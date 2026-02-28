@@ -9,7 +9,7 @@ public class ChatSendingMessagesAccessor(ChatSendingMessages chatSendingMessages
 
     public async Task<ChatEntry> GetSelfOrSending(ChatEntry chatEntry)
     {
-        if (chatEntry.HasAttachmentUploads) {
+        if (chatEntry.HasUploadingAttachments) {
             var newMessages = await ChatSendingMessages.GetNewMessages().ConfigureAwait(false);
             var sendingMessage = newMessages.FirstOrDefault(c => c.PostedChatEntry?.LocalId == chatEntry.LocalId);
             if (sendingMessage is not null) {
@@ -69,7 +69,7 @@ public class ChatSendingMessagesAccessor(ChatSendingMessages chatSendingMessages
                 BeginsAt = sendingMessage.BeginsAt,
                 SendingTag = sendingMessage,
                 ClientUid = Guid.NewGuid().ToString(),
-                HasAttachmentUploads = sendingMessage.AttachmentUploads is not null,
+                HasUploadingAttachments = sendingMessage.AttachmentUploads is not null,
             };
             Owner.RegisterEntryByClientId(chatEntry);
             entries.Add(chatEntry);

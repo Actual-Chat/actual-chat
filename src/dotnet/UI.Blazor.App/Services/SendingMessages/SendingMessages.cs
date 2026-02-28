@@ -316,7 +316,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             var chatSendingMessages = GetChatSendingMessages(request.ChatId);
             if (result.IsValue(out var chatEntry1, out var exception)) {
                 ChatEntryId = chatEntry1.Id;
-                var hasAttachmentUploads = request.AttachmentUploads is not null;// chatEntry1.HasAttachmentUploads || chatEntry1.Attachments.Any(c => !(c.Media?.IsReady ?? false));
+                var hasAttachmentUploads = request.AttachmentUploads is not null;// chatEntry1.HasUploadingAttachments || chatEntry1.Attachments.Any(c => !(c.Media?.IsReady ?? false));
                 chatSendingMessages.ConfirmMessageHasSent(sendingMessage, chatEntry1, Now, !hasAttachmentUploads);
                 _mediaUploadsUI.Invalidate(sendingMessage);
                 try {
@@ -450,10 +450,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 .Select(c => c?.MediaContent)
                 .SkipNullItems()
                 .ToDictionary(c => c.MediaId, c => c);
-            var attachments = chatEntry.AttachmentUploads;
-            if (attachments.Length == 0)
-                attachments = chatEntry.Attachments;
-            var entryAttachments = attachments
+            var entryAttachments = chatEntry.Attachments
                 .Select(c => new { Attachment = c, MediaContent = mediaContents.GetValueOrDefault(c.MediaId) })
                 .Where(c => c.MediaContent is not null)
                 .Select(c => new TextEntryAttachment {
@@ -466,7 +463,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             var cmd = new Chats_UpsertTextEntry(Session, chatEntry.ChatId, chatEntry.LocalId) {
                 Text = chatEntry.Content,
                 EntryAttachments = entryAttachments,
-                HasAttachmentUploads = false,
+                HasUploadingAttachments = false,
             };
             chatEntry1 = await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
         }

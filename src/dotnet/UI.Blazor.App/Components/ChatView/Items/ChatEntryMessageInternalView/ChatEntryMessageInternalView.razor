@@ -41,10 +41,10 @@
     RenderFragment statusFragment = (__builder) => {
         var status = ChatMessageSendingStatus.MessageStatus.Default;
         if (entry.IsSending) {
-            if (!entry.HasAttachmentUploads)
+            if (!entry.HasUploadingAttachments)
                 status = ChatMessageSendingStatus.MessageStatus.Sending;
         }
-        else if (entry.HasAttachmentUploads) {
+        else if (entry.HasUploadingAttachments) {
             // Use default
         }
         else if (IsUnreadByOthers) {

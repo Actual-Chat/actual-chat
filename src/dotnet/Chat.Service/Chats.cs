@@ -348,7 +348,7 @@ public partial class Chats(IServiceProvider services) : IChats
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(ChatPermissions.Write);
         var attachments = command.EntryAttachments;
-        if (string.IsNullOrWhiteSpace(text) && attachments.Length == 0 && !command.HasAttachmentUploads)
+        if (string.IsNullOrWhiteSpace(text) && attachments.Length == 0 && !command.HasUploadingAttachments)
             throw StandardError.Constraint("Sorry, you can't post empty messages.");
 
         ChatEntry textEntry;
@@ -373,7 +373,6 @@ public partial class Chats(IServiceProvider services) : IChats
             var diff = new ChatEntryDiff {
                 Content = text,
                 RepliedEntryLid = repliedEntryLid,
-                HasAttachmentUploads = command.HasAttachmentUploads,
                 Attachments = command.EntryAttachments,
             };
 
@@ -429,7 +428,6 @@ public partial class Chats(IServiceProvider services) : IChats
                     Forwarded = command.Forwarded,
                     Attachments = attachments.Length == 0 ? null : attachments,
                     ClientId = command.ClientId,
-                    HasAttachmentUploads = command.HasAttachmentUploads,
                 }));
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
         }

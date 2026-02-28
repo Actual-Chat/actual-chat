@@ -8,5 +8,5 @@ public enum ChatEntryFlags
     HasReactions = 1 << 1,
     IsThreadStart = 1 << 2,
     IsThread = 1 << 3,
-    HasAttachmentUploads = 1 << 4,
+    HasUploadingAttachments = 1 << 4,
 }

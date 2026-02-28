@@ -166,7 +166,7 @@
                     IsUnreadByOthersBlockStart="@m.IsUnreadByOthersBlockStart"
                 />
             </div>
-            @if (entry.Attachments.Length > 0 || entry.HasAttachmentUploads) {
+            @if (entry.Attachments.Length > 0 || entry.HasUploadingAttachments) {
                 <ChatEntryAttachmentsView
                     Hub="@Hub"
                     Entry="@entry"

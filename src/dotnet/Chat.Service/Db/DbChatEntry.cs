@@ -34,7 +34,6 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public bool IsSystemEntry { get; set; }
     public bool IsThreadStartEntry { get; set; }
     public bool IsThreadEntry { get; set; }
-    public bool HasAttachmentUploads { get; set; }
     public string ClientId { get; set; } = "";
 
     public string? ForwardedChatTitle { get; set; }
@@ -85,7 +84,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     {
         // fix NRE during deserialization of ApiArray at versions earlier than v0.200
         var attachmentsArray = attachments == null ? [] : attachments.OrderBy(x => x.Index).ToArray();
-        var hasAttachmentUploads = attachmentsArray.Any(c => c.Media.BlobId.IsNullOrEmpty());
+        var hasUploadingAttachments = attachmentsArray.Any(c => !c.Media.IsUploaded);
         var chatId = ActualChat.ChatId.Parse(ChatId);
         var id = ChatEntryId.New(chatId, LocalId);
         var linkPreviewIds = DeserializeLinkPreviewIds();
@@ -96,7 +95,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         if (HasReactions) flags |= ChatEntryFlags.HasReactions;
         if (IsThreadStartEntry) flags |= ChatEntryFlags.IsThreadStart;
         if (IsThreadEntry) flags |= ChatEntryFlags.IsThread;
-        if (HasAttachmentUploads || hasAttachmentUploads) flags |= ChatEntryFlags.HasAttachmentUploads;
+        if (hasUploadingAttachments) flags |= ChatEntryFlags.HasUploadingAttachments;
 
         // Build partial audio from DB columns (like SystemEntry pattern)
         var audio = BuildPartialAudio();
@@ -114,8 +113,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             Audio = audio,
             RepliedEntryLid = RepliedChatEntryId,
             Forwarded = BuildForwarded(),
-            Attachments = !hasAttachmentUploads ? attachmentsArray : [],
-            AttachmentUploads = hasAttachmentUploads ? attachmentsArray : [],
+            Attachments = attachmentsArray,
             LinkPreviewIds = linkPreviewIds,
             LinkPreviewMode = LinkPreviewMode ?? Media.LinkPreviewMode.Default,
             LinkPreviews = linkPreviews,
@@ -175,7 +173,6 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         IsRemoved = model.IsRemoved;
         IsThreadStartEntry = model.IsThreadStart;
         IsThreadEntry = model.IsThread;
-        HasAttachmentUploads = model.HasAttachmentUploads;
         ClientId = model.ClientId;
 
         AuthorId = model.AuthorId.Value;

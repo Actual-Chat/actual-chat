@@ -5,7 +5,7 @@
     var hasSelection = SelectionUI.HasSelection.Value;
     var isForwarded = e.Forwarded is not null;
     var isTextEntry = !e.IsContentStreaming;
-    var canEdit = isTextEntry && !isForwarded && !hasSelection && !e.HasAttachmentUploads;
+    var canEdit = isTextEntry && !isForwarded && !hasSelection && !e.HasUploadingAttachments;
     var canCopyText = isTextEntry && !e.Content.IsNullOrEmpty();
 }
 

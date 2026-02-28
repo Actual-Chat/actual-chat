@@ -58,7 +58,6 @@ public sealed partial record ChatEntry(
 
     // Read-only (populated on reads)
     [DataMember(Order = 17), MemoryPackOrder(17)] public TextEntryAttachment[] Attachments { get; init; } = [];
-    [DataMember(Order = 18), MemoryPackOrder(18)] public TextEntryAttachment[] AttachmentUploads { get; init; } = [];
 
     // MemoryPackXxx properties
 
@@ -102,9 +101,9 @@ public sealed partial record ChatEntry(
         init => Flags = value ? Flags | ChatEntryFlags.IsThread : Flags & ~ChatEntryFlags.IsThread;
     }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public bool HasAttachmentUploads {
-        get => Flags.HasFlag(ChatEntryFlags.HasAttachmentUploads);
-        init => Flags = value ? Flags | ChatEntryFlags.HasAttachmentUploads : Flags & ~ChatEntryFlags.HasAttachmentUploads;
+    public bool HasUploadingAttachments {
+        get => Flags.HasFlag(ChatEntryFlags.HasUploadingAttachments);
+        init => Flags = value ? Flags | ChatEntryFlags.HasUploadingAttachments : Flags & ~ChatEntryFlags.HasUploadingAttachments;
     }
 
     // Computed
@@ -156,8 +155,7 @@ public sealed partial record ChatEntryDiff() : RecordDiff, ISanitized
     [DataMember, MemoryPackOrder(12)] public bool? HasReactions { get; init; }
     [DataMember, MemoryPackOrder(13)] public bool? IsThreadStart { get; init; }
     [DataMember, MemoryPackOrder(14)] public bool? IsThread { get; init; }
-    [DataMember, MemoryPackOrder(15)] public bool? HasAttachmentUploads { get; init; }
-    [DataMember, MemoryPackOrder(16)] public string? ClientId { get; init; } // Soon obsolete
+    [DataMember, MemoryPackOrder(15)] public string? ClientId { get; init; } // Soon obsolete
 
     public ChatEntryDiff(ChatEntry entry) : this()
     {
@@ -177,7 +175,6 @@ public sealed partial record ChatEntryDiff() : RecordDiff, ISanitized
         IsThreadStart = entry.IsThreadStart;
         IsThread = entry.IsThread;
         HasReactions = entry.HasReactions;
-        HasAttachmentUploads = entry.HasAttachmentUploads;
         // Soon obsolete
         ClientId = entry.ClientId;
     }
