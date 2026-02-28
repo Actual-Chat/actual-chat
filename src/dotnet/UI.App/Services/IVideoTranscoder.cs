@@ -6,7 +6,6 @@ public interface IVideoTranscoder
 {
     Task<VideoTranscodeResult?> TranscodeIfNeeded(
         FilePath sourceFilePath,
-        string mimeType,
         IProgress<double>? progress = null,
         CancellationToken cancellationToken = default);
 }
@@ -15,7 +14,7 @@ public interface IVideoTranscoder
 public class NullVideoTranscoder : IVideoTranscoder
 {
     public Task<VideoTranscodeResult?> TranscodeIfNeeded(
-        FilePath sourceFilePath, string mimeType,
+        FilePath sourceFilePath,
         IProgress<double>? progress = null,
         CancellationToken cancellationToken = default)
         => Task.FromResult<VideoTranscodeResult?>(null);
