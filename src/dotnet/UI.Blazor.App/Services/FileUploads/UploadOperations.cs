@@ -1,4 +1,5 @@
 using ActualChat.Media;
+using ActualChat.UI.App.Services;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -15,6 +16,7 @@ public class UploadOperations(AppUIHub hub)
     public ICommander Commander => hub.Commander;
     public Moment Now() => hub.Clocks.SystemClock.Now;
     public IMedia Media => hub.Media;
+    public IVideoTranscoder VideoTranscoder => field ??= hub.Services.GetRequiredService<IVideoTranscoder>();
     private ILogger Log => field ??= hub.LogFor(GetType());
 
     public async Task<MediaId> ReserveMediaId(

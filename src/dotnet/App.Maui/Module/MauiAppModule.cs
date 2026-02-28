@@ -4,7 +4,6 @@ using ActualChat.App.Maui.Services.Playback;
 using ActualChat.App.Maui.Services.Recording;
 using ActualChat.Audio;
 using ActualChat.Hosting;
-using ActualChat.Maui.Services;
 using ActualChat.MediaPlayback;
 using ActualChat.UI;
 using ActualChat.UI.App.Services;
@@ -15,7 +14,6 @@ using ActualChat.UI.Blazor.App.Pages.Test;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace ActualChat.App.Maui.Module;
 
