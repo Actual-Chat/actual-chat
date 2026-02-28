@@ -183,8 +183,8 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         StreamId = model.ContentStreamId;
         RepliedChatEntryId = model.RepliedEntryLid;
         if (model.Forwarded is { } forwarded) {
-            ForwardedChatEntryId = forwarded.ChatEntryId.Value;
-            ForwardedAuthorId = forwarded.AuthorId.Value;
+            ForwardedChatEntryId = forwarded.ChatEntryId?.Value;
+            ForwardedAuthorId = forwarded.AuthorId?.Value;
             ForwardedChatEntryBeginsAt = forwarded.BeginsAt;
             ForwardedChatTitle = forwarded.ChatTitle.NullIfEmpty();
             ForwardedAuthorName = forwarded.AuthorName.NullIfEmpty();

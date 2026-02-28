@@ -662,18 +662,18 @@ public partial class Chats(IServiceProvider services) : IChats
             destinationChat.Rules.Permissions.Require(ChatPermissions.Write);
 
             foreach (var chatEntry in chatEntries) {
-                var existing = chatEntry.Forwarded;
-                var forwardedChatTitle = existing?.ChatTitle.NullIfEmpty() ?? chat.Title;
-                var forwardedChatEntryId = existing != null
-                    ? existing.ChatEntryId != default && existing.ChatEntryId.ChatId.Kind != ChatKind.Peer
-                        ? existing.ChatEntryId
-                        : default
+                var forwarded = chatEntry.Forwarded;
+                var forwardedChatTitle = forwarded?.ChatTitle.NullIfEmpty() ?? chat.Title;
+                var forwardedChatEntryId = forwarded is not null
+                    ? forwarded.ChatEntryId is not null && forwarded.ChatEntryId.ChatId.Kind != ChatKind.Peer
+                        ? forwarded.ChatEntryId
+                        : null
                     : chatEntry.ChatId.Kind == ChatKind.Peer
-                        ? default
+                        ? null
                         : chatEntry.Id;
-                var forwardedBeginsAt = existing?.BeginsAt ?? chatEntry.BeginsAt;
-                var forwardedAuthorId = existing?.AuthorId ?? chatEntry.AuthorId;
-                var forwardedAuthorName = existing?.AuthorName ?? "";
+                var forwardedBeginsAt = forwarded?.BeginsAt ?? chatEntry.BeginsAt;
+                var forwardedAuthorId = forwarded?.AuthorId ?? chatEntry.AuthorId;
+                var forwardedAuthorName = forwarded?.AuthorName ?? "";
                 if (forwardedAuthorName.IsNullOrEmpty()) {
                     var forwardedAuthor = await AuthorsBackend
                         .Get(forwardedAuthorId.ChatId, forwardedAuthorId, RequestedAuthorKind.Full, cancellationToken)

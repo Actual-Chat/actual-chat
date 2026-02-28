@@ -222,12 +222,16 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             ShareSuggestions.Push(contactId);
     }
 
-    private async Task CreateChatEntry(ChatId chatId, string entryText, ChatEntryAttachment[] attachmentList, CancellationToken cancellationToken)
+    private async Task CreateChatEntry(
+        ChatId chatId,
+        string text,
+        ChatEntryAttachment[] attachments,
+        CancellationToken cancellationToken)
     {
         var cmd = new Chats_UpsertTextEntry(Session, chatId, null) {
-            Text = entryText,
+            Text = text,
             ClientId = RandomStringGenerator.Default.Next(6),
-            Attachments = attachmentList,
+            Attachments = attachments,
         };
         await UICommander.Call(cmd, cancellationToken).ConfigureAwait(false);
     }

@@ -309,7 +309,7 @@
         var isHighlighted = entry.Id == await ChatUI.HighlightedEntryId.Use(cancellationToken).ConfigureAwait(false);
         Chat? forwardedChat = null;
         ChatEntryId? forwardedChatEntryId = null;
-        if (isForward && entry.Forwarded!.ChatEntryId != default) {
+        if (isForward && entry.Forwarded!.ChatEntryId is not null) {
             var fwdEntryId = entry.Forwarded.ChatEntryId;
             forwardedChat = await Chats.Get(Session, fwdEntryId.ChatId, cancellationToken).ConfigureAwait(false);
             if (forwardedChat != null)
@@ -458,7 +458,7 @@
         if (entry.Forwarded is not { } forwarded)
             return null;
 
-        if (forwarded.ChatEntryId != default)
+        if (forwarded.ChatEntryId is not null)
             return await Authors.Get(Session, forwarded.ChatEntryId.ChatId, forwarded.AuthorId, cancellationToken);
 
         if (forwarded.AuthorId.ChatId is not PeerChatId peerChatId)

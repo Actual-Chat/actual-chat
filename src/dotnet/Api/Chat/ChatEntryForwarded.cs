@@ -13,9 +13,8 @@ public sealed partial record ChatEntryForwarded : ISanitized
     /// <summary>
     /// The original entry id. Can be <c>default</c> for peer-chat forwards where the link is suppressed.
     /// </summary>
-    [DataMember, MemoryPackOrder(0)] public ChatEntryId ChatEntryId { get; init; }
-
-    [DataMember, MemoryPackOrder(1)] public AuthorId AuthorId { get; init; }
+    [DataMember, MemoryPackOrder(0)] public ChatEntryId? ChatEntryId { get; init; }
+    [DataMember, MemoryPackOrder(1)] public AuthorId AuthorId { get; init; } = null!;
     [DataMember, MemoryPackOrder(2)] public Moment BeginsAt { get; init; }
     [DataMember, MemoryPackOrder(3)] public string ChatTitle { get => Sanitizer.MaskPrivate(field); init; } = "";
     [DataMember, MemoryPackOrder(4)] public string AuthorName { get => Sanitizer.MaskPrivate(field); init; } = "";
