@@ -14,20 +14,17 @@ public class IosVideoTranscoder(IServiceProvider services) : IVideoTranscoder
 
     public async Task<VideoTranscodeResult?> TranscodeIfNeeded(
         FilePath sourceFilePath,
-        string mimeType,
         IProgress<double>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        DebugLog?.LogInformation(
-            "TranscodeIfNeeded: '{Path}', mimeType={MimeType}",
-            sourceFilePath, mimeType);
+        DebugLog?.LogInformation("TranscodeIfNeeded: '{Path}'", sourceFilePath);
 
-        if (!await NeedsTranscoding(sourceFilePath, mimeType).ConfigureAwait(false))
+        if (!await NeedsTranscoding(sourceFilePath).ConfigureAwait(false))
             return null;
 
         var sourceFileInfo = new FileInfo(sourceFilePath);
-        Log.LogInformation("Transcoding video '{Path}' (mimeType={MimeType}, size={Size})",
-            sourceFilePath, mimeType, sourceFileInfo.Length);
+        Log.LogInformation("Transcoding video '{Path}' (size={Size})",
+            sourceFilePath, sourceFileInfo.Length);
 
         var startedAt = CpuTimestamp.Now;
         var outputPath = await Transcode(sourceFilePath, progress, cancellationToken)
@@ -45,11 +42,10 @@ public class IosVideoTranscoder(IServiceProvider services) : IVideoTranscoder
         return new VideoTranscodeResult(outputPath.Value, "video/mp4", fileInfo.Length);
     }
 
-    private async Task<bool> NeedsTranscoding(FilePath filePath, string mimeType)
+    private async Task<bool> NeedsTranscoding(FilePath filePath)
     {
-        if (!OrdinalIgnoreCaseEquals(mimeType, "video/mp4")) {
-            DebugLog?.LogInformation(
-                "NeedsTranscoding: true (mimeType={MimeType} is not video/mp4)", mimeType);
+        if (!OrdinalIgnoreCaseEquals(filePath.Extension, ".mp4")) {
+            DebugLog?.LogInformation("NeedsTranscoding: true (extension '{Extension}' is not .mp4)", filePath.Extension);
             return true;
         }
 
