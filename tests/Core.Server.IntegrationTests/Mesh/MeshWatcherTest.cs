@@ -9,12 +9,13 @@ public class MeshWatcherTest(ITestOutputHelper @out)
     [Fact(Timeout = 30_000)]
     public async Task BasicTest()
     {
+        var syncTimeout = TimeSpan.FromSeconds(10);
+
         await using var h1 = await NewAppHost();
         var w1 = h1.Services.GetRequiredService<MeshWatcher>();
         var s = w1.State.Value.GetShardMap(ShardScheme.TestBackend);
         WriteLine(s.ToString());
 
-        var syncTimeout = w1.OfflineTimeout * 2;
         await w1.State.Computed.When(x => x.AllNodes.Count == 1).WaitAsync(syncTimeout);
         await w1.State.Computed.When(x => x.LiveNodes.Length == 1).WaitAsync(syncTimeout);
         s = w1.State.Value.GetShardMap(ShardScheme.TestBackend);
@@ -73,14 +74,13 @@ public class MeshWatcherTest(ITestOutputHelper @out)
         }
         _ = w2.DisposeAsync();
 
-        var t1a = Task.Delay(w1.OfflineTimeout * 0.5, sr2!.RouteState!.ChangedToken);
-        var t1b = Task.Delay(w1.OfflineTimeout * 1.5, sr2!.RouteState!.ChangedToken);
+        // With no Offline grace period, the route state should change
+        // as soon as the lock expires and the watcher detects it
+        var t1 = Task.Delay(TimeSpan.FromSeconds(10), sr2!.RouteState!.ChangedToken);
         var t2 = Task.Delay(TimeSpan.FromSeconds(1), sr1!.RouteState!.ChangedToken);
-        var r1a = await t1a.ResultAwait();
-        var r1b = await t1b.ResultAwait();
+        var r1 = await t1.ResultAwait();
         var r2 = await t2.ResultAwait();
-        r1a.Error.Should().BeNull();
-        (r1b.Error is OperationCanceledException).Should().BeTrue();
+        (r1.Error is OperationCanceledException).Should().BeTrue();
         r2.Error.Should().BeNull();
     }
 }

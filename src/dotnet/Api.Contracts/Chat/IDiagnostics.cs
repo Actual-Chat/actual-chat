@@ -26,7 +26,6 @@ public sealed partial record NodeDiagInfo(
     [property: DataMember, MemoryPackOrder(1)] string Endpoint,
     [property: DataMember, MemoryPackOrder(2)] string State,
     [property: DataMember, MemoryPackOrder(3)] bool IsThis,
-    [property: DataMember, MemoryPackOrder(4)] TimeSpan? DiesIn,
     [property: DataMember, MemoryPackOrder(5)] string Roles,
     [property: DataMember, MemoryPackOrder(6)] string Extra);
 

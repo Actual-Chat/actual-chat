@@ -80,7 +80,6 @@ public class DiagnosticsBackendLocal(IServiceProvider services) : IComputeServic
                 c.Endpoint,
                 c.State.ToString(),
                 thisNode == c,
-                c.DeadAt.HasValue ? (c.DeadAt.Value - now).Positive() : null,
                 c.Roles.ToDelimitedString(", "),
                 ""))
             .ToArray();
@@ -135,9 +134,17 @@ public class DiagnosticsBackendLocal(IServiceProvider services) : IComputeServic
         public RpcConnectionDiagInfo? Connection { get; init; }
     }
 
-    public record RpcConnectionDiagInfo(bool IsLocal, string Uri, WebSocketDiagInfo? WebSocket);
+    public record RpcConnectionDiagInfo(
+        bool IsLocal,
+        string Uri,
+        WebSocketDiagInfo? WebSocket);
 
-    public record WebSocketDiagInfo(string Websocket, string State, string? SubProtocol, string CloseStatus, string? CloseStatusDescription);
+    public record WebSocketDiagInfo(
+        string Websocket,
+        string State,
+        string? SubProtocol,
+        string CloseStatus,
+        string? CloseStatusDescription);
 
     public bool IsDisposed => false;
 }
