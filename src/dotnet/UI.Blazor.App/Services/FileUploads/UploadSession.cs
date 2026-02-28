@@ -154,6 +154,11 @@ public class UploadSession
         if (MediaTypeExt.IsVideo(mimeType) && fileProvider is MauiFileProvider mauiFileProvider) {
             var filePath = mauiFileProvider.FileRef.Value;
             if (!filePath.IsNullOrEmpty()) {
+                Log.LogInformation("'{SessionId}': client processing video '{FilePath}', mimeType={MimeType}",
+                    SessionId,
+                    filePath,
+                    mimeType);
+
                 var progress = new Progress<double>(p => {
                     _ = UpdateState(s => {
                         if (s.CurrentState != UploadSessionState.ClientProcessing)
@@ -166,9 +171,13 @@ public class UploadSession
                     .TranscodeIfNeeded(filePath, mimeType, progress, cancellationToken)
                     .ConfigureAwait(false);
 
-                if (result != null)
+                if (result != null) {
+                    Log.LogInformation("'{SessionId}': transcoded to '{TranscodedPath}', size={Size}", SessionId, result.FilePath, result.Length);
                     await UpdateState(s => s with { TranscodedFilePath = result.FilePath }, cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
+                }
+                else
+                    Log.LogInformation("'{SessionId}': no transcoding needed", SessionId);
             }
         }
 
@@ -264,10 +273,17 @@ public class UploadSession
     private UploadSource? GetTranscodedSource()
     {
         var transcodedPath = _snapshot.TranscodedFilePath;
-        if (transcodedPath.IsNullOrEmpty() || !File.Exists(transcodedPath))
+        if (transcodedPath.IsNullOrEmpty())
             return null;
+        if (!File.Exists(transcodedPath)) {
+            Log.LogWarning("'{SessionId}': transcoded file not found at '{Path}', using original",
+                SessionId, transcodedPath);
+            return null;
+        }
 
         var fileInfo = new FileInfo(transcodedPath);
+        Log.LogInformation("'{SessionId}': uploading transcoded file '{Path}', size={Size}",
+            SessionId, transcodedPath, fileInfo.Length);
         var metadata = new UploadSourceMetadata("video/mp4", fileInfo.Length, Path.GetFileName(transcodedPath));
         return new UploadSource(metadata, new StreamUploadSource(() => Task.FromResult<Stream>(File.OpenRead(transcodedPath))));
     }
