@@ -2,6 +2,7 @@ using ActualChat.UI.App.Services;
 using ActualLab.Diagnostics;
 using ActualLab.IO;
 using AVFoundation;
+using Microsoft.Maui.Storage;
 
 namespace ActualChat.Maui;
 
@@ -70,7 +71,11 @@ public class IosVideoTranscoder(IServiceProvider services) : IVideoTranscoder
         var asset = new AVUrlAsset(sourceUrl);
 
         var exportSession = new AVAssetExportSession(asset, AVAssetExportSessionPreset.Preset1920x1080);
-        FilePath outputPath = new FilePath(Path.GetTempPath()) & $"{Guid.NewGuid():N}.mp4";
+        FilePath outputDir = new FilePath(FileSystem.CacheDirectory) | "transcoded";
+        Directory.CreateDirectory(outputDir);
+        FilePath outputPath = outputDir | $"{sourcePath.FileNameWithoutExtension}.mp4";
+        if (File.Exists(outputPath))
+            outputPath = outputPath.ToUnique();
         var outputUrl = NSUrl.CreateFileUrl(outputPath);
 
         exportSession.OutputUrl = outputUrl;
@@ -158,7 +163,7 @@ public class IosVideoTranscoder(IServiceProvider services) : IVideoTranscoder
             return;
 
         while (!cancellationToken.IsCancellationRequested) {
-            await Task.Delay(250, cancellationToken).ConfigureAwait(false);
+            await Task.Delay(100, cancellationToken).ConfigureAwait(false);
             progress.Report(session.Progress);
         }
     }
