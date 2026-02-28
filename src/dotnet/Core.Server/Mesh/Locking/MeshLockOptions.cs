@@ -4,7 +4,11 @@ public sealed record MeshLockOptions(
     TimeSpan ExpirationPeriod,
     float RenewalPeriodRatio = 0.4f
 ) {
-    public static readonly MeshLockOptions Release = new(expirationPeriod: 11, renewalPeriodRatio: 0.3f);
+    public static readonly MeshLockOptions ReleaseMeshWatcher = new(expirationPeriod: 22) {
+        RenewalPeriodRatio = 0.24f,
+        ExpirationSafetyMargin = TimeSpan.FromSeconds(2),
+    };
+    public static readonly MeshLockOptions Release = new(expirationPeriod: 11);
     public static readonly MeshLockOptions Debug = new(expirationPeriod: 61);
     public static readonly MeshLockOptions Test =  new(expirationPeriod: 21) { // GitHub build agents make huge pauses sometimes
         RenewalPeriodRatio = 0.24f,
@@ -28,7 +32,7 @@ public sealed record MeshLockOptions(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public TimeSpan RenewalPeriod => ExpirationPeriod * RenewalPeriodRatio;
 
-    public MeshLockOptions(double expirationPeriod, float renewalPeriodRatio = 0.4f)
+    public MeshLockOptions(double expirationPeriod, float renewalPeriodRatio = 0.32f)
         : this(TimeSpan.FromSeconds(expirationPeriod), renewalPeriodRatio)
     { }
 
