@@ -96,11 +96,25 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         var sessionId = session.SessionId;
         if (session.UploadId is {} uploadId)
             await _uploadOperations.RemoveUpload(uploadId, CancellationToken.None).ConfigureAwait(false);
+        TryDeleteTranscodedFile(session.TranscodedFilePath);
         await session.FileProvider.ClearForRemoving().ConfigureAwait(false);
         await _repo.Delete(sessionId).ConfigureAwait(false);
         _sessions.TryRemove(sessionId, out _);
         UploadSessionsState.Remove(sessionId);
         Log.LogDebug("Deleted session '{SessionId}' ('{FileName}')", sessionId, session.FileProvider.Metadata.FileName);
+    }
+
+    private static void TryDeleteTranscodedFile(string? filePath)
+    {
+        if (filePath.IsNullOrEmpty())
+            return;
+        try {
+            if (File.Exists(filePath))
+                File.Delete(filePath);
+        }
+        catch {
+            // Best effort cleanup
+        }
     }
 
     private Func<UploadSessionSnapshot, CancellationToken, Task> CreateStorage()

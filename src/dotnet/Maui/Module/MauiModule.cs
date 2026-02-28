@@ -47,6 +47,9 @@ public class MauiModule(IServiceProvider moduleServices)
         var fusion = services.AddFusion();
         fusion.AddService<IconUI>(ServiceLifetime.Scoped);
         fusion.AddService<IncomingShareSuggestions, IosIncomingShareSuggestions>(ServiceLifetime.Scoped);
+
+        // Video transcoding
+        services.AddScoped<IVideoTranscoder>(c => new IosVideoTranscoder(c));
 #endif
     }
 }
