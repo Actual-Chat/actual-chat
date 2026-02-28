@@ -52,19 +52,30 @@ public class IosAttachmentFilePicker(IServiceProvider services) : MauiAttachment
     {
         var item = pickerResult.ItemProvider;
         try {
+            var loadStartedAt = CpuTimestamp.Now;
             var representation = await item
                 .LoadInPlaceFileRepresentationAsync(contentType.Identifier)
                 .ConfigureAwait(false);
             FilePath tmpFileName = item.SuggestedName.NullIfEmpty() ?? representation.Path.FileName;
             tmpFileName = tmpFileName.EnsureExt(representation.Path.Extension);
+            Log.LogInformation(
+                "Loaded in-place representation for '{FileName}' in {Elapsed}",
+                tmpFileName, loadStartedAt.Elapsed.ToShortString());
+
             var tmpFilePath = AttachmentsDirectoryName | tmpFileName.ToUnique();
+            var copyStartedAt = CpuTimestamp.Now;
             await representation.Copy(tmpFilePath).ConfigureAwait(false);
+            var fileInfo = new FileInfo(tmpFilePath);
+            Log.LogInformation(
+                "Copied picked media '{FileName}' ({Size} bytes) in {Elapsed}",
+                tmpFileName, fileInfo.Length, copyStartedAt.Elapsed.ToShortString());
+
             var fileProvider = new MauiFileProvider {
                 FileRef = tmpFilePath,
                 Metadata = new() {
                     FileName = tmpFileName,
                     FileType = representation.ImplyMimeType(item),
-                    Length = new FileInfo(tmpFilePath).Length,
+                    Length = fileInfo.Length,
                 },
             };
             fileProvider.Initialize(Services);

@@ -25,20 +25,22 @@ public class IosVideoTranscoder(IServiceProvider services) : IVideoTranscoder
         if (!await NeedsTranscoding(sourceFilePath, mimeType).ConfigureAwait(false))
             return null;
 
-        Log.LogInformation("Transcoding video '{Path}' (mimeType={MimeType})",
-            sourceFilePath, mimeType);
+        var sourceFileInfo = new FileInfo(sourceFilePath);
+        Log.LogInformation("Transcoding video '{Path}' (mimeType={MimeType}, size={Size})",
+            sourceFilePath, mimeType, sourceFileInfo.Length);
 
+        var startedAt = CpuTimestamp.Now;
         var outputPath = await Transcode(sourceFilePath, progress, cancellationToken)
             .ConfigureAwait(false);
 
         if (outputPath == null) {
-            Log.LogWarning("Transcoding failed for '{Path}'", sourceFilePath);
+            Log.LogWarning("Transcoding failed for '{Path}' in {Elapsed}", sourceFilePath, startedAt.Elapsed.ToShortString());
             return null;
         }
 
         var fileInfo = new FileInfo(outputPath.Value);
-        Log.LogInformation("Transcoding completed: '{OutputPath}', size={Size}",
-            outputPath, fileInfo.Length);
+        Log.LogInformation("Transcoding completed: '{OutputPath}', size={Size} in {Elapsed}",
+            outputPath, fileInfo.Length, startedAt.Elapsed.ToShortString());
 
         return new VideoTranscodeResult(outputPath.Value, "video/mp4", fileInfo.Length);
     }
