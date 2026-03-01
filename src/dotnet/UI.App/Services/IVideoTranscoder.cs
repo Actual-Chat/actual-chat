@@ -4,7 +4,7 @@ namespace ActualChat.UI.App.Services;
 
 public interface IVideoTranscoder
 {
-    Task<VideoTranscodeResult?> TranscodeIfNeeded(
+    Task<FilePath?> TranscodeIfNeeded(
         FilePath sourceFilePath,
         IProgress<double>? progress = null,
         CancellationToken cancellationToken = default);
@@ -13,11 +13,9 @@ public interface IVideoTranscoder
 /// No-op for platforms without client-side transcoding (web, Android, Windows).
 public class NullVideoTranscoder : IVideoTranscoder
 {
-    public Task<VideoTranscodeResult?> TranscodeIfNeeded(
+    public Task<FilePath?> TranscodeIfNeeded(
         FilePath sourceFilePath,
         IProgress<double>? progress = null,
         CancellationToken cancellationToken = default)
-        => Task.FromResult<VideoTranscodeResult?>(null);
+        => Task.FromResult<FilePath?>(null);
 }
-
-public record VideoTranscodeResult(FilePath FilePath, string ContentType, long Length);

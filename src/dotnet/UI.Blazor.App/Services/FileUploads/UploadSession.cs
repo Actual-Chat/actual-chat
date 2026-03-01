@@ -152,8 +152,8 @@ public class UploadSession
         var mimeType = fileProvider.Metadata.FileType;
 
         if (MediaTypeExt.IsVideo(mimeType) && fileProvider is MauiFileProvider mauiFileProvider) {
-            var filePath = mauiFileProvider.FileRef.Value;
-            if (!filePath.IsNullOrEmpty()) {
+            var filePath = mauiFileProvider.FileRef;
+            if (filePath.IsEmpty) {
                 Log.LogInformation("'{SessionId}': client processing video '{FilePath}', mimeType={MimeType}",
                     SessionId,
                     filePath,
@@ -167,17 +167,14 @@ public class UploadSession
                     }, cancellationToken: cancellationToken);
                 });
 
-                var result = await _uploadOperations.VideoTranscoder
+                var transcodedPath = await _uploadOperations.VideoTranscoder
                     .TranscodeIfNeeded(filePath, progress, cancellationToken)
                     .ConfigureAwait(false);
 
-                if (result != null) {
-                    Log.LogInformation("'{SessionId}': transcoded to '{TranscodedPath}', size={Size}", SessionId, result.FilePath, result.Length);
-                    await UpdateState(s => s with { TranscodedFilePath = result.FilePath }, cancellationToken: cancellationToken)
+                if (transcodedPath is not null)
+                    await UpdateState(s => s with { TranscodedFilePath = transcodedPath.Value },
+                            cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
-                }
-                else
-                    Log.LogInformation("'{SessionId}': no transcoding needed", SessionId);
             }
         }
 
