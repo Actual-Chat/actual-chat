@@ -16,7 +16,7 @@ public class UploadOperations(AppUIHub hub)
     public ICommander Commander => hub.Commander;
     public Moment Now() => hub.Clocks.SystemClock.Now;
     public IMedia Media => hub.Media;
-    public IVideoTranscoder VideoTranscoder => field ??= hub.Services.GetRequiredService<IVideoTranscoder>();
+    public VideoTranscoder VideoTranscoder => field ??= hub.Services.GetRequiredService<VideoTranscoder>();
     private ILogger Log => field ??= hub.LogFor(GetType());
 
     public async Task<MediaId> ReserveMediaId(

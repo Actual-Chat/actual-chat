@@ -6,14 +6,14 @@ using Microsoft.Maui.Storage;
 
 namespace ActualChat.Maui;
 
-public class IosVideoTranscoder(IServiceProvider services) : IVideoTranscoder
+public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
 {
     private const int MaxResolution = 1080;
 
     private ILogger Log => field ??= services.LogFor<IosVideoTranscoder>();
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.VideoTranscoding);
 
-    public async Task<FilePath?> TranscodeIfNeeded(
+    public override async Task<FilePath?> TranscodeIfNeeded(
         FilePath sourceFilePath,
         IProgress<double>? progress = null,
         CancellationToken cancellationToken = default)

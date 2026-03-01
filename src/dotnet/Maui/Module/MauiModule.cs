@@ -49,7 +49,7 @@ public class MauiModule(IServiceProvider moduleServices)
         fusion.AddService<IncomingShareSuggestions, IosIncomingShareSuggestions>(ServiceLifetime.Scoped);
 
         // Video transcoding
-        services.AddScoped<IVideoTranscoder>(c => new IosVideoTranscoder(c));
+        services.AddScoped<VideoTranscoder>(c => new IosVideoTranscoder(c));
 #endif
     }
 }
