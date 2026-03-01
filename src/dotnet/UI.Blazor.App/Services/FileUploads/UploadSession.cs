@@ -269,19 +269,18 @@ public class UploadSession
 
     private UploadSource? GetTranscodedSource()
     {
-        var transcodedPath = _snapshot.TranscodedFilePath;
-        if (transcodedPath.IsNullOrEmpty())
+        if (_snapshot.TranscodedFilePath is not { } transcodedPath)
             return null;
+
         if (!File.Exists(transcodedPath)) {
-            Log.LogWarning("'{SessionId}': transcoded file not found at '{Path}', using original",
-                SessionId, transcodedPath);
-            return null;
+            Log.LogError("'{SessionId}': transcoded file not found at '{Path}'", SessionId, transcodedPath);
+            throw StandardError.Internal("Transcoded video not found");
         }
 
         var fileInfo = new FileInfo(transcodedPath);
         Log.LogInformation("'{SessionId}': uploading transcoded file '{Path}', size={Size}",
             SessionId, transcodedPath, fileInfo.Length);
-        var metadata = new UploadSourceMetadata("video/mp4", fileInfo.Length, Path.GetFileName(transcodedPath));
+        var metadata = new UploadSourceMetadata(MediaMimeTypes.GetMimeType(transcodedPath), fileInfo.Length, transcodedPath.FileName);
         return new UploadSource(metadata, new StreamUploadSource(() => Task.FromResult<Stream>(File.OpenRead(transcodedPath))));
     }
 }
