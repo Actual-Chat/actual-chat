@@ -198,6 +198,14 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             var dbAccount = await dbContext.GetDbAccount(userId, true, cancellationToken).ConfigureAwait(false);
             dbAccount.Require();
 
+            // Use fresh DB identities to avoid synthetic identities from cached ToModel()
+            if (existingAccount is not null) {
+                var freshIdentities = dbAccount.FormatVersion >= 1
+                    ? dbAccount.Identities.ToApiMap(ai => new UserIdentity(ai.Id), ai => ai.Secret)
+                    : dbUser.Identities.ToApiMap(ui => new UserIdentity(ui.Id), ui => ui.Secret);
+                existingAccount = existingAccount with { Identities = freshIdentities };
+            }
+
             account = UpdateExistingAccount(existingAccount, userId);
             await UpdateDbAccount(dbContext, dbAccount, account, cancellationToken).ConfigureAwait(false);
         }
@@ -447,6 +455,24 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         dbAccount.TimeZone = account.TimeZone;
         dbAccount.AliasId = account.AliasId?.NormalizedValue ?? "";
         dbAccount.Claims = account.Claims.ToImmutableDictionary(StringComparer.Ordinal);
+
+        // Sync identities to DbAccount
+        var dbIdentities = dbAccount.Identities.ToDictionary(ai => ai.Id, StringComparer.Ordinal);
+        foreach (var (userIdentity, secret) in account.Identities) {
+            if (!userIdentity.IsValid)
+                continue;
+            var foundIdentity = dbIdentities.GetValueOrDefault(userIdentity.Id);
+            if (foundIdentity is not null) {
+                foundIdentity.Secret = secret;
+                continue;
+            }
+
+            dbAccount.Identities.Add(new DbAccountIdentity {
+                Id = userIdentity.Id,
+                DbAccountId = dbAccount.Id,
+                Secret = secret ?? "",
+            });
+        }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
