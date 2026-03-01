@@ -1,3 +1,5 @@
+using ActualLab.IO;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
 public partial class UploadSessions : UIServiceBase<AppUIHub>
@@ -96,25 +98,20 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         var sessionId = session.SessionId;
         if (session.UploadId is {} uploadId)
             await _uploadOperations.RemoveUpload(uploadId, CancellationToken.None).ConfigureAwait(false);
-        TryDeleteTranscodedFile(session.TranscodedFilePath);
         await session.FileProvider.ClearForRemoving().ConfigureAwait(false);
         await _repo.Delete(sessionId).ConfigureAwait(false);
         _sessions.TryRemove(sessionId, out _);
         UploadSessionsState.Remove(sessionId);
+        DeleteFile(session.TranscodedFilePath);
         Log.LogDebug("Deleted session '{SessionId}' ('{FileName}')", sessionId, session.FileProvider.Metadata.FileName);
     }
 
-    private static void TryDeleteTranscodedFile(string? filePath)
+    private static void DeleteFile(FilePath? filePath)
     {
-        if (filePath.IsNullOrEmpty())
+        if (filePath?.IsEmpty != false || !File.Exists(filePath))
             return;
-        try {
-            if (File.Exists(filePath))
-                File.Delete(filePath);
-        }
-        catch {
-            // Best effort cleanup
-        }
+
+        File.Delete(filePath);
     }
 
     private Func<UploadSessionSnapshot, CancellationToken, Task> CreateStorage()
