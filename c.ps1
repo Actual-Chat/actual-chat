@@ -1,32 +1,12 @@
 #!/usr/bin/env pwsh
 # Claude launcher script - runs Claude in Docker, WSL, or native OS
 
-# Project definitions: folder name -> docker path suffix
-# Can be overridden by AC_Project0, AC_Project1, etc. environment variables
-$DefaultProjects = @(
-    "ActualChat",
-    "ActualLab.Fusion",
-    "ActualLab.Fusion.Samples"
-)
-
-# Apply overrides from environment variables
-$Projects = @()
-for ($i = 0; $i -lt $DefaultProjects.Count; $i++) {
-    $override = [Environment]::GetEnvironmentVariable("AC_Project$i")
-    if ($override) {
-        $Projects += $override
-    } else {
-        $Projects += $DefaultProjects[$i]
-    }
-}
-
-# Check AC_ProjectRoot
+# Auto-detect AC_ProjectRoot from the folder containing this script
+# e.g., if c.ps1 is at D:\Projects\ActualChat\c.ps1, AC_ProjectRoot = D:\Projects
 if (-not $env:AC_ProjectRoot) {
-    Write-Error "AC_ProjectRoot environment variable is not set."
-    Write-Error "Please set it to your projects root directory (e.g., D:\Projects or /home/user/projects)"
-    exit 1
+    $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+    $env:AC_ProjectRoot = Split-Path -Parent $scriptDir
 }
-
 
 # Detect current OS
 function Get-CurrentOS {
@@ -103,71 +83,77 @@ if ($currentOS -eq "Windows" -and $hasWindowsTerminal -and -not $env:WT_SESSION 
     exit 0
 }
 
-# Find project root by traversing up from current directory
-# Also detects worktrees named {ProjectName}-{Suffix}
+# Find project root via git. Detects worktrees automatically.
 function Find-ProjectRoot {
     param([switch]$Debug)
 
-    $checkDir = (Get-Location).Path
-    if ($Debug) { Write-Host "[DEBUG] Starting Find-ProjectRoot, checkDir=$checkDir" }
+    $currentPath = (Get-Location).Path
+    if ($Debug) { Write-Host "[DEBUG] Starting Find-ProjectRoot, currentPath=$currentPath" }
 
-    while ($checkDir) {
-        $dirName = Split-Path -Leaf $checkDir
-        $parentPath = Split-Path -Parent $checkDir
-        # Normalize paths for comparison
-        $normalizedParent = if ($parentPath) { $parentPath.TrimEnd('\', '/').ToLower() } else { "" }
-        $normalizedRoot = if ($env:AC_ProjectRoot) { $env:AC_ProjectRoot.TrimEnd('\', '/').ToLower() } else { "" }
-
-        if ($Debug) {
-            Write-Host "[DEBUG] dirName=$dirName, parentPath=$parentPath"
-            Write-Host "[DEBUG] normalizedParent='$normalizedParent', normalizedRoot='$normalizedRoot'"
-        }
-
-        if ($normalizedParent -eq $normalizedRoot -and $normalizedParent -ne "") {
-            # Check for exact project name match
-            if ($Projects -contains $dirName) {
-                $currentPath = (Get-Location).Path
-                return @{
-                    ProjectName = $dirName
-                    ProjectRoot = $checkDir
-                    RelativePath = $currentPath.Substring($checkDir.Length)
-                    Worktree = ""
-                }
-            }
-            # Check for worktree pattern: {ProjectName}-{Suffix}
-            foreach ($proj in $Projects) {
-                $pattern = '^' + [regex]::Escape($proj) + '-(.+)$'
-                if ($Debug) { Write-Host "[DEBUG] Testing pattern '$pattern' against '$dirName'" }
-                if ($dirName -match $pattern) {
-                    $currentPath = (Get-Location).Path
-                    if ($Debug) { Write-Host "[DEBUG] Match found! Worktree=$($Matches[1])" }
-                    return @{
-                        ProjectName = $proj
-                        ProjectRoot = $checkDir
-                        RelativePath = $currentPath.Substring($checkDir.Length)
-                        Worktree = $Matches[1]
-                    }
-                }
-            }
-        }
-        $parent = Split-Path -Parent $checkDir
-        if (-not $parent -or $parent -eq $checkDir) { break }
-        $checkDir = $parent
+    # Find git repo root
+    $gitRoot = git rev-parse --show-toplevel 2>$null
+    if ($LASTEXITCODE -ne 0 -or -not $gitRoot) {
+        if ($Debug) { Write-Host "[DEBUG] Not in a git repository" }
+        return $null
     }
-    return $null
+
+    # Normalize: git returns forward slashes; convert to platform separator
+    $gitRootNorm = [System.IO.Path]::GetFullPath(($gitRoot -replace "/", [System.IO.Path]::DirectorySeparatorChar))
+
+    if ($Debug) {
+        Write-Host "[DEBUG] gitRoot=$gitRootNorm"
+    }
+
+    $folderName   = Split-Path -Leaf $gitRootNorm
+    $relativePath = ""
+    if ($currentPath.Length -gt $gitRootNorm.Length) {
+        $relativePath = $currentPath.Substring($gitRootNorm.Length) -replace "\\", "/"
+    }
+
+    if ($Debug) { Write-Host "[DEBUG] folderName=$folderName, relativePath=$relativePath" }
+
+    # Detect secondary git worktree: git-common-dir is absolute in worktrees, ".git" in main
+    $gitCommonDir = git rev-parse --git-common-dir 2>$null
+    $projectName  = $folderName
+    $worktree     = ""
+
+    if ($LASTEXITCODE -eq 0 -and $gitCommonDir) {
+        $gitCommonDirNorm = $gitCommonDir -replace "/", [System.IO.Path]::DirectorySeparatorChar
+        $isAbsolute = [System.IO.Path]::IsPathRooted($gitCommonDirNorm)
+        if ($Debug) { Write-Host "[DEBUG] git-common-dir=$gitCommonDir, isAbsolute=$isAbsolute" }
+
+        if ($isAbsolute) {
+            # Secondary worktree: common dir is /path/to/main/.git
+            $mainProjectPath = Split-Path -Parent ($gitCommonDirNorm.TrimEnd('\', '/'))
+            $mainProjectName = Split-Path -Leaf $mainProjectPath
+            if ($Debug) { Write-Host "[DEBUG] Worktree detected, mainProject=$mainProjectName" }
+            if ($folderName.StartsWith("$mainProjectName-")) {
+                $projectName = $mainProjectName
+                $worktree    = $folderName.Substring($mainProjectName.Length + 1)
+            }
+        }
+    }
+
+    return @{
+        ProjectName   = $projectName   # base project name (without worktree suffix)
+        FolderName    = $folderName    # actual folder name on disk
+        ProjectRoot   = $gitRootNorm   # full path to project/worktree folder
+        RelativePath  = $relativePath  # path from project root to cwd
+        Worktree      = $worktree      # worktree suffix, empty if main
+    }
 }
 
 # Main logic
-$currentOS = Get-CurrentOS
-$mode = "docker"  # default mode
-$fromMode = $null  # set when self-invoked (e.g., from-docker, from-wsl)
-$worktreeSuffix = $null  # set when wt argument is used (regular worktree from current branch)
-$featureWorktreeSuffix = $null  # set when fwt/bwt argument is used (worktree suffix)
-$wtType = $null  # worktree type: "feat" for fwt, "bugfix" for bwt
-$newContainer = $false
-$dryRun = $false
-$debugMode = $false
-$claudeArgs = @()
+$currentOS             = Get-CurrentOS
+$mode                  = "docker"  # default mode
+$fromMode              = $null     # set when self-invoked (e.g., from-docker, from-wsl)
+$worktreeSuffix        = $null     # set when wt argument is used
+$featureWorktreeSuffix = $null     # set when fwt/bwt argument is used
+$wtType                = $null     # worktree type: "feature" or "bugfix"
+$newContainer          = $false
+$dryRun                = $false
+$debugMode             = $false
+$claudeArgs            = @()
 
 # Show help
 function Show-Help {
@@ -187,34 +173,30 @@ function Show-Help {
     Write-Host "  help         Show this help message"
     Write-Host ""
     Write-Host "Options:"
-    Write-Host "  --new        Always create a new Docker container (default: reuse existing for worktree)"
+    Write-Host "  --new        Force creation of a new Docker container (skip reuse)"
     Write-Host "  --dry-run    Show environment variables and command without executing"
     Write-Host "  --debug      Show debug output for troubleshooting"
     Write-Host ""
-    Write-Host "Environment variables (required):"
-    Write-Host "  AC_ProjectRoot    Root directory containing all projects"
-    Write-Host ""
-    Write-Host "Environment variables (optional overrides):"
-    Write-Host "  AC_Project0       Override name for project 0 (default: $($DefaultProjects[0]))"
-    Write-Host "  AC_Project1       Override name for project 1 (default: $($DefaultProjects[1]))"
-    Write-Host "  AC_Project2       Override name for project 2 (default: $($DefaultProjects[2]))"
+    Write-Host "Environment variables (optional):"
+    Write-Host "  AC_ProjectRoot    Override auto-detected project root directory"
     Write-Host "  AC_CLAUDE_ISOLATE Set to 'true' or '1' to isolate .claude.json per container instance"
     Write-Host ""
     Write-Host "Environment variables set for Claude:"
-    Write-Host "  AC_ProjectRoot    Project root path (adjusted for environment)"
-    Write-Host "  AC_Project        Current project name"
+    Write-Host "  AC_ProjectRoot    Project root path (/proj in Docker)"
     Write-Host "  AC_ProjectPath    Full path to current project (or worktree)"
     Write-Host "  AC_OS             OS/environment description"
     Write-Host "  AC_Worktree       Worktree suffix (empty if not in a worktree)"
-    Write-Host "  AC_Project0Path   Full path to project 0"
-    Write-Host "  AC_Project1Path   Full path to project 1"
-    Write-Host "  AC_Project2Path   Full path to project 2"
+    Write-Host ""
+    Write-Host "Docker:"
+    Write-Host "  AC_ProjectRoot is mounted as /proj/ — all sibling projects are accessible"
+    Write-Host "  Project detection is handled by the project's own CLAUDE.md"
     Write-Host ""
     Write-Host "Worktree support:"
-    Write-Host "  Worktrees are automatically detected when the folder name is {Project}-{Suffix}"
-    Write-Host "  Use wt to create a regular worktree from current branch (push/pull go to that branch)"
-    Write-Host "  Use fwt to create a feature worktree with a new feat/<suffix> branch from origin/dev or origin/master"
-    Write-Host "  Use bwt to create a bugfix worktree with a new bugfix/<suffix> branch from origin/dev or origin/master"
+    Write-Host "  Worktrees are auto-detected via git (git rev-parse --git-common-dir)"
+    Write-Host "  Use wt  to create a worktree from the current branch"
+    Write-Host "  Use fwt to create a feature worktree with a new feat/<suffix> branch"
+    Write-Host "  Use bwt to create a bugfix worktree with a new bugfix/<suffix> branch"
+    Write-Host "  Base branch for fwt/bwt: 'dev' if it exists on origin, otherwise 'master'"
     Write-Host ""
     Write-Host "Examples:"
     Write-Host "  c                  Run Claude in Docker"
@@ -289,16 +271,16 @@ while ($argIndex -lt $args.Count) {
         continue
     }
 
-    # Check for --new
-    if ($currentArg -eq "--new") {
-        $newContainer = $true
+    # Check for --dry-run
+    if ($currentArg -eq "--dry-run") {
+        $dryRun = $true
         $argIndex++
         continue
     }
 
-    # Check for --dry-run
-    if ($currentArg -eq "--dry-run") {
-        $dryRun = $true
+    # Check for --new (force new Docker container)
+    if ($currentArg -eq "--new") {
+        $newContainer = $true
         $argIndex++
         continue
     }
@@ -322,26 +304,25 @@ if ($argIndex -lt $args.Count) {
 # Find current project
 $projectInfo = Find-ProjectRoot -Debug:$debugMode
 if (-not $projectInfo) {
-    Write-Error "Could not find a known project root."
-    Write-Error "Known projects: $($Projects -join ', ')"
-    Write-Error "Make sure you're inside a project directory under AC_ProjectRoot ($env:AC_ProjectRoot)"
+    Write-Error "Could not find project root."
+    Write-Error "Make sure you're inside a git repository."
     exit 1
 }
 
-$projectName = $projectInfo.ProjectName
-$projectRoot = $projectInfo.ProjectRoot
+$projectName  = $projectInfo.ProjectName
+$folderName   = $projectInfo.FolderName
+$projectRoot  = $projectInfo.ProjectRoot
 $relativePath = $projectInfo.RelativePath -replace "\\", "/"
-$worktree = $projectInfo.Worktree
+$worktree     = $projectInfo.Worktree
 
-# Save the original project root and worktree (where c.ps1 was invoked from)
-$originalProjectRoot = $projectRoot
-$originalWorktree = $worktree
+# Save the original folder name (where c.ps1 was invoked from, before wt/fwt/bwt)
+$originalFolderName = $folderName
 
 # Handle wt argument: create regular worktree from current branch and switch to it
 if ($worktreeSuffix) {
     # Always use the main project path (not another worktree)
     $mainProjectPath = Join-Path $env:AC_ProjectRoot $projectName
-    $worktreePath = Join-Path $env:AC_ProjectRoot "$projectName-$worktreeSuffix"
+    $worktreePath    = Join-Path $env:AC_ProjectRoot "$projectName-$worktreeSuffix"
 
     if (-not (Test-Path $worktreePath)) {
         Write-Host "Creating worktree: $projectName-$worktreeSuffix"
@@ -356,8 +337,7 @@ if ($worktreeSuffix) {
                 exit 1
             }
 
-            # Create worktree from current branch (creates a new branch with same name as suffix, tracking current branch)
-            # This makes push/pull work with the branch in the main project
+            # Create worktree from current branch
             git worktree add -b $worktreeSuffix $worktreePath $currentBranch
             if ($LASTEXITCODE -ne 0) {
                 Write-Error "Failed to create worktree"
@@ -372,8 +352,9 @@ if ($worktreeSuffix) {
     }
 
     # Update project info for the worktree
-    $projectRoot = $worktreePath
-    $worktree = $worktreeSuffix
+    $projectRoot  = $worktreePath
+    $folderName   = "$projectName-$worktreeSuffix"
+    $worktree     = $worktreeSuffix
     $relativePath = ""
     Set-Location $worktreePath
 }
@@ -382,25 +363,27 @@ if ($worktreeSuffix) {
 if ($featureWorktreeSuffix) {
     # Always use the main project path (not another worktree)
     $mainProjectPath = Join-Path $env:AC_ProjectRoot $projectName
-    $worktreePath = Join-Path $env:AC_ProjectRoot "$projectName-$featureWorktreeSuffix"
+    $worktreePath    = Join-Path $env:AC_ProjectRoot "$projectName-$featureWorktreeSuffix"
 
     if (-not (Test-Path $worktreePath)) {
         Write-Host "Creating $wtType worktree: $projectName-$featureWorktreeSuffix"
         $originalLocation = Get-Location
         Set-Location $mainProjectPath
         try {
-            # Determine base branch based on project
-            $baseBranch = if ($projectName -eq "ActualChat") { "dev" } else { "master" }
-            $branchPrefix = if ($wtType -eq "feature") { "feat" } else { "bugfix" }
+            $branchPrefix  = if ($wtType -eq "feature") { "feat" } else { "bugfix" }
             $featureBranch = "$branchPrefix/$featureWorktreeSuffix"
 
-            # Make sure we have the latest
+            # Fetch to get up-to-date remote branch info
             git fetch origin 2>$null
 
+            # Auto-detect base branch: prefer dev if it exists on remote, else master
+            $null = git rev-parse --verify "refs/remotes/origin/dev" 2>$null
+            $baseBranch = if ($LASTEXITCODE -eq 0) { "dev" } else { "master" }
+
             # Check if the feature branch already exists (locally or remotely)
-            $localBranchExists = git rev-parse --verify "refs/heads/$featureBranch" 2>$null
+            $null = git rev-parse --verify "refs/heads/$featureBranch" 2>$null
             $localExists = $LASTEXITCODE -eq 0
-            $remoteBranchExists = git rev-parse --verify "refs/remotes/origin/$featureBranch" 2>$null
+            $null = git rev-parse --verify "refs/remotes/origin/$featureBranch" 2>$null
             $remoteExists = $LASTEXITCODE -eq 0
 
             if (-not $localExists) {
@@ -435,15 +418,15 @@ if ($featureWorktreeSuffix) {
     }
 
     # Update project info for the worktree
-    $projectRoot = $worktreePath
-    $worktree = $featureWorktreeSuffix
+    $projectRoot  = $worktreePath
+    $folderName   = "$projectName-$featureWorktreeSuffix"
+    $worktree     = $featureWorktreeSuffix
     $relativePath = ""
     Set-Location $worktreePath
 }
 
 # Suppress output when launching docker (inner instance will output)
 if ($mode -ne "docker" -or $dryRun) {
-    Write-Host "Project: $projectName"
     $displayMode = if ($fromMode) { $fromMode } else { $mode }
     Write-Host "Mode: $displayMode"
     if ($dryRun) {
@@ -470,31 +453,8 @@ function New-VolumeMount {
     return @("-v", $mount)
 }
 
-# Helper function: mount a project folder with its artifacts and node_modules
-function New-ProjectMounts {
-    param(
-        [string]$HostPath,
-        [string]$ContainerPath
-    )
-    $mounts = @()
-    $mounts += New-VolumeMount $HostPath $ContainerPath
-
-    # Artifacts/claude-docker folder for Docker builds (avoids permission conflicts with host)
-    $artifactsHostPath = Join-Path $HostPath "artifacts" "claude-docker"
-    $mounts += New-VolumeMount $artifactsHostPath "$ContainerPath/artifacts" -EnsureExists
-
-    # node_modules from artifacts/claude-docker for persistence across container restarts
-    $nodeModulesHostPath = Join-Path $artifactsHostPath "node_modules"
-    $nodeModulesMountPoint = Join-Path $HostPath "node_modules"
-    if (-not (Test-Path $nodeModulesMountPoint)) {
-        New-Item -ItemType Directory -Path $nodeModulesMountPoint -Force | Out-Null
-    }
-    $mounts += New-VolumeMount $nodeModulesHostPath "$ContainerPath/node_modules" -EnsureExists
-    return $mounts
-}
-
 # Helper function: prompt user to select from a list of items
-# Returns 0-based index of selected item, or -1 if user chose the extra option
+# Returns 0-based index of selected item
 function Read-UserSelection {
     param(
         [string]$Title,
@@ -542,16 +502,16 @@ function Show-DryRun {
 switch ($mode) {
     "build" {
         # Build Docker image
-        $imageName = "claude-$($projectName.ToLower())"
-        Write-Host "Building Docker image: $imageName"
+        $containerName = "claude-$($projectName.ToLower())"
+        Write-Host "Building Docker image: $containerName"
         if (-not $dryRun) {
-            docker build -t $imageName -f "$projectRoot/claude.Dockerfile" $projectRoot
+            docker build -t $containerName -f "$projectRoot/claude.Dockerfile" $projectRoot
         } else {
             Write-Host ""
             Write-Host "=== DRY RUN ===" -ForegroundColor Yellow
             Write-Host ""
             Write-Host "Command:" -ForegroundColor Cyan
-            Write-Host "  docker build -t $imageName -f `"$projectRoot/claude.Dockerfile`" $projectRoot"
+            Write-Host "  docker build -t $containerName -f `"$projectRoot/claude.Dockerfile`" $projectRoot"
             Write-Host ""
         }
     }
@@ -566,11 +526,9 @@ switch ($mode) {
         $wslProjectRoot = ConvertTo-WSLPath $env:AC_ProjectRoot
         $wslWorkDir = "/mnt/" + ((Get-Location).ToString().Substring(0, 1).ToLower()) + ((Get-Location).ToString().Substring(2) -replace "\\", "/")
         # Use c.ps1 from where it was originally invoked (could be main project or a worktree)
-        $originalWslPath = ConvertTo-WSLPath $originalProjectRoot
-        $wslScriptPath = "$originalWslPath/c.ps1"
+        $wslScriptPath = "$wslProjectRoot/$originalFolderName/c.ps1"
 
-        Write-Host "WSL Project Root: $wslProjectRoot"
-        Write-Host "WSL Working Directory: $wslWorkDir"
+        Write-Host "Working Directory: $wslWorkDir @ $wslProjectRoot"
 
         # Build args for the script running in WSL
         $wslArgs = @("os", "from-wsl")
@@ -578,31 +536,17 @@ switch ($mode) {
         if ($debugMode) { $wslArgs += "--debug" }
         $wslArgs += $claudeArgs
 
-        # Build project path env vars for WSL
+        # Build env vars for WSL
         $wslProjectPath = ConvertTo-WSLPath $projectRoot
-        $wslProjectEnvVars = @("AC_ProjectPath='$wslProjectPath'", "AC_Worktree='$worktree'")
-        for ($i = 0; $i -lt $Projects.Count; $i++) {
-            $winProjPath = Join-Path $env:AC_ProjectRoot $Projects[$i]
-            $wslProjPath = ConvertTo-WSLPath $winProjPath
-            $wslProjectEnvVars += "AC_Project${i}Path='$wslProjPath'"
-        }
-        $wslEnvString = (@("AC_ProjectRoot='$wslProjectRoot'", "DISABLE_AUTOUPDATER=1") + $wslProjectEnvVars) -join ' '
+        $wslEnvString = "AC_ProjectRoot='$wslProjectRoot' DISABLE_AUTOUPDATER=1 AC_ProjectPath='$wslProjectPath' AC_Worktree='$worktree'"
 
-        # Run this script in WSL with "os" argument
-        # On Windows, we're already in wt (handled at script start)
         $wslCommandFull = "cd '$wslWorkDir' && export $wslEnvString && pwsh '$wslScriptPath' $($wslArgs -join ' ')"
 
-        # Build env vars hashtable for display
         $wslEnvVars = @{
             "AC_ProjectRoot" = $wslProjectRoot
-            "AC_Project" = $projectName
             "AC_ProjectPath" = $wslProjectPath
-            "AC_OS" = "Linux on WSL"
-            "AC_Worktree" = $worktree
-        }
-        for ($i = 0; $i -lt $Projects.Count; $i++) {
-            $winProjPath = Join-Path $env:AC_ProjectRoot $Projects[$i]
-            $wslEnvVars["AC_Project${i}Path"] = ConvertTo-WSLPath $winProjPath
+            "AC_OS"          = "Linux on WSL"
+            "AC_Worktree"    = $worktree
         }
 
         if ($dryRun) {
@@ -628,39 +572,28 @@ switch ($mode) {
 
     "os" {
         # Run Claude directly on the host OS
-        $env:AC_Project = $projectName
         $env:AC_ProjectPath = $projectRoot
-        $env:AC_Worktree = $worktree
+        $env:AC_Worktree    = $worktree
         $env:DISABLE_AUTOUPDATER = "1"
 
         # Set AC_OS based on detected environment
         $env:AC_OS = switch ($currentOS) {
             "Docker" { "Linux in Docker" }
-            "WSL" { "Linux on WSL" }
-            default { $currentOS }
-        }
-
-        # Set AC_ProjectXPath for all projects
-        for ($i = 0; $i -lt $Projects.Count; $i++) {
-            $projPath = Join-Path $env:AC_ProjectRoot $Projects[$i]
-            [Environment]::SetEnvironmentVariable("AC_Project${i}Path", $projPath)
+            "WSL"    { "Linux on WSL" }
+            default  { $currentOS }
         }
 
         Write-Host "Running Claude on: $($env:AC_OS)"
-        Write-Host "Working Directory: $(Get-Location)"
+        Write-Host "Working Directory: $(Get-Location) @ $env:AC_ProjectRoot"
         if ($worktree) {
             Write-Host "Worktree: $worktree"
         }
 
         $envVars = @{
             "AC_ProjectRoot" = $env:AC_ProjectRoot
-            "AC_Project" = $env:AC_Project
             "AC_ProjectPath" = $env:AC_ProjectPath
-            "AC_OS" = $env:AC_OS
-            "AC_Worktree" = $env:AC_Worktree
-        }
-        for ($i = 0; $i -lt $Projects.Count; $i++) {
-            $envVars["AC_Project${i}Path"] = [Environment]::GetEnvironmentVariable("AC_Project${i}Path")
+            "AC_OS"          = $env:AC_OS
+            "AC_Worktree"    = $env:AC_Worktree
         }
 
         if ($dryRun) {
@@ -690,28 +623,25 @@ switch ($mode) {
     }
 
     "docker" {
-        # Build volume mounts for all projects
         $homeDir = if ($currentOS -eq "Windows") { $env:USERPROFILE } else { $env:HOME }
         $volumeMounts = @()
-        foreach ($proj in $Projects) {
-            $hostPath = Join-Path $env:AC_ProjectRoot $proj
-            $volumeMounts += New-ProjectMounts $hostPath "/proj/$proj"
-        }
 
-        # Add worktree mount if in a worktree
-        # Note: The main project is already mounted above (e.g., /proj/ActualLab.Fusion)
-        # This adds the worktree folder (e.g., /proj/ActualLab.Fusion-feature1)
-        # Both are available so you can merge changes from worktree into main
-        if ($worktree) {
-            $worktreeHostPath = Join-Path $env:AC_ProjectRoot "$projectName-$worktree"
-            $volumeMounts += New-ProjectMounts $worktreeHostPath "/proj/$projectName-$worktree"
-        }
+        # Mount entire AC_ProjectRoot as /proj/ — all sibling projects are visible
+        $volumeMounts += New-VolumeMount $env:AC_ProjectRoot "/proj"
 
-        # Also mount the original worktree if different (for c.ps1 access when switching worktrees)
-        if ($originalWorktree -and $originalWorktree -ne $worktree) {
-            $origWorktreeHostPath = Join-Path $env:AC_ProjectRoot "$projectName-$originalWorktree"
-            $volumeMounts += New-ProjectMounts $origWorktreeHostPath "/proj/$projectName-$originalWorktree"
+        # Artifact/node_modules overrides for current project only (avoids permission conflicts with host)
+        $currentFolderName  = if ($worktree) { "$projectName-$worktree" } else { $projectName }
+        $currentHostPath    = Join-Path $env:AC_ProjectRoot $currentFolderName
+        $artifactsHostPath  = Join-Path $currentHostPath "artifacts" "claude-docker"
+        $volumeMounts += New-VolumeMount $artifactsHostPath "/proj/$currentFolderName/artifacts" -EnsureExists
+
+        # node_modules from artifacts/claude-docker for persistence across container restarts
+        $nodeModulesHostPath  = Join-Path $artifactsHostPath "node_modules"
+        $nodeModulesMountPoint = Join-Path $currentHostPath "node_modules"
+        if (-not (Test-Path $nodeModulesMountPoint)) {
+            New-Item -ItemType Directory -Path $nodeModulesMountPoint -Force | Out-Null
         }
+        $volumeMounts += New-VolumeMount $nodeModulesHostPath "/proj/$currentFolderName/node_modules" -EnsureExists
 
         # Claude config mounts
         $volumeMounts += New-VolumeMount "$homeDir/.claude" "/home/claude/.claude"
@@ -756,28 +686,23 @@ switch ($mode) {
             $volumeMounts += New-VolumeMount $gcpKeyPath "/home/claude/.gcp" -ReadOnly
         }
 
-        # Add .actual folder mount for ActualChat project (contains prompts and other config)
-        if ($projectName -eq "ActualChat") {
-            $actualPath = "$homeDir/.actual"
-            if (Test-Path $actualPath) {
-                $volumeMounts += New-VolumeMount $actualPath "/home/claude/.actual" -ReadOnly
-            }
+        # .actual folder mount (project-agnostic; contains prompts and other config)
+        $actualPath = "$homeDir/.actual"
+        if (Test-Path $actualPath) {
+            $volumeMounts += New-VolumeMount $actualPath "/home/claude/.actual" -ReadOnly
         }
 
         # Calculate Docker working directory
-        $dockerFolderName = if ($worktree) { "$projectName-$worktree" } else { $projectName }
-        $dockerWorkDir = "/proj/$dockerFolderName$relativePath"
-        $imageName = "claude-$($projectName.ToLower())"
+        $dockerWorkDir     = "/proj/$currentFolderName$relativePath"
+        $imageName         = "claude-$($projectName.ToLower())"
         $containerBaseName = if ($worktree) { "$($projectName.ToLower())-$($worktree.ToLower())" } else { $projectName.ToLower() }
-        $containerName = "$containerBaseName-$(Get-Date -Format 'MMdd-HHmmss')"
+        $containerName     = "$containerBaseName-$(Get-Date -Format 'MMdd-HHmmss')"
         # Use c.ps1 from where it was originally invoked (could be main project or a worktree)
-        $originalFolderName = Split-Path -Leaf $originalProjectRoot
         $dockerScriptPath = "/proj/$originalFolderName/c.ps1"
 
         if ($dryRun) {
-            Write-Host "Image: $imageName"
             Write-Host "Container: $containerName"
-            Write-Host "Docker Working Directory: $dockerWorkDir"
+            Write-Host "Working Directory: $dockerWorkDir @ /proj"
         }
 
         # Build args for the script running in Docker
@@ -802,7 +727,7 @@ switch ($mode) {
             }
             if ($selectedContainer) {
                 $parts = $selectedContainer -split "`t"
-                $containerId = $parts[0]
+                $containerId          = $parts[0]
                 $containerDisplayName = $parts[1]
                 if ($dryRun) {
                     Write-Host ""
@@ -823,13 +748,8 @@ switch ($mode) {
         }
 
         # Build project path env vars for Docker
-        # For worktrees, the docker path includes the worktree suffix
-        $dockerProjectPath = if ($worktree) { "/proj/$projectName-$worktree" } else { "/proj/$projectName" }
+        $dockerProjectPath = "/proj/$currentFolderName"
         $projectEnvVars = @("-e", "AC_ProjectPath=$dockerProjectPath", "-e", "AC_Worktree=$worktree")
-        for ($i = 0; $i -lt $Projects.Count; $i++) {
-            $projectEnvVars += "-e"
-            $projectEnvVars += "AC_Project${i}Path=/proj/$($Projects[$i])"
-        }
 
         # Collect environment variables to propagate:
         # - Variables with __ in their names (e.g., ChatSettings__OpenAIApiKey)
@@ -837,7 +757,7 @@ switch ($mode) {
         # - ActualChat_* variables
         $propagatedEnvVars = @()
         Get-ChildItem env: | ForEach-Object {
-            $name = $_.Name
+            $name  = $_.Name
             $value = $_.Value
             if ($name -match '__' -or
                 $name -eq 'GITHUB_TOKEN' -or
@@ -857,13 +777,11 @@ switch ($mode) {
 
         # Build docker run command - run this script with "os" argument inside container
         # Uses --network host so localhost inside container = host's localhost
-        # This allows tests to connect to services (redis, postgres, nats) on host
-        # AC_InClaudeDocker tells tests not to use docker-specific config
         $dockerArgs = @(
             "run", "-it", "--rm"
+            "--network", "host"
             "--name", $containerName
             "--label", "worktree=$containerBaseName"
-            "--network", "host"
         )
 
         $dockerArgs += $volumeMounts + @(
@@ -884,13 +802,9 @@ switch ($mode) {
             # Build env vars hashtable for display
             $dockerEnvVars = @{
                 "AC_ProjectRoot" = "/proj"
-                "AC_Project" = $projectName
                 "AC_ProjectPath" = $dockerProjectPath
-                "AC_OS" = "Linux in Docker"
-                "AC_Worktree" = $worktree
-            }
-            for ($i = 0; $i -lt $Projects.Count; $i++) {
-                $dockerEnvVars["AC_Project${i}Path"] = "/proj/$($Projects[$i])"
+                "AC_OS"          = "Linux in Docker"
+                "AC_Worktree"    = $worktree
             }
 
             Write-Host ""
@@ -903,15 +817,6 @@ switch ($mode) {
             Write-Host ""
             Write-Host "Command:" -ForegroundColor Cyan
             Write-Host "  claude --dangerously-skip-permissions $($claudeArgs -join ' ')"
-            Write-Host ""
-            Write-Host "Labels:" -ForegroundColor Cyan
-            Write-Host "  worktree=$containerBaseName"
-            Write-Host ""
-            Write-Host "Volume mounts:" -ForegroundColor Cyan
-            for ($i = 0; $i -lt $volumeMounts.Count; $i += 2) {
-                # volumeMounts is flat: -v, host:container[:ro], -v, ...
-                Write-Host "  $($volumeMounts[$i + 1])"
-            }
             Write-Host ""
             Write-Host "Docker launch command:" -ForegroundColor Cyan
             Write-Host "  docker $($dockerArgs -join ' ')"
