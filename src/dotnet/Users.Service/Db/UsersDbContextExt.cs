@@ -16,8 +16,10 @@ public static class UsersDbContextExt
             .FirstOrDefaultAsync(a => Equals(a.Id, userId.Value), cancellationToken)
             .ConfigureAwait(false);
         if (dbAccount is not null)
-            await dbContext.Entry(dbAccount).Collection(nameof(DbAccount.Identities))
-                .LoadAsync(cancellationToken).ConfigureAwait(false);
+            await dbContext.Entry(dbAccount)
+                .Collection(nameof(DbAccount.Identities))
+                .LoadAsync(cancellationToken)
+                .ConfigureAwait(false);
         return dbAccount;
     }
 
