@@ -7,7 +7,7 @@ using ActualChat.MediaPlayback;
 using ActualChat.Notification;
 using ActualChat.Live;
 using ActualChat.Streaming;
-using ActualChat.UI.Blazor.Services;
+using ActualChat.UI.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -34,6 +34,7 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public IStreamClient StreamClient => field ??= Services.GetRequiredService<IStreamClient>();
     public ILiveStreams LiveStreams => field ??= Services.GetRequiredService<ILiveStreams>();
     public IMedia Media => field ??= Services.GetRequiredService<IMedia>();
+    public VideoTranscoder VideoTranscoder => field ??= Services.GetRequiredService<VideoTranscoder>();
 
     public ChatUI ChatUI => field ??= Services.GetRequiredService<ChatUI>();
     public AttachmentsState AttachmentsState => field ??= Services.GetRequiredService<AttachmentsState>();
