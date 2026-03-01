@@ -28,20 +28,21 @@ public sealed class Crawler(
 
     public async Task<CrawledLink> Crawl(string url, CancellationToken cancellationToken)
     {
+        using var cts = cancellationToken.CreateLinkedTokenSource(settings.CrawlTimeout);
         try {
             if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) {
                 DebugLog?.LogError("Invalid URL: {Url}", url);
                 return CrawledLink.None;
             }
 
-            if (!await egressGuard.IsAllowed(uri.DnsSafeHost, cancellationToken).ConfigureAwait(false))
+            if (!await egressGuard.IsAllowed(uri.DnsSafeHost, cts.Token).ConfigureAwait(false))
                 return CrawledLink.None;
 
-            var userAgents = await ListSupportedUserAgents(uri, cancellationToken).ConfigureAwait(false);
+            var userAgents = await ListSupportedUserAgents(uri, cts.Token).ConfigureAwait(false);
             if (userAgents.Count == 0)
                 return CrawledLink.None;
 
-            var response = await SendRequest(url, userAgents, cancellationToken).ConfigureAwait(false);
+            var response = await SendRequest(url, userAgents, cts.Token).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
                 return CrawledLink.None;
 
@@ -49,9 +50,13 @@ public sealed class Crawler(
             if (handler is null)
                 return CrawledLink.None;
 
-            return await handler.Handle(response, cancellationToken).ConfigureAwait(false);
+            return await handler.Handle(response, cts.Token).ConfigureAwait(false);
         }
-        catch (Exception e) {
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
+            log.LogWarning("Crawl of '{Url}' timed out after {Timeout}s", url, settings.CrawlTimeout.TotalSeconds);
+            throw;
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
             var logLevel = e is HttpRequestException ? LogLevel.Debug : LogLevel.Error;
             log.Log(logLevel, e, "Failed to crawl '{Url}'", url);
             return CrawledLink.None;
