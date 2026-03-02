@@ -62,7 +62,7 @@ public partial class ChatAudioEntryMigrationFlow : Flow<Unit>
             .Where(e => e.ChatId == chatId
                 && e.Kind == ChatEntryKind.Text
                 && e.AudioEntryId != null
-                && (e.MediaId == null || e.MediaId == ""))
+                && (e.AudioId == null || e.AudioId == ""))
             .OrderBy(e => e.LocalId)
             .Where(e => e.LocalId > LastProcessedLocalId)
             .Take(BatchSize)
@@ -130,17 +130,17 @@ public partial class ChatAudioEntryMigrationFlow : Flow<Unit>
 
         // Create Media record
         var mediaId = MediaId.New(chatId.Value);
-        var beginsAtTicks = audioEntry.BeginsAt.ToMoment().EpochOffset.Ticks;
-        var endsAtTicks = audioEntry.EndsAt?.ToMoment().EpochOffset.Ticks ?? beginsAtTicks;
-        var contentEndsAtTicks = audioEntry.ContentEndsAt?.ToMoment().EpochOffset.Ticks ?? endsAtTicks;
+        var beginsAt = audioEntry.BeginsAt.ToMoment();
+        var endsAt = audioEntry.EndsAt?.ToMoment() ?? beginsAt;
+        var contentEndsAt = audioEntry.ContentEndsAt?.ToMoment() ?? endsAt;
 
         var media = new MediaFull(mediaId) {
             ContentId = audioBlobId,
-            Metadata = PropertyBag.Empty
-                .Set(nameof(Media.Media.ContentType), (object)"audio/webm")
-                .Set("BeginsAt", (object)beginsAtTicks)
-                .Set("EndsAt", (object)endsAtTicks)
-                .Set("ContentEndsAt", (object)contentEndsAtTicks),
+            Kind = MediaKind.ChatEntryAudio,
+            ContentType = "audio/webm",
+            BeginsAt = beginsAt,
+            EndsAt = endsAt,
+            ContentEndsAt = contentEndsAt,
         };
         var changeCommand = new MediaBackend_Change(mediaId, null, new Change<MediaFull> { Create = media });
 
@@ -152,8 +152,8 @@ public partial class ChatAudioEntryMigrationFlow : Flow<Unit>
             return;
         }
 
-        // Update text entry's MediaId directly in DB
-        textEntry.MediaId = mediaId.Value;
+        // Update text entry's AudioId directly in DB
+        textEntry.AudioId = mediaId.Value;
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 }
