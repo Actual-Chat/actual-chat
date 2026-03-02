@@ -165,15 +165,20 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
 
     private static void WarmupSystemJsonSerializer()
     {
+#pragma warning disable CA1861 // Prefer 'static readonly' fields over constant array arguments
         Warmup(default(char));
         Warmup(default(bool?));
         Warmup(Symbol.Empty);
+        Warmup(new[] { "a", null }); // WebKvasBackend.GetMany,SetMany
+        Warmup(new Dictionary<string, string>(StringComparer.Ordinal) { ["a"] = "b" }); // WebKvasBackend.List*
         Warmup(default(JSCallResultType));
         Warmup(default(ElementReference));
         Warmup(default(SideNavSide));
-        Warmup(default(VirtualListEdge));
+        Warmup(new HashSet<string>(StringComparer.Ordinal) { "a" }); // BrowserInit.Initialize
         Warmup(KeyValuePair.Create("", new List<string>()));
-        Warmup(KeyValuePair.Create(default(Tune), new TuneInfo([])));
+        Warmup(KeyValuePair.Create(default(Tune), new TuneInfo([]))); // TuneUI
+        Warmup(new Dictionary<Tune, TuneInfo> { [default] = new([]) }); // TuneUI
+        Warmup(default(VirtualListEdge));
         Warmup(new VirtualListRenderState {
             RenderIndex = 1,
             Query = new VirtualListDataQuery(new Range<string>("1", "2"), new Range<double>(), new Range<int>()),
@@ -184,6 +189,7 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
             HasVeryLastItem = true,
             ScrollToKey = "1",
         });
+#pragma warning restore CA1861
         return;
 
         static void Warmup<T>(T instance) {
