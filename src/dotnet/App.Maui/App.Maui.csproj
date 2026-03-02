@@ -211,10 +211,14 @@
   <!-- R2R exclusions (applies to both Android and Windows Release builds) -->
   <ItemGroup Condition="'$(Configuration)' == 'Release'">
     <PublishReadyToRunExclude Include="PhoneNumbers.dll" />
-    <!-- The .mibc somehow makes it a bit worse - both on Windows and on Android
-    <ReadyToRunOptimizationData Include="$(MSBuildThisFileDirectory)_Profiling\windows.mibc" />
+    <!-- Doesn't work:
+    <ReadyToRunOptimizationData Include="$(MSBuildThisFileDirectory)_Profiling\merged.mibc" />
     -->
   </ItemGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <!-- Workaround for ReadyToRunOptimizationData: -->
+     <PublishReadyToRunCrossgen2ExtraArgs>--embed-pgo-data;--mibc:$(MSBuildThisFileDirectory)_Profiling\merged.mibc</PublishReadyToRunCrossgen2ExtraArgs>
+  </PropertyGroup>
 
   <!-- Trimming -->
   <ItemGroup>
