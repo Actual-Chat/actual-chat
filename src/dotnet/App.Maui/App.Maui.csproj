@@ -217,7 +217,7 @@
   </ItemGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <!-- Workaround for ReadyToRunOptimizationData: -->
-     <PublishReadyToRunCrossgen2ExtraArgs>--embed-pgo-data;--mibc:$(MSBuildThisFileDirectory)_Profiling\merged.mibc</PublishReadyToRunCrossgen2ExtraArgs>
+    <PublishReadyToRunCrossgen2ExtraArgs>--embed-pgo-data;--mibc:$(MSBuildThisFileDirectory)_Profiling\merged.mibc</PublishReadyToRunCrossgen2ExtraArgs>
   </PropertyGroup>
 
   <!-- Trimming -->
