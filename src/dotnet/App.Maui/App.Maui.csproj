@@ -211,6 +211,9 @@
   <!-- R2R exclusions (applies to both Android and Windows Release builds) -->
   <ItemGroup Condition="'$(Configuration)' == 'Release'">
     <PublishReadyToRunExclude Include="PhoneNumbers.dll" />
+    <!-- The .mibc somehow makes it a bit worse - both on Windows and on Android
+    <ReadyToRunOptimizationData Include="$(MSBuildThisFileDirectory)_Profiling\windows.mibc" />
+    -->
   </ItemGroup>
 
   <!-- Trimming -->
