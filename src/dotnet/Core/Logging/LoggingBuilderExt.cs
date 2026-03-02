@@ -1,11 +1,14 @@
+using Microsoft.Extensions.Options;
+
 namespace ActualChat.Logging;
 
 public static class LoggingBuilderExt
 {
     public static ILoggingBuilder AddTailLogger(this ILoggingBuilder logging)
     {
-        logging.Services.AddSingleton<ILoggerProvider>(c => new TailLoggerProvider(c))
-            .AddSingleton<LogSinks>(_ => new LogSinks());
+        var services = logging.Services;
+        services.AddSingleton<ILoggerProvider>(c => new TailLoggerProvider(c));
+        services.AddSingleton<LogSinks>(_ => new LogSinks());
         return logging;
     }
 
@@ -13,10 +16,19 @@ public static class LoggingBuilderExt
         this ILoggingBuilder logging,
         Func<IServiceProvider, bool> mustSanitizePredicate)
     {
+        IEnumerable<ILoggerProvider>? providers = null;
+        IOptionsMonitor<LoggerFilterOptions>? filterOption = null;
+        IOptions<LoggerFactoryOptions>? options = null;
         logging.Services.AddSingleton<ILoggerFactory>(c => {
             var mustSanitize = mustSanitizePredicate.Invoke(c);
-            var innerFactory = ActivatorUtilities.CreateInstance<LoggerFactory>(c);
-            return new SanitizingLoggerFactory(innerFactory, mustSanitize);
+            providers ??= c.GetServices<ILoggerProvider>();
+            filterOption ??= c.GetRequiredService<IOptionsMonitor<LoggerFilterOptions>>();
+            options ??= c.GetService<IOptions<LoggerFactoryOptions>>();
+            var scopeProvider = c.GetService<IExternalScopeProvider>();
+            var innerFactory = new LoggerFactory(providers, filterOption, options, scopeProvider);
+            return mustSanitize
+                ? new SanitizingLoggerFactory(innerFactory, mustSanitize)
+                : innerFactory;
         });
         return logging;
     }
