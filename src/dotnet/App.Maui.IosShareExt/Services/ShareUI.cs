@@ -255,7 +255,8 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         IProgress<double> progress,
         CancellationToken cancellationToken)
     {
-        var uploadSource = await PrepareUploadSource(fileInput, cancellationToken).ConfigureAwait(false);
+        using var dUploadSource = await PrepareUploadSource(fileInput, cancellationToken).ConfigureAwait(false);
+        var uploadSource = dUploadSource.Resource;
         var metadata = new PropertyBag()
             .Set(nameof(Media.Media.FileName), uploadSource.Metadata.FileName)
             .Set(nameof(Media.Media.ContentType), uploadSource.Metadata.ContentType);
@@ -278,26 +279,27 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             => Commander.Call(new Uploads_ConvertToMediaRef(Session, uploadId), CancellationToken.None);
     }
 
-    private async Task<UploadSource> PrepareUploadSource(
+    private async Task<Disposable<UploadSource>> PrepareUploadSource(
         NSItemProvider fileInput,
         CancellationToken cancellationToken)
     {
         var uploadSource = await fileInput.ToUploadSource().ConfigureAwait(false);
         if (uploadSource.StreamSource is not FileUploadSource fileSource
             || !uploadSource.Metadata.ContentType.OrdinalStartsWith("video/"))
-            return uploadSource;
+            return Disposable.New(uploadSource, Delegates<UploadSource>.Noop);
 
         var transcodedFilePath = await VideoTranscoder
             .TranscodeIfNeeded(fileSource.FilePath, progress: null, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
-        if (transcodedFilePath == null)
-            return uploadSource;
+        if (transcodedFilePath.IsEmpty)
+            return Disposable.New(uploadSource, Delegates<UploadSource>.Noop);
 
         var fileInfo = new FileInfo(transcodedFilePath);
         var newMetadata = new UploadSourceMetadata(
             "video/mp4",
             fileInfo.Length,
             uploadSource.Metadata.FileName);
-        return new UploadSource(newMetadata, new FileUploadSource(transcodedFilePath));
+        return Disposable.New(new UploadSource(newMetadata, new FileUploadSource(transcodedFilePath)),
+            _ => File.Delete(transcodedFilePath));
     }
 }
