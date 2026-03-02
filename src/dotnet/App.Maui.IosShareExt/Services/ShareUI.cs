@@ -297,7 +297,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             return (Disposable.New(uploadSource, Delegates<UploadSource>.Noop), false);
 
         var transcodedFilePath = await VideoTranscoder
-            .TranscodeIfNeeded(fileSource.FilePath, uploadSource.Metadata.ContentType, progress, cancellationToken)
+            .Transcode(fileSource.FilePath, uploadSource.Metadata.ContentType, progress, cancellationToken)
             .ConfigureAwait(false);
         if (transcodedFilePath.IsEmpty)
             return (Disposable.New(uploadSource, Delegates<UploadSource>.Noop), false);

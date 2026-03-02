@@ -8,7 +8,7 @@ namespace ActualChat.UI.App.Services;
 /// </summary>
 public class VideoTranscoder
 {
-    public Task<FilePath> TranscodeIfNeeded(
+    public Task<FilePath> Transcode(
         FilePath sourceFilePath,
         string mimeType,
         IProgress<double>? progress = null,
@@ -17,10 +17,10 @@ public class VideoTranscoder
         if (sourceFilePath.IsEmpty || !mimeType.OrdinalStartsWith("video/"))
             return Task.FromResult(FilePath.Empty);
 
-        return TranscodeIfNeededInternal(sourceFilePath, progress, cancellationToken);
+        return TranscodeInternal(sourceFilePath, progress, cancellationToken);
     }
 
-    protected virtual Task<FilePath> TranscodeIfNeededInternal(
+    protected virtual Task<FilePath> TranscodeInternal(
         FilePath sourceFilePath,
         IProgress<double>? progress = null,
         CancellationToken cancellationToken = default)
