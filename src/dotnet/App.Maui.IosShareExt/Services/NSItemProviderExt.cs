@@ -51,7 +51,7 @@ public static class NSItemProviderExt
                 inPlaceResult.ImplyMimeType(item),
                 fileInfo.Length,
                 fileName);
-            return new UploadSource(metadata, new StreamUploadSource(() => Task.FromResult<Stream>(File.OpenRead(filePath))));
+            return new UploadSource(metadata, new FileUploadSource(filePath));
         }
 
         private bool IsInMemoryImage()
