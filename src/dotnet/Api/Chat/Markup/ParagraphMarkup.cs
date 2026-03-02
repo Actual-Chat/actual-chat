@@ -2,7 +2,7 @@ namespace ActualChat.Chat;
 
 public class ParagraphMarkup : Markup
 {
-    public static new readonly ParagraphMarkup Empty = new (PlainTextMarkup.Empty);
+    public static readonly ParagraphMarkup Empty = new (PlainTextMarkup.Empty);
 
     public ParagraphMarkup(Markup content)
     {

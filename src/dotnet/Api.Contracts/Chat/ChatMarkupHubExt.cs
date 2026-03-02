@@ -19,7 +19,7 @@ public static class ChatMarkupHubExt
         Markup markup;
         switch (entry) {
         case { SystemEntry: { } systemEntry }:
-            markup = systemEntry.Option?.ToMarkup() ?? Markup.EmptyText;
+            markup = systemEntry.Option?.ToMarkup() ?? Markup.EmptyParagraph;
             // System entries render markup w/o mention names
             markup = await markupHub.MentionNamer.Apply(markup, cancellationToken).ConfigureAwait(false);
             break;
@@ -28,7 +28,7 @@ public static class ChatMarkupHubExt
             break;
         default:
             markup = markupHub.Parser.Parse(translation?.Content ?? entry.Content);
-            if (ReferenceEquals(markup, Markup.EmptyText))
+            if (ReferenceEquals(markup, MarkupParser.EmptyResult))
                 markup = GetEmptyMarkupReplacement(entry, consumer);
             break;
         }

@@ -45,6 +45,9 @@ public abstract record MarkupFormatterBase : MarkupVisitorWithState<StringBuilde
                 // Double newline between consecutive paragraphs (paragraph break)
                 if (prevItem is ParagraphMarkup && item is ParagraphMarkup)
                     state.Append(NewLineMarkup.Instance.Format());
+                // Extra newline after empty paragraph to preserve empty line in output
+                else if (prevItem is ParagraphMarkup p && p.Content == Markup.EmptyText)
+                    state.Append(NewLineMarkup.Instance.Format());
             }
 
             Visit(item, ref state);
