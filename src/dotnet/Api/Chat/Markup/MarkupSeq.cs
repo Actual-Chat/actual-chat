@@ -29,6 +29,9 @@ public sealed class MarkupSeq : Markup
                 // Double newline between consecutive paragraphs (paragraph break)
                 if (prevItem is ParagraphMarkup && item is ParagraphMarkup)
                     sb.Append(NewLineMarkup.Instance.Format());
+                // Extra newline after empty paragraph to preserve empty line in output
+                else if (prevItem is ParagraphMarkup p && p.Content == Markup.EmptyText)
+                    sb.Append(NewLineMarkup.Instance.Format());
             }
 
             sb.Append(item.Format());

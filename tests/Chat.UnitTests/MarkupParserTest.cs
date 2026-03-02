@@ -232,11 +232,11 @@ public class MarkupParserTest(ITestOutputHelper @out) : TestBase(@out)
 code
 ```");
         m.Language.Should().Be("cs");
-        m.Code.Should().Be("code\r\n");
+        m.Code.Should().Be("code");
 
         m = Parse<CodeBlockMarkup>("``` code\n```", false);
         m.Language.Should().Be("");
-        m.Code.Should().Be("code\r\n");
+        m.Code.Should().Be("code");
 
         m = Parse<CodeBlockMarkup>(@"```cs
 ```");
@@ -253,8 +253,7 @@ code
         m.Code.Should().Be(@"public class CodeWithIndent
 {
   Test();
-}
-".Replace("\n", "\r\n", StringComparison.OrdinalIgnoreCase));
+}".Replace("\n", "\r\n", StringComparison.OrdinalIgnoreCase));
 
         m = Parse<CodeBlockMarkup>(@"```cs
 
@@ -268,7 +267,6 @@ code
 public class CodeWithIndent
 {
 }
-
 ".Replace("\n", "\r\n", StringComparison.OrdinalIgnoreCase));
     }
 
@@ -482,7 +480,7 @@ code
             .Which.Content.Should().BeOfType<PlainTextMarkup>()
             .Which.Text.Should().Be("Text after the code block.");
         m.Items[1].Should().BeOfType<CodeBlockMarkup>()
-            .Which.Code.Should().Be("Code block\r\nis here\r\n");
+            .Which.Code.Should().Be("Code block\r\nis here");
     }
 
     [Fact]
@@ -550,7 +548,7 @@ code
             .Which.Text.Should().Be("List item 2 is here.");
 
         m.Items[2].Should().BeOfType<CodeBlockMarkup>()
-            .Which.Code.Should().Be("some code\r\n");
+            .Which.Code.Should().Be("some code");
     }
 
     [Fact]
@@ -647,7 +645,7 @@ code
             - line 2
 
 
-            *header 2**
+            **header 2**
             - line 3
             - line 4
 
@@ -656,7 +654,25 @@ code
             some code block
             ```
             """;
-        var m = Parse<MarkupSeq>(text, false);
+        var m = Parse<MarkupSeq>(text);
+        m.Items.Length.Should().Be(7);
+        m.Items[0].Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().BeOfType<StylizedMarkup>()
+            .Which.Style.Should().Be(TextStyle.Bold);
+        m.Items[1].Should().BeOfType<ListMarkup>()
+            .Which.Items.Should().HaveCount(2);
+        m.Items[2].Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().BeEmpty();
+        m.Items[3].Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().BeOfType<StylizedMarkup>()
+            .Which.Style.Should().Be(TextStyle.Bold);
+        m.Items[4].Should().BeOfType<ListMarkup>()
+            .Which.Items.Should().HaveCount(2);
+        m.Items[5].Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().BeEmpty();
+        m.Items[6].Should().BeOfType<CodeBlockMarkup>();
     }
 
     [Fact]
@@ -670,6 +686,11 @@ code
 
             """;
         var m = Parse<MarkupSeq>(text);
+        m.Items.Length.Should().Be(2);
+        m.Items[0].Should().BeOfType<CodeBlockMarkup>()
+            .Which.Code.Should().Be("some code block");
+        m.Items[1].Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().Be(Markup.EmptyText);
     }
 
     [Theory]

@@ -224,9 +224,12 @@ public partial class MarkupParser : IMarkupParser
                     if (buffer.Count == 0)
                         return "";
 
+                    var isFirst = true;
                     foreach (var line in buffer) {
+                        if (!isFirst)
+                            sb.Append("\r\n"); // We want stable line endings here
+                        isFirst = false;
                         sb.Append(minIndent < line.Length ? line[minIndent..] : "");
-                        sb.Append("\r\n"); // We want stable line endings here
                     }
                     return sb.ToString(); // Ok here, .Release() is in finally block
                 }
@@ -317,12 +320,16 @@ public partial class MarkupParser : IMarkupParser
             Parser<char, Markup> block =
                 SafeTryOneOf(CodeBlock, ListBlock, paragraph);
 
+            // Empty paragraph: matches when there's another newline (or end) after paragraph break
+            Parser<char, Markup> emptyParagraph =
+                Lookahead(Try(EndOfLine).Or(End.ThenReturn(""))).ThenReturn((Markup)new ParagraphMarkup(Markup.EmptyText));
+
             // After code/list block: single newline can be followed by any block
             // After paragraph: need double newline for next paragraph, single newline OK for code/list
             // Solution: Try all options with proper backtracking
             Parser<char, Markup> blockSeparatorThenBlock =
                 Try(EndOfLine.Then(SafeTryOneOf(CodeBlock, ListBlock))) // single \n + code/list
-                    .Or(Try(EndOfLine.Then(EndOfLine).Then(Try(EndOfLine).Many()).Then(block))) // \n\n+ + any block
+                    .Or(Try(EndOfLine.Then(EndOfLine).Then(SafeTryOneOf(emptyParagraph, block)))) // \n\n + empty or block
                     .Or(EndOfLine.Then(paragraph)); // single \n + paragraph (only works after code/list)
 
             Parser =
