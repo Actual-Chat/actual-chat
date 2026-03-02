@@ -75,9 +75,9 @@ if ($currentOS -eq "Windows" -and $hasWindowsTerminal -and -not $env:WT_SESSION 
     $hasDryRun = $args -contains "--dry-run"
     $hasHelp = $args -contains "help" -or $args -contains "-h" -or $args -contains "--help" -or $args -contains "-?"
     if ($hasDebug -or $hasBuild -or $hasDryRun -or $hasHelp) {
-        $wtArgs = @("-d", $workDir, "--", "pwsh", "-NoExit", "-File", $scriptPath) + $args
+        $wtArgs = @("-d", $workDir, "--", "pwsh", "-NoProfile", "-NoExit", "-File", $scriptPath) + $args
     } else {
-        $wtArgs = @("-d", $workDir, "--", "pwsh", "-File", $scriptPath) + $args
+        $wtArgs = @("-d", $workDir, "--", "pwsh", "-NoProfile", "-File", $scriptPath) + $args
     }
     & wt @wtArgs
     exit 0
