@@ -71,6 +71,6 @@ public static partial class Constants
         public const bool ShareSuggestions = false;
 
         // File upload
-        public const bool VideoTranscoding = true; // TODO: false before PR!!!
+        public const bool VideoTranscoding = false;
     }
 }
