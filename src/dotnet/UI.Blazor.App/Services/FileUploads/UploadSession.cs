@@ -153,7 +153,7 @@ public class UploadSession
 
         if (MediaTypeExt.IsVideo(mimeType) && fileProvider is MauiFileProvider mauiFileProvider) {
             var filePath = mauiFileProvider.FileRef;
-            if (filePath.IsEmpty) {
+            if (!filePath.IsEmpty) {
                 Log.LogInformation("'{SessionId}': client processing video '{FilePath}', mimeType={MimeType}",
                     SessionId,
                     filePath,
