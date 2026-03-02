@@ -70,3 +70,4 @@ sw.js
 
 # claude
 .home
+.claude/worktrees/
