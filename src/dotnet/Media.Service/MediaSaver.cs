@@ -12,7 +12,7 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
     private IMediaBackend MediaBackend { get; } = services.GetRequiredService<IMediaBackend>();
     private ICommander Commander { get; } = services.Commander();
 
-    public async Task<MediaContent> Save(MediaId mediaId, ProcessedFile processedFile, bool isUpdate, CancellationToken cancellationToken)
+    public async Task<MediaContent> Save(MediaId mediaId, ProcessedFile processedFile, bool isUpdate, MediaKind kind, CancellationToken cancellationToken)
     {
         var mediaContent = GetContentId(mediaId, processedFile);
         if (processedFile.Thumbnail != null) {
@@ -24,6 +24,7 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
                 processedFile.Size,
                 null,
                 false,
+                kind,
                 cancellationToken)
                 .ConfigureAwait(false);
             await SetMediaProgressToReady(mediaContent.ThumbnailMediaId!, cancellationToken).ConfigureAwait(false);
@@ -36,6 +37,7 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
             processedFile.Size,
             mediaContent.ThumbnailMediaId,
             isUpdate,
+            kind,
             cancellationToken).ConfigureAwait(false);
         await SetMediaProgressToReady(mediaId, cancellationToken).ConfigureAwait(false);
         return mediaContent;
@@ -45,8 +47,9 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
         MediaId mediaId,
         UploadedFile file,
         Size? size,
+        MediaKind kind,
         CancellationToken cancellationToken)
-        => Save(mediaId, new ProcessedFile(file, size, null), false, cancellationToken);
+        => Save(mediaId, new ProcessedFile(file, size, null), false, kind, cancellationToken);
 
     private static string GetContentId(MediaId mediaId, UploadedFile file)
         => mediaId.GetContentId(Path.GetExtension(file.FileName));
@@ -78,13 +81,14 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
         Size? size,
         MediaId? thumbnailMediaId,
         bool isUpdate,
+        MediaKind kind,
         CancellationToken cancellationToken)
     {
         MediaFull? media;
         if (isUpdate)
             media = await MediaBackend.GetFull(mediaId, cancellationToken).Require().ConfigureAwait(false);
         else
-            media = new MediaFull(mediaId);
+            media = new MediaFull(mediaId) { Kind = kind };
         media = media with {
             ContentId = contentId,
             FileName = file.FileName,

@@ -146,7 +146,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
             mediaId = MediaId.New(chatId.Value);
         }
         using var processedFile = await MediaProcessor.ProcessUpload(uploadedFile, cancellationToken).ConfigureAwait(false);
-        return await MediaSaver.Save(mediaId, processedFile, isUpdate:false, cancellationToken).ConfigureAwait(false);
+        return await MediaSaver.Save(mediaId, processedFile, isUpdate:false, MediaKind.ChatEntryAttachment, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task<MediaContent> OnProcessAndSaveContent(UploadsBackend_ProcessAndSaveContent command, CancellationToken cancellationToken)
@@ -168,7 +168,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
             progress = CreateMediaConvertingProgressTracker(mediaId);
             using var processedFile = await MediaProcessor.ProcessUpload(uploadedFile, progress, cancellationToken)
                 .ConfigureAwait(false);
-            var mediaContent = await MediaSaver.Save(mediaId, processedFile, isUpdate: true, cancellationToken)
+            var mediaContent = await MediaSaver.Save(mediaId, processedFile, isUpdate: true, default, cancellationToken)
                 .ConfigureAwait(false);
             return mediaContent;
         }

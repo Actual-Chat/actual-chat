@@ -21,12 +21,14 @@ public class DbMedia : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string ContentId { get; set; } = "";
     public string UserId { get; set; } = "";
     public string ThumbnailId { get; set; } = "";
+    public MediaKind Kind { get; set; }
     public string MetadataJson { get; set; } = "";
 
     public MediaFull ToModel()
         => new (MediaId.Parse(Id)) {
             Version = Version,
             ContentId = ContentId,
+            Kind = Kind,
             UserId = ActualChat.UserId.ParseNullable(UserId),
             ThumbnailId = MediaId.ParseNullable(ThumbnailId),
             Metadata = MetadataSerializer.Read(MetadataJson),
@@ -45,6 +47,7 @@ public class DbMedia : IHasId<string>, IHasVersion<long>, IRequirementTarget
         }
         Version = model.Version;
         ContentId = model.ContentId;
+        Kind = model.Kind;
         ThumbnailId = model.ThumbnailId?.Value ?? "";
         MetadataJson = MetadataSerializer.Write(model.Metadata);
     }

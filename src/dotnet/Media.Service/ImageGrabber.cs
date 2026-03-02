@@ -150,7 +150,7 @@ public class ImageGrabber(IServiceProvider services)
         if (media is not null)
             return media.Id;
 
-        await MediaSaver.Save(mediaId, processedFile.File, processedFile.Size, cancellationToken).ConfigureAwait(false);
+        await MediaSaver.Save(mediaId, processedFile.File, processedFile.Size, MediaKind.ChatPicture, cancellationToken).ConfigureAwait(false);
         return mediaId;
     }
 

@@ -1,3 +1,4 @@
+using ActualChat.Media;
 using ActualChat.Uploads;
 
 namespace ActualChat.Testing.Host;
@@ -12,7 +13,7 @@ public static class MediaOperations
     {
         var mediaSaver = tester.AppServices.GetRequiredService<IMediaSaver>();
         var mediaId = MediaId.New(chatId.Value);
-        await mediaSaver.Save(mediaId, file, null, cancellationToken);
+        await mediaSaver.Save(mediaId, file, null, MediaKind.ChatEntryAttachment, cancellationToken);
         return mediaId;
     }
 

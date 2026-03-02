@@ -1,4 +1,5 @@
 using ActualChat.Controllers;
+using ActualChat.Media;
 using ActualChat.Security;
 using ActualChat.Uploads;
 using Microsoft.AspNetCore.Mvc;
@@ -48,7 +49,7 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
             file.ContentType,
             file.Length,
             () => Task.FromResult(file.OpenReadStream()));
-        var mediaContent = await MediaSaver.Save(mediaId, uploadedFile, null, cancellationToken).ConfigureAwait(false);
+        var mediaContent = await MediaSaver.Save(mediaId, uploadedFile, null, MediaKind.UserAvatarPicture, cancellationToken).ConfigureAwait(false);
         return Ok(mediaContent);
     }
 }

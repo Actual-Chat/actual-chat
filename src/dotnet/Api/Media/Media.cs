@@ -15,6 +15,7 @@ public partial record Media : IHasId<MediaId>, IHasVersion<long>, IHasMetadata, 
     [DataMember, MemoryPackOrder(0)] public MediaId Id { get; init; }
     [DataMember, MemoryPackOrder(1)] public string ContentId { get; init; } = "";
     [DataMember, MemoryPackOrder(2)] public long Version { get; init; }
+    [DataMember, MemoryPackOrder(9)] public MediaKind Kind { get; init; }
     [DataMember, MemoryPackOrder(10)] public PropertyBag Metadata { get; init; }
 
     // Computed properties
