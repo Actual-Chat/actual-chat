@@ -9,7 +9,6 @@ using ActualChat.UI.Services;
 using ActualLab.Fusion.UI;
 using ActualLab.Generators;
 using ActualLab.Interception;
-using ActualLab.IO;
 
 namespace ActualChat.App.Maui.IosShareExt.Services;
 
@@ -256,56 +255,49 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         IProgress<double> progress,
         CancellationToken cancellationToken)
     {
-        var uploadSource = await fileInput.ToUploadSource().ConfigureAwait(false);
-        FilePath? transcodedFilePath = null;
-        try {
-            // Transcode video if needed
-            if (uploadSource.StreamSource is FileUploadSource fileSource
-                && uploadSource.Metadata.ContentType.OrdinalStartsWith("video/")) {
-                transcodedFilePath = await VideoTranscoder
-                    .TranscodeIfNeeded(fileSource.FilePath, progress: null, cancellationToken)
-                    .ConfigureAwait(false);
-                if (transcodedFilePath != null) {
-                    var fileInfo = new FileInfo(transcodedFilePath.Value);
-                    var newMetadata = new UploadSourceMetadata(
-                        "video/mp4",
-                        fileInfo.Length,
-                        uploadSource.Metadata.FileName);
-                    uploadSource = new UploadSource(newMetadata, new FileUploadSource(transcodedFilePath.Value));
-                }
-            }
-
-            var metadata = new PropertyBag()
-                .Set(nameof(Media.Media.FileName), uploadSource.Metadata.FileName)
-                .Set(nameof(Media.Media.ContentType), uploadSource.Metadata.ContentType);
-            var uploadId = await InitUpload().ConfigureAwait(false);
-            var streamSource = (StreamUploadSource)uploadSource.StreamSource;
-            await FileUploader.UploadData(uploadId, streamSource.GetStream(), progress, cancellationToken).ConfigureAwait(false);
+        var uploadSource = await PrepareUploadSource(fileInput, cancellationToken).ConfigureAwait(false);
+        var metadata = new PropertyBag()
+            .Set(nameof(Media.Media.FileName), uploadSource.Metadata.FileName)
+            .Set(nameof(Media.Media.ContentType), uploadSource.Metadata.ContentType);
+        var uploadId = await InitUpload().ConfigureAwait(false);
+        var streamSource = (StreamUploadSource)uploadSource.StreamSource;
+        await FileUploader.UploadData(uploadId, streamSource.GetStream(), progress, cancellationToken).ConfigureAwait(false);
         var mediaRef = await CompleteUpload().ConfigureAwait(false);
-            return new TextEntryAttachment {
+        return new TextEntryAttachment {
             MediaId = mediaRef.MediaId,
             ThumbnailMediaId = mediaRef.ThumbnailMediaId,
-            };
+        };
 
-            Task<UploadId> InitUpload()
-            {
-                var cmd = new Uploads_Create(Session, uploadSource.Metadata.Length, UploadExt.BuildTag(chatId), metadata);
-                return UICommander.Call(cmd, cancellationToken);
-            }
+        Task<UploadId> InitUpload()
+        {
+            var cmd = new Uploads_Create(Session, uploadSource.Metadata.Length, UploadExt.BuildTag(chatId), metadata);
+            return UICommander.Call(cmd, cancellationToken);
+        }
 
         Task<MediaRef> CompleteUpload()
             => Commander.Call(new Uploads_ConvertToMediaRef(Session, uploadId), CancellationToken.None);
-        }
-        finally {
-            // Clean up transcoded file
-            if (transcodedFilePath != null)
-                DeleteFile(transcodedFilePath.Value);
-        }
     }
 
-    private static void DeleteFile(FilePath path)
+    private async Task<UploadSource> PrepareUploadSource(
+        NSItemProvider fileInput,
+        CancellationToken cancellationToken)
     {
-        if (File.Exists(path))
-            File.Delete(path);
+        var uploadSource = await fileInput.ToUploadSource().ConfigureAwait(false);
+        if (uploadSource.StreamSource is not FileUploadSource fileSource
+            || !uploadSource.Metadata.ContentType.OrdinalStartsWith("video/"))
+            return uploadSource;
+
+        var transcodedFilePath = await VideoTranscoder
+            .TranscodeIfNeeded(fileSource.FilePath, progress: null, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+        if (transcodedFilePath == null)
+            return uploadSource;
+
+        var fileInfo = new FileInfo(transcodedFilePath);
+        var newMetadata = new UploadSourceMetadata(
+            "video/mp4",
+            fileInfo.Length,
+            uploadSource.Metadata.FileName);
+        return new UploadSource(newMetadata, new FileUploadSource(transcodedFilePath));
     }
 }

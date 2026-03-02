@@ -8,9 +8,9 @@ namespace ActualChat.UI.App.Services;
 /// </summary>
 public class VideoTranscoder
 {
-    public virtual Task<FilePath?> TranscodeIfNeeded(
+    public virtual Task<FilePath> TranscodeIfNeeded(
         FilePath sourceFilePath,
         IProgress<double>? progress = null,
         CancellationToken cancellationToken = default)
-        => Task.FromResult<FilePath?>(null);
+        => Task.FromResult(FilePath.Empty);
 }
