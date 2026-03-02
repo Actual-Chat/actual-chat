@@ -74,12 +74,7 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
         }
 
         // Check estimated output size
-        var sourceUrl = NSUrl.CreateFileUrl(filePath);
-        var asset = new AVUrlAsset(sourceUrl);
-        var exportSession = new AVAssetExportSession(asset, AVAssetExportSessionPreset.Hevc1920x1080);
-        exportSession.OutputFileType = AVFileTypes.Mpeg4.GetConstant();
-        exportSession.ShouldOptimizeForNetworkUse = true;
-
+        var exportSession = CreateExportSession(filePath);
         var estimatedSize = await exportSession.EstimateOutputFileLengthAsync().ConfigureAwait(false);
         if (estimatedSize >= sourceSize) {
             Log.LogInformation(
@@ -100,20 +95,14 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
         IProgress<double>? progress,
         CancellationToken cancellationToken)
     {
-        var sourceUrl = NSUrl.CreateFileUrl(sourcePath);
-        var asset = new AVUrlAsset(sourceUrl);
-
-        var exportSession = new AVAssetExportSession(asset, AVAssetExportSessionPreset.Hevc1920x1080);
+        var exportSession = CreateExportSession(sourcePath);
         FilePath outputDir = new FilePath(FileSystem.CacheDirectory) | "transcoded";
         Directory.CreateDirectory(outputDir);
         FilePath outputPath = outputDir | $"{sourcePath.FileNameWithoutExtension}.mp4";
         if (File.Exists(outputPath))
             outputPath = outputPath.ToUnique();
-        var outputUrl = NSUrl.CreateFileUrl(outputPath);
 
-        exportSession.OutputUrl = outputUrl;
-        exportSession.OutputFileType = AVFileTypes.Mpeg4.GetConstant();
-        exportSession.ShouldOptimizeForNetworkUse = true;
+        exportSession.OutputUrl = NSUrl.CreateFileUrl(outputPath);
 
         DebugLog?.LogInformation(
             "Transcode: exporting '{Source}' -> '{Output}' (source={SourceSize})",
@@ -196,6 +185,16 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
             progress.Report(session.Progress * 100);
             DebugLog?.LogDebug("Video transcoding progress: {Progress:P2}", session.Progress);
         }
+    }
+
+    private static AVAssetExportSession CreateExportSession(FilePath sourcePath)
+    {
+        var sourceUrl = NSUrl.CreateFileUrl(sourcePath);
+        var asset = new AVUrlAsset(sourceUrl);
+        var session = new AVAssetExportSession(asset, AVAssetExportSessionPreset.Hevc1920x1080);
+        session.OutputFileType = AVFileTypes.Mpeg4.GetConstant();
+        session.ShouldOptimizeForNetworkUse = true;
+        return session;
     }
 
     private static void CleanupFile(FilePath path)
