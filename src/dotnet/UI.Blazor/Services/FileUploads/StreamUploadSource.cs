@@ -1,6 +1,7 @@
 namespace ActualChat.UI.Blazor.Services;
 
-public class StreamUploadSource(Func<Task<Stream>> getStream) : IUploadStreamSource
+public class StreamUploadSource(Func<Task<Stream>> streamFactory) : IUploadStreamSource
 {
-    public Func<Task<Stream>> GetStream { get; } = getStream;
+    public Task<Stream> GetStream()
+        => streamFactory();
 }
