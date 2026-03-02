@@ -13,7 +13,7 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
     private ILogger Log => field ??= services.LogFor<IosVideoTranscoder>();
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.VideoTranscoding);
 
-    public override async Task<FilePath?> TranscodeIfNeeded(
+    public override async Task<FilePath> TranscodeIfNeeded(
         FilePath sourceFilePath,
         IProgress<double>? progress = null,
         CancellationToken cancellationToken = default)
@@ -21,7 +21,7 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
         DebugLog?.LogInformation("TranscodeIfNeeded: '{Path}'", sourceFilePath);
 
         if (!await NeedsTranscoding(sourceFilePath).ConfigureAwait(false))
-            return null;
+            return FilePath.Empty;
 
         var sourceFileInfo = new FileInfo(sourceFilePath);
         Log.LogInformation("Transcoding video '{Path}' (size={Size})",
@@ -32,7 +32,7 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
             .ConfigureAwait(false);
 
         if (outputPath == null)
-            return null;
+            return FilePath.Empty;
 
         var fileInfo = new FileInfo(outputPath.Value);
         Log.LogInformation("Transcoding completed: '{OutputPath}', size={Size} in {Elapsed}",
@@ -62,7 +62,7 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
         return needs;
     }
 
-    private async Task<FilePath?> Transcode(
+    private async Task<FilePath> Transcode(
         FilePath sourcePath,
         IProgress<double>? progress,
         CancellationToken cancellationToken)
