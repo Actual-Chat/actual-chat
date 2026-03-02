@@ -1,4 +1,4 @@
-namespace ActualChat.UI.Blazor.Services;
+namespace ActualChat.UI.Services;
 
 public record UploadSourceMetadata(
     string ContentType,

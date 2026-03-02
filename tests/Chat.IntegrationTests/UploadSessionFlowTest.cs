@@ -2,7 +2,7 @@ using ActualChat.Media;
 using ActualChat.Testing.Host;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Services;
-using ActualChat.UI.Blazor.Services;
+using ActualChat.UI.Services;
 
 namespace ActualChat.Chat.IntegrationTests;
 
