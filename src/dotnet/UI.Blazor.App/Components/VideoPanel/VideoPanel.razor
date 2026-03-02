@@ -1,19 +1,34 @@
 @namespace ActualChat.UI.Blazor.Components
+@using ActualChat.Streaming
+@using ActualChat.UI.Blazor.App.Components.VideoPanel
 @using ActualChat.UI.Blazor.App.Module
-@inherits ComputedStateComponent<AppUIHub, bool>
+@using ActualChat.UI.Blazor.App.Services
+@inherits ComputedStateComponent<AppUIHub, VideoPanel.Model>
 @{
-    var isRightPanelVisible = State.Value;
-    var cls = isRightPanelVisible ? "rp-visible" : "";
+    var m = State.Value;
+    var cls = m.IsRightPanelVisible ? "rp-visible" : "";
+    var recordingCls = m.IsRecording ? "recording" : "";
+    var hasRemoteStreams = m.RemoteStreams.Length > 0;
+    var remoteStreamsCls = hasRemoteStreams ? "has-remote-streams" : "";
+    var firstOpenCls = _isFirstOpen ? "first-time-open" : "";
 }
 
 @if (_rendered) {
-    <div @ref="Ref" class="video-panel first-time-open @cls">
+    <div @ref="Ref" class="video-panel @firstOpenCls @cls @recordingCls @remoteStreamsCls">
         <div class="c-content">
-            <div class="video-frame">
-                <video autoplay muted playsinline loop preload="auto" class="call-video">
-                    <source src="/dist/images/landing/landing-tutorial.webm" type="video/webm"/>
-                    <source src="/dist/images/landing/landing-tutorial.mp4" type="video/mp4"/>
-                </video>
+            <VideoRecorder
+                PendingCameraDeviceId="@PendingCameraDeviceId"
+                PendingBlurEnabled="@PendingBlurEnabled"
+                RemoteStreamCount="@m.RemoteStreams.Length"
+                AutoStart="@_autoStartPending" />
+            <div class="remote-streams">
+                @foreach (var streamInfo in m.RemoteStreams) {
+                    var name = m.AuthorNames.GetValueOrDefault(streamInfo.AuthorId, "");
+                    var isFocused = streamInfo.AuthorId == m.FocusedAuthorId;
+                    var isPrevious = streamInfo.AuthorId == m.PreviousFocusedAuthorId;
+                    var focusedCls = isFocused ? "focused" : isPrevious ? "previous-speaker" : "";
+                    <VideoTrackPlayer @key="streamInfo.StreamId.Value" StreamInfo="@streamInfo" AuthorName="@name" FocusedClass="@focusedCls" />
+                }
             </div>
             <HeaderButton Class="expand-btn show-with-delay">
                 <i class="icon-expand text-lg"></i>
@@ -23,15 +38,32 @@
 }
 
 @code {
+    public sealed record Model(
+        bool IsRightPanelVisible,
+        VideoStreamInfo[] RemoteStreams,
+        bool IsRecording,
+        bool IsAnyoneVideoStreaming,
+        IReadOnlyDictionary<AuthorId, string> AuthorNames,
+        AuthorId? FocusedAuthorId,
+        AuthorId? PreviousFocusedAuthorId
+    ) {
+        public static readonly Model None = new(false, [], false, false, new Dictionary<AuthorId, string>(), null, null);
+    }
+
     private bool _rendered;
+    private bool _isFirstOpen = true;
+    private bool _autoStartPending;
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoPanel.create";
 
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ElementReference Ref { get; set; }
     private DotNetObjectReference<VideoPanel> BlazorRef { get; set; } = null!;
     private IJSObjectReference? JSRef { get; set; }
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter] public bool Show { get; set; }
+    [Parameter] public string? PendingCameraDeviceId { get; set; }
+    [Parameter] public bool PendingBlurEnabled { get; set; }
 
     public override async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
@@ -45,12 +77,16 @@
         if (_rendered && JSRef is null) {
             BlazorRef = DotNetObjectReference.Create(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
+
+            _ = ClearFirstOpenAsync();
         }
     }
 
     protected override async Task OnParametersSetAsync() {
         if (Show && !_rendered) {
             _rendered = true;
+            _isFirstOpen = true;
+            _autoStartPending = true;
         } else if (!Show && _rendered && JSRef is not null) {
             await JSRef.InvokeVoidAsync("startClosing");
         }
@@ -59,6 +95,8 @@
     [JSInvokable]
     public async Task CloseVideoPanel() {
         _rendered = false;
+        _autoStartPending = false;
+        ChatVideoUI.OnRecordingStopped();
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
 
@@ -68,19 +106,74 @@
         await InvokeAsync(StateHasChanged);
     }
 
+    private async Task ClearFirstOpenAsync() {
+        await Task.Delay(1000);
+        _isFirstOpen = false;
+    }
 
-    protected override ComputedState<bool>.Options GetStateOptions()
+    protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            t => new ComputedState<bool>.Options {
-                InitialValue = !ScreenSize.IsNarrow() && PanelsUI.Right.IsVisible.Value,
+            t => new ComputedState<Model>.Options {
+                InitialValue = new Model(!ScreenSize.IsNarrow() && PanelsUI.Right.IsVisible.Value, [], false, false, new Dictionary<AuthorId, string>(), null, null),
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
 
-    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
-        if (ScreenSize.IsNarrow())
-            return false;
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var isRightPanelVisible = false;
+        if (!ScreenSize.IsNarrow())
+            isRightPanelVisible = await PanelsUI.Right.IsVisible.Use(cancellationToken);
 
-        return await PanelsUI.Right.IsVisible.Use(cancellationToken);
+        // Get current chat
+        var emptyNames = (IReadOnlyDictionary<AuthorId, string>)new Dictionary<AuthorId, string>();
+
+        var chatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken);
+        if (chatId is null)
+            return new Model(isRightPanelVisible, [], false, false, emptyNames, null, null);
+
+        // Get centralized video state (for recording status)
+        var videoState = await ChatVideoUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
+
+        // Get active video streams for this chat
+        var activeStreams = await ChatVideoUI.GetActiveVideoStreams(chatId, cancellationToken);
+        var isAnyoneStreaming = activeStreams.Count > 0;
+
+        if (activeStreams.Count == 0)
+            return new Model(isRightPanelVisible, [], videoState.IsRecording, false, emptyNames, null, null);
+
+        // Filter out own stream (shown in local preview)
+        var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken);
+        var remoteStreams = activeStreams
+            .Where(s => ownAuthor?.Id != s.AuthorId)
+            .ToArray();
+        // TEMP: Include own stream for latency troubleshooting (normally filtered out)
+        // var remoteStreams = activeStreams.ToArray();
+
+        // Resolve author names for remote streams
+        var authorNames = new Dictionary<AuthorId, string>();
+        foreach (var stream in remoteStreams) {
+            var author = await Hub.Authors.Get(Session, chatId, stream.AuthorId, cancellationToken);
+            authorNames[stream.AuthorId] = author?.Avatar.Name ?? "";
+        }
+
+        // Get focused speaker from ChatVideoUI (state sync maintains this)
+        var focusedAuthorId = await ChatVideoUI.GetFocusedSpeakerId(cancellationToken)
+            .ConfigureAwait(false);
+
+        // Validate focused author still has video; fall back to first remote stream
+        var videoAuthorIds = remoteStreams.Select(s => s.AuthorId).ToHashSet();
+        if (focusedAuthorId != null && !videoAuthorIds.Contains(focusedAuthorId))
+            focusedAuthorId = null;
+        focusedAuthorId ??= remoteStreams.Length > 0 ? remoteStreams[0].AuthorId : null;
+
+        // Get previous focused speaker and validate
+        var previousFocusedAuthorId = await ChatVideoUI.GetPreviousFocusedSpeakerId(cancellationToken)
+            .ConfigureAwait(false);
+        if (previousFocusedAuthorId != null
+            && (!videoAuthorIds.Contains(previousFocusedAuthorId)
+                || previousFocusedAuthorId == focusedAuthorId))
+            previousFocusedAuthorId = null;
+
+        return new Model(isRightPanelVisible, remoteStreams, videoState.IsRecording, isAnyoneStreaming, authorNames, focusedAuthorId, previousFocusedAuthorId);
     }
 }

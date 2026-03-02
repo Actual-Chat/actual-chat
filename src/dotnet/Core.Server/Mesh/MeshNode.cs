@@ -8,8 +8,7 @@ public sealed record MeshNode(
     NodeRef Ref,
     string Endpoint,
     IReadOnlySet<HostRole> Roles,
-    MeshNodeState State,
-    Moment? DeadAt = null
+    MeshNodeState State
     ) : IComparable<MeshNode>, IHasId<NodeRef>, IHasId<Symbol>
 {
     private static readonly ListFormat Formatter = new(' ');
@@ -19,8 +18,7 @@ public sealed record MeshNode(
     NodeRef IHasId<NodeRef>.Id => Ref;
     Symbol IHasId<Symbol>.Id => Ref.Id;
 
-    private string DebugValue
-        => $"{ToString()}{(State is MeshNodeState.Offline ? $", dies in: {(DeadAt - Moment.Now).ToShortString()}" : "")}";
+    private string DebugValue => ToString();
 
     public string LockKey
         => field ??= Formatter.Format(Ref.Value, Endpoint, Roles.ToDelimitedString(","));
@@ -35,25 +33,9 @@ public sealed record MeshNode(
 
     // Helpers
 
-    public MeshNode ToOffline(Moment deadAt)
+    public MeshNode ToDead()
         => State is not MeshNodeState.Online
             ? throw StandardError.StateTransition<MeshNode>($"Expected {nameof(State.Online)} state, but got {State}.")
-            : this with {
-                State = MeshNodeState.Offline,
-                DeadAt = deadAt,
-            };
-
-    public MeshNode ToOnline()
-        => State is not MeshNodeState.Offline
-            ? throw StandardError.StateTransition<MeshNode>($"Expected {nameof(State.Offline)} state, but got {State}.")
-            : this with {
-                State = MeshNodeState.Online,
-                DeadAt = null,
-            };
-
-    public MeshNode ToDead()
-        => State is not MeshNodeState.Offline
-            ? throw StandardError.StateTransition<MeshNode>($"Expected {nameof(State.Offline)} state, but got {State}.")
             : this with {
                 State = MeshNodeState.Dead,
             };

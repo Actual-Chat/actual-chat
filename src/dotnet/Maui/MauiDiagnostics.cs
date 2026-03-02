@@ -32,7 +32,9 @@ public static class MauiDiagnostics
     public static void Initialize()
     {
         Log.Logger = CreateAppLogger();
-        StaticLog.Factory = new SerilogLoggerFactory(Log.Logger);
+        StaticLog.Factory = new SanitizingLoggerFactory(
+            new SerilogLoggerFactory(Log.Logger),
+            mustSanitize: !MauiSettings.IsDevApp);
         Tracer.Default = CreateAppTracer();
 
         if (Constants.DebugMode.WebMReader)
@@ -47,6 +49,7 @@ public static class MauiDiagnostics
             logging.ConfigureClientFilters(MauiSettings.AppKind);
             logging.AddFilteringSerilog(Log.Logger, dispose: dispose);
             logging.AddTailLogger();
+            logging.AddSanitizingLoggerFactory(_ => !MauiSettings.IsDevApp);
         });
         return services;
     }

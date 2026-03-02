@@ -6,7 +6,7 @@
     if (m is null)
         return;
 
-    var isVisible = m.IsAnyoneTalking || m.AudioState.IsListening || IsRecordingHere;
+    var isVisible = m.IsAnyoneTalking || m.IsAnyoneVideoStreaming || m.AudioState.IsListening || IsRecordingHere;
     if (!isVisible)
         return;
 
@@ -14,8 +14,11 @@
     var chatId = chat?.Id;
     var iconSize = ScreenSize.IsNarrow() ? 6 : 8;
     var isActive = m.IsAnyoneTalking;
+    var showVideoIcon = m.IsAnyoneVideoStreaming && !m.IsAnyoneTalking;
+    var iconMode = showVideoIcon ? "video" : "audio";
     var tooltip = IsListening ? "Listening..." : "Listen";
     var cls = IsListening ? " listening" : "";
+    var joinButtonText = m.IsAnyoneVideoStreaming ? "Join" : "Join muted";
 }
 
 <div @ref="Ref"
@@ -23,25 +26,22 @@
      @onclick:preventDefault="true"
      @onclick:stopPropagation="true"
      @onclick="@Click">
+    @* Camera icon - shown when anyone is video streaming *@
     <div class="c-icon hideable">
-        <chat-activity-panel-icon-svg size="@iconSize" isActive="@isActive"/>
+        <chat-activity-panel-icon-svg size="@iconSize" isActive="@isActive" mode="@iconMode"/>
     </div>
+    @* Talking heads - shown when anyone is talking *@
     @if (m.IsAnyoneTalking && chatId is not null) {
         <ChatActivities
             @key="@chatId.Value"
             Chat="@chat"
             MaxCount="@MaxCount"
             IsListening="@IsListening"/>
-    } else {
-        <div class="activity-placeholder">
-            <div class="placeholder-circle"></div>
-            <div class="placeholder-circle"></div>
-            <div class="placeholder-circle"></div>
-            @if (!ScreenSize.IsNarrow()) {
-                <div class="placeholder-circle"></div>
-            }
-        </div>
     }
+    @if (m.IsAnyoneVideoStreaming && m.VideoStreamMemberCount > 0) {
+        <div class="c-member-count">@m.VideoStreamMemberCount watching</div>
+    }
+    <div class="flex-1"></div>
     <div class="c-buttons">
         @if (!IsListening && !IsRecordingHere) {
             <Button
@@ -52,7 +52,7 @@
                 Tooltip="@tooltip"
                 TooltipPosition="FloatingPosition.Bottom"
                 MustKeepAwake="@(!IsListening)">
-                Join muted
+                @joinButtonText
             </Button>
         } else if (IsRecordingHere) {
             <HeaderButton
@@ -90,6 +90,7 @@
 
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
 
     private ChatId? RecordingChatId {
@@ -129,7 +130,13 @@
 
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
         var isAnyoneTalking = await LiveStreamUI.IsAnyoneStreaming(chatId, cancellationToken).ConfigureAwait(false);
-        return new (chat, audioState, isAnyoneTalking);
+        var isVideoStreamingEnabled = await Hub.Features.IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
+        var isAnyoneVideoStreaming = isVideoStreamingEnabled
+            && await ChatVideoUI.IsAnyoneVideoStreaming(chatId, cancellationToken).ConfigureAwait(false);
+        var videoStreamMemberCount = isAnyoneVideoStreaming
+            ? await ChatVideoUI.GetVideoStreamMemberCount(chatId, cancellationToken).ConfigureAwait(false)
+            : 0;
+        return new (chat, audioState, isAnyoneTalking, isAnyoneVideoStreaming, videoStreamMemberCount);
     }
 
     private void OnClick() {
@@ -139,6 +146,12 @@
         if (IsListening && IsRecordingHere)
             StopRecording();
 
+        var isVideoStreaming = State.Value?.IsAnyoneVideoStreaming == true;
+        if (isVideoStreaming) {
+            // When joining a video call: open modal AND start listening
+            _ = ModalUI.Show(new JoinVideoCallModal.Model(Chat!));
+        }
+        // Normal audio join/leave behavior
         _ = ChatAudioUI.SetListeningState(chatId, !IsListening);
     }
 
@@ -166,5 +179,7 @@
     public sealed record Model(
         Chat Chat,
         ChatAudioState AudioState,
-        bool IsAnyoneTalking);
+        bool IsAnyoneTalking,
+        bool IsAnyoneVideoStreaming,
+        int VideoStreamMemberCount);
 }

@@ -7,7 +7,22 @@
         searchCls += " on";
     var isThread = chat?.Id.IsThread() ?? false;
     var showBackBtn = isThread || ScreenSize.IsNarrow();
-    var isPanelVisible = IsRecordingHere || IsListeningHere || (m.IsAnyoneTalking && m.AudioState?.ChatId == chat?.Id);
+    var isVideoStreamingEnabled = m.IsVideoStreamingEnabled;
+    var isAnyoneVideoStreaming = isVideoStreamingEnabled && m.IsAnyoneVideoStreaming;
+    var isPanelVisible = IsRecordingHere || IsListeningHere || isAnyoneVideoStreaming || (m.IsAnyoneTalking && m.AudioState?.ChatId == chat?.Id);
+
+    // Show video panel when recording or remote streams exist
+    if (isVideoStreamingEnabled && m.VideoState?.IsRecording == true && !_showVideoPanel) {
+        _showVideoPanel = true;
+        _pendingCameraDeviceId = m.VideoState?.SelectedCameraDeviceId;
+        _pendingBlurEnabled = m.VideoState?.IsBackgroundBlurEnabled ?? false;
+    }
+    // Hide video panel when recording stopped AND no remote video streams
+    else if (_showVideoPanel && (m.VideoState?.IsRecording != true && !m.IsAnyoneVideoStreaming || !isVideoStreamingEnabled)) {
+        _showVideoPanel = false;
+        _pendingCameraDeviceId = null;
+        _pendingBlurEnabled = false;
+    }
 }
 
 @if (m.HasSelection) {
@@ -59,20 +74,7 @@
     </div>
     @if (chat is not null) {
         <div class="chat-header-control-panel hideable">
-        @if (m.EnableIncompleteUI) {
-            <HeaderButton Click="@OnJoinVideoCallClick">
-                <i class="icon-monitor text-xl"></i>
-            </HeaderButton>
-            <HeaderButton Click="@OnShowVideoPanel">
-                <i class="icon-video text-xl"></i>
-            </HeaderButton>
-        }
         <TranslationButton ChatId="@chat.Id"/>
-        @* @if (m.EnableIncompleteUI) { *@
-        @* <HeaderButton Click="@OnSearchClick" Class="@searchCls"> *@
-        @* <i class="icon-ai-search"></i> *@
-        @* </HeaderButton> *@
-        @* } *@
         @if (chat.Id.IsThread(out var threadChatId)) {
             <ChatHeaderFollowThreadToggle ThreadChatId="@threadChatId"/>
         }
@@ -98,14 +100,19 @@
     </div>
 }
 
-<VideoPanel Show="@_showVideoPanel"/>
+@if (m.IsVideoStreamingEnabled) {
+    <VideoPanel Show="@_showVideoPanel" PendingCameraDeviceId="@_pendingCameraDeviceId" PendingBlurEnabled="@_pendingBlurEnabled"/>
+}
 
 @code {
     private bool _showVideoPanel;
+    private string? _pendingCameraDeviceId;
+    private bool _pendingBlurEnabled;
 
     private IChats Chats => Hub.Chats;
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
 
     private ChatId? RecordingChatId {
@@ -140,6 +147,7 @@
 
         Chat? chat = null;
         ChatAudioState? audioState = null;
+        ChatVideoState? videoState = null;
         if (chatId is not null)
             chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
 
@@ -147,19 +155,27 @@
         if (chatId is not null)
             authorIds = await LiveStreamUI.GetStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
 
-        if (chatId is not null)
+        if (chatId is not null) {
             audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
+            videoState = await ChatVideoUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
+        }
+
+        var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chatId, cancellationToken).ConfigureAwait(false);
 
         var hasSelection = await Hub.SelectionUI.HasSelection.Use(cancellationToken).ConfigureAwait(false);
         var isSearchMode = await Hub.PanelsUI.Right.IsSearchMode.Use(cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        var isVideoStreamingEnabled = await Hub.Features.IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
         return new() {
             Chat = chat,
             AudioState = audioState,
+            VideoState = videoState,
             IsAnyoneTalking = authorIds.Length > 0,
+            IsAnyoneVideoStreaming = isAnyoneVideoStreaming,
             HasSelection = hasSelection,
             IsSearchMode = isSearchMode,
             EnableIncompleteUI = enableIncompleteUI,
+            IsVideoStreamingEnabled = isVideoStreamingEnabled,
         };
     }
 
@@ -189,17 +205,6 @@
     private void OnSearchClick()
         => Hub.PanelsUI.Right.SearchToggle();
 
-    private void OnShowVideoPanel() {
-        _showVideoPanel = !_showVideoPanel;
-        StateHasChanged();
-    }
-
-    private void OnJoinVideoCallClick() {
-        if (Chat != null) {
-            _ = ModalUI.Show(new JoinVideoCallModal.Model(Chat));
-        }
-    }
-
     // Nested types
 
     public sealed record Model {
@@ -207,9 +212,12 @@
 
         public Chat? Chat { get; init; }
         public ChatAudioState? AudioState { get; init; }
+        public ChatVideoState? VideoState { get; init; }
         public bool IsAnyoneTalking { get; init; }
+        public bool IsAnyoneVideoStreaming { get; init; }
         public bool HasSelection { get; init; }
         public bool IsSearchMode { get; init; }
         public bool EnableIncompleteUI { get; init; }
+        public bool IsVideoStreamingEnabled { get; init; }
     }
 }

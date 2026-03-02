@@ -1,0 +1,212 @@
+@namespace ActualChat.UI.Blazor.App.Components.VideoPanel
+@using ActualChat.Streaming
+@using ActualChat.UI.Blazor.App.Module
+@using ActualChat.Video
+@implements IAsyncDisposable
+@implements IVideoPlayerBackend
+@inject IServiceProvider Services
+
+<div class="remote-video-container @FocusedClass">
+    <canvas @ref="CanvasRef" class="remote-video" data-stream-id="@StreamInfo.StreamId.Value" data-author-id="@StreamInfo.AuthorId.Value"></canvas>
+    @if (!string.IsNullOrEmpty(AuthorName)) {
+        <div class="video-participant-label">
+            <i class="icon-video"></i>
+            <span>@AuthorName</span>
+        </div>
+    }
+</div>
+
+@code {
+    private static bool DebugMode => Constants.DebugMode.VideoPlayback;
+    private ILogger? DebugLog => DebugMode ? Log : null;
+
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoPlayer.create";
+
+    private readonly CancellationTokenSource _disposeCts = new();
+    private readonly TaskCompletionSource _whenCompletedSource = new();
+
+    private IJSObjectReference? _jsPlayerRef;
+    private Task? _playTask;
+    private bool _isDisposed;
+    private bool _isViewerRegistered;
+
+    private ILogger Log => field ??= Services.LogFor<VideoTrackPlayer>();
+    private IJSRuntime JS => field ??= Services.GetRequiredService<IJSRuntime>();
+    private ILiveVideoStreams LiveVideoStreams => field ??= Services.GetRequiredService<ILiveVideoStreams>();
+    private Session Session => field ??= Services.Session();
+
+    private ElementReference CanvasRef { get; set; }
+    private DotNetObjectReference<VideoTrackPlayer>? BlazorRef { get; set; }
+
+    [Parameter, EditorRequired]
+    public VideoStreamInfo StreamInfo { get; set; } = null!;
+
+    [Parameter]
+    public string AuthorName { get; set; } = "";
+
+    [Parameter]
+    public string FocusedClass { get; set; } = "";
+
+    public Task WhenCompleted => _whenCompletedSource.Task;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _isDisposed)
+            return;
+
+        try {
+            BlazorRef = DotNetObjectReference.Create(this);
+
+            var format = StreamInfo.Format;
+            var startedAtMs = StreamInfo.StartedAt.EpochOffset.TotalMilliseconds;
+            Log.LogDebug(
+                "[VideoTrackPlayer {StreamId}] Creating JS player: authorId={AuthorId}, startedAtMs={StartedAtMs}",
+                StreamInfo.StreamId, StreamInfo.AuthorId, startedAtMs);
+            _jsPlayerRef = await JS.InvokeAsync<IJSObjectReference>(
+                JSCreateMethod,
+                _disposeCts.Token,
+                CanvasRef,
+                BlazorRef,
+                StreamInfo.StreamId.Value,
+                StreamInfo.AuthorId.Value,
+                format.Codec,
+                format.Width,
+                format.Height,
+                format.CodecSettings,
+                startedAtMs);
+
+            await _jsPlayerRef.InvokeVoidAsync("start", _disposeCts.Token);
+
+            // Register as viewer
+            await RegisterViewer();
+
+            // Start playback in background
+            _playTask = Task.Run(async () => await PlayAsync(_disposeCts.Token), CancellationToken.None);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            Log.LogError(ex, "Failed to initialize VideoTrackPlayer for stream {StreamId}", StreamInfo.StreamId);
+            _whenCompletedSource.TrySetResult();
+        }
+    }
+
+    [JSInvokable]
+    public Task OnPlaying(double offset, bool isBufferLow)
+    {
+        DebugLog?.LogDebug(
+            "[VideoTrackPlayer {StreamId}] OnPlaying: {Offset}, buffer: {IsBufferLow}",
+            StreamInfo.StreamId, offset, isBufferLow ? "low" : "ok");
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public Task OnEnded(string? errorMessage)
+    {
+        if (errorMessage != null)
+            Log.LogError("[VideoTrackPlayer {StreamId}] Playback stopped with an error: {Error}", StreamInfo.StreamId, errorMessage);
+
+        DebugLog?.LogDebug("[VideoTrackPlayer {StreamId}] OnEnded: {Message}", StreamInfo.StreamId, errorMessage);
+        _whenCompletedSource.TrySetResult();
+        return Task.CompletedTask;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_isDisposed)
+            return;
+
+        _isDisposed = true;
+
+        try {
+            await _disposeCts.CancelAsync().ConfigureAwait(false);
+
+            if (_playTask != null)
+                await _playTask.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+
+            await UnregisterViewer();
+
+            if (_jsPlayerRef is {} jsRef) {
+                try {
+                    await jsRef.InvokeVoidAsync("stop");
+                }
+                catch {
+                    // Ignore JS errors during disposal
+                }
+                await jsRef.DisposeSilentlyAsync();
+            }
+
+            BlazorRef?.DisposeSilently();
+        }
+        finally {
+            _disposeCts.Dispose();
+            _whenCompletedSource.TrySetResult();
+        }
+    }
+
+    private async Task PlayAsync(CancellationToken cancellationToken)
+    {
+        try {
+            var clocks = Services.Clocks();
+            var skipTo = clocks.ServerClock.Now - StreamInfo.StartedAt;
+            if (skipTo < TimeSpan.Zero)
+                skipTo = TimeSpan.Zero;
+
+            DebugLog?.LogDebug(
+                "[VideoTrackPlayer {StreamId}] Starting SignalR pull, skipTo={SkipTo}",
+                StreamInfo.StreamId, skipTo);
+
+            // Initiate pull from JS — it connects via SignalR and feeds frames directly
+            await _jsPlayerRef!.InvokeVoidAsync(
+                "startPull",
+                cancellationToken,
+                StreamInfo.StreamId.Value,
+                skipTo.TotalMilliseconds);
+
+            // Wait for playback completion (signaled by JS via OnEnded callback)
+            await _whenCompletedSource.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) {
+            // Expected during disposal
+        }
+        catch (Exception ex) {
+            Log.LogError(ex, "[VideoTrackPlayer {StreamId}] Playback failed", StreamInfo.StreamId);
+        }
+        finally {
+            _whenCompletedSource.TrySetResult();
+        }
+    }
+
+    private async Task RegisterViewer()
+    {
+        if (_isViewerRegistered)
+            return;
+
+        try {
+            var decoderCodecs = await JS.InvokeAsync<string[]>(
+                $"{BlazorUIAppModule.ImportName}.detectSupportedDecoderCodecs");
+            await LiveVideoStreams.RegisterVideoStreamMember(
+                Session, StreamInfo.ChatId, new ApiArray<string>(decoderCodecs), CancellationToken.None);
+            _isViewerRegistered = true;
+            DebugLog?.LogDebug("[VideoTrackPlayer {StreamId}] Registered as viewer with decoder codecs: {Codecs}",
+                StreamInfo.StreamId, string.Join(", ", decoderCodecs));
+        }
+        catch (Exception ex) {
+            Log.LogError(ex, "[VideoTrackPlayer {StreamId}] Failed to register as viewer", StreamInfo.StreamId);
+        }
+    }
+
+    private async Task UnregisterViewer()
+    {
+        if (!_isViewerRegistered)
+            return;
+
+        try {
+            await LiveVideoStreams.UnregisterVideoStreamMember(Session, StreamInfo.ChatId, CancellationToken.None);
+            _isViewerRegistered = false;
+            DebugLog?.LogDebug("[VideoTrackPlayer {StreamId}] Unregistered as viewer", StreamInfo.StreamId);
+        }
+        catch (Exception ex) {
+            Log.LogError(ex, "[VideoTrackPlayer {StreamId}] Failed to unregister as viewer", StreamInfo.StreamId);
+        }
+    }
+
+}

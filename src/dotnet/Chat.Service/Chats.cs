@@ -344,7 +344,8 @@ public partial class Chats(IServiceProvider services) : IChats
         if (Invalidation.IsActive)
             return null!; // It just spawns other commands, so nothing to do here
 
-        var (session, chatId, localId, text, repliedEntryLid) = command;
+        var (session, chatId, localId, text, repliedEntryLid) =
+            (command.Session, command.ChatId, command.LocalId, command.Text, command.RepliedEntryLid);
         var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(ChatPermissions.Write);
@@ -698,7 +699,8 @@ public partial class Chats(IServiceProvider services) : IChats
                     forwardedAuthorName = forwardedAuthor!.Avatar.Name;
                 }
 
-                var cmd = new Chats_UpsertTextEntry(session, destinationChatId, null, chatEntry.Content) {
+                var cmd = new Chats_UpsertTextEntry(session, destinationChatId, null) {
+                    Text = chatEntry.Content,
                     ForwardedAuthorId = forwardedAuthorId,
                     ForwardedChatEntryId = forwardedChatEntryId,
                     ForwardedAuthorName = forwardedAuthorName,

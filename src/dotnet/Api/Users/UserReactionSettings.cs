@@ -3,32 +3,66 @@ using ActualChat.Kvas;
 namespace ActualChat.Users;
 
 /// <summary>
-/// Tracks emoji usage frequency to show most-used emojis first.
+/// Tracks emoji ranking to show most-used emojis first.
+/// Top 6 emojis have ranks 1-6 (6 = highest/first position).
+/// Other emojis have rank 0.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record UserReactionSettings : IHasKvasKey<UserReactionSettings>
 {
+    private const int TopCount = 6;
+
     public static string KvasKey => nameof(UserReactionSettings);
 
     /// <summary>
-    /// Maps emoji ID to usage count.
+    /// Maps emoji ID to rank (1-6 for top emojis, 0 for others).
     /// </summary>
     [DataMember, MemoryPackOrder(0)]
-    public Dictionary<string, int> EmojiUsageCount { get; init; } = new(StringComparer.Ordinal);
+    public Dictionary<string, int> EmojiRanks { get; init; } = new(StringComparer.Ordinal);
 
-    public UserReactionSettings WithIncrementedUsage(string emojiId)
+    public UserReactionSettings WithBubbleUp(string emojiId)
     {
-        var newCount = new Dictionary<string, int>(EmojiUsageCount, StringComparer.Ordinal);
-        newCount[emojiId] = newCount.GetValueOrDefault(emojiId) + 1;
-        return this with { EmojiUsageCount = newCount };
+        var newRanks = new Dictionary<string, int>(EmojiRanks, StringComparer.Ordinal);
+        var currentRank = newRanks.GetValueOrDefault(emojiId);
+
+        if (currentRank >= TopCount) {
+            // Already at top position, nothing to do
+            return this;
+        }
+
+        var targetRank = currentRank + 1;
+
+        // Find emoji with target rank and swap
+        var emojiToSwap = newRanks.FirstOrDefault(kv => kv.Value == targetRank).Key;
+        if (emojiToSwap != null) {
+            newRanks[emojiToSwap] = currentRank;
+        }
+
+        newRanks[emojiId] = targetRank;
+
+        return this with { EmojiRanks = newRanks };
     }
 
     public IEnumerable<Emoji> GetSortedEmojis()
     {
         var allEmojis = Emojis.All;
-        if (EmojiUsageCount.Count == 0)
-            return allEmojis;
+        return allEmojis.OrderByDescending(e => GetRank(e.Id.Value));
+    }
 
-        return allEmojis.OrderByDescending(e => EmojiUsageCount.GetValueOrDefault(e.Id.Value));
+    private int GetRank(string emojiId)
+    {
+        if (EmojiRanks.TryGetValue(emojiId, out var rank))
+            return rank;
+
+        // Default top 6 emojis
+        return emojiId switch {
+            "😂" => 6, // Lol
+            "😊" => 5, // Smile
+            "😘" => 4, // Kiss
+            "👍" => 3, // ThumbsUp
+            "❤️" => 2, // RedHeart
+            "😥" => 1, // Sad
+            _ => 0,
+        };
     }
 }

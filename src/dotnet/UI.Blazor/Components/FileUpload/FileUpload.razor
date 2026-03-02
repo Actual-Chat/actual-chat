@@ -1,4 +1,5 @@
 @using ActualChat.UI.Blazor.Module
+@using ActualChat.UI.Blazor.Services
 @using ActualChat.Media
 @inherits ComponentBase<UIHub>
 @implements IAsyncDisposable
@@ -7,6 +8,8 @@
 
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.FileUpload.create";
+
+    private FileUploader FileUploader => field ??= Services.GetRequiredService<FileUploader>();
 
     private ElementReference InputRef { get; set; }
     private DotNetObjectReference<FileUpload> BlazorRef { get; set; } = null!;
@@ -40,7 +43,7 @@
         if (MaxSize.HasValue && size > MaxSize.Value) {
             var sizeStr = FileSizeFormatter.Format(MaxSize.Value);
             UICommander.ShowError(StandardError.Constraint($"File is too big. Max file size: {sizeStr}."));
-            await JSRef.InvokeVoidAsync("clear");
+            await ClearSelection();
             return;
         }
 
@@ -56,10 +59,8 @@
                 .Set("ContentType", contentType);
             var uploadId = await UICommander.Call(new Uploads_Create(Session, size, tag, metadata));
 
-            // Start chunked upload in JS with progress tracking
-            uploaderBackend = new WebFileUploaderBackend(new Progress<double>());
-            await JSRef.InvokeVoidAsync("startUpload", uploadId.Value, uploaderBackend.BlazorRef);
-            await uploaderBackend.WhenUploadCompleted;
+            var webUploadStreamSource = new WebUploadStreamSource(JSRef);
+            await FileUploader.Upload(webUploadStreamSource, uploadId, null, CancellationToken.None);
 
             // Process upload
             var mediaContent = await UICommander.Call(new Medias_ProcessUpload(Session, mediaId, uploadId));
@@ -70,6 +71,10 @@
         }
         finally {
             uploaderBackend?.DisposeSilently();
+            await ClearSelection();
         }
     }
+
+    private async Task ClearSelection()
+        => await JSRef.InvokeVoidAsync("clear");
 }

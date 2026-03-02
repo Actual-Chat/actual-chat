@@ -190,8 +190,8 @@
         var description = TranslatedText.From(chat.Description);
         var mustTranslate = await TranslationUI.MustTranslate(chat, cancellationToken).ConfigureAwait(false);
         if (mustTranslate) {
-            var titleTranslationTask = TranslationUI.Get(chatId, ThreadTranslationIdKind.Title, TranslationConsumers.ChatView, cancellationToken);
-            var descriptionTranslationTask = TranslationUI.Get(chatId, ThreadTranslationIdKind.Description, TranslationConsumers.ChatView, cancellationToken);
+            var titleTranslationTask = TranslationUI.Get(chatId, ThreadTranslationIdKind.Title, cancellationToken);
+            var descriptionTranslationTask = TranslationUI.Get(chatId, ThreadTranslationIdKind.Description, cancellationToken);
             await Task.WhenAll(titleTranslationTask, descriptionTranslationTask).ConfigureAwait(false);
             var titleTranslation = await titleTranslationTask.ConfigureAwait(false);
             var descriptionTranslation = await descriptionTranslationTask.ConfigureAwait(false);
@@ -208,7 +208,7 @@
         if (!await TranslationUI.MustTranslate(chatEntry, false, cancellationToken).ConfigureAwait(false))
             return markup;
 
-        var translation = await TranslationUI.Get(chatEntry.Id.ToTextEntryId(), TranslationConsumers.ChatView, cancellationToken).ConfigureAwait(false);
+        var translation = await TranslationUI.Get(chatEntry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
         if (translation is null || translation.MatchesOriginal(chatEntry.Content))
             return markup;
 

@@ -11,6 +11,9 @@
     var incompleteUIStatus = m.IsIncompleteUIEnabled
         ? "Early access UI is enabled."
         : "Disabled";
+    var videoStreamingStatus = m.IsVideoStreamingEnabled
+        ? "Video streaming is enabled."
+        : "Disabled";
 }
 
 @if (NativeAppSettings != null) {
@@ -55,6 +58,14 @@
                 <Toggle IsChecked="@m.IsIncompleteUIEnabled"/>
             </Right>
         </TileItem>
+        <TileItem Click="@OnVideoStreamingEnabledClick">
+            <Icon><i class="icon-info text-2xl"></i></Icon>
+            <Content>Enable video streaming</Content>
+            <Caption>@videoStreamingStatus</Caption>
+            <Right>
+                <Toggle IsChecked="@m.IsVideoStreamingEnabled"/>
+            </Right>
+        </TileItem>
     </Tile>
 }
 <TileTopic Topic="Troubleshooting"/>
@@ -88,9 +99,9 @@
 @code {
     private INativeAppSettings? NativeAppSettings { get; set; }
 
-    private BubbleUI BubbleUI => Hub.BubbleUI;
-    private OnboardingUI OnboardingUI => Hub.OnboardingUI;
     private IDataCollectionSettingsUI DataCollectionSettingsUI => Hub.DataCollectionSettingsUI;
+    private OnboardingUI OnboardingUI => Hub.OnboardingUI;
+    private BubbleUI BubbleUI => Hub.BubbleUI;
     private LogUI LogUI => Hub.LogUI;
 
     protected override void OnInitialized()
@@ -107,6 +118,7 @@
             settings.IsDataCollectionEnabled ?? false,
             settings.AreExperimentalFeaturesEnabled ?? false,
             settings.IsIncompleteUIEnabled ?? false,
+            settings.IsVideoStreamingEnabled ?? false,
             account.IsAdmin,
             appSettings.IsLogViewerEnabledOrDefault);
     }
@@ -138,6 +150,11 @@
             IsIncompleteUIEnabled = !(x.IsIncompleteUIEnabled ?? false),
         });
 
+    private Task OnVideoStreamingEnabledClick()
+        => AccountSettings.UserAppSettings().Update(x => x with {
+            IsVideoStreamingEnabled = !(x.IsVideoStreamingEnabled ?? false),
+        });
+
     private async Task OnLogUIEnabledClick() {
         await LocalSettings.LocalAppSettings().Update(x => x with {
             IsLogViewerEnabled = !x.IsLogViewerEnabledOrDefault,
@@ -151,9 +168,10 @@
         bool IsDataCollectionEnabled,
         bool AreExperimentalFeaturesEnabled,
         bool IsIncompleteUIEnabled,
+        bool IsVideoStreamingEnabled,
         bool IsAdmin,
         bool IsLogUIEnabled)
     {
-        public static readonly Model None = new(false, false, false, false, false);
+        public static readonly Model None = new(false, false, false, false, false, false);
     }
 }

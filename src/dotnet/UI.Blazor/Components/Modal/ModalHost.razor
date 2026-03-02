@@ -28,17 +28,18 @@
 @code {
     private static readonly string JSUpdateBodyStyleMethod = $"{BlazorUICoreModule.ImportName}.ModalHost.updateBodyStyle";
 
+    private readonly AfterRenderQueue _afterRenderQueue = new ();
     private ModalRefSet _renderedRefs = new ();
     private ModalRefSet _refs = new ();
-    private AfterRenderQueue _afterRenderQueue = new ();
 
     [Inject] internal HistoryStepper HistoryStepper { get; init; } = null!;
     [Inject] private UIHub Hub { get; set; } = null!;
+    internal History History => Hub.History;
     private ModalUI ModalUI => Hub.ModalUI;
     private TuneUI TuneUI => Hub.TuneUI;
-    internal History History => Hub.History;
     private IJSRuntime JS => Hub.JS;
 
+    public event Action? OnModalShown;
     public event Action? OnModalClosed;
 
     protected override void OnInitialized()
@@ -55,6 +56,7 @@
         options = options.WithImplicit();
         var modalRef = new ModalRef(options, model, this, content);
         _refs.Add(modalRef);
+        OnModalShown?.Invoke();
         History.Save<OwnHistoryState>();
         StateHasChanged();
         return modalRef;

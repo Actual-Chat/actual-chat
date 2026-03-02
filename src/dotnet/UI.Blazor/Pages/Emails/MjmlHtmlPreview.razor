@@ -21,7 +21,7 @@
         var mjml = await blazorRenderer.RenderComponent(ComponentType).ConfigureAwait(false);
         var mjmlRenderer = new MjmlRenderer();
         var mjmlOptions = new MjmlOptions { Beautify = false };
-        var renderResult = mjmlRenderer.Render(mjml, mjmlOptions);
+        var renderResult = await mjmlRenderer.RenderAsync(mjml, mjmlOptions).ConfigureAwait(false);
         _html = renderResult.Html;
     }
 }

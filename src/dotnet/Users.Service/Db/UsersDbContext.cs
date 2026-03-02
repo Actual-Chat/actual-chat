@@ -20,10 +20,6 @@ public class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContex
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
     public DbSet<DbEvent> Events { get; protected set; } = null!;
 
-    // Legacy ActualLab.Fusion.Authentication.Services tables; to be removed
-    public DbSet<DbUser> Users { get; protected set; } = null!;
-    public DbSet<DbUserIdentity<string>> UserIdentities { get; protected set; } = null!;
-
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
         base.ConfigureConventions(configurationBuilder);
@@ -50,13 +46,6 @@ public class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContex
 
         var chatPosition = model.Entity<DbChatPosition>();
         chatPosition.Property(e => e.Id).UseCollation("C");
-
-        var user = model.Entity<DbUser>();
-        user.Property(e => e.Id).UseCollation("C");
-
-        var userIdentity = model.Entity<DbUserIdentity<string>>();
-        userIdentity.Property(e => e.Id).UseCollation("C");
-        userIdentity.Property(e => e.DbUserId).UseCollation("C");
 
         var accountIdentity = model.Entity<DbAccountIdentity>();
         accountIdentity.Property(e => e.Id).UseCollation("C");

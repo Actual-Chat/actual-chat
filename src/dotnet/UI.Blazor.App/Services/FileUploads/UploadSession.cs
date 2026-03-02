@@ -1,3 +1,5 @@
+using ActualChat.UI.Blazor.Services;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
 public enum UploadSessionState
@@ -27,9 +29,25 @@ public class UploadSession
     private Task _runTask = Task.CompletedTask;
     private readonly UploadOperations _uploadOperations;
 
+    public static UploadSessionSnapshot NewUploadSnapshot(IFileProvider fileProvider, PropertyBag metadata,
+        Moment now, string mediaScope)
+    {
+        var snapshot = new UploadSessionSnapshot {
+            SessionId = Guid.NewGuid().ToString(),
+            FileProvider = fileProvider,
+            Metadata = metadata,
+            CurrentState = UploadSessionState.Created,
+            DataVersion = 1,
+            CreatedAt = now,
+            LastUpdatedAt = now,
+            MediaScope = mediaScope,
+        };
+        return snapshot;
+    }
+
     public UploadSession(UploadSessionSnapshot snapshot,
         UploadOperations uploadOperations,
-        Func<UploadSessionSnapshot, CancellationToken, Task> storage)
+        Func<UploadSessionSnapshot, CancellationToken, Task>? storage = null)
     {
         _uploadOperations = uploadOperations;
         _storage = storage;
@@ -129,6 +147,7 @@ public class UploadSession
 
     private Task RunClientProcessing(CancellationToken cancellationToken) => ExecuteStep(async () => {
         // No actual work for now, just transition to Uploading
+        // Transcode a file source if needed and save the result.
         await TransitionTo(UploadSessionState.Uploading).ConfigureAwait(false);
     }, cancellationToken);
 
@@ -145,7 +164,12 @@ public class UploadSession
         var snapshotAccessor = new UploadSessionSnapshotAccessor(
             () => _snapshot,
             (update, ct) => UpdateState(update, cancellationToken: ct));
+
+        // Use transcoded source if available, otherwise get from the file provider
+        var uploadSource = GetTranscodedSource() ?? _snapshot.FileProvider.GetUploadSource();
+
         await _uploadOperations.UploadData(
+            uploadSource,
             snapshotAccessor,
             progress,
             cancellationToken).ConfigureAwait(false);
@@ -212,6 +236,9 @@ public class UploadSession
             _stateLock.Release();
         }
     }
+
+    private UploadSource? GetTranscodedSource()
+        => null;
 }
 
 public readonly struct UploadSessionSnapshotAccessor(

@@ -1,64 +1,62 @@
 ﻿namespace ActualChat.UI.Blazor.Components;
 
-public enum DialogFramePosition { Bottom, Stretch }
-
-public record DialogFrameNarrowViewSettings
+public enum DialogFramePosition
 {
-    public static readonly DialogFrameNarrowViewSettings Bottom = new () { Position = DialogFramePosition.Bottom };
-    public static readonly DialogFrameNarrowViewSettings Stretch = new () { Position = DialogFramePosition.Stretch };
-    private bool _canSubmit = true;
+    Default = 0, // Default
+    Bottom,
+}
 
-    public DialogFramePosition Position { get; init; } = DialogFramePosition.Bottom;
+public sealed record DialogFrameNarrowViewSettings
+{
+    public static readonly DialogFrameNarrowViewSettings Default = new ();
+    public static readonly DialogFrameNarrowViewSettings Bottom = new () { Position = DialogFramePosition.Bottom };
+
+    public DialogFramePosition Position { get; init; }
     public bool? ShouldHideButtons { get; init; }
     public ButtonType SubmitButtonType { get; init; } = ButtonType.Button;
-    public EventCallback SubmitClick { get; init; }
     public string SubmitButtonText { get; init; } = "";
+    public EventCallback SubmitClick { get; init; }
 
     public bool CanSubmit {
-        get => _canSubmit;
+        get;
         set {
-            if (_canSubmit == value)
+            if (field == value)
                 return;
-            _canSubmit = value;
+
+            field = value;
             RaiseCanSubmitChanged();
         }
-    }
+    } = true;
 
+    public bool HasSubmit => SubmitButtonType != ButtonType.Button || SubmitClick.HasDelegate;
+    public bool? UseInteractiveHeader { get; init; }
+    public bool ShouldUseInteractiveHeader => UseInteractiveHeader ?? HasSubmit;
     public event EventHandler? CanSubmitChanged;
 
     public void RaiseCanSubmitChanged()
         => CanSubmitChanged?.Invoke(this, EventArgs.Empty);
 
-    public bool? UseInteractiveHeader { get; init; }
-
-    public bool IsSubmitDefined
-        => SubmitButtonType != ButtonType.Button || SubmitClick.HasDelegate;
-    internal bool ShouldUseInteractiveHeader
-        => UseInteractiveHeader ?? IsSubmitDefined;
-
-    public static DialogFrameNarrowViewSettings FormSubmitButton(string submitButtonText = "")
+    public static DialogFrameNarrowViewSettings ForFormSubmitButton(string submitButtonText = "")
         => new() {
-            Position = DialogFramePosition.Stretch,
             SubmitButtonType = ButtonType.Submit,
             SubmitButtonText = submitButtonText,
         };
 
-    public static DialogFrameNarrowViewSettings SubmitButton(Action callback, string submitButtonText = "")
+    public static DialogFrameNarrowViewSettings ForSubmitButton(Action callback, string submitButtonText = "")
     {
         var eventCallback = callback.Target != null
             ? EventCallback.Factory.Create(callback.Target, callback)
             : new EventCallback(null, callback);
         return new DialogFrameNarrowViewSettings {
-            Position = DialogFramePosition.Stretch,
             SubmitClick = eventCallback,
             SubmitButtonText = submitButtonText,
         };
     }
 
-    public static DialogFrameNarrowViewSettings SubmitButton(Func<Task> callback, string submitButtonText = "")
-        => SubmitButton(DialogFramePosition.Stretch, callback, submitButtonText);
+    public static DialogFrameNarrowViewSettings ForSubmitButton(Func<Task> callback, string submitButtonText = "")
+        => ForSubmitButton(DialogFramePosition.Default, callback, submitButtonText);
 
-    public static DialogFrameNarrowViewSettings SubmitButton(DialogFramePosition position, Func<Task> callback, string submitButtonText = "")
+    public static DialogFrameNarrowViewSettings ForSubmitButton(DialogFramePosition position, Func<Task> callback, string submitButtonText = "")
     {
         var eventCallback = callback.Target != null
             ? EventCallback.Factory.Create(callback.Target, callback)

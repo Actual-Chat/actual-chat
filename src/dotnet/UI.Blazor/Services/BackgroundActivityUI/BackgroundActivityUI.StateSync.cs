@@ -1,0 +1,42 @@
+﻿namespace ActualChat.UI.Blazor.Services;
+
+public partial class BackgroundActivityUI
+{
+    protected override Task OnRun(CancellationToken cancellationToken)
+    {
+        var retryDelays = RetryDelaySeq.Exp(0.5, 3);
+        return AsyncChain.From(PushState)
+            .Log(LogLevel.Debug, Log)
+            .RetryForever(retryDelays, Log)
+            .RunIsolated(cancellationToken);
+    }
+
+    private async Task PushState(CancellationToken cancellationToken)
+    {
+        var cGetState = await Computed
+            .Capture(() => ComputeState(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        var changes = cGetState.Changes(cancellationToken);
+        await foreach (var cState in changes.ConfigureAwait(false)) {
+            var state = cState.Value;
+            if (_state.Value == state)
+                continue;
+
+            Log.LogDebug("PushState: {OldState} -> {State}", _state.Value, state);
+            _state.Value = state;
+        }
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<BackgroundActivityState> ComputeState(CancellationToken cancellationToken)
+    {
+        var isBackground = await IsRunningInBackground.Use(cancellationToken).ConfigureAwait(false);
+        if (!isBackground)
+            return BackgroundActivityState.Foreground;
+
+        var isActiveInBackground = await MustBeBackgroundActive(cancellationToken).ConfigureAwait(false);
+        return isActiveInBackground
+            ? BackgroundActivityState.BackgroundActive
+            : BackgroundActivityState.BackgroundIdle;
+    }
+}

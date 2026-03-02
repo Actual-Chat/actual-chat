@@ -36,7 +36,8 @@ export class BrowserInit {
         baseUri: string,
         supportedHosts: string[],
         sessionHash: string,
-        browserInfoBackendRef: DotNet.DotNetObject
+        browserInfoBackendRef: DotNet.DotNetObject,
+        clipboardInteropRef: DotNet.DotNetObject | null,
     ): void {
         try {
             infoLog?.log(`-> init, apiVersion: ${apiVersion}, baseUri: ${baseUri}, sessionHash: ${sessionHash}`);
@@ -46,7 +47,7 @@ export class BrowserInit {
             this.baseUri = supportedHosts.includes(documentBaseUri.host) ? `${documentBaseUri.protocol}//${documentBaseUri.host}` : baseUri;
             this.sessionHash = sessionHash;
             this.initWindowId();
-            this.initAndroidWebViewClipboardHandlers();
+            this.initClipboardHandlers(clipboardInteropRef);
             if (hostKind !== 'MauiApp')
                 void this.initFirebase();
 
@@ -272,43 +273,21 @@ export class BrowserInit {
         });
     }
 
-    private static initAndroidWebViewClipboardHandlers(): void {
-        // Our own WebViews expose `window.Android` object,
-        // search for `AndroidJSInterface` to find how.
-        const android = window['Android'] as unknown;
-        if (!android)
+    private static initClipboardHandlers(clipboardHandlersRef: DotNet.DotNetObject | null): void {
+        if (!clipboardHandlersRef)
             return;
 
-        // In Android WebView readText and writeText operations fail with insufficient permissions,
+        // In Android WebView, navigator.clipboard operations fail with insufficient permissions,
         // and there is no way to grant these permissions.
         // https://stackoverflow.com/questions/61243646/clipboard-api-call-throws-notallowederror-without-invoking-onpermissionrequest
-        // So we replace `navigator.clipboard` functions with our own implementation
-        // based on JS-to-Native-Android interop.
-        navigator.clipboard.writeText = clipText => {
-            return new Promise((resolve, reject) => {
-                try {
-                    // @ts-expect-error intentional: we know that `android` is an object with `writeTextToClipboard` method
-                    android.writeTextToClipboard(clipText);
-                    resolve();
-                }
-                catch (e) {
-                    // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
-                    reject(e);
-                }
-            });
+        // We use Blazor JS interop (clipboardInteropRef) instead of the AndroidJSInterface
+        // native bridge, because the latter suffers from CoreCLR garbage collecting
+        // JNI callback delegates, causing native aborts on the JavaBridge thread.
+        navigator.clipboard.writeText = async (clipText: string): Promise<void> => {
+            await clipboardHandlersRef.invokeMethodAsync('WriteText', clipText);
         };
-        navigator.clipboard.readText = () => {
-            return new Promise((resolve, reject) => {
-                try {
-                    // @ts-expect-error intentional: we know that `android` is an object with `readTextFromClipboard` method
-                    const clipText = android.readTextFromClipboard();
-                    resolve(clipText);
-                }
-                catch (e) {
-                    // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
-                    reject(e);
-                }
-            });
+        navigator.clipboard.readText = async (): Promise<string> => {
+            return await clipboardHandlersRef.invokeMethodAsync('ReadText') ?? '';
         };
     }
 

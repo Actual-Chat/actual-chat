@@ -16,6 +16,6 @@ public sealed class IosShareExtensionModule(IServiceProvider moduleServices)
         fusion.AddIos();
         fusion.AddService<ShareUI>(ServiceLifetime.Scoped);
         services.AddScoped<ShareInputs>();
-        services.AddScoped<SessionInitializer>();
+        fusion.AddService<SessionInitializer>(ServiceLifetime.Scoped);
     }
 }

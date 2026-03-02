@@ -1,11 +1,8 @@
-// TODO: Fix ESLint errors
-/* eslint-disable @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-deprecated, @typescript-eslint/no-floating-promises */
 import { fromEvent, Subject, takeUntil, filter } from 'rxjs';
 
 export class VideoPanel {
     private blazorRef: DotNet.DotNetObject;
     private readonly videoPanel: HTMLElement;
-    private readonly video: HTMLElement | null = null;
     private readonly expandBtn: HTMLElement | null = null;
     private parentElement: HTMLElement | null = null;
     private disposed$: Subject<void> = new Subject<void>();
@@ -17,12 +14,6 @@ export class VideoPanel {
     constructor(videoPanel: HTMLElement, blazorRef: DotNet.DotNetObject) {
         this.blazorRef = blazorRef;
         this.videoPanel = videoPanel;
-        if (!this.videoPanel)
-            return;
-
-        this.video = this.videoPanel.querySelector('.call-video');
-        if (!this.video)
-            return;
 
         this.parentElement = this.videoPanel.parentElement;
         const needToShowElements = this.videoPanel.querySelectorAll('.show-with-delay');
@@ -30,14 +21,16 @@ export class VideoPanel {
             needToShowElements.forEach(element => element.classList.add('show'));
             this.videoPanel.classList.remove('first-time-open');
         }, 1000);
+
+        // Expand button
         this.expandBtn = this.videoPanel.querySelector('.expand-btn');
-        if (!this.expandBtn)
-            return;
+        if (this.expandBtn) {
+            fromEvent(this.expandBtn, 'click')
+                .pipe(takeUntil(this.disposed$))
+                .subscribe(() => this.onExpandBtnClick());
+        }
 
-        fromEvent(this.expandBtn, 'click')
-            .pipe(takeUntil(this.disposed$))
-            .subscribe(() => this.onExpandBtnClick());
-
+        // Escape key handler
         fromEvent<KeyboardEvent>(document, 'keydown')
             .pipe(
                 takeUntil(this.disposed$),
@@ -47,7 +40,7 @@ export class VideoPanel {
     }
 
     public dispose() {
-        if (this.disposed$.isStopped)
+        if (this.disposed$.closed)
             return;
 
         this.disposed$.next();
@@ -76,11 +69,15 @@ export class VideoPanel {
         this.videoPanel.classList.add('closing');
 
         const content = this.videoPanel.querySelector('.c-content')!;
-        const handler = () => {
-            content.removeEventListener('animationend', handler);
-            this.blazorRef.invokeMethodAsync('CloseVideoPanel');
+        let handled = false;
+        const complete = () => {
+            if (handled) return;
+            handled = true;
+            content.removeEventListener('animationend', complete);
+            void this.blazorRef.invokeMethodAsync('CloseVideoPanel');
         };
 
-        content.addEventListener('animationend', handler);
+        content.addEventListener('animationend', complete);
+        setTimeout(complete, 500); // Safety fallback if animation doesn't fire
     }
 }

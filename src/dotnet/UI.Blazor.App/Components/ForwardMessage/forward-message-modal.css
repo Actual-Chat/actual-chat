@@ -1,6 +1,10 @@
 .forward-message-modal {
     @apply text-03;
 }
+body.narrow .forward-message-modal.narrow-view__modal__position-stretch {
+    padding-top: var(--safe-area-top);
+    padding-bottom: calc(1rem + var(--safe-area-bottom));
+}
 .forward-message-modal.modal-frame {
     @apply px-0;
     @apply gap-y-0;

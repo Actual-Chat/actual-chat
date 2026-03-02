@@ -29,7 +29,6 @@ public abstract class ChatPlayer : ProcessorBase
     protected IChats Chats => Hub.Chats;
     protected IAuthors Authors => Hub.Authors;
     protected InteractiveUI InteractiveUI => Hub.InteractiveUI;
-    protected AudioWidget AudioWidget => Hub.AudioWidget;
     protected MomentClockSet Clocks => Hub.Clocks;
 
     protected IState<TimeSpan> SleepDuration { get; }

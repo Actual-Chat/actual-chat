@@ -22,9 +22,9 @@ public class ConversationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
                 TranslatedMarkup.From(descriptionMarkup),
                 TranslatedMarkup.From(summaryMarkup));
 
-        var titleTranslationTask = TranslationUI.Get(conversationId, ConversationTranslationIdKind.Title, TranslationConsumers.ChatView, cancellationToken);
-        var descriptionTranslationTask = TranslationUI.Get(conversationId, ConversationTranslationIdKind.Description, TranslationConsumers.ChatView, cancellationToken);
-        var summaryTranslationTask = TranslationUI.Get(conversationId, ConversationTranslationIdKind.Summary, TranslationConsumers.ChatView, cancellationToken);
+        var titleTranslationTask = TranslationUI.Get(conversationId, ConversationTranslationIdKind.Title, cancellationToken);
+        var descriptionTranslationTask = TranslationUI.Get(conversationId, ConversationTranslationIdKind.Description, cancellationToken);
+        var summaryTranslationTask = TranslationUI.Get(conversationId, ConversationTranslationIdKind.Summary, cancellationToken);
         var titleTranslation = await titleTranslationTask.ConfigureAwait(false);
         var descriptionTranslation = await descriptionTranslationTask.ConfigureAwait(false);
         var summaryTranslation = await summaryTranslationTask.ConfigureAwait(false);

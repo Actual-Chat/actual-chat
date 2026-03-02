@@ -30,6 +30,7 @@ internal static class Program
         public const string GenerateCISolutionFilter = "slnf";
         public const string IntegrationTests = "integration-tests";
         public const string SlowTests = "slow-tests";
+        public const string NightlyTests = "nightly-tests";
         public const string CleanTests = "clean-tests";
         public const string Tests = "tests";
         public const string Build = "build";
@@ -239,9 +240,11 @@ internal static class Program
 
         Target(Targets.UnitTests, () => RunTests("FullyQualifiedName~UnitTests", 15 * 60));
 
-        Target(Targets.IntegrationTests,  () => RunTests("FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.PlaywrightTests&Category!~Slow", 30 * 60));
+        Target(Targets.IntegrationTests,  () => RunTests("FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.PlaywrightTests&Category!~Slow&Category!~Nightly", 30 * 60));
 
         Target(Targets.SlowTests,  () => RunTests("FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.PlaywrightTests&Category~Slow", 30 * 60));
+
+        Target(Targets.NightlyTests,  () => RunTests("FullyQualifiedName~IntegrationTests&Category~Nightly", 30 * 60));
 
         Target(Targets.CleanTests, () => {
             FileExt.Remove("artifacts/tests/output");

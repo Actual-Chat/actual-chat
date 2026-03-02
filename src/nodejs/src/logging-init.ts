@@ -92,6 +92,15 @@ export type LogScope =
     | 'Theme'
     | 'TooltipHost'
     | 'UserInterface'
+    | 'VideoPanel'
+    | 'AudioVideoSync'
+    | 'VideoPlayer'
+    | 'VideoRecorder'
+    | 'VideoStreamer'
+    | 'VideoPipeline'
+    | 'VideoEncoder'
+    | 'VideoDecoder'
+    | 'VideoSegmentation'
     | 'VisualMediaViewer'
     | 'WebAuth'
     | 'WebFileProvider';
@@ -212,7 +221,7 @@ function reset(minLevels: Map<LogScope, LogLevel>, isProduction?: boolean): void
     // minLevels.set('OpusEncoderWorker', LogLevel.Debug);
     // minLevels.set('OpusEncoderWorkletProcessor', LogLevel.Debug);
     // minLevels.set('InertialScroll', LogLevel.Debug);
-    minLevels.set('VirtualList', LogLevel.Debug);
+    // minLevels.set('VirtualList', LogLevel.Debug);
     // minLevels.set('Landing', LogLevel.Debug);
     // minLevels.set('LandingLeftMenu', LogLevel.Debug);
     // minLevels.set('SideNav', LogLevel.Debug);
@@ -230,6 +239,13 @@ function reset(minLevels: Map<LogScope, LogLevel>, isProduction?: boolean): void
     // minLevels.set('MenuHost', LogLevel.Debug);
     // minLevels.set('MarkupEditor', LogLevel.Debug);
     // minLevels.set('ChatMessageEditor', LogLevel.Debug);
+
+    // Video scopes — enabled for latency troubleshooting
+    minLevels.set('VideoPlayer', LogLevel.Debug);
+    minLevels.set('VideoPipeline', LogLevel.Debug);
+    minLevels.set('VideoStreamer', LogLevel.Debug);
+    minLevels.set('VideoPanel', LogLevel.Debug);
+    minLevels.set('AudioVideoSync', LogLevel.Debug);
 
     // minLevels.clear(); // To quickly discard any tweaks :)
     persist(minLevels);

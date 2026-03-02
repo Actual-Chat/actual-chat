@@ -198,7 +198,6 @@ See also: [Condensed API Index](api-index.md).
 - `LegacyLanguageFormatter` - Legacy language formatter.
 - `LegacyLanguageFormatterAttribute` (attribute) - Legacy formatter attribute.
 - `LegacyNullableLanguageFormatter` - Legacy nullable language formatter.
-- `LegacySessionAuthInfo` - Legacy session auth info.
 - `IgnoreComputeArg` - Marks arguments to ignore in compute.
 - `LinearMapExt` (static class) - Extension methods for linear maps.
 - `MasterFlowStarter` - Starts master flows.
@@ -626,7 +625,6 @@ See also: [Condensed API Index](api-index.md).
 - `IEmailsBackend` - Backend service for email operations.
 - `ISessionsBackend` - Backend service for managing user sessions.
 - `IUserPresencesBackend` - Backend service for user presence tracking.
-- `IUsersUpgradeBackend` - Backend service for user migration and upgrade operations.
 - `IServerKvasBackend` - Backend service for server-side key-value store.
 - `ServerKvasBackendExt` (static class) - Extension methods for IServerKvasBackend.
 - `AccountsBackendExt` (static class) - Extension methods for IAccountsBackend.

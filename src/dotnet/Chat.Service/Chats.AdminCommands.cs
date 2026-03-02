@@ -1,5 +1,7 @@
 using System.Text.RegularExpressions;
+using ActualChat.Contacts;
 using ActualChat.Hosting;
+using ActualChat.Kvas;
 using ActualChat.Text;
 
 namespace ActualChat.Chat;
@@ -8,6 +10,9 @@ public partial class Chats
 {
     [GeneratedRegex(@"^/lorem-ipsum\s+(\d+)(?:\s+(\d+)\.\.(\d+))?$")]
     private static partial Regex LoremIpsumCommandRegex();
+
+    [GeneratedRegex(@"^/bot-army(?:\s+(\d+))?$")]
+    private static partial Regex BotArmyCommandRegex();
 
     private async Task<ChatEntry?> TryHandleAdminCommand(
         Session session, ChatId chatId, Author author, string text,
@@ -24,9 +29,20 @@ public partial class Chats
             return null;
 
         var match = LoremIpsumCommandRegex().Match(text);
-        if (!match.Success)
-            return null;
+        if (match.Success)
+            return await HandleLoremIpsum(chatId, author, match, cancellationToken).ConfigureAwait(false);
 
+        match = BotArmyCommandRegex().Match(text);
+        if (match.Success)
+            return await HandleBotArmy(session, chatId, author, account, match, cancellationToken).ConfigureAwait(false);
+
+        return null;
+    }
+
+    private async Task<ChatEntry> HandleLoremIpsum(
+        ChatId chatId, Author author, Match match,
+        CancellationToken cancellationToken)
+    {
         var count = int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
         count = Math.Clamp(count, 1, 500);
         var minLines = match.Groups[2].Success
@@ -66,5 +82,87 @@ public partial class Chats
             lastEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
         }
         return lastEntry!;
+    }
+
+    private async Task<ChatEntry> HandleBotArmy(
+        Session session, ChatId chatId, Author author, AccountFull account, Match match,
+        CancellationToken cancellationToken)
+    {
+        var count = match.Groups[1].Success
+            ? int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture)
+            : 100;
+        count = Math.Clamp(count, 1, 500);
+
+        var accountsBackend = services.GetRequiredService<IAccountsBackend>();
+        var myId = account.Id;
+
+        var startIndex = 0;
+        while (await accountsBackend.Get(UserId.Parse($"testbot{startIndex}"), cancellationToken).ConfigureAwait(false) != null)
+            startIndex++;
+
+        for (var i = 0; i < count; i++) {
+            var userId = UserId.Parse($"testbot{startIndex + i}");
+            await CreateTestBot(session, userId, cancellationToken).ConfigureAwait(false);
+
+            var contactId = ContactId.NewUser(myId, userId);
+            var contact = new Contact(contactId);
+            var createCmd = new ContactsBackend_Change(contactId, null, Change.Create(contact));
+            await Commander.Call(createCmd, cancellationToken).ConfigureAwait(false);
+        }
+
+        var message = $"Bot army: created {count} bots (testbot{startIndex}..testbot{startIndex + count - 1}), {count} new contacts";
+        var textEntryId = TextEntryId.New(chatId, 0);
+        var upsertCommand = new ChatsBackend_ChangeEntry(
+            textEntryId,
+            null,
+            Change.Create(new ChatEntryDiff {
+                AuthorId = author.Id,
+                Content = message,
+            }));
+        return await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task CreateTestBot(Session callerSession, UserId userId, CancellationToken cancellationToken)
+    {
+        var accountsBackend = services.GetRequiredService<IAccountsBackend>();
+
+        // Create & sign in the account
+        var botSession = Session.New();
+        var userIdentity = new UserIdentity(UserIdentity.InternalSchema, userId.Value);
+        var signInCommand = new AccountsBackend_SignIn(
+            botSession, userIdentity, ApiMap<UserIdentity, string>.Empty, ApiMap<string, string>.Empty);
+        await Commander.Call(signInCommand, cancellationToken).ConfigureAwait(false);
+
+        // Fetch & activate
+        var botAccount = await accountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+        botAccount.Require();
+        if (botAccount.Status != AccountStatus.Active) {
+            botAccount = botAccount with { Status = AccountStatus.Active };
+            var updateCommand = new AccountsBackend_Update(botAccount, botAccount.Version);
+            await Commander.Call(updateCommand, cancellationToken).ConfigureAwait(false);
+            botAccount = await accountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+        }
+        botAccount.Require(AccountFull.MustBeActive);
+
+        // Create avatar
+        var name = $"Robo {RandomNameGenerator.Default.Generate()}";
+        var seed = userId.Value.GetHashCode(StringComparison.Ordinal);
+        var pictureUrl = $"https://api.dicebear.com/7.x/bottts/svg?seed={seed}";
+        var changeAvatarCommand = new Avatars_Change(callerSession, Symbol.Empty, null, new Change<AvatarFull> {
+            Create = new AvatarFull(botAccount.Id) {
+                Name = name,
+                Bio = $"I'm just a {name} test bot",
+                PictureUrl = pictureUrl,
+            },
+        });
+        var avatar = await Commander.Call(changeAvatarCommand, cancellationToken).ConfigureAwait(false);
+
+        // Set default avatar
+        var userKvas = ServerKvasBackend.GetUserClient(botAccount);
+        var userAvatarSettings = new UserAvatarSettings() {
+            DefaultAvatarId = avatar.Id,
+            AvatarIds = [avatar.Id],
+        };
+        await userKvas.UserAvatarSettings().Set(userAvatarSettings, cancellationToken).ConfigureAwait(false);
     }
 }

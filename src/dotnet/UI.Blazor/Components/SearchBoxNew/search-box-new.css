@@ -7,7 +7,7 @@
 .search-box-new i {
     @apply absolute right-0;
     @apply flex items-center justify-center;
-    @apply w-14 h-14;
+    @apply w-14 h-12;
     @apply text-03 text-2xl;
 }
 .search-box-new input {

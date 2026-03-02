@@ -23,10 +23,10 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
     private ILogger Log => field ??= Services.LogFor(GetType());
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SQLiteBatchingKvasBackend))]
-    public SQLiteBatchingKvasBackend(FilePath dbPath, string version, IServiceProvider services)
+    public SQLiteBatchingKvasBackend(FilePath dbPath, string version, IServiceProvider services, byte[]? key = null)
     {
         Services = services;
-        _connectionPool = Initialize(dbPath, version);
+        _connectionPool = Initialize(dbPath, version, key);
     }
 
     public ValueTask<byte[]?[]> GetMany(string[] keys, CancellationToken cancellationToken = default)
@@ -115,35 +115,57 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
 
     // Private methods
 
-    private SimpleConcurrentPool<SQLiteConnection>? Initialize(FilePath dbPath, string version)
+    private SimpleConcurrentPool<SQLiteConnection>? Initialize(FilePath dbPath, string version, byte[]? key)
     {
         try {
-            var connectionCount = HardwareInfo.ProcessorCount + 2;
-            var connections = new SimpleConcurrentPool<SQLiteConnection>(
-                () => DbHelpers.OpenConnection(dbPath),
-                static c => !c.IsInTransaction,
-                connectionCount);
-
-            using var lease = connections.Rent();
-            var connection = lease.Resource;
-            // connection.EnableWriteAheadLogging();
-            connection.ExecuteScalar<string>("PRAGMA journal_mode=WAL");
-            connection.ExecuteScalar<string>("PRAGMA synchronous=normal");
-            connection.ExecuteScalar<string>("PRAGMA journal_size_limit=2048000");
-            var versionBytes = Encoding.UTF8.GetEncoder().Convert(version);
-            if (connection.CreateTable<DbItem>() == CreateTableResult.Migrated) {
-                var existingVersionBytes = connection.Find<DbItem>(VersionKey)?.Value ?? [];
-                if (!versionBytes.AsSpan().SequenceEqual(existingVersionBytes.AsSpan())) {
-                    _ = connection.DropTable<DbItem>();
-                    _ = connection.CreateTable<DbItem>();
-                }
-            }
-            connection.InsertOrReplace(new DbItem { Key = VersionKey, Value = versionBytes });
-            return connections;
+            return InitializeCore(dbPath, version, key);
         }
         catch (Exception e) {
-            Log.LogError(e, "Failed to initialize SQLite database");
-            return null;
+            Log.LogWarning(e, "Failed to initialize SQLite database, deleting and retrying");
+            try {
+                DeleteDbFiles(dbPath);
+                return InitializeCore(dbPath, version, key);
+            }
+            catch (Exception e2) {
+                Log.LogError(e2, "Failed to initialize SQLite database after retry");
+                return null;
+            }
+        }
+    }
+
+    private SimpleConcurrentPool<SQLiteConnection> InitializeCore(FilePath dbPath, string version, byte[]? key)
+    {
+        var connectionCount = HardwareInfo.ProcessorCount + 2;
+        var connections = new SimpleConcurrentPool<SQLiteConnection>(
+            () => DbHelpers.OpenConnection(dbPath, key),
+            static c => !c.IsInTransaction,
+            connectionCount);
+
+        using var lease = connections.Rent();
+        var connection = lease.Resource;
+        // connection.EnableWriteAheadLogging();
+        connection.ExecuteScalar<string>("PRAGMA journal_mode=WAL");
+        connection.ExecuteScalar<string>("PRAGMA synchronous=normal");
+        connection.ExecuteScalar<string>("PRAGMA journal_size_limit=2048000");
+        var versionBytes = Encoding.UTF8.GetEncoder().Convert(version);
+        if (connection.CreateTable<DbItem>() == CreateTableResult.Migrated) {
+            var existingVersionBytes = connection.Find<DbItem>(VersionKey)?.Value ?? [];
+            if (!versionBytes.AsSpan().SequenceEqual(existingVersionBytes.AsSpan())) {
+                _ = connection.DropTable<DbItem>();
+                _ = connection.CreateTable<DbItem>();
+            }
+        }
+        connection.InsertOrReplace(new DbItem { Key = VersionKey, Value = versionBytes });
+        return connections;
+    }
+
+    private static void DeleteDbFiles(FilePath dbPath)
+    {
+        var path = (string)dbPath;
+        foreach (var suffix in new[] { "", "-wal", "-shm" }) {
+            var file = path + suffix;
+            if (File.Exists(file))
+                File.Delete(file);
         }
     }
 
@@ -169,9 +191,11 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
         public static string UpsertSql = null!;
 
         [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DbHelpers))]
-        public static SQLiteConnection OpenConnection(FilePath dbPath)
+        public static SQLiteConnection OpenConnection(FilePath dbPath, byte[]? key = null)
         {
-            var connection = new SQLiteConnection(dbPath, OpenFlags);
+            // byte[] key uses raw hex format (PRAGMA key = "x'...'"), skipping PBKDF2
+            var connectionString = new SQLiteConnectionString(dbPath, OpenFlags, storeDateTimeAsTicks: true, key: key);
+            var connection = new SQLiteConnection(connectionString);
             if (_initializedTag == null) {
                 using var _ = Lock.EnterScope();
                 if (_initializedTag == null) {

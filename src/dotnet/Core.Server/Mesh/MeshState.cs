@@ -29,7 +29,7 @@ public sealed class MeshState
             return;
 
         AllRoles = AllNodes.Values.SelectMany(x => x.Roles).ToHashSet();
-        LiveNodes = [..AllNodes.Values.Where(x => x.State.IsLive()).Order()];
+        LiveNodes = [..AllNodes.Values.Where(x => x.State is MeshNodeState.Online).Order()];
         LiveNodesByRole = AllRoles.Select(r => new KeyValuePair<HostRole, MeshNode[]>(
             r,
             [..LiveNodes.Where(n => n.Roles.Contains(r))])
@@ -40,12 +40,9 @@ public sealed class MeshState
     {
         var sb = ActualLab.Text.StringBuilderExt.Acquire();
         sb.Append("MeshState(").Append(AllNodes.Count).AppendLine(" node(s)) {");
-        var now = Clock.Now;
         var i = 0;
         foreach (var node in AllNodes.Values.Order()) {
             sb.Append("  [").Append(i).Append("] = ").Append(node.LockKey).Append(": ").Append(node.State);
-            if (node.DeadAt is { } deadAt)
-                sb.Append(CultureInfo.InvariantCulture, $", dies in: {(deadAt - now).Positive().ToShortString()}");
             sb.AppendLine();
             i++;
         }

@@ -6,10 +6,10 @@ import { ResolvedPromise } from 'promises';
 
 const { infoLog, warnLog } = Log.get('AudioInfo');
 
-export type AppActivityState = 'Foreground' | 'BackgroundIdle' | 'BackgroundActive';
+export type BackgroundActivityState = 'Foreground' | 'BackgroundIdle' | 'BackgroundActive';
 
 export class AudioInitializer {
-    public static appActivityState: AppActivityState = 'Foreground';
+    public static backgroundActivityState: BackgroundActivityState = 'Foreground';
     public static isRecorderInitialized = false;
     public static isPlayerInitialized = false;
 
@@ -46,12 +46,12 @@ export class AudioInitializer {
     }
 
     /** Called by Blazor */
-    public static async setAppActivityState(appActivityState: AppActivityState): Promise<void> {
-        infoLog?.log(`setAppActivityState:`, appActivityState);
-        this.appActivityState = appActivityState;
-        await audioContextSource.setAppActivityState(appActivityState);
-        await recordingAudioContextSource.setAppActivityState(appActivityState);
-        if (appActivityState === 'Foreground' || appActivityState === 'BackgroundActive')
+    public static async setBackgroundActivityState(backgroundActivityState: BackgroundActivityState): Promise<void> {
+        infoLog?.log(`setBackgroundActivityState:`, backgroundActivityState);
+        this.backgroundActivityState = backgroundActivityState;
+        await audioContextSource.setBackgroundActivityState(backgroundActivityState);
+        await recordingAudioContextSource.setBackgroundActivityState(backgroundActivityState);
+        if (backgroundActivityState === 'Foreground' || backgroundActivityState === 'BackgroundActive')
             await opusMediaRecorder.ensureConnected(true);
         else
             await opusMediaRecorder.disconnect();

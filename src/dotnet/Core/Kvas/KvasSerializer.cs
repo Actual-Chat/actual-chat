@@ -11,8 +11,10 @@ namespace ActualChat.Kvas;
 [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Type is already marked with DynamicallyAccessedMembers.")]
 public class KvasSerializer : ByteSerializerBase
 {
-    private const byte ByteFormatMarker = 0x0;
-    private static readonly byte[] ByteFormatHeader = { ByteFormatMarker };
+    private const byte MemoryPackMarker = 0x0;
+    private const byte MessagePackMarker = 0x1;
+    private static readonly byte[] MemoryPackHeader = [MemoryPackMarker];
+    private static readonly byte[] MessagePackHeader = [MessagePackMarker];
 
     private ILogger Log { get; } = StaticLog.For<KvasSerializer>();
 
@@ -20,7 +22,8 @@ public class KvasSerializer : ByteSerializerBase
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "True value always can be serialized.")]
     public static readonly byte[] SerializedTrue = Default.Write(true, typeof(bool)).WrittenMemory.ToArray();
 
-    public IByteSerializer ByteSerializer { get; init; } = MemoryPackByteSerializer.Default;
+    public IByteSerializer MemoryPackSerializer { get; init; } = MemoryPackByteSerializer.Default;
+    public IByteSerializer MessagePackSerializer { get; init; } = MessagePackByteSerializer.Default;
     public ITextSerializer TextSerializer { get; init; } = SystemJsonSerializer.Default;
 
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Type is already marked with DynamicallyAccessedMembers.")]
@@ -32,11 +35,15 @@ public class KvasSerializer : ByteSerializerBase
         out int readLength)
     {
         try {
-            var isText = data.Length == 0 || data.Span[0] != ByteFormatMarker;
-            var result = isText
-                ? TextSerializer.Read(data, type, out readLength)
-                : ByteSerializer.Read(data[1..], type, out readLength);
-            return result;
+            if (data.Length == 0) {
+                return TextSerializer.Read(data, type, out readLength);
+            }
+            var marker = data.Span[0];
+            return marker switch {
+                MemoryPackMarker => MemoryPackSerializer.Read(data[1..], type, out readLength),
+                MessagePackMarker => MessagePackSerializer.Read(data[1..], type, out readLength),
+                _ => TextSerializer.Read(data, type, out readLength), // Legacy JSON format (no marker)
+            };
         }
         catch (MemoryPackSerializationException e) {
             Log.LogWarning(e, "Failed to deserialize data of type {Type} with length {Length}", type, data.Length);
@@ -53,7 +60,12 @@ public class KvasSerializer : ByteSerializerBase
         object? value,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type)
     {
-        bufferWriter.Write(ByteFormatHeader);
-        ByteSerializer.Write(bufferWriter, value, type);
+#if USE_MESSAGEPACK_IN_KVAS
+        bufferWriter.Write(MessagePackHeader);
+        MessagePackSerializer.Write(bufferWriter, value, type);
+#else
+        bufferWriter.Write(MemoryPackHeader);
+        MemoryPackSerializer.Write(bufferWriter, value, type);
+#endif
     }
 }

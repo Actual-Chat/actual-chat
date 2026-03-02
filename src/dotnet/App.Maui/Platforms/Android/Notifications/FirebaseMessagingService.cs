@@ -64,7 +64,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
         if (Log.IsEnabled(LogLevel.Debug)) {
             var dataAsText = dataRaw.Select(c => $"'{c.Key}':'{c.Value}'").ToCommaPhrase();
             Log.LogDebug("OnMessageReceived: message #{MessageId}, Data: {Data}",
-                message.MessageId, dataAsText);
+                message.MessageId, dataAsText.ToPrivate());
         }
 
         var data = new NotificationData(message.MessageId ?? "", dataRaw);
@@ -116,7 +116,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
     {
         var contentIntent = NotificationHelper.CreateViewIntent(this, data.Link);
         var body = data.Body!;
-        Log.LogDebug("-> ShowChatMessageNotification, text: '{Text}'", body);
+        Log.LogDebug("-> ShowChatMessageNotification, text: '{Text}'", body.ToPrivate());
 
         // Generate an unique(ish) request code for a PendingIntent.
         //var pendingIntentRequestCode = NotificationHelper.RequestCodeProvider.IncrementAndGet();

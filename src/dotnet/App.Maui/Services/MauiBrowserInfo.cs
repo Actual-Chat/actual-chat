@@ -11,8 +11,7 @@ namespace ActualChat.App.Maui.Services;
 public class MauiBrowserInfo : BrowserInfo
 {
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiBrowserInfo))]
-    public MauiBrowserInfo(UIHub hub)
-        : base(hub)
+    public MauiBrowserInfo(UIHub hub) : base(hub)
     {
         var appKind = HostInfo.AppKind;
         var isWindowsOrMacOS = appKind is AppKind.Windows or AppKind.MacOS;
@@ -30,6 +29,11 @@ public class MauiBrowserInfo : BrowserInfo
         IsChromium = IsAndroid || IsEdge; // IsEdge is needed for MAUI on Windows
         IsWebKit = IsIos || appKind == AppKind.MacOS;
         IsTouchCapable = isMobile;
+
+#if ANDROID
+        ClipboardHandlersRef = DotNetObjectReference.Create<IClipboardHandlers>(new AndroidClipboardHandlers());
+        Hub.RegisterDisposable(ClipboardHandlersRef);
+#endif
 
         var display = DeviceDisplay.Current.MainDisplayInfo;
         var isWide = !isMobile || display.Orientation == DisplayOrientation.Landscape;

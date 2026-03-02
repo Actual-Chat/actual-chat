@@ -4,7 +4,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <PropertyGroup>
-    <ActualLabFusionVersion>12.1.61</ActualLabFusionVersion>
+    <ActualLabFusionVersion>12.1.74</ActualLabFusionVersion>
     <AspNetCoreVersion>10.0.2</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <EntityFrameworkCoreVersion>10.0.2</EntityFrameworkCoreVersion>
@@ -43,8 +43,8 @@
     <PackageVersion Include="Plugin.Firebase.Analytics" Version="3.1.2" />
     <PackageVersion Include="Plugin.Firebase.Crashlytics" Version="3.1.1" />
     <PackageVersion Include="Plugin.Maui.Audio" Version="4.0.0" />
-    <PackageVersion Include="sqlite-net-pcl" Version="1.9.172" />
-    <PackageVersion Include="SQLitePCLRaw.bundle_green" Version="2.1.11" />
+    <PackageVersion Include="sqlite-net-sqlcipher" Version="1.9.172" />
+    <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlcipher" Version="2.1.11" />
     <!-- Android -->
     <PackageVersion Include="Mono.Profiler.Android" Version="7.0.0" />
     <PackageVersion Include="Mono.AotProfiler.Android" Version="9.0.0-preview1" />
@@ -116,7 +116,15 @@
     <PackageVersion Include="ActualLab.Rpc" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Rpc.Server" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Testing" Version="$(ActualLabFusionVersion)" />
-    <PackageVersion Include="Svg.Skia" Version="3.4.1" />
+    <!--
+    Svg.Skia is built from our fork (Actual-Chat/Svg.Skia) targeting SkiaSharp 3.x
+    for 16KB page alignment on Android. Upstream Svg.Skia depends on SkiaSharp 2.88.9,
+    which ships libSkiaSharp.so with 4KB alignment and will never be fixed in 2.x.
+    -->
+    <PackageVersion Include="Svg.Skia" Version="3.4.2-local" />
+    <PackageVersion Include="Svg.Custom" Version="3.4.2-local" />
+    <PackageVersion Include="Svg.Model" Version="3.4.2-local" />
+    <PackageVersion Include="ShimSkiaSharp" Version="3.4.2-local" />
   </ItemGroup>
   <!-- All other packages -->
   <ItemGroup>

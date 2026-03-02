@@ -154,7 +154,7 @@ public partial class ChatUI
         var chatSendingMessages = Hub.SendingMessages.GetSendingMessages(chatId);
         var chatSendingMessagesWrapper = new IgnoreComputeArg<ChatSendingMessagesAccessor>(chatSendingMessages);
         var tiles = new List<VirtualListTile<ChatMessage>>();
-        var hasVeryFirstItem = dataQuery.ExistingIdRange.Start + dataQuery.StartOffset <= chatIdRange.Start;
+        var hasVeryFirstItem = idTiles.Count > 0 && idTiles[0].Start <= chatIdRange.Start;
         var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId) : null;
         var alreadyAddedConversationHeaders = new HashSet<ConversationId>();
         foreach (var idTile in idTiles) {
@@ -214,6 +214,14 @@ public partial class ChatUI
         }
 
         var items = tiles.SelectMany(t => t.Items).ToList();
+
+        // Ensure welcome block is present when at the very beginning
+        if (hasVeryFirstItem && (items.Count == 0 || items[0].Kind != ChatMessageKind.WelcomeBlock)) {
+            var welcomeBlock = ChatMessage.Welcome(chatId);
+            if (items.Count > 0)
+                welcomeBlock.NextMessage = items[0];
+            items.Insert(0, welcomeBlock);
+        }
 
         // Remove NewMessagesLine if there are own messages after it -
         // own messages are never "new" to the sender
@@ -462,7 +470,7 @@ public partial class ChatUI
         var isWelcomeBlockAdded = false;
         foreach (var (entry, conversation) in items) {
             var date = DateOnly.FromDateTime(DateTimeConverter.ToLocalTime(entry?.BeginsAt ?? conversation!.StartsAt));
-            if (entry != null && entry.IsThreadStartEntry) {
+            if (entry is { IsThreadStartEntry: true }) {
                 var threadChatId = entry.ChatId.CreateThreadId(entry.LocalId);
                 var threadChat = await Chats.Get(Session, threadChatId, cancellationToken).ConfigureAwait(false);
                 if (threadChat is not null) {
@@ -504,18 +512,16 @@ public partial class ChatUI
                 if (entry.AuthorId == currentAuthorId)
                     flags |= ChatMessageFlags.IsOwnMessage;
                 if (shouldAddToResult) {
-                    if (!isWelcomeBlockAdded) {
-                        if (hasVeryFirstItem) {
-                            var welcomeMessage = new ChatEntryMessage(entry) {
-                                Kind = ChatMessageKind.WelcomeBlock,
-                                ShouldSkipKey = true,
-                                PreviousMessage = prevMessage,
-                            };
-                            if (prevMessage != null)
-                                prevMessage.NextMessage = welcomeMessage;
-                            messages.Add(welcomeMessage);
-                            prevMessage = welcomeMessage;
-                        }
+                    if (!isWelcomeBlockAdded && hasVeryFirstItem) {
+                        var welcomeMessage = new ChatEntryMessage(entry) {
+                            Kind = ChatMessageKind.WelcomeBlock,
+                            ShouldSkipKey = true,
+                            PreviousMessage = prevMessage,
+                        };
+                        if (prevMessage != null)
+                            prevMessage.NextMessage = welcomeMessage;
+                        messages.Add(welcomeMessage);
+                        prevMessage = welcomeMessage;
                         isWelcomeBlockAdded = true;
                     }
 
@@ -535,7 +541,9 @@ public partial class ChatUI
 
                     // Conversation header goes before the date line
                     if (expandedConversation != null && alreadyAddedConversationHeaders.Add(expandedConversation.Id)
-                        && (prevMessage == null || prevMessage.Id < expandedConversation.Id.StartEntryLid)) {
+                        && (prevMessage == null
+                            || prevMessage.Kind == ChatMessageKind.WelcomeBlock
+                            || prevMessage.Id < expandedConversation.Id.StartEntryLid)) {
                         // Add a conversation header only if it wasn't added before
                         var conversationHeaderMessage = new ConversationHeader(expandedConversation) {
                             Kind = ChatMessageKind.ConversationStart,

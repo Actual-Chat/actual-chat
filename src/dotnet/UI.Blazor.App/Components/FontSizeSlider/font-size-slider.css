@@ -1,6 +1,5 @@
 .font-size-slider {
     @apply flex-x items-center gap-x-2;
-    @apply h-full;
     --track-height: 2px;
     --thumb-size: 16px;
     --track-color: var(--separator);
@@ -71,9 +70,5 @@
     height: 80px;
 }
 .font-size-tile .ui-settings {
-    @apply h-full;
-}
-.settings-tab-content:has(.font-size-tile) {
-    @apply absolute;
-    top: 80px;
+    @apply h-full flex-y justify-center;
 }

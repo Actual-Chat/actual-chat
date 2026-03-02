@@ -31,13 +31,21 @@ public partial class CustomBlazorWebViewHandler
         settings.MixedContentMode = MixedContentHandling.AlwaysAllow;
         settings.CacheMode = CacheModes.Default;
         settings.TextZoom = 100;
+
+        // Prevent native scrolling so DOM can handle resizing via interactive-widget=resizes-content
+        webView.VerticalScrollBarEnabled = false;
+        webView.HorizontalScrollBarEnabled = false;
+        webView.OverScrollMode = OverScrollMode.Never;
+        webView.ScrollChange += (sender, e) => {
+            if (e.ScrollX != 0 || e.ScrollY != 0) {
+                webView.ScrollTo(0, 0);
+            }
+        };
+
         // settings.OffscreenPreRaster = true;
 #pragma warning disable CS0618
         settings.EnableSmoothTransition();
 #pragma warning restore CS0618
-
-        // AndroidJSInterface methods will be available for invocation in js via 'window.Android' object.
-        webView.AddJavascriptInterface(new AndroidJSInterface(webView), "Android");
 
         var services = MauiContext!.Services;
         _androidWebViewClient = new AndroidWebViewClient(

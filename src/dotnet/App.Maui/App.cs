@@ -1,6 +1,5 @@
 using ActualChat.Maui;
 using ActualChat.UI.Blazor.Services;
-using Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific;
 using Sentry;
 using Application = Microsoft.Maui.Controls.Application;
 
@@ -16,9 +15,6 @@ public class App : Application
 
     public App(IServiceProvider services)
     {
-        Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific.Application.SetWindowSoftInputModeAdjust(
-            this,
-            WindowSoftInputModeAdjust.Resize);
 #if WINDOWS
         // Allows loading of mixed content into WebView on Windows
         Environment.SetEnvironmentVariable(

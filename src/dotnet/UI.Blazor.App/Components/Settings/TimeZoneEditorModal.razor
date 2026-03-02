@@ -1,0 +1,49 @@
+@using TimeZone = ActualChat.Users.TimeZone
+@inherits ComponentBase<AppUIHub>
+@implements IModalView<TimeZoneEditorModal.Model>
+
+<DialogFrame
+    Class="time-zone-editor-modal"
+    Title="Select time zone"
+    HasCloseButton="true"
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.Default">
+    <Body>
+        <div class="time-zone-list">
+            @foreach (var timeZone in ModalModel.TimeZones) {
+                <div class="time-zone-item @(timeZone.Id == _selectedTimeZoneId ? "selected" : "")"
+                     @onclick="@(() => OnTimeZoneSelected(timeZone))">
+                    @timeZone.IanaName
+                </div>
+            }
+        </div>
+    </Body>
+</DialogFrame>
+
+@code {
+    private string _selectedTimeZoneId = "";
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        _selectedTimeZoneId = Hub.AccountUI.OwnAccount.Value.TimeZone;
+    }
+
+    private async Task OnTimeZoneSelected(TimeZone timeZone) {
+        var account = await Hub.Accounts.GetOwn(Session, default);
+        var updateAccountCommand = new Accounts_Update(
+            Session,
+            account with { TimeZone = timeZone.Id },
+            account.Version);
+        var (_, error) = await Hub.UICommander.Run(updateAccountCommand);
+        if (error != null)
+            return;
+
+        Hub.ToastUI.Show("Time zone has been updated", "icon-checkmark-circle", ToastDismissDelay.Short);
+        Modal.Close();
+    }
+
+    // Nested types
+
+    public sealed record Model(IReadOnlyCollection<TimeZone> TimeZones);
+}

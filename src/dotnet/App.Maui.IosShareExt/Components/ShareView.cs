@@ -6,6 +6,7 @@ namespace ActualChat.App.Maui.IosShareExt.Components;
 public class ShareView(IosHub hub) : ComputedStateView<ShareView.Model>(hub)
 {
     private ShareUI ShareUI => Hub.ShareUI;
+    private SignInView? _signInView;
     private ContactSelectionView? _contactSelectionView;
     private UploadProgressView? _uploadProgressView;
     private ErrorView? _errorView;
@@ -24,6 +25,9 @@ public class ShareView(IosHub hub) : ComputedStateView<ShareView.Model>(hub)
             return;
 
         switch (model.Step) {
+            case ShareStep.SignIn:
+                ShowSignIn();
+                break;
             case ShareStep.ContactSelection:
                 ShowContactSelection();
                 break;
@@ -38,6 +42,20 @@ public class ShareView(IosHub hub) : ComputedStateView<ShareView.Model>(hub)
                 break;
         }
         _displayedStep = model.Step;
+    }
+
+    private void ShowSignIn()
+    {
+        _signInView = new SignInView(Hub);
+        _signInView.TranslatesAutoresizingMaskIntoConstraints = false;
+        AddSubview(_signInView);
+
+        NSLayoutConstraint.ActivateConstraints([
+            _signInView.TopAnchor.ConstraintEqualTo(TopAnchor),
+            _signInView.LeadingAnchor.ConstraintEqualTo(LeadingAnchor),
+            _signInView.TrailingAnchor.ConstraintEqualTo(TrailingAnchor),
+            _signInView.BottomAnchor.ConstraintEqualTo(BottomAnchor),
+        ]);
     }
 
     private void ShowContactSelection()
@@ -141,7 +159,7 @@ public class ShareView(IosHub hub) : ComputedStateView<ShareView.Model>(hub)
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
     {
-        var step = await ShareUI.Step.Use(cancellationToken).ConfigureAwait(false);
+        var step = await ShareUI.GetStep(cancellationToken).ConfigureAwait(false);
         return new Model(step);
     }
 

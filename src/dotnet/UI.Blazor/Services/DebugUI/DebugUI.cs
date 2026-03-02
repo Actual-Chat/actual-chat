@@ -110,4 +110,32 @@ public sealed class DebugUI : UIServiceBase<UIHub>, IDisposable
         await bubbleUI.ResetBubbles(enable).ConfigureAwait(false);
         Log.LogInformation("ResetBubbles({Enable}): done", enable);
     }
+
+    public Func<Task>? ShowMicTroubleshooterHandler { get; set; }
+    public Func<Task>? ShowPhotoTroubleshooterHandler { get; set; }
+    public Func<Task>? ShowIncomingShareModalHandler { get; set; }
+
+    [JSInvokable]
+    public async Task ShowMicTroubleshooter()
+    {
+        if (ShowMicTroubleshooterHandler is { } handler)
+            await handler().ConfigureAwait(false);
+        Log.LogInformation("ShowMicTroubleshooter: done");
+    }
+
+    [JSInvokable]
+    public async Task ShowPhotoTroubleshooter()
+    {
+        if (ShowPhotoTroubleshooterHandler is { } handler)
+            await handler().ConfigureAwait(false);
+        Log.LogInformation("ShowPhotoTroubleshooter: done");
+    }
+
+    [JSInvokable]
+    public async Task ShowIncomingShareModal()
+    {
+        if (ShowIncomingShareModalHandler is { } handler)
+            await handler().ConfigureAwait(false);
+        Log.LogInformation("ShowIncomingShareModal: done");
+    }
 }

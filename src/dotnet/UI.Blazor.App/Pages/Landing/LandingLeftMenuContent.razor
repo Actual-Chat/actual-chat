@@ -80,8 +80,10 @@
         _ = History.NavigateTo(url);
     }
 
-    private Task SignIn()
-        => ModalUI.Show(new SignInModal.Model());
+    private Task SignIn() {
+        Owner.Close();
+        return ModalUI.Show(new SignInModal.Model());
+    }
 
     // Nested types
 

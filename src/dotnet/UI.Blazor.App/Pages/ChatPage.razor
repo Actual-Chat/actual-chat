@@ -209,7 +209,7 @@
             if (account.IsGuestOrNull()) {
                 canJoinWithGuestAccount = chat.AllowGuestAuthors;
             } else {
-                canJoinAnonymously = chat.AllowAnonymousAuthors;
+                canJoinAnonymously = Features_EnableAnonymousChat.IsEnabled && chat.AllowAnonymousAuthors;
                 var avatars = await Avatars
                     .ListOwnAvatarIds(session, cancellationToken)
                     .WaitAsync(LoadTimeout, cancellationToken)

@@ -30,7 +30,17 @@ public partial class MauiWebView
             MauiSettings.SplashBackgroundColor.Green,
             MauiSettings.SplashBackgroundColor.Blue);
         WKWebView.ScrollView.Bounces = false;
+        WKWebView.ScrollView.ContentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentBehavior.Never;
         WKWebView.AllowsBackForwardNavigationGestures = false;
+
+        // Prevent native scrolling so DOM can handle resizing via interactive-widget=resizes-content
+        WKWebView.ScrollView.ShowsVerticalScrollIndicator = false;
+        WKWebView.ScrollView.ShowsHorizontalScrollIndicator = false;
+        WKWebView.ScrollView.Scrolled += (sender, e) => {
+            if (WKWebView.ScrollView.ContentOffset.X != 0 || WKWebView.ScrollView.ContentOffset.Y != 0) {
+                WKWebView.ScrollView.ContentOffset = new CoreGraphics.CGPoint(0, 0);
+            }
+        };
     }
 
     public partial void HardNavigateTo(string url)

@@ -19,6 +19,11 @@ public static class UIKitExt
             generator.NotificationOccurred(UINotificationFeedbackType.Success);
         });
 
+    public static Task OpenUrl(NSUrl url, CancellationToken cancellationToken = default)
+        => MainThread.InvokeOnMainThreadAsync(
+                () => UIApplication.SharedApplication.OpenUrlAsync(url, new UIApplicationOpenUrlOptions()))
+            .WaitAsync(cancellationToken);
+
     public static Task<ChatId?> GetSuggestedRecipient()
         => MainThread.InvokeOnMainThreadAsync(GetSuggestedRecipientUnsafe);
 
@@ -26,4 +31,5 @@ public static class UIKitExt
         => ExtensionContext.GetIntent() is INSendMessageIntent sendMessageIntent
             ? ChatId.ParseNullable(sendMessageIntent.ConversationIdentifier)
             : null;
+
 }

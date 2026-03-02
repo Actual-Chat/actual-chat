@@ -10,7 +10,7 @@ import { Versioning } from 'versioning';
 import { BrowserInfo } from '../../UI.Blazor/Services/BrowserInfo/browser-info';
 import { AudioContextTrait, AttachedAudioContextTrait, DestinationFallbackTrait, DemandInteractiveUI } from './audio-context-traits';
 import { Log } from 'logging';
-import { AudioInitializer, AppActivityState } from './audio-initializer';
+import { AudioInitializer, BackgroundActivityState } from './audio-initializer';
 import { Disposable } from 'disposable';
 import { DeviceInfo } from 'device-info';
 
@@ -261,8 +261,8 @@ export class AudioContextSource {
     private readonly _contextCreated$: Subject<AudioContext> = new Subject<AudioContext>();
     private readonly _contextClosed$: Subject<AudioContext> = new Subject<AudioContext>();
     private _testRequested: PromiseSource<void> | null = null;
-    private _appActivityState: AppActivityState | null = null;
-    private _whileBackgroundIdleAppActivityState: PromiseSource<void> | null = null;
+    private _backgroundActivityState: BackgroundActivityState | null = null;
+    private _whileBackgroundIdleState: PromiseSource<void> | null = null;
     private _context: AppAudioContext | null = null;
     private _refCount = 0;
     private _isMaintained = false;
@@ -437,21 +437,21 @@ export class AudioContextSource {
         this._maintainTask = this.maintain();
     }
 
-    public async setAppActivityState(state: AppActivityState): Promise<void> {
-        debugLog?.log(`setAppActivityState:`, state, this.isUsed);
-        if (state === this._appActivityState) return;
+    public async setBackgroundActivityState(state: BackgroundActivityState): Promise<void> {
+        debugLog?.log(`setBackgroundActivityState:`, state, this.isUsed);
+        if (state === this._backgroundActivityState) return;
 
-        this._appActivityState = state;
+        this._backgroundActivityState = state;
         if (state === 'BackgroundIdle') {
-            this._whileBackgroundIdleAppActivityState ??= new PromiseSource<void>();
+            this._whileBackgroundIdleState ??= new PromiseSource<void>();
             if (!this.isUsed) this._suspendContextDebounced();
             this._isMaintained = false;
             return;
         } else {
             this._suspendContextDebounced.reset();
             this._closeContextDebounced.reset();
-            this._whileBackgroundIdleAppActivityState?.resolve(undefined);
-            this._whileBackgroundIdleAppActivityState = null;
+            this._whileBackgroundIdleState?.resolve(undefined);
+            this._whileBackgroundIdleState = null;
         }
 
         // Restart the maintain loop if it was stopped (e.g., by BackgroundIdle)
@@ -638,7 +638,7 @@ export class AudioContextSource {
         }
 
         // Check if should suspend
-        const backgroundState = AudioInitializer.appActivityState;
+        const backgroundState = AudioInitializer.backgroundActivityState;
         if (backgroundState === 'BackgroundIdle') {
             this._suspendContextDebounced();
         }
@@ -835,7 +835,7 @@ export class AudioContextSource {
             await Promise.all(unusedPromises);
         }
 
-        if (Interactive.isAlwaysInteractive && AudioInitializer.appActivityState === 'BackgroundIdle')
+        if (Interactive.isAlwaysInteractive && AudioInitializer.backgroundActivityState === 'BackgroundIdle')
             this._closeContextDebounced();
     }
 
@@ -847,9 +847,9 @@ export class AudioContextSource {
         this.notifyRefsFailed();
         await this.closeSilently(context);
 
-        if (AudioInitializer.appActivityState !== 'BackgroundIdle') {
-            this._whileBackgroundIdleAppActivityState?.resolve(undefined);
-            this._whileBackgroundIdleAppActivityState = null;
+        if (AudioInitializer.backgroundActivityState !== 'BackgroundIdle') {
+            this._whileBackgroundIdleState?.resolve(undefined);
+            this._whileBackgroundIdleState = null;
         }
     }
 
@@ -915,7 +915,7 @@ export class AudioContextSource {
                 }
 
                 if (context.state === 'suspended') {
-                    const whileIdle = this._whileBackgroundIdleAppActivityState;
+                    const whileIdle = this._whileBackgroundIdleState;
                     if (whileIdle) await whileIdle;
                     if (context.wasInteractive) await this.resume(context, true);
                     else {

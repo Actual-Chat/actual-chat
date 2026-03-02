@@ -9,8 +9,8 @@ const isWatch = process.argv.slice(2).includes('--watch');
 const mustAnalyze = process.argv.slice(2).includes('--analyze');
 process.env.NODE_ENV = isProduction ? 'production' : 'development';
 
-const outputPath = path.normalize(path.resolve(import.meta.dirname, 'src/dotnet/App.Wasm/wwwroot/dist'));
-const mauiOutputPath = path.normalize(path.resolve(import.meta.dirname, 'src/dotnet/App.Maui/wwwroot/dist'));
+const outputPath = path.normalize(path.resolve(import.meta.dirname, './src/dotnet/App.Wasm/wwwroot/dist'));
+const mauiOutputPath = path.normalize(path.resolve(import.meta.dirname, './src/dotnet/App.Maui/wwwroot/dist'));
 
 await fs.promises.rm(outputPath, { recursive: true, force: true });
 await fs.promises.rm(mauiOutputPath, { recursive: true, force: true });
@@ -41,6 +41,9 @@ const options = {
         { out: 'feederWorklet', in: './src/dotnet/UI.Blazor.App/Components/AudioPlayer/worklets/feeder-audio-worklet-processor.ts' },
         { out: 'opusEncoderWorklet', in: './src/dotnet/UI.Blazor.App/Components/AudioRecorder/worklets/opus-encoder-worklet-processor.ts' },
         { out: 'vadWorklet', in: './src/dotnet/UI.Blazor.App/Components/AudioRecorder/worklets/audio-vad-worklet-processor.ts' },
+        { out: 'videoDecoderWorker', in: './src/dotnet/UI.Blazor.App/Services/Video/workers/decoder-worker.ts' },
+        { out: 'videoEncoderWorker', in: './src/dotnet/UI.Blazor.App/Services/Video/workers/encoder-worker.ts' },
+        { out: 'videoSegmentationWorker', in: './src/dotnet/UI.Blazor.App/Services/Video/workers/segmentation-worker.ts' },
     ],
     bundle: true,
     platform: 'browser',

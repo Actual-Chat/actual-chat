@@ -1,0 +1,23 @@
+body.narrow .time-zone-editor-modal.narrow-view__modal__position-stretch {
+    padding-top: var(--safe-area-top);
+    padding-bottom: calc(0.5rem + var(--safe-area-bottom));
+}
+.time-zone-editor-modal .time-zone-list {
+    @apply flex-y gap-y-1;
+    @apply md:max-h-96;
+    @apply px-2;
+    @apply overflow-y-auto custom-scrollbar;
+}
+.time-zone-editor-modal .time-zone-item {
+    @apply px-2 py-1;
+    @apply cursor-pointer;
+    @apply rounded-md;
+}
+body.hoverable .time-zone-editor-modal .time-zone-item:hover,
+.touch-capable .time-zone-editor-modal .time-zone-item:active {
+    @apply bg-hover;
+}
+.time-zone-editor-modal .time-zone-item.selected {
+    @apply bg-selected;
+    @apply text-primary;
+}

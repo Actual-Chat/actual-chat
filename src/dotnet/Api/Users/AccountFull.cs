@@ -48,11 +48,6 @@ public sealed partial record AccountFull : Account
 
     [DataMember, MemoryPackOrder(18)] public ApiMap<string, string> Claims { get; init; }
 
-    // Obsolete properties
-
-    [Obsolete("2025.01: Unused, will be removed soon.")]
-    [DataMember, MemoryPackOrder(11)] public string Username { get; init; } = "";
-
     // Computed properties
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
@@ -65,22 +60,6 @@ public sealed partial record AccountFull : Account
         get => Identities.UnorderedItems.ToApiMap(p => p.Key.Id, p => p.Value, StringComparer.Ordinal);
         init => Identities = value.ToApiMap(p => new UserIdentity(p.Key), p => p.Value);
     }
-
-    // MemoryPack slot 4: LegacyUser for backward compatibility with release's User type
-#pragma warning disable CS0618 // Type or member is obsolete
-    [Obsolete("This property is for backward compatibility. Use Identities, Claims, Name properties directly.")]
-    [MemoryPackOrder(4)]
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public LegacyUser? User {
-        get => new(Id?.Value ?? "", Name) {
-            Version = Version,
-            Claims = Claims,
-            Identities = Identities,
-        };
-        // ReSharper disable once ValueParameterNotUsed
-        init { } // Ignored on deserialization; serialized only for legacy clients
-    }
-#pragma warning restore CS0618
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
     public AccountFull(UserId id, long version = 0) : base(id, version)
@@ -96,16 +75,6 @@ public sealed partial record AccountFull : Account
         Identities = ApiMap<UserIdentity, string>.Empty;
         Claims = ApiMap<string, string>.Empty;
     }
-
-    [Obsolete("Use constructor with UserId parameter.")]
-#pragma warning disable CS0618 // Type or member is obsolete
-    public AccountFull(LegacyUser user, long version = 0) : base(UserId.ParseNullable(user.Id)!, version)
-    {
-        Identities = user.Identities;
-        Claims = user.Claims;
-        Name = user.Name;
-    }
-#pragma warning restore CS0618
 
     // This record relies on referential equality
     public bool Equals(AccountFull? other) => ReferenceEquals(this, other);

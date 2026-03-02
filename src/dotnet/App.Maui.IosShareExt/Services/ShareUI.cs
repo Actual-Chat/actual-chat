@@ -1,6 +1,7 @@
 using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
 using ActualChat.Chat;
 using ActualChat.Contacts;
+using ActualChat.Maui;
 using ActualChat.Media;
 using ActualChat.Search;
 using ActualChat.UI.App.Services;
@@ -18,10 +19,11 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
     private readonly MutableState<double> _uploadPct;
     private readonly FuncWorker _sendWorker;
     private SearchPhrase _searchPhrase = SearchPhrase.None;
-    private readonly MutableState<ShareStep> _step;
+    private readonly MutableState<bool> _isSending;
+    private readonly MutableState<bool> _isSent;
+    private readonly MutableState<bool> _hasFailed;
 
     public MutableState<PlaceId?> SelectedPlaceId { get; }
-    public IState<ShareStep> Step => _step;
     public IState<double> UploadPct => _uploadPct;
     public IState<bool> CanSend => _canSend;
 
@@ -41,7 +43,9 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         Hub = hub;
         SelectedPlaceId = Hub.StateFactory.NewMutable<PlaceId?>();
         Hub.Services.GetRequiredService<ChunkSizeSelectorRecommendation>().Multiplier = 1;
-        _step = Hub.StateFactory.NewMutable<ShareStep>();
+        _isSending = Hub.StateFactory.NewMutable<bool>();
+        _isSent = Hub.StateFactory.NewMutable<bool>();
+        _hasFailed = Hub.StateFactory.NewMutable<bool>();
         _uploadPct = Hub.StateFactory.NewMutable<double>();
         _canSend = Hub.StateFactory.NewMutable<bool>();
         _sendWorker = FuncWorker.New(ct
@@ -56,29 +60,49 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         try {
-            if (await UIKitExt.GetSuggestedRecipient().ConfigureAwait(false) is not { } chatId) {
-                _step.Value = ShareStep.ContactSelection;
-                return;
-            }
-
-            // Show upload progress immediately when sharing from a contact suggestion
-            _step.Value = ShareStep.Uploading;
-
             var ownAccount = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
-            var contactId = ContactId.NewAny(ownAccount.Id, chatId);
+            if (ownAccount.IsGuest)
+                return;
 
+            if (await UIKitExt.GetSuggestedRecipient().ConfigureAwait(false) is not { } chatId)
+                return;
+
+            // Auto-send when sharing from a contact suggestion
+            var contactId = ContactId.NewAny(ownAccount.Id, chatId);
             _selectedIds.Add(contactId);
             _canSend.Value = true;
             StartSending();
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to initialize");
-            _step.Value = ShareStep.Failed;
+            _hasFailed.Value = true;
         }
     }
 
     protected override Task DisposeAsyncCore()
         => _sendWorker.DisposeSilentlyAsync().AsTask();
+
+    [ComputeMethod]
+    public virtual async Task<ShareStep> GetStep(CancellationToken cancellationToken)
+    {
+        var ownAccount = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
+        if (ownAccount.IsGuest)
+            return ShareStep.SignIn;
+
+        var hasFailed = await _hasFailed.Use(cancellationToken).ConfigureAwait(false);
+        if (hasFailed)
+            return ShareStep.Failed;
+
+        var isSent = await _isSent.Use(cancellationToken).ConfigureAwait(false);
+        if (isSent)
+            return ShareStep.Completed;
+
+        var isSending = await _isSending.Use(cancellationToken).ConfigureAwait(false);
+        if (isSending)
+            return ShareStep.Uploading;
+
+        return ShareStep.ContactSelection;
+    }
 
     [ComputeMethod]
     public virtual Task<bool> IsContactSelected(ContactId contactId, CancellationToken cancellationToken)
@@ -126,8 +150,16 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
 
     public void StartSending()
     {
-        _step.Value = ShareStep.Uploading;
+        _isSending.Value = true;
         _sendWorker.Start(true);
+    }
+
+    public async Task OpenMainApp(CancellationToken cancellationToken)
+    {
+        var url = new NSUrl($"{MauiSettings.AppScheme}://");
+        Log.LogInformation("Opening main app `{Url}`", url);
+        await UIKitExt.OpenUrl(url, cancellationToken).ConfigureAwait(false);
+        await UIKitExt.CloseApp(cancellationToken).ConfigureAwait(false);
     }
 
     public async Task CancelUploading(CancellationToken cancellationToken)
@@ -144,7 +176,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             SuggestShareContacts([.._selectedIds]);
             var text = await SharedInputs.GetText(cancellationToken).ConfigureAwait(false);
             var fileInputs = await SharedInputs.ListFiles(cancellationToken).ConfigureAwait(false);
-            Log.LogInformation("Text: {Text}, Files: {Files}", text, fileInputs.Count);
+            Log.LogInformation("Text: {Text}, Files: {Files}", text.ToPrivate(), fileInputs.Count);
             if (text.IsNullOrWhiteSpace() && fileInputs.Count == 0) {
                 Log.LogError("No text or files available for upload");
                 return;
@@ -170,7 +202,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
                     await CreateChatEntry(chatId, entryText, [], cancellationToken).ConfigureAwait(false);
             }
 
-            _step.Value = ShareStep.Completed;
+            _isSent.Value = true;
 
             UIKitExt.PlaySuccessHaptic();
             await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
@@ -179,7 +211,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         catch (Exception e)
         {
             Log.LogError(e, "Failed to send message");
-            _step.Value = ShareStep.Failed;
+            _hasFailed.Value = true;
             throw;
         }
     }
@@ -192,7 +224,8 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
 
     private async Task CreateChatEntry(ChatId chatId, string entryText, TextEntryAttachment[] attachmentList, CancellationToken cancellationToken)
     {
-        var cmd = new Chats_UpsertTextEntry(Session, chatId, null, entryText) {
+        var cmd = new Chats_UpsertTextEntry(Session, chatId, null) {
+            Text = entryText,
             ClientId = RandomStringGenerator.Default.Next(6),
             EntryAttachments = attachmentList,
         };

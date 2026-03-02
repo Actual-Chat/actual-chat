@@ -25,14 +25,20 @@
 @if (_showAllReactions) {
     <div class="message-menu">
         <div class="reactions-menu">
-            @foreach (var emoji in Emojis.All) {
-                <MenuEntry
-                    Class="reactions-menu-item"
-                    Click="@(_ => React(emoji))">
-                    <IconContent>
-                        <EmojiIcon Emoji="@emoji" Class="reactions-menu-emoji"/>
-                    </IconContent>
-                </MenuEntry>
+            @foreach (var group in Enum.GetValues<EmojiGroup>()) {
+                <div @key="group" class="reactions-menu-group">
+                    <div class="reactions-menu-group-items">
+                        @foreach (var emoji in Emojis.GetByGroup(group)) {
+                            <MenuEntry @key="emoji"
+                                Class="reactions-menu-item"
+                                Click="@(_ => React(emoji))">
+                                <IconContent>
+                                    <EmojiIcon Emoji="@emoji" Class="reactions-menu-emoji"/>
+                                </IconContent>
+                            </MenuEntry>
+                        }
+                    </div>
+                </div>
             }
         </div>
     </div>
@@ -182,6 +188,7 @@
             EntryId = ChatEntry.Id.ToTextEntryId(),
             Emoji = emoji,
         };
+        _ = Hub.AccountSettings.UserReactionSettings().Update(s => s.WithBubbleUp(emoji.Id.Value));
         await UICommander.Run(new Reactions_React(Session, reaction));
     }
 }

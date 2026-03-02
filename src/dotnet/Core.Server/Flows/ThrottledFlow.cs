@@ -1,17 +1,26 @@
-﻿namespace ActualChat.Flows;
+namespace ActualChat.Flows;
 
 /// <summary>
 /// A flow that throttles its execution to at most once per <see cref="ThrottlePeriod"/>.
+/// If <see cref="Run"/> fails, it retries up to <see cref="MaxFailCount"/> times.
+/// After that many consecutive failures, it advances <see cref="NextRunAt"/>
+/// as if the run succeeded, to avoid retrying indefinitely.
 /// </summary>
 public abstract class ThrottledFlow : Flow<string>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     protected abstract TimeSpan ThrottlePeriod { get; }
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    protected virtual TimeSpan RetryDelay => TimeSpan.FromMinutes(1);
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    protected virtual int MaxFailCount => 5;
 
     // Persisted state
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public int SuccessCount { get; protected set; }
+    [DataMember(Order = 2), MemoryPackOrder(2)]
+    public int FailCount { get; protected set; }
     [DataMember(Order = 1), MemoryPackOrder(1)]
     public Moment NextRunAt { get; protected set; }
 
@@ -41,9 +50,24 @@ public abstract class ThrottledFlow : Flow<string>
         // Execute
         var startedAt = CpuTimestamp.Now;
         Console.Log($"Run() #{SuccessCount + 1} started");
-        await Run(cancellationToken).ConfigureAwait(false);
-        SuccessCount++;
-        NextRunAt = Hub.SystemNow + ThrottlePeriod;
-        Console.Log($"Run() #{SuccessCount} completed in {startedAt.Elapsed.ToShortString()}");
+        try {
+            await Run(cancellationToken).ConfigureAwait(false);
+            SuccessCount++;
+            FailCount = 0;
+            NextRunAt = Hub.SystemNow + ThrottlePeriod;
+            Console.Log($"Run() #{SuccessCount} completed in {startedAt.Elapsed.ToShortString()}");
+        }
+        catch (Exception e) when (e is not OperationCanceledException || !cancellationToken.IsCancellationRequested) {
+            FailCount++;
+            if (FailCount >= MaxFailCount) {
+                NextRunAt = Hub.SystemNow + ThrottlePeriod;
+                Console.Log($"Run() failed {FailCount} times, giving up until {NextRunAt}");
+                FailCount = 0;
+            }
+            else {
+                Runtime.StageResumeIn(RetryDelay);
+                Console.Log($"Run() failed (attempt {FailCount}/{MaxFailCount}): {e.Message}, retrying in {RetryDelay.ToShortString()}");
+            }
+        }
     }
 }

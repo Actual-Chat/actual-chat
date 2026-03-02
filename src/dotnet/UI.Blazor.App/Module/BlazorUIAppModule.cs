@@ -3,6 +3,7 @@ using ActualChat.Hosting;
 using ActualChat.MediaPlayback;
 using ActualChat.UI.App.Services;
 using ActualChat.UI.Blazor.App.Components.AudioPlayer;
+using ActualChat.UI.Blazor.App.Components.VideoPanel;
 using ActualChat.UI.Blazor.App.Components.MarkupParts;
 using ActualChat.UI.Blazor.App.Components.MarkupParts.CodeBlockMarkupView;
 using ActualChat.UI.Blazor.App.Components.Settings;
@@ -48,10 +49,11 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         fusion.AddService<ConversationUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatListUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatAudioUI>(ServiceLifetime.Scoped);
+        fusion.AddService<ChatVideoUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatEditorUI>(ServiceLifetime.Scoped);
         fusion.AddService<HighlightUI>(ServiceLifetime.Scoped);
         fusion.AddService<LinkPreviewUI>(ServiceLifetime.Scoped);
-        fusion.AddService<AppActivity, PlaybackAndRecordingAppActivity>(ServiceLifetime.Scoped);
+        fusion.AddService<BackgroundActivityUI, PlaybackAndRecordingBackgroundActivityUI>(ServiceLifetime.Scoped);
         services.AddScoped(c => new SelectionUI(c.AppUIHub()));
         services.AddScoped(c => new ActiveChatsUI(c.AppUIHub()));
         services.AddScoped(c => new IncomingShareUI(c.GetRequiredService<ModalUI>()));
@@ -122,6 +124,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             .Add<TranslationTargetLanguageModal.Model, TranslationTargetLanguageModal>()
             .Add<JoinVideoCallModal.Model, JoinVideoCallModal>()
             .Add<IncomingCallModal.Model, IncomingCallModal>()
+            .Add<TimeZoneEditorModal.Model, TimeZoneEditorModal>()
         );
         // IBannerViews
         services.AddTypeMap<IBannerView>(map => map
@@ -193,13 +196,23 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             services.AddScoped<IRecordingPermissionRequester>(_ => new WebRecordingPermissionRequester());
             services.AddScoped<IMediaMetadataUI>(_ => new WebMediaMetadataUI());
         }
-        services.AddScoped(c => new AudioWidget(c)); // Scoped in WASM/SSB, singleton in MAUI
+        services.AddScoped(c => new AudioWidget(c.AppUIHub()));
 
         // IModalViews
         services.AddTypeMap<IModalView>(map => map
             .Add<RecordingTroubleshooterModal.Model, RecordingTroubleshooterModal>()
             .Add<PhotoTroubleshooterModal.Model, PhotoTroubleshooterModal>()
         );
+
+        // DebugUI - override base registration to wire guide handlers
+        services.AddScoped(c => {
+            var hub = c.UIHub();
+            var debugUI = new DebugUI(hub);
+            debugUI.ShowMicTroubleshooterHandler = () => hub.ModalUI.Show(new RecordingTroubleshooterModal.Model());
+            debugUI.ShowPhotoTroubleshooterHandler = () => hub.ModalUI.Show(new PhotoTroubleshooterModal.Model());
+            debugUI.ShowIncomingShareModalHandler = () => hub.ModalUI.Show(new IncomingShareModal.Model("Test shared text"));
+            return debugUI;
+        });
 
         // Sending messages & File uploads
         fusion.AddService<ChatSendingMessagesTriggers>(ServiceLifetime.Scoped);

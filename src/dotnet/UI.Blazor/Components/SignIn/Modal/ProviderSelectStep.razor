@@ -61,7 +61,7 @@
                 </div>
             }
         </FormSection>
-        @if (CaptchaUI.IsConfigured) {
+        @if (CaptchaUI.IsAvailable) {
             <div class="c-recaptcha-info">
                 This site is protected by reCAPTCHA and the Google
                 <a class="recaptcha-link" href="https://policies.google.com/privacy">Privacy Policy</a> and
@@ -123,7 +123,7 @@
             })
             .ToList();
         _stepModel = new StepModel(ComponentIdGenerator).CopyToBase();
-        await CaptchaUI.EnsureInitialized().ConfigureAwait(false);
+        await CaptchaUI.WhenReady.ConfigureAwait(false);
     }
 
     protected override ComputedState<Model>.Options GetStateOptions() {
@@ -190,7 +190,7 @@
             return;
         }
 
-        if (CaptchaUI.IsConfigured) {
+        if (CaptchaUI.IsAvailable) {
             _validationState = ValidationState.Validating;
             StateHasChanged();
             try {

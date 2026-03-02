@@ -53,6 +53,17 @@
     <TargetPlatformMinVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.17763.0</TargetPlatformMinVersion>
   </PropertyGroup>
 
+  <!-- Runtime settings (intact if it's CoreCLR, i.e. on Android & Windows) -->
+  <PropertyGroup>
+    <!-- Reduce work at startup -->
+    <TieredCompilation>true</TieredCompilation>
+    <TieredCompilationQuickJit>true</TieredCompilationQuickJit>
+    <TieredCompilationQuickJitForLoops>true</TieredCompilationQuickJitForLoops>
+    <TieredPGO>false</TieredPGO>
+    <!-- GC settings, Server GC adds ~ 80ms to startup -->
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+  </PropertyGroup>
+
   <!-- Trimming & feature switches -->
   <PropertyGroup>
     <!-- Reduces WASM size + we assume this mode is used on the client -->
@@ -197,6 +208,18 @@
     <UseInterpreter Condition="'$(Configuration)' == 'Release'">false</UseInterpreter>
   </PropertyGroup>
 
+  <!-- R2R exclusions (applies to both Android and Windows Release builds) -->
+  <ItemGroup Condition="'$(Configuration)' == 'Release'">
+    <PublishReadyToRunExclude Include="PhoneNumbers.dll" />
+    <!-- Doesn't work:
+    <ReadyToRunOptimizationData Include="$(MSBuildThisFileDirectory)_Profiling\merged.mibc" />
+    -->
+  </ItemGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <!-- Workaround for ReadyToRunOptimizationData: -->
+    <PublishReadyToRunCrossgen2ExtraArgs>--embed-pgo-data;--mibc:$(MSBuildThisFileDirectory)_Profiling\merged.mibc</PublishReadyToRunCrossgen2ExtraArgs>
+  </PropertyGroup>
+
   <!-- Trimming -->
   <ItemGroup>
     <!--
@@ -240,13 +263,10 @@
   <!-- Android: Both Debug & Release configurations -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-android'))">
     <AndroidUseInterpreter>$(UseInterpreter)</AndroidUseInterpreter>
-    <!-- This instructs trimmer to remove managed HTTP handler - don't use it with HttpClientHandler -->
-    <UseNativeHttpHandler>true</UseNativeHttpHandler>
-    <!-- <AndroidHttpClientHandlerType>Xamarin.Android.Net.AndroidClientHandler</AndroidHttpClientHandlerType>-->
-    <!-- Default one in .NET, supports HTTP/2: -->
-    <!-- <AndroidHttpClientHandlerType>System.Net.Http.SocketsHttpHandler, System.Net.Http</AndroidHttpClientHandlerType> -->
-    <!-- Used when unspecified: -->
-    <!-- <AndroidHttpClientHandlerType>System.Net.Http.HttpClientHandler, System.Net.Http</AndroidHttpClientHandlerType>-->
+    <!-- Use SocketsHttpHandler (managed) instead of AndroidMessageHandler (JNI-based).
+         SocketsHttpHandler supports HTTP/2 and HTTP/3, avoids JNI overhead,
+         and is more stable with CoreCLR on Android. -->
+    <UseNativeHttpHandler>false</UseNativeHttpHandler>
     <!-- This also ensures debug symbols are there -->
     <DebuggerSupport>true</DebuggerSupport>
   </PropertyGroup>
@@ -319,6 +339,7 @@
     <UseMonoRuntime>false</UseMonoRuntime>
     <RunAOTCompilation>false</RunAOTCompilation>
     <PublishReadyToRun>true</PublishReadyToRun>
+    <PublishReadyToRunComposite>true</PublishReadyToRunComposite>
   </PropertyGroup>
 
   <!-- Android: Profile-guided AOT profiles -->
@@ -426,6 +447,7 @@
   <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release'">
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <PublishReadyToRun>true</PublishReadyToRun>
+    <PublishReadyToRunComposite>true</PublishReadyToRunComposite>
     <!-- <PublishSingleFile>true</PublishSingleFile>-->
     <!-- <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>-->
     <SelfContained>true</SelfContained>
@@ -553,6 +575,10 @@
     <None Include="**\*.Windows.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
     <Compile Remove="**\Windows\**\*.cs" />
     <None Include="**\Windows\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+    <!-- webrtc-apm is Windows-only; exclude from all other platforms -->
+    <Content Remove="**\webrtc-apm.*" />
+    <NativeReference Remove="**\webrtc-apm.*" />
+    <AndroidNativeLibrary Remove="**\webrtc-apm.*;**\libwebrtc-apm.*" />
   </ItemGroup>
   <!-- Windows -->
   <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">

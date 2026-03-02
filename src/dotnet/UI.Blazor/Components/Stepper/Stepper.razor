@@ -40,6 +40,7 @@
 
 @code {
     private readonly List<IStep> _steps = new();
+    private readonly HashSet<IStep> _skippedSteps = new();
     private IStep? _currentStep;
     private bool _initialSkipDone;
 
@@ -56,6 +57,21 @@
     public int LastStepIndex => Math.Max(0, _steps.Count - 1);
     public int CurrentStepIndex => _currentStep is { } currentStep ? _steps.IndexOf(currentStep) : -1;
     public bool IsLastStep => CurrentStepIndex == LastStepIndex;
+    public int VisibleStepCount => SkipCompletedSteps ? _steps.Count(IsStepVisible) : _steps.Count;
+    public int CurrentVisibleStepIndex => SkipCompletedSteps && _currentStep is not null
+        ? _steps.TakeWhile(s => s != _currentStep).Count(IsStepVisible)
+        : CurrentStepIndex;
+
+    private bool IsStepVisible(IStep step) {
+        if (_skippedSteps.Contains(step))
+            return false;
+        var stepIndex = _steps.IndexOf(step);
+        // Passed or current steps are always visible
+        if (stepIndex <= CurrentStepIndex)
+            return true;
+        // Future steps are visible only if not pre-completed
+        return !step.IsCompleted;
+    }
     public bool CanMoveForward => CurrentStepIndex is var i and >= 0 && i < LastStepIndex;
     public bool CanMoveBack => SkipCompletedSteps
         ? CurrentStepIndex > 0 && _steps.Take(CurrentStepIndex).Any(s => !s.IsCompleted)
@@ -68,6 +84,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (SkipCompletedSteps && !_initialSkipDone && _currentStep?.IsCompleted == true) {
             _initialSkipDone = true;
+            _skippedSteps.Add(_currentStep);
             await Move(1);
         }
     }
@@ -106,8 +123,10 @@
         // Skip completed steps when SkipCompletedSteps is enabled
         if (SkipCompletedSteps) {
             var direction = Math.Sign(offset);
-            while (newStepIndex >= 0 && newStepIndex < StepCount && _steps[newStepIndex].IsCompleted)
+            while (newStepIndex >= 0 && newStepIndex < StepCount && _steps[newStepIndex].IsCompleted) {
+                _skippedSteps.Add(_steps[newStepIndex]);
                 newStepIndex += direction;
+            }
         }
 
         if (newStepIndex < 0)

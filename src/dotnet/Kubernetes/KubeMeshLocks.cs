@@ -8,6 +8,7 @@ public class KubeMeshLocks : MeshLocksBase
 {
     public const string KeyPrefix = "voxt.ai/key-prefix";
     public const string FullName = "voxt.ai/full-name";
+    public static readonly TimeSpan StaleLeaseAge = TimeSpan.FromDays(7);
 
     private readonly ConcurrentDictionary<string, (string FullName, string LeaseName)> _leaseFullKeys = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, Api.Lease> _cachedLeases = new(StringComparer.Ordinal);
@@ -91,11 +92,25 @@ public class KubeMeshLocks : MeshLocksBase
     {
         var leases = await LeaseClient.List(Namespace, _labelSelector, cancellationToken).ConfigureAwait(false);
         var (fullPrefix, _) = GetName(prefix);
-        return leases.Items
-            .Where(x => !IsExpired(x))
-            .Where(x => x.Metadata.Annotations != null && x.Metadata.Annotations.TryGetValue(FullName, out var fullName) && fullName.StartsWith(fullPrefix, StringComparison.Ordinal))
-            .Select(x => x.Metadata.Annotations![FullName][_keyPrefixLength..])
-            .ToList();
+        var activeKeys = new List<string>();
+        var staleLeases = new List<Lease>();
+        var staleThreshold = (Clock.Now - StaleLeaseAge).ToDateTime();
+        foreach (var lease in leases.Items) {
+            var isExpired = IsExpired(lease);
+            var hasAnnotation = lease.Metadata.Annotations != null
+                && lease.Metadata.Annotations.TryGetValue(FullName, out var fullName)
+                && fullName.StartsWith(fullPrefix, StringComparison.Ordinal);
+
+            if (!isExpired && hasAnnotation)
+                activeKeys.Add(lease.Metadata.Annotations![FullName][_keyPrefixLength..]);
+            else if (isExpired && (lease.Spec.RenewTime ?? DateTime.MinValue) < staleThreshold)
+                staleLeases.Add(lease);
+        }
+
+        if (staleLeases.Count > 0)
+            _ = Task.Run(() => PruneStale(staleLeases), CancellationToken.None);
+
+        return activeKeys;
     }
 
     public override IMeshLocks With(string keyPrefix, MeshLockOptions? lockOptions)
@@ -174,7 +189,8 @@ public class KubeMeshLocks : MeshLocksBase
 
         // Try using cached lease first (single Replace call instead of GET+Replace)
         if (_cachedLeases.TryGetValue(key, out var cachedLease)
-            && OrdinalEquals(cachedLease.Spec.HolderIdentity, value)) {
+            && OrdinalEquals(cachedLease.Spec.HolderIdentity, value)
+            && !IsExpired(cachedLease)) {
             var updatedLease = cachedLease with {
                 Spec = cachedLease.Spec with {
                     LeaseDurationSeconds = (int)expiresIn.TotalSeconds,
@@ -194,7 +210,7 @@ public class KubeMeshLocks : MeshLocksBase
 
         // Fallback: GET + Replace
         var existingLease = await LeaseClient.Get(Namespace, name, cancellationToken, requestTimeout).ConfigureAwait(false);
-        if (existingLease == null || !OrdinalEquals(existingLease.Spec.HolderIdentity, value))
+        if (existingLease == null || !OrdinalEquals(existingLease.Spec.HolderIdentity, value) || IsExpired(existingLease))
             return false;
 
         existingLease = existingLease with {
@@ -250,8 +266,8 @@ public class KubeMeshLocks : MeshLocksBase
 
     private (string FullName, string LeaseName) GetName(string key)
         => _leaseFullKeys.GetOrAdd(key,
-            k => {
-                var fullName = _keyPrefix + "-"+ k;
+            static (k, self) => {
+                var fullName = self._keyPrefix + "-"+ k;
                 if (fullName.Length < 31)
                     return (fullName, fullName.OrdinalReplace(" ", "-").OrdinalReplace(",", ".").OrdinalReplace(":", "").ToKebabCase());
 
@@ -262,15 +278,33 @@ public class KubeMeshLocks : MeshLocksBase
 
                 var name = fullName[..splitIndex].OrdinalReplace(" ", "-").OrdinalReplace(",", ".").OrdinalReplace(":", "").ToKebabCase() + "-" + hashSuffix;
                 return (fullName, name);
-            });
+            }, this);
 
-    private bool IsExpired(Api.Lease lease)
+    private bool IsExpired(Lease lease)
     {
         if (lease.Spec.RenewTime == null || lease.Spec.LeaseDurationSeconds == null)
             return true;
 
         var expireTime = lease.Spec.RenewTime.Value.AddSeconds(lease.Spec.LeaseDurationSeconds.Value);
         return expireTime < Clock.Now.ToDateTime();
+    }
+
+    private async Task PruneStale(IEnumerable<Lease> leases)
+    {
+        var now = Clock.Now;
+        foreach (var lease in leases) {
+            var age = (now - new Moment(lease.Spec.RenewTime ?? DateTime.MinValue)).Positive();
+            var sAge = age < TimeSpan.FromDays(30)
+                ? age.ToShortString()
+                : "more than 30 days";
+            try {
+                await LeaseClient.Delete(Namespace, lease.Metadata.Name, CancellationToken.None).ConfigureAwait(false);
+                Log.LogInformation("Pruned lease: {LeaseName} (age: {Age})", lease.Metadata.Name, sAge);
+            }
+            catch (Exception e) {
+                Log.LogWarning(e, "Failed to prune lease: {LeaseName} (age: {Age})", lease.Metadata.Name, sAge);
+            }
+        }
     }
 }
 

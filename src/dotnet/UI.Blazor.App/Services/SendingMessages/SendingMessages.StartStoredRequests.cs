@@ -5,7 +5,7 @@ partial class SendingMessages
     private async Task StartStoredPostRequests()
     {
         DebugLog?.LogDebug("StartStoredPostRequests");
-        CancellationToken cancellationToken = CancellationToken.None;
+        var cancellationToken = CancellationToken.None;
         var entries = await _requestsRepo.GetStored(cancellationToken).ConfigureAwait(false);
         var chatIds = new HashSet<ChatId>();
         foreach (var (uuid, entry) in entries) {
@@ -74,11 +74,18 @@ partial class SendingMessages
     {
         var attachEntries = filesUpload?.CreateAttachFileRequests() ?? [];
         var clientId = !cmd.LocalId.HasValue ? Guid.NewGuid().ToString() : "";
-        var entry = new SendMessageRequestEntry(
-            uuid, now,
-            cmd.ChatId, cmd.LocalId, cmd.Text, cmd.RepliedEntryLid,
-            attachEntries, clientId,
-            cmd.AfterSendMessageHandler?.Key ?? "", cmd.AfterSendMessageHandler?.Args ?? "");
+        var entry = new SendMessageRequestEntry {
+            Uuid = uuid,
+            Now = now,
+            ChatId = cmd.ChatId,
+            LocalId = cmd.LocalId,
+            Text = cmd.Text,
+            RepliedEntryLid = cmd.RepliedEntryLid,
+            AttachFileRequests = attachEntries,
+            ClientId = clientId,
+            AfterSendMessageHandlerKey = cmd.AfterSendMessageHandler?.Key ?? "",
+            AfterSendMessageHandlerArgs = cmd.AfterSendMessageHandler?.Args ?? "",
+        };
         return entry;
     }
 }

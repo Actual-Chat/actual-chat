@@ -163,16 +163,15 @@ public class AndroidAudioWidgetForegroundService : Service
         callback(null);
 
         _ = bitmapTask.ContinueWith(t => {
-                if (!t.IsCompletedSuccessfully)
-                    return;
+            if (!t.IsCompletedSuccessfully)
+                return;
 
-                var bitmap = bitmapTask.GetAwaiter().GetResult();
-                MainThread.BeginInvokeOnMainThread(() => {
-                    // Update notification with the loaded bitmap
-                    callback(bitmap);
-                });
-            },
-            TaskScheduler.Default);
+            var bitmap = bitmapTask.GetAwaiter().GetResult();
+            BeginDispatchToMainThread(() => {
+                // Update notification with the loaded bitmap
+                callback(bitmap);
+            });
+        }, TaskScheduler.Default);
     }
 
     private Android.App.Notification BuildNotification(MediaSessionCompat mediaSession, string link)

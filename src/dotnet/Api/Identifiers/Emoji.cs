@@ -23,10 +23,16 @@ public sealed partial class Emoji : StringIdentifier, IStringIdentifier<Emoji>
     [IgnoreDataMember]
     public string Title { get; }
 
+    [IgnoreDataMember]
+    public EmojiGroup Group { get; }
+
     // Factories and constructors
 
-    internal Emoji(string id, string title) : base(id)
-        => Title = title;
+    internal Emoji(string id, string title, EmojiGroup group = EmojiGroup.Gestures) : base(id)
+    {
+        Title = title;
+        Group = group;
+    }
 
     // Equality
 

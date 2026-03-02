@@ -3,7 +3,7 @@
 
 <ul class="reaction-select">
     @foreach (var emoji in _visibleEmojis) {
-        <MenuEntry
+        <MenuEntry @key="emoji"
             Class="reaction-select-reaction"
             Click="@(_ => React(emoji))">
             <IconContent>
@@ -29,13 +29,10 @@
     [Parameter] public bool ShowDefaultReaction { get; set; } = true;
     [Parameter] public EventCallback OnExpandClick { get; set; }
 
-    protected override async Task OnInitializedAsync() {
+    protected override async Task OnParametersSetAsync() {
         _reactionSettings = await Hub.AccountSettings.UserReactionSettings().Get();
         UpdateEmojis();
     }
-
-    protected override void OnParametersSet()
-        => UpdateEmojis();
 
     private void UpdateEmojis() {
         var skipCount = ShowDefaultReaction ? 0 : 1;
@@ -54,7 +51,8 @@
             Emoji = emoji,
         };
 
-        _ = Hub.AccountSettings.UserReactionSettings().Update(s => s.WithIncrementedUsage(emoji.Id.Value));
+        _reactionSettings = await Hub.AccountSettings.UserReactionSettings().Update(s => s.WithBubbleUp(emoji.Id.Value));
+        UpdateEmojis();
         await UICommander.Run(new Reactions_React(Session, reaction));
     }
 }

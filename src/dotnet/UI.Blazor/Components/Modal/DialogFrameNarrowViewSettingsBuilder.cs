@@ -21,14 +21,14 @@ public class DialogFrameNarrowViewSettingsBuilder
             _lastSubmitButtonInfo = submitButtonInfo;
             if (_lastSubmitButtonInfo != null)
                 _lastSubmitButtonInfo.CanExecuteChanged += OnCanExecuteChanged;
-            if (_lastSubmitButtonInfo == null) {
-                _lastNarrowViewSettings = position == DialogFramePosition.Stretch
-                    ? DialogFrameNarrowViewSettings.Stretch
-                    : DialogFrameNarrowViewSettings.Bottom;
-                _lastNarrowViewSettings = _lastNarrowViewSettings with { UseInteractiveHeader = true };
-            }
+            if (_lastSubmitButtonInfo == null)
+                _lastNarrowViewSettings = new DialogFrameNarrowViewSettings() {
+                    Position = position,
+                    UseInteractiveHeader = true,
+                };
             else
-                _lastNarrowViewSettings = DialogFrameNarrowViewSettings.SubmitButton(position, _lastSubmitButtonInfo.Execute!, _lastSubmitButtonInfo.Title);
+                _lastNarrowViewSettings = DialogFrameNarrowViewSettings
+                    .ForSubmitButton(position, _lastSubmitButtonInfo.Execute!, _lastSubmitButtonInfo.Title);
         }
         if (_lastSubmitButtonInfo != null)
             _lastNarrowViewSettings.CanSubmit = _lastSubmitButtonInfo.CanExecute;

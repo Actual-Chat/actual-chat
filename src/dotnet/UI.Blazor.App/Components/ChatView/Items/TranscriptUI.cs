@@ -24,12 +24,15 @@ public class TranscriptUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompute
         if (translation?.StreamId is not null)
             return new StreamingState(translation.StreamId, entry.Content, true); // Already streaming translated transcript.
 
-        if (entry.StreamId.IsNullOrEmpty())
+        if (entry.StreamId is not {} entryStreamId)
             return null; // No source stream. We can't start a translation stream.
 
-        var sourceStreamId = StreamId.Parse(entry.StreamId);
+        if (entryStreamId.IsNullOrEmpty())
+            return null;
+
+        var sourceStreamId = StreamId.Parse(entryStreamId);
         var language = await TranslationUI.GetTargetLanguage(id.ChatId, cancellationToken).ConfigureAwait(false);
-        var streamId = StreamId.New(sourceStreamId, language);
+        var streamId = StreamId.New(sourceStreamId, language ?? Languages.English);
         return new StreamingState(streamId, entry.Content, true); // We can start ad-hoc translation stream.
     }
 

@@ -6,10 +6,7 @@ namespace ActualChat.App.Maui.Services.StartupTracing;
 // https://learn.microsoft.com/en-us/dotnet/core/diagnostics/eventsource-collect-and-view-traces#eventlistener
 internal sealed class DependencyInjectionEventListener : EventListener
 {
-    private Serilog.ILogger? _log;
-
-    private Serilog.ILogger Log
-        => _log ??= Serilog.Log.Logger.ForContext<DependencyInjectionEventListener>();
+    private Serilog.ILogger Log => field ??= Serilog.Log.Logger.ForContext<DependencyInjectionEventListener>();
 
     protected override void OnEventSourceCreated(EventSource eventSource)
     {

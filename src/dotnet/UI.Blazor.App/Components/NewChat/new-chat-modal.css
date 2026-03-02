@@ -1,6 +1,10 @@
 .new-chat-modal.modal-frame {
     @apply gap-y-0;
 }
+body.narrow .new-chat-modal.narrow-view__modal__position-stretch {
+    padding-top: var(--safe-area-top);
+    padding-bottom: calc(1rem + var(--safe-area-bottom));
+}
 .new-chat-modal .dialog-body {
     @apply flex-y;
     @apply gap-y-2;

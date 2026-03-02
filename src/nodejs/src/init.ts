@@ -16,16 +16,18 @@ void (async () => {
                 return;
 
             const vh = window.visualViewport.height * 0.01;
-            window.document.body.style.setProperty('--vh', `${vh}px`);
+            window.document.documentElement.style.setProperty('--vh', `${vh}px`);
         });
     }
 
-    if (DeviceInfo.isIos) {
-        window.addEventListener('scroll', e => {
-            e.preventDefault();
-            window.scrollTo(0, 0);
-        });
-    }
+    // Prevent body scrolling: some browsers (Safari) allow user to scroll up
+    // a non-existent part of the document body that "hides" below the keyboard.
+    // We do a few other steps to prevent this, so this one is quite unlikely
+    // to be used, but... It doesn't make anything worse, so it stays here.
+    window.addEventListener('scroll', e => {
+        e.preventDefault();
+        window.scrollTo(0, 0);
+    });
 
     const app = window.App;
     if (app) {

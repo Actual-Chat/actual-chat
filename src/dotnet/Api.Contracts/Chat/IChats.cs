@@ -139,11 +139,11 @@ public sealed partial record Chats_RestoreTextEntries(
 public sealed partial record Chats_UpsertTextEntry(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(2)] long? LocalId,
-    [property: DataMember, MemoryPackOrder(3)] string Text,
-    [property: DataMember, MemoryPackOrder(4)] Option<long?> RepliedEntryLid = default
-) : ISessionCommand<ChatEntry>, IApiCommand
+    [property: DataMember, MemoryPackOrder(2)] long? LocalId
+) : ISessionCommand<ChatEntry>, IApiCommand, ISanitized
 {
+    [DataMember, MemoryPackOrder(3)] public string Text { get => Sanitizer.MaskPrivate(field); init; } = "";
+    [DataMember, MemoryPackOrder(4)] public Option<long?> RepliedEntryLid { get; init; }
     [DataMember, MemoryPackOrder(6)] public ChatEntryId? ForwardedChatEntryId { get; set; }
     [DataMember, MemoryPackOrder(7)] public AuthorId? ForwardedAuthorId { get; set; }
     [DataMember, MemoryPackOrder(8)] public string? ForwardedChatTitle { get; set; }

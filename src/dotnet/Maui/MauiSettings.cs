@@ -19,6 +19,7 @@ public static class MauiSettings
     public const bool AreDevToolsEnabled = false;
 #endif
 #endif
+    public const string AppScheme = IsDevApp ? "voxt-dev" : "voxt";
     public const string DefaultHost =
         UseLocalhost
             ? Constants.Hosts.LocalVoxt :
@@ -26,7 +27,7 @@ public static class MauiSettings
                 ? Constants.Hosts.DevVoxt
                 : Constants.Hosts.Voxt;
     public static readonly string Host;
-    public static bool IsHostOverriden => !OrdinalIgnoreCaseEquals(Host, DefaultHost);
+    public static bool IsHostOverridden => !OrdinalIgnoreCaseEquals(Host, DefaultHost);
     public static readonly Uri BaseUri;
     public static readonly string BaseUrl;
     public static readonly AppKind AppKind;
@@ -34,7 +35,7 @@ public static class MauiSettings
 
     static MauiSettings()
     {
-        Host = GetHostOverride() ?? DefaultHost;
+        Host = MauiPreferences.HostOverride ?? DefaultHost;
         BaseUrl = "https://" + Host + "/";
         BaseUri = BaseUrl.ToUri();
 
@@ -49,10 +50,8 @@ public static class MauiSettings
 #else
         AppKind = AppKind.Unknown;
 #endif
+        MauiHostNameRemapper.Use();
     }
-
-    private static string? GetHostOverride()
-        => MauiHostStorage.GetHostOverride()?.Host;
 
     // Nested types
 

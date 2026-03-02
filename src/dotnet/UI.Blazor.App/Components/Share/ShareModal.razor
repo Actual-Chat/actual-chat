@@ -18,7 +18,7 @@
     Class="@cls"
     HasCloseButton="true"
     Title="@(ModalModel.Title.NullIfEmpty() ?? "Share")"
-    NarrowViewSettings="@DialogFrameNarrowViewSettings.Stretch">
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.Default">
     <Body>
     <FormBlock Class="with-contact-list">
         @if (_selectorKind == SelectorKind.Contact) {
@@ -52,7 +52,7 @@
             PlaceholderIcon="icon-message-ellipse"
             TextChanged="OnCommentChanged" />
         @if (ModalModel.Request.HasLink(out var link)) {
-            <input type="hidden" @ref="@_copyTextSourceRef" value="@RequestWithComment.GetShareTextAndLink(UrlMapper)" />
+            <input type="hidden" @ref="@_copyTextSourceRef" value="@RequestWithComment.GetShareLink(UrlMapper)" />
             @if (!_copyTextSourceRef.Id.IsNullOrEmpty()) {
                 <ShareLinkBadge Link="@link" CopyTextSource="@_copyTextSourceRef"/>
             }

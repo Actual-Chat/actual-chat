@@ -341,71 +341,6 @@ namespace ActualChat.Users.Migrations
                     b.ToTable("_sessions");
                 });
 
-            modelBuilder.Entity("ActualChat.Users.Db.DbUser", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id")
-                        .UseCollation("C");
-
-                    b.Property<string>("ClaimsJson")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("claims_json");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("name");
-
-                    b.Property<long>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint")
-                        .HasColumnName("version");
-
-                    b.HasKey("Id")
-                        .HasName("pk_users");
-
-                    b.HasIndex("Name")
-                        .HasDatabaseName("ix_users_name");
-
-                    b.ToTable("users");
-                });
-
-            modelBuilder.Entity("ActualChat.Users.Db.DbUserIdentity<string>", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id")
-                        .UseCollation("C");
-
-                    b.Property<string>("DbUserId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("user_id")
-                        .UseCollation("C");
-
-                    b.Property<string>("Secret")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("secret");
-
-                    b.HasKey("Id")
-                        .HasName("pk_user_identities");
-
-                    b.HasIndex("DbUserId")
-                        .HasDatabaseName("ix_user_identities_user_id");
-
-                    b.HasIndex("Id")
-                        .HasDatabaseName("ix_user_identities_id");
-
-                    b.ToTable("user_identities");
-                });
-
             modelBuilder.Entity("ActualChat.Users.Db.DbUserPresence", b =>
                 {
                     b.Property<string>("UserId")
@@ -531,22 +466,7 @@ namespace ActualChat.Users.Migrations
                         .HasConstraintName("fk_account_identities_accounts_account_id");
                 });
 
-            modelBuilder.Entity("ActualChat.Users.Db.DbUserIdentity<string>", b =>
-                {
-                    b.HasOne("ActualChat.Users.Db.DbUser", null)
-                        .WithMany("Identities")
-                        .HasForeignKey("DbUserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_user_identities_users_user_id");
-                });
-
             modelBuilder.Entity("ActualChat.Users.Db.DbAccount", b =>
-                {
-                    b.Navigation("Identities");
-                });
-
-            modelBuilder.Entity("ActualChat.Users.Db.DbUser", b =>
                 {
                     b.Navigation("Identities");
                 });

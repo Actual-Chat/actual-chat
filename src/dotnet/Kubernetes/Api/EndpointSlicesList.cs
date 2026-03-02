@@ -2,7 +2,7 @@ namespace ActualChat.Kubernetes.Api;
 
 #pragma warning disable CA1822
 
-public record EndpointSliceList(
+public sealed record EndpointSliceList(
     Metadata Metadata,
     IReadOnlyList<EndpointSlice> Items
 ) {

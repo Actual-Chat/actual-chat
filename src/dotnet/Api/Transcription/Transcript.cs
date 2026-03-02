@@ -11,7 +11,8 @@ namespace ActualChat.Transcription;
 public sealed partial record Transcript(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] string Text,
     [property: DataMember(Order = 1), MemoryPackOrder(1)] LinearMap TimeMap,
-    [property: DataMember(Order = 2), MemoryPackOrder(2)] Language[] Languages)
+    [property: DataMember(Order = 2), MemoryPackOrder(2)] Language[] Languages
+) : ISanitized
 {
     [GeneratedRegex(@"^\s*", RegexOptions.Singleline | RegexOptions.ExplicitCapture)]
     private static partial Regex ContentStartRegexFactory();
@@ -41,7 +42,7 @@ public sealed partial record Transcript(
         => new ("", LinearMap.Zero, []);
 
     public override string ToString()
-        => $"`{Text}` + {TimeMap}";
+        => $"`{Sanitizer.MaskPrivate(Text)}` + {TimeMap}";
 
     public bool IsIdenticalTo(Transcript other)
         => OrdinalEquals(Text, other.Text)

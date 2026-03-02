@@ -1,0 +1,30 @@
+name: Run nightly tests
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+on:
+  schedule:
+    - cron: '0 2 * * *' # 2:00 AM UTC daily
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+  issues: read
+  checks: write
+  statuses: write
+
+jobs:
+  nightly-tests:
+    name: Run nightly tests
+    if: github.ref == 'refs/heads/dev'
+    uses: ./.github/workflows/_run-tests.yml
+    with:
+      build-target: nightly-tests
+      report-name: Nightly tests results
+      checkout-ref: dev
+      checkout-configs: true
+      configs-ref: master
+    secrets: inherit

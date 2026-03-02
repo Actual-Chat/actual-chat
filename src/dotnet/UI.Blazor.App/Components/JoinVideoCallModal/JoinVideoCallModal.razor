@@ -1,57 +1,217 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
 @implements IModalView<JoinVideoCallModal.Model>
+@implements IAsyncDisposable
+@using ActualChat.UI.Blazor.App.Module
+@using ActualChat.Users
 
 <DialogFrame
     Class="join-video-call-modal modal-sm"
-    Title="Join the video call">
+    ButtonsClass="wide-dialog-buttons"
+    Title="@ModalTitle">
     <Body>
     <FormBlock Class="">
-        <div class="c-members">
-            <ChatActivities
-                @key="@ModalModel.Chat.Id.Value"
-                Chat="@ModalModel.Chat"
-                MaxCount="3"
-                IsListening="true"/>
-            <span class="c-text">Lena J, Ethan Y and 8 others on the call</span>
-        </div>
-        <div class="c-video">
+        @if (ModalModel.Mode == VideoCallMode.Join) {
+            <div class="c-members">
+                <ChatActivities
+                    @key="@ModalModel.Chat.Id.Value"
+                    Chat="@ModalModel.Chat"
+                    MaxCount="3"
+                    IsListening="true"/>
+            </div>
+            <div class="c-rules">
+                <span class="c-rules-link">Chat Rules</span>
+            </div>
+        }
+        <div @ref="_containerRef" class="c-video">
             <div class="video-frame">
                 <span class="plug-text">
-                    Camera inactive
+                    Camera is off
                 </span>
             </div>
         </div>
-        <div class="c-buttons">
-            <ButtonRound Class="transcription-btn">
-                <i class="icon-transcription text-2xl"></i>
+        <div class="c-toolbar">
+            @* Blur button *@
+            <ButtonRound Class="@BlurBtnClass()" Click="@OnBlurToggle">
+                <i class="icon-eye text-2xl"></i>
             </ButtonRound>
-            <ButtonRound Class="recording-btn">
+
+            @* Mic button *@
+            <ButtonRound Class="mic-btn">
                 <i class="icon-mic-2 text-2xl"></i>
             </ButtonRound>
-            <ButtonRound Class="video-btn">
-                <i class="icon-video text-2xl"></i>
-            </ButtonRound>
-            <ButtonRound Class="cast-btn">
-                <i class="icon-cast text-2xl"></i>
-            </ButtonRound>
+
+            @* Camera button *@
+            <div class="@VideoWrapperClass() video-wrapper">
+                <ButtonRound Class="video-btn" Click="@OnVideoToggle">
+                    <i class="icon-video text-2xl"></i>
+                </ButtonRound>
+            </div>
         </div>
-        <div class="c-rules">
-            <span class="c-title">Rules</span>
-            <span class="c-text">No transcription, no anonymous</span>
+        <div class="c-camera-select">
+            <select value="@_selectedDeviceId" @onchange="OnCameraChanged">
+                @if (_videoDevices.Count == 0) {
+                    <option value="">No cameras found</option>
+                } else {
+                    @foreach (var device in _videoDevices) {
+                        <option value="@device.DeviceId">@device.Label</option>
+                    }
+                }
+            </select>
         </div>
     </FormBlock>
     </Body>
     <Buttons>
+        <Button Class="btn-modal btn-primary" Click="@OnJoinClick">@ButtonText</Button>
         <Button Class="btn-modal" Click="@(_ => Modal.Close())">Cancel</Button>
-        <Button>Join</Button>
     </Buttons>
 </DialogFrame>
 
 @code {
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.JoinVideoCallModal.create";
+    private static readonly string JSEnumerateMethod = $"{BlazorUIAppModule.ImportName}.JoinVideoCallModal.enumerateDevices";
+
+    private record VideoDevice(string DeviceId, string Label);
+
+    private ElementReference _containerRef;
+    private DotNetObjectReference<JoinVideoCallModal>? _blazorRef;
+    private IJSObjectReference? _jsRef;
+
+    private bool _isVideoOn;
+    private string _selectedDeviceId = "";
+    private bool _isBlurEnabled;
+    private List<VideoDevice> _videoDevices = new();
+
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
+    private string ModalTitle => ModalModel.Mode == VideoCallMode.Start
+        ? "Start Video Call"
+        : "Join the video call";
+
+    private string ButtonText => ModalModel.Mode == VideoCallMode.Start
+        ? "Start"
+        : "Join";
+
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+
+    protected override async Task OnInitializedAsync() {
+        var settings = await Hub.LocalSettings.LocalAppSettings().Get();
+        _selectedDeviceId = settings.SelectedCameraDeviceId ?? "";
+        _isBlurEnabled = settings.GetIsBackgroundBlurEnabled(Hub.BrowserInfo.IsMobile);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender)
+            return;
+
+        await LoadVideoDevices();
+        await EnsureJsRef();
+        if (_jsRef is null)
+            return;
+
+        var deviceId = string.IsNullOrEmpty(_selectedDeviceId) ? null : _selectedDeviceId;
+        var success = await _jsRef.InvokeAsync<bool>("startPreview", deviceId);
+        if (success) {
+            _isVideoOn = true;
+            // Start blur preview if blur was previously enabled
+            if (_isBlurEnabled)
+                await _jsRef.InvokeVoidAsync("toggleBlur", true);
+            StateHasChanged();
+        }
+    }
+
+    public async ValueTask DisposeAsync() {
+        if (_jsRef is not null) {
+            await _jsRef.InvokeVoidAsync("dispose");
+            await _jsRef.DisposeAsync();
+            _jsRef = null;
+        }
+        _blazorRef?.Dispose();
+        _blazorRef = null;
+    }
+
+    private async Task LoadVideoDevices() {
+        try {
+            var devices = await JS.InvokeAsync<VideoDevice[]>(JSEnumerateMethod);
+            _videoDevices = devices.ToList();
+            StateHasChanged();
+        } catch {
+            _videoDevices = new();
+        }
+    }
+
+    private async Task EnsureJsRef() {
+        if (_jsRef is not null)
+            return;
+
+        _blazorRef = DotNetObjectReference.Create(this);
+        _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _containerRef, _blazorRef);
+    }
+
+    private async Task OnVideoToggle() {
+        await EnsureJsRef();
+        if (_jsRef is null)
+            return;
+
+        if (_isVideoOn) {
+            await _jsRef.InvokeVoidAsync("stopPreview");
+            _isVideoOn = false;
+        } else {
+            var deviceId = string.IsNullOrEmpty(_selectedDeviceId) ? null : _selectedDeviceId;
+            var success = await _jsRef.InvokeAsync<bool>("startPreview", deviceId);
+            if (success)
+                _isVideoOn = true;
+        }
+    }
+
+    private async Task OnCameraChanged(ChangeEventArgs e) {
+        var deviceId = e.Value?.ToString() ?? "";
+        _selectedDeviceId = deviceId;
+        await Hub.LocalSettings.LocalAppSettings().Update(
+            s => s with { SelectedCameraDeviceId = deviceId });
+
+        // Switch camera if preview is active
+        if (_isVideoOn && _jsRef is not null)
+            await _jsRef.InvokeAsync<bool>("switchCamera", deviceId);
+    }
+
+    private async Task OnBlurToggle() {
+        _isBlurEnabled = !_isBlurEnabled;
+        await Hub.LocalSettings.LocalAppSettings().Update(
+            s => s with { IsBackgroundBlurEnabled = _isBlurEnabled });
+        // Update live blur state so VideoPanel can react during an active call
+        ChatVideoUI.SetBackgroundBlur(_isBlurEnabled);
+        // Update blur preview in the modal
+        if (_jsRef is not null && _isVideoOn)
+            await _jsRef.InvokeVoidAsync("toggleBlur", _isBlurEnabled);
+    }
+
+    private async Task OnJoinClick() {
+        // Get actual device ID from JS before disposing — the browser may have
+        // picked a different camera than what was originally requested (e.g.,
+        // front camera when no device ID was specified).
+        string? deviceId = null;
+        if (_jsRef is not null)
+            deviceId = await _jsRef.InvokeAsync<string?>("getActualDeviceId");
+        if (string.IsNullOrEmpty(deviceId))
+            deviceId = string.IsNullOrEmpty(_selectedDeviceId) ? null : _selectedDeviceId;
+
+        await DisposeAsync();
+        var chatId = ModalModel.Chat.Id;
+        ChatVideoUI.SetRecordingChatId(chatId, deviceId, _isBlurEnabled);
+        Modal.Close();
+    }
+
+    private string VideoWrapperClass()
+        => _isVideoOn ? "video-on" : "video-off";
+
+    private string BlurBtnClass()
+        => _isBlurEnabled ? "blur-btn active" : "blur-btn";
+
     // Nested types
 
-    public sealed record Model(Chat Chat);
+    public enum VideoCallMode { Join, Start }
+
+    public sealed record Model(Chat Chat, VideoCallMode Mode = VideoCallMode.Join);
 }

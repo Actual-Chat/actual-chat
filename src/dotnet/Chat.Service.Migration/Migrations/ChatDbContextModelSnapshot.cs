@@ -18,7 +18,7 @@ namespace ActualChat.Chat.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.8")
+                .HasAnnotation("ProductVersion", "10.0.2")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -508,80 +508,6 @@ namespace ActualChat.Chat.Migrations
                         .HasName("pk_chat_entry_languages");
 
                     b.ToTable("chat_entry_languages");
-                });
-
-            modelBuilder.Entity("ActualChat.Chat.Db.DbChatRoulette", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id")
-                        .UseCollation("C");
-
-                    b.Property<string>("ChatId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("chat_id")
-                        .UseCollation("C");
-
-                    b.Property<int>("CompleteReason")
-                        .HasColumnType("integer")
-                        .HasColumnName("complete_reason");
-
-                    b.Property<DateTime>("CompletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("completed_at");
-
-                    b.Property<string>("CompletedByUserId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("completed_by_user_id");
-
-                    b.Property<string>("InitiatedByUserId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("initiated_by_user_id");
-
-                    b.Property<string>("ProfileId1")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("profile_id1")
-                        .UseCollation("C");
-
-                    b.Property<string>("ProfileId2")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("profile_id2")
-                        .UseCollation("C");
-
-                    b.Property<string>("UserId1")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("user_id1")
-                        .UseCollation("C");
-
-                    b.Property<string>("UserId2")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("user_id2")
-                        .UseCollation("C");
-
-                    b.Property<long>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint")
-                        .HasColumnName("version");
-
-                    b.HasKey("Id")
-                        .HasName("pk_chat_roulettes");
-
-                    b.HasIndex("ChatId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_chat_roulettes_chat_id");
-
-                    b.HasIndex("ProfileId1", "ProfileId2")
-                        .IsUnique()
-                        .HasDatabaseName("ix_chat_roulettes_profile_id1_profile_id2");
-
-                    b.ToTable("chat_roulettes");
                 });
 
             modelBuilder.Entity("ActualChat.Chat.Db.DbConversation", b =>

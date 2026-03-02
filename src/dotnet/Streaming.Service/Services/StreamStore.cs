@@ -3,11 +3,11 @@ using System.Diagnostics.Metrics;
 namespace ActualChat.Streaming.Services;
 
 /// <summary>
-/// In-memory store for sharing active audio and transcript streams.
+/// In-memory store for sharing active audio, video, transcript streams.
 /// </summary>
 public class StreamStore<TItem> : ProcessorBase
 {
-    private readonly ConcurrentDictionary<Symbol, ExpiringEntry<Symbol, AsyncTaskMethodBuilder<AsyncMemoizer<TItem>?>>> _streams = new();
+    private readonly ConcurrentDictionary<Symbol, ExpiringEntry<Symbol, AsyncTaskMethodBuilder<IAsyncMemoizer<TItem>?>>> _streams = new();
 
     public TimeSpan ExpirationDelay { get; init; } = TimeSpan.FromSeconds(5);
     public TimeSpan ShareWaitDelay { get; init; } = TimeSpan.FromSeconds(2);
@@ -27,54 +27,53 @@ public class StreamStore<TItem> : ProcessorBase
         => Get(streamId, true, cancellationToken);
     public async Task<IAsyncEnumerable<TItem>?> Get(StreamId streamId, bool waitForShare, CancellationToken cancellationToken)
     {
+        Log?.LogInformation("StreamStore.Get({StreamId}, waitForShare={WaitForShare}): starting", streamId, waitForShare);
         StreamIdValidator.Invoke(streamId);
-        if (StopToken.IsCancellationRequested)
+        if (StopToken.IsCancellationRequested) {
+            Log?.LogWarning("StreamStore.Get({StreamId}): StopToken is cancelled", streamId);
             return null;
+        }
 
         if (!waitForShare && _streams.TryGetValue(streamId.Value, out var entry)) {
-            if (!entry.Value.Task.IsCompleted)
+            if (!entry.Value.Task.IsCompleted) {
+                Log?.LogInformation("StreamStore.Get({StreamId}): entry exists but task not completed", streamId);
                 return null;
+            }
 
             var memoizer = await entry.Value.Task.ConfigureAwait(false);
+            Log?.LogInformation("StreamStore.Get({StreamId}): returning memoizer (waitForShare=false), memoizer={Memoizer}", streamId, memoizer != null ? "exists" : "null");
             return memoizer?.Replay(cancellationToken);
         }
 
         // If waitForShare is false and the stream doesn't exist, return null immediately
-        if (!waitForShare)
+        if (!waitForShare) {
+            Log?.LogInformation("StreamStore.Get({StreamId}): stream not found and waitForShare=false", streamId);
             return null;
+        }
 
+        Log?.LogInformation("StreamStore.Get({StreamId}): waiting for stream with timeout {Timeout}s", streamId, ShareWaitDelay.TotalSeconds);
         entry = GetOrAddStream(streamId);
         try {
             var memoizer = await entry.Value.Task
                 .WaitAsync(ShareWaitDelay, cancellationToken)
                 .ConfigureAwait(false);
+            Log?.LogInformation("StreamStore.Get({StreamId}): got memoizer={Memoizer}", streamId, memoizer != null ? "exists" : "null");
             return memoizer?.Replay(cancellationToken);
-#if false
-            if (memoizer == null)
-                return null;
-
-            return DebugReplay();
-
-            async IAsyncEnumerable<TItem>? DebugReplay()
-            {
-                await foreach (var item in memoizer.Replay(cancellationToken).ConfigureAwait(false)) {
-                    Log?.LogInformation("Get({StreamId}): item {Item}", streamId, item);
-                    yield return item;
-                }
-            }
-#endif
         }
         catch (TimeoutException) {
+            Log?.LogWarning("StreamStore.Get({StreamId}): TIMEOUT waiting for stream after {Timeout}s", streamId, ShareWaitDelay.TotalSeconds);
             return null;
         }
     }
 
     public Task Publish(StreamId streamId, IAsyncEnumerable<TItem> stream)
         => Publish(streamId, stream.Memoize());
-    public Task Publish(StreamId streamId, AsyncMemoizer<TItem> memoizer)
+    public Task Publish(StreamId streamId, IAsyncMemoizer<TItem> memoizer)
     {
         StreamIdValidator.Invoke(streamId);
         StopToken.ThrowIfCancellationRequested();
+
+        Log?.LogInformation("StreamStore.Publish({StreamId}): registering stream", streamId);
 
         // No need to wait for write completion here, it's enough to just register the stream
         StreamCount?.Add(1);
@@ -84,14 +83,18 @@ public class StreamStore<TItem> : ProcessorBase
             return Task.CompletedTask;
         }
 
+        Log?.LogInformation("StreamStore.Publish({StreamId}): stream registered successfully", streamId);
+
         var writeTask = memoizer.WriteTask;
         _ = BackgroundTask.Run(async () => {
             var bumpExpirationPeriod = ExpirationDelay / 2;
             while (true) {
                 await Task.Delay(bumpExpirationPeriod).SilentAwait(false);
                 entry.BumpExpiresAt(ExpirationDelay);
-                if (writeTask.IsCompleted)
+                if (writeTask.IsCompleted) {
+                    Log?.LogInformation("StreamStore.Publish({StreamId}): write completed", streamId);
                     return;
+                }
             }
         }, CancellationToken.None);
         return writeTask;
@@ -99,11 +102,11 @@ public class StreamStore<TItem> : ProcessorBase
 
     // Protected methods
 
-    protected ExpiringEntry<Symbol, AsyncTaskMethodBuilder<AsyncMemoizer<TItem>?>> GetOrAddStream(StreamId streamId)
+    protected ExpiringEntry<Symbol, AsyncTaskMethodBuilder<IAsyncMemoizer<TItem>?>> GetOrAddStream(StreamId streamId)
     {
         var entry = _streams.GetOrAdd(streamId.Value,
             static (key, self) => {
-                var memoizerSource = AsyncTaskMethodBuilderExt.New<AsyncMemoizer<TItem>?>();
+                var memoizerSource = AsyncTaskMethodBuilderExt.New<IAsyncMemoizer<TItem>?>();
                 var disposeTokenSource = self.StopToken.CreateLinkedTokenSource();
                 var entry = ExpiringEntry
                     .New(self._streams, key, memoizerSource, disposeTokenSource)

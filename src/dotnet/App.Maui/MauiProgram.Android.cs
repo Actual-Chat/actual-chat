@@ -1,4 +1,5 @@
 using ActualChat.App.Maui.Audio;
+using ActualChat.App.Maui.Services;
 using ActualChat.App.Maui.Services.Recording;
 using ActualChat.Maui;
 using ActualChat.UI.Blazor.App.Services;
@@ -55,7 +56,7 @@ public static partial class MauiProgram
                 Android.Util.Log.Info(MauiDiagnostics.LogTag, "OnBecameForeground");
                 SetBackgroundState(false);
                 if (MainPage.Current is { Content: null } mainPage)
-                    MainThread.BeginInvokeOnMainThread(() => mainPage.RecreateWebView());
+                    BeginDispatchToMainThread(() => mainPage.RecreateWebView());
             });
             android.OnStop(_ => {
                 Android.Util.Log.Info(MauiDiagnostics.LogTag, "OnBecameBackground");
@@ -105,7 +106,7 @@ public static partial class MauiProgram
     }
 
     private static bool IsDataCollectionEnabled()
-        => Preferences.Default.Get(Constants.Preferences.EnableDataCollectionKey, false);
+        => MauiPreferences.IsDataCollectionEnabled == true;
 
     private static void ActivateDataCollectionIfEnabled(Context context)
     {

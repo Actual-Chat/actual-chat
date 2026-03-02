@@ -11,11 +11,10 @@ public class TotpUI(UIHub hub): UIServiceBase<UIHub>(hub), IComputeService
     public IState<Moment> TotpNextSendAt => _totpNextSendAt;
 
     private IPhoneAuth PhoneAuth => field ??= Services.GetRequiredService<IPhoneAuth>();
+    private IEmailAuth EmailAuth => field ??= Services.GetRequiredService<IEmailAuth>();
 
     public Task<string> ValidateCanSendToPhone(Phone phone, TotpPurpose purpose, CancellationToken cancellationToken)
         => PhoneAuth.ValidateCanSendToPhone(Session, phone, purpose, cancellationToken);
-
-    private IEmailAuth EmailAuth => field ??= Services.GetRequiredService<IEmailAuth>();
 
     public Task<string> ValidateCanSendToEmail(Email email, TotpPurpose purpose, CancellationToken cancellationToken)
         => EmailAuth.ValidateCanSendToEmail(Session, email, purpose, cancellationToken);

@@ -7,7 +7,7 @@ namespace ActualChat.Chat;
 /// Base class for chat message markup elements.
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
-public abstract class Markup
+public abstract class Markup : ISanitized
 {
     protected static ArrayPool<Markup> MarkupArrayPool = ArrayPool<Markup>.Shared;
 
@@ -50,7 +50,7 @@ public abstract class Markup
     }
 
     public override string ToString()
-        => $"{GetType()}({Format()})";
+        => $"{GetType()}({Sanitizer.MaskPrivate(Format())})";
 
     public abstract string Format();
 

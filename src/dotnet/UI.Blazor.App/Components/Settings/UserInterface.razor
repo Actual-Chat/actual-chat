@@ -1,22 +1,68 @@
-@inherits ComponentBase<AppUIHub>
+@inherits ComputedStateComponent<AppUIHub, UserInterface.Model>
 @{
-#pragma warning disable IL2091
+    var m = State.Value;
 }
-@if (ScreenSize.IsNarrow()) {
-    <Tile Class="font-size-tile">
-        <div class="ui-settings">
-            <FontSizeSlider/>
-        </div>
-    </Tile>
-}
+
+<TileTopic Topic="Font"/>
+<Tile Class="font-size-tile">
+    <div class="ui-settings">
+        <FontSizeSlider/>
+    </div>
+</Tile>
 
 <TileTopic Topic="Theme"/>
 <Tile Class="theme-tile">
     <ThemeSettings/>
 </Tile>
 
+<TileTopic Topic="Walk-through"/>
+<Button
+    Class="add-avatar-btn"
+    Click="@(OnRestartWalkThrough)">
+    <Icon><i class="icon-refresh text-xl"></i></Icon>
+    <Title>Restart walk-through</Title>
+</Button>
+
+@if (m.IsAdmin) {
+    <TileTopic Topic="Onboarding"/>
+    <Button
+        Class="add-avatar-btn"
+        Click="@(OnRestartOnboarding)">
+        <Icon><i class="icon-refresh text-xl"></i></Icon>
+        <Title>Restart onboarding</Title>
+    </Button>
+}
+
 @code {
     private ILogger<UserInterface> Log => field ??= Hub.LogFor<UserInterface>();
 
+    private BubbleUI BubbleUI => Hub.BubbleUI;
+    private OnboardingUI OnboardingUI => Hub.OnboardingUI;
+
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var account = await Hub.AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+        return new(account.IsAdmin);
+    }
+
+    private async Task OnRestartWalkThrough() {
+        await BubbleUI.ResetSettings();
+        ToastUI.Show("Walk-through tips are back!", "icon-checkmark-circle", ToastDismissDelay.Short);
+    }
+
+    private void OnRestartOnboarding() {
+        OnboardingUI.ResetSettings();
+        ToastUI.Show("Onboarding steps are back!", "icon-checkmark-circle", ToastDismissDelay.Short);
+    }
+
+    // Nested types
+
+    public record Model(bool IsAdmin)
+    {
+        public static readonly Model None = new(false);
+    }
 }

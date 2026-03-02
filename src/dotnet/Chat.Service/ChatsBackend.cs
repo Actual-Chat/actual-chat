@@ -1889,11 +1889,15 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return;
 
         if (ShouldUseOriginalTranscript(textEntry, transcription)) {
-            Log.LogDebug("Skip updating TextEntry (id={Id}) transcription.\r\nFrom: '{From}' -> \r\nTo: '{To}'", textEntry.Id.Value, textEntry.Content, transcription.Text);
+            Log.LogDebug(
+                "Skip updating TextEntry (id={Id}) transcription.\r\nFrom: '{From}' -> \r\nTo: '{To}'",
+                textEntry.Id.Value, textEntry.Content.ToPrivate(), transcription.Text.ToPrivate());
             return;
         }
 
-        Log.LogDebug("Updating TextEntry (id={Id}) transcription.\r\nFrom: '{From}' -> \r\nTo: '{To}'", textEntry.Id.Value, textEntry.Content, transcription.Text);
+        Log.LogDebug(
+            "Updating TextEntry (id={Id}) transcription.\r\nFrom: '{From}' -> \r\nTo: '{To}'",
+            textEntry.Id.Value, textEntry.Content.ToPrivate(), transcription.Text.ToPrivate());
         var timeMap = transcription.TimeMap;
         if (timeMap.IsDegenerate && !textEntry.TimeMap.IsDegenerate) {
             timeMap = LinearMapDtwRemapper.Remap(textEntry.Content,

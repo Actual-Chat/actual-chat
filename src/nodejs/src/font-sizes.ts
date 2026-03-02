@@ -1,4 +1,4 @@
-import { DeviceInfo } from 'device-info';
+// import { DeviceInfo } from 'device-info';
 import { ScreenSize } from '../../dotnet/UI.Blazor/Services/ScreenSize/screen-size';
 
 const storage = window.localStorage as Storage | undefined;
@@ -48,7 +48,8 @@ export class FontSizes {
 }
 
 function getDefault() {
-    return DeviceInfo.isIos ? '18px' : '16px';
+    return '16px';
+    // return DeviceInfo.isIos ? '18px' : '16px';
 }
 
 function getValidOrDefault(size: string): string {

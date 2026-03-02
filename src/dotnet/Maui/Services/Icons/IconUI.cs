@@ -23,7 +23,6 @@ public class IconUI(IServiceProvider services) : ProcessorBase, IComputeService
 
         var filePath = await GetExternalImage(url, cancellationToken).ConfigureAwait(false);
         return filePath.IsEmpty ? null : new LoadedImage(filePath, null);
-
     }
 
     [ComputeMethod]

@@ -1,18 +1,26 @@
 .side-nav {
     @apply isolate;
     @apply fixed md:relative;
-    @apply z-button left-0;
+    @apply z-button;
     @apply h-full w-full;
     @apply text-02 bg-02;
     @apply top-0 bottom-0;
     @apply z-10;
+    left: var(--safe-area-left);
+    right: var(--safe-area-right);
+    width: auto;
     transform: none;
     touch-action: manipulation;
     will-change: transform; /* Ensures its own composition layer */
 }
+@media (min-width: 820px) {
+    .side-nav {
+        @apply left-0 right-auto w-full;
+    }
+}
 
 body.device-ios .side-nav {
-    @apply ios-height;
+    @apply has-viewport-height;
 }
 
 .side-nav.animated {

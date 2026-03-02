@@ -1,5 +1,5 @@
 // TODO: Fix ESLint errors
-/* eslint-disable @typescript-eslint/no-unused-vars */
+ 
 import { Subject } from 'rxjs';
 import Sortable, { SortableEvent } from 'sortablejs';
 import { DeviceInfo } from 'device-info';

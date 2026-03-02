@@ -18,9 +18,8 @@ public partial class ChatsUpgradeBackend
             return null!; // It just spawns other commands, so nothing to do here
 
         var chatId = Constants.Chat.AnnouncementsChatId;
-        var usersTempBackend = Services.GetRequiredService<IUsersUpgradeBackend>();
         var hostInfo = Services.HostInfo();
-        var userIds = await usersTempBackend.ListAllUserIds(cancellationToken).ConfigureAwait(false);
+        var userIds = await ListAllAccountIds(cancellationToken).ConfigureAwait(false);
 
         var admin = await AccountsBackend.Get(Constants.User.Admin.UserId, cancellationToken)
             .Require()
@@ -149,7 +148,7 @@ public partial class ChatsUpgradeBackend
         var adminAuthor = await AuthorsBackend.EnsureJoined(chatId, admin.Id, cancellationToken).ConfigureAwait(false);
 
         // Adding every user to this chat
-        var userIds = await UsersUpgradeBackend.ListAllUserIds(cancellationToken).ConfigureAwait(false);
+        var userIds = await ListAllAccountIds(cancellationToken).ConfigureAwait(false);
         foreach (var userId in userIds) {
             var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
             if (!account.IsActive())
@@ -362,9 +361,8 @@ public partial class ChatsUpgradeBackend
             return null!; // It just spawns other commands, so nothing to do here
 
         var chatId = Constants.Chat.FeedbackTemplateChatId;
-        var usersTempBackend = Services.GetRequiredService<IUsersUpgradeBackend>();
         var hostInfo = Services.HostInfo();
-        var userIds = await usersTempBackend.ListAllUserIds(cancellationToken).ConfigureAwait(false);
+        var userIds = await ListAllAccountIds(cancellationToken).ConfigureAwait(false);
 
         var admin = await AccountsBackend.Get(Constants.User.Admin.UserId, cancellationToken)
             .Require()

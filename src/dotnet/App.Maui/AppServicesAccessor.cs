@@ -1,7 +1,6 @@
 using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
-using ActualLab.Internal;
 
 namespace ActualChat.App.Maui;
 
@@ -26,7 +25,9 @@ public class AppServicesAccessor
     private static ILogger Log // Otherwise, Rider assumes we're referencing it from elsewhere
         => _log ??= StaticLog.Factory.CreateLogger<AppServicesAccessor>();
 
+#pragma warning disable CA1044 // Properties should not be write only
     public static IServiceProvider BlazorAppServices {
+#pragma warning restore CA1044
         set {
             lock (AppServicesLock) {
                 if (value == null)
@@ -98,21 +99,53 @@ public class AppServicesAccessor
         return WhenBlazorAppServicesReadyAsync(whenRendered, cancellationToken);
     }
 
+    // DispatchToMainThread
+
+    public static void BeginDispatchToMainThread(Action action, bool allowInline = true)
+    {
+        if (!allowInline && MainThread.IsMainThread)
+            _ = Task.Run(() => MainThread.BeginInvokeOnMainThread(action));
+        else
+            MainThread.BeginInvokeOnMainThread(action);
+    }
+
+    public static Task DispatchToMainThread(Action action, bool allowInline = true)
+        => !allowInline && MainThread.IsMainThread
+            ? Task.Run(() => MainThread.InvokeOnMainThreadAsync(action))
+            : MainThread.InvokeOnMainThreadAsync(action);
+
+    public static Task<T> DispatchToMainThread<T>(Func<T> func, bool allowInline = true)
+        => !allowInline && MainThread.IsMainThread
+            ? Task.Run(() => MainThread.InvokeOnMainThreadAsync(func))
+            : MainThread.InvokeOnMainThreadAsync(func);
+
+    public static Task DispatchToMainThread(Func<Task> func, bool allowInline = true)
+        => !allowInline && MainThread.IsMainThread
+            ? Task.Run(() => MainThread.InvokeOnMainThreadAsync(func))
+            : MainThread.InvokeOnMainThreadAsync(func);
+
+    public static Task<T> DispatchToMainThread<T>(Func<Task<T>> func, bool allowInline = true)
+        => !allowInline && MainThread.IsMainThread
+            ? Task.Run(() => MainThread.InvokeOnMainThreadAsync(func))
+            : MainThread.InvokeOnMainThreadAsync(func);
+
+    // DispatchToBlazor
+
     public static Task DispatchToBlazor(Action<IServiceProvider> workItem, string name, bool whenRendered = false)
         => DispatchToBlazor(c => _ = ForegroundTask.Run(() => {
             workItem.Invoke(c);
             return Task.CompletedTask;
-        }, Log, $"{name} failed"));
+        }, Log, $"{name} failed"), whenRendered);
 
     public static Task DispatchToBlazor(Func<IServiceProvider, Task> workItem, string name, bool whenRendered = false)
         => DispatchToBlazor(c => ForegroundTask.Run(
             async () => await workItem.Invoke(c).ConfigureAwait(false),
-            Log, $"{name} failed"));
+            Log, $"{name} failed"), whenRendered);
 
     public static Task DispatchToBlazor<T>(Func<IServiceProvider, Task<T>> workItem, string name, bool whenRendered = false)
         => DispatchToBlazor(c => ForegroundTask.Run(
             async () => await workItem.Invoke(c).ConfigureAwait(false),
-            Log, $"{name} failed"));
+            Log, $"{name} failed"), whenRendered);
 
     public static async Task DispatchToBlazor(Action<IServiceProvider> workItem, bool whenRendered = false)
     {

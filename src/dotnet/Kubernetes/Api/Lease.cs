@@ -4,7 +4,7 @@ namespace ActualChat.Kubernetes.Api;
 
 #pragma warning disable CA1822
 
-public record Lease(
+public sealed record Lease(
     Metadata Metadata,
     LeaseSpec Spec
 ) {
@@ -12,7 +12,7 @@ public record Lease(
     public string Kind => "Lease";
 }
 
-public record LeaseSpec(
+public sealed record LeaseSpec(
     string? HolderIdentity = null,
     int? LeaseDurationSeconds = null,
     [property: JsonConverter(typeof(NullableMicroTimeJsonConverter))]
@@ -22,7 +22,7 @@ public record LeaseSpec(
     int? LeaseTransitions = null
 );
 
-public record LeaseList(
+public sealed record LeaseList(
     Metadata Metadata,
     IReadOnlyList<Lease> Items
 ) {

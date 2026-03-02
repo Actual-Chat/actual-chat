@@ -1,26 +1,28 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, ChatAudioPanel.Model>
 @{
-    var (audioState, enableIncompleteUI) = State.Value;
-    var isHeaderVisible = audioState != null && IsNarrow && audioState is { IsListening: true, IsRecording: true };
+    var m = State.Value;
+    var audioState = m.AudioState;
+    var isRecording = audioState?.IsRecording == true;
+    var isOwnVideoStreaming = m.IsOwnVideoStreaming;
+    var isAnyoneVideoStreaming = m.IsAnyoneVideoStreaming;
+    var isHeaderVisible = audioState != null && IsNarrow
+        && audioState.IsListening
+        && (audioState.IsRecording || isOwnVideoStreaming || isAnyoneVideoStreaming);
+    var enableIncompleteUI = m.EnableIncompleteUI;
+    var allowVideo = m.IsVideoFeatureEnabled;
 }
 
 <div class="chat-audio-panel">
     @if (enableIncompleteUI && isHeaderVisible) {
         <div class="audio-panel-header">
             <div class="c-left">
-                <div class="w-12"></div>
-                <ButtonRound>
-                    <i class="icon-transcription text-xl"></i>
-                </ButtonRound>
-            </div>
-            <div class="c-right">
-                <ButtonRound>
-                    <i class="icon-video text-xl"></i>
-                </ButtonRound>
                 <ButtonRound>
                     <i class="icon-cast text-xl"></i>
                 </ButtonRound>
+            </div>
+            <div class="c-right">
+                <VideoToggle Chat="@Chat" IsNarrow="true" />
             </div>
         </div>
     }
@@ -31,6 +33,9 @@
              data-bubble-placement="@(FloatingPosition.TopEnd.ToPositionString())">
             <PlaybackToggle Chat="@Chat"/>
         </div>
+        @if (allowVideo && !IsNarrow && (isRecording || isOwnVideoStreaming || isAnyoneVideoStreaming)) {
+            <VideoToggle Chat="@Chat" />
+        }
         <div class="recorder-button">
             <div data-bubble="@(BubbleRef.New<RecordButtonBubble>())"
                  data-bubble-priority="100"
@@ -38,7 +43,7 @@
             </div>
             <RecorderToggle Chat="@Chat"/>
         </div>
-        @if (IsNarrow) {
+        @if (allowVideo && IsNarrow) {
             <VoiceSettingsButton Chat="@Chat" IsNarrow="true" />
         }
         <div class="language-button"
@@ -52,19 +57,38 @@
 
 @code {
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter] public bool IsNarrow { get; set; }
 
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options {
+                InitialValue = new Model(null, false, false, false, false),
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        var isVideoFeatureEnabled = await Features.IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
         if (chat?.Id is null)
-            return new(null, enableIncompleteUI);
+            return new(null, enableIncompleteUI, false, false, isVideoFeatureEnabled);
 
         var audioState = await ChatAudioUI.GetState(chat.Id).ConfigureAwait(false);
-        return new (audioState, enableIncompleteUI);
+        var isOwnVideoStreaming = await ChatVideoUI.GetRecordingChatId(cancellationToken).ConfigureAwait(false) == chat.Id;
+        var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chat.Id, cancellationToken).ConfigureAwait(false);
+        return new(
+            audioState,
+            enableIncompleteUI,
+            isOwnVideoStreaming,
+            isAnyoneVideoStreaming,
+            isVideoFeatureEnabled);
     }
 
-    public sealed record Model(ChatAudioState? State, bool EnableIncompleteUI);
+    // Nested classes
+
+    public sealed record Model(ChatAudioState? AudioState, bool EnableIncompleteUI, bool IsOwnVideoStreaming, bool IsAnyoneVideoStreaming, bool IsVideoFeatureEnabled);
 }

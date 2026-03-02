@@ -10,6 +10,7 @@ using ActualChat.UI.Blazor.App.Services;
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
 [Collection(nameof(TranslationUICollection))]
+[Trait("Category", "Nightly")]
 public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<TranslationAppHostFixture>(fixture, @out)
 {
@@ -22,7 +23,6 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     private TranscriptUI TranscriptUI => Hub.TranscriptUI;
     private LanguageUI LanguageUI => Hub.LanguageUI;
     private ChatUI ChatUI => Hub.ChatUI;
-    private string ConsumerId { get; } = UniqueNames.Name(nameof(TranslationUITest));
 
     protected override async Task InitializeAsync()
     {
@@ -277,7 +277,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         var cancellationToken = cts.Token;
         var chatId = await CreateChat(cancellationToken);
         await TranslationUI.SetTargetLanguage(chatId, Languages.German, cancellationToken);
-        var entries = await CreateEntries(chatId, Enumerable.Range(0, ThrottledTranslations.ParallelismDegree + 10).Select(i => $"Hello {i}"));
+        var entries = await CreateEntries(chatId, Enumerable.Range(0, ThrottledTranslations.ConcurrencyLevel + 10).Select(i => $"Hello {i}"));
 
         // act
         var translations = await GetTranslations(entries, cancellationToken);
@@ -292,7 +292,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
             translations.Reverse();
             var running = translations.Select((x, i) => new { Translation = x, Index = i })
                 .Where(x => x.Translation is null)
-                .Take(ThrottledTranslations.ParallelismDegree)
+                .Take(ThrottledTranslations.ConcurrencyLevel)
                 .ToList();
 
             // assert
@@ -301,14 +301,14 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
                 break; // all translations completed
             }
 
-            if (running.Count >= ThrottledTranslations.ParallelismDegree) {
+            if (running.Count >= ThrottledTranslations.ConcurrencyLevel) {
                 var firstWaitingIndex = running[^1].Index + 1;
                 for (var i = firstWaitingIndex; i < translations.Count; i++)
                     translations[i]
                         .Should()
                         .BeNull(
                             "only {0} parallel simultaneous translations allowed, current running are at indices [{1}]",
-                            ThrottledTranslations.ParallelismDegree,
+                            ThrottledTranslations.ConcurrencyLevel,
                             string.Join(',', running.Select(x => x.Index)));
             }
             await Task.Delay(TimeSpan.FromSeconds(0.1), cancellationToken);
@@ -323,7 +323,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         var cancellationToken = cts.Token;
         var chatId = await CreateChat(cancellationToken);
         await TranslationUI.SetTargetLanguage(chatId, Languages.German, cancellationToken);
-        var entries = await CreateVisibleEntries(chatId, Enumerable.Range(0, ThrottledTranslations.ParallelismDegree + 10).Select(i => $"Hello {i}"));
+        var entries = await CreateVisibleEntries(chatId, Enumerable.Range(0, ThrottledTranslations.ConcurrencyLevel + 10).Select(i => $"Hello {i}"));
 
         // act
         var translations = await GetTranslations(entries, cancellationToken);
@@ -331,6 +331,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
 
         // assert
         translations.Should().AllSatisfy(x => x.Should().BeNull());
+        queued.Should().AllSatisfy(x => x.Id.SourceId.ChatId.Should().Be(chatId));
 
         // act
         ClearVisibleItems(chatId);
@@ -340,7 +341,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
                 queued.Should().AllSatisfy(x => ThrottledTranslations.GetWorkItem(x.Id).Should().BeNull());
                 queued.Should().AllSatisfy(x => x.Task.IsCompleted.Should().BeTrue());
             },
-            TimeSpan.FromSeconds(10));
+            TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 20 : 10));
         await TestExt.When(() => {
             ThrottledTranslations.ListQueued().Should().BeEmpty();
             ThrottledTranslations.ListRunning().Should().BeEmpty();
@@ -403,7 +404,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
 
     private Task<Translation> AssertTranslation(ChatEntry entry, string expected, double similarity = 0.7)
         => ComputedTest.When(async ct => {
-            var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), ConsumerId, ct).Require();
+            var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), ct).Require();
             if (expected.IsNullOrEmpty())
                 translation.Content.Should().Be(expected);
             else
@@ -416,7 +417,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     {
         var translations = new List<Translation?>();
         foreach (var entry in entries) {
-            var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), ConsumerId, cancellationToken);
+            var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), cancellationToken);
             translations.Add(translation);
         }
         return translations;

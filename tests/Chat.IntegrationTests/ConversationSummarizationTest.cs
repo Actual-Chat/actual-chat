@@ -28,8 +28,9 @@ public class ConversationSummarizationTest(ChatCollection.AppHostFixture fixture
         // Post messages
         var messages = new[] { "Hello everyone!", "How is the project going?", "Let's discuss the roadmap." };
         var entries = new List<ChatEntry>();
-        foreach (var msg in messages) {
-            var entry = await commander.Call(new Chats_UpsertTextEntry(session, chatId, null, msg));
+        foreach (var message in messages) {
+            var cmd = new Chats_UpsertTextEntry(session, chatId, null) { Text = message };
+            var entry = await commander.Call(cmd);
             entries.Add(entry);
         }
 

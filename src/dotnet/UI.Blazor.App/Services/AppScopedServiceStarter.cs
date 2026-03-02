@@ -1,10 +1,9 @@
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
-using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class AppScopedServiceStarter
+public sealed class AppScopedServiceStarter
 {
     private volatile string? _sessionHash;
 
@@ -39,7 +38,6 @@ public class AppScopedServiceStarter
             var baseUri = HostInfo.BaseUrl;
 
             // Creating core services - this should be done as early as possible
-            var recaptchaUI = Hub.Services.GetRequiredService<CaptchaUI>();
             var browserInfo = Hub.BrowserInfo;
             var browserInit = Hub.Services.GetRequiredService<BrowserInit>();
             _ = browserInit.Initialize(
@@ -48,8 +46,8 @@ public class AppScopedServiceStarter
                 ApiConstants.VersionString,
                 baseUri,
                 sessionHash,
-                browserInfo.BlazorRef);
-            _ = recaptchaUI.EnsureInitialized();
+                browserInfo.BlazorRef,
+                browserInfo.ClipboardHandlersRef);
             var rightPanelStoredState = Hub.Services.GetRequiredService<RightPanelStoredState>();
 
             // Start AccountUI & UIEventHub
@@ -107,9 +105,6 @@ public class AppScopedServiceStarter
         }
     }
 
-    protected virtual Task OnPrepareFirstRender()
-        => Task.CompletedTask;
-
     public async Task AfterFirstRender(CancellationToken cancellationToken)
     {
         // Starts in Blazor dispatcher
@@ -126,8 +121,10 @@ public class AppScopedServiceStarter
                 Hub.Services.GetRequiredService<SessionTokens>().Start();
             Hub.Services.GetRequiredService<AppPresenceReporter>().Start();
             Hub.Services.GetRequiredService<AppIconBadgeUpdater>().Start();
-            Hub.Services.GetRequiredService<AppActivity>().Start();
+            Hub.Services.GetRequiredService<BackgroundActivityUI>().Start();
+            _ = Hub.AudioFocusUI.WarmUp(); // Pre-initialize audio HAL for faster first recording
             _ = Hub.TuneUI; // Touch. Auto-starts on construction
+            _ = Hub.AudioWidget; // Touch. Auto-starts on construction
             Hub.Services.GetRequiredService<ThrottledTranslations>().Start();
             if (!HostInfo.IsProductionInstance)
                 Hub.Services.GetRequiredService<DebugUI>();
@@ -150,9 +147,6 @@ public class AppScopedServiceStarter
             throw;
         }
     }
-
-    protected virtual Task OnAfterFirstRender(CancellationToken cancellationToken)
-        => Task.CompletedTask;
 
     // Private methods
 

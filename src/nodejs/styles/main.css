@@ -5,7 +5,7 @@
 }
 
 html {
-    @apply overflow-hidden;
+    @apply overflow-hidden has-viewport-height;
     overscroll-behavior-x: none; /* Disables navigate back/forward w/ swipe, doesn't work on Safari */
     font-size: var(--font-size);
 }
@@ -24,7 +24,7 @@ body {
 
 /* iOS-specific styles */
 body.device-ios {
-    @apply ios-height;
+    @apply has-viewport-height;
 }
 
 body.device-ios :has(input:focus),
@@ -39,11 +39,11 @@ body.device-ios * {
 
 /* Android-specific styles */
 body.device-android {
-    @apply ios-height;
+    @apply has-viewport-height;
     overflow: hidden;
 }
 body.device-android #app {
-    @apply ios-height;
+    @apply has-viewport-height;
     overflow: hidden;
 }
 
@@ -65,6 +65,101 @@ body.no-select {
             overflow: hidden;
         }
     }
+}
+
+/* Safe area insets — CSS variables wrapping env() for debug overrides */
+:root {
+    --safe-area-top: env(safe-area-inset-top, 0px);
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-left: env(safe-area-inset-left, 0px);
+    --safe-area-right: env(safe-area-inset-right, 0px);
+}
+
+.safe-area-top {
+    height: var(--safe-area-top);
+    width: 100%;
+    flex-shrink: 0;
+    background-color: transparent;
+}
+.safe-area-bottom {
+    height: var(--safe-area-bottom);
+    width: 100%;
+    flex-shrink: 0;
+    background-color: transparent;
+}
+.safe-area-left {
+    width: var(--safe-area-left);
+    height: 100%;
+    flex-shrink: 0;
+    background-color: var(--background-04);
+}
+.safe-area-left::after {
+    content: '';
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: var(--safe-area-left);
+    z-index: 99999;
+    background-color: var(--background-04);
+    touch-action: none;
+}
+.safe-area-right {
+    width: var(--safe-area-right);
+    height: 100%;
+    flex-shrink: 0;
+    background-color: var(--background-04);
+}
+.safe-area-right::after {
+    content: '';
+    position: fixed;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: var(--safe-area-right);
+    z-index: 99999;
+    background-color: var(--background-04);
+    touch-action: none;
+}
+.safe-area-bottom-overlay {
+    @apply absolute bottom-0 left-0 right-0;
+    pointer-events: none;
+    background: linear-gradient(to bottom, transparent, var(--background-03));
+}
+.safe-area-bottom-overlay::before {
+    content: '';
+    @apply absolute inset-0;
+    pointer-events: none;
+    backdrop-filter: blur(8px);
+    -webkit-mask-image: linear-gradient(to bottom, transparent, black);
+    mask-image: linear-gradient(to bottom, transparent, black);
+}
+body.device-ios .safe-area-bottom-overlay::before {
+    backdrop-filter: none;
+}
+
+/* Uncomment to force safe areas before JS loads (skeleton testing, etc.) */
+/*
+body {
+    --safe-area-top: 34px;
+    --safe-area-bottom: 34px;
+    --safe-area-left: 34px;
+    --safe-area-right: 34px;
+}
+*/
+
+/* Debug: debugUI.showSafeAreas(true|false|null) */
+body.show-safe-areas {
+    --safe-area-top: 34px;
+    --safe-area-bottom: 34px;
+    --safe-area-left: 34px;
+    --safe-area-right: 34px;
+}
+body.hide-safe-areas {
+    --safe-area-top: 0px;
+    --safe-area-bottom: 0px;
+    --safe-area-left: 0px;
+    --safe-area-right: 0px;
 }
 
 /* Styled inputs */
@@ -134,7 +229,7 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
 .base-layout-body {
     @apply relative;
     @apply flex-1 flex-y flex-nowrap;
-    @apply w-full;
+    @apply min-w-0;
     @apply float-left;
 }
 .base-layout-body > .c-layout-content {
@@ -149,6 +244,8 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     @apply w-full;
     @apply bg-01;
     @apply border-b border-separator;
+    padding-top: var(--safe-area-top);
+    min-height: var(--safe-area-top);
 }
 .layout-header > .c-content {
     @apply ordinary-header gap-x-2;
@@ -189,7 +286,7 @@ body.narrow .layout-header > .c-content.selection-header {
 .layout-footer {
     @apply sticky bottom-0;
     @apply flex-none flex-y items-center z-10;
-    @apply w-full min-h-footer;
+    @apply w-full;
     @apply overflow-visible;
     @apply shadow-none;
     overflow-anchor: auto;
@@ -224,7 +321,7 @@ body.narrow .layout-header > .c-content.selection-header {
 }
 .list-view-layout .layout-header {
     @apply items-center;
-    @apply max-h-14;
+    max-height: calc(3.5rem + var(--safe-area-top));
 }
 .list-view-layout .layout-header:has(.header-activity-panel-wrapper):not(:has(.video-panel)),
 .list-view-layout:has(.chat-activity-panel.listening) .layout-header {
@@ -248,17 +345,17 @@ body.narrow .list-view-layout:has(.chat-activity-panel.listening) .layout-header
 }
 .list-view-layout .layout-header:has(.header-activity-panel-wrapper),
 .list-view-layout .layout-header.expanded:has(.header-activity-panel-wrapper) {
-    max-height: 7.5rem;
+    max-height: calc(7.5rem + var(--safe-area-top));
 }
 .list-view-layout .layout-header:has(.header-activity-panel-wrapper):has(.video-panel),
 .list-view-layout .layout-header.expanded:has(.header-activity-panel-wrapper):has(.video-panel) {
-    max-height: 19.5rem;
+    max-height: calc(19.5rem + var(--safe-area-top));
 }
 .list-view-layout .layout-header.collapsed:has(.header-activity-panel-wrapper) {
-    max-height: 3.5rem;
+    max-height: calc(3.5rem + var(--safe-area-top));
 }
 .list-view-layout .layout-header.collapsed:has(.header-activity-panel-wrapper):has(.video-panel) {
-    max-height: 16rem;
+    max-height: calc(16rem + var(--safe-area-top));
 }
 .list-view-layout .layout-header:has(.video-panel) {
     max-height: 100%;
@@ -346,7 +443,8 @@ body.narrow .list-view-layout:has(.chat-activity-panel.listening) .layout-subfoo
 }
 
 .default-layout {
-    @apply w-full;
+    @apply flex-y;
+    @apply h-full w-full;
     @apply overflow-hidden;
 }
 .default-layout .layout-header {
@@ -379,6 +477,17 @@ body.narrow .list-view-layout:has(.chat-activity-panel.listening) .layout-subfoo
     @apply inset-x-0 md:inset-x-auto md:right-0;
     @apply h-auto;
     @apply overflow-y-auto;
+}
+body.narrow .error-container {
+    left: var(--safe-area-left);
+    right: var(--safe-area-right);
+    top: calc(3rem + var(--safe-area-top));
+    max-height: calc(100vh - 3rem - var(--safe-area-top) - var(--safe-area-bottom));
+}
+body.wide .error-container {
+    right: var(--safe-area-right);
+    top: calc(3rem + var(--safe-area-top));
+    max-height: calc(100vh - 3rem - var(--safe-area-top) - var(--safe-area-bottom));
 }
 .error-container > .c-content {
     @apply relative;
@@ -453,14 +562,19 @@ body.narrow .list-view-layout:has(.chat-activity-panel.listening) .layout-subfoo
 }
 .page-with-header-and-footer .layout-body-wrapper {
     @apply flex-1 flex-x justify-center;
-    @apply h-full;
+    @apply h-0 min-h-0; /* grows to max h */
     @apply overflow-hidden;
 }
-
 .page-with-header-and-footer .layout-body-wrapper > .c-container {
     @apply relative flex-1 -flex-y;
     @apply h-full;
     @apply overflow-hidden;
+}
+.page-with-header-and-footer .layout-body-wrapper > .c-container > .layout-body {
+    @apply h-0 min-h-0; /* grows to max h */
+}
+.page-with-header-and-footer .layout-body-wrapper > .c-container:not(:has(.has-safe-area-bottom)) {
+    padding-bottom: var(--safe-area-bottom);
 }
 
 .page-with-header-and-footer:has(.chat-panel-skeleton) .layout-footer,

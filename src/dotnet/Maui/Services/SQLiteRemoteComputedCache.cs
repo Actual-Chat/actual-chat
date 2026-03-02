@@ -11,6 +11,7 @@ public sealed class SQLiteRemoteComputedCache : AppRemoteComputedCache
     public new record Options : AppRemoteComputedCache.Options
     {
         public FilePath DbPath { get; init; }
+        public byte[]? Key { get; init; }
 
         public Options()
             => ReaderWorkerPolicy = new BatchProcessorWorkerPolicy() {
@@ -26,7 +27,7 @@ public sealed class SQLiteRemoteComputedCache : AppRemoteComputedCache
         : base(settings, services)
     {
         Settings = settings;
-        Backend = new SQLiteBatchingKvasBackend(settings.DbPath, settings.Version, services);
+        Backend = new SQLiteBatchingKvasBackend(settings.DbPath, settings.Version, services, settings.Key);
         _ = Reader.Start();
     }
 }

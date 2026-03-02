@@ -17,7 +17,7 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         var (chatId, _) = await tester.CreateChat(true);
 
-        var cmd = new Chats_UpsertTextEntry(session, chatId, null, "Hello!");
+        var cmd = new Chats_UpsertTextEntry(session, chatId, null) { Text = "Hello!" };
         var chatEntry = await commander.Call(cmd);
 
         chatEntry.ChatId.Should().Be(chatId);
@@ -35,10 +35,10 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         var (chatId, _) = await tester.CreateChat(true);
 
-        var cmd = new Chats_UpsertTextEntry(session, chatId, null, "Hello!");
+        var cmd = new Chats_UpsertTextEntry(session, chatId, null) { Text = "Hello!" };
         var chatEntry = await commander.Call(cmd);
 
-        var cmd2 = new Chats_UpsertTextEntry(session, chatId, chatEntry.LocalId, "EditedMessage");
+        var cmd2 = new Chats_UpsertTextEntry(session, chatId, chatEntry.LocalId) { Text = "EditedMessage" };
         var editedChatEntry = await commander.Call(cmd2);
 
         editedChatEntry.ChatId.Should().Be(chatId);
@@ -57,10 +57,10 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         var (chatId, _) = await tester.CreateChat(true);
 
-        var cmd = new Chats_UpsertTextEntry(session, chatId, null, "Hello!");
+        var cmd = new Chats_UpsertTextEntry(session, chatId, null) { Text = "Hello!" };
         var chatEntry = await commander.Call(cmd);
 
-        var cmd2 = new Chats_UpsertTextEntry(session, chatId, null, "Reply") {
+        var cmd2 = new Chats_UpsertTextEntry(session, chatId, null) { Text = "Reply",
             RepliedEntryLid = chatEntry.LocalId,
         };
         var replyChatEntry = await commander.Call(cmd2);
@@ -81,15 +81,15 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         var (chatId, _) = await tester.CreateChat(true);
 
-        var cmd = new Chats_UpsertTextEntry(session, chatId, null, "Hello!");
+        var cmd = new Chats_UpsertTextEntry(session, chatId, null) { Text = "Hello!" };
         var chatEntry = await commander.Call(cmd);
 
-        var cmd2 = new Chats_UpsertTextEntry(session, chatId, null, "Reply") {
+        var cmd2 = new Chats_UpsertTextEntry(session, chatId, null) { Text = "Reply",
             RepliedEntryLid = chatEntry.LocalId,
         };
         var replyChatEntry = await commander.Call(cmd2);
 
-        var cmd3 = new Chats_UpsertTextEntry(session, chatId, replyChatEntry.LocalId, "EditedReply");
+        var cmd3 = new Chats_UpsertTextEntry(session, chatId, replyChatEntry.LocalId) { Text = "EditedReply" };
         var editedReplyChatEntry = await commander.Call(cmd3);
 
         editedReplyChatEntry.ChatId.Should().Be(chatId);
@@ -121,7 +121,7 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
             new TextEntryAttachment { MediaId = media2 },
             new TextEntryAttachment { MediaId = media3 },
         };
-        var createCmd = new Chats_UpsertTextEntry(session, chatId, null, "Message with 3 attachments") {
+        var createCmd = new Chats_UpsertTextEntry(session, chatId, null) { Text = "Message with 3 attachments",
             EntryAttachments = attachments,
         };
         var chatEntry = await commander.Call(createCmd);
@@ -141,7 +141,7 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
             new TextEntryAttachment { MediaId = media1 },
             new TextEntryAttachment { MediaId = media3 },
         };
-        var updateCmd = new Chats_UpsertTextEntry(session, chatId, chatEntry.LocalId, "Message with 2 attachments") {
+        var updateCmd = new Chats_UpsertTextEntry(session, chatId, chatEntry.LocalId) { Text = "Message with 2 attachments",
             EntryAttachments = updatedAttachments,
         };
         var updatedEntry = await commander.Call(updateCmd);

@@ -30,10 +30,13 @@ public class AndroidThemeHandler : MauiThemeHandler
         if (window == null)
             return false;
 
-        var androidColor = Android.Graphics.Color.ParseColor(bottomBarColor);
-        window.SetNavigationBarColor(androidColor);
+        window.SetNavigationBarColor(Android.Graphics.Color.Transparent);
+#pragma warning disable CA1422 // Validate platform compatibility
+        window.NavigationBarContrastEnforced = false;
+#pragma warning restore CA1422
 
         // Set navigation bar icon appearance (light/dark)
+        var androidColor = Android.Graphics.Color.ParseColor(bottomBarColor);
         var isNavBarDark = IsDark(androidColor);
         var wic = new WindowInsetsControllerCompat(window, window.DecorView);
         wic.AppearanceLightNavigationBars = !isNavBarDark;

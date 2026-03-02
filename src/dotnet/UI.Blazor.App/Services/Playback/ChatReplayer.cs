@@ -9,7 +9,6 @@ public sealed class ChatReplayer : ChatPlayer
     public override void Pause()
     {
         _ = Playback.Pause(CancellationToken.None);
-        Hub.AudioWidget.RecomputeState();
         if (ChatAudioUI!.ReplayState.Value is { } rs && rs.ChatId == ChatId)
             ChatAudioUI!.TryReleaseAudioFocus();
     }
@@ -26,7 +25,6 @@ public sealed class ChatReplayer : ChatPlayer
             return;
 
         _ = Playback.Resume(default);
-        Hub.AudioWidget.RecomputeState();
     }
 
     protected override async Task Play(

@@ -63,6 +63,7 @@
     <!-- Global usings -->
     <Using Include="ActualChat" />
     <Using Include="ActualChat.Collections" />
+    <Using Include="ActualChat.Compliance" />
     <Using Include="ActualChat.DependencyInjection" />
     <Using Include="ActualChat.Mathematics" />
     <Using Include="ActualChat.OrdinalStringExt" Static="true" />

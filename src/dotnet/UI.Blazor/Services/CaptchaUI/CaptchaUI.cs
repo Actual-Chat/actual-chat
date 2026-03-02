@@ -2,35 +2,20 @@ using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class CaptchaUI : ICaptchaUIBackend
+public class CaptchaUI(UIHub hub) : UIServiceBase<UIHub>(hub)
 {
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.{nameof(CaptchaUI)}.init";
     private static readonly string JSGetTokenMethod = $"{BlazorUICoreModule.ImportName}.{nameof(CaptchaUI)}.getToken";
-    private readonly DotNetObjectReference<ICaptchaUIBackend> _blazorRef;
-    private UIHub Hub { get; }
 
-    public bool IsConfigured => !string.IsNullOrWhiteSpace(SiteKey);
     public string SiteKey { get; private set; } = "";
+    public bool IsAvailable => !SiteKey.IsNullOrEmpty();
+    public Task WhenReady => field ??= Initialize();
 
-    public CaptchaUI(UIHub hub)
-    {
-        Hub = hub;
-        _blazorRef = DotNetObjectReference.Create<ICaptchaUIBackend>(this);
-    }
+    public Task<string> GetActionToken(string action, CancellationToken cancellationToken)
+        => Hub.JS
+            .InvokeAsync<string>(JSGetTokenMethod, CancellationToken.None, SiteKey, action)
+            .AsTask().WaitAsync(cancellationToken);
 
-    public void Initialize(string siteKey)
-        => SiteKey = siteKey;
-
-    public ValueTask EnsureInitialized()
-        => IsConfigured ? ValueTask.CompletedTask : Initialize();
-
-    public ValueTask<string> GetActionToken(string action, CancellationToken cancellationToken)
-        => Hub.JS.InvokeAsync<string>(JSGetTokenMethod, CancellationToken.None, SiteKey, action);
-
-    [JSInvokable]
-    public void OnInitialized(string siteKey)
-        => SiteKey = siteKey;
-
-    private ValueTask Initialize()
-        => Hub.JS.InvokeVoidAsync(JSInitMethod, _blazorRef);
+    private async Task<string> Initialize()
+        => SiteKey = await Hub.JS.InvokeAsync<string>(JSInitMethod).ConfigureAwait(true);
 }

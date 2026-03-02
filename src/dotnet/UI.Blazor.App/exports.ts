@@ -27,6 +27,7 @@ export * from './Components/ClientUpgradeCover/upgrade-app-cat-svg.lit';
 export * from './Components/DateVisor/date-visor';
 export * from './Components/FontSizeSlider/font-size-slider';
 export * from './Components/InaccessiblePlace/not-member-yet-svg.lit';
+export * from './Components/JoinVideoCallModal/join-video-call-modal';
 export * from './Components/MarkupEditor/markup-editor';
 export * from './Components/MarkupParts/playable-text-markup-view';
 export * from './Components/MarkupParts/CodeBlockMarkupView/code-block-markup-view';
@@ -49,12 +50,15 @@ export * from './notification-ui';
 export * from './recaptcha-handler';
 
 export * from './Components/AudioPlayer/audio-player';
+export { AudioVideoSync } from 'audio-video-sync';
 export * from './Components/AudioRecorder/audio-recorder';
 export * from './Components/AudioRecorder/web-microphone-permission-handler';
 export * from './Components/AudioRecorder/opus-media-recorder';
 export * from './Components/AudioRecorder/opus-media-recorder-contracts';
 export * from './Components/AudioRecorder/recorder-state-hub';
 export * from './Components/VideoPanel/video-panel';
+export * from './Components/VideoPanel/video-recorder';
+export * from './Components/VideoPanel/video-player';
 export * from './Pages/AudioRecorderTestPage/audio-recorder-test-page';
 export * from './Pages/AudioPlayerTestPage/audio-player-test-page';
 export * from './Services/audio-context-source';
@@ -65,3 +69,6 @@ export * from './Services/observe-directive-lit';
 export * from './Services/FileProviders/file-handle-storage';
 export * from './Services/FileProviders/file-handle-permissions';
 export * from './Services/FileProviders/web-file-providers';
+export * from './Services/Video/webgpu-manager'
+export * from './Services/Video/codec-support'
+

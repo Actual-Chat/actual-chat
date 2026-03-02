@@ -1,5 +1,3 @@
-using System.Text.Json.Serialization;
-
 namespace ActualChat.Kubernetes.Api;
 
 public class Labels : Dictionary<string, string>

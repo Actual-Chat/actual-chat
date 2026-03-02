@@ -108,7 +108,7 @@ public sealed partial class MauiWebView
             }
 
             ScopedServices = null;
-            AppServicesAccessor.DiscardBlazorAppServices(scopedServices, "MauiWebView.ResetScopedServices");
+            DiscardBlazorAppServices(scopedServices, "MauiWebView.ResetScopedServices");
         }
     }
 
@@ -127,7 +127,7 @@ public sealed partial class MauiWebView
     public partial void HardNavigateTo(string url);
 
     public Task EvaluateJS(string code)
-        => MainThread.InvokeOnMainThreadAsync(() => EvaluateJSInternal(code));
+        => DispatchToMainThread(() => EvaluateJSInternal(code));
 
     private partial Task EvaluateJSInternal(string code);
 

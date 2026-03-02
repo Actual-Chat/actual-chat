@@ -74,6 +74,9 @@ public class Debouncer<T>(MomentClock clock, TimeSpan interval, Func<T, Task> ac
         // We must do all of this before triggering action.Invoke
         T item;
         lock (_lock) {
+            if (cancellationToken.IsCancellationRequested)
+                return;
+
             item = _item;
             _item = default!;
             _cts.DisposeSilently();

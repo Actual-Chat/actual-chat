@@ -42,7 +42,7 @@ public static partial class MauiProgram
 
 #if !HOTRESTART
             CrossFirebase.Initialize();
-            var isDataCollectionEnabled = Preferences.Default.Get(Constants.Preferences.EnableDataCollectionKey, false);
+            var isDataCollectionEnabled = MauiPreferences.IsDataCollectionEnabled == true;
             CrossFirebaseAnalytics.Current.IsAnalyticsCollectionEnabled = isDataCollectionEnabled;
             FirebaseCloudMessagingImplementation.Initialize();
 #endif

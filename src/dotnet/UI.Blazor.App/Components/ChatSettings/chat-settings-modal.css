@@ -1,6 +1,13 @@
 ﻿.edit-settings-modal {
     @apply text-03;
 }
+body.narrow .edit-settings-modal.narrow-view__modal__position-stretch {
+    padding-top: var(--safe-area-top);
+    padding-bottom: calc(1rem + var(--safe-area-bottom));
+}
+body.narrow .edit-settings-modal.narrow-view__modal__position-stretch:has(.chat-settings-header, .own-avatar-edit-header) {
+    padding-top: 0;
+}
 
 .edit-settings-modal.modal-frame {
     @apply px-0;
@@ -14,6 +21,7 @@
     @apply absolute inset-0 z-50;
     @apply border-none;
     @apply bg-transparent;
+    top: var(--safe-area-top);
 }
 .edit-settings-modal:has(.chat-settings-header, .own-avatar-edit-header) .modal-header-interactive .btn-h {
     @apply text-viewer-header-text;
@@ -197,16 +205,18 @@ body.hoverable .chat-settings-container .tile-item:hover {
 .chat-settings-header {
     @apply relative;
     @apply flex-y items-center gap-x-4;
-    @apply min-h-32;
     @apply p-0;
+    min-height: calc(8rem + var(--safe-area-top));
 }
 .own-avatar-edit-header > .c-top,
 .chat-settings-header > .c-top {
     @apply relative;
     @apply flex-none;
-    @apply h-26 w-full;
+    @apply w-full;
     @apply rounded-b-xl;
     @apply overflow-hidden;
+    height: calc(6.5rem + var(--safe-area-top));
+    padding-top: var(--safe-area-top);
 }
 body.narrow .own-avatar-edit-header > .c-top::after,
 body.narrow .chat-settings-header > .c-top::after {
@@ -216,7 +226,8 @@ body.narrow .chat-settings-header > .c-top::after {
 }
 .own-avatar-edit-header > .c-top .right-panel-close-btn,
 .chat-settings-header > .c-top .right-panel-close-btn {
-    @apply absolute top-4 right-4;
+    @apply absolute right-4;
+    top: calc(1rem + var(--safe-area-top));
 }
 body.narrow .own-avatar-edit-header > .c-top .right-panel-close-btn,
 body.narrow .chat-settings-header > .c-top .right-panel-close-btn {
@@ -224,10 +235,11 @@ body.narrow .chat-settings-header > .c-top .right-panel-close-btn {
 }
 .own-avatar-edit-header > .c-center,
 .chat-settings-header > .c-center {
-    @apply absolute top-18 z-20;
+    @apply absolute z-20;
     @apply flex-x;
     @apply h-16 w-full;
     @apply px-4;
+    top: calc(4.5rem + var(--safe-area-top));
 }
 .own-avatar-edit-header > .c-center > .c-buttons,
 .chat-settings-header > .c-center > .c-buttons {

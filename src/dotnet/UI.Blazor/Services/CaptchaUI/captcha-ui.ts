@@ -2,22 +2,22 @@
 import { PromiseSource } from 'promises';
 
 export class CaptchaUI {
-    public static init(recaptchaUIBackendRef: DotNet.DotNetObject): void {
+    public static init(): string {
         const recaptchaScript = document.getElementById('recaptcha-head-script') as HTMLScriptElement;
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!recaptchaScript)
-            return;
+            return '';
 
         if (!recaptchaScript.src)
-            return;
+            return '';
 
         const match = /.+js\?render=(?<siteKey>[^&]+)/.exec(recaptchaScript.src);
         // @ts-expect-error TODO(AK): fix ignored error
         if (!match.groups?.siteKey)
-            return;
+            return '';
+
         // @ts-expect-error TODO(AK): fix ignored error
-        const siteKey = match.groups.siteKey;
-        void recaptchaUIBackendRef.invokeMethodAsync('OnInitialized', siteKey);
+        return match.groups.siteKey;
     }
 
     public static async getToken(siteKey: string, action: string) : Promise<string> {

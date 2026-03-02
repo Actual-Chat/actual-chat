@@ -76,7 +76,7 @@
             @if (m.CanStartPeerChat) {
                 var authorName = author?.Avatar.Name ?? "";
                 if (!m.OnlyAnonymousChatAllowed) {
-                    if (_anonymousChat) {
+                    if (Features_EnableAnonymousChat.IsEnabled && _anonymousChat) {
                         <Button Class="btn-modal btn-primary anonymous-chat-btn" Click="OnStartAnonymousPeerChat">
                             <i class="icon-question-mark-bubble text-xl"></i>
                             <span class="c-title">
@@ -96,7 +96,7 @@
                         </Button>
                     }
                 } else {
-                    if (m.EnableIncompleteUI) {
+                    if (Features_EnableAnonymousChat.IsEnabled && m.EnableIncompleteUI) {
                         <Button Class="btn-modal btn-primary anonymous-chat-btn" Click="OnStartAnonymousPeerChat">
                             <i class="icon-question-mark-bubble text-xl"></i>
                             <span class="c-title">
@@ -107,7 +107,7 @@
                     }
                 }
 
-                @if (m.EnableIncompleteUI) {
+                @if (Features_EnableAnonymousChat.IsEnabled && m.EnableIncompleteUI) {
                     <div class="tile-wrapper">
                         <div class="c-incut @(toggleValue ? "show" : "")">
                             <div class="c-info">

@@ -40,10 +40,10 @@ public partial class MauiWebView
     private void OnLoading(object? sender, UrlLoadingEventArgs eventArgs)
     {
         if (IsDead && Current == this) {
-            MainThreadExt.InvokeLater(() => {
+            BeginDispatchToMainThread(() => {
                 if (Current == this)
                     MainPage.Current.RecreateWebView();
-            });
+            }, allowInline: false);
             eventArgs.UrlLoadingStrategy = UrlLoadingStrategy.CancelLoad;
             return;
         }
@@ -90,7 +90,9 @@ public partial class MauiWebView
         if (IsAllowedHostUri(uri)) {
             // We never land here, coz IsAllowedHostUri(...) always returns false now
             if (uri.PathAndQuery.OrdinalIgnoreCaseStartsWith("/fusion/close")) {
-                MainThreadExt.InvokeLater(() => HardNavigateTo(LastLocalUri.ToString()));
+                BeginDispatchToMainThread(
+                    () => HardNavigateTo(LastLocalUri.ToString()),
+                    allowInline: false);
                 eventArgs.UrlLoadingStrategy = UrlLoadingStrategy.CancelLoad;
                 return false;
             }
@@ -100,7 +102,9 @@ public partial class MauiWebView
 
         // It's a host URL, so we have to re-route it to the local one
         var localUri = HostToAbsoluteLocalUri(uri);
-        MainThreadExt.InvokeLater(() => _ = NavigateTo(localUri, !wasOnLocalUri));
+        BeginDispatchToMainThread(
+            () => _ = NavigateTo(localUri, !wasOnLocalUri),
+            allowInline: false);
         eventArgs.UrlLoadingStrategy = UrlLoadingStrategy.CancelLoad;
         return false;
     }

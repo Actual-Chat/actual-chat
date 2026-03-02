@@ -4,7 +4,6 @@
 .pic > .c-content {
     @apply w-full h-full;
 }
-
 .pic-generated {
     @apply rounded-full;
     @apply cursor-default pointer-events-none select-none;
@@ -13,17 +12,18 @@
 .pic-rounded {
     @apply overflow-hidden;
     @apply rounded-full;
+    isolation: isolate; /* Rendering perf. */
 }
 .pic-blurred {
     @apply opacity-70;
     @apply absolute right-0 top-0 left-0 bottom-0;
     @apply overflow-hidden;
+    filter: blur(40px);
 }
-.pic-blurred::after {
-    content: '';
-    @apply absolute inset-0;
-    -webkit-backdrop-filter: blur(40px);
-    backdrop-filter: blur(40px);
+body.device-ios .pic-blurred {
+    /* Addresses blur performance issue on WebKit */
+    will-change: transform;
+    transform: translateZ(0);
 }
 .pic-blurred .pic-image {
     @apply rounded-none;

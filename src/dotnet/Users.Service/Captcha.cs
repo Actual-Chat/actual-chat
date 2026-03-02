@@ -6,15 +6,20 @@ using Grpc.Core;
 
 namespace ActualChat.Users;
 
-public class Captcha(UsersSettings settings, CoreServerSettings serverSettings, ILogger<Captcha> log) : ICaptcha
+public class Captcha(UsersSettings settings, CoreServerSettings serverSettings, UrlMapper urlMapper, ILogger<Captcha> log) : ICaptcha
 {
     private readonly RecaptchaEnterpriseServiceClient _client = RecaptchaEnterpriseServiceClient.Create();
     private readonly ProjectName _projectName = new (serverSettings.GoogleProjectId);
     private UsersSettings Settings { get; } = settings;
+    private UrlMapper UrlMapper { get; } = urlMapper;
     private ILogger<Captcha> Log { get; } = log;
 
     public virtual async Task<RecaptchaValidationResult> Validate(string token, string action, CancellationToken cancellationToken)
     {
+        // Skip CAPTCHA validation on local development (localhost, local.voxt.ai)
+        if (IsLocalDevBypassAllowed())
+            return new RecaptchaValidationResult(true, null, 1.0f);
+
         if (Settings.GoogleRecaptchaSiteKey.IsNullOrEmpty())
             return new RecaptchaValidationResult(false, "reCAPTCHA is not configured.");
 
@@ -44,5 +49,18 @@ public class Captcha(UsersSettings settings, CoreServerSettings serverSettings, 
             Log.LogWarning(e, "Error validating reCAPTCHA token");
             return new RecaptchaValidationResult(false, "reCAPTCHA validation failed.");
         }
+    }
+
+    private bool IsLocalDevBypassAllowed()
+    {
+        // Check if bypass is explicitly enabled via environment variable
+        var bypassEnvVar = Environment.GetEnvironmentVariable("ActualChat_CaptchaBypassEnabled");
+        if (!bool.TryParse(bypassEnvVar, out var bypassEnabled) || !bypassEnabled)
+            return false;
+
+        var host = UrlMapper.BaseUri.Host;
+        // Bypass CAPTCHA on local development hosts (not on prod or dev domains)
+        return !Constants.Hosts.AllProd.Contains(host)
+            && !Constants.Hosts.AllDev.Contains(host);
     }
 }

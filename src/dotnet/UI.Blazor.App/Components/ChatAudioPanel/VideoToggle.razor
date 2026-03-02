@@ -1,0 +1,77 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, VideoToggle.Model>
+@{
+    var m = State.Value;
+    var isVideoOn = m.IsLocalVideoRecording;
+    var stateCls = isVideoOn ? "video-on" : "video-off";
+    var narrowCls = IsNarrow ? "narrow" : "";
+    var wrapperCls = $"{stateCls} {narrowCls}";
+    var tooltip = isVideoOn ? "Stop video" : "Start video";
+}
+
+<div class="@wrapperCls video-wrapper">
+    <ButtonRound
+        Click="@OnVideoClick"
+        Tooltip="@tooltip"
+        TooltipPosition="FloatingPosition.Top">
+        <i class="icon-video text-xl"></i>
+    </ButtonRound>
+</div>
+
+@code {
+    private IAuthors Authors => Hub.Authors;
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [Parameter] public bool IsNarrow { get; set; }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.NewLoading(Chat),
+            UpdateDelayer = FixedDelayer.NextTick,
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chat = Chat;
+        var chatId = chat.Id;
+
+        var streamingAuthorIds = await ChatVideoUI.GetVideoStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
+        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var recordingChatId = await ChatVideoUI.GetRecordingChatId(cancellationToken).ConfigureAwait(false);
+        var isLocalVideoRecording = recordingChatId == chatId;
+
+        var isOwnVideoStreaming = ownAuthor != null && streamingAuthorIds.Contains(ownAuthor.Id);
+        var areOthersVideoStreaming = streamingAuthorIds.Count > (isOwnVideoStreaming ? 1 : 0);
+
+        return new(chat, isOwnVideoStreaming, areOthersVideoStreaming, isLocalVideoRecording);
+    }
+
+    private void OnVideoClick() {
+        var m = State.Value;
+        if (m.IsLocalVideoRecording) {
+            // Stop own video recording (keep panel open for remote streams)
+            ChatVideoUI.SetRecordingChatId(null);
+        } else if (ChatVideoUI.HasJoinedVideoCall(Chat.Id)) {
+            // Already joined this call — resume without modal
+            ChatVideoUI.ResumeRecording(Chat.Id);
+        } else {
+            // Open join/start modal
+            var mode = m.AreOthersVideoStreaming
+                ? JoinVideoCallModal.VideoCallMode.Join
+                : JoinVideoCallModal.VideoCallMode.Start;
+            _ = ModalUI.Show(new JoinVideoCallModal.Model(Chat, mode));
+        }
+    }
+
+    // Nested types
+
+    public sealed record Model(
+        Chat Chat,
+        bool IsOwnVideoStreaming,
+        bool AreOthersVideoStreaming,
+        bool IsLocalVideoRecording
+    ) {
+        public static Model NewLoading(Chat chat) => new(chat, false, false, false);
+    }
+}

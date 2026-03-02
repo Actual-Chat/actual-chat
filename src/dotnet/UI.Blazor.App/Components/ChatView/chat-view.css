@@ -181,6 +181,11 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
 .chat-message-markup.streaming {
     transition: height 0.25s linear;
 }
+/* Disable streaming height animation when user is scrolled up (not at sticky end) —
+   the message is off-screen so the transition only causes jitter */
+.virtual-list:not(.sticky-end) .chat-message-markup.streaming {
+    transition: none;
+}
 .chat-message-markup.empty {
     @apply hidden;
 }

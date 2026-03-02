@@ -156,7 +156,7 @@ public class MauiLivenessProbe : WorkerBase
         catch (Exception e) {
             var whenScopedServicesChanged = WhenBlazorAppServicesChanged(cancellationToken);
             var now = CpuTimestamp.Now;
-            await MainThread.InvokeOnMainThreadAsync(() => { }).ConfigureAwait(false);
+            await DispatchToMainThread(() => { }).ConfigureAwait(false);
             var isMainThreadBusy = now.Elapsed >= MainThreadBusyTimeout;
             var isDisconnected = e is ObjectDisposedException || safeJSRuntime is { IsDisconnected: true };
             if (isDisconnected)

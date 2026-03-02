@@ -268,7 +268,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{
 		.github\workflows\build-nats.yml = .github\workflows\build-nats.yml
 		.github\workflows\build-test-deploy-dev.yml = .github\workflows\build-test-deploy-dev.yml
 		.github\workflows\create-release-branch.yml = .github\workflows\create-release-branch.yml
+		.github\workflows\test-nightly.yml = .github\workflows\test-nightly.yml
 		.github\workflows\test-slow.yml = .github\workflows\test-slow.yml
+		.github\workflows\_run-tests.yml = .github\workflows\_run-tests.yml
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Contacts.IntegrationTests", "tests\Contacts.IntegrationTests\Contacts.IntegrationTests.csproj", "{5ECF11E4-C107-431F-9FC7-9FAE6B2B677E}"
@@ -387,6 +389,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "plans", "plans", "{A0CDF5EA
 		docs\plans\audio-context-source-refactor.md = docs\plans\audio-context-source-refactor.md
 		docs\plans\live-streams.md = docs\plans\live-streams.md
 		docs\plans\e2ee.md = docs\plans\e2ee.md
+		docs\plans\sanitizer.md = docs\plans\sanitizer.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "types", "types", "{CDA725E9-7CDB-46A4-9696-9A3BAB683662}"

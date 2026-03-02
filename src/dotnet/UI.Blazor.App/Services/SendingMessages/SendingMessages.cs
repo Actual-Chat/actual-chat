@@ -95,20 +95,20 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
     public async Task<Task<ChatEntry?>> Send(SendMessageRequest cmd, CancellationToken cancellationToken)
     {
         // return FakeSend();
-        DebugLog?.LogDebug("Post '{Text}'", cmd.Text);
+        DebugLog?.LogDebug("Post '{Text}'", cmd.Text.ToPrivate());
         var now = Clocks.SystemClock.Now;
         var resultSource = TaskCompletionSourceExt.New<ChatEntry?>();
         await _whenStoredRequestsProcessed.ConfigureAwait(false);
         var uuid = Ulid.NewUlid().ToString();
         var filesUpload = cmd.Uploads is not null ? _filesUploadRegistry.Get(cmd.Uploads) : null;
         var entry = CreateStoredSendRequest(uuid, now, cmd, filesUpload);
-        DebugLog?.LogDebug("About to store post request '{Text}'", cmd.Text);
+        DebugLog?.LogDebug("About to store post request '{Text}'", cmd.Text.ToPrivate());
         await _requestsRepo.Add(entry, cancellationToken).ConfigureAwait(false);
 
         var uploads = await CreateAttachmentUploads(entry, filesUpload?.Attachments).ConfigureAwait(false);
         var requestInternal = CreatePostMessageRequestInternal(entry, uploads, false);
         _ = BackgroundTask.Run(async () => {
-            DebugLog?.LogDebug("About to post internal '{Text}'", cmd.Text);
+            DebugLog?.LogDebug("About to post internal '{Text}'", cmd.Text.ToPrivate());
             await PostInternal(requestInternal, resultSource, cancellationToken).ConfigureAwait(false);
         }, cancellationToken);
         return resultSource.Task;
@@ -122,17 +122,21 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
 
     private static PostMessageRequestInternal CreatePostMessageRequestInternal(SendMessageRequestEntry entry,
         AttachmentUploads? uploads, bool checkResend)
-        => new (entry.Uuid,
-            entry.Now,
-            entry.ChatId,
-            entry.LocalId,
-            entry.Text,
-            entry.RepliedEntryLid,
-            uploads,
-            entry.ClientId,
-            entry.NewChatEntryLocalId,
-            !entry.AfterSendMessageHandlerKey.IsNullOrEmpty() ? new AfterSendMessageHandler(entry.AfterSendMessageHandlerKey, entry.AfterSendMessageHandlerArgs) : null,
-            checkResend);
+        => new () {
+            Uuid = entry.Uuid,
+            Now = entry.Now,
+            ChatId = entry.ChatId,
+            LocalId = entry.LocalId,
+            Text = entry.Text,
+            RepliedEntryLid = entry.RepliedEntryLid,
+            AttachmentUploads = uploads,
+            ClientId = entry.ClientId,
+            NewChatEntryLocalId = entry.NewChatEntryLocalId,
+            AfterSendMessageHandler = !entry.AfterSendMessageHandlerKey.IsNullOrEmpty()
+                ? new AfterSendMessageHandler(entry.AfterSendMessageHandlerKey, entry.AfterSendMessageHandlerArgs)
+                : null,
+            CheckResend = checkResend,
+        };
 
     private async Task<AttachmentUploads?> CreateAttachmentUploads(SendMessageRequestEntry entry, IReadOnlyList<Attachment>? sourceAttachments)
     {
@@ -294,8 +298,9 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         var discardSendRequest = false;
         TextEntryId? textEntryId = null;
         try {
-            DebugLog?.LogDebug("Sending message: LocalId={LocalId}, Content='{Content}', ClientId='{ClientId}', NewChatEntryLocalId={NewChatEntryLocalId}",
-                request.LocalId, request.Text, request.ClientId, request.NewChatEntryLocalId);
+            DebugLog?.LogDebug(
+                "Sending message: LocalId={LocalId}, Content='{Content}', ClientId='{ClientId}', NewChatEntryLocalId={NewChatEntryLocalId}",
+                request.LocalId, request.Text.ToPrivate(), request.ClientId, request.NewChatEntryLocalId);
             var cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             var cancellationToken1 = cancellationTokenSource.Token;
             var sendingMessage = CreateAndRegisterSendingMessage(request, () => {
@@ -341,8 +346,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         catch (Exception e) {
             Log.LogError(e,
                 "Failed to sent message. UUID={Uuid}, Text='{Text}'",
-                request.Uuid,
-                request.Text);
+                request.Uuid, request.Text.ToPrivate());
             resultSource.TrySetException(e);
         }
 
@@ -384,14 +388,16 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 .ConfigureAwait(false);
             var chatEntry = (ChatEntry)postResult!;
             result = new Result<ChatEntry>(chatEntry);
-            DebugLog?.LogDebug("Sent message: LocalId={LocalId}, Content='{Content}'",
-                chatEntry.LocalId,
-                chatEntry.Content);
+            DebugLog?.LogDebug(
+                "Sent message: LocalId={LocalId}, Content='{Content}'",
+                chatEntry.LocalId, chatEntry.Content.ToPrivate());
         }
         catch (Exception e) {
             // NOTE(DF): react on critical errors like have no longer have permissions to send a message to the chat.
             // Then we should discard this request and inform the user.
-            Log.LogError(e, "Failed to sent message. UUID={Uuid}, Text='{Text}'", request.Uuid, request.Text);
+            Log.LogError(e,
+                "Failed to sent message. UUID={Uuid}, Text='{Text}'",
+                request.Uuid, request.Text.ToPrivate());
             result = Result.NewError<ChatEntry>(e);
         }
 
@@ -457,7 +463,8 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 }).ToArray();
 
             // Finalize the message with attachments.
-            var cmd = new Chats_UpsertTextEntry(Session, chatEntry.ChatId, chatEntry.LocalId, chatEntry.Content) {
+            var cmd = new Chats_UpsertTextEntry(Session, chatEntry.ChatId, chatEntry.LocalId) {
+                Text = chatEntry.Content,
                 EntryAttachments = entryAttachments,
                 HasAttachmentUploads = false,
             };
@@ -489,29 +496,30 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
 
     private async Task RemoveChatEntry(TextEntryId chatEntryId, CancellationToken cancellationToken)
     {
-        var cmd1 = new Chats_RemoveTextEntry(Session, chatEntryId.ChatId, chatEntryId.LocalId);
-        await Commander.Run(cmd1, cancellationToken).ConfigureAwait(false);
+        var cmd = new Chats_RemoveTextEntry(Session, chatEntryId.ChatId, chatEntryId.LocalId);
+        await Commander.Run(cmd, cancellationToken).ConfigureAwait(false);
     }
 
     // Nested types
 
-    public record PostMessageRequestInternal(string Uuid,
-        Moment Now,
-        ChatId ChatId,
-        long? LocalId,
-        string Text,
-        Option<long?> RepliedEntryLid,
-        AttachmentUploads? AttachmentUploads,
-        string ClientId,
-        long? NewChatEntryLocalId,
-        AfterSendMessageHandler? AfterSendMessageHandler,
-        bool CheckResend
-    ) : IHasId<string>
+    public sealed record PostMessageRequestInternal : IHasId<string>, ISanitized
     {
+        public required string Uuid { get; init; }
+        public required Moment Now { get; init; }
+        public required ChatId ChatId { get; init; }
+        public long? LocalId { get; init; }
+        public string Text { get => Sanitizer.MaskPrivate(field); init; } = "";
+        public Option<long?> RepliedEntryLid { get; init; }
+        public AttachmentUploads? AttachmentUploads { get; init; }
+        public string ClientId { get; init; } = "";
+        public long? NewChatEntryLocalId { get; init; }
+        public AfterSendMessageHandler? AfterSendMessageHandler { get; init; }
+        public bool CheckResend { get; init; }
+
         string IHasId<string>.Id => Uuid;
     }
 
-    private record AttachmentInfo(
+    private sealed record AttachmentInfo(
         Attachment Attachment,
         bool NoFileAccess,
         Task<bool> WhenFilePermissionGranted,

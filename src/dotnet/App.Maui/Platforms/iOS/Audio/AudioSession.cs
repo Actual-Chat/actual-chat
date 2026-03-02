@@ -9,7 +9,7 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
     private ILogger Log => field ??= hub.LogFor(GetType());
 
     public ValueTask DisposeAsync()
-        => BackgroundTask.Run(() => MainThread.InvokeOnMainThreadAsync(() => {
+        => BackgroundTask.Run(() => DispatchToMainThread(() => {
                     var session = AVAudioSession.SharedInstance();
                     session.SetActive(false, AVAudioSessionSetActiveOptions.NotifyOthersOnDeactivation)
                         .Assert("Failed to deactivate session");
@@ -19,10 +19,10 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
             .ToValueTask();
 
     public Task Reconfigure(AudioFocusMode mode)
-        => MainThread.InvokeOnMainThreadAsync(() => ReconfigureUnsafe(mode));
+        => DispatchToMainThread(() => ReconfigureUnsafe(mode));
 
     public Task Reactivate(AudioFocusMode mode)
-        => MainThread.InvokeOnMainThreadAsync(() => ReactivateUnsafe(mode));
+        => DispatchToMainThread(() => ReactivateUnsafe(mode));
 
     private void ReactivateUnsafe(AudioFocusMode mode)
     {

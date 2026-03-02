@@ -264,7 +264,6 @@ public partial class ChatAudioUI
                         TryReleaseAudioFocus();
                 }
 
-                AudioWidget.SetListeningState(newChatIds.IsEmpty ? null : newChatIds);
                 lastChatIds = newChatIds;
             }
             catch (Exception ex) when (ex is not OperationCanceledException) {
@@ -290,7 +289,6 @@ public partial class ChatAudioUI
                     if (lastState is not null) {
                         _ = TuneUI.Play(Tune.StopReplay);
                         await StopPlayer(lastState.ChatId, ChatPlayerKind.Replaying).ConfigureAwait(false);
-                        AudioWidget.SetReplayState(null);
                         // Release audio focus if no listening either
                         var listeningChatIds = await GetListeningChatIds().ConfigureAwait(false);
                         if (listeningChatIds.IsEmpty)
@@ -325,7 +323,6 @@ public partial class ChatAudioUI
                 }, cancellationToken);
                 await startTask.ConfigureAwait(false);
 
-                AudioWidget.SetReplayState(newState);
                 lastState = newState;
             }
             catch (Exception ex) when (ex is not OperationCanceledException) {
@@ -638,6 +635,15 @@ public partial class ChatAudioUI
         await Task.Delay(options.PreCountdownTimeout, cancellationToken).ConfigureAwait(false);
 
         while (!cancellationToken.IsCancellationRequested) {
+            // If own video is streaming for this chat, treat as activity — don't countdown
+            var videoRecordingChatId = await Hub.ChatVideoUI.GetRecordingChatId(cancellationToken).ConfigureAwait(false);
+            if (videoRecordingChatId == chatId) {
+                lastTranscribedAt = Clocks.ServerClock.Now;
+                yield return null; // No countdown
+                await Task.Delay(options.CheckPeriod, cancellationToken).ConfigureAwait(false);
+                continue;
+            }
+
             // GetLastActivityTime returns null when there's ongoing activity, timestamp when idle
             var lastActivityTime = await LiveStreamUI.GetLastActivityServerTime(chatId, cancellationToken).ConfigureAwait(false);
             lastTranscribedAt = Moment.Max(lastTranscribedAt, lastActivityTime ?? ServerNow);

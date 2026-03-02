@@ -7,7 +7,7 @@ using ActualChat.Hosting;
 using ActualChat.Maui.Services;
 using ActualChat.MediaPlayback;
 using ActualChat.UI;
-using ActualChat.UI.App.Services.NativeAppSettings;
+using ActualChat.UI.App.Services;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Components;
@@ -38,15 +38,15 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
 
         // UI
         services.AddSingleton<ScopedServicesAccessor>(_ => static () => TryGetScopedServices(out var c) ? c : null); // Scoped in WASM/SSB, singleton in MAUI
-        services.Replace(ServiceDescriptor.Singleton<ReloadUI>(c => new MauiReloadUI(c))); // Replaces scoped ReloadUI
         services.AddScoped<BrowserInfo>(c => new MauiBrowserInfo(c.UIHub()));
         services.AddScoped<KeepAwakeUI>(c => new MauiKeepAwakeUI(c.UIHub()));
         services.AddScoped<KeepWebViewAliveUI>(c => new (c.UIHub()));
         services.AddScoped<IMauiShare>(c => new MauiShare(c));
-        services.AddScoped<IMauiHostSwitcher>(c => new MauiHostSwitcher(c.UIHub().UrlMapper, c.GetRequiredService<ReloadUI>()));
-        services.AddScoped<IDeveloperTools>(_ => new MauiDeveloperTools());
+        services.AddScoped<AppServerInstanceSelector>(c => new MauiAppServerInstanceSelector(c.UIHub()));
         services.AddScoped<SystemSettingsUI>(_ => new MauiSystemSettingsUI());
         services.AddScoped<IMediaMetadataUI>(c => new MediaMetadataUI(c.AppUIHub()));
+        services.AddSingleton<ReloadUI>(c => new MauiReloadUI(c)); // Replaces scoped ReloadUI
+        services.AddSingleton<BackgroundStateTracker>(c => new MauiBackgroundStateTracker(c)); // Replaces scoped WebBackgroundStateTracker
         services.AddSingleton<MauiTestPage.IMauiTestPageBackend>(_ => new MauiTestPageBackend());
 
         // Permissions
@@ -78,7 +78,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
 #elif ANDROID
         services.AddScoped<AudioFocusUI>(c => new AndroidAudioFocusUI(c.AppUIHub()));
         services.AddScoped<TuneUI>(c => new MauiTuneUI(c.UIHub()));
-        services.AddSingleton<AudioWidget>(c => new AndroidAudioWidget(c)); // Scoped in WASM/SSB, singleton in MAUI
+        services.AddScoped<AudioWidget>(c => new AndroidAudioWidget(c.AppUIHub()));
         services.AddSingleton<VoiceActivityDetector>(c => new TfLiteVoiceActivityDetector(c));
         services.AddSingleton<IAudioCodec, OpusAudioCodec>();
 #elif IOS || MACCATALYST

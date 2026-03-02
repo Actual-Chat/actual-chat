@@ -58,10 +58,6 @@
                         }
 
                         <span> = @node.Id @node.Endpoint : @node.State</span>
-                        @if (node.DiesIn is { } diesIn) {
-                            <span>, dies in: @diesIn.ToShortString()</span>
-                        }
-
                         <br>
                         <span>Roles: @node.Roles</span>
                         <br>

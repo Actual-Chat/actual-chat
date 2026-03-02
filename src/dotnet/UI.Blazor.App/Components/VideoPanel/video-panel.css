@@ -19,15 +19,10 @@ body.narrow .video-panel.expanded {
     @apply fixed z-tooltip inset-0;
     @apply max-w-none max-h-none;
     @apply p-0;
+    padding: var(--safe-area-top) var(--safe-area-right) var(--safe-area-bottom) var(--safe-area-left);
 }
 .video-panel.expanded > .c-content {
     @apply rounded-none;
-}
-.video-panel .video-frame {
-    @apply h-full;
-}
-.video-panel .video-frame video {
-    @apply h-full;
 }
 body.narrow .video-panel {
     @apply min-h-48 max-h-48;
@@ -42,7 +37,7 @@ body.wide .video-panel.rp-visible {
     @apply relative;
     @apply flex items-center justify-center;
     @apply w-full h-full;
-    @apply rounded-lg;
+    @apply rounded-lg overflow-hidden;
     @apply bg-black;
 }
 .video-panel.first-time-open > .c-content {
@@ -67,6 +62,57 @@ body.hoverable .btn-h.expand-btn:hover {
 .video-panel .show-with-delay.show {
     @apply visible;
 }
+
+.video-panel .remote-video-container {
+    @apply absolute inset-0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.4s ease;
+}
+.video-panel .remote-video-container.focused {
+    opacity: 1;
+    pointer-events: auto;
+}
+/* Previous speaker overlay — small PiP above local preview */
+.video-panel .remote-video-container.previous-speaker {
+    opacity: 1;
+    pointer-events: auto;
+    @apply z-20;
+    @apply rounded-lg overflow-hidden;
+    border: 2px solid var(--white-40);
+    transform-origin: bottom right;
+    transform: scale(0.2) translateY(-130%);
+    transition: opacity 0.3s ease, transform 0.4s ease;
+}
+.video-panel .remote-video-container.previous-speaker .video-participant-label {
+    @apply hidden;
+}
+
+/* Remote video streams */
+.video-panel .remote-streams {
+    @apply absolute inset-0;
+    overflow: hidden;
+}
+.video-panel .remote-streams:empty {
+    @apply hidden;
+}
+.video-panel.has-remote-streams .video-recorder {
+    @apply absolute;
+    @apply h-1/4;
+    @apply bottom-2 right-2;
+    @apply z-10;
+    @apply rounded-lg overflow-hidden;
+    aspect-ratio: 16 / 9;
+    border: 2px solid var(--white-40);
+}
+.video-panel .remote-streams canvas.remote-video {
+    @apply w-full h-full;
+    @apply object-contain;
+    @apply bg-gray-900;
+    @apply rounded-lg;
+    pointer-events: auto;
+}
+
 
 @keyframes smoothShowVideoPanel {
     0% {

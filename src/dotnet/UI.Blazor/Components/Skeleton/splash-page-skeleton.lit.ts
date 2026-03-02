@@ -14,7 +14,7 @@ export class SplashPageSkeleton extends LitElement {
         const rightPanelDataAttr = this.isRightPanelVisible === 'true' ? 'open' : 'closed';
         return html`
             <div class="page-with-header-and-footer">
-<!--                Left Panel-->
+<!--                Left Panel -->
                 <div class="left-panel-skeleton side-nav side-nav-left">
                     <div class='left-panel'>
                         <div class="thin-left-panel-skeleton">
@@ -35,7 +35,7 @@ export class SplashPageSkeleton extends LitElement {
                         </div>
                     </div>
                 </div>
-<!--                Chat Panel-->
+<!--                Chat Panel -->
                 <div class="chat-panel-skeleton">
                     <div class="chat-header-skeleton">
                         <div class="c-wrapper">
@@ -54,7 +54,8 @@ export class SplashPageSkeleton extends LitElement {
                         <chat-view-footer-skeleton />
                     </div>
                 </div>
-<!--                Right Panel    -->
+<!--                Right Panel - disabled as unnecessary -->
+<!--
                 <div class="right-panel-skeleton side-nav side-nav-right" data-side-nav='${rightPanelDataAttr}'>
                     <div class="panel-header-skeleton"></div>
                     <div class="panel-body-skeleton">
@@ -100,6 +101,7 @@ export class SplashPageSkeleton extends LitElement {
                         </div>
                     </div>
                 </div>
+-->
             </div>
         `;
     }

@@ -81,14 +81,12 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddScoped(c => new LoadingUI(c.UIHub()));
         services.AddScoped(c => new ReconnectUI(c.UIHub()));
         services.AddScoped(c => new ReloadUI(c));
-        if (hostKind.IsMauiApp())
-            services.AddSingleton<BackgroundStateTracker>(c => new MauiBackgroundStateTracker(c));
-        else {
+        if (!hostKind.IsMauiApp()) {
             services.AddScoped<BackgroundStateTracker>(c => new WebBackgroundStateTracker(c));
             services.AddScoped<AudioFocusUI>(_ => new AudioFocusUI());
             services.AddScoped<TuneUI>(c => new WebTuneUI(c.UIHub()));
         }
-        services.AddScoped(c => new ClipboardUI(c.GetRequiredService<IJSRuntime>()));
+        services.AddScoped(c => new ClipboardUI(c.UIHub()));
         services.AddScoped(c => new InteractiveUI(c.UIHub()));
         services.AddScoped(c => new AutoNavigationUI(c.UIHub()));
         services.AddScoped(_ => new AppNavigationQueue.ContainerDisposalTracker());
@@ -109,6 +107,11 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddScoped(c => new ThemeUI(c.UIHub()));
         services.AddScoped(c => new VisualMediaViewerUI(c.UIHub()));
         services.AddScoped(_ => new BlazorAppLifecycle());
+
+        // Uploads
+        services.AddScoped<IFileUploader, WebSourceUploader>();
+        services.AddScoped<IFileUploader, StreamUploader>();
+        services.AddScoped<FileUploader>();
 
         // Fusion-based UI services
         if (hostKind == HostKind.Server)

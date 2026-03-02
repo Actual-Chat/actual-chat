@@ -1,0 +1,236 @@
+name: Run tests (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      build-target:
+        type: string
+        required: true
+        description: "Build target: integration-tests, slow-tests, nightly-tests"
+      report-name:
+        type: string
+        required: true
+        description: "Test report check name"
+      checkout-ref:
+        type: string
+        default: ''
+        description: "Git ref to checkout (empty = use triggering ref)"
+      checkout-configs:
+        type: boolean
+        default: false
+        description: "Whether to checkout Actual-Chat/configs repo for prompts"
+      configs-ref:
+        type: string
+        default: ''
+        description: "Ref for configs repo checkout (empty = auto-detect from branch)"
+      opensearch-java-opts:
+        type: string
+        default: '-Xms1024m -Xmx1024m'
+        description: "OpenSearch JVM heap size"
+
+jobs:
+  run-tests:
+    name: ${{ inputs.report-name }}
+    runs-on: ubuntu-latest
+    env:
+      NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+    services:
+      redis:
+        image: redis:7.2-alpine3.19
+        # Set health checks to wait until redis has started
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          # Maps port 6379 on service container to the host
+          - 6379:6379
+      postgres:
+        image: postgres:16.1-alpine3.19
+        # Provide the password for postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_HOST_AUTH_METHOD: password
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          # Maps tcp port 5432 on service container to the host
+          - 5432:5432
+      nats:
+        image: ghcr.io/actual-chat/nats-jet:2.11.0-alpine3.21
+        # Set health checks to wait until nats has started
+        options: >-
+          --health-cmd "wget --no-verbose --tries=1 --spider 'http://localhost:8222/healthz?js-enabled-only=true' || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          # Maps port 4222 and 8222 on service container to the host
+          - 4222:4222
+          - 8222:8222
+      opensearch:
+        image: opensearchproject/opensearch:2.18.0
+        env:
+          node.name: opensearch-node
+          discovery.type: single-node
+          cluster.name: opensearch-cluster
+          cluster.routing.allocation.disk.threshold_enabled: false
+          bootstrap.memory_lock: true # along with the memlock settings below, disables swapping
+          OPENSEARCH_JAVA_OPTS: ${{ inputs.opensearch-java-opts }}
+          DISABLE_SECURITY_PLUGIN: true
+          plugins.ml_commons.only_run_on_ml_node: false # allow running ml tasks on data nodes
+          plugins.ml_commons.allow_registering_model_via_url: true
+          plugins.ml_commons.allow_registering_model_via_local_file: true
+          plugins.ml_commons.connector.private_ip_enabled: true
+          plugins.ml_commons.model_access_control_enabled: true
+          plugins.ml_commons.model_auto_redeploy.enable: true
+          plugins.ml_commons.native_memory_threshold: 99
+          path.repo: /usr/share/opensearch/data/snapshots
+        options: >-
+          --ulimit memlock=-1:-1
+          --ulimit nofile=65536:65536
+          --health-cmd "curl --fail 'http://localhost:9200/_cluster/health?wait_for_status=green&timeout=1s' || exit 1"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 15
+        ports:
+          - 9200:9200
+          - 9600:9600
+        volumes:
+          - opensearch-data:/usr/share/opensearch/data
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: insightsengineering/disk-space-reclaimer@v1
+        with:
+          android: false
+          dotnet: true
+          haskell: false
+          large-packages: false
+          swap-storage: true
+          docker-images: true
+          tools-cache: true
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client libatomic1
+
+      - name: "Set some postgres settings"
+        run: |
+          docker exec -i ${{ job.services.postgres.id }} bash << EOF
+          sed -i -e 's/max_connections = 100/max_connections = 1000/' /var/lib/postgresql/data/postgresql.conf
+          sed -i -e 's/shared_buffers = 128MB/shared_buffers = 256MB/' /var/lib/postgresql/data/postgresql.conf
+          cat /var/lib/postgresql/data/postgresql.conf
+          EOF
+          docker restart --time 0 ${{ job.services.postgres.id }}
+          sleep 5
+
+      - name: Show max connections
+        run: PGPASSWORD=postgres psql -h localhost -U postgres -c 'SHOW max_connections;'
+
+      - name: Flush Redis data
+        run: |
+          docker exec ${{ job.services.redis.id }} redis-cli flushall
+          echo "Redis data has been cleared"
+          docker exec ${{ job.services.redis.id }} redis-cli keys "*" | head -n 10
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Avoid shallow clone for Nerdbank.GitVersioning
+          fetch-depth: 0
+          lfs: true
+          ref: ${{ inputs.checkout-ref || github.ref }}
+
+      - name: Checkout configs
+        if: ${{ inputs.checkout-configs }}
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.CONFIGS_REPO_GITHUB_TOKEN }}
+          fetch-depth: 1
+          repository: Actual-Chat/configs
+          path: configs/
+          sparse-checkout: |
+            prompts/
+          sparse-checkout-cone-mode: false
+          ref: ${{ inputs.configs-ref || (startsWith(github.ref_name, 'release/') && github.ref_name || 'master') }}
+
+      - name: Copy prompts
+        if: ${{ inputs.checkout-configs }}
+        run: |
+          mv configs/prompts .config/
+          rm -rf configs/
+
+      - name: Build OpenSearch configurator image
+        run: |
+          docker build \
+          -f ${{github.workspace}}/services/opensearch/Dockerfile \
+          -t opensearch-configurator-image:latest ${{github.workspace}}/services/opensearch/
+
+      - name: Configure OpenSearch ML pipeline
+        run: |
+          docker run --attach stderr --attach stdout --rm \
+          --network host \
+          --name opensearch-configurator \
+          --env SLEEP_ON_FAILURE_SECONDS=5 \
+          --env MAX_RETRY_ATTEMPTS=6 \
+          --env OPENSEARCH_CLUSTER_URL='http://localhost:9200' \
+          --env OPENSEARCH_ML_MODEL_GROUP='NLP_model_group' \
+          --env TORCHSCRIPT_MODEL_PATH='/ml_model/sentence-transformers_paraphrase-MiniLM-L3-v2-1.0.1-torch_script.zip' \
+          --env TORCHSCRIPT_MODEL_CONFIG_PATH='/ml_model/config.json' \
+          opensearch-configurator-image:latest
+
+      - name: Setup dotnet
+        uses: ./.github/actions/setup-dotnet
+        with:
+          restore-tools: false
+          restore-workloads: false
+
+      - name: Debug Build for tests
+        run: |
+          dotnet build ActualChat.CI.slnf --nologo --no-restore --configuration Debug
+
+      - name: Run tests
+        id: run-tests
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{github.workspace}}/.config/gcp-key.json
+          HostSettings__WebRootPath: ${{github.workspace}}/src/dotnet/App.Wasm/wwwroot/
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          NPM_READ_TOKEN: ${{secrets.NPM_READ_TOKEN}}
+          USERSSETTINGS__GOOGLECLIENTID: ${{secrets.USERSSETTINGS__GOOGLECLIENTID}}
+          USERSSETTINGS__GOOGLECLIENTSECRET: ${{secrets.USERSSETTINGS__GOOGLECLIENTSECRET}}
+          USERSSETTINGS__MICROSOFTACCOUNTCLIENTID: ${{secrets.USERSSETTINGS__MICROSOFTACCOUNTCLIENTID}}
+          USERSSETTINGS__MICROSOFTACCOUNTCLIENTSECRET: ${{secrets.USERSSETTINGS__MICROSOFTACCOUNTCLIENTSECRET}}
+          TESTS__USERS__USER1__EMAIL: ${{secrets.TESTS__USERS__USER1__EMAIL}}
+          TESTS__USERS__USER1__PASSWORD: ${{secrets.TESTS__USERS__USER1__PASSWORD}}
+          RedisSettings__DefaultRedis: localhost|test_{instance.}{context}
+          DbSettings__DefaultDb: postgresql:Server=localhost;Database=ac_{instance_}{context};Port=5432;User Id=postgres;Password=postgres
+          CoreSettings__GoogleProjectId: ${{secrets.CORESETTINGS_GOOGLEPROJECTID}}
+          CoreSettings__PromptsDir: ${{github.workspace}}/.config/prompts/
+          StreamingSettings__DeepgramKey: ${{secrets.DEEPGRAM_API_KEY}}
+          ChatSettings__OpenAIKey: ${{secrets.OPENAI_API_KEY}}
+        run: |-
+          cat <<- 'EOF' > ./.config/gcp-key.json
+          ${{secrets.GCP_KEY_JSON}}
+          EOF
+
+          ./run-build.cmd ${{ inputs.build-target }} --configuration Debug
+
+      - name: Report test results
+        uses: phoenix-actions/test-reporting@v15
+        if: success() || failure() # run this step even if previous step failed
+        with:
+          name: ${{ inputs.report-name }}
+          path: "./tests/**/*.trx" # Path to test results
+          reporter: dotnet-trx # Format of test results
+          fail-on-error: false
+          list-tests: "all"
+          output-to: "checks"
+          list-suites: "all"
+          only-summary: "true"

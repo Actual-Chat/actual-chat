@@ -15,7 +15,7 @@
 <DialogFrame
     Class="onboarding-modal theme-light"
     HasHeader="false"
-    NarrowViewSettings="DialogFrameNarrowViewSettings.Stretch">
+    NarrowViewSettings="DialogFrameNarrowViewSettings.Default">
     <Body>
     <Stepper Context="stepper" CurrentStepChanged="@OnCurrentStepChanged"
         Class="onboarding-stepper" ShowNoise="@true" SkipCompletedSteps="@true">
@@ -67,8 +67,8 @@
             <div class="onboarding-footer">
                 @if (!isTutorial) {
                     <LineProgress
-                        StepCount="@stepper.StepCount"
-                        CurrentStepIndex="@stepper.CurrentStepIndex">
+                        StepCount="@stepper.VisibleStepCount"
+                        CurrentStepIndex="@stepper.CurrentVisibleStepIndex">
                     </LineProgress>
                 }
                 <div class="btn-group">

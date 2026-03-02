@@ -1,0 +1,121 @@
+@using ActualChat.UI.App.Services
+@{
+#pragma warning disable IL2091
+}
+
+<Form Model="@_formModel">
+    <DataAnnotationsValidator/>
+
+    <FormBlock>
+        <InputRadioGroup
+            Name="host"
+            DisplayName="Host"
+            @bind-Value="_formModel.Host">
+
+            <TileItem>
+                <Icon>
+                    <FormRadio
+                        Id="@_formModel.ProdFormId"
+                        Value="@AppServerInstance.Prod.HostName"/>
+                </Icon>
+                <Content>
+                    <Label InputId="@_formModel.ProdFormId" Text="@GetTitle(AppServerInstance.Prod)"></Label>
+                </Content>
+            </TileItem>
+
+            <TileItem>
+                <Icon>
+                    <FormRadio
+                        Id="@_formModel.DevFormId"
+                        Value="@AppServerInstance.Dev.HostName"/>
+                </Icon>
+                <Content>
+                    <Label InputId="@_formModel.DevFormId" Text="@GetTitle(AppServerInstance.Dev)"></Label>
+                </Content>
+            </TileItem>
+
+        </InputRadioGroup>
+
+        @if (Selector.Current != Selector.Get()) {
+            <TileItem>
+                <Icon>
+                    <i class="icon-alert-triangle text-warning text-2xl"></i>
+                </Icon>
+                <Content>
+                    Host has been changed.
+                </Content>
+                <Caption>
+                    Changes will be applied after app restart. Please sign in again.
+                </Caption>
+            </TileItem>
+        }
+    </FormBlock>
+</Form>
+
+@code {
+    private FormModel _formModel = null!;
+
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
+
+    [Parameter, EditorRequired] public AppServerInstanceSelector Selector { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        _formModel = new (ComponentIdGenerator) {
+            Host = Selector.Get().HostName,
+        };
+        _formModel.HostChanged += OnHostChanged;
+    }
+
+    private string GetTitle(AppServerInstance instance) {
+        var title = instance == AppServerInstance.Prod ? "Prod" :
+            instance == AppServerInstance.Dev ? "Dev" : throw new ArgumentOutOfRangeException(nameof(instance));
+        return title + GetHostTags(instance);
+    }
+
+    private string GetHostTags(AppServerInstance instance) {
+        var isCurrent = Selector.Current == instance;
+        var isDefault = Selector.Default == instance;
+        if (!isCurrent && !isDefault)
+            return "";
+
+        var tags = new List<string>();
+        if (isCurrent)
+            tags.Add("current");
+        if (isDefault)
+            tags.Add("default");
+        return $" ({tags.ToCommaPhrase()})";
+    }
+
+    private void OnHostChanged(string? host) {
+        var instance = AppServerInstance.TryCreate(host ?? "");
+        if (instance != null)
+            Selector.Set(instance);
+    }
+
+    public sealed class FormModel {
+        private string? _host;
+
+        private string FormId { get; }
+        public string ProdFormId { get; }
+        public string DevFormId { get; }
+
+        public string? Host {
+            get => _host;
+            set {
+                if (_host == value)
+                    return;
+                _host = value;
+                HostChanged?.Invoke(value);
+            }
+        }
+
+        public event Action<string?>? HostChanged;
+
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
+            FormId = componentIdGenerator.Next("host-form");
+            ProdFormId = $"{FormId}-prod";
+            DevFormId = $"{FormId}-dev";
+        }
+    }
+}

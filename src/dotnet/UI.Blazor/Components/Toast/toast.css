@@ -7,10 +7,15 @@
     @apply overflow-y-auto;
 }
 body.narrow .toast-container {
-    @apply top-12;
+    left: var(--safe-area-left);
+    right: var(--safe-area-right);
+    top: calc(3rem + var(--safe-area-top));
+    max-height: calc(100vh - 3rem - var(--safe-area-top) - var(--safe-area-bottom));
 }
 body.wide .toast-container {
-    @apply bottom-12;
+    right: var(--safe-area-right);
+    bottom: calc(3rem + var(--safe-area-bottom));
+    max-height: calc(100vh - 3rem - var(--safe-area-top) - var(--safe-area-bottom));
 }
 .toast-container > .c-content {
     @apply relative;

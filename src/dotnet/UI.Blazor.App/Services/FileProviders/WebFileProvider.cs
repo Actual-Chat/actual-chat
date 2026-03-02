@@ -1,4 +1,5 @@
 using ActualChat.UI.Blazor.App.Module;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -91,8 +92,15 @@ public partial class WebFileProvider : IFileProvider
     public Task WhenFileStreamReady()
         => DemandWebFileProviderInternal().WhenFileStreamReady();
 
-    public Task UploadData(UploadId uploadId, IProgress<double> progressTracker, CancellationToken ct)
-        => DemandWebFileProviderInternal().UploadData(uploadId, progressTracker, ct);
+    public UploadSource GetUploadSource()
+    {
+        var @internal = DemandWebFileProviderInternal();
+        var metadata = new UploadSourceMetadata(
+            Metadata.FileType,
+            Metadata.Length,
+            Metadata.FileName);
+        return new UploadSource(metadata, @internal.GetUploadStreamSource());
+    }
 
     private IWebFileProviderInternal DemandWebFileProviderInternal()
     {
@@ -107,10 +115,10 @@ public interface IWebFileProviderInternal : IAsyncDisposable
 {
     ValueTask<string> CreatePreviewUrl();
     ValueTask<string> SaveFileHandleToDb();
-    Task UploadData(UploadId uploadId, IProgress<double> progressTracker, CancellationToken ct);
     Task<bool> WhenUserConsentGranted();
     Task WhenFileStreamReady();
     Task ClearForRemoving();
+    WebUploadStreamSource GetUploadStreamSource();
 }
 
 public class WebFileProviderInternal : IWebFileProviderInternal
@@ -152,28 +160,11 @@ public class WebFileProviderInternal : IWebFileProviderInternal
         _previewUrl = null;
     }
 
+    public WebUploadStreamSource GetUploadStreamSource()
+        => new (_jsRef);
+
     public ValueTask<string> SaveFileHandleToDb()
         => _jsRef.InvokeAsync<string>("saveFileHandleToDb", _cancellationToken);
-
-    public async Task UploadData(UploadId uploadId, IProgress<double> progressTracker, CancellationToken ct)
-    {
-        var cts = _cancellationToken.LinkWith(ct);
-        var ct2 = cts.Token;
-        var backend = new WebFileUploaderBackend(progressTracker);
-        var blazorRef = backend.BlazorRef;
-        try {
-            ct.Register(() => {
-                _ = Cancel();
-            });
-            // Upload data
-            await Start(uploadId, blazorRef, ct2).ConfigureAwait(false);
-            await backend.WhenUploadCompleted.WaitAsync(ct2).ConfigureAwait(false);
-        }
-        finally {
-            blazorRef.Dispose();
-            cts.DisposeSilently();
-        }
-    }
 
     public async Task WhenFileStreamReady()
     {
@@ -183,12 +174,6 @@ public class WebFileProviderInternal : IWebFileProviderInternal
 
         await TaskExt.NeverEnding(_cancellationToken).ConfigureAwait(false);
     }
-
-    private ValueTask Start(UploadId uploadId, DotNetObjectReference<IWebFileUploaderBackend> blazorRef, CancellationToken ct)
-        => _jsRef.InvokeVoidAsync("start", ct, uploadId.Value, blazorRef);
-
-    private ValueTask Cancel()
-        => _jsRef.InvokeVoidAsync("cancel", _cancellationToken);
 
     public async ValueTask DisposeAsync()
     {
@@ -212,7 +197,7 @@ public class NoFileAccessWebFileProviderInternal(IJSRuntime jsRuntime, string fi
     public Task ClearForRemoving()
         => WebFileProviders.DeleteFileHandleFromDb(jsRuntime, fileHandleDbKey).AsTask();
 
-    public Task UploadData(UploadId uploadId, IProgress<double> progressTracker, CancellationToken ct)
+    public WebUploadStreamSource GetUploadStreamSource()
         => throw new NotSupportedException();
 
     Task<bool> IWebFileProviderInternal.WhenUserConsentGranted()

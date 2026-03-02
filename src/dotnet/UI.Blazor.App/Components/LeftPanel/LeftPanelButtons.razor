@@ -1,9 +1,9 @@
-@using ActualChat.UI.Blazor.Events
 @namespace ActualChat.UI.Blazor.App.Components
 
 <div class="left-panel-buttons">
     <div class="c-spacer"></div>
     <div class="c-content">
+        <div class="safe-area-top"></div>
         <NavbarButton
             Class="settings-btn"
             data-menu="@(MenuRef.New<TopNavbarMenu>())"
@@ -21,5 +21,6 @@
             <NavbarButtons/>
         </div>
         <AccountDropdown/>
+        <div class="safe-area-bottom"></div>
     </div>
 </div>

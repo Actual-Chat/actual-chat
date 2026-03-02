@@ -114,9 +114,10 @@
     .no-highlight {
         -webkit-tap-highlight-color: transparent;
     }
-    .ios-height {
-        height: 100dvh;
-        max-height: calc(var(--vh, 1vh) * 100);
+    .has-viewport-height {
+        height: calc(var(--vh, 1dvh) * 100);
+        min-height: calc(var(--vh, 1dvh) * 100);
+        max-height: calc(var(--vh, 1dvh) * 100);
     }
 
     .content-empty {

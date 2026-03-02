@@ -235,7 +235,11 @@ public static class ClientStartup
 
         // Logging
         if (!hostKind.IsMauiApp()) // MauiDiagnostics takes care of that
-            services.AddLogging(logging => logging.ConfigureClientFilters(hostInfo.AppKind).AddTailLogger());
+            services.AddLogging(logging => {
+                logging.ConfigureClientFilters(hostInfo.AppKind);
+                logging.AddTailLogger();
+                logging.AddSanitizingLoggerFactory(c => c.HostInfo().IsProductionInstance);
+            });
 
         // Other services shared with plugins
         services.AddSingleton(hostInfo);

@@ -28,7 +28,6 @@
     var hasRecaptchaConfigured = !UserSettings.GoogleRecaptchaSiteKey.IsNullOrEmpty();
     var recaptchaKey = UserSettings.GoogleRecaptchaSiteKey;
     var recaptchaNonce = nonceGenerator.Next(12);
-    CaptchaUI.Initialize(UserSettings.GoogleRecaptchaSiteKey);
 
     // Build custom import map with WASM
     var defaultImportMap = HttpContext.GetEndpoint()?.Metadata.GetMetadata<ImportMapDefinition>();
@@ -43,7 +42,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content"/>
     <meta http-equiv="Content-Security-Policy" content="
         default-src 'self';
         img-src 'self'
@@ -104,7 +103,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon_voxt.png">
     <link rel="manifest" href="/manifest.json">
     <meta name="msapplication-TileColor" content="#0C003D">
-    <meta name="theme-color" content="#444444">
+    @* <meta name="theme-color" content="#444444"> <!-- Legacy, auto is better on iOS now --> *@
     <base href="/" />
     @{
         var title = $"{CoreConstants.AppName}: The New Voice of Everyday Communication";
@@ -149,6 +148,8 @@
     <link rel="prefetch" href="/@Assets["dist/onDeviceAwakeWorker.js"]" as="worker" crossorigin />
     <link rel="prefetch" href="/@Assets["dist/opusDecoderWorker.js"]" as="worker" crossorigin />
     <link rel="prefetch" href="/@Assets["dist/opusEncoderWorker.js"]" as="worker" crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/videoDecoderWorker.js"]" as="worker" crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/videoEncoderWorker.js"]" as="worker" crossorigin />
     <link rel="prefetch" href="/@Assets["dist/warmUpWorklet.js"]" as="audioworklet" crossorigin />
     <link rel="prefetch" href="/@Assets["dist/vadWorker.js"]" as="worker" crossorigin />
     <link rel="prefetch" href="/@Assets["dist/feederWorklet.js"]" as="audioworklet" crossorigin />
@@ -182,9 +183,9 @@
                 await window.App.whenBundleReady;
                 return true;
             },
-            browserInit: async function(hostKind, appKind, apiVersion, baseUri, supportedHosts, sessionHash, browserInfoBackendRef) {
+            browserInit: async function(hostKind, appKind, apiVersion, baseUri, supportedHosts, sessionHash, browserInfoBackendRef, clipboardInteropRef) {
                 await window.App.whenBundleReady;
-                await window.ui.BrowserInit.init(hostKind, appKind, apiVersion, baseUri, supportedHosts, sessionHash, browserInfoBackendRef);
+                await window.ui.BrowserInit.init(hostKind, appKind, apiVersion, baseUri, supportedHosts, sessionHash, browserInfoBackendRef, clipboardInteropRef);
             },
         };
         window.App.whenBlazorReady = new Promise((resolve, _) => {

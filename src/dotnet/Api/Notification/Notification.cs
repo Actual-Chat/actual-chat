@@ -11,7 +11,7 @@ namespace ActualChat.Notification;
 public partial record Notification(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] NotificationId Id,
     [property: DataMember(Order = 1), MemoryPackOrder(1)] long Version = 0
-    ) : IHasId<NotificationId>, IHasVersion<long>, IUnionRecord<NotificationOption?>
+    ) : IHasId<NotificationId>, IHasVersion<long>, IUnionRecord<NotificationOption?>, ISanitized
 {
     #region MemoryPackXxx properties
 
@@ -23,8 +23,8 @@ public partial record Notification(
 
     #endregion
 
-    [DataMember(Order = 2), MemoryPackOrder(2)] public string Title { get; init; } = "";
-    [DataMember(Order = 3), MemoryPackOrder(3)] public string Content { get; init; } = "";
+    [DataMember(Order = 2), MemoryPackOrder(2)] public string Title { get => Sanitizer.MaskPrivate(field); init; } = "";
+    [DataMember(Order = 3), MemoryPackOrder(3)] public string Content { get => Sanitizer.MaskPrivate(field); init; } = "";
     [DataMember(Order = 4), MemoryPackOrder(4)] public string IconUrl { get; init; } = "";
     [DataMember(Order = 5), MemoryPackOrder(5)] public Moment CreatedAt { get; init; }
     [DataMember(Order = 6), MemoryPackOrder(6)] public Moment SentAt { get; init; }

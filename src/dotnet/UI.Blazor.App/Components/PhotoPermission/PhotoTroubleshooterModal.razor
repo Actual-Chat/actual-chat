@@ -10,7 +10,7 @@
     Class="photo-troubleshooter-modal"
     Title="Photo library access"
     HasCloseButton="true"
-    NarrowViewSettings="@DialogFrameNarrowViewSettings.SubmitButton(OnSettingsClick, settingsButtonTitle)">
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.ForSubmitButton(OnSettingsClick, settingsButtonTitle)">
     <Body>
     <FormBlock>
         <div class="c-text font-normal">
@@ -18,6 +18,7 @@
             Please enable it in <a @onclick="OnSettingsClick" @onclick:preventDefault class="settings-link">Settings</a>.
         </div>
     </FormBlock>
+    <div class="safe-area-bottom safe-area-bottom-overlay"></div>
     </Body>
     <Buttons>
         <Button Class="btn-modal" Click="@(() => Modal.Close())">

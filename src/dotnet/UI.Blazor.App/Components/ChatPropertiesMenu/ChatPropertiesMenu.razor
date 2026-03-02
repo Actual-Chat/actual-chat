@@ -5,7 +5,13 @@
     if (m == null)
         return;
 
-    var rules = m.Chat.Rules;
+    var chat = m.Chat;
+    var rules = chat.Rules;
+    var shareChatTitle = chat.Id is PeerChatId
+        ? $"Share {chat.Title}'s contact"
+        : chat.IsPublic
+            ? "Share chat"
+            : "Share chat join link";
 }
 
 <CascadingValue Value="m">
@@ -15,6 +21,7 @@
         Text="Open right panel"
         Click="@OnOpenRightPanelClick">
     </MenuEntry>
+@*
     <MenuEntry
         Icon="icon-phone-call"
         Text="Start Voice call">
@@ -40,14 +47,13 @@
             </div>
         </TextContent>
     </MenuEntry>
-    <MenuEntry
-        Icon="icon-person-add"
-        Text="Add member">
-    </MenuEntry>
+*@
     <MenuEntry
         Icon="icon-share"
-        Text="Share chat">
+        Text="@shareChatTitle"
+        Click="@OnShareClick">
     </MenuEntry>
+    <ChatMenuAddMember/>
     @if (rules.CanLeave()) {
         <ChatMenuLeave/>
     }
@@ -71,4 +77,7 @@
 
     private void OnOpenRightPanelClick()
         => Hub.PanelsUI.Right.Toggle();
+
+    private Task OnShareClick()
+        => Hub.ShareUI.Share(_chatId);
 }

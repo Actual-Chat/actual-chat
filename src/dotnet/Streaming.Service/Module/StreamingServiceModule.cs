@@ -34,8 +34,10 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
         if (rpcHost.IsApiHost) {
             var signalR = services.AddSignalR(options => {
                 options.StreamBufferCapacity = 20;
-                options.EnableDetailedErrors = false;
+                options.EnableDetailedErrors = true; // Enable for debugging
                 options.StatefulReconnectBufferSize = 2000;
+                // Increase max message size for video frames (keyframes can be 50KB+)
+                options.MaximumReceiveMessageSize = 512 * 1024; // 512KB
             });
             signalR.AddJsonProtocol();
             signalR.AddMessagePackProtocol();
@@ -44,8 +46,11 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
 
         rpcHost.AddApi<IStreamServer, StreamServer>();
         rpcHost.AddApi<ILiveStreams, LiveStreams>();
+		rpcHost.AddBackend<ILiveBackend, LiveBackend>();
         rpcHost.AddBackend<IStreamingBackend, StreamingBackend>();
-        rpcHost.AddBackend<ILiveBackend, LiveBackend>();
+        rpcHost.AddApi<ILiveVideoStreams, LiveVideoStreams>();
+        rpcHost.AddBackend<ILiveVideoBackend, LiveVideoBackend>();
+        rpcHost.AddBackend<IVideoStreamingBackend, VideoStreamingBackend>();
         services.AddSingleton<IStreamClient, StreamBackendClient>(); // Client for IStreamingBackend
         services.AddSingleton<AudioDownloader, BlobStorageAudioDownloader>(); // Server-side AudioDownloader
         services.TryAddSingleton<AudioSettings>(); // AudioSettings are not configured now

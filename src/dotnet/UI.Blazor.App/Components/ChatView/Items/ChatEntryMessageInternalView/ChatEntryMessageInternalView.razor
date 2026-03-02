@@ -271,7 +271,7 @@
         if (!mustTranslate)
             return new(markup, entry, TranslationState.None, TranscriptStreamerState.None, isUnreadByOthers, isUnreadByOthersBlockStart);
 
-        var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), TranslationConsumers.ChatView, cancellationToken).ConfigureAwait(false);
+        var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
         if (translation is null)
             return new(markup, entry, TranslationState.Translating, TranscriptStreamerState.None, isUnreadByOthers, isUnreadByOthersBlockStart);
 

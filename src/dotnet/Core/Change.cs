@@ -6,7 +6,7 @@ namespace ActualChat;
 /// <summary>
 /// Represents a change operation (create, update, or remove) on an entity.
 /// </summary>
-public interface IChange : IRequirementTarget
+public interface IChange : IRequirementTarget, ISanitized
 {
     ChangeKind Kind { get; }
     bool IsValid();

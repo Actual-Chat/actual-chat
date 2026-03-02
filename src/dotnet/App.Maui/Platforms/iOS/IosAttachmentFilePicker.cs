@@ -43,7 +43,7 @@ public class IosAttachmentFilePicker(IServiceProvider services) : MauiAttachment
     }
 
     private Task<AttachFileInfo[]> LoadPickedFiles(PHPickerResult[] results, UTType preferredContentType)
-        => MainThread.InvokeOnMainThreadAsync(async () => {
+        => DispatchToMainThread(async () => {
             var pickedMediaFiles = await results.Select(x => LoadPickedMedia(x, preferredContentType)).Collect().ConfigureAwait(false);
             return pickedMediaFiles.SkipNullItems().ToArray();
         });

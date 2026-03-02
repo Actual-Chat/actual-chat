@@ -1,4 +1,5 @@
 import { Log } from 'logging';
+import { SvgCache } from '../../Components/Avatar/svg-cache';
 
 const { infoLog } = Log.get('DebugUI');
 
@@ -59,6 +60,33 @@ export class DebugUI {
     public static resetBubbles(enable: boolean): void {
         void this.backendRef.invokeMethodAsync('ResetBubbles', enable);
     };
+
+    public static showMicTroubleshooter(): void {
+        void this.backendRef.invokeMethodAsync('ShowMicTroubleshooter');
+    };
+
+    public static showPhotoTroubleshooter(): void {
+        void this.backendRef.invokeMethodAsync('ShowPhotoTroubleshooter');
+    };
+
+    public static showIncomingShareModal(): void {
+        void this.backendRef.invokeMethodAsync('ShowIncomingShareModal');
+    };
+
+    public static clearSvgCache(): void {
+        SvgCache.clear();
+        infoLog?.log('clearSvgCache: done');
+    }
+
+    public static showSafeAreas(show: boolean | null | undefined): void {
+        const cl = document.body.classList;
+        cl.remove('show-safe-areas', 'hide-safe-areas');
+        if (show === true)
+            cl.add('show-safe-areas');
+        else if (show === false)
+            cl.add('hide-safe-areas');
+        infoLog?.log(`showSafeAreas: ${show ?? 'default'}`);
+    }
 
     public static startDOMEventSniffer(): void {
         if (this._eventSnifferInstalled) {

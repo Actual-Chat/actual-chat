@@ -1,0 +1,260 @@
+@namespace ActualChat.UI.Blazor.App.Components.VideoPanel
+@using ActualChat.Streaming
+@using ActualChat.UI.Blazor.App.Module
+@using ActualChat.UI.Blazor.App.Services
+@inherits ComputedStateComponent<AppUIHub, VideoRecorder.Model>
+@{
+    var m = State.Value;
+    var recordingCls = m.VideoState.IsRecording ? "recording" : "";
+}
+
+<div @ref="Ref" class="video-recorder @recordingCls">
+    <canvas class="call-video"></canvas>
+    @if (m.VideoState.IsRecording) {
+        <HeaderButton Class="settings-btn" Click="@OnSettingsClick">
+            <i class="icon-settings text-lg"></i>
+        </HeaderButton>
+        <div class="video-participant-label">
+            <i class="icon-video"></i>
+            <span>You</span>
+        </div>
+    }
+    @if (m.VideoState.HasError) {
+        <div class="video-error">
+            <span>@(m.VideoState.ErrorMessage ?? "")</span>
+        </div>
+    }
+</div>
+
+@code {
+    public sealed record Model(ChatVideoState VideoState) {
+        public static readonly Model None = new(ChatVideoState.None);
+    }
+
+    private CancellationTokenSource? _qualityCts;
+    private CancellationTokenSource? _codecCts;
+    private bool _autoStartPending;
+    private int _lastRemoteStreamCount = -1;
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoRecorder.create";
+
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private ILogger Log => field ??= Hub.LogFor(GetType());
+    private ElementReference Ref { get; set; }
+    private DotNetObjectReference<VideoRecorder> BlazorRef { get; set; } = null!;
+    private IJSObjectReference? JSRef { get; set; }
+
+    [Parameter] public string? PendingCameraDeviceId { get; set; }
+    [Parameter] public bool PendingBlurEnabled { get; set; }
+    [Parameter] public int RemoteStreamCount { get; set; }
+    [Parameter] public bool AutoStart { get; set; }
+
+    public override async ValueTask DisposeAsync() {
+        _qualityCts.CancelAndDisposeSilently();
+        _qualityCts = null;
+        _codecCts.CancelAndDisposeSilently();
+        _codecCts = null;
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
+        await base.DisposeAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (JSRef is null) {
+            BlazorRef = DotNetObjectReference.Create(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
+
+            // Auto-start recording if requested from JoinVideoCallModal
+            if (_autoStartPending) {
+                _autoStartPending = false;
+                var chatId = Hub.ChatUI.SelectedChatId.Value;
+                if (chatId is not null) {
+                    if (!string.IsNullOrEmpty(PendingCameraDeviceId))
+                        await JSRef.InvokeVoidAsync("setSelectedCamera", PendingCameraDeviceId);
+                    await JSRef.InvokeVoidAsync("setBlurEnabled", PendingBlurEnabled);
+                    await JSRef.InvokeVoidAsync("startRecording", chatId.Value);
+                }
+            }
+        }
+    }
+
+    protected override Task OnParametersSetAsync() {
+        if (AutoStart && JSRef is null)
+            _autoStartPending = true;
+
+        if (JSRef is {} jsRef && RemoteStreamCount != _lastRemoteStreamCount) {
+            _lastRemoteStreamCount = RemoteStreamCount;
+            _ = jsRef.InvokeVoidAsync("setRemoteStreamCount", RemoteStreamCount);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public async Task OnRecordingStarted() {
+        var chatId = Hub.ChatUI.SelectedChatId.Value;
+        if (chatId != null) {
+            ChatVideoUI.OnRecordingStarted(chatId);
+            _ = SubscribeToQualityRequests(chatId);
+            _ = SubscribeToSupportedDecoderCodecs(chatId);
+        }
+        if (JSRef is {} jsRef)
+            _ = jsRef.InvokeVoidAsync("setRemoteStreamCount", RemoteStreamCount);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public async Task OnRecordingStopped() {
+        _qualityCts.CancelAndDisposeSilently();
+        _qualityCts = null;
+        _codecCts.CancelAndDisposeSilently();
+        _codecCts = null;
+        ChatVideoUI.OnRecordingStopped();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public async Task OnRecordingError(string error) {
+        ChatVideoUI.OnRecordingError(error);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public async Task OnRecorderStateChanged(string stateJson) {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SubscribeToQualityRequests(ChatId chatId) {
+        _qualityCts.CancelAndDisposeSilently();
+        var cts = _qualityCts = new CancellationTokenSource();
+        var ct = cts.Token;
+
+        try {
+            Log.LogInformation("SubscribeToQualityRequests: starting for ChatId={ChatId}", chatId);
+
+            // Wait for our own stream to appear (registration is async)
+            StreamId? ownStreamId = null;
+            var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, ct).ConfigureAwait(false);
+            if (ownAuthor == null)
+                return;
+
+            for (var i = 0; i < 30; i++) { // poll up to 15s
+                var streams = await ChatVideoUI.GetActiveVideoStreams(chatId, ct).ConfigureAwait(false);
+                var ownStream = streams.FirstOrDefault(s => s.AuthorId == ownAuthor.Id);
+                if (ownStream != default) {
+                    ownStreamId = ownStream.StreamId;
+                    break;
+                }
+                await Task.Delay(500, ct).ConfigureAwait(false);
+            }
+
+            if (ownStreamId == null) {
+                Log.LogWarning("SubscribeToQualityRequests: own stream not found after polling for ChatId={ChatId}", chatId);
+                return;
+            }
+
+            Log.LogInformation("SubscribeToQualityRequests: found own StreamId={StreamId}, subscribing", ownStreamId);
+
+            var liveVideoStreams = Hub.Services.GetRequiredService<ILiveVideoStreams>();
+            var qualityStream = await liveVideoStreams
+                .ObserveStreamQualityRequests(Session, ownStreamId, ct)
+                .ConfigureAwait(false);
+            await foreach (var preset in qualityStream.ConfigureAwait(false)) {
+                Log.LogInformation("SubscribeToQualityRequests: received preset {Level} ({Width}x{Height} @ {Bitrate}bps)",
+                    preset.Level, preset.Width, preset.Height, preset.Bitrate);
+                if (JSRef is {} jsRef)
+                    await jsRef.InvokeVoidAsync("reconfigure", ct, preset.Width, preset.Height, preset.Bitrate);
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
+        catch (Exception e) {
+            Log.LogWarning(e, "SubscribeToQualityRequests failed");
+        }
+    }
+
+    private async Task SubscribeToSupportedDecoderCodecs(ChatId chatId) {
+        _codecCts.CancelAndDisposeSilently();
+        var cts = _codecCts = new CancellationTokenSource();
+        var ct = cts.Token;
+
+        try {
+            Log.LogInformation("SubscribeToSupportedDecoderCodecs: starting for ChatId={ChatId}", chatId);
+
+            var liveVideoStreams = Hub.Services.GetRequiredService<ILiveVideoStreams>();
+            var codecStream = await liveVideoStreams
+                .ObserveSupportedDecoderCodecs(Session, chatId, ct)
+                .ConfigureAwait(false);
+            await foreach (var codecs in codecStream.ConfigureAwait(false)) {
+                Log.LogInformation("SubscribeToSupportedDecoderCodecs: received codecs=[{Codecs}]", string.Join(", ", codecs));
+                if (JSRef is {} jsRef)
+                    await jsRef.InvokeVoidAsync("updateSupportedDecoderCodecs", ct, codecs.ToArray());
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
+        catch (Exception e) {
+            Log.LogWarning(e, "SubscribeToSupportedDecoderCodecs failed");
+        }
+    }
+
+    private async Task OnSettingsClick() {
+        // Stop current recording
+        if (JSRef is {} jsRef)
+            await jsRef.InvokeVoidAsync("stopRecording");
+
+        // Get chat for modal
+        var chatId = Hub.ChatUI.SelectedChatId.Value;
+        if (chatId is null)
+            return;
+
+        var chat = await Hub.Chats.Get(Session, chatId, default).ConfigureAwait(false);
+        if (chat is null)
+            return;
+
+        // Open JoinVideoCallModal for camera settings
+        var mode = RemoteStreamCount > 0
+            ? JoinVideoCallModal.VideoCallMode.Join
+            : JoinVideoCallModal.VideoCallMode.Start;
+        _ = ModalUI.Show(new JoinVideoCallModal.Model(chat, mode));
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            t => new ComputedState<Model>.Options {
+                InitialValue = Model.None,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken);
+        if (chatId is null)
+            return Model.None;
+
+        // Get centralized video state
+        var videoState = await ChatVideoUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
+
+        if (JSRef is not { } jsRef)
+            return new (videoState);
+
+        // Check if recording was stopped externally
+        var wasRecording = State.Value.VideoState.IsRecording;
+        if (wasRecording && !videoState.IsRecording)
+            _ = jsRef.InvokeVoidAsync("stopRecording");
+
+        // Detect blur state change during active recording
+        var wasBlurEnabled = State.Value.VideoState.IsBackgroundBlurEnabled;
+        if (videoState.IsRecording && wasBlurEnabled != videoState.IsBackgroundBlurEnabled)
+            _ = jsRef.InvokeVoidAsync("toggleBlur", videoState.IsBackgroundBlurEnabled);
+
+        // Detect recording started while panel is already open
+        if (!wasRecording && videoState.IsRecording) {
+            if (!string.IsNullOrEmpty(videoState.SelectedCameraDeviceId))
+                _ = jsRef.InvokeVoidAsync("setSelectedCamera", videoState.SelectedCameraDeviceId);
+            _ = jsRef.InvokeVoidAsync("setBlurEnabled", videoState.IsBackgroundBlurEnabled);
+            _ = jsRef.InvokeVoidAsync("startRecording", chatId.Value);
+        }
+
+        return new (videoState);
+    }
+}

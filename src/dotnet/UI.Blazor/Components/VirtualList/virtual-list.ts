@@ -26,6 +26,7 @@ const UpdateItemVisibilityInterval = 250;
 const VisibilityEpsilon = 4;
 const EdgeEpsilon = 4;
 const ScrollDebounce = 200;
+const ScrollRestoreGuard = 100;
 const SkeletonDetectionBoundary = 200;
 const MinViewPortSize = 400;
 const RequestDataTimeout = 800;
@@ -669,6 +670,7 @@ export class VirtualList {
         let itemsWereMeasured = false;
         let notAnItem = false;
         let existingResizedCount = 0;
+        let totalExistingSizeDiff = 0;
         const itemRefsWithWrongSize = new Array<HTMLElement>();
         for (const entry of entries) {
             const rect = entry.contentRect;
@@ -694,6 +696,7 @@ export class VirtualList {
                     if (oldSize && oldSize > 0 && size > 0 && size != oldSize) {
                         existingResizedCount++;
                         itemsWereMeasured = true;
+                        totalExistingSizeDiff += size - oldSize;
                     }
                     item.size = size;
                     if (this.state.pivots.some(pivot => pivot.itemKey === key)) {
@@ -757,6 +760,18 @@ export class VirtualList {
             // Use debounced scroll restoration to batch multiple resize events together
             // This prevents jittering when returning to a chat and items are being measured
             this.restoreScrollPositionOnResizeDebounced();
+
+            // Immediate scroll compensation when items resize while not at sticky end.
+            // Container is anchored from bottom — when items grow, the container extends
+            // upward, shifting visible items. Shift the container's bottom position to
+            // compensate, avoiding scrollTop changes that trigger scroll events and iOS issues.
+            // Do not use fastRaf there as it produces jumps up-down
+            if (totalExistingSizeDiff !== 0
+                && this.defaultEdge === VirtualListEdge.End
+                && this.state.stickyEdge?.edge !== VirtualListEdge.End) {
+                const currentBottom = parseFloat(this.containerRef.style.bottom) || 0;
+                this.containerRef.style.bottom = `${currentBottom - totalExistingSizeDiff}px`;
+            }
         }
     };
 
@@ -1163,6 +1178,13 @@ export class VirtualList {
         if (!ev.isTrusted)
             return; // Ignore non-user initiated scrolls
 
+        // Ignore scroll events from programmatic scroll position restoration.
+        // Setting scrollTop in restoreScrollPosition fires a trusted scroll event
+        // that would otherwise be misidentified as user scroll, clearing pivots
+        // and causing a visual jump.
+        if (Date.now() - this.state.scrollPositionRestoredAt < ScrollRestoreGuard)
+            return;
+
         // Clear sticky edge when user is scrolling via touch/pointer drag
         if (this.isPointerDown && this.state.stickyEdge != null && !this.state.isEndAnchorVisible) {
             this.setStickyEdge(null);
@@ -1213,6 +1235,9 @@ export class VirtualList {
             this.turnOffIsEndAnchorVisible()
             this.turnOnIsEndAnchorVisibleDebounced.reset();
             this.turnOffIsEndAnchorVisibleDebounced.reset();
+        } else {
+            debugLog?.log(`onDocumentVisibilityChange: visible, re-checking endAnchor visibility`);
+            this.turnOnIsEndAnchorVisibleDebounced();
         }
     }
 
@@ -1254,7 +1279,8 @@ export class VirtualList {
 
                 const item = this.items.get(itemKey);
                 const pivotRef = this.getItemRef(itemKey);
-                if (!pivotRef || !item || item.shouldSkipKey || !item.range)
+                const isInteractive = itemKey === interactiveKey;
+                if (!pivotRef || !item || (!isInteractive && item.shouldSkipKey) || !item.range)
                     continue;
 
                 pivotRefs.push(pivotRef);
@@ -1262,7 +1288,6 @@ export class VirtualList {
                 let stickyOffset: number | null = null;
                 const itemRect = pivotRef.getBoundingClientRect();
                 const isVisible = this.isRectIntersects(itemRect, viewRect);
-                const isInteractive = itemKey === interactiveKey;
                 if (isInteractive) {
                     const isSticky = window.getComputedStyle(pivotRef).position === 'sticky';
                     if (isSticky) {
@@ -1464,16 +1489,28 @@ export class VirtualList {
             useSmoothScroll = false; // fix for scroll to the end on chat switch
         this.updateState('scrollToEdge', this.state, { scrollTime: Date.now() });
 
-        const scrollHeight = 0;
+        let targetScrollTop = 0;
         fastRaf({
             read: () => {
                 const isFarFromEdge = edge == VirtualListEdge.End
                     ? -this.ref.scrollTop > this.ref.offsetHeight
                     : this.ref.scrollTop > this.ref.offsetHeight;
                 useSmoothScroll = useSmoothScroll && !isFarFromEdge;
+
+                // Compute target scroll position based on layout direction
+                if (this.defaultEdge === VirtualListEdge.End) {
+                    // column-reverse: scrollTop=0 is end, negative is toward start
+                    targetScrollTop = edge === VirtualListEdge.End
+                        ? 0
+                        : this.ref.clientHeight - this.ref.scrollHeight;
+                } else {
+                    // column: scrollTop=0 is start, positive is toward end
+                    targetScrollTop = edge === VirtualListEdge.Start
+                        ? 0
+                        : this.ref.scrollHeight - this.ref.clientHeight;
+                }
             },
             write: () => {
-                const targetScrollTop = edge == VirtualListEdge.End ? scrollHeight : 0;
                 if (useSmoothScroll) {
                     // Use scrollTo instead of scrollIntoView - more predictable on iOS
                     this.ref.scrollTo({
@@ -1501,6 +1538,19 @@ export class VirtualList {
         if (old?.itemKey !== stickyEdge?.itemKey || old?.edge !== stickyEdge?.edge) {
             debugLog?.log(`setStickyEdge:`, stickyEdge);
             this.updateState('setStickyEdge', this.state, { stickyEdge: stickyEdge as Required<VirtualListStickyEdgeState> | null });
+
+            // Toggle class for CSS transition control
+            const addStickyEnd = stickyEdge?.edge === VirtualListEdge.End;
+            fastRaf({
+                write: () => {
+                    if (addStickyEnd) {
+                        this.ref.classList.add('sticky-end');
+                    } else {
+                        this.ref.classList.remove('sticky-end');
+                    }
+                },
+            });
+
             if (stickyEdge?.edge === VirtualListEdge.End) {
                 const lastItemRef = this.getLastItemRef();
                 if (!lastItemRef)
@@ -1538,7 +1588,6 @@ export class VirtualList {
         let endSpacerSize = 0;
         let totalSizeDiff = 0;
         const isInteractivePositioning = [...this.state.pivots].some(p => p.isInteractive)
-            && scrollMetadata?.scrollType !== 'sticky-edge'
             && scrollMetadata?.scrollType !== 'last-item'
             && scrollMetadata?.scrollType !== 'item';
 
@@ -1724,16 +1773,18 @@ export class VirtualList {
 
         // Handle restore position synchronously after render
         options.read();
+        // Set scrollPositionRestoredAt BEFORE write/scroll to guard onScroll from false "user scroll" detection
+        this.updateState('scrollRestored', this.state, { scrollPositionRestoredAt: Date.now() });
         options.write();
         if (!isInteractivePositioning) {
             scrollMetadata?.scroll?.();
             debugLog?.log(`restoreScrollPosition: scroll set synchronously`, scrollMetadata?.scrollType);
         }
         else {
-            debugLog?.log(`restoreScrollPosition: scroll skipped`, scrollMetadata?.scrollType);
+            if (this.state.stickyEdge)
+                this.setStickyEdge(null);
+            debugLog?.log(`restoreScrollPosition: scroll set interactive`, scrollMetadata?.scrollType);
         }
-
-        this.updateState('scrollRestored', this.state, { scrollPositionRestoredAt: Date.now() });
 
         this.updateViewportThrottled();
         // await delayAsync(50);
@@ -1829,6 +1880,22 @@ export class VirtualList {
                     cornerstoneItem.range.start + offsetDelta,
                     cornerstoneItem.range.end + offsetDelta);
                 interactivePivot.stickyOffset = null;
+            }
+            // Re-measure interactive cornerstone: DOM may have been updated by Blazor
+            // but ResizeObserver hasn't fired yet, so item.size can be stale
+            if (cornerstoneItem?.range) {
+                const itemRef = this.getItemRef(cornerstoneItem.key);
+                if (itemRef) {
+                    const rect = itemRef.getBoundingClientRect();
+                    const measuredSize = Math.ceil(rect.height + this.rowGap);
+                    if (measuredSize > 0 && measuredSize !== cornerstoneItem.size) {
+                        cornerstoneItem.size = measuredSize;
+                        cornerstoneItem.range = new NumberRange(
+                            cornerstoneItem.range.start,
+                            cornerstoneItem.range.start + measuredSize);
+                        this.sizeCache.set(cornerstoneItem.key, measuredSize);
+                    }
+                }
             }
         }
         const visibleItemKeys = [...visibleItems.keys()]

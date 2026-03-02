@@ -68,6 +68,7 @@
     [Parameter] public string SessionToken { get; set; } = "";
     [Parameter] public string RenderModeKey { get; set; } = "";
 
+    // ReSharper disable once NotNullOrRequiredMemberIsNotInitialized
     public AppBase()
         => LoadingUI.MarkAppCreated();
 
