@@ -23,7 +23,7 @@ public class MentionsBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
 
         var dbMention = await dbContext.Mentions
             .Where(x => x.ChatId == chatId.Value && x.MentionId == mentionId.Value)
-            .OrderByDescending(x => x.EntryLocalId)
+            .OrderByDescending(x => x.EntryLid)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
 
@@ -51,7 +51,7 @@ public class MentionsBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
         await using var __ = dbContext.ConfigureAwait(false);
 
         var existingMentions = await dbContext.Mentions
-            .Where(x => x.ChatId == entry.ChatId.Value && x.EntryLocalId == entry.LocalId)
+            .Where(x => x.ChatId == entry.ChatId.Value && x.EntryLid == entry.LocalId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
@@ -71,7 +71,7 @@ public class MentionsBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
                 .Select(mentionId => new DbMention {
                     Id = DbMention.ComposeId(entry.Id, mentionId),
                     MentionId = mentionId.Value,
-                    EntryLocalId = entry.LocalId,
+                    EntryLid = entry.LocalId,
                     ChatId = entry.ChatId.Value,
                 }).ToList();
             dbContext.Mentions.AddRange(toAdd);

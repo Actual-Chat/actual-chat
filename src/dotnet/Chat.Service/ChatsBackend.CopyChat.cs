@@ -712,7 +712,7 @@ public partial class ChatsBackend
 
         var mentions = await dbContext.Mentions
             .Where(c => c.ChatId == chatSid)
-            .Where(c => c.EntryLocalId >= minLocalId && c.EntryLocalId <= maxLocalId)
+            .Where(c => c.EntryLid >= minLocalId && c.EntryLid <= maxLocalId)
             .OrderBy(c => c.Id)
             .AsNoTracking()
             .ToListAsync(cancellationToken)
@@ -767,9 +767,9 @@ public partial class ChatsBackend
                 mentionId = parsedMentionId;
             }
             mention.MentionId = mentionId.Value;
-            mention.Id = DbMention.ComposeId(ChatEntryId.New(newChatId, mention.EntryLocalId), mentionId);
+            mention.Id = DbMention.ComposeId(ChatEntryId.New(newChatId, mention.EntryLid), mentionId);
             dbContext.Mentions.Add(mention);
-            entryIdsCollector.Add(mention.EntryLocalId);
+            entryIdsCollector.Add(mention.EntryLid);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

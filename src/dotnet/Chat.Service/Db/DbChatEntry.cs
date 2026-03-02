@@ -71,10 +71,9 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public bool HasReactions { get; set; }
     public string? LinkPreviewIds { get; set; }
     public LinkPreviewMode? LinkPreviewMode { get; set; }
-    public string? StreamId { get; set; } // Rename to ContentStreamId
+    public string? ContentStreamId { get; set; }
 
-    public long? AudioEntryId { get; set; } // Remove
-    public long? VideoEntryId { get; set; } // Remove
+    public long? AudioEntryId { get; set; } // TODO(AY): Remove
     public string? MediaId { get; set; }
     public string? TimeMap { get; set; }
 
@@ -109,7 +108,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             Content = !IsSystemEntry ? Content : "",
             ContentHash = new (ContentHash ?? ""),
             SystemEntry = IsSystemEntry ? SystemEntrySerializer.Read(Content) : null,
-            ContentStreamId = StreamId ?? "",
+            ContentStreamId = ContentStreamId ?? "",
             Audio = audio,
             RepliedEntryLid = RepliedChatEntryId,
             Forwarded = BuildForwarded(),
@@ -180,7 +179,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         EndsAt = model.EndsAt;
         Duration = EndsAt.HasValue ? (EndsAt.GetValueOrDefault() - BeginsAt).TotalSeconds : 0;
         HasReactions = model.HasReactions;
-        StreamId = model.ContentStreamId;
+        ContentStreamId = model.ContentStreamId;
         RepliedChatEntryId = model.RepliedEntryLid;
         if (model.Forwarded is { } forwarded) {
             ForwardedChatEntryId = forwarded.ChatEntryId?.Value;

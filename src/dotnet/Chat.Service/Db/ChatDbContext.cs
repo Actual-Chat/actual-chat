@@ -49,11 +49,11 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
         chatEntry.Property(e => e.Id).UseCollation("C");
         chatEntry.Property(e => e.ChatId).UseCollation("C");
         chatEntry.Property(e => e.AuthorId).UseCollation("C");
-        chatEntry.Property(e => e.StreamId).UseCollation("C");
+        chatEntry.Property(e => e.ContentStreamId).UseCollation("C");
         chatEntry.Property(e => e.MediaId).UseCollation("C");
         chatEntry.Property(e => e.ForwardedAuthorId).UseCollation("C");
         chatEntry.Property(e => e.LinkPreviewIds).UseCollation("C");
-        chatEntry.HasIndex(e => e.StreamId).HasFilter("\"kind\" = 0 AND \"stream_id\" IS NOT NULL");
+        chatEntry.HasIndex(e => e.ContentStreamId).HasFilter("\"kind\" = 0 AND \"stream_id\" IS NOT NULL");
 
         var chatEntryLanguage = model.Entity<DbChatEntryLanguage>();
         chatEntryLanguage.Property(e => e.Id).UseCollation("C");

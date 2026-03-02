@@ -387,7 +387,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
 
             // This query will be executed once - no need to wrap in a compute method
             var chatEntrySid = await dbContext.ChatEntries
-                .Where(e => e.Kind == 0 && e.StreamId == streamId.Value)
+                .Where(e => e.Kind == 0 && e.ContentStreamId == streamId.Value)
                 .Select(e => e.Id)
                 .FirstOrDefaultAsync(cancellationToken)
                 .ConfigureAwait(false);
