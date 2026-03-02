@@ -288,7 +288,14 @@ public sealed class ChatAttentionService
     }
 
     private static State? GetState()
-        => MauiPreferences.Get<State?>(MauiPreferences.ChatAttentionStateKey);
+    {
+        if (MauiPreferences.Get<State?>(MauiPreferences.ChatAttentionStateKey) is not { } state)
+            return null;
+
+        if (ReferenceEquals(state.Requests, null))
+            state = state with { Requests = [] };
+        return state;
+    }
 
     private static void SetState(State? state)
     {
@@ -299,7 +306,7 @@ public sealed class ChatAttentionService
 
     // Nested types
 
-    public record State(DateTime UpdatedOnUtc, ChatAttentionRequest[] Requests)
+    public sealed record State(DateTime UpdatedOnUtc, ChatAttentionRequest[] Requests)
     {
         public static readonly State None = new (DateTime.MinValue, []);
 
