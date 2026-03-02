@@ -255,14 +255,22 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         IProgress<double> progress,
         CancellationToken cancellationToken)
     {
-        using var dUploadSource = await PrepareUploadSource(fileInput, progress, cancellationToken).ConfigureAwait(false);
+        // Split progress: transcoding 0-20%, upload 20-100% (if transcoding happened)
+        var transcodingProgress = new Progress<double>(pct => progress.Report(pct * 0.2));
+        var (dUploadSource, didTranscode) = await PrepareUploadSource(fileInput, transcodingProgress, cancellationToken).ConfigureAwait(false);
+        using var _ = dUploadSource;
         var uploadSource = dUploadSource.Resource;
+
+        var uploadProgress = didTranscode
+            ? new Progress<double>(pct => progress.Report(20 + pct * 0.8))
+            : progress;
+
         var metadata = new PropertyBag()
             .Set(nameof(Media.Media.FileName), uploadSource.Metadata.FileName)
             .Set(nameof(Media.Media.ContentType), uploadSource.Metadata.ContentType);
         var uploadId = await InitUpload().ConfigureAwait(false);
         var streamSource = (StreamUploadSource)uploadSource.StreamSource;
-        await FileUploader.UploadData(uploadId, streamSource.GetStream(), progress, cancellationToken).ConfigureAwait(false);
+        await FileUploader.UploadData(uploadId, streamSource.GetStream(), uploadProgress, cancellationToken).ConfigureAwait(false);
         var mediaRef = await CompleteUpload().ConfigureAwait(false);
         return new TextEntryAttachment {
             MediaId = mediaRef.MediaId,
@@ -279,7 +287,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             => Commander.Call(new Uploads_ConvertToMediaRef(Session, uploadId), CancellationToken.None);
     }
 
-    private async Task<Disposable<UploadSource>> PrepareUploadSource(
+    private async Task<(Disposable<UploadSource> Source, bool DidTranscode)> PrepareUploadSource(
         NSItemProvider fileInput,
         IProgress<double> progress,
         CancellationToken cancellationToken)
@@ -287,20 +295,20 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         var uploadSource = await fileInput.ToUploadSource().ConfigureAwait(false);
         if (uploadSource.StreamSource is not FileUploadSource fileSource
             || !uploadSource.Metadata.ContentType.OrdinalStartsWith("video/"))
-            return Disposable.New(uploadSource, Delegates<UploadSource>.Noop);
+            return (Disposable.New(uploadSource, Delegates<UploadSource>.Noop), false);
 
         var transcodedFilePath = await VideoTranscoder
             .TranscodeIfNeeded(fileSource.FilePath, progress, cancellationToken)
             .ConfigureAwait(false);
         if (transcodedFilePath == fileSource.FilePath)
-            return Disposable.New(uploadSource, Delegates<UploadSource>.Noop);
+            return (Disposable.New(uploadSource, Delegates<UploadSource>.Noop), false);
 
         var fileInfo = new FileInfo(transcodedFilePath);
         var newMetadata = new UploadSourceMetadata(
             "video/mp4",
             fileInfo.Length,
             uploadSource.Metadata.FileName);
-        return Disposable.New(new UploadSource(newMetadata, new FileUploadSource(transcodedFilePath)),
-            _ => File.Delete(transcodedFilePath));
+        return (Disposable.New(new UploadSource(newMetadata, new FileUploadSource(transcodedFilePath)),
+            _ => File.Delete(transcodedFilePath)), true);
     }
 }
