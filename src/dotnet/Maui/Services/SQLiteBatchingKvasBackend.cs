@@ -23,7 +23,7 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
     private ILogger Log => field ??= Services.LogFor(GetType());
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SQLiteBatchingKvasBackend))]
-    public SQLiteBatchingKvasBackend(FilePath dbPath, string version, IServiceProvider services, string? key = null)
+    public SQLiteBatchingKvasBackend(FilePath dbPath, string version, IServiceProvider services, byte[]? key = null)
     {
         Services = services;
         _connectionPool = Initialize(dbPath, version, key);
@@ -115,7 +115,7 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
 
     // Private methods
 
-    private SimpleConcurrentPool<SQLiteConnection>? Initialize(FilePath dbPath, string version, string? key)
+    private SimpleConcurrentPool<SQLiteConnection>? Initialize(FilePath dbPath, string version, byte[]? key)
     {
         try {
             return InitializeCore(dbPath, version, key);
@@ -133,7 +133,7 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
         }
     }
 
-    private SimpleConcurrentPool<SQLiteConnection> InitializeCore(FilePath dbPath, string version, string? key)
+    private SimpleConcurrentPool<SQLiteConnection> InitializeCore(FilePath dbPath, string version, byte[]? key)
     {
         var connectionCount = HardwareInfo.ProcessorCount + 2;
         var connections = new SimpleConcurrentPool<SQLiteConnection>(
@@ -191,11 +191,11 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
         public static string UpsertSql = null!;
 
         [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DbHelpers))]
-        public static SQLiteConnection OpenConnection(FilePath dbPath, string? key = null)
+        public static SQLiteConnection OpenConnection(FilePath dbPath, byte[]? key = null)
         {
-            var connection = key != null
-                ? new SQLiteConnection(new SQLiteConnectionString(dbPath, OpenFlags, storeDateTimeAsTicks: true, key: key))
-                : new SQLiteConnection(dbPath, OpenFlags);
+            // byte[] key uses raw hex format (PRAGMA key = "x'...'"), skipping PBKDF2
+            var connectionString = new SQLiteConnectionString(dbPath, OpenFlags, storeDateTimeAsTicks: true, key: key);
+            var connection = new SQLiteConnection(connectionString);
             if (_initializedTag == null) {
                 using var _ = Lock.EnterScope();
                 if (_initializedTag == null) {

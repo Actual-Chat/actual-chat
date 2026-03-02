@@ -11,7 +11,7 @@ public sealed class SQLiteRemoteComputedCache : AppRemoteComputedCache
     public new record Options : AppRemoteComputedCache.Options
     {
         public FilePath DbPath { get; init; }
-        public string? Key { get; init; }
+        public byte[]? Key { get; init; }
 
         public Options()
             => ReaderWorkerPolicy = new BatchProcessorWorkerPolicy() {

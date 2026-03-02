@@ -25,8 +25,8 @@ public static class MauiPreferences
         set => Set(HostOverrideKey, value ?? "");
     }
 
-    public static string DbEncryptionKey
-        => Get(DbEncryptionKeyKey, static () => Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)))!;
+    public static byte[] DbEncryptionKey
+        => Get(DbEncryptionKeyKey, static () => RandomNumberGenerator.GetBytes(32));
 
     public static bool? IsDataCollectionEnabled {
         get => Get<bool?>(IsDataCollectionEnabledKey);
@@ -46,6 +46,7 @@ public static class MauiPreferences
 
     // Public helpers
 
+    [return: NotNullIfNotNull("factory")]
     public static T? Get<T>(string key, Func<T>? factory = null)
     {
         var cached = Cache.GetValueOrDefault(key, NotCachedTag);
@@ -61,14 +62,7 @@ public static class MauiPreferences
             try {
                 var stored = Preferences.Default.Get(key, "");
                 if (stored.IsNullOrEmpty()) {
-                    if (factory != null) {
-                        result = factory.Invoke();
-                        Set(key, result); // Sets Cache[key] as well
-                        return result;
-                    }
-                    result = typeof(T) == typeof(string)
-                        ? (T)(object)stored
-                        : default;
+                    // No stored value
                 }
                 else if (typeof(T) == typeof(string))
                     result = (T)(object)stored;
@@ -77,6 +71,12 @@ public static class MauiPreferences
             }
             catch {
                 // Handles type mismatch when stored format changes across versions
+            }
+
+            if (result is null && factory != null) {
+                result = factory.Invoke();
+                Set(key, result); // Sets Cache[key] as well
+                return result!;
             }
 
             Cache[key] = result;
