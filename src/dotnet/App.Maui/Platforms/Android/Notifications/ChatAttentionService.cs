@@ -300,8 +300,11 @@ public class ChatAttentionService
 
         try {
  #pragma warning disable IL2026
-            return JsonSerializer.Deserialize<State>(json);
+            var state = JsonSerializer.Deserialize<State?>(json);
  #pragma warning restore IL2026
+            if (state is not null && ReferenceEquals(state.Requests, null))
+                state = state with { Requests = [] };
+            return state;
         }
         catch {
             return null;
