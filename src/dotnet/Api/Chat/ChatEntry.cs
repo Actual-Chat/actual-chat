@@ -89,6 +89,7 @@ public sealed partial record ChatEntry(
     [DataMember(Order = 19), MemoryPackOrder(19)] public string StreamId { get; init; } = "";
     [DataMember(Order = 20), MemoryPackIgnore] public long? AudioEntryLid { get; init; }
     [DataMember(Order = 21), MemoryPackIgnore] public long? VideoEntryLid { get; init; }
+    [DataMember(Order = 37), MemoryPackOrder(37)] public string? MediaId { get; init; }
     [DataMember(Order = 22), MemoryPackOrder(22)] public LinearMap TimeMap { get; init; }
     [DataMember(Order = 23), MemoryPackIgnore] public long? RepliedEntryLid { get; init; }
     [DataMember(Order = 24), MemoryPackOrder(24)] public ChatEntryId? ForwardedChatEntryId { get; init; }
@@ -178,6 +179,7 @@ public sealed partial record ChatEntryDiff() : RecordDiff, ISanitized
     [DataMember, MemoryPackOrder(32)] public bool IsThreadEntry { get; init; }
     [DataMember, MemoryPackOrder(33)] public bool HasAttachmentUploads { get; init; }
     [DataMember, MemoryPackOrder(34)] public string ClientId { get; init; } = "";
+    [DataMember, MemoryPackOrder(35)] public string? MediaId { get; init; }
     [DataMember, MemoryPackOrder(50)] public TextEntryAttachment[]? Attachments { get; init; }
 
     public ChatEntryDiff(ChatEntry entry) : this()
@@ -196,6 +198,7 @@ public sealed partial record ChatEntryDiff() : RecordDiff, ISanitized
         StreamId = entry.StreamId;
         AudioEntryLid = entry.AudioEntryLid;
         VideoEntryLid = entry.VideoEntryLid;
+        MediaId = entry.MediaId;
         TimeMap = entry.TimeMap;
         RepliedEntryLid = entry.RepliedEntryLid;
         ForwardedChatEntryId = entry.ForwardedChatEntryId;
