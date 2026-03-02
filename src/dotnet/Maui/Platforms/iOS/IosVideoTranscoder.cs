@@ -2,6 +2,7 @@ using ActualChat.UI.App.Services;
 using ActualLab.Diagnostics;
 using ActualLab.IO;
 using AVFoundation;
+using CoreMedia;
 using Microsoft.Maui.Storage;
 
 namespace ActualChat.Maui;
@@ -10,6 +11,7 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
 {
     private const int MaxLongSide = 1920;
     private const int MaxShortSide = 1080;
+    private const int MaxBitrate = 8_000_000; // 8 Mbps - HEVC 1080p typically outputs around this
 
     private ILogger Log => field ??= services.LogFor<IosVideoTranscoder>();
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.VideoTranscoding);
@@ -21,10 +23,10 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
     {
         DebugLog?.LogInformation("TranscodeInternal: '{Path}'", sourceFilePath);
 
-        if (!await NeedsTranscoding(sourceFilePath).ConfigureAwait(false))
+        var sourceFileInfo = new FileInfo(sourceFilePath);
+        if (!await NeedsTranscoding(sourceFilePath, sourceFileInfo.Length).ConfigureAwait(false))
             return FilePath.Empty;
 
-        var sourceFileInfo = new FileInfo(sourceFilePath);
         Log.LogInformation("Transcoding video '{Path}' (size={Size})",
             sourceFilePath, sourceFileInfo.Length);
 
@@ -35,33 +37,61 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
         if (transcodedPath.IsEmpty)
             return FilePath.Empty;
 
-        var fileInfo = new FileInfo(transcodedPath);
-        Log.LogInformation("Transcoding completed: '{OutputPath}', size={Size} in {Elapsed}",
-            transcodedPath, fileInfo.Length, startedAt.Elapsed.ToShortString());
+        var transcodedFileInfo = new FileInfo(transcodedPath);
+        Log.LogInformation("Transcoding completed: '{OutputPath}', size={Size} ({Ratio:P0} of source) in {Elapsed}",
+            transcodedPath, transcodedFileInfo.Length,
+            (double)transcodedFileInfo.Length / sourceFileInfo.Length,
+            startedAt.Elapsed.ToShortString());
 
         return transcodedPath;
     }
 
-    private async Task<bool> NeedsTranscoding(FilePath filePath)
+    private async Task<bool> NeedsTranscoding(FilePath filePath, long sourceSize)
     {
         if (!OrdinalIgnoreCaseEquals(filePath.Extension, ".mp4")) {
-            DebugLog?.LogInformation("NeedsTranscoding: true (extension '{Extension}' is not .mp4)", filePath.Extension);
+            Log.LogInformation("NeedsTranscoding: true (extension '{Extension}' is not .mp4)", filePath.Extension);
             return true;
         }
 
-        var resolution = await GetVideoResolution(filePath).ConfigureAwait(false);
-        if (resolution == null) {
-            DebugLog?.LogInformation("NeedsTranscoding: false (can't read resolution)");
+        var info = await GetVideoInfo(filePath).ConfigureAwait(false);
+        if (info == null) {
+            Log.LogInformation("NeedsTranscoding: false (can't read video info)");
             return false;
         }
 
-        var longSide = (int)Math.Max(resolution.Value.Width, resolution.Value.Height);
-        var shortSide = (int)Math.Min(resolution.Value.Width, resolution.Value.Height);
-        var needs = longSide > MaxLongSide || shortSide > MaxShortSide;
-        DebugLog?.LogInformation(
-            "NeedsTranscoding: {Result} (resolution={Width}x{Height}, longSide={Long}, shortSide={Short}, maxLong={MaxLong}, maxShort={MaxShort})",
-            needs, (int)resolution.Value.Width, (int)resolution.Value.Height, longSide, shortSide, MaxLongSide, MaxShortSide);
-        return needs;
+        var (resolution, bitrate, duration, codec) = info.Value;
+
+        // Skip transcoding if already HEVC - re-encoding HEVC to HEVC rarely helps
+        if (codec == CMVideoCodecType.Hevc) {
+            Log.LogInformation(
+                "NeedsTranscoding: false (already HEVC, {Width}x{Height}, bitrate={Bitrate})",
+                (int)resolution.Width, (int)resolution.Height, bitrate);
+            return false;
+        }
+
+        var needsResize = resolution.LongSide > MaxLongSide || resolution.ShortSide > MaxShortSide;
+        var needsCompress = bitrate > MaxBitrate;
+
+        if (!needsResize && !needsCompress) {
+            Log.LogInformation(
+                "NeedsTranscoding: false ({Width}x{Height}, bitrate={Bitrate}, codec={Codec})",
+                (int)resolution.Width, (int)resolution.Height, bitrate, codec);
+            return false;
+        }
+
+        // Estimate output size: duration * target bitrate (8 Mbps for HEVC 1080p)
+        var estimatedOutputSize = (long)(duration * MaxBitrate / 8);
+        if (estimatedOutputSize >= sourceSize) {
+            Log.LogInformation(
+                "NeedsTranscoding: false (estimated {EstimatedSize} >= source {SourceSize})",
+                estimatedOutputSize, sourceSize);
+            return false;
+        }
+
+        Log.LogInformation(
+            "NeedsTranscoding: true ({Width}x{Height}, bitrate={Bitrate}, codec={Codec}, estimated={EstimatedSize}, source={SourceSize})",
+            (int)resolution.Width, (int)resolution.Height, bitrate, codec, estimatedOutputSize, sourceSize);
+        return true;
     }
 
     private async Task<FilePath> Transcode(
@@ -72,7 +102,7 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
         var sourceUrl = NSUrl.CreateFileUrl(sourcePath);
         var asset = new AVUrlAsset(sourceUrl);
 
-        var exportSession = new AVAssetExportSession(asset, AVAssetExportSessionPreset.Preset1920x1080);
+        var exportSession = new AVAssetExportSession(asset, AVAssetExportSessionPreset.Hevc1920x1080);
         FilePath outputDir = new FilePath(FileSystem.CacheDirectory) | "transcoded";
         Directory.CreateDirectory(outputDir);
         FilePath outputPath = outputDir | $"{sourcePath.FileNameWithoutExtension}.mp4";
@@ -84,8 +114,7 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
         exportSession.OutputFileType = AVFileTypes.Mpeg4.GetConstant();
         exportSession.ShouldOptimizeForNetworkUse = true;
 
-        DebugLog?.LogInformation(
-            "Transcode: exporting '{Source}' -> '{Output}'", sourcePath, outputPath);
+        DebugLog?.LogInformation("Transcode: exporting '{Source}' -> '{Output}'", sourcePath, outputPath);
 
         try {
             // Start progress monitoring
@@ -123,35 +152,31 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
         }
     }
 
-    private async Task<CGSize?> GetVideoResolution(FilePath filePath)
+    private async Task<(CGSize Resolution, float Bitrate, double Duration, CMVideoCodecType Codec)?> GetVideoInfo(FilePath filePath)
     {
         try {
-            DebugLog?.LogInformation("GetVideoResolution: '{FilePath}'", filePath);
+            DebugLog?.LogInformation("GetVideoInfo: '{FilePath}'", filePath);
             var url = NSUrl.CreateFileUrl(filePath);
             var asset = new AVUrlAsset(url);
             var tracks = await asset.LoadTracksWithMediaTypeAsync(AVMediaTypes.Video.GetConstant()!)
                 .ConfigureAwait(false);
             if (tracks.Count == 0) {
-                DebugLog?.LogInformation("GetVideoResolution: no video track found in '{FilePath}'", filePath);
+                DebugLog?.LogInformation("GetVideoInfo: no video track found in '{FilePath}'", filePath);
                 return null;
             }
 
             var track = tracks[0];
-            var size = track.NaturalSize;
-            var transform = track.PreferredTransform;
-
-            // Apply transform to handle rotated videos (e.g., portrait recordings)
-            var isRotated = Math.Abs(transform.A) < 0.01 && Math.Abs(transform.D) < 0.01;
-            var result = isRotated
-                ? new CGSize(Math.Abs(size.Height), Math.Abs(size.Width))
-                : new CGSize(Math.Abs(size.Width), Math.Abs(size.Height));
+            var resolution = track.ActualResolution;
+            var bitrate = track.EstimatedDataRate;
+            var duration = asset.Duration.Seconds;
+            var codec = track.VideoCodecType;
             DebugLog?.LogInformation(
-                "GetVideoResolution: {Width}x{Height} (isRotated={IsRotated})",
-                (int)result.Width, (int)result.Height, isRotated);
-            return result;
+                "GetVideoInfo: {Width}x{Height}, bitrate={Bitrate}, duration={Duration}s, codec={Codec}",
+                (int)resolution.Width, (int)resolution.Height, bitrate, duration, codec);
+            return (resolution, bitrate, duration, codec);
         }
         catch (Exception e) {
-            Log.LogError(e, "GetVideoResolution: failed to read video tracks from '{FilePath}'", filePath);
+            Log.LogError(e, "GetVideoInfo: failed to read video tracks from '{FilePath}'", filePath);
             return null;
         }
     }
