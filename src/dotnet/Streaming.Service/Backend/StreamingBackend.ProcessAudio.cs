@@ -3,6 +3,7 @@ using ActualChat.Audio;
 using ActualChat.Chat;
 using ActualChat.Kvas;
 using ActualChat.Live;
+using ActualChat.Media;
 using ActualChat.Transcription;
 using ActualLab.Rpc;
 
@@ -157,6 +158,16 @@ public partial class StreamingBackend
         if (transcribeResult is not null) {
             // Launch re-transcribe after text and audio entries have been finalized.
             await RetranscribeTextEntry(transcribeResult.Value.Item1, transcribeResult.Value.Item2).SilentAwait();
+        }
+
+        // Double-write: create media record for the audio entry so the text entry can reference it via MediaId
+        if (audioEntry != null && !audioBlobId.IsNullOrEmpty() && transcribeResult is not null) {
+            var audioEndsAt = audioEntry.BeginsAt + closedSegment.Duration;
+            var audioContentEndsAt = Moment.Min(audioEndsAt, audioEntry.BeginsAt + closedSegment.AudibleDuration);
+            await CreateAudioMedia(
+                    chatId, audioEntry.BeginsAt, audioEndsAt, audioContentEndsAt,
+                    audioBlobId, transcribeResult.Value.Item1, CancellationToken.None)
+                .SilentAwait();
         }
     }
 
@@ -401,6 +412,35 @@ public partial class StreamingBackend
             textEntryId,
             audioSegmentLanguage);
         await Commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    private async Task CreateAudioMedia(
+        ChatId chatId,
+        Moment beginsAt,
+        Moment endsAt,
+        Moment contentEndsAt,
+        string audioBlobId,
+        ChatEntryId textEntryId,
+        CancellationToken cancellationToken)
+    {
+        var mediaId = MediaId.New(chatId.Value);
+        var media = new MediaFull(mediaId) {
+            ContentId = audioBlobId,
+            Metadata = PropertyBag.Empty
+                .Set(nameof(ActualChat.Media.Media.ContentType), "audio/webm")
+                .Set("BeginsAt", beginsAt.EpochOffset.Ticks)
+                .Set("EndsAt", endsAt.EpochOffset.Ticks)
+                .Set("ContentEndsAt", contentEndsAt.EpochOffset.Ticks),
+        };
+        var changeCommand = new MediaBackend_Change(mediaId, null, new Change<MediaFull> { Create = media });
+        await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
+
+        // Update the text entry's MediaId
+        var updateCommand = new ChatsBackend_ChangeEntry(
+            textEntryId,
+            null,
+            Change.Update(new ChatEntryDiff { MediaId = mediaId.Value }));
+        await Commander.Call(updateCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     private void ApplyTranscriptionDetectedLanguage(AudioRecord audioSegmentRecord, Language detectedLanguage,
