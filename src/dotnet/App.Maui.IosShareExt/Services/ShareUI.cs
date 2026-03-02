@@ -255,7 +255,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         IProgress<double> progress,
         CancellationToken cancellationToken)
     {
-        using var dUploadSource = await PrepareUploadSource(fileInput, cancellationToken).ConfigureAwait(false);
+        using var dUploadSource = await PrepareUploadSource(fileInput, progress, cancellationToken).ConfigureAwait(false);
         var uploadSource = dUploadSource.Resource;
         var metadata = new PropertyBag()
             .Set(nameof(Media.Media.FileName), uploadSource.Metadata.FileName)
@@ -281,6 +281,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
 
     private async Task<Disposable<UploadSource>> PrepareUploadSource(
         NSItemProvider fileInput,
+        IProgress<double> progress,
         CancellationToken cancellationToken)
     {
         var uploadSource = await fileInput.ToUploadSource().ConfigureAwait(false);
@@ -289,9 +290,9 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             return Disposable.New(uploadSource, Delegates<UploadSource>.Noop);
 
         var transcodedFilePath = await VideoTranscoder
-            .TranscodeIfNeeded(fileSource.FilePath, progress: null, cancellationToken: cancellationToken)
+            .TranscodeIfNeeded(fileSource.FilePath, progress, cancellationToken)
             .ConfigureAwait(false);
-        if (transcodedFilePath.IsEmpty)
+        if (transcodedFilePath == fileSource.FilePath)
             return Disposable.New(uploadSource, Delegates<UploadSource>.Noop);
 
         var fileInfo = new FileInfo(transcodedFilePath);

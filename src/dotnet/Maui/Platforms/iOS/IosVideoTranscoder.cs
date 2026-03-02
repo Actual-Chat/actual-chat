@@ -21,7 +21,7 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
         DebugLog?.LogInformation("TranscodeIfNeeded: '{Path}'", sourceFilePath);
 
         if (!await NeedsTranscoding(sourceFilePath).ConfigureAwait(false))
-            return FilePath.Empty;
+            return sourceFilePath;
 
         var sourceFileInfo = new FileInfo(sourceFilePath);
         Log.LogInformation("Transcoding video '{Path}' (size={Size})",
@@ -32,7 +32,7 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
             .ConfigureAwait(false);
 
         if (outputPath == null)
-            return FilePath.Empty;
+            return sourceFilePath;
 
         var fileInfo = new FileInfo(outputPath.Value);
         Log.LogInformation("Transcoding completed: '{OutputPath}', size={Size} in {Elapsed}",
