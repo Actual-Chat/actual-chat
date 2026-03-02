@@ -32,7 +32,7 @@ public sealed class MediaUploader(Type ownerType, VersionGenerator<long> version
         log.LogInformation("Uploading chat pictures: done");
         return;
 
-        async Task AddMedia(string id, Resource resource)
+        async Task AddMedia(string id, Resource resource, MediaKind kind)
         {
             var mediaId = MediaId.Parse(id);
             var mediaIdHash = mediaId.Value.Hash(Encoding.UTF8).SHA256().AlphaNumeric();
@@ -44,6 +44,7 @@ public sealed class MediaUploader(Type ownerType, VersionGenerator<long> version
             var contentId = $"media/{mediaIdHash}/{mediaId.LocalId}{extension}";
             var media = new MediaFull(mediaId) {
                 ContentId = contentId,
+                Kind = kind,
                 FileName = resource.Name,
                 Length = resourceStream.Length,
                 ContentType = type,
@@ -74,5 +75,5 @@ public sealed class MediaUploader(Type ownerType, VersionGenerator<long> version
         }
     }
 
-    public sealed record UploadBuilderContext(Func<string, Resource, Task> AddMedia);
+    public sealed record UploadBuilderContext(Func<string, Resource, MediaKind, Task> AddMedia);
 }

@@ -1,5 +1,4 @@
 using ActualLab.Fusion.Blazor;
-using MemoryPack;
 
 namespace ActualChat.Media;
 

@@ -1,3 +1,4 @@
+using ActualChat.Media;
 using SixLabors.ImageSharp;
 
 namespace ActualChat.Uploads;
@@ -7,6 +8,6 @@ namespace ActualChat.Uploads;
 /// </summary>
 public interface IMediaSaver
 {
-    Task<MediaContent> Save(MediaId mediaId, UploadedFile file, Size? size, CancellationToken cancellationToken);
-    Task<MediaContent> Save(MediaId mediaId, ProcessedFile file, bool isUpdate, CancellationToken cancellationToken);
+    Task<MediaContent> Save(MediaId mediaId, UploadedFile file, Size? size, MediaKind kind, CancellationToken cancellationToken);
+    Task<MediaContent> Save(MediaId mediaId, ProcessedFile file, bool isUpdate, MediaKind kind, CancellationToken cancellationToken);
 }

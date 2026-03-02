@@ -1,4 +1,5 @@
 using ActualChat.Controllers;
+using ActualChat.Media;
 using ActualChat.Security;
 using ActualChat.Uploads;
 using Microsoft.AspNetCore.Mvc;
@@ -48,7 +49,7 @@ public sealed class ChatMediaController(IServiceProvider services) : ControllerB
             file.Length,
             () => Task.FromResult(file.OpenReadStream()));
         using var processedFile = await MediaProcessor.ProcessUpload(uploadedFile, cancellationToken).ConfigureAwait(false);
-        var mediaContent = await MediaSaver.Save(MediaId.New(chatId.Value), processedFile, isUpdate:false, cancellationToken).ConfigureAwait(false);
+        var mediaContent = await MediaSaver.Save(MediaId.New(chatId.Value), processedFile, isUpdate:false, MediaKind.ChatEntryAttachment, cancellationToken).ConfigureAwait(false);
         return Ok(mediaContent);
     }
 }

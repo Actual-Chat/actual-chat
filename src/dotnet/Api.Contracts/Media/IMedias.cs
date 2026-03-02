@@ -25,6 +25,7 @@ public sealed partial record Medias_ReserveMedia(
 ) : ISessionCommand<MediaId>, IApiCommand
 {
     [DataMember, MemoryPackOrder(2)] public PropertyBag Metadata { get; init; } = PropertyBag.Empty;
+    [DataMember, MemoryPackOrder(3)] public MediaKind Kind { get; init; }
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
