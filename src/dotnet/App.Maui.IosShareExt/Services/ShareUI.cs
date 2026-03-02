@@ -257,14 +257,10 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
     {
         // Split progress: transcoding 0-20%, upload 20-100% (if transcoding happened)
         var transcodingProgress = new Progress<double>(pct => progress.Report(pct * 0.2));
-        var (dUploadSource, didTranscode) = await PrepareUploadSource(fileInput, transcodingProgress, cancellationToken).ConfigureAwait(false);
-        using var _ = dUploadSource;
+        using var dUploadSource = await PrepareUploadSource(fileInput, transcodingProgress, cancellationToken).ConfigureAwait(false);
         var uploadSource = dUploadSource.Resource;
 
-        var uploadProgress = didTranscode
-            ? new Progress<double>(pct => progress.Report(20 + pct * 0.8))
-            : progress;
-
+        var uploadProgress = new Progress<double>(pct => progress.Report(20 + (pct * 0.8)));
         var metadata = new PropertyBag()
             .Set(nameof(Media.Media.FileName), uploadSource.Metadata.FileName)
             .Set(nameof(Media.Media.ContentType), uploadSource.Metadata.ContentType);
@@ -287,27 +283,27 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             => Commander.Call(new Uploads_ConvertToMediaRef(Session, uploadId), CancellationToken.None);
     }
 
-    private async Task<(Disposable<UploadSource> Source, bool DidTranscode)> PrepareUploadSource(
+    private async Task<Disposable<UploadSource>> PrepareUploadSource(
         NSItemProvider fileInput,
         IProgress<double> progress,
         CancellationToken cancellationToken)
     {
         var uploadSource = await fileInput.ToUploadSource().ConfigureAwait(false);
         if (uploadSource.StreamSource is not FileUploadSource fileSource)
-            return (Disposable.New(uploadSource, Delegates<UploadSource>.Noop), false);
+            return Disposable.New(uploadSource, Delegates<UploadSource>.Noop);
 
         var transcodedFilePath = await VideoTranscoder
             .Transcode(fileSource.FilePath, uploadSource.Metadata.ContentType, progress, cancellationToken)
             .ConfigureAwait(false);
         if (transcodedFilePath.IsEmpty)
-            return (Disposable.New(uploadSource, Delegates<UploadSource>.Noop), false);
+            return Disposable.New(uploadSource, Delegates<UploadSource>.Noop);
 
         var fileInfo = new FileInfo(transcodedFilePath);
         var newMetadata = new UploadSourceMetadata(
             "video/mp4",
             fileInfo.Length,
             uploadSource.Metadata.FileName);
-        return (Disposable.New(new UploadSource(newMetadata, new FileUploadSource(transcodedFilePath)),
-            _ => File.Delete(transcodedFilePath)), true);
+        return Disposable.New(new UploadSource(newMetadata, new FileUploadSource(transcodedFilePath)),
+            _ => File.Delete(transcodedFilePath));
     }
 }
