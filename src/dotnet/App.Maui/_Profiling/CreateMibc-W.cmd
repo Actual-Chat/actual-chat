@@ -1,1 +1,1 @@
-dotnet-pgo create-mibc --trace windows.nettrace --output windows.mibc --compressed --reference "../../../../artifacts/obj/App.Maui/debug_net10.0-windows10.0.22621.0/R2R/*.dll"
+call "%~dp0..\..\..\..\dotnet-pgo.cmd" create-mibc --trace windows.nettrace --output windows.mibc --compressed --reference "../../../../artifacts/obj/App.Maui/debug_net10.0-windows10.0.22621.0/R2R/*.dll"
