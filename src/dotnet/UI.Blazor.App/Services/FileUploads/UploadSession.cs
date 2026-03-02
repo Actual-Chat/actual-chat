@@ -171,7 +171,7 @@ public class UploadSession
                     .TranscodeIfNeeded(filePath, progress, cancellationToken)
                     .ConfigureAwait(false);
 
-                if (transcodedPath is not null)
+                if (!transcodedPath.IsEmpty)
                     await UpdateState(s => s with { TranscodedFilePath = transcodedPath.Value },
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
