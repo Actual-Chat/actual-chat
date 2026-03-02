@@ -76,7 +76,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public long? AudioEntryId { get; set; }
     public long? VideoEntryId { get; set; }
-    public string? MediaId { get; set; }
+    public string? AudioId { get; set; }
     public string? TimeMap { get; set; }
 
     public ChatEntry ToModel(IEnumerable<TextEntryAttachment>? attachments = null, LinkPreview[]? linkPreviews = null)
@@ -108,7 +108,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             StreamId = StreamId ?? "",
             AudioEntryLid = AudioEntryId,
             VideoEntryLid = VideoEntryId,
-            MediaId = MediaId,
+            AudioId = AudioId,
             RepliedEntryLid = RepliedChatEntryId,
             ForwardedChatTitle = ForwardedChatTitle,
             ForwardedAuthorId = ActualChat.AuthorId.ParseNullable(ForwardedAuthorId),
@@ -163,7 +163,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         StreamId = model.StreamId;
         AudioEntryId = model.AudioEntryLid;
         VideoEntryId = model.VideoEntryLid;
-        MediaId = model.MediaId;
+        AudioId = model.AudioId;
         RepliedChatEntryId = model.RepliedEntryLid;
         ForwardedChatTitle = model.ForwardedChatTitle;
         ForwardedAuthorId = model.ForwardedAuthorId?.Value;

@@ -13,8 +13,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Chat.Migrations
 {
     [DbContext(typeof(ChatDbContext))]
-    [Migration("20260302034453_Add_ChatEntry_MediaId")]
-    partial class Add_ChatEntry_MediaId
+    [Migration("20260302232151_Add_ChatEntry_AudioId")]
+    partial class Add_ChatEntry_AudioId
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -314,6 +314,10 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("audio_entry_id");
 
+                    b.Property<string>("AudioId")
+                        .HasColumnType("text")
+                        .HasColumnName("audio_id");
+
                     b.Property<string>("AuthorId")
                         .IsRequired()
                         .HasColumnType("text")
@@ -425,10 +429,6 @@ namespace ActualChat.Chat.Migrations
                     b.Property<long>("LocalId")
                         .HasColumnType("bigint")
                         .HasColumnName("local_id");
-
-                    b.Property<string>("MediaId")
-                        .HasColumnType("text")
-                        .HasColumnName("media_id");
 
                     b.Property<long?>("RepliedChatEntryId")
                         .HasColumnType("bigint")

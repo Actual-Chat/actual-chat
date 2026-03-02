@@ -20,6 +20,9 @@ public partial record Media : IHasId<MediaId>, IHasVersion<long>, IHasMetadata, 
 
     // Computed properties
 
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public bool IsReady => !ContentId.IsNullOrEmpty();
+
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public long Length {
         get => this.GetMetadataValue(0L);
@@ -50,8 +53,25 @@ public partial record Media : IHasId<MediaId>, IHasVersion<long>, IHasMetadata, 
         init => this.SetMetadataValue(value);
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsReady => !ContentId.IsNullOrEmpty();
+    // Used when Kind = ChatEntryXxx
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public Moment BeginsAt {
+        get => this.GetMetadataValue<Moment>();
+        init => this.SetMetadataValue(value);
+    }
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public Moment EndsAt {
+        get => this.GetMetadataValue<Moment>();
+        init => this.SetMetadataValue(value);
+    }
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public Moment ContentEndsAt {
+        get => this.GetMetadataValue<Moment>();
+        init => this.SetMetadataValue(value);
+    }
 
     public Media(MediaId id)
         => Id = id;

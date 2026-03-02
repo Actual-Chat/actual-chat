@@ -5,13 +5,13 @@
 namespace ActualChat.Chat.Migrations
 {
     /// <inheritdoc />
-    public partial class Add_ChatEntry_MediaId : Migration
+    public partial class Add_ChatEntry_AudioId : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<string>(
-                name: "media_id",
+                name: "audio_id",
                 table: "chat_entries",
                 type: "text",
                 nullable: true);
@@ -21,7 +21,7 @@ namespace ActualChat.Chat.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "media_id",
+                name: "audio_id",
                 table: "chat_entries");
         }
     }

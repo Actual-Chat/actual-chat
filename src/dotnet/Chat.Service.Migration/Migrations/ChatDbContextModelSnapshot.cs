@@ -311,6 +311,10 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("audio_entry_id");
 
+                    b.Property<string>("AudioId")
+                        .HasColumnType("text")
+                        .HasColumnName("audio_id");
+
                     b.Property<string>("AuthorId")
                         .IsRequired()
                         .HasColumnType("text")
@@ -422,10 +426,6 @@ namespace ActualChat.Chat.Migrations
                     b.Property<long>("LocalId")
                         .HasColumnType("bigint")
                         .HasColumnName("local_id");
-
-                    b.Property<string>("MediaId")
-                        .HasColumnType("text")
-                        .HasColumnName("media_id");
 
                     b.Property<long?>("RepliedChatEntryId")
                         .HasColumnType("bigint")

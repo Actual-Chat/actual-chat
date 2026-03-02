@@ -160,7 +160,7 @@ public partial class StreamingBackend
             await RetranscribeTextEntry(transcribeResult.Value.Item1, transcribeResult.Value.Item2).SilentAwait();
         }
 
-        // Double-write: create media record for the audio entry so the text entry can reference it via MediaId
+        // Double-write: create media record for the audio entry so the text entry can reference it via AudioId
         if (audioEntry != null && !audioBlobId.IsNullOrEmpty() && transcribeResult is not null) {
             var audioEndsAt = audioEntry.BeginsAt + closedSegment.Duration;
             var audioContentEndsAt = Moment.Min(audioEndsAt, audioEntry.BeginsAt + closedSegment.AudibleDuration);
@@ -426,20 +426,20 @@ public partial class StreamingBackend
         var mediaId = MediaId.New(chatId.Value);
         var media = new MediaFull(mediaId) {
             ContentId = audioBlobId,
-            Metadata = PropertyBag.Empty
-                .Set(nameof(ActualChat.Media.Media.ContentType), "audio/webm")
-                .Set("BeginsAt", beginsAt.EpochOffset.Ticks)
-                .Set("EndsAt", endsAt.EpochOffset.Ticks)
-                .Set("ContentEndsAt", contentEndsAt.EpochOffset.Ticks),
+            Kind = MediaKind.ChatEntryAudio,
+            ContentType = "audio/webm",
+            BeginsAt = beginsAt,
+            EndsAt = endsAt,
+            ContentEndsAt = contentEndsAt,
         };
         var changeCommand = new MediaBackend_Change(mediaId, null, new Change<MediaFull> { Create = media });
         await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
 
-        // Update the text entry's MediaId
+        // Update the text entry's AudioId
         var updateCommand = new ChatsBackend_ChangeEntry(
             textEntryId,
             null,
-            Change.Update(new ChatEntryDiff { MediaId = mediaId.Value }));
+            Change.Update(new ChatEntryDiff { AudioId = mediaId.Value }));
         await Commander.Call(updateCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
