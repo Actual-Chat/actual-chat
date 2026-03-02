@@ -293,14 +293,13 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         CancellationToken cancellationToken)
     {
         var uploadSource = await fileInput.ToUploadSource().ConfigureAwait(false);
-        if (uploadSource.StreamSource is not FileUploadSource fileSource
-            || !uploadSource.Metadata.ContentType.OrdinalStartsWith("video/"))
+        if (uploadSource.StreamSource is not FileUploadSource fileSource)
             return (Disposable.New(uploadSource, Delegates<UploadSource>.Noop), false);
 
         var transcodedFilePath = await VideoTranscoder
-            .TranscodeIfNeeded(fileSource.FilePath, progress, cancellationToken)
+            .TranscodeIfNeeded(fileSource.FilePath, uploadSource.Metadata.ContentType, progress, cancellationToken)
             .ConfigureAwait(false);
-        if (transcodedFilePath == fileSource.FilePath)
+        if (transcodedFilePath.IsEmpty)
             return (Disposable.New(uploadSource, Delegates<UploadSource>.Noop), false);
 
         var fileInfo = new FileInfo(transcodedFilePath);

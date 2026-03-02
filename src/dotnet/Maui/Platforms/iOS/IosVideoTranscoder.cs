@@ -14,32 +14,32 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
     private ILogger Log => field ??= services.LogFor<IosVideoTranscoder>();
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.VideoTranscoding);
 
-    public override async Task<FilePath> TranscodeIfNeeded(
+    protected override async Task<FilePath> TranscodeIfNeededInternal(
         FilePath sourceFilePath,
         IProgress<double>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        DebugLog?.LogInformation("TranscodeIfNeeded: '{Path}'", sourceFilePath);
+        DebugLog?.LogInformation("TranscodeIfNeededInternal: '{Path}'", sourceFilePath);
 
         if (!await NeedsTranscoding(sourceFilePath).ConfigureAwait(false))
-            return sourceFilePath;
+            return FilePath.Empty;
 
         var sourceFileInfo = new FileInfo(sourceFilePath);
         Log.LogInformation("Transcoding video '{Path}' (size={Size})",
             sourceFilePath, sourceFileInfo.Length);
 
         var startedAt = CpuTimestamp.Now;
-        var outputPath = await Transcode(sourceFilePath, progress, cancellationToken)
+        var transcodedPath = await Transcode(sourceFilePath, progress, cancellationToken)
             .ConfigureAwait(false);
 
-        if (outputPath == null)
-            return sourceFilePath;
+        if (transcodedPath.IsEmpty)
+            return FilePath.Empty;
 
-        var fileInfo = new FileInfo(outputPath.Value);
+        var fileInfo = new FileInfo(transcodedPath);
         Log.LogInformation("Transcoding completed: '{OutputPath}', size={Size} in {Elapsed}",
-            outputPath, fileInfo.Length, startedAt.Elapsed.ToShortString());
+            transcodedPath, fileInfo.Length, startedAt.Elapsed.ToShortString());
 
-        return outputPath;
+        return transcodedPath;
     }
 
     private async Task<bool> NeedsTranscoding(FilePath filePath)
@@ -106,7 +106,7 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
                     exportSession.Status,
                     exportSession.Error?.LocalizedDescription ?? "unknown");
                 CleanupFile(outputPath);
-                return null;
+                return FilePath.Empty;
             }
 
             progress?.Report(1.0);
