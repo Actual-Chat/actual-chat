@@ -8,7 +8,8 @@ namespace ActualChat.Maui;
 
 public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
 {
-    private const int MaxResolution = 1080;
+    private const int MaxLongSide = 1920;
+    private const int MaxShortSide = 1080;
 
     private ILogger Log => field ??= services.LogFor<IosVideoTranscoder>();
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.VideoTranscoding);
@@ -54,11 +55,12 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
             return false;
         }
 
-        var minDimension = (int)Math.Min(resolution.Value.Width, resolution.Value.Height);
-        var needs = minDimension > MaxResolution;
+        var longSide = (int)Math.Max(resolution.Value.Width, resolution.Value.Height);
+        var shortSide = (int)Math.Min(resolution.Value.Width, resolution.Value.Height);
+        var needs = longSide > MaxLongSide || shortSide > MaxShortSide;
         DebugLog?.LogInformation(
-            "NeedsTranscoding: {Result} (resolution={Width}x{Height}, minDimension={Min}, max={Max})",
-            needs, (int)resolution.Value.Width, (int)resolution.Value.Height, minDimension, MaxResolution);
+            "NeedsTranscoding: {Result} (resolution={Width}x{Height}, longSide={Long}, shortSide={Short}, maxLong={MaxLong}, maxShort={MaxShort})",
+            needs, (int)resolution.Value.Width, (int)resolution.Value.Height, longSide, shortSide, MaxLongSide, MaxShortSide);
         return needs;
     }
 
