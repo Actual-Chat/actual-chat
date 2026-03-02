@@ -94,13 +94,8 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
         IProgress<double>? progress,
         CancellationToken cancellationToken)
     {
+        var outputPath = GetOutputPath(sourcePath);
         var exportSession = CreateExportSession(sourcePath);
-        FilePath outputDir = new FilePath(FileSystem.CacheDirectory) | "transcoded";
-        Directory.CreateDirectory(outputDir);
-        FilePath outputPath = outputDir | $"{sourcePath.FileNameWithoutExtension}.mp4";
-        if (File.Exists(outputPath))
-            outputPath = outputPath.ToUnique();
-
         exportSession.OutputUrl = NSUrl.CreateFileUrl(outputPath);
 
         DebugLog?.LogInformation(
@@ -141,6 +136,16 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
             CleanupFile(outputPath);
             return null;
         }
+    }
+
+    private static FilePath GetOutputPath(FilePath sourcePath)
+    {
+        FilePath outputDir = new FilePath(FileSystem.CacheDirectory) | "transcoded";
+        Directory.CreateDirectory(outputDir);
+        FilePath outputPath = outputDir | $"{sourcePath.FileNameWithoutExtension}.mp4";
+        if (File.Exists(outputPath))
+            outputPath = outputPath.ToUnique();
+        return outputPath;
     }
 
     private async Task<(CGSize Resolution, float Bitrate, CMVideoCodecType Codec)?> GetVideoInfo(FilePath filePath)
