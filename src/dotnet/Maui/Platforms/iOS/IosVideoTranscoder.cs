@@ -18,7 +18,7 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
 
     protected override async Task<FilePath> TranscodeInternal(
         FilePath sourceFilePath,
-        IProgress<double>? progress = null,
+        IProgress<double> progress,
         CancellationToken cancellationToken = default)
     {
         DebugLog?.LogInformation("TranscodeInternal: '{Path}'", sourceFilePath);
@@ -91,7 +91,7 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
 
     private async Task<FilePath> Transcode(
         FilePath sourcePath,
-        IProgress<double>? progress,
+        IProgress<double> progress,
         CancellationToken cancellationToken)
     {
         var outputPath = GetOutputPath(sourcePath);
@@ -124,7 +124,7 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
                 return FilePath.Empty;
             }
 
-            progress?.Report(1.0);
+            progress.Report(1.0);
             return outputPath;
         }
         catch (OperationCanceledException e) when(e.IsCancellationOf(cancellationToken)) {
@@ -178,12 +178,9 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
 
     private async Task MonitorProgress(
         AVAssetExportSession session,
-        IProgress<double>? progress,
+        IProgress<double> progress,
         CancellationToken cancellationToken)
     {
-        if (progress == null)
-            return;
-
         while (!cancellationToken.IsCancellationRequested) {
             await Task.Delay(250, cancellationToken).ConfigureAwait(false);
             progress.Report(session.Progress * 100);

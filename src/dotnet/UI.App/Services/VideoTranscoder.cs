@@ -11,7 +11,7 @@ public class VideoTranscoder
     public Task<FilePath> Transcode(
         FilePath sourceFilePath,
         string mimeType,
-        IProgress<double>? progress = null,
+        IProgress<double> progress,
         CancellationToken cancellationToken = default)
     {
         if (sourceFilePath.IsEmpty || !mimeType.OrdinalStartsWith("video/"))
@@ -22,7 +22,7 @@ public class VideoTranscoder
 
     protected virtual Task<FilePath> TranscodeInternal(
         FilePath sourceFilePath,
-        IProgress<double>? progress = null,
+        IProgress<double> progress,
         CancellationToken cancellationToken = default)
         => Task.FromResult(FilePath.Empty);
 }
