@@ -95,8 +95,12 @@ public class VideoUploadProcessor(ILogger<VideoUploadProcessor> log) : IUploadPr
             if (!OrdinalIgnoreCaseEquals(videoUpload.FileName.Extension, ".mp4"))
                 return true;
 
-            return !OrdinalIgnoreCaseEquals(media.PrimaryVideoStream?.CodecName, "h264")
-                && !OrdinalIgnoreCaseEquals(media.PrimaryVideoStream?.CodecName, VideoCodec.LibX264.Name);
+            var codecName = media.PrimaryVideoStream?.CodecName;
+            // Skip transcoding for H.264 and HEVC (H.265) codecs
+            return !OrdinalIgnoreCaseEquals(codecName, "h264")
+                && !OrdinalIgnoreCaseEquals(codecName, VideoCodec.LibX264.Name)
+                && !OrdinalIgnoreCaseEquals(codecName, "hevc")
+                && !OrdinalIgnoreCaseEquals(codecName, "h265");
         }
     }
 
