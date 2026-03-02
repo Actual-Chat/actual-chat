@@ -14,12 +14,12 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
     private ILogger Log => field ??= services.LogFor<IosVideoTranscoder>();
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.VideoTranscoding);
 
-    protected override async Task<FilePath> TranscodeIfNeededInternal(
+    protected override async Task<FilePath> TranscodeInternal(
         FilePath sourceFilePath,
         IProgress<double>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        DebugLog?.LogInformation("TranscodeIfNeededInternal: '{Path}'", sourceFilePath);
+        DebugLog?.LogInformation("TranscodeInternal: '{Path}'", sourceFilePath);
 
         if (!await NeedsTranscoding(sourceFilePath).ConfigureAwait(false))
             return FilePath.Empty;

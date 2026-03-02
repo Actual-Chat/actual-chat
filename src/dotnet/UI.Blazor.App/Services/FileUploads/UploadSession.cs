@@ -162,7 +162,7 @@ public class UploadSession
         });
 
         var transcodedPath = await _uploadOperations.VideoTranscoder
-            .TranscodeIfNeeded(filePath, mimeType, progress, cancellationToken)
+            .Transcode(filePath, mimeType, progress, cancellationToken)
             .ConfigureAwait(false);
 
         if (!transcodedPath.IsEmpty)
