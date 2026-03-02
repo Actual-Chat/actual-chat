@@ -29,7 +29,7 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
 
         Log.LogInformation("Transcoding video '{Path}' (size={Size})", sourceFilePath, sourceFileInfo.Length);
         var startedAt = CpuTimestamp.Now;
-        var transcodedPath = await Transcode(sourceFilePath, sourceFileInfo.Length, progress, cancellationToken)
+        var transcodedPath = await Transcode(sourceFilePath, progress, cancellationToken)
             .ConfigureAwait(false);
 
         if (transcodedPath.IsEmpty)
@@ -91,7 +91,6 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
 
     private async Task<FilePath> Transcode(
         FilePath sourcePath,
-        long sourceSize,
         IProgress<double>? progress,
         CancellationToken cancellationToken)
     {
@@ -106,7 +105,7 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
 
         DebugLog?.LogInformation(
             "Transcode: exporting '{Source}' -> '{Output}' (source={SourceSize})",
-            sourcePath, outputPath, sourceSize);
+            sourcePath, outputPath, new FileInfo(sourcePath).Length);
 
         try {
             // Start progress monitoring
