@@ -234,16 +234,16 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
 
     private async Task<TextEntryAttachment[]> UploadFiles(
         ChatId chatId,
-        IReadOnlyList<NSItemProvider> uploadInputs,
+        IReadOnlyList<NSItemProvider> fileInputs,
         IProgress<double> progress,
         CancellationToken cancellationToken)
     {
-        var attachments = new TextEntryAttachment[uploadInputs.Count];
-        for (var i = 0; i < uploadInputs.Count; i++) {
-            var totalPct = i * 100 / uploadInputs.Count;
-            var uploadInput = uploadInputs[i];
-            var fileProgress = new Progress<double>(pct => progress.Report(totalPct + (pct / uploadInputs.Count)));
-            attachments[i] = await UploadFile(chatId, uploadInput, fileProgress, cancellationToken).ConfigureAwait(false);
+        var attachments = new TextEntryAttachment[fileInputs.Count];
+        for (var i = 0; i < fileInputs.Count; i++) {
+            var totalPct = i * 100 / fileInputs.Count;
+            var fileInput = fileInputs[i];
+            var fileProgress = new Progress<double>(pct => progress.Report(totalPct + (pct / fileInputs.Count)));
+            attachments[i] = await UploadFile(chatId, fileInput, fileProgress, cancellationToken).ConfigureAwait(false);
         }
         return attachments;
     }
