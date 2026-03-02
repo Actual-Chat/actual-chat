@@ -1,5 +1,6 @@
 using ActualChat.Media;
 using ActualChat.UI.Services;
+using ActualLab.IO;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -150,33 +151,24 @@ public class UploadSession
     private Task RunClientProcessing(CancellationToken cancellationToken) => ExecuteStep(async () => {
         var fileProvider = _snapshot.FileProvider;
         var mimeType = fileProvider.Metadata.FileType;
+        var filePath = (fileProvider as MauiFileProvider)?.FileRef ?? FilePath.Empty;
 
-        if (MediaTypeExt.IsVideo(mimeType) && fileProvider is MauiFileProvider mauiFileProvider) {
-            var filePath = mauiFileProvider.FileRef;
-            if (!filePath.IsEmpty) {
-                Log.LogInformation("'{SessionId}': client processing video '{FilePath}', mimeType={MimeType}",
-                    SessionId,
-                    filePath,
-                    mimeType);
+        var progress = new Progress<double>(p => {
+            _ = UpdateState(s => {
+                if (s.CurrentState != UploadSessionState.ClientProcessing)
+                    return s;
+                return s with { StageProgress = p };
+            }, cancellationToken: cancellationToken);
+        });
 
-                var progress = new Progress<double>(p => {
-                    _ = UpdateState(s => {
-                        if (s.CurrentState != UploadSessionState.ClientProcessing)
-                            return s;
-                        return s with { StageProgress = p };
-                    }, cancellationToken: cancellationToken);
-                });
+        var transcodedPath = await _uploadOperations.VideoTranscoder
+            .TranscodeIfNeeded(filePath, mimeType, progress, cancellationToken)
+            .ConfigureAwait(false);
 
-                var transcodedPath = await _uploadOperations.VideoTranscoder
-                    .TranscodeIfNeeded(filePath, progress, cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (transcodedPath != filePath)
-                    await UpdateState(s => s with { TranscodedFilePath = transcodedPath.Value },
-                            cancellationToken: cancellationToken)
-                        .ConfigureAwait(false);
-            }
-        }
+        if (!transcodedPath.IsEmpty)
+            await UpdateState(s => s with { TranscodedFilePath = transcodedPath.Value },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
 
         await TransitionTo(UploadSessionState.Uploading).ConfigureAwait(false);
     }, cancellationToken);
