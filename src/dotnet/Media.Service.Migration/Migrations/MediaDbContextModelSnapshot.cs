@@ -107,10 +107,10 @@ namespace ActualChat.Media.Migrations
                         .HasColumnName("id")
                         .UseCollation("C");
 
-                    b.Property<string>("ContentId")
+                    b.Property<string>("BlobId")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasColumnName("content_id")
+                        .HasColumnName("blob_id")
                         .UseCollation("C");
 
                     b.Property<string>("LocalId")
@@ -150,8 +150,8 @@ namespace ActualChat.Media.Migrations
                     b.HasKey("Id")
                         .HasName("pk_media");
 
-                    b.HasIndex("ContentId")
-                        .HasDatabaseName("ix_media_content_id");
+                    b.HasIndex("BlobId")
+                        .HasDatabaseName("ix_media_blob_id");
 
                     b.ToTable("media");
                 });
