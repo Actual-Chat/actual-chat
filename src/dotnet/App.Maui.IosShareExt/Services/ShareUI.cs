@@ -298,10 +298,9 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         if (transcodedFilePath.IsEmpty)
             return Disposable.New(uploadSource, Delegates<UploadSource>.Noop);
 
-        var fileInfo = new FileInfo(transcodedFilePath);
         var newMetadata = new UploadSourceMetadata(
-            "video/mp4",
-            fileInfo.Length,
+            MediaMimeTypes.GetMimeType(transcodedFilePath),
+            new FileInfo(transcodedFilePath).Length,
             uploadSource.Metadata.FileName);
         return Disposable.New(new UploadSource(newMetadata, new FileUploadSource(transcodedFilePath)),
             _ => File.Delete(transcodedFilePath));
