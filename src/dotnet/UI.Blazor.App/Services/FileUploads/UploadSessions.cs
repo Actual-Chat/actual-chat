@@ -106,7 +106,11 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
 
         var fileProvider = snapshot.FileProvider;
         fileProvider.Initialize(Hub.Services);
-        await DeleteSessionResources(sessionId, fileProvider, snapshot.UploadId).ConfigureAwait(false);
+        await DeleteSessionResources(
+            sessionId,
+            fileProvider,
+            snapshot.TranscodedFilePath,
+            snapshot.UploadId).ConfigureAwait(false);
         Log.LogDebug("Deleted stale session '{SessionId}' ('{FileName}')", sessionId, fileProvider.Metadata.FileName);
     }
 
@@ -125,17 +129,12 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         var sessionId = session.SessionId;
         _sessions.TryRemove(sessionId, out _);
         var fileProvider = session.FileProvider;
-        await DeleteSessionResources(sessionId, fileProvider, session.UploadId).ConfigureAwait(false);
-        DeleteFile(session.TranscodedFilePath);
+        await DeleteSessionResources(
+            sessionId,
+            fileProvider,
+            session.TranscodedFilePath,
+            session.UploadId).ConfigureAwait(false);
         Log.LogDebug("Deleted session '{SessionId}' ('{FileName}')", sessionId, fileProvider.Metadata.FileName);
-    }
-
-    private static void DeleteFile(FilePath? filePath)
-    {
-        if (filePath?.IsEmpty != false || !File.Exists(filePath))
-            return;
-
-        File.Delete(filePath);
     }
 
     private Func<UploadSessionSnapshot, CancellationToken, Task> CreateStorage()
@@ -178,13 +177,22 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     private bool CheckIfActive(string sessionId)
         => _sessions.TryGetValue(sessionId, out var sessionRef) && sessionRef.ReferenceCount > 0;
 
-    private async Task DeleteSessionResources(string sessionId, IFileProvider fileProvider, UploadId? uploadId)
+    private async Task DeleteSessionResources(string sessionId, IFileProvider fileProvider, string? transcodedFilePath, UploadId? uploadId)
     {
         if (uploadId is not null)
             await _uploadOperations.RemoveUpload(uploadId, CancellationToken.None).ConfigureAwait(false);
         await fileProvider.ClearForRemoving().ConfigureAwait(false);
+        DeleteFile(transcodedFilePath);
         await _repo.Delete(sessionId).ConfigureAwait(false);
         UploadSessionsState.Remove(sessionId);
+    }
+
+    private static void DeleteFile(FilePath? filePath)
+    {
+        if (filePath?.IsEmpty != false || !File.Exists(filePath))
+            return;
+
+        File.Delete(filePath);
     }
 
     // Nested types

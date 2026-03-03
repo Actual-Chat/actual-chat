@@ -34,6 +34,7 @@ public class MediaProgressBackend(IServiceProvider services) : DbServiceBase<Med
 
         MediaProgress? progress;
         if (change.IsCreate(out var createProgress)) {
+            await dbContext.MediaProgresses.Lock(mediaId.Value, cancellationToken).ConfigureAwait(false);
             progress = createProgress with {
                 Version = VersionGenerator.NextVersion()
             };
@@ -41,6 +42,7 @@ public class MediaProgressBackend(IServiceProvider services) : DbServiceBase<Med
             dbContext.MediaProgresses.Add(dbMediaProgress);
         }
         else if (change.IsUpdate(out var updateProgress)) {
+            await dbContext.MediaProgresses.Lock(mediaId.Value, cancellationToken).ConfigureAwait(false);
             var dbMediaProgress = await dbContext.MediaProgresses
                 .Get(mediaId.Value, cancellationToken)
                 .ConfigureAwait(false);
