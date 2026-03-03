@@ -124,7 +124,7 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
                 return FilePath.Empty;
             }
 
-            progress.Report(1.0);
+            progress.Report(100);
             return outputPath;
         }
         catch (OperationCanceledException e) when(e.IsCancellationOf(cancellationToken)) {
