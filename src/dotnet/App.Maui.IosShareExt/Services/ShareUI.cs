@@ -243,7 +243,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
     private async Task<TextEntryAttachment[]> UploadFiles(
         ChatId chatId,
         IReadOnlyList<NSItemProvider> fileInputs,
-        ForkableProgress progress,
+        IProgress<double> progress,
         CancellationToken cancellationToken)
     {
         var attachments = new TextEntryAttachment[fileInputs.Count];
@@ -258,7 +258,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
     private async Task<TextEntryAttachment> UploadFile(
         ChatId chatId,
         NSItemProvider fileInput,
-        ForkableProgress progress,
+        IProgress<double> progress,
         CancellationToken cancellationToken)
     {
         // Split progress: transcoding 20%, upload 80%
@@ -290,7 +290,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
 
     private async Task<Disposable<UploadSource>> PrepareUploadSource(
         NSItemProvider fileInput,
-        ForkableProgress progress,
+        IProgress<double> progress,
         CancellationToken cancellationToken)
     {
         var uploadSource = await fileInput.ToUploadSource().ConfigureAwait(false);
