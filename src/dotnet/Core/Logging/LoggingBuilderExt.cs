@@ -8,7 +8,7 @@ public static class LoggingBuilderExt
     {
         var services = logging.Services;
         services.AddSingleton<ILoggerProvider>(c => new TailLoggerProvider(c));
-        services.AddSingleton<LogSinks>(_ => new LogSinks());
+        services.AddSingleton<TailLoggerSinkSet>(_ => new TailLoggerSinkSet());
         return logging;
     }
 
@@ -27,7 +27,7 @@ public static class LoggingBuilderExt
             var scopeProvider = c.GetService<IExternalScopeProvider>();
             var innerFactory = new LoggerFactory(providers, filterOption, options, scopeProvider);
             return mustSanitize
-                ? new SanitizingLoggerFactory(innerFactory, mustSanitize)
+                ? new SanitizingLoggerFactory(innerFactory)
                 : innerFactory;
         });
         return logging;

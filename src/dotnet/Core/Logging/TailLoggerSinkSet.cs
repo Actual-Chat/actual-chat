@@ -1,15 +1,11 @@
-using ActualLab.Generators;
-
 namespace ActualChat.Logging;
 
 /// <summary>
 /// Manages a collection of <see cref="ILogSink"/> instances and broadcasts log entries.
 /// </summary>
-public sealed class LogSinks
+public sealed class TailLoggerSinkSet
 {
     private readonly ConcurrentDictionary<ILogSink, Unit> _sinks = [];
-
-    public Symbol Id { get; } = RandomStringGenerator.Default.Next(5);
 
     public void Add(ILogSink sink)
         => _sinks.TryAdd(sink, default);
@@ -29,5 +25,5 @@ public sealed class LogSinks
     }
 
     public override string ToString()
-        => $"#{Id}: {_sinks.Count} sinks";
+        => $"{GetType().GetName()}({_sinks.Count} sinks)";
 }

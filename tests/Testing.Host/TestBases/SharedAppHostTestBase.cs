@@ -36,13 +36,15 @@ public abstract class SharedAppHostTestBase<TAppHostFixture>(
     }
 
     // Just a shortcut
-    protected virtual async Task<TestAppHost> NewAppHost(
+    protected async Task<TestAppHost> NewAppHost(
         string instanceName,
         Func<TestAppHostOptions, TestAppHostOptions>? optionOverrider = null)
     {
         var appHost = await Fixture.NewAppHost(options => {
-            options = options with { Output = Out };
-            options = options with { InstanceName = instanceName };
+            options = options with {
+                Output = Out,
+                InstanceName = instanceName,
+            };
             options = optionOverrider?.Invoke(options) ?? options;
             return options;
         });

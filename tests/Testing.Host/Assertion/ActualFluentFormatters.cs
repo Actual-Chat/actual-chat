@@ -28,25 +28,6 @@ public static class ActualFluentFormatters
         }
     }
 
-    public static void Remove()
-    {
-        if (!_isUsed)
-            return;
-
-        lock (Lock) {
-            if (!_isUsed)
-                return;
-
-            Remove<AccountFullFormatter>();
-            Remove<ChatFormatter>();
-            Remove<ContactFormatter>();
-            Remove<ContactSearchResultFormatter>();
-            Remove<FoundItemFormatter>();
-            Remove<EntrySearchResultFormatter>();
-            _isUsed = false;
-        }
-    }
-
     private static void Add<T>() where T : IValueFormatter, new()
         => AwesomeAssertions.Formatting.Formatter.AddFormatter(new T());
 

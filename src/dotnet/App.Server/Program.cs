@@ -57,8 +57,10 @@ internal static class Program
         StaticLog.Factory = c.LoggerFactory();
         if (Constants.DebugMode.WebMReader)
             WebMReader.DebugLog = c.LogFor(typeof(WebMReader));
-        if (Constants.DebugMode.Npgsql)
-            Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(c.GetRequiredService<ILoggerFactory>(),true);
+        if (Constants.DebugMode.Npgsql) {
+            var loggerFactory = c.GetRequiredService<ILoggerFactory>();
+            Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(loggerFactory, parameterLoggingEnabled: true);
+        }
 
         await appHost.RunInitializers().ConfigureAwait(false);
 

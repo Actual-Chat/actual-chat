@@ -56,7 +56,6 @@ public class UIHub : CircuitHub, IDispatcherResolver
     public IUserPresences UserPresences => field ??= Services.GetRequiredService<IUserPresences>();
     public ModuleHost ModuleHost => field ??= Services.GetRequiredService<ModuleHost>();
     public AnalyticEvents AnalyticEvents => field ??= Services.GetRequiredService<AnalyticEvents>();
-    public LogSinks LogSinks => field ??= Services.GetRequiredService<LogSinks>();
 
     // UI services
     public LoadingUI LoadingUI => field ??= Services.GetRequiredService<LoadingUI>();

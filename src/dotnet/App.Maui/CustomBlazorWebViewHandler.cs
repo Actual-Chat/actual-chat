@@ -31,8 +31,3 @@ public partial class CustomBlazorWebViewHandler : BlazorWebViewHandler
         base.SetMauiContext(newMauiContext);
     }
 }
-
-/// <summary>
-/// Provides access to the parent service container for child services.
-/// </summary>
-public record ParentContainerAccessor(IServiceProvider Services);

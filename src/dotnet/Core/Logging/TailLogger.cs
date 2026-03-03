@@ -1,11 +1,11 @@
 namespace ActualChat.Logging;
 
 /// <summary>
-/// A logger that forwards log entries to <see cref="LogSinks"/>.
+/// A logger that forwards log entries to <see cref="TailLoggerSinkSet"/>.
 /// </summary>
 public class TailLogger(IServiceProvider services, string categoryName) : ILogger
 {
-    private LogSinks Sinks => field ??= services.GetRequiredService<LogSinks>();
+    private TailLoggerSinkSet Sinks => field ??= services.GetRequiredService<TailLoggerSinkSet>();
 
     public void Log<TState>(
         LogLevel logLevel,

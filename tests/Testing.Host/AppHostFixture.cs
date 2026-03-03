@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging.Abstractions;
-
 namespace ActualChat.Testing.Host;
 
 public abstract class AppHostFixture(
@@ -8,22 +6,15 @@ public abstract class AppHostFixture(
     TestAppHostOptions? appHostOptions = null
     ) : IAsyncLifetime
 {
-    private ILoggerFactory? _prevLoggerFactory;
-
     public TestAppHostOptions AppHostOptions { get; protected init; }
         = (appHostOptions ?? TestAppHostOptions.Default).With(instanceName, messageSink);
     public TestAppHost AppHost { get; protected set; } = null!;
 
     async Task IAsyncLifetime.InitializeAsync()
-    {
-        AppHost = await NewAppHost();
-        _prevLoggerFactory = StaticLog.Factory;
-        StaticLog.Factory = AppHost.Services.GetRequiredService<ILoggerFactory>();
-    }
+        => AppHost = await NewAppHost();
 
     Task IAsyncLifetime.DisposeAsync()
     {
-        StaticLog.Factory = _prevLoggerFactory ?? new NullLoggerFactory();
         AppHost.DisposeSilently();
         return Task.CompletedTask;
     }

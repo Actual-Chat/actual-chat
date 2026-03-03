@@ -168,12 +168,11 @@ public static partial class MauiProgram
 
     private static void InjectMauiAppServices(BlazorWebViewAppBuilder blazorViewAppBuilder, MauiApp app)
     {
+        var c = app.Services;
         var services = blazorViewAppBuilder.Services;
-        var svp = app.Services;
-        services.Replace(ServiceDescriptor.Singleton(svp.GetRequiredService<ILoggerFactory>()));
-        services.AddSingleton(svp.GetRequiredService<LogSinks>());
-        services.AddSingleton(new ParentContainerAccessor(svp));
-        var dispatcher = svp.GetRequiredService<IDispatcher>();
+        services.Replace(ServiceDescriptor.Singleton(c.GetRequiredService<ILoggerFactory>()));
+        services.AddSingleton(c.GetRequiredService<TailLoggerSinkSet>());
+        var dispatcher = c.GetRequiredService<IDispatcher>();
         services.AddSingleton(dispatcher);
     }
 
