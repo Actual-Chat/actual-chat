@@ -263,7 +263,7 @@ public partial class ChatsUpgradeBackend
                         "Мой друг художник и поэт в Дождливый вечер на стекле мою любовь нарисовал "
                         + "открыв мне чудо на Земле",
                     TimeMap = timeMap,
-                    MediaId = mediaId.Value,
+                    AudioId = mediaId.Value,
                     AuthorId = author.Id.Value,
                 };
                 dbContext.Add(textEntry);
@@ -307,7 +307,7 @@ public partial class ChatsUpgradeBackend
                         "утро в декабре туманом окутана под ногами белый снег предатель виден каждый "
                         + "шаг и холоду лютому слишком просто сладить с тобой",
                     TimeMap = timeMap,
-                    MediaId = mediaId.Value,
+                    AudioId = mediaId.Value,
                     AuthorId = author.Id.Value,
                 };
                 dbContext.Add(textEntry);

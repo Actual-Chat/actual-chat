@@ -140,7 +140,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
             var textEntries = await dbContext.ChatEntries
                 .Where(e => e.Kind == 0)
                 .Where(e => e.AudioEntryId != null)
-                .Where(e => e.MediaId == null || e.MediaId == "")
+                .Where(e => e.AudioId == null || e.AudioId == "")
                 .Where(e => e.LocalId > lastProcessedLocalId)
                 .OrderBy(e => e.ChatId).ThenBy(e => e.LocalId)
                 .Take(batchSize)
@@ -205,7 +205,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
                 var dbTextEntry = await opDbContext.ChatEntries
                     .SingleAsync(e => e.Id == textEntry.Id, cancellationToken)
                     .ConfigureAwait(false);
-                dbTextEntry.MediaId = mediaId.Value;
+                dbTextEntry.AudioId = mediaId.Value;
                 await opDbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
                 totalMigrated++;

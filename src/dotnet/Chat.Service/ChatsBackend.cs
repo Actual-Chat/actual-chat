@@ -2458,7 +2458,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         CancellationToken cancellationToken)
     {
         var mediaIds = dbEntries
-            .Select(e => e.MediaId)
+            .Select(e => e.AudioId)
             .Where(id => !id.IsNullOrEmpty() && MediaId.TryParse(id, out _))
             .Select(id => MediaId.Parse(id!))
             .Distinct()

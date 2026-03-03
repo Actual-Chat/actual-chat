@@ -96,7 +96,7 @@ public class ChatReplayerTest(ChatAppHostFixture fixture, ITestOutputHelper @out
             Version = 1,
             BeginsAt = beginsAt,
             EndsAt = beginsAt.Add(duration),
-            MediaId = $"fake-scope:{localId}", // Makes HasAudio = true
+            AudioId = $"fake-scope:{localId}", // Makes HasAudio = true
         };
         dbContext.Add(textEntry);
         localId++;

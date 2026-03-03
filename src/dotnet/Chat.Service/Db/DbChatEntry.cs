@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using ActualChat.Hashing;
 using ActualChat.Media;
@@ -74,7 +74,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string? ContentStreamId { get; set; }
 
     public long? AudioEntryId { get; set; } // TODO(AY): Remove
-    public string? MediaId { get; set; }
+    public string? AudioId { get; set; }
     public string? TimeMap { get; set; }
 
     public ChatEntry ToModel(
@@ -121,7 +121,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     private ChatEntryAudio? BuildPartialAudio()
     {
-        if (MediaId.IsNullOrEmpty())
+        if (AudioId.IsNullOrEmpty())
             return null;
 
         var timeMap = !TimeMap.IsNullOrEmpty()
@@ -129,9 +129,9 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             : default;
 
         // MediaId column stores either a MediaId (parseable) or a stream ID (not parseable)
-        return ActualChat.MediaId.TryParse(MediaId, out var mediaId)
+        return ActualChat.MediaId.TryParse(AudioId, out var mediaId)
             ? new ChatEntryAudio { MediaId = mediaId, TimeMap = timeMap, BeginsAt = BeginsAt }
-            : new ChatEntryAudio { StreamId = MediaId, TimeMap = timeMap, BeginsAt = BeginsAt };
+            : new ChatEntryAudio { StreamId = AudioId, TimeMap = timeMap, BeginsAt = BeginsAt };
     }
 
     private ChatEntryForwarded? BuildForwarded()
@@ -208,13 +208,13 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             var hasMediaId = modelAudio.MediaId is { Value.Length: > 0 };
             Debug.Assert(hasStreamId ^ hasMediaId,
                 "ChatEntryAudio must have either StreamId or MediaId set, but not both");
-            MediaId = hasMediaId ? modelAudio.MediaId!.Value : modelAudio.StreamId;
+            AudioId = hasMediaId ? modelAudio.MediaId!.Value : modelAudio.StreamId;
             TimeMap = !modelAudio.TimeMap.IsEmpty
                 ? JsonSerializer.Serialize(modelAudio.TimeMap)
                 : null;
         }
         else {
-            MediaId = null;
+            AudioId = null;
             TimeMap = null;
         }
     }
