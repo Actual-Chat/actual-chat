@@ -1,3 +1,4 @@
+using ActualChat.Maui;
 using ActualLab.Opus.MaciOS;
 
 namespace ActualChat.App.Maui.Audio;

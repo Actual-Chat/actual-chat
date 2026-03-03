@@ -50,6 +50,9 @@ public class MauiModule(IServiceProvider moduleServices)
 
         // Video transcoding
         services.AddScoped<VideoTranscoder>(c => new IosVideoTranscoder(c));
+
+        // Video thumbnails
+        services.AddSingleton<IosVideoThumbnails>();
 #endif
     }
 }
