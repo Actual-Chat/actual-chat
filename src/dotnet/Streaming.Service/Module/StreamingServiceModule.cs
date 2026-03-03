@@ -54,6 +54,7 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
         services.AddSingleton<IStreamClient, StreamBackendClient>(); // Client for IStreamingBackend
         services.AddSingleton<AudioDownloader, BlobStorageAudioDownloader>(); // Server-side AudioDownloader
         services.TryAddSingleton<AudioSettings>(); // AudioSettings are not configured now
+        services.AddHostedService<VideoBackendWarmup>();
         if (isBackendClient)
             return;
 
