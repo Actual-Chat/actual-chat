@@ -144,7 +144,7 @@ public class UploadOperations(AppUIHub hub)
     {
         var length = sourceMetadata.Length;
         var metadata = new PropertyBag()
-            .Set(nameof(ActualChat.Media.Media.FileName), sourceMetadata.FileName ?? "")
+            .Set(nameof(ActualChat.Media.Media.FileName), sourceMetadata.FileName.Value)
             .Set(nameof(ActualChat.Media.Media.ContentType), sourceMetadata.ContentType);
         return await Commander.Call(new Uploads_Create(Session, length, "", metadata), cancellationToken).ConfigureAwait(false);
     }
