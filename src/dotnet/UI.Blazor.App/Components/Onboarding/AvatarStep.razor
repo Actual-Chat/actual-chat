@@ -120,8 +120,8 @@
         return error is null;
     }
 
-    private void OnImagePicked(MediaContent mediaContent) {
-        _model.Picture = new (mediaContent);
+    private void OnImagePicked(MediaRef mediaRef) {
+        _model.Picture = new (mediaRef);
     }
 
     private void OnGenerateAvatarClick() {

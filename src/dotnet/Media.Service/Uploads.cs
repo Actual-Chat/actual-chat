@@ -62,13 +62,13 @@ public class Uploads(IServiceProvider services) : IUploads
     }
 
     // [CommandHandler]
-    public virtual async Task<MediaContent> OnConvertToMediaContent(Uploads_ConvertToMediaContent command, CancellationToken cancellationToken)
+    public virtual async Task<MediaRef> OnConvertToMediaRef(Uploads_ConvertToMediaRef command, CancellationToken cancellationToken)
     {
         var (session, uploadId) = command;
         var user = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var upload = await Backend.Get(uploadId, cancellationToken).ConfigureAwait(false);
         EnsureCanAccessUpload(upload, user);
-        return await Commander.Call(new UploadsBackend_ConvertToMediaContent(uploadId), cancellationToken).ConfigureAwait(false);
+        return await Commander.Call(new UploadsBackend_ConvertToMediaRef(uploadId), cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]

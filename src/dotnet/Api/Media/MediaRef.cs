@@ -7,13 +7,13 @@ namespace ActualChat.Media;
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
-public sealed partial record MediaContent(
+public sealed partial record MediaRef(
     [property: DataMember, MemoryPackOrder(0)] MediaId MediaId,
     [property: DataMember, MemoryPackOrder(1)] string BlobId,
     [property: DataMember, MemoryPackOrder(2)] MediaId? ThumbnailMediaId = null,
     [property: DataMember, MemoryPackOrder(3)] string? ThumbnailBlobId = null
 ) {
     // This record relies on referential equality
-    public bool Equals(MediaContent? other) => ReferenceEquals(this, other);
+    public bool Equals(MediaRef? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

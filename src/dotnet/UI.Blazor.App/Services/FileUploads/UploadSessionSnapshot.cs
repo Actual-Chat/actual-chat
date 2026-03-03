@@ -12,7 +12,7 @@ public partial record UploadSessionSnapshot
     [DataMember, MemoryPackOrder(4)] public Moment LastUpdatedAt { get; set; } = Moment.EpochStart;
     // [DataMember, MemoryPackOrder(5)] public ChatId ChatId { get; set; } = null!; Obsolete
     [DataMember, MemoryPackOrder(6)] public UploadId? UploadId { get; set; }
-    [DataMember, MemoryPackOrder(7)] public MediaContent? MediaContent { get; set; }
+    [DataMember, MemoryPackOrder(7)] public MediaRef? MediaRef { get; set; }
     [DataMember, MemoryPackOrder(8)] public int DataVersion { get; set; }
     [DataMember, MemoryPackOrder(9)] public PropertyBag Metadata { get; set; }
 

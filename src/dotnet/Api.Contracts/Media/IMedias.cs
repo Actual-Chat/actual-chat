@@ -5,7 +5,7 @@ public interface IMedias : IComputeService
     [ComputeMethod]
     Task<MediaProgress?> GetProgress(Session session, MediaId mediaId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<MediaContent?> GetContent(Session session, MediaId mediaId, CancellationToken cancellationToken);
+    Task<MediaRef?> GetContent(Session session, MediaId mediaId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<MediaId> OnReserveMedia(Medias_ReserveMedia command, CancellationToken cancellationToken);
@@ -14,7 +14,7 @@ public interface IMedias : IComputeService
     [CommandHandler]
     Task OnUpdateProgress(Medias_UpdateProgress command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task<MediaContent> OnProcessUpload(Medias_ProcessUpload command, CancellationToken cancellationToken);
+    Task<MediaRef> OnProcessUpload(Medias_ProcessUpload command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -52,4 +52,4 @@ public sealed partial record Medias_ProcessUpload(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] MediaId MediaId,
     [property: DataMember, MemoryPackOrder(2)] UploadId UploadId
-) : ISessionCommand<MediaContent>, IApiCommand;
+) : ISessionCommand<MediaRef>, IApiCommand;

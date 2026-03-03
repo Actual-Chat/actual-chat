@@ -71,7 +71,7 @@ public class UploadOperations(AppUIHub hub)
         await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<MediaContent> WaitForProcessingCompletion(
+    public async Task<MediaRef> WaitForProcessingCompletion(
         UploadSessionSnapshot snapshot,
         IProgress<double>? progress = null,
         CancellationToken cancellationToken1 = default)

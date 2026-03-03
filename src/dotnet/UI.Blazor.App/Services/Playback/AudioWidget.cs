@@ -137,8 +137,8 @@ public class AudioWidget : IDisposable
         var ownAccount = await Accounts.GetOwn(Session, CancellationToken.None).ConfigureAwait(false);
         var peerUserId = peerChatId.AnotherUserId(ownAccount.Id);
         var peerAccount = await Accounts.Get(Session, peerUserId, CancellationToken.None).ConfigureAwait(false);
-        if (peerAccount?.Avatar.Picture?.MediaContent is { } mediaContent)
-            picUrl = UrlMapper.ContentUrl(mediaContent.BlobId);
+        if (peerAccount?.Avatar.Picture?.MediaRef is { } mediaRef)
+            picUrl = UrlMapper.ContentUrl(mediaRef.BlobId);
 
         return new AudioWidgetChatInfo(chatId, chat.Title, picUrl, 0);
     }

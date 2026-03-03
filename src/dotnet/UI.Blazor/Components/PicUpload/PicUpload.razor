@@ -73,7 +73,7 @@
     [Parameter, EditorRequired] public string Scope { get; set; } = "";
     [Parameter] public RenderFragment? NoPicture { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
-    [Parameter] public EventCallback<MediaContent> Picked { get; set; }
+    [Parameter] public EventCallback<MediaRef> Picked { get; set; }
     [Parameter] public EventCallback GenerateAvatar { get; set; }
 
     protected override void OnInitialized() {
@@ -90,10 +90,6 @@
             _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _dropZoneRef, _inputId);
     }
 
-    private async Task OnUploaded(MediaContent mediaContent)
-        => await Picked.InvokeAsync(mediaContent).ConfigureAwait(false);
-
-    private void UploadImage() {
-
-    }
+    private async Task OnUploaded(MediaRef mediaRef)
+        => await Picked.InvokeAsync(mediaRef).ConfigureAwait(false);
 }

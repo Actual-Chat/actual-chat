@@ -49,8 +49,8 @@ public class UploadSessionFlowTest(ChatCollection.AppHostFixture fixture, ITestO
         // Assert: Upload completed successfully
         uploadSession.IsFailed.Should().BeFalse(uploadSession.LastError?.ToString() ?? "no error");
         uploadSession.IsCompleted.Should().BeTrue();
-        uploadSession.MediaContent.Should().NotBeNull();
-        uploadSession.MediaContent!.BlobId.Should().NotBeNullOrEmpty();
+        uploadSession.MediaRef.Should().NotBeNull();
+        uploadSession.MediaRef!.BlobId.Should().NotBeNullOrEmpty();
 
         // Verify media exists on server with Ready stage (may need to wait for server processing)
         await TestExt.When(async () => {
@@ -61,7 +61,7 @@ public class UploadSessionFlowTest(ChatCollection.AppHostFixture fixture, ITestO
 
         var media = await mediaBackend.GetFull(mediaId, default);
         media.Should().NotBeNull();
-        media.BlobId.Should().Be(uploadSession.MediaContent.BlobId);
+        media.BlobId.Should().Be(uploadSession.MediaRef.BlobId);
     }
 
     // Test file provider that uploads data via ChunkedFileUploader

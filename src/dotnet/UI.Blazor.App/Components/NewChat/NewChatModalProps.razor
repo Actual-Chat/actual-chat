@@ -164,8 +164,8 @@
         }
     }
 
-    private void OnImagePicked(MediaContent mediaContent) {
-        _form.Picture = new(mediaContent);
+    private void OnImagePicked(MediaRef mediaRef) {
+        _form.Picture = new(mediaRef);
         StateHasChanged();
     }
 
@@ -198,7 +198,7 @@
                     Description = _form.Description,
                     Kind = null,
                     IsPublic = _form.IsPublic,
-                    MediaId = _form.Picture?.MediaContent?.MediaId,
+                    MediaId = _form.Picture?.MediaRef?.MediaId,
                     AllowGuestAuthors = PlaceId is null ? _form.AllowGuestAuthors : null,
                     AllowAnonymousAuthors = PlaceId is null ? _form.AllowAnonymousAuthors : null,
                     PlaceId = PlaceId

@@ -4,7 +4,7 @@ namespace ActualChat.Media.Flows;
 
 [Flow(ResumeTimeout = 14.5 * 60)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-public sealed partial class UploadProcessingFlow : Flow<MediaContent>
+public sealed partial class UploadProcessingFlow : Flow<MediaRef>
 {
     private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
     private IUploadsBackend UploadsBackend => field ??= Services.GetRequiredService<IUploadsBackend>();
@@ -25,7 +25,7 @@ public sealed partial class UploadProcessingFlow : Flow<MediaContent>
 
             if (!media.BlobId.IsNullOrEmpty()) {
                 Console.Log("Media already has content");
-                SetResult(new MediaContent(mediaId, media.BlobId));
+                SetResult(new MediaRef(mediaId, media.BlobId));
                 return;
             }
 
@@ -36,11 +36,11 @@ public sealed partial class UploadProcessingFlow : Flow<MediaContent>
 
             try {
                 // Process upload and bind to media
-                var mediaContent = await Commander
+                var mediaRef = await Commander
                     .Call(new UploadsBackend_ProcessAndSaveContent(uploadId, mediaId), cancellationToken)
                     .ConfigureAwait(false);
                 Console.Log("Upload processed and saved");
-                SetResult(mediaContent);
+                SetResult(mediaRef);
             }
             catch (Exception e) {
                 Console.Log($"Processing failed: {e.Message}");

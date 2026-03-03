@@ -23,7 +23,7 @@ public class Medias(IServiceProvider services) : IMedias
     }
 
     // [ComputeMethod]
-    public virtual async Task<MediaContent?> GetContent(Session session, MediaId mediaId, CancellationToken cancellationToken)
+    public virtual async Task<MediaRef?> GetContent(Session session, MediaId mediaId, CancellationToken cancellationToken)
     {
         var media = await MediaBackend.GetFull(mediaId, cancellationToken).ConfigureAwait(false);
         if (media == null)
@@ -40,7 +40,7 @@ public class Medias(IServiceProvider services) : IMedias
             : null;
 
         var thumbnailBlobId = thumbnailMedia?.BlobId;
-        return new MediaContent(mediaId, blobId, thumbnailId, thumbnailBlobId);
+        return new MediaRef(mediaId, blobId, thumbnailId, thumbnailBlobId);
     }
 
     // [CommandHandler]
@@ -104,7 +104,7 @@ public class Medias(IServiceProvider services) : IMedias
     }
 
     // [CommandHandler]
-    public virtual async Task<MediaContent> OnProcessUpload(Medias_ProcessUpload command, CancellationToken cancellationToken)
+    public virtual async Task<MediaRef> OnProcessUpload(Medias_ProcessUpload command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return default!;
@@ -119,12 +119,14 @@ public class Medias(IServiceProvider services) : IMedias
         await RequireOwner(session, media, cancellationToken).ConfigureAwait(false);
 
         // Process upload and bind to media
-        var mediaContent = await Commander.Call(new UploadsBackend_ProcessAndSaveContent(uploadId, mediaId), cancellationToken).ConfigureAwait(false);
+        var mediaRef = await Commander
+            .Call(new UploadsBackend_ProcessAndSaveContent(uploadId, mediaId), cancellationToken)
+            .ConfigureAwait(false);
 
         // Remove the upload
         await Commander.Call(new UploadsBackend_Remove(uploadId), cancellationToken).ConfigureAwait(false);
 
-        return mediaContent;
+        return mediaRef;
     }
 
     // Private methods

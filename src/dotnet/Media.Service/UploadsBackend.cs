@@ -125,7 +125,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         return expectedNewOffset;
     }
 
-    public virtual async Task<MediaContent> OnConvertToMediaContent(UploadsBackend_ConvertToMediaContent command, CancellationToken cancellationToken)
+    public virtual async Task<MediaRef> OnConvertToMediaRef(UploadsBackend_ConvertToMediaRef command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return default!;
@@ -149,7 +149,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         return await MediaSaver.Save(mediaId, processedFile, isUpdate:false, MediaKind.ChatEntryAttachment, cancellationToken).ConfigureAwait(false);
     }
 
-    public virtual async Task<MediaContent> OnProcessAndSaveContent(UploadsBackend_ProcessAndSaveContent command, CancellationToken cancellationToken)
+    public virtual async Task<MediaRef> OnProcessAndSaveContent(UploadsBackend_ProcessAndSaveContent command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return default!;
@@ -168,9 +168,10 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
             progress = CreateMediaConvertingProgressTracker(mediaId);
             using var processedFile = await MediaProcessor.ProcessUpload(uploadedFile, progress, cancellationToken)
                 .ConfigureAwait(false);
-            var mediaContent = await MediaSaver.Save(mediaId, processedFile, isUpdate: true, default, cancellationToken)
+            var mediaRef = await MediaSaver
+                .Save(mediaId, processedFile, isUpdate: true, default, cancellationToken)
                 .ConfigureAwait(false);
-            return mediaContent;
+            return mediaRef;
         }
         catch (Exception e) {
             Log.LogError(e,

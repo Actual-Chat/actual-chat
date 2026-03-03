@@ -65,9 +65,9 @@ public class UploadSession
     public UploadSessionState CurrentState => _snapshot.CurrentState;
     public bool IsFailed => _snapshot.IsFailed;
     public Exception? LastError { get; private set; }
-    [MemberNotNullWhen(true, nameof(MediaContent))]
+    [MemberNotNullWhen(true, nameof(MediaRef))]
     public bool IsCompleted => CurrentState == UploadSessionState.Completed;
-    public MediaContent? MediaContent => _snapshot.MediaContent;
+    public MediaRef? MediaRef => _snapshot.MediaRef;
     public bool IsRunning => Interlocked.CompareExchange(ref _isRunning, 0, 0) == 1;
     public bool IsTerminated => CurrentState == UploadSessionState.Completed || CurrentState == UploadSessionState.Cancelled;
     public Task<MediaId> WhenMediaReserved => _whenMediaIdReserved.Task;
@@ -192,7 +192,7 @@ public class UploadSession
         });
         var result = await _uploadOperations.WaitForProcessingCompletion(_snapshot, progress, cancellationToken).ConfigureAwait(false);
 
-        await UpdateState(s => s with { MediaContent = result }, save:false, cancellationToken).ConfigureAwait(false);
+        await UpdateState(s => s with { MediaRef = result }, save:false, cancellationToken).ConfigureAwait(false);
         await TransitionTo(UploadSessionState.Completed).ConfigureAwait(false);
     }, cancellationToken);
 

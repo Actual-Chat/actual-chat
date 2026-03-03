@@ -58,9 +58,9 @@ public partial record Avatar(
             return this;
 
         return this with {
-            MediaId = picture.MediaContent?.MediaId,
-            PictureUrl = picture.MediaContent is null ? picture.ExternalUrl ?? "" : "",
-            AvatarKey = picture.MediaContent is null ? picture.AvatarKey ?? "" : "",
+            MediaId = picture.MediaRef?.MediaId,
+            PictureUrl = picture.MediaRef is null ? picture.ExternalUrl ?? "" : "",
+            AvatarKey = picture.MediaRef is null ? picture.AvatarKey ?? "" : "",
         };
     }
 
