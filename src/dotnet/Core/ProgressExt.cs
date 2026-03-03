@@ -13,7 +13,7 @@ public static class ProgressExt
     /// <param name="count">Number of forks to create.</param>
     /// <returns>Array of child progress reporters.</returns>
     public static ForkableProgress[] Fork(this IProgress<double> progress, int count)
-        => new ForkableProgress(progress.Report).Fork(count);
+        => progress.AsForkable().Fork(count);
 
     /// <summary>
     /// Forks this progress into parts with custom weights.
@@ -23,7 +23,7 @@ public static class ProgressExt
     /// <param name="weights">Relative weights for each fork.</param>
     /// <returns>Array of child progress reporters.</returns>
     public static ForkableProgress[] Fork(this IProgress<double> progress, params double[] weights)
-        => new ForkableProgress(progress.Report).Fork(weights);
+        => progress.AsForkable().Fork(weights);
 
     /// <summary>
     /// Forks this progress into two parts with custom weights.
@@ -36,7 +36,7 @@ public static class ProgressExt
         this IProgress<double> progress,
         double weight1,
         double weight2)
-        => new ForkableProgress(progress.Report).Fork(weight1, weight2);
+        => progress.AsForkable().Fork(weight1, weight2);
 
     /// <summary>
     /// Forks this progress into three parts with custom weights.
@@ -51,5 +51,11 @@ public static class ProgressExt
         double weight1,
         double weight2,
         double weight3)
-        => new ForkableProgress(progress.Report).Fork(weight1, weight2, weight3);
+        => progress.AsForkable().Fork(weight1, weight2, weight3);
+
+    /// <summary>
+    /// Converts an IProgress to ForkableProgress, reusing it if already a ForkableProgress.
+    /// </summary>
+    private static ForkableProgress AsForkable(this IProgress<double> progress)
+        => progress as ForkableProgress ?? new ForkableProgress(progress.Report);
 }
