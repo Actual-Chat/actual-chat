@@ -363,16 +363,18 @@ export class AudioPlayer implements Resettable {
             if (this.authorId) {
                 AudioVideoSync.update(this.authorId, state.playingAt, this.recordedAtMs, state.playbackState);
 
-                const now = Date.now();
-                if (now - this.lastLatencyLogTime > 10_000) {
-                    this.lastLatencyLogTime = now;
-                    const recordedAtMs = this.recordedAtMs + state.playingAt * 1000;
-                    const latencyMs = now - recordedAtMs;
-                    warnLog?.log(
-                        `LATENCY: authorId=${this.authorId}, ` +
-                        `now=${now.toFixed(0)}, recorded=${recordedAtMs.toFixed(0)} ` +
-                        `(recordedAt=${this.recordedAtMs.toFixed(0)}+playingAt=${(state.playingAt * 1000).toFixed(0)}), ` +
-                        `latency=${latencyMs.toFixed(0)}ms`);
+                if (state.playbackState === 'playing') {
+                    const now = Date.now();
+                    if (now - this.lastLatencyLogTime > 10_000) {
+                        this.lastLatencyLogTime = now;
+                        const recordedAtMs = this.recordedAtMs + state.playingAt * 1000;
+                        const latencyMs = now - recordedAtMs;
+                        warnLog?.log(
+                            `LATENCY: authorId=${this.authorId}, ` +
+                            `now=${now.toFixed(0)}, recorded=${recordedAtMs.toFixed(0)} ` +
+                            `(recordedAt=${this.recordedAtMs.toFixed(0)}+playingAt=${(state.playingAt * 1000).toFixed(0)}), ` +
+                            `latency=${latencyMs.toFixed(0)}ms`);
+                    }
                 }
             }
             const isPaused = state.playbackState === 'paused';
