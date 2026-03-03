@@ -198,17 +198,19 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         await services.GetRequiredService<IAuthors>().EnsureJoined(session, TestChatId, CancellationToken.None);
         await WaitForIdRangeToStabilize(chats, session, TestChatId, ChatEntryKind.Text);
 
+        var idRangeBefore = await chats.GetIdRange(session, TestChatId, ChatEntryKind.Text, CancellationToken.None);
         await CreateChatEntries(chats, session, TestChatId, 3);
         var author = await services.GetRequiredService<IAuthors>()
             .GetOwn(session, TestChatId, CancellationToken.None)
             .Require();
         var idRange = await chats.GetIdRange(session, TestChatId, ChatEntryKind.Text, CancellationToken.None);
+        var ourRange = new Range<long>(idRangeBefore.End, idRange.End);
         var reader = chats.NewEntryReader(session, TestChatId, ChatEntryKind.Text);
-        var tile = await reader.ReadTilesReverse(idRange, CancellationToken.None).FirstAsync();
-        foreach (var chatEntry in tile.Entries.TakeLast(removeLastCount))
-            await services.Commander().Call(new Chats_RemoveTextEntry(session, TestChatId, chatEntry.LocalId), CancellationToken.None);
 
-        var entry = await reader.GetLast(idRange, x => x.AuthorId == author.Id, 0, CancellationToken.None);
+        for (var i = 0; i < removeLastCount; i++)
+            await services.Commander().Call(new Chats_RemoveTextEntry(session, TestChatId, idRange.End - 1 - i), CancellationToken.None);
+
+        var entry = await reader.GetLast(ourRange, x => x.AuthorId == author.Id, 0, CancellationToken.None);
         entry?.Content.Should().Be(expected);
     }
 
