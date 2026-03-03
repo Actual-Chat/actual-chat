@@ -84,7 +84,7 @@ public static class ServiceCollectionExt
         // everything below LogLevel.Information
  #pragma warning disable CS0618 // Type or member is obsolete
         logging.AddProvider(new XUnitLoggerProvider(
-            outputAccessor.Output,
+            new TestOutputHelperAdaptor(outputAccessor),
             new XUnitLoggerOptions() {
                 Filter = (_, _) => true,
             }));
