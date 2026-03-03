@@ -56,7 +56,7 @@ public class UploadSessionFlowTest(ChatCollection.AppHostFixture fixture, ITestO
         await TestExt.When(async () => {
             var progress = await mediaProgressBackend.Get(mediaId, default);
             progress.Should().NotBeNull();
-            progress.Stage.Should().Be(MediaStage.Ready);
+            progress.Stage.Should().Be(MediaProcessingStage.Ready);
         }, TimeSpan.FromSeconds(10));
 
         var media = await mediaBackend.GetFull(mediaId, default);

@@ -1,6 +1,7 @@
 namespace ActualChat.Media;
 
-public class Medias(IServiceProvider services) : IMedias
+// ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
+public class MediaService(IServiceProvider services) : IMedia
 {
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IMediaBackend MediaBackend { get; } = services.GetRequiredService<IMediaBackend>();
@@ -16,10 +17,10 @@ public class Medias(IServiceProvider services) : IMedias
 
         await RequireOwner(session, media, cancellationToken).ConfigureAwait(false);
         if (!media.BlobId.IsNullOrEmpty())
-            return new MediaProgress(mediaId, 0, MediaStage.Ready, 100, "");
+            return new MediaProgress(mediaId, 0, MediaProcessingStage.Ready, 100, "");
 
-        var mediaProgress = await MediaProgressBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
-        return mediaProgress;
+        var progress = await MediaProgressBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
+        return progress;
     }
 
     // [ComputeMethod]
@@ -44,7 +45,7 @@ public class Medias(IServiceProvider services) : IMedias
     }
 
     // [CommandHandler]
-    public virtual async Task<MediaId> OnReserveMedia(Medias_ReserveMedia command, CancellationToken cancellationToken)
+    public virtual async Task<MediaId> OnReserveMedia(Media_ReserveMedia command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return default!;
@@ -58,7 +59,7 @@ public class Medias(IServiceProvider services) : IMedias
 
         await Commander.Call(new MediaBackend_Change(mediaId, null, mediaChange), cancellationToken).ConfigureAwait(false);
 
-        var progress = new MediaProgress(mediaId, 0, MediaStage.Reserved, 0, "");
+        var progress = new MediaProgress(mediaId, 0, MediaProcessingStage.Reserved, 0, "");
         var progressChange = new Change<MediaProgress> { Create = progress };
         await Commander.Call(new MediaProgressBackend_Change(mediaId, null, progressChange), cancellationToken).ConfigureAwait(false);
 
@@ -66,7 +67,7 @@ public class Medias(IServiceProvider services) : IMedias
     }
 
     // [CommandHandler]
-    public virtual async Task OnRemoveMedia(Medias_RemoveMedia command, CancellationToken cancellationToken)
+    public virtual async Task OnRemoveMedia(Media_RemoveMedia command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return;
@@ -86,7 +87,7 @@ public class Medias(IServiceProvider services) : IMedias
     }
 
     // [CommandHandler]
-    public virtual async Task OnUpdateProgress(Medias_UpdateProgress command, CancellationToken cancellationToken)
+    public virtual async Task OnUpdateProgress(Media_UpdateProgress command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return;
@@ -104,7 +105,7 @@ public class Medias(IServiceProvider services) : IMedias
     }
 
     // [CommandHandler]
-    public virtual async Task<MediaRef> OnProcessUpload(Medias_ProcessUpload command, CancellationToken cancellationToken)
+    public virtual async Task<MediaRef> OnProcessUpload(Media_ProcessUpload command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return default!;

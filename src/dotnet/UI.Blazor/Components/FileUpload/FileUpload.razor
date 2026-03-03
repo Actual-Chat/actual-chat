@@ -50,7 +50,7 @@
         WebFileUploaderBackend? uploaderBackend = null;
         try {
             // Reserve MediaId
-            var mediaId = await UICommander.Call(new Medias_ReserveMedia(Session, Scope));
+            var mediaId = await UICommander.Call(new Media_ReserveMedia(Session, Scope));
 
             // Create Upload
             var tag = $"FileUpload/v1/{Scope}";
@@ -63,7 +63,7 @@
             await FileUploader.Upload(webUploadStreamSource, uploadId, null, CancellationToken.None);
 
             // Process upload
-            var mediaRef = await UICommander.Call(new Medias_ProcessUpload(Session, mediaId, uploadId));
+            var mediaRef = await UICommander.Call(new Media_ProcessUpload(Session, mediaId, uploadId));
             await Uploaded.InvokeAsync(mediaRef);
         }
         catch (Exception e) {

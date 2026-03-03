@@ -24,7 +24,7 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         var testData = "Hello, this is test file content!"u8.ToArray();
 
         // Act 1: Reserve MediaId
-        var mediaId = await commander.Call(new Medias_ReserveMedia(session, scope));
+        var mediaId = await commander.Call(new Media_ReserveMedia(session, scope));
 
         // Assert 1: MediaId is created and status is Reserved
         mediaId.Should().NotBeNull();
@@ -36,7 +36,7 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         var progress = await mediaProgressBackend.Get(mediaId, default);
         progress.Should().NotBeNull();
-        progress!.Stage.Should().Be(MediaStage.Reserved);
+        progress!.Stage.Should().Be(MediaProcessingStage.Reserved);
 
         // Act 2: Create Upload
         var metadata = new PropertyBag()
@@ -53,15 +53,15 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         newOffset.Should().Be(testData.Length);
 
         // Act 4: Update progress to Uploading
-        await commander.Call(new Medias_UpdateProgress(session, mediaId, null, MediaStage.Uploading, 100, ""));
+        await commander.Call(new Media_UpdateProgress(session, mediaId, null, MediaProcessingStage.Uploading, 100, ""));
 
         progress = await mediaProgressBackend.Get(mediaId, default);
         progress.Should().NotBeNull();
-        progress.Stage.Should().Be(MediaStage.Uploading);
+        progress.Stage.Should().Be(MediaProcessingStage.Uploading);
         progress.StageProgress.Should().Be(100);
 
         // Act 5: Process upload - verifies upload is complete, runs processors, saves ContentId to Media, updates progress to Ready, removes upload
-        var mediaRef = await commander.Call(new Medias_ProcessUpload(session, mediaId, uploadId));
+        var mediaRef = await commander.Call(new Media_ProcessUpload(session, mediaId, uploadId));
 
         mediaRef.Should().NotBeNull();
         mediaRef.BlobId.Should().NotBeNullOrEmpty();
@@ -74,7 +74,7 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         // Verify progress is Ready
         progress = await mediaProgressBackend.Get(mediaId, default);
         progress.Should().NotBeNull();
-        progress.Stage.Should().Be(MediaStage.Ready);
+        progress.Stage.Should().Be(MediaProcessingStage.Ready);
 
         // Verify upload is removed (should throw or return null)
         var uploads = services.GetRequiredService<IUploads>();
@@ -92,11 +92,11 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         await ownerTester.SignInAsUniqueBob();
 
         var services = ownerTester.AppServices;
-        var medias = services.GetRequiredService<IMedias>();
+        var medias = services.GetRequiredService<IMedia>();
         var commander = ownerTester.Commander;
 
         // Owner reserves media
-        var mediaId = await commander.Call(new Medias_ReserveMedia(ownerSession, "owner-test"));
+        var mediaId = await commander.Call(new Media_ReserveMedia(ownerSession, "owner-test"));
         mediaId.Should().NotBeNull();
 
         // Act & Assert: Another user should not be able to update progress
@@ -107,7 +107,7 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         var otherCommander = otherTester.Commander;
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => {
-            await otherCommander.Call(new Medias_UpdateProgress(otherSession, mediaId, null, MediaStage.Ready, 100, ""));
+            await otherCommander.Call(new Media_UpdateProgress(otherSession, mediaId, null, MediaProcessingStage.Ready, 100, ""));
         });
     }
 
@@ -123,7 +123,7 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         var commander = ownerTester.Commander;
 
         // Owner reserves media
-        var mediaId = await commander.Call(new Medias_ReserveMedia(ownerSession, "remove-test"));
+        var mediaId = await commander.Call(new Media_ReserveMedia(ownerSession, "remove-test"));
 
         // Act & Assert: Another user should not be able to remove
         await using var otherTester = AppHost.NewBlazorTester(Out);
@@ -133,11 +133,11 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         var otherCommander = otherTester.Commander;
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => {
-            await otherCommander.Call(new Medias_RemoveMedia(otherSession, mediaId));
+            await otherCommander.Call(new Media_RemoveMedia(otherSession, mediaId));
         });
 
         // Owner can remove
-        await commander.Call(new Medias_RemoveMedia(ownerSession, mediaId));
+        await commander.Call(new Media_RemoveMedia(ownerSession, mediaId));
 
         var mediaBackend = services.GetRequiredService<IMediaBackend>();
         var media = await mediaBackend.GetFull(mediaId, default);
@@ -158,7 +158,7 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         var commander = tester.Commander;
 
         // Reserve media
-        var mediaId = await commander.Call(new Medias_ReserveMedia(session, "delete-test"));
+        var mediaId = await commander.Call(new Media_ReserveMedia(session, "delete-test"));
 
         // Verify both media and progress exist
         var media = await mediaBackend.GetFull(mediaId, default);
@@ -168,7 +168,7 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         progress.Should().NotBeNull();
 
         // Act: Remove media
-        await commander.Call(new Medias_RemoveMedia(session, mediaId));
+        await commander.Call(new Media_RemoveMedia(session, mediaId));
 
         // Assert: Both media and progress are removed
         media = await mediaBackend.GetFull(mediaId, default);

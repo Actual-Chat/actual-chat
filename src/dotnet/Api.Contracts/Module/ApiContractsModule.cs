@@ -67,7 +67,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         // Media
         fusion.AddClient<IMediaLinkPreviews>();
         fusion.AddClient<IUploads>();
-        fusion.AddClient<IMedias>();
+        fusion.AddClient<IMedia>("IMedias"); // TODO(AY): Remove "IMedias"
 
         // Notification
         fusion.AddClient<INotifications>();

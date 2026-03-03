@@ -14,7 +14,7 @@ public class UploadOperations(AppUIHub hub)
     public Session Session => hub.Session;
     public ICommander Commander => hub.Commander;
     public Moment Now() => hub.Clocks.SystemClock.Now;
-    public IMedias Medias => hub.Medias;
+    public IMedia Media => hub.Media;
     private ILogger Log => field ??= hub.LogFor(GetType());
 
     public async Task<MediaId> ReserveMediaId(
@@ -24,11 +24,11 @@ public class UploadOperations(AppUIHub hub)
         var sessionMetadata = snapshot.Metadata;
         var fileMetadata = snapshot.FileProvider.Metadata;
         var metadata = sessionMetadata
-            .Set(nameof(Media.Media.FileName), fileMetadata.FileName)
-            .Set(nameof(Media.Media.ContentType), fileMetadata.FileType)
-            .Set(nameof(Media.Media.Length), fileMetadata.Length);
+            .Set(nameof(ActualChat.Media.Media.FileName), fileMetadata.FileName)
+            .Set(nameof(ActualChat.Media.Media.ContentType), fileMetadata.FileType)
+            .Set(nameof(ActualChat.Media.Media.Length), fileMetadata.Length);
         var mediaScope = snapshot.MediaScope.NullIfEmpty() ?? MediaId.NewScope();
-        var command = new Medias_ReserveMedia(Session, mediaScope) { Metadata = metadata };
+        var command = new Media_ReserveMedia(Session, mediaScope) { Metadata = metadata };
         var mediaId = await Commander.Call(command, cancellationToken).ConfigureAwait(false);
         return mediaId;
     }
@@ -82,7 +82,7 @@ public class UploadOperations(AppUIHub hub)
         try {
             var mediaId = snapshot.ReservedMediaId.Require();
             var cStatus = await Computed
-                .Capture(() => Medias.GetProgress(Session, mediaId, ct2), ct2)
+                .Capture(() => Media.GetProgress(Session, mediaId, ct2), ct2)
                 .ConfigureAwait(false);
 
             var changes = cStatus.Changes(FixedDelayer.NoneUnsafe, ct2);
@@ -98,14 +98,14 @@ public class UploadOperations(AppUIHub hub)
                 if (status.HasFailed)
                     throw new InvalidOperationException(status.ErrorMessage);
 
-                if (status.Stage is MediaStage.Ready) {
-                    var content = await Medias.GetContent(Session, mediaId, ct2).ConfigureAwait(false);
+                if (status.Stage is MediaProcessingStage.Ready) {
+                    var content = await Media.GetContent(Session, mediaId, ct2).ConfigureAwait(false);
                     if (content == null)
                         throw new InvalidOperationException("Media content not found after Ready status");
 
                     return content;
                 }
-                if (status.Stage is MediaStage.ServerProcessing)
+                if (status.Stage is MediaProcessingStage.ServerProcessing)
                     progress?.Report(status.StageProgress);
             }
         }
@@ -141,8 +141,8 @@ public class UploadOperations(AppUIHub hub)
     {
         var length = sourceMetadata.Length;
         var metadata = new PropertyBag()
-            .Set(nameof(Media.Media.FileName), sourceMetadata.FileName ?? "")
-            .Set(nameof(Media.Media.ContentType), sourceMetadata.ContentType);
+            .Set(nameof(ActualChat.Media.Media.FileName), sourceMetadata.FileName ?? "")
+            .Set(nameof(ActualChat.Media.Media.ContentType), sourceMetadata.ContentType);
         return await Commander.Call(new Uploads_Create(Session, length, "", metadata), cancellationToken).ConfigureAwait(false);
     }
 }

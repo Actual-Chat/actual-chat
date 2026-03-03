@@ -200,14 +200,14 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
     {
         var mediaProgress = await mediaProgressBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
         if (mediaProgress is null
-            || mediaProgress.Stage == MediaStage.Ready
-            || mediaProgress.Stage == MediaStage.ServerProcessing && !mediaProgress.ErrorMessage.IsNullOrEmpty())
+            || mediaProgress.Stage == MediaProcessingStage.Ready
+            || mediaProgress.Stage == MediaProcessingStage.ServerProcessing && !mediaProgress.ErrorMessage.IsNullOrEmpty())
             return;
 
-        var progress = mediaProgress.Stage is MediaStage.ServerProcessing ? mediaProgress.StageProgress : 0;
+        var progress = mediaProgress.Stage is MediaProcessingStage.ServerProcessing ? mediaProgress.StageProgress : 0;
         var failedProgress = new MediaProgress(mediaId,
             0,
-            MediaStage.ServerProcessing,
+            MediaProcessingStage.ServerProcessing,
             progress,
             errorMessage.NullIfEmpty() ?? "Failed to process upload");
         var failedChange = new Change<MediaProgress> { Update = failedProgress };
@@ -264,18 +264,18 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
     {
         var progress = new ThrottledProgress<double>(p => {
             // Fire and forget - we don't want to block processing for status updates
-            _ = UpdateMediaProgress(MediaStage.ServerProcessing, p, CancellationToken.None);
+            _ = UpdateMediaProgress(MediaProcessingStage.ServerProcessing, p, CancellationToken.None);
         }, TimeSpan.FromSeconds(1));
         return progress;
 
-        async Task UpdateMediaProgress(MediaStage stage, double p, CancellationToken cancellationToken)
+        async Task UpdateMediaProgress(MediaProcessingStage processingStage, double p, CancellationToken cancellationToken)
         {
             try {
                 var mediaProgress = await MediaProgressBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
-                if (mediaProgress is null || mediaProgress.Stage == MediaStage.Ready || !mediaProgress.ErrorMessage.IsNullOrEmpty())
+                if (mediaProgress is null || mediaProgress.Stage == MediaProcessingStage.Ready || !mediaProgress.ErrorMessage.IsNullOrEmpty())
                     return;
 
-                mediaProgress = new MediaProgress(mediaId, mediaProgress.Version, stage, p, "");
+                mediaProgress = new MediaProgress(mediaId, mediaProgress.Version, processingStage, p, "");
                 var change = new Change<MediaProgress> { Update = mediaProgress };
                 await Commander.Call(new MediaProgressBackend_Change(mediaId, mediaProgress.Version, change), true, cancellationToken).ConfigureAwait(false);
             }

@@ -1,6 +1,6 @@
 namespace ActualChat.Media;
 
-public enum MediaStage
+public enum MediaProcessingStage
 {
     Reserved,
     ClientProcessing,

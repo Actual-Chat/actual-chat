@@ -8,7 +8,7 @@ namespace ActualChat.Media;
 public sealed partial record MediaProgress(
     [property: DataMember, MemoryPackOrder(0)] MediaId Id,
     [property: DataMember, MemoryPackOrder(1)] long Version,
-    [property: DataMember, MemoryPackOrder(2)] MediaStage Stage,
+    [property: DataMember, MemoryPackOrder(2)] MediaProcessingStage Stage,
     [property: DataMember, MemoryPackOrder(3)] double StageProgress,
     [property: DataMember, MemoryPackOrder(4)] string ErrorMessage
 ) : IHasId<MediaId>, IHasVersion<long>
