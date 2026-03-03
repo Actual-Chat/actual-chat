@@ -19,6 +19,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
     private readonly MutableState<double> _uploadPct;
     private readonly FuncWorker _sendWorker;
     private SearchPhrase _searchPhrase = SearchPhrase.None;
+    private readonly MutableState<bool> _isInitialized;
     private readonly MutableState<bool> _isSending;
     private readonly MutableState<bool> _isSent;
     private readonly MutableState<bool> _hasFailed;
@@ -44,6 +45,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         Hub = hub;
         SelectedPlaceId = Hub.StateFactory.NewMutable<PlaceId?>();
         Hub.Services.GetRequiredService<ChunkSizeSelectorRecommendation>().Multiplier = 1;
+        _isInitialized = Hub.StateFactory.NewMutable<bool>();
         _isSending = Hub.StateFactory.NewMutable<bool>();
         _isSent = Hub.StateFactory.NewMutable<bool>();
         _hasFailed = Hub.StateFactory.NewMutable<bool>();
@@ -78,6 +80,9 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             Log.LogError(e, "Failed to initialize");
             _hasFailed.Value = true;
         }
+        finally {
+            _isInitialized.Value = true;
+        }
     }
 
     protected override Task DisposeAsyncCore()
@@ -101,6 +106,10 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         var isSending = await _isSending.Use(cancellationToken).ConfigureAwait(false);
         if (isSending)
             return ShareStep.Uploading;
+
+        var isInitialized = await _isInitialized.Use(cancellationToken).ConfigureAwait(false);
+        if (!isInitialized)
+            return ShareStep.None;
 
         return ShareStep.ContactSelection;
     }
