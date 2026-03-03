@@ -611,11 +611,11 @@ public class NotificationsBackend(IServiceProvider services)
 
     private string GetIconUrl(Chat.Chat chat, AuthorFull author)
          => chat.Kind switch {
-             ChatKind.Group or ChatKind.Place or ChatKind.Thread => chat.Picture?.ContentId.IsNullOrEmpty() == false
-                 ? UrlMapper.ContentUrl(chat.Picture.ContentId)
+             ChatKind.Group or ChatKind.Place or ChatKind.Thread => chat.Picture?.BlobId.IsNullOrEmpty() == false
+                 ? UrlMapper.ContentUrl(chat.Picture.BlobId)
                  : "/favicon_voxt.ico",
-             ChatKind.Peer => author.Avatar.Media?.ContentId.IsNullOrEmpty() == false
-                 ? UrlMapper.ContentUrl(author.Avatar.Media.ContentId)
+             ChatKind.Peer => author.Avatar.Media?.BlobId.IsNullOrEmpty() == false
+                 ? UrlMapper.ContentUrl(author.Avatar.Media.BlobId)
                  : "/favicon_voxt.ico",
              _ => throw new ArgumentOutOfRangeException($"{nameof(chat)}.{nameof(chat.Kind)}", chat.Kind, null),
          };

@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using ActualLab.Versioning;
 using Microsoft.EntityFrameworkCore;
@@ -18,7 +18,7 @@ public class DbMedia : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public string Scope { get; set; } = "";
     public string LocalId { get; set; } = "";
-    public string ContentId { get; set; } = "";
+    public string BlobId { get; set; } = "";
     public string UserId { get; set; } = "";
     public string ThumbnailId { get; set; } = "";
     public MediaKind Kind { get; set; }
@@ -27,7 +27,7 @@ public class DbMedia : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public MediaFull ToModel()
         => new (MediaId.Parse(Id)) {
             Version = Version,
-            ContentId = ContentId,
+            BlobId = BlobId,
             Kind = Kind,
             UserId = ActualChat.UserId.ParseNullable(UserId),
             ThumbnailId = MediaId.ParseNullable(ThumbnailId),
@@ -46,7 +46,7 @@ public class DbMedia : IHasId<string>, IHasVersion<long>, IRequirementTarget
             UserId = model.UserId?.Value ?? "";
         }
         Version = model.Version;
-        ContentId = model.ContentId;
+        BlobId = model.BlobId;
         Kind = model.Kind;
         ThumbnailId = model.ThumbnailId?.Value ?? "";
         MetadataJson = MetadataSerializer.Write(model.Metadata);
@@ -55,6 +55,6 @@ public class DbMedia : IHasId<string>, IHasVersion<long>, IRequirementTarget
     internal class EntityConfiguration : IEntityTypeConfiguration<DbMedia>
     {
         public void Configure(EntityTypeBuilder<DbMedia> builder)
-            => builder.HasIndex(a => a.ContentId);
+            => builder.HasIndex(a => a.BlobId);
     }
 }

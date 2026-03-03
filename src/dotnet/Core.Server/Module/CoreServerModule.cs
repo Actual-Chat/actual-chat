@@ -47,7 +47,7 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
         services.AddSingleton<IUploadProcessor, VideoUploadProcessor>();
         services.AddSingleton<IMediaProcessor, MediaProcessor>();
 
-        // Blob storages & IContentSaver
+        // Blob storages
         var storageBucket = Settings.GoogleStorageBucket;
         if (storageBucket.IsNullOrEmpty()) {
             services.AddSingleton<IContentTypeProvider>(_ => ContentTypeProvider.Instance);
@@ -56,7 +56,6 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
         }
         else
             services.AddSingleton<IBlobStorages>(_ => new GoogleCloudBlobStorages(storageBucket));
-        services.AddSingleton<IContentSaver>(c => new ContentSaver(c.BlobStorages()));
         services.AddSingleton<AudioSourceDownloader>();
 
         // Controllers, etc.

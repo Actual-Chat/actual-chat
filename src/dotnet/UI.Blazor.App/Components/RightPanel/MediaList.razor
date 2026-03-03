@@ -8,7 +8,7 @@
 <div class="media-list-tab">
     <div class="c-content">
         @foreach (var attachment in attachments) {
-            var url = UrlMapper.ContentUrl(attachment.Media.ContentId);
+            var url = UrlMapper.ContentUrl(attachment.Media.BlobId);
             string? previewUrl = null;
             if (attachment.IsGif() || attachment.IsSvg()) {
                 previewUrl = url; // currently image proxy fails on large gifs

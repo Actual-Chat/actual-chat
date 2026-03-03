@@ -23,9 +23,9 @@ public sealed partial class UploadProcessingFlow : Flow<MediaContent>
             if (media == null)
                 throw StandardError.NotFound<Media>();
 
-            if (!media.ContentId.IsNullOrEmpty()) {
+            if (!media.BlobId.IsNullOrEmpty()) {
                 Console.Log("Media already has content");
-                SetResult(new MediaContent(mediaId, media.ContentId));
+                SetResult(new MediaContent(mediaId, media.BlobId));
                 return;
             }
 

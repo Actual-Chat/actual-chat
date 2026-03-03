@@ -17,7 +17,7 @@
 @if (_mediaList.Length < MediaList.Length) {
     var extra = MediaList.Length - _mediaList.Length;
     var attachment = MediaList[_mediaList.Length];
-    var url = UrlMapper.ContentUrl(attachment.Media.ContentId);
+    var url = UrlMapper.ContentUrl(attachment.Media.BlobId);
     <div class="extra-media-count"
          @onclick="@(() => VisualMediaViewerUI.Show(url, MediaList))">
         + @extra media

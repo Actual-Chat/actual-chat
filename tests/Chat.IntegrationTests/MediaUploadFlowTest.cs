@@ -64,12 +64,12 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         var mediaContent = await commander.Call(new Medias_ProcessUpload(session, mediaId, uploadId));
 
         mediaContent.Should().NotBeNull();
-        mediaContent.ContentId.Should().NotBeNullOrEmpty();
+        mediaContent.BlobId.Should().NotBeNullOrEmpty();
 
         // Verify media has ContentId
         media = await mediaBackend.GetFull(mediaId, default);
         media.Should().NotBeNull();
-        media.ContentId.Should().Be(mediaContent.ContentId);
+        media.BlobId.Should().Be(mediaContent.BlobId);
 
         // Verify progress is Ready
         progress = await mediaProgressBackend.Get(mediaId, default);

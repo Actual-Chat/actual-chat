@@ -425,7 +425,7 @@ public partial class StreamingBackend
     {
         var mediaId = MediaId.New(chatId.Value);
         var media = new MediaFull(mediaId) {
-            ContentId = audioBlobId,
+            BlobId = audioBlobId,
             Kind = MediaKind.ChatEntryAudio,
             ContentType = "audio/webm",
             BeginsAt = beginsAt,

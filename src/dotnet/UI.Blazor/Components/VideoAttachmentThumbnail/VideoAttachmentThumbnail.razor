@@ -28,9 +28,9 @@
     {
         if (Attachment.ThumbnailMedia is not {} thumbnail)
             // OBSOLETE 2023.11: For backward compatibility for old videos. Probably convert in background.
-            return (UrlMapper.ContentUrl(Attachment.Media.ContentId), UrlMapper.ContentUrl(Attachment.Media.ContentId));
+            return (UrlMapper.ContentUrl(Attachment.Media.BlobId), UrlMapper.ContentUrl(Attachment.Media.BlobId));
 
-        var contentUrl = UrlMapper.ContentUrl(thumbnail.ContentId);
+        var contentUrl = UrlMapper.ContentUrl(thumbnail.BlobId);
         var originalUrl = UrlMapper.ImagePreviewUrl(contentUrl, null, (int?)Constants.Attachments.MaxActualResolution.Y);
         var thumbnailUrl = UrlMapper.ImagePreviewUrl(contentUrl, null, (int?)Constants.Attachments.MaxActualThumbnailResolution.Y);
         return (originalUrl, thumbnailUrl);

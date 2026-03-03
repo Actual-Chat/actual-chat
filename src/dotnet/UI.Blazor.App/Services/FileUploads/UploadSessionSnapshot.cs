@@ -1,3 +1,5 @@
+using ActualChat.Media;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]

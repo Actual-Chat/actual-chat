@@ -1,3 +1,4 @@
+using ActualChat.Media;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;

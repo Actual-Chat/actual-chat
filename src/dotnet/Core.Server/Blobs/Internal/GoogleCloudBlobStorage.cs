@@ -14,6 +14,7 @@ public class GoogleCloudBlobStorage(string bucket, RecyclableMemoryStreamManager
     private readonly StorageClient _client = StorageClient.Create();
 
     private RecyclableMemoryStreamManager MemoryStreamManager { get; } = memoryStreamManager;
+    public TimeSpan PostDeleteDelay { get; init; } = TimeSpan.FromMilliseconds(250);
 
     public ValueTask DisposeAsync()
     {
@@ -74,8 +75,11 @@ public class GoogleCloudBlobStorage(string bucket, RecyclableMemoryStreamManager
     public Task Copy(string oldPath, string newPath, CancellationToken cancellationToken)
         => _client.CopyObjectAsync(bucket, oldPath, bucket, newPath, cancellationToken: cancellationToken);
 
-    public Task Delete(string path, CancellationToken cancellationToken)
-        => _client.DeleteObjectAsync(bucket, path, cancellationToken: cancellationToken);
+    public async Task Delete(string path, CancellationToken cancellationToken)
+    {
+        await _client.DeleteObjectAsync(bucket, path, cancellationToken: cancellationToken).ConfigureAwait(false);
+        await Task.Delay(PostDeleteDelay, CancellationToken.None).ConfigureAwait(false);
+    }
 
     public async Task Append(string path, Stream stream, CancellationToken cancellationToken)
     {

@@ -1,5 +1,3 @@
-using System.Text;
-using ActualChat.Hashing;
 using ActualChat.Hosting;
 using ActualChat.Media.Db;
 using ActualChat.Media.Resources;
@@ -35,15 +33,14 @@ public sealed class MediaUploader(Type ownerType, VersionGenerator<long> version
         async Task AddMedia(string id, Resource resource, MediaKind kind)
         {
             var mediaId = MediaId.Parse(id);
-            var mediaIdHash = mediaId.Value.Hash(Encoding.UTF8).SHA256().AlphaNumeric();
             var resourceStream = resource.GetStream();
             var extension = Path.GetExtension(resource.Name);
             var type = contentTypeProvider.TryGetContentType(resource.Name, out var contentType)
                 ? contentType
                 : throw StandardError.Internal($"Unknown content type: {resource.Name}.");
-            var contentId = $"media/{mediaIdHash}/{mediaId.LocalId}{extension}";
+            var blobId = MediaSaver.GetBlobId(mediaId, extension);
             var media = new MediaFull(mediaId) {
-                ContentId = contentId,
+                BlobId = blobId,
                 Kind = kind,
                 FileName = resource.Name,
                 Length = resourceStream.Length,
@@ -68,10 +65,10 @@ public sealed class MediaUploader(Type ownerType, VersionGenerator<long> version
                 dbContext.Media.Add(new DbMedia(media));
             }
 
-            var mediaExists = await blobStorage.Exists(media.ContentId, cancellationToken).ConfigureAwait(false);
+            var mediaExists = await blobStorage.Exists(media.BlobId, cancellationToken).ConfigureAwait(false);
             if (mediaExists)
-                await blobStorage.Delete(media.ContentId, cancellationToken).ConfigureAwait(false);
-            await blobStorage.Write(media.ContentId, resourceStream, media.ContentType, cancellationToken).ConfigureAwait(false);
+                await blobStorage.Delete(media.BlobId, cancellationToken).ConfigureAwait(false);
+            await blobStorage.Write(media.BlobId, resourceStream, media.ContentType, cancellationToken).ConfigureAwait(false);
         }
     }
 
