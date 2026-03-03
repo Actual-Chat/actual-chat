@@ -33,7 +33,7 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public ITranslations Translations => field ??= Services.GetRequiredService<ITranslations>();
     public IStreamClient StreamClient => field ??= Services.GetRequiredService<IStreamClient>();
     public ILiveStreams LiveStreams => field ??= Services.GetRequiredService<ILiveStreams>();
-    public IMedias Medias => field ??= Services.GetRequiredService<IMedias>();
+    public IMedia Media => field ??= Services.GetRequiredService<IMedia>();
 
     public ChatUI ChatUI => field ??= Services.GetRequiredService<ChatUI>();
     public AttachmentsState AttachmentsState => field ??= Services.GetRequiredService<AttachmentsState>();

@@ -15,12 +15,12 @@ public class DbMediaProgress : IHasId<string>, IHasVersion<long>, IRequirementTa
     [Key] public string Id { get; set; } = "";
     [ConcurrencyCheck] public long Version { get; set; }
 
-    public MediaStage Stage { get; set; }
+    public MediaProcessingStage ProcessingStage { get; set; }
     public double StageProgress { get; set; }
     public string ErrorMessage { get; set; } = "";
 
     public MediaProgress ToModel()
-        => new (MediaId.Parse(Id), Version, Stage, StageProgress, ErrorMessage);
+        => new (MediaId.Parse(Id), Version, ProcessingStage, StageProgress, ErrorMessage);
 
     public void UpdateFrom(MediaProgress model)
     {
@@ -30,7 +30,7 @@ public class DbMediaProgress : IHasId<string>, IHasVersion<long>, IRequirementTa
 
         Id = id.Value;
         Version = model.Version;
-        Stage = model.Stage;
+        ProcessingStage = model.Stage;
         StageProgress = model.StageProgress;
         ErrorMessage = model.ErrorMessage;
     }

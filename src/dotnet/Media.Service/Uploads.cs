@@ -93,10 +93,10 @@ public class Uploads(IServiceProvider services) : IUploads
 
         var mediaProgress = await MediaProgressBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
         if (mediaProgress != null
-            && mediaProgress.Stage == MediaStage.ServerProcessing
+            && mediaProgress.Stage == MediaProcessingStage.ServerProcessing
             && !mediaProgress.ErrorMessage.IsNullOrEmpty()) {
             // Reset media progress if there was an error reported.
-            var progress = new MediaProgress(mediaProgress.Id, 0, MediaStage.ServerProcessing, mediaProgress.StageProgress, "");
+            var progress = new MediaProgress(mediaProgress.Id, 0, MediaProcessingStage.ServerProcessing, mediaProgress.StageProgress, "");
             await Commander.Run(new MediaProgressBackend_Change(mediaProgress.Id, mediaProgress.Version, Change.Update(progress)), cancellationToken).ConfigureAwait(false);
         }
 

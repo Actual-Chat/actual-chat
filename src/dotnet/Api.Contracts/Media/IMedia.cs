@@ -1,6 +1,6 @@
 namespace ActualChat.Media;
 
-public interface IMedias : IComputeService
+public interface IMedia : IComputeService
 {
     [ComputeMethod]
     Task<MediaProgress?> GetProgress(Session session, MediaId mediaId, CancellationToken cancellationToken);
@@ -8,18 +8,18 @@ public interface IMedias : IComputeService
     Task<MediaRef?> GetContent(Session session, MediaId mediaId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task<MediaId> OnReserveMedia(Medias_ReserveMedia command, CancellationToken cancellationToken);
+    Task<MediaId> OnReserveMedia(Media_ReserveMedia command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task OnRemoveMedia(Medias_RemoveMedia command, CancellationToken cancellationToken);
+    Task OnRemoveMedia(Media_RemoveMedia command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task OnUpdateProgress(Medias_UpdateProgress command, CancellationToken cancellationToken);
+    Task OnUpdateProgress(Media_UpdateProgress command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task<MediaRef> OnProcessUpload(Medias_ProcessUpload command, CancellationToken cancellationToken);
+    Task<MediaRef> OnProcessUpload(Media_ProcessUpload command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Medias_ReserveMedia(
+public sealed partial record Media_ReserveMedia(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] string Scope
 ) : ISessionCommand<MediaId>, IApiCommand
@@ -30,25 +30,25 @@ public sealed partial record Medias_ReserveMedia(
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Medias_RemoveMedia(
+public sealed partial record Media_RemoveMedia(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] MediaId MediaId
 ) : ISessionCommand<Unit>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Medias_UpdateProgress(
+public sealed partial record Media_UpdateProgress(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] MediaId MediaId,
     [property: DataMember, MemoryPackOrder(2)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(3)] MediaStage Stage,
+    [property: DataMember, MemoryPackOrder(3)] MediaProcessingStage Stage,
     [property: DataMember, MemoryPackOrder(4)] double StageProgress,
     [property: DataMember, MemoryPackOrder(5)] string ErrorMessage
 ) : ISessionCommand<Unit>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Medias_ProcessUpload(
+public sealed partial record Media_ProcessUpload(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] MediaId MediaId,
     [property: DataMember, MemoryPackOrder(2)] UploadId UploadId
