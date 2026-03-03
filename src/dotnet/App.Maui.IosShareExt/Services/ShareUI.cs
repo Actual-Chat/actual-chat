@@ -183,16 +183,13 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
                 return;
             }
 
-            // TODO: max 10 attachments per message
-
-            Log.LogInformation("Uploading to chats: {ChatIds}", string.Join(",", chatIds));
             // TODO(FC): single upload for all chats !!!!!!!!!!!!!!!!!!!!!!!!!!!
-            var rootProgress = new ForkableProgress(pct => _uploadPct.Value = pct);
-            var chatForks = rootProgress.Fork(chatIds.Count);
+            var progress = new ForkableProgress(pct => _uploadPct.Value = pct);
+            var chatProgresses = progress.Fork(chatIds.Count);
             for (var i = 0; i < chatIds.Count; i++) {
                 // TODO: handle cancellation
                 var chatId = chatIds[i];
-                var attachments = await UploadFiles(chatId, fileInputs, chatForks[i], cancellationToken)
+                var attachments = await UploadFiles(chatId, fileInputs, chatProgresses[i], cancellationToken)
                     .ConfigureAwait(false);
                 var entryText = text;
                 foreach (var attachmentList in attachments.Chunk(10)) {
