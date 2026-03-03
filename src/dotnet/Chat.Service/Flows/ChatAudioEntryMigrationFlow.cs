@@ -14,7 +14,7 @@ namespace ActualChat.Chat.Flows;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class ChatAudioEntryMigrationFlow : Flow<Unit>
 {
-    private const int BatchSize = 100;
+    private const int BatchSize = 25;
     private static readonly TimeSpan BatchDelay = TimeSpan.FromSeconds(0.1);
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
@@ -22,22 +22,30 @@ public partial class ChatAudioEntryMigrationFlow : Flow<Unit>
     [DataMember(Order = 1), MemoryPackOrder(1)]
     public long LastProcessedLocalId { get; set; }
     [DataMember(Order = 2), MemoryPackOrder(2)]
-    public int TotalMigrated { get; set; }
+    public long MigratedEntryCount { get; set; }
     [DataMember(Order = 3), MemoryPackOrder(3)]
-    public HashSet<string> CompletedSteps { get; set; } = new(StringComparer.Ordinal);
+    public long MigratedChatCount { get; set; }
+    [DataMember(Order = 4), MemoryPackOrder(4)]
+    public long TotalEntryCount { get; set; }
+    [DataMember(Order = 5), MemoryPackOrder(5)]
+    public long TotalChatCount { get; set; }
 
     protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
-        if (CompletedSteps.Contains("AudioEntryMigration")) {
-            SetResult(Unit.Default);
-            return;
-        }
-
         var dbHub = Services.DbHub<ChatDbContext>();
         var commander = Services.Commander();
 
-        var dbContext = await dbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await dbHub.CreateDbContext(readWrite: true, cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
+
+        if (TotalEntryCount == 0)
+            TotalEntryCount = Math.Max(1, await dbContext.ChatEntries
+                .CountAsync(x => x.Kind == ChatEntryKind.Audio, cancellationToken)
+                .ConfigureAwait(false));
+        if (TotalChatCount == 0)
+            TotalChatCount = Math.Max(1, await dbContext.Chats
+                .CountAsync(cancellationToken)
+                .ConfigureAwait(false));
 
         // Get next chat to process
         var chatQuery = dbContext.Chats.OrderBy(x => x.Id);
@@ -51,9 +59,10 @@ public partial class ChatAudioEntryMigrationFlow : Flow<Unit>
 
         if (chatId == null) {
             // No more chats — migration complete
-            CompletedSteps.Add("AudioEntryMigration");
-            Console.Log($"ChatAudioEntryMigrationFlow completed. Total migrated: {TotalMigrated}");
-            SetResult(Unit.Default);
+            Console.Log(
+                $"ChatAudioEntryMigrationFlow completed. "
+                + $"Migrated chats: {MigratedChatCount}, entries: {MigratedEntryCount}");
+            SetResult(default);
             return;
         }
 
@@ -62,7 +71,7 @@ public partial class ChatAudioEntryMigrationFlow : Flow<Unit>
             .Where(e => e.ChatId == chatId
                 && e.Kind == ChatEntryKind.Text
                 && e.AudioEntryId != null
-                && (e.AudioId == null || e.AudioId == ""))
+                && (e.AudioId == null || e.AudioId == "")) // Skipping already migrated entries
             .OrderBy(e => e.LocalId)
             .Where(e => e.LocalId > LastProcessedLocalId)
             .Take(BatchSize)
@@ -73,30 +82,43 @@ public partial class ChatAudioEntryMigrationFlow : Flow<Unit>
             // Current chat done, move to next
             LastProcessedLocalId = 0;
             LastProcessedChatId = chatId;
-            Console.Log($"Chat {chatId} done. Total migrated so far: {TotalMigrated}");
+            MigratedChatCount++;
+            Console.Log($"Chat #{chatId} done ({MigratedChatCount}/{TotalChatCount})");
             Runtime.StageResumeIn(BatchDelay);
             return;
         }
 
-        var migratedInBatch = 0;
-        foreach (var textEntry in batch) {
-            try {
-                await MigrateEntry(dbContext, commander, textEntry, cancellationToken).ConfigureAwait(false);
-                migratedInBatch++;
+        try {
+            var migratedInBatch = 0;
+            foreach (var textEntry in batch) {
+                try {
+                    await MigrateEntry(dbContext, commander, textEntry, cancellationToken).ConfigureAwait(false);
+                    migratedInBatch++;
+                }
+                catch (Exception e) {
+                    Console.LogError($"Failed to migrate entry #{textEntry.Id}: {e.Message}", e);
+                }
             }
-            catch (Exception e) {
-                Console.LogWarning($"Failed to migrate entry {textEntry.Id}: {e.Message}");
-            }
+            LastProcessedLocalId = batch[^1].LocalId;
+            MigratedEntryCount += migratedInBatch;
+        }
+        finally {
+            // If MigrateEntry fails, we still need to save the entries migrated earlier
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        LastProcessedLocalId = batch[^1].LocalId;
-        TotalMigrated += migratedInBatch;
-        Console.Log($"Migrated {migratedInBatch} entries in chat {chatId}, total: {TotalMigrated}");
+        var totalEntryCount = Math.Max(MigratedEntryCount, TotalEntryCount);
+        var progress = (double)MigratedEntryCount / totalEntryCount * 100;
+        Console.Log(
+            $"Progress: {progress:P1} "
+            + $"({MigratedChatCount}/{TotalChatCount} chats, {MigratedEntryCount}/{totalEntryCount} entries), "
+            + $"migrating chat #{chatId}");
 
         if (batch.Count < BatchSize) {
             // Current chat done
             LastProcessedLocalId = 0;
             LastProcessedChatId = chatId;
+            MigratedChatCount++;
         }
 
         Runtime.StageResumeIn(BatchDelay);
@@ -154,6 +176,5 @@ public partial class ChatAudioEntryMigrationFlow : Flow<Unit>
 
         // Update text entry's AudioId directly in DB
         textEntry.AudioId = mediaId.Value;
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 }
