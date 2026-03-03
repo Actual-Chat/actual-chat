@@ -148,102 +148,133 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             throw StandardError.Internal("Source attachments count is not equal to attach file requests count.");
 
         var attachmentInfos = new List<AttachmentInfo>();
-        var attachmentsState = AttachmentsState;
-        for (var i = 0; i < attachEntries.Length; i++) {
-            var attachEntry = attachEntries[i];
-            var sourceAttachment = sourceAttachments?[i];
-            AttachmentId? sourceAttachmentId = sourceAttachment?.Id;
-            var previewUrl = sourceAttachment is SourceAttachment s ? s.PreviewUrl : "";
-            var uploadSessionId = attachEntry.UploadSessionId;
-            Task<bool>? whenFilePermissionGranted = null;
-            Task<AttachmentPreview>? attachmentPreviewTask = null;
-            try {
-                var session = await UploadSessions.TryGetSession(uploadSessionId).ConfigureAwait(false);
-                if (session is not null) {
-                    if (session.IsCompleted) {
-                        // If media was already uploaded, use it directly to display a preview.
-                        // Do not try to access the file.
-                        whenFilePermissionGranted = NeverGetFilePermission();
-                        async Task<bool> NeverGetFilePermission() {
-                            await TaskExt.NeverEnding(CancellationToken.None).ConfigureAwait(false);
-                            return false;
-                        }
-                        if (previewUrl.IsNullOrEmpty()) {
-                            var contentType = session.FileProvider.Metadata.FileType;
-                            if (MediaTypeExt.IsVisualMedia(contentType))
-                                previewUrl = UrlMapper.ContentUrl(session.MediaRef.BlobId);
-                        }
-                        attachmentPreviewTask = Task.FromResult(AttachmentPreview.Preview(previewUrl));
+        try {
+            for (var i = 0; i < attachEntries.Length; i++) {
+                var attachEntry = attachEntries[i];
+                var sourceAttachment = sourceAttachments?[i];
+                AttachmentId? sourceAttachmentId = sourceAttachment?.Id;
+                var previewUrl = sourceAttachment is SourceAttachment s ? s.PreviewUrl : "";
+                var uploadSessionId = attachEntry.UploadSessionId;
+                Task<bool>? whenFilePermissionGranted = null;
+                Task<AttachmentPreview>? attachmentPreviewTask = null;
+                UploadSession? session = null;
+                try {
+                    session = await UploadSessions.TryGetSession(uploadSessionId).ConfigureAwait(false);
+                }
+                catch (Exception e) {
+                    Log.LogError(e,
+                        "Failed to get upload session '{UploadSessionId}' for attachment '{Attachment}'",
+                        uploadSessionId,
+                        attachEntry.FileName);
+                }
+                // Skip this attachment.
+                if (session is null)
+                    continue;
+
+                if (session.IsCompleted) {
+                    // If media was already uploaded, use it directly to display a preview.
+                    // Do not try to access the file.
+                    whenFilePermissionGranted = NeverGetFilePermission();
+
+                    async Task<bool> NeverGetFilePermission()
+                    {
+                        await TaskExt.NeverEnding(CancellationToken.None).ConfigureAwait(false);
+                        return false;
                     }
-                    else {
-                        var fileProvider = session.FileProvider;
-                        var canAccess = await fileProvider.CheckAccess().ConfigureAwait(false);
-                        if (canAccess) {
-                            var whenUserConsentGrantedTask = fileProvider.WhenUserConsentGranted();
-                            whenFilePermissionGranted = whenUserConsentGrantedTask;
-                            attachmentPreviewTask = GetAttachmentPreviewUrl();
 
-                            async Task<AttachmentPreview> GetAttachmentPreviewUrl() {
-                                if (!previewUrl.IsNullOrEmpty())
-                                    return AttachmentPreview.Preview(previewUrl);
+                    if (previewUrl.IsNullOrEmpty()) {
+                        var contentType = session.FileProvider.Metadata.FileType;
+                        if (MediaTypeExt.IsVisualMedia(contentType))
+                            previewUrl = UrlMapper.ContentUrl(session.MediaRef.BlobId);
+                    }
+                    attachmentPreviewTask = Task.FromResult(AttachmentPreview.Preview(previewUrl));
+                }
+                else {
+                    var fileProvider = session.FileProvider;
+                    var canAccess = await fileProvider.CheckAccess().ConfigureAwait(false);
+                    if (canAccess) {
+                        var whenUserConsentGrantedTask = fileProvider.WhenUserConsentGranted();
+                        whenFilePermissionGranted = whenUserConsentGrantedTask;
+                        attachmentPreviewTask = GetAttachmentPreviewUrl();
 
-                                var consentGranted = await whenUserConsentGrantedTask.ConfigureAwait(false);
-                                if (!consentGranted)
-                                    return AttachmentPreview.NoFileAccess;
+                        async Task<AttachmentPreview> GetAttachmentPreviewUrl()
+                        {
+                            if (!previewUrl.IsNullOrEmpty())
+                                return AttachmentPreview.Preview(previewUrl);
 
-                                if (!MediaTypeExt.IsVisualMedia(fileProvider.Metadata.FileType))
-                                    return AttachmentPreview.Preview("");
+                            var consentGranted = await whenUserConsentGrantedTask.ConfigureAwait(false);
+                            if (!consentGranted)
+                                return AttachmentPreview.NoFileAccess;
 
-                                var previewUrl2 = await fileProvider.GetPreviewUrl().ConfigureAwait(false);
-                                return AttachmentPreview.Preview(previewUrl2);
-                            }
+                            if (!MediaTypeExt.IsVisualMedia(fileProvider.Metadata.FileType))
+                                return AttachmentPreview.Preview("");
+
+                            var previewUrl2 = await fileProvider.GetPreviewUrl().ConfigureAwait(false);
+                            return AttachmentPreview.Preview(previewUrl2);
                         }
                     }
                 }
+
+                attachmentPreviewTask ??= Task.FromResult(AttachmentPreview.NoFileAccess);
+
+                async Task CleanupRequest()
+                    => await _requestsRepo.RemoveAttachRequest(entry.Uuid, attachEntry, CancellationToken.None)
+                        .ConfigureAwait(false);
+
+                var attachment = new Attachment(
+                    attachEntry.FileName,
+                    attachEntry.FileType,
+                    attachEntry.FileLength,
+                    attachEntry.Width,
+                    attachEntry.Height) {
+                    UploadSessionId = uploadSessionId,
+                };
+                attachment.Cleanups.Add(new AttachmentCleanup(AttachmentCleanupKind.PersistedPostMessageRequest, CleanupRequest));
+                UploadSessions.AddReference(uploadSessionId);
+                attachment.Cleanups.Add(AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSessionId));
+                if (sourceAttachmentId is not null)
+                    AttachmentsState.Unregister(sourceAttachmentId.Value);
+                AttachmentsState.Register(attachment);
+                var attachmentInfo = new AttachmentInfo(attachment,
+                    whenFilePermissionGranted ?? Task.FromResult(false),
+                    attachmentPreviewTask);
+                attachmentInfos.Add(attachmentInfo);
             }
-            catch (Exception e) {
-                Log.LogError(e, "Failed to get upload session '{UploadSessionId}'", uploadSessionId);
-                // Intended
+            if (attachmentInfos.Count == 0)
+                return null;
+
+            var attachmentsController = Services.GetRequiredService<AttachmentsController>();
+            var attachmentList = new AttachmentList();
+            attachmentList.Subscribe(attachmentsController);
+            foreach (var attachmentInfo in attachmentInfos) {
+                var attachment = attachmentInfo.Attachment;
+                attachmentList.Add(attachment);
+                SetAttachmentPreview(attachment.Id, attachmentInfo.WhenFilePermissionGranted, attachmentInfo.GetPreview);
+                var attachmentProgress = await AttachmentsState.GetProgress(attachment.Id, default).ConfigureAwait(false);
+                if (attachmentProgress.IsReady || attachmentProgress.IsFailed)
+                    continue;
+
+                attachmentsController.ResumeUpload(attachment);
             }
-
-            attachmentPreviewTask ??= Task.FromResult(AttachmentPreview.NoFileAccess);
-
-            async Task CleanupRequest()
-                => await _requestsRepo.RemoveAttachRequest(entry.Uuid, attachEntry, CancellationToken.None).ConfigureAwait(false);
-
-            var attachment = new Attachment(
-                attachEntry.FileName,
-                attachEntry.FileType,
-                attachEntry.FileLength,
-                attachEntry.Width,
-                attachEntry.Height) {
-                UploadSessionId = uploadSessionId,
-            };
-            attachment.Cleanups.Add(new AttachmentCleanup(AttachmentCleanupKind.PersistedPostMessageRequest, CleanupRequest));
-            UploadSessions.AddReference(uploadSessionId);
-            attachment.Cleanups.Add(AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSessionId));
-            if (sourceAttachmentId is not null)
-                attachmentsState.Unregister(sourceAttachmentId.Value);
-            attachmentsState.Register(attachment);
-            var attachmentInfo = new AttachmentInfo(attachment, whenFilePermissionGranted ?? Task.FromResult(false), attachmentPreviewTask);
-            attachmentInfos.Add(attachmentInfo);
+            return new AttachmentUploads(attachmentList, AttachmentsState);
         }
-        if (attachmentInfos.Count == 0)
-            return null;
-
-        var attachmentsController = Services.GetRequiredService<AttachmentsController>();
-        var attachmentList = new AttachmentList();
-        attachmentList.Subscribe(attachmentsController);
-        foreach (var attachmentInfo in attachmentInfos) {
-            var attachment = attachmentInfo.Attachment;
-            attachmentList.Add(attachment);
-            SetAttachmentPreview(attachment.Id, attachmentInfo.WhenFilePermissionGranted, attachmentInfo.GetPreview);
-            var attachmentProgress = await attachmentsState.GetProgress(attachment.Id, default).ConfigureAwait(false);
-            if (attachmentProgress.IsReady || attachmentProgress.IsFailed)
-                continue;
-            attachmentsController.ResumeUpload(attachment);
+        catch (Exception e) {
+            Log.LogError(e, "Failed to create attachment uploads for post request '{Id}'", entry.Uuid);
+            foreach (var attachmentInfo in attachmentInfos) {
+                var attachment = attachmentInfo.Attachment;
+                try {
+                    AttachmentsState.Unregister(attachment.Id);
+                    // NOTE(DF): during starting stored requests, it might be that there multiple consumers for the same upload it.
+                    // So we can't delete the upload session until all stored requests are processed.
+                    UploadSessions.ReleaseReference(attachment.UploadSessionId, false);
+                }
+                catch (Exception e2) {
+                    Log.LogError(e2, "Failed to release attachment resources. Attachment: '{AttachmentId}', UploadSession: '{UploadSessionId}', File: '{FileName}'",
+                        attachment.Id, attachment.UploadSessionId, attachment.FileName);
+                }
+            }
+            throw;
         }
-        return new AttachmentUploads(attachmentList, attachmentsState);
     }
 
     private void SetAttachmentPreview(

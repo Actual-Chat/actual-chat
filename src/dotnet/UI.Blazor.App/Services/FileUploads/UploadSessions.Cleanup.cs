@@ -23,7 +23,7 @@ partial class UploadSessions
                     continue;
                 }
 
-                if (!CheckIfTouched(uploadSession.SessionId))
+                if (!CheckIfActive(uploadSession.SessionId))
                     staleItems.Add(item);
             }
 
@@ -40,7 +40,7 @@ partial class UploadSessions
             Log.LogDebug("About to delete {Count} stale upload sessions", staleItems.Count);
             foreach (var item in staleItems) {
                 try {
-                    var cleanup = AttachmentCleanupFactory.ForUploadSession(this, item.Key);
+                    var cleanup = AttachmentCleanupFactory.ForStaleUploadSession(this, item.Key);
                     await cleanup.Cleanup().ConfigureAwait(false);
                 }
                 catch (Exception ex) {
