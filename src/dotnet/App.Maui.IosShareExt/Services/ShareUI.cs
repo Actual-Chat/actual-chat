@@ -267,7 +267,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         var uploadSource = dUploadSource.Resource;
 
         var metadata = new PropertyBag()
-            .Set(nameof(Media.Media.FileName), uploadSource.Metadata.FileName)
+            .Set(nameof(Media.Media.FileName), uploadSource.Metadata.FileName.Value)
             .Set(nameof(Media.Media.ContentType), uploadSource.Metadata.ContentType);
         var uploadId = await InitUpload().ConfigureAwait(false);
         var streamSource = (StreamUploadSource)uploadSource.StreamSource;
