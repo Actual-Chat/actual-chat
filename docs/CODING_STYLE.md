@@ -380,6 +380,42 @@ public override async Task Require(CancellationToken cancellationToken)
    See `ActualLab.IO.FilePath` for the full API
    and `src/dotnet/Core/IO/FilePathExt.cs` for project-specific extensions.
 
+### Test Conventions
+
+#### Test Method Naming
+- **Use PascalCase without underscores** for test method names
+- Test names should clearly describe the scenario being tested
+- Good: `ReportShouldScaleToFullRange`, `ForkEqualPartsShouldDivideRangeEqually`
+- Bad: `Report_Should_Scale_To_Full_Range`, `Fork_EqualParts_ShouldDivideRangeEqually`
+
+#### AAA Pattern (Arrange-Act-Assert)
+All tests must use the AAA (Arrange-Act-Assert) pattern with lowercase comments:
+
+```csharp
+[Fact]
+public void ForkEqualPartsShouldDivideRangeEqually()
+{
+    // arrange
+    var reported = new List<double>();
+    var progress = new ForkableProgress(v => reported.Add(v));
+
+    // act
+    var forks = progress.Fork(2);
+    forks[0].Report(0);
+    forks[0].Report(100);
+    forks[1].Report(0);
+    forks[1].Report(100);
+
+    // assert
+    reported.Should().Equal([0, 50, 50, 100]);
+}
+```
+
+- **arrange**: Set up the test data and dependencies
+- **act**: Execute the code being tested
+- **assert**: Verify the expected outcome
+- For simple tests where arrange is trivial, the comment can be omitted but act and assert should always be present
+
 ### Disabled/Silenced Warnings
 
 Search for `<NoWarn>` to see the list of disabled warnings.
