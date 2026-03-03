@@ -259,4 +259,97 @@ public class ForkableProgressTest
         // assert
         reported.Last().Should().BeApproximately(100, 0.001);
     }
+
+    // ProgressExt tests (using SyncProgress to avoid async callback issues)
+
+    [Fact]
+    public void ExtensionForkEqualPartsShouldWork()
+    {
+        // arrange
+        var reported = new List<double>();
+        IProgress<double> progress = new SyncProgress<double>(v => reported.Add(v));
+
+        // act
+        var forks = progress.Fork(2);
+        forks[0].Report(100);
+        forks[1].Report(100);
+
+        // assert
+        reported.Should().Equal([50, 100]);
+    }
+
+    [Fact]
+    public void ExtensionForkWeightedArrayShouldWork()
+    {
+        // arrange
+        var reported = new List<double>();
+        IProgress<double> progress = new SyncProgress<double>(v => reported.Add(v));
+
+        // act
+        var forks = progress.Fork([1, 3]);
+        forks[0].Report(100);
+        forks[1].Report(100);
+
+        // assert
+        reported.Should().Equal([25, 100]);
+    }
+
+    [Fact]
+    public void ExtensionForkTwoWeightsShouldWork()
+    {
+        // arrange
+        var reported = new List<double>();
+        IProgress<double> progress = new SyncProgress<double>(v => reported.Add(v));
+
+        // act
+        var (first, second) = progress.Fork(0.2, 0.8);
+        first.Report(100);
+        second.Report(100);
+
+        // assert
+        reported.Should().Equal([20, 100]);
+    }
+
+    [Fact]
+    public void ExtensionForkThreeWeightsShouldWork()
+    {
+        // arrange
+        var reported = new List<double>();
+        IProgress<double> progress = new SyncProgress<double>(v => reported.Add(v));
+
+        // act
+        var (first, second, third) = progress.Fork(0.1, 0.2, 0.7);
+        first.Report(100);
+        second.Report(100);
+        third.Report(100);
+
+        // assert
+        reported.Should().Equal([10, 30, 100]);
+    }
+
+    [Fact]
+    public void ExtensionForkShouldAllowNestedForking()
+    {
+        // arrange
+        var reported = new List<double>();
+        IProgress<double> progress = new SyncProgress<double>(v => reported.Add(v));
+
+        // act
+        var forks = progress.Fork(2);
+        var nested = forks[0].Fork(2);
+        nested[0].Report(100);
+        nested[1].Report(100);
+        forks[1].Report(100);
+
+        // assert
+        reported.Should().Equal([25, 50, 100]);
+    }
+
+    /// <summary>
+    /// Synchronous IProgress implementation for testing (unlike Progress{T} which uses SynchronizationContext).
+    /// </summary>
+    private sealed class SyncProgress<T>(Action<T> handler) : IProgress<T>
+    {
+        public void Report(T value) => handler(value);
+    }
 }
