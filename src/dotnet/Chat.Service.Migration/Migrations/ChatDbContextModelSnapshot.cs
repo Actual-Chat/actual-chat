@@ -428,11 +428,6 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("local_id");
 
-                    b.Property<string>("MediaId")
-                        .HasColumnType("text")
-                        .HasColumnName("media_id")
-                        .UseCollation("C");
-
                     b.Property<long?>("RepliedChatEntryId")
                         .HasColumnType("bigint")
                         .HasColumnName("replied_chat_entry_id");
@@ -450,7 +445,7 @@ namespace ActualChat.Chat.Migrations
                         .HasName("pk_chat_entries");
 
                     b.HasIndex("ContentStreamId")
-                        .HasFilter("\"kind\" = 0 AND \"stream_id\" IS NOT NULL");
+                        .HasFilter("\"kind\" = 0 AND \"content_stream_id\" IS NOT NULL");
 
                     b.HasIndex("ChatId", "Kind", "LocalId")
                         .IsUnique()

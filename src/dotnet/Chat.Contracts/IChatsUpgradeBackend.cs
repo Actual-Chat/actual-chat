@@ -17,8 +17,6 @@ public interface IChatsUpgradeBackend : ICommandService, IBackendService
     Task OnUpgradeChat(ChatsUpgradeBackend_UpgradeChat command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnFixCorruptedReadPositions(ChatsUpgradeBackend_FixCorruptedReadPositions command, CancellationToken cancellationToken);
-    [CommandHandler]
-    Task OnMigrateAudioEntries(ChatsUpgradeBackend_MigrateAudioEntries command, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -63,18 +61,6 @@ public sealed partial record ChatsUpgradeBackend_CreateFeedbackTemplateChat(
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsUpgradeBackend_FixCorruptedReadPositions(
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId?>
-{
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public ChatId? ShardKey => null;
-}
-
-/// <summary>
-/// Command to migrate old audio entries to the new Media-based model.
-/// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-// ReSharper disable once InconsistentNaming
-public sealed partial record ChatsUpgradeBackend_MigrateAudioEntries(
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId?>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
