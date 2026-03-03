@@ -146,7 +146,7 @@ public class LogUI(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService, ILogS
     }
 
     protected override Task OnRun(CancellationToken cancellationToken) {
-        if (!HostInfo.HostKind.IsServer()) // SECURITY: No log streaming from SSB!
+        if (!HostInfo.HostKind.IsServer() || HostInfo.IsTested) // SECURITY: No log streaming from SSB!
             TailLoggerSinks.Add(this);
         _whenReady.TrySetResult();
         return Task.CompletedTask;
