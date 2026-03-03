@@ -44,8 +44,8 @@ public static class UrlMapperExt
         }
 
         private string PictureUrl(Picture picture)
-            => picture.MediaContent != null
-                ? mapper.ContentUrl(picture.MediaContent.BlobId)
+            => picture.MediaRef != null
+                ? mapper.ContentUrl(picture.MediaRef.BlobId)
                 : picture.ExternalUrl ?? "";
     }
 }

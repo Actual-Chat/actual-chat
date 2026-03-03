@@ -16,7 +16,7 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
     [DisableFormValueModelBinding]
     [RequestSizeLimit(Constants.Attachments.AvatarPictureFileSizeLimit * 2)]
     [RequestFormLimits(MultipartBodyLengthLimit = Constants.Attachments.AvatarPictureFileSizeLimit * 2)]
-    public async Task<ActionResult<MediaContent>> UploadPicture(CancellationToken cancellationToken)
+    public async Task<ActionResult<MediaRef>> UploadPicture(CancellationToken cancellationToken)
     {
         AccountFull account;
         try {
@@ -49,7 +49,9 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
             file.ContentType,
             file.Length,
             () => Task.FromResult(file.OpenReadStream()));
-        var mediaContent = await MediaSaver.Save(mediaId, uploadedFile, null, MediaKind.UserAvatarPicture, cancellationToken).ConfigureAwait(false);
-        return Ok(mediaContent);
+        var mediaRef = await MediaSaver
+            .Save(mediaId, uploadedFile, null, MediaKind.UserAvatarPicture, cancellationToken)
+            .ConfigureAwait(false);
+        return Ok(mediaRef);
     }
 }

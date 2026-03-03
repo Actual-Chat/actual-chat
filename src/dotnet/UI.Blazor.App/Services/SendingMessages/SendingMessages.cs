@@ -178,7 +178,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                         if (previewUrl.IsNullOrEmpty()) {
                             var contentType = session.FileProvider.Metadata.FileType;
                             if (MediaTypeExt.IsVisualMedia(contentType))
-                                previewUrl = UrlMapper.ContentUrl(session.MediaContent.BlobId);
+                                previewUrl = UrlMapper.ContentUrl(session.MediaRef.BlobId);
                         }
                         if (!previewUrl.IsNullOrEmpty())
                             getPreviewUrl = Task.FromResult(previewUrl);
@@ -447,19 +447,19 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                     .Select(c => Hub.UploadSessions.TryGetSession(c.UploadSessionId))
                     .Collect(cancellationToken)
                     .ConfigureAwait(false))
-                .Select(c => c?.MediaContent)
+                .Select(c => c?.MediaRef)
                 .SkipNullItems()
                 .ToDictionary(c => c.MediaId, c => c);
             var attachments = chatEntry.AttachmentUploads;
             if (attachments.Length == 0)
                 attachments = chatEntry.Attachments;
             var entryAttachments = attachments
-                .Select(c => new { Attachment = c, MediaContent = mediaContents.GetValueOrDefault(c.MediaId) })
-                .Where(c => c.MediaContent is not null)
+                .Select(c => new { Attachment = c, MediaRef = mediaContents.GetValueOrDefault(c.MediaId) })
+                .Where(c => c.MediaRef is not null)
                 .Select(c => new TextEntryAttachment {
                     Id = c.Attachment.Id,
-                    MediaId = c.MediaContent!.MediaId,
-                    ThumbnailMediaId = c.MediaContent.ThumbnailMediaId,
+                    MediaId = c.MediaRef!.MediaId,
+                    ThumbnailMediaId = c.MediaRef.ThumbnailMediaId,
                 }).ToArray();
 
             // Finalize the message with attachments.

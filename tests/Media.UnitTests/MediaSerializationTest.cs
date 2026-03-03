@@ -50,21 +50,21 @@ public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
-    public void MediaContent_Basic()
+    public void MediaRef_Basic()
     {
         var mediaId = MediaId.New(TestUserId.Value, "local1");
-        var content = new MediaContent(mediaId, "content-1");
+        var content = new MediaRef(mediaId, "content-1");
         var s = content.PassThroughAllSerializers(Out);
         s.MediaId.Should().Be(content.MediaId);
         s.BlobId.Should().Be(content.BlobId);
     }
 
     [Fact]
-    public void MediaContent_WithThumbnail()
+    public void MediaRef_WithThumbnail()
     {
         var mediaId = MediaId.New(TestUserId.Value, "local1");
         var thumbId = MediaId.New(TestUserId.Value, "thumb1");
-        var content = new MediaContent(mediaId, "content-1", thumbId, "thumb-content-1");
+        var content = new MediaRef(mediaId, "content-1", thumbId, "thumb-content-1");
         var s = content.PassThroughAllSerializers(Out);
         s.MediaId.Should().Be(content.MediaId);
         s.BlobId.Should().Be(content.BlobId);
@@ -76,11 +76,11 @@ public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void Picture_Basic()
     {
         var mediaId = MediaId.New(TestUserId.Value, "local1");
-        var content = new MediaContent(mediaId, "content-1");
+        var content = new MediaRef(mediaId, "content-1");
         var picture = new Picture(content, "https://example.com/pic.jpg", "avatar-key");
         var s = picture.PassThroughAllSerializers(Out);
-        s.MediaContent.Should().NotBeNull();
-        s.MediaContent!.MediaId.Should().Be(picture.MediaContent!.MediaId);
+        s.MediaRef.Should().NotBeNull();
+        s.MediaRef!.MediaId.Should().Be(picture.MediaRef!.MediaId);
         s.ExternalUrl.Should().Be(picture.ExternalUrl);
         s.AvatarKey.Should().Be(picture.AvatarKey);
     }
@@ -90,7 +90,7 @@ public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     {
         var picture = new Picture(null, "https://example.com/pic.jpg");
         var s = picture.PassThroughAllSerializers(Out);
-        s.MediaContent.Should().BeNull();
+        s.MediaRef.Should().BeNull();
         s.ExternalUrl.Should().Be(picture.ExternalUrl);
     }
 

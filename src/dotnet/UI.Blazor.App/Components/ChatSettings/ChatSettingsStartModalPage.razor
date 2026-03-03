@@ -233,8 +233,8 @@
         };
     }
 
-    private void OnImagePicked(MediaContent mediaContent) {
-        _form!.Picture = new (mediaContent);
+    private void OnImagePicked(MediaRef mediaRef) {
+        _form!.Picture = new (mediaRef);
         StateHasChanged();
     }
 
@@ -274,7 +274,7 @@
         var newChat = chat with {
             Title = _form!.Title,
             Description = _form!.Description,
-            MediaId = _form.Picture?.MediaContent?.MediaId,
+            MediaId = _form.Picture?.MediaRef?.MediaId,
         };
         var command = new Chats_Change(Session, chat.Id, chat.Version, new() {
             Update = DiffEngine.Diff<Chat, ChatDiff>(chat, newChat),

@@ -61,15 +61,15 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         progress.StageProgress.Should().Be(100);
 
         // Act 5: Process upload - verifies upload is complete, runs processors, saves ContentId to Media, updates progress to Ready, removes upload
-        var mediaContent = await commander.Call(new Medias_ProcessUpload(session, mediaId, uploadId));
+        var mediaRef = await commander.Call(new Medias_ProcessUpload(session, mediaId, uploadId));
 
-        mediaContent.Should().NotBeNull();
-        mediaContent.BlobId.Should().NotBeNullOrEmpty();
+        mediaRef.Should().NotBeNull();
+        mediaRef.BlobId.Should().NotBeNullOrEmpty();
 
         // Verify media has ContentId
         media = await mediaBackend.GetFull(mediaId, default);
         media.Should().NotBeNull();
-        media.BlobId.Should().Be(mediaContent.BlobId);
+        media.BlobId.Should().Be(mediaRef.BlobId);
 
         // Verify progress is Ready
         progress = await mediaProgressBackend.Get(mediaId, default);

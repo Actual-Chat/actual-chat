@@ -260,10 +260,10 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             .Set(nameof(Media.Media.ContentType), uploadInput.ContentType);
         var uploadId = await InitUpload().ConfigureAwait(false);
         await FileUploader.UploadData(uploadId, Task.FromResult(uploadInput.Stream.Resource), progress, cancellationToken).ConfigureAwait(false);
-        var mediaContent = await CompleteUpload().ConfigureAwait(false);
+        var mediaRef = await CompleteUpload().ConfigureAwait(false);
         return new TextEntryAttachment {
-            MediaId = mediaContent.MediaId,
-            ThumbnailMediaId = mediaContent.ThumbnailMediaId,
+            MediaId = mediaRef.MediaId,
+            ThumbnailMediaId = mediaRef.ThumbnailMediaId,
         };
 
         Task<UploadId> InitUpload()
@@ -272,7 +272,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             return UICommander.Call(cmd, cancellationToken);
         }
 
-        Task<MediaContent> CompleteUpload()
-            => Commander.Call(new Uploads_ConvertToMediaContent(Session, uploadId), CancellationToken.None);
+        Task<MediaRef> CompleteUpload()
+            => Commander.Call(new Uploads_ConvertToMediaRef(Session, uploadId), CancellationToken.None);
     }
 }

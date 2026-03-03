@@ -27,7 +27,7 @@ Replace MemoryPack with MessagePack as the primary binary serializer across the 
 - **Chat**: Chat, ChatEntry, ChatDiff, Author, AuthorFull, Place, Role, Reaction, Conversation, Translation, etc.
 - **Users**: Account, AccountFull, Avatar, AvatarFull, all UserXxxSettings types, ChatPosition, etc.
 - **Contacts**: Contact, ExternalContact, ExternalContactFull, ThreadContact, etc.
-- **Media**: Media, LinkPreview, GrabStatus, Upload, MediaContent, Picture, etc.
+- **Media**: Media, LinkPreview, GrabStatus, Upload, MediaRef, Picture, etc.
 - **Notifications**: Notification, Device, ExplicitNotification, ChatNotificationOption, etc.
 - **Streaming**: AudioRecord, LiveStreamInfo, etc.
 - **Core**: Change\<T>, Expiring\<T>, LinearMap, SetDiff, SearchMatch, SecureToken, HashString, etc.

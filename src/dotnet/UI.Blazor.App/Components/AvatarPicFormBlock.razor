@@ -56,6 +56,6 @@
     private void OnGenerateAvatarClick()
         => ImagePicked.InvokeAsync(new Picture(null, null, DefaultUserPicture.GetAvatarKey(IdGenerator.Next())));
 
-    private void OnImagePicked(MediaContent mediaContent)
-        => ImagePicked.InvokeAsync(new(mediaContent));
+    private void OnImagePicked(MediaRef mediaRef)
+        => ImagePicked.InvokeAsync(new(mediaRef));
 }

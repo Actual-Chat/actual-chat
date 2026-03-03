@@ -210,7 +210,7 @@ See also: [Condensed API Index](api-index.md).
 - `BlobPath` (record struct) - Path to a blob in storage.
 - `BlobScope` (enum) - Specifies the scope of blob storage.
 - `Crawler` - Web page crawler.
-- `MediaContent` (record) - Media content information.
+- `MediaRef` (record) - Media content information.
 - `MediaProcessor` - Processes media files.
 - `MediaSaver` - Saves media files.
 - `TranscriptDiffStreamExt` (static class) - Extension methods for transcript diff streams.

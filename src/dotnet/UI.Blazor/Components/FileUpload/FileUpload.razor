@@ -17,7 +17,7 @@
 
     [Parameter, EditorRequired] public string Scope { get; set; } = "";
     [Parameter] public int? MaxSize { get; set; }
-    [Parameter] public EventCallback<MediaContent> Uploaded { get; set; }
+    [Parameter] public EventCallback<MediaRef> Uploaded { get; set; }
 
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object> InputAttributes { get; set; } = new();
@@ -63,8 +63,8 @@
             await FileUploader.Upload(webUploadStreamSource, uploadId, null, CancellationToken.None);
 
             // Process upload
-            var mediaContent = await UICommander.Call(new Medias_ProcessUpload(Session, mediaId, uploadId));
-            await Uploaded.InvokeAsync(mediaContent);
+            var mediaRef = await UICommander.Call(new Medias_ProcessUpload(Session, mediaId, uploadId));
+            await Uploaded.InvokeAsync(mediaRef);
         }
         catch (Exception e) {
             UICommander.ShowError(e);

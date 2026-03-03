@@ -17,7 +17,7 @@ public sealed class ChatMediaController(IServiceProvider services) : ControllerB
     [DisableFormValueModelBinding]
     [RequestSizeLimit(Constants.Attachments.FileSizeLimit * 2)]
     [RequestFormLimits(MultipartBodyLengthLimit = Constants.Attachments.FileSizeLimit * 2)]
-    public async Task<ActionResult<MediaContent>> Upload(ChatId chatId, CancellationToken cancellationToken)
+    public async Task<ActionResult<MediaRef>> Upload(ChatId chatId, CancellationToken cancellationToken)
     {
         try {
             // NOTE(AY): Header is used by clients, cookie is used by SSB
@@ -49,7 +49,9 @@ public sealed class ChatMediaController(IServiceProvider services) : ControllerB
             file.Length,
             () => Task.FromResult(file.OpenReadStream()));
         using var processedFile = await MediaProcessor.ProcessUpload(uploadedFile, cancellationToken).ConfigureAwait(false);
-        var mediaContent = await MediaSaver.Save(MediaId.New(chatId.Value), processedFile, isUpdate:false, MediaKind.ChatEntryAttachment, cancellationToken).ConfigureAwait(false);
-        return Ok(mediaContent);
+        var mediaRef = await MediaSaver
+            .Save(MediaId.New(chatId.Value), processedFile, isUpdate:false, MediaKind.ChatEntryAttachment, cancellationToken)
+            .ConfigureAwait(false);
+        return Ok(mediaRef);
     }
 }
