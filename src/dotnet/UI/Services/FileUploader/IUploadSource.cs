@@ -1,9 +1,11 @@
+using ActualLab.IO;
+
 namespace ActualChat.UI.Services;
 
 public record UploadSourceMetadata(
     string ContentType,
     long Length,
-    string? FileName = null);
+    FilePath FileName = default);
 
 public interface IUploadStreamSource;
 

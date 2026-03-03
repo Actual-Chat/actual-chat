@@ -307,10 +307,11 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             return Disposable.New(uploadSource, Delegates<UploadSource>.Noop);
         }
 
+        // Use transcoded file's extension but keep original name stem
         var newMetadata = new UploadSourceMetadata(
             MediaMimeTypes.GetMimeType(transcodedFilePath),
             new FileInfo(transcodedFilePath).Length,
-            uploadSource.Metadata.FileName);
+            uploadSource.Metadata.FileName.ChangeExtension(transcodedFilePath.Extension));
         return Disposable.New(new UploadSource(newMetadata, new FileUploadSource(transcodedFilePath)),
             _ => File.Delete(transcodedFilePath));
     }
