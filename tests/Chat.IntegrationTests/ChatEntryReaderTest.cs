@@ -28,6 +28,9 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         chat.Should().NotBeNull();
         chat?.Title.Should().Be("The Actual One");
 
+        await services.GetRequiredService<IAuthors>().EnsureJoined(session, TestChatId, CancellationToken.None);
+        await WaitForIdRangeToStabilize(chats, session, TestChatId, ChatEntryKind.Text);
+
         await CreateChatEntries(chats, session, TestChatId, 3);
         var idRange = await chats.GetIdRange(session, TestChatId, ChatEntryKind.Text, CancellationToken.None);
         var chuckBerryId = idRange.End - 1;
@@ -63,6 +66,9 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         var chat = await chats.Get(session, TestChatId, CancellationToken.None);
         chat.Should().NotBeNull();
         chat?.Title.Should().Be("The Actual One");
+
+        await services.GetRequiredService<IAuthors>().EnsureJoined(session, TestChatId, CancellationToken.None);
+        await WaitForIdRangeToStabilize(chats, session, TestChatId, ChatEntryKind.Text);
 
         await CreateChatEntries(chats, session, TestChatId, 3);
         var idRange = await chats.GetIdRange(session, TestChatId, ChatEntryKind.Text, CancellationToken.None);
@@ -108,6 +114,9 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         var chat = await chats.Get(session, TestChatId, CancellationToken.None);
         chat.Should().NotBeNull();
         chat?.Title.Should().Be("The Actual One");
+
+        await services.GetRequiredService<IAuthors>().EnsureJoined(session, TestChatId, CancellationToken.None);
+        await WaitForIdRangeToStabilize(chats, session, TestChatId, ChatEntryKind.Text);
 
         await CreateChatEntries(chats, session, TestChatId, 3);
         var idRange = await chats.GetIdRange(session, TestChatId, ChatEntryKind.Text, CancellationToken.None);
@@ -185,6 +194,9 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         var chat = await chats.Get(session, TestChatId, CancellationToken.None);
         chat.Should().NotBeNull();
         chat?.Title.Should().Be("The Actual One");
+
+        await services.GetRequiredService<IAuthors>().EnsureJoined(session, TestChatId, CancellationToken.None);
+        await WaitForIdRangeToStabilize(chats, session, TestChatId, ChatEntryKind.Text);
 
         await CreateChatEntries(chats, session, TestChatId, 3);
         var author = await services.GetRequiredService<IAuthors>()
