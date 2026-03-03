@@ -5,7 +5,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 public partial class UploadSessions : UIServiceBase<AppUIHub>
 {
     private readonly Task _cleanupTask;
-    private readonly UploadSessionRepo _repo;
+    private readonly IUploadSessionRepo _repo;
     private readonly UploadOperations _uploadOperations;
     private readonly ConcurrentDictionary<string, SessionRef> _sessions = new (StringComparer.Ordinal);
     private readonly Func<UploadSessionSnapshot, CancellationToken, Task> _storage;
@@ -14,7 +14,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
 
     public UploadSessions(AppUIHub hub) :base(hub)
     {
-        _repo = new UploadSessionRepo(hub.Services);
+        _repo = hub.Services.GetRequiredService<IUploadSessionRepo>();
         _uploadOperations = new UploadOperations(hub);
         _cleanupTask = BackgroundTask.Run(Cleanup);
         _storage = CreateStorage();
@@ -75,7 +75,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         Interlocked.Increment(ref sessionRef.ReferenceCount);
     }
 
-    public void ReleaseReference(string sessionId)
+    public void ReleaseReference(string sessionId, bool cancel = true)
     {
         if (!_sessions.TryGetValue(sessionId, out var sessionRef))
             throw new InvalidOperationException($"Session {sessionId} not found");
@@ -84,8 +84,35 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         if (newCount != 0)
             return;
 
-        var session = sessionRef.Session;
-        Log.LogDebug("Releasing reference for session '{SessionId}' ('{FileName}')", sessionId, session.FileProvider.Metadata.FileName);
+        if (!cancel)
+            return;
+
+        ReleaseSessionInternal(sessionRef.Session);
+    }
+
+    public async Task DeleteStaleSession(string sessionId)
+    {
+        if (_sessions.TryGetValue(sessionId, out var sessionRef) && sessionRef.ReferenceCount > 0)
+            throw StandardError.Constraint($"Session {sessionId} is active");
+
+        if (sessionRef is not null) {
+            ReleaseSessionInternal(sessionRef.Session);
+            return;
+        }
+
+        var snapshot = await _repo.Get(sessionId).ConfigureAwait(false);
+        if (snapshot is null)
+            return;
+
+        var fileProvider = snapshot.FileProvider;
+        fileProvider.Initialize(Hub.Services);
+        await DeleteSessionResources(sessionId, fileProvider, snapshot.UploadId).ConfigureAwait(false);
+        Log.LogDebug("Deleted stale session '{SessionId}' ('{FileName}')", sessionId, fileProvider.Metadata.FileName);
+    }
+
+    private void ReleaseSessionInternal(UploadSession session)
+    {
+        Log.LogDebug("Releasing reference for session '{SessionId}' ('{FileName}')", session.SessionId, session.FileProvider.Metadata.FileName);
         var completed = session.Cancel();
         _ = BackgroundTask.Run( async () => {
             await completed.WaitAsync(TimeSpan.FromSeconds(30)).SilentAwait(false);
@@ -96,14 +123,11 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     private async Task DeleteSessionInternal(UploadSession session)
     {
         var sessionId = session.SessionId;
-        if (session.UploadId is {} uploadId)
-            await _uploadOperations.RemoveUpload(uploadId, CancellationToken.None).ConfigureAwait(false);
-        await session.FileProvider.ClearForRemoving().ConfigureAwait(false);
-        await _repo.Delete(sessionId).ConfigureAwait(false);
         _sessions.TryRemove(sessionId, out _);
-        UploadSessionsState.Remove(sessionId);
+        var fileProvider = session.FileProvider;
+        await DeleteSessionResources(sessionId, fileProvider, session.UploadId).ConfigureAwait(false);
         DeleteFile(session.TranscodedFilePath);
-        Log.LogDebug("Deleted session '{SessionId}' ('{FileName}')", sessionId, session.FileProvider.Metadata.FileName);
+        Log.LogDebug("Deleted session '{SessionId}' ('{FileName}')", sessionId, fileProvider.Metadata.FileName);
     }
 
     private static void DeleteFile(FilePath? filePath)
@@ -151,8 +175,17 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     private void SetProgress(string sessionId, UploadSessionProgress progress)
         => UploadSessionsState.SetProgress(sessionId, progress);
 
-    private bool CheckIfTouched(string sessionId)
-        => _sessions.ContainsKey(sessionId);
+    private bool CheckIfActive(string sessionId)
+        => _sessions.TryGetValue(sessionId, out var sessionRef) && sessionRef.ReferenceCount > 0;
+
+    private async Task DeleteSessionResources(string sessionId, IFileProvider fileProvider, UploadId? uploadId)
+    {
+        if (uploadId is not null)
+            await _uploadOperations.RemoveUpload(uploadId, CancellationToken.None).ConfigureAwait(false);
+        await fileProvider.ClearForRemoving().ConfigureAwait(false);
+        await _repo.Delete(sessionId).ConfigureAwait(false);
+        UploadSessionsState.Remove(sessionId);
+    }
 
     // Nested types
     private class SessionRef(UploadSession session)

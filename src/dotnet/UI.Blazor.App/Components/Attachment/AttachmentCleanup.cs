@@ -30,4 +30,8 @@ public static class AttachmentCleanupFactory
                 uploadSessions.ReleaseReference(uploadSessionId);
                 return Task.CompletedTask;
             });
+
+    public static AttachmentCleanup ForStaleUploadSession(UploadSessions uploadSessions, string uploadSessionId)
+        => new (AttachmentCleanupKind.UploadSession,
+            () => uploadSessions.DeleteStaleSession(uploadSessionId));
 }
