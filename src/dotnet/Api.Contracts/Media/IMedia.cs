@@ -43,7 +43,7 @@ public sealed partial record Media_UpdateProgress(
     [property: DataMember, MemoryPackOrder(2)] long? ExpectedVersion,
     [property: DataMember, MemoryPackOrder(3)] MediaProcessingStage Stage,
     [property: DataMember, MemoryPackOrder(4)] double StageProgress,
-    [property: DataMember, MemoryPackOrder(5)] string ErrorMessage
+    [property: DataMember, MemoryPackOrder(5)] string? Error = null
 ) : ISessionCommand<Unit>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

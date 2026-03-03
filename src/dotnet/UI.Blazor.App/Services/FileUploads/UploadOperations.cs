@@ -96,7 +96,7 @@ public class UploadOperations(AppUIHub hub)
                     throw new InvalidOperationException("Media not found");
 
                 if (status.HasFailed)
-                    throw new InvalidOperationException(status.ErrorMessage);
+                    throw new InvalidOperationException(status.Error);
 
                 if (status.Stage is MediaProcessingStage.Ready) {
                     var content = await Media.GetContent(Session, mediaId, ct2).ConfigureAwait(false);

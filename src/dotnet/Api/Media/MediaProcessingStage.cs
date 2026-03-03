@@ -2,11 +2,9 @@ namespace ActualChat.Media;
 
 public enum MediaProcessingStage
 {
-    Reserved,
+    Reserved = 0,
     ClientProcessing,
     Uploading,
-    Uploaded,
     ServerProcessing,
-    Saving,
-    Ready
+    Ready = 0x100,
 }

@@ -92,11 +92,10 @@ public class Uploads(IServiceProvider services) : IUploads
             throw StandardError.Unauthorized("You don't have permission to access this media.");
 
         var mediaProgress = await MediaProgressBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
-        if (mediaProgress != null
-            && mediaProgress.Stage == MediaProcessingStage.ServerProcessing
-            && !mediaProgress.ErrorMessage.IsNullOrEmpty()) {
+        if (mediaProgress is { Stage: MediaProcessingStage.ServerProcessing }
+            && !mediaProgress.Error.IsNullOrEmpty()) {
             // Reset media progress if there was an error reported.
-            var progress = new MediaProgress(mediaProgress.Id, 0, MediaProcessingStage.ServerProcessing, mediaProgress.StageProgress, "");
+            var progress = new MediaProgress(mediaProgress.Id, 0, MediaProcessingStage.ServerProcessing, mediaProgress.StageProgress);
             await Commander.Run(new MediaProgressBackend_Change(mediaProgress.Id, mediaProgress.Version, Change.Update(progress)), cancellationToken).ConfigureAwait(false);
         }
 
