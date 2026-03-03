@@ -187,12 +187,12 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
 
             Log.LogInformation("Uploading to chats: {ChatIds}", string.Join(",", chatIds));
             // TODO(FC): single upload for all chats !!!!!!!!!!!!!!!!!!!!!!!!!!!
+            var rootProgress = new ForkableProgress(pct => _uploadPct.Value = pct);
+            var chatForks = rootProgress.Fork(chatIds.Count);
             for (var i = 0; i < chatIds.Count; i++) {
                 // TODO: handle cancellation
-                var totalPct = i * 100 / chatIds.Count;
                 var chatId = chatIds[i];
-                var progress = new Progress<double>(pct => _uploadPct.Value = totalPct + (pct / chatIds.Count));
-                var attachments = await UploadFiles(chatId, fileInputs, progress, cancellationToken)
+                var attachments = await UploadFiles(chatId, fileInputs, chatForks[i], cancellationToken)
                     .ConfigureAwait(false);
                 var entryText = text;
                 foreach (var attachmentList in attachments.Chunk(10)) {
@@ -236,15 +236,14 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
     private async Task<TextEntryAttachment[]> UploadFiles(
         ChatId chatId,
         IReadOnlyList<NSItemProvider> fileInputs,
-        IProgress<double> progress,
+        ForkableProgress progress,
         CancellationToken cancellationToken)
     {
         var attachments = new TextEntryAttachment[fileInputs.Count];
+        var fileForks = progress.Fork(fileInputs.Count);
         for (var i = 0; i < fileInputs.Count; i++) {
-            var totalPct = i * 100 / fileInputs.Count;
             var fileInput = fileInputs[i];
-            var fileProgress = new Progress<double>(pct => progress.Report(totalPct + (pct / fileInputs.Count)));
-            attachments[i] = await UploadFile(chatId, fileInput, fileProgress, cancellationToken).ConfigureAwait(false);
+            attachments[i] = await UploadFile(chatId, fileInput, fileForks[i], cancellationToken).ConfigureAwait(false);
         }
         return attachments;
     }
@@ -252,15 +251,14 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
     private async Task<TextEntryAttachment> UploadFile(
         ChatId chatId,
         NSItemProvider fileInput,
-        IProgress<double> progress,
+        ForkableProgress progress,
         CancellationToken cancellationToken)
     {
-        // Split progress: transcoding 0-20%, upload 20-100% (if transcoding happened)
-        var transcodingProgress = new Progress<double>(pct => progress.Report(pct * 0.2));
+        // Split progress: transcoding 20%, upload 80%
+        var (transcodingProgress, uploadProgress) = progress.Fork(0.2, 0.8);
         using var dUploadSource = await PrepareUploadSource(fileInput, transcodingProgress, cancellationToken).ConfigureAwait(false);
         var uploadSource = dUploadSource.Resource;
 
-        var uploadProgress = new Progress<double>(pct => progress.Report(20 + (pct * 0.8)));
         var metadata = new PropertyBag()
             .Set(nameof(Media.Media.FileName), uploadSource.Metadata.FileName)
             .Set(nameof(Media.Media.ContentType), uploadSource.Metadata.ContentType);
@@ -285,7 +283,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
 
     private async Task<Disposable<UploadSource>> PrepareUploadSource(
         NSItemProvider fileInput,
-        IProgress<double> progress,
+        ForkableProgress progress,
         CancellationToken cancellationToken)
     {
         var uploadSource = await fileInput.ToUploadSource().ConfigureAwait(false);
