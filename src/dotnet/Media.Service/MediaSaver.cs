@@ -119,7 +119,7 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
 
     private async Task SetMediaProgressToReady(MediaId mediaId, CancellationToken cancellationToken)
     {
-        var changeProgress = Change.Update(new MediaProgress(mediaId, 0, MediaProcessingStage.Ready, 0, ""));
+        var changeProgress = Change.Update(new MediaProgress(mediaId, 0, MediaProcessingStage.Ready, 0));
         await Commander.Run(new MediaProgressBackend_Change(mediaId, null, changeProgress), cancellationToken).ConfigureAwait(false);
     }
 }

@@ -17,7 +17,7 @@ public class MediaService(IServiceProvider services) : IMedia
 
         await RequireOwner(session, media, cancellationToken).ConfigureAwait(false);
         if (!media.BlobId.IsNullOrEmpty())
-            return new MediaProgress(mediaId, 0, MediaProcessingStage.Ready, 100, "");
+            return new MediaProgress(mediaId, 0, MediaProcessingStage.Ready, 100);
 
         var progress = await MediaProgressBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
         return progress;
@@ -59,7 +59,7 @@ public class MediaService(IServiceProvider services) : IMedia
 
         await Commander.Call(new MediaBackend_Change(mediaId, null, mediaChange), cancellationToken).ConfigureAwait(false);
 
-        var progress = new MediaProgress(mediaId, 0, MediaProcessingStage.Reserved, 0, "");
+        var progress = new MediaProgress(mediaId, 0, MediaProcessingStage.Reserved, 0);
         var progressChange = new Change<MediaProgress> { Create = progress };
         await Commander.Call(new MediaProgressBackend_Change(mediaId, null, progressChange), cancellationToken).ConfigureAwait(false);
 
@@ -92,14 +92,14 @@ public class MediaService(IServiceProvider services) : IMedia
         if (Invalidation.IsActive)
             return;
 
-        var (session, mediaId, expectedVersion, stage, stageProgress, errorMessage) = command;
+        var (session, mediaId, expectedVersion, stage, stageProgress, error) = command;
         var media = await MediaBackend.GetFull(mediaId, cancellationToken).ConfigureAwait(false);
         if (media == null)
             throw StandardError.NotFound<Media>();
 
         await RequireOwner(session, media, cancellationToken).ConfigureAwait(false);
 
-        var progress = new MediaProgress(mediaId, 0, stage, stageProgress, errorMessage);
+        var progress = new MediaProgress(mediaId, 0, stage, stageProgress, error);
         var change = new Change<MediaProgress> { Update = progress };
         await Commander.Call(new MediaProgressBackend_Change(mediaId, expectedVersion, change), cancellationToken).ConfigureAwait(false);
     }

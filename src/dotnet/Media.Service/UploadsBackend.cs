@@ -195,13 +195,13 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         IMediaProgressBackend mediaProgressBackend,
         ICommander commander,
         MediaId mediaId,
-        string errorMessage,
+        string error,
         CancellationToken cancellationToken)
     {
         var mediaProgress = await mediaProgressBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
         if (mediaProgress is null
             || mediaProgress.Stage == MediaProcessingStage.Ready
-            || mediaProgress.Stage == MediaProcessingStage.ServerProcessing && !mediaProgress.ErrorMessage.IsNullOrEmpty())
+            || mediaProgress.Stage == MediaProcessingStage.ServerProcessing && !mediaProgress.Error.IsNullOrEmpty())
             return;
 
         var progress = mediaProgress.Stage is MediaProcessingStage.ServerProcessing ? mediaProgress.StageProgress : 0;
@@ -209,7 +209,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
             0,
             MediaProcessingStage.ServerProcessing,
             progress,
-            errorMessage.NullIfEmpty() ?? "Failed to process upload");
+            error.NullIfEmpty() ?? "Failed to process upload");
         var failedChange = new Change<MediaProgress> { Update = failedProgress };
         var change = new MediaProgressBackend_Change(mediaId, null, failedChange);
         await commander.Call(change, true, cancellationToken).ConfigureAwait(false);
@@ -272,10 +272,10 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         {
             try {
                 var mediaProgress = await MediaProgressBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
-                if (mediaProgress is null || mediaProgress.Stage == MediaProcessingStage.Ready || !mediaProgress.ErrorMessage.IsNullOrEmpty())
+                if (mediaProgress is null || mediaProgress.Stage == MediaProcessingStage.Ready || !mediaProgress.Error.IsNullOrEmpty())
                     return;
 
-                mediaProgress = new MediaProgress(mediaId, mediaProgress.Version, processingStage, p, "");
+                mediaProgress = new MediaProgress(mediaId, mediaProgress.Version, processingStage, p);
                 var change = new Change<MediaProgress> { Update = mediaProgress };
                 await Commander.Call(new MediaProgressBackend_Change(mediaId, mediaProgress.Version, change), true, cancellationToken).ConfigureAwait(false);
             }

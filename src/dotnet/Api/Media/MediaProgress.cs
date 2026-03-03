@@ -10,11 +10,11 @@ public sealed partial record MediaProgress(
     [property: DataMember, MemoryPackOrder(1)] long Version,
     [property: DataMember, MemoryPackOrder(2)] MediaProcessingStage Stage,
     [property: DataMember, MemoryPackOrder(3)] double StageProgress,
-    [property: DataMember, MemoryPackOrder(4)] string ErrorMessage
+    [property: DataMember, MemoryPackOrder(4)] string? Error = null
 ) : IHasId<MediaId>, IHasVersion<long>
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    public bool HasFailed => !ErrorMessage.IsNullOrEmpty();
+    public bool HasFailed => !Error.IsNullOrEmpty();
 
     // This record relies on referential equality
     public bool Equals(MediaProgress? other) => ReferenceEquals(this, other);

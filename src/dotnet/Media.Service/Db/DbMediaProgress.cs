@@ -15,12 +15,12 @@ public class DbMediaProgress : IHasId<string>, IHasVersion<long>, IRequirementTa
     [Key] public string Id { get; set; } = "";
     [ConcurrencyCheck] public long Version { get; set; }
 
-    public MediaProcessingStage ProcessingStage { get; set; }
+    public MediaProcessingStage Stage { get; set; }
     public double StageProgress { get; set; }
-    public string ErrorMessage { get; set; } = "";
+    public string Error { get; set; } = "";
 
     public MediaProgress ToModel()
-        => new (MediaId.Parse(Id), Version, ProcessingStage, StageProgress, ErrorMessage);
+        => new (MediaId.Parse(Id), Version, Stage, StageProgress, Error.NullIfEmpty());
 
     public void UpdateFrom(MediaProgress model)
     {
@@ -30,9 +30,9 @@ public class DbMediaProgress : IHasId<string>, IHasVersion<long>, IRequirementTa
 
         Id = id.Value;
         Version = model.Version;
-        ProcessingStage = model.Stage;
+        Stage = model.Stage;
         StageProgress = model.StageProgress;
-        ErrorMessage = model.ErrorMessage;
+        Error = model.Error ?? "";
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbMediaProgress>
