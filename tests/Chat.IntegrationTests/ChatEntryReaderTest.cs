@@ -9,7 +9,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
 {
     private ChatId TestChatId { get; } = ChatId.Parse("the-actual-one");
 
-    [Fact(Skip = "Flaky")]
+    [FlakyFact("Flaky")]
     public async Task BasicTest()
     {
         var appHost = AppHost;
@@ -49,7 +49,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         entry!.Content.Should().Be("it was a teenage wedding and the all folks wished them well");
     }
 
-    [Fact(Skip = "Flaky")]
+    [FlakyFact("Flaky")]
     public async Task FindByMinBeginsAtTest()
     {
         var appHost = AppHost;
@@ -90,7 +90,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         }
     }
 
-    [Fact(Skip = "Flaky")]
+    [FlakyFact("Flaky")]
     public async Task ReadTilesTest()
     {
         var appHost = AppHost;
@@ -162,7 +162,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
                 "back in black i hit the sack");
     }
 
-    [Theory(Skip = "Flaky")]
+    [FlakyTheory("Flaky")]
     [InlineData(0, "it was a teenage wedding and the all folks wished them well")]
     [InlineData(1, "rape me rape me my friend")]
     [InlineData(2, "back in black i hit the sack")]
@@ -200,7 +200,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         entry?.Content.Should().Be(expected);
     }
 
-    [Fact(Skip = "Flaky")]
+    [FlakyFact("Flaky")]
     public async Task ObserveTest1()
     {
         var appHost = AppHost;
@@ -218,6 +218,13 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         var chat = await chats.Get(session, TestChatId, CancellationToken.None);
         chat.Should().NotBeNull();
         chat?.Title.Should().Be("The Actual One");
+
+        // Ensure Bob is joined before capturing idRange to avoid
+        // a "member joined" system entry being created during CreateChatEntries.
+        // EnsureJoined fires AuthorUpsertedEvent which creates a system entry asynchronously,
+        // so we need to wait for the idRange to stabilize.
+        await services.GetRequiredService<IAuthors>().EnsureJoined(session, TestChatId, CancellationToken.None);
+        await WaitForIdRangeToStabilize(chats, session, TestChatId, ChatEntryKind.Text);
 
         var reader = chats.NewEntryReader(session, TestChatId, ChatEntryKind.Text);
         var idRange = await chats.GetIdRange(session, TestChatId, ChatEntryKind.Text, CancellationToken.None);
@@ -245,7 +252,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         }
     }
 
-    [Fact(Skip = "Flaky")]
+    [FlakyFact("Flaky")]
     public async Task ObserveTest2()
     {
         var appHost = AppHost;
@@ -264,6 +271,13 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         chat.Should().NotBeNull();
         chat?.Title.Should().Be("The Actual One");
 
+        // Ensure Bob is joined before capturing idRange to avoid
+        // a "member joined" system entry being created during CreateChatEntries.
+        // EnsureJoined fires AuthorUpsertedEvent which creates a system entry asynchronously,
+        // so we need to wait for the idRange to stabilize.
+        await services.GetRequiredService<IAuthors>().EnsureJoined(session, TestChatId, CancellationToken.None);
+        await WaitForIdRangeToStabilize(chats, session, TestChatId, ChatEntryKind.Text);
+
         var idRangeTask = chats.GetIdRange(session, TestChatId, ChatEntryKind.Text, CancellationToken.None);
         var reader = chats.NewEntryReader(session, TestChatId, ChatEntryKind.Text);
 
@@ -276,6 +290,24 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
                     (int)Constants.Chat.ReaderIdTileStack.MinTileSize));
             var result = await resultTask;
             result.Count.Should().Be(1 + (int)Constants.Chat.ReaderIdTileStack.MinTileSize);
+        }
+    }
+
+    private static async Task WaitForIdRangeToStabilize(
+        IChats chats,
+        Session session,
+        ChatId chatId,
+        ChatEntryKind kind,
+        int maxAttempts = 20,
+        int delayMs = 100)
+    {
+        var idRange = await chats.GetIdRange(session, chatId, kind, CancellationToken.None);
+        for (var i = 0; i < maxAttempts; i++) {
+            await Task.Delay(delayMs);
+            var newIdRange = await chats.GetIdRange(session, chatId, kind, CancellationToken.None);
+            if (newIdRange == idRange)
+                return;
+            idRange = newIdRange;
         }
     }
 
