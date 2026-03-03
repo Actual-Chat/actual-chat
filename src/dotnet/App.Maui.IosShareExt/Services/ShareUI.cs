@@ -215,10 +215,11 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
             await UIKitExt.CloseApp(cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception e)
-        {
-            Log.LogError(e, "Failed to send message");
-            _hasFailed.Value = true;
+        catch (Exception e) {
+            if (!e.IsCancellationOf(cancellationToken)) {
+                Log.LogError(e, "Failed to send message");
+                _hasFailed.Value = true;
+            }
             throw;
         }
     }
