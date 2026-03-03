@@ -10,7 +10,7 @@ public record ChatAudioTrackInfo : TrackInfo
 
     // Primary constructor for entry-based playback
     public ChatAudioTrackInfo(ChatEntry audioEntry, Chat.Chat chat, Author author)
-        : base(ComposeTrackId(audioEntry), audioEntry.IsStreaming)
+        : base(ComposeTrackId(audioEntry), audioEntry.IsContentStreaming)
     {
         AudioEntry = audioEntry;
         Chat = chat;
@@ -26,9 +26,7 @@ public record ChatAudioTrackInfo : TrackInfo
     }
 
     public static Symbol ComposeTrackId(ChatEntry entry)
-        => entry.Kind == ChatEntryKind.Audio
-            ? ComposeTrackId(entry.ChatId, entry.LocalId)
-            : ComposeTrackId(entry.ChatId, entry.AudioEntryLid ?? 0);
+        => ComposeTrackId(entry.ChatId, entry.LocalId);
 
     public static Symbol ComposeTrackId(ChatId chatId, long audioEntryId)
         => $"audio:{chatId.Value}:{audioEntryId}";

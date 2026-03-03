@@ -11,7 +11,7 @@ public class EntryGroupBuilderTest
     public void AddEntry_IncreasesWordCount()
     {
         var builder = new EntryGroupBuilder();
-        var entry = new TextEntry(0, "Hello world", _authorId, new Moment(DateTime.Now), null, false, null, false);
+        var entry = new ChatEntrySlim(0, "Hello world", _authorId, new Moment(DateTime.Now), null, false, null, false);
         builder.Add(entry);
         builder.WordCount.Should().Be(2);
     }
@@ -20,8 +20,8 @@ public class EntryGroupBuilderTest
     public void AddEntry_UpdatesAveragePauseBetweenEntries()
     {
         var builder = new EntryGroupBuilder();
-        var entry1 = new TextEntry(0, "First entry", _authorId, new Moment(DateTime.Now), null, false, null, false);
-        var entry2 = new TextEntry(0, "Second entry", _authorId, new Moment(DateTime.Now.AddSeconds(10)), null, false, null, false);
+        var entry1 = new ChatEntrySlim(0, "First entry", _authorId, new Moment(DateTime.Now), null, false, null, false);
+        var entry2 = new ChatEntrySlim(0, "Second entry", _authorId, new Moment(DateTime.Now.AddSeconds(10)), null, false, null, false);
 
         builder.Add(entry1);
         builder.Add(entry2);
@@ -33,7 +33,7 @@ public class EntryGroupBuilderTest
     public void AddRange_AddsMultipleEntries()
     {
         var builder = new EntryGroupBuilder();
-        var entries = new List<TextEntry> {
+        var entries = new List<ChatEntrySlim> {
             new (0, "First entry", _authorId, new Moment(DateTime.Now), null, false, null, false),
             new (0, "Second entry", _authorId, new Moment(DateTime.Now), null, false, null, false),
         };
@@ -47,8 +47,8 @@ public class EntryGroupBuilderTest
     public void Text_ReturnsConcatenatedContent()
     {
         var builder = new EntryGroupBuilder();
-        var entry1 = new TextEntry(0, "Hello", _authorId, new Moment(DateTime.Now), null, false, null, false);
-        var entry2 = new TextEntry(0, "world", _authorId, new Moment(DateTime.Now), null, false, null, false);
+        var entry1 = new ChatEntrySlim(0, "Hello", _authorId, new Moment(DateTime.Now), null, false, null, false);
+        var entry2 = new ChatEntrySlim(0, "world", _authorId, new Moment(DateTime.Now), null, false, null, false);
 
         builder.Add(entry1);
         builder.Add(entry2);
@@ -60,7 +60,7 @@ public class EntryGroupBuilderTest
     public void Build_ReturnsEntryGroup()
     {
         var builder = new EntryGroupBuilder();
-        var entry = new TextEntry(0, "Hello world", _authorId, new Moment(DateTime.Now), null, false, null, false);
+        var entry = new ChatEntrySlim(0, "Hello world", _authorId, new Moment(DateTime.Now), null, false, null, false);
 
         builder.Add(entry);
         var entryGroup = builder.Build();
@@ -73,7 +73,7 @@ public class EntryGroupBuilderTest
     public void GetPauseBetween_ReturnsZeroForFirstEntry()
     {
         var builder = new EntryGroupBuilder();
-        var entry = new TextEntry(0, "Hello world", _authorId, new Moment(DateTime.Now), null, false, null, false);
+        var entry = new ChatEntrySlim(0, "Hello world", _authorId, new Moment(DateTime.Now), null, false, null, false);
 
         var pause = builder.GetPauseBetween(entry);
 
@@ -84,8 +84,8 @@ public class EntryGroupBuilderTest
     public void AddEntry_ResetsText()
     {
         var builder = new EntryGroupBuilder();
-        var entry1 = new TextEntry(0, "Hello", _authorId, new Moment(DateTime.Now), null, false, null, false);
-        var entry2 = new TextEntry(0, "world", _authorId, new Moment(DateTime.Now), null, false, null, false);
+        var entry1 = new ChatEntrySlim(0, "Hello", _authorId, new Moment(DateTime.Now), null, false, null, false);
+        var entry2 = new ChatEntrySlim(0, "world", _authorId, new Moment(DateTime.Now), null, false, null, false);
 
         builder.Add(entry1);
         var textBefore = builder.Text;
@@ -98,8 +98,8 @@ public class EntryGroupBuilderTest
     public void SerializeAndDeserialize_EntryGroupBuilder()
     {
         var builder = new EntryGroupBuilder();
-        var entry1 = new TextEntry(0, "Hello", _authorId, new Moment(DateTime.Now), null, false, null, false);
-        var entry2 = new TextEntry(0, "world", _authorId, new Moment(DateTime.Now), null, false, null, false);
+        var entry1 = new ChatEntrySlim(0, "Hello", _authorId, new Moment(DateTime.Now), null, false, null, false);
+        var entry2 = new ChatEntrySlim(0, "world", _authorId, new Moment(DateTime.Now), null, false, null, false);
         builder.Add(entry1);
         builder.Add(entry2);
 

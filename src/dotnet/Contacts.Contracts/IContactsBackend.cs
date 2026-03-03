@@ -58,7 +58,7 @@ public interface IContactsBackend : IComputeService, IBackendService
     [EventHandler]
     Task OnAuthorChangedEvent(AuthorUpsertedEvent eventCommand, CancellationToken cancellationToken);
     [EventHandler]
-    Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
+    Task OnChatEntryChangedEvent(ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken);
     [EventHandler]
     Task OnExternalContactNameMayHaveChangedEvent(
         ExternalContactNameMayHaveChangedEvent eventCommand,

@@ -5,7 +5,7 @@ public static class TranslationsExt
     public static async Task<ChatEntryLanguage?> GetLanguage(
         this ITranslations chats,
         Session session,
-        TextEntryId entryId,
+        ChatEntryId entryId,
         CancellationToken cancellationToken = default)
     {
         try {

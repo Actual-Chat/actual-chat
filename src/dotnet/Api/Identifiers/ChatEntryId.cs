@@ -6,6 +6,7 @@ namespace ActualChat;
 
 /// <summary>
 /// Unique identifier for a chat entry (message).
+/// String format: "chatId:kind:localId" where kind is always 0 for text entries.
 /// </summary>
 #pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
 
@@ -15,9 +16,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<ChatEntryId>))]
 [TypeConverter(typeof(StringIdentifierTypeConverter<ChatEntryId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-// This type is technically abstract, but we don't want to make it abstract,
-// coz this forces RPC to use polymorphic serialization for this type.
-public partial class ChatEntryId : StringIdentifier, IStringIdentifier<ChatEntryId>
+public sealed partial class ChatEntryId : StringIdentifier, IStringIdentifier<ChatEntryId>
 {
     public const string Delimiter = ":";
     private static ILogger? _log;
@@ -27,23 +26,17 @@ public partial class ChatEntryId : StringIdentifier, IStringIdentifier<ChatEntry
     [IgnoreDataMember]
     public ChatId ChatId { get; }
     [IgnoreDataMember]
-    public ChatEntryKind Kind { get; }
-    [IgnoreDataMember]
     public long LocalId { get; }
 
     // Factories and constructors
 
-    public static ChatEntryId New(ChatId chatId, ChatEntryKind kind, long localId)
-        => kind switch {
-            ChatEntryKind.Text => TextEntryId.New(chatId, localId),
-            ChatEntryKind.Audio => AudioEntryId.New(chatId, localId),
-            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
-        };
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ChatEntryId New(ChatId chatId, long localId)
+        => new(Format(chatId, localId), chatId, localId);
 
-    protected ChatEntryId(string value, ChatId chatId, ChatEntryKind kind, long localId) : base(value)
+    internal ChatEntryId(string value, ChatId chatId, long localId) : base(value)
     {
         ChatId = chatId;
-        Kind = kind;
         LocalId = localId;
     }
 
@@ -72,8 +65,8 @@ public partial class ChatEntryId : StringIdentifier, IStringIdentifier<ChatEntry
     public static string Prefix(string chatId)
         => $"{chatId}{Delimiter}";
 
-    public static string Format(ChatId chatId, ChatEntryKind kind, long localId)
-        => $"{chatId.Value}{Delimiter}{kind.Format()}{Delimiter}{localId.Format()}";
+    public static string Format(ChatId chatId, long localId)
+        => $"{chatId.Value}{Delimiter}0{Delimiter}{localId.Format()}";
 
     public static ChatEntryId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ChatEntryId>(s);
@@ -111,30 +104,16 @@ public partial class ChatEntryId : StringIdentifier, IStringIdentifier<ChatEntry
         var sKind = s.AsSpan(kindStart, kindLength - kindStart);
         if (!NumberExt.TryParsePositiveInt(sKind, out var kind))
             return false;
-        if (kind > 2)
+        // Accept kind 0 (text) and 1 (legacy audio) for backward compatibility
+        if (kind > 1)
             return false;
 
         var sLocalId = s.AsSpan(kindLength + 1);
         if (!NumberExt.TryParsePositiveLong(sLocalId, out var localId))
             return false;
 
-        result = (ChatEntryKind)kind switch {
-            ChatEntryKind.Text => new TextEntryId(s, chatId, localId),
-            ChatEntryKind.Audio => new AudioEntryId(s, chatId, localId),
-            _ => null,
-        };
-        if (result == null)
-            return false;
-
+        result = new ChatEntryId(s, chatId, localId);
         result = Cache.AddOrGet(s, result);
         return true;
-    }
-
-    public TextEntryId ToTextEntryId()
-    {
-        if (this is not TextEntryId textEntryId)
-            throw StandardError.Constraint($"Invalid entry kind: '{Kind}'");
-
-        return textEntryId;
     }
 }

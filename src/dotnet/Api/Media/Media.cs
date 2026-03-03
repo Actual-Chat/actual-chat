@@ -73,6 +73,9 @@ public partial record Media : IHasId<MediaId>, IHasVersion<long>, IHasMetadata, 
         init => this.SetMetadataValue(value);
     }
 
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public bool IsUploaded => !BlobId.IsNullOrEmpty();
+
     public Media(MediaId id)
         => Id = id;
 

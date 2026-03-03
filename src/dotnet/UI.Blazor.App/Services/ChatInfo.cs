@@ -24,7 +24,7 @@ public sealed record ChatInfo(Contact Contact) : IHasId<ChatId>
     public ChatId Id => Contact.Id.ChatId;
     public Chat.Chat Chat => Contact.Chat;
     public ChatEntry? LastTextEntry => News?.LastTextEntry;
-    public bool IsThreadStartEntry => LastTextEntry?.IsThreadStartEntry == true;
+    public bool IsThreadStartEntry => LastTextEntry?.IsThreadStart == true;
 
     // Computed
     public Trimmed<int> UnmutedUnreadCount => UserSettings.NotificationMode switch {

@@ -49,8 +49,8 @@ public partial class ContentId : StringIdentifier, IStringIdentifier<ContentId>
             return ContentKind.Chat;
         if (id is UserId)
             return ContentKind.User;
-        if (id is TextEntryId)
-            return ContentKind.TextEntry;
+        if (id is ChatEntryId)
+            return ContentKind.ChatEntry;
         if (id is AuthorId)
             return ContentKind.Author;
         if (id is PlaceId)
@@ -128,10 +128,10 @@ public partial class ContentId : StringIdentifier, IStringIdentifier<ContentId>
                     return false;
                 result = new ContentId(s, kind, chatId);
                 return true;
-            case ContentKind.TextEntry:
-                if (!TextEntryId.TryParse(sTargetId, out var textEntryId))
+            case ContentKind.ChatEntry:
+                if (!ChatEntryId.TryParse(sTargetId, out var chatEntryId))
                     return false;
-                result = new ContentId(s, kind, textEntryId);
+                result = new ContentId(s, kind, chatEntryId);
                 return true;
             case ContentKind.Author:
                 if (!AuthorId.TryParse(sTargetId, out var authorId))
@@ -157,7 +157,7 @@ public enum ContentKind
 {
     User = 0,
     Chat = 1,
-    TextEntry = 2,
+    ChatEntry = 2,
     Author = 3,
     Place = 4
 }

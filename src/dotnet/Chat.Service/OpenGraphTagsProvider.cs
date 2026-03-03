@@ -15,10 +15,10 @@ public class OpenGraphTagsProvider(IServiceProvider services)
             var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
             if (chat is not null) {
                 if (entryLid > 0) {
-                    var textEntryId = TextEntryId.New(chatId, entryLid);
-                    var chatEntry = await Chats.GetEntry(session, textEntryId, cancellationToken).ConfigureAwait(false);
+                    var chatEntryId = ChatEntryId.New(chatId, entryLid);
+                    var chatEntry = await Chats.GetEntry(session, chatEntryId, cancellationToken).ConfigureAwait(false);
                     if (chatEntry is not null)
-                        contentId = ContentId.New(textEntryId);
+                        contentId = ContentId.New(chatEntryId);
                 }
                 else
                     contentId = ContentId.New(chatId);

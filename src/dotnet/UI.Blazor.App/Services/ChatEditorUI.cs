@@ -24,12 +24,12 @@ public partial class ChatEditorUI : UIWorkerBase<AppUIHub>, IComputeService, INo
     void INotifyInitialized.Initialized()
         => this.Start();
 
-    public Task ShowRelatedEntry(RelatedEntryKind kind, TextEntryId entryId, bool focusOnEditor, bool updateUI = true)
+    public Task ShowRelatedEntry(RelatedEntryKind kind, ChatEntryId entryId, bool focusOnEditor, bool updateUI = true)
         => ShowRelatedEntry(new RelatedEntryRef(kind, new EntryRef(entryId)), focusOnEditor, updateUI);
 
     public Task ShowRelatedEntry(RelatedEntryKind kind, ChatEntry chatEntry, bool focusOnEditor, bool updateUI = true)
     {
-        var entryRef = new EntryRef((TextEntryId)chatEntry.Id);
+        var entryRef = new EntryRef(chatEntry.Id);
         if (chatEntry.IsSending && !chatEntry.IsStored())
             entryRef = entryRef with {
                 ChatEntry = chatEntry
@@ -95,7 +95,7 @@ public partial class ChatEditorUI : UIWorkerBase<AppUIHub>, IComputeService, INo
         ChatEntry? lastEditableEntry ;
         using (ComputedSynchronizer.Default.Activate()) {
             var chatIdRange = await Chats
-                .GetIdRange(Session, chatId, ChatEntryKind.Text, CancellationToken.None)
+                .GetIdRange(Session, chatId, CancellationToken.None)
                 .ConfigureAwait(false);
 
             var chatSendingMessages = Hub.SendingMessages.GetSendingMessages(chatId);
@@ -103,14 +103,14 @@ public partial class ChatEditorUI : UIWorkerBase<AppUIHub>, IComputeService, INo
             if (newMessages.Length > 0)
                 lastEditableEntry = newMessages[^1];
             else {
-                var chatEntryReader = Hub.NewEntryReader(chatId, ChatEntryKind.Text);
+                var chatEntryReader = Hub.NewEntryReader(chatId);
                 lastEditableEntry = await chatEntryReader.GetLast(
                         chatIdRange,
                         x => x.AuthorId == author.Id
                             && x is {
-                                HasVideoEntry: false,
-                                IsStreaming: false,
-                                ForwardedChatEntryId: null,
+                                HasAudio: false,
+                                IsContentStreaming: false,
+                                Forwarded: null,
                             },
                         1000, // Max. 1000 entries to scan upwards
                         CancellationToken.None)

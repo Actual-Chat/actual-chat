@@ -11,7 +11,7 @@ public class Reactions(IServiceProvider services) : IReactions
     private ICommander Commander { get; } = services.Commander();
 
     // [ComputeMethod]
-    public virtual async Task<Reaction?> Get(Session session, TextEntryId entryId, CancellationToken cancellationToken)
+    public virtual async Task<Reaction?> Get(Session session, ChatEntryId entryId, CancellationToken cancellationToken)
     {
         var chatAuthor = await Authors.GetOwn(session, entryId.ChatId, cancellationToken).ConfigureAwait(false);
         if (chatAuthor == null)
@@ -25,7 +25,7 @@ public class Reactions(IServiceProvider services) : IReactions
     // [ComputeMethod]
     public virtual async Task<ReactionSummary[]> ListSummaries(
         Session session,
-        TextEntryId entryId,
+        ChatEntryId entryId,
         CancellationToken cancellationToken)
     {
         var chatRules = await Chats.GetRules(session, entryId.ChatId, cancellationToken).ConfigureAwait(false);

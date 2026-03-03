@@ -8,7 +8,7 @@ public static class TranslationOperations
     extension(IWebTester tester)
     {
         public Task<Translation?> GetTranslation(
-            TextEntryId entryId,
+            ChatEntryId entryId,
             Language language,
             bool translateIfMissing,
             CancellationToken cancellationToken = default)
@@ -23,10 +23,10 @@ public static class TranslationOperations
         public Task<ChatEntryLanguage?> GetEntryLanguage(
             ChatEntryId id,
             CancellationToken cancellationToken = default)
-            => tester.Translations.GetLanguage(tester.Session, (TextEntryId)id, cancellationToken);
+            => tester.Translations.GetLanguage(tester.Session, (ChatEntryId)id, cancellationToken);
 
         public Task<ChatEntryLanguage?> CreateEntryLanguage(
-            TextEntryId id,
+            ChatEntryId id,
             Language? language,
             HashString entryContentHash,
             CancellationToken cancellationToken = default)

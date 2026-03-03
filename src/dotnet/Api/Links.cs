@@ -18,31 +18,31 @@ public static class Links
     public static readonly LocalUrl Chats = "/chat";
     public static readonly LocalUrl Logs = "/test/logs";
 
-    public static LocalUrl Chat(TextEntryId? textEntryId)
-        => textEntryId == null
+    public static LocalUrl Chat(ChatEntryId? ChatEntryId)
+        => ChatEntryId == null
             ? "/chat"
-            : $"/chat/{textEntryId.ChatId.Value}{TextEntryQuery(textEntryId.LocalId)}";
+            : $"/chat/{ChatEntryId.ChatId.Value}{TextEntryQuery(ChatEntryId.LocalId)}";
 
-    public static LocalUrl Chat(ChatId chatId, long textEntryId = 0)
-        => $"/chat/{chatId.Value}{TextEntryQuery(textEntryId)}";
+    public static LocalUrl Chat(ChatId chatId, long ChatEntryId = 0)
+        => $"/chat/{chatId.Value}{TextEntryQuery(ChatEntryId)}";
 
-    public static LocalUrl Chat(AliasInfo<ChatId> aliasInfo, long textEntryId = 0)
+    public static LocalUrl Chat(AliasInfo<ChatId> aliasInfo, long ChatEntryId = 0)
     {
         var chatId = aliasInfo.Id;
         if (chatId is PlaceChatId)
             throw new ArgumentOutOfRangeException(nameof(aliasInfo), "Place chat requires place alias info.");
 
         return aliasInfo.AliasId is { } aliasId
-            ? $"/chat/@{aliasId.Value}{TextEntryQuery(textEntryId)}"
-            : Chat(chatId, textEntryId);
+            ? $"/chat/@{aliasId.Value}{TextEntryQuery(ChatEntryId)}"
+            : Chat(chatId, ChatEntryId);
     }
 
-    public static LocalUrl Chat(AliasInfo<ChatId> aliasInfo, AliasInfo<PlaceId>? placeAliasInfo, long textEntryId = 0)
+    public static LocalUrl Chat(AliasInfo<ChatId> aliasInfo, AliasInfo<PlaceId>? placeAliasInfo, long ChatEntryId = 0)
     {
         var chatId = aliasInfo.Id;
         if (chatId is not PlaceChatId placeChatId)
             return placeAliasInfo is null
-                ? Chat(aliasInfo, textEntryId)
+                ? Chat(aliasInfo, ChatEntryId)
                 : throw new ArgumentOutOfRangeException(nameof(placeAliasInfo),
                     "Chat doesn't belong to a place, but place alias info is provided.");
 
@@ -53,12 +53,12 @@ public static class Links
                 "Chat belongs to a place that differs from place alias info.");
 
         if (placeAliasInfo.AliasId is null) // Should we allow chat aliases for places w/o an alias?
-            return Chat(chatId, textEntryId);
+            return Chat(chatId, ChatEntryId);
 
         var fullAlias = aliasInfo.AliasId is not { } aliasId
             ? string.Concat(placeAliasInfo.AliasId.Value, Separator, placeChatId.LocalChatId)
             : string.Concat(placeAliasInfo.AliasId.Value, Separator, AliasPrefix, aliasId.Value);
-        return $"/chat/@{fullAlias}" + TextEntryQuery(textEntryId);
+        return $"/chat/@{fullAlias}" + TextEntryQuery(ChatEntryId);
     }
 
     public static LocalUrl EmbeddedChat(ChatId chatId, long textEntryLid = 0)

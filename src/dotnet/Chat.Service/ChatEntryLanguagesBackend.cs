@@ -46,7 +46,7 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
         IEnumerable<ChatEntryId> GetEntryIds(Range<long> range)
         {
             for (var lid = range.Start; lid < range.End; lid++)
-                yield return TextEntryId.New(chatId, lid);
+                yield return ChatEntryId.New(chatId, lid);
         }
     }
 
@@ -139,7 +139,7 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
     }
 
     // [EventHandler]
-    public virtual Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
+    public virtual Task OnChatEntryChangedEvent(ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
@@ -163,7 +163,7 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
                 return;
 
             if (changeKind is ChangeKind.Remove) {
-                Log.LogDebug("OnTextEntryChangedEvent: Removing chat entry languages for {Id}", entry.Id);
+                Log.LogDebug("OnChatEntryChangedEvent: Removing chat entry languages for {Id}", entry.Id);
                 await Commander.Call(ChatEntryLanguagesBackend_Change.Remove(entry.Id), true, cancellationToken)
                     .ConfigureAwait(false);
                 return;

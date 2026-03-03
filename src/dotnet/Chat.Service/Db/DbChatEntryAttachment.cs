@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using ActualLab.Versioning;
 
@@ -6,11 +6,11 @@ namespace ActualChat.Chat.Db;
 
 [Table("TextEntryAttachments")]
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
-public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequirementTarget
+public class DbChatEntryAttachment : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private const char IdSeparator = ':';
-    public DbTextEntryAttachment() { }
-    public DbTextEntryAttachment(TextEntryAttachment model) => UpdateFrom(model);
+    public DbChatEntryAttachment() { }
+    public DbChatEntryAttachment(ChatEntryAttachment model) => UpdateFrom(model);
 
     // (ChatId, EntryId, Index)
     [Key] public string Id { get; set; } = "";
@@ -20,31 +20,31 @@ public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequire
     public string ThumbnailMediaId { get; set; } = "";
     public int Index { get; set; }
 
-    public static string ComposeId(TextEntryId entryId, int index)
+    public static string ComposeId(ChatEntryId entryId, int index)
         => $"{entryId}{IdSeparator}{index}";
 
-    public static string IdPrefix(TextEntryId entryId)
+    public static string IdPrefix(ChatEntryId entryId)
         => entryId.Value + IdSeparator;
 
-    public static TextEntryId? ExtractTextEntryId(Symbol id)
+    public static ChatEntryId? ExtractEntryId(Symbol id)
     {
         var i = id.Value.LastIndexOf(IdSeparator);
         if (i < 0)
             return null;
 
-        _ = TextEntryId.TryParse(id.Value[..i], out var textEntryId);
-        return textEntryId;
+        _ = ChatEntryId.TryParse(id.Value[..i], out var entryId);
+        return entryId;
     }
 
-    public TextEntryAttachment ToModel()
+    public ChatEntryAttachment ToModel()
         => new (Id, Version) {
-            EntryId = TextEntryId.Parse(EntryId),
+            EntryId = ChatEntryId.Parse(EntryId),
             Index = Index,
             MediaId = ActualChat.MediaId.Parse(MediaId),
             ThumbnailMediaId = ActualChat.MediaId.ParseNullable(ThumbnailMediaId),
         };
 
-    public void UpdateFrom(TextEntryAttachment model)
+    public void UpdateFrom(ChatEntryAttachment model)
     {
         var id = ComposeId(model.EntryId, model.Index);
         this.RequireSameOrEmptyId(id);

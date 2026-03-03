@@ -23,7 +23,7 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
         await Tester.SignIn(bob);
         var entry = await Tester.CreateTextEntry(chatId, "Ok!");
         await Tester.SignIn(alice);
-        await Tester.React(entry.Id.ToTextEntryId(), Emojis.Love);
+        await Tester.React(entry.Id, Emojis.RedHeart);
 
         // assert
         var aliceNotification = await GetNotification(alice, entry.Id);
@@ -60,7 +60,7 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
         var mediaId = await Tester.SaveMedia(chatId, TestImages.GetUploadedImage(TestImages.DefaultJpg));
         var entry = await Tester.CreateTextEntry(chatId, "", mediaId);
         await Tester.SignIn(alice);
-        await Tester.React(entry.Id.ToTextEntryId(), Emojis.Love);
+        await Tester.React(entry.Id, Emojis.RedHeart);
 
         // assert
         var aliceNotification = await GetNotification(alice, entry.Id);

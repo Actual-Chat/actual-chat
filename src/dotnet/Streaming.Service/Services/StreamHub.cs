@@ -182,7 +182,7 @@ public class StreamHub(IServiceProvider services) : Hub
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
 
         var chatIdTyped = ChatId.Parse(chatId);
-        var repliedEntryIdTyped = TextEntryId.ParseNullable(repliedEntryId);
+        var repliedEntryIdTyped = ChatEntryId.ParseNullable(repliedEntryId);
         var httpContext = Context.GetHttpContext()!;
         var session = GetSessionFromToken(sessionToken) ?? httpContext.GetSessionFromCookie();
 

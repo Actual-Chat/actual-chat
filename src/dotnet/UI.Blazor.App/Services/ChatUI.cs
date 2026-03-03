@@ -23,7 +23,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private readonly MutableState<PlaceId?> _selectedPlaceId;
     private readonly StoredState<string> _selectedNavbarGroupId;
     private readonly StoredState<IImmutableDictionary<string, ChatId>> _selectedChatIds;
-    private readonly MutableState<TextEntryId?> _highlightedEntryId;
+    private readonly MutableState<ChatEntryId?> _highlightedEntryId;
     private readonly MutableState<IImmutableSet<ConversationId>> _expandedConversations;
     private readonly SyncedState<UserNavbarSettings> _navbarSettings;
     private ChatId? _searchEnabledChatId;
@@ -54,7 +54,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     public IState<ChatId?> SelectedChatId => _selectedChatId;
     public IState<PlaceId?> SelectedPlaceId => _selectedPlaceId;
     public IState<IImmutableDictionary<string, ChatId>> SelectedChatIds => _selectedChatIds;
-    public IState<TextEntryId?> HighlightedEntryId => _highlightedEntryId;
+    public IState<ChatEntryId?> HighlightedEntryId => _highlightedEntryId;
     public IState<IImmutableSet<ConversationId>> ExpandedConversations => _expandedConversations;
     public IState<UserNavbarSettings> NavbarSettings => _navbarSettings;
     public Task WhenReady => _selectedChatId.WhenRead;
@@ -84,7 +84,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                 InitialValue = ImmutableDictionary<string, ChatId>.Empty,
             });
         _highlightedEntryId = StateFactory.NewMutable(
-            (TextEntryId?)null,
+            (ChatEntryId?)null,
             StateCategories.Get(type, nameof(HighlightedEntryId)));
         _expandedConversations = StateFactory.NewMutable(
             (IImmutableSet<ConversationId>)ImmutableHashSet<ConversationId>.Empty,
@@ -139,9 +139,9 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             Chat.Chat? lastThreadChat = null;
             Author? lastThreadCreator = null;
             if (news?.LastTextEntry is { } lastTextEntry) {
-                if (lastTextEntry.IsStreaming)
+                if (lastTextEntry.IsContentStreaming)
                     lastTextEntryText = Constants.Messages.RecordingSkeleton;
-                else if (lastTextEntry.IsThreadStartEntry) {
+                else if (lastTextEntry.IsThreadStart) {
                     var threadChatId = lastTextEntry.ChatId.CreateThreadId(lastTextEntry.LocalId);
                     var threadChatTask = Chats.Get(Session, threadChatId, cancellationToken);
                     var threadCreatorTask = ChatThreads.GetThreadCreator(Session, threadChatId, cancellationToken);
@@ -269,7 +269,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         Computed<Range<long>> cIdRange;
         using (Computed.BeginIsolation()) {
             cIdRange = await Computed
-                .Capture(() => Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken), cancellationToken)
+                .Capture(() => Chats.GetIdRange(Session, chatId, cancellationToken), cancellationToken)
                 .ConfigureAwait(false);
         }
 
@@ -284,7 +284,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             return false;
         }
 
-        var reader = Chats.NewEntryReader(Session, chatId, ChatEntryKind.Text);
+        var reader = Chats.NewEntryReader(Session, chatId);
         await foreach (var entry in reader.Read(idRange, cancellationToken).ConfigureAwait(false))
             if (!entry.IsSystemEntry)
                 return false;
@@ -400,7 +400,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         return hasChanged;
     }
 
-    public void HighlightEntry(TextEntryId? entryId, bool navigate, bool updateUI = true)
+    public void HighlightEntry(ChatEntryId? entryId, bool navigate, bool updateUI = true)
     {
         if (navigate) {
             if (entryId is null)

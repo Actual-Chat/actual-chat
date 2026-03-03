@@ -19,14 +19,14 @@ public sealed class SendMessageRequest
             AfterSendMessageHandler = afterSendMessageHandler,
         };
 
-    public static SendMessageRequest EditMessage(TextEntryId textEntryId, string newText)
+    public static SendMessageRequest EditMessage(ChatEntryId chatEntryId, string newText)
         => new () {
-            ChatId = textEntryId.ChatId,
-            LocalId = textEntryId.LocalId,
+            ChatId = chatEntryId.ChatId,
+            LocalId = chatEntryId.LocalId,
             Text = newText,
         };
 
-    public static SendMessageRequest ReplyMessage(ChatId chatId, TextEntryId relatedMessageId, string text, FilesUploadHandle? uploads = null)
+    public static SendMessageRequest ReplyMessage(ChatId chatId, ChatEntryId relatedMessageId, string text, FilesUploadHandle? uploads = null)
     {
         if (relatedMessageId.ChatId != chatId)
             throw new ArgumentException("Related message must be in the same chat", nameof(relatedMessageId));

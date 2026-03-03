@@ -108,7 +108,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
                 return default;
 
             var textEntryRange = await ChatsBackend
-                .GetIdRange(contactId.ChatId, ChatEntryKind.Text, false, cancellationToken)
+                .GetIdRange(contactId.ChatId, false, cancellationToken)
                 .ConfigureAwait(false);
             var maxEntryId = textEntryRange.End > 0 ? textEntryRange.End - 1 : 0;
             if (maxEntryId <= 0)

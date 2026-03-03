@@ -353,6 +353,11 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("text")
                         .HasColumnName("content_hash");
 
+                    b.Property<string>("ContentStreamId")
+                        .HasColumnType("text")
+                        .HasColumnName("content_stream_id")
+                        .UseCollation("C");
+
                     b.Property<double>("Duration")
                         .HasColumnType("double precision")
                         .HasColumnName("duration");
@@ -381,10 +386,6 @@ namespace ActualChat.Chat.Migrations
                     b.Property<string>("ForwardedChatTitle")
                         .HasColumnType("text")
                         .HasColumnName("forwarded_chat_title");
-
-                    b.Property<bool>("HasAttachmentUploads")
-                        .HasColumnType("boolean")
-                        .HasColumnName("has_attachment_uploads");
 
                     b.Property<bool>("HasAttachments")
                         .HasColumnType("boolean")
@@ -427,14 +428,14 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("local_id");
 
+                    b.Property<string>("MediaId")
+                        .HasColumnType("text")
+                        .HasColumnName("media_id")
+                        .UseCollation("C");
+
                     b.Property<long?>("RepliedChatEntryId")
                         .HasColumnType("bigint")
                         .HasColumnName("replied_chat_entry_id");
-
-                    b.Property<string>("StreamId")
-                        .HasColumnType("text")
-                        .HasColumnName("stream_id")
-                        .UseCollation("C");
 
                     b.Property<string>("TimeMap")
                         .HasColumnType("text")
@@ -445,14 +446,10 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("version");
 
-                    b.Property<long?>("VideoEntryId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("video_entry_id");
-
                     b.HasKey("Id")
                         .HasName("pk_chat_entries");
 
-                    b.HasIndex("StreamId")
+                    b.HasIndex("ContentStreamId")
                         .HasFilter("\"kind\" = 0 AND \"stream_id\" IS NOT NULL");
 
                     b.HasIndex("ChatId", "Kind", "LocalId")
@@ -476,6 +473,46 @@ namespace ActualChat.Chat.Migrations
                         .HasDatabaseName("ix_chat_entries_chat_id_kind_is_removed_local_id");
 
                     b.ToTable("chat_entries");
+                });
+
+            modelBuilder.Entity("ActualChat.Chat.Db.DbChatEntryAttachment", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id")
+                        .UseCollation("C");
+
+                    b.Property<string>("EntryId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("entry_id")
+                        .UseCollation("C");
+
+                    b.Property<int>("Index")
+                        .HasColumnType("integer")
+                        .HasColumnName("index");
+
+                    b.Property<string>("MediaId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("media_id")
+                        .UseCollation("C");
+
+                    b.Property<string>("ThumbnailMediaId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("thumbnail_media_id")
+                        .UseCollation("C");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_text_entry_attachments");
+
+                    b.ToTable("text_entry_attachments");
                 });
 
             modelBuilder.Entity("ActualChat.Chat.Db.DbChatEntryLanguage", b =>
@@ -617,9 +654,9 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnName("chat_id")
                         .UseCollation("C");
 
-                    b.Property<long>("EntryLocalId")
+                    b.Property<long>("EntryLid")
                         .HasColumnType("bigint")
-                        .HasColumnName("entry_local_id");
+                        .HasColumnName("entry_lid");
 
                     b.Property<string>("MentionId")
                         .IsRequired()
@@ -630,11 +667,11 @@ namespace ActualChat.Chat.Migrations
                     b.HasKey("Id")
                         .HasName("pk_mentions");
 
-                    b.HasIndex("ChatId", "EntryLocalId", "MentionId")
-                        .HasDatabaseName("ix_mentions_chat_id_entry_local_id_mention_id");
+                    b.HasIndex("ChatId", "EntryLid", "MentionId")
+                        .HasDatabaseName("ix_mentions_chat_id_entry_lid_mention_id");
 
-                    b.HasIndex("ChatId", "MentionId", "EntryLocalId")
-                        .HasDatabaseName("ix_mentions_chat_id_mention_id_entry_local_id");
+                    b.HasIndex("ChatId", "MentionId", "EntryLid")
+                        .HasDatabaseName("ix_mentions_chat_id_mention_id_entry_lid");
 
                     b.ToTable("mentions");
                 });
@@ -896,46 +933,6 @@ namespace ActualChat.Chat.Migrations
                         .HasDatabaseName("ix_roles_chat_id_name");
 
                     b.ToTable("roles");
-                });
-
-            modelBuilder.Entity("ActualChat.Chat.Db.DbTextEntryAttachment", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id")
-                        .UseCollation("C");
-
-                    b.Property<string>("EntryId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("entry_id")
-                        .UseCollation("C");
-
-                    b.Property<int>("Index")
-                        .HasColumnType("integer")
-                        .HasColumnName("index");
-
-                    b.Property<string>("MediaId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("media_id")
-                        .UseCollation("C");
-
-                    b.Property<string>("ThumbnailMediaId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("thumbnail_media_id")
-                        .UseCollation("C");
-
-                    b.Property<long>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint")
-                        .HasColumnName("version");
-
-                    b.HasKey("Id")
-                        .HasName("pk_text_entry_attachments");
-
-                    b.ToTable("text_entry_attachments");
                 });
 
             modelBuilder.Entity("ActualChat.Chat.Db.DbTranslation", b =>

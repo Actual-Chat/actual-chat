@@ -103,10 +103,10 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
         var messageCount = 0;
         var topAuthorIds = new List<AuthorId>();
         var authorIds = new HashSet<AuthorId>();
-        var range = await ChatsBackend.GetIdRange(threadChatId, ChatEntryKind.Text, false, cancellationToken).ConfigureAwait(false);
-        var entries = ChatsBackend.ReadEntries(threadChatId, ChatEntryKind.Text, range, false, cancellationToken);
+        var range = await ChatsBackend.GetIdRange(threadChatId, false, cancellationToken).ConfigureAwait(false);
+        var entries = ChatsBackend.ReadEntries(threadChatId, range, false, cancellationToken);
         var entryCount = 0;
-        var attachmentList = new List<TextEntryAttachment>();
+        var attachmentList = new List<ChatEntryAttachment>();
         const int entryCountLimit = 30;
         await foreach (var chatEntry in entries.ConfigureAwait(false)) {
             entryCount++;
@@ -133,15 +133,15 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
     public virtual async Task<(string, string)> SuggestThreadTitle(
         Session session,
         ChatId parentChatId,
-        TextEntryId[] entryIds,
+        ChatEntryId[] entryIds,
         CancellationToken cancellationToken)
     {
         await Chats.Get(session, parentChatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
-        var textEntries = new List<TextEntry>();
-        foreach (var textEntryId in entryIds) {
-            var chatEntry = await Chats.GetEntry(session, textEntryId, cancellationToken).ConfigureAwait(false);
+        var textEntries = new List<ChatEntrySlim>();
+        foreach (var chatEntryId in entryIds) {
+            var chatEntry = await Chats.GetEntry(session, chatEntryId, cancellationToken).ConfigureAwait(false);
             if (chatEntry is not null)
-                textEntries.Add(new TextEntry(chatEntry));
+                textEntries.Add(new ChatEntrySlim(chatEntry));
         }
         if (textEntries.Count is 0)
             return ("", "");
@@ -172,8 +172,8 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
 
         var isFirst = true;
         Chat? threadChat = null;
-        foreach (var textEntryId in command.EntryIds.OrderBy(c => c.LocalId)) {
-            var textEntry = await Chats.GetEntry(session, textEntryId, cancellationToken).ConfigureAwait(false);
+        foreach (var chatEntryId in command.EntryIds.OrderBy(c => c.LocalId)) {
+            var textEntry = await Chats.GetEntry(session, chatEntryId, cancellationToken).ConfigureAwait(false);
             if (textEntry is null || textEntry.IsRemoved)
                 continue;
 
@@ -191,7 +191,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
 
             // Create a thread chat entry
             {
-                var textEntryId1 = TextEntryId.New(chatId, 0);
+                var textEntryId1 = ChatEntryId.New(chatId, 0);
                 var textEntryAuthorId = AuthorsBackend.Remap(textEntry.AuthorId, chatId);
                 var upsertEntryCommand = new ChatsBackend_ChangeEntry(
                     textEntryId1,
@@ -207,10 +207,10 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
             {
                 // Mark source entry as thread entry.
                 var diff = isFirst
-                    ? new ChatEntryDiff { IsThreadStartEntry = true }
-                    : new ChatEntryDiff { IsThreadEntry = true };
+                    ? new ChatEntryDiff { IsThreadStart = true }
+                    : new ChatEntryDiff { IsThread = true };
                 var upsertEntryCommand = new ChatsBackend_ChangeEntry(
-                    textEntryId,
+                    chatEntryId,
                     null,
                     Change.Update(diff));
                 await Commander.Call(upsertEntryCommand, cancellationToken).ConfigureAwait(false);

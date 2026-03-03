@@ -7,11 +7,11 @@ internal sealed class ChatDialogFormatter(IAuthorNameRetriever authorNameRetriev
 {
     private static readonly TimeSpan BlockStartTimeGap = TimeSpan.FromSeconds(120);
 
-    public async Task<string> EntriesToText(IEnumerable<TextEntry> chatEntries, ChatDialogFormatterOptions? options = null)
+    public async Task<string> EntriesToText(IEnumerable<ChatEntrySlim> chatEntries, ChatDialogFormatterOptions? options = null)
     {
         options ??= ChatDialogFormatterOptions.Default;
         var sb = ActualLab.Text.StringBuilderExt.Acquire();
-        TextEntry? prevChatEntry = null;
+        ChatEntrySlim? prevChatEntry = null;
         foreach (var chatEntry in chatEntries) {
             if (sb.Length > 0)
                 sb.AppendLine();
@@ -21,7 +21,7 @@ internal sealed class ChatDialogFormatter(IAuthorNameRetriever authorNameRetriev
         return sb.ToStringAndRelease();
     }
 
-    public async Task<string> EntryToText(TextEntry entry, TextEntry? prevChatEntry, ChatDialogFormatterOptions? options = null)
+    public async Task<string> EntryToText(ChatEntrySlim entry, ChatEntrySlim? prevChatEntry, ChatDialogFormatterOptions? options = null)
     {
         options ??= ChatDialogFormatterOptions.Default;
         var showAuthor = options.DisplayAuthorPerEntry;
@@ -73,7 +73,7 @@ internal sealed class ChatDialogFormatter(IAuthorNameRetriever authorNameRetriev
     private static Task<string> ContentToText(string markup)
         => Task.FromResult(markup); // TODO: add markup parsing
 
-    private static bool IsBlockStart(TextEntry? prevEntry, TextEntry entry)
+    private static bool IsBlockStart(ChatEntrySlim? prevEntry, ChatEntrySlim entry)
     {
         if (prevEntry == null)
             return true;

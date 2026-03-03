@@ -51,8 +51,8 @@ public class LinkPreviewUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
 
         var localLinkModel = new ChatLocalLinkInfo(localUrl, chat);
         if (entryLid > 0) {
-            var textEntryId = TextEntryId.New(chatId, entryLid);
-            var entry = await Chats.GetEntry(Session, textEntryId, cancellationToken).ConfigureAwait(false);
+            var chatEntryId = ChatEntryId.New(chatId, entryLid);
+            var entry = await Chats.GetEntry(Session, chatEntryId, cancellationToken).ConfigureAwait(false);
             localLinkModel = localLinkModel with { Entry = entry };
             if (entry is not null) {
                 var authorId = entry.AuthorId;

@@ -12,7 +12,7 @@ public class IncomingShareAfterSendMessageHandler(AppUIHub hub) : IAfterSendMess
     {
         var expectedUploadedFilesNumber = int.Parse(args, CultureInfo.InvariantCulture);
 
-        TextEntryAttachment[]? attachments;
+        ChatEntryAttachment[]? attachments;
         if (result.HasError) {
             if (result.Error is OperationCanceledException)
                 return;

@@ -26,7 +26,7 @@ public class FirebaseMessagingClient(
         var content = notification.Content;
         var iconUrl = notification.IconUrl;
         var chatId = notification.ChatId;
-        var entryId = (TextEntryId?)null;
+        var entryId = (ChatEntryId?)null;
         long lastEntryLocalId = 0;
         if (notification.ChatEntryNotification != null)
             entryId = notification.ChatEntryNotification.EntryId;

@@ -1,6 +1,6 @@
-﻿namespace ActualChat.Chat.ML;
+namespace ActualChat.Chat.ML;
 
-public record EntryGroup(IReadOnlyList<TextEntry> Entries, int WordCount = 0, bool IsCompleted = false)
+public record EntryGroup(IReadOnlyList<ChatEntrySlim> Entries, int WordCount = 0, bool IsCompleted = false)
 {
     public IReadOnlyList<Range<long>> LocalIdRanges => field ??= GetLocalIdRanges();
 
@@ -30,7 +30,7 @@ public record EntryGroup(IReadOnlyList<TextEntry> Entries, int WordCount = 0, bo
     }
 }
 
-public record ReplySequence(IReadOnlyList<TextEntry> Entries);
+public record ReplySequence(IReadOnlyList<ChatEntrySlim> Entries);
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record ExtractorState(
@@ -42,7 +42,7 @@ public partial record ExtractorState(
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public long MaxLid => Math.Max(CurrentChunk?.MaxLid ?? 0, CurrentGroup?.MaxLid ?? 0);
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public TextEntry? LastEntry => CurrentChunk?.Entries.LastOrDefault() ?? CurrentGroup?.Entries.LastOrDefault();
+    public ChatEntrySlim? LastEntry => CurrentChunk?.Entries.LastOrDefault() ?? CurrentGroup?.Entries.LastOrDefault();
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public int WordCount => (CurrentGroup?.WordCount ?? 0) + (CurrentChunk?.WordCount ?? 0);
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
@@ -55,7 +55,7 @@ public interface IEntryGroupExtractor
 {
     ExtractResult ExtractGroups(
         ExtractorState? state,
-        IReadOnlyCollection<TextEntry> entries);
+        IReadOnlyCollection<ChatEntrySlim> entries);
 }
 
 public enum EntryGroupLimit
@@ -77,7 +77,7 @@ public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, ILo
 
     public ExtractResult ExtractGroups(
         ExtractorState? state,
-        IReadOnlyCollection<TextEntry> entries)
+        IReadOnlyCollection<ChatEntrySlim> entries)
     {
         state ??= new ExtractorState(null, null);
         if (entries.Count == 0)
@@ -165,7 +165,7 @@ public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, ILo
             : new ExtractorState(null, null);
         return new ExtractResult(resultState, groups, replySequences);
 
-        void CompleteGroupOnPause(EntryGroupBuilder groupBuilder1, TextEntry entry)
+        void CompleteGroupOnPause(EntryGroupBuilder groupBuilder1, ChatEntrySlim entry)
         {
             var currentPause = groupBuilder1.GetPauseBetween(entry);
             var minPause = entry.IsTranscript ? Constants.Audio.MaxStreamDuration.TotalSeconds : MinPauseBetweenTextEntries;

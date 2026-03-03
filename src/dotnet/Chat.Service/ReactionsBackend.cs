@@ -15,7 +15,7 @@ public class ReactionsBackend(IServiceProvider services)
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
 
     // [ComputeMethod]
-    public virtual async Task<Reaction?> Get(TextEntryId entryId, AuthorId authorId, CancellationToken cancellationToken)
+    public virtual async Task<Reaction?> Get(ChatEntryId entryId, AuthorId authorId, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
@@ -28,7 +28,7 @@ public class ReactionsBackend(IServiceProvider services)
 
     // [ComputeMethod]
     public virtual async Task<ReactionSummary[]> List(
-        TextEntryId entryId,
+        ChatEntryId entryId,
         CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);

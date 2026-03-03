@@ -62,7 +62,7 @@
     }
 
     private void OnQuoteClick()
-        => ChatUI.HighlightEntry(Entry.Id.ToTextEntryId(), navigate: true);
+        => ChatUI.HighlightEntry(Entry.Id, navigate: true);
 
     private void OnCancelClick()
         => UIEventHub.Publish<CancelChatMessageEditEvent>();

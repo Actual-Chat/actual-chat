@@ -1,4 +1,5 @@
 using ActualChat.Chat;
+using ActualChat.Media;
 
 namespace ActualChat.Testing.Host;
 
@@ -10,12 +11,12 @@ public static class ChatEntryOperations
         string text,
         MediaId? mediaId = null)
     {
-        var cmd = new Chats_UpsertTextEntry(tester.Session, chatId, null) {
+        var cmd = new Chats_UpsertEntry(tester.Session, chatId, null) {
             Text = text,
-            EntryAttachments = mediaId == null
+            Attachments = mediaId == null
                 ? []
                 : [
-                    new TextEntryAttachment {
+                    new ChatEntryAttachment {
                         MediaId = mediaId,
                         Index = 0,
                     },
@@ -26,12 +27,12 @@ public static class ChatEntryOperations
 
     public static Task<ChatEntry> UpdateTextEntry(this IWebTester tester, ChatEntryId id, string text)
     {
-        var cmd = new Chats_UpsertTextEntry(tester.Session, id.ChatId, id.LocalId) { Text = text };
+        var cmd = new Chats_UpsertEntry(tester.Session, id.ChatId, id.LocalId) { Text = text };
         return tester.Commander.Call(cmd);
     }
 
     public static Task RemoveTextEntry(this IWebTester tester, ChatEntryId id)
-        => tester.Commander.Call(new Chats_RemoveTextEntry(tester.Session, id.ChatId, id.LocalId));
+        => tester.Commander.Call(new Chats_RemoveEntry(tester.Session, id.ChatId, id.LocalId));
 
     public static async Task<ChatEntry[]> CreateTextEntries(this IWebTester tester, ChatId chatId, string textPrefix, int entryCount)
     {
@@ -44,32 +45,23 @@ public static class ChatEntryOperations
     public static async Task<StreamingEntry> CreateStreamingEntry(this IWebTester tester, ChatId chatId, Language language, CancellationToken cancellationToken = default)
     {
         var clocks = tester.AppServices.Clocks();
-        var author = await tester.GetOwnAuthor(chatId, cancellationToken).Require();
         var now = clocks.SystemClock.Now;
-        var audioEntry = await tester.Commander.Call(new ChatsBackend_ChangeEntry(
-                AudioEntryId.New(chatId, 0),
+        var author = await tester.GetOwnAuthor(chatId, cancellationToken).Require();
+        var streamId = StreamId.New(NodeRef.ThisNodeAlias).Value;
+        var textEntry = await tester.Commander.Call(new ChatsBackend_ChangeEntry(ChatEntryId.New(chatId, 0),
                 null,
                 Change.Create(new ChatEntryDiff {
                     AuthorId = author.Id,
+                    ContentStreamId = streamId,
+                    Audio = new ChatEntryAudio { StreamId = streamId },
                     Content = "",
-                    StreamId = StreamId.New(NodeRef.ThisNodeAlias).Value,
                     BeginsAt = now,
-                    ClientSideBeginsAt = now,
-                })),
-            cancellationToken);
-        var textEntry = await tester.Commander.Call(new ChatsBackend_ChangeEntry(TextEntryId.New(chatId, 0),
-                null,
-                Change.Create(new ChatEntryDiff {
-                    AuthorId = author.Id,
-                    StreamId = StreamId.New(NodeRef.ThisNodeAlias).Value,
-                    AudioEntryLid = audioEntry.LocalId,
-                    Content = "",
                 })),
             cancellationToken: cancellationToken);
         var entryLanguage = await tester
-            .CreateEntryLanguage(textEntry.Id.ToTextEntryId(), language, textEntry.ContentHash, cancellationToken)
+            .CreateEntryLanguage(textEntry.Id, language, textEntry.ContentHash, cancellationToken)
             .ConfigureAwait(false);
-        return new (audioEntry, textEntry, entryLanguage);
+        return new (textEntry, entryLanguage);
     }
 
     public static async Task<StreamingEntry> FinalizeStreamingEntry(
@@ -80,30 +72,20 @@ public static class ChatEntryOperations
     {
         var clocks = tester.AppServices.Clocks();
         var now = clocks.SystemClock.Now;
-        var (audioEntry, textEntry, _) = streamingEntry;
-        audioEntry = await tester.Commander.Call(new ChatsBackend_ChangeEntry(
-            audioEntry.Id,
-            null, // do not perform version check there - it might have already been changed and it's OK
-            Change.Update(new ChatEntryDiff {
-                Content = "fake-blob-id",
-                StreamId = "",
-                EndsAt = now,
-                ContentEndsAt = now,
-            })), cancellationToken);
+        var textEntry = streamingEntry.ChatEntrySlim;
 
         textEntry = await tester.Commander.Call(new ChatsBackend_ChangeEntry(textEntry.Id, textEntry.Version, Change.Update(new ChatEntryDiff {
             Content = text,
-            StreamId = "",
-            AudioEntryLid = audioEntry.LocalId,
+            ContentStreamId = "",
+            Audio = new ChatEntryAudio { MediaId = MediaId.Parse("fake:mediaid") },
             EndsAt = now,
-            TimeMap = LinearMap.Zero,
         })), cancellationToken);
 
         var entryLanguage = await tester.UpdateEntryLanguage(
             streamingEntry.EntryLanguage with { EntryContentHash = textEntry.ContentHash },
             cancellationToken);
-        return new (audioEntry, textEntry, entryLanguage);
+        return new (textEntry, entryLanguage);
     }
 }
 
-public sealed record StreamingEntry(ChatEntry AudioEntry, ChatEntry TextEntry, ChatEntryLanguage EntryLanguage);
+public sealed record StreamingEntry(ChatEntry ChatEntrySlim, ChatEntryLanguage EntryLanguage);

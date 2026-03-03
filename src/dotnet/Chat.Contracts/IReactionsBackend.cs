@@ -8,9 +8,9 @@ namespace ActualChat.Chat;
 public interface IReactionsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
-    Task<Reaction?> Get(TextEntryId entryId, AuthorId authorId, CancellationToken cancellationToken);
+    Task<Reaction?> Get(ChatEntryId entryId, AuthorId authorId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ReactionSummary[]> List(TextEntryId entryId, CancellationToken cancellationToken);
+    Task<ReactionSummary[]> List(ChatEntryId entryId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task OnReact(ReactionsBackend_React command, CancellationToken cancellationToken);
@@ -23,8 +23,8 @@ public interface IReactionsBackend : IComputeService, IBackendService
 // ReSharper disable once InconsistentNaming
 public sealed partial record ReactionsBackend_React(
     [property: DataMember, MemoryPackOrder(0)] Reaction Reaction
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<TextEntryId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatEntryId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public TextEntryId ShardKey => Reaction.EntryId;
+    public ChatEntryId ShardKey => Reaction.EntryId;
 }

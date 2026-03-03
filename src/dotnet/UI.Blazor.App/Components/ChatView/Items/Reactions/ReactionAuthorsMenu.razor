@@ -21,7 +21,7 @@
             throw new ArgumentOutOfRangeException(nameof(Arguments));
 
         var emoji = Emoji.Parse(emojiId);
-        var entryId = TextEntryId.Parse(sEntryId);
+        var entryId = ChatEntryId.Parse(sEntryId);
         var summaries = await Reactions.ListSummaries(Session, entryId, CancellationToken.None).ConfigureAwait(false);
         var summary = summaries.FirstOrDefault(x => x.Emoji == emoji);
 

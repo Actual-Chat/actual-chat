@@ -6,9 +6,8 @@ public static class ChatsExt
     public static ChatEntryReader NewEntryReader(
         this IChats chats,
         Session session,
-        ChatId chatId,
-        ChatEntryKind entryKind)
-        => new(chats, session, chatId, entryKind);
+        ChatId chatId)
+        => new(chats, session, chatId);
 
     public static async ValueTask<ChatEntry?> GetEntry(
         this IChats chats,
@@ -20,7 +19,6 @@ public static class ChatsExt
             var idTile = Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(entryId.LocalId);
             var tile = await chats.GetTile(session,
                     entryId.ChatId,
-                    entryId.Kind,
                     idTile.Range,
                     cancellationToken)
                 .ConfigureAwait(false);
@@ -36,11 +34,10 @@ public static class ChatsExt
         this IChats chats,
         Session session,
         ChatId chatId,
-        ChatEntryKind entryKind,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var idRange = await chats.GetIdRange(session, chatId, entryKind, cancellationToken).ConfigureAwait(false);
-        var entryReader = chats.NewEntryReader(session, chatId, entryKind);
+        var idRange = await chats.GetIdRange(session, chatId, cancellationToken).ConfigureAwait(false);
+        var entryReader = chats.NewEntryReader(session, chatId);
         await foreach (var chatEntry in entryReader.ReadReverse(idRange, cancellationToken).ConfigureAwait(false))
             yield return chatEntry;
     }

@@ -36,15 +36,15 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
         };
         var parentChatEntries = await InsertEntries(commander, session, parentChat.Id, messages, cancellationToken);
 
-        var entryIdsForThread = parentChatEntries.Where((c, i) => i is 0 or 2).Select(c => c.Id.ToTextEntryId()).ToArray();
+        var entryIdsForThread = parentChatEntries.Where((c, i) => i is 0 or 2).Select(c => c.Id).ToArray();
         var chat = await CreateThreadChat(commander, chats, session, parentChat.Id, "Thread#1", entryIdsForThread, cancellationToken);
 
-        var range = await chats.GetIdRange(session, chat.Id, ChatEntryKind.Text, cancellationToken);
+        var range = await chats.GetIdRange(session, chat.Id, cancellationToken);
         range.IsEmpty.Should().BeFalse();
         var tileStack = Constants.Chat.ViewIdTileStack;
         var resultChatEntries = new List<ChatEntry>();
         foreach (var tileRange in tileStack.GetOptimalCoveringTiles(range)) {
-            var tile = await chats.GetTile(session, chat.Id, ChatEntryKind.Text, tileRange.Range, cancellationToken);
+            var tile = await chats.GetTile(session, chat.Id, tileRange.Range, cancellationToken);
             resultChatEntries.AddRange(tile.Entries);
         }
         resultChatEntries.Count.Should().Be(2);
@@ -83,7 +83,7 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
         };
         var parentChatEntries = await InsertEntries(commander, session, parentChat.Id, messages, cancellationToken);
 
-        var entryIdsForThread = parentChatEntries.Where((c, i) => i is 0 or 2).Select(c => c.Id.ToTextEntryId()).ToArray();
+        var entryIdsForThread = parentChatEntries.Where((c, i) => i is 0 or 2).Select(c => c.Id).ToArray();
         var chat1 = await CreateThreadChat(commander, chats, session, parentChat.Id, "Thread#1", entryIdsForThread, cancellationToken);
 
         var messages2 = new[] {
@@ -93,15 +93,15 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
 
         var threadChatEntries = await InsertEntries(commander, session, chat1.Id, messages2, cancellationToken);
 
-        var entryIdsForThread2 = threadChatEntries.Select(c => c.Id.ToTextEntryId()).ToArray();
+        var entryIdsForThread2 = threadChatEntries.Select(c => c.Id).ToArray();
         var chat2 = await CreateThreadChat(commander, chats, session, chat1.Id, "Thread#2", entryIdsForThread2, cancellationToken);
 
-        var range = await chats.GetIdRange(session, chat2.Id, ChatEntryKind.Text, cancellationToken);
+        var range = await chats.GetIdRange(session, chat2.Id, cancellationToken);
         range.IsEmpty.Should().BeFalse();
         var tileStack = Constants.Chat.ViewIdTileStack;
         var resultChatEntries = new List<ChatEntry>();
         foreach (var tileRange in tileStack.GetOptimalCoveringTiles(range)) {
-            var tile = await chats.GetTile(session, chat2.Id, ChatEntryKind.Text, tileRange.Range, cancellationToken);
+            var tile = await chats.GetTile(session, chat2.Id, tileRange.Range, cancellationToken);
             resultChatEntries.AddRange(tile.Entries);
         }
         resultChatEntries.Count.Should().Be(2);
@@ -144,7 +144,7 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
             "I am fine! Thanks.",
         };
         var parentChatEntries = await InsertEntries(commander, session, parentChat.Id, messages, cancellationToken);
-        var entryIdsForThread = parentChatEntries.Where((c, i) => i is 0 or 2).Select(c => c.Id.ToTextEntryId()).ToArray();
+        var entryIdsForThread = parentChatEntries.Where((c, i) => i is 0 or 2).Select(c => c.Id).ToArray();
         var threadChat = await CreateThreadChat(commander, chats, session, parentChat.Id, "Thread#1", entryIdsForThread, cancellationToken);
 
         await commander.Run(new Chats_Change(session, threadChat.Id, null, Change.Remove<ChatDiff>()), cancellationToken);
@@ -176,7 +176,7 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
             "I am fine! Thanks.",
         };
         var parentChatEntries = await InsertEntries(commander, session, parentChat.Id, messages, cancellationToken);
-        var entryIdsForThread = parentChatEntries.Where((c, i) => i is 0 or 2).Select(c => c.Id.ToTextEntryId()).ToArray();
+        var entryIdsForThread = parentChatEntries.Where((c, i) => i is 0 or 2).Select(c => c.Id).ToArray();
         var threadChat = await CreateThreadChat(commander, chats, session, parentChat.Id, "Thread#1", entryIdsForThread, cancellationToken);
 
         await commander.Run(new Chats_Change(session, parentChat.Id, null, Change.Remove<ChatDiff>()), cancellationToken);
@@ -210,7 +210,7 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
             "I am fine! Thanks.",
         };
         var parentChatEntries = await InsertEntries(commander, session, parentChat.Id, messages, cancellationToken);
-        var entryIdsForThread = parentChatEntries.Select(c => c.Id.ToTextEntryId()).ToArray();
+        var entryIdsForThread = parentChatEntries.Select(c => c.Id).ToArray();
         var threadChat = await CreateThreadChat(commander, chats, session, parentChat.Id, "Thread#1", entryIdsForThread, cancellationToken);
 
         await AssertThreadChatHasSameReadWritePermissionsAsParent(
@@ -237,7 +237,7 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
     }
 
     private static async Task<Chat> CreateThreadChat(ICommander commander, IChats chats, Session session, ChatId parentChatId,
-        string title, TextEntryId[] entryIdsForThread, CancellationToken cancellationToken)
+        string title, ChatEntryId[] entryIdsForThread, CancellationToken cancellationToken)
     {
         var chatThread = await commander.Call(new ChatThreads_Start(session, parentChatId, title, "", entryIdsForThread), cancellationToken);
         var chat = await chats.Get(session, chatThread.Id, cancellationToken);
@@ -250,7 +250,7 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
     {
         var parentChatEntries = new List<ChatEntry>();
         foreach (var message in messages) {
-            var cmd = new Chats_UpsertTextEntry(session, chatId, null) { Text = message };
+            var cmd = new Chats_UpsertEntry(session, chatId, null) { Text = message };
             var chatEntry = await commander.Call(cmd, cancellationToken);
             parentChatEntries.Add(chatEntry);
         }

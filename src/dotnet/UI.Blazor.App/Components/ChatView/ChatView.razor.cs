@@ -260,11 +260,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (chat == null)
             return;
 
-        var entryReader = new ChatEntryReader(Chats, Session, chatId, ChatEntryKind.Text);
+        var entryReader = new ChatEntryReader(Chats, Session, chatId);
         var author = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         var authorId = author?.Id;
         var chatIdRange = await Chats
-            .GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken)
+            .GetIdRange(Session, chatId, cancellationToken)
             .ConfigureAwait(false);
 
         // Getting the very last chat entry
@@ -292,7 +292,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 ResetNewMessagesLineState();
                 UpdateReadPosition(lastEntryLid);
             }
-            if (entry.IsStreaming || entry.AudioEntryLid.HasValue)
+            if (entry.IsContentStreaming || entry.HasAudio)
                 continue;
 
             await NavigateTo(lastEntryLid, false).ConfigureAwait(false);
@@ -362,7 +362,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         Computed<Range<long>> cChatIdRange;
         using (Computed.BeginIsolation())
             cChatIdRange = await Computed.Capture(
-                () => Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken),
+                () => Chats.GetIdRange(Session, chatId, cancellationToken),
                 cancellationToken);
         var chatIdRange = cChatIdRange.Value;
         var dataQuery = GetChatDataQuery(query,
@@ -463,7 +463,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             else if (nav.MustHighlight)
                 // TODO(AK): Implement highlighting of conversations
                 ChatUI.HighlightEntry(
-                    TextEntryId.New(chatId, navChatMessage.Id),
+                    ChatEntryId.New(chatId, navChatMessage.Id),
                     false);
         }
         // Determine scroll target
@@ -657,9 +657,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private async ValueTask<ChatEntry?> GetFirstEntry(long minEntryLid, CancellationToken cancellationToken)
     {
         var chatId = ChatId;
-        var entryReader = new ChatEntryReader(Chats, Session, chatId, ChatEntryKind.Text);
+        var entryReader = new ChatEntryReader(Chats, Session, chatId);
         var chatIdRange = await Chats
-            .GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken)
+            .GetIdRange(Session, chatId, cancellationToken)
             .ConfigureAwait(false);
         var range = new Range<long>(minEntryLid, minEntryLid + (20 * ChatUI.IdTileStack.MinTileSize))
             .IntersectWith(chatIdRange);

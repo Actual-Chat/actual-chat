@@ -107,7 +107,7 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
 
         await ComputedTest.When(async ct => {
             // act
-            var translation = await Translations.Get(Tester.Session, TranslationId.New((TextEntryId)entry.Id, targetLang), true, ct);
+            var translation = await Translations.Get(Tester.Session, TranslationId.New((ChatEntryId)entry.Id, targetLang), true, ct);
 
             // assert
             translation.Should().NotBeNull();
@@ -130,7 +130,7 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
         // act
         await ComputedTest.When(async ct => {
                 // act
-                var translation = await Translations.Get(Tester.Session, TranslationId.New((TextEntryId)entry.Id, targetLang), true, ct);
+                var translation = await Translations.Get(Tester.Session, TranslationId.New((ChatEntryId)entry.Id, targetLang), true, ct);
 
                 // assert
                 translation.Should().NotBeNull();
@@ -159,14 +159,14 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
                 var entry = await Tester.CreateTextEntry(chatId, original);
                 // Set the language to English - this allows the translation system to skip
                 // unnecessary LLM calls when translating English to English
-                await Tester.CreateEntryLanguage(entry.Id.ToTextEntryId(), Languages.English, entry.ContentHash);
-                _ = Tester.GetTranslation(TranslationId.New((TextEntryId)entry.Id, targetLanguage), true, CancellationToken.None);
+                await Tester.CreateEntryLanguage(entry.Id, Languages.English, entry.ContentHash);
+                _ = Tester.GetTranslation(TranslationId.New((ChatEntryId)entry.Id, targetLanguage), true, CancellationToken.None);
                 return entry;
             })
             .Collect(1);
         foreach (var entry in entries) {
             // act
-            var translation = await WhenTranslated((TextEntryId)entry.Id, targetLanguage);
+            var translation = await WhenTranslated((ChatEntryId)entry.Id, targetLanguage);
 
             // assert
             if (!translation.Content.IsNullOrEmpty())
@@ -203,7 +203,7 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
 
         // act
         var translations = await Enumerable.Range(0, messages.Length)
-            .Select(i => WhenTranslated((TextEntryId)entries[i].Id, Languages.Russian))
+            .Select(i => WhenTranslated((ChatEntryId)entries[i].Id, Languages.Russian))
             .Collect(1);
 
         // assert
@@ -220,7 +220,7 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
         return;
     }
 
-    private Task<Translation> WhenTranslated(TextEntryId id, Language language)
+    private Task<Translation> WhenTranslated(ChatEntryId id, Language language)
         => ComputedTest.When(async ct => {
                 var translation = await Translations.Get(Tester.Session, TranslationId.New(id, language), true, ct).Require();
                 translation.IsStreaming.Should().BeFalse();
@@ -232,7 +232,7 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
     {
         var expectedLanguages = sExpectedLanguages.Split([',']).Select(Language.Parse).ToList();
         return ComputedTest.When(async ct => {
-                var language = await Translations.GetLanguage(Tester.Session, (TextEntryId)id, ct).Require();
+                var language = await Translations.GetLanguage(Tester.Session, (ChatEntryId)id, ct).Require();
                 language.Languages.Should().BeEquivalentTo(expectedLanguages, "expected {0} for #{1}", sExpectedLanguages, id);
                 return language.Languages;
             },

@@ -43,7 +43,7 @@ public interface INotificationsBackend : IComputeService, IBackendService
     // Events
 
     [EventHandler]
-    Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
+    Task OnChatEntryChangedEvent(ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken);
     [EventHandler]
     Task OnReactionChangedEvent(ReactionChangedEvent eventCommand, CancellationToken cancellationToken);
     [EventHandler]
@@ -156,7 +156,7 @@ public sealed partial record NotificationsBackend_NotifyMembers(
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_NotifyMentionedMembers(
     [property: DataMember, MemoryPackOrder(0)] UserId UserId,
-    [property: DataMember, MemoryPackOrder(1)] TextEntryId TextEntryId,
+    [property: DataMember, MemoryPackOrder(1)] ChatEntryId ChatEntryId,
     [property: DataMember, MemoryPackOrder(2)] UserId[] UserIds
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {

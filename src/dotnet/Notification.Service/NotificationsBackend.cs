@@ -384,21 +384,21 @@ public class NotificationsBackend(IServiceProvider services)
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (userId, textEntryId, mentionedUserIds) = command;
-        var chatId = textEntryId.ChatId;
+        var (userId, ChatEntryId, mentionedUserIds) = command;
+        var chatId = ChatEntryId.ChatId;
 
         var subscribedUserIds = await ListSubscribedUserIds(chatId, cancellationToken).ConfigureAwait(false);
         var userIds = subscribedUserIds.Intersect(mentionedUserIds).ToArray();
         if (userIds.Length == 0)
             return;
 
-        await NotifyMembersInternal(userId, chatId, textEntryId.LocalId, userIds, cancellationToken).ConfigureAwait(false);
+        await NotifyMembersInternal(userId, chatId, ChatEntryId.LocalId, userIds, cancellationToken).ConfigureAwait(false);
     }
 
     // Event handlers
 
     // [EventHandler]
-    public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
+    public virtual async Task OnChatEntryChangedEvent(ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
@@ -406,17 +406,17 @@ public class NotificationsBackend(IServiceProvider services)
         var (entry, author, changeKind, oldEntry) = eventCommand;
         if (entry.IsSystemEntry)
             return;
-        if (entry.Id is not TextEntryId entryId)
+        if (entry.Id is not ChatEntryId entryId)
             return;
 
         var chatId = entry.ChatId;
-        if (entry.AudioEntryLid.HasValue) { // Maybe has transcription
+        if (entry.HasAudio) { // Maybe has transcription
             if (changeKind != ChangeKind.Update)
                 return;
 
             // When the transcribed message is being finalized, it's updated to IsStreaming = false.
             // At this moment we can notify chat users.
-            var isFinalized = oldEntry is { IsStreaming: true } && !entry.IsStreaming;
+            var isFinalized = oldEntry is { IsContentStreaming: true } && !entry.IsContentStreaming;
             if (!isFinalized)
                 return;
         }
@@ -469,7 +469,7 @@ public class NotificationsBackend(IServiceProvider services)
             return;
         if (author.Id == reactionAuthor.Id) // No notifs on your own reactions to your own messages
             return;
-        if (entry.Id is not TextEntryId entryId)
+        if (entry.Id is not ChatEntryId entryId)
             return;
 
         var (text, _) = await GetText(entry, MarkupConsumer.ReactionNotification, cancellationToken).ConfigureAwait(false);
@@ -554,7 +554,7 @@ public class NotificationsBackend(IServiceProvider services)
 
     private async ValueTask EnqueueMessageRelatedNotifications(
         ChatId chatId,
-        TextEntryId? entryId,
+        ChatEntryId? entryId,
         AuthorFull changeAuthor,
         string content,
         NotificationKind kind,
@@ -671,7 +671,7 @@ public class NotificationsBackend(IServiceProvider services)
         var now = Clocks.CoarseSystemClock.Now;
         var similarityKey = now.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
         var content = $"{author.Avatar.Name} asks for attention";
-        var lastEntryId = TextEntryId.New(chatId, textEntryLid);
+        var lastEntryId = ChatEntryId.New(chatId, textEntryLid);
         await EnqueueMessageRelatedNotifications(
             chatId, lastEntryId, author, content, NotificationKind.Attention,
             similarityKey, userIds, cancellationToken)

@@ -19,7 +19,7 @@
         }
     </div>
 }
-else if (Entry.HasAttachmentUploads) {
+else if (Entry.HasUploadingAttachments) {
     if (IsOwnMessage) {
         <ChatEntryAttachmentUploadsViewContainer
             Hub="@Hub"
@@ -39,7 +39,7 @@ else if (Entry.HasAttachmentUploads) {
     [Parameter] public bool IsUnreadByOthers { get; set; }
     [Parameter] public bool IsUnreadByOthersBlockStart { get; set; }
 
-    private (TextEntryAttachment[], TextEntryAttachment[]) GetOrderedAttachmentList(ChatEntry entry)
+    private (ChatEntryAttachment[], ChatEntryAttachment[]) GetOrderedAttachmentList(ChatEntry entry)
         => (entry.Attachments.Where(a => a.IsVisualMedia()).ToArray(),
             entry.Attachments.Where(a => !a.IsVisualMedia()).ToArray());
 }

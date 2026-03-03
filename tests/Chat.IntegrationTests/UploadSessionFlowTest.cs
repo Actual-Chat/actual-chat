@@ -137,21 +137,13 @@ public class UploadSessionFlowTest(ChatCollection.AppHostFixture fixture, ITestO
     }
 
     // Test file provider that uploads data via ChunkedFileUploader
-    private sealed class DataFileProvider : IFileProvider
+    private sealed class DataFileProvider(byte[] data, string fileName, string contentType) : IFileProvider
     {
-        private readonly byte[] _data;
-
-        public FileMetadata Metadata { get; }
-
-        public DataFileProvider(byte[] data, string fileName, string contentType)
-        {
-            _data = data;
-            Metadata = new FileMetadata {
-                FileName = fileName,
-                FileType = contentType,
-                Length = data.Length,
-            };
-        }
+        public FileMetadata Metadata { get; } = new() {
+            FileName = fileName,
+            FileType = contentType,
+            Length = data.Length,
+        };
 
         public void Initialize(IServiceProvider services) {}
 
@@ -176,7 +168,7 @@ public class UploadSessionFlowTest(ChatCollection.AppHostFixture fixture, ITestO
             return new UploadSource(metadata, new StreamUploadSource(GetFile));
 
             Task<Stream> GetFile()
-                => Task.FromResult<Stream>(new MemoryStream(_data));
+                => Task.FromResult<Stream>(new MemoryStream(data));
         }
     }
 }

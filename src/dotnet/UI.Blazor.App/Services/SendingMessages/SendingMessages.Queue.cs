@@ -34,14 +34,14 @@ partial class SendingMessages
                 return chatEntry1;
         }
         var mediaIds = await ReserveMediaIds(request, cancellationToken).ConfigureAwait(false);
-        var textEntryAttachments = mediaIds
-            .Select(x => new TextEntryAttachment { MediaId = x })
+        var attachments = mediaIds
+            .Select(x => new ChatEntryAttachment { MediaId = x })
             .ToArray();
-        var cmd = new Chats_UpsertTextEntry(Session, request.ChatId, request.LocalId) {
+        var cmd = new Chats_UpsertEntry(Session, request.ChatId, request.LocalId) {
             Text = request.Text,
             RepliedEntryLid = request.RepliedEntryLid,
             ClientId = request.ClientId,
-            EntryAttachments = textEntryAttachments,
+            Attachments = attachments,
         };
         // // Simulate long sending
         // await Task.Delay(5000, cancellationToken).ConfigureAwait(false);
@@ -59,13 +59,13 @@ partial class SendingMessages
             AnalyticEvents.RaiseMessagePosted(
                 cmd.RepliedEntryLid.HasValue,
                 !cmd.Text.IsNullOrEmpty(),
-                cmd.EntryAttachments.Length);
+                cmd.Attachments.Length);
         return chatEntry;
     }
 
     private async Task<ChatEntry?> TryFindPreviouslySendEntry(ChatId chatId, string clientId, CancellationToken cancellationToken)
     {
-        var range = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
+        var range = await Chats.GetIdRange(Session, chatId, cancellationToken).ConfigureAwait(false);
         if (range.IsEmpty)
             return null;
 
@@ -78,7 +78,7 @@ partial class SendingMessages
             return null;
 
         var ownAuthorId = ownAuthor.Id;
-        var entryReader = Chats.NewEntryReader(Session, chatId, ChatEntryKind.Text);
+        var entryReader = Chats.NewEntryReader(Session, chatId);
         var counter = 0;
         const int maxResendScanCount = 200; // Scan the last 200 messages
         await foreach (var chatEntry1 in entryReader.ReadReverse(range, cancellationToken).ConfigureAwait(false)) {

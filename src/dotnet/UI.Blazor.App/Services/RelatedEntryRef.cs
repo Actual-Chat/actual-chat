@@ -1,4 +1,4 @@
-﻿namespace ActualChat.UI.Blazor.App.Services;
+namespace ActualChat.UI.Blazor.App.Services;
 
 public enum RelatedEntryKind
 {
@@ -12,11 +12,11 @@ public sealed partial record RelatedEntryRef(
     [property: DataMember, MemoryPackOrder(1)] EntryRef EntryRef)
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public TextEntryId EntryId => EntryRef.EntryId;
+    public ChatEntryId EntryId => EntryRef.EntryId;
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-public sealed partial record EntryRef([property: DataMember, MemoryPackOrder(0)] TextEntryId EntryId)
+public sealed partial record EntryRef([property: DataMember, MemoryPackOrder(0)] ChatEntryId EntryId)
 {
     [DataMember, MemoryPackOrder(1)]
     public ChatEntry? ChatEntry { get; init; }

@@ -81,7 +81,7 @@
             if (trackInfo is ChatAudioTrackInfo { AudioEntry: { } audioEntry }) {
                 if (audioEntry.ChatId != Entry.ChatId)
                     continue;
-                if (audioEntry.LocalId == Entry.AudioEntryLid) {
+                if (audioEntry.LocalId == Entry.LocalId) {
                     if (isPaused || playingTrack.State.IsStarted)
                         canPlay = false;
                 }
@@ -103,19 +103,13 @@
         return Task.CompletedTask;
     }
 
-    private async Task OnPlay() {
+    private Task OnPlay() {
         var entry = Entry;
         var chatId = entry.ChatId;
-        var audioEntryId = AudioEntryId.New(chatId, entry.AudioEntryLid ?? -1);
-        var audioEntry = await Chats.GetEntry(Session, audioEntryId);
-        if (audioEntry == null) {
-            Log.LogWarning("Can't play: audio entry with Id = {Id} doesn't exist", audioEntryId);
-            return; // We can't do much in this case
-        }
-
-        var startAt = audioEntry.BeginsAt;
+        var startAt = entry.BeginsAt;
         var chatAudioUI = Services.GetRequiredService<ChatAudioUI>();
         chatAudioUI.StartReplay(chatId, startAt);
+        return Task.CompletedTask;
     }
 
     // Nested types

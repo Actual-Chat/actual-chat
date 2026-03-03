@@ -4,7 +4,7 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public class TranscriptStreamer(TextEntryId id, AppUIHub hub) : WorkerBase
+public class TranscriptStreamer(ChatEntryId id, AppUIHub hub) : WorkerBase
 {
     private static readonly TimeSpan TranscriptThrottleInterval = TimeSpan.FromMilliseconds(320); // LLM usually responds within this threshold
     private static readonly RetryDelaySeq StreamRetryDelays = RetryDelaySeq.Exp(0.1, 2);

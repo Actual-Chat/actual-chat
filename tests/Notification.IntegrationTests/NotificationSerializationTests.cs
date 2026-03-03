@@ -52,7 +52,7 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
     [Fact]
     public void Notification_WithChatEntryNotificationOption()
     {
-        var entryId = TextEntryId.New(TestChatId, 1);
+        var entryId = ChatEntryId.New(TestChatId, 1);
         var authorId = AuthorId.New(TestChatId, 5);
         var id = NotificationId.New(TestUserId, NotificationKind.Message, "1234");
         var notification = new Notification(id, 1) {
@@ -86,7 +86,7 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
     [Fact]
     public void ChatEntryNotificationOption_Basic()
     {
-        var entryId = TextEntryId.New(TestChatId, 1);
+        var entryId = ChatEntryId.New(TestChatId, 1);
         var authorId = AuthorId.New(TestChatId, 5);
         var option = new ChatEntryNotificationOption(entryId, authorId);
         option.AssertPassesThroughAllSerializers();
@@ -163,7 +163,7 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
     [Fact]
     public void Notifications_NotifyMentionedMembers_Basic()
     {
-        var entryId = TextEntryId.New(TestChatId, 1);
+        var entryId = ChatEntryId.New(TestChatId, 1);
         var cmd = new Notifications_NotifyMentionedMembers(TestSession, entryId);
         cmd.AssertPassesThroughAllSerializers();
     }
@@ -229,12 +229,12 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
     [Fact]
     public void NotificationsBackend_NotifyMentionedMembers_Basic()
     {
-        var entryId = TextEntryId.New(TestChatId, 1);
+        var entryId = ChatEntryId.New(TestChatId, 1);
         var cmd = new NotificationsBackend_NotifyMentionedMembers(TestUserId, entryId, [TestUserId]);
         cmd.AssertPassesThroughAllSerializers(
             (deserialized, original) => {
                 deserialized.UserId.Should().Be(original.UserId);
-                deserialized.TextEntryId.Should().Be(original.TextEntryId);
+                deserialized.ChatEntryId.Should().Be(original.ChatEntryId);
             }, Out);
     }
 }

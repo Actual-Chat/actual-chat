@@ -9,7 +9,7 @@ public static class ChatEntryEx
         if (chatEntry.IsSystemEntry)
             return chatEntry.Id.Value;
 
-        var useClientId = chatEntry.IsSending || chatEntry.HasAttachmentUploads && isOwnMessage;
+        var useClientId = chatEntry.IsSending || chatEntry.HasUploadingAttachments && isOwnMessage;
         if (useClientId)
             return chatEntry.ClientUid;
 

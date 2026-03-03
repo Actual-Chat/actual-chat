@@ -34,7 +34,6 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public bool IsSystemEntry { get; set; }
     public bool IsThreadStartEntry { get; set; }
     public bool IsThreadEntry { get; set; }
-    public bool HasAttachmentUploads { get; set; }
     public string ClientId { get; set; } = "";
 
     public string? ForwardedChatTitle { get; set; }
@@ -65,66 +64,89 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public double Duration { get; set; }
 
-    public ChatEntryKind Kind { get; set; }
+    public int Kind { get; set; }
     public string Content { get; set; } = "";
     public string? ContentHash { get; set; } = "";
     public bool HasAttachments { get; set; }
     public bool HasReactions { get; set; }
     public string? LinkPreviewIds { get; set; }
     public LinkPreviewMode? LinkPreviewMode { get; set; }
-    public string? StreamId { get; set; }
+    public string? ContentStreamId { get; set; }
 
-    public long? AudioEntryId { get; set; }
-    public long? VideoEntryId { get; set; }
+    public long? AudioEntryId { get; set; } // TODO(AY): Remove
     public string? AudioId { get; set; }
     public string? TimeMap { get; set; }
 
-    public ChatEntry ToModel(IEnumerable<TextEntryAttachment>? attachments = null, LinkPreview[]? linkPreviews = null)
+    public ChatEntry ToModel(
+        IEnumerable<ChatEntryAttachment>? attachments = null,
+        LinkPreview[]? linkPreviews = null)
     {
         // fix NRE during deserialization of ApiArray at versions earlier than v0.200
-        var attachmentsArray = attachments == null
-            ? []
-            : attachments.OrderBy(x => x.Index).ToArray();
-        var hasAttachmentUploads = attachmentsArray.Any(c => c.Media.BlobId.IsNullOrEmpty());
+        var attachmentsArray = attachments == null ? [] : attachments.OrderBy(x => x.Index).ToArray();
+        var hasUploadingAttachments = attachmentsArray.Any(c => !c.Media.IsUploaded);
         var chatId = ActualChat.ChatId.Parse(ChatId);
-        var id = ChatEntryId.New(chatId, Kind, LocalId);
+        var id = ChatEntryId.New(chatId, LocalId);
         var linkPreviewIds = DeserializeLinkPreviewIds();
         linkPreviews ??= [];
+
+        var flags = ChatEntryFlags.None;
+        if (IsRemoved) flags |= ChatEntryFlags.IsRemoved;
+        if (HasReactions) flags |= ChatEntryFlags.HasReactions;
+        if (IsThreadStartEntry) flags |= ChatEntryFlags.IsThreadStart;
+        if (IsThreadEntry) flags |= ChatEntryFlags.IsThread;
+        if (hasUploadingAttachments) flags |= ChatEntryFlags.HasUploadingAttachments;
+
+        // Build partial audio from DB columns (like SystemEntry pattern)
+        var audio = BuildPartialAudio();
+
         return new (id, Version) {
-            IsRemoved = IsRemoved,
+            Flags = flags,
             AuthorId = ActualChat.AuthorId.Parse(AuthorId),
-            IsThreadStartEntry = IsThreadStartEntry,
-            IsThreadEntry = IsThreadEntry,
-            HasAttachmentUploads = HasAttachmentUploads || hasAttachmentUploads,
             ClientId = ClientId,
             BeginsAt = BeginsAt,
-            ClientSideBeginsAt = ClientSideBeginsAt.ToMoment(),
             EndsAt = EndsAt.ToMoment(),
-            ContentEndsAt = ContentEndsAt.ToMoment(),
             Content = !IsSystemEntry ? Content : "",
             ContentHash = new (ContentHash ?? ""),
             SystemEntry = IsSystemEntry ? SystemEntrySerializer.Read(Content) : null,
-            HasReactions = HasReactions,
-            StreamId = StreamId ?? "",
-            AudioEntryLid = AudioEntryId,
-            VideoEntryLid = VideoEntryId,
-            AudioId = AudioId,
+            ContentStreamId = ContentStreamId ?? "",
+            Audio = audio,
             RepliedEntryLid = RepliedChatEntryId,
-            ForwardedChatTitle = ForwardedChatTitle,
-            ForwardedAuthorId = ActualChat.AuthorId.ParseNullable(ForwardedAuthorId),
-            ForwardedAuthorName = ForwardedAuthorName,
-            ForwardedChatEntryId = ChatEntryId.ParseNullable(ForwardedChatEntryId),
-            ForwardedChatEntryBeginsAt = ForwardedChatEntryBeginsAt.ToMoment(),
-            Attachments = !hasAttachmentUploads ? attachmentsArray : [],
-            AttachmentUploads = hasAttachmentUploads ? attachmentsArray : [],
+            Forwarded = BuildForwarded(),
+            Attachments = attachmentsArray,
             LinkPreviewIds = linkPreviewIds,
             LinkPreviewMode = LinkPreviewMode ?? Media.LinkPreviewMode.Default,
             LinkPreviews = linkPreviews,
-            TimeMap = Kind == ChatEntryKind.Text
-                ? TimeMap != null
-                    ? JsonSerializer.Deserialize<LinearMap>(TimeMap)
-                    : default
-                : default,
+        };
+    }
+
+    private ChatEntryAudio? BuildPartialAudio()
+    {
+        if (AudioId.IsNullOrEmpty())
+            return null;
+
+        var timeMap = !TimeMap.IsNullOrEmpty()
+            ? JsonSerializer.Deserialize<LinearMap>(TimeMap)
+            : default;
+
+        // MediaId column stores either a MediaId (parseable) or a stream ID (not parseable)
+        return ActualChat.MediaId.TryParse(AudioId, out var mediaId)
+            ? new ChatEntryAudio { MediaId = mediaId, TimeMap = timeMap, BeginsAt = BeginsAt }
+            : new ChatEntryAudio { StreamId = AudioId, TimeMap = timeMap, BeginsAt = BeginsAt };
+    }
+
+    private ChatEntryForwarded? BuildForwarded()
+    {
+        if (ForwardedAuthorId.IsNullOrEmpty())
+            return null;
+        if (ChatEntryId.ParseNullable(ForwardedChatEntryId) is not { } forwardedChatEntryId)
+            return null;
+
+        return new ChatEntryForwarded {
+            ChatEntryId = forwardedChatEntryId,
+            AuthorId = ActualChat.AuthorId.Parse(ForwardedAuthorId),
+            BeginsAt = ForwardedChatEntryBeginsAt.ToMoment() ?? default,
+            ChatTitle = ForwardedChatTitle ?? "",
+            AuthorName = ForwardedAuthorName ?? "",
         };
     }
 
@@ -144,41 +166,57 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
         Id = id.Value;
         ChatId = model.ChatId.Value;
-        Kind = model.Kind;
+        Kind = 0;
         LocalId = model.LocalId;
         Version = model.Version;
         IsRemoved = model.IsRemoved;
-        IsThreadStartEntry = model.IsThreadStartEntry;
-        IsThreadEntry = model.IsThreadEntry;
-        HasAttachmentUploads = model.HasAttachmentUploads;
+        IsThreadStartEntry = model.IsThreadStart;
+        IsThreadEntry = model.IsThread;
         ClientId = model.ClientId;
 
         AuthorId = model.AuthorId.Value;
         BeginsAt = model.BeginsAt;
-        ClientSideBeginsAt = model.ClientSideBeginsAt;
         EndsAt = model.EndsAt;
-        ContentEndsAt = model.ContentEndsAt;
         Duration = EndsAt.HasValue ? (EndsAt.GetValueOrDefault() - BeginsAt).TotalSeconds : 0;
         HasReactions = model.HasReactions;
-        StreamId = model.StreamId;
-        AudioEntryId = model.AudioEntryLid;
-        VideoEntryId = model.VideoEntryLid;
-        AudioId = model.AudioId;
+        ContentStreamId = model.ContentStreamId;
         RepliedChatEntryId = model.RepliedEntryLid;
-        ForwardedChatTitle = model.ForwardedChatTitle;
-        ForwardedAuthorId = model.ForwardedAuthorId?.Value;
-        ForwardedAuthorName = model.ForwardedAuthorName;
-        ForwardedChatEntryId = model.ForwardedChatEntryId?.Value;
-        ForwardedChatEntryBeginsAt = model.ForwardedChatEntryBeginsAt;
+        if (model.Forwarded is { } forwarded) {
+            ForwardedChatEntryId = forwarded.ChatEntryId?.Value;
+            ForwardedAuthorId = forwarded.AuthorId?.Value;
+            ForwardedChatEntryBeginsAt = forwarded.BeginsAt;
+            ForwardedChatTitle = forwarded.ChatTitle.NullIfEmpty();
+            ForwardedAuthorName = forwarded.AuthorName.NullIfEmpty();
+        }
+        else {
+            ForwardedChatEntryId = null;
+            ForwardedAuthorId = null;
+            ForwardedChatEntryBeginsAt = null;
+            ForwardedChatTitle = null;
+            ForwardedAuthorName = null;
+        }
         Content = model.SystemEntry != null ? SystemEntrySerializer.Write(model.SystemEntry) : model.Content;
         ContentHash = model.SystemEntry != null ? HashString.None : model.GetContentHashString();
         IsSystemEntry = model.SystemEntry != null;
         LinkPreviewIds = model.LinkPreviewIds.Length != 0
             ? JsonSerializer.Serialize(model.LinkPreviewIds)
             : null;
-        TimeMap = !model.TimeMap.IsEmpty
-            ? JsonSerializer.Serialize(model.TimeMap)
-            : null;
+
+        // Write audio to DB columns (like SystemEntry → Content/IsSystemEntry)
+        if (model.Audio is { } modelAudio) {
+            var hasStreamId = !modelAudio.StreamId.IsNullOrEmpty();
+            var hasMediaId = modelAudio.MediaId is { Value.Length: > 0 };
+            Debug.Assert(hasStreamId ^ hasMediaId,
+                "ChatEntryAudio must have either StreamId or MediaId set, but not both");
+            AudioId = hasMediaId ? modelAudio.MediaId!.Value : modelAudio.StreamId;
+            TimeMap = !modelAudio.TimeMap.IsEmpty
+                ? JsonSerializer.Serialize(modelAudio.TimeMap)
+                : null;
+        }
+        else {
+            AudioId = null;
+            TimeMap = null;
+        }
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbChatEntry>
@@ -188,7 +226,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             builder.Property(x => x.AuthorId).IsRequired();
 
             builder.HasIndex(nameof(ChatId), nameof(Version), nameof(LocalId))
-                .HasFilter($"kind = {(byte)ChatEntryKind.Text}");
+                .HasFilter("kind = 0");
         }
     }
 }

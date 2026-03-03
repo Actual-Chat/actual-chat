@@ -77,6 +77,6 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
 
     // Some handy helpers
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ChatEntryReader NewEntryReader(ChatId chatId, ChatEntryKind entryKind)
-        => new(Chats, Session, chatId, entryKind);
+    public ChatEntryReader NewEntryReader(ChatId chatId)
+        => new(Chats, Session, chatId);
 }

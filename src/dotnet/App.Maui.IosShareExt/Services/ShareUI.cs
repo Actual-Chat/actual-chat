@@ -230,23 +230,27 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             ShareSuggestions.Push(contactId);
     }
 
-    private async Task CreateChatEntry(ChatId chatId, string entryText, TextEntryAttachment[] attachmentList, CancellationToken cancellationToken)
+    private async Task CreateChatEntry(
+        ChatId chatId,
+        string text,
+        ChatEntryAttachment[] attachments,
+        CancellationToken cancellationToken)
     {
-        var cmd = new Chats_UpsertTextEntry(Session, chatId, null) {
-            Text = entryText,
+        var cmd = new Chats_UpsertEntry(Session, chatId, null) {
+            Text = text,
             ClientId = RandomStringGenerator.Default.Next(6),
-            EntryAttachments = attachmentList,
+            Attachments = attachments,
         };
         await UICommander.Call(cmd, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<TextEntryAttachment[]> UploadFiles(
+    private async Task<ChatEntryAttachment[]> UploadFiles(
         ChatId chatId,
         IReadOnlyList<NSItemProvider> fileInputs,
         IProgress<double> progress,
         CancellationToken cancellationToken)
     {
-        var attachments = new TextEntryAttachment[fileInputs.Count];
+        var attachments = new ChatEntryAttachment[fileInputs.Count];
         var fileForks = progress.Fork(fileInputs.Count);
         for (var i = 0; i < fileInputs.Count; i++) {
             var fileInput = fileInputs[i];
@@ -255,7 +259,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         return attachments;
     }
 
-    private async Task<TextEntryAttachment> UploadFile(
+    private async Task<ChatEntryAttachment> UploadFile(
         ChatId chatId,
         NSItemProvider fileInput,
         IProgress<double> progress,
@@ -273,7 +277,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         var streamSource = (StreamUploadSource)uploadSource.StreamSource;
         await FileUploader.UploadData(uploadId, streamSource.GetStream(), uploadProgress, cancellationToken).ConfigureAwait(false);
         var mediaRef = await CompleteUpload().ConfigureAwait(false);
-        return new TextEntryAttachment {
+        return new ChatEntryAttachment {
             MediaId = mediaRef.MediaId,
             ThumbnailMediaId = mediaRef.ThumbnailMediaId,
         };
