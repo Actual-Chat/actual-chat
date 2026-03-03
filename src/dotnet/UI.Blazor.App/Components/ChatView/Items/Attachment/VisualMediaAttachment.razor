@@ -2,7 +2,7 @@
 @inherits ComponentBase<AppUIHub>
 @{
     var attachment = Attachment;
-    var url = UrlMapper.ContentUrl(Attachment.Media.ContentId);
+    var url = UrlMapper.ContentUrl(Attachment.Media.BlobId);
     string? previewUrl = null;
     if (attachment.IsGif() || attachment.IsSvg()) {
         previewUrl = url; // currently image proxy fails on large gifs

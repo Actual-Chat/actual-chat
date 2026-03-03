@@ -109,10 +109,10 @@
 
     private string GetImageUrl(Media? preview, LinkPreviewMode linkPreviewMode)
     {
-        if (preview?.ContentId.IsNullOrEmpty() != false)
+        if (preview?.BlobId.IsNullOrEmpty() != false)
             return "";
 
-        var imageUrl = UrlMapper.ContentUrl(preview.ContentId);
+        var imageUrl = UrlMapper.ContentUrl(preview.BlobId);
         // TODO: use image metadata for better proportions selection
         var (width, height) = GetImageMaxSize(linkPreviewMode);
         return UrlMapper.ImagePreviewUrl(imageUrl, width, height);

@@ -22,7 +22,7 @@ public sealed class ContentController(IBlobStorages blobStorages, IMediaBackend 
         if (byteStream == null)
             return NotFound();
 
-        var media = await mediaBackend.GetByContentId(blobId, cancellationToken).ConfigureAwait(false);
+        var media = await mediaBackend.GetByBlobId(blobId, cancellationToken).ConfigureAwait(false);
         if (media != null) {
             var mediaContentType = media.ContentType.IsNullOrEmpty()
                 ? MediaTypeNames.Application.Octet

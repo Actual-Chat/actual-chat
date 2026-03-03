@@ -85,7 +85,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         var attachmentsArray = attachments == null
             ? []
             : attachments.OrderBy(x => x.Index).ToArray();
-        var hasAttachmentUploads = attachmentsArray.Any(c => c.Media.ContentId.IsNullOrEmpty());
+        var hasAttachmentUploads = attachmentsArray.Any(c => c.Media.BlobId.IsNullOrEmpty());
         var chatId = ActualChat.ChatId.Parse(ChatId);
         var id = ChatEntryId.New(chatId, Kind, LocalId);
         var linkPreviewIds = DeserializeLinkPreviewIds();

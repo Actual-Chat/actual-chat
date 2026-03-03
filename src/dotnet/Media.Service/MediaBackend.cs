@@ -12,8 +12,8 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
 {
     private IDbEntityResolver<string, DbMedia> DbMediaResolver { get; }
         = services.GetRequiredService<IDbEntityResolver<string, DbMedia>>();
-    private IContentSaver ContentSaver { get; }
-        = services.GetRequiredService<IContentSaver>();
+    private IBlobStorage BlobStorage { get; }
+        = services.BlobStorages()[BlobScope.ContentRecord];
 
     // [ComputeMethod]
     public virtual async Task<Media?> Get(MediaId? mediaId, CancellationToken cancellationToken)
@@ -52,16 +52,16 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
     }
 
     // [ComputeMethod]
-    public virtual async Task<Media?> GetByContentId(string contentId, CancellationToken cancellationToken)
+    public virtual async Task<Media?> GetByBlobId(string blobId, CancellationToken cancellationToken)
     {
-        if (contentId.IsNullOrEmpty())
+        if (blobId.IsNullOrEmpty())
             return null;
 
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbMedia = await dbContext.Media
-            .Where(x => x.ContentId == contentId)
+            .Where(x => x.BlobId == blobId)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
         return dbMedia?.ToModel().ToMedia();
@@ -105,8 +105,8 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
             if (dbMedia is not null) {
                 dbMedia.RequireVersion(expectedVersion);
                 media = dbMedia.ToModel();
-                if (!dbMedia.ContentId.IsNullOrEmpty())
-                    await ContentSaver.Remove(dbMedia.ContentId, cancellationToken).ConfigureAwait(false);
+                if (!dbMedia.BlobId.IsNullOrEmpty())
+                    await BlobStorage.Delete(dbMedia.BlobId, cancellationToken).ConfigureAwait(false);
                 dbContext.Remove(dbMedia);
             }
         }
@@ -182,19 +182,19 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
             if (existentMediaSidSet.Contains(mediaId.Value))
                 continue;
 
-            var contentId = dbMedia.ContentId;
+            var blobId = dbMedia.BlobId;
             // We must check if the content already exists because it can be the second attempt to copy chat media
             // and the content might be already copied in a previous attempt, which did not finish successfully.
-            var newContentId = mediaId.GetContentId(Path.GetExtension(dbMedia.ContentId));
-            if (!await ContentSaver.Exists(newContentId, cancellationToken).ConfigureAwait(false))
-                await ContentSaver.Copy(contentId, newContentId, cancellationToken).ConfigureAwait(false);
+            var newBlobId = MediaSaver.GetBlobId(mediaId, Path.GetExtension(dbMedia.BlobId));
+            if (!await BlobStorage.Exists(newBlobId, cancellationToken).ConfigureAwait(false))
+                await BlobStorage.Copy(blobId, newBlobId, cancellationToken).ConfigureAwait(false);
             else
-                Log.LogInformation("Content with id '{NewContentId}' exists. Won't make a copy from content with id '{OriginalContentId}'",
-                    newContentId, contentId);
+                Log.LogInformation("Blob with id '{NewBlobId}' exists. Won't make a copy from blob with id '{OriginalBlobId}'",
+                    newBlobId, blobId);
 
             dbMedia.Id = mediaId.Value;
             dbMedia.Scope = mediaId.Scope;
-            dbMedia.ContentId = newContentId;
+            dbMedia.BlobId = newBlobId;
             dbContext.Media.Add(dbMedia);
             updateCount++;
         }

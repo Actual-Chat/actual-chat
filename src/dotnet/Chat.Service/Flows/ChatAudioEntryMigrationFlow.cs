@@ -135,7 +135,7 @@ public partial class ChatAudioEntryMigrationFlow : Flow<Unit>
         var contentEndsAt = audioEntry.ContentEndsAt?.ToMoment() ?? endsAt;
 
         var media = new MediaFull(mediaId) {
-            ContentId = audioBlobId,
+            BlobId = audioBlobId,
             Kind = MediaKind.ChatEntryAudio,
             ContentType = "audio/webm",
             BeginsAt = beginsAt,

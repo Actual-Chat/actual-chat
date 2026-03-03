@@ -33,10 +33,6 @@ public sealed partial class MediaId : StringIdentifier, IStringIdentifier<MediaI
     [IgnoreDataMember]
     public string LocalId { get; }
 
-    [IgnoreDataMember]
-    private string SecureHash
-        => field ??= Value.Hash(Encoding.UTF8).SHA256().AlphaNumeric();
-
     // Factories and constructors
 
     public static MediaId New(string scope)
@@ -56,11 +52,6 @@ public sealed partial class MediaId : StringIdentifier, IStringIdentifier<MediaI
         Scope = scope;
         LocalId = localId;
     }
-
-    // Helpers
-
-    public string GetContentId(string fileExt)
-        => $"media/{SecureHash}/{LocalId}{fileExt}";
 
     // Equality
 

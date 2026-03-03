@@ -242,7 +242,7 @@ public interface IMediaBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<Media?> GetByMediaIdScope(string mediaIdScope, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<Media?> GetByContentId(string contentId, CancellationToken cancellationToken);
+    Task<Media?> GetByBlobId(string blobId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<Media?> OnChange(MediaBackend_Change command, CancellationToken cancellationToken);

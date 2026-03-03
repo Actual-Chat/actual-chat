@@ -1,3 +1,5 @@
+using System.Text;
+using ActualChat.Hashing;
 using ActualChat.Uploads;
 using SixLabors.ImageSharp;
 
@@ -8,18 +10,44 @@ namespace ActualChat.Media;
 /// </summary>
 public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
 {
-    private IContentSaver ContentSaver { get; } = services.GetRequiredService<IContentSaver>();
+    private IBlobStorage BlobStorage { get; } = services.BlobStorages()[BlobScope.ContentRecord];
     private IMediaBackend MediaBackend { get; } = services.GetRequiredService<IMediaBackend>();
     private ICommander Commander { get; } = services.Commander();
 
-    public async Task<MediaContent> Save(MediaId mediaId, ProcessedFile processedFile, bool isUpdate, MediaKind kind, CancellationToken cancellationToken)
+    // GetBlobId
+
+    public static string GetBlobId(MediaId mediaId, string fileExt)
     {
-        var mediaContent = GetContentId(mediaId, processedFile);
+        var mediaIdHash = mediaId.Value.Hash(Encoding.UTF8).SHA256().AlphaNumeric();
+        return $"media/{mediaIdHash}/{mediaId.LocalId}{fileExt}";
+    }
+
+    public static string GetBlobId(MediaId mediaId, UploadedFile file)
+        => GetBlobId(mediaId, Path.GetExtension(file.FileName));
+
+    public static MediaContent GetBlobId(MediaId mediaId, ProcessedFile file)
+    {
+        var blobId = GetBlobId(mediaId, file.File);
+        if (file.Thumbnail == null)
+            return new MediaContent(mediaId, blobId);
+
+        var thumbnailMediaId = MediaId.New(mediaId.Scope);
+        var thumbnailBlobId = GetBlobId(thumbnailMediaId, file.Thumbnail);
+        return new MediaContent(mediaId, blobId, thumbnailMediaId, thumbnailBlobId);
+    }
+
+    // Save
+
+    public async Task<MediaContent> Save(
+        MediaId mediaId, ProcessedFile processedFile, bool isUpdate, MediaKind kind,
+        CancellationToken cancellationToken)
+    {
+        var mediaContent = GetBlobId(mediaId, processedFile);
         if (processedFile.Thumbnail != null) {
-            await SaveFileContent(processedFile.Thumbnail, mediaContent.ThumbnailContentId!, cancellationToken).ConfigureAwait(false);
+            await SaveFileContent(processedFile.Thumbnail, mediaContent.ThumbnailBlobId!, cancellationToken).ConfigureAwait(false);
             await SaveMediaMetadata(
                 mediaContent.ThumbnailMediaId!,
-                mediaContent.ThumbnailContentId!,
+                mediaContent.ThumbnailBlobId!,
                 processedFile.Thumbnail,
                 processedFile.Size,
                 null,
@@ -29,10 +57,10 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
                 .ConfigureAwait(false);
             await SetMediaProgressToReady(mediaContent.ThumbnailMediaId!, cancellationToken).ConfigureAwait(false);
         }
-        await SaveFileContent(processedFile.File, mediaContent.ContentId, cancellationToken).ConfigureAwait(false);
+        await SaveFileContent(processedFile.File, mediaContent.BlobId, cancellationToken).ConfigureAwait(false);
         await SaveMediaMetadata(
             mediaId,
-            mediaContent.ContentId,
+            mediaContent.BlobId,
             processedFile.File,
             processedFile.Size,
             mediaContent.ThumbnailMediaId,
@@ -44,39 +72,23 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
     }
 
     public Task<MediaContent> Save(
-        MediaId mediaId,
-        UploadedFile file,
-        Size? size,
-        MediaKind kind,
+        MediaId mediaId, UploadedFile file, Size? size, MediaKind kind,
         CancellationToken cancellationToken)
         => Save(mediaId, new ProcessedFile(file, size, null), false, kind, cancellationToken);
 
-    private static string GetContentId(MediaId mediaId, UploadedFile file)
-        => mediaId.GetContentId(Path.GetExtension(file.FileName));
+    // Private methods
 
-    private static MediaContent GetContentId(MediaId mediaId, ProcessedFile file)
-    {
-        var contentId = GetContentId(mediaId, file.File);
-        if (file.Thumbnail == null)
-            return new MediaContent(mediaId, contentId);
-
-        var thumbnailMediaId = MediaId.New(mediaId.Scope);
-        var thumbnailContentId = GetContentId(thumbnailMediaId, file.Thumbnail);
-        return new MediaContent(mediaId, contentId, thumbnailMediaId, thumbnailContentId);
-    }
-
-    private async Task SaveFileContent(UploadedFile file, string contentId, CancellationToken cancellationToken)
+    private async Task SaveFileContent(UploadedFile file, string blobId, CancellationToken cancellationToken)
     {
         var stream = await file.Open().ConfigureAwait(false);
         await using (stream.ConfigureAwait(false)) {
-            var content = new Content(contentId, file.ContentType, stream);
-            await ContentSaver.Save(content, cancellationToken).ConfigureAwait(false);
+            await BlobStorage.Write(blobId, stream, file.ContentType, cancellationToken).ConfigureAwait(false);
         }
     }
 
     private async Task SaveMediaMetadata(
         MediaId mediaId,
-        string contentId,
+        string blobId,
         UploadedFile file,
         Size? size,
         MediaId? thumbnailMediaId,
@@ -90,7 +102,7 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
         else
             media = new MediaFull(mediaId) { Kind = kind };
         media = media with {
-            ContentId = contentId,
+            BlobId = blobId,
             FileName = file.FileName,
             Length = file.Length,
             ContentType = file.ContentType,

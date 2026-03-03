@@ -8,7 +8,7 @@ namespace ActualChat;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record Picture(
-    [property: DataMember, MemoryPackOrder(0)] MediaContent? MediaContent,
+    [property: DataMember, MemoryPackOrder(0)] Media.MediaContent? MediaContent,
     [property: DataMember, MemoryPackOrder(1)] string? ExternalUrl = null,
     [property: DataMember, MemoryPackOrder(2)] string? AvatarKey = null
 ) {

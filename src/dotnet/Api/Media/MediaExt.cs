@@ -11,5 +11,5 @@ public static class MediaExt
             : new (media?.ToMediaContent(), externalPictureUrl, avatarKey);
 
     public static MediaContent ToMediaContent(this Media media)
-        => new (media.Id, media.ContentId);
+        => new (media.Id, media.BlobId);
 }

@@ -2,7 +2,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @{
     var fileSize = Attachment.Media.Length;
-    var url = UrlMapper.ContentUrl(Attachment.Media.ContentId);
+    var url = UrlMapper.ContentUrl(Attachment.Media.BlobId);
     MediaMimeTypes.TryGetExtension(Attachment.Media.ContentType, out var extension);
     var fileExtension = extension != null ? extension.Replace(".", "") : "";
     var fileCls = FileTypeHelper.FileColors.GetValueOrDefault(fileExtension, "file-default");
