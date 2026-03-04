@@ -143,9 +143,6 @@ public sealed class DbModule(IServiceProvider moduleServices)
                     operations.ConfigureEventLogReader(_ => new DbEventLogReader<TDbContext>.Options() {
                         CheckPeriod = TimeSpan.FromSeconds(1).ToRandom(0.1),
                     });
-
-                operations.Services.RemoveAll(sd => sd.ServiceType == typeof(DbEventLogReader<TDbContext>));
-                operations.Services.AddSingleton<DbEventLogReader<TDbContext>, FilteredDbEventLogReader<TDbContext>>();
             });
 
             configure?.Invoke(db);
