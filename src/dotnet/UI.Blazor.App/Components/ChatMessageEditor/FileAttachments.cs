@@ -57,6 +57,10 @@ public class FileAttachments : UIServiceBase<AppUIHub>
             UICommander.ShowError(e);
             return false;
         }
+        // Browser's File System Access API may return empty MIME type for some files (e.g., MOV).
+        // Fall back to detecting from file extension.
+        if (fileType.IsNullOrEmpty())
+            fileType = MediaMimeTypes.GetMimeType(fileName);
         var webFileProvider = await CreateWebFileProvider(id, fileName, fileType, size);
         if (webFileProvider is null)
             return false;
