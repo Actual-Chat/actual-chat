@@ -11,7 +11,7 @@ namespace ActualChat.Users.Db;
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    private NewtonsoftJsonSerialized<ImmutableDictionary<string, string>> _claims
+    private NewtonsoftJsonSerialized<ImmutableDictionary<string, string>?> _claims
         = ImmutableDictionary<string, string>.Empty;
 
     [Key] public string Id { get; set; } = null!;
@@ -43,11 +43,11 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     [NotMapped]
     public ImmutableDictionary<string, string> Claims {
-        get => _claims.Value;
+        get => _claims.Value ?? ImmutableDictionary<string, string>.Empty;
         set => _claims = value;
     }
 
-    public List<DbAccountIdentity> Identities => field ??= new();
+    public List<DbAccountIdentity> Identities { get; } = new();
 
     public AccountFull ToModel()
     {
@@ -71,8 +71,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public AccountFull ToModel(
         ApiMap<UserIdentity, string> identities,
         ApiMap<string, string> claims)
-    {
-        return new(UserId.Parse(Id), Version) {
+        => new(UserId.Parse(Id), Version) {
             FormatVersion = FormatVersion,
             Status = Status,
             Email = Email,
@@ -86,7 +85,6 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
             Identities = identities,
             Claims = claims,
         };
-    }
 
     public void UpdateFrom(AccountFull model)
     {
