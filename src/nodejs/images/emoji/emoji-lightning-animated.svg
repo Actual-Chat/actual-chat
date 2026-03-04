@@ -1,0 +1,68 @@
+<svg width="512" height="512" viewBox="0 0 28 28" overflow="visible" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    /* Весь холст: легкая встряска при каждой серии вспышек */
+    .thunder-container {
+      transform-origin: 14px 14px;
+      animation: thunder-vibration 2s infinite;
+    }
+
+    /* Слой для перемещения молнии в разные точки */
+    .lightning-positioner {
+      transform-origin: 14px 14px;
+      animation: jump-position 2s infinite steps(1);
+    }
+
+    /* Сама молния: частые и резкие вспышки */
+    .lightning-fx {
+      transform-origin: 14px 14px;
+      opacity: 0;
+      animation: strike-flash 2s infinite;
+    }
+
+    /* Резкие вспышки (мерцание) */
+    @keyframes strike-flash {
+      0%, 15%, 25%, 40%, 50%, 65%, 75%, 90%, 100% { 
+        opacity: 0; 
+        filter: brightness(1) drop-shadow(0 0 0px #FFDD52);
+      }
+      5%, 20%, 30%, 45%, 55%, 70%, 80%, 95% { 
+        opacity: 1; 
+        filter: brightness(2) drop-shadow(0 0 6px #FFDD52);
+      }
+    }
+
+    /* Прыжки молнии по экрану (сдвиги) */
+    @keyframes jump-position {
+      0%   { transform: translate(0, 0); }
+      25%  { transform: translate(-3px, 2px) rotate(-5deg); }
+      50%  { transform: translate(3px, -1px) rotate(5deg); }
+      75%  { transform: translate(-1px, -3px) rotate(2deg); }
+    }
+
+    /* Вибрация "воздуха" */
+    @keyframes thunder-vibration {
+      0%, 100% { transform: scale(1); }
+      5%, 30%, 55%, 80% { transform: scale(1.02) translate(0.5px, -0.5px); }
+      10%, 35%, 60%, 85% { transform: scale(1) translate(-0.5px, 0.5px); }
+    }
+  </style>
+
+  <g class="thunder-container">
+    <g class="lightning-positioner">
+      <g class="lightning-fx">
+        <path d="M11.9572 15.9648L8.57164 25.5251L23.3831 11.5797L14.2 12.8522L17.2819 3.06655L5.36494 15.9643L11.9572 15.9648Z" 
+              fill="url(#lightning_grad)" 
+              stroke="#844432" 
+              stroke-width="0.5" 
+              stroke-linejoin="round"/>
+      </g>
+    </g>
+  </g>
+
+  <defs>
+    <linearGradient id="lightning_grad" x1="15" y1="13" x2="5" y2="16.5" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFDD52"/>
+      <stop offset="1" stop-color="white"/>
+    </linearGradient>
+  </defs>
+</svg>

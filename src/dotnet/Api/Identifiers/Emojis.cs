@@ -15,7 +15,7 @@ public static class Emojis
     public static readonly Emoji Kiss = new("😘", "Face blowing a kiss", EmojiGroup.Positive);
     public static readonly Emoji Blessed = new("😇", "Smiling face with halo", EmojiGroup.Positive);
     public static readonly Emoji Hugging = new("🤗", "Hugging face", EmojiGroup.Positive);
-    public static readonly Emoji MindBlown = new("🤯", "Exploding head", EmojiGroup.Positive);
+    public static readonly Emoji ExplodingHead = new("🤯", "Exploding head", EmojiGroup.Positive);
     public static readonly Emoji Party = new("🥳", "Partying face", EmojiGroup.Positive);
     public static readonly Emoji Saluting = new("🫡", "Saluting face", EmojiGroup.Positive);
 
@@ -26,6 +26,7 @@ public static class Emojis
     public static readonly Emoji Melting = new("🫠", "Melting face", EmojiGroup.Negative);
     public static readonly Emoji Devil = new("😈", "Smiling face with horns", EmojiGroup.Negative);
     public static readonly Emoji Clown = new("🤡", "Clown face", EmojiGroup.Negative);
+    public static readonly Emoji ClownYellow = new("🤡", "clown-yellow", "Yellow clown face", EmojiGroup.Negative);
     public static readonly Emoji Bored = new("😒", "Unamused face", EmojiGroup.Negative);
     public static readonly Emoji Crazy = new("🤪", "Zany face", EmojiGroup.Negative);
     public static readonly Emoji Dead = new("💀", "Skull", EmojiGroup.Negative);
@@ -39,7 +40,6 @@ public static class Emojis
     public static readonly Emoji Love = new("❤️", "Red heart", EmojiGroup.Love);
     public static readonly Emoji InLove = new("😍", "Smiling face with heart-eyes", EmojiGroup.Love);
     public static readonly Emoji BrokenHeart = new("💔", "Broken heart", EmojiGroup.Love);
-    public static readonly Emoji Please = new("🥺", "Pleading face", EmojiGroup.Love);
     public static readonly Emoji KissLips = new("💋", "Kiss mark", EmojiGroup.Love);
     public static readonly Emoji Praying = new("🙏", "Folded hands", EmojiGroup.Love);
 
@@ -49,7 +49,6 @@ public static class Emojis
     public static readonly Emoji Done = new("✅", "Check mark", EmojiGroup.Gestures);
     public static readonly Emoji Eyes = new("👀", "Eyes", EmojiGroup.Gestures);
     public static readonly Emoji Poop = new("💩", "Pile of poo", EmojiGroup.Gestures);
-    public static readonly Emoji Boom = new("💥", "Boom", EmojiGroup.Gestures);
     public static readonly Emoji Surprise = new("😲", "Astonished face", EmojiGroup.Gestures);
     public static readonly Emoji Mysterious = new("🤫", "Shushing face", EmojiGroup.Gestures);
     public static readonly Emoji StoneFaceMoai = new("🗿", "Moai", EmojiGroup.Gestures);
@@ -64,6 +63,8 @@ public static class Emojis
     public static readonly Emoji RoboKitty = new("🐱", "Robo kitty", EmojiGroup.Gestures);
     public static readonly Emoji Thinking = new("🤔", "Thinking face", EmojiGroup.Gestures);
     public static readonly Emoji Writing = new("✍️", "Writing hand", EmojiGroup.Gestures);
+    public static readonly Emoji Fire = new("🔥", "Fire", EmojiGroup.Gestures);
+    public static readonly Emoji HundredPoints = new("💯", "Hundred points", EmojiGroup.Gestures);
 
     public static readonly Emoji[] All = [
         // Positive
@@ -76,7 +77,7 @@ public static class Emojis
         Kiss,
         Blessed,
         Hugging,
-        MindBlown,
+        ExplodingHead,
         Party,
         Saluting,
         // Negative
@@ -86,6 +87,7 @@ public static class Emojis
         Melting,
         Devil,
         Clown,
+        ClownYellow,
         Bored,
         Crazy,
         Dead,
@@ -98,7 +100,6 @@ public static class Emojis
         Love,
         InLove,
         BrokenHeart,
-        Please,
         KissLips,
         Praying,
         // Gestures
@@ -107,7 +108,6 @@ public static class Emojis
         Done,
         Eyes,
         Poop,
-        Boom,
         Surprise,
         Mysterious,
         StoneFaceMoai,
@@ -122,6 +122,8 @@ public static class Emojis
         RoboKitty,
         Thinking,
         Writing,
+        Fire,
+        HundredPoints,
     ];
 
     public static readonly Dictionary<string, Emoji> ById
