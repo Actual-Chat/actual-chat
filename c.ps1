@@ -351,9 +351,6 @@ if ($worktreeSuffix) {
         }
     }
 
-    # Ensure worktree uses relative git paths (needed for Docker compatibility)
-    Fix-WorktreeRelativePaths -MainProjectPath $mainProjectPath -WorktreePath $worktreePath
-
     # Update project info for the worktree
     $projectRoot  = $worktreePath
     $folderName   = "$projectName-$worktreeSuffix"
@@ -419,9 +416,6 @@ if ($featureWorktreeSuffix) {
             Set-Location $originalLocation
         }
     }
-
-    # Ensure worktree uses relative git paths (needed for Docker compatibility)
-    Fix-WorktreeRelativePaths -MainProjectPath $mainProjectPath -WorktreePath $worktreePath
 
     # Update project info for the worktree
     $projectRoot  = $worktreePath
@@ -503,41 +497,6 @@ function Show-DryRun {
     Write-Host "Command:" -ForegroundColor Cyan
     Write-Host "  $Command $($Arguments -join ' ')"
     Write-Host ""
-}
-
-# Fix worktree git paths to use relative references (required for Docker path compatibility).
-# git worktree add stores absolute paths which break when the repo is mounted at a different
-# location inside Docker. Relative paths work in both environments.
-function Fix-WorktreeRelativePaths {
-    param(
-        [string]$MainProjectPath,
-        [string]$WorktreePath
-    )
-
-    # Fix worktree's .git file: convert absolute gitdir to relative
-    $worktreeGitFile = Join-Path $WorktreePath ".git"
-    if (Test-Path $worktreeGitFile -PathType Leaf) {
-        $content = (Get-Content $worktreeGitFile -Raw).Trim()
-        if ($content -match '^gitdir:\s*(.+)') {
-            $targetPath = $Matches[1].Trim()
-            if ([System.IO.Path]::IsPathRooted($targetPath)) {
-                $rel = ([System.IO.Path]::GetRelativePath($WorktreePath, $targetPath)) -replace '\\', '/'
-                Set-Content $worktreeGitFile "gitdir: $rel"
-            }
-        }
-    }
-
-    # Fix main repo's worktree gitdir: convert absolute path to relative
-    $worktreeName = Split-Path -Leaf $WorktreePath
-    $worktreeMetaDir = Join-Path $MainProjectPath ".git" "worktrees" $worktreeName
-    $gitdirFile = Join-Path $worktreeMetaDir "gitdir"
-    if (Test-Path $gitdirFile) {
-        $targetPath = (Get-Content $gitdirFile -Raw).Trim()
-        if ([System.IO.Path]::IsPathRooted($targetPath)) {
-            $rel = ([System.IO.Path]::GetRelativePath($worktreeMetaDir, $targetPath)) -replace '\\', '/'
-            Set-Content $gitdirFile $rel
-        }
-    }
 }
 
 switch ($mode) {
