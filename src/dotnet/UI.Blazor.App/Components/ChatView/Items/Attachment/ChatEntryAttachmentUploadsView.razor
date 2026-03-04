@@ -42,7 +42,7 @@
             attachments.Where(a => !HasPreview(a)).ToArray());
 
     private static bool HasPreview(Attachment a)
-        => a.IsImage || a.IsVideo || (a.Width > 0 && a.Height > 0);
+        => a.IsSupportedImage || a.IsSupportedVideo || (a.Width > 0 && a.Height > 0);
 
     private Task OnRemoveClick(Attachment attachment)
         => Uploads.Remove(attachment);

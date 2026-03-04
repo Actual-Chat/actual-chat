@@ -28,9 +28,9 @@
             <ButtonSquare Click="@RemoveClick" Class="remove-attachment-btn btn-danger btn-sm">
                 <i class="icon-trash03 text-2xl font-thin"></i>
             </ButtonSquare>
-            @if (attachment.IsImage) {
+            @if (attachment.IsSupportedImage) {
                 <img src="@previewUrl" alt="Image attachment" class="@plugClass"/>
-            } else if (attachment.IsVideo) {
+            } else if (attachment.IsSupportedVideo) {
                 <video preload="metadata" class="@plugClass">
                     <source src="@previewUrl#t=0.5"/>
                 </video>

@@ -28,8 +28,8 @@ public abstract class AttachmentItemBase : ComputedStateComponent<AppUIHub, Atta
 
         public bool NoAccess => Preview.State == PreviewAccessState.NoFileAccess;
 
-        public bool HasPreview => Attachment.IsImage
-            || Attachment.IsVideo
+        public bool HasPreview => Attachment.IsSupportedImage
+            || Attachment.IsSupportedVideo
             || (Attachment is { Width: > 0, Height: > 0 } && !Preview.PreviewUrl.IsNullOrEmpty());
     }
 }
