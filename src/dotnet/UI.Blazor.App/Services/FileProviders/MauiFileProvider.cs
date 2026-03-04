@@ -19,8 +19,8 @@ public partial class MauiFileProvider : IFileProvider
     public void Initialize(IServiceProvider services)
         => _services = services;
 
-    public Task<string> GetPreviewUrl()
-        => Impl.GetPreviewUrl();
+    public Task<string> GetPreviewUrl(CancellationToken cancellationToken = default)
+        => Impl.GetPreviewUrl(cancellationToken);
 
     public Task PrepareForSaving()
         => Impl.PrepareForSaving();
@@ -76,7 +76,7 @@ public interface IMauiFileProviderImplFactory
 
 public interface IMauiFileProviderImpl
 {
-    Task<string> GetPreviewUrl();
+    Task<string> GetPreviewUrl(CancellationToken cancellationToken = default);
     Task PrepareForSaving();
     Task ClearBeforeRemoving();
     Task<Stream?> OpenRead();

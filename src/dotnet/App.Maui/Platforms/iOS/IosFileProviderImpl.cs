@@ -12,12 +12,12 @@ public sealed class IosFileProviderImpl(IServiceProvider services, FilePath file
 
     private FileInfo FileInfo => field ??= new FileInfo(filePath);
 
-    public async Task<string> GetPreviewUrl()
+    public async Task<string> GetPreviewUrl(CancellationToken cancellationToken = default)
     {
         if (!OrdinalIgnoreCaseEquals(filePath.Extension, ".mov"))
             return ContentResolver.GetFileUri(filePath);
 
-        var thumbnailPath = await VideoThumbnails.Generate(filePath).ConfigureAwait(false);
+        var thumbnailPath = await VideoThumbnails.Generate(filePath, cancellationToken).ConfigureAwait(false);
         DebugLog?.LogDebug("Generated thumbnail: {ThumbnailPath}", thumbnailPath);
         return ContentResolver.GetFileUri(thumbnailPath.IsEmpty ? filePath : thumbnailPath);
     }

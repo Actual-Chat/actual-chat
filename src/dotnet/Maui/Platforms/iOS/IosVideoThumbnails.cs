@@ -10,8 +10,7 @@ public class IosVideoThumbnails(IServiceProvider services)
 
     private ILogger Log => field ??= services.LogFor<IosVideoThumbnails>();
 
-    // TODO: cancellation
-    public async Task<FilePath> Generate(FilePath videoPath)
+    public async Task<FilePath> Generate(FilePath videoPath, CancellationToken cancellationToken = default)
     {
         try {
             // Create a stable thumbnail path based on the source file name
@@ -25,7 +24,7 @@ public class IosVideoThumbnails(IServiceProvider services)
                 return thumbnailPath;
             }
 
-            var success = await GenerateThumbnailFile(videoPath, thumbnailPath).ConfigureAwait(false);
+            var success = await GenerateThumbnailFile(videoPath, thumbnailPath, cancellationToken).ConfigureAwait(false);
             Log.LogInformation("Generate: success={Success}, thumbnailPath='{ThumbnailPath}'", success, thumbnailPath);
             return success ? thumbnailPath : FilePath.Empty;
         }
@@ -35,7 +34,7 @@ public class IosVideoThumbnails(IServiceProvider services)
         }
     }
 
-    private static async Task<bool> GenerateThumbnailFile(FilePath videoPath, FilePath thumbnailPath)
+    private static async Task<bool> GenerateThumbnailFile(FilePath videoPath, FilePath thumbnailPath, CancellationToken cancellationToken)
     {
         var url = NSUrl.CreateFileUrl(videoPath);
         var asset = new AVUrlAsset(url);
@@ -55,7 +54,7 @@ public class IosVideoThumbnails(IServiceProvider services)
         var frameTime = asset.Duration.Seconds >= 0.5
             ? TimeSpan.FromSeconds(0.5)
             : TimeSpan.FromSeconds(asset.Duration.Seconds * 0.1);
-        var cgImage = await generator.GenerateCGImage(frameTime).ConfigureAwait(false);
+        var cgImage = await generator.GenerateCGImage(frameTime, cancellationToken).ConfigureAwait(false);
         if (cgImage == null)
             return false;
 
@@ -65,7 +64,7 @@ public class IosVideoThumbnails(IServiceProvider services)
         if (jpegData == null)
             return false;
 
-        await File.WriteAllBytesAsync(thumbnailPath, jpegData.ToArray()).ConfigureAwait(false);
+        await File.WriteAllBytesAsync(thumbnailPath, jpegData.ToArray(), cancellationToken).ConfigureAwait(false);
         return true;
     }
 }
