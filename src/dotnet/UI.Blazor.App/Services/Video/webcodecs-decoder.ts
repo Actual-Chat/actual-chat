@@ -19,6 +19,7 @@ export interface DecoderStats {
   decodedFrames: number;
   droppedFrames: number;
   averageDecodeTime: number;
+  medianDecodeTime: number;
   hardwareAcceleration: string;
   resolution: string;
 }
@@ -114,6 +115,21 @@ export class WebCodecsDecoder {
         }
     }
 
+    decodeRaw(chunk: EncodedVideoChunk): void {
+        if (this.decoder.state !== 'configured') {
+            this.droppedFrames++;
+            return;
+        }
+        this.decodeStartTimes.push(performance.now());
+        try {
+            this.decoder.decode(chunk);
+        } catch (error) {
+            this.droppedFrames++;
+            this.decodeStartTimes.pop();
+            this.onError(error as Error);
+        }
+    }
+
     decode(chunkData: EncodedChunkData): void {
     // Check decoder state before attempting decode
         const currentState = this.decoder.state;
@@ -175,6 +191,16 @@ export class WebCodecsDecoder {
             ? this.decodeTimeHistory.reduce((a, b) => a + b, 0) / this.decodeTimeHistory.length
             : 0;
 
+        // Compute median decode time
+        let medianDecodeTime = 0;
+        if (this.decodeTimeHistory.length > 0) {
+            const sorted = [...this.decodeTimeHistory].sort((a, b) => a - b);
+            const mid = Math.floor(sorted.length / 2);
+            medianDecodeTime = sorted.length % 2 !== 0
+                ? sorted[mid]
+                : (sorted[mid - 1] + sorted[mid]) / 2;
+        }
+
         // Try to determine hardware acceleration status
         let hardwareAcceleration = 'unknown';
         try {
@@ -197,6 +223,7 @@ export class WebCodecsDecoder {
             decodedFrames: this.frameCount,
             droppedFrames: this.droppedFrames,
             averageDecodeTime,
+            medianDecodeTime,
             hardwareAcceleration,
             resolution
         };

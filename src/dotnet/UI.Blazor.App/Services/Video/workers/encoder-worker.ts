@@ -387,6 +387,10 @@ const serverImpl: EncoderWorker = {
             keyFrames: 0,
             totalBytes: 0,
             averageEncodeTime: 0,
+            medianEncodeTime: 0,
+            configuredWidth: 0,
+            configuredHeight: 0,
+            configuredBitrate: 0,
             hardwareAcceleration: 'unknown'
         };
     },

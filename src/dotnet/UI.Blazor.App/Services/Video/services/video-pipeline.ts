@@ -130,11 +130,18 @@ export class VideoPipeline implements IVideoPipeline {
                 keyFrames: 0,
                 totalBytes: 0,
                 averageEncodeTime: 0,
+                medianEncodeTime: 0,
+                configuredWidth: 0,
+                configuredHeight: 0,
+                configuredBitrate: 0,
                 hardwareAcceleration: 'unknown'
             },
             segmentation: null
         };
     private statsInterval: number | null = null;
+    private diagnosticsInterval: number | null = null;
+    private lastDiagTotalBytes = 0;
+    private lastDiagEncodedFrames = 0;
 
     private onSerializedChunk = (
         chunkBytes: ArrayBuffer,
@@ -397,6 +404,32 @@ export class VideoPipeline implements IVideoPipeline {
             })();
         }, 1000);
 
+        // Start 10s diagnostics timer
+        this.lastDiagTotalBytes = 0;
+        this.lastDiagEncodedFrames = 0;
+        this.diagnosticsInterval = window.setInterval(() => {
+            const s = this.currentStats.encoder;
+            const bytesDelta = s.totalBytes - this.lastDiagTotalBytes;
+            const framesDelta = s.encodedFrames - this.lastDiagEncodedFrames;
+            this.lastDiagTotalBytes = s.totalBytes;
+            this.lastDiagEncodedFrames = s.encodedFrames;
+
+            const actualMbps = (bytesDelta * 8 / 10_000_000).toFixed(2);
+            const cfgMbps = (s.configuredBitrate / 1_000_000).toFixed(1);
+            const codec = this.config.encoderConfig.codec;
+            const msg = `VIDEO_ENCODE: codec=${codec} median=${s.medianEncodeTime.toFixed(1)}ms avg=${s.averageEncodeTime.toFixed(1)}ms ` +
+                `cfg=${s.configuredWidth}x${s.configuredHeight}@${cfgMbps}Mbps actual=${actualMbps}Mbps ` +
+                `enc=${framesDelta} drop=${s.droppedFrames} kf=${s.keyFrames} hw=${s.hardwareAcceleration}`;
+            warnLog?.log(msg);
+
+            const seg = this.currentStats.segmentation;
+            if (seg) {
+                warnLog?.log(
+                    `VIDEO_SEG: infer=${seg.averageInferenceTime.toFixed(1)}ms blur=${seg.averageBlurTime.toFixed(1)}ms ` +
+                    `total=${seg.averageTotalTime.toFixed(1)}ms drop=${seg.droppedFrames} backend=${seg.backend}`);
+            }
+        }, 10_000);
+
         infoLog?.log('Pipeline started: Encoder Worker → Server streaming');
     }
 
@@ -418,6 +451,10 @@ export class VideoPipeline implements IVideoPipeline {
         if (this.statsInterval) {
             clearInterval(this.statsInterval);
             this.statsInterval = null;
+        }
+        if (this.diagnosticsInterval) {
+            clearInterval(this.diagnosticsInterval);
+            this.diagnosticsInterval = null;
         }
 
         // Stop pumping frames

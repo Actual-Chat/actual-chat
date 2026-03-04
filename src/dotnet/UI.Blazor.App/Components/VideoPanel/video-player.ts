@@ -62,6 +62,10 @@ export class VideoPlayer {
     private lastSyncLogTime = 0;        // throttle sync logging
     private sequenceNumber = 0;         // sequence number for chunks sent to decoder worker
 
+    // Diagnostics counters for 10s delta reporting
+    private lastDiagDecodedFrames = 0;
+    private lastDiagReceivedFrames = 0;
+
     // Latency measurement
     private lastRenderedOffsetMs = 0;   // offset of the latest decoded frame (ms from stream start)
     private latencyReportTimer: ReturnType<typeof setInterval> | null = null;
@@ -643,6 +647,8 @@ export class VideoPlayer {
         this.pipelineLatencyMs = 0;
         this.skipFramesBelowOffsetMs = 0;
         this.skippedBacklogFrames = 0;
+        this.lastDiagDecodedFrames = 0;
+        this.lastDiagReceivedFrames = 0;
 
         // Stop latency reporting
         if (this.latencyReportTimer !== null) {
@@ -705,6 +711,39 @@ export class VideoPlayer {
             `now=${nowMs.toFixed(0)}, recorded=${recordedAtMs.toFixed(0)} ` +
             `(startedAt=${this.startedAtMs.toFixed(0)}+offset=${this.lastRenderedOffsetMs.toFixed(0)}), ` +
             `latency=${latencyMs.toFixed(0)}ms`);
+
+        // Decoder diagnostics
+        if (this.decoderWorker) {
+            void this.decoderWorker.getStats().then(ds => {
+                const recvDelta = this.receivedFrameCount - this.lastDiagReceivedFrames;
+                const decodedDelta = ds.decodedFrames - this.lastDiagDecodedFrames;
+                this.lastDiagReceivedFrames = this.receivedFrameCount;
+                this.lastDiagDecodedFrames = ds.decodedFrames;
+
+                warnLog?.log(
+                    `VIDEO_DECODE: median=${ds.medianDecodeTime.toFixed(1)}ms avg=${ds.averageDecodeTime.toFixed(1)}ms ` +
+                    `e2e=${this.pipelineLatencyMs.toFixed(0)}ms buf=${this.pendingFrames.length} ` +
+                    `recv=${recvDelta} decoded=${decodedDelta} drop=${ds.droppedFrames} ` +
+                    `res=${ds.resolution} hw=${ds.hardwareAcceleration}`);
+
+                // A/V sync diagnostics
+                const audioState = AudioVideoSync.get(this.authorId);
+                if (audioState) {
+                    const audioPlayingAtMs = AudioVideoSync.interpolatePlayingAt(audioState) * 1000;
+                    const targetVideoOffsetMs = (audioState.recordedAtMs - this.startedAtMs)
+                        + audioPlayingAtMs - this.pipelineLatencyMs;
+                    const avDriftMs = this.lastRenderedOffsetMs - targetVideoOffsetMs;
+                    warnLog?.log(
+                        `AV_SYNC: drift=${avDriftMs.toFixed(0)}ms ` +
+                        `(videoOffset=${this.lastRenderedOffsetMs.toFixed(0)}ms, ` +
+                        `targetOffset=${targetVideoOffsetMs.toFixed(0)}ms, ` +
+                        `audioPlayingAt=${audioPlayingAtMs.toFixed(0)}ms, ` +
+                        `audioState=${audioState.playbackState})`);
+                } else {
+                    warnLog?.log(`AV_SYNC: no audio state for authorId=${this.authorId}`);
+                }
+            });
+        }
 
         const connection = VideoStreamer.connection;
         const sessionToken = SessionTokens.current;

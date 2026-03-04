@@ -497,10 +497,9 @@ const serverImpl: DecoderWorker = {
                     `configured=${decoderConfigured}, descLen=${description?.byteLength ?? 0}, dataLen=${data.byteLength}`);
             }
 
-            // Decode using the internal VideoDecoder
-            // We use a simplified path here — no reorder buffer since SignalR delivers in order
-            const nativeDecoder = (decoder as unknown as { decoder: VideoDecoder }).decoder;
-            nativeDecoder.decode(chunk);
+            // Decode using the WebCodecsDecoder wrapper (tracks timing for diagnostics)
+            // Simplified path — no reorder buffer since SignalR delivers in order
+            decoder.decodeRaw(chunk);
         } catch (error) {
             errorLog?.log('Error decoding raw chunk:', error);
         }
@@ -588,6 +587,7 @@ const serverImpl: DecoderWorker = {
             decodedFrames: 0,
             droppedFrames: 0,
             averageDecodeTime: 0,
+            medianDecodeTime: 0,
             hardwareAcceleration: 'unknown',
             resolution: 'N/A'
         };
