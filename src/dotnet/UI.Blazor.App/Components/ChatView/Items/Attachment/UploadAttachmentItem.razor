@@ -34,7 +34,7 @@
                     <video preload="metadata" class="@plugClass">
                         <source src="@previewUrl#t=0.5"/>
                     </video>
-                } else if (attachment.Width > 0 && attachment.Height > 0 && !previewUrl.IsNullOrEmpty()) {
+                } else if (attachment.HasPreview && !previewUrl.IsNullOrEmpty()) {
                     <img src="@previewUrl" alt="Video thumbnail" class="@plugClass"/>
                 }
                 @if (!progress.IsReady) {
