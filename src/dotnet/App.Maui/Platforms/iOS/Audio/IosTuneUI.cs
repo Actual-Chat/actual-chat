@@ -1,5 +1,4 @@
 using ActualChat.App.Maui.Services;
-using ActualChat.Maui;
 using ActualChat.Pooling;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;

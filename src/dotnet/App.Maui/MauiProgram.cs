@@ -2,7 +2,6 @@ using ActualChat.App.Maui.Module;
 using ActualChat.App.Maui.Services;
 using ActualChat.Hosting;
 using ActualChat.Logging;
-using ActualChat.Maui;
 using ActualChat.Maui.Module;
 using ActualChat.Security;
 using ActualChat.UI.Blazor.App;
