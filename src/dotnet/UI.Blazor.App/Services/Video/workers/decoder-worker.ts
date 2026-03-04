@@ -258,19 +258,37 @@ const serverImpl: DecoderWorker = {
     // eslint-disable-next-line
     initialize: async (config): Promise<void> => {
         try {
-            infoLog?.log('Initializing decoder for codec:', config.codec);
+            infoLog?.log('Initializing decoder for codec:', config.codec,
+                ', descriptionLen:', config.description
+                    ? config.description.byteLength
+                    : 'none');
 
-            // Store decoder config for later use
             currentDecoderConfig = config;
 
-            // Setup decoder - auto-configure from bitstream
-            decoder = createDecoder(config);
-            decoder.initialize();
-            infoLog?.log('Decoder initialized for codec:', config.codec);
+            if (config.description) {
+                // Create decoder WITH description — single configure() in AVCC mode.
+                // Do NOT use createDecoder() which strips description, causing
+                // double-configure (Annex B → AVCC) that breaks Chrome's VideoDecoder.
+                decoder = new WebCodecsDecoder(
+                    config,
+                    (frame: VideoFrame) => {
+                        frameCount++;
+                        void callbacks.onDecodedFrame(frame, rpcNoWait);
+                    },
+                    (error) => {
+                        errorLog?.log('Decoder error:', error);
+                    }
+                );
+                decoder.initialize();
+                decoderConfigured = true;
+                infoLog?.log('Decoder initialized in AVCC mode (single configure)');
+            } else {
+                decoder = createDecoder(config);
+                decoder.initialize();
+                infoLog?.log('Decoder initialized without description');
+            }
 
-            // Mark as ready
             processing = true;
-
             infoLog?.log('Ready to decode chunks');
         } catch (error) {
             errorLog?.log('Failed to initialize decoder:', error);
@@ -429,10 +447,27 @@ const serverImpl: DecoderWorker = {
         try {
             // If we have a description and it's a keyframe, reconfigure the decoder
             if (isKeyFrame && description && description.byteLength > 0) {
-                if (!decoderConfigured || description.byteLength > 0) {
-                    decoder.updateDescription(description);
-                    decoderConfigured = true;
+                decoder.updateDescription(description);
+                decoderConfigured = true;
+            } else if (isKeyFrame && !decoderConfigured && currentDecoderConfig?.description) {
+                // Recreate decoder with description to avoid double-configure.
+                // Handles skipTo jumping past the first keyframe with per-frame SPS/PPS.
+                infoLog?.log('Recreating decoder with initial description for skipTo keyframe');
+                if (decoder.getState() !== 'closed') {
+                    decoder.close();
                 }
+                decoder = new WebCodecsDecoder(
+                    currentDecoderConfig,
+                    (frame: VideoFrame) => {
+                        frameCount++;
+                        void callbacks.onDecodedFrame(frame, rpcNoWait);
+                    },
+                    (error) => {
+                        errorLog?.log('Decoder error:', error);
+                    }
+                );
+                decoder.initialize();
+                decoderConfigured = true;
             }
 
             // For AV1, we don't need a description — mark as configured on first keyframe
@@ -455,6 +490,11 @@ const serverImpl: DecoderWorker = {
             if (decoder.getState() !== 'configured') {
                 warnLog?.log(`Decoder not configured (state: ${decoder.getState()}), dropping chunk`);
                 return;
+            }
+
+            if (isKeyFrame) {
+                infoLog?.log(`Decoding keyframe: seq=${sequenceNumber}, state=${decoder.getState()}, ` +
+                    `configured=${decoderConfigured}, descLen=${description?.byteLength ?? 0}, dataLen=${data.byteLength}`);
             }
 
             // Decode using the internal VideoDecoder

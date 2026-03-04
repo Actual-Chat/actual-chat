@@ -45,6 +45,9 @@ export class ChatActivityPanel {
 
     constructor(activityPanel: HTMLElement) {
         this.activityPanel = activityPanel;
+        if (!(this.activityPanel instanceof HTMLElement))
+            return;
+
         this.chatView = document.querySelector('.chat-view')!;
         this.header = this.activityPanel.closest('.layout-header')!;
         this.panelWrapper = this.activityPanel.closest('.header-activity-panel-wrapper');
@@ -132,8 +135,8 @@ export class ChatActivityPanel {
         if (this.disposed$.isStopped)
             return;
 
-        this.header.classList.remove('expanded', 'collapsed', 'pinned');
-        this.activityPanel.classList.remove('pressing');
+        this.header?.classList.remove('expanded', 'collapsed', 'pinned');
+        this.activityPanel?.classList.remove('pressing');
         this.pinBadge?.classList.remove('show');
         this.unpinBadge?.classList.remove('show');
         this.disposed$.next();

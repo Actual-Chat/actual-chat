@@ -102,6 +102,7 @@ export class VideoPipeline implements IVideoPipeline {
     private videoStream: VideoStream | null = null; // VideoStream instance
     private pendingStreamFrames: VideoStreamFrame[] = []; // Buffer frames until we get codec description
     private codecSettings: string | null = null; // Base64 encoded codec description (SPS/PPS for H.264)
+    private storedDescriptionBytes: Uint8Array | null = null; // Raw description bytes for attaching to every keyframe
     private firstEncodedTimestamp: number | null = null; // First encoded chunk timestamp (microseconds) for 0-based normalization
 
     // Preview callback for rendering segmented frames before encoding
@@ -187,6 +188,14 @@ export class VideoPipeline implements IVideoPipeline {
                     this.codecSettings = btoa(binary);
                     debugLog?.log('Captured codec description:', descBytes.length, 'bytes,', this.codecSettings.length, 'base64 chars');
                 }
+                this.storedDescriptionBytes = descBytes;
+            }
+
+            // Attach stored description to ALL keyframes (even if encoder didn't provide it this time).
+            // Chrome's WebCodecs only provides description on the first keyframe; subsequent keyframes lack it.
+            // Without this, remote viewers joining via skipTo get DescLen=0 keyframes.
+            if (isKeyFrame && !frame.description && this.storedDescriptionBytes) {
+                frame.description = this.storedDescriptionBytes;
             }
 
             // If videoStream doesn't exist yet, check if we can create it now

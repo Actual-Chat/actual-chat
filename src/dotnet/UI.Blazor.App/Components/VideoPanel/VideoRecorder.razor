@@ -188,7 +188,7 @@
             await foreach (var codecs in codecStream.ConfigureAwait(false)) {
                 Log.LogInformation("SubscribeToSupportedDecoderCodecs: received codecs=[{Codecs}]", string.Join(", ", codecs));
                 if (JSRef is {} jsRef)
-                    await jsRef.InvokeVoidAsync("updateSupportedDecoderCodecs", ct, codecs.ToArray());
+                    await jsRef.InvokeVoidAsync("updateSupportedDecoderCodecs", ct, (object)codecs.ToArray());
             }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
