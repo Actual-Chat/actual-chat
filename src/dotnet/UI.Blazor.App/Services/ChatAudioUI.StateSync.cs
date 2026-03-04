@@ -1,7 +1,6 @@
 using ActualChat.Hosting;
 using ActualChat.Rpc;
 using ActualChat.UI.Blazor.Services;
-using ActualChat.Users;
 using ActualLab.Resilience;
 
 namespace ActualChat.UI.Blazor.App.Services;

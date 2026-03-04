@@ -5,6 +5,8 @@ public enum MediaProcessingStage
     Reserved = 0,
     ClientProcessing,
     Uploading,
+    Uploaded,
     ServerProcessing,
-    Ready = 0x100,
+    Saving,
+    Ready,
 }
