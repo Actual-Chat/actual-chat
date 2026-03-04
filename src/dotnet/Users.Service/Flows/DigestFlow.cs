@@ -28,7 +28,7 @@ public partial class DigestFlow : PeriodicFlow
             return "No account";
         if (account.TimeZone.IsNullOrEmpty())
             return "Account has no time zone";
-        if (!account.IsEmailVerified())
+        if (!account.IsEmailVerified() && !IsSystemUser(userId))
             return "Account has no verified email";
         if (!account.Email.EndsWith(Constants.Team.EmailSuffix, StringComparison.OrdinalIgnoreCase))
             return "Account is excluded";
@@ -49,11 +49,14 @@ public partial class DigestFlow : PeriodicFlow
 
     protected override async ValueTask<Moment> Run(CancellationToken cancellationToken)
     {
-        if (!Constants.User.SystemUserIds.Contains(Account.Id)) {
+        if (!IsSystemUser(Account.Id)) {
             var sendDigestCommand = new EmailsBackend_SendDigest(Account.Id);
             var queues = Services.Queues();
             await queues.Enqueue(sendDigestCommand, cancellationToken).ConfigureAwait(false);
         }
         return TimeZoneInfo.NextTimeOfDay(DigestTime, Hub.SystemNow);
     }
+
+    private static bool IsSystemUser(UserId userId)
+        => Constants.User.SystemUserIds.Contains(userId);
 }
