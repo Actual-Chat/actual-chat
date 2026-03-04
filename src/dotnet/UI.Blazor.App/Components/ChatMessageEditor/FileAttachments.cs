@@ -147,7 +147,8 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         var height = 0;
         if (MediaTypeExt.IsVisualMedia(fileMetadata.FileType)) {
             previewUrl = await fileProvider.GetPreviewUrl();
-            var dimensions = await VisualMediaDimensions.GetVisualMediaDimensions(previewUrl, fileMetadata.FileType);
+            var previewFileType = MediaMimeTypes.TryGetMimeType(previewUrl, out var type) ? type : fileMetadata.FileType;
+            var dimensions = await VisualMediaDimensions.GetVisualMediaDimensions(previewUrl, previewFileType);
             width = dimensions.width;
             height = dimensions.height;
         }
@@ -162,6 +163,16 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         };
         attachment.Cleanups.Add(AttachmentCleanupFactory.ForFile(fileProvider));
         return attachment;
+    }
+
+    private static bool IsImagePreviewUrl(string? previewUrl)
+    {
+        if (previewUrl.IsNullOrEmpty())
+            return false;
+
+        var decodedUrl = Uri.UnescapeDataString(previewUrl);
+        var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp" };
+        return imageExtensions.Any(ext => decodedUrl.OrdinalIgnoreCaseEndsWith(ext));
     }
 
     private struct CreateWebFileProviderResult

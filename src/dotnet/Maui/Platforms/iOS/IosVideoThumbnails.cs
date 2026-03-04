@@ -1,33 +1,36 @@
 using ActualLab.IO;
 using AVFoundation;
-using CoreGraphics;
-using Foundation;
 using Microsoft.Maui.Storage;
-using UIKit;
 
 namespace ActualChat.Maui;
 
-public class IosVideoThumbnails
+public class IosVideoThumbnails(IServiceProvider services)
 {
-    private readonly FilePath _cacheDir = new FilePath(FileSystem.CacheDirectory) | "video-thumbnails";
+    private static readonly FilePath CacheDir = new FilePath(FileSystem.CacheDirectory) | "video-thumbnails";
 
+    private ILogger Log => field ??= services.LogFor<IosVideoThumbnails>();
+
+    // TODO: cancellation
     public async Task<FilePath> Generate(FilePath videoPath)
     {
         try {
             // Create a stable thumbnail path based on the source file name
-            var thumbnailFileName = Path.GetFileNameWithoutExtension(videoPath) + "_thumb.jpg";
-            Directory.CreateDirectory(_cacheDir);
-            FilePath thumbnailPath = _cacheDir | thumbnailFileName;
+            var thumbnailFileName = videoPath.FileName.ChangeExtension(".jpg");
+            Directory.CreateDirectory(CacheDir);
+            var thumbnailPath = CacheDir | thumbnailFileName;
 
             // Return cached thumbnail if it exists
-            if (File.Exists(thumbnailPath))
+            if (File.Exists(thumbnailPath)) {
+                Log.LogInformation("Generate: using cached thumbnail '{ThumbnailPath}'", thumbnailPath);
                 return thumbnailPath;
+            }
 
             var success = await GenerateThumbnailFile(videoPath, thumbnailPath).ConfigureAwait(false);
+            Log.LogInformation("Generate: success={Success}, thumbnailPath='{ThumbnailPath}'", success, thumbnailPath);
             return success ? thumbnailPath : FilePath.Empty;
         }
-        catch {
-            // Fall back to empty path if thumbnail generation fails
+        catch (Exception e) {
+            Log.LogError(e, "Generate failed for '{VideoPath}'", videoPath);
             return FilePath.Empty;
         }
     }
