@@ -9,6 +9,11 @@ namespace ActualChat;
 /// </summary>
 public sealed partial class UrlMapper
 {
+    /// <summary>
+    /// URI scheme used by MAUI apps (iOS/macOS/Windows) for local file content.
+    /// </summary>
+    public const string UriContentScheme = "content";
+
     [GeneratedRegex(@"^[\w\d]+://")]
     private static partial Regex IsAbsoluteUrlRegexFactory();
 
