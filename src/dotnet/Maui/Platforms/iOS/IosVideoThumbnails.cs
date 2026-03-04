@@ -1,8 +1,11 @@
+using ActualChat.UI.App;
 using ActualLab.IO;
 using AVFoundation;
 using Microsoft.Maui.Storage;
 
 namespace ActualChat.Maui;
+
+public sealed record VideoThumbnail(FilePath Path, Size Size);
 
 public class IosVideoThumbnails(IServiceProvider services)
 {
@@ -10,7 +13,7 @@ public class IosVideoThumbnails(IServiceProvider services)
 
     private ILogger Log => field ??= services.LogFor<IosVideoThumbnails>();
 
-    public async Task<FilePath> Generate(FilePath videoPath, CancellationToken cancellationToken = default)
+    public async Task<VideoThumbnail?> Generate(FilePath videoPath, CancellationToken cancellationToken = default)
     {
         try {
             // Create a stable thumbnail path based on the source file name
@@ -21,20 +24,21 @@ public class IosVideoThumbnails(IServiceProvider services)
             // Return cached thumbnail if it exists
             if (File.Exists(thumbnailPath)) {
                 Log.LogInformation("Generate: using cached thumbnail '{ThumbnailPath}'", thumbnailPath);
-                return thumbnailPath;
+                var size = await GetImageSize(thumbnailPath).ConfigureAwait(false);
+                return new VideoThumbnail(thumbnailPath, size);
             }
 
-            var success = await GenerateThumbnailFile(videoPath, thumbnailPath, cancellationToken).ConfigureAwait(false);
-            Log.LogInformation("Generate: success={Success}, thumbnailPath='{ThumbnailPath}'", success, thumbnailPath);
-            return success ? thumbnailPath : FilePath.Empty;
+            var result = await GenerateThumbnailFile(videoPath, thumbnailPath, cancellationToken).ConfigureAwait(false);
+            Log.LogInformation("Generate: success={Success}, thumbnailPath='{ThumbnailPath}'", result != null, thumbnailPath);
+            return result;
         }
         catch (Exception e) {
             Log.LogError(e, "Generate failed for '{VideoPath}'", videoPath);
-            return FilePath.Empty;
+            return null;
         }
     }
 
-    private static async Task<bool> GenerateThumbnailFile(FilePath videoPath, FilePath thumbnailPath, CancellationToken cancellationToken)
+    private static async Task<VideoThumbnail?> GenerateThumbnailFile(FilePath videoPath, FilePath thumbnailPath, CancellationToken cancellationToken)
     {
         var url = NSUrl.CreateFileUrl(videoPath);
         var asset = new AVUrlAsset(url);
@@ -43,7 +47,7 @@ public class IosVideoThumbnails(IServiceProvider services)
         var tracks = await asset.LoadTracksWithMediaTypeAsync(AVMediaTypes.Video.GetConstant()!)
             .ConfigureAwait(false);
         if (tracks.Count == 0)
-            return false;
+            return null;
 
         var generator = new AVAssetImageGenerator(asset) {
             AppliesPreferredTrackTransform = true,
@@ -56,15 +60,23 @@ public class IosVideoThumbnails(IServiceProvider services)
             : TimeSpan.FromSeconds(asset.Duration.Seconds * 0.1);
         var cgImage = await generator.GenerateCGImage(frameTime, cancellationToken).ConfigureAwait(false);
         if (cgImage == null)
-            return false;
+            return null;
 
         using var uiImage = new UIImage(cgImage);
         using var jpegData = uiImage.AsJPEG(0.85f);
 
         if (jpegData == null)
-            return false;
+            return null;
 
         await File.WriteAllBytesAsync(thumbnailPath, jpegData.ToArray(), cancellationToken).ConfigureAwait(false);
-        return true;
+        return new VideoThumbnail(thumbnailPath, new Size((int)uiImage.Size.Width, (int)uiImage.Size.Height));
+    }
+
+    private static Task<Size> GetImageSize(FilePath imagePath)
+    {
+        using var uiImage = UIImage.FromFile(imagePath);
+        return Task.FromResult(uiImage != null
+            ? new Size((int)uiImage.Size.Width, (int)uiImage.Size.Height)
+            : default);
     }
 }
