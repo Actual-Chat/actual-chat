@@ -17,7 +17,7 @@ namespace ActualChat.Users.Flows;
 public partial class AccountMigrationFlow : Flow<(Moment, long)>
 {
     private const int BatchSize = 50;
-    private static readonly TimeSpan BatchDelay = TimeSpan.FromSeconds(0.33);
+    private static readonly RandomTimeSpan BatchDelay = TimeSpan.FromSeconds(5).ToRandom(0.25);
 
     private DbHub<UsersDbContext> DbHub => field ??= Services.DbHub<UsersDbContext>();
     private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
@@ -81,7 +81,7 @@ public partial class AccountMigrationFlow : Flow<(Moment, long)>
         }
 
         // Schedule next batch after delay
-        Runtime.StageResumeIn(BatchDelay);
+        Runtime.StageResumeIn(BatchDelay.Next());
     }
 
     private void Complete()

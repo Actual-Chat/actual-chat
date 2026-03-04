@@ -15,7 +15,7 @@ namespace ActualChat.Chat.Flows;
 public partial class ChatEntryMigrationFlow : Flow<(Moment, long, long)>
 {
     private const int BatchSize = 50;
-    private static readonly TimeSpan BatchDelay = TimeSpan.FromSeconds(0.33);
+    private static readonly RandomTimeSpan BatchDelay = TimeSpan.FromSeconds(2).ToRandom(0.25);
 
     private DbHub<ChatDbContext> DbHub => field ??= Services.DbHub<ChatDbContext>();
     private ICommander Commander => Hub.Commander;
@@ -80,7 +80,7 @@ public partial class ChatEntryMigrationFlow : Flow<(Moment, long, long)>
             LastProcessedChatId = chatId;
             MigratedChatCount++;
             Console.Log($"Chat #{chatId} done ({MigratedChatCount}/{TotalChatCount})");
-            Runtime.StageResumeIn(BatchDelay);
+            Runtime.StageResumeIn(BatchDelay.Next());
             return;
         }
 
@@ -116,7 +116,7 @@ public partial class ChatEntryMigrationFlow : Flow<(Moment, long, long)>
             MigratedChatCount++;
         }
 
-        Runtime.StageResumeIn(BatchDelay);
+        Runtime.StageResumeIn(BatchDelay.Next());
     }
 
     private void Complete()
