@@ -146,7 +146,7 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         var width = 0;
         var height = 0;
         if (MediaTypeExt.IsVisualMedia(fileMetadata.FileType)) {
-            previewUrl = await fileProvider.GetPreviewUrl();
+            previewUrl = await fileProvider.GetPreviewUrl(Hub.StopToken);
             var previewFileType = MediaMimeTypes.TryGetMimeType(previewUrl, out var type) ? type : fileMetadata.FileType;
             var dimensions = await VisualMediaDimensions.GetVisualMediaDimensions(previewUrl, previewFileType);
             width = dimensions.width;

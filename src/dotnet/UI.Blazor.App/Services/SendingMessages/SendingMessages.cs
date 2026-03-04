@@ -209,7 +209,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                             if (!MediaTypeExt.IsVisualMedia(fileProvider.Metadata.FileType))
                                 return AttachmentPreview.Preview("");
 
-                            var previewUrl2 = await fileProvider.GetPreviewUrl().ConfigureAwait(false);
+                            var previewUrl2 = await fileProvider.GetPreviewUrl(Hub.StopToken).ConfigureAwait(false);
                             return AttachmentPreview.Preview(previewUrl2);
                         }
                     }
