@@ -17,9 +17,11 @@ public sealed class IosFileProviderImpl(IServiceProvider services, FilePath file
         if (!OrdinalIgnoreCaseEquals(filePath.Extension, ".mov"))
             return new FilePreview(ContentResolver.GetFileUri(filePath));
 
-        var thumbnailPath = await VideoThumbnails.Generate(filePath, cancellationToken).ConfigureAwait(false);
-        DebugLog?.LogDebug("Generated thumbnail: {ThumbnailPath}", thumbnailPath);
-        return new FilePreview(ContentResolver.GetFileUri(thumbnailPath.IsEmpty ? filePath : thumbnailPath));
+        var thumbnail = await VideoThumbnails.Generate(filePath, cancellationToken).ConfigureAwait(false);
+        DebugLog?.LogDebug("Generated thumbnail: {ThumbnailPath}", thumbnail?.Path);
+        return thumbnail is { } t
+            ? new FilePreview(ContentResolver.GetFileUri(t.Path), t.Size)
+            : new FilePreview(ContentResolver.GetFileUri(filePath));
     }
 
     public Task PrepareForSaving()

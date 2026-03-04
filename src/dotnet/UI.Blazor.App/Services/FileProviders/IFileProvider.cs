@@ -1,3 +1,4 @@
+using ActualChat.UI.App;
 using ActualChat.UI.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -16,12 +17,6 @@ public partial interface IFileProvider
     Task<FilePreview> GetPreview(CancellationToken cancellationToken = default);
     Task WhenFileStreamReady();
     UploadSource GetUploadSource();
-}
-
-[StructLayout(LayoutKind.Auto)]
-public readonly record struct Size(int Width, int Height)
-{
-    public bool IsEmpty => Width <= 0 || Height <= 0;
 }
 
 public readonly record struct FilePreview(string Url, Size? Dimensions = null);
