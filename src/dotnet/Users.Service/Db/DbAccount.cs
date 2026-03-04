@@ -47,7 +47,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
         set => _claims = value;
     }
 
-    public List<DbAccountIdentity> Identities { get; } = new();
+    public List<DbAccountIdentity> Identities => field ??= new();
 
     public AccountFull ToModel()
     {
