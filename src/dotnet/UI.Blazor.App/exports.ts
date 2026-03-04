@@ -16,7 +16,7 @@ export * from './Components/ChatAudioPanel/narrow-recording-svg.lit';
 export * from './Components/ChatAudioPanel/take-phone-svg.lit';
 export * from './Components/ChatList/chat-activity-svg.lit';
 export * from './Components/ChatMessageEditor/attachment-web-file-picker';
-export * from './Components/ChatMessageEditor/visual-media-dimensions';
+export * from './Components/ChatMessageEditor/file-previews';
 export * from './Components/ChatMessageEditor/chat-message-editor';
 export * from './Components/ChatMessageEditor/bell-svg.lit';
 export * from './Components/ChatNotFound/chat-not-found-svg.lit';

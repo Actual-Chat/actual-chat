@@ -155,7 +155,7 @@ public class UploadSessionFlowTest(ChatCollection.AppHostFixture fixture, ITestO
 
         public Task ClearForRemoving() => Task.CompletedTask;
 
-        public Task<string> GetPreviewUrl(CancellationToken cancellationToken = default) => Task.FromResult("");
+        public Task<FilePreview> GetPreview(CancellationToken cancellationToken = default) => Task.FromResult(new FilePreview(""));
 
         public Task WhenFileStreamReady() => Task.CompletedTask;
 

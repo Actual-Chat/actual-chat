@@ -13,10 +13,18 @@ public partial interface IFileProvider
     Task<bool> CheckAccess();
     Task<bool> WhenUserConsentGranted();
     Task ClearForRemoving();
-    Task<string> GetPreviewUrl(CancellationToken cancellationToken = default);
+    Task<FilePreview> GetPreview(CancellationToken cancellationToken = default);
     Task WhenFileStreamReady();
     UploadSource GetUploadSource();
 }
+
+[StructLayout(LayoutKind.Auto)]
+public readonly record struct Size(int Width, int Height)
+{
+    public bool IsEmpty => Width <= 0 || Height <= 0;
+}
+
+public readonly record struct FilePreview(string Url, Size? Dimensions = null);
 
 // NOTE(DF): This is a workaround for the following issue:
 // When I apply MemoryPackUnion to the interface, this is working on Desktop, but fails on Android (MAUI) with an error:
