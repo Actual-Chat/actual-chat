@@ -11,14 +11,14 @@ public class FileAttachments : UIServiceBase<AppUIHub>
 
     private AttachmentsController AttachmentsController { get; }
     private AttachmentsState AttachmentsState { get; }
-    private VisualMediaDimensions VisualMediaDimensions { get; }
+    private FilePreviews FilePreviews { get; }
     public ChatId ChatId { get; }
 
     public FileAttachments(AppUIHub hub, ChatId chatId) : base(hub)
     {
         AttachmentsController = Hub.Services.GetRequiredService<AttachmentsController>();
         AttachmentsState = Hub.AttachmentsState;
-        VisualMediaDimensions = new VisualMediaDimensions(Hub.JS, Hub.LogFor<VisualMediaDimensions>());
+        FilePreviews = Hub.Services.GetRequiredService<FilePreviews>();
         ChatId = chatId;
     }
 
@@ -146,23 +146,12 @@ public class FileAttachments : UIServiceBase<AppUIHub>
     private async Task<Attachment> CreateAttachment(IFileProvider fileProvider)
     {
         var fileMetadata = fileProvider.Metadata;
-        var previewUrl = "";
-        var width = 0;
-        var height = 0;
-        if (MediaTypeExt.IsVisualMedia(fileMetadata.FileType)) {
-            previewUrl = await fileProvider.GetPreviewUrl(Hub.StopToken);
-            var previewFileType = MediaMimeTypes.TryGetMimeType(previewUrl, out var type) ? type : fileMetadata.FileType;
-            var dimensions = await VisualMediaDimensions.GetVisualMediaDimensions(previewUrl, previewFileType);
-            width = dimensions.width;
-            height = dimensions.height;
-        }
+        var preview = await FilePreviews.Get(fileProvider, fileMetadata.FileType, Hub.StopToken);
         var attachment = new SourceAttachment(
             fileMetadata.FileName,
             fileMetadata.FileType,
             fileMetadata.Length,
-            width,
-            height,
-            previewUrl) {
+            preview) {
             FileProvider = fileProvider,
         };
         attachment.Cleanups.Add(AttachmentCleanupFactory.ForFile(fileProvider));

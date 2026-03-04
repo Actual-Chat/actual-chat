@@ -209,8 +209,8 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                             if (!MediaTypeExt.IsVisualMedia(fileProvider.Metadata.FileType))
                                 return AttachmentPreview.Preview("");
 
-                            var previewUrl2 = await fileProvider.GetPreviewUrl(Hub.StopToken).ConfigureAwait(false);
-                            return AttachmentPreview.Preview(previewUrl2);
+                            var preview = await fileProvider.GetPreview(Hub.StopToken).ConfigureAwait(false);
+                            return AttachmentPreview.Preview(preview.Url);
                         }
                     }
                 }
@@ -225,8 +225,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                     attachEntry.FileName,
                     attachEntry.FileType,
                     attachEntry.FileLength,
-                    attachEntry.Width,
-                    attachEntry.Height) {
+                    new Size(attachEntry.Width, attachEntry.Height)) {
                     UploadSessionId = uploadSessionId,
                 };
                 attachment.Cleanups.Add(new AttachmentCleanup(AttachmentCleanupKind.PersistedPostMessageRequest, CleanupRequest));
