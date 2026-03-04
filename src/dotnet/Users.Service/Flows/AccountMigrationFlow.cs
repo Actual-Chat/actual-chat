@@ -98,6 +98,7 @@ public partial class AccountMigrationFlow : Flow<(Moment, long)>
 
         // Start DigestFlow
         await Hub.NewResumeEvent<DigestFlow>(userId.Value)
+            .WithDelayQuanta(TimeSpan.Zero) // Otherwise tests may fail due to cross-test NATS dedup!
             .Schedule(cancellationToken)
             .ConfigureAwait(false);
 

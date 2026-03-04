@@ -7,7 +7,7 @@ namespace ActualChat.Users.IntegrationTests.Flows;
 public class DigestFlowTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(DigestFlowTest)}", TestAppHostOptions.Default, @out)
 {
-    [Fact(Skip = "AY: Weird, it frequently fails")]
+    [Fact]
     public async Task MigrationFlow_Should_Start_DigestFlow()
     {
         await using var h = await NewAppHost();
