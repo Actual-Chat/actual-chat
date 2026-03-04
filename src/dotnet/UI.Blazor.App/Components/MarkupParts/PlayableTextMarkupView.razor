@@ -34,7 +34,7 @@
                 ? m.Map[i + 1]
                 : WordPlayback.None;
             var cls = GetPlayingClass(status, nextStatus);
-            var highlightedCls = m.HighlightedWords.Count > 0 && m.HighlightedWords.Contains(word.Value.TrimNonWord(), StringComparer.OrdinalIgnoreCase)
+            var highlightedCls = m.HighlightedWords.Count > 0 && m.HighlightedWords.Contains(word.Value.TrimNonLetterOrDigits(), StringComparer.OrdinalIgnoreCase)
                 ? "highlight"
                 : "";
             if (i != Markup.Words.Length - 1) {

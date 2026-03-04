@@ -49,9 +49,11 @@ public partial class DigestFlow : PeriodicFlow
 
     protected override async ValueTask<Moment> Run(CancellationToken cancellationToken)
     {
-        var sendDigestCommand = new EmailsBackend_SendDigest(Account.Id);
-        var queues = Services.Queues();
-        await queues.Enqueue(sendDigestCommand, cancellationToken).ConfigureAwait(false);
+        if (!Constants.User.SystemUserIds.Contains(Account.Id)) {
+            var sendDigestCommand = new EmailsBackend_SendDigest(Account.Id);
+            var queues = Services.Queues();
+            await queues.Enqueue(sendDigestCommand, cancellationToken).ConfigureAwait(false);
+        }
         return TimeZoneInfo.NextTimeOfDay(DigestTime, Hub.SystemNow);
     }
 }

@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using ActualChat.App.Server.Components.Pages;
+using ActualChat.App.Server.Flows;
 using ActualChat.App.Server.Health;
 using ActualChat.Db.Diagnostics;
 using ActualChat.Diagnostics;
@@ -230,6 +231,9 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 LockOptions = MeshLockOptions.Presets[optionsPreset],
             };
         });
+
+        // Flows
+        services.AddFlows().Add<MigrationFlow>();
 
         // Web
         var binPath = new FilePath(Assembly.GetExecutingAssembly().Location).FullPath.DirectoryPath;

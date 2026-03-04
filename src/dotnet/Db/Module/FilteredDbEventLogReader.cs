@@ -14,7 +14,7 @@ public class FilteredDbEventLogReader<TDbContext>(
     : DbEventLogReader<TDbContext>(settings, services)
     where TDbContext : DbContext
 {
-    protected override async Task<int> ProcessBatch(string shard, int batchSize, CancellationToken cancellationToken)
+    protected override async Task<Moment> ProcessBatch(string shard, int batchSize, CancellationToken cancellationToken)
     {
         var activity = FusionInstruments.ActivitySource
             .IfEnabled(Settings.IsTracingEnabled)
@@ -38,7 +38,7 @@ public class FilteredDbEventLogReader<TDbContext>(
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
             if (entries.Count == 0)
-                return 0;
+                return await GetMinDelayUntil(dbEntries, cancellationToken).ConfigureAwait(false);
 
             var logLevel = entries.Count == batchSize ? LogLevel.Warning : LogLevel.Debug;
             // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
@@ -57,7 +57,11 @@ public class FilteredDbEventLogReader<TDbContext>(
             }
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
-            return entries.Count;
+            if (entries.Count >= batchSize)
+                return default; // Full batch = there might be more entries
+
+            // Partial batch - check if there are upcoming delayed entries
+            return await GetMinDelayUntil(dbEntries, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) {
             activity?.Finalize(e, cancellationToken);
@@ -66,5 +70,15 @@ public class FilteredDbEventLogReader<TDbContext>(
         finally {
             activity?.Dispose();
         }
+    }
+
+    private static new async Task<Moment> GetMinDelayUntil(
+        DbSet<DbEvent> dbEntries, CancellationToken cancellationToken)
+    {
+        var minDelayUntil = await dbEntries
+            .Where(o => o.State == LogEntryState.New)
+            .MinAsync(o => (DateTime?)o.DelayUntil, cancellationToken)
+            .ConfigureAwait(false);
+        return minDelayUntil.DefaultKind(DateTimeKind.Utc).ToMoment() ?? Moment.MaxValue;
     }
 }

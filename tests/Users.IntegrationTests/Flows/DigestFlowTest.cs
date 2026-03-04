@@ -1,3 +1,4 @@
+using ActualChat.App.Server.Flows;
 using ActualChat.Testing.Host;
 using ActualChat.Users.Flows;
 
@@ -7,11 +8,35 @@ public class DigestFlowTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(DigestFlowTest)}", TestAppHostOptions.Default, @out)
 {
     [Fact]
+    public async Task MigrationFlow_Should_Start_DigestFlow()
+    {
+        await using var h = await NewAppHost();
+
+        var flowHub = h.Services.FlowHub();
+        await flowHub.Get<MigrationFlow>(""); // We need to manually start it in this test
+
+        // MigrationFlow should start AccountMigrationFlow
+        await ComputedTest.When(async ct => {
+            var flow = await flowHub.TryGet<AccountMigrationFlow>("", ct);
+            flow.Should().NotBeNull();
+        }, TimeSpan.FromSeconds(30));
+
+        // AccountMigrationFlow should start DigestFlow(admin)
+        await ComputedTest.When(async ct => {
+            var userId = Constants.User.Admin.UserId.Value;
+            var flow = await flowHub.TryGet<DigestFlow>(userId, ct);
+            flow.Should().NotBeNull();
+        }, TimeSpan.FromSeconds(30));
+    }
+
+    [Fact]
     public async Task ShouldStopFlowIfUserHasNoTimeZone()
     {
         await using var h = await NewAppHost();
 
         var flowHub = h.Services.FlowHub();
+        await flowHub.Get<MigrationFlow>(""); // We need to manually start it in this test
+
         var userId = Constants.User.Admin.UserId.Value;
         var f0 = await flowHub.Get<DigestFlow>(userId);
 
@@ -27,8 +52,10 @@ public class DigestFlowTest(ITestOutputHelper @out)
     {
         await using var h = await NewAppHost();
 
-        var commander = h.Services.Commander();
         var flowHub = h.Services.FlowHub();
+        await flowHub.Get<MigrationFlow>(""); // We need to manually start it in this test
+
+        var commander = h.Services.Commander();
         var accountsBackend = h.Services.GetRequiredService<IAccountsBackend>();
 
         var userId = Constants.User.Admin.UserId;
@@ -54,8 +81,10 @@ public class DigestFlowTest(ITestOutputHelper @out)
     {
         await using var h = await NewAppHost();
 
-        var commander = h.Services.Commander();
         var flowHub = h.Services.FlowHub();
+        await flowHub.Get<MigrationFlow>(""); // We need to manually start it in this test
+
+        var commander = h.Services.Commander();
         var accountsBackend = h.Services.GetRequiredService<IAccountsBackend>();
 
         var userId = Constants.User.Admin.UserId;
@@ -87,8 +116,10 @@ public class DigestFlowTest(ITestOutputHelper @out)
             },
         });
 
-        var commander = h.Services.Commander();
         var flowHub = h.Services.FlowHub();
+        await flowHub.Get<MigrationFlow>(""); // We need to manually start it in this test
+
+        var commander = h.Services.Commander();
         var accountsBackend = h.Services.GetRequiredService<IAccountsBackend>();
         var serverKvasBackend = h.Services.GetRequiredService<IServerKvasBackend>();
 

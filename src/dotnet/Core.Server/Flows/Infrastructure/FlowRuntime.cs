@@ -2,8 +2,7 @@ using ActualLab.CommandR.Operations;
 
 namespace ActualChat.Flows.Infrastructure;
 
-public class FlowRuntime(Flow flow, FlowHub hub, CancellationToken cancellationToken)
-    : IHasServices, IServiceProvider
+public class FlowRuntime(Flow flow, FlowHub hub, CancellationToken cancellationToken) : IHasServices
 {
     public Flow Flow { get; } = flow;
     public FlowHub Hub { get; } = hub;
@@ -16,11 +15,6 @@ public class FlowRuntime(Flow flow, FlowHub hub, CancellationToken cancellationT
     public bool AutoCommit { get; set; } = true;
     // Events
     public List<object?> StagedEvents { get; } = new();
-
-    // IServiceProvider
-
-    public object? GetService(Type serviceType)
-        => Services.GetService(serviceType);
 
     // StageResume
 
@@ -78,6 +72,7 @@ public class FlowRuntime(Flow flow, FlowHub hub, CancellationToken cancellationT
     private FlowResumeEvent StageResumeAt(FlowId flowId, Moment delayUntil)
     {
         var e = new FlowResumeEvent(flowId, Hub).WithDelay(delayUntil);
+        // Log.LogInformation("Staged event: {Event}", e);
         StagedEvents.Add(e);
         return e;
     }
@@ -85,6 +80,7 @@ public class FlowRuntime(Flow flow, FlowHub hub, CancellationToken cancellationT
     private FlowResumeEvent StageResumeAt(FlowId flowId, Moment delayUntil, TimeSpan? delayQuanta)
     {
         var e = new FlowResumeEvent(flowId, Hub).WithDelay(delayUntil, delayQuanta);
+        // Log.LogInformation("Staged event: {Event}", e);
         StagedEvents.Add(e);
         return e;
     }
@@ -97,7 +93,7 @@ public class FlowRuntime(Flow flow, FlowHub hub, CancellationToken cancellationT
                 if (e is null)
                     continue;
                 if (e is IOperationEventSource operationEventSource)
-                    buffer.Add(operationEventSource.ToOperationEvent(this));
+                    buffer.Add(operationEventSource.ToOperationEvent(Services));
                 else if (e is OperationEvent operationEvent)
                     buffer.Add(operationEvent);
                 else

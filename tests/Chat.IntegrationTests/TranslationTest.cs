@@ -211,7 +211,7 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
             var (_, expectedTranslation, mainExpectedWord) = messages[i];
             var translation = translations[i];
             translation.Should().NotBeNull();
-            translation.Content.TrimNonWord()
+            translation.Content.TrimNonLetterOrDigits()
                 .Should()
                 .NotBeNullOrEmpty()
                 .And.BeSimilarTo(expectedTranslation, minSimilarity)

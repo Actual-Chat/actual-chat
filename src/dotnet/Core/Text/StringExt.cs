@@ -130,6 +130,13 @@ public static partial class StringExt
     public static string Truncate(this string source, int maxLength, string ellipsis)
         => source.Length <= maxLength ? source : source[..maxLength] + ellipsis;
 
+    public static string TrimNonLetterOrDigits(this string s)
+    {
+        var iStart = s.FirstIndexOf(char.IsLetterOrDigit);
+        var iEnd = s.LastIndexOf(char.IsLetterOrDigit);
+        return iStart < 0 || iEnd < 0 ? "" : s[iStart..(iEnd + 1)];
+    }
+
     public static string OrdinalSuffix(this string s, string separator)
         => s.Suffix(separator, StringComparison.Ordinal);
 
@@ -143,10 +150,10 @@ public static partial class StringExt
     public static string[] SplitIntoWords(this string text) =>
         text.Split([' ', ',', '!', '.', ':', '-'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
 
-    public static int GetIndentLength(this string source)
+    public static int GetPrefixCharCount(this string source, char prefix)
     {
         for (var i = 0; i < source.Length; i++)
-            if (source[i] != 32)
+            if (source[i] != prefix)
                 return i;
         return source.Length;
     }
@@ -270,6 +277,8 @@ public static partial class StringExt
         return true;
     }
 
+    // To/FromBaseXX
+
     public static string ToBase64(this string s)
     {
         var bytes = Encoding.UTF8.GetBytes(s);
@@ -282,10 +291,50 @@ public static partial class StringExt
         return Encoding.UTF8.GetString(bytes);
     }
 
-    public static string TrimNonWord(this string s)
+    // Indent
+
+    public static string Indent(this string s, string indent)
     {
-        var iStart = s.FirstIndexOf(char.IsLetterOrDigit);
-        var iEnd = s.LastIndexOf(char.IsLetterOrDigit);
-        return iStart < 0 || iEnd < 0 ? "" : s[iStart..(iEnd + 1)];
+        if (s.Length == 0 || indent.Length == 0)
+            return s;
+
+        // Count inner newlines (not trailing) to calculate result size
+        var sourceSpan = s.AsSpan();
+        var innerNewlineCount = 0;
+        var lastNewlineIndex = -1;
+        for (var i = 0; i < sourceSpan.Length; i++) {
+            if (sourceSpan[i] != '\n')
+                continue;
+
+            lastNewlineIndex = i;
+            if (i < sourceSpan.Length - 1)
+                innerNewlineCount++;
+        }
+
+        // No newlines at all - just prepend indent
+        if (lastNewlineIndex < 0)
+            return indent + s;
+
+        // indent for first line + indent after each inner \n
+        var resultLength = s.Length + indent.Length * (1 + innerNewlineCount);
+        return string.Create(resultLength, (source: s, indent), static (span, state) => {
+            var (src, ind) = state;
+            var srcSpan = src.AsSpan();
+            var indSpan = ind.AsSpan();
+            var pos = 0;
+
+            // Prepend indent to first line
+            indSpan.CopyTo(span[pos..]);
+            pos += indSpan.Length;
+
+            for (var i = 0; i < srcSpan.Length; i++) {
+                var c = srcSpan[i];
+                span[pos++] = c;
+                if (c == '\n' && i < srcSpan.Length - 1) {
+                    indSpan.CopyTo(span[pos..]);
+                    pos += indSpan.Length;
+                }
+            }
+        });
     }
 }
