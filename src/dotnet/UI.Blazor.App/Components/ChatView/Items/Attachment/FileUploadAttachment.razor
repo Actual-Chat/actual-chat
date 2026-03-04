@@ -3,10 +3,10 @@
 @inherits AttachmentItemBase
 
 @{
-    var attachment = Attachment;
-    var state = State.Value;
-    var previewState = state.Preview.State;
-    var progress = state.Progress;
+    var m = State.Value;
+    var attachment = m.Attachment;
+    var previewState = m.Preview.State;
+    var progress = m.Progress;
     var progressValue = progress.Progress;
     var stageDetails = progress.Details;
     var uploadProgressClass = "attachment-upload-progress";
@@ -48,7 +48,7 @@
         <FileAttachmentTitle Title="@attachment.FileName"/>
         <div class="c-bottom">
             <div class="c-size">
-                <span>@FileSizeFormatter.Format(Attachment.Length)</span>
+                    <span>@FileSizeFormatter.Format(attachment.Length)</span>
             </div>
             <div class="@uploadProgressClass"
                  style="@uploadStyle"
@@ -56,8 +56,9 @@
             </div>
         </div>
     </div>
+        </div>
     @if (!progress.IsReady) {
-        @if (progress.IsFailed && !state.NoAccess && RestartClick.HasDelegate) {
+        @if (progress.IsFailed && !m.NoAccess && RestartClick.HasDelegate) {
             <span class="reload-icon-wrapper">
                 <ButtonRound Click="@RestartClick" Class="btn-sm">
                     <i class="icon-sync text-2xl"></i>

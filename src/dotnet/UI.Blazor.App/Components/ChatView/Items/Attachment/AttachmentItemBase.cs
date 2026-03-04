@@ -15,17 +15,21 @@ public abstract class AttachmentItemBase : ComputedStateComponent<AppUIHub, Atta
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
     {
-        var id = Attachment.Id;
-        var previewState = await AttachmentsState.GetPreview(id, cancellationToken).ConfigureAwait(false);
-        var uploadState = await AttachmentsState.GetProgress(id, cancellationToken).ConfigureAwait(false);
-        return new Model(previewState, uploadState);
+        var attachment = Attachment;
+        var previewState = await AttachmentsState.GetPreview(attachment.Id, cancellationToken).ConfigureAwait(false);
+        var uploadState = await AttachmentsState.GetProgress(attachment.Id, cancellationToken).ConfigureAwait(false);
+        return new Model(attachment, previewState, uploadState);
     }
 
     // Nested types
-    public record Model(AttachmentPreview Preview, AttachmentProgress Progress)
+    public record Model(Attachment Attachment, AttachmentPreview Preview, AttachmentProgress Progress)
     {
-        public static readonly Model None = new(AttachmentPreview.NoPreview, AttachmentProgress.New);
+        public static readonly Model None = new(null!, AttachmentPreview.NoPreview, AttachmentProgress.New);
 
         public bool NoAccess => Preview.State == PreviewAccessState.NoFileAccess;
+
+        public bool HasPreview => Attachment.IsImage
+            || Attachment.IsVideo
+            || (Attachment is { Width: > 0, Height: > 0 } && !Preview.PreviewUrl.IsNullOrEmpty());
     }
 }
