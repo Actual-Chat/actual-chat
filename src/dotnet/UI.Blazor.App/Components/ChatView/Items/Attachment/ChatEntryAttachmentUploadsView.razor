@@ -38,8 +38,8 @@
     }
 
     private (Attachment[], Attachment[]) GetOrderedAttachmentList(Attachment[] attachments)
-        => (attachments.Where(a => a.IsImage || a.IsVideo || (a.Width > 0 && a.Height > 0)).ToArray(),
-            attachments.Where(a => a is { IsImage: false, IsVideo: false } && a.Width == 0).ToArray());
+        => (attachments.Where(a => a.HasPreview).ToArray(),
+            attachments.Where(a => !a.HasPreview).ToArray());
 
     private Task OnRemoveClick(Attachment attachment)
         => Uploads.Remove(attachment);
