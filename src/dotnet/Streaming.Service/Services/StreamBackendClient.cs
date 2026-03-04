@@ -78,7 +78,7 @@ public sealed class StreamBackendClient : IStreamClient
 
     public Task ReportAudioLatency(TimeSpan latency, CancellationToken cancellationToken)
     {
-        AppMeters.AudioLatency.Record((float)latency.TotalMilliseconds);
+        AppMeters.AudioLatency.Record(latency.TotalMilliseconds);
         return Task.CompletedTask;
     }
 }
