@@ -13,7 +13,6 @@ public record Attachment(string FileName, string FileType, long Length, int Widt
 
     public bool IsImage => MediaTypeExt.IsSupportedImage(FileType);
     public bool IsVideo => MediaTypeExt.IsSupportedVideo(FileType);
-    public bool HasPreview => IsImage || IsVideo || (Width > 0 && Height > 0);
 
     public string DemandUploadSessionId()
         => !UploadSessionId.IsNullOrEmpty() ? UploadSessionId : throw new InvalidOperationException("Upload session not assigned");
