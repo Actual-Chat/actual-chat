@@ -106,9 +106,6 @@ public sealed class CoreModule(IServiceProvider moduleServices)
     {
         var fusion = services.AddFusion();
 
-        // Reconnector
-        services.AddSingleton(c => new RpcDependentReconnectDelayer(c));
-
         // Features
         fusion.AddClient<IServerFeaturesClient>();
         fusion.Configure<IServerFeaturesClient>().HasName(nameof(IServerFeatures));

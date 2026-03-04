@@ -1,7 +1,8 @@
 using ActualChat.Hosting;
-using ActualChat.Rpc;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Resilience;
+using ActualLab.Rpc;
+using ActualLab.Rpc.Infrastructure;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -443,14 +444,16 @@ public partial class ChatAudioUI
 
     private async Task ReconnectOnRpcReconnect(CancellationToken cancellationToken)
     {
-        var rpcDependentReconnectDelayer = Hub.Services.GetService<RpcDependentReconnectDelayer>();
-        if (rpcDependentReconnectDelayer == null)
+        if (HostInfo.HostKind == HostKind.Server)
             return;
 
+        var peer = Hub.RpcHub.GetClientPeer(RpcPeerRef.Default);
+        if (peer.IsConnected())
+            await AudioRecorder.EnsureConnected(quickReconnect: true, cancellationToken).ConfigureAwait(false);
         while (true) {
-            await rpcDependentReconnectDelayer.WhenDisconnected(cancellationToken).ConfigureAwait(false);
-            await rpcDependentReconnectDelayer.WhenConnected(cancellationToken).ConfigureAwait(false);
-            // AudioRecorder.Reconnect does nothing if the connection is already there
+            await peer.ConnectionState.WhenDisconnected(cancellationToken).ConfigureAwait(false);
+            peer = Hub.RpcHub.GetClientPeer(RpcPeerRef.Default);
+            await peer.ConnectionState.When(x => x.IsConnected(), cancellationToken).ConfigureAwait(false);
             await AudioRecorder.EnsureConnected(quickReconnect: true, cancellationToken).ConfigureAwait(false);
         }
     }
