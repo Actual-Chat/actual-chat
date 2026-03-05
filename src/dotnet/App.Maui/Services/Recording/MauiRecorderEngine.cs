@@ -35,6 +35,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
     private IAudioCodec AudioCodec => field ??= _hub.Services.GetRequiredService<IAudioCodec>();
     private RecorderStateHub RecorderStateHub => field ??= _hub.Services.GetRequiredService<RecorderStateHub>();
     private ConnectivityUI ConnectivityUI => field ??= _hub.Services.GetRequiredService<ConnectivityUI>();
+    private MomentClockSet Clocks => field ??= _hub.Clocks;
     private ILogger Log => field ??= _hub.LogFor<MauiRecorderEngine>();
 
     public MauiRecorderEngine(UIHub hub)
@@ -292,6 +293,38 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 
     #region AudioStreamProcessor
 
+    private async Task SendAudio(
+        ChatId chatId,
+        ChatEntryId? repliedChatEntryId,
+        int preSkip,
+        IAsyncEnumerable<IMemoryOwner<byte>> packetStream,
+        CancellationToken cancellationToken)
+    {
+        var serverClock = Clocks.ServerClock;
+        double clientStartOffset = serverClock.Now.EpochOffset.TotalSeconds;
+        var session = _hub.Session;
+
+        var frameStream = packetStream
+            .Select((packet, i) => {
+                using var _ = packet;
+                return new AudioFrame {
+                    Data = packet.Memory.ToArray(),
+                    Offset = TimeSpan.FromMilliseconds(i * Constants.Audio.OpusFrameDurationMs),
+                    Duration = Constants.Audio.OpusFrameDuration,
+                };
+            })
+            .SuppressCancellation(cancellationToken);
+
+        await StreamClient.PushAudio(
+            session,
+            chatId.Value,
+            repliedChatEntryId?.Value,
+            clientStartOffset,
+            preSkip,
+            frameStream,
+            cancellationToken).ConfigureAwait(false);
+    }
+
     private async Task<ChannelWriter<IMemoryOwner<byte>>?> CreateAudioStream(CancellationToken cancellationToken)
     {
         string? sessionToken;
@@ -319,26 +352,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             });
 
         // TODO(AK): Specify PreSkip
-        var packetStream = stream.Reader.ReadAllAsync(cancellationToken);
-        double clientStartOffset = Moment.Now.ToUnixEpoch(); // Unix timestamp in seconds
-        var session = _hub.Session;
-
-        var frameStream = packetStream
-            .Select((packet, i) => {
-                using var _ = packet;
-                return new AudioFrame {
-                    Data = packet.Memory.ToArray(),
-                    Offset = TimeSpan.FromMilliseconds(i * Constants.Audio.OpusFrameDurationMs),
-                    Duration = Constants.Audio.OpusFrameDuration,
-                };
-            }).SuppressCancellation(cancellationToken);
-
-        await StreamClient.PushAudio(
-            session, chatId.Value, repliedChatEntryId?.Value,
-            clientStartOffset, 0,
-            frameStream, cancellationToken
-            ).ConfigureAwait(false);
-
+        _sendTask = SendAudio(chatId, repliedChatEntryId, 0, stream.Reader.ReadAllAsync(cancellationToken), cancellationToken);
         lock (_sync) {
             _currentStream = stream;
             _repliedChatEntryId = null; // Clear so it's only used once

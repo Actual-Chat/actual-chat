@@ -14,31 +14,6 @@ public class StreamServer(IServiceProvider services) : IStreamServer
     private IStreamingBackend Backend { get; } = services.GetRequiredService<IStreamingBackend>();
     private ILogger Log { get; } = services.LogFor<StreamServer>();
 
-    public async Task PushAudio(
-        Session session, string chatId, string? repliedChatEntryId,
-        double clientStartOffset, int preSkip,
-        RpcStream<AudioFrame> frameStream,
-        CancellationToken cancellationToken)
-    {
-        var chatIdTyped = ChatId.Parse(chatId);
-        var repliedEntryIdTyped = TextEntryId.ParseNullable(repliedChatEntryId);
-
-        var nodes = MeshWatcher.State.Value.LiveNodesByRole[HostRole.AudioBackend];
-        if (nodes.Length == 0) {
-            Log.LogError("No nodes serving {Role} role!", HostRole.AudioBackend);
-            return; // No backends
-        }
-
-        var nodeRef = _preferThisNode ? MeshWatcher.ThisNode.Ref : nodes.GetRandom().Ref;
-        var streamId = StreamId.New(nodeRef);
-        var audioRecord = new AudioRecord(streamId, session, chatIdTyped, clientStartOffset, repliedEntryIdTyped);
-        var newFrameStream = RpcStream.New(frameStream);
-        Log.LogInformation("PushAudio: {AudioRecord}", audioRecord);
-
-        using var stopCts = new CancellationTokenSource(Constants.Chat.MaxEntryDuration + TimeSpan.FromSeconds(5));
-        await Backend.ProcessAudio(audioRecord, preSkip, newFrameStream, stopCts.Token).ConfigureAwait(false);
-    }
-
     public async Task<RpcStream<byte[]>?> GetAudio(string streamId, TimeSpan skipTo, CancellationToken cancellationToken)
     {
         // We must return another RpcStream here - they aren't "shareable"
@@ -71,5 +46,30 @@ public class StreamServer(IServiceProvider services) : IStreamServer
     {
         AppMeters.AudioLatency.Record(latency.TotalMilliseconds);
         return Task.CompletedTask;
+    }
+
+    public async Task PushAudio(
+        Session session, string chatId, string? repliedChatEntryId,
+        double clientStartOffset, int preSkip,
+        RpcStream<AudioFrame> frameStream,
+        CancellationToken cancellationToken)
+    {
+        var chatIdTyped = ChatId.Parse(chatId);
+        var repliedEntryIdTyped = TextEntryId.ParseNullable(repliedChatEntryId);
+
+        var nodes = MeshWatcher.State.Value.LiveNodesByRole[HostRole.AudioBackend];
+        if (nodes.Length == 0) {
+            Log.LogError("No nodes serving {Role} role!", HostRole.AudioBackend);
+            return; // No backends
+        }
+
+        var nodeRef = _preferThisNode ? MeshWatcher.ThisNode.Ref : nodes.GetRandom().Ref;
+        var streamId = StreamId.New(nodeRef);
+        var audioRecord = new AudioRecord(streamId, session, chatIdTyped, clientStartOffset, repliedEntryIdTyped);
+        var newFrameStream = RpcStream.New(frameStream);
+        Log.LogInformation("PushAudio: {AudioRecord}", audioRecord);
+
+        using var stopCts = new CancellationTokenSource(Constants.Chat.MaxEntryDuration + TimeSpan.FromSeconds(5));
+        await Backend.ProcessAudio(audioRecord, preSkip, newFrameStream, stopCts.Token).ConfigureAwait(false);
     }
 }
