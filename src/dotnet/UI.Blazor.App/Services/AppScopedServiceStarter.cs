@@ -118,9 +118,9 @@ public sealed class AppScopedServiceStarter
             await Task.Delay(baseDelay, cancellationToken).ConfigureAwait(false);
             if (hostKind.IsApp())
                 Hub.Services.GetRequiredService<SessionTokens>().Start();
-            Hub.Services.GetRequiredService<AppPresenceReporter>().Start();
-            Hub.Services.GetRequiredService<AppIconBadgeUpdater>().Start();
             Hub.Services.GetRequiredService<BackgroundActivityUI>().Start();
+            Hub.Services.GetRequiredService<ConnectivityUI>().Start();
+            Hub.Services.GetRequiredService<ReconnectUI>().Start();
             _ = Hub.AudioFocusUI.WarmUp(); // Pre-initialize audio HAL for faster first recording
             _ = Hub.TuneUI; // Touch. Auto-starts on construction
             _ = Hub.AudioWidget; // Touch. Auto-starts on construction
@@ -129,9 +129,9 @@ public sealed class AppScopedServiceStarter
                 Hub.Services.GetRequiredService<DebugUI>();
 
             await Task.Delay(baseDelay * 2, cancellationToken).ConfigureAwait(false);
-            Hub.Services.GetRequiredService<ConnectivityUI>().Start();
-            Hub.Services.GetRequiredService<ReconnectUI>().Start();
             Hub.AudioInitializer.StartInitialization();
+            Hub.Services.GetRequiredService<AppPresenceReporter>().Start();
+            Hub.Services.GetRequiredService<AppIconBadgeUpdater>().Start();
             if (hostKind.IsApp())
                 await StartHostedServices().ConfigureAwait(false);
 
