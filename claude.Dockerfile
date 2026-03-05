@@ -113,7 +113,7 @@ RUN playwright install chromium
 
 # Install Claude Code CLI (native installer, auto-update disabled at runtime)
 ENV DISABLE_AUTOUPDATER=1
-RUN curl -fsSL https://claude.ai/install.sh | bash
+RUN curl -fsSL https://claude.ai/install.sh | bash -s -- 2.1.69
 
 # Install frontend-design plugin
 RUN mkdir -p /home/claude/.claude/skills/frontend-design && \
