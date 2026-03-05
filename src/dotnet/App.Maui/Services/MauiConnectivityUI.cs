@@ -1,0 +1,31 @@
+using ActualChat.UI.Blazor;
+using ActualChat.UI.Blazor.Module;
+using ActualChat.UI.Blazor.Services;
+using Microsoft.JSInterop;
+
+namespace ActualChat.App.Maui.Services;
+
+/// <summary>
+/// MAUI implementation: uses Microsoft.Maui.Networking.IConnectivity for network state,
+/// and pushes state to JS via ConnectivityUI.setOnline().
+/// </summary>
+public sealed class MauiConnectivityUI : ConnectivityUI
+{
+    private readonly MutableState<bool> _isOnline;
+
+    public override IState<bool> IsOnline => _isOnline;
+
+    public MauiConnectivityUI(UIHub hub) : base(hub)
+    {
+        MustPushIsOnlineToJS = true;
+        var connectivity = Connectivity.Current;
+        var isOnline = connectivity.NetworkAccess.IsOnline();
+        _isOnline = hub.StateFactory.NewMutable(isOnline, StateCategories.Get(GetType(), nameof(IsOnline)));
+        connectivity.ConnectivityChanged += OnConnectivityChanged;
+        hub.RegisterDisposable((Action)(() => connectivity.ConnectivityChanged -= OnConnectivityChanged));
+        _ = Initialize();
+    }
+
+    private void OnConnectivityChanged(object? sender, ConnectivityChangedEventArgs e)
+        => _isOnline.Value = e.NetworkAccess.IsOnline();
+}

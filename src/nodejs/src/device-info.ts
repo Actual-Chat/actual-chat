@@ -19,7 +19,7 @@ export const DeviceInfo = {
         && (('ontouchstart' in window) || (navigator.maxTouchPoints > 0))
         && window.matchMedia('(pointer: coarse)').matches),
 
-    init: function (): void {
+    updateBodyClasses: function (): void {
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         const body = document?.body;
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition

@@ -16,7 +16,7 @@ export type LogScope =
     | 'BrowserInfo'
     | 'BrowserInit'
     | 'BubbleHost'
-    | 'Connectivity'
+    | 'ConnectivityUI'
     | 'DelayedInvoker'
     | 'FileUpload'
     | 'Gestures'

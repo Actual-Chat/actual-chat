@@ -1,4 +1,6 @@
+using ActualChat.Audio;
 using ActualChat.Diagnostics;
+using ActualChat.Hosting;
 using ActualChat.Transcription;
 using ActualLab.Rpc;
 
@@ -41,5 +43,28 @@ public class StreamServer(IServiceProvider services) : IStreamServer
     {
         AppMeters.AudioLatency.Record(latency.TotalMilliseconds);
         return Task.CompletedTask;
+    }
+
+    public Task PushAudio(
+        Session session,
+        string chatId,
+        string? repliedChatEntryId,
+        double clientStartOffset,
+        int preSkip,
+        RpcStream<AudioFrame> frameStream,
+        CancellationToken cancellationToken)
+    {
+        var chatIdTyped = ChatId.Parse(chatId);
+        var repliedEntryIdTyped = TextEntryId.ParseNullable(repliedChatEntryId);
+        var nodes = services.MeshWatcher().State.Value.LiveNodesByRole[HostRole.AudioBackend];
+        if (nodes.Length == 0) {
+            Log.LogError("PushAudio: No nodes serving {Role} role!", HostRole.AudioBackend);
+            return Task.CompletedTask;
+        }
+        var nodeRef = nodes.GetRandom().Ref;
+        var streamId = StreamId.New(nodeRef);
+        var record = new AudioRecord(streamId, session, chatIdTyped, clientStartOffset, repliedEntryIdTyped);
+        Log.LogInformation("PushAudio: {AudioRecord}", record);
+        return Backend.ProcessAudio(record, preSkip, frameStream, cancellationToken);
     }
 }

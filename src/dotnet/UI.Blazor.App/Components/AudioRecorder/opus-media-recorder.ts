@@ -7,6 +7,7 @@ import { catchErrors, delayAsync, delayAsyncWith, PromiseSource, ResolvedPromise
 import { rpcClient, rpcClientServer, RpcNoWait, rpcNoWait } from 'rpc';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
 import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
+import { ConnectivityUI } from '../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
 import { audioContextSource, recordingAudioContextSource, AppAudioContext, AudioContextRef, AudioContextAction } from '../../Services/audio-context-source';
 import { AudioContextTrait, AttachedAudioContextTrait } from '../../Services/audio-context-traits';
 import { AudioVadWorker } from './workers/audio-vad-worker-contract';
@@ -343,6 +344,19 @@ export class OpusMediaRecorder implements RecorderStateServer {
             hubUrl,
             { type: 'rpc-timeout', timeoutMs: 5_000 });
         debugLog?.log(`init(): encoderWorker created`);
+
+        const updateWorkerConnectivityUI = () => {
+            void this.encoderWorker?.onConnectivityUpdate(
+                ConnectivityUI.isOnline,
+                ConnectivityUI.isConnected,
+                ConnectivityUI.isBlazorServer,
+                rpcNoWait)
+        }
+        ConnectivityUI.isOnlineChanged.add(updateWorkerConnectivityUI);
+        ConnectivityUI.isConnectedChanged.add(updateWorkerConnectivityUI);
+        await ConnectivityUI.whenReady;
+        void this.encoderWorker.onConnectivityUpdate(
+            ConnectivityUI.isOnline, ConnectivityUI.isConnected, ConnectivityUI.isBlazorServer, rpcNoWait);
 
         await this.vadWorker.create(
             Versioning.assetMap,

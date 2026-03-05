@@ -162,8 +162,7 @@ public class StreamHub(IServiceProvider services) : Hub
 
         var frameCount = 0;
 
-        await foreach (var frame in ((IAsyncEnumerable<VideoFrame>)rpcStream)
-            .WithCancellation(stopCts.Token)) {
+        await foreach (var frame in rpcStream.WithCancellation(stopCts.Token).ConfigureAwait(false)) {
             frameCount++;
             if (frameCount <= 30 || frameCount % 30 == 0)
                 Log.LogInformation("GetVideo sending frame #{Total}", frameCount);
@@ -342,7 +341,7 @@ public class StreamHub(IServiceProvider services) : Hub
 
     private static byte[] SerializeVideoFrame(VideoFrame frame)
     {
-        var buffer = new ArrayBufferWriter<byte>();
+        using var buffer = new ArrayPoolBuffer<byte>(1024, mustClear: false);
         var writer = new MessagePackWriter(buffer);
 
         var fieldCount = 3; // offset, duration, data

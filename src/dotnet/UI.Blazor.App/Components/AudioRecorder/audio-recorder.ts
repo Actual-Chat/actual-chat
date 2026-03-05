@@ -1,9 +1,7 @@
 // TODO: Fix ESLint errors
 /* eslint-disable @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-condition */
-import { EventHandler } from 'event-handling';
 import { opusMediaRecorder } from './opus-media-recorder';
 import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
-import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
 import { AudioPlayer } from '../AudioPlayer/audio-player';
 import { recordingAudioContextSource } from '../../Services/audio-context-source';
 import { VoiceActivityChange } from './workers/audio-vad-contract';
@@ -36,7 +34,6 @@ const HEARTBEAT_INTERVAL = 2000; // ms
 
 export class AudioRecorder {
     private readonly blazorRef: DotNet.DotNetObject;
-    private readonly onReconnected: EventHandler<void>;
     private readonly recorderStateChangedSubscription: Subscription;
     private readonly recordingHeartbeatSubscription: Subscription;
 
@@ -57,7 +54,6 @@ export class AudioRecorder {
 
     public constructor(blazorRef: DotNet.DotNetObject) {
         this.blazorRef = blazorRef;
-        this.onReconnected = BrowserInit.reconnectedEvents.add(() => this.ensureConnected(true));
         this.recorderStateChangedSubscription = RecorderStateHub.recorderStateChanged$.subscribe(state => this.onRecordingStateChange(
             state.isRecording,
             state.isSignalDetected,
@@ -70,8 +66,6 @@ export class AudioRecorder {
     public async dispose(): Promise<void> {
         debugLog?.log(`-> dispose()`);
         this.chatId = undefined;
-        if (this.onReconnected)
-            BrowserInit.reconnectedEvents.remove(this.onReconnected);
         try {
             await opusMediaRecorder.stop();
             this.recorderStateChangedSubscription.unsubscribe();
@@ -132,12 +126,6 @@ export class AudioRecorder {
             this.state = 'stopped';
             debugLog?.log(`<- stopRecording`);
         }
-    }
-
-    /** Called from Blazor */
-    public ensureConnected(quickReconnect: boolean): Promise<void> {
-        debugLog?.log(`ensureConnected(${quickReconnect})`);
-        return opusMediaRecorder.ensureConnected(quickReconnect);
     }
 
     /** Called from Blazor */
