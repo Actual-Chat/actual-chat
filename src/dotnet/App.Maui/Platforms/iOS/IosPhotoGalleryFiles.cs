@@ -134,7 +134,7 @@ public sealed class IosPhotoGalleryFiles : IDisposable
             return new FilePreview(ContentResolver.GetFileUri(thumbnailPath), size);
         }
         catch (Exception e) {
-            Log.LogWarning(e, "Failed to load low-res thumbnail");
+            Log.LogError(e, "Failed to load low-res thumbnail");
             return null;
         }
     }
@@ -162,7 +162,7 @@ public sealed class IosPhotoGalleryFiles : IDisposable
                 : null;
         }
         catch (Exception e) {
-            Log.LogWarning(e, "Failed to generate thumbnail from in-place URL");
+            Log.LogError(e, "Failed to generate thumbnail from in-place URL");
             return null;
         }
     }
