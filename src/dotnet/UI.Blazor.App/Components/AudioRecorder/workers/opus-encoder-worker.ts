@@ -173,8 +173,8 @@ const serverImpl: OpusEncoderWorker = {
             await stopRecording();
     },
 
-    onConnectivityUpdate: async (isOnline: boolean, isConnected: boolean, _noWait?: RpcNoWait): Promise<void> => {
-        WorkerConnectivityUI.update(isOnline, isConnected);
+    onConnectivityUpdate: async (isOnline: boolean, isConnected: boolean, isAlwaysConnected: boolean, _noWait?: RpcNoWait): Promise<void> => {
+        WorkerConnectivityUI.update(isOnline, isConnected, isAlwaysConnected);
     },
 }
 const stateServer = rpcClientServer<RecorderStateServer>(`${logScope}.stateServer`, worker, serverImpl);

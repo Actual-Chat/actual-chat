@@ -13,11 +13,16 @@ public abstract class ConnectivityUI : UIWorkerBase<UIHub>
 {
     protected static readonly string JSInitMethod
         = $"{BlazorUICoreModule.ImportName}.ConnectivityUI.init";
+    private static readonly string JSSetOnlineMethod
+        = $"{BlazorUICoreModule.ImportName}.ConnectivityUI.setOnline";
     protected static readonly string JSSetConnectedMethod
         = $"{BlazorUICoreModule.ImportName}.ConnectivityUI.setConnected";
 
     private readonly MutableState<bool> _isConnected;
+    private bool _jsIsOnline = true; // Must be in sync with the default value for _jsIsOnline in JS!
     private bool _jsIsConnected = true; // Must be in sync with the default value for _isConnected in JS!
+
+    protected bool MustPushIsOnlineToJS { get; init; }
 
     public bool IsAlwaysConnected { get; }
     public IState<bool> IsConnected => _isConnected;
@@ -38,12 +43,23 @@ public abstract class ConnectivityUI : UIWorkerBase<UIHub>
 
     // Protected methods
 
+    protected async ValueTask Initialize(DotNetObjectReference<IConnectivityUIBackend>? backendRef = null)
+    {
+        try {
+            await JS.InvokeVoidAsync(JSInitMethod, backendRef, IsAlwaysConnected).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Initialize failed");
+        }
+    }
+
     protected override Task OnRun(CancellationToken cancellationToken)
     {
         if (IsAlwaysConnected)
             return Task.CompletedTask;
 
         var baseChains = new[] {
+            AsyncChain.From(PushIsOnlineToJS),
             AsyncChain.From(PushIsConnectedToJS),
             AsyncChain.From(ResetReconnectDelaysWhenComeOnline),
         };
@@ -55,6 +71,21 @@ public abstract class ConnectivityUI : UIWorkerBase<UIHub>
 
     // Private methods
 
+    private async Task PushIsOnlineToJS(CancellationToken cancellationToken)
+    {
+        if (!MustPushIsOnlineToJS)
+            return;
+
+        var changes = IsOnline.Computed.Changes(FixedDelayer.NextTick, cancellationToken);
+        await foreach (var (isOnline, _) in changes.ConfigureAwait(false)) {
+            if (isOnline == _jsIsOnline)
+                continue;
+
+            await Hub.JS.InvokeVoidAsync(JSSetOnlineMethod, CancellationToken.None, isOnline).ConfigureAwait(false);
+            _jsIsOnline = isOnline;
+        }
+    }
+
     private async Task PushIsConnectedToJS(CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested) {
@@ -63,9 +94,7 @@ public abstract class ConnectivityUI : UIWorkerBase<UIHub>
             var isConnected = connectionState.Value.Handshake is not null;
             _isConnected.Set(isConnected);
             if (isConnected != _jsIsConnected) {
-                await JS.InvokeVoidAsync(JSSetConnectedMethod, CancellationToken.None, isConnected)
-                    .AsTask().WaitAsync(cancellationToken)
-                    .ConfigureAwait(false);
+                await JS.InvokeVoidAsync(JSSetConnectedMethod, CancellationToken.None, isConnected).ConfigureAwait(false);
                 _jsIsConnected = isConnected;
             }
             await connectionState.WhenNext(cancellationToken).ConfigureAwait(false);

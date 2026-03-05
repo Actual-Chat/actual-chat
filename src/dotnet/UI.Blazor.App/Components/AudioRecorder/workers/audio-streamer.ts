@@ -195,11 +195,9 @@ export class AudioStreamer {
             })
             .withAutomaticReconnect({
                 nextRetryDelayInMilliseconds: (ctx) => {
-                    // Immediate retry if we just came online (within < 1s)
-                    if (WorkerConnectivityUI.justBecameOnline())
+                    if (WorkerConnectivityUI.justBecameConnected())
                         return 0;
-
-                    if (!WorkerConnectivityUI.isOnline)
+                    if (!WorkerConnectivityUI.isConnected)
                         return 60 * 60 * 1000; // 1 hour when offline
 
                     // online policy: 10, 100, 500, 1000 ms, then stop

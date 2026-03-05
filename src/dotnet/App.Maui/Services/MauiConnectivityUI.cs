@@ -11,35 +11,21 @@ namespace ActualChat.App.Maui.Services;
 /// </summary>
 public sealed class MauiConnectivityUI : ConnectivityUI
 {
-    private static readonly string JSSetOnlineMethod = $"{BlazorUICoreModule.ImportName}.ConnectivityUI.setOnline";
-
     private readonly MutableState<bool> _isOnline;
 
     public override IState<bool> IsOnline => _isOnline;
 
     public MauiConnectivityUI(UIHub hub) : base(hub)
     {
+        MustPushIsOnlineToJS = true;
         var connectivity = Connectivity.Current;
-        var isOnline = connectivity.NetworkAccess == NetworkAccess.Internet;
+        var isOnline = connectivity.NetworkAccess.IsOnline();
         _isOnline = hub.StateFactory.NewMutable(isOnline, StateCategories.Get(GetType(), nameof(IsOnline)));
         connectivity.ConnectivityChanged += OnConnectivityChanged;
         hub.RegisterDisposable((Action)(() => connectivity.ConnectivityChanged -= OnConnectivityChanged));
+        _ = Initialize();
     }
 
     private void OnConnectivityChanged(object? sender, ConnectivityChangedEventArgs e)
-    {
-        var isOnline = e.NetworkAccess is not (NetworkAccess.None or NetworkAccess.Local);
-        _isOnline.Value = isOnline;
-        _ = PushToJS(isOnline);
-    }
-
-    private async Task PushToJS(bool isOnline)
-    {
-        try {
-            await Hub.JS.InvokeVoidAsync(JSSetOnlineMethod, isOnline).ConfigureAwait(false);
-        }
-        catch (Exception e) {
-            Hub.LogFor<MauiConnectivityUI>().LogError(e, "Failed to push online state to JS");
-        }
-    }
+        => _isOnline.Value = e.NetworkAccess.IsOnline();
 }
