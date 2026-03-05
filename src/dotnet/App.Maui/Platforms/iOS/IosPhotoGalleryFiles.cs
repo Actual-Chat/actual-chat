@@ -73,7 +73,7 @@ public sealed class IosPhotoGalleryFiles : IDisposable
 
         // Try to get in-place URL for quick thumbnail generation (doesn't require full file copy)
         if (OrdinalIgnoreCaseEquals(targetPath.Extension, ".mov")) {
-            var thumbnail = await GenerateThumbnailFromInPlaceUrl(itemProvider, contentType, targetPath, cancellationToken)
+            var thumbnail = await GenerateThumbnailFromInPlaceUrl(itemProvider, contentType, cancellationToken)
                 .ConfigureAwait(false);
             if (thumbnail != null)
                 return thumbnail;
@@ -95,7 +95,6 @@ public sealed class IosPhotoGalleryFiles : IDisposable
     private async Task<FilePreview?> GenerateThumbnailFromInPlaceUrl(
         NSItemProvider itemProvider,
         UTType contentType,
-        FilePath targetPath,
         CancellationToken cancellationToken)
     {
         try {

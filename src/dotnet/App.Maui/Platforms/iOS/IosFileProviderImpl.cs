@@ -39,12 +39,7 @@ public sealed class IosFileProviderImpl(IServiceProvider services, FilePath file
 
     public Task ClearBeforeRemoving()
     {
-        try {
-            File.Delete(filePath);
-        }
-        catch (DirectoryNotFoundException) {
-            // File or directory doesn't exist - ignore, since we're deleting anyway
-        }
+        filePath.DeleteSilently();
         return Task.CompletedTask;
     }
 
