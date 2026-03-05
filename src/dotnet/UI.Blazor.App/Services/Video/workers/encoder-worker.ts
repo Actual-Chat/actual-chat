@@ -128,7 +128,8 @@ function cpuRgbaToI420(frame: VideoFrame): VideoFrame {
     const h = frame.codedHeight;
 
     // Draw frame to canvas to get RGBA pixels
-    if (!resizeCanvas || resizeCanvas.width !== w || resizeCanvas.height !== h) {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (resizeCanvas?.width !== w || resizeCanvas?.height !== h) {
         resizeCanvas = new OffscreenCanvas(w, h);
         resizeCtx = resizeCanvas.getContext('2d', { willReadFrequently: true });
     }
@@ -322,7 +323,6 @@ const serverImpl: EncoderWorker = {
     /**
    * Encode a single frame
    */
-    // eslint-disable-next-line
     encodeFrame: async (frame): Promise<void> => {
         if (!encoder || !processing || !encoderConfig) {
             frame.close();

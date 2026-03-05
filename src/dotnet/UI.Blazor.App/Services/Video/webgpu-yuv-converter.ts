@@ -15,7 +15,7 @@
 
 import { Log } from 'logging';
 
-const { infoLog, warnLog } = Log.get('VideoSegmentation');
+const { infoLog } = Log.get('VideoSegmentation');
 
 // ── WGSL Compute Shader ────────────────────────────────────────────────────────
 
