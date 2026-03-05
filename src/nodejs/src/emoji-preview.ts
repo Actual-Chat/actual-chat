@@ -131,8 +131,9 @@ export class EmojiPreview {
         const svgNames = meta.content.split(',');
         const basePath = '/dist/images/emoji/';
 
-        const prefetchBatch = (urls: string[]): Promise<void> =>
-            Promise.all(urls.map(url => fetch(url, { priority: 'low' } as RequestInit).catch(() => {}))).then(() => {});
+        const ignoreFetchError = (_: unknown) => { /* expected */ };
+        const prefetchBatch = (urls: string[]): Promise<unknown[]> =>
+            Promise.all(urls.map(url => fetch(url, { priority: 'low' } as RequestInit).catch(ignoreFetchError)));
 
         // After page load: prefetch static, then animated
         window.addEventListener('load', () => {
