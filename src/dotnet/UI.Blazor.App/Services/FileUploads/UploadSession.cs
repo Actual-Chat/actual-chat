@@ -153,6 +153,9 @@ public class UploadSession
         var mimeType = fileProvider.Metadata.FileType;
         var filePath = (fileProvider as MauiFileProvider)?.FileRef ?? FilePath.Empty;
 
+        // Wait for the file to be fully loaded before transcoding
+        await fileProvider.WhenFileStreamReady().WaitAsync(cancellationToken).ConfigureAwait(false);
+
         var progress = new Progress<double>(p => {
             _ = UpdateState(s => {
                 if (s.CurrentState != UploadSessionState.ClientProcessing)
