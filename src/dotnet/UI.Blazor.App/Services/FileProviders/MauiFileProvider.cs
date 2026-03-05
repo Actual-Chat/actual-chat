@@ -47,9 +47,11 @@ public partial class MauiFileProvider : IFileProvider
 
     public UploadSource GetUploadSource()
     {
+        // Read actual file size from disk if not set in metadata
+        var length = Metadata.Length > 0 ? Metadata.Length : FileRef.FileSize;
         var metadata = new UploadSourceMetadata(
             Metadata.FileType,
-            Metadata.Length,
+            length,
             Metadata.FileName);
         return new UploadSource(metadata, new StreamUploadSource(GetFile));
 
