@@ -1,0 +1,45 @@
+@using ActualChat.UI.Blazor.Module
+@using ActualChat.UI.Blazor.Services
+@inherits ComponentBase<UIHub>
+@implements IAsyncDisposable
+
+<input @ref="_inputRef" type="file" @attributes="InputAttributes"/>
+
+@code {
+    private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.FileUploadPicker.create";
+
+    private ElementReference _inputRef;
+    private DotNetObjectReference<FileUploadPicker> _blazorRef = null!;
+    private IJSObjectReference _jsRef = null!;
+
+    [Parameter] public EventCallback<UploadSource> FileSelected { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object> InputAttributes { get; set; } = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender)
+            return;
+
+        _blazorRef = DotNetObjectReference.Create(this);
+        _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _inputRef, _blazorRef);
+    }
+
+    public async ValueTask DisposeAsync() {
+        await _jsRef.DisposeSilentlyAsync("dispose");
+        _jsRef = null!;
+        _blazorRef.DisposeSilently();
+        _blazorRef = null!;
+    }
+
+    [JSInvokable("FileSelected")]
+    public async Task OnFileSelected(string fileName, string contentType, long size) {
+        var metadata = new UploadSourceMetadata(contentType, size, fileName);
+        var streamSource = new WebUploadStreamSource(_jsRef);
+        var uploadSource = new UploadSource(metadata, streamSource);
+        await FileSelected.InvokeAsync(uploadSource);
+    }
+
+    public async Task ClearSelection()
+        => await _jsRef.InvokeVoidAsync("clear");
+}

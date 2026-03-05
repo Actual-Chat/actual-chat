@@ -11,23 +11,31 @@ public class ImageUploadProcessor(ILogger<ImageUploadProcessor> log) : IUploadPr
     private ILogger Log { get; } = log;
 
     public bool Supports(string contentType)
-        => MediaTypeExt.IsImage(contentType);
+        // SVG is a vector format that ImageSharp can't process - pass through unchanged.
+        => MediaTypeExt.IsImage(contentType) && !(MediaTypeExt.IsSvg(contentType) || MediaTypeExt.IsGif(contentType));
 
-    public async Task<ProcessedFile> Process(UploadedTempFile upload, IProgress<double>? progress, CancellationToken cancellationToken)
+    public async Task<ProcessedFile> Process(UploadedFile upload, IProgress<double>? progress, CancellationToken cancellationToken)
     {
         progress?.Report(0);
-
-        // SVG is a vector format that ImageSharp can't process - pass through unchanged.
-        if (MediaTypeExt.IsSvg(upload.ContentType))
-            return new ProcessedFile(upload, null);
-
-        var imageInfo = await GetImageInfo(upload).ConfigureAwait(false);
-        if (imageInfo == null) {
-            var fileInfo = upload with {
-                ContentType = System.Net.Mime.MediaTypeNames.Application.Octet,
-            };
-            return new ProcessedFile(fileInfo, null);
+        var tempFile = await UploadHelper.DumpToTempFile(upload, cancellationToken).ConfigureAwait(false);
+        ProcessedFile processedFile;
+        try {
+            processedFile = await ProcessInternal(tempFile, progress, cancellationToken).ConfigureAwait(false);
         }
+        catch {
+            tempFile.Delete();
+            throw;
+        }
+        if (processedFile.File != tempFile)
+            tempFile.Delete();
+        return processedFile;
+    }
+
+    private async Task<ProcessedFile> ProcessInternal(UploadedFile upload, IProgress<double>? progress, CancellationToken cancellationToken)
+    {
+        var imageInfo = await GetImageInfo(upload).ConfigureAwait(false);
+        if (imageInfo == null)
+            return new ProcessedFile(upload.AsBinaryFile(), null);
 
         // Do not process GIFs and other animated images.
         if (imageInfo.FrameMetadataCollection.Count > 0
@@ -75,7 +83,7 @@ public class ImageUploadProcessor(ILogger<ImageUploadProcessor> log) : IUploadPr
         try {
             var inputStream = await file.Open().ConfigureAwait(false);
             await using var __ = inputStream.ConfigureAwait(false);
-            // Decode only first frame to identify whether it's an animated image or not.'
+            // Decode only the first frame to identify whether it's an animated image or not.'
             var options = new DecoderOptions { MaxFrames = 1 };
             return await Image.IdentifyAsync(options, inputStream).ConfigureAwait(false);
         }

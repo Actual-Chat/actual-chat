@@ -4,6 +4,7 @@ using ActualChat.AspNetCore;
 using ActualChat.Diagnostics;
 using ActualChat.Queues.Internal;
 using ActualChat.Uploads;
+using Google.Cloud.Storage.V1;
 using Microsoft.AspNetCore.StaticFiles;
 
 namespace ActualChat.Module;
@@ -44,8 +45,6 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
 
         // Upload processors
         services.AddSingleton<IUploadProcessor, ImageUploadProcessor>();
-        services.AddSingleton<IUploadProcessor, VideoUploadProcessor>();
-        services.AddSingleton<IMediaProcessor, MediaProcessor>();
 
         // Blob storages
         var storageBucket = Settings.GoogleStorageBucket;
@@ -56,6 +55,19 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
         }
         else
             services.AddSingleton<IBlobStorages>(_ => new GoogleCloudBlobStorages(storageBucket));
+
+        // Video upload processor
+        if (Settings.UseGoogleTranscoder && !storageBucket.IsNullOrEmpty())
+            services.AddSingleton<IUploadProcessor>(c => new GoogleCloudVideoUploadProcessor(
+                StorageClient.Create(),
+                storageBucket,
+                Settings.GoogleProjectId,
+                Settings.GoogleRegionId,
+                c.LogFor<GoogleCloudVideoUploadProcessor>()));
+        else
+            services.AddSingleton<IUploadProcessor, LocalVideoUploadProcessor>();
+        services.AddSingleton<IMediaProcessor, MediaProcessor>();
+
         services.AddSingleton<AudioSourceDownloader>();
 
         // Controllers, etc.

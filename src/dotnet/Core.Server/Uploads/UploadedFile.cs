@@ -1,3 +1,4 @@
+using System.Net.Mime;
 using ActualLab.IO;
 
 namespace ActualChat.Uploads;
@@ -16,4 +17,10 @@ public abstract record UploadedFile(FilePath FileName, string ContentType)
         await using var _ = stream.ConfigureAwait(false);
         return await processor.Invoke(stream).ConfigureAwait(false);
     }
+}
+
+public static class UploadedFileExt
+{
+    public static T AsBinaryFile<T>(this T file) where T : UploadedFile
+        => file with { ContentType = MediaTypeNames.Application.Octet };
 }
