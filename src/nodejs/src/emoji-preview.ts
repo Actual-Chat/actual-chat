@@ -118,6 +118,28 @@ export class EmojiPreview {
 
         // Watch for reaction animation triggers
         this.initReactionAnimations();
+
+        // Prefetch emoji SVGs after critical resources are loaded
+        this.prefetchEmojis();
+    }
+
+    private static prefetchEmojis(): void {
+        const meta = document.querySelector<HTMLMetaElement>('meta[name="emoji-svg-names"]');
+        if (!meta?.content)
+            return;
+
+        const svgNames = meta.content.split(',');
+        const basePath = '/dist/images/emoji/';
+
+        const prefetchBatch = (urls: string[]): Promise<void> =>
+            Promise.all(urls.map(url => fetch(url, { priority: 'low' } as RequestInit).catch(() => {}))).then(() => {});
+
+        // After page load: prefetch static, then animated
+        window.addEventListener('load', () => {
+            const staticUrls = svgNames.map(n => `${basePath}${n}.svg`);
+            const animatedUrls = svgNames.map(n => `${basePath}${n}-animated.svg`);
+            void prefetchBatch(staticUrls).then(() => prefetchBatch(animatedUrls));
+        }, { once: true });
     }
 
     private static initReactionAnimations(): void {
