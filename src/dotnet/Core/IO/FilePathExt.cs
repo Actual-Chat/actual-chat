@@ -53,5 +53,16 @@ public static class FilePathExt
     extension(FilePath path)
     {
         public long FileSize => path.GetFileInfo().Length;
+
+        public void DeleteSilently()
+        {
+            try {
+                if (File.Exists(path))
+                    File.Delete(path);
+            }
+            catch {
+                // ignore
+            }
+        }
     }
 }
