@@ -33,16 +33,6 @@ public class WebRecorderEngine(AppUIHub hub) : IAudioRecorderEngine
         return true;
     }
 
-    public async ValueTask EnsureConnected(bool quickReconnect, CancellationToken cancellationToken)
-    {
-        await EnsureInitialized(cancellationToken).ConfigureAwait(false);
-
-        await _jsRef.InvokeVoidAsync("ensureConnected", CancellationToken.None, quickReconnect)
-            .AsTask()
-            .WaitAsync(cancellationToken)
-            .ConfigureAwait(false);
-    }
-
     public async ValueTask ConversationSignal(CancellationToken cancellationToken)
     {
         await EnsureInitialized(cancellationToken).ConfigureAwait(false);

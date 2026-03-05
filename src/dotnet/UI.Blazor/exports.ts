@@ -6,6 +6,7 @@ export * from './Services/AccountUI/web-auth';
 export * from './Services/BrowserInfo/browser-info';
 export * from './Services/Caching/remote-computed-cache';
 export * from './Services/ClipboardUI/clipboard';
+export * from './Services/ConnectivityUI/connectivity-ui';
 export * from './Services/DebugUI/debug-ui';
 export * from './Services/DeviceAwakeUI/device-awake-ui';
 export * from './Services/ElementReference/element-utils'

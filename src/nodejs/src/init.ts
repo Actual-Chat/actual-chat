@@ -4,7 +4,7 @@ import { Gestures } from 'gestures';
 import { ServiceWorker } from 'service-worker';
 import { BrowserInit } from '../../dotnet/UI.Blazor/Services/BrowserInit/browser-init';
 
-DeviceInfo.init();
+DeviceInfo.updateBodyClasses();
 Interactive.init();
 Gestures.init();
 void ServiceWorker.init();

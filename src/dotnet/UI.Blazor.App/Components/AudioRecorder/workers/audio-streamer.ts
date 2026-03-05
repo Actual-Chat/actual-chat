@@ -1,6 +1,7 @@
 // TODO(AY): remove eslint-disables and fix errors
 /* eslint-disable */
 import { AUDIO_STREAMER as AS, AUDIO_ENCODER as AE } from '_constants';
+import { ConnectivityUI } from '../../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
 import Denque from 'denque';
 import { Disposable } from 'disposable';
 import { EventHandlerSet } from 'event-handling';
@@ -174,42 +175,6 @@ export class AudioStream implements Disposable {
     }
 }
 
-class ConnectionOnlineTracker {
-    public isOnline: boolean = (typeof navigator === 'undefined') ? true : (navigator.onLine ?? true);
-    private lastWentOfflineAt: number | null = null;
-    private lastCameOnlineAt: number | null = null;
-    private attached = false;
-
-    public attach(): void {
-        if (this.attached)
-            return;
-
-        this.attached = true;
-        try {
-            globalThis.addEventListener('online', () => {
-                this.isOnline = true;
-                this.lastCameOnlineAt = Date.now();
-            });
-            globalThis.addEventListener('offline', () => {
-                this.isOnline = false;
-                this.lastWentOfflineAt = Date.now();
-            });
-        } catch { /* ignore if not available */ }
-    }
-
-    public justBecameOnline(): boolean {
-        if (!this.isOnline)
-            return false;
-
-        if (this.lastCameOnlineAt == null)
-            return false;
-
-        // If came online within the last 1 second
-        return (Date.now() - this.lastCameOnlineAt) < 1000;
-    }
-}
-const _connectionOnlineTracker = new ConnectionOnlineTracker();
-
 export class AudioStreamer {
     public static connection: signalR.HubConnection;
     public static readonly streams = new Array<AudioStream>();
@@ -231,10 +196,10 @@ export class AudioStreamer {
             .withAutomaticReconnect({
                 nextRetryDelayInMilliseconds: (ctx) => {
                     // Immediate retry if we just came online (within < 1s)
-                    if (_connectionOnlineTracker.justBecameOnline())
+                    if (ConnectivityUI.justBecameOnline())
                         return 0;
 
-                    if (!_connectionOnlineTracker.isOnline)
+                    if (!ConnectivityUI.isOnline)
                         return 60 * 60 * 1000; // 1 hour when offline
 
                     // online policy: 10, 100, 500, 1000 ms, then stop
@@ -246,8 +211,6 @@ export class AudioStreamer {
             .withHubProtocol(new MessagePackHubProtocol())
             .configureLogging(signalR.LogLevel.Information)
             .build();
-        // Track connection state and online/offline events
-        _connectionOnlineTracker.attach();
         c.onreconnected(() => updateConnectionState());
         c.onreconnecting(() => updateConnectionState());
         c.onclose(() => updateConnectionState());
@@ -256,15 +219,15 @@ export class AudioStreamer {
         this.connection = c;
 
         // Network-aware reconnect: ensure we try fast when online event fires
-        try {
-            globalThis.addEventListener('online', () => {
-                const state = AudioStreamer.connection?.state;
-                if (state !== HubConnectionState.Connected && state !== HubConnectionState.Reconnecting) {
-                    debugLog?.log('online: ensuring SignalR connection ASAP');
-                    void AudioStreamer.ensureConnected(true);
-                }
-            });
-        } catch { }
+        ConnectivityUI.isOnlineChanged.add((isOnline) => {
+            if (!isOnline)
+                return;
+            const state = AudioStreamer.connection?.state;
+            if (state !== HubConnectionState.Connected && state !== HubConnectionState.Reconnecting) {
+                debugLog?.log('online: ensuring SignalR connection ASAP');
+                void AudioStreamer.ensureConnected(true);
+            }
+        });
     }
 
     public static get isInitialized(): boolean {
@@ -290,16 +253,14 @@ export class AudioStreamer {
         infoLog?.log(`ensureConnected(${quickReconnect}): connection.state:`, c.state);
         while (!this.isConnected) {
             try {
-                // If the browser reports we're offline, wait for the 'online' event to avoid futile reconnect attempts
-                if (typeof navigator !== 'undefined' && !navigator.onLine) {
-                    warnLog?.log('ensureConnected: offline, waiting for window.online event...');
+                // If we're offline, wait for the online event to avoid futile reconnect attempts
+                if (!ConnectivityUI.isOnline) {
+                    warnLog?.log('ensureConnected: offline, waiting for ConnectivityUI.isOnlineChanged...');
                     await new Promise<void>(resolve => {
-                        const handler = () => {
-                            globalThis.removeEventListener('online', handler as any);
-                            resolve();
-                        };
-                        // Some runtimes don't type 'globalThis' with EventTarget in TS config
-                        globalThis.addEventListener('online', handler as any, { once: true } as any);
+                        const handler = ConnectivityUI.isOnlineChanged.addJustOnce((isOnline) => {
+                            if (isOnline)
+                                resolve();
+                        });
                     });
                     // Use quick reconnect once we're back online
                     quickReconnect = true;

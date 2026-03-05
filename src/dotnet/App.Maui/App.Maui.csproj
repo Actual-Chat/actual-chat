@@ -149,9 +149,6 @@
     <!-- This seems weird, but w/o this line MSBuild concludes the version is 1.0.0! -->
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" VersionOverride="$(MicrosoftExtensionsVersion)" />
     <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" />
-    <!-- SignalR client needed for AudioStreamer -->
-    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
-    <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" />
     <PackageReference Include="Plugin.Maui.Audio" />
   </ItemGroup>
 

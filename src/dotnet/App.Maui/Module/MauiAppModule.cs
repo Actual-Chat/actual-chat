@@ -51,6 +51,9 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<MicrophonePermissionHandler>(c => new MauiMicrophonePermissionHandler(c.UIHub()));
         services.AddScoped<IDataCollectionSettingsUI>(_ => new MauiDataCollectionSettingsUI());
 
+        // Connectivity
+        services.AddScoped<ConnectivityUI>(c => new MauiConnectivityUI(c.UIHub()));
+
         // Audio
         services.AddScoped<IAudioRecorderEngine>(c => new MauiRecorderEngine(c.AppUIHub()));
 #if WINDOWS

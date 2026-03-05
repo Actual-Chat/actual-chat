@@ -116,7 +116,6 @@ public sealed class AppScopedServiceStarter
 
             // Starting less important UI services
             await Task.Delay(baseDelay, cancellationToken).ConfigureAwait(false);
-            Hub.Services.GetRequiredService<ReconnectUI>().Start();
             if (hostKind.IsApp())
                 Hub.Services.GetRequiredService<SessionTokens>().Start();
             Hub.Services.GetRequiredService<AppPresenceReporter>().Start();
@@ -130,6 +129,8 @@ public sealed class AppScopedServiceStarter
                 Hub.Services.GetRequiredService<DebugUI>();
 
             await Task.Delay(baseDelay * 2, cancellationToken).ConfigureAwait(false);
+            Hub.Services.GetRequiredService<ConnectivityUI>().Start();
+            Hub.Services.GetRequiredService<ReconnectUI>().Start();
             Hub.AudioInitializer.StartInitialization();
             if (hostKind.IsApp())
                 await StartHostedServices().ConfigureAwait(false);
