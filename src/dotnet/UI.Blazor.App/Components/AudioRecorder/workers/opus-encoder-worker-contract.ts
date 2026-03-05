@@ -14,4 +14,5 @@ export interface OpusEncoderWorker {
 
     onEncoderWorkletSamples(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void>;
     onVoiceActivityChange(change: VoiceActivityChange, noWait?: RpcNoWait): Promise<void>;
+    onConnectivityUpdate(isOnline: boolean, isConnected: boolean, noWait?: RpcNoWait): Promise<void>;
 }

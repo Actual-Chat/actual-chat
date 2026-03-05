@@ -1,7 +1,6 @@
 // TODO(AY): remove eslint-disables and fix errors
 /* eslint-disable */
 import { AUDIO_STREAMER as AS, AUDIO_ENCODER as AE } from '_constants';
-import { ConnectivityUI } from '../../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
 import Denque from 'denque';
 import { Disposable } from 'disposable';
 import { EventHandlerSet } from 'event-handling';
@@ -10,6 +9,7 @@ import { delayAsync } from 'promises';
 import * as signalR from '@microsoft/signalr';
 import { HubConnectionState, IStreamResult } from '@microsoft/signalr';
 import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
+import { WorkerConnectivityUI } from './worker-connectivity-ui';
 import { Log } from 'logging';
 
 const { debugLog, infoLog, warnLog } = Log.get('AudioStreamer');
@@ -196,10 +196,10 @@ export class AudioStreamer {
             .withAutomaticReconnect({
                 nextRetryDelayInMilliseconds: (ctx) => {
                     // Immediate retry if we just came online (within < 1s)
-                    if (ConnectivityUI.justBecameOnline())
+                    if (WorkerConnectivityUI.justBecameOnline())
                         return 0;
 
-                    if (!ConnectivityUI.isOnline)
+                    if (!WorkerConnectivityUI.isOnline)
                         return 60 * 60 * 1000; // 1 hour when offline
 
                     // online policy: 10, 100, 500, 1000 ms, then stop
@@ -219,9 +219,10 @@ export class AudioStreamer {
         this.connection = c;
 
         // Network-aware reconnect: ensure we try fast when online event fires
-        ConnectivityUI.isOnlineChanged.add((isOnline) => {
+        WorkerConnectivityUI.isOnlineChanged.add((isOnline) => {
             if (!isOnline)
                 return;
+
             const state = AudioStreamer.connection?.state;
             if (state !== HubConnectionState.Connected && state !== HubConnectionState.Reconnecting) {
                 debugLog?.log('online: ensuring SignalR connection ASAP');
@@ -254,10 +255,10 @@ export class AudioStreamer {
         while (!this.isConnected) {
             try {
                 // If we're offline, wait for the online event to avoid futile reconnect attempts
-                if (!ConnectivityUI.isOnline) {
-                    warnLog?.log('ensureConnected: offline, waiting for ConnectivityUI.isOnlineChanged...');
+                if (!WorkerConnectivityUI.isOnline) {
+                    warnLog?.log('ensureConnected: offline, waiting for WorkerConnectivityUI.isOnlineChanged...');
                     await new Promise<void>(resolve => {
-                        const handler = ConnectivityUI.isOnlineChanged.addJustOnce((isOnline) => {
+                        WorkerConnectivityUI.isOnlineChanged.addJustOnce((isOnline) => {
                             if (isOnline)
                                 resolve();
                         });

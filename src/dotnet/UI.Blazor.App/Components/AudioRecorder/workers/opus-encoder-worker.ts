@@ -7,6 +7,7 @@ import { AUDIO_REC as AR, AUDIO_ENCODER as AE } from '_constants';
 import Denque from 'denque';
 import { Disposable } from 'disposable';
 import { retry } from 'promises';
+import { approximateGain, average, clamp } from 'math';
 import { rpcClientServer, rpcNoWait, RpcNoWait, RpcTimeout } from 'rpc';
 import { Versioning } from 'versioning';
 
@@ -17,9 +18,9 @@ import { OpusEncoderWorklet } from '../worklets/opus-encoder-worklet-contract';
 import { VoiceActivityChange } from './audio-vad-contract';
 import { RecorderStateServer } from '../opus-media-recorder-contracts';
 import { AudioDiagnosticsState } from '../audio-recorder';
-import { Log } from 'logging';
-import { approximateGain, average, clamp } from 'math';
 import { ResamplerLoader } from './resampler-loader';
+import { WorkerConnectivityUI } from './worker-connectivity-ui';
+import { Log } from 'logging';
 
 const { logScope, debugLog, infoLog, warnLog, errorLog } = Log.get('OpusEncoderWorker');
 
@@ -170,6 +171,10 @@ const serverImpl: OpusEncoderWorker = {
             await startRecording();
         else
             await stopRecording();
+    },
+
+    onConnectivityUpdate: async (isOnline: boolean, isConnected: boolean, _noWait?: RpcNoWait): Promise<void> => {
+        WorkerConnectivityUI.update(isOnline, isConnected);
     },
 }
 const stateServer = rpcClientServer<RecorderStateServer>(`${logScope}.stateServer`, worker, serverImpl);
