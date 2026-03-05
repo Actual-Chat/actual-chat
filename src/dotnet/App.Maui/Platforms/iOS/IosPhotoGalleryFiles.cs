@@ -1,4 +1,5 @@
 using ActualChat.Concurrency;
+using ActualChat.Maui;
 using ActualChat.UI.Blazor.App.Services;
 using ActualLab.Generators;
 using ActualLab.IO;
@@ -19,6 +20,7 @@ public sealed class IosPhotoGalleryFiles : IDisposable
     private readonly ConcurrentProcessor<PendingFile, FilePath> _processor;
 
     private ILogger Log { get; }
+    private IosVideoThumbnails VideoThumbnails => field ??= _services.GetRequiredService<IosVideoThumbnails>();
 
     public IosPhotoGalleryFiles(IServiceProvider services)
     {
@@ -59,6 +61,24 @@ public sealed class IosPhotoGalleryFiles : IDisposable
 
     public Task WhenNoPending(FilePath targetPath)
         => _processor.Get(new PendingFile(targetPath))?.ResultTask ?? Task.CompletedTask;
+
+    public async Task<FilePreview?> GetPreview(FilePath targetPath, CancellationToken cancellationToken)
+    {
+        var pendingTask = _processor.Get(new PendingFile(targetPath))?.ResultTask;
+        if (pendingTask == null)
+            return null;
+
+        await pendingTask.ConfigureAwait(false);
+
+        if (!OrdinalIgnoreCaseEquals(targetPath.Extension, ".mov"))
+            return new FilePreview(ContentResolver.GetFileUri(targetPath));
+
+        var thumbnail = await VideoThumbnails.Generate(targetPath, cancellationToken).ConfigureAwait(false);
+        Log.LogDebug("Generated thumbnail: {ThumbnailPath}", thumbnail?.Path);
+        return thumbnail is { } t
+            ? new FilePreview(ContentResolver.GetFileUri(t.Path), t.Size)
+            : new FilePreview(ContentResolver.GetFileUri(targetPath));
+    }
 
     private async Task<FilePath> ProcessFile(PendingFile pendingFile, CancellationToken cancellationToken)
     {
