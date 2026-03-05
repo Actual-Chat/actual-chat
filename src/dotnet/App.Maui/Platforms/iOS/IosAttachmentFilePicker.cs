@@ -1,8 +1,6 @@
 using ActualChat.App.Maui.Services;
 using ActualChat.Media;
 using ActualChat.UI.Blazor.App.Components;
-using ActualChat.UI.Blazor.App.Services;
-using ActualLab.IO;
 using Photos;
 using PhotosUI;
 using UniformTypeIdentifiers;
@@ -12,7 +10,8 @@ namespace ActualChat.App.Maui;
 public class IosAttachmentFilePicker(IServiceProvider services) : MauiAttachmentFilePicker(services)
 {
     private const int MaxSelectionCount = 10;
-    private static readonly FilePath AttachmentsDirectoryName = Path.Combine(FileSystem.CacheDirectory, "attachments");
+
+    private IosPhotoGalleryFiles PhotoGalleryFiles => field ??= Services.GetRequiredService<IosPhotoGalleryFiles>();
 
     protected override async Task<AttachFileInfo[]?> TryPickVisualMediaFiles(string acceptTypes)
     {
@@ -42,40 +41,23 @@ public class IosAttachmentFilePicker(IServiceProvider services) : MauiAttachment
     }
 
     private Task<AttachFileInfo[]> LoadPickedFiles(PHPickerResult[] results, UTType preferredContentType)
-        => DispatchToMainThread(async () => {
-            var pickedMediaFiles = await results.Select(x => LoadPickedMedia(x, preferredContentType)).Collect().ConfigureAwait(false);
-            return pickedMediaFiles.SkipNullItems().ToArray();
+        => DispatchToMainThread(() => {
+            var attachFileInfos = results
+                .Select(x => CreateAttachFileInfo(x, preferredContentType))
+                .SkipNullItems()
+                .ToArray();
+            return Task.FromResult(attachFileInfos);
         });
 
-    private async Task<AttachFileInfo?> LoadPickedMedia(PHPickerResult pickerResult, UTType contentType)
+    private AttachFileInfo? CreateAttachFileInfo(PHPickerResult pickerResult, UTType contentType)
     {
-        var item = pickerResult.ItemProvider;
         try {
-            var loadStartedAt = CpuTimestamp.Now;
-            var representation = await item
-                .LoadInPlaceFileRepresentationAsync(contentType.Identifier)
-                .ConfigureAwait(false);
-            FilePath fileName = item.SuggestedName.NullIfEmpty() ?? representation.Path.FileName;
-            fileName = fileName.EnsureExt(representation.Path.Extension);
-            Log.LogInformation(
-                "Loaded in-place representation for '{FileName}' in {Elapsed}",
-                fileName, loadStartedAt.Elapsed.ToShortString());
-
-            var targetFilePath = AttachmentsDirectoryName | fileName.ToUnique();
-            var fileProvider = new MauiFileProvider {
-                FileRef = targetFilePath,
-                TransientFileRef = representation.Path,
-                Metadata = new() {
-                    FileName = fileName,
-                    FileType = representation.ImplyMimeType(item),
-                    Length = new FileInfo(representation.Path).Length,
-                },
-            };
-            fileProvider.Initialize(Services);
+            // Enqueue for background loading - returns MauiFileProvider immediately
+            var fileProvider = PhotoGalleryFiles.Enqueue(pickerResult, contentType);
             return new AttachFileInfo(fileProvider);
         }
         catch (Exception e) {
-            Log.LogWarning(e, "Failed to load picked media file.");
+            Log.LogWarning(e, "Failed to enqueue picked media file.");
             return null;
         }
     }

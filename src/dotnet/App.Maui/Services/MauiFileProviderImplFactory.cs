@@ -9,14 +9,14 @@ public class MauiFileProviderImplFactory(IServiceProvider services) : IMauiFileP
     private AndroidContentDownloader Downloader => field ??= services.GetRequiredService<AndroidContentDownloader>();
 #endif
 
-    public IMauiFileProviderImpl Create(FilePath fileRef, FilePath transientFileRef)
+    public IMauiFileProviderImpl Create(FilePath fileRef)
     {
 #if WINDOWS
         return new WindowsFileProviderImpl(fileRef);
 #elif ANDROID
         return new AndroidFileProviderImpl(Downloader, fileRef);
 #elif IOS
-        return new IosFileProviderImpl(services, fileRef, transientFileRef);
+        return new IosFileProviderImpl(services, fileRef);
 #else
         throw new PlatformNotSupportedException();
 #endif
