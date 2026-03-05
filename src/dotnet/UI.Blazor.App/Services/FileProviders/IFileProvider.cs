@@ -13,7 +13,7 @@ public partial interface IFileProvider
     Task<bool> CheckAccess();
     Task<bool> WhenUserConsentGranted();
     Task ClearForRemoving();
-    Task<string> GetPreviewUrl();
+    Task<string> GetPreviewUrl(CancellationToken cancellationToken = default);
     Task WhenFileStreamReady();
     UploadSource GetUploadSource();
 }

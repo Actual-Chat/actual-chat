@@ -4,7 +4,16 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class UploadSessionRepo
+public interface IUploadSessionRepo
+{
+    Task Save(UploadSessionSnapshot session, bool flush = true);
+    Task<UploadSessionSnapshot?> Get(string sessionId);
+    Task<IEnumerable<KeyValuePair<string, UploadSessionSnapshot>>> GetAll();
+    Task Delete(string sessionId);
+    Task Flush();
+}
+
+public class UploadSessionRepo : IUploadSessionRepo
 {
     private readonly UploadSessionRepositoryInternal _internal;
 

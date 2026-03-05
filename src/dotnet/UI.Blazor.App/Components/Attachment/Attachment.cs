@@ -11,8 +11,8 @@ public record Attachment(string FileName, string FileType, long Length, int Widt
     public string UploadSessionId { get; init; } = "";
     public AttachmentCleanupCollection Cleanups { get; } = new ();
 
-    public bool IsImage => MediaTypeExt.IsSupportedImage(FileType);
-    public bool IsVideo => MediaTypeExt.IsSupportedVideo(FileType);
+    public bool IsSupportedImage => MediaTypeExt.IsSupportedImage(FileType);
+    public bool IsSupportedVideo => MediaTypeExt.IsSupportedVideo(FileType);
 
     public string DemandUploadSessionId()
         => !UploadSessionId.IsNullOrEmpty() ? UploadSessionId : throw new InvalidOperationException("Upload session not assigned");
@@ -23,7 +23,7 @@ public record Attachment(string FileName, string FileType, long Length, int Widt
             .Set(nameof(Media.Media.FileName), FileName)
             .Set(nameof(Media.Media.ContentType), FileType)
             .Set(nameof(Media.Media.Length), Length);
-        if (IsImage || IsVideo)
+        if (IsSupportedImage || IsSupportedVideo)
             metadata = metadata
                 .Set(nameof(Media.Media.Width), Width)
                 .Set(nameof(Media.Media.Height), Height);

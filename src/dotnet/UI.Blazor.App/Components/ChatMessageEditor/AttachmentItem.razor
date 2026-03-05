@@ -2,8 +2,8 @@
 @inherits AttachmentItemBase
 
 @{
-    var attachment = Attachment;
     var m = State.Value;
+    var attachment = m.Attachment;
     var progress = m.Progress;
     var progressValue = progress.Progress;
     var stageDetails = progress.Details;
@@ -28,12 +28,14 @@
             <ButtonSquare Click="@RemoveClick" Class="remove-attachment-btn btn-danger btn-sm">
                 <i class="icon-trash03 text-2xl font-thin"></i>
             </ButtonSquare>
-            @if (attachment.IsImage) {
+            @if (attachment.IsSupportedImage) {
                 <img src="@previewUrl" alt="Image attachment" class="@plugClass"/>
-            } else if (attachment.IsVideo) {
+            } else if (attachment.IsSupportedVideo) {
                 <video preload="metadata" class="@plugClass">
                     <source src="@previewUrl#t=0.5"/>
                 </video>
+            } else if (m.HasPreview) {
+                <img src="@previewUrl" alt="Video thumbnail" class="@plugClass"/>
             } else {
                 <FileAttachmentView FileType="@attachment.FileType"/>
             }

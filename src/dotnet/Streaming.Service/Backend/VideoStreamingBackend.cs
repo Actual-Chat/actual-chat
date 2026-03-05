@@ -97,7 +97,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         if (_latencyStates.TryGetValue(streamId, out var latencyState)) {
             var latency = Clocks.ServerClock.Now - (latencyState.StartedAt + TimeSpan.FromMilliseconds(streamOffsetMs));
             if (latency > TimeSpan.Zero) {
-                AppMeters.VideoLatency.Record((float)latency.TotalMilliseconds);
+                AppMeters.VideoLatency.Record(latency.TotalMilliseconds);
                 Log.LogWarning("ReportPeerLatency: StreamId={StreamId}, PeerId={PeerId}, StreamOffsetMs={StreamOffsetMs:F0}, LatencyMs={LatencyMs:F0}",
                     streamId, peerId, streamOffsetMs, latency.TotalMilliseconds);
                 latencyState.RecordPeerLatency(peerId, (float)latency.TotalMilliseconds);

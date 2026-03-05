@@ -3,18 +3,16 @@
 @inherits AttachmentItemBase
 
 @{
-    var attachment = Attachment;
-    var state = State.Value;
-    var previewState = state.Preview.State;
-    var progress = state.Progress;
+    var m = State.Value;
+    var attachment = m.Attachment;
+    var previewState = m.Preview.State;
+    var progress = m.Progress;
     var progressValue = progress.Progress;
     var stageDetails = progress.Details;
     var uploadProgressClass = "attachment-upload-progress";
     MediaMimeTypes.TryGetExtension(attachment.FileType, out var extension);
     var fileExtension = extension != null ? extension.Replace(".", "") : "";
     var fileCls = FileTypeHelper.FileColors.GetValueOrDefault(fileExtension, "file-default");
-    var iconOnlyCls = IconOnly ? "icon-only" : "";
-    var tooltipTitle = IconOnly ? GetTooltipTitle() : "";
     if (progress.IsFailed) {
         progressValue = Math.Max(progressValue, 30);
         uploadProgressClass += " attachment-upload-failed";
@@ -25,9 +23,7 @@
     var isUploading = progress.IsInProgress;
 }
 
-<div class="file-attachment upload-file unfocusable @iconOnlyCls"
-   data-tooltip="@tooltipTitle"
-   data-tooltip-position="@FloatingPosition.Top.ToPositionString()">
+<div class="file-attachment upload-file unfocusable">
     <div class="c-file-icon @fileCls">
         @if (previewState is PreviewAccessState.PendingGetAccessRequest) {
             <i class="icon-file-blocked text-2xl text-02"></i>
@@ -48,22 +44,20 @@
             }
         }
     </div>
-    @if (!IconOnly) {
-        <div class="c-file-info">
-            <FileAttachmentTitle Title="@attachment.FileName"/>
-            <div class="c-bottom">
-                <div class="c-size">
-                    <span>@FileSizeFormatter.Format(Attachment.Length)</span>
-                </div>
-                <div class="@uploadProgressClass"
-                     style="@uploadStyle"
-                     title="@stageDetails">
-                </div>
+    <div class="c-file-info">
+        <FileAttachmentTitle Title="@attachment.FileName"/>
+        <div class="c-bottom">
+            <div class="c-size">
+                <span>@FileSizeFormatter.Format(attachment.Length)</span>
+            </div>
+            <div class="@uploadProgressClass"
+                 style="@uploadStyle"
+                 title="@stageDetails">
             </div>
         </div>
-    }
+    </div>
     @if (!progress.IsReady) {
-        @if (progress.IsFailed && !state.NoAccess && RestartClick.HasDelegate) {
+        @if (progress.IsFailed && !m.NoAccess && RestartClick.HasDelegate) {
             <span class="reload-icon-wrapper">
                 <ButtonRound Click="@RestartClick" Class="btn-sm">
                     <i class="icon-sync text-2xl"></i>
@@ -75,12 +69,3 @@
         <i class="icon-trash03 text-2xl font-thin"></i>
     </ButtonRound>
 </div>
-
-@code {
-    [Parameter] public bool IconOnly { get; set; }
-
-    private string GetTooltipTitle() {
-        var name = Attachment.FileName;
-        return name.Length <= 24 ? name : $"{name[..10]}...{name[^10..]}";
-    }
-}

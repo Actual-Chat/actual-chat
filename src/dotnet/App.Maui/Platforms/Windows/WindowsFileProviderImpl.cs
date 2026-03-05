@@ -6,7 +6,7 @@ public class WindowsFileProviderImpl(string filePath) : IMauiFileProviderImpl
 {
     private FileInfo FileInfo => field ??= new FileInfo(filePath);
 
-    public Task<string> GetPreviewUrl()
+    public Task<string> GetPreviewUrl(CancellationToken cancellationToken = default)
         => Task.FromResult(ContentResolver.GetFileUri(filePath));
 
     public Task PrepareForSaving()

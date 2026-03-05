@@ -23,10 +23,8 @@ partial class SendingMessages
             catch (Exception e) {
                 Log.LogError(e, "Failed to recreate stored post request");
                 // Failed to restart send message request.
-                // So forget about this request and cleanup attachment resources.
+                // So forget about this request.
                 await DiscardStoredPostRequest(entry.Uuid, cancellationToken).ConfigureAwait(false);
-                var uploadSessionIds = entry.AttachFileRequests.Select(x => x.UploadSessionId).ToArray();
-                await CleanupUploadSessions(entry.Uuid, uploadSessionIds).ConfigureAwait(false);
                 continue;
             }
             var resultSource = TaskCompletionSourceExt.New<ChatEntry?>();
@@ -49,20 +47,6 @@ partial class SendingMessages
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to remove stored post request '{Id}'", postRequestUuid);
-        }
-    }
-
-    private async Task CleanupUploadSessions(string postRequestUuid, string[] uploadSessionIds)
-    {
-        foreach (var uploadSessionId in uploadSessionIds) {
-            try {
-                var cleanup = AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSessionId);
-                await cleanup.Cleanup().ConfigureAwait(false);
-            }
-            catch (Exception e) {
-                Log.LogError(e, "Failed to cleanup upload session '{UploadSessionId}' for post request '{Id}'",
-                    uploadSessionId, postRequestUuid);
-            }
         }
     }
 

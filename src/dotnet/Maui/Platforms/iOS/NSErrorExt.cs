@@ -1,10 +1,9 @@
-﻿using Foundation;
-
-namespace ActualChat.App.Maui;
+﻿namespace ActualChat.Maui;
 
 // ReSharper disable once InconsistentNaming
 public static class NSErrorExt
 {
+    [return: NotNullIfNotNull(nameof(error))]
     public static Exception? ToException(this NSError? error, string? message = null)
         => error != null
             ? StandardError.External(message.NullIfEmpty() ?? $"{error.LocalizedDescription}. {error.Description}",

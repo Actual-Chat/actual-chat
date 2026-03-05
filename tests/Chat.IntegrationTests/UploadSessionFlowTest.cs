@@ -64,6 +64,78 @@ public class UploadSessionFlowTest(ChatCollection.AppHostFixture fixture, ITestO
         media.BlobId.Should().Be(uploadSession.MediaRef.BlobId);
     }
 
+    [Fact]
+    public async Task ShouldRestoreUploadSessionFromRepo()
+    {
+        await using var appHost = await NewAppHost("restore-session", options => options with {
+            ConfigureServices = (_, services) => {
+                services.AddScoped<IUploadSessionRepo, InMemoryUploadSessionRepo>();
+            },
+        });
+        await using var tester = appHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+
+        var hub = tester.ScopedAppServices.AppUIHub();
+        var repo = tester.ScopedAppServices.GetRequiredService<IUploadSessionRepo>();
+        var uploadSessions = hub.UploadSessions;
+
+        var testContent = "Test content for restore"u8.ToArray();
+        var fileProvider = new DataFileProvider(testContent, "restore-test.txt", "text/plain");
+        var metadata = new PropertyBag().Set("TestKey", "TestValue");
+
+        var uploadOperations = new UploadOperations(hub);
+        var snapshot = UploadSession.NewUploadSnapshot(fileProvider, metadata, uploadOperations.Now(), "restore-test");
+
+        // Save snapshot directly to repo (bypasses _sessions dictionary)
+        await repo.Save(snapshot);
+
+        // Act: TryGetSession should load from repo
+        var session = await uploadSessions.TryGetSession(snapshot.SessionId);
+
+        // Assert
+        session.Should().NotBeNull();
+        session.SessionId.Should().Be(snapshot.SessionId);
+        session.CurrentState.Should().Be(snapshot.CurrentState);
+        session.FileName.Should().Be("restore-test.txt");
+    }
+
+    [Fact]
+    public async Task ShouldDeleteStaleUploadSession()
+    {
+        await using var appHost = await NewAppHost("delete-stale-session", options => options with {
+            ConfigureServices = (_, services) => {
+                services.AddScoped<IUploadSessionRepo, InMemoryUploadSessionRepo>();
+            },
+        });
+        await using var tester = appHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+
+        var hub = tester.ScopedAppServices.AppUIHub();
+        var repo = tester.ScopedAppServices.GetRequiredService<IUploadSessionRepo>();
+        var uploadSessions = hub.UploadSessions;
+
+        var testContent = "Test content for stale delete"u8.ToArray();
+        var fileProvider = new DataFileProvider(testContent, "stale-test.txt", "text/plain");
+        var metadata = new PropertyBag().Set("TestKey", "TestValue");
+
+        var uploadOperations = new UploadOperations(hub);
+        var snapshot = UploadSession.NewUploadSnapshot(fileProvider, metadata, uploadOperations.Now(), "stale-test");
+
+        // Save snapshot directly to repo (bypasses _sessions dictionary — simulates stale session)
+        await repo.Save(snapshot);
+
+        // Act: DeleteSession should handle a session not in _sessions
+        await uploadSessions.DeleteStaleSession(snapshot.SessionId);
+
+        // Assert: session is deleted from repo
+        var repoSession = await repo.Get(snapshot.SessionId);
+        repoSession.Should().BeNull();
+
+        // Assert: TryGetSession also returns null
+        var session = await uploadSessions.TryGetSession(snapshot.SessionId);
+        session.Should().BeNull();
+    }
+
     // Test file provider that uploads data via ChunkedFileUploader
     private sealed class DataFileProvider : IFileProvider
     {
@@ -91,7 +163,7 @@ public class UploadSessionFlowTest(ChatCollection.AppHostFixture fixture, ITestO
 
         public Task ClearForRemoving() => Task.CompletedTask;
 
-        public Task<string> GetPreviewUrl() => Task.FromResult("");
+        public Task<string> GetPreviewUrl(CancellationToken cancellationToken = default) => Task.FromResult("");
 
         public Task WhenFileStreamReady() => Task.CompletedTask;
 

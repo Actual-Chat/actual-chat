@@ -71,6 +71,7 @@ public static partial class Constants
         public const bool ShareSuggestions = false;
 
         // File upload
+        public const bool FileAttachments = false;
         public const bool VideoTranscoding = false;
     }
 }

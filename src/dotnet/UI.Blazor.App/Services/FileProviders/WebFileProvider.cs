@@ -87,7 +87,7 @@ public partial class WebFileProvider : IFileProvider
             await WebFileProviders.DeleteFileHandleFromDb(JS, FileHandleDbKey).ConfigureAwait(false);
     }
 
-    public Task<string> GetPreviewUrl()
+    public Task<string> GetPreviewUrl(CancellationToken cancellationToken = default)
         => DemandWebFileProviderInternal().CreatePreviewUrl().AsTask();
 
     public Task WhenFileStreamReady()
