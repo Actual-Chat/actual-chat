@@ -7,14 +7,14 @@ const { infoLog, warnLog, errorLog } = Log.get('ConnectivityUI');
 export class ConnectivityUI {
     private static _isOnline = true;
     private static _isConnected = true;
-    private static _isAlwaysConnected = false;
+    private static _isBlazorServer = false;
     private static _lastCameOnlineAt: number | null = null;
     private static _lastCameConnectedAt: number | null = null;
     private static _backendRef: DotNet.DotNetObject | null = null;
 
     public static get isOnline(): boolean { return this._isOnline; }
     public static get isConnected(): boolean { return this._isConnected; }
-    public static get isAlwaysConnected(): boolean { return this._isAlwaysConnected; }
+    public static get isBlazorServer(): boolean { return this._isBlazorServer; }
 
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     public static readonly isMauiApp = globalThis.document?.body.classList.contains('app-maui') ?? false;
@@ -23,14 +23,14 @@ export class ConnectivityUI {
     public static readonly whenReady = new PromiseSource<void>();
 
     /** Called from C# to initialize connectivity tracking */
-    public static init(backendRef: DotNet.DotNetObject | null, isAlwaysConnected: boolean): void {
+    public static init(backendRef: DotNet.DotNetObject | null, isBlazorServer: boolean): void {
         this._backendRef = backendRef;
-        this._isAlwaysConnected = isAlwaysConnected;
+        this._isBlazorServer = isBlazorServer;
 
         if (!this.isMauiApp) { // MauiApp uses MauiConnectivityUI to report online/offline state
             const setOnline = (isOnline: boolean) => {
                 this.setOnline(isOnline);
-                if (this._isAlwaysConnected)
+                if (this._isBlazorServer)
                     this.setConnected(isOnline);
             };
             try {

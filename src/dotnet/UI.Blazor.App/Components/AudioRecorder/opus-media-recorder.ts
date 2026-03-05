@@ -349,14 +349,14 @@ export class OpusMediaRecorder implements RecorderStateServer {
             void this.encoderWorker?.onConnectivityUpdate(
                 ConnectivityUI.isOnline,
                 ConnectivityUI.isConnected,
-                ConnectivityUI.isAlwaysConnected,
+                ConnectivityUI.isBlazorServer,
                 rpcNoWait)
         }
         ConnectivityUI.isOnlineChanged.add(updateWorkerConnectivityUI);
         ConnectivityUI.isConnectedChanged.add(updateWorkerConnectivityUI);
         await ConnectivityUI.whenReady;
         void this.encoderWorker.onConnectivityUpdate(
-            ConnectivityUI.isOnline, ConnectivityUI.isConnected, ConnectivityUI.isAlwaysConnected, rpcNoWait);
+            ConnectivityUI.isOnline, ConnectivityUI.isConnected, ConnectivityUI.isBlazorServer, rpcNoWait);
 
         await this.vadWorker.create(
             Versioning.assetMap,

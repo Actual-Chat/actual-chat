@@ -24,15 +24,15 @@ public abstract class ConnectivityUI : UIWorkerBase<UIHub>
 
     protected bool MustPushIsOnlineToJS { get; init; }
 
-    public bool IsAlwaysConnected { get; }
+    public bool IsBlazorServer { get; }
     public IState<bool> IsConnected => _isConnected;
-    public RpcClientPeer? Peer => IsAlwaysConnected ? null : Hub.RpcHub.GetClientPeer(RpcPeerRef.Default);
+    public RpcClientPeer? Peer => IsBlazorServer ? null : Hub.RpcHub.GetClientPeer(RpcPeerRef.Default);
     public abstract IState<bool> IsOnline { get; }
 
     protected ConnectivityUI(UIHub hub) : base(hub)
     {
-        IsAlwaysConnected = Hub.HostInfo.HostKind.IsServer();
-        _isConnected = StateFactory.NewMutable(IsAlwaysConnected);
+        IsBlazorServer = Hub.HostInfo.HostKind.IsServer();
+        _isConnected = StateFactory.NewMutable(IsBlazorServer);
     }
 
     public Task WhenConnected(CancellationToken cancellationToken = default)
@@ -46,7 +46,7 @@ public abstract class ConnectivityUI : UIWorkerBase<UIHub>
     protected async ValueTask Initialize(DotNetObjectReference<IConnectivityUIBackend>? backendRef = null)
     {
         try {
-            await JS.InvokeVoidAsync(JSInitMethod, backendRef, IsAlwaysConnected).ConfigureAwait(false);
+            await JS.InvokeVoidAsync(JSInitMethod, backendRef, IsBlazorServer).ConfigureAwait(false);
         }
         catch (Exception e) {
             Log.LogError(e, "Initialize failed");
@@ -55,7 +55,7 @@ public abstract class ConnectivityUI : UIWorkerBase<UIHub>
 
     protected override Task OnRun(CancellationToken cancellationToken)
     {
-        if (IsAlwaysConnected)
+        if (IsBlazorServer)
             return Task.CompletedTask;
 
         var baseChains = new[] {
@@ -103,7 +103,7 @@ public abstract class ConnectivityUI : UIWorkerBase<UIHub>
 
     private async Task ResetReconnectDelaysWhenComeOnline(CancellationToken cancellationToken)
     {
-        if (IsAlwaysConnected)
+        if (IsBlazorServer)
             return;
 
         while (!cancellationToken.IsCancellationRequested) {

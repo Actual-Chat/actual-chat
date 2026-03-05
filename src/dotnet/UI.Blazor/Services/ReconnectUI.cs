@@ -21,7 +21,7 @@ public class ReconnectUI(UIHub hub)
 
     public void ReconnectIfDisconnected()
     {
-        if (ConnectivityUI.IsAlwaysConnected)
+        if (ConnectivityUI.IsBlazorServer)
             return;
         if (!ConnectivityUI.IsOnline.Value)
             return; // No internet -> don't try to reconnect
