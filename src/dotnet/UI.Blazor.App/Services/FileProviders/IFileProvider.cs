@@ -19,7 +19,7 @@ public partial interface IFileProvider
     UploadSource GetUploadSource();
 }
 
-public readonly record struct FilePreview(string Url, Size? Dimensions = null);
+public sealed record FilePreview(string Url, Size? Dimensions = null);
 
 // NOTE(DF): This is a workaround for the following issue:
 // When I apply MemoryPackUnion to the interface, this is working on Desktop, but fails on Android (MAUI) with an error:
