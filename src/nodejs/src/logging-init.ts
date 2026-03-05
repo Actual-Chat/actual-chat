@@ -19,6 +19,7 @@ export type LogScope =
     | 'ConnectivityUI'
     | 'DelayedInvoker'
     | 'FileUpload'
+    | 'EmojiPreview'
     | 'Gestures'
     | 'event-handling'
     | 'InertialScroll'

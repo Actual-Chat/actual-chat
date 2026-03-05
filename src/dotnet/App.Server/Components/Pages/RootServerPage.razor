@@ -2,6 +2,7 @@
 @using ActualChat.Hosting
 @using ActualChat.Security
 @using ActualChat.UI.Blazor.App
+@using ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
 @using ActualChat.Users.Module
@@ -158,6 +159,10 @@
     <link rel="prefetch" href="/@Assets["dist/assets/wasm/codec.wasm"]" as="fetch" crossorigin />
     <link rel="prefetch" href="/@Assets["dist/assets/wasm/webrtc-vad.wasm"]" as="fetch"  crossorigin />
     <link rel="prefetch" href="/@Assets["dist/assets/wasm/ort-wasm-simd.wasm"]" as="fetch" crossorigin />
+    @foreach (var svgName in EmojiIcon.SvgNames.Values) {
+        <link rel="prefetch" href="/dist/images/emoji/@(svgName).svg" as="image" />
+        <link rel="prefetch" href="/dist/images/emoji/@(svgName)-animated.svg" as="image" />
+    }
 
     <link href="/@Assets["dist/bundle.css"]" rel="stylesheet" />
     <ImportMap nonce="@importMapNonce" ImportMapDefinition="importMap"/>

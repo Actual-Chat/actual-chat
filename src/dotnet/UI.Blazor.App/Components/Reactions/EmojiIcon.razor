@@ -1,7 +1,10 @@
 @namespace ActualChat.UI.Blazor.App.Components
 
 @if (_svgName is not null) {
-    <img class="@Class" src="/dist/images/emoji/@(_svgName).svg" alt="@Emoji?.Title" />
+    <img class="@Class"
+         src="/dist/images/emoji/@(_svgName).svg"
+         alt="@Emoji?.Title"
+         data-emoji-preview="@_svgName" />
 } else {
     @(Emoji?.Value ?? "")
 }

@@ -1,0 +1,35 @@
+@page "/test/emojis"
+@inherits ComponentBase<AppUIHub>
+
+<RequireAccount MustBeAdmin="true"/>
+<MainHeader>Emojis Test Page</MainHeader>
+
+<div class="emojis-test-page">
+    <h2 class="emojis-test-title">Static Emojis (@(EmojiIcon.SvgNames.Count))</h2>
+    <div class="emojis-test-grid">
+        @foreach (var emoji in Emojis.All) {
+            <div class="emojis-test-item">
+                <EmojiIcon Emoji="@emoji" Class="emojis-test-emoji"/>
+            </div>
+        }
+    </div>
+
+    <h2 class="emojis-test-title">Animated Emojis (@(EmojiIcon.SvgNames.Count))</h2>
+    <div class="emojis-test-grid">
+        @foreach (var svgName in EmojiIcon.SvgNames.Values) {
+            <div class="emojis-test-item animated-emoji">
+                <img class="emojis-test-emoji" src="/dist/images/emoji/@(svgName)-animated.svg" alt="@svgName"/>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private NavbarUI NavbarUI => Hub.NavbarUI;
+
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        NavbarUI.SelectGroup(NavbarGroupIds.TestPages, false);
+        PanelsUI.Left.SetIsVisible(false);
+    }
+}

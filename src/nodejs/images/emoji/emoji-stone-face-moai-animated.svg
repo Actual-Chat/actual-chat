@@ -1,67 +1,62 @@
-<svg width="512" height="512" viewBox="0 0 28 28" overflow="visible" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <style>
-    .forehead {
-      transform-origin: 14px 4px;
-      animation: foreheadDrop 3s infinite ease-in-out;
-    }
+<svg width="512" height="512" viewBox="-2 -2 32 32" overflow="visible" style="overflow: visible;" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <style>
+        .forehead {
+            transform-origin: 14px 4px;
+            animation: foreheadDrop 3s infinite ease-in-out;
+        }
+        .mouth {
+            transform-origin: 14px 22px;
+            animation: mouthRise 3s infinite ease-in-out;
+        }
+        .bg-body {
+            transform-origin: 14px 14px;
+            animation: bgSquish 3s infinite ease-in-out;
+        }
+        @keyframes foreheadDrop {
+            0%    { transform: translateY(0px); }
+            16.6% { transform: translateY(0.25px); }
+            33.3% { transform: translateY(0px); }
+            100%  { transform: translateY(0px); }
+        }
+        @keyframes mouthRise {
+            0%    { transform: translateY(0px); }
+            16.6% { transform: translateY(-0.25px); }
+            33.3% { transform: translateY(0px); }
+            100%  { transform: translateY(0px); }
+        }
+        @keyframes bgSquish {
+            0%    { transform: scaleY(1); }
+            16.6% { transform: scaleY(0.982); }
+            33.3% { transform: scaleY(1); }
+            100%  { transform: scaleY(1); }
+        }
+    </style>
 
-    .mouth {
-      transform-origin: 14px 22px;
-      animation: mouthRise 3s infinite ease-in-out;
-    }
+    <g class="bg-body">
+        <path d="M22 26H6L5.5 25L6.5 20.5L6 19L7.5 16.5H5L4.5 15L9 7.5H8L7.5 6L10 2.5L14 2L17.5 2.5L20 4L21.5 7L23 7.5V25L22 26Z" fill="#D9D9D9"/>
+        <rect x="20.9219" y="7.07812" width="1.6921" height="9.30653" fill="#D9D9D9"/>
+        <path d="M14.5 17.5L18.2498 25.6889H16H5.5L7 20.5L5.74219 19.5L11.5 7.5H18.5L14.5 17.5Z" fill="url(#paint1_linear_26438_101020)"/>
+    </g>
 
-    .bg-body {
-      transform-origin: 14px 14px;
-      animation: bgSquish 3s infinite ease-in-out;
-    }
+    <g class="forehead">
+        <path d="M7.38281 5.38419L10.2343 2L18 2.5L16.752 5.38419H7.38281Z" fill="url(#paint0_linear_26438_101020)"/>
+        <path d="M18.4384 7.38985H8.46227C7.66357 7.38985 7.18718 6.49971 7.63022 5.83515L9.74352 2.6652C9.89339 2.4404 10.1266 2.28461 10.3934 2.24209C14.1017 1.65103 20.6496 1.81784 21.3402 6.54339C21.4078 7.00573 21.7784 7.38985 22.2456 7.38985C22.7129 7.38985 23.0917 7.76864 23.0917 8.2359V16.1165C23.0917 16.6688 22.644 17.1165 22.0917 17.1165H21.5535C21.0013 17.1165 20.5535 16.6688 20.5535 16.1165V10.7711" stroke="#42393E" stroke-linecap="round"/>
+        <path d="M9.12917 7.39062L4.86608 14.7741C4.48116 15.4408 4.96229 16.2741 5.7321 16.2741H10.3982" stroke="#42393E" stroke-linecap="round"/>
+    </g>
 
-    @keyframes foreheadDrop {
-      0%        { transform: translateY(0px); }
-      16.6%     { transform: translateY(0.25px); }
-      33.3%     { transform: translateY(0px); }
-      100%      { transform: translateY(0px); }
-    }
+    <g class="mouth">
+        <path d="M7.07399 16.6953L5.88892 18.5387C5.4611 19.2043 5.93894 20.0795 6.7301 20.0795H12.5129" stroke="#42393E" stroke-linecap="round"/>
+        <path d="M7.07399 20.0784L5.39245 24.6559C5.15268 25.3086 5.63577 26.0007 6.33112 26.0007H21.6654C22.2177 26.0007 22.6654 25.553 22.6654 25.0007V17.1172" stroke="#42393E" stroke-linecap="round"/>
+    </g>
 
-    @keyframes mouthRise {
-      0%        { transform: translateY(0px); }
-      16.6%     { transform: translateY(-0.25px); }
-      33.3%     { transform: translateY(0px); }
-      100%      { transform: translateY(0px); }
-    }
-
-    @keyframes bgSquish {
-      0%        { transform: scaleY(1); }
-      16.6%     { transform: scaleY(0.982); }
-      33.3%     { transform: scaleY(1); }
-      100%      { transform: scaleY(1); }
-    }
-  </style>
-
-  <g class="bg-body">
-    <path d="M22 26H6L5.5 25L6.5 20.5L6 19L7.5 16.5H5L4.5 15L9 7.5H8L7.5 6L10 2.5L14 2L17.5 2.5L20 4L21.5 7L23 7.5V25L22 26Z" fill="#D9D9D9"/>
-    <rect x="20.9219" y="7.07812" width="1.6921" height="9.30653" fill="#D9D9D9"/>
-    <path d="M14.5 17.5L18.2498 25.6889H16H5.5L7 20.5L5.74219 19.5L11.5 7.5H18.5L14.5 17.5Z" fill="url(#paint1_linear_26438_101020)"/>
-  </g>
-
-  <g class="forehead">
-    <path d="M7.38281 5.38419L10.2343 2L18 2.5L16.752 5.38419H7.38281Z" fill="url(#paint0_linear_26438_101020)"/>
-    <path d="M18.4384 7.38985H8.46227C7.66357 7.38985 7.18718 6.49971 7.63022 5.83515L9.74352 2.6652C9.89339 2.4404 10.1266 2.28461 10.3934 2.24209C14.1017 1.65103 20.6496 1.81784 21.3402 6.54339C21.4078 7.00573 21.7784 7.38985 22.2456 7.38985C22.7129 7.38985 23.0917 7.76864 23.0917 8.2359V16.1165C23.0917 16.6688 22.644 17.1165 22.0917 17.1165H21.5535C21.0013 17.1165 20.5535 16.6688 20.5535 16.1165V10.7711" stroke="#42393E" stroke-linecap="round"/>
-    <path d="M9.12917 7.39062L4.86608 14.7741C4.48116 15.4408 4.96229 16.2741 5.7321 16.2741H10.3982" stroke="#42393E" stroke-linecap="round"/>
-  </g>
-
-  <g class="mouth">
-    <path d="M7.07399 16.6953L5.88892 18.5387C5.4611 19.2043 5.93894 20.0795 6.7301 20.0795H12.5129" stroke="#42393E" stroke-linecap="round"/>
-    <path d="M7.07399 20.0784L5.39245 24.6559C5.15268 25.3086 5.63577 26.0007 6.33112 26.0007H21.6654C22.2177 26.0007 22.6654 25.553 22.6654 25.0007V17.1172" stroke="#42393E" stroke-linecap="round"/>
-  </g>
-
-  <defs>
-    <linearGradient id="paint0_linear_26438_101020" x1="15" y1="2" x2="12" y2="10" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#D9D9D9"/>
-      <stop offset="1" stop-color="#737373"/>
-    </linearGradient>
-    <linearGradient id="paint1_linear_26438_101020" x1="26" y1="-11" x2="12.2726" y2="25.6889" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#737373"/>
-      <stop offset="1" stop-color="#D9D9D9"/>
-    </linearGradient>
-  </defs>
+    <defs>
+        <linearGradient id="paint0_linear_26438_101020" x1="15" y1="2" x2="12" y2="10" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#D9D9D9"/>
+            <stop offset="1" stop-color="#737373"/>
+        </linearGradient>
+        <linearGradient id="paint1_linear_26438_101020" x1="26" y1="-11" x2="12.2726" y2="25.6889" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#737373"/>
+            <stop offset="1" stop-color="#D9D9D9"/>
+        </linearGradient>
+    </defs>
 </svg>
