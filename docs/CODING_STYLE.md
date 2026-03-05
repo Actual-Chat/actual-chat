@@ -396,6 +396,8 @@ public override async Task Require(CancellationToken cancellationToken)
 
 10. **Prefer `sealed` classes and records** unless inheritance is intended.
 
+11. **Prefer `LogFor(GetType())` over `LogFor<T>()`** for the current type in non-static context.
+
 ### Test Conventions
 
 #### Test Method Naming
