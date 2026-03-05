@@ -381,6 +381,19 @@ public override async Task Require(CancellationToken cancellationToken)
    See `ActualLab.IO.FilePath` for the full API
    and `src/dotnet/Core/IO/FilePathExt.cs` for project-specific extensions.
 
+9. **Prefer `RandomStringGenerator` over `Guid.NewGuid()` for IDs.**
+   Use `RandomStringGenerator.Default.Next()` from `ActualLab.Generators`
+   instead of `Guid.NewGuid().ToString()` when generating unique identifiers.
+   Random strings are shorter, more URL-friendly, and avoid the overhead
+   of GUID formatting.
+
+| Instead of | Use |
+|---|---|
+| `Guid.NewGuid().ToString()` | `RandomStringGenerator.Default.Next()` |
+| `Guid.NewGuid().ToString("N")` | `RandomStringGenerator.Default.Next()` |
+
+   You can specify length: `RandomStringGenerator.Default.Next(10)` for 10 characters.
+
 ### Test Conventions
 
 #### Test Method Naming
