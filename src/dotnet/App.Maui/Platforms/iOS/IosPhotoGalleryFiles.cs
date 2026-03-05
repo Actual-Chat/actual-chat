@@ -5,6 +5,7 @@ using ActualLab.IO;
 using Foundation;
 using PhotosUI;
 using UniformTypeIdentifiers;
+using Size = ActualChat.UI.App.Size;
 
 namespace ActualChat.App.Maui;
 
@@ -71,8 +72,14 @@ public sealed class IosPhotoGalleryFiles : IDisposable
         var itemProvider = pendingItem.Key.ItemProvider;
         var contentType = pendingItem.Key.ContentType;
 
-        // Try to get in-place URL for quick thumbnail generation (doesn't require full file copy)
+        // Try to get low-res thumbnail first (fastest option for videos)
         if (OrdinalIgnoreCaseEquals(targetPath.Extension, ".mov")) {
+            var lowResThumbnail = await TryLoadLowResThumbnail(itemProvider, targetPath, cancellationToken)
+                .ConfigureAwait(false);
+            if (lowResThumbnail != null)
+                return lowResThumbnail;
+
+            // Fall back to in-place URL for thumbnail generation
             var thumbnail = await GenerateThumbnailFromInPlaceUrl(itemProvider, contentType, cancellationToken)
                 .ConfigureAwait(false);
             if (thumbnail != null)
@@ -90,6 +97,46 @@ public sealed class IosPhotoGalleryFiles : IDisposable
         return fallbackThumbnail is { } t
             ? new FilePreview(ContentResolver.GetFileUri(t.Path), t.Size)
             : new FilePreview(ContentResolver.GetFileUri(targetPath));
+    }
+
+    private async Task<FilePreview?> TryLoadLowResThumbnail(
+        NSItemProvider itemProvider,
+        FilePath targetPath,
+        CancellationToken cancellationToken)
+    {
+        const string lowResThumbnailType = "com.apple.private.photos.thumbnail.low";
+
+        try {
+            if (!itemProvider.HasItemConformingTo(lowResThumbnailType))
+                return null;
+
+            var result = await itemProvider
+                .LoadFileRepresentationAsync(lowResThumbnailType)
+                .ConfigureAwait(false);
+
+            if (result.Path.IsNullOrEmpty())
+                return null;
+
+            // Copy the thumbnail to our cache directory
+            var thumbnailFileName = targetPath.FileName.ChangeExtension(".jpg");
+            var thumbnailDir = new FilePath(FileSystem.CacheDirectory) | "video-thumbnails";
+            Directory.CreateDirectory(thumbnailDir);
+            var thumbnailPath = thumbnailDir | thumbnailFileName;
+
+            await ((FilePath)result.Path).CopyTo(thumbnailPath, cancellationToken).ConfigureAwait(false);
+
+            // Get dimensions
+            using var uiImage = UIKit.UIImage.FromFile(thumbnailPath);
+            Size? size = uiImage != null
+                ? new Size((int)uiImage.Size.Width, (int)uiImage.Size.Height)
+                : null;
+
+            return new FilePreview(ContentResolver.GetFileUri(thumbnailPath), size);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to load low-res thumbnail");
+            return null;
+        }
     }
 
     private async Task<FilePreview?> GenerateThumbnailFromInPlaceUrl(
