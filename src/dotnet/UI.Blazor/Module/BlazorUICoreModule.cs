@@ -12,6 +12,8 @@ using Microsoft.Extensions.Hosting;
 using ActualLab.Fusion.Client.Caching;
 using ActualLab.Fusion.Client.Interception;
 using ActualLab.Fusion.Diagnostics;
+using ActualLab.Net;
+using ActualLab.Rpc;
 
 namespace ActualChat.UI.Blazor.Module;
 
@@ -26,6 +28,8 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
     protected override void InjectServices(IServiceCollection services)
     {
         var hostKind = HostInfo.HostKind;
+        var isServer = hostKind.IsServer();
+        var isMauiApp = hostKind.IsMauiApp();
 
         // Just to test how it impacts the performance
         // FusionComponentBase.DefaultParameterComparisonMode = ParameterComparisonMode.Standard;
@@ -47,7 +51,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddTransient(c => c.GetRequiredService<UIHub>().Dispatcher);
 
         // Core UI-related services
-        if (!hostKind.IsServer())
+        if (!isServer)
             services.TryAddSingleton<IHostApplicationLifetime>(_ => new FakeHostApplicationLifetime());
         services.AddScoped(c => new BrowserInit(c.UIHub()));
         services.AddScoped(c => new CaptchaUI(c.UIHub()));
@@ -64,7 +68,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddScoped(c => new LocalSettings(c.GetRequiredService<LocalSettings.Options>(), c));
         services.AddScoped(c => c.AccountSettings(c.Session()));
         services.AddScoped(c => c.ServerSettingsKvasClient(c.Session()));
-        if (hostKind.IsServer()) {
+        if (isServer) {
             services.AddScoped<DateTimeConverter>(c => new ServerSideDateTimeConverter(c));
             MomentClockSet.Default.ServerClock.Offset = TimeSpan.Zero;
         }
@@ -80,12 +84,14 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         // UI services
         services.AddScoped(c => new LoadingUI(c.UIHub()));
         services.AddScoped(c => new ReconnectUI(c.UIHub()));
+        if (!isServer)
+            services.AddSingleton<RpcClientPeerReconnectDelayer>(c => new AppRpcClientPeerReconnectDelayer(c.UIHub()));
         services.AddScoped(c => new ReloadUI(c));
-        if (hostKind.IsServer())
+        if (isServer)
             services.AddScoped<ConnectivityUI>(c => new ServerConnectivityUI(c.UIHub()));
-        else if (!hostKind.IsMauiApp()) // MauiConnectivityUI is registered in MauiApp
+        else if (!isMauiApp) // MauiConnectivityUI is registered in MauiApp
             services.AddScoped<ConnectivityUI>(c => new WebConnectivityUI(c.UIHub()));
-        if (!hostKind.IsMauiApp()) {
+        if (!isMauiApp) {
             services.AddScoped<BackgroundStateTracker>(c => new WebBackgroundStateTracker(c));
             services.AddScoped<AudioFocusUI>(_ => new AudioFocusUI());
             services.AddScoped<TuneUI>(c => new WebTuneUI(c.UIHub()));

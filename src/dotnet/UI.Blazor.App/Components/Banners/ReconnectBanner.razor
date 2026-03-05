@@ -5,6 +5,7 @@
     if (m.Kind == RpcPeerStateKind.Connected)
         return;
 
+    var isOffline = m.ReconnectsIn >= OfflineThreshold;
     _isVisible = m.Kind is RpcPeerStateKind.Disconnected;
     // Services.LogFor(GetType()).LogInformation("State: {State}", m);
 }
@@ -20,6 +21,8 @@
             <div class="c-main-text desktop">Connection lost.</div>
             @if (m.ReconnectsIn == default) {
                 <div class="c-secondary-text">Connecting...</div>
+            } else if (isOffline) {
+                <div class="c-secondary-text">You're offline.</div>
             } else {
                 <div class="c-secondary-text">
                     Will reconnect in
@@ -31,13 +34,14 @@
         }
     </Body>
     <Buttons>
-        @if (m.ReconnectsIn != default) {
+        @if (m.ReconnectsIn != default && !isOffline) {
             <Button Class="btn-transparent unhovered on" Click="@(_ => ReconnectUI.ReconnectIfDisconnected())">Retry</Button>
         }
     </Buttons>
 </Banner>
 
 @code {
+    private static readonly TimeSpan OfflineThreshold = TimeSpan.FromSeconds(1000);
     private bool _isVisible;
 
     [Inject] private ReconnectUI ReconnectUI { get; init; } = null!;
