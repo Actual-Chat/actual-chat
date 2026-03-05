@@ -72,18 +72,18 @@ public sealed class IosPhotoGalleryFiles : IDisposable
         var itemProvider = pendingItem.Key.ItemProvider;
         var contentType = pendingItem.Key.ContentType;
 
-        // Try to get low-res thumbnail first (fastest option for videos)
+        // Try to get thumbnail first (fastest option for videos)
         if (OrdinalIgnoreCaseEquals(targetPath.Extension, ".mov")) {
-            var lowResThumbnail = await TryLoadLowResThumbnail(itemProvider, targetPath, cancellationToken)
-                .ConfigureAwait(false);
-            if (lowResThumbnail != null)
-                return lowResThumbnail;
-
-            // Fall back to in-place URL for thumbnail generation
-            var thumbnail = await GenerateThumbnailFromInPlaceUrl(itemProvider, contentType, cancellationToken)
+            var thumbnail = await TryLoadThumbnail(itemProvider, targetPath, cancellationToken)
                 .ConfigureAwait(false);
             if (thumbnail != null)
                 return thumbnail;
+
+            // Fall back to in-place URL for thumbnail generation
+            var inPlaceThumbnail = await GenerateThumbnailFromInPlaceUrl(itemProvider, contentType, cancellationToken)
+                .ConfigureAwait(false);
+            if (inPlaceThumbnail != null)
+                return inPlaceThumbnail;
         }
 
         // Wait for file to be fully loaded
@@ -99,44 +99,51 @@ public sealed class IosPhotoGalleryFiles : IDisposable
             : new FilePreview(ContentResolver.GetFileUri(targetPath));
     }
 
-    private async Task<FilePreview?> TryLoadLowResThumbnail(
+    private async Task<FilePreview?> TryLoadThumbnail(
         NSItemProvider itemProvider,
         FilePath targetPath,
         CancellationToken cancellationToken)
     {
-        const string lowResThumbnailType = "com.apple.private.photos.thumbnail.low";
+        // Try low-res first (faster), then standard
+        string[] thumbnailTypes = [
+            "com.apple.private.photos.thumbnail.low",
+            "com.apple.private.photos.thumbnail.standard",
+        ];
 
-        try {
-            if (!itemProvider.HasItemConformingTo(lowResThumbnailType))
-                return null;
+        foreach (var thumbnailType in thumbnailTypes) {
+            if (!itemProvider.HasItemConformingTo(thumbnailType))
+                continue;
 
-            var result = await itemProvider
-                .LoadFileRepresentationAsync(lowResThumbnailType)
-                .ConfigureAwait(false);
+            try {
+                var result = await itemProvider
+                    .LoadFileRepresentationAsync(thumbnailType)
+                    .ConfigureAwait(false);
 
-            if (result.Path.IsNullOrEmpty())
-                return null;
+                if (result.Path.IsNullOrEmpty())
+                    continue;
 
-            // Copy the thumbnail to our cache directory
-            var thumbnailFileName = targetPath.FileName.ChangeExtension(".jpg");
-            var thumbnailDir = new FilePath(FileSystem.CacheDirectory) | "video-thumbnails";
-            Directory.CreateDirectory(thumbnailDir);
-            var thumbnailPath = thumbnailDir | thumbnailFileName;
+                // Copy the thumbnail to our cache directory
+                var thumbnailFileName = targetPath.FileName.ChangeExtension(".jpg");
+                var thumbnailDir = new FilePath(FileSystem.CacheDirectory) | "video-thumbnails";
+                Directory.CreateDirectory(thumbnailDir);
+                var thumbnailPath = thumbnailDir | thumbnailFileName;
 
-            await ((FilePath)result.Path).CopyTo(thumbnailPath, cancellationToken).ConfigureAwait(false);
+                await ((FilePath)result.Path).CopyTo(thumbnailPath, cancellationToken).ConfigureAwait(false);
 
-            // Get dimensions
-            using var uiImage = UIKit.UIImage.FromFile(thumbnailPath);
-            Size? size = uiImage != null
-                ? new Size((int)uiImage.Size.Width, (int)uiImage.Size.Height)
-                : null;
+                // Get dimensions
+                using var uiImage = UIKit.UIImage.FromFile(thumbnailPath);
+                Size? size = uiImage != null
+                    ? new Size((int)uiImage.Size.Width, (int)uiImage.Size.Height)
+                    : null;
 
-            return new FilePreview(ContentResolver.GetFileUri(thumbnailPath), size);
+                return new FilePreview(ContentResolver.GetFileUri(thumbnailPath), size);
+            }
+            catch (Exception e) {
+                Log.LogWarning(e, "Failed to load thumbnail of type '{ThumbnailType}'", thumbnailType);
+            }
         }
-        catch (Exception e) {
-            Log.LogError(e, "Failed to load low-res thumbnail");
-            return null;
-        }
+
+        return null;
     }
 
     private async Task<FilePreview?> GenerateThumbnailFromInPlaceUrl(
