@@ -2,17 +2,20 @@ import { DocumentEvents } from 'event-handling';
 import { Timeout } from 'timeout';
 import { Log } from 'logging';
 import { fromEvent } from 'rxjs';
+import { fastRaf } from 'fast-raf';
 
 const { debugLog } = Log.get('EmojiPreview');
 
 const LONG_PRESS_DELAY_MS = 300;
 const CONTAINER_SIZE_REM = 12;
+const TOUCH_OFFSET_REM = 5;
 
 export class EmojiPreview {
     private static overlay: HTMLElement | null = null;
     private static currentTarget: HTMLElement | null = null;
     private static longPressTimeout: Timeout | null = null;
     private static isTouch = false;
+    private static longPressTriggered = false;
 
     public static init(): void {
         debugLog?.log('EmojiPreview.init');
@@ -54,6 +57,18 @@ export class EmojiPreview {
             this.hidePreview();
         });
 
+        // Intercept click and contextmenu after long press to prevent menu from closing
+        const interceptEvent = (e: Event) => {
+            if (this.longPressTriggered) {
+                e.stopPropagation();
+                e.preventDefault();
+                if (e.type === 'click')
+                    this.longPressTriggered = false;
+            }
+        };
+        fromEvent(document, 'contextmenu', { capture: true }).subscribe(interceptEvent);
+        fromEvent(document, 'click', { capture: true }).subscribe(interceptEvent);
+
         // Touch: long press
         DocumentEvents.passive.pointerDown$.subscribe((e: PointerEvent) => {
             if (e.pointerType !== 'touch')
@@ -67,7 +82,8 @@ export class EmojiPreview {
 
             this.longPressTimeout?.dispose();
             this.longPressTimeout = new Timeout(LONG_PRESS_DELAY_MS, () => {
-                this.showPreview(emojiEl);
+                this.longPressTriggered = true;
+                this.showPreview(emojiEl, true);
             });
         });
 
@@ -77,6 +93,10 @@ export class EmojiPreview {
                 this.longPressTimeout = null;
                 this.hidePreview();
                 this.isTouch = false;
+                // Safety reset: browser may not fire click after long press,
+                // leaving longPressTriggered=true and eating the next real tap
+                if (this.longPressTriggered)
+                    setTimeout(() => { this.longPressTriggered = false; }, 300);
             }
         });
 
@@ -95,6 +115,106 @@ export class EmojiPreview {
                 this.longPressTimeout = null;
             }
         });
+
+        // Watch for reaction animation triggers
+        this.initReactionAnimations();
+    }
+
+    private static initReactionAnimations(): void {
+        const observer = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                if (mutation.type === 'childList') {
+                    for (const node of mutation.addedNodes) {
+                        if (node instanceof HTMLElement)
+                            this.processAnimateElements(node);
+                    }
+                }
+                if (mutation.type === 'attributes'
+                    && mutation.attributeName === 'data-emoji-animate'
+                    && mutation.target instanceof HTMLElement
+                    && mutation.target.dataset.emojiAnimate)
+                    this.animateReaction(mutation.target);
+            }
+        });
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['data-emoji-animate'],
+        });
+    }
+
+    private static processAnimateElements(root: HTMLElement): void {
+        if (root.dataset.emojiAnimate)
+            this.animateReaction(root);
+        root.querySelectorAll<HTMLElement>('[data-emoji-animate]')
+            .forEach(el => this.animateReaction(el));
+    }
+
+    private static animateReaction(el: HTMLElement): void {
+        const svgName = el.dataset.emojiAnimate;
+        if (!svgName)
+            return;
+
+        el.removeAttribute('data-emoji-animate');
+
+        // Defer until layout is stable (element may have shifted due to new reaction badge)
+        // Use fastRaf to separate layout reads from DOM writes
+        let centerX = 0, centerY = 0, containerSizePx = 0;
+        let clampedLeft = 0, clampedTop = 0;
+        let offsetX = 0, offsetY = 0;
+
+        fastRaf({
+            read: () => {
+                const remToPx = parseFloat(getComputedStyle(document.documentElement).fontSize);
+                containerSizePx = CONTAINER_SIZE_REM * remToPx;
+
+                const rect = el.getBoundingClientRect();
+                centerX = rect.left + rect.width / 2;
+                centerY = rect.top + rect.height / 2;
+
+                const left = centerX - containerSizePx / 2;
+                let top = centerY - containerSizePx / 2;
+
+                // Clamp above the message editor so animation doesn't appear behind it
+                const editor = document.querySelector('.chat-message-editor');
+                const maxBottom = editor
+                    ? editor.getBoundingClientRect().top
+                    : window.innerHeight;
+                top = Math.min(top, maxBottom - containerSizePx);
+
+                const margin = 8;
+                clampedLeft = Math.max(margin, Math.min(left, window.innerWidth - containerSizePx - margin));
+                clampedTop = Math.max(margin, Math.min(top, window.innerHeight - containerSizePx - margin));
+                offsetX = left - clampedLeft;
+                offsetY = top - clampedTop;
+            },
+            write: () => {
+                const overlay = document.createElement('div');
+                overlay.className = 'emoji-reaction-animate';
+
+                const img = document.createElement('img');
+                img.src = `/dist/images/emoji/${svgName}-animated.svg`;
+                img.alt = '';
+                img.className = 'emoji-preview-image';
+                overlay.appendChild(img);
+
+                overlay.style.left = `${clampedLeft}px`;
+                overlay.style.top = `${clampedTop}px`;
+                overlay.style.transformOrigin = `${centerX - clampedLeft}px ${centerY - clampedTop}px`;
+
+                if (offsetX !== 0 || offsetY !== 0) {
+                    img.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+                    overlay.style.setProperty('--offset-x', `${offsetX}px`);
+                    overlay.style.setProperty('--offset-y', `${offsetY}px`);
+                }
+
+                document.body.appendChild(overlay);
+                overlay.addEventListener('animationend', () => overlay.remove());
+
+                debugLog?.log('animateReaction:', svgName);
+            },
+        });
     }
 
     private static tryShowPreview(target: HTMLElement): void {
@@ -108,7 +228,7 @@ export class EmojiPreview {
         // Look for an element with data-emoji-preview attribute
         let el: HTMLElement | null = target;
         while (el) {
-            if (el.dataset?.emojiPreview) {
+            if (el.dataset.emojiPreview) {
                 return el;
             }
             el = el.parentElement;
@@ -116,7 +236,7 @@ export class EmojiPreview {
         return null;
     }
 
-    private static showPreview(emojiEl: HTMLElement): void {
+    private static showPreview(emojiEl: HTMLElement, isTouch = false): void {
         const svgName = emojiEl.dataset.emojiPreview;
         if (!svgName)
             return;
@@ -146,18 +266,28 @@ export class EmojiPreview {
         const rect = emojiEl.getBoundingClientRect();
         const centerX = rect.left + rect.width / 2;
         const centerY = rect.top + rect.height / 2;
+        const touchOffsetPx = isTouch ? TOUCH_OFFSET_REM * remToPx : 0;
 
-        // Position so the preview is centered on the emoji
-        let left = centerX - containerSizePx / 2;
-        let top = centerY - containerSizePx / 2;
+        // Position so the preview is centered on the emoji (shifted up for touch)
+        const left = centerX - containerSizePx / 2;
+        const top = centerY - containerSizePx / 2 - touchOffsetPx;
 
-        // Keep within viewport
+        // Keep within viewport, track how much we had to shift
         const margin = 8;
-        left = Math.max(margin, Math.min(left, window.innerWidth - containerSizePx - margin));
-        top = Math.max(margin, Math.min(top, window.innerHeight - containerSizePx - margin));
+        const clampedLeft = Math.max(margin, Math.min(left, window.innerWidth - containerSizePx - margin));
+        const clampedTop = Math.max(margin, Math.min(top, window.innerHeight - containerSizePx - margin));
 
-        overlay.style.left = `${left}px`;
-        overlay.style.top = `${top}px`;
+        overlay.style.left = `${clampedLeft}px`;
+        overlay.style.top = `${clampedTop}px`;
+
+        // Compensate image and background position so they stay aligned with the emoji
+        const offsetX = left - clampedLeft;
+        const offsetY = top - clampedTop;
+        if (offsetX !== 0 || offsetY !== 0) {
+            img.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+            overlay.style.setProperty('--offset-x', `${offsetX}px`);
+            overlay.style.setProperty('--offset-y', `${offsetY}px`);
+        }
 
         document.body.appendChild(overlay);
         this.overlay = overlay;

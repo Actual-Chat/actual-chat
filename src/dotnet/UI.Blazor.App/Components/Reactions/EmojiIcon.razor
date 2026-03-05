@@ -4,7 +4,7 @@
     <img class="@Class"
          src="/dist/images/emoji/@(_svgName).svg"
          alt="@Emoji?.Title"
-         data-emoji-preview="@_svgName" />
+         data-emoji-preview="@(HasPreview ? _svgName : null)" />
 } else {
     @(Emoji?.Value ?? "")
 }
@@ -74,6 +74,7 @@
 
     [Parameter] public Emoji? Emoji { get; set; }
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public bool HasPreview { get; set; } = true;
 
     protected override void OnParametersSet() {
         _svgName = Emoji is { } emoji

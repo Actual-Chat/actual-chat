@@ -19,7 +19,8 @@
     @apply rounded-md;
     @apply cursor-pointer;
 }
-.reactions-menu-item:hover {
+body.hoverable .reactions-menu-item:hover,
+.touch-capable .reactions-menu-item:active {
     @apply bg-hover;
 }
 .reactions-menu-item .ac-menu-content,

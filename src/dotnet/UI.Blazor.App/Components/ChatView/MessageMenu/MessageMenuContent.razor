@@ -182,6 +182,7 @@
 
     private async Task React(Emoji emoji) {
         _ = TuneUI.Play(Tune.React);
+        ReactionBadge.PendingAnimations.Add((ChatEntry.Id.Value, emoji.Id.Value));
         var reaction = new Reaction {
             Id = Symbol.Empty,
             AuthorId = null!,
