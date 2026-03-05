@@ -398,6 +398,8 @@ public override async Task Require(CancellationToken cancellationToken)
 
 11. **Prefer `LogFor(GetType())` over `LogFor<T>()`** for the current type in non-static context.
 
+12. **Prefer primary constructors for services** when acceptable.
+
 ### Test Conventions
 
 #### Test Method Naming
