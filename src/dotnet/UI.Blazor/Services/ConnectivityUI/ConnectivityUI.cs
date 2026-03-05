@@ -31,7 +31,7 @@ public abstract class ConnectivityUI : UIWorkerBase<UIHub>
 
     protected ConnectivityUI(UIHub hub) : base(hub)
     {
-        IsBlazorServer = Hub.HostInfo.HostKind.IsServer();
+        IsBlazorServer = hub.HostInfo.HostKind.IsServer();
         _isConnected = StateFactory.NewMutable(IsBlazorServer);
     }
 
@@ -43,8 +43,10 @@ public abstract class ConnectivityUI : UIWorkerBase<UIHub>
 
     // Protected methods
 
-    protected async ValueTask Initialize(DotNetObjectReference<IConnectivityUIBackend>? backendRef = null)
+    protected async Task Initialize(DotNetObjectReference<IConnectivityUIBackend>? backendRef = null)
     {
+        if (Hub.Services.GetService<RpcClientPeerReconnectDelayer>() is AppRpcClientPeerReconnectDelayer delayer)
+            delayer.IsOnlineResolver = () => !IsOnline.IsValue(out var v) || v;
         try {
             await JS.InvokeVoidAsync(JSInitMethod, backendRef, IsBlazorServer).ConfigureAwait(false);
         }
