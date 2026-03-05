@@ -31,10 +31,8 @@ public sealed class SlidingMemoizer<T> : IAsyncMemoizer<T>
         int consumerCapacity,
         CancellationToken cancellationToken = default)
     {
-        if (capacity <= 0)
-            throw new ArgumentOutOfRangeException(nameof(capacity));
-        if (consumerCapacity <= 0)
-            throw new ArgumentOutOfRangeException(nameof(consumerCapacity));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(capacity);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(consumerCapacity);
 
         _capacity = capacity;
         _consumerCapacity = consumerCapacity;

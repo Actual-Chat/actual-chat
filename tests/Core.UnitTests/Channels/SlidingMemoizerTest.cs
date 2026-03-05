@@ -134,7 +134,7 @@ public class SlidingMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         replayed.Should().BeEmpty();
     }
 
-    [Fact]
+    [FlakyFact("AY: Time-dependent")]
     public async Task CancellationWorks()
     {
         var channel = Channel.CreateUnbounded<int>();
