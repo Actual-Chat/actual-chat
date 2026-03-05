@@ -61,9 +61,9 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 
         // Create a new recording context
         _recordingCts = cancellationToken.CreateLinkedTokenSource();
-        var token = _recordingCts.Token;
+        var recordingToken = _recordingCts.Token;
 
-        var microphoneStream = await AudioCapture.Capture(token).ConfigureAwait(false);
+        var microphoneStream = await AudioCapture.Capture(recordingToken).ConfigureAwait(false);
         if (microphoneStream is null) {
             Log.LogWarning("Microphone stream is unavailable");
             await SetRecording(false).ConfigureAwait(false);
@@ -77,10 +77,9 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         await InitializeRecordingState().ConfigureAwait(false);
 
         // Start processing in the background
-        _ = BackgroundTask.Run(() => ProcessAudioStream(microphoneStream, token),
-            Log,
-            "Failed to process microphone stream",
-            token);
+        _ = BackgroundTask.Run(
+            () => ProcessAudioStream(microphoneStream, recordingToken),
+            Log, "Failed to process microphone stream", recordingToken);
         return true;
     }
 
@@ -248,37 +247,6 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 
     #region Audio Processing
 
-    private async Task SendAudio(
-        ChatId chatId,
-        ChatEntryId? repliedChatEntryId,
-        int preSkip,
-        IAsyncEnumerable<IMemoryOwner<byte>> packetStream,
-        CancellationToken cancellationToken)
-    {
-        double clientStartOffset = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
-        var session = _hub.Session;
-
-        var frameStream = packetStream
-            .Select((packet, i) => {
-                using var _ = packet;
-                return new AudioFrame {
-                    Data = packet.Memory.ToArray(),
-                    Offset = TimeSpan.FromMilliseconds(i * Constants.Audio.OpusFrameDurationMs),
-                    Duration = Constants.Audio.OpusFrameDuration,
-                };
-            })
-            .SuppressCancellation(cancellationToken);
-
-        await StreamClient.PushAudio(
-            session,
-            chatId.Value,
-            repliedChatEntryId?.Value,
-            clientStartOffset,
-            preSkip,
-            frameStream,
-            cancellationToken).ConfigureAwait(false);
-    }
-
     private async Task ProcessAudioStream(IAsyncEnumerable<IMemoryOwner<float>> frames, CancellationToken cancellationToken)
     {
         try {
@@ -351,7 +319,26 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             });
 
         // TODO(AK): Specify PreSkip
-        _sendTask = SendAudio(chatId, repliedChatEntryId, 0, stream.Reader.ReadAllAsync(cancellationToken), cancellationToken);
+        var packetStream = stream.Reader.ReadAllAsync(cancellationToken);
+        double clientStartOffset = Moment.Now.ToUnixEpoch(); // Unix timestamp in seconds
+        var session = _hub.Session;
+
+        var frameStream = packetStream
+            .Select((packet, i) => {
+                using var _ = packet;
+                return new AudioFrame {
+                    Data = packet.Memory.ToArray(),
+                    Offset = TimeSpan.FromMilliseconds(i * Constants.Audio.OpusFrameDurationMs),
+                    Duration = Constants.Audio.OpusFrameDuration,
+                };
+            }).SuppressCancellation(cancellationToken);
+
+        await StreamClient.PushAudio(
+            session, chatId.Value, repliedChatEntryId?.Value,
+            clientStartOffset, 0,
+            frameStream, cancellationToken
+            ).ConfigureAwait(false);
+
         lock (_sync) {
             _currentStream = stream;
             _repliedChatEntryId = null; // Clear so it's only used once

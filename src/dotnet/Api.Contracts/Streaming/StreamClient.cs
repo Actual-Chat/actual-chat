@@ -15,6 +15,19 @@ public class StreamClient(IServiceProvider services) : IStreamClient
     private ILogger AudioSourceLog => field ??= Services.LogFor<AudioSource>();
     private ILogger Log => field ??= Services.LogFor(GetType());
 
+    public Task PushAudio(
+        Session session, string chatId, string? repliedChatEntryId,
+        double clientStartOffset, int preSkip,
+        IAsyncEnumerable<AudioFrame> frameStream,
+        CancellationToken cancellationToken)
+    {
+        var rpcStream = RpcStream.New(frameStream);
+        return StreamServer.PushAudio(
+            session, chatId, repliedChatEntryId,
+            clientStartOffset, preSkip,
+            rpcStream, cancellationToken);
+    }
+
     public async Task<AudioSource> GetAudio(
         string streamId,
         TimeSpan skipTo,
@@ -68,17 +81,4 @@ public class StreamClient(IServiceProvider services) : IStreamClient
 
     public Task ReportAudioLatency(TimeSpan latency, CancellationToken cancellationToken)
         => StreamServer.ReportAudioLatency(latency, cancellationToken);
-
-    public Task PushAudio(
-        Session session,
-        string chatId,
-        string? repliedChatEntryId,
-        double clientStartOffset,
-        int preSkip,
-        IAsyncEnumerable<AudioFrame> frameStream,
-        CancellationToken cancellationToken)
-    {
-        var rpcStream = RpcStream.New(frameStream);
-        return StreamServer.PushAudio(session, chatId, repliedChatEntryId, clientStartOffset, preSkip, rpcStream, cancellationToken);
-    }
 }

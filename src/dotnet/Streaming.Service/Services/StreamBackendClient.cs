@@ -21,6 +21,21 @@ public sealed class StreamBackendClient : IStreamClient
         MeshWatcher = services.MeshWatcher();
     }
 
+    public Task PushAudio(
+        Session session, string chatId, string? repliedChatEntryId,
+        double clientStartOffset, int preSkip,
+        IAsyncEnumerable<AudioFrame> frameStream,
+        CancellationToken cancellationToken)
+    {
+        // StreamBackendClient runs on the same server, so route directly to backend
+        var chatIdTyped = ChatId.Parse(chatId);
+        var repliedEntryIdTyped = TextEntryId.ParseNullable(repliedChatEntryId);
+        var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
+        var record = new AudioRecord(streamId, session, chatIdTyped, clientStartOffset, repliedEntryIdTyped);
+        var rpcStream = RpcStream.New(frameStream);
+        return Backend.ProcessAudio(record, preSkip, rpcStream, cancellationToken);
+    }
+
     public async Task<AudioSource> GetAudio(string streamId, TimeSpan skipTo, CancellationToken cancellationToken)
     {
         Log.LogDebug("GetAudio({StreamId}, SkipTo = {SkipTo})", streamId, skipTo.ToShortString());
@@ -82,23 +97,5 @@ public sealed class StreamBackendClient : IStreamClient
     {
         AppMeters.AudioLatency.Record(latency.TotalMilliseconds);
         return Task.CompletedTask;
-    }
-
-    public Task PushAudio(
-        Session session,
-        string chatId,
-        string? repliedChatEntryId,
-        double clientStartOffset,
-        int preSkip,
-        IAsyncEnumerable<AudioFrame> frameStream,
-        CancellationToken cancellationToken)
-    {
-        // StreamBackendClient runs on the same server, so route directly to backend
-        var chatIdTyped = ChatId.Parse(chatId);
-        var repliedEntryIdTyped = TextEntryId.ParseNullable(repliedChatEntryId);
-        var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
-        var record = new AudioRecord(streamId, session, chatIdTyped, clientStartOffset, repliedEntryIdTyped);
-        var rpcStream = RpcStream.New(frameStream);
-        return Backend.ProcessAudio(record, preSkip, rpcStream, cancellationToken);
     }
 }
