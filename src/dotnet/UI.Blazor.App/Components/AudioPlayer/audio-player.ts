@@ -19,6 +19,7 @@ import { Resettable } from 'resettable';
 import { AudioInitializer } from '../../Services/audio-initializer';
 import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
 import { AudioVideoSync } from 'audio-video-sync';
+import { ServerClock } from 'server-clock';
 
 const { logScope, debugLog, warnLog } = Log.get('AudioPlayer');
 
@@ -364,7 +365,7 @@ export class AudioPlayer implements Resettable {
                 AudioVideoSync.update(this.authorId, state.playingAt, this.recordedAtMs, state.playbackState);
 
                 if (state.playbackState === 'playing') {
-                    const now = Date.now();
+                    const now = ServerClock.now();
                     if (now - this.lastLatencyLogTime > 10_000) {
                         this.lastLatencyLogTime = now;
                         const recordedAtMs = this.recordedAtMs + state.playingAt * 1000;

@@ -9,6 +9,7 @@ import { delayAsync } from 'promises';
 import * as signalR from '@microsoft/signalr';
 import { HubConnectionState, IStreamResult } from '@microsoft/signalr';
 import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
+import { ServerClock } from 'server-clock';
 import { WorkerConnectivityUI } from './worker-connectivity-ui';
 import { Log } from 'logging';
 
@@ -72,7 +73,7 @@ export class AudioStream implements Disposable {
         if (!source || source.byteLength == 0 || this.isCompleted)
             return;
 
-        this.firstFrameTimestamp ??= Date.now();
+        this.firstFrameTimestamp ??= ServerClock.now();
 
         const buffer = bufferPool.get();
         let frame: Uint8Array;
@@ -124,7 +125,7 @@ export class AudioStream implements Disposable {
                     await AudioStreamer.connection.send(
                         'ProcessAudioChunks',
                         this.sessionToken, this.chatId, this.repliedChatEntryId,
-                        (this.firstFrameTimestamp ?? Date.now()) / 1000, this.preSkip, subject);
+                        (this.firstFrameTimestamp ?? ServerClock.now()) / 1000, this.preSkip, subject);
                     this.repliedChatEntryId = undefined; // We don't want to send a few "replies" in case we retry
                 }
                 while (AudioStreamer.isConnected && !this.isDisposed) {

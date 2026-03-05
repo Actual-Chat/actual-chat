@@ -23,6 +23,7 @@ import { Interactive } from 'interactive';
 import { DeviceInfo } from 'device-info';
 import { AudioVadProcessorOptions } from './worklets/audio-vad-worklet-processor';
 import { RecorderStateHub } from './recorder-state-hub';
+import { ServerClock } from 'server-clock';
 
 /*
 ┌─────────────────────────────────┐  ┌──────────────────────┐
@@ -344,6 +345,13 @@ export class OpusMediaRecorder implements RecorderStateServer {
             hubUrl,
             { type: 'rpc-timeout', timeoutMs: 5_000 });
         debugLog?.log(`init(): encoderWorker created`);
+
+        // Forward server clock offset to encoder worker (runs in web worker)
+        if (ServerClock.offsetMs !== 0)
+            void this.encoderWorker.updateServerClockOffset(ServerClock.offsetMs, rpcNoWait);
+        ServerClock.onOffsetChanged((offset) => {
+            void this.encoderWorker?.updateServerClockOffset(offset, rpcNoWait);
+        });
 
         const updateWorkerConnectivityUI = () => {
             void this.encoderWorker?.onConnectivityUpdate(

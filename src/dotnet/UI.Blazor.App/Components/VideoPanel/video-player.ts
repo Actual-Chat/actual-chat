@@ -2,6 +2,7 @@ import * as signalR from '@microsoft/signalr';
 import { decode } from '@msgpack/msgpack';
 import { Log } from 'logging';
 import { fastRaf } from 'fast-raf';
+import { ServerClock } from 'server-clock';
 import { rpcClientServer } from 'rpc';
 import type { Disposable } from 'disposable';
 import { VideoStreamer } from '../../Services/Video/video-streamer';
@@ -270,7 +271,7 @@ export class VideoPlayer {
         // Update pipeline latency estimate from this fresh frame
         const frameOffsetMs = frame.timestamp / 1000; // μs → ms
         const capturedAtMs = this.startedAtMs + frameOffsetMs;
-        const currentLatencyMs = Date.now() - capturedAtMs;
+        const currentLatencyMs = ServerClock.now() - capturedAtMs;
         this.pipelineLatencyMs = this.pipelineLatencyMs === 0
             ? Math.max(currentLatencyMs, 0)
             : this.pipelineLatencyMs * 0.95 + currentLatencyMs * 0.05;
@@ -548,7 +549,7 @@ export class VideoPlayer {
 
         // Set threshold to skip stale encoded frames arriving from SignalR
         const targetLatencyMs = Math.max(this.pipelineLatencyMs, 300);
-        this.skipFramesBelowOffsetMs = (Date.now() - this.startedAtMs) - targetLatencyMs;
+        this.skipFramesBelowOffsetMs = (ServerClock.now() - this.startedAtMs) - targetLatencyMs;
 
         warnLog?.log(
             `Tab restored: flushed ${pendingCount} pending frames, decoder reset, ` +
@@ -703,7 +704,7 @@ export class VideoPlayer {
         }
         const streamOffsetMs = this.lastRenderedOffsetMs;
 
-        const nowMs = Date.now();
+        const nowMs = ServerClock.now();
         const recordedAtMs = this.startedAtMs + this.lastRenderedOffsetMs;
         const latencyMs = nowMs - recordedAtMs;
         warnLog?.log(

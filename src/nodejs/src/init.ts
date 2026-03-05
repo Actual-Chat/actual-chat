@@ -2,9 +2,11 @@ import { DeviceInfo } from 'device-info';
 import { Interactive } from 'interactive';
 import { Gestures } from 'gestures';
 import { EmojiPreview } from 'emoji-preview';
+import { ServerClock } from 'server-clock';
 import { ServiceWorker } from 'service-worker';
 import { BrowserInit } from '../../dotnet/UI.Blazor/Services/BrowserInit/browser-init';
 
+globalThis.ServerClock = ServerClock;
 DeviceInfo.updateBodyClasses();
 Interactive.init();
 Gestures.init();

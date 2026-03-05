@@ -1,5 +1,6 @@
 using ActualChat.Hosting;
 using ActualChat.Users;
+using Microsoft.JSInterop;
 
 namespace ActualChat.UI.Blazor.Services;
 
@@ -10,6 +11,7 @@ public class ServerTimeSync : WorkerBase
     private MomentClock CpuClock => Clocks.CpuClock;
     private HostInfo HostInfo { get; }
     private ISystemProperties SystemProperties { get; set; }
+    private IJSRuntime JS { get; }
 
     public TimeSpan LastOffset { get; private set; }
     public TimeSpan LastPrecision { get; private set; } = TimeSpan.FromHours(1);
@@ -25,6 +27,7 @@ public class ServerTimeSync : WorkerBase
         Clocks = services.Clocks();
         HostInfo = services.HostInfo();
         SystemProperties = services.GetRequiredService<ISystemProperties>();
+        JS = services.JSRuntime();
         LastUpdatedAt = Clocks.CpuClock.Now - TimeSpan.FromDays(1);
     }
 
@@ -83,5 +86,13 @@ public class ServerTimeSync : WorkerBase
         serverClock.Offset = offset;
         if (MomentClockSet.Default.ServerClock != serverClock)
             MomentClockSet.Default.ServerClock.Offset = offset;
+
+        try {
+            await JS.InvokeVoidAsync("ServerClock.updateOffset", cancellationToken, offset.TotalMilliseconds)
+                .ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is JSDisconnectedException or ObjectDisposedException) {
+            // Blazor circuit is gone — safe to ignore
+        }
     }
 }
