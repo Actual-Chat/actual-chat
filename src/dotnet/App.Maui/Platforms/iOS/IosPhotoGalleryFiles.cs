@@ -1,7 +1,6 @@
 using ActualChat.Concurrency;
-using ActualChat.Maui;
+using ActualChat.Media;
 using ActualChat.UI.Blazor.App.Services;
-using ActualLab.Generators;
 using ActualLab.IO;
 using Foundation;
 using PhotosUI;
@@ -38,10 +37,11 @@ public sealed class IosPhotoGalleryFiles : IDisposable
     public MauiFileProvider Enqueue(PHPickerResult pickerResult, UTType preferredContentType)
     {
         var item = pickerResult.ItemProvider;
-        FilePath suggestedFileName = item.SuggestedName.NullIfEmpty()
-            ?? pickerResult.AssetIdentifier
-            ?? RandomStringGenerator.Default.Next();
-        var targetPath = AttachmentsDirectory | suggestedFileName.ToUnique();
+        FilePath suggestedFileName = item.SuggestedName.NullIfEmpty();
+        var ext = MediaMimeTypes.TryGetExtension(item.ImplyMimeType(), out var ext1)
+            ? ext1
+            : throw StandardError.Internal($"Failed to identify ext for asset {pickerResult.AssetIdentifier}");
+        var targetPath = AttachmentsDirectory | suggestedFileName.EnsureExt(ext).ToUnique();
 
         var pendingFile = new PendingFile(targetPath, item, preferredContentType);
         _processor.Enqueue(pendingFile);
@@ -64,20 +64,61 @@ public sealed class IosPhotoGalleryFiles : IDisposable
 
     public async Task<FilePreview?> GetPreview(FilePath targetPath, CancellationToken cancellationToken)
     {
-        var pendingTask = _processor.Get(new PendingFile(targetPath))?.ResultTask;
-        if (pendingTask == null)
+        var pendingItem = _processor.Get(new PendingFile(targetPath));
+        if (pendingItem == null)
             return null;
 
-        await pendingTask.ConfigureAwait(false);
+        var itemProvider = pendingItem.Key.ItemProvider;
+        var contentType = pendingItem.Key.ContentType;
+
+        // Try to get in-place URL for quick thumbnail generation (doesn't require full file copy)
+        if (OrdinalIgnoreCaseEquals(targetPath.Extension, ".mov")) {
+            var thumbnail = await GenerateThumbnailFromInPlaceUrl(itemProvider, contentType, targetPath, cancellationToken)
+                .ConfigureAwait(false);
+            if (thumbnail != null)
+                return thumbnail;
+        }
+
+        // Wait for file to be fully loaded
+        await pendingItem.ResultTask.ConfigureAwait(false);
 
         if (!OrdinalIgnoreCaseEquals(targetPath.Extension, ".mov"))
             return new FilePreview(ContentResolver.GetFileUri(targetPath));
 
-        var thumbnail = await VideoThumbnails.Generate(targetPath, cancellationToken).ConfigureAwait(false);
-        Log.LogDebug("Generated thumbnail: {ThumbnailPath}", thumbnail?.Path);
-        return thumbnail is { } t
+        var fallbackThumbnail = await VideoThumbnails.Generate(targetPath, cancellationToken).ConfigureAwait(false);
+        Log.LogDebug("Generated thumbnail: {ThumbnailPath}", fallbackThumbnail?.Path);
+        return fallbackThumbnail is { } t
             ? new FilePreview(ContentResolver.GetFileUri(t.Path), t.Size)
             : new FilePreview(ContentResolver.GetFileUri(targetPath));
+    }
+
+    private async Task<FilePreview?> GenerateThumbnailFromInPlaceUrl(
+        NSItemProvider itemProvider,
+        UTType contentType,
+        FilePath targetPath,
+        CancellationToken cancellationToken)
+    {
+        try {
+            var result = await itemProvider
+                .LoadInPlaceFileRepresentationAsync(contentType.Identifier)
+                .ConfigureAwait(false);
+
+            if (result.Path.Value.IsNullOrEmpty())
+                return null;
+
+            Log.LogDebug("Got in-place path: {Path}", result.Path);
+
+            var thumbnail = await VideoThumbnails.Generate(result.Path, cancellationToken)
+                .ConfigureAwait(false);
+
+            return thumbnail is { } t
+                ? new FilePreview(ContentResolver.GetFileUri(t.Path), t.Size)
+                : null;
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to generate thumbnail from in-place URL");
+            return null;
+        }
     }
 
     private async Task<FilePath> ProcessFile(PendingFile pendingFile, CancellationToken cancellationToken)
