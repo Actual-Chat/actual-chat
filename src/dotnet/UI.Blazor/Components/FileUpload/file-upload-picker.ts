@@ -6,14 +6,14 @@ export interface Options {
     maxSize?: number;
 }
 
-export class FileUpload implements Disposable, IUploadStreamSource {
+export class FileUploadPicker implements Disposable, IUploadStreamSource {
     private disposed$: Subject<void> = new Subject<void>();
     private pendingFile: File | null = null;
 
     public static create(
         input: HTMLInputElement,
-        blazorRef: DotNet.DotNetObject): FileUpload {
-        return new FileUpload(input, blazorRef);
+        blazorRef: DotNet.DotNetObject): FileUploadPicker {
+        return new FileUploadPicker(input, blazorRef);
     }
 
     constructor(

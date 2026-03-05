@@ -1,38 +1,24 @@
-using ActualLab.IO;
-
 namespace ActualChat.Uploads;
 
 public class MediaProcessor(IServiceProvider services) : IMediaProcessor
 {
     private IReadOnlyCollection<IUploadProcessor> Processors { get; }
         = services.GetRequiredService<IEnumerable<IUploadProcessor>>().ToList();
+    private ILogger Log =>  field ??= services.LogFor(GetType());
 
     public async Task<ProcessedFile> ProcessUpload(UploadedFile uploadedFile, IProgress<double>? progress, CancellationToken cancellationToken)
     {
         var processor = Processors.FirstOrDefault(x => x.Supports(uploadedFile.ContentType));
         if (processor is null)
-            // no need to dump file to file system
+            // no need to process the file
             return new ProcessedFile(uploadedFile, null);
 
-        var tempFile = await DumpToTempFile(uploadedFile, cancellationToken).ConfigureAwait(false);
-        var processedFile = await processor.Process(tempFile, progress, cancellationToken).ConfigureAwait(false);
-        if (tempFile != processedFile.File)
-            tempFile.Delete();
+        var sw = Stopwatch.GetTimestamp();
+        var processedFile = await processor.Process(uploadedFile, progress, cancellationToken).ConfigureAwait(false);
+        var elapsed = Stopwatch.GetElapsedTime(sw);
+        Log.LogInformation($"Processed '{uploadedFile.FileName}' in {elapsed.TotalMilliseconds}ms");
 
         progress?.Report(100);
         return processedFile;
-    }
-
-    private static async Task<UploadedTempFile> DumpToTempFile(UploadedFile file, CancellationToken cancellationToken)
-    {
-        var tempFileName = Guid.NewGuid() + "_" + file.FileName;
-        var tempFilePath = FilePath.GetApplicationTempDirectory() & FileExt.ShortenFileName(tempFileName);
-        var target = File.OpenWrite(tempFilePath);
-        await using var _1 = target.ConfigureAwait(false);
-        var source = await file.Open().ConfigureAwait(false);
-        await using var _2 = source.ConfigureAwait(false);
-        await source.CopyToAsync(target, cancellationToken).ConfigureAwait(false);
-        target.Position = 0;
-        return new UploadedTempFile(file.FileName, file.ContentType, tempFilePath);
     }
 }

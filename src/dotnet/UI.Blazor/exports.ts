@@ -45,7 +45,7 @@ export * from './Components/Tooltip/tooltip-host';
 export * from './Components/TotpInput/totp-input';
 export * from './Components/VirtualList/virtual-list';
 export * from './Components/PicUpload/pic-upload';
-export * from './Components/FileUpload/file-upload';
+export * from './Components/FileUpload/file-upload-picker';
 export * from './Components/Skeleton';
 export * from './Components/Share/share';
 export * from './Components/YoutubePlayer/youtube-player';

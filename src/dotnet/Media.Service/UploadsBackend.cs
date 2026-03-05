@@ -250,14 +250,22 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
             throw StandardError.Constraint("Upload length mismatch. Upload has not been completed.");
     }
 
-    private UploadedStreamFile GetUploadedStreamFileFrom(Upload upload, CancellationToken cancellationToken)
+    private UploadedFile GetUploadedStreamFileFrom(Upload upload, CancellationToken cancellationToken)
     {
-        var uploadedFile = new UploadedStreamFile(
+        if (IsGoogleStorage) {
+            var blobPath = UploadsStorage.GetDataFileId(upload.Id);
+            return new UploadedBlobFile(
+                upload.FileName,
+                upload.ContentType,
+                upload.Length!.Value,
+                blobPath,
+                () => UploadsStorage.GetDataFile(upload.Id, cancellationToken));
+        }
+        return new UploadedStreamFile(
             upload.FileName,
             upload.ContentType,
             upload.Length!.Value,
             () => UploadsStorage.GetDataFile(upload.Id, cancellationToken));
-        return uploadedFile;
     }
 
     private ThrottledProgress<double> CreateMediaConvertingProgressTracker(MediaId mediaId)

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net.Mime;
 using ActualChat.Media;
 using ActualLab.IO;
@@ -7,32 +8,56 @@ using SixLabors.ImageSharp;
 
 namespace ActualChat.Uploads;
 
-public class VideoUploadProcessor(ILogger<VideoUploadProcessor> log) : IUploadProcessor
+public class LocalVideoUploadProcessor(ILogger<LocalVideoUploadProcessor> log) : IUploadProcessor
 {
     private ILogger Log { get; } = log;
 
     public bool Supports(string contentType)
         => MediaTypeExt.IsVideo(contentType);
 
-    public async Task<ProcessedFile> Process(UploadedTempFile upload, IProgress<double>? progress, CancellationToken cancellationToken)
+    public async Task<ProcessedFile> Process(UploadedFile upload, IProgress<double>? progress, CancellationToken cancellationToken)
     {
         progress?.Report(0);
+        var tempFile = await UploadHelper.DumpToTempFile(upload, cancellationToken).ConfigureAwait(false);
+        ProcessedFile processedFile;
+        try {
+            processedFile = await ProcessInternal(tempFile, progress, cancellationToken).ConfigureAwait(false);
+        }
+        catch {
+            tempFile.Delete();
+            throw;
+        }
+        if (processedFile.File != tempFile)
+            tempFile.Delete();
+        return processedFile;
+    }
+
+    private async Task<ProcessedFile> ProcessInternal(UploadedTempFile upload, IProgress<double>? progress, CancellationToken cancellationToken)
+    {
+        var totalSw = Stopwatch.StartNew();
+        var stepSw = Stopwatch.StartNew();
+
         var (mustConvert, size, duration) = await GetVideoInfo(upload, upload.TempFilePath, cancellationToken).ConfigureAwait(false);
+        Log.LogDebug("Video analysis completed in {Elapsed:N0}ms for '{FileName}'",
+            stepSw.ElapsedMilliseconds, upload.FileName);
         if (size is null)
-            // we consider it as a file not as a video
-            return new ProcessedFile(upload with { ContentType = MediaTypeNames.Application.Octet }, null);
+            return new ProcessedFile(upload.AsBinaryFile(), null);
 
         progress?.Report(10);
+
+        stepSw.Restart();
         var thumbnail = await GetThumbnail(upload, upload.TempFilePath, duration).ConfigureAwait(false);
+        Log.LogDebug("Thumbnail extraction completed in {Elapsed:N0}ms for '{FileName}'",
+            stepSw.ElapsedMilliseconds, upload.FileName);
         if (thumbnail is null)
-            // we consider it as a file not as a video
-            return new ProcessedFile(upload with { ContentType = MediaTypeNames.Application.Octet }, null);
+            return new ProcessedFile(upload.AsBinaryFile(), size);
 
         progress?.Report(20);
         if (!mustConvert)
             return new ProcessedFile(upload, size, thumbnail);
 
         try {
+            stepSw.Restart();
             var tempDir = FilePath.GetApplicationTempDirectory();
             var convertedFileName = Guid.NewGuid().ToString("N") + "_" + FileExt.ShortenFileName(Path.ChangeExtension(upload.FileName, ".mp4"));
             var convertedFilePath = tempDir | convertedFileName;
@@ -53,7 +78,14 @@ public class VideoUploadProcessor(ILogger<VideoUploadProcessor> log) : IUploadPr
             await ffMpegArguments
                 .ProcessAsynchronously()
                 .ConfigureAwait(false);
+            Log.LogDebug("Local transcoding completed in {Elapsed:N0}ms for '{FileName}'",
+                stepSw.ElapsedMilliseconds, upload.FileName);
             progress?.Report(98);
+            // Delete an original temp file since we have a new converted file
+            upload.Delete();
+
+            Log.LogDebug("Total video processing completed in {Elapsed:N0}ms for '{FileName}'",
+                totalSw.ElapsedMilliseconds, upload.FileName);
             return new ProcessedFile(
                 new UploadedTempFile(
                     Path.ChangeExtension(upload.FileName, ".mp4"),
@@ -67,7 +99,8 @@ public class VideoUploadProcessor(ILogger<VideoUploadProcessor> log) : IUploadPr
             throw;
         }
         catch (Exception e) {
-            Log.LogError(e, "Could not convert uploaded video '{File}'", upload.FileName);
+            Log.LogError(e, "Could not convert uploaded video '{File}' after {Elapsed:N0}ms",
+                upload.FileName, totalSw.ElapsedMilliseconds);
             return new ProcessedFile(upload, size, thumbnail);
         }
     }
@@ -77,30 +110,12 @@ public class VideoUploadProcessor(ILogger<VideoUploadProcessor> log) : IUploadPr
         try {
             var media = await FFProbe.AnalyseAsync(videoTempFile, cancellationToken: cancellationToken).ConfigureAwait(false);
             var video = media.PrimaryVideoStream;
-            var size = video is null ? (Size?)null : GetEffectiveSize(video);
-            return (MustConvert(media), size, media.Duration);
+            var size = video is null ? (Size?)null : UploadHelper.GetEffectiveSize(video);
+            return (UploadHelper.MustConvertVideo(media, videoUpload.FileName), size, media.Duration);
         }
         catch (Exception e) {
-            Log.LogWarning(e, "Failed to extract video info from '{FileName}'", videoUpload.FileName);
+            Log.LogDebug(e, "Failed to extract video info from '{FileName}'", videoUpload.FileName);
             return (false, null, TimeSpan.Zero);
-        }
-
-        Size GetEffectiveSize(VideoStream video)
-            => video.Rotation is 90 or 270 or -90 or -270
-                ? new Size(video.Height, video.Width)
-                : new Size(video.Width, video.Height);
-
-        bool MustConvert(IMediaAnalysis media)
-        {
-            if (!OrdinalIgnoreCaseEquals(videoUpload.FileName.Extension, ".mp4"))
-                return true;
-
-            var codecName = media.PrimaryVideoStream?.CodecName;
-            // Skip transcoding for H.264 and HEVC (H.265) codecs
-            return !OrdinalIgnoreCaseEquals(codecName, "h264")
-                && !OrdinalIgnoreCaseEquals(codecName, VideoCodec.LibX264.Name)
-                && !OrdinalIgnoreCaseEquals(codecName, "hevc")
-                && !OrdinalIgnoreCaseEquals(codecName, "h265");
         }
     }
 
