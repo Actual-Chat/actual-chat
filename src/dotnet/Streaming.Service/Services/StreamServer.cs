@@ -46,11 +46,8 @@ public class StreamServer(IServiceProvider services) : IStreamServer
     }
 
     public Task PushAudio(
-        Session session,
-        string chatId,
-        string? repliedChatEntryId,
-        double clientStartOffset,
-        int preSkip,
+        Session session, string chatId, string? repliedChatEntryId,
+        double clientStartOffset, int preSkip,
         RpcStream<AudioFrame> frameStream,
         CancellationToken cancellationToken)
     {
@@ -61,10 +58,12 @@ public class StreamServer(IServiceProvider services) : IStreamServer
             Log.LogError("PushAudio: No nodes serving {Role} role!", HostRole.AudioBackend);
             return Task.CompletedTask;
         }
+
         var nodeRef = nodes.GetRandom().Ref;
         var streamId = StreamId.New(nodeRef);
         var record = new AudioRecord(streamId, session, chatIdTyped, clientStartOffset, repliedEntryIdTyped);
+        var newFrameStream = RpcStream.New(frameStream);
         Log.LogInformation("PushAudio: {AudioRecord}", record);
-        return Backend.ProcessAudio(record, preSkip, frameStream, cancellationToken);
+        return Backend.ProcessAudio(record, preSkip, newFrameStream, cancellationToken);
     }
 }

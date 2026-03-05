@@ -9,15 +9,13 @@ namespace ActualChat.Streaming;
 /// </summary>
 public interface IStreamServer : IRpcService
 {
+    Task PushAudio(
+        Session session, string chatId, string? repliedChatEntryId,
+        double clientStartOffset, int preSkip,
+        RpcStream<AudioFrame> frameStream,
+        CancellationToken cancellationToken);
+
     Task<RpcStream<byte[]>?> GetAudio(string streamId, TimeSpan skipTo, CancellationToken cancellationToken);
     Task<RpcStream<TranscriptDiff>?> GetTranscript(string streamId, CancellationToken cancellationToken);
     Task ReportAudioLatency(TimeSpan latency, CancellationToken cancellationToken);
-    Task PushAudio(
-        Session session,
-        string chatId,
-        string? repliedChatEntryId,
-        double clientStartOffset,
-        int preSkip,
-        RpcStream<AudioFrame> frameStream,
-        CancellationToken cancellationToken);
 }
