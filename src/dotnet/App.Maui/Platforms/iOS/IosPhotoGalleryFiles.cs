@@ -40,7 +40,6 @@ public sealed class IosPhotoGalleryFiles : IDisposable
             ?? pickerResult.AssetIdentifier
             ?? RandomStringGenerator.Default.Next();
         var targetPath = AttachmentsDirectory | suggestedFileName.ToUnique();
-        pickerResult.ItemProvider.ImplyMimeType();
 
         var pendingFile = new PendingFile(targetPath, item, preferredContentType);
         _processor.Enqueue(pendingFile);
@@ -52,7 +51,6 @@ public sealed class IosPhotoGalleryFiles : IDisposable
             Metadata = new() {
                 FileName = suggestedFileName,
                 FileType = item.ImplyMimeType(),
-                Length = 0,
             },
         };
         fileProvider.Initialize(_services);
