@@ -1,4 +1,3 @@
-using ActualChat.Maui;
 using ActualChat.UI.Blazor.App.Services;
 using ActualLab.IO;
 
@@ -40,7 +39,12 @@ public sealed class IosFileProviderImpl(IServiceProvider services, FilePath file
 
     public Task ClearBeforeRemoving()
     {
-        File.Delete(filePath);
+        try {
+            File.Delete(filePath);
+        }
+        catch (DirectoryNotFoundException) {
+            // File or directory doesn't exist - ignore, since we're deleting anyway
+        }
         return Task.CompletedTask;
     }
 
