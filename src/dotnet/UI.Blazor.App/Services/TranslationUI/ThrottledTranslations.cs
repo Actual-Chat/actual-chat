@@ -47,14 +47,20 @@ public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IA
         return existing;
     }
 
+    // Internal methods (used in tests)
+
+#pragma warning disable RCS1210
     internal Task<Translation>? GetWorkItem(TranslationId id)
         => _translations.Get(id)?.ResultTask;
+#pragma warning restore RCS1210
 
     internal IReadOnlyList<(TranslationId Id, Task<Translation> Task)> ListRunning()
         => _translations.Queue.Where(x => x.IsStarted).Select(x => (x.Key, x.ResultTask)).ToList();
 
     internal IReadOnlyList<(TranslationId Id, Task<Translation> Task)> ListQueued()
         => _translations.Queue.Where(x => !x.IsStarted).Select(x => (x.Key, x.ResultTask)).ToList();
+
+    // Protected methods
 
     [ComputeMethod]
     protected virtual async Task<State?> GetTranslationVisibilityState(CancellationToken cancellationToken)
@@ -78,12 +84,9 @@ public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IA
             AsyncChain.From(SyncRunningTranslations),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
-        return (
-            from chain in baseChains
-            select chain
-                .Log(LogLevel.Debug, Log)
-                .RetryForever(retryDelays, Log)
-            ).RunIsolated(cancellationToken);
+        return baseChains
+            .Select(chain => chain.Log(LogLevel.Debug, Log).RetryForever(retryDelays, Log))
+            .RunIsolated(cancellationToken);
     }
 
     private async Task SyncRunningTranslations(CancellationToken cancellationToken)
