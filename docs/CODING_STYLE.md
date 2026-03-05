@@ -96,6 +96,7 @@ Search for `<Using>` to get the full list. Avoid adding explicit usings for glob
 
 ### Naming Conventions
 
+- **Async method names**: do NOT use the `Async` suffix (e.g., `GetUser` not `GetUserAsync`)
 - **Private static readonly fields and constants**: use PascalCase (`ReadonlyField`)
 - **All other private fields, including static ones**: use underscore prefix with camelCase (`_fieldName`)
 
