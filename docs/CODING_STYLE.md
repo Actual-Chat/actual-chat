@@ -417,6 +417,73 @@ public void ForkEqualPartsShouldDivideRangeEqually()
 - **assert**: Verify the expected outcome
 - For simple tests where arrange is trivial, the comment can be omitted but act and assert should always be present
 
+### Background Workers
+
+Classes intended to perform background work must inherit from appropriate base classes
+and use `AsyncChain` for resilient async operations:
+
+- **`WorkerBase`** — for general-purpose background workers (non-UI)
+- **`UIWorkerBase<THub>`** — for UI-related background workers that need access to UI services
+
+**Key patterns:**
+
+1. Override `OnRun(CancellationToken)` to implement the worker logic
+2. Use `AsyncChain.From(...)` to wrap async operations with retry and logging
+3. Chain `.Log(LogLevel.Debug, Log)` for debug logging
+4. Chain `.RetryForever(retryDelays, Log)` for automatic retry on failure
+5. Chain `.CycleForever()` for continuous execution (polling/sync workers)
+
+**Example (general worker):**
+```csharp
+public sealed class MyWorker : WorkerBase
+{
+    private ILogger Log { get; }
+
+    public MyWorker(IServiceProvider services)
+    {
+        Log = services.LogFor(GetType());
+        this.Start();
+    }
+
+    protected override Task OnRun(CancellationToken cancellationToken)
+        => AsyncChain.From(DoWork)
+            .Log(LogLevel.Debug, Log)
+            .RetryForever(RetryDelaySeq.Exp(0.5, 60), Log)
+            .CycleForever()
+            .Run(cancellationToken);
+
+    private async Task DoWork(CancellationToken cancellationToken)
+    {
+        // Actual work here
+    }
+}
+```
+
+**Example (UI worker):**
+```csharp
+public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService
+{
+    protected override IEnumerable<AsyncChain> OnRun(CancellationToken cancellationToken)
+    {
+        var retryDelays = RetryDelaySeq.Exp(0.1, 1);
+        return
+            from chain in new[] {
+                AsyncChain.From(SyncState),
+                AsyncChain.From(ProcessUpdates),
+            }
+            select chain
+                .Log(LogLevel.Debug, Log)
+                .RetryForever(retryDelays, Log);
+    }
+}
+```
+
+**Common `RetryDelaySeq` patterns:**
+- `RetryDelaySeq.Exp(0.1, 1)` — fast retries for UI sync (100ms to 1s)
+- `RetryDelaySeq.Exp(0.5, 60)` — moderate retries (500ms to 60s)
+- `RetryDelaySeq.Exp(3, 60)` — slower retries for background tasks
+- `RetryDelaySeq.Fixed(1)` — fixed 1-second delay between retries
+
 ### Disabled/Silenced Warnings
 
 Search for `<NoWarn>` to see the list of disabled warnings.
