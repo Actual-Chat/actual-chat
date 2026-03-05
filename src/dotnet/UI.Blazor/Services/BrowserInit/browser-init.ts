@@ -131,7 +131,7 @@ export class BrowserInit {
         this.whenReloading.resolve(undefined);
 
         // @ts-expect-error because of the `window.opusMediaRecorder`
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         await window?.opusMediaRecorder?.stop();
 
         await ConnectivityUI.whenReadyToReload('reloading');
@@ -168,7 +168,7 @@ export class BrowserInit {
             if (errorDiv) {
                 const checkErrorDiv = () => {
                     if (errorDiv.style.display === 'block')
-                        this.startReloading();
+                        void this.startReloading();
                 }
                 const observer = new MutationObserver(() => checkErrorDiv());
                 observer.observe(errorDiv, { attributes: true });
