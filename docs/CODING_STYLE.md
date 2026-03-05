@@ -394,6 +394,8 @@ public override async Task Require(CancellationToken cancellationToken)
 
    You can specify length: `RandomStringGenerator.Default.Next(10)` for 10 characters.
 
+10. **Prefer `sealed` classes and records** unless inheritance is intended.
+
 ### Test Conventions
 
 #### Test Method Naming
