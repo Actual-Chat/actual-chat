@@ -34,11 +34,8 @@ public class StreamHub(IServiceProvider services) : Hub
 
     // The only method that is currently used by our JS client
     public Task ProcessAudioChunks(
-        string sessionToken,
-        string? chatId,
-        string? repliedChatEntryId,
-        double clientStartOffset,
-        int preSkip,
+        string sessionToken, string? chatId, string? repliedChatEntryId,
+        double clientStartOffset, int preSkip,
         IAsyncEnumerable<byte[][]> audioStream)
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
         => ProcessAudio(
@@ -203,6 +200,7 @@ public class StreamHub(IServiceProvider services) : Hub
         var nodeRef = _preferThisNode ? MeshWatcher.ThisNode.Ref : nodes.GetRandom().Ref;
         var streamId = StreamId.New(nodeRef);
         var audioRecord = new AudioRecord(streamId, session, chatIdTyped, clientStartOffset, repliedEntryIdTyped);
+
         Log.LogInformation("ProcessAudio: {AudioRecord}", audioRecord);
         var frames = audioStream
             .Select((packet, i) => new AudioFrame {
