@@ -38,4 +38,20 @@ public static class FilePathExt
 
     public static FilePath EnsureExt(this FilePath path, string ext)
         => path.HasExtension && OrdinalEquals(path.Extension, ext) ? path : path.ChangeExtension(ext);
+
+    public static async Task CopyTo(this FilePath sourcePath, FilePath targetPath, CancellationToken cancellationToken = default)
+    {
+        sourcePath.RequireFileExists();
+        Directory.CreateDirectory(targetPath.DirectoryPath);
+        var source = File.OpenRead(sourcePath);
+        await using var _1 = source.ConfigureAwait(false);
+        var target = File.Open(targetPath, FileMode.Create, FileAccess.Write, FileShare.None);
+        await using var _2 = target.ConfigureAwait(false);
+        await source.CopyToAsync(target, cancellationToken).ConfigureAwait(false);
+    }
+
+    extension(FilePath path)
+    {
+        public long FileSize => path.GetFileInfo().Length;
+    }
 }
