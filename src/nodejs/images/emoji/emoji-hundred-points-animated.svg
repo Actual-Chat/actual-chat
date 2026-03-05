@@ -1,59 +1,49 @@
-<svg width="512" height="512" viewBox="0 0 28 28" overflow="visible" fill="none" xmlns="http://www.w3.org/2000/svg">
-<style>
-.sticker-body {
-transform-origin: 14px 20px;
-animation: elastic-bounce 2.5s infinite cubic-bezier(0.45, 0.05, 0.55, 0.95);
-}
-code
-Code
-.eye-features {
-  transform-origin: 14px 8px;
-  animation: blink 3.5s infinite ease-in-out;
-}
+<svg width="512" height="512" viewBox="-2 -2 32 30" overflow="visible" style="overflow: visible;" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <style>
+        .sticker-body {
+            transform-origin: 14px 20px;
+            animation: elastic-bounce 2.5s infinite cubic-bezier(0.45, 0.05, 0.55, 0.95);
+        }
+        .eye-features {
+            transform-origin: 14px 8px;
+            animation: blink 3.5s infinite ease-in-out;
+        }
+        .expression-pulse {
+            transform-origin: 14px 14px;
+            animation: pulse-subtle 2.5s infinite ease-in-out;
+        }
+        @keyframes elastic-bounce {
+            0%, 100% { transform: scale(1, 1) translateY(0); }
+            15%      { transform: scale(1.12, 0.88) translateY(0.5px); }
+            30%      { transform: scale(0.95, 1.05) translateY(-1.5px); }
+            45%      { transform: scale(1.03, 0.97) translateY(0); }
+            60%      { transform: scale(0.99, 1.01) translateY(-0.2px); }
+        }
+        @keyframes blink {
+            0%, 90%, 100% { transform: scaleY(1); }
+            93%           { transform: scaleY(0.1); }
+            96%           { transform: scaleY(1.1); }
+        }
+        @keyframes pulse-subtle {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50%      { opacity: 0.8; transform: scale(1.02); }
+        }
+    </style>
 
-.expression-pulse {
-  transform-origin: 14px 14px;
-  animation: pulse-subtle 2.5s infinite ease-in-out;
-}
+    <g class="sticker-body">
+        <path d="M4.5 24C9 21.1815 18.25 16.5415 27.5 17.0367" stroke="#FF005C" stroke-width="2"/>
+        <path d="M12.3469 24.4804C12.3469 24.4804 18 20.4973 25.0053 20.4973" stroke="#FF005C" stroke-width="2"/>
+        <path d="M3.5 8.5L8 5C7 10 6 14.5 3.99697 20.5" stroke="#FF005C" stroke-width="2" stroke-linejoin="bevel"/>
 
-@keyframes elastic-bounce {
-  0%, 100% { transform: scale(1, 1) translateY(0); }
-  15% { transform: scale(1.12, 0.88) translateY(0.5px); }
-  30% { transform: scale(0.95, 1.05) translateY(-1.5px); }
-  45% { transform: scale(1.03, 0.97) translateY(0); }
-  60% { transform: scale(0.99, 1.01) translateY(-0.2px); }
-}
+        <path d="M4.29629 8.0642L6.94089 6.00117" stroke="white" stroke-width="0.5" stroke-linecap="round"/>
+        <path d="M5 23.5C5 23.5 9 21 12 20" stroke="white" stroke-width="0.5" stroke-linecap="round"/>
 
-@keyframes blink {
-  0%, 90%, 100% { transform: scaleY(1); }
-  93% { transform: scaleY(0.1); }
-  96% { transform: scaleY(1.1); }
-}
-
-@keyframes pulse-subtle {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.8; transform: scale(1.02); }
-}
-</style>
-<g class="sticker-body">
-<!-- Base Character/Body strokes -->
-<path d="M4.5 24C9 21.1815 18.25 16.5415 27.5 17.0367" stroke="#FF005C" stroke-width="2"/>
-<path d="M12.3469 24.4804C12.3469 24.4804 18 20.4973 25.0053 20.4973" stroke="#FF005C" stroke-width="2"/>
-<path d="M3.5 8.5L8 5C7 10 6 14.5 3.99697 20.5" stroke="#FF005C" stroke-width="2" stroke-linejoin="bevel"/>
-code
-Code
-<!-- Highlights attached to body -->
-<path d="M4.29629 8.0642L6.94089 6.00117" stroke="white" stroke-width="0.5" stroke-linecap="round"/>
-<path d="M5 23.5C5 23.5 9 21 12 20" stroke="white" stroke-width="0.5" stroke-linecap="round"/>
-
-<g class="eye-features">
-  <!-- "Eye" or ear-like expressive loops -->
-  <path d="M22.7379 2.57703C21.4561 2.85499 19.3728 4.49587 18.5703 7.89169C17.7677 11.2875 18.73 14.3107 21.0231 13.6573C22.7656 13.1609 25.0421 9.61727 24.3105 4.28353" stroke="#FF005C" stroke-width="2"/>
-  <g class="expression-pulse">
-    <path d="M14.1141 4.066C12.638 4.32725 10.6676 6.11417 9.56178 10.2898C8.59336 13.9467 9.77345 17.6769 12.2996 16.6182C14.8257 15.5596 16.5191 10.476 16.2839 5.56619" stroke="#FF005C" stroke-width="2"/>
-  </g>
-  <!-- Detail highlights on expression -->
-  <path d="M10.3186 8.06657C10.5245 7.42076 11.3746 5.96463 12.5285 5.00812" stroke="white" stroke-width="0.5" stroke-linecap="round"/>
-</g>
-</g>
+        <g class="eye-features">
+            <path d="M22.7379 2.57703C21.4561 2.85499 19.3728 4.49587 18.5703 7.89169C17.7677 11.2875 18.73 14.3107 21.0231 13.6573C22.7656 13.1609 25.0421 9.61727 24.3105 4.28353" stroke="#FF005C" stroke-width="2"/>
+            <g class="expression-pulse">
+                <path d="M14.1141 4.066C12.638 4.32725 10.6676 6.11417 9.56178 10.2898C8.59336 13.9467 9.77345 17.6769 12.2996 16.6182C14.8257 15.5596 16.5191 10.476 16.2839 5.56619" stroke="#FF005C" stroke-width="2"/>
+            </g>
+            <path d="M10.3186 8.06657C10.5245 7.42076 11.3746 5.96463 12.5285 5.00812" stroke="white" stroke-width="0.5" stroke-linecap="round"/>
+        </g>
+    </g>
 </svg>

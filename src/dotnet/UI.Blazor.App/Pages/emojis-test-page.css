@@ -1,0 +1,34 @@
+.emojis-test-page {
+    @apply flex-y gap-6;
+    @apply p-4;
+}
+.emojis-test-title {
+    @apply text-xl font-semibold text-primary;
+}
+.emojis-test-grid {
+    @apply flex flex-wrap gap-8;
+}
+.emojis-test-item {
+    @apply flex items-center justify-center;
+    @apply w-8 h-8;
+    @apply rounded-md;
+    @apply cursor-pointer;
+}
+.emojis-test-item.animated-emoji {
+    @apply relative z-10;
+    @apply w-20 h-20;
+    @apply p-4 -m-4;
+    @apply overflow-visible;
+}
+.emojis-test-item:hover {
+    @apply bg-hover;
+}
+.emojis-test-emoji {
+    @apply w-6 h-6;
+}
+.animated-emoji .emojis-test-emoji {
+    @apply block;
+    @apply w-20 h-20;
+    @apply overflow-visible;
+    @apply object-contain;
+}

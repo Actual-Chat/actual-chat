@@ -1,99 +1,158 @@
-<svg width="512" height="512" viewBox="0 0 28 28" overflow="visible" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <style>
-    /* Основа персонажа: небольшая отдача при взлете дыма */
-    .character-base {
-      transform-origin: 14px 18px;
-      animation: body-react 2.5s infinite ease-out;
-    }
+<svg width="512" height="512" viewBox="-4 -10 36 38" overflow="visible" style="overflow: visible;" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <style>
+        .character-base {
+            transform-origin: 14px 18px;
+            animation: body-react 2.5s infinite ease-out;
+        }
+        .steam-top {
+            transform-origin: 14px 10px;
+            animation: explosion-rise-fall 2.5s infinite cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .eyes-group {
+            transform-origin: 14px 14.5px;
+            animation: blink 4s infinite;
+        }
+        .mouth-group {
+            transform-origin: 15px 22px;
+            animation: mouth-move 0.8s infinite ease-in-out;
+        }
+        .spark-1 {
+            transform-origin: 2.5px 8.25px;
+            animation: spark-fly-1 2.5s infinite cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .spark-2 {
+            transform-origin: 4.97px 2.75px;
+            animation: spark-fly-2 2.5s infinite cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .spark-3 {
+            transform-origin: 11.1px 7.45px;
+            animation: spark-fly-3 2.5s infinite cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .spark-4 {
+            transform-origin: 13.53px 2.45px;
+            animation: spark-fly-4 2.5s infinite cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .spark-5 {
+            transform-origin: 25.53px 2.45px;
+            animation: spark-fly-5 2.5s infinite cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .spark-6 {
+            transform-origin: 21.53px 7.45px;
+            animation: spark-fly-6 2.5s infinite cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        @keyframes spark-fly-1 {
+            0%   { transform: translate(0, 0) rotate(0deg)   scale(1);   opacity: 1; }
+            15%  { transform: translate(-2.5px, -3px) rotate(-35deg) scale(1.3); opacity: 1; }
+            60%  { transform: translate(-1px, -1.5px) rotate(-15deg) scale(0.8); opacity: 0.4; }
+            100% { transform: translate(0, 0) rotate(0deg)   scale(1);   opacity: 1; }
+        }
+        @keyframes spark-fly-2 {
+            0%   { transform: translate(0, 0) rotate(0deg)   scale(1);   opacity: 1; }
+            15%  { transform: translate(-1.5px, -3.5px) rotate(20deg) scale(1.3); opacity: 1; }
+            60%  { transform: translate(-0.5px, -1.5px) rotate(8deg)  scale(0.8); opacity: 0.4; }
+            100% { transform: translate(0, 0) rotate(0deg)   scale(1);   opacity: 1; }
+        }
+        @keyframes spark-fly-3 {
+            0%   { transform: translate(0, 0) rotate(0deg)   scale(1);   opacity: 1; }
+            15%  { transform: translate(1px, -4px) rotate(-25deg) scale(1.4); opacity: 1; }
+            60%  { transform: translate(0.5px, -1.8px) rotate(-10deg) scale(0.8); opacity: 0.4; }
+            100% { transform: translate(0, 0) rotate(0deg)   scale(1);   opacity: 1; }
+        }
+        @keyframes spark-fly-4 {
+            0%   { transform: translate(0, 0) rotate(0deg)   scale(1);   opacity: 1; }
+            15%  { transform: translate(2px, -3.5px) rotate(30deg) scale(1.3); opacity: 1; }
+            60%  { transform: translate(1px, -1.5px) rotate(12deg) scale(0.8); opacity: 0.4; }
+            100% { transform: translate(0, 0) rotate(0deg)   scale(1);   opacity: 1; }
+        }
+        @keyframes spark-fly-5 {
+            0%   { transform: translate(0, 0) rotate(0deg)   scale(1);   opacity: 1; }
+            15%  { transform: translate(3px, -3px) rotate(40deg) scale(1.3); opacity: 1; }
+            60%  { transform: translate(1.2px, -1.3px) rotate(16deg) scale(0.8); opacity: 0.4; }
+            100% { transform: translate(0, 0) rotate(0deg)   scale(1);   opacity: 1; }
+        }
+        @keyframes spark-fly-6 {
+            0%   { transform: translate(0, 0) rotate(0deg)   scale(1);   opacity: 1; }
+            15%  { transform: translate(2.5px, -4px) rotate(-20deg) scale(1.4); opacity: 1; }
+            60%  { transform: translate(1px, -1.8px) rotate(-8deg)  scale(0.8); opacity: 0.4; }
+            100% { transform: translate(0, 0) rotate(0deg)   scale(1);   opacity: 1; }
+        }
+        @keyframes body-react {
+            0% { transform: scale(1) translateY(0); }
+            10% { transform: scale(1.02, 0.98) translateY(0.3px); }
+            20% { transform: scale(0.98, 1.02) translateY(-0.4px); }
+            100% { transform: scale(1) translateY(0); }
+        }
+        @keyframes explosion-rise-fall {
+            0% { transform: translateY(0) scale(1);    opacity: 0.85; }
+            15% { transform: translateY(-3px) scale(1.06); opacity: 1; }
+            100% { transform: translateY(0) scale(1);    opacity: 0.85; }
+        }
+        @keyframes blink {
+            0%, 90%, 100% { transform: scaleY(1); }
+            95% { transform: scaleY(0.1); }
+        }
+        @keyframes mouth-move {
+            0%, 100% { transform: scale(1) translateX(0); }
+            50% { transform: scale(1.08) translateX(0.15px); }
+        }
+    </style>
 
-    /* Верхняя часть: быстрый взлет, медленное оседание */
-    .steam-top {
-      transform-origin: 14px 10px;
-      animation: explosion-rise-fall 2.5s infinite cubic-bezier(0.22, 1, 0.36, 1);
-    }
+    <g class="character-base">
+        <path d="M9 6H20V14H9V6Z" fill="url(#paint0_linear)"/>
+        <path d="M25.6215 11.8712C26.0572 13.1138 25.9972 14.1602 25.9972 15.6099C25.9972 21.9262 20.6598 27 14.0153 27C9.76715 27 6.06365 24.9291 3.88512 21.7191C3.44942 20.4766 2 18.9346 2 17.4849L2.49211 13.7425L3.12264 10.9356L5.93692 13.2747L8.39749 10.9356L10.8581 12.8069L13.3186 10.9356L15.7792 12.8069L18.2398 10.4678L21.1925 12.339L23.1609 10L25.6215 11.8712Z" fill="url(#paint1_linear)"/>
+        <path d="M26.2842 11C26.7082 12.2607 26.9385 13.6066 26.9385 15.001C26.9383 21.9731 21.184 27.7274 14.2119 27.7275C7.23967 27.7275 1.48452 21.9732 1.48438 15.001C1.48438 13.6066 1.71463 12.2607 2.13867 11H3.29785C2.84065 12.2473 2.59082 13.595 2.59082 15.001C2.59096 21.4198 7.79303 26.6211 14.2119 26.6211C20.6307 26.621 25.8319 21.4197 25.832 15.001C25.832 13.595 25.5822 12.2473 25.125 11H26.2842Z" fill="#844432"/>
+        <path d="M14.7676 18.428H13.6609C13.6609 16.1039 12.8862 14.3331 11.5581 13.2264C8.23799 10.681 2.2617 12.341 2.15103 12.341L1.92969 11.2343C2.15103 11.2343 8.45933 9.46358 12.2222 12.341C13.8823 13.6691 14.7676 15.6612 14.7676 18.428Z" fill="#1C1C1C"/>
 
-    /* Редкое моргание */
-    .eyes-group {
-      transform-origin: 14px 14.5px;
-      animation: blink 4s infinite;
-    }
+        <g class="eyes-group">
+            <path d="M9.25386 16.768C9.80396 16.768 10.2499 15.8266 10.2499 14.6653C10.2499 13.5039 9.80396 12.5625 9.25386 12.5625C8.70376 12.5625 8.25781 13.5039 8.25781 14.6653C8.25781 15.8266 8.70376 16.768 9.25386 16.768Z" fill="#1C1C1C"/>
+            <path d="M19.2539 16.768C19.804 16.768 20.2499 15.8266 20.2499 14.6653C20.2499 13.5039 19.804 12.5625 19.2539 12.5625C18.7038 12.5625 18.2578 13.5039 18.2578 14.6653C18.2578 15.8266 18.7038 16.768 19.2539 16.768Z" fill="#1C1C1C"/>
+        </g>
 
-    /* Вибрация рта */
-    .mouth-group {
-      transform-origin: 15px 22px;
-      animation: mouth-move 0.8s infinite ease-in-out;
-    }
-
-    @keyframes body-react {
-      0% { transform: scale(1) translateY(0); }
-      10% { transform: scale(1.02, 0.98) translateY(0.3px); } /* Присаживается перед выплеском */
-      20% { transform: scale(0.98, 1.02) translateY(-0.5px); } /* Подпрыгивает вслед за дымом */
-      100% { transform: scale(1) translateY(0); }
-    }
-
-    @keyframes explosion-rise-fall {
-      0% { transform: translateY(0) scale(1); opacity: 0.8; }
-      15% { transform: translateY(-5px) scale(1.1); opacity: 1; } /* Быстрый взлет */
-      100% { transform: translateY(0) scale(1); opacity: 0.8; }   /* Медленное оседание */
-    }
-
-    @keyframes blink {
-      0%, 90%, 100% { transform: scaleY(1); }
-      95% { transform: scaleY(0.1); }
-    }
-
-    @keyframes mouth-move {
-      0%, 100% { transform: scale(1) translateX(0); }
-      50% { transform: scale(1.1) translateX(0.2px); }
-    }
-  </style>
-
-  <g class="character-base">
-    <!-- Главные формы лица/головы -->
-    <path d="M9 6H20V14H9V6Z" fill="url(#paint0_linear)"/>
-    <path d="M25.6215 11.8712C26.0572 13.1138 25.9972 14.1602 25.9972 15.6099C25.9972 21.9262 20.6598 27 14.0153 27C9.76715 27 6.06365 24.9291 3.88512 21.7191C3.44942 20.4766 2 18.9346 2 17.4849L2.49211 13.7425L3.12264 10.9356L5.93692 13.2747L8.39749 10.9356L10.8581 12.8069L13.3186 10.9356L15.7792 12.8069L18.2398 10.4678L21.1925 12.339L23.1609 10L25.6215 11.8712Z" fill="url(#paint1_linear)"/>
-    <path d="M26.2842 11C26.7082 12.2607 26.9385 13.6066 26.9385 15.001C26.9383 21.9731 21.184 27.7274 14.2119 27.7275C7.23967 27.7275 1.48452 21.9732 1.48438 15.001C1.48438 13.6066 1.71463 12.2607 2.13867 11H3.29785C2.84065 12.2473 2.59082 13.595 2.59082 15.001C2.59096 21.4198 7.79303 26.6211 14.2119 26.6211C20.6307 26.621 25.8319 21.4197 25.832 15.001C25.832 13.595 25.5822 12.2473 25.125 11H26.2842Z" fill="#844432"/>
-    
-    <path d="M14.7676 18.428H13.6609C13.6609 16.1039 12.8862 14.3331 11.5581 13.2264C8.23799 10.681 2.2617 12.341 2.15103 12.341L1.92969 11.2343C2.15103 11.2343 8.45933 9.46358 12.2222 12.341C13.8823 13.6691 14.7676 15.6612 14.7676 18.428Z" fill="#1C1C1C"/>
-
-    <g class="eyes-group">
-      <path d="M9.25386 16.768C9.80396 16.768 10.2499 15.8266 10.2499 14.6653C10.2499 13.5039 9.80396 12.5625 9.25386 12.5625C8.70376 12.5625 8.25781 13.5039 8.25781 14.6653C8.25781 15.8266 8.70376 16.768 9.25386 16.768Z" fill="#1C1C1C"/>
-      <path d="M19.2539 16.768C19.804 16.768 20.2499 15.8266 20.2499 14.6653C20.2499 13.5039 19.804 12.5625 19.2539 12.5625C18.7038 12.5625 18.2578 13.5039 18.2578 14.6653C18.2578 15.8266 18.7038 16.768 19.2539 16.768Z" fill="#1C1C1C"/>
+        <g class="mouth-group">
+            <path d="M15 24C13.8954 24 13 23.1046 13 22C13 20.8954 13.8954 20 15 20C16.1046 20 17 20.8954 17 22C17 23.1046 16.1046 24 15 24Z" fill="#1C1C1C"/>
+        </g>
     </g>
 
-    <g class="mouth-group">
-      <path d="M15 24C13.8954 24 13 23.1046 13 22C13 20.8954 13.8954 20 15 20C16.1046 20 17 20.8954 17 22C17 23.1046 16.1046 24 15 24Z" fill="#1C1C1C"/>
+    <g class="steam-top">
+        <path d="M8 5C8 6.65685 6.65685 8 5 8C3.34315 8 2 6.65685 2 5C2 3.34315 3.34315 2 5 2C6.65685 2 8 3.34315 8 5Z" fill="#D9D9D9"/>
+        <path d="M8 5C8 3.34315 6.65685 2 5 2C3.34315 2 2 3.34315 2 5C2 6.65685 3.34315 8 5 8C6.65685 8 8 6.65685 8 5ZM9 5C9 7.20914 7.20914 9 5 9C2.79086 9 1 7.20914 1 5C1 2.79086 2.79086 1 5 1C7.20914 1 9 2.79086 9 5Z" fill="#A7A7A7"/>
+        <path d="M26 5C26 6.65685 24.6569 8 23 8C21.3431 8 20 6.65685 20 5C20 3.34315 21.3431 2 23 2C24.6569 2 26 3.34315 26 5Z" fill="#D9D9D9"/>
+        <path d="M26 5C26 3.34315 24.6569 2 23 2C21.3431 2 20 3.34315 20 5C20 6.65685 21.3431 8 23 8C24.6569 8 26 6.65685 26 5ZM27 5C27 7.20914 25.2091 9 23 9C20.7909 9 19 7.20914 19 5C19 2.79086 20.7909 1 23 1C25.2091 1 27 2.79086 27 5Z" fill="#A7A7A7"/>
+        <path d="M12 5C12 6.65685 10.6569 8 9 8C7.34315 8 6 6.65685 6 5C6 3.34315 7.34315 2 9 2C10.6569 2 12 3.34315 12 5Z" fill="#D9D9D9"/>
+        <path d="M12 5C12 3.34315 10.6569 2 9 2C7.34315 2 6 3.34315 6 5C6 6.65685 7.34315 8 9 8C10.6569 8 12 6.65685 12 5ZM13 5C13 7.20914 11.2091 9 9 9C6.79086 9 5 7.20914 5 5C5 2.79086 6.79086 1 9 1C11.2091 1 13 2.79086 13 5Z" fill="#A7A7A7"/>
+        <path d="M22 5C22 6.65685 20.6569 8 19 8C17.3431 8 16 6.65685 16 5C16 3.34315 17.3431 2 19 2C20.6569 2 22 3.34315 22 5Z" fill="#D9D9D9"/>
+        <path d="M22 5C22 3.34315 20.6569 2 19 2C17.3431 2 16 3.34315 16 5C16 6.65685 17.3431 8 19 8C20.6569 8 22 6.65685 22 5ZM23 5C23 7.20914 21.2091 9 19 9C16.7909 9 15 7.20914 15 5C15 2.79086 16.7909 1 19 1C21.2091 1 23 2.79086 23 5Z" fill="#A7A7A7"/>
+        <path d="M17 5C17 6.65685 15.6569 8 14 8C12.3431 8 11 6.65685 11 5C11 3.34315 12.3431 2 14 2C15.6569 2 17 3.34315 17 5Z" fill="#D9D9D9"/>
+        <path d="M17 5C17 3.34315 15.6569 2 14 2C12.3431 2 11 3.34315 11 5C11 6.65685 12.3431 8 14 8C15.6569 8 17 6.65685 17 5ZM18 5C18 7.20914 16.2091 9 14 9C11.7909 9 10 7.20914 10 5C10 2.79086 11.7909 1 14 1C16.2091 1 18 2.79086 18 5Z" fill="#A7A7A7"/>
+
+        <g class="spark-1">
+            <path d="M4.68359 7.66992L1.32617 9.68359L0.8125 8.82617L4.16992 6.8125L4.68359 7.66992Z" fill="#FFDD52"/>
+        </g>
+        <g class="spark-2">
+            <path d="M6.81391 4.02914L3.26325 2.37992L3.68475 1.47362L7.23542 3.12285L6.81391 4.02914Z" fill="#FFDD52"/>
+        </g>
+        <g class="spark-3">
+            <path d="M12.8842 8.73226L9.33356 7.08304L9.75506 6.17675L13.3057 7.82597L12.8842 8.73226Z" fill="#FFDD52"/>
+        </g>
+        <g class="spark-4">
+            <path d="M11.7642 3.73226L15.3149 2.08304L14.8934 1.17675L11.3427 2.82597L11.7642 3.73226Z" fill="#FFDD52"/>
+        </g>
+        <g class="spark-5">
+            <path d="M23.7642 3.73226L27.3149 2.08304L26.8934 1.17675L23.3427 2.82597L23.7642 3.73226Z" fill="#FFDD52"/>
+        </g>
+        <g class="spark-6">
+            <path d="M19.7642 8.73226L23.3149 7.08304L22.8934 6.17675L19.3427 7.82597L19.7642 8.73226Z" fill="#FFDD52"/>
+        </g>
     </g>
-  </g>
 
-  <!-- Верхние элементы (взрывающийся дым) -->
-  <g class="steam-top">
-    <path d="M8 5C8 6.65685 6.65685 8 5 8C3.34315 8 2 6.65685 2 5C2 3.34315 3.34315 2 5 2C6.65685 2 8 3.34315 8 5Z" fill="#D9D9D9"/>
-    <path d="M8 5C8 3.34315 6.65685 2 5 2C3.34315 2 2 3.34315 2 5C2 6.65685 3.34315 8 5 8C6.65685 8 8 6.65685 8 5ZM9 5C9 7.20914 7.20914 9 5 9C2.79086 9 1 7.20914 1 5C1 2.79086 2.79086 1 5 1C7.20914 1 9 2.79086 9 5Z" fill="#A7A7A7"/>
-    <path d="M26 5C26 6.65685 24.6569 8 23 8C21.3431 8 20 6.65685 20 5C20 3.34315 21.3431 2 23 2C24.6569 2 26 3.34315 26 5Z" fill="#D9D9D9"/>
-    <path d="M26 5C26 3.34315 24.6569 2 23 2C21.3431 2 20 3.34315 20 5C20 6.65685 21.3431 8 23 8C24.6569 8 26 6.65685 26 5ZM27 5C27 7.20914 25.2091 9 23 9C20.7909 9 19 7.20914 19 5C19 2.79086 20.7909 1 23 1C25.2091 1 27 2.79086 27 5Z" fill="#A7A7A7"/>
-    <path d="M12 5C12 6.65685 10.6569 8 9 8C7.34315 8 6 6.65685 6 5C6 3.34315 7.34315 2 9 2C10.6569 2 12 3.34315 12 5Z" fill="#D9D9D9"/>
-    <path d="M12 5C12 3.34315 10.6569 2 9 2C7.34315 2 6 3.34315 6 5C6 6.65685 7.34315 8 9 8C10.6569 8 12 6.65685 12 5ZM13 5C13 7.20914 11.2091 9 9 9C6.79086 9 5 7.20914 5 5C5 2.79086 6.79086 1 9 1C11.2091 1 13 2.79086 13 5Z" fill="#A7A7A7"/>
-    <path d="M22 5C22 6.65685 20.6569 8 19 8C17.3431 8 16 6.65685 16 5C16 3.34315 17.3431 2 19 2C20.6569 2 22 3.34315 22 5Z" fill="#D9D9D9"/>
-    <path d="M22 5C22 3.34315 20.6569 2 19 2C17.3431 2 16 3.34315 16 5C16 6.65685 17.3431 8 19 8C20.6569 8 22 6.65685 22 5ZM23 5C23 7.20914 21.2091 9 19 9C16.7909 9 15 7.20914 15 5C15 2.79086 16.7909 1 19 1C21.2091 1 23 2.79086 23 5Z" fill="#A7A7A7"/>
-    <path d="M17 5C17 6.65685 15.6569 8 14 8C12.3431 8 11 6.65685 11 5C11 3.34315 12.3431 2 14 2C15.6569 2 17 3.34315 17 5Z" fill="#D9D9D9"/>
-    <path d="M17 5C17 3.34315 15.6569 2 14 2C12.3431 2 11 3.34315 11 5C11 6.65685 12.3431 8 14 8C15.6569 8 17 6.65685 17 5ZM18 5C18 7.20914 16.2091 9 14 9C11.7909 9 10 7.20914 10 5C10 2.79086 11.7909 1 14 1C16.2091 1 18 2.79086 18 5Z" fill="#A7A7A7"/>
-    <path d="M4.68359 7.66992L1.32617 9.68359L0.8125 8.82617L4.16992 6.8125L4.68359 7.66992Z" fill="#FFDD52"/>
-    <path d="M6.81391 4.02914L3.26325 2.37992L3.68475 1.47362L7.23542 3.12285L6.81391 4.02914Z" fill="#FFDD52"/>
-    <path d="M12.8842 8.73226L9.33356 7.08304L9.75506 6.17675L13.3057 7.82597L12.8842 8.73226Z" fill="#FFDD52"/>
-    <path d="M11.7642 3.73226L15.3149 2.08304L14.8934 1.17675L11.3427 2.82597L11.7642 3.73226Z" fill="#FFDD52"/>
-    <path d="M23.7642 3.73226L27.3149 2.08304L26.8934 1.17675L23.3427 2.82597L23.7642 3.73226Z" fill="#FFDD52"/>
-    <path d="M19.7642 8.73226L23.3149 7.08304L22.8934 6.17675L19.3427 7.82597L19.7642 8.73226Z" fill="#FFDD52"/>
-  </g>
-
-  <defs>
-    <linearGradient id="paint0_linear" x1="14.5" y1="6" x2="14.5" y2="14" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#844432"/>
-      <stop offset="1" stop-color="#FF5A74"/>
-    </linearGradient>
-    <linearGradient id="paint1_linear" x1="14.795" y1="9.06438" x2="18.2802" y2="42.4708" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFDD52"/>
-      <stop offset="1" stop-color="#FF3C7B"/>
-    </linearGradient>
-  </defs>
+    <defs>
+        <linearGradient id="paint0_linear" x1="14.5" y1="6" x2="14.5" y2="14" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#844432"/>
+            <stop offset="1" stop-color="#FF5A74"/>
+        </linearGradient>
+        <linearGradient id="paint1_linear" x1="14.795" y1="9.06438" x2="18.2802" y2="42.4708" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#FFDD52"/>
+            <stop offset="1" stop-color="#FF3C7B"/>
+        </linearGradient>
+    </defs>
 </svg>

@@ -1,0 +1,25 @@
+.emoji-preview-overlay {
+    @apply fixed z-[10000];
+    @apply flex items-center justify-center;
+    @apply w-48 h-48;
+    @apply opacity-0;
+    @apply pointer-events-none;
+    transform: scale(0.5);
+    transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+    filter: drop-shadow(0 0.25rem 0.75rem rgba(0, 0, 0, 0.3));
+}
+.emoji-preview-overlay::before {
+    @apply content-empty;
+    @apply absolute inset-0 z-minus;
+    @apply rounded-full;
+    background: radial-gradient(circle, var(--background-01) 20%, transparent 55%);
+}
+.emoji-preview-overlay.emoji-preview-visible {
+    @apply opacity-100;
+    transform: scale(1);
+}
+.emoji-preview-image {
+    @apply shrink-0;
+    @apply w-[5.25rem] h-[5.25rem];
+    @apply object-contain;
+}

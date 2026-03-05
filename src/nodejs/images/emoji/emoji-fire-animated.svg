@@ -1,119 +1,102 @@
-<svg width="512" height="512" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <style>
+<svg width="512" height="512" viewBox="-2 -3 32 32" overflow="visible" style="overflow: visible;" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <style>
+        .body {
+            transform-origin: 14px 22px;
+            animation: sway 4.5s infinite cubic-bezier(0.45, 0.05, 0.55, 0.95);
+        }
+        .outer-flame {
+            transform-origin: 14px 22px;
+            animation: outerBreathe 3.2s infinite cubic-bezier(0.37, 0, 0.63, 1);
+        }
+        .inner-flame {
+            transform-origin: 14.4px 22px;
+            animation: coreFlicker 2.0s infinite cubic-bezier(0.37, 0, 0.63, 1);
+        }
+        .streak-left {
+            transform-origin: 11px 11px;
+            animation: streakLeft 3.8s infinite cubic-bezier(0.45, 0.05, 0.55, 0.95);
+        }
+        .streak-right {
+            transform-origin: 13px 19px;
+            animation: streakRight 3.1s infinite cubic-bezier(0.45, 0.05, 0.55, 0.95);
+        }
+        .tip {
+            transform-origin: 16px 5px;
+            animation: tipFlick 2.6s infinite cubic-bezier(0.37, 0, 0.63, 1);
+        }
+        @keyframes sway {
+            0%   { transform: rotate(0deg) scaleX(1); }
+            25%  { transform: rotate(-1.2deg) scaleX(1.015); }
+            50%  { transform: rotate(0.8deg) scaleX(0.985); }
+            75%  { transform: rotate(-0.5deg) scaleX(1.008); }
+            100% { transform: rotate(0deg) scaleX(1); }
+        }
+        @keyframes outerBreathe {
+            0%, 100% { transform: scaleY(1) scaleX(1); }
+            40%      { transform: scaleY(1.025) scaleX(0.978); }
+            70%      { transform: scaleY(0.978) scaleX(1.018); }
+        }
+        @keyframes coreFlicker {
+            0%, 100% { transform: scaleY(1) scaleX(1);    opacity: 1; }
+            30%      { transform: scaleY(1.05) scaleX(0.96); opacity: 0.92; }
+            55%      { transform: scaleY(0.96) scaleX(1.04); opacity: 1; }
+            80%      { transform: scaleY(1.03) scaleX(0.98); opacity: 0.88; }
+        }
+        @keyframes streakLeft {
+            0%, 100% { transform: rotate(0deg)  translateY(0px);    opacity: 1; }
+            35%      { transform: rotate(-5deg) translateY(-0.3px); opacity: 0.65; }
+            65%      { transform: rotate(3deg)  translateY(0.15px); opacity: 0.88; }
+        }
+        @keyframes streakRight {
+            0%, 100% { transform: rotate(0deg)  scaleY(1);    opacity: 1; }
+            40%      { transform: rotate(4deg)  scaleY(1.06); opacity: 0.6; }
+            70%      { transform: rotate(-2deg) scaleY(0.94); opacity: 1; }
+        }
+        @keyframes tipFlick {
+            0%, 100% { transform: scaleY(1)    rotate(0deg);   opacity: 1; }
+            35%      { transform: scaleY(1.14) rotate(-3deg);  opacity: 0.55; }
+            65%      { transform: scaleY(0.88) rotate(2.5deg); opacity: 0.95; }
+        }
+    </style>
 
-    .body {
-      transform-origin: 14px 22px;
-      animation: sway 4.5s infinite cubic-bezier(0.45, 0.05, 0.55, 0.95);
-    }
+    <defs>
+        <clipPath id="flame-body-clip">
+            <path d="M17.5819 3.3702C15.4302 0.860102 12.2026 0.830011 10.8578 1.12884C13.2433 2.49199 13.439 4.72492 12.4994 6.43457C12.3606 6.62185 11.9275 7.1425 11.3052 7.72686C9.0639 9.51709 8.64187 13.5057 8.49219 15C5.99219 13.5 7.03682 10.0912 7.41869 8.67507C5.33545 10.5653 4.13281 13.4529 4.13281 16.6897C4.13281 22.3839 8.74889 27 14.4431 27C20.1373 27 23.8568 22.3839 23.8568 16.6897C23.8568 15.0215 23.458 13.4471 22.7546 12.0529C22.2548 13.3315 20.931 13.6578 19.8224 13.1035C19.18 12.7823 18.7697 12.231 18.7525 11.4496C18.7611 11.1735 18.8167 10.8701 18.9267 10.54C19.375 9.19598 19.7335 5.88045 17.5819 3.3702Z"/>
+        </clipPath>
+        <linearGradient id="paint0_linear_26508_98445" x1="13.9948" y1="1" x2="13.9948" y2="27" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#F4432F"/>
+            <stop offset="1" stop-color="#FF8153"/>
+        </linearGradient>
+        <radialGradient id="paint1_radial_26508_98445" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(14.4369 12.2072) rotate(91.0297) scale(14.7578 9.92089)">
+            <stop offset="0.132785" stop-color="#FFC558"/>
+            <stop offset="0.63434" stop-color="#F5EA85"/>
+            <stop offset="0.748336" stop-color="#FFF9C0"/>
+            <stop offset="0.966757" stop-color="#FFAD33"/>
+        </radialGradient>
+    </defs>
 
-    .outer-flame {
-      transform-origin: 14px 22px;
-      animation: outerBreathe 3.2s infinite cubic-bezier(0.37, 0, 0.63, 1);
-    }
-
-    .inner-flame {
-      transform-origin: 14.4px 22px;
-      animation: coreFlicker 2.0s infinite cubic-bezier(0.37, 0, 0.63, 1);
-    }
-
-    .streak-left {
-      transform-origin: 11px 11px;
-      animation: streakLeft 3.8s infinite cubic-bezier(0.45, 0.05, 0.55, 0.95);
-    }
-
-    .streak-right {
-      transform-origin: 13px 19px;
-      animation: streakRight 3.1s infinite cubic-bezier(0.45, 0.05, 0.55, 0.95);
-    }
-
-    .tip {
-      transform-origin: 16px 5px;
-      animation: tipFlick 2.6s infinite cubic-bezier(0.37, 0, 0.63, 1);
-    }
-
-    @keyframes sway {
-      0%   { transform: rotate(0deg) scaleX(1); }
-      25%  { transform: rotate(-1.2deg) scaleX(1.015); }
-      50%  { transform: rotate(0.8deg) scaleX(0.985); }
-      75%  { transform: rotate(-0.5deg) scaleX(1.008); }
-      100% { transform: rotate(0deg) scaleX(1); }
-    }
-
-    @keyframes outerBreathe {
-      0%, 100% { transform: scaleY(1)    scaleX(1); }
-      40%      { transform: scaleY(1.025) scaleX(0.978); }
-      70%      { transform: scaleY(0.978) scaleX(1.018); }
-    }
-
-    @keyframes coreFlicker {
-      0%, 100% { transform: scaleY(1)    scaleX(1);    opacity: 1; }
-      30%      { transform: scaleY(1.05) scaleX(0.96); opacity: 0.92; }
-      55%      { transform: scaleY(0.96) scaleX(1.04); opacity: 1; }
-      80%      { transform: scaleY(1.03) scaleX(0.98); opacity: 0.88; }
-    }
-
-    @keyframes streakLeft {
-      0%, 100% { transform: rotate(0deg)  translateY(0px);    opacity: 1; }
-      35%      { transform: rotate(-5deg) translateY(-0.3px); opacity: 0.65; }
-      65%      { transform: rotate(3deg)  translateY(0.15px); opacity: 0.88; }
-    }
-
-    @keyframes streakRight {
-      0%, 100% { transform: rotate(0deg) scaleY(1);    opacity: 1; }
-      40%      { transform: rotate(4deg) scaleY(1.06); opacity: 0.6; }
-      70%      { transform: rotate(-2deg) scaleY(0.94); opacity: 1; }
-    }
-
-    @keyframes tipFlick {
-      0%, 100% { transform: scaleY(1)    rotate(0deg);  opacity: 1; }
-      35%      { transform: scaleY(1.14) rotate(-3deg); opacity: 0.55; }
-      65%      { transform: scaleY(0.88) rotate(2.5deg); opacity: 0.95; }
-    }
-
-  </style>
-
-  <defs>
-    <linearGradient id="paint0_linear_26508_98445" x1="13.9948" y1="1" x2="13.9948" y2="27" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#F4432F"/>
-      <stop offset="1" stop-color="#FF8153"/>
-    </linearGradient>
-    <radialGradient id="paint1_radial_26508_98445" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(14.4369 12.2072) rotate(91.0297) scale(14.7578 9.92089)">
-      <stop offset="0.132785" stop-color="#FFC558"/>
-      <stop offset="0.63434" stop-color="#F5EA85"/>
-      <stop offset="0.748336" stop-color="#FFF9C0"/>
-      <stop offset="0.966757" stop-color="#FFAD33"/>
-    </radialGradient>
-    <clipPath id="bounds">
-      <rect x="0" y="0" width="28" height="28"/>
-    </clipPath>
-  </defs>
-
-  <g clip-path="url(#bounds)">
     <g class="body">
+        <g class="outer-flame">
+            <path d="M17.5819 3.3702C15.4302 0.860102 12.2026 0.830011 10.8578 1.12884C13.2433 2.49199 13.439 4.72492 12.4994 6.43457C12.3606 6.62185 11.9275 7.1425 11.3052 7.72686C9.0639 9.51709 8.64187 13.5057 8.49219 15C5.99219 13.5 7.03682 10.0912 7.41869 8.67507C5.33545 10.5653 4.13281 13.4529 4.13281 16.6897C4.13281 22.3839 8.74889 27 14.4431 27C20.1373 27 23.8568 22.3839 23.8568 16.6897C23.8568 15.0215 23.458 13.4471 22.7546 12.0529C22.2548 13.3315 20.931 13.6578 19.8224 13.1035C19.18 12.7823 18.7697 12.231 18.7525 11.4496C18.7611 11.1735 18.8167 10.8701 18.9267 10.54C19.375 9.19598 19.7335 5.88045 17.5819 3.3702Z" fill="url(#paint0_linear_26508_98445)"/>
+        </g>
 
-      <g class="outer-flame">
-        <path d="M17.5819 3.3702C15.4302 0.860102 12.2026 0.830011 10.8578 1.12884C13.2433 2.49199 13.439 4.72492 12.4994 6.43457C12.3606 6.62185 11.9275 7.1425 11.3052 7.72686C9.0639 9.51709 8.64187 13.5057 8.49219 15C5.99219 13.5 7.03682 10.0912 7.41869 8.67507C5.33545 10.5653 4.13281 13.4529 4.13281 16.6897C4.13281 22.3839 8.74889 27 14.4431 27C20.1373 27 23.8568 22.3839 23.8568 16.6897C23.8568 15.0215 23.458 13.4471 22.7546 12.0529C22.2548 13.3315 20.931 13.6578 19.8224 13.1035C19.18 12.7823 18.7697 12.231 18.7525 11.4496C18.7611 11.1735 18.8167 10.8701 18.9267 10.54C19.375 9.19598 19.7335 5.88045 17.5819 3.3702Z" fill="url(#paint0_linear_26508_98445)"/>
-      </g>
+        <g class="inner-flame" clip-path="url(#flame-body-clip)">
+            <path d="M8.60938 20.9187C8.60938 24.2566 11.3371 26.9626 14.7018 26.9626C16.23 26.9626 18.6365 25.6554 19.3679 23.8623C19.864 22.6463 20.1938 20.6536 18.0231 18.483C16.23 16.6899 13.8093 14.7175 16.6783 10.4141C9.9542 13.1037 12.6438 19.8278 11.299 19.8278C9.9542 19.8278 10.4025 17.1382 10.4025 17.1382C8.90909 18.5042 8.60938 19.8278 8.60938 20.9187Z" fill="url(#paint1_radial_26508_98445)" stroke="#FFA052" stroke-linejoin="round"/>
+        </g>
 
-      <g class="inner-flame">
-        <path d="M8.60938 20.9187C8.60938 24.2566 11.3371 26.9626 14.7018 26.9626C16.23 26.9626 18.6365 25.6554 19.3679 23.8623C19.864 22.6463 20.1938 20.6536 18.0231 18.483C16.23 16.6899 13.8093 14.7175 16.6783 10.4141C9.9542 13.1037 12.6438 19.8278 11.299 19.8278C9.9542 19.8278 10.4025 17.1382 10.4025 17.1382C8.90909 18.5042 8.60938 19.8278 8.60938 20.9187Z" fill="url(#paint1_radial_26508_98445)" stroke="#FFA052" stroke-linejoin="round"/>
-      </g>
+        <g class="streak-left">
+            <path d="M9.96875 14.4477C9.96875 12.6546 10.2072 10.0103 12.6584 8.17188" stroke="#FAF2A5" stroke-linecap="round"/>
+        </g>
 
-      <path d="M10.8578 1.12884C12.2026 0.830011 15.4302 0.860102 17.5819 3.3702C19.7335 5.88045 19.375 9.19598 18.9267 10.54C18.8167 10.8702 18.7611 11.1735 18.7525 11.4496C18.7697 12.231 19.18 12.7823 19.8224 13.1035M22.7546 12.0529C23.458 13.4471 23.8568 15.0215 23.8568 16.6897C23.8568 22.3839 20.1373 27 14.4431 27C8.74889 27 3.99219 22.1942 3.99219 16.5C3.99219 13.2632 4.90894 10.3902 6.99219 8.5M8.49219 15C8.49219 12.5 8.99219 9 11.9922 7" stroke="#844432" stroke-linejoin="round"/>
+        <g class="streak-right">
+            <path d="M22 16C22.4961 17.25 22 20 21 21.5" stroke="#F54731" stroke-linecap="round"/>
+            <path d="M5.5 16.5C5.5 18 6 20 7.53038 21.8168" stroke="#F54731" stroke-linecap="round"/>
+        </g>
 
-      <g class="streak-left">
-        <path d="M9.96875 14.4477C9.96875 12.6546 10.2072 10.0103 12.6584 8.17188" stroke="#FAF2A5" stroke-linecap="round"/>
-      </g>
+        <g class="tip">
+            <path d="M14.7656 3.14062C15.9104 3.84631 17.5832 5.40405 17.553 8.01577" stroke="#FFA052" stroke-linecap="round"/>
+        </g>
 
-      <g class="streak-right">
-        <path d="M22 16C22.4961 17.25 22 20 21 21.5" stroke="#F54731" stroke-linecap="round"/>
-        <path d="M5.5 16.5C5.5 18 6 20 7.53038 21.8168" stroke="#F54731" stroke-linecap="round"/>
-      </g>
-
-      <g class="tip">
-        <path d="M14.7656 3.14062C15.9104 3.84631 17.5832 5.40405 17.553 8.01577" stroke="#FFA052" stroke-linecap="round"/>
-      </g>
-
+        <path d="M10.8578 1.12884C12.2026 0.830011 15.4302 0.860102 17.5819 3.3702C19.7335 5.88045 19.375 9.19598 18.9267 10.54C18.8167 10.8702 18.7611 11.1735 18.7525 11.4496C18.7697 12.231 19.18 12.7823 19.8224 13.1035M22.7546 12.0529C23.458 13.4471 23.8568 15.0215 23.8568 16.6897C23.8568 22.3839 20.1373 27 14.4431 27C8.74889 27 3.99219 22.1942 3.99219 16.5C3.99219 13.2632 4.90894 10.3902 6.99219 8.5M8.49219 15C8.49219 12.5 8.99219 9 11.9922 7" stroke="#844432" stroke-linejoin="round"/>
     </g>
-  </g>
 </svg>
