@@ -1,4 +1,11 @@
 import { WebGPUManager } from './webgpu-manager.js';
+import {
+    initYUVConverter,
+    getOrCreateCompositeTexture,
+    getCompositeTextureView,
+    encodeRGBAtoI420,
+    createI420VideoFrame,
+} from './webgpu-yuv-converter.js';
 import { Log } from 'logging';
 
 const { infoLog, warnLog } = Log.get('VideoSegmentation');
@@ -381,12 +388,13 @@ const COMPOSITE_WGSL = /* wgsl */`
   @group(0) @binding(1) var blurred:   texture_2d<f32>;
   @group(0) @binding(2) var mask:      texture_2d<f32>;
   @group(0) @binding(3) var blurSampler: sampler;
+  @group(0) @binding(4) var<uniform> cropOffset: vec2f;
 
   @fragment fn fs(@builtin(position) pos: vec4f) -> @location(0) vec4f {
       let origSize = vec2f(textureDimensions(original));
 
-      // Use pos.xy directly (already at pixel centers) for correct alignment
-      let uv       = pos.xy / origSize;
+      // Apply crop offset so we sample a centered crop region of the original frame
+      let uv       = (pos.xy + cropOffset) / origSize;
 
       let orig = textureSampleBaseClampToEdge(original, blurSampler, uv);
       let blur = textureSample(blurred, blurSampler, uv);
@@ -396,13 +404,6 @@ const COMPOSITE_WGSL = /* wgsl */`
 
       // Apply smoothstep for final edge refinement (symmetric around 0.45)
       let alpha = smoothstep(0.30, 0.60, maskValue);
-
-      // DEBUG: show full blurred background
-      // return blur;
-
-      // DEBUG: show mask only
-      // return vec4f(vec3f(maskValue), 1.0);
-
 
       // Alpha is now 0.0-1.0 probability, use directly for blending
       // Higher probability = more person (less blur)
@@ -466,6 +467,9 @@ export async function initBlurWebGPU(gpuDevice?: GPUDevice): Promise<void> {
 
     // Initialize GPU resources with the provided device
     initializeGpuResources();
+
+    // Initialize YUV converter for I420 output
+    initYUVConverter(device);
 }
 
 /**
@@ -505,7 +509,7 @@ function initializeGpuResources() {
     canvasCtx.configure({
         device,
         format: FORMAT,
-        alphaMode: 'opaque',
+        alphaMode: 'premultiplied',
         usage: GPUTextureUsage.RENDER_ATTACHMENT
     });
 
@@ -537,6 +541,7 @@ function initializeGpuResources() {
             { binding: 1, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
             { binding: 2, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } }, // upscaled mask (now bgra8unorm, filterable)
             { binding: 3, visibility: GPUShaderStage.FRAGMENT, sampler: { type: 'filtering' } },
+            { binding: 4, visibility: GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } }, // cropOffset vec2f
         ]
     });
 
@@ -668,6 +673,10 @@ export interface BlurOptions {
   smoothingSource?: GPUBuffer;
   /** Smoothing factor for temporal EMA (0-1). Required when smoothingSource is set. */
   smoothingAlpha?: number;
+  /** Target output width (default: input frame width) */
+  outputWidth?: number;
+  /** Target output height (default: input frame height) */
+  outputHeight?: number;
 }
 
 /**
@@ -729,6 +738,10 @@ export function applyTemporalSmoothing(
     device!.queue.submit([encoder.finish()]);
 }
 
+// Cached crop offset buffer — reused when dimensions don't change
+let cachedCropOffsetBuffer: GPUBuffer | null = null;
+let cachedCropOffsetKey = '';
+
 // Public API - accepts either CPU Float32Array or GPU buffer
 export function applyBackgroundBlur(
     frame: VideoFrame,
@@ -744,6 +757,8 @@ export function applyBackgroundBlur(
     let maskDirty = true;
     let smoothingSource: GPUBuffer | undefined;
     let smoothingAlpha: number | undefined;
+    let outputWidth: number | undefined;
+    let outputHeight: number | undefined;
 
     if (typeof blurStrengthOrOptions === 'number') {
         blurStrength = blurStrengthOrOptions;
@@ -752,6 +767,8 @@ export function applyBackgroundBlur(
         maskDirty = blurStrengthOrOptions.maskDirty ?? true;
         smoothingSource = blurStrengthOrOptions.smoothingSource;
         smoothingAlpha = blurStrengthOrOptions.smoothingAlpha;
+        outputWidth = blurStrengthOrOptions.outputWidth;
+        outputHeight = blurStrengthOrOptions.outputHeight;
     }
 
     // Clear texture pool and offset buffer cache on blur strength change
@@ -774,13 +791,62 @@ export function applyBackgroundBlur(
     if (w === 0 || h === 0)
         throw new Error('Invalid frame');
 
-    if (offscreenCanvas.width !== w || offscreenCanvas.height !== h) {
-        offscreenCanvas.width = w;
-        offscreenCanvas.height = h;
+    // Output dimensions: use specified output size or default to frame size
+    const outW = outputWidth ?? w;
+    const outH = outputHeight ?? h;
+
+    // Set offscreen canvas to output dimensions (not frame dimensions)
+    if (offscreenCanvas.width !== outW || offscreenCanvas.height !== outH) {
+        offscreenCanvas.width = outW;
+        offscreenCanvas.height = outH;
     }
 
-    const src = device!.importExternalTexture({ source: frame });
     const encoder = device!.createCommandEncoder();
+
+    encodeBlurPasses(encoder, frame, personMask, maskWidth, maskHeight, {
+        blurStrength,
+        maskDirty,
+        smoothingSource,
+        smoothingAlpha,
+    }, w, h, outW, outH, canvasCtx.getCurrentTexture().createView());
+
+    device!.queue.submit([encoder.finish()]);
+
+    // No GPU sync needed: WebGPU guarantees command ordering within the same queue,
+    // and new VideoFrame(offscreenCanvas) implicitly waits for render completion.
+    const timestamp = frame.timestamp;
+    frame.close();
+
+    return new VideoFrame(offscreenCanvas, { timestamp });
+}
+
+/**
+ * Internal helper: encode all blur passes (temporal smoothing → mask upload →
+ * pyramid downsample/upsample → composite) onto an existing command encoder.
+ * The composite is rendered to `renderTargetView`, which can be the canvas
+ * texture or a separate composite texture for I420 conversion.
+ */
+function encodeBlurPasses(
+    encoder: GPUCommandEncoder,
+    frame: VideoFrame,
+    personMask: GPUBuffer,
+    maskWidth: number,
+    maskHeight: number,
+    opts: {
+        blurStrength: number;
+        maskDirty: boolean;
+        smoothingSource?: GPUBuffer;
+        smoothingAlpha?: number;
+    },
+    frameW: number,
+    frameH: number,
+    outW: number,
+    outH: number,
+    renderTargetView: GPUTextureView,
+): void {
+    const { blurStrength, maskDirty, smoothingSource, smoothingAlpha } = opts;
+
+    const src = device!.importExternalTexture({ source: frame });
 
     // Merge temporal smoothing into this encoder (saves one queue.submit per frame)
     if (smoothingSource && smoothingAlpha !== undefined && maskDirty) {
@@ -796,26 +862,19 @@ export function applyBackgroundBlur(
         maskTex = cachedMaskTexture;
     }
 
-    // Pass 1: Upscale mask to video resolution FIRST (needed for mask-aware blur)
-    // const upscaledMask = getUpscaledMask(encoder, maskTex, w, h);
-
     const offsetMultiplier = 0.5;
-
-    // Dynamic pyramid blur based on blur strength (cached on blur strength change)
     const levels = cachedLevels;
-
-    // Create single pyramid texture with all mip levels
-    const pyramid = getMipmapTexture(w, h);
+    const pyramid = getMipmapTexture(frameW, frameH);
 
     // Downsample: Render to mip 1, then mip 2, etc.
     let currentSrc: GPUExternalTexture | GPUTextureView = src;
     for (let level = 1; level < levels; level++) {
-        const offset = getOffsetBuffer(w >> level, h >> level, blurStrength * offsetMultiplier);
+        const offset = getOffsetBuffer(frameW >> level, frameH >> level, blurStrength * offsetMultiplier);
         const isFirstLevel = level === 1;
         const pipeline = isFirstLevel ? mipmapDownsamplePipeline : downsample2dPipeline;
 
         const levelView = getPyramidView(pyramid, level);
-        const maskView = getMaskTextureView(maskTex);
+        const mView = getMaskTextureView(maskTex);
 
         const pass = encoder.beginRenderPass({
             colorAttachments: [{ view: levelView, loadOp: 'clear', storeOp: 'store' }]
@@ -827,7 +886,7 @@ export function applyBackgroundBlur(
                 { binding: 0, resource: currentSrc },
                 { binding: 1, resource: sampler },
                 { binding: 2, resource: { buffer: offset } },
-                { binding: 3, resource: maskView },
+                { binding: 3, resource: mView },
                 { binding: 4, resource: sampler }
             ]
         }));
@@ -842,7 +901,7 @@ export function applyBackgroundBlur(
     for (let level = levels - 1; level > 0; level--) {
         const srcView = getPyramidView(pyramid, level);
         const targetView = getPyramidView(pyramid, level - 1);
-        const offset = getOffsetBuffer(w >> (level - 1), h >> (level - 1), blurStrength * offsetMultiplier);
+        const offset = getOffsetBuffer(frameW >> (level - 1), frameH >> (level - 1), blurStrength * offsetMultiplier);
 
         const pass = encoder.beginRenderPass({
             colorAttachments: [{ view: targetView, loadOp: 'load', storeOp: 'store' }]
@@ -862,11 +921,24 @@ export function applyBackgroundBlur(
         pass.end();
     }
 
-    // Composite uses pyramid.createView({ baseMipLevel: 0 }) as blurred
+    // Get or create crop offset uniform buffer
+    const cropOffsetX = Math.max(0, (frameW - outW) / 2);
+    const cropOffsetY = Math.max(0, (frameH - outH) / 2);
+    const cropKey = `${cropOffsetX},${cropOffsetY}`;
+    if (cachedCropOffsetKey !== cropKey || !cachedCropOffsetBuffer) {
+        cachedCropOffsetBuffer ??= device!.createBuffer({
+            size: 8,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
+        tempFloat32Array2[0] = cropOffsetX;
+        tempFloat32Array2[1] = cropOffsetY;
+        device!.queue.writeBuffer(cachedCropOffsetBuffer, 0, tempFloat32Array2);
+        cachedCropOffsetKey = cropKey;
+    }
 
-    // Pass 4: Composite render to canvas
+    // Composite render to the provided target (canvas or composite texture)
     const compositePass = encoder.beginRenderPass({
-        colorAttachments: [{ view: canvasCtx.getCurrentTexture().createView(), loadOp: 'clear', storeOp: 'store' }]
+        colorAttachments: [{ view: renderTargetView, loadOp: 'clear', storeOp: 'store' }]
     });
     compositePass.setPipeline(compositePipeline);
     compositePass.setBindGroup(0, device!.createBindGroup({
@@ -876,20 +948,106 @@ export function applyBackgroundBlur(
             { binding: 1, resource: getPyramidView(pyramid, 0) },
             { binding: 2, resource: getMaskTextureView(maskTex) },
             { binding: 3, resource: sampler },
+            { binding: 4, resource: { buffer: cachedCropOffsetBuffer } },
         ]
     }));
     compositePass.draw(4);
     compositePass.end();
+}
 
-    // Submit work with proper synchronization to avoid GPU contention
-    const commandBuffer = encoder.finish();
-  device!.queue.submit([commandBuffer]);
+/**
+ * Result from applyBackgroundBlurI420 including conversion timing.
+ */
+export interface BlurI420Result {
+    frame: VideoFrame;
+    conversionTimeMs: number;
+}
 
-  // No GPU sync needed: WebGPU guarantees command ordering within the same queue,
-  // and new VideoFrame(offscreenCanvas) implicitly waits for render completion.
+/**
+ * Apply background blur and return the result as an I420 VideoFrame.
+ * Renders the composite to an intermediate GPU texture, then converts to I420
+ * via a compute shader — avoiding the slow/broken VideoFrame.copyTo({ format: 'I420' }).
+ */
+export async function applyBackgroundBlurI420(
+    frame: VideoFrame,
+    personMask: GPUBuffer,
+    maskWidth: number,
+    maskHeight: number,
+    blurStrengthOrOptions: number | BlurOptions = 12
+): Promise<BlurI420Result> {
+    ensureInitialized();
 
-  const timestamp = frame.timestamp;
-  frame.close();
+    // Parse options (same as applyBackgroundBlur)
+    let blurStrength = 12;
+    let maskDirty = true;
+    let smoothingSource: GPUBuffer | undefined;
+    let smoothingAlpha: number | undefined;
+    let outputWidth: number | undefined;
+    let outputHeight: number | undefined;
 
-  return new VideoFrame(offscreenCanvas, { timestamp });
+    if (typeof blurStrengthOrOptions === 'number') {
+        blurStrength = blurStrengthOrOptions;
+    } else {
+        blurStrength = blurStrengthOrOptions.blurStrength ?? 12;
+        maskDirty = blurStrengthOrOptions.maskDirty ?? true;
+        smoothingSource = blurStrengthOrOptions.smoothingSource;
+        smoothingAlpha = blurStrengthOrOptions.smoothingAlpha;
+        outputWidth = blurStrengthOrOptions.outputWidth;
+        outputHeight = blurStrengthOrOptions.outputHeight;
+    }
+
+    // Clear texture pool and offset buffer cache on blur strength change
+    if (blurStrength !== lastBlurStrength) {
+        for (const pool of texturePool.values()) {
+            for (const tex of pool) {
+                tex.destroy();
+            }
+        }
+        texturePool.clear();
+        clearMipmapCache();
+        for (const buf of offsetBufferCache.values()) buf.destroy();
+        offsetBufferCache.clear();
+        cachedLevels = blurStrength < 10 ? 2 : blurStrength < 20 ? 3 : 4;
+        lastBlurStrength = blurStrength;
+    }
+
+    const w = frame.displayWidth;
+    const h = frame.displayHeight;
+    if (w === 0 || h === 0)
+        throw new Error('Invalid frame');
+
+    const outW = outputWidth ?? w;
+    const outH = outputHeight ?? h;
+
+    // Get or create composite texture (RENDER_ATTACHMENT + TEXTURE_BINDING)
+    const compositeTex = getOrCreateCompositeTexture(outW, outH, FORMAT);
+    const compositeView = getCompositeTextureView();
+
+    const encoder = device!.createCommandEncoder();
+
+    // Encode blur passes → composite texture
+    encodeBlurPasses(encoder, frame, personMask, maskWidth, maskHeight, {
+        blurStrength,
+        maskDirty,
+        smoothingSource,
+        smoothingAlpha,
+    }, w, h, outW, outH, compositeView);
+
+    // Encode RGBA → I420 compute pass
+    encodeRGBAtoI420(encoder, compositeTex, outW, outH);
+
+    device!.queue.submit([encoder.finish()]);
+
+    const timestamp = frame.timestamp;
+    const duration = frame.duration ?? undefined;
+
+    // Map staging buffers and construct I420 VideoFrame.
+    // Only close the input frame AFTER we successfully create the I420 frame,
+    // so the caller can fall back to applyBackgroundBlur on failure.
+    const convStart = performance.now();
+    const result = await createI420VideoFrame(outW, outH, timestamp, duration);
+    const conversionTimeMs = performance.now() - convStart;
+
+    frame.close();
+    return { frame: result, conversionTimeMs };
 }

@@ -250,8 +250,6 @@ export class VideoPipeline implements IVideoPipeline {
     };
 
     private onSegmentationFrameProcessed = async (frame: VideoFrame, _sequenceNumber: number, _processingTime: number) => {
-        // Render to preview canvas before transferring to encoder
-        // (drawImage reads the frame without consuming it; encodeFrame transfers it)
         if (this.previewCallback) {
             try {
                 this.previewCallback(frame);
@@ -260,11 +258,9 @@ export class VideoPipeline implements IVideoPipeline {
             }
         }
 
-        // Send processed frame to encoder
         try {
-            await this.encoder.encodeFrame(frame);
+            await this.encoder.encodeFrame(frame, rpcNoWait);
         } catch {
-            // Close frame if RPC transfer failed (e.g., encoder shutting down)
             try { frame.close(); } catch { /* already transferred/closed */ }
         }
     };
@@ -369,9 +365,14 @@ export class VideoPipeline implements IVideoPipeline {
 
         // Initialize segmentation worker if background blur is enabled
         if (this.segmentationWorker && this.config.backgroundBlur?.enabled) {
+            const segConfig = {
+                ...this.config.backgroundBlur.segmentationConfig,
+                outputWidth: this.config.encoderConfig.width,
+                outputHeight: this.config.encoderConfig.height,
+            };
             initPromises.push(
                 this.segmentationWorker.initialize(
-                    this.config.backgroundBlur.segmentationConfig,
+                    segConfig,
                     { timeoutMs: 10000 } // Longer timeout for model loading
                 ).catch((error: unknown) => {
                     errorLog?.log('Failed to initialize segmentation worker:', error);
@@ -426,6 +427,7 @@ export class VideoPipeline implements IVideoPipeline {
             if (seg) {
                 warnLog?.log(
                     `VIDEO_SEG: infer=${seg.averageInferenceTime.toFixed(1)}ms blur=${seg.averageBlurTime.toFixed(1)}ms ` +
+                    `conv=${seg.averageConversionTime.toFixed(1)}ms ` +
                     `total=${seg.averageTotalTime.toFixed(1)}ms drop=${seg.droppedFrames} backend=${seg.backend}`);
             }
         }, 10_000);
@@ -525,6 +527,14 @@ export class VideoPipeline implements IVideoPipeline {
         // Track base bitrate for VAD-based reduction
         this.savedBitrate = params.bitrate;
 
+        // Update blur output dimensions to match encoder target (avoids resize in encoder worker)
+        if (this.segmentationWorker && this.config.backgroundBlur?.enabled) {
+            void this.segmentationWorker.updateConfig({
+                outputWidth: params.width,
+                outputHeight: params.height,
+            });
+        }
+
         // If currently in VAD silence, apply reduced ratio to new base bitrate
         if (!this.isSpeaking && this.config.adaptiveFramerate?.enabled) {
             const ratio = this.config.adaptiveFramerate.reducedBitrateRatio ?? 0.25;
@@ -617,9 +627,13 @@ export class VideoPipeline implements IVideoPipeline {
                 }
             );
 
-            // Initialize the worker
+            // Initialize the worker with encoder output dimensions
             await this.segmentationWorker.initialize(
-                this.config.backgroundBlur.segmentationConfig,
+                {
+                    ...this.config.backgroundBlur.segmentationConfig,
+                    outputWidth: this.config.encoderConfig.width,
+                    outputHeight: this.config.encoderConfig.height,
+                },
                 { timeoutMs: 10000 }
             );
 
@@ -1081,11 +1095,9 @@ export class VideoPipeline implements IVideoPipeline {
                 try {
                     if (this.segmentationWorker && this.config.backgroundBlur?.enabled) {
                         try {
-                            // Send frame to segmentation worker for processing
                             await this.segmentationWorker.processFrame(frame, rpcNoWait);
                         } catch (error) {
                             errorLog?.log(`Segmentation worker error on frame #${frameCount}:`, error);
-                            // Fallback: send frame directly to encoder if segmentation fails
                             await this.encoder.encodeFrame(frame);
                         }
                     } else {

@@ -176,6 +176,11 @@ export interface SegmentationConfig {
    *  Lower values = more smoothing (less flickering), higher = more responsive. */
   temporalSmoothingFactor?: number;
 
+  /** Target output width for blur pass (matches encoder). Defaults to input frame width. */
+  outputWidth?: number;
+  /** Target output height for blur pass (matches encoder). Defaults to input frame height. */
+  outputHeight?: number;
+
   /**
    * Model tensor format configuration.
    * If not specified, will be auto-detected from MODEL_CONFIGS based on modelUrl,
@@ -199,6 +204,9 @@ export interface SegmentationStats {
 
   /** Number of frames dropped due to processing delays */
   droppedFrames: number;
+
+  /** Average I420 conversion time in milliseconds */
+  averageConversionTime: number;
 
   /** Current backend being used */
   backend: string;
