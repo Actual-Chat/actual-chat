@@ -46,7 +46,7 @@ public abstract class ConnectivityUI : UIWorkerBase<UIHub>
     protected async Task Initialize(DotNetObjectReference<IConnectivityUIBackend>? backendRef = null)
     {
         if (Hub.Services.GetService<RpcClientPeerReconnectDelayer>() is AppRpcClientPeerReconnectDelayer delayer)
-            delayer.IsOnlineResolver = () => !IsOnline.IsValue(out var v) || v;
+            delayer.IsOnlineDetector = () => !IsOnline.IsValue(out var v) || v;
         try {
             await JS.InvokeVoidAsync(JSInitMethod, backendRef, IsBlazorServer).ConfigureAwait(false);
         }
