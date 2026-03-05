@@ -4,35 +4,94 @@ using ActualLab.IO;
 
 namespace ActualChat.App.Maui;
 
-public sealed class IosFileProviderImpl(IServiceProvider services, FilePath filePath) : IMauiFileProviderImpl
+public sealed class IosFileProviderImpl : WorkerBase, IMauiFileProviderImpl
 {
-    private IosVideoThumbnails VideoThumbnails => field ??= services.GetRequiredService<IosVideoThumbnails>();
-    private ILogger Log => field ??= services.LogFor(GetType());
+    private readonly IServiceProvider _services;
+    private readonly FilePath _filePath;
+    private readonly FilePath _transientFilePath;
+    private readonly TaskCompletionSource _whenCopied = TaskCompletionSourceExt.New();
+
+    private FilePath TempFilePath => _filePath + ".tmp";
+
+    private IosVideoThumbnails VideoThumbnails => field ??= _services.GetRequiredService<IosVideoThumbnails>();
+    private ILogger Log => field ??= _services.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.FileAttachments);
 
-    private FileInfo FileInfo => field ??= new FileInfo(filePath);
+    public IosFileProviderImpl(IServiceProvider services, FilePath filePath, FilePath transientFilePath)
+    {
+        _services = services;
+        _filePath = filePath;
+        _transientFilePath = transientFilePath;
+
+        if (File.Exists(filePath))
+            // File already fully copied
+            _whenCopied.TrySetResult();
+        else if (!transientFilePath.IsEmpty && File.Exists(transientFilePath))
+            // Fresh pick - start background copy
+            this.Start();
+    }
+
+    protected override Task OnRun(CancellationToken cancellationToken)
+        => AsyncChain.From(CopyFile)
+            .LogError(Log)
+            .Run(cancellationToken);
+
+    private async Task CopyFile(CancellationToken cancellationToken)
+    {
+        try {
+            var copyStartedAt = CpuTimestamp.Now;
+            // Copy to temp file first
+            await _transientFilePath.CopyTo(TempFilePath, cancellationToken).ConfigureAwait(false);
+            // Rename to final name (atomic operation)
+            File.Move(TempFilePath, _filePath);
+            Log.LogInformation(
+                "Copied picked media '{FileName}' ({Size} bytes) in {Elapsed}",
+                _filePath.FileName, _filePath.FileSize, copyStartedAt.Elapsed.ToShortString());
+            _whenCopied.TrySetResult();
+        }
+        catch (Exception e) {
+            _whenCopied.TrySetException(e);
+            throw;
+        }
+    }
 
     public async Task<FilePreview> GetPreview(CancellationToken cancellationToken = default)
     {
-        if (!OrdinalIgnoreCaseEquals(filePath.Extension, ".mov"))
-            return new FilePreview(ContentResolver.GetFileUri(filePath));
+        // Use transient file path for preview if copy is not complete yet
+        var previewPath = _transientFilePath.IsEmpty || _whenCopied.Task.IsCompletedSuccessfully
+            ? _filePath
+            : _transientFilePath;
 
-        var thumbnail = await VideoThumbnails.Generate(filePath, cancellationToken).ConfigureAwait(false);
+        if (!OrdinalIgnoreCaseEquals(previewPath.Extension, ".mov"))
+            return new FilePreview(ContentResolver.GetFileUri(previewPath));
+
+        var thumbnail = await VideoThumbnails.Generate(previewPath, cancellationToken).ConfigureAwait(false);
         DebugLog?.LogDebug("Generated thumbnail: {ThumbnailPath}", thumbnail?.Path);
         return thumbnail is { } t
             ? new FilePreview(ContentResolver.GetFileUri(t.Path), t.Size)
-            : new FilePreview(ContentResolver.GetFileUri(filePath));
+            : new FilePreview(ContentResolver.GetFileUri(previewPath));
     }
+
+    public Task WhenFileStreamReady()
+        => _whenCopied.Task;
 
     public Task PrepareForSaving()
         => Task.CompletedTask;
 
     public Task ClearBeforeRemoving()
     {
-        File.Delete(filePath);
+        File.Delete(_filePath);
+        File.Delete(TempFilePath);
         return Task.CompletedTask;
     }
 
-    public Task<Stream?> OpenRead()
-        => Task.FromResult<Stream?>(FileInfo.Exists ? FileInfo.OpenRead() : null);
+    public async Task<Stream?> OpenRead()
+    {
+        if (!_transientFilePath.IsEmpty)
+            await _whenCopied.Task.ConfigureAwait(false);
+
+        var fileInfo = new FileInfo(_filePath);
+        return fileInfo.Exists ? fileInfo.OpenRead() : null;
+    }
+
 }

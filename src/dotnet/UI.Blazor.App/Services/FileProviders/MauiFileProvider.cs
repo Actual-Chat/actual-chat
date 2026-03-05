@@ -13,7 +13,11 @@ public partial class MauiFileProvider : IFileProvider
     [DataMember, MemoryPackOrder(1)]
     public FilePath FileRef { get; init; } = "";
 
-    private IMauiFileProviderImpl Impl => field ??= _services.GetRequiredService<IMauiFileProviderImplFactory>().Create(FileRef);
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public FilePath TransientFileRef { get; init; } = "";
+
+    private IMauiFileProviderImpl Impl => field ??= _services.GetRequiredService<IMauiFileProviderImplFactory>().
+        Create(FileRef, TransientFileRef);
     private ILogger Log => field ??= _services.LogFor<MauiFileProvider>();
 
     public void Initialize(IServiceProvider services)
@@ -42,7 +46,7 @@ public partial class MauiFileProvider : IFileProvider
     }
 
     public Task WhenFileStreamReady()
-        => Task.CompletedTask;
+        => Impl.WhenFileStreamReady();
 
     public UploadSource GetUploadSource()
     {
@@ -71,11 +75,12 @@ public partial class MauiFileProvider : IFileProvider
 
 public interface IMauiFileProviderImplFactory
 {
-    IMauiFileProviderImpl Create(string fileRef);
+    IMauiFileProviderImpl Create(FilePath fileRef, FilePath transientFileRef);
 }
 
 public interface IMauiFileProviderImpl
 {
+    Task WhenFileStreamReady();
     Task<FilePreview> GetPreview(CancellationToken cancellationToken = default);
     Task PrepareForSaving();
     Task ClearBeforeRemoving();

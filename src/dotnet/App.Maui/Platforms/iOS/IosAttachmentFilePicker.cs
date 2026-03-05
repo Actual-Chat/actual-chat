@@ -55,26 +55,20 @@ public class IosAttachmentFilePicker(IServiceProvider services) : MauiAttachment
             var representation = await item
                 .LoadInPlaceFileRepresentationAsync(contentType.Identifier)
                 .ConfigureAwait(false);
-            FilePath tmpFileName = item.SuggestedName.NullIfEmpty() ?? representation.Path.FileName;
-            tmpFileName = tmpFileName.EnsureExt(representation.Path.Extension);
+            FilePath fileName = item.SuggestedName.NullIfEmpty() ?? representation.Path.FileName;
+            fileName = fileName.EnsureExt(representation.Path.Extension);
             Log.LogInformation(
                 "Loaded in-place representation for '{FileName}' in {Elapsed}",
-                tmpFileName, loadStartedAt.Elapsed.ToShortString());
+                fileName, loadStartedAt.Elapsed.ToShortString());
 
-            var tmpFilePath = AttachmentsDirectoryName | tmpFileName.ToUnique();
-            var copyStartedAt = CpuTimestamp.Now;
-            await representation.Copy(tmpFilePath).ConfigureAwait(false);
-            var fileInfo = new FileInfo(tmpFilePath);
-            Log.LogInformation(
-                "Copied picked media '{FileName}' ({Size} bytes) in {Elapsed}",
-                tmpFileName, fileInfo.Length, copyStartedAt.Elapsed.ToShortString());
-
+            var targetFilePath = AttachmentsDirectoryName | fileName.ToUnique();
             var fileProvider = new MauiFileProvider {
-                FileRef = tmpFilePath,
+                FileRef = targetFilePath,
+                TransientFileRef = representation.Path,
                 Metadata = new() {
-                    FileName = tmpFileName,
+                    FileName = fileName,
                     FileType = representation.ImplyMimeType(item),
-                    Length = fileInfo.Length,
+                    Length = new FileInfo(representation.Path).Length,
                 },
             };
             fileProvider.Initialize(Services);

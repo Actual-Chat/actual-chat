@@ -14,6 +14,9 @@ public class AndroidFileProviderImpl : IMauiFileProviderImpl
     private AndroidContentDownloader Downloader { get; }
     private string Uri { get; }
 
+    public Task WhenFileStreamReady()
+        => Task.CompletedTask;
+
     public Task<FilePreview> GetPreview(CancellationToken cancellationToken = default)
         => Task.FromResult(new FilePreview(AndroidContentDownloader.CreateWebRequestUri(Uri)));
 
