@@ -13,11 +13,8 @@ public partial class MauiFileProvider : IFileProvider
     [DataMember, MemoryPackOrder(1)]
     public FilePath FileRef { get; init; } = "";
 
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public FilePath TransientFileRef { get; init; } = "";
-
     private IMauiFileProviderImpl Impl => field ??= _services.GetRequiredService<IMauiFileProviderImplFactory>().
-        Create(FileRef, TransientFileRef);
+        Create(FileRef);
     private ILogger Log => field ??= _services.LogFor<MauiFileProvider>();
 
     public void Initialize(IServiceProvider services)
@@ -75,7 +72,7 @@ public partial class MauiFileProvider : IFileProvider
 
 public interface IMauiFileProviderImplFactory
 {
-    IMauiFileProviderImpl Create(FilePath fileRef, FilePath transientFileRef);
+    IMauiFileProviderImpl Create(FilePath fileRef);
 }
 
 public interface IMauiFileProviderImpl
