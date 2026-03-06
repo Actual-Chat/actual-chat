@@ -248,6 +248,8 @@ export class AudioPlayer implements Resettable {
         this.playingAction = undefined;
         this.contextRef?.dispose();
         this.contextRef = undefined;
+        // Remove the feeder node trait so it can be re-registered and re-attached on next play
+        audioContextSource.removeTrait(this.feederNodeTrait);
         this.whenEnded?.resolve(undefined);
         resetMediaSessionDebounced();
     }
