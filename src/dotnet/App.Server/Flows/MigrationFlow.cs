@@ -12,6 +12,7 @@ public partial class MigrationFlow : Flow<Unit>, IMasterFlow
     {
         await Apply<AccountMigrationFlow>().ConfigureAwait(false);
         await Apply<ChatEntryMigrationFlow>().ConfigureAwait(false);
+        await Apply<ChatEntryMigrationFixupFlow>().ConfigureAwait(false);
     }
 
     // Private methods

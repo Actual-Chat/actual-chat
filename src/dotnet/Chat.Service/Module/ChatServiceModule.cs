@@ -165,6 +165,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         // Flows
         services.AddFlows()
             .Add<ChatEntryMigrationFlow>()
+            .Add<ChatEntryMigrationFixupFlow>()
             .Add<ConversationSplitMasterFlow>()
             .Add<ConversationSplitFlow>()
             .Add<TranslationCleanupFlow>();
