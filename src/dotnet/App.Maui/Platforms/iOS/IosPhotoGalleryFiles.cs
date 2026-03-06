@@ -46,7 +46,7 @@ public sealed class IosPhotoGalleryFiles : IDisposable
         fileName = fileName.EnsureExt(ext);
         var cachedPath = AttachmentsDirectory | fileName.ToUnique();
 
-        var pendingFile = new PendingFile(cachedPath, fileName, item, preferredContentType);
+        var pendingFile = new PendingFile(cachedPath, item, preferredContentType);
         _processor.Enqueue(pendingFile);
 
         Log.LogDebug("Enqueued file '{TargetPath}' for background loading", cachedPath);
@@ -148,7 +148,6 @@ public sealed class IosPhotoGalleryFiles : IDisposable
 
     private sealed record PendingFile(
         FilePath TargetPath,
-        FilePath FileName = default,
         NSItemProvider ItemProvider = null!,
         UTType ContentType = null!)
     {
