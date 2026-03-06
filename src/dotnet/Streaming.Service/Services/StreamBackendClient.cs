@@ -29,7 +29,7 @@ public sealed class StreamBackendClient : IStreamClient
     {
         // StreamBackendClient runs on the same server, so route directly to backend
         var chatIdTyped = ChatId.Parse(chatId);
-        var repliedEntryIdTyped = TextEntryId.ParseNullable(repliedChatEntryId);
+        var repliedEntryIdTyped = ChatEntryId.ParseNullable(repliedChatEntryId);
         var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
         var record = new AudioRecord(streamId, session, chatIdTyped, clientStartOffset, repliedEntryIdTyped);
         var rpcStream = RpcStream.New(frameStream);

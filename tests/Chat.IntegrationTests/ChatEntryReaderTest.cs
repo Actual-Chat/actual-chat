@@ -29,7 +29,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         chat?.Title.Should().Be("The Actual One");
 
         await services.GetRequiredService<IAuthors>().EnsureJoined(session, TestChatId, CancellationToken.None);
-        await WaitForIdRangeToStabilize(chats, session, TestChatId, ChatEntryKind.Text);
+        await WaitForIdRangeToStabilize(chats, session, TestChatId);
 
         await CreateChatEntries(chats, session, TestChatId, 3);
         var idRange = await chats.GetIdRange(session, TestChatId, CancellationToken.None);
@@ -68,7 +68,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         chat?.Title.Should().Be("The Actual One");
 
         await services.GetRequiredService<IAuthors>().EnsureJoined(session, TestChatId, CancellationToken.None);
-        await WaitForIdRangeToStabilize(chats, session, TestChatId, ChatEntryKind.Text);
+        await WaitForIdRangeToStabilize(chats, session, TestChatId);
 
         await CreateChatEntries(chats, session, TestChatId, 3);
         var idRange = await chats.GetIdRange(session, TestChatId, CancellationToken.None);
@@ -116,7 +116,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         chat?.Title.Should().Be("The Actual One");
 
         await services.GetRequiredService<IAuthors>().EnsureJoined(session, TestChatId, CancellationToken.None);
-        await WaitForIdRangeToStabilize(chats, session, TestChatId, ChatEntryKind.Text);
+        await WaitForIdRangeToStabilize(chats, session, TestChatId);
 
         await CreateChatEntries(chats, session, TestChatId, 3);
         var idRange = await chats.GetIdRange(session, TestChatId, CancellationToken.None);
