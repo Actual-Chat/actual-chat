@@ -15,7 +15,7 @@ import {
     videoFrameToTensorFloat32,
     videoFrameToTensorUint8,
 } from '../tensor-utils';
-import { applyBackgroundBlur, applyBackgroundBlurI420, applyTemporalSmoothing, initBlurWebGPU, processBlurDeferredCleanups } from '../webgpu-blur';
+import { applyBackgroundBlur, submitBlurI420, awaitAllPendingReadbacks, applyTemporalSmoothing, initBlurWebGPU, processBlurDeferredCleanups } from '../webgpu-blur';
 import { WebGPUManager } from '../webgpu-manager';
 
 import type {
@@ -140,12 +140,11 @@ async function processQueue(): Promise<void> {
             if (frameSkipInterval > 1 && frameCounter % frameSkipInterval !== 0 && hasValidMask) {
                 // Reuse previous smoothed mask - skip inference but still apply blur
                 const skipBlurStart = performance.now();
-                let finalFrame: VideoFrame;
-                let convTimeMs = 0;
                 if (config.blurEnabled) {
                     try {
-                        // GPU I420 path: blur + RGBA→I420 compute shader in one submission
-                        const i420Result = await applyBackgroundBlurI420(
+                        // Fire-and-forget GPU I420 path: blur + RGBA→I420, callback on readback
+                        const seqNum = qf.sequenceNumber;
+                        await submitBlurI420(
                             qf.frame,
                             smoothedMaskBuffer,
                             config.inputWidth,
@@ -155,18 +154,19 @@ async function processQueue(): Promise<void> {
                                 maskDirty: false,
                                 outputWidth: config.outputWidth,
                                 outputHeight: config.outputHeight,
+                            },
+                            (result) => {
+                                if (!loggedFormat) {
+                                    loggedFormat = true;
+                                    warnLog?.log(`I420 path: GPU compute shader, frame format: ${result.frame.format}`);
+                                }
+                                processedFrames++;
+                                pipeline.onFrameProcessed(result.frame, seqNum, 0);
                             }
                         );
-                        finalFrame = i420Result.frame;
-                        convTimeMs = i420Result.conversionTimeMs;
-                        totalConversionTime += convTimeMs;
-                        if (!loggedFormat) {
-                            loggedFormat = true;
-                            warnLog?.log(`I420 path: GPU compute shader, frame format: ${finalFrame.format}`);
-                        }
                     } catch {
                         // Fallback: render to canvas (RGBA) if GPU I420 fails
-                        finalFrame = applyBackgroundBlur(
+                        const finalFrame = applyBackgroundBlur(
                             qf.frame,
                             smoothedMaskBuffer,
                             config.inputWidth,
@@ -182,18 +182,18 @@ async function processQueue(): Promise<void> {
                             loggedFormat = true;
                             warnLog?.log(`I420 path: RGBA fallback (GPU compute failed), frame format: ${finalFrame.format}`);
                         }
+                        processedFrames++;
+                        pipeline.onFrameProcessed(finalFrame, qf.sequenceNumber, performance.now() - skipBlurStart);
                     }
                 } else {
-                    finalFrame = qf.frame;
+                    processedFrames++;
+                    pipeline.onFrameProcessed(qf.frame, qf.sequenceNumber, 0);
                 }
+
                 const skipBlurTime = performance.now() - skipBlurStart;
+                totalBlurTime += skipBlurTime;
+                totalProcessingTime += performance.now() - qf.timestamp;
 
-                const frameProcessingTime = performance.now() - qf.timestamp;
-                processedFrames++;
-                totalBlurTime += skipBlurTime - convTimeMs;
-                totalProcessingTime += frameProcessingTime;
-
-                pipeline.onFrameProcessed(finalFrame, qf.sequenceNumber, frameProcessingTime);
                 continue;
             }
 
@@ -254,14 +254,13 @@ async function processQueue(): Promise<void> {
             // Time the blur operation
             const blurStartTime = performance.now();
 
-            let finalFrame: VideoFrame;
-            let convTimeMs = 0;
             if (config.blurEnabled) {
                 // Apply background blur with merged temporal smoothing + GPU I420 conversion
                 const smoothingAlpha = config.temporalSmoothingFactor ?? 0.3;
+                const seqNum = qf.sequenceNumber;
                 try {
-                    // GPU I420 path: blur + temporal smoothing + RGBA→I420 in one submission
-                    const i420Result = await applyBackgroundBlurI420(
+                    // Fire-and-forget GPU I420 path: blur + temporal smoothing + RGBA→I420
+                    await submitBlurI420(
                         qf.frame,
                         smoothedMaskBuffer,
                         config.inputWidth,
@@ -272,18 +271,19 @@ async function processQueue(): Promise<void> {
                             smoothingAlpha,
                             outputWidth: config.outputWidth,
                             outputHeight: config.outputHeight,
+                        },
+                        (result) => {
+                            if (!loggedFormat) {
+                                loggedFormat = true;
+                                warnLog?.log(`I420 path: GPU compute shader, frame format: ${result.frame.format}`);
+                            }
+                            processedFrames++;
+                            pipeline.onFrameProcessed(result.frame, seqNum, 0);
                         }
                     );
-                    finalFrame = i420Result.frame;
-                    convTimeMs = i420Result.conversionTimeMs;
-                    totalConversionTime += convTimeMs;
-                    if (!loggedFormat) {
-                        loggedFormat = true;
-                        warnLog?.log(`I420 path: GPU compute shader, frame format: ${finalFrame.format}`);
-                    }
                 } catch {
                     // Fallback: render to canvas (RGBA) if GPU I420 fails
-                    finalFrame = applyBackgroundBlur(
+                    const finalFrame = applyBackgroundBlur(
                         qf.frame,
                         smoothedMaskBuffer,
                         config.inputWidth,
@@ -300,29 +300,27 @@ async function processQueue(): Promise<void> {
                         loggedFormat = true;
                         warnLog?.log(`I420 path: RGBA fallback (GPU compute failed), frame format: ${finalFrame.format}`);
                     }
+                    processedFrames++;
+                    pipeline.onFrameProcessed(finalFrame, seqNum, performance.now() - qf.timestamp);
                 }
             } else {
                 // No blur — still need temporal smoothing as standalone
                 const smoothingAlpha = config.temporalSmoothingFactor ?? 0.3;
                 const maskSize = config.inputWidth * config.inputHeight;
                 applyTemporalSmoothing(gpuBuffer, smoothedMaskBuffer, maskSize, smoothingAlpha);
-                finalFrame = qf.frame;
+                processedFrames++;
+                pipeline.onFrameProcessed(qf.frame, qf.sequenceNumber, performance.now() - qf.timestamp);
             }
 
             const blurEndTime = performance.now();
             const blurTime = blurEndTime - blurStartTime;
 
-            const now = performance.now();
-            const frameProcessingTime = now - qf.timestamp;
-
-            // Update performance tracking
-            processedFrames++;
+            // Update performance tracking (CPU-side times only)
             totalInferenceTime += inferenceTime;
-            totalBlurTime += blurTime - convTimeMs;
-            totalProcessingTime += frameProcessingTime;
-
-            pipeline.onFrameProcessed(finalFrame, qf.sequenceNumber, frameProcessingTime);
+            totalBlurTime += blurTime;
+            totalProcessingTime += performance.now() - qf.timestamp;
         }
+
     } finally {
         processingFrame = false;
     }
@@ -481,11 +479,13 @@ const serverImpl: SegmentationWorker = {
     /**
    * Stop processing and clean up resources
    */
-    // eslint-disable-next-line
     stop: async (): Promise<void> => {
         infoLog?.log('Stopping segmentation worker...');
 
         processing = false;
+
+        // Await all in-flight async readbacks
+        try { await awaitAllPendingReadbacks(); } catch { /* ignore */ }
 
         // Clear frame queue - close pending frames
         if (frameQueue) {

@@ -4,7 +4,11 @@ import {
     getOrCreateCompositeTexture,
     getCompositeTextureView,
     encodeRGBAtoI420,
-    createI420VideoFrame,
+    startReadback,
+    awaitPreviousReadback,
+    flushReadbackPipeline,
+    ensureStagingReady,
+    startReadbackWithCallback,
 } from './webgpu-yuv-converter.js';
 import { Log } from 'logging';
 
@@ -1041,13 +1045,127 @@ export async function applyBackgroundBlurI420(
     const timestamp = frame.timestamp;
     const duration = frame.duration ?? undefined;
 
-    // Map staging buffers and construct I420 VideoFrame.
-    // Only close the input frame AFTER we successfully create the I420 frame,
-    // so the caller can fall back to applyBackgroundBlur on failure.
+    // Pipelined double-buffered readback:
+    // 1. Await the PREVIOUS frame's readback (non-blocking if already mapped)
+    // 2. Start readback for THIS frame (async mapAsync, returns immediately)
+    // 3. Return previous frame's result (or await current on first call)
     const convStart = performance.now();
-    const result = await createI420VideoFrame(outW, outH, timestamp, duration);
-    const conversionTimeMs = performance.now() - convStart;
+    const prevFrame = await awaitPreviousReadback();
 
+    // Start async readback of current frame's staging buffer
+    startReadback(outW, outH, timestamp, duration);
+
+    // Close the input frame now — GPU work is submitted
     frame.close();
-    return { frame: result, conversionTimeMs };
+
+    if (prevFrame) {
+        // Steady state: return previous frame while current readback proceeds
+        const conversionTimeMs = performance.now() - convStart;
+        return { frame: prevFrame, conversionTimeMs };
+    } else {
+        // First call: no previous frame available, await current readback directly
+        const result = await awaitPreviousReadback();
+        const conversionTimeMs = performance.now() - convStart;
+        return { frame: result!, conversionTimeMs };
+    }
 }
+
+/**
+ * Flush the pipelined I420 readback — await the last pending frame.
+ * Call this when no more frames will be submitted (end of stream, stop, fallback switch).
+ * Returns null if no readback is pending.
+ */
+export async function flushI420Pipeline(): Promise<BlurI420Result | null> {
+    const convStart = performance.now();
+    const frame = await flushReadbackPipeline();
+    if (!frame) return null;
+    const conversionTimeMs = performance.now() - convStart;
+    return { frame, conversionTimeMs };
+}
+
+/**
+ * Fire-and-forget blur + I420 conversion. Only awaits staging buffer availability
+ * (instant at 30fps). When mapAsync resolves, calls onFrameReady with the result.
+ *
+ * This eliminates the ~28ms blocking readback from the processing loop.
+ */
+export async function submitBlurI420(
+    frame: VideoFrame,
+    personMask: GPUBuffer,
+    maskWidth: number, maskHeight: number,
+    blurStrengthOrOptions: number | BlurOptions,
+    onFrameReady: (result: BlurI420Result) => void,
+): Promise<void> {
+    ensureInitialized();
+
+    // Parse options (same as applyBackgroundBlurI420)
+    let blurStrength = 12;
+    let maskDirty = true;
+    let smoothingSource: GPUBuffer | undefined;
+    let smoothingAlpha: number | undefined;
+    let outputWidth: number | undefined;
+    let outputHeight: number | undefined;
+
+    if (typeof blurStrengthOrOptions === 'number') {
+        blurStrength = blurStrengthOrOptions;
+    } else {
+        blurStrength = blurStrengthOrOptions.blurStrength ?? 12;
+        maskDirty = blurStrengthOrOptions.maskDirty ?? true;
+        smoothingSource = blurStrengthOrOptions.smoothingSource;
+        smoothingAlpha = blurStrengthOrOptions.smoothingAlpha;
+        outputWidth = blurStrengthOrOptions.outputWidth;
+        outputHeight = blurStrengthOrOptions.outputHeight;
+    }
+
+    // Clear texture pool and offset buffer cache on blur strength change
+    if (blurStrength !== lastBlurStrength) {
+        for (const pool of texturePool.values()) {
+            for (const tex of pool) {
+                tex.destroy();
+            }
+        }
+        texturePool.clear();
+        clearMipmapCache();
+        for (const buf of offsetBufferCache.values()) buf.destroy();
+        offsetBufferCache.clear();
+        cachedLevels = blurStrength < 10 ? 2 : blurStrength < 20 ? 3 : 4;
+        lastBlurStrength = blurStrength;
+    }
+
+    const w = frame.displayWidth;
+    const h = frame.displayHeight;
+    if (w === 0 || h === 0)
+        throw new Error('Invalid frame');
+
+    const outW = outputWidth ?? w;
+    const outH = outputHeight ?? h;
+
+    // Await staging buffer availability (instant at 30fps)
+    await ensureStagingReady();
+
+    // GPU work (all synchronous): blur + I420 encode + submit
+    const compositeTex = getOrCreateCompositeTexture(outW, outH, FORMAT);
+    const compositeView = getCompositeTextureView();
+    const encoder = device!.createCommandEncoder();
+
+    encodeBlurPasses(encoder, frame, personMask, maskWidth, maskHeight, {
+        blurStrength,
+        maskDirty,
+        smoothingSource,
+        smoothingAlpha,
+    }, w, h, outW, outH, compositeView);
+
+    encodeRGBAtoI420(encoder, compositeTex, outW, outH);
+    device!.queue.submit([encoder.finish()]);
+
+    const timestamp = frame.timestamp;
+    const duration = frame.duration ?? undefined;
+    frame.close();
+
+    // Fire-and-forget: callback fires when mapAsync resolves
+    startReadbackWithCallback(outW, outH, timestamp, duration, (videoFrame) => {
+        onFrameReady({ frame: videoFrame, conversionTimeMs: 0 });
+    });
+}
+
+export { awaitAllPendingReadbacks } from './webgpu-yuv-converter.js';

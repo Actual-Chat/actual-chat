@@ -7,78 +7,68 @@
  * throws NotSupportedError on Android (RGBA) and Windows (BGRA).
  *
  * Architecture:
- *   GPU composite texture → compute shader → I420 staging buffers → mapAsync → VideoFrame(I420)
+ *   GPU composite texture → compute shader → I420 staging buffer → mapAsync → VideoFrame(I420)
  *
- * Each compute thread handles a 2×2 luma block (4 Y + 1 U + 1 V).
- * Output uses u32-per-byte to avoid WGSL byte-level write limitations.
+ * Optimizations over naive approach:
+ *   - Packed bytes (4 pixels per u32) — 4× less GPU→CPU transfer vs u32-per-byte
+ *   - Single staging buffer for Y+U+V — 1 mapAsync instead of 3
+ *   - Uint8Array.set() bulk copy instead of per-byte extraction loops
+ *
+ * Each compute thread handles one pixel (Y) and optionally one chroma sample
+ * (U+V for top-left pixel of each 2×2 block). Packed byte writes use atomicOr
+ * on pre-cleared buffers.
  */
 
 import { Log } from 'logging';
 
-const { infoLog } = Log.get('VideoSegmentation');
+const { infoLog, warnLog } = Log.get('VideoSegmentation');
 
-// ── WGSL Compute Shader ────────────────────────────────────────────────────────
+// ── WGSL Compute Shader (packed byte output) ────────────────────────────────
 
 const RGBA_TO_I420_WGSL = /* wgsl */`
   @group(0) @binding(0) var src: texture_2d<f32>;
-  @group(0) @binding(1) var<storage, read_write> yPlane: array<u32>;
-  @group(0) @binding(2) var<storage, read_write> uPlane: array<u32>;
-  @group(0) @binding(3) var<storage, read_write> vPlane: array<u32>;
+  @group(0) @binding(1) var<storage, read_write> yPlane: array<atomic<u32>>;
+  @group(0) @binding(2) var<storage, read_write> uPlane: array<atomic<u32>>;
+  @group(0) @binding(3) var<storage, read_write> vPlane: array<atomic<u32>>;
   @group(0) @binding(4) var<uniform> params: vec4u; // width, height, chromaW, chromaH
 
   @compute @workgroup_size(16, 16)
   fn main(@builtin(global_invocation_id) gid: vec3u) {
-    let chromaW = params.z;
-    let chromaH = params.w;
     let width   = params.x;
     let height  = params.y;
+    let chromaW = params.z;
 
-    // Each thread handles one chroma position = one 2×2 luma block
-    if (gid.x >= chromaW || gid.y >= chromaH) { return; }
+    if (gid.x >= width || gid.y >= height) { return; }
 
-    let baseX = gid.x * 2u;
-    let baseY = gid.y * 2u;
+    let c = textureLoad(src, vec2u(gid.x, gid.y), 0);
 
-    // Load 2×2 block with edge clamping
-    let x0 = baseX;
-    let y0 = baseY;
-    let x1 = min(baseX + 1u, width - 1u);
-    let y1 = min(baseY + 1u, height - 1u);
+    // BT.601 limited-range: Y=[16,235]
+    let yVal = u32(clamp(round(65.481 * c.r + 128.553 * c.g + 24.966 * c.b + 16.0), 0.0, 255.0));
 
-    // textureLoad normalizes to RGBA regardless of underlying format
-    let c00 = textureLoad(src, vec2u(x0, y0), 0);
-    let c10 = textureLoad(src, vec2u(x1, y0), 0);
-    let c01 = textureLoad(src, vec2u(x0, y1), 0);
-    let c11 = textureLoad(src, vec2u(x1, y1), 0);
+    // Pack Y byte into u32 word (buffers pre-cleared to 0, atomicOr is safe)
+    let yIdx = gid.y * width + gid.x;
+    atomicOr(&yPlane[yIdx >> 2u], yVal << ((yIdx & 3u) << 3u));
 
-    // BT.601 limited-range: Y=[16,235], UV=[16,240]
-    let yOffset  = 16.0;
-    let uvOffset = 128.0;
+    // Chroma: one sample per 2×2 block (top-left pixel of each block)
+    if ((gid.x & 1u) == 0u && (gid.y & 1u) == 0u) {
+      let x1 = min(gid.x + 1u, width  - 1u);
+      let y1 = min(gid.y + 1u, height - 1u);
 
-    // Compute Y for each pixel
-    let y00 = clamp(round( 65.481 * c00.r + 128.553 * c00.g +  24.966 * c00.b + yOffset), 0.0, 255.0);
-    let y10 = clamp(round( 65.481 * c10.r + 128.553 * c10.g +  24.966 * c10.b + yOffset), 0.0, 255.0);
-    let y01 = clamp(round( 65.481 * c01.r + 128.553 * c01.g +  24.966 * c01.b + yOffset), 0.0, 255.0);
-    let y11 = clamp(round( 65.481 * c11.r + 128.553 * c11.g +  24.966 * c11.b + yOffset), 0.0, 255.0);
+      let c10 = textureLoad(src, vec2u(x1,    gid.y), 0);
+      let c01 = textureLoad(src, vec2u(gid.x, y1),    0);
+      let c11 = textureLoad(src, vec2u(x1,    y1),    0);
 
-    // Write Y values (one u32 per byte — no thread races)
-    yPlane[y0 * width + x0] = u32(y00);
-    yPlane[y0 * width + x1] = u32(y10);
-    // Only write second row if it exists
-    if (baseY + 1u < height) {
-      yPlane[y1 * width + x0] = u32(y01);
-      yPlane[y1 * width + x1] = u32(y11);
+      // Average 2×2 block for chroma subsampling
+      let avg = (c + c10 + c01 + c11) * 0.25;
+
+      // BT.601 limited-range: UV=[16,240]
+      let uVal = u32(clamp(round(-37.797 * avg.r -  74.203 * avg.g + 112.0   * avg.b + 128.0), 0.0, 255.0));
+      let vVal = u32(clamp(round( 112.0  * avg.r -  93.786 * avg.g -  18.214 * avg.b + 128.0), 0.0, 255.0));
+
+      let cIdx = (gid.y >> 1u) * chromaW + (gid.x >> 1u);
+      atomicOr(&uPlane[cIdx >> 2u], uVal << ((cIdx & 3u) << 3u));
+      atomicOr(&vPlane[cIdx >> 2u], vVal << ((cIdx & 3u) << 3u));
     }
-
-    // Average 2×2 block for chroma subsampling
-    let avg = (c00 + c10 + c01 + c11) * 0.25;
-
-    let u = clamp(round(-37.797 * avg.r -  74.203 * avg.g + 112.0   * avg.b + uvOffset), 0.0, 255.0);
-    let v = clamp(round(112.0   * avg.r -  93.786 * avg.g -  18.214 * avg.b + uvOffset), 0.0, 255.0);
-
-    let chromaIdx = gid.y * chromaW + gid.x;
-    uPlane[chromaIdx] = u32(u);
-    vPlane[chromaIdx] = u32(v);
   }
 `;
 
@@ -92,19 +82,38 @@ let compositeTexture: GPUTexture | null = null;
 let compositeTextureView: GPUTextureView | null = null;
 let compositeKey = '';
 
-// GPU storage + staging buffers, keyed by "width,height"
+// GPU storage buffers (packed bytes, 4× smaller than u32-per-byte)
 let bufferKey = '';
 let yStorageBuf: GPUBuffer | null = null;
 let uStorageBuf: GPUBuffer | null = null;
 let vStorageBuf: GPUBuffer | null = null;
-let yStagingBuf: GPUBuffer | null = null;
-let uStagingBuf: GPUBuffer | null = null;
-let vStagingBuf: GPUBuffer | null = null;
+
+// Double-buffered staging: GPU writes to one while CPU reads from the other
+let stagingBufs: [GPUBuffer | null, GPUBuffer | null] = [null, null];
+let currentStagingIdx = 0;
+
+// Per-buffer readiness: resolves when the buffer is unmapped and available for GPU writes
+let stagingReadyPromises: [Promise<void>, Promise<void>] = [Promise.resolve(), Promise.resolve()];
+
 let paramsBuf: GPUBuffer | null = null;
 
-// Pre-allocated I420 output buffer, reused across frames
-let i420OutputBuf: ArrayBuffer | null = null;
-let i420OutputSize = 0;
+// Cached bind group for encodeRGBAtoI420 (all resources stable per-resolution)
+let cachedYuvBindGroup: GPUBindGroup | null = null;
+
+// Packed byte sizes for current resolution
+let yPackedSize = 0;
+let uvPackedSize = 0;
+
+// Pending readback for double-buffered pipeline
+interface PendingReadback {
+    promise: Promise<void>;
+    bufIdx: number;
+    width: number;
+    height: number;
+    timestamp: number;
+    duration?: number;
+}
+let pendingReadback: PendingReadback | null = null;
 
 // ── Public API ──────────────────────────────────────────────────────────────────
 
@@ -121,7 +130,7 @@ export function initYUVConverter(gpuDevice: GPUDevice): void {
         compute: { module, entryPoint: 'main' },
     });
 
-    infoLog?.log('WebGPU YUV converter initialized');
+    infoLog?.log('WebGPU YUV converter initialized (packed byte output)');
 }
 
 /**
@@ -171,13 +180,15 @@ function ensureBuffers(width: number, height: number): void {
     const key = `${width},${height}`;
     if (bufferKey === key) return;
 
+    // Invalidate cached bind group on resize
+    cachedYuvBindGroup = null;
+
     // Destroy old buffers
     yStorageBuf?.destroy();
     uStorageBuf?.destroy();
     vStorageBuf?.destroy();
-    yStagingBuf?.destroy();
-    uStagingBuf?.destroy();
-    vStagingBuf?.destroy();
+    stagingBufs[0]?.destroy();
+    stagingBufs[1]?.destroy();
     paramsBuf?.destroy();
 
     const ySize = width * height;
@@ -185,27 +196,31 @@ function ensureBuffers(width: number, height: number): void {
     const chromaH = Math.ceil(height / 2);
     const uvSize = chromaW * chromaH;
 
-    // Storage buffers: u32 per element (one byte value stored per u32)
-    yStorageBuf = device!.createBuffer({ size: ySize * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
-    uStorageBuf = device!.createBuffer({ size: uvSize * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
-    vStorageBuf = device!.createBuffer({ size: uvSize * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
+    // Packed byte sizes: ceil to 4-byte alignment for copyBufferToBuffer
+    yPackedSize = Math.ceil(ySize / 4) * 4;
+    uvPackedSize = Math.ceil(uvSize / 4) * 4;
+    const totalStagingSize = yPackedSize + uvPackedSize * 2;
 
-    // Staging buffers for mapAsync readback
-    yStagingBuf = device!.createBuffer({ size: ySize * 4, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
-    uStagingBuf = device!.createBuffer({ size: uvSize * 4, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
-    vStagingBuf = device!.createBuffer({ size: uvSize * 4, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
+    // Storage buffers: packed bytes (4 pixels per u32)
+    // COPY_DST needed for clearBuffer, COPY_SRC needed for copyBufferToBuffer
+    const storageUsage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST;
+    yStorageBuf = device!.createBuffer({ size: yPackedSize, usage: storageUsage });
+    uStorageBuf = device!.createBuffer({ size: uvPackedSize, usage: storageUsage });
+    vStorageBuf = device!.createBuffer({ size: uvPackedSize, usage: storageUsage });
+
+    // Double-buffered staging: one for GPU writes, one for CPU reads
+    const stagingUsage = GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ;
+    stagingBufs = [
+        device!.createBuffer({ size: totalStagingSize, usage: stagingUsage }),
+        device!.createBuffer({ size: totalStagingSize, usage: stagingUsage }),
+    ];
+    currentStagingIdx = 0;
+    stagingReadyPromises = [Promise.resolve(), Promise.resolve()];
 
     // Uniform params buffer: vec4u (width, height, chromaW, chromaH)
     paramsBuf = device!.createBuffer({ size: 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
     const paramsData = new Uint32Array([width, height, chromaW, chromaH]);
     device!.queue.writeBuffer(paramsBuf, 0, paramsData);
-
-    // Pre-allocate I420 output buffer
-    const totalI420 = ySize + uvSize * 2;
-    if (i420OutputSize !== totalI420) {
-        i420OutputBuf = new ArrayBuffer(totalI420);
-        i420OutputSize = totalI420;
-    }
 
     bufferKey = key;
 }
@@ -224,35 +239,179 @@ export function encodeRGBAtoI420(
 
     ensureBuffers(width, height);
 
-    const chromaW = Math.ceil(width / 2);
-    const chromaH = Math.ceil(height / 2);
-    const ySize = width * height;
-    const uvSize = chromaW * chromaH;
+    // Clear storage buffers to zero (required for atomicOr correctness)
+    encoder.clearBuffer(yStorageBuf!);
+    encoder.clearBuffer(uStorageBuf!);
+    encoder.clearBuffer(vStorageBuf!);
 
-    // Compute pass
+    // Compute pass: one thread per pixel
     const pass = encoder.beginComputePass();
     pass.setPipeline(yuvPipeline);
-    pass.setBindGroup(0, device!.createBindGroup({
-        layout: yuvPipeline.getBindGroupLayout(0),
-        entries: [
-            { binding: 0, resource: sourceTexture.createView() },
-            { binding: 1, resource: { buffer: yStorageBuf! } },
-            { binding: 2, resource: { buffer: uStorageBuf! } },
-            { binding: 3, resource: { buffer: vStorageBuf! } },
-            { binding: 4, resource: { buffer: paramsBuf! } },
-        ],
-    }));
-    pass.dispatchWorkgroups(Math.ceil(chromaW / 16), Math.ceil(chromaH / 16));
+
+    // Cache bind group — all resources are stable per-resolution
+    // Use compositeTextureView when available (production path), fall back to createView
+    const texView = compositeTextureView && sourceTexture === compositeTexture
+        ? compositeTextureView
+        : sourceTexture.createView();
+
+    if (!cachedYuvBindGroup || texView !== compositeTextureView) {
+        cachedYuvBindGroup = device!.createBindGroup({
+            layout: yuvPipeline.getBindGroupLayout(0),
+            entries: [
+                { binding: 0, resource: texView },
+                { binding: 1, resource: { buffer: yStorageBuf! } },
+                { binding: 2, resource: { buffer: uStorageBuf! } },
+                { binding: 3, resource: { buffer: vStorageBuf! } },
+                { binding: 4, resource: { buffer: paramsBuf! } },
+            ],
+        });
+    }
+    pass.setBindGroup(0, cachedYuvBindGroup);
+    pass.dispatchWorkgroups(Math.ceil(width / 16), Math.ceil(height / 16));
     pass.end();
 
-    // Copy storage → staging
-    encoder.copyBufferToBuffer(yStorageBuf!, 0, yStagingBuf!, 0, ySize * 4);
-    encoder.copyBufferToBuffer(uStorageBuf!, 0, uStagingBuf!, 0, uvSize * 4);
-    encoder.copyBufferToBuffer(vStorageBuf!, 0, vStagingBuf!, 0, uvSize * 4);
+    // Copy all planes to current staging buffer (Y | U | V)
+    const staging = stagingBufs[currentStagingIdx]!;
+    encoder.copyBufferToBuffer(yStorageBuf!, 0, staging, 0, yPackedSize);
+    encoder.copyBufferToBuffer(uStorageBuf!, 0, staging, yPackedSize, uvPackedSize);
+    encoder.copyBufferToBuffer(vStorageBuf!, 0, staging, yPackedSize + uvPackedSize, uvPackedSize);
 }
 
 /**
- * Map staging buffers, extract I420 bytes, and construct an I420 VideoFrame.
+ * Start an async readback of the current staging buffer.
+ * Must be called AFTER the command encoder containing encodeRGBAtoI420 has been submitted.
+ * Flips the staging buffer index so the next frame writes to the other buffer.
+ */
+export function startReadback(
+    width: number,
+    height: number,
+    timestamp: number,
+    duration?: number,
+): void {
+    const bufIdx = currentStagingIdx;
+    const staging = stagingBufs[bufIdx]!;
+    const promise = staging.mapAsync(GPUMapMode.READ);
+
+    pendingReadback = { promise, bufIdx, width, height, timestamp, duration };
+
+    // Flip to the other staging buffer for the next frame
+    currentStagingIdx = 1 - currentStagingIdx;
+}
+
+/**
+ * Await the previous frame's readback and return its I420 VideoFrame.
+ * Returns null if no readback is pending.
+ */
+export async function awaitPreviousReadback(): Promise<VideoFrame | null> {
+    if (!pendingReadback) return null;
+
+    const { promise, bufIdx, width, height, timestamp, duration } = pendingReadback;
+    pendingReadback = null;
+
+    await promise;
+
+    const staging = stagingBufs[bufIdx]!;
+    const mapped = new Uint8Array(staging.getMappedRange());
+    const chromaW = Math.ceil(width / 2);
+
+    // Create VideoFrame directly from mapped staging buffer.
+    // VideoFrame constructor copies data synchronously before returning,
+    // so it's safe to unmap immediately after.
+    const frame = new VideoFrame(mapped.buffer, {
+        format: 'I420',
+        codedWidth: width,
+        codedHeight: height,
+        timestamp,
+        duration,
+        layout: [
+            { offset: mapped.byteOffset, stride: width },
+            { offset: mapped.byteOffset + yPackedSize, stride: chromaW },
+            { offset: mapped.byteOffset + yPackedSize + uvPackedSize, stride: chromaW },
+        ],
+    });
+
+    staging.unmap();
+    return frame;
+}
+
+/**
+ * Flush the pipeline: await the last pending readback.
+ * Call this to get the final frame when no more frames will be submitted.
+ */
+export async function flushReadbackPipeline(): Promise<VideoFrame | null> {
+    return awaitPreviousReadback();
+}
+
+/**
+ * Await until the staging buffer we're about to write to is available.
+ * Instant in steady state at 30fps (buffer reuse every 2 frames = 66ms, far exceeding ~28ms GPU time).
+ */
+export async function ensureStagingReady(): Promise<void> {
+    await stagingReadyPromises[currentStagingIdx];
+}
+
+/**
+ * Non-blocking readback. Starts mapAsync and calls onReady when data is available.
+ * Must be called AFTER the command encoder containing encodeRGBAtoI420 has been submitted.
+ * Flips the staging buffer index so the next frame writes to the other buffer.
+ */
+export function startReadbackWithCallback(
+    width: number, height: number, timestamp: number, duration: number | undefined,
+    onReady: (frame: VideoFrame) => void,
+): void {
+    const bufIdx = currentStagingIdx;
+    const staging = stagingBufs[bufIdx]!;
+
+    // Mark buffer as busy — ensureStagingReady will await this
+    let resolveReady!: () => void;
+    stagingReadyPromises[bufIdx] = new Promise(r => resolveReady = r);
+
+    const mapPromise = staging.mapAsync(GPUMapMode.READ);
+    currentStagingIdx = 1 - currentStagingIdx;
+
+    mapPromise.then(() => {
+        try {
+            const mapped = new Uint8Array(staging.getMappedRange());
+            const chromaW = Math.ceil(width / 2);
+            const frame = new VideoFrame(mapped.buffer, {
+                format: 'I420',
+                codedWidth: width,
+                codedHeight: height,
+                timestamp,
+                duration,
+                layout: [
+                    { offset: mapped.byteOffset, stride: width },
+                    { offset: mapped.byteOffset + yPackedSize, stride: chromaW },
+                    { offset: mapped.byteOffset + yPackedSize + uvPackedSize, stride: chromaW },
+                ],
+            });
+            staging.unmap();
+            resolveReady(); // buffer now available for next GPU write
+            onReady(frame);
+        } catch (e) {
+            // Ensure buffer is always released even if VideoFrame construction fails
+            try { staging.unmap(); } catch { /* already unmapped or destroyed */ }
+            resolveReady();
+            warnLog?.log('startReadbackWithCallback: error in readback callback:', e);
+        }
+    }).catch((e: unknown) => {
+        // mapAsync rejected (device lost, buffer destroyed, etc.)
+        resolveReady(); // prevent deadlock
+        warnLog?.log('startReadbackWithCallback: mapAsync failed:', e);
+    });
+}
+
+/**
+ * Await all in-flight readback operations. Use for clean shutdown.
+ */
+export async function awaitAllPendingReadbacks(): Promise<void> {
+    await stagingReadyPromises[0];
+    await stagingReadyPromises[1];
+}
+
+/**
+ * Legacy synchronous API: map staging buffer and construct I420 VideoFrame in one call.
+ * Used when double-buffering is not applicable (e.g., single-frame operations).
  * Must be called AFTER the command encoder containing encodeRGBAtoI420 has been submitted.
  */
 export async function createI420VideoFrame(
@@ -261,61 +420,27 @@ export async function createI420VideoFrame(
     timestamp: number,
     duration?: number,
 ): Promise<VideoFrame> {
-    const ySize = width * height;
     const chromaW = Math.ceil(width / 2);
-    const chromaH = Math.ceil(height / 2);
-    const uvSize = chromaW * chromaH;
+    const staging = stagingBufs[currentStagingIdx]!;
 
-    // Map all three staging buffers concurrently
-    await Promise.all([
-        yStagingBuf!.mapAsync(GPUMapMode.READ),
-        uStagingBuf!.mapAsync(GPUMapMode.READ),
-        vStagingBuf!.mapAsync(GPUMapMode.READ),
-    ]);
+    await staging.mapAsync(GPUMapMode.READ);
 
-    // Extract every 4th byte (u32 → u8) into the pre-allocated I420 buffer
-    const out = new Uint8Array(i420OutputBuf!, 0, ySize + uvSize * 2);
+    const mapped = new Uint8Array(staging.getMappedRange());
 
-    const yData = new Uint32Array(yStagingBuf!.getMappedRange());
-    const uData = new Uint32Array(uStagingBuf!.getMappedRange());
-    const vData = new Uint32Array(vStagingBuf!.getMappedRange());
-
-    // Y plane
-    for (let i = 0; i < ySize; i++) {
-        out[i] = yData[i] & 0xFF;
-    }
-    // U plane
-    const uOffset = ySize;
-    for (let i = 0; i < uvSize; i++) {
-        out[uOffset + i] = uData[i] & 0xFF;
-    }
-    // V plane
-    const vOffset = ySize + uvSize;
-    for (let i = 0; i < uvSize; i++) {
-        out[vOffset + i] = vData[i] & 0xFF;
-    }
-
-    yStagingBuf!.unmap();
-    uStagingBuf!.unmap();
-    vStagingBuf!.unmap();
-
-    // Construct I420 VideoFrame
-    const yStride = width;
-    const uvStride = chromaW;
-
-    const frame = new VideoFrame(i420OutputBuf!, {
+    const frame = new VideoFrame(mapped.buffer, {
         format: 'I420',
         codedWidth: width,
         codedHeight: height,
         timestamp,
         duration,
         layout: [
-            { offset: 0, stride: yStride },
-            { offset: ySize, stride: uvStride },
-            { offset: ySize + uvSize, stride: uvStride },
+            { offset: mapped.byteOffset, stride: width },
+            { offset: mapped.byteOffset + yPackedSize, stride: chromaW },
+            { offset: mapped.byteOffset + yPackedSize + uvPackedSize, stride: chromaW },
         ],
     });
 
+    staging.unmap();
     return frame;
 }
 
@@ -331,22 +456,24 @@ export function disposeYUVResources(): void {
     yStorageBuf?.destroy();
     uStorageBuf?.destroy();
     vStorageBuf?.destroy();
-    yStagingBuf?.destroy();
-    uStagingBuf?.destroy();
-    vStagingBuf?.destroy();
+    stagingBufs[0]?.destroy();
+    stagingBufs[1]?.destroy();
     paramsBuf?.destroy();
 
     yStorageBuf = null;
     uStorageBuf = null;
     vStorageBuf = null;
-    yStagingBuf = null;
-    uStagingBuf = null;
-    vStagingBuf = null;
+    stagingBufs = [null, null];
+    currentStagingIdx = 0;
+    stagingReadyPromises = [Promise.resolve(), Promise.resolve()];
+    pendingReadback = null;
     paramsBuf = null;
     bufferKey = '';
 
-    i420OutputBuf = null;
-    i420OutputSize = 0;
+    cachedYuvBindGroup = null;
+
+    yPackedSize = 0;
+    uvPackedSize = 0;
 
     yuvPipeline = null;
     device = null;
