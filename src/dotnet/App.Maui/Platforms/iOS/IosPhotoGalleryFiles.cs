@@ -1,10 +1,12 @@
 using ActualChat.Concurrency;
 using ActualChat.Media;
 using ActualChat.UI.Blazor.App.Services;
+using ActualLab.Generators;
 using ActualLab.IO;
 using Foundation;
 using PhotosUI;
 using UniformTypeIdentifiers;
+using FilePathExt = ActualChat.IO.FilePathExt;
 using Size = ActualChat.UI.App.Size;
 
 namespace ActualChat.App.Maui;
@@ -20,7 +22,6 @@ public sealed class IosPhotoGalleryFiles : IDisposable
     private readonly ConcurrentProcessor<PendingFile, FilePath> _processor;
 
     private ILogger Log { get; }
-    private IosVideoThumbnails VideoThumbnails => field ??= _services.GetRequiredService<IosVideoThumbnails>();
 
     public IosPhotoGalleryFiles(IServiceProvider services)
     {
@@ -38,7 +39,7 @@ public sealed class IosPhotoGalleryFiles : IDisposable
     public MauiFileProvider Enqueue(PHPickerResult pickerResult, UTType preferredContentType)
     {
         var item = pickerResult.ItemProvider;
-        FilePath fileName = item.SuggestedName.NullIfEmpty();
+        FilePath fileName = item.SuggestedName.NullIfEmpty() ?? RandomStringGenerator.Default.Next(10);
         var fileType = item.ImplyMimeType();
         var ext = MediaMimeTypes.TryGetExtension(fileType, out var ext1)
             ? ext1
@@ -46,7 +47,7 @@ public sealed class IosPhotoGalleryFiles : IDisposable
         fileName = fileName.EnsureExt(ext);
         var cachedPath = AttachmentsDirectory | fileName.ToUnique();
 
-        var pendingFile = new PendingFile(cachedPath, item, preferredContentType);
+        var pendingFile = new PendingFile(cachedPath, fileName, item, preferredContentType);
         _processor.Enqueue(pendingFile);
 
         Log.LogDebug("Enqueued file '{TargetPath}' for background loading", cachedPath);
@@ -71,39 +72,11 @@ public sealed class IosPhotoGalleryFiles : IDisposable
         if (pendingItem == null)
             return null;
 
-        var itemProvider = pendingItem.Key.ItemProvider;
-        var contentType = pendingItem.Key.ContentType;
-
-        // Try to get thumbnail first (fastest option for videos)
-        if (OrdinalIgnoreCaseEquals(targetPath.Extension, ".mov")) {
-            var thumbnail = await TryLoadThumbnail(itemProvider, targetPath, cancellationToken)
-                .ConfigureAwait(false);
-            if (thumbnail != null)
-                return thumbnail;
-
-            // Fall back to in-place URL for thumbnail generation
-            var inPlaceThumbnail = await GenerateThumbnailFromInPlaceUrl(itemProvider, contentType, cancellationToken)
-                .ConfigureAwait(false);
-            if (inPlaceThumbnail != null)
-                return inPlaceThumbnail;
-        }
-
-        // Wait for file to be fully loaded
-        await pendingItem.ResultTask.ConfigureAwait(false);
-
-        if (!OrdinalIgnoreCaseEquals(targetPath.Extension, ".mov"))
-            return new FilePreview(ContentResolver.GetFileUri(targetPath));
-
-        var fallbackThumbnail = await VideoThumbnails.Generate(targetPath, cancellationToken).ConfigureAwait(false);
-        Log.LogDebug("Generated thumbnail: {ThumbnailPath}", fallbackThumbnail?.Path);
-        return fallbackThumbnail is { } t
-            ? new FilePreview(ContentResolver.GetFileUri(t.Path), t.Size)
-            : new FilePreview(ContentResolver.GetFileUri(targetPath));
+        return await TryLoadThumbnail(pendingItem.Key.ItemProvider, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<FilePreview?> TryLoadThumbnail(
         NSItemProvider itemProvider,
-        FilePath targetPath,
         CancellationToken cancellationToken)
     {
         // Try low-res first (faster), then standard
@@ -125,7 +98,8 @@ public sealed class IosPhotoGalleryFiles : IDisposable
                     continue;
 
                 // Copy the thumbnail to our cache directory
-                var thumbnailFileName = targetPath.FileName.ChangeExtension(".jpg");
+                FilePath fileName = itemProvider.SuggestedName.NullIfEmpty() ?? ((FilePath)result.Path).FileName;
+                var thumbnailFileName = fileName.ChangeExtension(".jpg").ToUnique();
                 var thumbnailDir = new FilePath(FileSystem.CacheDirectory) | "video-thumbnails";
                 Directory.CreateDirectory(thumbnailDir);
                 var thumbnailPath = thumbnailDir | thumbnailFileName;
@@ -146,34 +120,6 @@ public sealed class IosPhotoGalleryFiles : IDisposable
         }
 
         return null;
-    }
-
-    private async Task<FilePreview?> GenerateThumbnailFromInPlaceUrl(
-        NSItemProvider itemProvider,
-        UTType contentType,
-        CancellationToken cancellationToken)
-    {
-        try {
-            var result = await itemProvider
-                .LoadInPlaceFileRepresentationAsync(contentType.Identifier)
-                .ConfigureAwait(false);
-
-            if (result.Path.Value.IsNullOrEmpty())
-                return null;
-
-            Log.LogDebug("Got in-place path: {Path}", result.Path);
-
-            var thumbnail = await VideoThumbnails.Generate(result.Path, cancellationToken)
-                .ConfigureAwait(false);
-
-            return thumbnail is { } t
-                ? new FilePreview(ContentResolver.GetFileUri(t.Path), t.Size)
-                : null;
-        }
-        catch (Exception e) {
-            Log.LogError(e, "Failed to generate thumbnail from in-place URL");
-            return null;
-        }
     }
 
     private async Task<FilePath> ProcessFile(PendingFile pendingFile, CancellationToken cancellationToken)
@@ -203,6 +149,7 @@ public sealed class IosPhotoGalleryFiles : IDisposable
 
     private sealed record PendingFile(
         FilePath TargetPath,
+        FilePath FileName = default,
         NSItemProvider ItemProvider = null!,
         UTType ContentType = null!)
     {
