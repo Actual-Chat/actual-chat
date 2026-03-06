@@ -1,5 +1,5 @@
 @font-face {
-    font-family: TT Commons Pro;
+    font-family: 'TT Commons Pro';
     src: url("TT-Commons-Pro-DemiBold.woff2") format("woff2"),
     url("TT-Commons-Pro-DemiBold.otf") format("opentype"),
     url("TT-Commons-Pro-DemiBold.ttf") format("truetype");
@@ -10,7 +10,7 @@
 }
 
 @font-face {
-    font-family: TT Commons Pro;
+    font-family: 'TT Commons Pro';
     src: url("TT-Commons-Pro-Light.woff2") format("woff2"),
     url("TT-Commons-Pro-Light.otf") format("opentype"),
     url("TT-Commons-Pro-Light.ttf") format("truetype");
@@ -21,7 +21,7 @@
 }
 
 @font-face {
-    font-family: TT Commons Pro;
+    font-family: 'TT Commons Pro';
     src: url("TT-Commons-Pro-Medium.woff2") format("woff2"),
     url("TT-Commons-Pro-Medium.otf") format("opentype"),
     url("TT-Commons-Pro-Medium.ttf") format("truetype");
@@ -32,7 +32,7 @@
 }
 
 @font-face {
-    font-family: TT Commons Pro;
+    font-family: 'TT Commons Pro';
     src: url("TT-Commons-Pro-Regular.woff2") format("woff2"),
     url("TT-Commons-Pro-Regular.otf") format("opentype"),
     url("TT-Commons-Pro-Regular.ttf") format("truetype");
@@ -44,7 +44,7 @@
 
 
 @font-face {
-    font-family: TT Commons Pro Mono;
+    font-family: 'TT Commons Pro Mono';
     src: url("TT-Commons-Pro-Mono-Regular.woff2") format("woff2"),
     url("TT-Commons-Pro-Mono-Regular.otf") format("opentype"),
     url("TT-Commons-Pro-Mono-Regular.ttf") format("truetype");
@@ -52,5 +52,25 @@
     font-style: normal;
     font-stretch: normal;
     font-variant: normal;
-    font-face-name: ui-monospace;
+    font-display: swap;
+}
+
+/* Box-drawing fallback: TT Commons Pro Mono lacks U+2500-259F (box-drawing chars).
+   We define a separate font-family that provides them with width matching TT Commons Pro Mono (0.6em).
+   Consolas is ~0.55em → needs size-adjust. Others are ~0.6em. */
+@font-face {
+    font-family: 'Mono BoxDraw';
+    src: local('Menlo'),
+         local('DejaVu Sans Mono'),
+         local('Liberation Mono'),
+         local('Courier New');
+    font-display: swap;
+    unicode-range: U+2500-259F;
+}
+@font-face {
+    font-family: 'Mono BoxDraw Consolas';
+    src: local('Consolas');
+    font-display: swap;
+    size-adjust: 109%;
+    unicode-range: U+2500-259F;
 }

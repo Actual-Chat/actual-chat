@@ -27,11 +27,8 @@ export function highlightCode(pre: HTMLPreElement, languageName: string, code: s
         if (!codeElement)
             return;
         const language = hljs.getLanguage(languageName);
-        if (language) {
+        if (language)
             codeElement.innerHTML = hljs.highlight(code, { language: languageName }).value;
-        } else {
-            codeElement.innerHTML = hljs.highlightAuto(code).value;
-        }
     } catch(e) {
         errorLog?.log(`highlightCode: failed to highlight code`, e);
     }

@@ -84,10 +84,16 @@
         @apply px-0.5;
         @apply bg-01;
         @apply font-mono;
+        font-variant-ligatures: none;
+        font-kerning: none;
+        font-feature-settings: "kern" 0, "liga" 0, "calt" 0, "clig" 0;
     }
-     code * {
-         @apply font-mono;
-     }
+    code * {
+        @apply font-mono;
+        font-variant-ligatures: none;
+        font-kerning: none;
+        font-feature-settings: "kern" 0, "liga" 0, "calt" 0, "clig" 0;
+    }
 
     h1, h2, h3, h4, h5, h6 {
         @apply font-semibold leading-loose;
