@@ -129,9 +129,9 @@ public sealed class IosPhotoGalleryFiles : IDisposable
 
         var loadStartedAt = CpuTimestamp.Now;
         var representation = await item
-            .LoadFileRepresentationAsync(contentType.Identifier)
+            .LoadInPlaceFileRepresentationAsync(contentType.Identifier)
             .ConfigureAwait(false);
-        var sourcePath = (FilePath)representation.Path!;
+        var sourcePath = representation.Path;
 
         var copyStartedAt = CpuTimestamp.Now;
         await sourcePath.CopyTo(targetPath, cancellationToken).ConfigureAwait(false);
