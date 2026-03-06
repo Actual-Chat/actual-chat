@@ -427,7 +427,6 @@ export class VideoPipeline implements IVideoPipeline {
             if (seg) {
                 warnLog?.log(
                     `VIDEO_SEG: infer=${seg.averageInferenceTime.toFixed(1)}ms blur=${seg.averageBlurTime.toFixed(1)}ms ` +
-                    `conv=${seg.averageConversionTime.toFixed(1)}ms ` +
                     `total=${seg.averageTotalTime.toFixed(1)}ms drop=${seg.droppedFrames} backend=${seg.backend}`);
             }
         }, 10_000);

@@ -4,9 +4,6 @@ import {
     getOrCreateCompositeTexture,
     getCompositeTextureView,
     encodeRGBAtoI420,
-    startReadback,
-    awaitPreviousReadback,
-    flushReadbackPipeline,
     ensureStagingReady,
     startReadbackWithCallback,
 } from './webgpu-yuv-converter.js';
@@ -62,9 +59,6 @@ const clearMipmapCache = () => {
     pyramidViewCache.clear();
     cachedPyramidTexture = null;
 };
-
-// Texture pool with correct usage flags - keyed by dimensions
-const texturePool = new Map<string, GPUTexture[]>();
 
 // Cache keys: "width,height,blurStrength" → buffer with correct offset values
 const offsetBufferCache = new Map<string, GPUBuffer>();
@@ -476,13 +470,6 @@ export async function initBlurWebGPU(gpuDevice?: GPUDevice): Promise<void> {
     initYUVConverter(device);
 }
 
-/**
- * Get the current WebGPU device used by the blur module
- */
-export function getBlurDevice(): GPUDevice | null {
-    return device;
-}
-
 // Ensure device is initialized (must call initBlurWebGPU first)
 function ensureInitialized() {
     if (!device) {
@@ -775,14 +762,8 @@ export function applyBackgroundBlur(
         outputHeight = blurStrengthOrOptions.outputHeight;
     }
 
-    // Clear texture pool and offset buffer cache on blur strength change
+    // Clear caches on blur strength change
     if (blurStrength !== lastBlurStrength) {
-        for (const pool of texturePool.values()) {
-            for (const tex of pool) {
-                tex.destroy();
-            }
-        }
-        texturePool.clear();
         clearMipmapCache();
         for (const buf of offsetBufferCache.values()) buf.destroy();
         offsetBufferCache.clear();
@@ -960,127 +941,11 @@ function encodeBlurPasses(
 }
 
 /**
- * Result from applyBackgroundBlurI420 including conversion timing.
+ * Result from blur + I420 conversion including timing.
  */
 export interface BlurI420Result {
     frame: VideoFrame;
     conversionTimeMs: number;
-}
-
-/**
- * Apply background blur and return the result as an I420 VideoFrame.
- * Renders the composite to an intermediate GPU texture, then converts to I420
- * via a compute shader — avoiding the slow/broken VideoFrame.copyTo({ format: 'I420' }).
- */
-export async function applyBackgroundBlurI420(
-    frame: VideoFrame,
-    personMask: GPUBuffer,
-    maskWidth: number,
-    maskHeight: number,
-    blurStrengthOrOptions: number | BlurOptions = 12
-): Promise<BlurI420Result> {
-    ensureInitialized();
-
-    // Parse options (same as applyBackgroundBlur)
-    let blurStrength = 12;
-    let maskDirty = true;
-    let smoothingSource: GPUBuffer | undefined;
-    let smoothingAlpha: number | undefined;
-    let outputWidth: number | undefined;
-    let outputHeight: number | undefined;
-
-    if (typeof blurStrengthOrOptions === 'number') {
-        blurStrength = blurStrengthOrOptions;
-    } else {
-        blurStrength = blurStrengthOrOptions.blurStrength ?? 12;
-        maskDirty = blurStrengthOrOptions.maskDirty ?? true;
-        smoothingSource = blurStrengthOrOptions.smoothingSource;
-        smoothingAlpha = blurStrengthOrOptions.smoothingAlpha;
-        outputWidth = blurStrengthOrOptions.outputWidth;
-        outputHeight = blurStrengthOrOptions.outputHeight;
-    }
-
-    // Clear texture pool and offset buffer cache on blur strength change
-    if (blurStrength !== lastBlurStrength) {
-        for (const pool of texturePool.values()) {
-            for (const tex of pool) {
-                tex.destroy();
-            }
-        }
-        texturePool.clear();
-        clearMipmapCache();
-        for (const buf of offsetBufferCache.values()) buf.destroy();
-        offsetBufferCache.clear();
-        cachedLevels = blurStrength < 10 ? 2 : blurStrength < 20 ? 3 : 4;
-        lastBlurStrength = blurStrength;
-    }
-
-    const w = frame.displayWidth;
-    const h = frame.displayHeight;
-    if (w === 0 || h === 0)
-        throw new Error('Invalid frame');
-
-    const outW = outputWidth ?? w;
-    const outH = outputHeight ?? h;
-
-    // Get or create composite texture (RENDER_ATTACHMENT + TEXTURE_BINDING)
-    const compositeTex = getOrCreateCompositeTexture(outW, outH, FORMAT);
-    const compositeView = getCompositeTextureView();
-
-    const encoder = device!.createCommandEncoder();
-
-    // Encode blur passes → composite texture
-    encodeBlurPasses(encoder, frame, personMask, maskWidth, maskHeight, {
-        blurStrength,
-        maskDirty,
-        smoothingSource,
-        smoothingAlpha,
-    }, w, h, outW, outH, compositeView);
-
-    // Encode RGBA → I420 compute pass
-    encodeRGBAtoI420(encoder, compositeTex, outW, outH);
-
-    device!.queue.submit([encoder.finish()]);
-
-    const timestamp = frame.timestamp;
-    const duration = frame.duration ?? undefined;
-
-    // Pipelined double-buffered readback:
-    // 1. Await the PREVIOUS frame's readback (non-blocking if already mapped)
-    // 2. Start readback for THIS frame (async mapAsync, returns immediately)
-    // 3. Return previous frame's result (or await current on first call)
-    const convStart = performance.now();
-    const prevFrame = await awaitPreviousReadback();
-
-    // Start async readback of current frame's staging buffer
-    startReadback(outW, outH, timestamp, duration);
-
-    // Close the input frame now — GPU work is submitted
-    frame.close();
-
-    if (prevFrame) {
-        // Steady state: return previous frame while current readback proceeds
-        const conversionTimeMs = performance.now() - convStart;
-        return { frame: prevFrame, conversionTimeMs };
-    } else {
-        // First call: no previous frame available, await current readback directly
-        const result = await awaitPreviousReadback();
-        const conversionTimeMs = performance.now() - convStart;
-        return { frame: result!, conversionTimeMs };
-    }
-}
-
-/**
- * Flush the pipelined I420 readback — await the last pending frame.
- * Call this when no more frames will be submitted (end of stream, stop, fallback switch).
- * Returns null if no readback is pending.
- */
-export async function flushI420Pipeline(): Promise<BlurI420Result | null> {
-    const convStart = performance.now();
-    const frame = await flushReadbackPipeline();
-    if (!frame) return null;
-    const conversionTimeMs = performance.now() - convStart;
-    return { frame, conversionTimeMs };
 }
 
 /**
@@ -1098,7 +963,7 @@ export async function submitBlurI420(
 ): Promise<void> {
     ensureInitialized();
 
-    // Parse options (same as applyBackgroundBlurI420)
+    // Parse options
     let blurStrength = 12;
     let maskDirty = true;
     let smoothingSource: GPUBuffer | undefined;
@@ -1117,14 +982,8 @@ export async function submitBlurI420(
         outputHeight = blurStrengthOrOptions.outputHeight;
     }
 
-    // Clear texture pool and offset buffer cache on blur strength change
+    // Clear caches on blur strength change
     if (blurStrength !== lastBlurStrength) {
-        for (const pool of texturePool.values()) {
-            for (const tex of pool) {
-                tex.destroy();
-            }
-        }
-        texturePool.clear();
         clearMipmapCache();
         for (const buf of offsetBufferCache.values()) buf.destroy();
         offsetBufferCache.clear();

@@ -46,7 +46,6 @@ let smoothedMaskBuffer: GPUBuffer = null!; // Temporally smoothed mask buffer
 let processedFrames = 0;
 let totalInferenceTime = 0;
 let totalBlurTime = 0;
-let totalConversionTime = 0;
 let totalProcessingTime = 0;
 let droppedFrames = 0;
 
@@ -471,7 +470,6 @@ const serverImpl: SegmentationWorker = {
             averageBlurTime: processedFrames > 0 ? totalBlurTime / processedFrames : 0,
             averageTotalTime: processedFrames > 0 ? totalProcessingTime / processedFrames : 0,
             droppedFrames,
-            averageConversionTime: processedFrames > 0 ? totalConversionTime / processedFrames : 0,
             backend: config?.backend ?? 'unknown'
         };
     },
@@ -521,7 +519,6 @@ const serverImpl: SegmentationWorker = {
         processedFrames = 0;
         totalInferenceTime = 0;
         totalBlurTime = 0;
-        totalConversionTime = 0;
         totalProcessingTime = 0;
         droppedFrames = 0;
 

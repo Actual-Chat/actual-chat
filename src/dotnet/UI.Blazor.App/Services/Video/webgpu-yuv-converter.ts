@@ -104,17 +104,6 @@ let cachedYuvBindGroup: GPUBindGroup | null = null;
 let yPackedSize = 0;
 let uvPackedSize = 0;
 
-// Pending readback for double-buffered pipeline
-interface PendingReadback {
-    promise: Promise<void>;
-    bufIdx: number;
-    width: number;
-    height: number;
-    timestamp: number;
-    duration?: number;
-}
-let pendingReadback: PendingReadback | null = null;
-
 // ── Public API ──────────────────────────────────────────────────────────────────
 
 /**
@@ -278,71 +267,6 @@ export function encodeRGBAtoI420(
 }
 
 /**
- * Start an async readback of the current staging buffer.
- * Must be called AFTER the command encoder containing encodeRGBAtoI420 has been submitted.
- * Flips the staging buffer index so the next frame writes to the other buffer.
- */
-export function startReadback(
-    width: number,
-    height: number,
-    timestamp: number,
-    duration?: number,
-): void {
-    const bufIdx = currentStagingIdx;
-    const staging = stagingBufs[bufIdx]!;
-    const promise = staging.mapAsync(GPUMapMode.READ);
-
-    pendingReadback = { promise, bufIdx, width, height, timestamp, duration };
-
-    // Flip to the other staging buffer for the next frame
-    currentStagingIdx = 1 - currentStagingIdx;
-}
-
-/**
- * Await the previous frame's readback and return its I420 VideoFrame.
- * Returns null if no readback is pending.
- */
-export async function awaitPreviousReadback(): Promise<VideoFrame | null> {
-    if (!pendingReadback) return null;
-
-    const { promise, bufIdx, width, height, timestamp, duration } = pendingReadback;
-    pendingReadback = null;
-
-    await promise;
-
-    const staging = stagingBufs[bufIdx]!;
-    const mapped = new Uint8Array(staging.getMappedRange());
-    const chromaW = Math.ceil(width / 2);
-
-    // Create VideoFrame directly from mapped staging buffer.
-    // VideoFrame constructor copies data synchronously before returning,
-    // so it's safe to unmap immediately after.
-    const frame = new VideoFrame(mapped.buffer, {
-        format: 'I420',
-        codedWidth: width,
-        codedHeight: height,
-        timestamp,
-        duration,
-        layout: [
-            { offset: mapped.byteOffset, stride: width },
-            { offset: mapped.byteOffset + yPackedSize, stride: chromaW },
-            { offset: mapped.byteOffset + yPackedSize + uvPackedSize, stride: chromaW },
-        ],
-    });
-
-    staging.unmap();
-    return frame;
-}
-
-/**
- * Flush the pipeline: await the last pending readback.
- * Call this to get the final frame when no more frames will be submitted.
- */
-export async function flushReadbackPipeline(): Promise<VideoFrame | null> {
-    return awaitPreviousReadback();
-}
-
-/**
  * Await until the staging buffer we're about to write to is available.
  * Instant in steady state at 30fps (buffer reuse every 2 frames = 66ms, far exceeding ~28ms GPU time).
  */
@@ -410,41 +334,6 @@ export async function awaitAllPendingReadbacks(): Promise<void> {
 }
 
 /**
- * Legacy synchronous API: map staging buffer and construct I420 VideoFrame in one call.
- * Used when double-buffering is not applicable (e.g., single-frame operations).
- * Must be called AFTER the command encoder containing encodeRGBAtoI420 has been submitted.
- */
-export async function createI420VideoFrame(
-    width: number,
-    height: number,
-    timestamp: number,
-    duration?: number,
-): Promise<VideoFrame> {
-    const chromaW = Math.ceil(width / 2);
-    const staging = stagingBufs[currentStagingIdx]!;
-
-    await staging.mapAsync(GPUMapMode.READ);
-
-    const mapped = new Uint8Array(staging.getMappedRange());
-
-    const frame = new VideoFrame(mapped.buffer, {
-        format: 'I420',
-        codedWidth: width,
-        codedHeight: height,
-        timestamp,
-        duration,
-        layout: [
-            { offset: mapped.byteOffset, stride: width },
-            { offset: mapped.byteOffset + yPackedSize, stride: chromaW },
-            { offset: mapped.byteOffset + yPackedSize + uvPackedSize, stride: chromaW },
-        ],
-    });
-
-    staging.unmap();
-    return frame;
-}
-
-/**
  * Clean up all GPU resources held by the YUV converter.
  */
 export function disposeYUVResources(): void {
@@ -466,7 +355,6 @@ export function disposeYUVResources(): void {
     stagingBufs = [null, null];
     currentStagingIdx = 0;
     stagingReadyPromises = [Promise.resolve(), Promise.resolve()];
-    pendingReadback = null;
     paramsBuf = null;
     bufferKey = '';
 
