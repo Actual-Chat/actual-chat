@@ -18,7 +18,7 @@ public partial class ChatEntryMigrationFixupFlow : ChatEntryMigrationFlow
         var chatId = ChatId.Parse(textEntry.ChatId);
         var audioEntryLid = textEntry.AudioEntryId!.Value;
 
-        var audioEntryDbId = ChatEntryId.Format(chatId, ChatEntryKind.Audio, audioEntryLid);
+        var audioEntryDbId = ChatEntryId.Format(chatId, audioEntryLid);
         var audioEntry = await dbContext.ChatEntries
             .FirstOrDefaultAsync(e => e.Id == audioEntryDbId, cancellationToken)
             .ConfigureAwait(false);
