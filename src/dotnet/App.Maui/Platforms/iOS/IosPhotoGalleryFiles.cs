@@ -72,11 +72,12 @@ public sealed class IosPhotoGalleryFiles : IDisposable
         if (pendingItem == null)
             return null;
 
-        return await TryLoadThumbnail(pendingItem.Key.ItemProvider, cancellationToken).ConfigureAwait(false);
+        return await TryLoadThumbnail(pendingItem.Key.ItemProvider, pendingItem.Key.FileName, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<FilePreview?> TryLoadThumbnail(
         NSItemProvider itemProvider,
+        FilePath fileName,
         CancellationToken cancellationToken)
     {
         // Try low-res first (faster), then standard
@@ -98,7 +99,6 @@ public sealed class IosPhotoGalleryFiles : IDisposable
                     continue;
 
                 // Copy the thumbnail to our cache directory
-                FilePath fileName = itemProvider.SuggestedName.NullIfEmpty() ?? ((FilePath)result.Path).FileName;
                 var thumbnailFileName = fileName.ChangeExtension(".jpg").ToUnique();
                 var thumbnailDir = new FilePath(FileSystem.CacheDirectory) | "video-thumbnails";
                 Directory.CreateDirectory(thumbnailDir);
@@ -106,11 +106,8 @@ public sealed class IosPhotoGalleryFiles : IDisposable
 
                 await ((FilePath)result.Path).CopyTo(thumbnailPath, cancellationToken).ConfigureAwait(false);
 
-                // Get dimensions
-                using var uiImage = UIKit.UIImage.FromFile(thumbnailPath);
-                Size? size = uiImage != null
-                    ? new Size((int)uiImage.Size.Width, (int)uiImage.Size.Height)
-                    : null;
+                // Get dimensions using ImageIO (reads only header, doesn't decode full image)
+                var size = GetImageSize(thumbnailPath);
 
                 return new FilePreview(ContentResolver.GetFileUri(thumbnailPath), size);
             }
@@ -120,6 +117,22 @@ public sealed class IosPhotoGalleryFiles : IDisposable
         }
 
         return null;
+    }
+
+    private static Size? GetImageSize(FilePath path)
+    {
+        using var source = ImageIO.CGImageSource.FromUrl(NSUrl.CreateFileUrl(path));
+        if (source == null)
+            return null;
+
+        using var properties = source.CopyProperties((NSDictionary?)null, 0);
+        if (properties == null)
+            return null;
+
+        return properties[ImageIO.CGImageProperties.PixelWidth] is NSNumber width
+            && properties[ImageIO.CGImageProperties.PixelHeight] is NSNumber height
+                ? new Size(width.Int32Value, height.Int32Value)
+                : null;
     }
 
     private async Task<FilePath> ProcessFile(PendingFile pendingFile, CancellationToken cancellationToken)
