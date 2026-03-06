@@ -4,7 +4,7 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Chat.Db;
 
-[Table("TextEntryAttachments")]
+[Table("ChatEntryAttachments")]
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbChatEntryAttachment : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {

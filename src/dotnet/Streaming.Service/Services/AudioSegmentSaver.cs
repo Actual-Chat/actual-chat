@@ -43,11 +43,10 @@ public sealed class AudioSegmentSaver(IServiceProvider services) : AudioProcesso
         var media = new MediaFull(mediaId) {
             BlobId = blobId,
             ContentType = "audio/webm",
-            Metadata = PropertyBag.Empty
-                .Set(nameof(ChatEntryAudio.BeginsAt), beginsAt.EpochOffsetTicks)
-                .Set(nameof(ChatEntryAudio.EndsAt), endsAt.EpochOffsetTicks)
-                .Set(nameof(ChatEntryAudio.ContentEndsAt), contentEndsAt.EpochOffsetTicks)
-                .Set(nameof(ChatEntryAudio.ClientSideBeginsAt), recordedAt.EpochOffsetTicks),
+            BeginsAt = beginsAt,
+            EndsAt = endsAt,
+            ContentEndsAt = contentEndsAt,
+            ClientSideBeginsAt = recordedAt,
         };
         var command = new MediaBackend_Change(mediaId, null, Change.Create(media));
         await Commander.Call(command, cancellationToken).ConfigureAwait(false);

@@ -42,11 +42,37 @@ namespace ActualChat.Chat.Migrations
                 name: "IX_chat_entries_stream_id",
                 table: "chat_entries",
                 newName: "IX_chat_entries_content_stream_id");
+
+            migrationBuilder.DropPrimaryKey(
+                name: "pk_text_entry_attachments",
+                table: "text_entry_attachments");
+
+            migrationBuilder.RenameTable(
+                name: "text_entry_attachments",
+                newName: "chat_entry_attachments");
+
+            migrationBuilder.AddPrimaryKey(
+                name: "pk_chat_entry_attachments",
+                table: "chat_entry_attachments",
+                column: "id");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropPrimaryKey(
+                name: "pk_chat_entry_attachments",
+                table: "chat_entry_attachments");
+
+            migrationBuilder.RenameTable(
+                name: "chat_entry_attachments",
+                newName: "text_entry_attachments");
+
+            migrationBuilder.AddPrimaryKey(
+                name: "pk_text_entry_attachments",
+                table: "text_entry_attachments",
+                column: "id");
+
             migrationBuilder.RenameColumn(
                 name: "entry_lid",
                 table: "mentions",

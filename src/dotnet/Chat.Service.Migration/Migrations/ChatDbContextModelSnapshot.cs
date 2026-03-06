@@ -505,9 +505,9 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnName("version");
 
                     b.HasKey("Id")
-                        .HasName("pk_text_entry_attachments");
+                        .HasName("pk_chat_entry_attachments");
 
-                    b.ToTable("text_entry_attachments");
+                    b.ToTable("chat_entry_attachments");
                 });
 
             modelBuilder.Entity("ActualChat.Chat.Db.DbChatEntryLanguage", b =>

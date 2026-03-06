@@ -2481,18 +2481,10 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 var audio = new ChatEntryAudio {
                     MediaId = media.Id,
                     BlobId = media.BlobId,
-                    BeginsAt = media.Metadata[nameof(ChatEntryAudio.BeginsAt)] is { } beginsAtObj
-                        ? new Moment(Convert.ToInt64(beginsAtObj, CultureInfo.InvariantCulture))
-                        : default,
-                    EndsAt = media.Metadata[nameof(ChatEntryAudio.EndsAt)] is { } endsAtObj
-                        ? new Moment(Convert.ToInt64(endsAtObj, CultureInfo.InvariantCulture))
-                        : null,
-                    ContentEndsAt = media.Metadata[nameof(ChatEntryAudio.ContentEndsAt)] is { } contentEndsAtObj
-                        ? new Moment(Convert.ToInt64(contentEndsAtObj, CultureInfo.InvariantCulture))
-                        : null,
-                    ClientSideBeginsAt = media.Metadata[nameof(ChatEntryAudio.ClientSideBeginsAt)] is { } csbaObj
-                        ? new Moment(Convert.ToInt64(csbaObj, CultureInfo.InvariantCulture))
-                        : null,
+                    BeginsAt = media.BeginsAt,
+                    EndsAt = media.EndsAt != default ? media.EndsAt : null,
+                    ContentEndsAt = media.ContentEndsAt != default ? media.ContentEndsAt : null,
+                    ClientSideBeginsAt = media.ClientSideBeginsAt != default ? media.ClientSideBeginsAt : null,
                 };
                 map[media.Id.Value] = audio;
             }
