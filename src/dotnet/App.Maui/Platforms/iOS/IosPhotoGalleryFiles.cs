@@ -42,7 +42,7 @@ public sealed class IosPhotoGalleryFiles : IDisposable
         var fileType = item.ImplyMimeType();
         var ext = MediaMimeTypes.TryGetExtension(fileType, out var ext1)
             ? ext1
-            : throw StandardError.Internal($"Failed to identify ext for asset {pickerResult.AssetIdentifier}");
+            : throw StandardError.Internal($"Failed to identify ext for asset '{pickerResult.AssetIdentifier}', file '{fileName}'");
         fileName = fileName.EnsureExt(ext);
         var cachedPath = AttachmentsDirectory | fileName.ToUnique();
 
