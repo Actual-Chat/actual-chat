@@ -7,10 +7,10 @@ export class ServerClock {
     static get offsetMs(): number { return offsetMs; }
     /** Returns server-aligned epoch ms */
     static now(): number { return Date.now() + offsetMs; }
-    /** Called from C# ServerTimeSync whenever offset is updated */
-    static updateOffset(newOffsetMs: number): void {
-        offsetMs = newOffsetMs;
-        for (const fn of listeners) fn(newOffsetMs);
+    /** Called from C# ServerTimeSync with the current server time (epoch ms) */
+    static updateOffset(serverNowMs: number): void {
+        offsetMs = serverNowMs - Date.now();
+        for (const fn of listeners) fn(offsetMs);
     }
     /** Subscribe to offset changes. Returns unsubscribe function. */
     static onOffsetChanged(fn: OffsetListener): () => void {

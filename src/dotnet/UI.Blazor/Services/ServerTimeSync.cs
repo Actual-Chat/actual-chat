@@ -88,7 +88,8 @@ public class ServerTimeSync : WorkerBase
             MomentClockSet.Default.ServerClock.Offset = offset;
 
         try {
-            await JS.InvokeVoidAsync("ServerClock.updateOffset", cancellationToken, offset.TotalMilliseconds)
+            var serverNowMs = Clocks.ServerClock.Now.EpochOffset.TotalMilliseconds;
+            await JS.InvokeVoidAsync("ServerClock.updateOffset", cancellationToken, serverNowMs)
                 .ConfigureAwait(false);
         }
         catch (Exception e) when (e is JSDisconnectedException or ObjectDisposedException) {
