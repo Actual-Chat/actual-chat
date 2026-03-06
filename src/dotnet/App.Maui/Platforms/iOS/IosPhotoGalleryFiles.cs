@@ -35,7 +35,7 @@ public sealed class IosPhotoGalleryFiles : IDisposable
     public void Dispose()
         => _processor.DisposeSilently();
 
-    public MauiFileProvider Enqueue(PHPickerResult pickerResult, UTType preferredContentType)
+    public MauiFileProvider Enqueue(PHPickerResult pickerResult)
     {
         var item = pickerResult.ItemProvider;
         FilePath fileName = item.SuggestedName.NullIfEmpty() ?? RandomStringGenerator.Default.Next(10);
@@ -46,7 +46,7 @@ public sealed class IosPhotoGalleryFiles : IDisposable
         fileName = fileName.EnsureExt(ext);
         var cachedPath = AttachmentsDirectory | fileName.ToUnique();
 
-        var pendingFile = new PendingFile(cachedPath, item, preferredContentType);
+        var pendingFile = new PendingFile(cachedPath, item);
         _processor.Enqueue(pendingFile);
 
         Log.LogDebug("Enqueued file '{TargetPath}' for background loading", cachedPath);
@@ -125,7 +125,7 @@ public sealed class IosPhotoGalleryFiles : IDisposable
     {
         var targetPath = pendingFile.TargetPath;
         var item = pendingFile.ItemProvider;
-        var contentType = pendingFile.ContentType;
+        var contentType = item.RegisteredContentTypes[0];
 
         var loadStartedAt = CpuTimestamp.Now;
         var representation = await item
@@ -148,8 +148,7 @@ public sealed class IosPhotoGalleryFiles : IDisposable
 
     private sealed record PendingFile(
         FilePath TargetPath,
-        NSItemProvider ItemProvider = null!,
-        UTType ContentType = null!)
+        NSItemProvider ItemProvider = null!)
     {
         public bool Equals(PendingFile? other)
             => other is not null && TargetPath == other.TargetPath;
