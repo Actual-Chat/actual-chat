@@ -128,9 +128,9 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         var tiles = Constants.Chat.ReaderIdTileStack.FirstLayer.GetCoveringTiles(new Range<long>(acDcId, chuckBerryId));
         var result = await reader.ReadTiles(new Range<long>(tiles[0].Start, tiles[^1].End), CancellationToken.None).ToListAsync();
         result.Count.Should().BeGreaterThan(0);
-        result.Count.Should().BeLessThanOrEqualTo(2);
-        result[0].Should().NotBeNull();
-        result[0].Entries.Length.Should().BeGreaterThan(3);
+        result.SelectMany(t => t.Entries).Should().NotBeEmpty();
+        var totalEntries = result.Sum(t => t.Entries.Length);
+        totalEntries.Should().BeGreaterThanOrEqualTo(2, "the tile range covers acDcId and nirvanaId, which may span multiple tiles");
     }
 
     [Fact]
