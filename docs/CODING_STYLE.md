@@ -92,6 +92,10 @@ public class ConcurrentPool<T> : IPool<T>
 <Using Include="ActualLab.Async" />
 ```
 
+**Before adding a `using` directive**, check if it's already a global using:
+1. Search for `<Using Include="YourNamespace"` in `src/dotnet/Directory.Build.props`
+2. If found, do NOT add an explicit `using` directive - it's redundant
+
 Search for `<Using>` to get the full list. Avoid adding explicit usings for global usings.
 
 ### Naming Conventions
