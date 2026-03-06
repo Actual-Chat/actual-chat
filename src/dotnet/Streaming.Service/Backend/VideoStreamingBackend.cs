@@ -183,7 +183,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         IAsyncEnumerable<VideoFrame> videoFrames,
         CancellationToken cancellationToken)
     {
-        var beginsAt = Clocks.SystemClock.Now;
+        var beginsAt = default(Moment) + TimeSpan.FromSeconds(record.ClientStartOffset);
         var rules = await Chats.GetRules(record.Session, record.ChatId, cancellationToken)
             .ConfigureAwait(false);
         rules.Require(ChatPermissions.Write);
