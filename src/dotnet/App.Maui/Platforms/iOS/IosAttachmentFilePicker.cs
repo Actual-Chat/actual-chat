@@ -19,8 +19,7 @@ public class IosAttachmentFilePicker(IServiceProvider services) : MauiAttachment
             return [];
 
         var pickerResults = await PickVisualMedia(acceptTypes).ConfigureAwait(false);
-        var preferredContentType = MediaTypeExt.IsImage(acceptTypes) ? UTTypes.Image : UTTypes.Movie;
-        return await LoadPickedFiles(pickerResults, preferredContentType).ConfigureAwait(false);
+        return await LoadPickedFiles(pickerResults).ConfigureAwait(false);
     }
 
     private async Task<PHPickerResult[]> PickVisualMedia(string acceptTypes)
@@ -40,20 +39,20 @@ public class IosAttachmentFilePicker(IServiceProvider services) : MauiAttachment
         return await tcs.Task.ConfigureAwait(false);
     }
 
-    private Task<AttachFileInfo[]> LoadPickedFiles(PHPickerResult[] results, UTType preferredContentType)
+    private Task<AttachFileInfo[]> LoadPickedFiles(PHPickerResult[] results)
         => DispatchToMainThread(() => {
             var attachFileInfos = results
-                .Select(x => CreateAttachFileInfo(x, preferredContentType))
+                .Select(CreateAttachFileInfo)
                 .SkipNullItems()
                 .ToArray();
             return Task.FromResult(attachFileInfos);
         });
 
-    private AttachFileInfo? CreateAttachFileInfo(PHPickerResult pickerResult, UTType contentType)
+    private AttachFileInfo? CreateAttachFileInfo(PHPickerResult pickerResult)
     {
         try {
             // Enqueue for background loading - returns MauiFileProvider immediately
-            var fileProvider = PhotoGalleryFiles.Enqueue(pickerResult, contentType);
+            var fileProvider = PhotoGalleryFiles.Enqueue(pickerResult);
             return new AttachFileInfo(fileProvider);
         }
         catch (Exception e) {
