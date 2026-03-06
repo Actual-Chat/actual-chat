@@ -3,19 +3,24 @@ import { Timeout } from 'timeout';
 import { Log } from 'logging';
 import { fromEvent } from 'rxjs';
 import { fastRaf } from 'fast-raf';
+import { Tune, TuneUI } from '../../dotnet/UI.Blazor/Services/TuneUI/tune-ui';
 
 const { debugLog } = Log.get('EmojiPreview');
 
 const LONG_PRESS_DELAY_MS = 300;
 const CONTAINER_SIZE_REM = 12;
 const TOUCH_OFFSET_REM = 5;
+const TOUCH_MOVE_TOLERANCE_PX = 10;
 
 export class EmojiPreview {
     private static overlay: HTMLElement | null = null;
     private static currentTarget: HTMLElement | null = null;
     private static longPressTimeout: Timeout | null = null;
     private static isTouch = false;
+    private static touchOnEmoji = false;
     private static longPressTriggered = false;
+    private static touchStartX = 0;
+    private static touchStartY = 0;
 
     public static init(): void {
         debugLog?.log('EmojiPreview.init');
@@ -57,9 +62,14 @@ export class EmojiPreview {
             this.hidePreview();
         });
 
-        // Intercept click and contextmenu after long press to prevent menu from closing
+        // Intercept click and contextmenu to prevent menu from closing during long press
         const interceptEvent = (e: Event) => {
-            if (this.longPressTriggered) {
+            // Block contextmenu while touch is active on emoji (even before timer fires)
+            // Block click only after long press actually triggered
+            const shouldBlock = e.type === 'contextmenu'
+                ? (this.longPressTriggered || (this.isTouch && this.touchOnEmoji))
+                : this.longPressTriggered;
+            if (shouldBlock) {
                 e.stopPropagation();
                 e.preventDefault();
                 if (e.type === 'click')
@@ -77,12 +87,18 @@ export class EmojiPreview {
             this.isTouch = true;
             const target = e.target as HTMLElement;
             const emojiEl = this.findEmojiElement(target);
-            if (!emojiEl)
+            if (!emojiEl) {
+                this.touchOnEmoji = false;
                 return;
+            }
 
+            this.touchOnEmoji = true;
+            this.touchStartX = e.clientX;
+            this.touchStartY = e.clientY;
             this.longPressTimeout?.dispose();
             this.longPressTimeout = new Timeout(LONG_PRESS_DELAY_MS, () => {
                 this.longPressTriggered = true;
+                TuneUI.play(Tune.ClickButton);
                 this.showPreview(emojiEl, true);
             });
         });
@@ -93,6 +109,7 @@ export class EmojiPreview {
                 this.longPressTimeout = null;
                 this.hidePreview();
                 this.isTouch = false;
+                this.touchOnEmoji = false;
                 // Safety reset: browser may not fire click after long press,
                 // leaving longPressTriggered=true and eating the next real tap
                 if (this.longPressTriggered)
@@ -106,13 +123,18 @@ export class EmojiPreview {
                 this.longPressTimeout = null;
                 this.hidePreview();
                 this.isTouch = false;
+                this.touchOnEmoji = false;
             }
         });
 
-        DocumentEvents.passive.pointerMove$.subscribe(() => {
+        DocumentEvents.passive.pointerMove$.subscribe((e: PointerEvent) => {
             if (this.isTouch && this.longPressTimeout) {
-                this.longPressTimeout.dispose();
-                this.longPressTimeout = null;
+                const dx = e.clientX - this.touchStartX;
+                const dy = e.clientY - this.touchStartY;
+                if (dx * dx + dy * dy > TOUCH_MOVE_TOLERANCE_PX * TOUCH_MOVE_TOLERANCE_PX) {
+                    this.longPressTimeout.dispose();
+                    this.longPressTimeout = null;
+                }
             }
         });
 
@@ -181,13 +203,14 @@ export class EmojiPreview {
 
         el.removeAttribute('data-emoji-animate');
 
-        // Defer until layout is stable (element may have shifted due to new reaction badge)
-        // Use fastRaf to separate layout reads from DOM writes
+        // Double-RAF: first frame lets layout settle (new reaction row, message height change),
+        // second frame lets scroll adjustments complete (chat auto-scroll).
+        // This ensures getBoundingClientRect returns the final viewport position.
         let centerX = 0, centerY = 0, containerSizePx = 0;
         let clampedLeft = 0, clampedTop = 0;
         let offsetX = 0, offsetY = 0;
 
-        fastRaf({
+        requestAnimationFrame(() => fastRaf({
             read: () => {
                 const remToPx = parseFloat(getComputedStyle(document.documentElement).fontSize);
                 containerSizePx = CONTAINER_SIZE_REM * remToPx;
@@ -237,7 +260,7 @@ export class EmojiPreview {
 
                 debugLog?.log('animateReaction:', svgName);
             },
-        });
+        }));
     }
 
     private static tryShowPreview(target: HTMLElement): void {

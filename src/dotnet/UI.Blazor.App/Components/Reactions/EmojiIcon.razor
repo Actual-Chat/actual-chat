@@ -4,6 +4,7 @@
     <img class="@Class"
          src="/dist/images/emoji/@(_svgName).svg"
          alt="@Emoji?.Title"
+         draggable="false"
          data-emoji-preview="@(HasPreview ? _svgName : null)" />
 } else {
     @(Emoji?.Value ?? "")
