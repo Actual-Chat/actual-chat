@@ -14,7 +14,7 @@ namespace ActualChat.Chat.Flows;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class ChatEntryMigrationFlow : Flow<(Moment, long, long)>
 {
-    private const int BatchSize = 50;
+    private const int BatchSize = 100;
     private static readonly RandomTimeSpan BatchDelay = TimeSpan.FromSeconds(2).ToRandom(0.25);
 
     private DbHub<ChatDbContext> DbHub => field ??= Services.DbHub<ChatDbContext>();
@@ -47,74 +47,75 @@ public partial class ChatEntryMigrationFlow : Flow<(Moment, long, long)>
                 .CountAsync(cancellationToken)
                 .ConfigureAwait(false));
 
-        // Get next chat to process
-        var chatQuery = dbContext.Chats.OrderBy(x => x.Id);
-        if (!LastProcessedChatId.IsNullOrEmpty())
-            chatQuery = (IOrderedQueryable<DbChat>)chatQuery.Where(x => string.Compare(x.Id, LastProcessedChatId) > 0);
+        var processedInResume = 0;
+        while (processedInResume < BatchSize) {
+            // Get next chat to process
+            var chatQuery = dbContext.Chats.OrderBy(x => x.Id);
+            if (!LastProcessedChatId.IsNullOrEmpty())
+                chatQuery = (IOrderedQueryable<DbChat>)chatQuery.Where(x => string.Compare(x.Id, LastProcessedChatId) > 0);
 
-        var chatId = await chatQuery
-            .Select(x => x.Id)
-            .FirstOrDefaultAsync(cancellationToken)
-            .ConfigureAwait(false);
+            var chatId = await chatQuery
+                .Select(x => x.Id)
+                .FirstOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
 
-        if (chatId == null) {
-            Complete();
-            return;
-        }
-
-        // Get batch of text entries that have AudioEntryId set but no MediaId yet
-        var batch = await dbContext.ChatEntries
-            .Where(e => e.ChatId == chatId
-                && e.Kind == ChatEntryKind.Text
-                && e.AudioEntryId != null
-                && (e.AudioId == null || e.AudioId == "")) // Skipping already migrated entries
-            .OrderBy(e => e.LocalId)
-            .Where(e => e.LocalId > LastProcessedLocalId)
-            .Take(BatchSize)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-
-        if (batch.Count == 0) {
-            // Current chat done, move to next
-            LastProcessedLocalId = 0;
-            LastProcessedChatId = chatId;
-            MigratedChatCount++;
-            Console.Log($"Chat #{chatId} done ({MigratedChatCount}/{TotalChatCount})");
-            Runtime.StageResumeIn(BatchDelay.Next());
-            return;
-        }
-
-        try {
-            var migratedInBatch = 0;
-            foreach (var textEntry in batch) {
-                try {
-                    await ProcessOne(dbContext, textEntry, cancellationToken).ConfigureAwait(false);
-                    migratedInBatch++;
-                }
-                catch (Exception e) {
-                    Console.LogError($"Failed to process entry #{textEntry.Id}: {e.Message}", e);
-                }
+            if (chatId == null) {
+                Complete();
+                return;
             }
-            LastProcessedLocalId = batch[^1].LocalId;
-            MigratedEntryCount += migratedInBatch;
-        }
-        finally {
-            // If MigrateEntry fails, we still need to save the entries migrated earlier
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+            // Get batch of text entries that have AudioEntryId set but no MediaId yet
+            var remaining = BatchSize - processedInResume;
+            var batch = await dbContext.ChatEntries
+                .Where(e => e.ChatId == chatId
+                    && e.Kind == ChatEntryKind.Text
+                    && e.AudioEntryId != null
+                    && (e.AudioId == null || e.AudioId == "")) // Skipping already migrated entries
+                .OrderBy(e => e.LocalId)
+                .Where(e => e.LocalId > LastProcessedLocalId)
+                .Take(remaining)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            if (batch.Count == 0) {
+                // Current chat done, move to next
+                LastProcessedLocalId = 0;
+                LastProcessedChatId = chatId;
+                MigratedChatCount++;
+                continue;
+            }
+
+            try {
+                var migratedInBatch = 0;
+                foreach (var textEntry in batch) {
+                    try {
+                        await ProcessOne(dbContext, textEntry, cancellationToken).ConfigureAwait(false);
+                        migratedInBatch++;
+                    }
+                    catch (Exception e) {
+                        Console.LogError($"Failed to process entry #{textEntry.Id}: {e.Message}", e);
+                    }
+                }
+                LastProcessedLocalId = batch[^1].LocalId;
+                MigratedEntryCount += migratedInBatch;
+                processedInResume += migratedInBatch;
+            }
+            finally {
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            if (batch.Count < remaining) {
+                // Current chat done
+                LastProcessedLocalId = 0;
+                LastProcessedChatId = chatId;
+                MigratedChatCount++;
+            }
         }
 
         var progress = (double)MigratedEntryCount / TotalEntryCount * 100;
         Console.Log(
             $"Progress: {progress:F1}% "
-            + $"({MigratedChatCount}/{TotalChatCount} chats, {MigratedEntryCount}/{TotalEntryCount} entries), "
-            + $"processing chat #{chatId}");
-
-        if (batch.Count < BatchSize) {
-            // Current chat done
-            LastProcessedLocalId = 0;
-            LastProcessedChatId = chatId;
-            MigratedChatCount++;
-        }
+            + $"({MigratedChatCount}/{TotalChatCount} chats, {MigratedEntryCount}/{TotalEntryCount} entries)");
 
         Runtime.StageResumeIn(BatchDelay.Next());
     }
