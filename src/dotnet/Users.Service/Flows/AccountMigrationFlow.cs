@@ -60,20 +60,16 @@ public partial class AccountMigrationFlow : Flow<(Moment, long)>
         }
 
         // Process all accounts in the batch in parallel
-        var results = await batch
+        await batch
             .Select(x => ProcessOne(UserId.Parse(x.Id), cancellationToken))
-            .CollectResults(cancellationToken)
+            .Collect(cancellationToken)
             .ConfigureAwait(false);
-        var failedCount = results.Count(x => x.HasError);
-        var okCount = batch.Count - failedCount;
 
         LastProcessedId = batch[^1].Id;
-        MigratedCount += okCount;
+        MigratedCount += batch.Count;
 
         var progress = (double)MigratedCount / TotalCount * 100;
-        Console.Log(
-            $"Progress: {progress:F1}% ({MigratedCount}/{TotalCount} accounts), "
-            + $"batch: {okCount} ok, {failedCount} failed");
+        Console.Log($"Progress: {progress:F1}% ({MigratedCount}/{TotalCount} accounts)");
 
         if (batch.Count < BatchSize) {
             Complete();
@@ -102,16 +98,12 @@ public partial class AccountMigrationFlow : Flow<(Moment, long)>
             .Schedule(cancellationToken)
             .ConfigureAwait(false);
 
-        if (account.FormatVersion < 2) {
-            // Requires an upgrade, which happens on update
-            try {
-                var updateCommand = new AccountsBackend_Update(account, account.Version);
-                await Commander.Call(updateCommand, cancellationToken).ConfigureAwait(false);
-            }
-            catch (VersionMismatchException) {
-                // Account was modified recently, so it's already "touched"
-            }
-        }
+        if (account.FormatVersion >= 2)
+            return false;
+
+        // Requires an upgrade, AccountsBackend_Update does this
+        var updateCommand = new AccountsBackend_Update(account, account.Version);
+        await Commander.Call(updateCommand, cancellationToken).ConfigureAwait(false);
         return true;
     }
 }
