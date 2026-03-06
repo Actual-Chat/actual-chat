@@ -35,7 +35,7 @@ public class IosAttachmentFilePicker(IServiceProvider services) : MauiAttachment
         var picker = new PHPickerViewController(configuration) {
             Delegate = new PickerDelegate(tcs),
         };
-        controller.PresentViewController(picker, true, null);
+        await controller.PresentViewControllerAsync(picker, true).ConfigureAwait(false);
         return await tcs.Task.ConfigureAwait(false);
     }
 
@@ -61,7 +61,7 @@ public class IosAttachmentFilePicker(IServiceProvider services) : MauiAttachment
         }
     }
 
-    private PHPickerConfiguration GetConfiguration(string acceptTypes)
+    private static PHPickerConfiguration GetConfiguration(string acceptTypes)
     {
         var filter = MediaTypeExt.IsImage(acceptTypes) ? PHPickerFilter.ImagesFilter : PHPickerFilter.VideosFilter;
         return new PHPickerConfiguration(PHPhotoLibrary.SharedPhotoLibrary) {
