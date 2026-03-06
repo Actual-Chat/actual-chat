@@ -324,6 +324,27 @@ export class AudioContextSource {
         }
     }
 
+    public removeTrait(trait: AudioContextTrait): void {
+        if (!this._traits.has(trait.name))
+            return;
+
+        debugLog?.log(`removeTrait: removing trait '${trait.name}'`);
+        this._traits.delete(trait.name);
+
+        // Also remove from the live context's attached traits
+        const context = this._context;
+        if (context?.traits?.has(trait.name)) {
+            const attached = context.traits.get(trait.name);
+            context.traits.delete(trait.name);
+            if (attached?.onClosed) {
+                void Promise.resolve(attached.onClosed()).catch((e) =>
+                    warnLog?.log(`removeTrait: onClosed failed for '${trait.name}':`, e),
+                );
+            }
+        }
+        context?._attachingTraits?.delete(trait.name);
+    }
+
     public hasRefWithDemandInteractiveUITrait(): boolean {
         for (const ref of this._refs)
             if (ref.hasDemandInteractiveUITrait())

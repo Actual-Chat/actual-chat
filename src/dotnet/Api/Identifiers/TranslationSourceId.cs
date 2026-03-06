@@ -25,8 +25,8 @@ public partial class TranslationSourceId  : StringIdentifier, IStringIdentifier<
     public static TranslationSourceId New(ChatId chatId, TranslationIdKind kind, long refLid)
         => new (Format(chatId, kind, refLid.ToInvariantString()), chatId, kind, refLid);
 
-    public static TranslationSourceId New(TextEntryId textEntryId)
-        => new (textEntryId.Value, textEntryId);
+    public static TranslationSourceId New(ChatEntryId chatEntryId)
+        => new (chatEntryId.Value, chatEntryId);
 
     public static TranslationSourceId New(ThreadChatId threadChatId, ThreadTranslationIdKind kind)
         => New(threadChatId.ParentChatId, Map(kind), threadChatId.ThreadId);
@@ -34,9 +34,9 @@ public partial class TranslationSourceId  : StringIdentifier, IStringIdentifier<
     public static TranslationSourceId New(ConversationId conversationId, ConversationTranslationIdKind kind)
         => New(conversationId.ChatId, Map(kind), conversationId.StartEntryLid);
 
-    private TranslationSourceId(string value, TextEntryId textEntryId)
-        : this(value, textEntryId.ChatId, TranslationIdKind.TextEntry, textEntryId.LocalId)
-        => ChatEntryId = textEntryId;
+    private TranslationSourceId(string value, ChatEntryId chatEntryId)
+        : this(value, chatEntryId.ChatId, TranslationIdKind.ChatEntry, chatEntryId.LocalId)
+        => EntryId = chatEntryId;
 
     private TranslationSourceId(string value, ChatId chatId, TranslationIdKind kind, long refLid)
         : this(value, chatId, kind, refLid.ToInvariantString())
@@ -55,14 +55,14 @@ public partial class TranslationSourceId  : StringIdentifier, IStringIdentifier<
     public string Extra { get; }
     public long RefLid { get; }
 
-    private TextEntryId? ChatEntryId { get; }
+    private ChatEntryId? EntryId { get; }
 
-    public TextEntryId GetChatEntryId()
+    public ChatEntryId GetChatEntryId()
     {
-        if (Kind != TranslationIdKind.TextEntry)
-            throw StandardError.Constraint("Supported only for TextEntry TranslationId");
+        if (Kind != TranslationIdKind.ChatEntry)
+            throw StandardError.Constraint("Supported only for ChatEntry TranslationId");
 
-        return ChatEntryId!;
+        return EntryId!;
     }
 
     public TranslationId ToTranslationId(Language language)
@@ -133,8 +133,8 @@ public partial class TranslationSourceId  : StringIdentifier, IStringIdentifier<
         if (!long.TryParse(s3, CultureInfo.InvariantCulture, out var lid) || lid <= 0)
             return false;
 
-        if (kind is TranslationIdKind.TextEntry)
-            result = new TranslationSourceId(s, TextEntryId.New(chatId, lid));
+        if (kind is TranslationIdKind.ChatEntry)
+            result = new TranslationSourceId(s, ChatEntryId.New(chatId, lid));
         else
             result = new TranslationSourceId(s, chatId, kind, lid);
 
@@ -163,7 +163,7 @@ public partial class TranslationSourceId  : StringIdentifier, IStringIdentifier<
 /// </summary>
 public enum TranslationIdKind
 {
-    TextEntry = 0,
+    ChatEntry = 0,
     ConversationTitle = 5,
     ConversationDescription = 6,
     ConversationSummary = 7,

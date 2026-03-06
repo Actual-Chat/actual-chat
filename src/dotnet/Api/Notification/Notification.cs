@@ -109,7 +109,7 @@ public partial record ChatNotificationOption(
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record ChatEntryNotificationOption(
-    [property: DataMember, MemoryPackOrder(0)] TextEntryId EntryId,
+    [property: DataMember, MemoryPackOrder(0)] ChatEntryId EntryId,
     [property: DataMember, MemoryPackOrder(1)] AuthorId AuthorId
     ) : NotificationOption;
 

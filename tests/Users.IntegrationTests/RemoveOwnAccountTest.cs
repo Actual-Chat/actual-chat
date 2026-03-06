@@ -1,4 +1,4 @@
-﻿using ActualChat.Chat;
+using ActualChat.Chat;
 using ActualChat.Testing.Host;
 using ActualLab.Mathematics;
 
@@ -48,7 +48,6 @@ public class RemoveOwnAccountTest(AppHostFixture fixture, ITestOutputHelper @out
         var idTile = idTileStack.GetOptimalCoveringTiles(new Range<long>(lastEntryLid, lastEntryLid + 1))[^1];
         await FluentActions.Awaiting(() => chats.GetTile(session,
                 chat.Id,
-                ChatEntryKind.Text,
                 idTile.Range,
                 CancellationToken.None))
             .Should()
@@ -58,7 +57,6 @@ public class RemoveOwnAccountTest(AppHostFixture fixture, ITestOutputHelper @out
         var idTileActual = idTileStack.GetOptimalCoveringTiles(new Range<long>(lastActualEntryId, lastActualEntryId + 1))[^1];
         var tile = await chats.GetTile(session,
                 TestChatId,
-                ChatEntryKind.Text,
                 idTileActual.Range,
                 CancellationToken.None);
         tile.Entries.Should().NotContain(e => e.LocalId == lastActualEntryId);
@@ -83,7 +81,7 @@ public class RemoveOwnAccountTest(AppHostFixture fixture, ITestOutputHelper @out
                 if (count-- <= 0)
                     return entries.ToArray();
 
-                var command = new Chats_UpsertTextEntry(session, chatId, null) { Text = text };
+                var command = new Chats_UpsertEntry(session, chatId, null) { Text = text };
                 var entry = await commander.Call(command, CancellationToken.None).ConfigureAwait(false);
                 entries.Add(entry);
             }

@@ -119,9 +119,9 @@
 
     // Nested types
 
-    public sealed class Model(ChatId parentChatId, TextEntryId[] textEntryIds) {
+    public sealed class Model(ChatId parentChatId, ChatEntryId[] textEntryIds) {
         public ChatId ParentChatId { get; } = parentChatId;
-        public TextEntryId[] TextEntryIds { get; } = textEntryIds;
+        public ChatEntryId[] TextEntryIds { get; } = textEntryIds;
         public string Title { get; set; } = "";
         public string Description { get; set; } = "";
     }

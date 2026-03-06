@@ -14,7 +14,7 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
     public DbSet<DbMention> Mentions { get; protected set; } = null!;
     public DbSet<DbReaction> Reactions { get; protected set; } = null!;
     public DbSet<DbReactionSummary> ReactionSummaries { get; protected set; } = null!;
-    public DbSet<DbTextEntryAttachment> TextEntryAttachments { get; protected set; } = null!;
+    public DbSet<DbChatEntryAttachment> ChatEntryAttachments { get; protected set; } = null!;
     public DbSet<DbAuthor> Authors { get; protected set; } = null!;
     public DbSet<DbRole> Roles { get; protected set; } = null!;
     public DbSet<DbAuthorRole> AuthorRoles { get; protected set; } = null!;
@@ -49,10 +49,11 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
         chatEntry.Property(e => e.Id).UseCollation("C");
         chatEntry.Property(e => e.ChatId).UseCollation("C");
         chatEntry.Property(e => e.AuthorId).UseCollation("C");
-        chatEntry.Property(e => e.StreamId).UseCollation("C");
+        chatEntry.Property(e => e.ContentStreamId).UseCollation("C");
+        chatEntry.Property(e => e.AudioId).UseCollation("C");
         chatEntry.Property(e => e.ForwardedAuthorId).UseCollation("C");
         chatEntry.Property(e => e.LinkPreviewIds).UseCollation("C");
-        chatEntry.HasIndex(e => e.StreamId).HasFilter("\"kind\" = 0 AND \"stream_id\" IS NOT NULL");
+        chatEntry.HasIndex(e => e.ContentStreamId).HasFilter("\"kind\" = 0 AND \"content_stream_id\" IS NOT NULL");
 
         var chatEntryLanguage = model.Entity<DbChatEntryLanguage>();
         chatEntryLanguage.Property(e => e.Id).UseCollation("C");
@@ -74,11 +75,11 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
         reactionSummary.Property(e => e.Id).UseCollation("C");
         reactionSummary.Property(e => e.EntryId).UseCollation("C");
 
-        var textEntryAttachment = model.Entity<DbTextEntryAttachment>();
-        textEntryAttachment.Property(e => e.Id).UseCollation("C");
-        textEntryAttachment.Property(e => e.EntryId).UseCollation("C");
-        textEntryAttachment.Property(e => e.MediaId).UseCollation("C");
-        textEntryAttachment.Property(a => a.ThumbnailMediaId).UseCollation("C");
+        var ChatEntryAttachment = model.Entity<DbChatEntryAttachment>();
+        ChatEntryAttachment.Property(e => e.Id).UseCollation("C");
+        ChatEntryAttachment.Property(e => e.EntryId).UseCollation("C");
+        ChatEntryAttachment.Property(e => e.MediaId).UseCollation("C");
+        ChatEntryAttachment.Property(a => a.ThumbnailMediaId).UseCollation("C");
 
         var authors = model.Entity<DbAuthor>();
         authors.Property(e => e.Id).UseCollation("C");

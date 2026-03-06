@@ -7,7 +7,7 @@
         return;
 
     var entry = m.Entry;
-    var messageLink = Links.Chat(entry.Id.ToTextEntryId()).ToAbsolute(UrlMapper);
+    var messageLink = Links.Chat(entry.Id).ToAbsolute(UrlMapper);
     var canCopyMessageLink = !entry.IsSystemEntry;
 }
 

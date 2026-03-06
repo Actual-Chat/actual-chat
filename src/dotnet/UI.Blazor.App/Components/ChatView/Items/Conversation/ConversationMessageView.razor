@@ -92,7 +92,7 @@
             return;
 
         var conversation = Message.Conversation!;
-        var chatEntryId = TextEntryId.New(conversation.Id.ChatId, conversation.Id.StartEntryLid);
+        var chatEntryId = ChatEntryId.New(conversation.Id.ChatId, conversation.Id.StartEntryLid);
         _fakeEntry = new (chatEntryId);
         _lastMessage = Message;
     }
@@ -115,7 +115,7 @@
         await ClipboardUI.WriteText(text).ConfigureAwait(false);
     }
 
-    private (TextEntryAttachment[], TextEntryAttachment[]) GetOrderedAttachmentList(TextEntryAttachment[] attachments)
+    private (ChatEntryAttachment[], ChatEntryAttachment[]) GetOrderedAttachmentList(ChatEntryAttachment[] attachments)
         => (attachments.Where(a => a.IsVisualMedia()).ToArray(),
             attachments.Where(a => !a.IsVisualMedia()).ToArray());
 }

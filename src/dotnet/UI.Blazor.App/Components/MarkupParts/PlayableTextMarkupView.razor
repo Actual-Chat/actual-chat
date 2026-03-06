@@ -87,7 +87,7 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         // Let's store everything locally to make sure we can safely "leave" Blazor dispatcher's "thread"
         var chatId = Entry.ChatId;
-        var audioEntryId = Entry.AudioEntryLid;
+        var hasAudio = Entry.HasAudio;
         var markup = Markup;
         var rendered = _rendered;
         var entryId = Entry.Id;
@@ -112,7 +112,7 @@
 
         async Task<Model> InnerComputeState(CancellationToken cancellationToken1)
         {
-            if (audioEntryId == null)
+            if (!hasAudio)
                 return Model.None;
 
             if (markup.TimeRange.IsEmptyOrNegative)
@@ -122,7 +122,7 @@
             if (replayState is null || replayState.ChatId != chatId)
                 return Model.None;
 
-            var trackId = ChatAudioTrackInfo.ComposeTrackId(chatId, audioEntryId.GetValueOrDefault());
+            var trackId = ChatAudioTrackInfo.ComposeTrackId(chatId, Entry.LocalId);
             if (await ActivePlaybackInfo.GetTrackInfo(trackId, cancellationToken1).ConfigureAwait(false) is not ChatAudioTrackInfo trackInfo)
                 return Model.None;
 
@@ -177,14 +177,7 @@
         if (startTimeOpt is not { } startTime)
             return;
 
-        var audioEntryId = AudioEntryId.New(chatId, entry.AudioEntryLid ?? -1);
-        var audioEntry = await Chats.GetEntry(Session, audioEntryId);
-        if (audioEntry == null) {
-            Log.LogWarning("Can't play: audio entry with Id = {Id} doesn't exist", audioEntryId);
-            return; // We can't do much in this case
-        }
-
-        var startAt = audioEntry.BeginsAt + TimeSpan.FromSeconds(startTime - 0.25);
+        var startAt = entry.BeginsAt + TimeSpan.FromSeconds(startTime - 0.25);
         var chatAudioUI = Services.GetRequiredService<ChatAudioUI>();
         chatAudioUI.StartReplay(chatId, startAt);
     }

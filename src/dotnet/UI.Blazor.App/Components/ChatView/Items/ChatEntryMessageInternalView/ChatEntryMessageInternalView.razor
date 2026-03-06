@@ -41,10 +41,10 @@
     RenderFragment statusFragment = (__builder) => {
         var status = ChatMessageSendingStatus.MessageStatus.Default;
         if (entry.IsSending) {
-            if (!entry.HasAttachmentUploads)
+            if (!entry.HasUploadingAttachments)
                 status = ChatMessageSendingStatus.MessageStatus.Sending;
         }
-        else if (entry.HasAttachmentUploads) {
+        else if (entry.HasUploadingAttachments) {
             // Use default
         }
         else if (IsUnreadByOthers) {
@@ -64,7 +64,7 @@
 }
 <p @ref="Ref" class="chat-message-markup @translationCls @streamingCls">
     @if (message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign)) {
-        <ChatEntryKindView Kind="@(entry.HasAudioEntry ? ChatEntryKind.Audio : entry.Kind)"/>
+        <ChatEntryKindView IsTranscribed="@entry.HasAudio"/>
     }
     @if (m.IsStreaming) {
         @if (!sm.RetainedText.IsNullOrEmpty()) {
@@ -95,7 +95,7 @@
         @if (!_temporaryText.IsNullOrEmpty()) {
             <div class="temporary-container hide">
                 @if (message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign)) {
-                    <ChatEntryKindView Kind="@(entry.HasAudioEntry ? ChatEntryKind.Audio : entry.Kind)"/>
+                    <ChatEntryKindView IsTranscribed="@entry.HasAudio"/>
                 }
                 <span>@_temporaryText</span>
             </div>
@@ -119,12 +119,12 @@
     private static readonly double AnimationDurationMs = Constants.Transcription.ThrottlePeriod.TotalMilliseconds;
     private static readonly int AnimationSpanCount = (int)Math.Round(AnimationDurationMs / (1000.0 / 15));
     private static readonly double AnimationSpanDurationMs = AnimationDurationMs / AnimationSpanCount;
-    private static readonly IThreadSafeLruCache<TextEntryId, TranscriptStreamer> StreamersCache = new ThreadSafeLruCache<TextEntryId, TranscriptStreamer>(100);
+    private static readonly IThreadSafeLruCache<ChatEntryId, TranscriptStreamer> StreamersCache = new ThreadSafeLruCache<ChatEntryId, TranscriptStreamer>(100);
 
     private string? _temporaryText;
     private Model? _rendered;
     private TranscriptStreamer _streamer = null!;
-    private TextEntryId _textEntryId = null!;
+    private ChatEntryId _textEntryId = null!;
     private ILogger Log => Hub.LogFor(GetType());
     private IMarkupParser MarkupParser => ChatContext.ChatMarkupHub.Parser;
     private ChatUI ChatUI => Hub.ChatUI;
@@ -168,7 +168,7 @@
 
     protected override void OnInitialized() {
         var messageEntry = Message.Entry;
-        _textEntryId = TextEntryId.New(messageEntry.ChatId, messageEntry.LocalId);
+        _textEntryId = ChatEntryId.New(messageEntry.ChatId, messageEntry.LocalId);
         // Log.LogInformation("ChatEntryMessageInternalView.OnInitialized: {Id}", _textEntryId);
 
         if (StreamersCache.TryGetValue(_textEntryId, out var cached)) {
@@ -185,7 +185,7 @@
         }
 
         _streamer = new(_textEntryId, Hub);
-        if (Message.Entry.IsStreaming) {
+        if (Message.Entry.IsContentStreaming) {
             // Add if the entry was created as streaming
             var added = StreamersCache.GetOrAdd(_textEntryId, _ => _streamer);
             // If the instance in the cache is the newly created _streamer, start streaming.
@@ -214,7 +214,7 @@
                 || _rendered.IsStreaming != stateValue.IsStreaming
                 || _rendered.Entry.ContentHash != stateValue.Entry.ContentHash
                 || _rendered.Entry.IsSending != stateValue.Entry.IsSending
-                || _rendered.Entry.HasAudioEntry != stateValue.Entry.HasAudioEntry
+                || _rendered.Entry.HasAudio != stateValue.Entry.HasAudio
                 || _rendered.Markup != stateValue.Markup
                 || _rendered.Translation != stateValue.Translation
                 || _rendered.IsUnread != stateValue.IsUnread
@@ -271,14 +271,14 @@
         if (!mustTranslate)
             return new(markup, entry, TranslationState.None, TranscriptStreamerState.None, isUnreadByOthers, isUnreadByOthersBlockStart);
 
-        var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
+        var translation = await TranslationUI.Get(entry.Id, cancellationToken).ConfigureAwait(false);
         if (translation is null)
             return new(markup, entry, TranslationState.Translating, TranscriptStreamerState.None, isUnreadByOthers, isUnreadByOthersBlockStart);
 
         if (translation.MatchesOriginal(entry.Content))
             return new(markup, entry, translation.IsStreaming ? TranslationState.Translating : TranslationState.None, TranscriptStreamerState.None, isUnreadByOthers, isUnreadByOthersBlockStart);
 
-        var translatedMarkup = entry.HasMediaEntry
+        var translatedMarkup = entry.HasAudio
             ? new PlayableTextMarkup(translation.Content, translation.GetTimeMap(entry))
             : MarkupParser.Parse(translation.Content);
 
@@ -295,6 +295,6 @@
         bool IsUnread,
         bool IsUnreadBlockStart)
     {
-        public bool IsStreaming => Entry.IsStreaming || Streaming.IsStreaming;
+        public bool IsStreaming => Entry.IsContentStreaming || Streaming.IsStreaming;
     }
 }

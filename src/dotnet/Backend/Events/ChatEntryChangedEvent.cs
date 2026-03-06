@@ -3,7 +3,7 @@ using ActualChat.Chat;
 namespace ActualChat;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-public partial record TextEntryChangedEvent(
+public partial record ChatEntryChangedEvent(
     [property: DataMember, MemoryPackOrder(1)] ChatEntry Entry,
     [property: DataMember, MemoryPackOrder(2)] AuthorFull Author,
     [property: DataMember, MemoryPackOrder(3)] ChangeKind ChangeKind,

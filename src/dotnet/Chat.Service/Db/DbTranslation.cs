@@ -49,7 +49,7 @@ public class DbTranslation : IHasId<string>, IHasVersion<long>, IRequirementTarg
         Id = id.Value;
         var sourceId = id.SourceId;
         ChatId = sourceId.ChatId.Value;
-        EntryId = sourceId.Kind is TranslationIdKind.TextEntry ? sourceId.GetChatEntryId().Value : null;
+        EntryId = sourceId.Kind is TranslationIdKind.ChatEntry ? sourceId.GetChatEntryId().Value : null;
         Version = model.Version;
         Content = model.Content;
         SourceContentHash = model.SourceContentHash;

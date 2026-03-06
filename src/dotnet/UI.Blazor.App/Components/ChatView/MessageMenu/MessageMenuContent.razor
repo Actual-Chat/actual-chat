@@ -4,21 +4,21 @@
     var e = ChatEntry;
     var hasSelection = SelectionUI.HasSelection.Value;
     var isSelected = SelectionUI.IsSelected(e.Id);
-    var isForwarded = e.ForwardedAuthorId is not null;
-    var showPlayButton = ScreenSize.IsNarrow() && e.AudioEntryLid.HasValue && !hasSelection;
-    var isTextEntry = e is { Kind: ChatEntryKind.Text, IsStreaming: false };
+    var isForwarded = e.Forwarded is not null;
+    var showPlayButton = ScreenSize.IsNarrow() && e.HasAudio && !hasSelection;
+    var isTextEntry = !e.IsContentStreaming;
     var canDelete = CanWrite && (IsOwnEntry || IsOwner) && isTextEntry && !hasSelection;
     var canEdit = CanWrite && IsOwnEntry && isTextEntry && !isForwarded && !hasSelection;
-    var messageLink = Links.Chat(e.Id.ToTextEntryId()).ToAbsolute(UrlMapper);
-    var canReply = !e.IsStreaming && CanWrite && !IsSystem;
+    var messageLink = Links.Chat(e.Id).ToAbsolute(UrlMapper);
+    var canReply = !e.IsContentStreaming && CanWrite && !IsSystem;
     var canCopyText = isTextEntry && !e.Content.IsNullOrEmpty();
     var canCopyLink = !ClickedLinkUrl.IsNullOrEmpty();
     var canCopyCode = !ClickedCode.IsNullOrEmpty();
     var canCopyMessageLink = !IsSystem;
-    var canForward = !e.IsStreaming && !IsSystem && !hasSelection;
-    var canStartThread = !e.IsStreaming && !IsSystem && !hasSelection;
+    var canForward = !e.IsContentStreaming && !IsSystem && !hasSelection;
+    var canStartThread = !e.IsContentStreaming && !IsSystem && !hasSelection;
     // Selection
-    var canSelect = !e.IsStreaming && !IsSystem && !isSelected;
+    var canSelect = !e.IsContentStreaming && !IsSystem && !isSelected;
     var canUnselect = isSelected;
 }
 
@@ -175,7 +175,7 @@
     [Parameter, EditorRequired] public bool CanWrite { get; set; }
 
     private Task Reply()
-        => ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Reply, (TextEntryId)ChatEntry.Id, focusOnEditor: true);
+        => ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Reply, ChatEntry.Id, focusOnEditor: true);
 
     private void ShowAllReactions()
         => _showAllReactions = true;
@@ -186,7 +186,7 @@
         var reaction = new Reaction {
             Id = Symbol.Empty,
             AuthorId = null!,
-            EntryId = ChatEntry.Id.ToTextEntryId(),
+            EntryId = ChatEntry.Id,
             Emoji = emoji,
         };
         _ = Hub.AccountSettings.UserReactionSettings().Update(s => s.WithBubbleUp(emoji.Id.Value));

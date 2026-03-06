@@ -321,7 +321,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
     private async Task PostInternal(PostMessageRequestInternal request, TaskCompletionSource<ChatEntry?> resultSource, CancellationToken cancellationToken)
     {
         var discardSendRequest = false;
-        TextEntryId? textEntryId = null;
+        ChatEntryId? ChatEntryId = null;
         try {
             DebugLog?.LogDebug(
                 "Sending message: LocalId={LocalId}, Content='{Content}', ClientId='{ClientId}', NewChatEntryLocalId={NewChatEntryLocalId}",
@@ -333,15 +333,15 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 cancellationTokenSource.Cancel();
             });
             if (request.NewChatEntryLocalId.HasValue)
-                textEntryId = TextEntryId.New(request.ChatId, request.NewChatEntryLocalId.Value);
-            var result = textEntryId is null
+                ChatEntryId = ChatEntryId.New(request.ChatId, request.NewChatEntryLocalId.Value);
+            var result = ChatEntryId is null
                 ? await ExecutePostRequestViaQueue(request, cancellationToken1).ConfigureAwait(false)
-                : await TryGetExistentPostMessage(textEntryId, cancellationToken1).ConfigureAwait(false);
+                : await TryGetExistentPostMessage(ChatEntryId, cancellationToken1).ConfigureAwait(false);
 
             var chatSendingMessages = GetChatSendingMessages(request.ChatId);
             if (result.IsValue(out var chatEntry1, out var exception)) {
-                textEntryId = (TextEntryId)chatEntry1.Id;
-                var hasAttachmentUploads = request.AttachmentUploads is not null;// chatEntry1.HasAttachmentUploads || chatEntry1.Attachments.Any(c => !(c.Media?.IsReady ?? false));
+                ChatEntryId = chatEntry1.Id;
+                var hasAttachmentUploads = request.AttachmentUploads is not null;// chatEntry1.HasUploadingAttachments || chatEntry1.Attachments.Any(c => !(c.Media?.IsReady ?? false));
                 chatSendingMessages.ConfirmMessageHasSent(sendingMessage, chatEntry1, Now, !hasAttachmentUploads);
                 _mediaUploadsUI.Invalidate(sendingMessage);
                 try {
@@ -384,8 +384,8 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             if (request.AttachmentUploads is not null)
                 await CleanupAttachments(request.Uuid, request.AttachmentUploads.Attachments.Items)
                     .ConfigureAwait(false);
-            if (discardSendRequest && textEntryId is not null)
-                await RemoveChatEntry(textEntryId, cancellationToken).ConfigureAwait(false);
+            if (discardSendRequest && ChatEntryId is not null)
+                await RemoveChatEntry(ChatEntryId, cancellationToken).ConfigureAwait(false);
         }
 
         var task = resultSource.Task;
@@ -429,7 +429,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         return result;
     }
 
-    private async Task<Result<ChatEntry>> TryGetExistentPostMessage(TextEntryId chatEntryId, CancellationToken cancellationToken1)
+    private async Task<Result<ChatEntry>> TryGetExistentPostMessage(ChatEntryId chatEntryId, CancellationToken cancellationToken1)
     {
         Result<ChatEntry> result;
         var chatEntry = await Hub.Chats.GetEntry(Hub.Session, chatEntryId, cancellationToken1).ConfigureAwait(false);
@@ -464,7 +464,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         await request.AttachmentUploads.WhenUploaded.WaitAsync(cancellationToken).ConfigureAwait(false);
         if (request.AttachmentUploads.Attachments.Count == 0 && chatEntry.Content.IsNullOrEmpty()) {
             // Remove the message if it has no attachments and no content.
-            await RemoveChatEntry((TextEntryId)chatEntry.Id, cancellationToken).ConfigureAwait(false);
+            await RemoveChatEntry(chatEntry.Id, cancellationToken).ConfigureAwait(false);
             chatEntry1 = null;
         }
         else {
@@ -475,23 +475,20 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 .Select(c => c?.MediaRef)
                 .SkipNullItems()
                 .ToDictionary(c => c.MediaId, c => c);
-            var attachments = chatEntry.AttachmentUploads;
-            if (attachments.Length == 0)
-                attachments = chatEntry.Attachments;
-            var entryAttachments = attachments
+            var entryAttachments = chatEntry.Attachments
                 .Select(c => new { Attachment = c, MediaRef = mediaContents.GetValueOrDefault(c.MediaId) })
                 .Where(c => c.MediaRef is not null)
-                .Select(c => new TextEntryAttachment {
+                .Select(c => new ChatEntryAttachment {
                     Id = c.Attachment.Id,
                     MediaId = c.MediaRef!.MediaId,
                     ThumbnailMediaId = c.MediaRef.ThumbnailMediaId,
                 }).ToArray();
 
             // Finalize the message with attachments.
-            var cmd = new Chats_UpsertTextEntry(Session, chatEntry.ChatId, chatEntry.LocalId) {
+            var cmd = new Chats_UpsertEntry(Session, chatEntry.ChatId, chatEntry.LocalId) {
                 Text = chatEntry.Content,
-                EntryAttachments = entryAttachments,
-                HasAttachmentUploads = false,
+                Attachments = entryAttachments,
+                HasUploadingAttachments = false,
             };
             chatEntry1 = await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
         }
@@ -519,9 +516,9 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         handler.Invoke(afterSendMessageHandler.Args, result);
     }
 
-    private async Task RemoveChatEntry(TextEntryId chatEntryId, CancellationToken cancellationToken)
+    private async Task RemoveChatEntry(ChatEntryId chatEntryId, CancellationToken cancellationToken)
     {
-        var cmd = new Chats_RemoveTextEntry(Session, chatEntryId.ChatId, chatEntryId.LocalId);
+        var cmd = new Chats_RemoveEntry(Session, chatEntryId.ChatId, chatEntryId.LocalId);
         await Commander.Run(cmd, cancellationToken).ConfigureAwait(false);
     }
 

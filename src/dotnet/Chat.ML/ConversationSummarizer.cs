@@ -13,7 +13,7 @@ namespace ActualChat.Chat.ML;
 public interface IConversationSummarizer
 {
     Task<ConversationSummarizerResult> Summarize(
-        IReadOnlyCollection<TextEntry> chatEntries,
+        IReadOnlyCollection<ChatEntrySlim> chatEntries,
         CancellationToken cancellationToken);
 }
 
@@ -45,7 +45,7 @@ public class ConversationSummarizer(ConversationSummarizer.Options settings, ISe
     private IPromptTemplate PromptTemplate => field ??= BuildPromptTemplate();
 
     public async Task<ConversationSummarizerResult> Summarize(
-        IReadOnlyCollection<TextEntry> chatEntries,
+        IReadOnlyCollection<ChatEntrySlim> chatEntries,
         CancellationToken cancellationToken)
     {
         if (PromptTemplateString.IsNullOrEmpty())
@@ -156,7 +156,7 @@ public class ConversationSummarizer(ConversationSummarizer.Options settings, ISe
         return chatHistory;
     }
 
-    public async Task<Language?> GetMostCommonLanguage(ChatId chatId, IReadOnlyCollection<TextEntry> chatEntries, CancellationToken cancellationToken)
+    public async Task<Language?> GetMostCommonLanguage(ChatId chatId, IReadOnlyCollection<ChatEntrySlim> chatEntries, CancellationToken cancellationToken)
     {
         if (chatEntries.Count == 0)
             return null;
@@ -298,7 +298,7 @@ public record ConversationSummarizerResult
 public class ConversationSummarizerStub: IConversationSummarizer
 {
     public Task<ConversationSummarizerResult> Summarize(
-        IReadOnlyCollection<TextEntry> chatEntries,
+        IReadOnlyCollection<ChatEntrySlim> chatEntries,
         CancellationToken cancellationToken)
     {
         var firstEntry = chatEntries.FirstOrDefault();

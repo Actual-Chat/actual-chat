@@ -15,7 +15,7 @@ public sealed partial record Reaction : IHasId<Symbol>, IHasVersion<long>, IRequ
     [DataMember, MemoryPackOrder(0)] public required Symbol Id { get; init; }
     [DataMember, MemoryPackOrder(1)] public long Version { get; init; }
     [DataMember, MemoryPackOrder(2)] public required AuthorId AuthorId { get; init; }
-    [DataMember, MemoryPackOrder(3)] public required TextEntryId EntryId { get; init; }
+    [DataMember, MemoryPackOrder(3)] public required ChatEntryId EntryId { get; init; }
     [DataMember, MemoryPackOrder(4)] public required Emoji Emoji { get; init; }
     [DataMember, MemoryPackOrder(5)] public Moment ModifiedAt { get; init; }
 

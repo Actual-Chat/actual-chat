@@ -19,9 +19,19 @@ internal static class MetadataExt
         if (value == null)
             return @default;
 
-        // TODO: remove this workaround when int is not deserialized as long
-        if (typeof(T) == typeof(int))
+        // TODO(AY): remove this workaround when int is not deserialized as long
+        if (typeof(T) == typeof(int) && value is not int)
             value = Convert.ToInt32(value, CultureInfo.InvariantCulture);
+
+        // TODO(AY): remove this workaround once we touch all Media
+        if (typeof(T) == typeof(Moment) && value is not Moment) {
+            // Handle legacy data stored as EpochOffsetTicks (long) or ISO8601 string instead of Moment
+            value = value switch {
+                long ticks => new Moment(ticks),
+                string s => Moment.Parse(s),
+                _ => throw new InvalidCastException($"Cannot convert {value.GetType().Name} to Moment."),
+            };
+        }
 
         return (T)value;
     }

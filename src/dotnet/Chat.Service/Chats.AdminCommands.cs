@@ -71,9 +71,9 @@ public partial class Chats
             }
             var content = string.Join("\n", lines);
 
-            var textEntryId = TextEntryId.New(chatId, 0);
+            var chatEntryId = ChatEntryId.New(chatId, 0);
             var upsertCommand = new ChatsBackend_ChangeEntry(
-                textEntryId,
+                chatEntryId,
                 null,
                 Change.Create(new ChatEntryDiff {
                     AuthorId = author.Id,
@@ -111,9 +111,9 @@ public partial class Chats
         }
 
         var message = $"Bot army: created {count} bots (testbot{startIndex}..testbot{startIndex + count - 1}), {count} new contacts";
-        var textEntryId = TextEntryId.New(chatId, 0);
+        var chatEntryId = ChatEntryId.New(chatId, 0);
         var upsertCommand = new ChatsBackend_ChangeEntry(
-            textEntryId,
+            chatEntryId,
             null,
             Change.Create(new ChatEntryDiff {
                 AuthorId = author.Id,

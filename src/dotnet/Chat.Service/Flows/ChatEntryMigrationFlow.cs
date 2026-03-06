@@ -40,7 +40,7 @@ public partial class ChatEntryMigrationFlow : Flow<(Moment, long, long)>
 
         if (TotalEntryCount == 0)
             TotalEntryCount = Math.Max(1, await dbContext.ChatEntries
-                .CountAsync(x => x.Kind == ChatEntryKind.Audio, cancellationToken)
+                .CountAsync(x => x.Kind == 1, cancellationToken) // 1 = legacy Audio kind
                 .ConfigureAwait(false));
         if (TotalChatCount == 0)
             TotalChatCount = Math.Max(1, await dbContext.Chats
@@ -65,7 +65,7 @@ public partial class ChatEntryMigrationFlow : Flow<(Moment, long, long)>
         // Get batch of text entries that have AudioEntryId set but no MediaId yet
         var batch = await dbContext.ChatEntries
             .Where(e => e.ChatId == chatId
-                && e.Kind == ChatEntryKind.Text
+                && e.Kind == 0 // 0 = Text kind
                 && e.AudioEntryId != null
                 && (e.AudioId == null || e.AudioId == "")) // Skipping already migrated entries
             .OrderBy(e => e.LocalId)
@@ -131,7 +131,8 @@ public partial class ChatEntryMigrationFlow : Flow<(Moment, long, long)>
         var audioEntryLid = textEntry.AudioEntryId!.Value;
 
         // Look up the corresponding audio entry
-        var audioEntryDbId = ChatEntryId.Format(chatId, ChatEntryKind.Audio, audioEntryLid);
+        // Legacy audio entries had kind=1, construct ID directly
+        var audioEntryDbId = $"{chatId.Value}:1:{audioEntryLid.Format()}";
         var audioEntry = await dbContext.ChatEntries
             .FirstOrDefaultAsync(e => e.Id == audioEntryDbId, cancellationToken)
             .ConfigureAwait(false);

@@ -1,4 +1,4 @@
-﻿using System.Security;
+using System.Security;
 using ActualChat.Contacts;
 using ActualChat.Invite;
 using ActualChat.Queues;
@@ -530,11 +530,11 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
         await commander2.Call(new Places_Join(session2, place.Id));
 
-        var cmd1 = new Chats_UpsertTextEntry(session1, chat.Id, null) { Text = "My first message" };
+        var cmd1 = new Chats_UpsertEntry(session1, chat.Id, null) { Text = "My first message" };
         var chatEntry1 = await commander1.Call(cmd1);
         chatEntry1.Should().NotBeNull();
 
-        var cmd2 = new Chats_UpsertTextEntry(session2, chat.Id, null) { Text = "And mine first message" };
+        var cmd2 = new Chats_UpsertEntry(session2, chat.Id, null) { Text = "And mine first message" };
         var chatEntry2 = await commander2.Call(cmd2);
         chatEntry2.Should().NotBeNull();
     }
@@ -558,7 +558,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         await commander1.Call(new Places_Invite(session1, place.Id, [account.Id]));
 
         var commander2 = tester2.Commander;
-        var cmd = new Chats_UpsertTextEntry(session2, chat.Id, null) { Text = "My first message" };
+        var cmd = new Chats_UpsertEntry(session2, chat.Id, null) { Text = "My first message" };
         var chatEntry = await commander2.Call(cmd);
         chatEntry.Should().NotBeNull();
         var authorId = chatEntry.AuthorId;
@@ -721,7 +721,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         chatUsers.Should().HaveCount(2).And.Contain(user2.Id);
 
         // NOTE: user2 should write a message to ensure explicit author exists for the chat.
-        var cmd = new Chats_UpsertTextEntry(session2, chat.Id, null) { Text = "Hello!" };
+        var cmd = new Chats_UpsertEntry(session2, chat.Id, null) { Text = "Hello!" };
         await commander2.Call(cmd);
 
         await commander1.Call(new Places_Exclude(session1, user2PlaceMember.Id));

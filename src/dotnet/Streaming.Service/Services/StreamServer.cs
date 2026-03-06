@@ -55,7 +55,7 @@ public class StreamServer(IServiceProvider services) : IStreamServer
         CancellationToken cancellationToken)
     {
         var chatIdTyped = ChatId.Parse(chatId);
-        var repliedEntryIdTyped = TextEntryId.ParseNullable(repliedChatEntryId);
+        var repliedEntryIdTyped = ChatEntryId.ParseNullable(repliedChatEntryId);
 
         var nodes = MeshWatcher.State.Value.LiveNodesByRole[HostRole.AudioBackend];
         if (nodes.Length == 0) {

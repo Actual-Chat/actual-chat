@@ -10,7 +10,7 @@ namespace ActualChat.Chat.ML;
 public interface IThreadInsightExtractor
 {
     Task<ThreadInsight> GetInsight(
-        IReadOnlyCollection<TextEntry> chatEntries,
+        IReadOnlyCollection<ChatEntrySlim> chatEntries,
         CancellationToken cancellationToken);
 }
 
@@ -38,7 +38,7 @@ public class ThreadInsightExtractor(ThreadInsightExtractor.Options settings, ISe
     private string PromptTemplate => field ??= File.ReadAllText(Settings.PromptFile).Trim();
 
     public async Task<ThreadInsight> GetInsight(
-        IReadOnlyCollection<TextEntry> chatEntries,
+        IReadOnlyCollection<ChatEntrySlim> chatEntries,
         CancellationToken cancellationToken)
     {
         var promptTemplate = PromptTemplate;
@@ -82,7 +82,7 @@ public record ThreadInsight(string Title, string Description);
 public class ThreadInsightExtractorStub : IThreadInsightExtractor
 {
     public Task<ThreadInsight> GetInsight(
-        IReadOnlyCollection<TextEntry> chatEntries,
+        IReadOnlyCollection<ChatEntrySlim> chatEntries,
         CancellationToken cancellationToken)
         => Task.FromResult(new ThreadInsight("", ""));
 }

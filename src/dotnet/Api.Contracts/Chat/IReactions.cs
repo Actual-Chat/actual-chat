@@ -1,4 +1,4 @@
-﻿namespace ActualChat.Chat;
+namespace ActualChat.Chat;
 
 /// <summary>
 /// Service for managing reactions (emoji responses) to chat messages.
@@ -6,12 +6,12 @@
 public interface IReactions : IComputeService
 {
     [ComputeMethod]
-    Task<Reaction?> Get(Session session, TextEntryId entryId, CancellationToken cancellationToken);
+    Task<Reaction?> Get(Session session, ChatEntryId entryId, CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<ReactionSummary[]> ListSummaries(
         Session session,
-        TextEntryId entryId,
+        ChatEntryId entryId,
         CancellationToken cancellationToken);
 
     [CommandHandler]

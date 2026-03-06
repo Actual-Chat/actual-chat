@@ -47,9 +47,9 @@ public class ContentLinksBackend(IServiceProvider services) : IContentLinksBacke
                     chat.Picture.ToPicture(),
                     chat.Description);
             }
-            case ContentKind.TextEntry: {
-                var textEntryId = (TextEntryId)id;
-                var textEntry = await ChatsBackend.GetEntry(textEntryId, cancellationToken).ConfigureAwait(false);
+            case ContentKind.ChatEntry: {
+                var chatEntryId = (ChatEntryId)id;
+                var textEntry = await ChatsBackend.GetEntry(chatEntryId, cancellationToken).ConfigureAwait(false);
                 if (textEntry is null)
                     return ContentLinkInfo.RemovedOrUnknown(contentId);
 

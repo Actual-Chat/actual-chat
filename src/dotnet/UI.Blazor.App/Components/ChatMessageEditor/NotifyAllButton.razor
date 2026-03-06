@@ -82,7 +82,7 @@
             return Model.DisabledNoWritePermission; // Disabled if user can't write in the chat.
 
         var chatIdRange = await Chats
-            .GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken)
+            .GetIdRange(Session, chatId, cancellationToken)
             .ConfigureAwait(false);
         if (chatIdRange.IsEmpty)
             return Model.DisabledNoMessage; // Disabled if no messages yet.
@@ -91,7 +91,7 @@
         var isRecentDuration = TimeSpan.FromSeconds(10);
         var oldMessageBeginsAtThreshold = Clock.Now - isRecentDuration;
 
-        var chatEntryReader = Hub.NewEntryReader(chatId, ChatEntryKind.Text);
+        var chatEntryReader = Hub.NewEntryReader(chatId);
         var foundEntry = await chatEntryReader.GetLast(
                 chatIdRange,
                 x => {

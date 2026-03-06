@@ -22,14 +22,11 @@ public partial class ChatsBackend
             if (context.Operation.Items[typeof(ChatEntryId)] is string invLastEntrySid) {
                 Log.LogInformation("OnCopyChat({CorrelationId}): InvLastEntrySid is {EntrySid}", correlationId, invLastEntrySid);
                 InvalidateTiles(newChatId,
-                    ChatEntryKind.Text,
                     ChatEntryId.Parse(invLastEntrySid).LocalId,
                     ChangeKind.Create,
                     false);
-                _ = GetIdRange(newChatId, ChatEntryKind.Text, true, default);
-                _ = GetIdRange(newChatId, ChatEntryKind.Text, false, default);
-                _ = GetIdRange(newChatId, ChatEntryKind.Audio, true, default);
-                _ = GetIdRange(newChatId, ChatEntryKind.Audio, false, default);
+                _ = GetIdRange(newChatId, true, default);
+                _ = GetIdRange(newChatId, false, default);
             }
             return default!;
         }
@@ -74,9 +71,9 @@ public partial class ChatsBackend
                         cancellationToken)
                     .ConfigureAwait(false);
 
-            var sourceChatRange = await GetIdRange(chatId, ChatEntryKind.Text, true, cancellationToken).ConfigureAwait(false);
+            var sourceChatRange = await GetIdRange(chatId, true, cancellationToken).ConfigureAwait(false);
             if (!sourceChatRange.IsEmpty) {
-                var newChatRange = await GetIdRange(newChatId, ChatEntryKind.Text, true, cancellationToken).ConfigureAwait(false);
+                var newChatRange = await GetIdRange(newChatId, true, cancellationToken).ConfigureAwait(false);
                 var startEntryId = !newChatRange.IsEmpty ? newChatRange.End : 1;
                 var endEntryId = sourceChatRange.End;
                 if (endEntryId > startEntryId)
@@ -330,7 +327,7 @@ public partial class ChatsBackend
         CancellationToken cancellationToken)
     {
         if (entryIdRange.IsEmpty)
-            return new CopyChatEntriesResult(0, null, new Range<long>());
+            return new CopyChatEntriesResult(0, null);
 
         Log.LogInformation(
             "-> CopyChatEntries({CorrelationId}), entry Id range is [{Start},{End})",
@@ -342,22 +339,12 @@ public partial class ChatsBackend
         var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
         await using var __ = transaction.ConfigureAwait(false);
 
-        var textEntriesResult = await CopyChatEntries(dbContext,
+        var result = await CopyChatEntries(dbContext,
                 context,
-                ChatEntryKind.Text,
                 entryIdRange,
                 batchLimit,
                 cancellationToken)
             .ConfigureAwait(false);
-
-        if (!textEntriesResult.AudioEntryId.IsEmpty)
-            await CopyChatEntries(dbContext,
-                    context,
-                    ChatEntryKind.Audio,
-                    textEntriesResult.AudioEntryId,
-                    batchLimit,
-                    cancellationToken)
-                .ConfigureAwait(false);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
@@ -366,13 +353,12 @@ public partial class ChatsBackend
             "<- CopyChatEntries({CorrelationId}), entry Id range is [{Start},{End})",
             context.CorrelationId, entryIdRange.Start, entryIdRange.End);
 
-        return textEntriesResult;
+        return result;
     }
 
     private async Task<CopyChatEntriesResult> CopyChatEntries(
         ChatDbContext dbContext,
         CopyChatEntriesContext context,
-        ChatEntryKind entryKind,
         Range<long> entryIdRange,
         int batchLimit,
         CancellationToken cancellationToken)
@@ -380,14 +366,11 @@ public partial class ChatsBackend
         var correlationId = context.CorrelationId;
         var chatSid = context.ChatId.Value;
         var newChatId = context.NewChatId;
-        var newChatSid = newChatId.Value;
         var migratedAuthors = context.MigratedAuthors;
         var mentionExtractor = MentionExtractor.Instance;
 
         var mentionUpdatesInsideContent = 0;
         var mentionUpdatesInSystemEntries = 0;
-        var minRelatedAudioEntryId = long.MaxValue;
-        var maxRelatedAudioEntryId = 0L;
 
         var minLocalId = entryIdRange.Start;
         var maxLocalId = entryIdRange.End;
@@ -395,7 +378,7 @@ public partial class ChatsBackend
         var reactionIds = new List<long>();
 
         var entries = await dbContext.ChatEntries
-            .Where(c => c.ChatId == chatSid && c.Kind == entryKind)
+            .Where(c => c.ChatId == chatSid && c.Kind == 0)
             .Where(c => c.LocalId >= minLocalId && c.LocalId < maxLocalId)
             .OrderBy(c => c.LocalId)
             .Take(batchLimit)
@@ -404,55 +387,29 @@ public partial class ChatsBackend
             .ConfigureAwait(false);
 
         if (entries.Count == 0)
-            return new CopyChatEntriesResult(0, null, new Range<long>());
+            return new CopyChatEntriesResult(0, null);
 
         var lastFetchedEntry = entries[^1];
 
         Log.LogInformation(
-            "OnCopyChat({CorrelationId}): about to process {Kind} chat entry range [{From},{To})",
-            correlationId, entryKind, minLocalId, lastFetchedEntry.LocalId + 1);
+            "OnCopyChat({CorrelationId}): about to process chat entry range [{From},{To})",
+            correlationId, minLocalId, lastFetchedEntry.LocalId + 1);
 
-        List<long> chatEntryWithMentionIds = new List<long>();
-        if (entryKind == ChatEntryKind.Text)
-            await InsertMentions(dbContext,
-                    chatSid,
-                    newChatId,
-                    correlationId,
-                    new Range<long>(entryIdRange.Start, lastFetchedEntry.LocalId + 1),
-                    migratedAuthors,
-                    chatEntryWithMentionIds,
-                    cancellationToken)
-                .ConfigureAwait(false);
-        else
-            chatEntryWithMentionIds = new List<long>();
+        var chatEntryWithMentionIds = new List<long>();
+        await InsertMentions(dbContext,
+                chatSid,
+                newChatId,
+                correlationId,
+                new Range<long>(entryIdRange.Start, lastFetchedEntry.LocalId + 1),
+                migratedAuthors,
+                chatEntryWithMentionIds,
+                cancellationToken)
+            .ConfigureAwait(false);
 
         DbChatEntry? dbLastProcessedEntry = null;
 
-        ICollection<long>? entryToSkipLocalIds = null;
-        if (entryKind == ChatEntryKind.Audio) {
-            var existentAudioEntryLocalIds = await dbContext.ChatEntries
-                .Where(c => c.ChatId == newChatSid && c.Kind == ChatEntryKind.Audio)
-                .Where(c => c.LocalId >= minLocalId && c.LocalId <= lastFetchedEntry.LocalId)
-                .Select(c => c.LocalId)
-                .ToListAsync(cancellationToken)
-                .ConfigureAwait(false);
-            if (existentAudioEntryLocalIds.Count > 0)
-                entryToSkipLocalIds = existentAudioEntryLocalIds;
-        }
-
         foreach (var dbChatEntry in entries) {
-            if (entryToSkipLocalIds != null && entryToSkipLocalIds.Contains(dbChatEntry.LocalId))
-                continue;
-
-            if (entryKind == ChatEntryKind.Text && dbChatEntry.AudioEntryId.HasValue) {
-                var audioEntryId = dbChatEntry.AudioEntryId.Value;
-                if (audioEntryId < minRelatedAudioEntryId)
-                    minRelatedAudioEntryId = audioEntryId;
-                if (audioEntryId > maxRelatedAudioEntryId)
-                    maxRelatedAudioEntryId = audioEntryId;
-            }
-
-            var newEntryId = ChatEntryId.New(newChatId, entryKind, dbChatEntry.LocalId);
+            var newEntryId = ChatEntryId.New(newChatId, dbChatEntry.LocalId);
             dbChatEntry.Id = newEntryId.Value;
             dbChatEntry.ChatId = newChatId.Value;
 
@@ -477,8 +434,7 @@ public partial class ChatsBackend
 
             dbChatEntry.AuthorId = newAuthorId.Value;
 
-            if (dbChatEntry.Kind == ChatEntryKind.Text
-                && chatEntryWithMentionIds.Contains(dbChatEntry.LocalId)) {
+            if (chatEntryWithMentionIds.Contains(dbChatEntry.LocalId)) {
                 var content = UpdateMentionsInContent(context.ChatId, dbChatEntry.Content, migratedAuthors, mentionExtractor);
                 if (!OrdinalEquals(content, dbChatEntry.Content)) {
                     dbChatEntry.Content = content;
@@ -518,16 +474,15 @@ public partial class ChatsBackend
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         if (attachmentIds.Count > 0)
-            await InsertTextEntryAttachments(correlationId, dbContext, chatSid, newChatId, attachmentIds, cancellationToken).ConfigureAwait(false);
+            await InsertChatEntryAttachments(correlationId, dbContext, chatSid, newChatId, attachmentIds, cancellationToken).ConfigureAwait(false);
 
         if (reactionIds.Count > 0)
             await InsertReactions(correlationId, dbContext, chatSid, newChatId, reactionIds, migratedAuthors, cancellationToken).ConfigureAwait(false);
 
         Log.LogInformation(
-            "OnCopyChat({CorrelationId}): inserted {Count} {Kind} chat entry records with local Ids [{From},{To})",
+            "OnCopyChat({CorrelationId}): inserted {Count} chat entry records with local Ids [{From},{To})",
             correlationId,
             entries.Count,
-            entryKind,
             minLocalId,
             maxLocalId);
 
@@ -542,39 +497,8 @@ public partial class ChatsBackend
                 correlationId, mentionUpdatesInSystemEntries);
 
         var lastProcessedEntryId = ChatEntryId.ParseNullable(dbLastProcessedEntry?.Id);
-        var audioRange = minRelatedAudioEntryId <= maxRelatedAudioEntryId
-            ? new Range<long>(minRelatedAudioEntryId, maxRelatedAudioEntryId + 1)
-            : new Range<long>();
-        return new CopyChatEntriesResult(entries.Count, lastProcessedEntryId, audioRange);
+        return new CopyChatEntriesResult(entries.Count, lastProcessedEntryId);
     }
-
-        // Что делать с форвардами, когда мы копируем записи?
-
-        // // NOTE: I expect that we don't have many entries with forward fields filled in so far
-        // // hence it's ok to fetch them all at once.
-        // var chatEntriesToUpdateForwardFields = await dbContext.ChatEntries
-        //     .Where(c => c.ForwardedAuthorId != null && c.ForwardedAuthorId.StartsWith(chatSid))
-        //     .ToListAsync(cancellationToken)
-        //     .ConfigureAwait(false);
-        //
-        // updateCount = 0;
-        // foreach (var dbChatEntry in chatEntriesToUpdateForwardFields) {
-        //     var forwardedAuthorId =
-        //         dbChatEntry.ForwardedAuthorId.RequireNonEmpty(nameof(DbChatEntry.ForwardedAuthorId));
-        //     var newAuthorId = migratedAuthors.GetNewAuthorId(forwardedAuthorId);
-        //     dbChatEntry.ForwardedAuthorId = newAuthorId.Value;
-        //     var forwardedChatEntryId =
-        //         dbChatEntry.ForwardedChatEntryId.RequireNonEmpty(nameof(DbChatEntry.ForwardedChatEntryId));
-        //     var chatEntryId = new ChatEntryId(forwardedChatEntryId);
-        //     var newChatEntrySid = ChatEntryId.Format(newChatId, chatEntryId.Kind, chatEntryId.LocalId);
-        //     dbChatEntry.ForwardedChatEntryId = newChatEntrySid;
-        //     updateCount++;
-        // }
-        //
-        // await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-        // Log.LogInformation("Updated ForwardedAuthorId and ForwardedChatEntryId for {Count} chat entry records",
-        //     updateCount);
 
     private string UpdateMentionsInContent(ChatId chatId, string content, MigratedAuthors migratedAuthors,
         MentionExtractor mentionExtractor)
@@ -594,7 +518,7 @@ public partial class ChatsBackend
         return content;
     }
 
-    private async Task InsertTextEntryAttachments(
+    private async Task InsertChatEntryAttachments(
         string correlationId,
         ChatDbContext dbContext,
         string chatSid,
@@ -609,7 +533,7 @@ public partial class ChatsBackend
         var lastId = attachmentsIds[^1];
         var attachmentIdPrefix = chatSid + ":0:";
         List<string> ids = attachmentsIds.Select(entryId => attachmentIdPrefix + entryId + ":").ToList();
-        var attachments = await dbContext.TextEntryAttachments
+        var attachments = await dbContext.ChatEntryAttachments
             .Where(c => c.Id.StartsWith(attachmentIdPrefix))
  #pragma warning disable CA1310
             .Where(c => ids.Any(x => c.Id.StartsWith(x)))
@@ -636,13 +560,13 @@ public partial class ChatsBackend
             .ConfigureAwait(false);
 
         foreach (var dbAttachment in attachments) {
-            var entryId = TextEntryId.Parse(dbAttachment.EntryId);
-            var newEntryId = TextEntryId.New(newChatId, entryId.LocalId);
-            dbAttachment.Id = DbTextEntryAttachment.ComposeId(newEntryId, dbAttachment.Index);
+            var entryId = ChatEntryId.Parse(dbAttachment.EntryId);
+            var newEntryId = ChatEntryId.New(newChatId, entryId.LocalId);
+            dbAttachment.Id = DbChatEntryAttachment.ComposeId(newEntryId, dbAttachment.Index);
             dbAttachment.EntryId = newEntryId.Value;
             dbAttachment.MediaId = RemapMedia(dbAttachment.MediaId);
             dbAttachment.ThumbnailMediaId = RemapMedia(dbAttachment.ThumbnailMediaId);
-            dbContext.TextEntryAttachments.Add(dbAttachment);
+            dbContext.ChatEntryAttachments.Add(dbAttachment);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -697,8 +621,8 @@ public partial class ChatsBackend
             var newAuthorId = migratedAuthor.NewAuthorId;
             dbReaction.AuthorId = newAuthorId.Value;
 
-            var entryId = TextEntryId.Parse(dbReaction.EntryId);
-            var newEntryId = TextEntryId.New(newChatId, entryId.LocalId);
+            var entryId = ChatEntryId.Parse(dbReaction.EntryId);
+            var newEntryId = ChatEntryId.New(newChatId, entryId.LocalId);
             dbReaction.EntryId = newEntryId.Value;
             dbReaction.Id = DbReaction.ComposeId(newEntryId, newAuthorId);
 
@@ -719,8 +643,8 @@ public partial class ChatsBackend
             .ConfigureAwait(false);
 
         foreach (var dbSummary in reactionSummaries) {
-            var entryId = TextEntryId.Parse(dbSummary.EntryId);
-            var newEntryId = TextEntryId.New(newChatId, entryId.LocalId);
+            var entryId = ChatEntryId.Parse(dbSummary.EntryId);
+            var newEntryId = ChatEntryId.New(newChatId, entryId.LocalId);
             dbSummary.EntryId = newEntryId.Value;
             dbSummary.Id = DbReactionSummary.ComposeId(newEntryId, dbSummary.Emoji);
 
@@ -788,7 +712,7 @@ public partial class ChatsBackend
 
         var mentions = await dbContext.Mentions
             .Where(c => c.ChatId == chatSid)
-            .Where(c => c.EntryLocalId >= minLocalId && c.EntryLocalId <= maxLocalId)
+            .Where(c => c.EntryLid >= minLocalId && c.EntryLid <= maxLocalId)
             .OrderBy(c => c.Id)
             .AsNoTracking()
             .ToListAsync(cancellationToken)
@@ -843,9 +767,9 @@ public partial class ChatsBackend
                 mentionId = parsedMentionId;
             }
             mention.MentionId = mentionId.Value;
-            mention.Id = DbMention.ComposeId(TextEntryId.New(newChatId, mention.EntryLocalId), mentionId);
+            mention.Id = DbMention.ComposeId(ChatEntryId.New(newChatId, mention.EntryLid), mentionId);
             dbContext.Mentions.Add(mention);
-            entryIdsCollector.Add(mention.EntryLocalId);
+            entryIdsCollector.Add(mention.EntryLid);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -931,6 +855,5 @@ public partial class ChatsBackend
 
     public sealed record CopyChatEntriesResult(
         long ProcessedChatEntryCount,
-        ChatEntryId? LastProcessedEntryId,
-        Range<long> AudioEntryId);
+        ChatEntryId? LastProcessedEntryId);
 }

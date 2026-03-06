@@ -57,7 +57,7 @@
         if (itemVisibility.IsEmpty)
             return "";
 
-        var chatEntryId = TextEntryId.New(chatId, itemVisibility.MinMessageLid);
+        var chatEntryId = ChatEntryId.New(chatId, itemVisibility.MinMessageLid);
         var chatEntry = await Chats.GetEntry(Session, chatEntryId, cancellationToken).ConfigureAwait(false);
         if (chatEntry == null)
             return "";

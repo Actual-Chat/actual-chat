@@ -68,8 +68,8 @@ public class ChatSerializationTests(ITestOutputHelper @out) : TestBase(@out)
         tile1.Entries.Length.Should().Be(tile2.Entries.Length);
         tile1.Entries[0].Should().BeEquivalentTo(tile2.Entries[0]);
 
-        var moment1 = tile1.Entries[0].ClientSideBeginsAt;
-        var moment2 = tile2.Entries[0].ClientSideBeginsAt;
+        var moment1 = tile1.Entries[0].Audio?.ClientSideBeginsAt;
+        var moment2 = tile2.Entries[0].Audio?.ClientSideBeginsAt;
         moment2.Should().Be(moment1);
 
         var bytes1 = MemoryPackByteSerializer.Default.Write(moment1.ToApiNullable(), typeof(ApiNullable<Moment>)).WrittenSpan.ToArray();

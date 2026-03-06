@@ -1,4 +1,4 @@
-﻿namespace ActualChat.Search;
+namespace ActualChat.Search;
 
 /// <summary>
 /// Represents a chat entry match from a search query.
@@ -10,9 +10,9 @@ public partial class EntrySearchResult : SearchResult
     public ApiSet<string> HighlightedWords { get; init; } = [];
 
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public TextEntryId EntryId => field ??= TextEntryId.Parse(Id);
+    public ChatEntryId EntryId => field ??= ChatEntryId.Parse(Id);
 
-    public EntrySearchResult(TextEntryId id, SearchMatch searchMatch)
+    public EntrySearchResult(ChatEntryId id, SearchMatch searchMatch)
         : base(id.Value, searchMatch)
     { }
 

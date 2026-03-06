@@ -2,6 +2,7 @@ using ActualChat.Audio;
 using ActualChat.Chat;
 using ActualChat.Diagnostics;
 using ActualChat.Kvas;
+using ActualChat.Media;
 using ActualChat.Streaming.Services;
 using ActualChat.Transcription;
 using ActualLab.Rpc;
@@ -36,6 +37,7 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
     private MomentClockSet Clocks => field ??= Services.Clocks();
     private IHostApplicationLifetime HostLifetime => field ??= Services.HostLifetime();
     private ILiveBackend LiveBackend => field ??= Services.GetRequiredService<ILiveBackend>();
+    private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
 
     public StreamingBackend(IServiceProvider services)
     {

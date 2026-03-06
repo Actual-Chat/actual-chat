@@ -202,7 +202,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
     }
 
     // [EventHandler]
-    public virtual Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
+    public virtual Task OnChatEntryChangedEvent(ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return Task.CompletedTask; // It just spawns other commands, so nothing to do here
@@ -211,7 +211,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         return UpdateIndexedEntries();
 
         Task UpdateIndexedEntries()
-            => entry.IsSystemEntry || entry.Kind != ChatEntryKind.Text
+            => entry.IsSystemEntry
                 ? Task.CompletedTask
                 : ResumeIndexingFlow<EntryIndexingFlow>(entry.ChatId.Value, cancellationToken);
     }

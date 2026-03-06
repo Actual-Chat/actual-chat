@@ -30,7 +30,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         if (conversation.AttachmentIds.Length > 0) {
             var textEntryIds = conversation.AttachmentIds
-                .Select(DbTextEntryAttachment.ExtractTextEntryId)
+                .Select(DbChatEntryAttachment.ExtractEntryId)
                 .Distinct()
                 .ToArray();
             var textEntries = await textEntryIds
@@ -311,7 +311,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             AttachmentIds = entriesInfo.Attachments.Select(c => c.Id).ToArray(),
         };
         var change = existingConversation != null
-            ? Change.Update(DiffEngine.Diff<Conversation,ConversationDiff>(existingConversation, conversation))
+            ? Change.Update(DiffEngine.Diff<Conversation, ConversationDiff>(existingConversation, conversation))
             : Change.Create(new ConversationDiff(conversation));
         var changeCommand = new ConversationBackend_Change(conversationId, expectedVersion, change);
         return await DbHub.Commander.Call(changeCommand, false, cancellationToken).ConfigureAwait(false);
@@ -376,19 +376,19 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             .ToList();
 
         var tiles = await idTiles
-            .Select(idTile => ChatsBackend.GetTile(chatId, ChatEntryKind.Text, idTile.Range, false, cancellationToken))
+            .Select(idTile => ChatsBackend.GetTile(chatId, idTile.Range, false, cancellationToken))
             .Collect(cancellationToken)
             .ConfigureAwait(false);
 
-        var textEntries = new List<TextEntry>();
-        var attachments = new List<TextEntryAttachment>();
+        var textEntries = new List<ChatEntrySlim>();
+        var attachments = new List<ChatEntryAttachment>();
         var attachmentCount = 0;
         var chatEntries = tiles
             .SelectMany(tile => tile.Entries)
             .Where(e => entryIdRanges.Any(r => r.Contains(e.LocalId)))
             .ToArray();
         foreach (var entry in chatEntries) {
-            textEntries.Add(new TextEntry(entry));
+            textEntries.Add(new ChatEntrySlim(entry));
             attachmentCount += entry.Attachments.Length;
             foreach(var attachment in entry.Attachments)
                 attachments.Add(attachment);
@@ -404,7 +404,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     // Nested types
     private record ConversationEntriesInfo(
-        IReadOnlyCollection<TextEntry> TextEntries,
-        IReadOnlyCollection<TextEntryAttachment> Attachments,
+        IReadOnlyCollection<ChatEntrySlim> TextEntries,
+        IReadOnlyCollection<ChatEntryAttachment> Attachments,
         int AttachmentCount);
 }
