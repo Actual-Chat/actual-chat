@@ -38,22 +38,24 @@ public sealed class IosPhotoGalleryFiles : IDisposable
     public MauiFileProvider Enqueue(PHPickerResult pickerResult, UTType preferredContentType)
     {
         var item = pickerResult.ItemProvider;
-        FilePath suggestedFileName = item.SuggestedName.NullIfEmpty();
-        var ext = MediaMimeTypes.TryGetExtension(item.ImplyMimeType(), out var ext1)
+        FilePath fileName = item.SuggestedName.NullIfEmpty();
+        var fileType = item.ImplyMimeType();
+        var ext = MediaMimeTypes.TryGetExtension(fileType, out var ext1)
             ? ext1
             : throw StandardError.Internal($"Failed to identify ext for asset {pickerResult.AssetIdentifier}");
-        var targetPath = AttachmentsDirectory | suggestedFileName.EnsureExt(ext).ToUnique();
+        fileName = fileName.EnsureExt(ext);
+        var cachedPath = AttachmentsDirectory | fileName.ToUnique();
 
-        var pendingFile = new PendingFile(targetPath, item, preferredContentType);
+        var pendingFile = new PendingFile(cachedPath, item, preferredContentType);
         _processor.Enqueue(pendingFile);
 
-        Log.LogDebug("Enqueued file '{TargetPath}' for background loading", targetPath);
+        Log.LogDebug("Enqueued file '{TargetPath}' for background loading", cachedPath);
 
         var fileProvider = new MauiFileProvider {
-            FileRef = targetPath,
+            FileRef = cachedPath,
             Metadata = new() {
-                FileName = suggestedFileName,
-                FileType = item.ImplyMimeType(),
+                FileName = fileName,
+                FileType = fileType,
             },
         };
         fileProvider.Initialize(_services);
