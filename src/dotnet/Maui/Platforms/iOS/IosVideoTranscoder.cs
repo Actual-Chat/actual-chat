@@ -143,9 +143,7 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
         FilePath outputDir = new FilePath(FileSystem.CacheDirectory) | "transcoded";
         Directory.CreateDirectory(outputDir);
         FilePath outputPath = outputDir | $"{sourcePath.FileNameWithoutExtension}.mp4";
-        if (File.Exists(outputPath))
-            outputPath = outputPath.ToUnique();
-        return outputPath;
+        return outputPath.ToUnique();
     }
 
     private async Task<(CGSize Resolution, float Bitrate, CMVideoCodecType Codec)?> GetVideoInfo(FilePath filePath)

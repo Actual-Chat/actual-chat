@@ -33,8 +33,16 @@ public static class FilePathExt
             : path;
     }
 
-    public static FilePath ToUnique(this FilePath path, int randomLength = 5)
-        => path.DirectoryPath | $"{path.FileNameWithoutExtension}-{RandomStringGenerator.Default.Next(randomLength)}{path.Extension}";
+    public static FilePath ToUnique(this FilePath path, bool ensureNotExists = true, int randomLength = 5)
+    {
+        var uniquePath = path.DirectoryPath | $"{path.FileNameWithoutExtension}-{RandomStringGenerator.Default.Next(randomLength)}{path.Extension}";
+        if (!ensureNotExists)
+            return uniquePath;
+
+        for (var i = 1; i < 100 && File.Exists(uniquePath); i++)
+            uniquePath = path.DirectoryPath | $"{path.FileNameWithoutExtension}-{RandomStringGenerator.Default.Next(randomLength)}{path.Extension}";
+        return uniquePath;
+    }
 
     public static FilePath EnsureExt(this FilePath path, string ext)
         => path.HasExtension && OrdinalEquals(path.Extension, ext) ? path : path.ChangeExtension(ext);
