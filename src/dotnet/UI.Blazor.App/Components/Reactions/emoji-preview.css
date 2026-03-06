@@ -1,3 +1,12 @@
+/* Suppress native touch behaviors on emoji elements to enable JS long-press */
+[data-emoji-preview] {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-user-drag: none;
+    touch-action: manipulation;
+}
+
 .emoji-preview-overlay {
     @apply fixed z-[10000];
     @apply flex items-center justify-center;

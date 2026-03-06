@@ -43,8 +43,10 @@
 
     private Task ToggleReaction(Emoji emoji) {
         _ = Hub.TuneUI.Play(Tune.React);
-        if (OwnReaction?.Emoji != emoji)
+        var isRemove = OwnReaction?.Emoji == emoji;
+        if (!isRemove)
             PendingAnimations.Add((Entry.Id.Value, emoji.Id.Value));
+        MessageReactions.NotifyOptimisticReaction(Entry.Id, emoji, isRemove);
         var reaction = new Reaction {
             Id = Symbol.Empty,
             AuthorId = null!,
