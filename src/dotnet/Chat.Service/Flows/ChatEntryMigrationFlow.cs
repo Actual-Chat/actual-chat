@@ -119,13 +119,13 @@ public partial class ChatEntryMigrationFlow : Flow<(Moment, long, long)>
         Runtime.StageResumeIn(BatchDelay.Next());
     }
 
-    private void Complete()
+    protected virtual void Complete()
     {
         Console.Log($"Completed, processed {MigratedChatCount} chats, {MigratedEntryCount} entries");
         SetResult((Hub.Clocks.SystemClock.Now, MigratedChatCount, MigratedEntryCount));
     }
 
-    private async Task ProcessOne(ChatDbContext dbContext, DbChatEntry textEntry, CancellationToken cancellationToken)
+    protected virtual async Task ProcessOne(ChatDbContext dbContext, DbChatEntry textEntry, CancellationToken cancellationToken)
     {
         var chatId = ChatId.Parse(textEntry.ChatId);
         var audioEntryLid = textEntry.AudioEntryId!.Value;
@@ -163,13 +163,7 @@ public partial class ChatEntryMigrationFlow : Flow<(Moment, long, long)>
         };
         var changeCommand = new MediaBackend_Change(mediaId, null, new Change<MediaFull> { Create = media });
 
-        try {
-            await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception e) when (e is not OperationCanceledException) {
-            Console.LogError($"Failed to create media {mediaId} for text entry {textEntry.Id}: {e.Message}");
-            return;
-        }
+        await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
 
         // Update text entry's AudioId directly in DB
         textEntry.AudioId = mediaId.Value;
