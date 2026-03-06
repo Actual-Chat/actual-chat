@@ -6,7 +6,6 @@ using ActualLab.IO;
 using Foundation;
 using PhotosUI;
 using UniformTypeIdentifiers;
-using FilePathExt = ActualChat.IO.FilePathExt;
 using Size = ActualChat.UI.App.Size;
 
 namespace ActualChat.App.Maui;
@@ -72,13 +71,10 @@ public sealed class IosPhotoGalleryFiles : IDisposable
         if (pendingItem == null)
             return null;
 
-        return await TryLoadThumbnail(pendingItem.Key.ItemProvider, pendingItem.Key.FileName, cancellationToken).ConfigureAwait(false);
+        return await GetThumbnail(pendingItem.Key.ItemProvider).ConfigureAwait(false);
     }
 
-    private async Task<FilePreview?> TryLoadThumbnail(
-        NSItemProvider itemProvider,
-        FilePath fileName,
-        CancellationToken cancellationToken)
+    private async Task<FilePreview?> GetThumbnail(NSItemProvider itemProvider)
     {
         // Try low-res first (faster), then standard
         string[] thumbnailTypes = [
@@ -92,24 +88,14 @@ public sealed class IosPhotoGalleryFiles : IDisposable
 
             try {
                 var result = await itemProvider
-                    .LoadFileRepresentationAsync(thumbnailType)
+                    .LoadInPlaceFileRepresentationAsync(thumbnailType)
                     .ConfigureAwait(false);
 
-                if (result.Path.IsNullOrEmpty())
+                if (result.Path.Value.IsNullOrEmpty())
                     continue;
 
-                // Copy the thumbnail to our cache directory
-                var thumbnailFileName = fileName.ChangeExtension(".jpg").ToUnique();
-                var thumbnailDir = new FilePath(FileSystem.CacheDirectory) | "video-thumbnails";
-                Directory.CreateDirectory(thumbnailDir);
-                var thumbnailPath = thumbnailDir | thumbnailFileName;
-
-                await ((FilePath)result.Path).CopyTo(thumbnailPath, cancellationToken).ConfigureAwait(false);
-
-                // Get dimensions using ImageIO (reads only header, doesn't decode full image)
-                var size = GetImageSize(thumbnailPath);
-
-                return new FilePreview(ContentResolver.GetFileUri(thumbnailPath), size);
+                var size = GetImageSize(result.Path);
+                return new FilePreview(ContentResolver.GetFileUri(result.Path), size);
             }
             catch (Exception e) {
                 Log.LogWarning(e, "Failed to load thumbnail of type '{ThumbnailType}'", thumbnailType);
