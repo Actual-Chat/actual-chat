@@ -16,6 +16,7 @@ namespace ActualChat.App.Maui;
 public sealed class IosPhotoGalleryFiles : IDisposable
 {
     private static readonly FilePath AttachmentsDirectory = Path.Combine(FileSystem.CacheDirectory, "attachments");
+    private static readonly FilePath ThumbnailDir = new FilePath(FileSystem.CacheDirectory) | "thumbnails";
 
     private readonly IServiceProvider _services;
     private readonly ConcurrentProcessor<PendingFile, FilePath> _processor;
@@ -71,34 +72,42 @@ public sealed class IosPhotoGalleryFiles : IDisposable
         if (pendingItem == null)
             return null;
 
-        return await GetThumbnail(pendingItem.Key.ItemProvider).ConfigureAwait(false);
+        return await GetThumbnail(pendingItem.Key, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<FilePreview?> GetThumbnail(NSItemProvider itemProvider)
+    private async Task<FilePreview?> GetThumbnail(PendingFile pendingFile, CancellationToken cancellationToken)
     {
         // Try low-res first (faster), then standard
-        string[] thumbnailTypes = [
+        string[] thumbnailUTTypeIds = [
             "com.apple.private.photos.thumbnail.low",
             "com.apple.private.photos.thumbnail.standard",
         ];
 
-        foreach (var thumbnailType in thumbnailTypes) {
-            if (!itemProvider.HasItemConformingTo(thumbnailType))
+        var itemProvider = pendingFile.ItemProvider;
+        foreach (var thumbnailUTTypeId in thumbnailUTTypeIds) {
+            if (!itemProvider.HasItemConformingTo(thumbnailUTTypeId))
                 continue;
 
             try {
-                var result = await itemProvider
-                    .LoadInPlaceFileRepresentationAsync(thumbnailType)
+                var representation = await itemProvider
+                    .LoadInPlaceFileRepresentationAsync(thumbnailUTTypeId)
                     .ConfigureAwait(false);
 
-                if (result.Path.Value.IsNullOrEmpty())
+                if (representation.Path.IsEmpty)
                     continue;
 
-                var size = GetImageSize(result.Path);
-                return new FilePreview(ContentResolver.GetFileUri(result.Path), size);
+                // Copy thumbnail to cache directory
+                var thumbnailFileName = pendingFile.TargetPath.FileName.ChangeExtension(".jpg");
+                Directory.CreateDirectory(ThumbnailDir);
+                var thumbnailPath = ThumbnailDir | thumbnailFileName;
+
+                await representation.Path.CopyTo(thumbnailPath, cancellationToken).ConfigureAwait(false);
+
+                var size = GetImageSize(thumbnailPath);
+                return new FilePreview(ContentResolver.GetFileUri(thumbnailPath), size);
             }
             catch (Exception e) {
-                Log.LogWarning(e, "Failed to load thumbnail of type '{ThumbnailType}'", thumbnailType);
+                Log.LogWarning(e, "Failed to load thumbnail of type '{ThumbnailType}'", thumbnailUTTypeId);
             }
         }
 
