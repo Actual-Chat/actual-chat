@@ -200,6 +200,12 @@ body.hoverable .playable-text-markup > span:hover {
     @apply text-sm;
     /*@apply whitespace-pre-wrap;*/
 }
+.code-block-markup code span {
+    font: inherit !important;
+    letter-spacing: inherit !important;
+    word-spacing: inherit !important;
+    text-decoration: none !important;
+}
 
 ol.list-markup {
     @apply flex-y;
