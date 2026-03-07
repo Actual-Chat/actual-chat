@@ -27,11 +27,48 @@ export function highlightCode(pre: HTMLPreElement, languageName: string, code: s
         if (!codeElement)
             return;
         const language = hljs.getLanguage(languageName);
-        if (language)
+        if (language) {
             codeElement.innerHTML = hljs.highlight(code, { language: languageName }).value;
+        } else if (looksLikeTable(code)) {
+            codeElement.innerHTML = highlightTableCells(code);
+        } else {
+            codeElement.innerHTML = hljs.highlightAuto(code).value;
+        }
     } catch(e) {
         errorLog?.log(`highlightCode: failed to highlight code`, e);
     }
+}
+
+function looksLikeTable(code: string): boolean {
+    const lines = code.split('\n').filter(l => l.trim().length > 0);
+    if (lines.length < 2)
+        return false;
+    const pipeLines = lines.filter(l => l.trimStart().startsWith('|'));
+    return pipeLines.length >= lines.length / 2;
+}
+
+function escapeHtml(text: string): string {
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function highlightTableCells(code: string): string {
+    const sepPattern = /^\s*\|[-:|\s]+\|\s*$/;
+    return code.split('\n').map(line => {
+        if (!line.includes('|') || sepPattern.test(line))
+            return escapeHtml(line);
+        // Split by | keeping structure: empty | cell1 | cell2 | empty
+        const parts = line.split('|');
+        return parts.map((cell, i) => {
+            if (i === 0 || i === parts.length - 1)
+                return escapeHtml(cell);
+            const result = hljs.highlightAuto(cell);
+            return result.relevance >= 1 ? result.value : escapeHtml(cell);
+        }).join('|');
+    }).join('\n');
 }
 
 function applyTheme(themeInfo: ThemeInfo){
