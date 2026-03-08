@@ -74,11 +74,8 @@ public class GoogleCloudVideoUploadProcessor : IUploadProcessor
 
         progress?.Report(15);
 
-        if (!mustConvert) {
-            // Still need a local file for ProcessedFile
-            var tempFile = await UploadHelper.DumpToTempFile(upload, cancellationToken).ConfigureAwait(false);
-            return new ProcessedFile(tempFile, size, thumbnail);
-        }
+        if (!mustConvert)
+            return new ProcessedFile(upload, size, thumbnail);
 
         try {
             progress?.Report(20);
@@ -102,30 +99,27 @@ public class GoogleCloudVideoUploadProcessor : IUploadProcessor
             if (job.State == Job.Types.ProcessingState.Failed) {
                 _log.LogError("Transcoder job '{JobName}' failed: {Error}", job.Name, job.Error);
                 // Fall back to returning original file
-                var fallbackTempFile = await UploadHelper.DumpToTempFile(upload, cancellationToken).ConfigureAwait(false);
-                return new ProcessedFile(fallbackTempFile.AsBinaryFile(), size, thumbnail);
+                return new ProcessedFile(upload.AsBinaryFile(), size, thumbnail);
             }
 
-            // Download result MP4 from GCS — filename must match MuxStream.FileName
-            stepSw.Restart();
+            // Build UploadedBlobFile pointing to transcoder output (same bucket, server-side copy later)
             var outputObjectName = outputPrefix + "output.mp4";
-            var convertedFilePath = await DownloadFromGcs(outputObjectName, upload.FileName, cancellationToken).ConfigureAwait(false);
-            _log.LogDebug("Download from GCS completed in {Elapsed:N0}ms for '{FileName}'",
-                stepSw.ElapsedMilliseconds, upload.FileName);
+            var outputLength = await GetObjectLength(outputObjectName, cancellationToken).ConfigureAwait(false);
             progress?.Report(98);
-
-            // Cleanup GCS transcoder output artifacts (best-effort)
-            _ = CleanupGcsOutputAsync(outputPrefix);
 
             _log.LogDebug("Total video processing completed in {Elapsed:N0}ms for '{FileName}'",
                 totalSw.ElapsedMilliseconds, upload.FileName);
             return new ProcessedFile(
-                new UploadedTempFile(
+                new UploadedBlobFile(
                     Path.ChangeExtension(upload.FileName, ".mp4"),
                     "video/mp4",
-                    convertedFilePath),
+                    outputLength,
+                    outputObjectName,
+                    () => OpenGcsObject(outputObjectName)),
                 size,
-                thumbnail);
+                thumbnail) {
+                OnDispose = () => _ = CleanupGcsOutputAsync(outputPrefix),
+            };
         }
         catch (Exception e) {
             _log.LogError(e, "Cloud transcoding failed for '{File}' after {Elapsed:N0}ms",
@@ -255,15 +249,18 @@ public class GoogleCloudVideoUploadProcessor : IUploadProcessor
         throw new TimeoutException($"Transcoder job '{jobName}' did not complete within {JobTimeout}.");
     }
 
-    private async Task<FilePath> DownloadFromGcs(string objectName, FilePath originalFileName, CancellationToken cancellationToken)
+    private async Task<long> GetObjectLength(string objectName, CancellationToken cancellationToken)
     {
-        var tempDir = FilePath.GetApplicationTempDirectory();
-        var convertedFileName = Guid.NewGuid().ToString("N") + "_" + FileExt.ShortenFileName(Path.ChangeExtension(originalFileName, ".mp4"));
-        var localPath = tempDir | convertedFileName;
-        var fileStream = File.Create(localPath);
-        await using (fileStream.ConfigureAwait(false))
-            await _storageClient.DownloadObjectAsync(_bucket, objectName, fileStream, cancellationToken: cancellationToken).ConfigureAwait(false);
-        return localPath;
+        var obj = await _storageClient.GetObjectAsync(_bucket, objectName, cancellationToken: cancellationToken).ConfigureAwait(false);
+        return (long)(obj.Size ?? 0);
+    }
+
+    private async Task<Stream> OpenGcsObject(string objectName)
+    {
+        var stream = new MemoryStream();
+        await _storageClient.DownloadObjectAsync(_bucket, objectName, stream, cancellationToken: default).ConfigureAwait(false);
+        stream.Position = 0;
+        return stream;
     }
 
     private static int EstimateVideoBitrate(Size size, double frameRate)
