@@ -80,10 +80,13 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
 
     private async Task SaveFileContent(UploadedFile file, string blobId, CancellationToken cancellationToken)
     {
-        var stream = await file.Open().ConfigureAwait(false);
-        await using (stream.ConfigureAwait(false)) {
-            await BlobStorage.Write(blobId, stream, file.ContentType, cancellationToken).ConfigureAwait(false);
+        if (file is UploadedBlobFile blobFile) {
+            await BlobStorage.Copy(blobFile.BlobPath, blobId, cancellationToken).ConfigureAwait(false);
+            return;
         }
+        var stream = await file.Open().ConfigureAwait(false);
+        await using (stream.ConfigureAwait(false))
+            await BlobStorage.Write(blobId, stream, file.ContentType, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task SaveMediaMetadata(
