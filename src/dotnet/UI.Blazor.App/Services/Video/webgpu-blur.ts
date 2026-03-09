@@ -341,36 +341,57 @@ const MIPMAP_UPSCALE_WGSL = /* wgsl */`
    let targetSize = vec2f(textureDimensions(src)) * 2.0;
    let uv = (pos.xy + 0.5) / targetSize;
 
-   // Sample positions
-   let uv0 = uv;
-   let uv1 = uv + vec2f(-offset.x, -offset.y);
-   let uv2 = uv + vec2f( offset.x, -offset.y);
-   let uv3 = uv + vec2f(-offset.x,  offset.y);
-   let uv4 = uv + vec2f( offset.x,  offset.y);
+   // Dual Kawase upsample: 4 diagonal (weight 2) + 4 axis-aligned (weight 1) + center (weight 4)
+   // Diagonal half-pixel offsets
+   let uv_d0 = uv + vec2f(-offset.x, -offset.y);
+   let uv_d1 = uv + vec2f( offset.x, -offset.y);
+   let uv_d2 = uv + vec2f(-offset.x,  offset.y);
+   let uv_d3 = uv + vec2f( offset.x,  offset.y);
+   // Axis-aligned full-pixel offsets (2x distance)
+   let ax = offset.x * 2.0;
+   let ay = offset.y * 2.0;
+   let uv_a0 = uv + vec2f(-ax, 0.0);
+   let uv_a1 = uv + vec2f( ax, 0.0);
+   let uv_a2 = uv + vec2f(0.0, -ay);
+   let uv_a3 = uv + vec2f(0.0,  ay);
 
-   // Sample ALL colors unconditionally
-   let c0 = textureSample(src, s, uv0);
-   let c1 = textureSample(src, s, uv1);
-   let c2 = textureSample(src, s, uv2);
-   let c3 = textureSample(src, s, uv3);
-   let c4 = textureSample(src, s, uv4);
+   // Sample ALL colors unconditionally (uniform control flow)
+   let c0  = textureSample(src, s, uv);
+   let cd0 = textureSample(src, s, uv_d0);
+   let cd1 = textureSample(src, s, uv_d1);
+   let cd2 = textureSample(src, s, uv_d2);
+   let cd3 = textureSample(src, s, uv_d3);
+   let ca0 = textureSample(src, s, uv_a0);
+   let ca1 = textureSample(src, s, uv_a1);
+   let ca2 = textureSample(src, s, uv_a2);
+   let ca3 = textureSample(src, s, uv_a3);
 
    // Sample ALL mask values unconditionally
-   let m0 = textureSample(mask, maskSampler, uv0).r;
-   let m1 = textureSample(mask, maskSampler, uv1).r;
-   let m2 = textureSample(mask, maskSampler, uv2).r;
-   let m3 = textureSample(mask, maskSampler, uv3).r;
-   let m4 = textureSample(mask, maskSampler, uv4).r;
+   let m0  = textureSample(mask, maskSampler, uv).r;
+   let md0 = textureSample(mask, maskSampler, uv_d0).r;
+   let md1 = textureSample(mask, maskSampler, uv_d1).r;
+   let md2 = textureSample(mask, maskSampler, uv_d2).r;
+   let md3 = textureSample(mask, maskSampler, uv_d3).r;
+   let ma0 = textureSample(mask, maskSampler, uv_a0).r;
+   let ma1 = textureSample(mask, maskSampler, uv_a1).r;
+   let ma2 = textureSample(mask, maskSampler, uv_a2).r;
+   let ma3 = textureSample(mask, maskSampler, uv_a3).r;
 
-   // Convert to background weights
-   let w0 = bgWeight(m0) * 4.0;
-   let w1 = bgWeight(m1);
-   let w2 = bgWeight(m2);
-   let w3 = bgWeight(m3);
-   let w4 = bgWeight(m4);
+   // Convert to background weights: center ×4, diagonal ×2, axis-aligned ×1
+   let w0  = bgWeight(m0) * 4.0;
+   let wd0 = bgWeight(md0) * 2.0;
+   let wd1 = bgWeight(md1) * 2.0;
+   let wd2 = bgWeight(md2) * 2.0;
+   let wd3 = bgWeight(md3) * 2.0;
+   let wa0 = bgWeight(ma0);
+   let wa1 = bgWeight(ma1);
+   let wa2 = bgWeight(ma2);
+   let wa3 = bgWeight(ma3);
 
-   let totalWeight = w0 + w1 + w2 + w3 + w4;
-   let weightedColor = c0 * w0 + c1 * w1 + c2 * w2 + c3 * w3 + c4 * w4;
+   let totalWeight = w0 + wd0 + wd1 + wd2 + wd3 + wa0 + wa1 + wa2 + wa3;
+   let weightedColor = c0 * w0
+       + cd0 * wd0 + cd1 * wd1 + cd2 * wd2 + cd3 * wd3
+       + ca0 * wa0 + ca1 * wa1 + ca2 * wa2 + ca3 * wa3;
 
    let hasWeight = totalWeight > 0.01;
    let blurredResult = weightedColor / max(totalWeight, 0.01);
