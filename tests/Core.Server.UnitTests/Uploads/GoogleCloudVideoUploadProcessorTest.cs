@@ -9,8 +9,8 @@ public class GoogleCloudVideoUploadProcessorTest
 
     public GoogleCloudVideoUploadProcessorTest()
     {
-        var storageClient = new Mock<StorageClient>();
-        var logger = new Mock<ILogger<GoogleCloudVideoUploadProcessor>>();
+        var storageClient = new Mock<StorageClient>(MockBehavior.Strict);
+        var logger = new Mock<ILogger<GoogleCloudVideoUploadProcessor>>(MockBehavior.Loose);
         _processor = new GoogleCloudVideoUploadProcessor(
             storageClient.Object,
             "test-bucket",
@@ -32,7 +32,7 @@ public class GoogleCloudVideoUploadProcessorTest
     [Fact]
     public async Task Process_WithNonBlobFile_ThrowsInvalidOperationException()
     {
-        var streamFile = new UploadedStreamFile("video.mp4", "video/mp4", 100, () => Task.FromResult<Stream>(Stream.Null));
+        var streamFile = new UploadedStreamFile("video.mp4", "video/mp4", 100, () => Task.FromResult(Stream.Null));
 
         var act = () => _processor.Process(streamFile, null, CancellationToken.None);
 

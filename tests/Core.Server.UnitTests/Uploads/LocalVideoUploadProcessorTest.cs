@@ -8,7 +8,7 @@ public class LocalVideoUploadProcessorTest
 
     public LocalVideoUploadProcessorTest()
     {
-        var logger = new Mock<ILogger<LocalVideoUploadProcessor>>();
+        var logger = new Mock<ILogger<LocalVideoUploadProcessor>>(MockBehavior.Loose);
         _processor = new LocalVideoUploadProcessor(logger.Object);
     }
 

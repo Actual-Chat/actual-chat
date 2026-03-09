@@ -1,0 +1,88 @@
+using System.Net.Mime;
+using ActualLab.IO;
+using FFMpegCore;
+using SixLabors.ImageSharp;
+
+namespace ActualChat.Uploads;
+
+public static class UploadProcessorHelper
+{
+    private static readonly ILogger Log = StaticLog.For(typeof(UploadProcessorHelper));
+
+    public static Size GetEffectiveSize(VideoStream video)
+        => video.Rotation is 90 or 270 or -90 or -270
+            ? new Size(video.Height, video.Width)
+            : new Size(video.Width, video.Height);
+
+    public static T EnsureMp4Extension<T>(T file) where T : UploadedFile
+        => OrdinalIgnoreCaseEquals(file.FileName.Extension, ".mp4")
+            ? file
+            : file with { FileName = Path.ChangeExtension(file.FileName, ".mp4"), ContentType = "video/mp4" };
+
+    public static (Size Size, TimeSpan Duration, double FrameRate) AnalyzeVideo(VideoStream videoStream)
+    {
+        var size = GetEffectiveSize(videoStream);
+        return (size, videoStream.Duration, videoStream.AvgFrameRate);
+    }
+
+    public static bool MustConvertVideo(VideoStream videoStream)
+    {
+        var codecName = videoStream.CodecName;
+        // Skip transcoding for H.264 and HEVC (H.265) codecs — a simple rename to .mp4 is enough
+        return !OrdinalIgnoreCaseEquals(codecName, "h264")
+            && !OrdinalIgnoreCaseEquals(codecName, "libx264")
+            && !OrdinalIgnoreCaseEquals(codecName, "hevc")
+            && !OrdinalIgnoreCaseEquals(codecName, "h265");
+    }
+
+    public static Task<UploadedTempFile?> Snapshot(
+        Uri source, FilePath fileName, TimeSpan totalVideoDuration)
+        => SnapshotInternal(
+            at => FFMpegArguments.FromUrlInput(source, options => options.Seek(at)),
+            fileName, totalVideoDuration);
+
+    public static Task<UploadedTempFile?> Snapshot(
+        FilePath source, FilePath fileName, TimeSpan totalVideoDuration)
+        => SnapshotInternal(
+            at => FFMpegArguments.FromFileInput(source, true, options => options.Seek(at)),
+            fileName, totalVideoDuration);
+
+    public static async Task<UploadedTempFile> DumpToTempFile(UploadedFile file, CancellationToken cancellationToken)
+    {
+        var tempFileName = Guid.NewGuid() + "_" + file.FileName;
+        var tempFilePath = FilePath.GetApplicationTempDirectory() & FileExt.ShortenFileName(tempFileName);
+        var target = File.OpenWrite(tempFilePath);
+        await using var _1 = target.ConfigureAwait(false);
+        var source = await file.Open().ConfigureAwait(false);
+        await using var _2 = source.ConfigureAwait(false);
+        await source.CopyToAsync(target, cancellationToken).ConfigureAwait(false);
+        target.Position = 0;
+        return new UploadedTempFile(file.FileName, file.ContentType, tempFilePath);
+    }
+
+    // Private helpers
+
+    private static async Task<UploadedTempFile?> SnapshotInternal(
+        Func<TimeSpan, FFMpegArguments> createInput,
+        FilePath fileName, TimeSpan totalVideoDuration)
+    {
+        if (totalVideoDuration <= TimeSpan.Zero)
+            return null;
+
+        try {
+            var captureTime = (totalVideoDuration * 0.1).Clamp(TimeSpan.Zero, TimeSpan.FromSeconds(10));
+            var snapshotPath = FilePath.GetApplicationTempDirectory() | $"snapshot_{Guid.NewGuid()}.jpg";
+            var inputArgs = createInput(captureTime);
+            await inputArgs
+                .OutputToFile(snapshotPath, false, options => options.WithVideoCodec("mjpeg").WithFrameOutputCount(1))
+                .ProcessAsynchronously()
+                .ConfigureAwait(false);
+            var snapshotFileName = fileName.ChangeExtension(".thumbnail.jpg");
+            return new UploadedTempFile(snapshotFileName, MediaTypeNames.Image.Jpeg, snapshotPath);
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to extract snapshot for '{FileName}'", fileName);
+            return null;
+        }
+    }
+}

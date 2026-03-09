@@ -11,7 +11,7 @@ public class MediaProcessorTest
         var input = CreateUploadedFile("video.mp4", "video/mp4");
         var expectedResult = new ProcessedFile(input, new Size(100, 100));
 
-        var processor = new Mock<IUploadProcessor>();
+        var processor = new Mock<IUploadProcessor>(MockBehavior.Strict);
         processor.Setup(p => p.Supports("video/mp4")).Returns(true);
         processor.Setup(p => p.Process(input, It.IsAny<IProgress<double>?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedResult);
@@ -28,7 +28,7 @@ public class MediaProcessorTest
     {
         var input = CreateUploadedFile("doc.pdf", "application/pdf");
 
-        var processor = new Mock<IUploadProcessor>();
+        var processor = CreateProcessor();
         processor.Setup(p => p.Supports(It.IsAny<string>())).Returns(false);
 
         var mediaProcessor = CreateMediaProcessor(processor.Object);
@@ -46,12 +46,12 @@ public class MediaProcessorTest
         var input = CreateUploadedFile("video.mp4", "video/mp4");
         var expectedResult = new ProcessedFile(input, new Size(200, 200));
 
-        var first = new Mock<IUploadProcessor>();
+        var first = CreateProcessor();
         first.Setup(p => p.Supports("video/mp4")).Returns(true);
         first.Setup(p => p.Process(input, It.IsAny<IProgress<double>?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedResult);
 
-        var second = new Mock<IUploadProcessor>();
+        var second = CreateProcessor();
         second.Setup(p => p.Supports("video/mp4")).Returns(true);
 
         var mediaProcessor = CreateMediaProcessor(first.Object, second.Object);
@@ -66,12 +66,12 @@ public class MediaProcessorTest
     {
         var input = CreateUploadedFile("video.mp4", "video/mp4");
 
-        var processor = new Mock<IUploadProcessor>();
+        var processor = CreateProcessor();
         processor.Setup(p => p.Supports("video/mp4")).Returns(true);
         processor.Setup(p => p.Process(input, It.IsAny<IProgress<double>?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ProcessedFile(input, new Size(100, 100)));
 
-        var progress = new Mock<IProgress<double>>();
+        var progress = CreateProgress();
         var mediaProcessor = CreateMediaProcessor(processor.Object);
         await mediaProcessor.ProcessUpload(input, progress.Object, CancellationToken.None);
 
@@ -82,7 +82,7 @@ public class MediaProcessorTest
     public async Task ProcessUpload_NoMatch_DoesNotReportProgress()
     {
         var input = CreateUploadedFile("doc.pdf", "application/pdf");
-        var progress = new Mock<IProgress<double>>();
+        var progress = CreateProgress();
 
         var mediaProcessor = CreateMediaProcessor();
         await mediaProcessor.ProcessUpload(input, progress.Object, CancellationToken.None);
@@ -102,5 +102,11 @@ public class MediaProcessorTest
     }
 
     private static UploadedStreamFile CreateUploadedFile(string fileName, string contentType)
-        => new(fileName, contentType, 0, () => Task.FromResult<Stream>(Stream.Null));
+        => new(fileName, contentType, 0, () => Task.FromResult(Stream.Null));
+
+    private static Mock<IProgress<double>> CreateProgress()
+        => new (MockBehavior.Loose);
+
+    private static Mock<IUploadProcessor> CreateProcessor()
+        => new (MockBehavior.Strict);
 }
