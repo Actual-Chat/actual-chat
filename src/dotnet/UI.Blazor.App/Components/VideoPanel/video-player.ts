@@ -52,6 +52,8 @@ export class VideoPlayer {
 
     // SignalR pull subscription
     private pullSubscription: signalR.ISubscription<Uint8Array> | null = null;
+    private pullRetryCount = 0;
+    private pullRetryTimer: ReturnType<typeof setTimeout> | null = null;
 
     // Frame pacing state
     private playbackStartTime = 0;     // wall-clock ms (performance.now) when first frame rendered
@@ -655,7 +657,10 @@ export class VideoPlayer {
 
         const connection = VideoStreamer.connection!;
         const sessionToken = SessionTokens.current;
-        debugLog?.log(`startPull: stream=${streamId}, skipTo=${skipToMs}ms`);
+        debugLog?.log(`startPull: stream=${streamId}, skipTo=${skipToMs}ms, retryCount=${this.pullRetryCount}`);
+
+        const pullStartTime = performance.now();
+        let receivedFramesDuringPull = false;
 
         const streamResult = connection.stream<Uint8Array>(
             'GetVideo', sessionToken, streamId, skipToMs);
@@ -665,14 +670,43 @@ export class VideoPlayer {
 
         this.pullSubscription = streamResult.subscribe({
             next: (frameBytes: Uint8Array) => {
+                receivedFramesDuringPull = true;
+                this.pullRetryCount = 0; // reset on successful frame receipt
                 this.processReceivedFrame(frameBytes);
             },
             error: (err: Error) => {
+                const elapsed = performance.now() - pullStartTime;
+                if (elapsed < 2000 && this.pullRetryCount < 3 && this.isPlaying) {
+                    this.pullRetryCount++;
+                    warnLog?.log(
+                        `Pull stream error after ${elapsed.toFixed(0)}ms, retry #${this.pullRetryCount}: ${err.message}`);
+                    this.pullRetryTimer = setTimeout(() => {
+                        this.pullRetryTimer = null;
+                        if (!this.isPlaying) return;
+                        const retrySkipToMs = ServerClock.now() - this.startedAtMs;
+                        void this.startPull(streamId, retrySkipToMs);
+                    }, 1000);
+                    return;
+                }
                 errorLog?.log('Pull stream error:', err);
                 // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
                 void this.reportEnded(err?.message ?? 'Pull stream error');
             },
             complete: () => {
+                const elapsed = performance.now() - pullStartTime;
+                if (elapsed < 2000 && this.pullRetryCount < 3 && this.isPlaying) {
+                    this.pullRetryCount++;
+                    warnLog?.log(
+                        `Pull stream ended quickly (${elapsed.toFixed(0)}ms, ` +
+                        `frames=${receivedFramesDuringPull}), retry #${this.pullRetryCount}`);
+                    this.pullRetryTimer = setTimeout(() => {
+                        this.pullRetryTimer = null;
+                        if (!this.isPlaying) return;
+                        const retrySkipToMs = ServerClock.now() - this.startedAtMs;
+                        void this.startPull(streamId, retrySkipToMs);
+                    }, 1000);
+                    return;
+                }
                 debugLog?.log('Pull stream completed');
                 void this.reportEnded(undefined);
             },
@@ -712,6 +746,10 @@ export class VideoPlayer {
     }
 
     public stopPull(): void {
+        if (this.pullRetryTimer !== null) {
+            clearTimeout(this.pullRetryTimer);
+            this.pullRetryTimer = null;
+        }
         if (this.pullSubscription) {
             this.pullSubscription.dispose();
             this.pullSubscription = null;
@@ -735,6 +773,7 @@ export class VideoPlayer {
         this.consecutiveEmptyRenders = 0;
         this.playbackRate = 1.0;
         this.lastSeekTime = 0;
+        this.pullRetryCount = 0;
 
         // Stop latency reporting
         if (this.latencyReportTimer !== null) {
@@ -851,6 +890,12 @@ export class VideoPlayer {
     }
 
     private async reportEnded(error?: string): Promise<void> {
+        // Stop latency reporting — stream is done, no more meaningful data
+        if (this.latencyReportTimer !== null) {
+            clearInterval(this.latencyReportTimer);
+            this.latencyReportTimer = null;
+        }
+
         try {
             debugLog?.log(`VideoPlayer reporting ended for stream ${this.streamId}:`, error);
             await this.blazorRef.invokeMethodAsync('OnEnded', error ?? null);
