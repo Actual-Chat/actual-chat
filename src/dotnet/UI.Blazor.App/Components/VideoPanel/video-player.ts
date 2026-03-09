@@ -47,7 +47,7 @@ export class VideoPlayer {
 
     // Buffering state
     private bufferSize = 0;
-    private readonly maxBufferSize = 5; // frames
+    private readonly maxBufferSize = 30; // frames
     private lastReportedBufferLow = true;
 
     // SignalR pull subscription
@@ -75,6 +75,15 @@ export class VideoPlayer {
     private skippedBacklogFrames = 0;
     private rebufferDelayMs = 0;         // After tab restore, delay rendering to let buffer accumulate
     private consecutiveEmptyRenders = 0; // Safety net: count consecutive RAFs with no frame rendered
+
+    // Adaptive catch-up playback state (wall-clock path only)
+    private playbackRate = 1.0;
+    private readonly catchUpStartMs = 1000;      // start speed-up when buffer > 1s
+    private readonly catchUpTargetMs = 200;       // target buffer level to settle at
+    private readonly maxPlaybackRate = 1.15;      // max speed (barely noticeable for video)
+    private readonly seekThresholdMs = 5000;      // hard seek fallback when >5s behind
+    private lastSeekTime = 0;                     // cooldown for hard seek
+    private readonly seekCooldownMs = 5000;       // min interval between hard seeks
 
     // Audio sync
     private startedAtMs: number;
@@ -284,9 +293,7 @@ export class VideoPlayer {
         // When audio-sync is active, use larger buffer to retain frames from bursty delivery.
         // Audio-sync target controls rendering pace, so larger buffer doesn't add latency.
         // Without audio-sync (wall-clock path), keep small buffer for low latency.
-        const isAudioSynced = !!AudioVideoSync.get(this.authorId);
-        const effectiveMaxBuffer = isAudioSynced ? 30 : this.maxBufferSize;
-        while (this.pendingFrames.length > effectiveMaxBuffer) {
+        while (this.pendingFrames.length > this.maxBufferSize) {
             const dropped = this.pendingFrames.shift()!;
             dropped.close();
             this.bufferSize--;
@@ -341,12 +348,51 @@ export class VideoPlayer {
                     `driftMs=${driftMs.toFixed(0)}, pending=${this.pendingFrames.length}`);
             }
         } else {
-            const elapsedUs = (now - this.playbackStartTime) * 1000;
+            // Adaptive catch-up: measure buffer depth and adjust playback rate
+            let newRate = 1.0;
+            let bufferSpanMs = 0;
+            if (this.pendingFrames.length >= 2) {
+                bufferSpanMs = (this.pendingFrames[this.pendingFrames.length - 1].timestamp
+                    - this.pendingFrames[0].timestamp) / 1000;
+
+                if (bufferSpanMs > this.catchUpStartMs) {
+                    // Hard seek fallback: if >5s behind and cooldown elapsed, jump forward
+                    if (bufferSpanMs > this.seekThresholdMs
+                        && (now - this.lastSeekTime) > this.seekCooldownMs) {
+                        const latestTimestamp = this.pendingFrames[this.pendingFrames.length - 1].timestamp;
+                        this.playbackStartTime = now;
+                        this.firstFrameTimestamp = latestTimestamp;
+                        this.playbackRate = 1.0;
+                        this.lastSeekTime = now;
+                        warnLog?.log(
+                            `Wall-clock hard seek: bufferSpan=${bufferSpanMs.toFixed(0)}ms, ` +
+                            `pending=${this.pendingFrames.length}`);
+                    } else {
+                        // Gradual speed-up: linear ramp from 1.0 to maxPlaybackRate
+                        // as buffer goes from catchUpStartMs to 2x catchUpStartMs
+                        const excess = bufferSpanMs - this.catchUpStartMs;
+                        newRate = Math.min(
+                            1.0 + (excess / this.catchUpStartMs) * (this.maxPlaybackRate - 1.0),
+                            this.maxPlaybackRate);
+                    }
+                }
+            }
+
+            // Rebase timing anchor when rate changes to avoid sudden jump
+            if (Math.abs(newRate - this.playbackRate) > 0.005) {
+                this.firstFrameTimestamp += (now - this.playbackStartTime) * 1000 * this.playbackRate;
+                this.playbackStartTime = now;
+                this.playbackRate = newRate;
+            }
+
+            const elapsedUs = (now - this.playbackStartTime) * 1000 * this.playbackRate;
             targetTimestamp = this.firstFrameTimestamp + elapsedUs;
 
             if (now - this.lastSyncLogTime > 2000) {
                 this.lastSyncLogTime = now;
-                debugLog?.log(`audioSync: no audio state for authorId=${this.authorId}`);
+                debugLog?.log(
+                    `wallClock: authorId=${this.authorId}, rate=${this.playbackRate.toFixed(3)}, ` +
+                    `pending=${this.pendingFrames.length}, bufferSpanMs=${bufferSpanMs.toFixed(0)}`);
             }
         }
 
@@ -587,6 +633,8 @@ export class VideoPlayer {
 
         // Reset timing anchor so playback re-syncs on next rendered frame
         this.playbackStartTime = 0;
+        this.playbackRate = 1.0;
+        this.lastSeekTime = 0;
         this.rebufferDelayMs = 300;
     }
 
@@ -681,6 +729,8 @@ export class VideoPlayer {
         this.lastDiagDecodedFrames = 0;
         this.lastDiagReceivedFrames = 0;
         this.consecutiveEmptyRenders = 0;
+        this.playbackRate = 1.0;
+        this.lastSeekTime = 0;
 
         // Stop latency reporting
         if (this.latencyReportTimer !== null) {
