@@ -111,6 +111,7 @@ export class WebCodecsDecoder {
                 hardwareAcceleration: this.config.hardwareAcceleration,
                 description
             });
+            this.decodeStartTimes = []; // flush stale timings — configure() aborts pending decodes
             infoLog?.log('Decoder reconfigured with description');
         }
     }

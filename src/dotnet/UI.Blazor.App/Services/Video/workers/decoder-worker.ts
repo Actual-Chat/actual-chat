@@ -23,6 +23,17 @@ let pendingChunks: EncodedChunkData[] = [];
 let currentDecoderConfig: DecoderConfig | null = null;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 let frameCount = 0;
+let lastRawDescription: ArrayBuffer | null = null;
+
+function bufferEqual(a: ArrayBuffer, b: ArrayBuffer): boolean {
+    if (a.byteLength !== b.byteLength) return false;
+    const viewA = new Uint8Array(a);
+    const viewB = new Uint8Array(b);
+    for (let i = 0; i < viewA.length; i++) {
+        if (viewA[i] !== viewB[i]) return false;
+    }
+    return true;
+}
 
 // Chunk ordering state to prevent out-of-order decoding issues
 let nextExpectedSequence = 0;
@@ -327,6 +338,7 @@ const serverImpl: DecoderWorker = {
             pendingChunks = [];
             currentDecoderConfig = null;
             frameCount = 0;
+            lastRawDescription = null;
             nextExpectedSequence = 0;
             reorderBuffer.clear();
             lastKeyframeSequence = -1;
@@ -433,11 +445,11 @@ const serverImpl: DecoderWorker = {
      */
     // eslint-disable-next-line
     decodeRawChunk: async (
-        data: ArrayBuffer,
         timestamp: number,
         duration: number,
         isKeyFrame: boolean,
         sequenceNumber: number,
+        data: ArrayBuffer,
         description?: ArrayBuffer
     ): Promise<void> => {
         if (!decoder || !processing) {
@@ -445,9 +457,13 @@ const serverImpl: DecoderWorker = {
         }
 
         try {
-            // If we have a description and it's a keyframe, reconfigure the decoder
+            // If we have a description and it's a keyframe, reconfigure the decoder only if description changed
             if (isKeyFrame && description && description.byteLength > 0) {
-                decoder.updateDescription(description);
+                if (!lastRawDescription || !bufferEqual(lastRawDescription, description)) {
+                    decoder.updateDescription(description);
+                    lastRawDescription = description.slice(0);
+                    infoLog?.log('Description changed, decoder reconfigured');
+                }
                 decoderConfigured = true;
             } else if (isKeyFrame && !decoderConfigured && currentDecoderConfig?.description) {
                 // Recreate decoder with description to avoid double-configure.
@@ -547,14 +563,36 @@ const serverImpl: DecoderWorker = {
                 decoder.close();
             }
 
-            decoder = createDecoder(config);
-            decoder.initialize();
-            decoderConfigured = false;
-
-            // If config has description, apply it
             if (config.description) {
-                decoder.updateDescription(config.description);
+                // Single configure() in AVCC mode — same pattern as initialize().
+                // Do NOT use createDecoder() which strips description, causing
+                // double-configure (Annex B → AVCC) that breaks Chrome's VideoDecoder.
+                decoder = new WebCodecsDecoder(
+                    config,
+                    (frame: VideoFrame) => {
+                        frameCount++;
+                        void callbacks.onDecodedFrame(frame, rpcNoWait);
+                    },
+                    (error) => {
+                        errorLog?.log('Decoder error:', error);
+                    }
+                );
+                decoder.initialize();
                 decoderConfigured = true;
+
+                // Sync lastRawDescription so decodeRawChunk doesn't redundantly reconfigure
+                const desc = config.description;
+                if (desc instanceof ArrayBuffer) {
+                    lastRawDescription = desc.slice(0);
+                } else if (ArrayBuffer.isView(desc)) {
+                    lastRawDescription = desc.buffer.slice(
+                        desc.byteOffset, desc.byteOffset + desc.byteLength) as ArrayBuffer;
+                }
+            } else {
+                decoder = createDecoder(config);
+                decoder.initialize();
+                decoderConfigured = false;
+                lastRawDescription = null;
             }
 
             infoLog?.log('Decoder configured');

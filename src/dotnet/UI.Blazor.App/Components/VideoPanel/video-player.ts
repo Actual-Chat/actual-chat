@@ -3,7 +3,7 @@ import { decode } from '@msgpack/msgpack';
 import { Log } from 'logging';
 import { fastRaf } from 'fast-raf';
 import { ServerClock } from 'server-clock';
-import { rpcClientServer } from 'rpc';
+import { rpcClientServer, rpcNoWait } from 'rpc';
 import type { Disposable } from 'disposable';
 import { VideoStreamer } from '../../Services/Video/video-streamer';
 import { SessionTokens } from '../../../UI.Blazor/Services/Security/session-tokens';
@@ -74,6 +74,7 @@ export class VideoPlayer {
     private skipFramesBelowOffsetMs = 0; // After tab restore, skip decoded frames below this offset
     private skippedBacklogFrames = 0;
     private rebufferDelayMs = 0;         // After tab restore, delay rendering to let buffer accumulate
+    private consecutiveEmptyRenders = 0; // Safety net: count consecutive RAFs with no frame rendered
 
     // Audio sync
     private startedAtMs: number;
@@ -272,12 +273,20 @@ export class VideoPlayer {
         const frameOffsetMs = frame.timestamp / 1000; // μs → ms
         const capturedAtMs = this.startedAtMs + frameOffsetMs;
         const currentLatencyMs = ServerClock.now() - capturedAtMs;
+        // Safety cap at 10s to prevent absurd values from clock drift.
+        // The actual value (~3-4s for SignalR delivery) is used for audio-sync compensation.
+        // This does NOT affect server-side latency reporting (which uses lastRenderedOffsetMs directly).
+        const cappedLatencyMs = Math.min(Math.max(currentLatencyMs, 0), 10000);
         this.pipelineLatencyMs = this.pipelineLatencyMs === 0
-            ? Math.max(currentLatencyMs, 0)
-            : this.pipelineLatencyMs * 0.95 + currentLatencyMs * 0.05;
+            ? cappedLatencyMs
+            : this.pipelineLatencyMs * 0.9 + cappedLatencyMs * 0.1;
 
-        // Safety cap: prevent unbounded buffer growth (30 frames = 1s at 30fps)
-        while (this.pendingFrames.length > 30) {
+        // When audio-sync is active, use larger buffer to retain frames from bursty delivery.
+        // Audio-sync target controls rendering pace, so larger buffer doesn't add latency.
+        // Without audio-sync (wall-clock path), keep small buffer for low latency.
+        const isAudioSynced = !!AudioVideoSync.get(this.authorId);
+        const effectiveMaxBuffer = isAudioSynced ? 30 : this.maxBufferSize;
+        while (this.pendingFrames.length > effectiveMaxBuffer) {
             const dropped = this.pendingFrames.shift()!;
             dropped.close();
             this.bufferSize--;
@@ -333,7 +342,7 @@ export class VideoPlayer {
             }
         } else {
             const elapsedUs = (now - this.playbackStartTime) * 1000;
-            targetTimestamp = this.firstFrameTimestamp + elapsedUs - this.pipelineLatencyMs * 1000;
+            targetTimestamp = this.firstFrameTimestamp + elapsedUs;
 
             if (now - this.lastSyncLogTime > 2000) {
                 this.lastSyncLogTime = now;
@@ -362,6 +371,16 @@ export class VideoPlayer {
             this.lastRenderedOffsetMs = frameToRender.timestamp / 1000;
             this.drawFrame(frameToRender);
             frameToRender.close();
+            this.consecutiveEmptyRenders = 0;
+        } else if (this.pendingFrames.length > 0) {
+            this.consecutiveEmptyRenders++;
+            if (this.consecutiveEmptyRenders >= 60) {
+                warnLog?.log(`Render stuck for ${this.consecutiveEmptyRenders} frames, resetting timing anchor`);
+                this.playbackStartTime = 0;
+                this.consecutiveEmptyRenders = 0;
+            }
+        } else {
+            this.consecutiveEmptyRenders = 0;
         }
 
         this.updateBufferState();
@@ -474,6 +493,15 @@ export class VideoPlayer {
                     void this.decoderWorker.configureDecoder(newConfig);
                 }
                 this.playbackStartTime = 0;
+                this.pipelineLatencyMs = 0; // stale value causes render stall after reconfigure
+
+                // Flush old pending frames — they're from the old decoder at stale offsets.
+                // Keeping them creates a multi-second render stall (offset gap).
+                for (const frame of this.pendingFrames) {
+                    try { frame.close(); } catch { /* already closed */ }
+                }
+                this.pendingFrames = [];
+                this.bufferSize = 0;
             }
         }
 
@@ -500,13 +528,15 @@ export class VideoPlayer {
         }
 
         // Send raw bytes to worker — worker creates EncodedVideoChunk internally
+        // ArrayBuffer args are last (before rpcNoWait) so RPC transfers them zero-copy
         void this.decoderWorker.decodeRawChunk(
-            dataBuffer,
             timestampMs * 1000, // ms → μs
             durationMs * 1000,  // ms → μs
             isKeyFrame,
             this.sequenceNumber++,
-            descBuffer
+            dataBuffer,
+            descBuffer,
+            rpcNoWait
         );
     }
 
@@ -579,7 +609,7 @@ export class VideoPlayer {
             'GetVideo', sessionToken, streamId, skipToMs);
 
         // Start latency report timer now that we're receiving frames
-        this.latencyReportTimer ??= setInterval(() => this.reportLatencyTick(), 10_000);
+        this.latencyReportTimer ??= setInterval(() => this.reportLatencyTick(), 5_000);
 
         this.pullSubscription = streamResult.subscribe({
             next: (frameBytes: Uint8Array) => {
@@ -650,6 +680,7 @@ export class VideoPlayer {
         this.skippedBacklogFrames = 0;
         this.lastDiagDecodedFrames = 0;
         this.lastDiagReceivedFrames = 0;
+        this.consecutiveEmptyRenders = 0;
 
         // Stop latency reporting
         if (this.latencyReportTimer !== null) {
