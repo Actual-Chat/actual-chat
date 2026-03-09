@@ -1,4 +1,3 @@
-using System.Net.Mime;
 using ActualChat.Media;
 using ActualLab.IO;
 using FFMpegCore;
@@ -17,7 +16,7 @@ public class LocalVideoUploadProcessor(ILogger<LocalVideoUploadProcessor> log) :
     public async Task<ProcessedFile> Process(UploadedFile upload, IProgress<double>? progress, CancellationToken cancellationToken)
     {
         progress?.Report(0);
-        var tempFile = await UploadHelper.DumpToTempFile(upload, cancellationToken).ConfigureAwait(false);
+        var tempFile = await UploadProcessorHelper.DumpToTempFile(upload, cancellationToken).ConfigureAwait(false);
         ProcessedFile processedFile;
         try {
             processedFile = await ProcessInternal(tempFile, progress, cancellationToken).ConfigureAwait(false);
@@ -36,24 +35,40 @@ public class LocalVideoUploadProcessor(ILogger<LocalVideoUploadProcessor> log) :
         var totalSw = Stopwatch.StartNew();
         var stepSw = Stopwatch.StartNew();
 
-        var (mustConvert, size, duration) = await GetVideoInfo(upload, upload.TempFilePath, cancellationToken).ConfigureAwait(false);
-        Log.LogDebug("Video analysis completed in {Elapsed:N0}ms for '{FileName}'",
-            stepSw.ElapsedMilliseconds, upload.FileName);
-        if (size is null)
+        VideoStream? videoStream = null;
+        try {
+            var mediaAnalysis = await FFProbe.AnalyseAsync(upload.TempFilePath, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+            videoStream = mediaAnalysis.PrimaryVideoStream;
+            if (videoStream is null)
+                return new ProcessedFile(upload.AsBinaryFile(), null);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to extract video info from '{FileName}'", upload.FileName);
+        }
+        finally {
+            Log.LogDebug("Video analysis completed in {Elapsed:N0}ms for '{FileName}'",
+                stepSw.ElapsedMilliseconds,
+                upload.FileName);
+        }
+        if (videoStream is null)
             return new ProcessedFile(upload.AsBinaryFile(), null);
+
+        var mustConvert = UploadProcessorHelper.MustConvertVideo(videoStream);
+        var (size, duration, _) = UploadProcessorHelper.AnalyzeVideo(videoStream);
 
         progress?.Report(10);
 
         stepSw.Restart();
-        var thumbnail = await GetThumbnail(upload, upload.TempFilePath, duration).ConfigureAwait(false);
-        Log.LogDebug("Thumbnail extraction completed in {Elapsed:N0}ms for '{FileName}'",
+        var snapshot = await UploadProcessorHelper.Snapshot(upload.TempFilePath, upload.FileName, duration).ConfigureAwait(false);
+        Log.LogDebug("Snapshot extraction completed in {Elapsed:N0}ms for '{FileName}'",
             stepSw.ElapsedMilliseconds, upload.FileName);
-        if (thumbnail is null)
+        if (snapshot is null)
             return new ProcessedFile(upload.AsBinaryFile(), size);
 
         progress?.Report(20);
         if (!mustConvert)
-            return new ProcessedFile(upload, size, thumbnail);
+            return new ProcessedFile(UploadProcessorHelper.EnsureMp4Extension(upload), size, snapshot);
 
         try {
             stepSw.Restart();
@@ -91,56 +106,16 @@ public class LocalVideoUploadProcessor(ILogger<LocalVideoUploadProcessor> log) :
                     "video/mp4",
                     convertedFilePath),
                 size,
-                thumbnail);
+                snapshot);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-            thumbnail?.Delete();
+            snapshot.Delete();
             throw;
         }
         catch (Exception e) {
             Log.LogError(e, "Could not convert uploaded video '{File}' after {Elapsed:N0}ms",
                 upload.FileName, totalSw.ElapsedMilliseconds);
-            return new ProcessedFile(upload, size, thumbnail);
-        }
-    }
-
-    private async Task<(bool MustConvert, Size? Size, TimeSpan Duration)> GetVideoInfo(UploadedFile videoUpload, FilePath videoTempFile, CancellationToken cancellationToken)
-    {
-        try {
-            var media = await FFProbe.AnalyseAsync(videoTempFile, cancellationToken: cancellationToken).ConfigureAwait(false);
-            var video = media.PrimaryVideoStream;
-            var size = video is null ? (Size?)null : UploadHelper.GetEffectiveSize(video);
-            return (UploadHelper.MustConvertVideo(media, videoUpload.FileName), size, media.Duration);
-        }
-        catch (Exception e) {
-            Log.LogDebug(e, "Failed to extract video info from '{FileName}'", videoUpload.FileName);
-            return (false, null, TimeSpan.Zero);
-        }
-    }
-
-    private async Task<UploadedTempFile?> GetThumbnail(UploadedFile videoUpload, FilePath videoTempFile, TimeSpan totalVideoDuration)
-    {
-        if (totalVideoDuration <= TimeSpan.Zero)
-            return null;
-
-        try {
-            var at = (totalVideoDuration * 0.1).Clamp(TimeSpan.Zero, TimeSpan.FromSeconds(10));
-            var thumbnailPath = FilePath.GetApplicationTempDirectory() | $"snapshot_{Guid.NewGuid()}.jpg";
-            var success = await FFMpeg.SnapshotAsync(videoTempFile, thumbnailPath, captureTime: at).ConfigureAwait(false);
-            if (!success)
-                throw StandardError.External($"Could not take thumbnail for video {videoUpload.FileName}.");
-
-            await FFMpegArguments.FromFileInput(videoTempFile, true, options => options.Seek(at))
-                .OutputToFile(thumbnailPath, false, options => options.WithVideoCodec("mjpeg").WithFrameOutputCount(1))
-                .ProcessAsynchronously()
-                .ConfigureAwait(false);
-
-            var thumbnailFileName = videoUpload.FileName.ChangeExtension(".thumbnail.jpg");
-            return new UploadedTempFile(thumbnailFileName, MediaTypeNames.Image.Jpeg, thumbnailPath);
-        }
-        catch (Exception e) {
-            Log.LogError(e, "Failed to extract thumbnail for '{FileName}'", videoUpload.FileName);
-            return null;
+            return new ProcessedFile(upload, size, snapshot);
         }
     }
 }

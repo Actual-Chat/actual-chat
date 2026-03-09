@@ -1,6 +1,4 @@
-using System.Net.Mime;
 using ActualChat.Media;
-using ActualLab.IO;
 using FFMpegCore;
 using Google.Api.Gax.ResourceNames;
 using Google.Apis.Auth.OAuth2;
@@ -22,7 +20,8 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
     private readonly string _bucket;
     private readonly string _projectId;
     private readonly string _regionId;
-    private readonly ILogger _log;
+
+    private ILogger Log { get; }
 
     public GoogleCloudVideoUploadProcessor(
         StorageClient storageClient,
@@ -35,7 +34,7 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
         _bucket = bucket;
         _projectId = projectId;
         _regionId = regionId;
-        _log = log;
+        Log = log;
     }
 
     public bool Supports(string contentType)
@@ -56,42 +55,55 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
         var signedUrl = await GenerateSignedReadUrl(blobFile.BlobPath).ConfigureAwait(false);
 
         // 1. Video info — from saved state or by analyzing
-        Size? size;
+        Size size;
         TimeSpan duration;
         double frameRate;
         bool mustConvert;
 
         if (savedState != null) {
-            _log.LogDebug("Resuming transcoder job '{JobName}' for '{FileName}'",
+            Log.LogDebug("Resuming transcoder job '{JobName}' for '{FileName}'",
                 savedState.JobName, upload.FileName);
             size = new Size(savedState.VideoWidth, savedState.VideoHeight);
             duration = TimeSpan.FromSeconds(savedState.Duration);
-            frameRate = savedState.FrameRate;
+            frameRate = 0; // Not important since we're resuming a job.
             mustConvert = true;
         }
         else {
-            (mustConvert, size, duration, frameRate) = await GetVideoInfo(signedUrl, upload.FileName, cancellationToken).ConfigureAwait(false);
-            _log.LogDebug("Video analysis completed in {Elapsed:N0}ms for '{FileName}'",
-                stepSw.ElapsedMilliseconds, upload.FileName);
-        }
+            FFMpegCore.VideoStream? videoStream = null;
+            try {
+                var mediaAnalysis = await FFProbe.AnalyseAsync(new Uri(signedUrl), cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+                videoStream = mediaAnalysis.PrimaryVideoStream;
+            }
+            catch (Exception e) {
+                Log.LogWarning(e, "Failed to extract video info from '{FileName}'", upload.FileName);
+            }
+            finally {
+                Log.LogDebug("Video analysis completed in {Elapsed:N0}ms for '{FileName}'",
+                    stepSw.ElapsedMilliseconds,
+                    upload.FileName);
+            }
+            if (videoStream is null)
+                return new ProcessedFile(upload.AsBinaryFile(), null);
 
-        if (size is null)
-            return new ProcessedFile(upload.AsBinaryFile(), null);
+            mustConvert = UploadProcessorHelper.MustConvertVideo(videoStream);
+            (size, duration, frameRate) = UploadProcessorHelper.AnalyzeVideo(videoStream);
+        }
 
         progress?.Report(10);
 
-        // 2. Thumbnail
+        // 2. Snapshot
         stepSw.Restart();
-        var thumbnail = await GetThumbnail(signedUrl, upload.FileName, duration).ConfigureAwait(false);
-        _log.LogDebug("Thumbnail extraction completed in {Elapsed:N0}ms for '{FileName}'",
+        var snapshot = await UploadProcessorHelper.Snapshot(new Uri(signedUrl), upload.FileName, duration).ConfigureAwait(false);
+        Log.LogDebug("Snapshot extraction completed in {Elapsed:N0}ms for '{FileName}'",
             stepSw.ElapsedMilliseconds, upload.FileName);
-        if (thumbnail is null)
+        if (snapshot is null)
             return new ProcessedFile(upload.AsBinaryFile(), size);
 
         progress?.Report(15);
 
         if (!mustConvert)
-            return new ProcessedFile(upload, size, thumbnail);
+            return new ProcessedFile(UploadProcessorHelper.EnsureMp4Extension(upload), size, snapshot);
 
         // 3. Create or resume a transcoder job + poll
         try {
@@ -110,26 +122,26 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
                 var outputGcsUri = $"gs://{_bucket}/{outputPrefix}";
 
                 stepSw.Restart();
-                var createdJob = await CreateTranscoderJob(inputGcsUri, outputGcsUri, size.Value, frameRate, cancellationToken).ConfigureAwait(false);
+                var createdJob = await CreateTranscoderJob(inputGcsUri, outputGcsUri, size, frameRate, cancellationToken).ConfigureAwait(false);
                 jobName = createdJob.Name;
-                _log.LogDebug("Transcoder job created in {Elapsed:N0}ms: '{JobName}'",
+                Log.LogDebug("Transcoder job created in {Elapsed:N0}ms: '{JobName}'",
                     stepSw.ElapsedMilliseconds, jobName);
 
                 // Save state BEFORE polling so we can resume after a restart
-                await WriteState(stateObjectName, jobName, outputPrefix, size.Value, duration, frameRate, cancellationToken).ConfigureAwait(false);
+                await WriteState(stateObjectName, jobName, outputPrefix, size, duration, cancellationToken).ConfigureAwait(false);
             }
 
             // 4. Poll for completion
             stepSw.Restart();
             var job = await PollJobUntilComplete(jobName, progress, cancellationToken).ConfigureAwait(false);
-            _log.LogDebug("Transcoding completed in {Elapsed:N0}ms, state: {State}, job: '{JobName}'",
+            Log.LogDebug("Transcoding completed in {Elapsed:N0}ms, state: {State}, job: '{JobName}'",
                 stepSw.ElapsedMilliseconds, job.State, job.Name);
 
             progress?.Report(95);
 
             if (job.State == Job.Types.ProcessingState.Failed) {
-                _log.LogError("Transcoder job '{JobName}' failed: {Error}", job.Name, job.Error);
-                return new ProcessedFile(upload.AsBinaryFile(), size, thumbnail);
+                Log.LogError("Transcoder job '{JobName}' failed: {Error}", job.Name, job.Error);
+                return new ProcessedFile(upload.AsBinaryFile(), size, snapshot);
             }
 
             // 5. Build result
@@ -137,7 +149,7 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
             var outputLength = await GetObjectLength(outputObjectName, cancellationToken).ConfigureAwait(false);
             progress?.Report(98);
 
-            _log.LogDebug("Total video processing completed in {Elapsed:N0}ms for '{FileName}'",
+            Log.LogDebug("Total video processing completed in {Elapsed:N0}ms for '{FileName}'",
                 totalSw.ElapsedMilliseconds, upload.FileName);
             return new ProcessedFile(
                 new UploadedBlobFile(
@@ -147,7 +159,7 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
                     outputObjectName,
                     () => OpenGcsObject(outputObjectName)),
                 size,
-                thumbnail) {
+                snapshot) {
                 OnDispose = () => {
                     _ = CleanupGcsOutputAsync(outputPrefix);
                     _ = DeleteState(stateObjectName);
@@ -155,10 +167,10 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
             };
         }
         catch (Exception e) {
-            _log.LogError(e, "Cloud transcoding failed for '{File}' after {Elapsed:N0}ms",
+            Log.LogError(e, "Cloud transcoding failed for '{File}' after {Elapsed:N0}ms",
                 upload.FileName, totalSw.ElapsedMilliseconds);
             _ = DeleteState(stateObjectName);
-            thumbnail.Delete();
+            snapshot.Delete();
             throw;
         }
     }
@@ -172,57 +184,20 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
         return await urlSigner.SignAsync(_bucket, objectName, SignedUrlExpiry, cancellationToken: CancellationToken.None).ConfigureAwait(false);
     }
 
-    private async Task<(bool MustConvert, Size? Size, TimeSpan Duration, double FrameRate)> GetVideoInfo(
-        string signedUrl, FilePath fileName, CancellationToken cancellationToken)
-    {
-        try {
-            var media = await FFProbe.AnalyseAsync(new Uri(signedUrl), cancellationToken: cancellationToken).ConfigureAwait(false);
-            var video = media.PrimaryVideoStream;
-            var size = video is null ? (Size?)null : UploadHelper.GetEffectiveSize(video);
-            var frameRate = video?.AvgFrameRate ?? 0;
-            return (UploadHelper.MustConvertVideo(media, fileName), size, media.Duration, frameRate);
-        }
-        catch (Exception e) {
-            _log.LogDebug(e, "Failed to extract video info from '{FileName}'", fileName);
-            return (false, null, TimeSpan.Zero, 0);
-        }
-    }
-
-    private async Task<UploadedTempFile?> GetThumbnail(string signedUrl, FilePath fileName, TimeSpan totalVideoDuration)
-    {
-        if (totalVideoDuration <= TimeSpan.Zero)
-            return null;
-
-        try {
-            var at = (totalVideoDuration * 0.1).Clamp(TimeSpan.Zero, TimeSpan.FromSeconds(10));
-            var thumbnailPath = FilePath.GetApplicationTempDirectory() | $"snapshot_{Guid.NewGuid()}.jpg";
-
-            await FFMpegArguments.FromUrlInput(new Uri(signedUrl), options => options.Seek(at))
-                .OutputToFile(thumbnailPath, false, options => options.WithVideoCodec("mjpeg").WithFrameOutputCount(1))
-                .ProcessAsynchronously()
-                .ConfigureAwait(false);
-
-            var thumbnailFileName = fileName.ChangeExtension(".thumbnail.jpg");
-            return new UploadedTempFile(thumbnailFileName, MediaTypeNames.Image.Jpeg, thumbnailPath);
-        }
-        catch (Exception e) {
-            _log.LogError(e, "Failed to extract thumbnail for '{FileName}'", fileName);
-            return null;
-        }
-    }
-
     private async Task<Job> CreateTranscoderJob(
         string inputGcsUri, string outputGcsUri, Size size, double frameRate, CancellationToken cancellationToken)
     {
         var client = await TranscoderServiceClient.CreateAsync(cancellationToken).ConfigureAwait(false);
         var parent = LocationName.FromProjectLocation(_projectId, _regionId);
+        const string videoStreamKey = "video_stream0";
+        const string audioStreamKey = "audio_stream0";
         var job = new Job {
             InputUri = inputGcsUri,
             OutputUri = outputGcsUri,
             Config = new JobConfig {
                 ElementaryStreams = {
                     new ElementaryStream {
-                        Key = "video_stream0",
+                        Key = videoStreamKey,
                         VideoStream = new TranscoderVideoStream {
                             H264 = new TranscoderVideoStream.Types.H264CodecSettings {
                                 BitrateBps = EstimateVideoBitrate(size, frameRate),
@@ -234,7 +209,7 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
                         },
                     },
                     new ElementaryStream {
-                        Key = "audio_stream0",
+                        Key = audioStreamKey,
                         AudioStream = new TranscoderAudioStream {
                             Codec = "aac",
                             BitrateBps = 128_000,
@@ -246,7 +221,7 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
                         Key = "output",
                         Container = "mp4",
                         FileName = "output.mp4",
-                        ElementaryStreams = { "video_stream0", "audio_stream0" },
+                        ElementaryStreams = { videoStreamKey, audioStreamKey },
                     },
                 },
             },
@@ -315,7 +290,7 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
                 await _storageClient.DeleteObjectAsync(obj, cancellationToken: default).ConfigureAwait(false);
         }
         catch (Exception e) {
-            _log.LogDebug(e, "Failed to cleanup GCS transcoder output at '{Prefix}'", prefix);
+            Log.LogWarning(e, "Failed to cleanup GCS transcoder output at '{Prefix}'", prefix);
         }
     }
 
@@ -338,23 +313,23 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
             return null;
         }
         catch (Exception e) {
-            _log.LogWarning(e, "Failed to read transcoder state '{StateObject}', proceeding with new job", stateObjectName);
+            Log.LogWarning(e, "Failed to read transcoder state '{StateObject}', proceeding with new job", stateObjectName);
             return null;
         }
     }
 
     private async Task WriteState(
         string stateObjectName, string jobName, string outputPrefix,
-        Size size, TimeSpan duration, double frameRate,
+        Size size, TimeSpan duration,
         CancellationToken cancellationToken)
     {
-        var state = new TranscoderState(jobName, outputPrefix, size.Width, size.Height, duration.TotalSeconds, frameRate);
+        var state = new TranscoderState(jobName, outputPrefix, size.Width, size.Height, duration.TotalSeconds);
         var stream = MemoryStreamManager.Default.GetStream();
         await using (stream.ConfigureAwait(false)) {
             await JsonSerializer.SerializeAsync(stream, state, cancellationToken: cancellationToken).ConfigureAwait(false);
             stream.Position = 0;
             await _storageClient.UploadObjectAsync(_bucket, stateObjectName, "application/json", stream, cancellationToken: cancellationToken).ConfigureAwait(false);
-            _log.LogDebug("Saved transcoder state '{StateObject}': job '{JobName}'", stateObjectName, jobName);
+            Log.LogDebug("Saved transcoder state '{StateObject}': job '{JobName}'", stateObjectName, jobName);
         }
     }
 
@@ -362,10 +337,10 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
     {
         try {
             await _storageClient.DeleteObjectAsync(_bucket, stateObjectName, cancellationToken: default).ConfigureAwait(false);
-            _log.LogDebug("Deleted transcoder state '{StateObject}'", stateObjectName);
+            Log.LogDebug("Deleted transcoder state '{StateObject}'", stateObjectName);
         }
         catch (Exception e) {
-            _log.LogDebug(e, "Failed to delete transcoder state '{StateObject}'", stateObjectName);
+            Log.LogWarning(e, "Failed to delete transcoder state '{StateObject}'", stateObjectName);
         }
     }
 
@@ -376,6 +351,5 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
         string OutputPrefix,
         int VideoWidth,
         int VideoHeight,
-        double Duration,
-        double FrameRate);
+        double Duration);
 }
