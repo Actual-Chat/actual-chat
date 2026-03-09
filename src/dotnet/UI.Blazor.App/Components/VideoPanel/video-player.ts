@@ -286,9 +286,13 @@ export class VideoPlayer {
         // The actual value (~3-4s for SignalR delivery) is used for audio-sync compensation.
         // This does NOT affect server-side latency reporting (which uses lastRenderedOffsetMs directly).
         const cappedLatencyMs = Math.min(Math.max(currentLatencyMs, 0), 10000);
-        this.pipelineLatencyMs = this.pipelineLatencyMs === 0
-            ? cappedLatencyMs
-            : this.pipelineLatencyMs * 0.9 + cappedLatencyMs * 0.1;
+        if (this.pipelineLatencyMs === 0) {
+            this.pipelineLatencyMs = cappedLatencyMs;
+        } else {
+            // Asymmetric EMA: fast response to increases (α=0.3), slow decay (α=0.05)
+            const alpha = cappedLatencyMs > this.pipelineLatencyMs ? 0.3 : 0.05;
+            this.pipelineLatencyMs = this.pipelineLatencyMs * (1 - alpha) + cappedLatencyMs * alpha;
+        }
 
         // When audio-sync is active, use larger buffer to retain frames from bursty delivery.
         // Audio-sync target controls rendering pace, so larger buffer doesn't add latency.

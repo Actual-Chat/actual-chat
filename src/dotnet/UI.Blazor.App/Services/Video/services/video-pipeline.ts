@@ -120,6 +120,10 @@ export class VideoPipeline implements IVideoPipeline {
     private readonly reducedFrameIntervalMs: number;
     private savedBitrate: number;
 
+    // Encoder backpressure state
+    private backpressureStepDownCount = 0;
+    private lastBackpressureStepDown = 0;
+
     private currentStats: {
     encoder: EncoderStats;
     segmentation: SegmentationStats | null;
@@ -289,7 +293,13 @@ export class VideoPipeline implements IVideoPipeline {
         this.encoder = rpcClientServer<EncoderWorker>(
             'VideoPipeline.encoder',
             this.encoderWorkerInstance,
-            { onSerializedChunk: this.onSerializedChunk }
+            {
+                onSerializedChunk: this.onSerializedChunk,
+                onBackpressure: (dropRate: number) => {
+                    this.handleEncoderBackpressure(dropRate);
+                    return Promise.resolve();
+                },
+            }
         );
 
         // Initialize segmentation worker if background blur is enabled
@@ -544,6 +554,44 @@ export class VideoPipeline implements IVideoPipeline {
         }
 
         await this.encoder.reconfigure(params);
+    }
+
+    private handleEncoderBackpressure(dropRate: number): void {
+        const now = performance.now();
+
+        // Throttle: don't step down more than once per 5s
+        if (now - this.lastBackpressureStepDown < 5000) return;
+
+        const currentBitrate = this.config.encoderConfig.bitrate;
+        const currentWidth = this.config.encoderConfig.width;
+        const currentHeight = this.config.encoderConfig.height;
+
+        // Find current approximate quality level and step down
+        let target: { width: number; height: number; bitrate: number } | null = null;
+        if (currentWidth > 1280) {
+            target = { width: 1280, height: 720, bitrate: 4_000_000 };
+        } else if (currentWidth > 960) {
+            target = { width: 960, height: 540, bitrate: 2_500_000 };
+        } else if (currentWidth > 640) {
+            target = { width: 640, height: 360, bitrate: 1_000_000 };
+        }
+        // Already at lowest resolution — can only reduce bitrate further
+        if (!target && currentBitrate > 500_000) {
+            target = { width: currentWidth, height: currentHeight, bitrate: Math.round(currentBitrate * 0.5) };
+        }
+
+        if (!target) {
+            warnLog?.log('Backpressure step-down: already at minimum quality');
+            return;
+        }
+
+        this.backpressureStepDownCount++;
+        this.lastBackpressureStepDown = now;
+        warnLog?.log(`Backpressure step-down #${this.backpressureStepDownCount}: ` +
+            `${currentWidth}x${currentHeight}@${(currentBitrate/1e6).toFixed(1)}Mbps → ` +
+            `${target.width}x${target.height}@${(target.bitrate/1e6).toFixed(1)}Mbps, dropRate=${(dropRate*100).toFixed(0)}%`);
+
+        void this.reconfigure(target);
     }
 
     /**

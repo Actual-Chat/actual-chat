@@ -101,4 +101,12 @@ export interface EncoderWorkerCallbacks {
         descriptionBytes?: ArrayBuffer,
         noWait?: RpcNoWait
     ): Promise<void>;
+
+    /**
+     * Called when encoder experiences sustained backpressure (>20% frame drops over 5s).
+     * Main thread should step down encoding quality.
+     * @param dropRate Fraction of frames dropped (0-1)
+     * @param noWait Fire-and-forget
+     */
+    onBackpressure(dropRate: number, noWait?: RpcNoWait): Promise<void>;
 }

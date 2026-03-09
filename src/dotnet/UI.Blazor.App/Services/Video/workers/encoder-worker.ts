@@ -25,6 +25,14 @@ let startTimestamp: number | undefined = undefined;
 let lastLoggedFormat: string | null = '(unset)';
 let loggedI420Error = false;
 
+// Backpressure tracking
+let backpressureDrops = 0;
+let backpressureTotalFrames = 0;
+let lastBackpressureCheckTime = 0;
+const backpressureWindowMs = 5000;       // evaluation window
+const backpressureDropThreshold = 0.20;  // 20% drop rate triggers notification
+let backpressureNotified = false;        // avoid repeated notifications
+
 /**
  * Detect if description bytes are in avcC (H.264 decoder configuration record) format.
  * Used to detect when encoder silently falls back to H.264 despite being configured for AV1.
@@ -314,6 +322,10 @@ const serverImpl: EncoderWorker = {
             resizeCtx = null;
             frameCount = 0;
             startTimestamp = undefined;
+            backpressureDrops = 0;
+            backpressureTotalFrames = 0;
+            lastBackpressureCheckTime = 0;
+            backpressureNotified = false;
         } catch (error) {
             errorLog?.log('Failed to stop encoder:', error);
             throw error; // RPC automatically propagates errors
@@ -330,10 +342,43 @@ const serverImpl: EncoderWorker = {
         }
 
         // Backpressure: drop frame if encoder queue is building up
+        backpressureTotalFrames++;
         if (encoder.getEncodeQueueSize() > 3) {
             frame.close();
+            backpressureDrops++;
             debugLog?.log('Frame dropped due to encoder backpressure (queueSize > 3)');
+
+            // Check if we should notify main thread about sustained backpressure
+            const now = performance.now();
+            if (now - lastBackpressureCheckTime > backpressureWindowMs) {
+                const dropRate = backpressureDrops / backpressureTotalFrames;
+                if (dropRate > backpressureDropThreshold && !backpressureNotified) {
+                    backpressureNotified = true;
+                    warnLog?.log(`Sustained backpressure: dropRate=${(dropRate * 100).toFixed(1)}% ` +
+                        `(${backpressureDrops}/${backpressureTotalFrames} in ${backpressureWindowMs}ms)`);
+                    void callbacks.onBackpressure(dropRate, rpcNoWait);
+                }
+                // Reset counters for next window
+                backpressureDrops = 0;
+                backpressureTotalFrames = 0;
+                lastBackpressureCheckTime = now;
+            }
             return;
+        }
+
+        // Reset backpressure notification flag when encoding succeeds consistently
+        if (backpressureNotified && backpressureTotalFrames > 30) {
+            const now = performance.now();
+            if (now - lastBackpressureCheckTime > backpressureWindowMs) {
+                const dropRate = backpressureDrops / backpressureTotalFrames;
+                if (dropRate < 0.05) {
+                    backpressureNotified = false;
+                    debugLog?.log('Backpressure resolved');
+                }
+                backpressureDrops = 0;
+                backpressureTotalFrames = 0;
+                lastBackpressureCheckTime = now;
+            }
         }
 
         try {
@@ -494,6 +539,10 @@ const serverImpl: EncoderWorker = {
             // Reset frame counter and start timestamp for fresh keyframe scheduling
             frameCount = 0;
             startTimestamp = undefined;
+            backpressureDrops = 0;
+            backpressureTotalFrames = 0;
+            lastBackpressureCheckTime = 0;
+            backpressureNotified = false;
 
             infoLog?.log('Codec switched successfully');
         } catch (error) {
