@@ -6,7 +6,6 @@
         return;
 
     var language = m.ChatLanguage;
-    var primary = m.Primary;
 }
 
 @if (IsNarrow) {
@@ -35,8 +34,6 @@
 }
 
 @code {
-    private ChatId? _detectedLanguageChatId;
-
     private LanguageUI LanguageUI => Hub.LanguageUI;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
@@ -50,34 +47,14 @@
             });
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        var chat = Chat;
-        var chatId = chat.Id;
+        var chatId = Chat.Id;
         var data = await LanguageUI.GetChatLanguageAndPrimary(chatId, cancellationToken).ConfigureAwait(false);
-        if (data.Item1 is null && _detectedLanguageChatId != chatId) {
-            var detectedLanguage = await AccountSettings.UserChatRecordingDetectedLanguage().Get(cancellationToken).ConfigureAwait(false);
-            if (detectedLanguage.ChatId == chatId
-                && detectedLanguage.Language is not null
-                && IsRecent(detectedLanguage.Timestamp)) {
-                _detectedLanguageChatId = chatId;
-                _ = UpdateChatLanguage(chat, detectedLanguage.Language);
-            }
-        }
-        return new Model(data.Item1, data.Item2);
+        return new Model(data.Item1);
     }
-
-    private bool IsRecent(Moment timestamp)
-        => (Clocks.SystemClock.Now - timestamp).Positive().TotalSeconds < 60;
 
     private void OnClick()
         => ModalUI.Show(new VoiceSettingsModal.Model(Chat.Id));
 
-    private Task UpdateChatLanguage(Chat chat, Language language)
-        => InvokeAsync(async () => {
-            CancellationToken cancellationToken = default;
-            await LanguageUI.ChangeChatLanguage(chat.Id, language, cancellationToken);
-            ToastUI.Show($"Detected transcription language for chat '{chat.Title}' is {language.Title}.", OnClick, "Change", ToastDismissDelay.Long);
-        });
-
     // Nested types
-    public record Model(Language? ChatLanguage, Language Primary);
+    public record Model(Language? ChatLanguage);
 }

@@ -18,6 +18,7 @@ public partial class ChatUI
             AsyncChain.From(PushKeepAwakeState),
             AsyncChain.From(SynchronizeSelectedChatIdAndActivePlaceId),
             AsyncChain.From(PrefetchChatTails),
+            AsyncChain.From(ApplyDetectedLanguage),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
         await (
@@ -83,6 +84,10 @@ public partial class ChatUI
         return activeChats.Any(c => c.IsListening || c.IsRecording);
     }
 
+    [ComputeMethod]
+    protected virtual async Task<UserChatRecordingDetectedLanguage> GetDetectedLanguage(CancellationToken cancellationToken)
+        => await AccountSettings.UserChatRecordingDetectedLanguage().Get(cancellationToken).ConfigureAwait(false);
+
     private async Task PushKeepAwakeState(CancellationToken cancellationToken)
     {
         var lastMustKeepAwake = (bool?)null;
@@ -146,6 +151,47 @@ public partial class ChatUI
             _pendingSelectedChatIds = null;
         }
     }
+
+    private async Task ApplyDetectedLanguage(CancellationToken cancellationToken)
+    {
+        var lastDetectedLanguageChatId = (ChatId?)null;
+        var cDetected = await Computed
+            .Capture(() => GetDetectedLanguage(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        var changes = cDetected.Changes(FixedDelayer.Get(0.5), cancellationToken);
+        await foreach (var c in changes.ConfigureAwait(false)) {
+            var detected = c.Value;
+            if (detected.ChatId is null || detected.Language is null)
+                continue;
+
+            var chatId = detected.ChatId;
+            if (chatId == lastDetectedLanguageChatId)
+                continue;
+
+            var data = await LanguageUI.GetChatLanguageAndPrimary(chatId, cancellationToken).ConfigureAwait(false);
+            if (data.Item1 is not null)
+                continue; // language already set explicitly
+
+            if (!IsRecentDetection(detected.Timestamp))
+                continue;
+
+            lastDetectedLanguageChatId = chatId;
+            var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+            if (chat is null)
+                continue;
+
+            var language = detected.Language;
+            await LanguageUI.ChangeChatLanguage(chatId, language, cancellationToken).ConfigureAwait(false);
+            ToastUI.Show(
+                $"Detected transcription language for chat '{chat.Title}' is {language.Title}.",
+                () => ModalUI.Show(new VoiceSettingsModal.Model(chatId), CancellationToken.None),
+                "Change",
+                ToastDismissDelay.Long);
+        }
+    }
+
+    private bool IsRecentDetection(Moment timestamp)
+        => (Clocks.SystemClock.Now - timestamp).Positive().TotalSeconds < 60;
 
     private async Task PrefetchChatTails(CancellationToken cancellationToken)
     {
