@@ -69,11 +69,10 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
             mustConvert = true;
         }
         else {
-            FFMpegCore.VideoStream? videoStream = null;
+            IMediaAnalysis? mediaInfo = null;
             try {
-                var mediaAnalysis = await FFProbe.AnalyseAsync(new Uri(signedUrl), cancellationToken: cancellationToken)
+                mediaInfo = await FFProbe.AnalyseAsync(new Uri(signedUrl), cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
-                videoStream = mediaAnalysis.PrimaryVideoStream;
             }
             catch (Exception e) {
                 Log.LogWarning(e, "Failed to extract video info from '{FileName}'", upload.FileName);
@@ -83,10 +82,12 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
                     stepSw.ElapsedMilliseconds,
                     upload.FileName);
             }
+            var videoStream = mediaInfo?.PrimaryVideoStream;
             if (videoStream is null)
                 return new ProcessedFile(upload.AsBinaryFile(), null);
 
-            mustConvert = UploadProcessorHelper.MustConvertVideo(videoStream);
+            mustConvert = UploadProcessorHelper.MustConvertVideo(videoStream)
+                || UploadProcessorHelper.MustConvertVideo(mediaInfo!.Format);
             (size, duration, frameRate) = UploadProcessorHelper.AnalyzeVideo(videoStream);
         }
 

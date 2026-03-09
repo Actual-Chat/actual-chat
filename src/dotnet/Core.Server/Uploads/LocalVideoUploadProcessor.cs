@@ -35,13 +35,10 @@ public class LocalVideoUploadProcessor(ILogger<LocalVideoUploadProcessor> log) :
         var totalSw = Stopwatch.StartNew();
         var stepSw = Stopwatch.StartNew();
 
-        VideoStream? videoStream = null;
+        IMediaAnalysis? mediaInfo = null;
         try {
-            var mediaAnalysis = await FFProbe.AnalyseAsync(upload.TempFilePath, cancellationToken: cancellationToken)
+            mediaInfo = await FFProbe.AnalyseAsync(upload.TempFilePath, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
-            videoStream = mediaAnalysis.PrimaryVideoStream;
-            if (videoStream is null)
-                return new ProcessedFile(upload.AsBinaryFile(), null);
         }
         catch (Exception e) {
             Log.LogWarning(e, "Failed to extract video info from '{FileName}'", upload.FileName);
@@ -51,10 +48,12 @@ public class LocalVideoUploadProcessor(ILogger<LocalVideoUploadProcessor> log) :
                 stepSw.ElapsedMilliseconds,
                 upload.FileName);
         }
+        var videoStream = mediaInfo?.PrimaryVideoStream;
         if (videoStream is null)
             return new ProcessedFile(upload.AsBinaryFile(), null);
 
-        var mustConvert = UploadProcessorHelper.MustConvertVideo(videoStream);
+        var mustConvert = UploadProcessorHelper.MustConvertVideo(videoStream)
+            || UploadProcessorHelper.MustConvertVideo(mediaInfo!.Format);
         var (size, duration, _) = UploadProcessorHelper.AnalyzeVideo(videoStream);
 
         progress?.Report(10);

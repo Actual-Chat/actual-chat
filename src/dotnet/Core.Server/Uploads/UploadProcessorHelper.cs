@@ -35,6 +35,9 @@ public static class UploadProcessorHelper
             && !OrdinalIgnoreCaseEquals(codecName, "h265");
     }
 
+    public static bool MustConvertVideo(MediaFormat mediaFormat)
+        => !IsMp4Container(mediaFormat);
+
     public static Task<UploadedTempFile?> Snapshot(
         Uri source, FilePath fileName, TimeSpan totalVideoDuration)
         => SnapshotInternal(
@@ -61,6 +64,19 @@ public static class UploadProcessorHelper
     }
 
     // Private helpers
+
+    private static bool IsMp4Container(MediaFormat mediaFormat)
+    {
+        var tags = mediaFormat.Tags;
+        if (tags is null)
+            return false;
+
+        if (!tags.TryGetValue("major_brand", out var brand1))
+            return false;
+
+        var brand = brand1.Trim();
+        return brand is "isom" or "iso2" or "mp41" or "mp42";
+    }
 
     private static async Task<UploadedTempFile?> SnapshotInternal(
         Func<TimeSpan, FFMpegArguments> createInput,
