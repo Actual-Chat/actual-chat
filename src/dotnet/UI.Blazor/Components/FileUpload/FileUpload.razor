@@ -2,7 +2,7 @@
 @using ActualChat.Media
 @inherits ComponentBase<UIHub>
 
-<FileUploadPicker @ref="_picker" MaxSize="MaxSize" FileSelected="OnFileSelected" @attributes="InputAttributes"/>
+<FileUploadPicker @ref="_picker" FileSelected="OnFileSelected" @attributes="InputAttributes"/>
 
 @code {
     private FileUploader FileUploader => field ??= Services.GetRequiredService<FileUploader>();
