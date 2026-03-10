@@ -240,9 +240,11 @@ public partial class StreamingBackend
         try {
             await foreach (var transcript in transcripts.Replay(cancellationToken).ConfigureAwait(false)) {
                 lastTranscript = transcript;
-                if (entryLanguage?.Languages.Length is null or 0 && textEntry != null)
-                    if (lastTranscript.Languages.Length > 0)
-                        entryLanguage = await CreateLanguages(lastTranscript.Languages).ConfigureAwait(false);
+                // NOTE(DF): in detect language mode, we should persist languages only on text entry finalization.
+                if (!transcriptionOptions.DetectLanguage)
+                    if (entryLanguage?.Languages.Length is null or 0 && textEntry != null)
+                        if (lastTranscript.Languages.Length > 0)
+                            entryLanguage = await CreateLanguages(lastTranscript.Languages).ConfigureAwait(false);
                 if (textEntry != null)
                     continue;
                 if (EmptyRegex.IsMatch(transcript.Text))
@@ -251,7 +253,9 @@ public partial class StreamingBackend
                 // Got first non-empty transcript -> create text entry
                 // The code below is performed only once
                 textEntry = await CreateTextEntry(transcript).ConfigureAwait(false);
-                entryLanguage = await CreateLanguages(lastTranscript.Languages).ConfigureAwait(false);
+                // NOTE(DF): in detect language mode, we should persist languages only on text entry finalization.
+                if (!transcriptionOptions.DetectLanguage)
+                    entryLanguage = await CreateLanguages(lastTranscript.Languages).ConfigureAwait(false);
                 var transcriptDiffStream = transcripts.Replay(cancellationToken).ToTranscriptDiffs().Memoize();
                 await _transcriptStreams
                     .Publish(transcriptStreamId, transcriptDiffStream)
@@ -262,7 +266,7 @@ public partial class StreamingBackend
             if (lastTranscript != null && textEntry != null)
                 await Task.WhenAll(FinalizeTextEntry(), FinalizeLanguages()).ConfigureAwait(false);
         }
-        return textEntry?.Id as ChatEntryId;
+        return textEntry?.Id;
 
         async Task<ChatEntry> CreateTextEntry(Transcript transcript)
         {
