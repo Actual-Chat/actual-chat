@@ -17,6 +17,13 @@ public sealed class IosFileProviderImpl(IServiceProvider services, FilePath file
         if (preview is not null)
             return preview;
 
+        // Check for existing thumbnail (e.g., after app restart when in-memory tracking is lost)
+        var existingThumbnail = PhotoGalleryFiles.FindExistingThumbnail(filePath);
+        if (existingThumbnail is not null)
+            return existingThumbnail;
+
+        // No thumbnail available - wait for main file to be ready, then use it as preview
+        await WhenFileStreamReady().ConfigureAwait(false);
         return File.Exists(filePath)
             ? new FilePreview(ContentResolver.GetFileUri(filePath))
             : throw StandardError.Internal($"Unable to generate file preview for '{filePath}'.");

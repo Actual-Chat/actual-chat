@@ -65,6 +65,24 @@ public sealed class IosPhotoGalleryFiles(IServiceProvider services)
             ? item.FileTask
             : Task.CompletedTask;
 
+    /// <summary>
+    /// Finds an existing thumbnail file for the given video path.
+    /// Used after app restart when in-memory tracking is lost but cached files might still exist.
+    /// </summary>
+    public FilePreview? FindExistingThumbnail(FilePath videoPath)
+    {
+        var thumbnailFileName = videoPath.FileName.ChangeExtension(".jpg");
+        var thumbnailPath = ThumbnailDir | thumbnailFileName;
+
+        if (!File.Exists(thumbnailPath))
+            return null;
+
+        var size = GetImageSize(thumbnailPath);
+        var preview = new FilePreview(ContentResolver.GetFileUri(thumbnailPath), size);
+        Log.LogDebug("Found existing thumbnail for '{VideoPath}': {Url}", videoPath, preview.Url);
+        return preview;
+    }
+
     private async Task ProcessPhotoGalleryItem(PendingItem item)
     {
         try {
