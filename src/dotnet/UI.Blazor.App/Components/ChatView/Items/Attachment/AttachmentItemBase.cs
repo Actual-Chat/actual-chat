@@ -28,10 +28,6 @@ public abstract class AttachmentItemBase : ComputedStateComponent<AppUIHub, Atta
 
         public bool NoAccess => Preview.State == PreviewAccessState.NoFileAccess;
 
-        public bool HasPreview => Attachment.IsSupportedImage
-            || Attachment.IsSupportedVideo
-            || HasCustomPreview;
-
         // Custom preview is a generated thumbnail (e.g., iOS MOV thumbnail) with content:// scheme
         public bool HasCustomPreview => !Attachment.Size.IsEmpty
             && Preview.PreviewUrl.OrdinalStartsWith($"{UrlMapper.UriContentScheme}://");
