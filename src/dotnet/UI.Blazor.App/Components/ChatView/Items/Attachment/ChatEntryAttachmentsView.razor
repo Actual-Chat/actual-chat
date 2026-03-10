@@ -1,5 +1,15 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@if (Entry.Attachments.Length > 0) {
+@if (Entry.HasUploadingAttachments) {
+    if (IsOwnMessage) {
+        <ChatEntryAttachmentUploadsViewContainer
+            Hub="@Hub"
+            Entry="@Entry"
+            ShownUploads="@(() => _hasShownUploads = true)" />
+    } else {
+        <UploadPlug />
+    }
+}
+else if (Entry.Attachments.Length > 0) {
     if (_hasShownUploads) {
         Hub.SendingMessages.NotifyAttachmentsLoaded(Entry.Id);
         _hasShownUploads = false;
@@ -18,16 +28,6 @@
                 IsDotOnly="@(!IsUnreadByOthersBlockStart)"/>
         }
     </div>
-}
-else if (Entry.HasUploadingAttachments) {
-    if (IsOwnMessage) {
-        <ChatEntryAttachmentUploadsViewContainer
-            Hub="@Hub"
-            Entry="@Entry"
-            ShownUploads="@(() => _hasShownUploads = true)" />
-    } else {
-        <UploadPlug />
-    }
 }
 
 @code {
