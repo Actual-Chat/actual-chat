@@ -774,7 +774,6 @@ export class VirtualList {
                     const currentBottom = parseFloat(this.containerRef.style.bottom) || 0;
                     this.containerRef.style.bottom = `${currentBottom - totalExistingSizeDiff}px`;
                     debugLog?.log(`onResize: compensate`, totalExistingSizeDiff, currentBottom);
-                } else {
                 }
             }
         }
@@ -1903,10 +1902,22 @@ export class VirtualList {
                     const rect = itemRef.getBoundingClientRect();
                     const measuredSize = Math.ceil(rect.height + this.rowGap);
                     if (measuredSize > 0 && measuredSize !== cornerstoneItem.size) {
+                        const oldSize = cornerstoneItem.size ?? 0;
+                        const cornerstoneSizeDiff = Math.abs(measuredSize - oldSize);
+                        const isDiffSmall = cornerstoneSizeDiff < measuredSize / 2 && cornerstoneSizeDiff < oldSize / 2;
                         cornerstoneItem.size = measuredSize;
-                        cornerstoneItem.range = new NumberRange(
-                            cornerstoneItem.range.start,
-                            cornerstoneItem.range.start + measuredSize);
+                        if (this.defaultEdge === VirtualListEdge.End && isDiffSmall) {
+                            // Start from the end for smaller diffs
+                            cornerstoneItem.range = new NumberRange(
+                                cornerstoneItem.range.end - measuredSize,
+                                cornerstoneItem.range.end);
+                        }
+                        else {
+                            // this change is usually caused by conversation expansion or significant message rewrite
+                            cornerstoneItem.range = new NumberRange(
+                                cornerstoneItem.range.start,
+                                cornerstoneItem.range.start + measuredSize);
+                        }
                         this.sizeCache.set(cornerstoneItem.key, measuredSize);
                     }
                 }
