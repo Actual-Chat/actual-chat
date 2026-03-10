@@ -155,8 +155,8 @@ public sealed class IosPhotoGalleryFiles(IServiceProvider services)
 
     private sealed class PendingItem(FilePath targetPath, NSItemProvider itemProvider)
     {
-        private readonly TaskCompletionSource<FilePreview?> _previewTcs = new();
-        private readonly TaskCompletionSource _fileTcs = new();
+        private readonly TaskCompletionSource<FilePreview?> _previewTcs = TaskCompletionSourceExt.New<FilePreview?>();
+        private readonly TaskCompletionSource _fileTcs = TaskCompletionSourceExt.New();
 
         public FilePath TargetPath => targetPath;
         public NSItemProvider ItemProvider => itemProvider;

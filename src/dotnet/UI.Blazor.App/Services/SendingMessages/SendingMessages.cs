@@ -154,7 +154,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 var attachEntry = attachEntries[i];
                 var sourceAttachment = sourceAttachments?[i];
                 AttachmentId? sourceAttachmentId = sourceAttachment?.Id;
-                var previewUrl = sourceAttachment is SourceAttachment s ? s.PreviewUrl : "";
+                var sourcePreview = sourceAttachment is SourceAttachment s ? s.Preview : null;
                 var uploadSessionId = attachEntry.UploadSessionId;
                 Task<bool>? whenFilePermissionGranted = null;
                 Task<AttachmentPreview>? attachmentPreviewTask = null;
@@ -183,12 +183,12 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                         return false;
                     }
 
-                    if (previewUrl.IsNullOrEmpty()) {
+                    if (sourcePreview is null) {
                         var contentType = session.FileProvider.Metadata.FileType;
                         if (MediaTypeExt.IsVisualMedia(contentType))
-                            previewUrl = UrlMapper.ContentUrl(session.MediaRef.BlobId);
+                            sourcePreview = new FilePreview(UrlMapper.ContentUrl(session.MediaRef.BlobId));
                     }
-                    attachmentPreviewTask = Task.FromResult(AttachmentPreview.Preview(previewUrl));
+                    attachmentPreviewTask = Task.FromResult(AttachmentPreview.From(sourcePreview));
                 }
                 else {
                     var fileProvider = session.FileProvider;
@@ -196,22 +196,22 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                     if (canAccess) {
                         var whenUserConsentGrantedTask = fileProvider.WhenUserConsentGranted();
                         whenFilePermissionGranted = whenUserConsentGrantedTask;
-                        attachmentPreviewTask = GetAttachmentPreviewUrl();
+                        attachmentPreviewTask = GetAttachmentPreview();
 
-                        async Task<AttachmentPreview> GetAttachmentPreviewUrl()
+                        async Task<AttachmentPreview> GetAttachmentPreview()
                         {
-                            if (!previewUrl.IsNullOrEmpty())
-                                return AttachmentPreview.Preview(previewUrl);
+                            if (sourcePreview is not null)
+                                return AttachmentPreview.From(sourcePreview);
 
                             var consentGranted = await whenUserConsentGrantedTask.ConfigureAwait(false);
                             if (!consentGranted)
                                 return AttachmentPreview.NoFileAccess;
 
                             if (!MediaTypeExt.IsVisualMedia(fileProvider.Metadata.FileType))
-                                return AttachmentPreview.Preview("");
+                                return AttachmentPreview.NoPreview;
 
                             var preview = await fileProvider.GetPreview(Hub.StopToken).ConfigureAwait(false);
-                            return AttachmentPreview.Preview(preview.Url);
+                            return AttachmentPreview.From(preview);
                         }
                     }
                 }

@@ -17,10 +17,9 @@ public sealed class IosFileProviderImpl(IServiceProvider services, FilePath file
         if (preview is not null)
             return preview;
 
-        if (File.Exists(filePath))
-            return new FilePreview(ContentResolver.GetFileUri(filePath));
-
-        throw StandardError.Internal($"Unable to generate file preview for '{filePath}'.");
+        return File.Exists(filePath)
+            ? new FilePreview(ContentResolver.GetFileUri(filePath))
+            : throw StandardError.Internal($"Unable to generate file preview for '{filePath}'.");
     }
 
     public Task PrepareForSaving()

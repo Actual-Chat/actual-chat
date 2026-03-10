@@ -21,7 +21,7 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
             _ = GetAttachmentInfo(attachment.Id, default);
 
         if (attachment is SourceAttachment source)
-            SetPreview(attachment.Id, AttachmentPreview.Preview(source.PreviewUrl));
+            SetPreview(attachment.Id, AttachmentPreview.From(source.Preview));
     }
 
     public void Unregister(AttachmentId id)
