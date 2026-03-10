@@ -6,32 +6,21 @@ namespace ActualChat.App.Maui;
 public sealed class IosFileProviderImpl(IServiceProvider services, FilePath filePath) : IMauiFileProviderImpl
 {
     private IosPhotoGalleryFiles PhotoGalleryFiles => field ??= services.GetRequiredService<IosPhotoGalleryFiles>();
-    private IosVideoThumbnails VideoThumbnails => field ??= services.GetRequiredService<IosVideoThumbnails>();
 
     public Task WhenFileStreamReady()
-        => PhotoGalleryFiles.WhenNoPending(filePath);
+        => PhotoGalleryFiles.WhenFileReady(filePath);
 
     public async Task<FilePreview> GetPreview(CancellationToken cancellationToken = default)
     {
-        var preview = await PhotoGalleryFiles.GetPreview(filePath, cancellationToken).ConfigureAwait(false);
+        // Try to get preview from photo gallery (awaits if pending)
+        var preview = await PhotoGalleryFiles.GetPreview(filePath).ConfigureAwait(false);
         if (preview is not null)
             return preview;
 
         if (File.Exists(filePath))
-            return await GetPreviewCore(cancellationToken).ConfigureAwait(false);
-
-        throw StandardError.Internal($"Unable to generate file preview for '{filePath}'.");
-    }
-
-    private async Task<FilePreview> GetPreviewCore(CancellationToken cancellationToken)
-    {
-        if (!OrdinalIgnoreCaseEquals(filePath.Extension, ".mov"))
             return new FilePreview(ContentResolver.GetFileUri(filePath));
 
-        var thumbnail = await VideoThumbnails.Generate(filePath, cancellationToken).ConfigureAwait(false);
-        return thumbnail is { } t
-            ? new FilePreview(ContentResolver.GetFileUri(t.Path), t.Size)
-            : new FilePreview(ContentResolver.GetFileUri(filePath));
+        throw StandardError.Internal($"Unable to generate file preview for '{filePath}'.");
     }
 
     public Task PrepareForSaving()

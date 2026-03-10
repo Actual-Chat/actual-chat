@@ -1,90 +1,90 @@
-using ActualChat.Concurrency;
 using ActualChat.Media;
 using ActualChat.UI.Blazor.App.Services;
 using ActualLab.Generators;
 using ActualLab.IO;
 using Foundation;
 using PhotosUI;
-using UniformTypeIdentifiers;
 using Size = ActualChat.UI.App.Size;
 
 namespace ActualChat.App.Maui;
 
 /// <summary>
 /// Loads files from PHPickerResult in background while allowing the picker to return immediately.
+/// Provides two-phase processing: preview (thumbnail) first, then main file.
 /// </summary>
-public sealed class IosPhotoGalleryFiles : IDisposable
+public sealed class IosPhotoGalleryFiles(IServiceProvider services)
 {
-    private static readonly FilePath AttachmentsDirectory = Path.Combine(FileSystem.CacheDirectory, "attachments");
+    private static readonly FilePath AttachmentsDir = new FilePath(FileSystem.CacheDirectory) | "attachments";
     private static readonly FilePath ThumbnailDir = new FilePath(FileSystem.CacheDirectory) | "thumbnails";
+    private static readonly string[] ThumbnailUTTypeIds = [
+        "com.apple.private.photos.thumbnail.low",
+        "com.apple.private.photos.thumbnail.standard",
+    ];
 
-    private readonly IServiceProvider _services;
-    private readonly ConcurrentProcessor<PendingFile, FilePath> _processor;
+    private readonly ConcurrentDictionary<FilePath, PendingItem> _items = new();
 
-    private ILogger Log { get; }
-
-    public IosPhotoGalleryFiles(IServiceProvider services)
-    {
-        _services = services;
-        Log = services.LogFor(GetType());
-        _processor = new ConcurrentProcessor<PendingFile, FilePath>(
-            concurrencyLevel: 3,
-            processor: ProcessFile,
-            log: services.LogFor<ConcurrentProcessor<PendingFile, FilePath>>());
-    }
-
-    public void Dispose()
-        => _processor.DisposeSilently();
+    private ILogger Log => field ??= services.LogFor(GetType());
 
     public MauiFileProvider Enqueue(PHPickerResult pickerResult)
     {
-        var item = pickerResult.ItemProvider;
-        FilePath fileName = item.SuggestedName.NullIfEmpty() ?? RandomStringGenerator.Default.Next(10);
-        var fileType = item.ImplyMimeType();
+        var itemProvider = pickerResult.ItemProvider;
+        FilePath fileName = itemProvider.SuggestedName.NullIfEmpty() ?? RandomStringGenerator.Default.Next(10);
+        var fileType = itemProvider.ImplyMimeType();
         var ext = MediaMimeTypes.TryGetExtension(fileType, out var ext1)
             ? ext1
             : throw StandardError.Internal($"Failed to identify ext for asset '{pickerResult.AssetIdentifier}', file '{fileName}'");
         fileName = fileName.EnsureExt(ext);
-        var cachedPath = AttachmentsDirectory | fileName.ToUnique();
+        var targetPath = AttachmentsDir | fileName.ToUnique();
 
-        var pendingFile = new PendingFile(cachedPath, item);
-        _processor.Enqueue(pendingFile);
+        var pendingItem = new PendingItem(targetPath, itemProvider);
+        _items[targetPath] = pendingItem;
 
-        Log.LogDebug("Enqueued file '{TargetPath}' for background loading", cachedPath);
+        Log.LogDebug("Enqueued file '{TargetPath}' for background loading", targetPath);
+
+        // Start processing in background
+        _ = ProcessPhotoGalleryItem(pendingItem);
 
         var fileProvider = new MauiFileProvider {
-            FileRef = cachedPath,
+            FileRef = targetPath,
             Metadata = new() {
                 FileName = fileName,
                 FileType = fileType,
             },
         };
-        fileProvider.Initialize(_services);
+        fileProvider.Initialize(services);
         return fileProvider;
     }
 
-    public Task WhenNoPending(FilePath targetPath)
-        => _processor.Get(new PendingFile(targetPath))?.ResultTask ?? Task.CompletedTask;
+    public Task<FilePreview?> GetPreview(FilePath targetPath)
+        => _items.TryGetValue(targetPath, out var item)
+            ? item.PreviewTask
+            : Task.FromResult<FilePreview?>(null);
 
-    public async Task<FilePreview?> GetPreview(FilePath targetPath, CancellationToken cancellationToken)
+    public Task WhenFileReady(FilePath targetPath)
+        => _items.TryGetValue(targetPath, out var item)
+            ? item.FileTask
+            : Task.CompletedTask;
+
+    private async Task ProcessPhotoGalleryItem(PendingItem item)
     {
-        var pendingItem = _processor.Get(new PendingFile(targetPath));
-        if (pendingItem == null)
-            return null;
+        try {
+            // Phase 1: Create preview (thumbnail)
+            var preview = await CreatePreview(item.TargetPath, item.ItemProvider).ConfigureAwait(false);
+            item.SetPreview(preview);
 
-        return await GetThumbnail(pendingItem.Key, cancellationToken).ConfigureAwait(false);
+            // Phase 2: Load main file
+            await LoadMainFile(item.TargetPath, item.ItemProvider).ConfigureAwait(false);
+            item.SetFileReady();
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to process file '{TargetPath}'", item.TargetPath);
+            item.SetFailed(e);
+        }
     }
 
-    private async Task<FilePreview?> GetThumbnail(PendingFile pendingFile, CancellationToken cancellationToken)
+    private async Task<FilePreview?> CreatePreview(FilePath targetPath, NSItemProvider itemProvider)
     {
-        // Try low-res first (faster), then standard
-        string[] thumbnailUTTypeIds = [
-            "com.apple.private.photos.thumbnail.low",
-            "com.apple.private.photos.thumbnail.standard",
-        ];
-
-        var itemProvider = pendingFile.ItemProvider;
-        foreach (var thumbnailUTTypeId in thumbnailUTTypeIds) {
+        foreach (var thumbnailUTTypeId in ThumbnailUTTypeIds) {
             if (!itemProvider.HasItemConformingTo(thumbnailUTTypeId))
                 continue;
 
@@ -97,21 +97,42 @@ public sealed class IosPhotoGalleryFiles : IDisposable
                     continue;
 
                 // Copy thumbnail to cache directory
-                var thumbnailFileName = pendingFile.TargetPath.FileName.ChangeExtension(".jpg");
+                var thumbnailFileName = targetPath.FileName.ChangeExtension(".jpg");
                 Directory.CreateDirectory(ThumbnailDir);
                 var thumbnailPath = ThumbnailDir | thumbnailFileName;
 
-                await representation.Path.CopyTo(thumbnailPath, cancellationToken).ConfigureAwait(false);
+                await representation.Path.CopyTo(thumbnailPath, CancellationToken.None).ConfigureAwait(false);
 
                 var size = GetImageSize(thumbnailPath);
-                return new FilePreview(ContentResolver.GetFileUri(thumbnailPath), size);
+                var preview = new FilePreview(ContentResolver.GetFileUri(thumbnailPath), size);
+                Log.LogDebug("Created preview for '{TargetPath}': {Url}", targetPath, preview.Url);
+                return preview;
             }
             catch (Exception e) {
                 Log.LogWarning(e, "Failed to load thumbnail of type '{ThumbnailType}'", thumbnailUTTypeId);
             }
         }
 
+        Log.LogDebug("No preview available for '{TargetPath}'", targetPath);
         return null;
+    }
+
+    private async Task LoadMainFile(FilePath targetPath, NSItemProvider itemProvider)
+    {
+        var contentType = itemProvider.RegisteredContentTypes[0];
+        var loadStartedAt = CpuTimestamp.Now;
+        var representation = await itemProvider
+            .LoadInPlaceFileRepresentationAsync(contentType.Identifier)
+            .ConfigureAwait(false);
+        var sourcePath = representation.Path;
+
+        var copyStartedAt = CpuTimestamp.Now;
+        await sourcePath.CopyTo(targetPath, CancellationToken.None).ConfigureAwait(false);
+
+        Log.LogInformation(
+            "Loaded '{FileName}' ({Size} bytes) in {LoadElapsed} + {CopyElapsed}",
+            targetPath.FileName, targetPath.FileSize,
+            loadStartedAt.Elapsed.ToShortString(), copyStartedAt.Elapsed.ToShortString());
     }
 
     private static Size? GetImageSize(FilePath path)
@@ -130,39 +151,29 @@ public sealed class IosPhotoGalleryFiles : IDisposable
                 : null;
     }
 
-    private async Task<FilePath> ProcessFile(PendingFile pendingFile, CancellationToken cancellationToken)
-    {
-        var targetPath = pendingFile.TargetPath;
-        var item = pendingFile.ItemProvider;
-        var contentType = item.RegisteredContentTypes[0];
-
-        var loadStartedAt = CpuTimestamp.Now;
-        var representation = await item
-            .LoadInPlaceFileRepresentationAsync(contentType.Identifier)
-            .ConfigureAwait(false);
-        var sourcePath = representation.Path;
-
-        var copyStartedAt = CpuTimestamp.Now;
-        await sourcePath.CopyTo(targetPath, cancellationToken).ConfigureAwait(false);
-
-        Log.LogInformation(
-            "Loaded '{FileName}' ({Size} bytes) in {LoadElapsed} + {CopyElapsed}",
-            targetPath.FileName, targetPath.FileSize,
-            loadStartedAt.Elapsed.ToShortString(), copyStartedAt.Elapsed.ToShortString());
-
-        return targetPath;
-    }
-
     // Nested types
 
-    private sealed record PendingFile(
-        FilePath TargetPath,
-        NSItemProvider ItemProvider = null!)
+    private sealed class PendingItem(FilePath targetPath, NSItemProvider itemProvider)
     {
-        public bool Equals(PendingFile? other)
-            => other is not null && TargetPath == other.TargetPath;
+        private readonly TaskCompletionSource<FilePreview?> _previewTcs = new();
+        private readonly TaskCompletionSource _fileTcs = new();
 
-        public override int GetHashCode()
-            => TargetPath.GetHashCode();
+        public FilePath TargetPath => targetPath;
+        public NSItemProvider ItemProvider => itemProvider;
+
+        public Task<FilePreview?> PreviewTask => _previewTcs.Task;
+        public Task FileTask => _fileTcs.Task;
+
+        public void SetPreview(FilePreview? preview)
+            => _previewTcs.TrySetResult(preview);
+
+        public void SetFileReady()
+            => _fileTcs.TrySetResult();
+
+        public void SetFailed(Exception e)
+        {
+            _previewTcs.TrySetException(e);
+            _fileTcs.TrySetException(e);
+        }
     }
 }
