@@ -28,14 +28,14 @@ if (chat == null)
 
 WriteLine($"Observing '{chat.Title}'...");
 var chatNews = await chats.GetNews(session, chatId, cancellationToken).ConfigureAwait(false);
-var reader = new ChatEntryReader(chats, session, chatId, ChatEntryKind.Text);
+var reader = new ChatEntryReader(chats, session, chatId);
 var entries = reader.Observe(chatNews?.LastTextEntry?.Id.LocalId ?? 0, cancellationToken);
 await foreach (var entry in entries.ConfigureAwait(false)) {
     var e = entry;
-    if (entry.IsStreaming) {
+    if (entry.IsContentStreaming) {
         var c = await Computed
             .New(async ct => await reader.Get(entry.Id.LocalId, ct).ConfigureAwait(false))
-            .When((x, _) => x is not { IsStreaming: true })
+            .When((x, _) => x is not { IsContentStreaming: true })
             .ConfigureAwait(false);
         e = c.Value;
         if (e == null) // Means it's deleted already

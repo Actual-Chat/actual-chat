@@ -87,7 +87,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
     }
 
     // [EventHandler]
-    public virtual Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
+    public virtual Task OnChatEntryChangedEvent(ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         var (entry, _, changeKind, oldEntry) = eventCommand;
         if (Invalidation.IsActive)

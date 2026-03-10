@@ -62,7 +62,7 @@ public class Uploads(IServiceProvider services) : IUploads
     }
 
     // [CommandHandler]
-    public virtual async Task<MediaRef> OnConvertToMediaRef(Uploads_ConvertToMediaRef command, CancellationToken cancellationToken)
+    public virtual async Task<MediaRef> OnConvertToMediaContent(Uploads_ConvertToMediaRef command, CancellationToken cancellationToken)
     {
         var (session, uploadId) = command;
         var user = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);

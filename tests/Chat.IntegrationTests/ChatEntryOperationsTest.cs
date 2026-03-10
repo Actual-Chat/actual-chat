@@ -21,7 +21,7 @@ public class ChatEntryOperationsTest(ChatCollection.AppHostFixture fixture, ITes
         await Tester.SignInAsBobAdmin();
 
         // act
-        var getTile = Chats.GetTile(Tester.Session, chatId, ChatEntryKind.Text, new Range<long>(0, 4), CancellationToken.None).AsAsyncFunc();
+        var getTile = Chats.GetTile(Tester.Session, chatId, new Range<long>(0, 4), CancellationToken.None).AsAsyncFunc();
 
         // assert
         await getTile.Should().ThrowAsync<NotFoundException<Chat>>();

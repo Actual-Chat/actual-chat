@@ -7,7 +7,7 @@ internal static class IndexedDocumentsExt
     public static Task SaveEntries(
         this IndexedDocuments indexedDocuments,
         IReadOnlyCollection<IndexedEntry> updated,
-        IReadOnlyCollection<TextEntryId> deleted,
+        IReadOnlyCollection<ChatEntryId> deleted,
         CancellationToken cancellationToken = default)
         => indexedDocuments.Save(x => x.EntryIndexName, updated, deleted, cancellationToken);
 

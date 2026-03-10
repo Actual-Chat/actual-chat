@@ -1,4 +1,3 @@
-using ActualChat.Maui;
 using ActualChat.UI.Blazor.Services;
 using Sentry;
 using Application = Microsoft.Maui.Controls.Application;

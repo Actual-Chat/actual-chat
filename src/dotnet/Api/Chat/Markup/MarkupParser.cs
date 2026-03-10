@@ -195,7 +195,7 @@ public partial class MarkupParser : IMarkupParser
                     var minIndent = int.MaxValue;
                     foreach (var line in lines) {
                         var properLine = line.OrdinalReplace("\t", "    "); // Replace tabs w/ spaces
-                        var indentLength = properLine.GetIndentLength();
+                        var indentLength = properLine.GetPrefixCharCount(' ');
                         if (indentLength == properLine.Length)
                             properLine = ""; // Empty line
                         else

@@ -1,5 +1,4 @@
 using ActualChat.App.Maui.Services;
-using ActualChat.Maui;
 using ActualChat.UI.Blazor.Services;
 using CommunityToolkit.Maui.Core;
 using CommunityToolkit.Maui.Core.Platform;

@@ -124,7 +124,7 @@
 
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.VisualMediaViewer.create";
-    private List<TextEntryAttachment> _attachments = new();
+    private List<ChatEntryAttachment> _attachments = new();
     private int _selectedSlide;
     private DotNetObjectReference<VisualMediaViewerModal> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
@@ -175,7 +175,7 @@
     public Task OnVideoPlaybackStopped()
         => AudioFocusUI.TryRecover();
 
-    private string GetPreviewUrl(TextEntryAttachment attachment) {
+    private string GetPreviewUrl(ChatEntryAttachment attachment) {
         var url = UrlMapper.ContentUrl(attachment.Media.BlobId);
 
         if (attachment.IsGif() || attachment.IsSvg()) {
@@ -192,5 +192,5 @@
 
     public sealed record Model(
         string Url,
-        TextEntryAttachment[] Attachments);
+        ChatEntryAttachment[] Attachments);
 }

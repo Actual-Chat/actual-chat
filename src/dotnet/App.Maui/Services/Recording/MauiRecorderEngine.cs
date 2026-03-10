@@ -1,5 +1,6 @@
 using System.Buffers;
 using ActualChat.Audio;
+using ActualChat.Streaming;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.Services;
@@ -12,7 +13,6 @@ public class MauiRecorderEngine : IAudioRecorderEngine
     private static readonly TimeSpan RecordingFailedInterval = TimeSpan.FromMilliseconds(500);
 
     private readonly Lock _sync = new();
-    private readonly AudioStreamer _streamer;
     private readonly Debouncer<Unit> _noSignalDetectedDebouncer;
 
     private ChatId? _chatId;
@@ -27,18 +27,20 @@ public class MauiRecorderEngine : IAudioRecorderEngine
     private bool _isVoiceActive;
     private readonly UIHub _hub;
 
+    private IStreamClient StreamClient => field ??= _hub.Services.GetRequiredService<IStreamClient>();
     private MicrophonePermissionHandler MicrophonePermissionHandler => field ??= _hub.Services.GetRequiredService<MicrophonePermissionHandler>();
     private IAudioCapture AudioCapture => field ??= _hub.Services.GetRequiredService<IAudioCapture>();
     private VoiceActivityDetector VoiceActivityDetector => field ??= _hub.Services.GetRequiredService<VoiceActivityDetector>();
     private IAudioRecorderBackend AudioRecorderBackend => field ??= _hub.Services.GetRequiredService<IAudioRecorderBackend>();
     private IAudioCodec AudioCodec => field ??= _hub.Services.GetRequiredService<IAudioCodec>();
-    private ILogger Log => field ??= _hub.LogFor<MauiRecorderEngine>();
     private RecorderStateHub RecorderStateHub => field ??= _hub.Services.GetRequiredService<RecorderStateHub>();
+    private ConnectivityUI ConnectivityUI => field ??= _hub.Services.GetRequiredService<ConnectivityUI>();
+    private MomentClockSet Clocks => field ??= _hub.Clocks;
+    private ILogger Log => field ??= _hub.LogFor<MauiRecorderEngine>();
 
     public MauiRecorderEngine(UIHub hub)
     {
         _hub = hub;
-        _streamer = new AudioStreamer(hub);
         _noSignalDetectedDebouncer = Debouncer.New<Unit>(
             hub.Clocks.CpuClock,
             RecordingFailedInterval,
@@ -54,15 +56,15 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         // Stop any existing recording first
         await Stop(cancellationToken).ConfigureAwait(false);
 
-        // Initialize and connect AudioStreamer
-        await _streamer.EnsureConnected(true, cancellationToken).ConfigureAwait(false);
+        // Wait for online before starting
+        await ConnectivityUI.WhenConnected(cancellationToken).ConfigureAwait(false);
         await SetConnected(true).ConfigureAwait(false);
 
         // Create a new recording context
         _recordingCts = cancellationToken.CreateLinkedTokenSource();
-        var token = _recordingCts.Token;
+        var recordingToken = _recordingCts.Token;
 
-        var microphoneStream = await AudioCapture.Capture(token).ConfigureAwait(false);
+        var microphoneStream = await AudioCapture.Capture(recordingToken).ConfigureAwait(false);
         if (microphoneStream is null) {
             Log.LogWarning("Microphone stream is unavailable");
             await SetRecording(false).ConfigureAwait(false);
@@ -76,10 +78,9 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         await InitializeRecordingState().ConfigureAwait(false);
 
         // Start processing in the background
-        _ = BackgroundTask.Run(() => ProcessAudioStream(microphoneStream, token),
-            Log,
-            "Failed to process microphone stream",
-            token);
+        _ = BackgroundTask.Run(
+            () => ProcessAudioStream(microphoneStream, recordingToken),
+            Log, "Failed to process microphone stream", recordingToken);
         return true;
     }
 
@@ -106,9 +107,6 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         return true;
     }
 
-    public async ValueTask EnsureConnected(bool quickReconnect, CancellationToken cancellationToken)
-        => await _streamer.EnsureConnected(quickReconnect, cancellationToken).ConfigureAwait(false);
-
     public ValueTask ConversationSignal(CancellationToken cancellationToken)
     {
         VoiceActivityDetector.ConversationSignal();
@@ -123,7 +121,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         bool isSignalDetected, isConnected;
         lock (_sync) {
             isSignalDetected = _isSignalDetected;
-            isConnected = _streamer.IsConnected;
+            isConnected = true; // RPC handles connectivity transparently
         }
 
         return new AudioRecorder.AudioDiagnosticsState {
@@ -249,6 +247,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
     #endregion
 
     #region Audio Processing
+
     private async Task ProcessAudioStream(IAsyncEnumerable<IMemoryOwner<float>> frames, CancellationToken cancellationToken)
     {
         try {
@@ -294,6 +293,38 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 
     #region AudioStreamProcessor
 
+    private async Task SendAudio(
+        ChatId chatId,
+        ChatEntryId? repliedChatEntryId,
+        int preSkip,
+        IAsyncEnumerable<IMemoryOwner<byte>> packetStream,
+        CancellationToken cancellationToken)
+    {
+        var serverClock = Clocks.ServerClock;
+        double clientStartOffset = serverClock.Now.EpochOffset.TotalSeconds;
+        var session = _hub.Session;
+
+        var frameStream = packetStream
+            .Select((packet, i) => {
+                using var _ = packet;
+                return new AudioFrame {
+                    Data = packet.Memory.ToArray(),
+                    Offset = TimeSpan.FromMilliseconds(i * Constants.Audio.OpusFrameDurationMs),
+                    Duration = Constants.Audio.OpusFrameDuration,
+                };
+            })
+            .SuppressCancellation(cancellationToken);
+
+        await StreamClient.PushAudio(
+            session,
+            chatId.Value,
+            repliedChatEntryId?.Value,
+            clientStartOffset,
+            preSkip,
+            frameStream,
+            cancellationToken).ConfigureAwait(false);
+    }
+
     private async Task<ChannelWriter<IMemoryOwner<byte>>?> CreateAudioStream(CancellationToken cancellationToken)
     {
         string? sessionToken;
@@ -309,8 +340,8 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         if (sessionToken is null || chatId is null)
             return null;
 
-        await _streamer.EnsureConnected(true, cancellationToken).ConfigureAwait(false);
-        await SetConnected(_streamer.IsConnected).ConfigureAwait(false);
+        await ConnectivityUI.WhenConnected(cancellationToken).ConfigureAwait(false);
+        await SetConnected(true).ConfigureAwait(false);
 
         var stream = Channel.CreateBounded<IMemoryOwner<byte>>(
             new BoundedChannelOptions(Constants.Audio.StreamingChannelCapacity) {
@@ -321,12 +352,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             });
 
         // TODO(AK): Specify PreSkip
-        _sendTask = _streamer.Send(sessionToken,
-            chatId,
-            repliedChatEntryId,
-            0,
-            stream.Reader.ReadAllAsync(cancellationToken),
-            cancellationToken);
+        _sendTask = SendAudio(chatId, repliedChatEntryId, 0, stream.Reader.ReadAllAsync(cancellationToken), cancellationToken);
         lock (_sync) {
             _currentStream = stream;
             _repliedChatEntryId = null; // Clear so it's only used once

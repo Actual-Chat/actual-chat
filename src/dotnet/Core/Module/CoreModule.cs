@@ -26,6 +26,10 @@ public sealed class CoreModule(IServiceProvider moduleServices)
         var isApp = hostKind.IsApp();
         var isServer = hostKind.IsServer();
 
+        // TestServiceProviderTag
+        if (HostInfo.IsTested)
+            services.AddSingleton(new TestServiceProviderTag());
+
         // IArithmetics
         services.AddTypeMapper<IArithmetics>(map => map
             .Add<double, DoubleArithmetics>()
@@ -105,9 +109,6 @@ public sealed class CoreModule(IServiceProvider moduleServices)
     private void InjectClientServices(IServiceCollection services)
     {
         var fusion = services.AddFusion();
-
-        // Reconnector
-        services.AddSingleton(c => new RpcDependentReconnectDelayer(c));
 
         // Features
         fusion.AddClient<IServerFeaturesClient>();

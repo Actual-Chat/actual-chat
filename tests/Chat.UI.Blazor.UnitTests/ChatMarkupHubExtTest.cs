@@ -14,7 +14,7 @@ public class ChatMarkupHubExtTest
         using var services = new ServiceCollection().AddTransient<IMarkupParser, MarkupParser>().BuildServiceProvider();
         var chatId = GroupChatId.New();
         var markupHub = new ChatMarkupHub(services, chatId);
-        var chatEntryId = TextEntryId.New(chatId, 1);
+        var chatEntryId = ChatEntryId.New(chatId, 1);
         var chatEntry = new ChatEntry {
             Id = chatEntryId,
             Content = "some text",
@@ -41,7 +41,7 @@ public class ChatMarkupHubExtTest
         using var services = new ServiceCollection().AddTransient<IMarkupParser, MarkupParser>().BuildServiceProvider();
         var chatId = GroupChatId.New();
         var markupHub = new ChatMarkupHub(services, chatId);
-        var chatEntryId = TextEntryId.New(chatId, 1);
+        var chatEntryId = ChatEntryId.New(chatId, 1);
         var chatEntry = new ChatEntry {
             Id = chatEntryId,
             Attachments = attachments.Select(Attachment).ToArray(),
@@ -68,7 +68,7 @@ public class ChatMarkupHubExtTest
         using var services = new ServiceCollection().AddTransient<IMarkupParser, MarkupParser>().BuildServiceProvider();
         var chatId = GroupChatId.New();
         var markupHub = new ChatMarkupHub(services, chatId);
-        var chatEntryId = TextEntryId.New(chatId, 1);
+        var chatEntryId = ChatEntryId.New(chatId, 1);
         var chatEntry = new ChatEntry {
             Id = chatEntryId,
             Attachments = attachments.Select(Attachment).ToArray(),
@@ -82,12 +82,12 @@ public class ChatMarkupHubExtTest
         rawMarkup.Should().Be(expectedMarkupText);
     }
 
-    private static TextEntryAttachment Attachment(string file)
+    private static ChatEntryAttachment Attachment(string file)
     {
         if (!FileExtensionContentTypeProvider.TryGetContentType(file, out var contentType))
             throw StandardError.Constraint($"Failed to find content type for '{file}'.");
 
-        return new TextEntryAttachment {
+        return new ChatEntryAttachment {
             Media = new Media.Media(null!) {
                 FileName = file,
                 ContentType = contentType,

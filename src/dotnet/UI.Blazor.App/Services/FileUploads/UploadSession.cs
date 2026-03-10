@@ -1,5 +1,6 @@
 using ActualChat.Media;
-using ActualChat.UI.Blazor.Services;
+using ActualChat.UI.Services;
+using ActualLab.IO;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -70,6 +71,7 @@ public class UploadSession
     public MediaRef? MediaRef => _snapshot.MediaRef;
     public bool IsRunning => Interlocked.CompareExchange(ref _isRunning, 0, 0) == 1;
     public bool IsTerminated => CurrentState == UploadSessionState.Completed || CurrentState == UploadSessionState.Cancelled;
+    public string? TranscodedFilePath => _snapshot.TranscodedFilePath;
     public Task<MediaId> WhenMediaReserved => _whenMediaIdReserved.Task;
 
     public bool Resume()
@@ -147,8 +149,27 @@ public class UploadSession
     }, cancellationToken);
 
     private Task RunClientProcessing(CancellationToken cancellationToken) => ExecuteStep(async () => {
-        // No actual work for now, just transition to Uploading
-        // Transcode a file source if needed and save the result.
+        var fileProvider = _snapshot.FileProvider;
+        var mimeType = fileProvider.Metadata.FileType;
+        var filePath = (fileProvider as MauiFileProvider)?.FileRef ?? FilePath.Empty;
+
+        var progress = new Progress<double>(p => {
+            _ = UpdateState(s => {
+                if (s.CurrentState != UploadSessionState.ClientProcessing)
+                    return s;
+                return s with { StageProgress = p };
+            }, cancellationToken: cancellationToken);
+        });
+
+        var transcodedPath = await _uploadOperations.VideoTranscoder
+            .Transcode(filePath, mimeType, progress, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!transcodedPath.IsEmpty)
+            await UpdateState(s => s with { TranscodedFilePath = transcodedPath.Value },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
         await TransitionTo(UploadSessionState.Uploading).ConfigureAwait(false);
     }, cancellationToken);
 
@@ -239,7 +260,21 @@ public class UploadSession
     }
 
     private UploadSource? GetTranscodedSource()
-        => null;
+    {
+        if (_snapshot.TranscodedFilePath is not { } transcodedPath)
+            return null;
+
+        if (!File.Exists(transcodedPath)) {
+            Log.LogError("'{SessionId}': transcoded file not found at '{Path}'", SessionId, transcodedPath);
+            throw StandardError.Internal("Transcoded video not found");
+        }
+
+        var fileInfo = new FileInfo(transcodedPath);
+        Log.LogInformation("'{SessionId}': uploading transcoded file '{Path}', size={Size}",
+            SessionId, transcodedPath, fileInfo.Length);
+        var metadata = new UploadSourceMetadata(MediaMimeTypes.GetMimeType(transcodedPath), fileInfo.Length, transcodedPath.FileName);
+        return new UploadSource(metadata, new StreamUploadSource(() => Task.FromResult<Stream>(File.OpenRead(transcodedPath))));
+    }
 }
 
 public readonly struct UploadSessionSnapshotAccessor(

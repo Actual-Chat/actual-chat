@@ -1,5 +1,7 @@
 using ActualChat.Media;
+using ActualChat.UI.App.Services;
 using ActualChat.UI.Blazor.Services;
+using ActualChat.UI.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -15,6 +17,7 @@ public class UploadOperations(AppUIHub hub)
     public ICommander Commander => hub.Commander;
     public Moment Now() => hub.Clocks.SystemClock.Now;
     public IMedia Media => hub.Media;
+    public VideoTranscoder VideoTranscoder => field ??= hub.VideoTranscoder;
     private ILogger Log => field ??= hub.LogFor(GetType());
 
     public async Task<MediaId> ReserveMediaId(
@@ -141,7 +144,7 @@ public class UploadOperations(AppUIHub hub)
     {
         var length = sourceMetadata.Length;
         var metadata = new PropertyBag()
-            .Set(nameof(ActualChat.Media.Media.FileName), sourceMetadata.FileName ?? "")
+            .Set(nameof(ActualChat.Media.Media.FileName), sourceMetadata.FileName.Value)
             .Set(nameof(ActualChat.Media.Media.ContentType), sourceMetadata.ContentType);
         return await Commander.Call(new Uploads_Create(Session, length, "", metadata), cancellationToken).ConfigureAwait(false);
     }

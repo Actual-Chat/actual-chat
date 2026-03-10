@@ -25,8 +25,8 @@
 }
 
 @code {
-    private VisualMediaGalleryLine<TextEntryAttachment>[] _rows = [];
-    private TextEntryAttachment[] _mediaList = [];
+    private VisualMediaGalleryLine<ChatEntryAttachment>[] _rows = [];
+    private ChatEntryAttachment[] _mediaList = [];
 
     private string _listCls = "";
     private string _attachmentsCls = "";
@@ -35,7 +35,7 @@
     private UrlMapper UrlMapper => Hub.UrlMapper;
     private VisualMediaViewerUI VisualMediaViewerUI => Hub.VisualMediaViewerUI;
 
-    [Parameter, EditorRequired] public TextEntryAttachment[] MediaList { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatEntryAttachment[] MediaList { get; set; } = null!;
     [Parameter] public bool IsConversation { get; set; }
     [Parameter] public bool IsNarrow { get; set; }
 
@@ -45,7 +45,7 @@
         _rows = GetRows(_mediaList, IsConversation, IsNarrow);
     }
 
-    private static VisualMediaGalleryLine<TextEntryAttachment>[] GetRows(TextEntryAttachment[] mediaList, bool isConversation, bool isNarrow) {
+    private static VisualMediaGalleryLine<ChatEntryAttachment>[] GetRows(ChatEntryAttachment[] mediaList, bool isConversation, bool isNarrow) {
         var arranger = isConversation && !isNarrow
             ? VisualMediaGalleryArranger.ConversationWideScreen
             : VisualMediaGalleryArranger.Default;

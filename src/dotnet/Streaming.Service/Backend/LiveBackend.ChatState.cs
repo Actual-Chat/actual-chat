@@ -88,22 +88,23 @@ public partial class LiveBackend
 
         private async Task Populate(CancellationToken cancellationToken)
         {
-            // Look for audio entries from the last MaxEntryDuration
+            // Look for entries from the last MaxEntryDuration
             var minBeginsAt = Owner.ServerClock.Now - Constants.Chat.MaxEntryDuration;
             var entries = await Owner.ChatsBackend.ListEntries(ChatId, minBeginsAt, cancellationToken).ConfigureAwait(false);
 
-            // Find entries that are currently streaming (have StreamId set)
+            // Find entries that are currently streaming
             foreach (var entry in entries) {
-                if (!entry.IsStreaming || entry.Kind != ChatEntryKind.Audio)
-                    continue;
-
-                var streamInfo = new LiveStreamInfo {
-                    ChatId = ChatId,
-                    AuthorId = entry.AuthorId,
-                    StreamId = entry.StreamId,
-                    BeginsAt = entry.BeginsAt,
-                };
-                _streams.TryAdd(streamInfo.StreamId, streamInfo);
+                // Audio entry with a non-empty StreamId on Audio = live stream
+                if (entry.Audio is { StreamId.Length: > 0 } liveAudio
+                    && !MediaId.TryParse(liveAudio.StreamId, out _)) {
+                    var streamInfo = new LiveStreamInfo {
+                        ChatId = ChatId,
+                        AuthorId = entry.AuthorId,
+                        StreamId = liveAudio.StreamId,
+                        BeginsAt = entry.BeginsAt,
+                    };
+                    _streams.TryAdd(streamInfo.StreamId, streamInfo);
+                }
             }
         }
     }

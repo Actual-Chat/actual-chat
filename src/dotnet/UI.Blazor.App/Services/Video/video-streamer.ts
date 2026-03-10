@@ -5,6 +5,7 @@ import { encode } from '@msgpack/msgpack';
 import Denque from 'denque';
 import { EventHandlerSet } from 'event-handling';
 import { Log } from 'logging';
+import { ServerClock } from 'server-clock';
 
 const { debugLog, infoLog, warnLog, errorLog } = Log.get('VideoStreamer');
 
@@ -127,7 +128,7 @@ export class VideoStream {
                         this.config.width,
                         this.config.height,
                         this.config.codecSettings ?? '', // Base64 encoded SPS/PPS for H.264
-                        Date.now() / 1000,
+                        ServerClock.now() / 1000,
                         subject
                     );
                     infoLog?.log('PushVideo called successfully');

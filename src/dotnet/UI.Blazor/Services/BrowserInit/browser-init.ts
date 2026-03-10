@@ -1,6 +1,6 @@
 // TODO: fix eslint errors
 /* eslint-disable @typescript-eslint/no-unnecessary-condition,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-argument */
-import { Connectivity } from 'connectivity';
+import { ConnectivityUI } from '../ConnectivityUI/connectivity-ui';
 import { EventHandlerSet } from 'event-handling';
 import { delayAsync, PromiseSource } from 'promises';
 import { AppKind, BrowserInfo, HostKind } from '../BrowserInfo/browser-info';
@@ -22,7 +22,7 @@ export class BrowserInit {
     public static firebaseApp?: FirebaseApp;
     public static firebaseAnalytics?: Analytics;
     public static firebasePublicKey?: string;
-    public static readonly isMauiApp = document.body.classList.contains('app-maui');
+    public static readonly isMauiApp = ConnectivityUI.isMauiApp;
     public static readonly whenInitialized = new PromiseSource<void>();
     public static readonly whenReloading = new PromiseSource<void>();
     public static readonly reconnectedEvents = new EventHandlerSet<void>();
@@ -58,7 +58,7 @@ export class BrowserInit {
             errorLog?.log('init: error:', e);
             this.whenInitialized.reject(e);
             // We can't do much in this case, so...
-            this.startReloading();
+            void this.startReloading();
         }
         finally {
             this.whenInitialized.resolve(undefined);
@@ -90,28 +90,29 @@ export class BrowserInit {
 
         this.reconnectingPromise ??= (async (): Promise<void> => {
             try {
-                while (window['Blazor']) {
-                    await Connectivity.whenOnline();
-                    if (this.whenReloading.isCompleted())
-                        return; // Already reloading
-
-                    const blazor = window['Blazor'] as { reconnect: (() => Promise<boolean>) | null };
-                    warnLog?.log('startReconnecting: reconnecting...');
-                    const reconnect = blazor.reconnect;
-                    if (reconnect == null)
-                        return; // No reconnect function - we use WASM platform
-                    try {
-                        if (await reconnect())
-                            return;
-                    }
-                    catch {
-                        // Let's assume it may fail
-                    }
-                    errorLog?.log('startReconnecting: failed to reconnect');
-                    if (await Connectivity.isOnline())
-                        break; // Couldn't reconnect while online -> reload
+                const blazor = window['Blazor'] as { reconnect: () => Promise<boolean> };
+                if (!blazor?.reconnect) {
+                    // No Blazor reconnect = it's WASM & something is severely wrong,
+                    // so the best we can do is to reload the page.
+                    void this.startReloading();
+                    return;
                 }
-                this.startReloading();
+
+                await ConnectivityUI.whenReadyToReload('reconnecting');
+                if (this.whenReloading.isCompleted())
+                    return; // Already reloading
+
+                warnLog?.log('startReconnecting: reconnecting...');
+                try {
+                    if (await blazor.reconnect())
+                        return;
+                }
+                catch {
+                    // We assume it may fail
+                }
+
+                errorLog?.log('startReconnecting: failed to reconnect, will reload...');
+                void this.startReloading();
             }
             finally {
                 this.reconnectingPromise = null!;
@@ -119,7 +120,7 @@ export class BrowserInit {
         })();
     }
 
-    public static startReloading(): void {
+    public static async startReloading(): Promise<void> {
         if (this.whenReloading.isCompleted())
             return; // Already reloading
 
@@ -128,7 +129,13 @@ export class BrowserInit {
 
         warnLog?.log('startReloading: reloading...');
         this.whenReloading.resolve(undefined);
-        void Connectivity.reloadCurrentPage();
+
+        // @ts-expect-error because of the `window.opusMediaRecorder`
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        await window?.opusMediaRecorder?.stop();
+
+        await ConnectivityUI.whenReadyToReload('reloading');
+        window.location.reload();
     }
 
     public static startReloadWatchers() {
@@ -144,7 +151,7 @@ export class BrowserInit {
                     if (classList.length == 0 || classList.contains('components-reconnect-hide'))
                         this.resetAppConnectionState();
                     else if (classList.contains('components-reconnect-rejected'))
-                        this.startReloading();
+                        void this.startReloading();
                     else if (classList.contains('components-reconnect-failed'))
                         this.startReconnecting(true);
                     else if (classList.contains('components-reconnect-show'))
@@ -161,7 +168,7 @@ export class BrowserInit {
             if (errorDiv) {
                 const checkErrorDiv = () => {
                     if (errorDiv.style.display === 'block')
-                        this.startReloading();
+                        void this.startReloading();
                 }
                 const observer = new MutationObserver(() => checkErrorDiv());
                 observer.observe(errorDiv, { attributes: true });

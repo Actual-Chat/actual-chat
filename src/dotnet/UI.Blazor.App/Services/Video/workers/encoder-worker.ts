@@ -22,6 +22,16 @@ let encoderConfig: EncoderConfig | null = null;
 let resizeCanvas: OffscreenCanvas | null = null;
 let resizeCtx: OffscreenCanvasRenderingContext2D | null = null;
 let startTimestamp: number | undefined = undefined;
+let lastLoggedFormat: string | null = '(unset)';
+let loggedI420Error = false;
+
+// Backpressure tracking
+let backpressureDrops = 0;
+let backpressureTotalFrames = 0;
+let lastBackpressureCheckTime = 0;
+const backpressureWindowMs = 5000;       // evaluation window
+const backpressureDropThreshold = 0.20;  // 20% drop rate triggers notification
+let backpressureNotified = false;        // avoid repeated notifications
 
 /**
  * Detect if description bytes are in avcC (H.264 decoder configuration record) format.
@@ -114,6 +124,89 @@ function resizeFrame(frame: VideoFrame, targetWidth: number, targetHeight: numbe
     frame.close();
 
     return newFrame;
+}
+
+/**
+ * CPU fallback: convert a non-YUV VideoFrame to I420 by drawing to a canvas
+ * and manually applying BT.601 limited-range conversion.
+ * Only used when native copyTo({ format: 'I420' }) fails on all formats.
+ */
+function cpuRgbaToI420(frame: VideoFrame): VideoFrame {
+    const w = frame.codedWidth;
+    const h = frame.codedHeight;
+
+    // Draw frame to canvas to get RGBA pixels
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (resizeCanvas?.width !== w || resizeCanvas?.height !== h) {
+        resizeCanvas = new OffscreenCanvas(w, h);
+        resizeCtx = resizeCanvas.getContext('2d', { willReadFrequently: true });
+    }
+    resizeCtx!.drawImage(frame, 0, 0, w, h);
+    const imageData = resizeCtx!.getImageData(0, 0, w, h);
+    const rgba = imageData.data;
+
+    const chromaW = Math.ceil(w / 2);
+    const chromaH = Math.ceil(h / 2);
+    const ySize = w * h;
+    const uvSize = chromaW * chromaH;
+    const i420Buf = new ArrayBuffer(ySize + uvSize * 2);
+    const out = new Uint8Array(i420Buf);
+
+    // BT.601 limited-range Y
+    for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+            const i = (y * w + x) * 4;
+            const r = rgba[i], g = rgba[i + 1], b = rgba[i + 2];
+            out[y * w + x] = Math.max(0, Math.min(255, Math.round(
+                65.481 * r / 255 + 128.553 * g / 255 + 24.966 * b / 255 + 16
+            )));
+        }
+    }
+
+    // BT.601 limited-range U and V (2×2 subsampling)
+    for (let cy = 0; cy < chromaH; cy++) {
+        for (let cx = 0; cx < chromaW; cx++) {
+            let rSum = 0, gSum = 0, bSum = 0, count = 0;
+            for (let dy = 0; dy < 2; dy++) {
+                for (let dx = 0; dx < 2; dx++) {
+                    const px = Math.min(cx * 2 + dx, w - 1);
+                    const py = Math.min(cy * 2 + dy, h - 1);
+                    const i = (py * w + px) * 4;
+                    rSum += rgba[i];
+                    gSum += rgba[i + 1];
+                    bSum += rgba[i + 2];
+                    count++;
+                }
+            }
+            const r = rSum / count / 255;
+            const g = gSum / count / 255;
+            const b = bSum / count / 255;
+            const chromaIdx = cy * chromaW + cx;
+            out[ySize + chromaIdx] = Math.max(0, Math.min(255, Math.round(
+                -37.797 * r - 74.203 * g + 112.0 * b + 128
+            )));
+            out[ySize + uvSize + chromaIdx] = Math.max(0, Math.min(255, Math.round(
+                112.0 * r - 93.786 * g - 18.214 * b + 128
+            )));
+        }
+    }
+
+    const yStride = w;
+    const uvStride = chromaW;
+    const i420Frame = new VideoFrame(i420Buf, {
+        format: 'I420',
+        codedWidth: w,
+        codedHeight: h,
+        timestamp: frame.timestamp,
+        duration: frame.duration ?? undefined,
+        layout: [
+            { offset: 0, stride: yStride },
+            { offset: ySize, stride: uvStride },
+            { offset: ySize + uvSize, stride: uvStride },
+        ],
+    });
+    frame.close();
+    return i420Frame;
 }
 
 // RPC Server Implementation
@@ -229,6 +322,10 @@ const serverImpl: EncoderWorker = {
             resizeCtx = null;
             frameCount = 0;
             startTimestamp = undefined;
+            backpressureDrops = 0;
+            backpressureTotalFrames = 0;
+            lastBackpressureCheckTime = 0;
+            backpressureNotified = false;
         } catch (error) {
             errorLog?.log('Failed to stop encoder:', error);
             throw error; // RPC automatically propagates errors
@@ -238,7 +335,6 @@ const serverImpl: EncoderWorker = {
     /**
    * Encode a single frame
    */
-    // eslint-disable-next-line
     encodeFrame: async (frame): Promise<void> => {
         if (!encoder || !processing || !encoderConfig) {
             frame.close();
@@ -246,10 +342,43 @@ const serverImpl: EncoderWorker = {
         }
 
         // Backpressure: drop frame if encoder queue is building up
+        backpressureTotalFrames++;
         if (encoder.getEncodeQueueSize() > 3) {
             frame.close();
+            backpressureDrops++;
             debugLog?.log('Frame dropped due to encoder backpressure (queueSize > 3)');
+
+            // Check if we should notify main thread about sustained backpressure
+            const now = performance.now();
+            if (now - lastBackpressureCheckTime > backpressureWindowMs) {
+                const dropRate = backpressureDrops / backpressureTotalFrames;
+                if (dropRate > backpressureDropThreshold && !backpressureNotified) {
+                    backpressureNotified = true;
+                    warnLog?.log(`Sustained backpressure: dropRate=${(dropRate * 100).toFixed(1)}% ` +
+                        `(${backpressureDrops}/${backpressureTotalFrames} in ${backpressureWindowMs}ms)`);
+                    void callbacks.onBackpressure(dropRate, rpcNoWait);
+                }
+                // Reset counters for next window
+                backpressureDrops = 0;
+                backpressureTotalFrames = 0;
+                lastBackpressureCheckTime = now;
+            }
             return;
+        }
+
+        // Reset backpressure notification flag when encoding succeeds consistently
+        if (backpressureNotified && backpressureTotalFrames > 30) {
+            const now = performance.now();
+            if (now - lastBackpressureCheckTime > backpressureWindowMs) {
+                const dropRate = backpressureDrops / backpressureTotalFrames;
+                if (dropRate < 0.05) {
+                    backpressureNotified = false;
+                    debugLog?.log('Backpressure resolved');
+                }
+                backpressureDrops = 0;
+                backpressureTotalFrames = 0;
+                lastBackpressureCheckTime = now;
+            }
         }
 
         try {
@@ -261,6 +390,57 @@ const serverImpl: EncoderWorker = {
 
             // Resize frame if dimensions don't match encoder configuration
             let processedFrame = resizeFrame(frame, encoderConfig.width, encoderConfig.height);
+
+            // On mobile, hardware encoders expect NV12/I420 but canvas/blur gives RGBA/BGRA.
+            // Try native format conversion (browser's optimized libyuv), with fallback chain.
+            // Note: VideoFrame.format is null for frames from canvas sources (WebGPU, 2D),
+            // so we convert any frame that's NOT already in a YUV format.
+            const format = processedFrame.format as string | null;
+            const isAlreadyYuv = format === 'NV12' || format === 'I420'
+                || format === 'I420A' || format === 'I422' || format === 'I444'
+                || format === 'NV12A';
+            if (!isAlreadyYuv) {
+                let converted = false;
+                // Try native formats in order of preference
+                for (const fmt of ['I420', 'NV12', 'I420A', 'I422'] as const) {
+                    try {
+                        const size = processedFrame.allocationSize({ format: fmt });
+                        const buf = new ArrayBuffer(size);
+                        const layout = await processedFrame.copyTo(buf, { format: fmt });
+                        const yuvFrame = new VideoFrame(buf, {
+                            format: fmt,
+                            codedWidth: processedFrame.codedWidth,
+                            codedHeight: processedFrame.codedHeight,
+                            timestamp: processedFrame.timestamp,
+                            duration: processedFrame.duration ?? undefined,
+                            layout,
+                            colorSpace: processedFrame.colorSpace,
+                        });
+                        processedFrame.close();
+                        processedFrame = yuvFrame;
+                        converted = true;
+                        break;
+                    } catch { continue; }
+                }
+
+                // CPU manual RGBA→I420 fallback if all native formats fail
+                if (!converted) {
+                    try {
+                        processedFrame = cpuRgbaToI420(processedFrame);
+                    } catch (e) {
+                        if (!loggedI420Error) {
+                            loggedI420Error = true;
+                            warnLog?.log('All YUV conversion methods failed:', String(e));
+                        }
+                    }
+                }
+            }
+
+            // Log frame format for diagnostics (after I420 conversion, so it shows actual encoded format)
+            if (processedFrame.format !== lastLoggedFormat) {
+                lastLoggedFormat = processedFrame.format;
+                warnLog?.log(`Frame format: ${processedFrame.format}, ${processedFrame.codedWidth}x${processedFrame.codedHeight}`);
+            }
 
             // Normalize timestamp to 0-based (relative to first frame).
             // resizeFrame may or may not return a new frame, so we always normalize here.
@@ -359,6 +539,10 @@ const serverImpl: EncoderWorker = {
             // Reset frame counter and start timestamp for fresh keyframe scheduling
             frameCount = 0;
             startTimestamp = undefined;
+            backpressureDrops = 0;
+            backpressureTotalFrames = 0;
+            lastBackpressureCheckTime = 0;
+            backpressureNotified = false;
 
             infoLog?.log('Codec switched successfully');
         } catch (error) {
@@ -387,6 +571,10 @@ const serverImpl: EncoderWorker = {
             keyFrames: 0,
             totalBytes: 0,
             averageEncodeTime: 0,
+            medianEncodeTime: 0,
+            configuredWidth: 0,
+            configuredHeight: 0,
+            configuredBitrate: 0,
             hardwareAcceleration: 'unknown'
         };
     },

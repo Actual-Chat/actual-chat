@@ -9,6 +9,7 @@ namespace ActualChat.Streaming.Services;
 public sealed class StreamBackendClient : IStreamClient
 {
     private IStreamingBackend Backend { get; }
+    private MeshWatcher MeshWatcher { get; }
     private ILogger Log { get; }
     private ILogger AudioSourceLog { get; }
 
@@ -17,6 +18,22 @@ public sealed class StreamBackendClient : IStreamClient
         Log = services.LogFor(GetType());
         AudioSourceLog = services.LogFor<AudioSource>();
         Backend = services.GetRequiredService<IStreamingBackend>();
+        MeshWatcher = services.MeshWatcher();
+    }
+
+    public Task PushAudio(
+        Session session, string chatId, string? repliedChatEntryId,
+        double clientStartOffset, int preSkip,
+        IAsyncEnumerable<AudioFrame> frameStream,
+        CancellationToken cancellationToken)
+    {
+        // StreamBackendClient runs on the same server, so route directly to backend
+        var chatIdTyped = ChatId.Parse(chatId);
+        var repliedEntryIdTyped = ChatEntryId.ParseNullable(repliedChatEntryId);
+        var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
+        var record = new AudioRecord(streamId, session, chatIdTyped, clientStartOffset, repliedEntryIdTyped);
+        var rpcStream = RpcStream.New(frameStream);
+        return Backend.ProcessAudio(record, preSkip, rpcStream, cancellationToken);
     }
 
     public async Task<AudioSource> GetAudio(string streamId, TimeSpan skipTo, CancellationToken cancellationToken)
@@ -78,7 +95,7 @@ public sealed class StreamBackendClient : IStreamClient
 
     public Task ReportAudioLatency(TimeSpan latency, CancellationToken cancellationToken)
     {
-        AppMeters.AudioLatency.Record((float)latency.TotalMilliseconds);
+        AppMeters.AudioLatency.Record(latency.TotalMilliseconds);
         return Task.CompletedTask;
     }
 }

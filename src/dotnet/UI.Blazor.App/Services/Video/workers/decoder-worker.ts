@@ -23,6 +23,17 @@ let pendingChunks: EncodedChunkData[] = [];
 let currentDecoderConfig: DecoderConfig | null = null;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 let frameCount = 0;
+let lastRawDescription: ArrayBuffer | null = null;
+
+function bufferEqual(a: ArrayBuffer, b: ArrayBuffer): boolean {
+    if (a.byteLength !== b.byteLength) return false;
+    const viewA = new Uint8Array(a);
+    const viewB = new Uint8Array(b);
+    for (let i = 0; i < viewA.length; i++) {
+        if (viewA[i] !== viewB[i]) return false;
+    }
+    return true;
+}
 
 // Chunk ordering state to prevent out-of-order decoding issues
 let nextExpectedSequence = 0;
@@ -258,19 +269,37 @@ const serverImpl: DecoderWorker = {
     // eslint-disable-next-line
     initialize: async (config): Promise<void> => {
         try {
-            infoLog?.log('Initializing decoder for codec:', config.codec);
+            infoLog?.log('Initializing decoder for codec:', config.codec,
+                ', descriptionLen:', config.description
+                    ? config.description.byteLength
+                    : 'none');
 
-            // Store decoder config for later use
             currentDecoderConfig = config;
 
-            // Setup decoder - auto-configure from bitstream
-            decoder = createDecoder(config);
-            decoder.initialize();
-            infoLog?.log('Decoder initialized for codec:', config.codec);
+            if (config.description) {
+                // Create decoder WITH description — single configure() in AVCC mode.
+                // Do NOT use createDecoder() which strips description, causing
+                // double-configure (Annex B → AVCC) that breaks Chrome's VideoDecoder.
+                decoder = new WebCodecsDecoder(
+                    config,
+                    (frame: VideoFrame) => {
+                        frameCount++;
+                        void callbacks.onDecodedFrame(frame, rpcNoWait);
+                    },
+                    (error) => {
+                        errorLog?.log('Decoder error:', error);
+                    }
+                );
+                decoder.initialize();
+                decoderConfigured = true;
+                infoLog?.log('Decoder initialized in AVCC mode (single configure)');
+            } else {
+                decoder = createDecoder(config);
+                decoder.initialize();
+                infoLog?.log('Decoder initialized without description');
+            }
 
-            // Mark as ready
             processing = true;
-
             infoLog?.log('Ready to decode chunks');
         } catch (error) {
             errorLog?.log('Failed to initialize decoder:', error);
@@ -309,6 +338,7 @@ const serverImpl: DecoderWorker = {
             pendingChunks = [];
             currentDecoderConfig = null;
             frameCount = 0;
+            lastRawDescription = null;
             nextExpectedSequence = 0;
             reorderBuffer.clear();
             lastKeyframeSequence = -1;
@@ -415,11 +445,11 @@ const serverImpl: DecoderWorker = {
      */
     // eslint-disable-next-line
     decodeRawChunk: async (
-        data: ArrayBuffer,
         timestamp: number,
         duration: number,
         isKeyFrame: boolean,
         sequenceNumber: number,
+        data: ArrayBuffer,
         description?: ArrayBuffer
     ): Promise<void> => {
         if (!decoder || !processing) {
@@ -427,12 +457,33 @@ const serverImpl: DecoderWorker = {
         }
 
         try {
-            // If we have a description and it's a keyframe, reconfigure the decoder
+            // If we have a description and it's a keyframe, reconfigure the decoder only if description changed
             if (isKeyFrame && description && description.byteLength > 0) {
-                if (!decoderConfigured || description.byteLength > 0) {
+                if (!lastRawDescription || !bufferEqual(lastRawDescription, description)) {
                     decoder.updateDescription(description);
-                    decoderConfigured = true;
+                    lastRawDescription = description.slice(0);
+                    infoLog?.log('Description changed, decoder reconfigured');
                 }
+                decoderConfigured = true;
+            } else if (isKeyFrame && !decoderConfigured && currentDecoderConfig?.description) {
+                // Recreate decoder with description to avoid double-configure.
+                // Handles skipTo jumping past the first keyframe with per-frame SPS/PPS.
+                infoLog?.log('Recreating decoder with initial description for skipTo keyframe');
+                if (decoder.getState() !== 'closed') {
+                    decoder.close();
+                }
+                decoder = new WebCodecsDecoder(
+                    currentDecoderConfig,
+                    (frame: VideoFrame) => {
+                        frameCount++;
+                        void callbacks.onDecodedFrame(frame, rpcNoWait);
+                    },
+                    (error) => {
+                        errorLog?.log('Decoder error:', error);
+                    }
+                );
+                decoder.initialize();
+                decoderConfigured = true;
             }
 
             // For AV1, we don't need a description — mark as configured on first keyframe
@@ -457,10 +508,14 @@ const serverImpl: DecoderWorker = {
                 return;
             }
 
-            // Decode using the internal VideoDecoder
-            // We use a simplified path here — no reorder buffer since SignalR delivers in order
-            const nativeDecoder = (decoder as unknown as { decoder: VideoDecoder }).decoder;
-            nativeDecoder.decode(chunk);
+            if (isKeyFrame) {
+                infoLog?.log(`Decoding keyframe: seq=${sequenceNumber}, state=${decoder.getState()}, ` +
+                    `configured=${decoderConfigured}, descLen=${description?.byteLength ?? 0}, dataLen=${data.byteLength}`);
+            }
+
+            // Decode using the WebCodecsDecoder wrapper (tracks timing for diagnostics)
+            // Simplified path — no reorder buffer since SignalR delivers in order
+            decoder.decodeRaw(chunk);
         } catch (error) {
             errorLog?.log('Error decoding raw chunk:', error);
         }
@@ -508,14 +563,36 @@ const serverImpl: DecoderWorker = {
                 decoder.close();
             }
 
-            decoder = createDecoder(config);
-            decoder.initialize();
-            decoderConfigured = false;
-
-            // If config has description, apply it
             if (config.description) {
-                decoder.updateDescription(config.description);
+                // Single configure() in AVCC mode — same pattern as initialize().
+                // Do NOT use createDecoder() which strips description, causing
+                // double-configure (Annex B → AVCC) that breaks Chrome's VideoDecoder.
+                decoder = new WebCodecsDecoder(
+                    config,
+                    (frame: VideoFrame) => {
+                        frameCount++;
+                        void callbacks.onDecodedFrame(frame, rpcNoWait);
+                    },
+                    (error) => {
+                        errorLog?.log('Decoder error:', error);
+                    }
+                );
+                decoder.initialize();
                 decoderConfigured = true;
+
+                // Sync lastRawDescription so decodeRawChunk doesn't redundantly reconfigure
+                const desc = config.description;
+                if (desc instanceof ArrayBuffer) {
+                    lastRawDescription = desc.slice(0);
+                } else if (ArrayBuffer.isView(desc)) {
+                    lastRawDescription = desc.buffer.slice(
+                        desc.byteOffset, desc.byteOffset + desc.byteLength) as ArrayBuffer;
+                }
+            } else {
+                decoder = createDecoder(config);
+                decoder.initialize();
+                decoderConfigured = false;
+                lastRawDescription = null;
             }
 
             infoLog?.log('Decoder configured');
@@ -548,6 +625,7 @@ const serverImpl: DecoderWorker = {
             decodedFrames: 0,
             droppedFrames: 0,
             averageDecodeTime: 0,
+            medianDecodeTime: 0,
             hardwareAcceleration: 'unknown',
             resolution: 'N/A'
         };

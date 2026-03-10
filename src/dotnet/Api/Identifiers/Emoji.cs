@@ -21,6 +21,9 @@ public sealed partial class Emoji : StringIdentifier, IStringIdentifier<Emoji>
     private static ILogger Log => _log ??= StaticLog.For<Emoji>();
 
     [IgnoreDataMember]
+    public string Symbol { get; }
+
+    [IgnoreDataMember]
     public string Title { get; }
 
     [IgnoreDataMember]
@@ -28,8 +31,18 @@ public sealed partial class Emoji : StringIdentifier, IStringIdentifier<Emoji>
 
     // Factories and constructors
 
-    internal Emoji(string id, string title, EmojiGroup group = EmojiGroup.Gestures) : base(id)
+    // Standard emoji: id == symbol
+    internal Emoji(string symbol, string title, EmojiGroup group = EmojiGroup.Gestures) : base(symbol)
     {
+        Symbol = symbol;
+        Title = title;
+        Group = group;
+    }
+
+    // Custom variant: separate id
+    internal Emoji(string symbol, string id, string title, EmojiGroup group = EmojiGroup.Gestures) : base(id)
+    {
+        Symbol = symbol;
         Title = title;
         Group = group;
     }

@@ -21,7 +21,7 @@ public sealed class ChatEntryMessage(ChatEntry entry): ChatMessage(entry.Id.Loca
             && Entry.IsSending == otherEntryMessage.Entry.IsSending
             && Entry.IsRemoved == otherEntryMessage.Entry.IsRemoved
             && Entry.HasReactions == otherEntryMessage.Entry.HasReactions
-            && Entry.HasAudioEntry == otherEntryMessage.Entry.HasAudioEntry
+            && Entry.HasAudio == otherEntryMessage.Entry.HasAudio
             && OrdinalEquals(Entry.Content, otherEntryMessage.Entry.Content)
             && Kind == other.Kind
             && Date == other.Date

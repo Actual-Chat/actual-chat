@@ -2,7 +2,8 @@ import * as signalR from '@microsoft/signalr';
 import { decode } from '@msgpack/msgpack';
 import { Log } from 'logging';
 import { fastRaf } from 'fast-raf';
-import { rpcClientServer } from 'rpc';
+import { ServerClock } from 'server-clock';
+import { rpcClientServer, rpcNoWait } from 'rpc';
 import type { Disposable } from 'disposable';
 import { VideoStreamer } from '../../Services/Video/video-streamer';
 import { SessionTokens } from '../../../UI.Blazor/Services/Security/session-tokens';
@@ -46,11 +47,13 @@ export class VideoPlayer {
 
     // Buffering state
     private bufferSize = 0;
-    private readonly maxBufferSize = 5; // frames
+    private readonly maxBufferSize = 30; // frames
     private lastReportedBufferLow = true;
 
     // SignalR pull subscription
     private pullSubscription: signalR.ISubscription<Uint8Array> | null = null;
+    private pullRetryCount = 0;
+    private pullRetryTimer: ReturnType<typeof setTimeout> | null = null;
 
     // Frame pacing state
     private playbackStartTime = 0;     // wall-clock ms (performance.now) when first frame rendered
@@ -62,6 +65,10 @@ export class VideoPlayer {
     private lastSyncLogTime = 0;        // throttle sync logging
     private sequenceNumber = 0;         // sequence number for chunks sent to decoder worker
 
+    // Diagnostics counters for 10s delta reporting
+    private lastDiagDecodedFrames = 0;
+    private lastDiagReceivedFrames = 0;
+
     // Latency measurement
     private lastRenderedOffsetMs = 0;   // offset of the latest decoded frame (ms from stream start)
     private latencyReportTimer: ReturnType<typeof setInterval> | null = null;
@@ -69,6 +76,16 @@ export class VideoPlayer {
     private skipFramesBelowOffsetMs = 0; // After tab restore, skip decoded frames below this offset
     private skippedBacklogFrames = 0;
     private rebufferDelayMs = 0;         // After tab restore, delay rendering to let buffer accumulate
+    private consecutiveEmptyRenders = 0; // Safety net: count consecutive RAFs with no frame rendered
+
+    // Adaptive catch-up playback state (wall-clock path only)
+    private playbackRate = 1.0;
+    private readonly catchUpStartMs = 1000;      // start speed-up when buffer > 1s
+    private readonly catchUpTargetMs = 200;       // target buffer level to settle at
+    private readonly maxPlaybackRate = 1.15;      // max speed (barely noticeable for video)
+    private readonly seekThresholdMs = 5000;      // hard seek fallback when >5s behind
+    private lastSeekTime = 0;                     // cooldown for hard seek
+    private readonly seekCooldownMs = 5000;       // min interval between hard seeks
 
     // Audio sync
     private startedAtMs: number;
@@ -266,13 +283,23 @@ export class VideoPlayer {
         // Update pipeline latency estimate from this fresh frame
         const frameOffsetMs = frame.timestamp / 1000; // μs → ms
         const capturedAtMs = this.startedAtMs + frameOffsetMs;
-        const currentLatencyMs = Date.now() - capturedAtMs;
-        this.pipelineLatencyMs = this.pipelineLatencyMs === 0
-            ? Math.max(currentLatencyMs, 0)
-            : this.pipelineLatencyMs * 0.95 + currentLatencyMs * 0.05;
+        const currentLatencyMs = ServerClock.now() - capturedAtMs;
+        // Safety cap at 10s to prevent absurd values from clock drift.
+        // The actual value (~3-4s for SignalR delivery) is used for audio-sync compensation.
+        // This does NOT affect server-side latency reporting (which uses lastRenderedOffsetMs directly).
+        const cappedLatencyMs = Math.min(Math.max(currentLatencyMs, 0), 10000);
+        if (this.pipelineLatencyMs === 0) {
+            this.pipelineLatencyMs = cappedLatencyMs;
+        } else {
+            // Asymmetric EMA: fast response to increases (α=0.3), slow decay (α=0.05)
+            const alpha = cappedLatencyMs > this.pipelineLatencyMs ? 0.3 : 0.05;
+            this.pipelineLatencyMs = this.pipelineLatencyMs * (1 - alpha) + cappedLatencyMs * alpha;
+        }
 
-        // Safety cap: prevent unbounded buffer growth (30 frames = 1s at 30fps)
-        while (this.pendingFrames.length > 30) {
+        // When audio-sync is active, use larger buffer to retain frames from bursty delivery.
+        // Audio-sync target controls rendering pace, so larger buffer doesn't add latency.
+        // Without audio-sync (wall-clock path), keep small buffer for low latency.
+        while (this.pendingFrames.length > this.maxBufferSize) {
             const dropped = this.pendingFrames.shift()!;
             dropped.close();
             this.bufferSize--;
@@ -327,12 +354,51 @@ export class VideoPlayer {
                     `driftMs=${driftMs.toFixed(0)}, pending=${this.pendingFrames.length}`);
             }
         } else {
-            const elapsedUs = (now - this.playbackStartTime) * 1000;
-            targetTimestamp = this.firstFrameTimestamp + elapsedUs - this.pipelineLatencyMs * 1000;
+            // Adaptive catch-up: measure buffer depth and adjust playback rate
+            let newRate = 1.0;
+            let bufferSpanMs = 0;
+            if (this.pendingFrames.length >= 2) {
+                bufferSpanMs = (this.pendingFrames[this.pendingFrames.length - 1].timestamp
+                    - this.pendingFrames[0].timestamp) / 1000;
+
+                if (bufferSpanMs > this.catchUpStartMs) {
+                    // Hard seek fallback: if >5s behind and cooldown elapsed, jump forward
+                    if (bufferSpanMs > this.seekThresholdMs
+                        && (now - this.lastSeekTime) > this.seekCooldownMs) {
+                        const latestTimestamp = this.pendingFrames[this.pendingFrames.length - 1].timestamp;
+                        this.playbackStartTime = now;
+                        this.firstFrameTimestamp = latestTimestamp;
+                        this.playbackRate = 1.0;
+                        this.lastSeekTime = now;
+                        warnLog?.log(
+                            `Wall-clock hard seek: bufferSpan=${bufferSpanMs.toFixed(0)}ms, ` +
+                            `pending=${this.pendingFrames.length}`);
+                    } else {
+                        // Gradual speed-up: linear ramp from 1.0 to maxPlaybackRate
+                        // as buffer goes from catchUpStartMs to 2x catchUpStartMs
+                        const excess = bufferSpanMs - this.catchUpStartMs;
+                        newRate = Math.min(
+                            1.0 + (excess / this.catchUpStartMs) * (this.maxPlaybackRate - 1.0),
+                            this.maxPlaybackRate);
+                    }
+                }
+            }
+
+            // Rebase timing anchor when rate changes to avoid sudden jump
+            if (Math.abs(newRate - this.playbackRate) > 0.005) {
+                this.firstFrameTimestamp += (now - this.playbackStartTime) * 1000 * this.playbackRate;
+                this.playbackStartTime = now;
+                this.playbackRate = newRate;
+            }
+
+            const elapsedUs = (now - this.playbackStartTime) * 1000 * this.playbackRate;
+            targetTimestamp = this.firstFrameTimestamp + elapsedUs;
 
             if (now - this.lastSyncLogTime > 2000) {
                 this.lastSyncLogTime = now;
-                debugLog?.log(`audioSync: no audio state for authorId=${this.authorId}`);
+                debugLog?.log(
+                    `wallClock: authorId=${this.authorId}, rate=${this.playbackRate.toFixed(3)}, ` +
+                    `pending=${this.pendingFrames.length}, bufferSpanMs=${bufferSpanMs.toFixed(0)}`);
             }
         }
 
@@ -357,6 +423,16 @@ export class VideoPlayer {
             this.lastRenderedOffsetMs = frameToRender.timestamp / 1000;
             this.drawFrame(frameToRender);
             frameToRender.close();
+            this.consecutiveEmptyRenders = 0;
+        } else if (this.pendingFrames.length > 0) {
+            this.consecutiveEmptyRenders++;
+            if (this.consecutiveEmptyRenders >= 60) {
+                warnLog?.log(`Render stuck for ${this.consecutiveEmptyRenders} frames, resetting timing anchor`);
+                this.playbackStartTime = 0;
+                this.consecutiveEmptyRenders = 0;
+            }
+        } else {
+            this.consecutiveEmptyRenders = 0;
         }
 
         this.updateBufferState();
@@ -469,6 +545,15 @@ export class VideoPlayer {
                     void this.decoderWorker.configureDecoder(newConfig);
                 }
                 this.playbackStartTime = 0;
+                this.pipelineLatencyMs = 0; // stale value causes render stall after reconfigure
+
+                // Flush old pending frames — they're from the old decoder at stale offsets.
+                // Keeping them creates a multi-second render stall (offset gap).
+                for (const frame of this.pendingFrames) {
+                    try { frame.close(); } catch { /* already closed */ }
+                }
+                this.pendingFrames = [];
+                this.bufferSize = 0;
             }
         }
 
@@ -495,13 +580,15 @@ export class VideoPlayer {
         }
 
         // Send raw bytes to worker — worker creates EncodedVideoChunk internally
+        // ArrayBuffer args are last (before rpcNoWait) so RPC transfers them zero-copy
         void this.decoderWorker.decodeRawChunk(
-            dataBuffer,
             timestampMs * 1000, // ms → μs
             durationMs * 1000,  // ms → μs
             isKeyFrame,
             this.sequenceNumber++,
-            descBuffer
+            dataBuffer,
+            descBuffer,
+            rpcNoWait
         );
     }
 
@@ -544,7 +631,7 @@ export class VideoPlayer {
 
         // Set threshold to skip stale encoded frames arriving from SignalR
         const targetLatencyMs = Math.max(this.pipelineLatencyMs, 300);
-        this.skipFramesBelowOffsetMs = (Date.now() - this.startedAtMs) - targetLatencyMs;
+        this.skipFramesBelowOffsetMs = (ServerClock.now() - this.startedAtMs) - targetLatencyMs;
 
         warnLog?.log(
             `Tab restored: flushed ${pendingCount} pending frames, decoder reset, ` +
@@ -552,6 +639,8 @@ export class VideoPlayer {
 
         // Reset timing anchor so playback re-syncs on next rendered frame
         this.playbackStartTime = 0;
+        this.playbackRate = 1.0;
+        this.lastSeekTime = 0;
         this.rebufferDelayMs = 300;
     }
 
@@ -568,24 +657,56 @@ export class VideoPlayer {
 
         const connection = VideoStreamer.connection!;
         const sessionToken = SessionTokens.current;
-        debugLog?.log(`startPull: stream=${streamId}, skipTo=${skipToMs}ms`);
+        debugLog?.log(`startPull: stream=${streamId}, skipTo=${skipToMs}ms, retryCount=${this.pullRetryCount}`);
+
+        const pullStartTime = performance.now();
+        let receivedFramesDuringPull = false;
 
         const streamResult = connection.stream<Uint8Array>(
             'GetVideo', sessionToken, streamId, skipToMs);
 
         // Start latency report timer now that we're receiving frames
-        this.latencyReportTimer ??= setInterval(() => this.reportLatencyTick(), 10_000);
+        this.latencyReportTimer ??= setInterval(() => this.reportLatencyTick(), 5_000);
 
         this.pullSubscription = streamResult.subscribe({
             next: (frameBytes: Uint8Array) => {
+                receivedFramesDuringPull = true;
+                this.pullRetryCount = 0; // reset on successful frame receipt
                 this.processReceivedFrame(frameBytes);
             },
             error: (err: Error) => {
+                const elapsed = performance.now() - pullStartTime;
+                if (elapsed < 2000 && this.pullRetryCount < 3 && this.isPlaying) {
+                    this.pullRetryCount++;
+                    warnLog?.log(
+                        `Pull stream error after ${elapsed.toFixed(0)}ms, retry #${this.pullRetryCount}: ${err.message}`);
+                    this.pullRetryTimer = setTimeout(() => {
+                        this.pullRetryTimer = null;
+                        if (!this.isPlaying) return;
+                        const retrySkipToMs = ServerClock.now() - this.startedAtMs;
+                        void this.startPull(streamId, retrySkipToMs);
+                    }, 1000);
+                    return;
+                }
                 errorLog?.log('Pull stream error:', err);
                 // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
                 void this.reportEnded(err?.message ?? 'Pull stream error');
             },
             complete: () => {
+                const elapsed = performance.now() - pullStartTime;
+                if (elapsed < 2000 && this.pullRetryCount < 3 && this.isPlaying) {
+                    this.pullRetryCount++;
+                    warnLog?.log(
+                        `Pull stream ended quickly (${elapsed.toFixed(0)}ms, ` +
+                        `frames=${receivedFramesDuringPull}), retry #${this.pullRetryCount}`);
+                    this.pullRetryTimer = setTimeout(() => {
+                        this.pullRetryTimer = null;
+                        if (!this.isPlaying) return;
+                        const retrySkipToMs = ServerClock.now() - this.startedAtMs;
+                        void this.startPull(streamId, retrySkipToMs);
+                    }, 1000);
+                    return;
+                }
                 debugLog?.log('Pull stream completed');
                 void this.reportEnded(undefined);
             },
@@ -625,6 +746,10 @@ export class VideoPlayer {
     }
 
     public stopPull(): void {
+        if (this.pullRetryTimer !== null) {
+            clearTimeout(this.pullRetryTimer);
+            this.pullRetryTimer = null;
+        }
         if (this.pullSubscription) {
             this.pullSubscription.dispose();
             this.pullSubscription = null;
@@ -643,6 +768,12 @@ export class VideoPlayer {
         this.pipelineLatencyMs = 0;
         this.skipFramesBelowOffsetMs = 0;
         this.skippedBacklogFrames = 0;
+        this.lastDiagDecodedFrames = 0;
+        this.lastDiagReceivedFrames = 0;
+        this.consecutiveEmptyRenders = 0;
+        this.playbackRate = 1.0;
+        this.lastSeekTime = 0;
+        this.pullRetryCount = 0;
 
         // Stop latency reporting
         if (this.latencyReportTimer !== null) {
@@ -697,7 +828,7 @@ export class VideoPlayer {
         }
         const streamOffsetMs = this.lastRenderedOffsetMs;
 
-        const nowMs = Date.now();
+        const nowMs = ServerClock.now();
         const recordedAtMs = this.startedAtMs + this.lastRenderedOffsetMs;
         const latencyMs = nowMs - recordedAtMs;
         warnLog?.log(
@@ -705,6 +836,39 @@ export class VideoPlayer {
             `now=${nowMs.toFixed(0)}, recorded=${recordedAtMs.toFixed(0)} ` +
             `(startedAt=${this.startedAtMs.toFixed(0)}+offset=${this.lastRenderedOffsetMs.toFixed(0)}), ` +
             `latency=${latencyMs.toFixed(0)}ms`);
+
+        // Decoder diagnostics
+        if (this.decoderWorker) {
+            void this.decoderWorker.getStats().then(ds => {
+                const recvDelta = this.receivedFrameCount - this.lastDiagReceivedFrames;
+                const decodedDelta = ds.decodedFrames - this.lastDiagDecodedFrames;
+                this.lastDiagReceivedFrames = this.receivedFrameCount;
+                this.lastDiagDecodedFrames = ds.decodedFrames;
+
+                warnLog?.log(
+                    `VIDEO_DECODE: median=${ds.medianDecodeTime.toFixed(1)}ms avg=${ds.averageDecodeTime.toFixed(1)}ms ` +
+                    `e2e=${this.pipelineLatencyMs.toFixed(0)}ms buf=${this.pendingFrames.length} ` +
+                    `recv=${recvDelta} decoded=${decodedDelta} drop=${ds.droppedFrames} ` +
+                    `res=${ds.resolution} hw=${ds.hardwareAcceleration}`);
+
+                // A/V sync diagnostics
+                const audioState = AudioVideoSync.get(this.authorId);
+                if (audioState) {
+                    const audioPlayingAtMs = AudioVideoSync.interpolatePlayingAt(audioState) * 1000;
+                    const targetVideoOffsetMs = (audioState.recordedAtMs - this.startedAtMs)
+                        + audioPlayingAtMs - this.pipelineLatencyMs;
+                    const avDriftMs = this.lastRenderedOffsetMs - targetVideoOffsetMs;
+                    warnLog?.log(
+                        `AV_SYNC: drift=${avDriftMs.toFixed(0)}ms ` +
+                        `(videoOffset=${this.lastRenderedOffsetMs.toFixed(0)}ms, ` +
+                        `targetOffset=${targetVideoOffsetMs.toFixed(0)}ms, ` +
+                        `audioPlayingAt=${audioPlayingAtMs.toFixed(0)}ms, ` +
+                        `audioState=${audioState.playbackState})`);
+                } else {
+                    warnLog?.log(`AV_SYNC: no audio state for authorId=${this.authorId}`);
+                }
+            });
+        }
 
         const connection = VideoStreamer.connection;
         const sessionToken = SessionTokens.current;
@@ -726,6 +890,12 @@ export class VideoPlayer {
     }
 
     private async reportEnded(error?: string): Promise<void> {
+        // Stop latency reporting — stream is done, no more meaningful data
+        if (this.latencyReportTimer !== null) {
+            clearInterval(this.latencyReportTimer);
+            this.latencyReportTimer = null;
+        }
+
         try {
             debugLog?.log(`VideoPlayer reporting ended for stream ${this.streamId}:`, error);
             await this.blazorRef.invokeMethodAsync('OnEnded', error ?? null);

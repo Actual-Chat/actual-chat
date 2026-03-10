@@ -1,6 +1,6 @@
 namespace ActualChat.Core.UnitTests.Identifiers;
 
-public class TextEntryIdTest(ITestOutputHelper @out) : StringIdentifierTestBase<TextEntryId>(@out)
+public class TextEntryIdTest(ITestOutputHelper @out) : StringIdentifierTestBase<ChatEntryId>(@out)
 {
     public override string[] ValidIdentifiers => [
         "thisIsChatId:0:0",
@@ -16,7 +16,6 @@ public class TextEntryIdTest(ITestOutputHelper @out) : StringIdentifierTestBase<
         "thisIsChatId::0",
         "thisIsChatId:0:",
         "thisIsChatId:-1:0",
-        "thisIsChatId:1:0",
         "thisIsChatId:2:0",
         "thisIsChatId:9:0",
         "thisIsChatId:0:-1",

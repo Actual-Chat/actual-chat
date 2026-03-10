@@ -1,0 +1,54 @@
+<svg width="512" height="512" viewBox="-4 -4 36 36" overflow="visible" style="overflow: visible;" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <style>
+        .pill-body {
+            transform-origin: 14px 14px;
+            animation: pillWiggle 1.6s ease-in-out infinite;
+        }
+        .stripes-translate {
+            transform-origin: 14px 14px;
+            animation: translateShake 1.6s ease-in-out infinite;
+        }
+        .eyes-blink {
+            transform-origin: 14px 12px;
+            animation: blink 4s ease-in-out infinite;
+        }
+        @keyframes pillWiggle {
+            0%   { transform: rotate(0deg) scale(1); }
+            12%  { transform: rotate(-14deg) scale(1.06, 0.94); }
+            24%  { transform: rotate(12deg) scale(0.94, 1.06); }
+            36%  { transform: rotate(-10deg) scale(1.04, 0.96); }
+            48%  { transform: rotate(8deg) scale(0.97, 1.03); }
+            60%  { transform: rotate(-5deg) scale(1.02, 0.98); }
+            72%  { transform: rotate(3deg) scale(0.99, 1.01); }
+            84%  { transform: rotate(-1deg) scale(1); }
+            100% { transform: rotate(0deg) scale(1); }
+        }
+        @keyframes translateShake {
+            0%   { transform: translate(0, 0); }
+            12%  { transform: translate(0.3px, -0.2px); }
+            24%  { transform: translate(-0.3px, 0.2px); }
+            36%  { transform: translate(0.25px, -0.15px); }
+            48%  { transform: translate(-0.2px, 0.15px); }
+            60%  { transform: translate(0.1px, -0.08px); }
+            72%  { transform: translate(-0.1px, 0.08px); }
+            84%  { transform: translate(0.05px, 0); }
+            100% { transform: translate(0, 0); }
+        }
+        @keyframes blink {
+            0%, 92%, 100% { transform: scaleY(1); }
+            96%           { transform: scaleY(0.1); }
+        }
+    </style>
+
+    <g class="pill-body">
+        <path d="M14.4833 5.79927C12.0851 3.40037 8.19658 3.40012 5.79847 5.79927C3.40039 8.19842 3.40063 12.0886 5.79847 14.4879L13.7607 22.4446C16.1589 24.8438 20.0473 24.8438 22.4455 22.4446C24.8435 20.0453 24.8435 16.1562 22.4455 13.7569L14.4833 5.79927Z" fill="#D95838"/>
+        <path d="M5.44531 5.44543C8.03869 2.85143 12.2435 2.85162 14.8369 5.44543L22.7988 13.4034L23.0342 13.6515C25.3895 16.2594 25.311 20.2845 22.7988 22.798C20.2864 25.3115 16.2622 25.3897 13.6553 23.0333L13.4072 22.798L5.44531 14.8419H5.44433C2.85141 12.2474 2.85204 8.03985 5.44531 5.44543ZM14.1299 6.15246C11.927 3.94909 8.35512 3.94907 6.15234 6.15246C3.94968 8.3561 3.94933 11.9297 6.15136 14.1339H6.15234L14.1143 22.0909L14.3252 22.2911C16.5396 24.2926 19.9577 24.2259 22.0918 22.0909C24.2946 19.8869 24.2947 16.3144 22.0918 14.1105L14.1299 6.15343V6.15246Z" fill="#844432"/>
+        <path d="M11.3277 11.3676C13.5368 9.15847 17.1183 9.15795 19.3275 11.3669L21.9916 14.031C24.2008 16.2402 24.2008 19.8223 21.9916 22.0315C19.7842 24.2386 16.2069 24.24 13.9973 22.0364L11.3277 19.3668C9.11882 17.1576 9.11884 13.5768 11.3277 11.3676Z" fill="#FFDD52"/>
+
+        <g class="stripes-translate">
+            <path d="M18.2095 13.4126L13.5567 8.7598C13.3614 8.56454 13.3614 8.24796 13.5567 8.0527C13.7519 7.85743 14.0685 7.85743 14.2638 8.0527L18.9166 12.7055C19.1119 12.9008 19.1119 13.2174 18.9166 13.4126C18.7213 13.6079 18.4048 13.6079 18.2095 13.4126Z" fill="white"/>
+            <path d="M9.60323 14.3923L6.60355 11.3926C6.40829 11.1974 6.09171 11.1974 5.89645 11.3926C5.70118 11.5879 5.70118 11.9045 5.89645 12.0997L8.89613 15.0994C9.09139 15.2947 9.40797 15.2947 9.60323 15.0994C9.7985 14.9041 9.7985 14.5876 9.60323 14.3923Z" fill="#844432"/>
+            <path d="M15.2017 21.4126L10.5489 16.7598C10.3536 16.5645 10.3536 16.248 10.5489 16.0527C10.7441 15.8574 11.0607 15.8574 11.256 16.0527L15.9088 20.7055C16.1041 20.9008 16.1041 21.2174 15.9088 21.4126C15.7135 21.6079 15.3969 21.6079 15.2017 21.4126Z" fill="#DABC42"/>
+        </g>
+    </g>
+</svg>

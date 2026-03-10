@@ -1,4 +1,4 @@
-﻿namespace ActualChat.Chat;
+namespace ActualChat.Chat;
 
 /// <summary>
 /// Extension methods for <see cref="IChatsBackend"/>.
@@ -15,7 +15,6 @@ public static class ChatsBackendExt
 
         var idTile = Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(entryId.LocalId);
         var tile = await chatsBackend.GetTile(entryId.ChatId,
-                entryId.Kind,
                 idTile.Range,
                 false,
                 cancellationToken)
@@ -35,7 +34,6 @@ public static class ChatsBackendExt
         var idTile = Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(entryId.LocalId);
         var cTile = await Computed.Capture(() => chatsBackend.GetTile(
                 entryId.ChatId,
-                entryId.Kind,
                 idTile.Range,
                 false,
                 cancellationToken),
@@ -66,7 +64,6 @@ public static class ChatsBackendExt
 
         var idTile = Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(entryId.LocalId);
         var tile = await chatsBackend.GetTile(entryId.ChatId,
-                entryId.Kind,
                 idTile.Range,
                 true,
                 cancellationToken)
@@ -80,20 +77,16 @@ public static class ChatsBackendExt
         bool includeRemoved = false,
         CancellationToken cancellationToken = default)
     {
-        var (chatId, entryKind) = ((ChatId?)null, default(ChatEntryKind?));
+        ChatId? chatId = null;
         var (minId, maxId) = (long.MaxValue, long.MinValue);
         var localIds = new HashSet<long>();
         foreach (var entryId in entryIds) {
-            if (chatId is null || entryKind is null) {
+            if (chatId is null) {
                 chatId = entryId.ChatId;
-                entryKind = entryId.Kind;
             }
             else {
                 if (chatId != entryId.ChatId) {
                     throw new InvalidOperationException("All entries must belong to the same chat.");
-                }
-                if (entryKind != entryId.Kind) {
-                    throw new InvalidOperationException("All entries must be of the same kind.");
                 }
             }
 
@@ -103,14 +96,13 @@ public static class ChatsBackendExt
             minId = Math.Min(minId, localId);
             maxId = Math.Max(maxId, localId);
         }
-        if (maxId < minId || entryKind is null)
+        if (maxId < minId || chatId is null)
             return [];
 
         var idTiles = Constants.Chat.ServerIdTileStack.FirstLayer.GetCoveringTiles(new Range<long>(minId, maxId + 1));
         var entries = new List<ChatEntry>(localIds.Count);
         foreach (var idTile in idTiles) {
             var tile = await chatsBackend.GetTile(chatId!,
-                    entryKind.Value,
                     idTile.Range,
                     includeRemoved,
                     cancellationToken)
@@ -123,7 +115,6 @@ public static class ChatsBackendExt
     public static async Task<IReadOnlyList<ChatEntry>> GetEntries(
         this IChatsBackend chatsBackend,
         ChatId chatId,
-        ChatEntryKind kind,
         Range<long> idRange,
         bool includeRemoved = false,
         CancellationToken cancellationToken = default)
@@ -131,7 +122,6 @@ public static class ChatsBackendExt
         var idTiles = Constants.Chat.ViewIdTileStack.FirstLayer.GetCoveringTiles(idRange);
         var tiles = await idTiles.Select(t => chatsBackend.GetTile(
                 chatId,
-                kind,
                 t.Range,
                 includeRemoved,
                 cancellationToken))
@@ -144,7 +134,6 @@ public static class ChatsBackendExt
     public static async IAsyncEnumerable<ChatEntry> ReadEntries(
         this IChatsBackend chatsBackend,
         ChatId chatId,
-        ChatEntryKind kind,
         Range<long> idRange,
         bool includeRemoved = false,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -153,7 +142,6 @@ public static class ChatsBackendExt
         foreach (var idTile in idTiles) {
             var tile = await chatsBackend.GetTile(
                 chatId,
-                kind,
                 idTile.Range,
                 includeRemoved,
                 cancellationToken).ConfigureAwait(false);

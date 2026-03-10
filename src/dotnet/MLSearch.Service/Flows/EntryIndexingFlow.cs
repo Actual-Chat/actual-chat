@@ -55,7 +55,7 @@ public sealed partial class EntryIndexingFlow : BatchedIndexingFlow<ChatEntry, C
         CancellationToken cancellationToken)
     {
         var maxVersion = ResumedAt.ToVersion(-Settings.ChangedEntityIndexingDelay);
-        cursor ??= new(TextEntryId.New(ChatId, 0), 0);
+        cursor ??= new(ChatEntryId.New(ChatId, 0), 0);
         var batch = await ChatsBackend.ListChangedEntries(new ChangedEntriesQuery {
                     ChatId = ChatId,
                     LastLocalId = cursor.LastUpdatedId?.LocalId ?? 0,
@@ -78,7 +78,7 @@ public sealed partial class EntryIndexingFlow : BatchedIndexingFlow<ChatEntry, C
             .ToList();
         var removed = batch
             .Where(x => x is { IsRemoved: true, IsSystemEntry: false })
-            .Select(x => x.Id.ToTextEntryId())
+            .Select(x => x.Id)
             .ToList();
         await IndexedDocuments.SaveEntries(updated, removed, cancellationToken).ConfigureAwait(false);
     }

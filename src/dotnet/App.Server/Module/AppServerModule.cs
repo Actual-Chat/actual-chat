@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using ActualChat.App.Server.Components.Pages;
+using ActualChat.App.Server.Flows;
 using ActualChat.App.Server.Health;
 using ActualChat.Db.Diagnostics;
 using ActualChat.Diagnostics;
@@ -231,6 +232,9 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             };
         });
 
+        // Flows
+        services.AddFlows().Add<MigrationFlow>();
+
         // Web
         var binPath = new FilePath(Assembly.GetExecutingAssembly().Location).FullPath.DirectoryPath;
         var dataProtection = Settings.DataProtection.NullIfEmpty() ?? binPath & "data-protection-keys";
@@ -353,11 +357,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         otel.WithMetrics(meter => meter
             // gcloud exporter doesn't support some of metrics yet:
             // - https://github.com/open-telemetry/opentelemetry-collector-contrib/discussions/2948
-            .AddAspNetCoreInstrumentation()
-            .AddHttpClientInstrumentation()
-            .AddRuntimeInstrumentation()
             .AddProcessInstrumentation()
-            .AddMeter("Npgsql") // Npgsql meter at Npgsql.MetricsReporter
             .AddMeter(RpcInstruments.Meter.Name) // ActualLab.Rpc
             .AddMeter(CommanderInstruments.Meter.Name) // ActualLab.Commander
             .AddMeter(FusionInstruments.Meter.Name) // ActualLab.Fusion
@@ -367,14 +367,6 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             .AddMeter(AppInstruments.Meter.Name)
             .AddMeter(AppUIInstruments.Meter.Name)
             .AddMeter(MLSearchInstruments.Meter.Name)
-            // Disabled prometheus endpoint to test Otlp
-            // .AddPrometheusExporter(cfg => { // OtlpExporter doesn't work for metrics ???
-            //     cfg.ScrapeEndpointPath = "/metrics";
-            //     cfg.ScrapeResponseCacheDurationMilliseconds = 300;
-            //     // commented out as OpenTelemetry.Exporter.Prometheus.AspNetCore 1.7.0-rc.1 doesn't support it
-            //     // and 1.8.0 doesn't allow the managed Prometheus collector to collect metrics
-            //     // cfg.DisableTotalNameSuffixForCounters = true;
-            // })
             .AddOtlpExporter(cfg => {
                 cfg.ExportProcessorType = ExportProcessorType.Batch;
                 cfg.BatchExportProcessorOptions = new BatchExportActivityProcessorOptions {
@@ -385,6 +377,25 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 };
                 cfg.Protocol = OtlpExportProtocol.Grpc;
                 cfg.Endpoint = endpointUrl.ToUri();
+            })
+            .AddView(instrument => {
+                if (instrument.Meter == RpcInstruments.Meter && instrument.Name.StartsWith("rpc.server.")) {
+                    if (instrument.Unit != "ms")
+                        return MetricStreamConfiguration.Drop; // Drop all non-ms metrics
+
+                    if (!instrument.Name.StartsWith("rpc.server.IConversations/Get")
+                        && !instrument.Name.StartsWith("rpc.server.IAuthors/Get")
+                        && !instrument.Name.StartsWith("rpc.server.IChats/Get")
+                        && !instrument.Name.StartsWith("rpc.server.IContacts/ListIds")
+                        && !instrument.Name.StartsWith("rpc.server.IChats/OnUpsertTextEntry")
+                        && !instrument.Name.StartsWith("rpc.server.IFlowBackend/OnResume")
+                        && !instrument.Name.StartsWith("rpc.server.IFlowBackend/TryGetData")
+                        && !instrument.Name.StartsWith("rpc.server.ITranslations/Get"))
+                        return MetricStreamConfiguration.Drop; // Keep the most relevant metrics
+
+                    return null;
+                }
+                return null;
             })
         );
         otel.WithTracing(tracer => tracer

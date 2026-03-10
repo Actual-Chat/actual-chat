@@ -2,7 +2,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public static class TranslationUIExt
 {
-    public static async Task<Translation?> Get(this TranslationUI translationUI, TextEntryId entryId, CancellationToken cancellationToken = default)
+    public static async Task<Translation?> Get(this TranslationUI translationUI, ChatEntryId entryId, CancellationToken cancellationToken = default)
         => await translationUI.Get(TranslationSourceId.New(entryId), cancellationToken).ConfigureAwait(false);
 
     public static async Task<Translation?> Get(this TranslationUI translationUI, ThreadChatId threadChatId, ThreadTranslationIdKind kind, CancellationToken cancellationToken = default)
@@ -11,7 +11,7 @@ public static class TranslationUIExt
     public static async Task<Translation?> Get(this TranslationUI translationUI, ConversationId conversationId, ConversationTranslationIdKind kind, CancellationToken cancellationToken = default)
         => await translationUI.Get(TranslationSourceId.New(conversationId, kind), cancellationToken).ConfigureAwait(false);
 
-    public static async Task<Translation?> GetExisting(this TranslationUI translationUI, TextEntryId entryId, CancellationToken cancellationToken = default)
+    public static async Task<Translation?> GetExisting(this TranslationUI translationUI, ChatEntryId entryId, CancellationToken cancellationToken = default)
         => await translationUI.GetExisting(TranslationSourceId.New(entryId), cancellationToken).ConfigureAwait(false);
 
     public static async Task<Translation?> GetExisting(this TranslationUI translationUI, ThreadChatId threadChatId, ThreadTranslationIdKind kind, CancellationToken cancellationToken = default)

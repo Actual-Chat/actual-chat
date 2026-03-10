@@ -118,7 +118,7 @@ public class ChatSendingMessages
             if (!sendingMessage.LocalId.HasValue)
                 _ = _triggers.OnNewMessagesChanged(ChatId);
             else
-                _ = _triggers.OnEditMessageChanged(TextEntryId.New(ChatId, sendingMessage.LocalId.Value));
+                _ = _triggers.OnEditMessageChanged(ChatEntryId.New(ChatId, sendingMessage.LocalId.Value));
     }
 
     private List<SendingMessage> GetCollectionFor(SendingMessage sendingMessage)

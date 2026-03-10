@@ -122,9 +122,6 @@ public sealed class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         return await StopRecordingUnsafe().ConfigureAwait(false);
     }
 
-    public async ValueTask EnsureConnected(bool quickReconnect, CancellationToken cancellationToken)
-        => await _engine.EnsureConnected(quickReconnect, cancellationToken).ConfigureAwait(false);
-
     public async ValueTask ConversationSignal(CancellationToken cancellationToken)
         => await _engine.ConversationSignal(cancellationToken).ConfigureAwait(false);
 

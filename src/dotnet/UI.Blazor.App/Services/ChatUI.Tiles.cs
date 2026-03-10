@@ -105,7 +105,7 @@ public partial class ChatUI
 
         Range<long> chatIdRange;
         using (Computed.BeginIsolation())
-            chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
+            chatIdRange = await Chats.GetIdRange(Session, chatId, cancellationToken).ConfigureAwait(false);
 
         List<Range<long>> idTiles;
         bool hasMoreBefore, hasMoreAfter;
@@ -137,7 +137,7 @@ public partial class ChatUI
                     .SelectMany(r => IdTileStack.FirstLayer.GetCoveringTiles(r))
                     .Select(t => t.Range)
                     .EnsureMonotonic()
-                    .Select(r => Chats.GetTile(Session, chatId, ChatEntryKind.Text, r, cancellationToken))
+                    .Select(r => Chats.GetTile(Session, chatId, r, cancellationToken))
                     .Collect(ApiConstants.Concurrency.High, cancellationToken);
                 var prefetchConversationsTask = showConversations
                     ? idTiles
@@ -419,7 +419,6 @@ public partial class ChatUI
         var tiles = await entryIdTiles
             .Select(t => Chats.GetTile(Session,
                 chatId,
-                ChatEntryKind.Text,
                 t.Range,
                 cancellationToken))
             .Collect(ApiConstants.Concurrency.High, cancellationToken)
@@ -459,7 +458,7 @@ public partial class ChatUI
         if (prevMessage is ChatEntryMessage prevEntryMessage) {
             prevEntry = prevEntryMessage.Entry;
             isPrevUnread = prevMessage.Flags.HasFlag(ChatMessageFlags.Unread);
-            isPrevAudio = prevEntry.HasAudioEntry || prevEntry.IsStreaming;
+            isPrevAudio = prevEntry.HasAudio || prevEntry.IsContentStreaming;
             hasVeryFirstItem = prevMessage.Kind == ChatMessageKind.WelcomeBlock;
         }
 
@@ -470,7 +469,7 @@ public partial class ChatUI
         var isWelcomeBlockAdded = false;
         foreach (var (entry, conversation) in items) {
             var date = DateOnly.FromDateTime(DateTimeConverter.ToLocalTime(entry?.BeginsAt ?? conversation!.StartsAt));
-            if (entry is { IsThreadStartEntry: true }) {
+            if (entry is { IsThreadStart: true }) {
                 var threadChatId = entry.ChatId.CreateThreadId(entry.LocalId);
                 var threadChat = await Chats.Get(Session, threadChatId, cancellationToken).ConfigureAwait(false);
                 if (threadChat is not null) {
@@ -487,15 +486,15 @@ public partial class ChatUI
                 // Ignore matched conversation
                 var expandedConversation = conversations.FirstOrDefault(c => c.EntryRange.Contains(entry.LocalId));
                 var isBlockStart = IsBlockStart(prevEntry, entry);
-                var isForward = entry.ForwardedAuthorId is not null;
-                var isPrevForward = prevEntry is not null && prevEntry.ForwardedAuthorId is not null;
-                var isForwardFromOtherChat = prevEntry?.ForwardedAuthorId?.ChatId != entry.ForwardedAuthorId?.ChatId;
-                var isForwardFromOtherAuthor = prevEntry?.ForwardedAuthorId != entry.ForwardedAuthorId;
+                var isForward = entry.Forwarded is not null;
+                var isPrevForward = prevEntry is not null && prevEntry.Forwarded is not null;
+                var isForwardFromOtherChat = prevEntry?.Forwarded?.AuthorId.ChatId != entry.Forwarded?.AuthorId.ChatId;
+                var isForwardFromOtherAuthor = prevEntry?.Forwarded?.AuthorId != entry.Forwarded?.AuthorId;
                 var isForwardBlockStart = (isBlockStart && isForward)
                     || (isForward && (!isPrevForward || isForwardFromOtherChat));
                 var isForwardAuthorBlockStart = isForwardBlockStart || (isForward && isForwardFromOtherAuthor);
                 var isEntryUnread = entry.LocalId > lastReadEntryId;
-                var isAudio = entry.HasAudioEntry;
+                var isAudio = entry.HasAudio;
                 var shouldAddToResult = idRange.Contains(entry.LocalId) || entry.IsSending; // add sending entries
                 var flags = default(ChatMessageFlags);
                 var indexDocId = showIndexDocId ? indexDocIds.GetValueOrDefault(entry.Id, "") : "";
@@ -632,7 +631,7 @@ public partial class ChatUI
     public virtual async Task<IReadOnlyList<ChatEntry>> GetThreadPreviewEntries(
         ChatId chatId,
         CancellationToken cancellationToken = default)
-        => await Chats.ReadReverse(Session, chatId, ChatEntryKind.Text, cancellationToken)
+        => await Chats.ReadReverse(Session, chatId, cancellationToken)
             .Where(x => !x.IsSystemEntry)
             .Take(2)
             .Reverse()
@@ -719,7 +718,7 @@ public partial class ChatUI
                 // IReactions.ListSummaries:3
                 // IAuthors.Get:4
                 var chatTask = Chats.Get(Session, chatId, cancellationToken);
-                var idRangeTask = Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken);
+                var idRangeTask = Chats.GetIdRange(Session, chatId, cancellationToken);
                 var rulesTask = Chats.GetRules(Session, chatId, cancellationToken);
                 var authorsTask = Authors.ListAuthorIds(Session, chatId, cancellationToken);
                 var isEmptyTask = IsEmpty(chatId, cancellationToken);

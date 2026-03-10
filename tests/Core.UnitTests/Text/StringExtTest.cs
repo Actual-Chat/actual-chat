@@ -17,4 +17,19 @@ public class StringExtTest
         "1X".ToSentenceCase().Should().Be("1 X");
         "xUI".ToSentenceCase().Should().Be("x UI");
     }
+
+    [Theory]
+    [InlineData("", "  ", "")]
+    [InlineData("hello", "", "hello")]
+    [InlineData("hello", "  ", "  hello")]
+    [InlineData("line1\nline2", "  ", "  line1\n  line2")]
+    [InlineData("line1\nline2\nline3", "  ", "  line1\n  line2\n  line3")]
+    [InlineData("line1\nline2\n", "  ", "  line1\n  line2\n")]
+    [InlineData("a\nb\nc\n", "\t", "\ta\n\tb\n\tc\n")]
+    [InlineData("\n", "  ", "  \n")]
+    [InlineData("\n\n", "  ", "  \n  \n")]
+    [InlineData("single", ">>", ">>single")]
+    [InlineData("a\r\nb", "  ", "  a\r\n  b")]
+    public void IndentTest(string source, string indent, string expected)
+        => source.Indent(indent).Should().Be(expected);
 }

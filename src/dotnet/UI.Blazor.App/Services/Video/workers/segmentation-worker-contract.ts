@@ -160,14 +160,8 @@ export interface SegmentationConfig {
   /** Threshold for person mask (0-1, default 0.5) */
   maskThreshold: number;
 
-  /** Number of frames to skip between inferences (0 = no skip) */
-  inferenceSkipFrames: number;
-
   /** Frame skip interval to reduce GPU contention (default: 1 = no skip) */
   frameSkipInterval?: number;
-
-  /** Maximum frames to skip even with no motion (default: 5) */
-  maxSkipFrames: number;
 
   /** Maximum queue size before dropping oldest frames */
   maxQueueSize: number;
@@ -175,6 +169,11 @@ export interface SegmentationConfig {
   /** Temporal smoothing factor for mask EMA (0-1, default 0.3).
    *  Lower values = more smoothing (less flickering), higher = more responsive. */
   temporalSmoothingFactor?: number;
+
+  /** Target output width for blur pass (matches encoder). Defaults to input frame width. */
+  outputWidth?: number;
+  /** Target output height for blur pass (matches encoder). Defaults to input frame height. */
+  outputHeight?: number;
 
   /**
    * Model tensor format configuration.
@@ -215,12 +214,6 @@ export const DEFAULT_SEGMENTATION_CONFIG = {
 
     /** Default threshold for person mask (0-1, unified with blur/composite shaders) */
     maskThreshold: 0.45,
-
-    /** Default inference skip frames (0 = no skip) */
-    inferenceSkipFrames: 0,
-
-    /** Default maximum frames to skip */
-    maxSkipFrames: 5,
 
     /** Default maximum queue size */
     maxQueueSize: 5,
@@ -306,7 +299,6 @@ export function createAdaptiveSegmentationConfig(backend: SegmentationConfig['ba
             backend,
             blurEnabled: true,
             ...DEFAULT_SEGMENTATION_CONFIG,
-            inferenceSkipFrames: 0
         };
     }
 
@@ -320,7 +312,6 @@ export function createAdaptiveSegmentationConfig(backend: SegmentationConfig['ba
         frameSkipInterval: 3,
         maxQueueSize: 3,
         temporalSmoothingFactor: 0.25,
-        inferenceSkipFrames: 0
     };
 }
 
@@ -365,69 +356,3 @@ export interface SegmentationWorker extends Disposable {
   stop(): Promise<void>;
 }
 
-// Message types for worker communication
-export interface InitMessage {
-  type: 'init';
-  config: SegmentationConfig;
-  timeoutMs?: number;
-}
-
-export interface ProcessFrameMessage {
-  type: 'process-frame';
-  frame: VideoFrame;
-  sequenceNumber: number;
-}
-
-export interface UpdateConfigMessage {
-  type: 'update-config';
-  config: Partial<SegmentationConfig>;
-}
-
-export interface GetStatsMessage {
-  type: 'get-stats';
-}
-
-export interface StopMessage {
-  type: 'stop';
-}
-
-export type SegmentationWorkerMessage =
-  | InitMessage
-  | ProcessFrameMessage
-  | UpdateConfigMessage
-  | GetStatsMessage
-  | StopMessage;
-
-// Response message types
-export interface ReadyMessage {
-  type: 'ready';
-}
-
-export interface FrameProcessedMessage {
-  type: 'frame-processed';
-  frame: VideoFrame;
-  sequenceNumber: number;
-  processingTime: number;
-}
-
-export interface StatsMessage {
-  type: 'stats';
-  stats: SegmentationStats;
-}
-
-export interface ErrorMessage {
-  type: 'error';
-  error: string;
-  code?: string;
-}
-
-export interface StoppedMessage {
-  type: 'stopped';
-}
-
-export type SegmentationWorkerResponse =
-  | ReadyMessage
-  | FrameProcessedMessage
-  | StatsMessage
-  | ErrorMessage
-  | StoppedMessage;

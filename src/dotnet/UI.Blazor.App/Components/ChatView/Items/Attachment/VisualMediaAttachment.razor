@@ -41,8 +41,8 @@
     private VisualMediaViewerUI VisualMediaViewerUI => Hub.VisualMediaViewerUI;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-    [Parameter, EditorRequired] public TextEntryAttachment Attachment { get; set; } = null!;
-    [Parameter] public TextEntryAttachment[]? Attachments { get; set; }
+    [Parameter, EditorRequired] public ChatEntryAttachment Attachment { get; set; } = null!;
+    [Parameter] public ChatEntryAttachment[]? Attachments { get; set; }
     [Parameter] public string Class { get; set; } = "";
 
     protected override async Task OnInitializedAsync() {

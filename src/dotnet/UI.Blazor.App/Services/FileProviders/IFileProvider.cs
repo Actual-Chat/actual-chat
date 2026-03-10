@@ -1,4 +1,4 @@
-﻿using ActualChat.UI.Blazor.Services;
+using ActualChat.UI.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -13,7 +13,7 @@ public partial interface IFileProvider
     Task<bool> CheckAccess();
     Task<bool> WhenUserConsentGranted();
     Task ClearForRemoving();
-    Task<string> GetPreviewUrl();
+    Task<string> GetPreviewUrl(CancellationToken cancellationToken = default);
     Task WhenFileStreamReady();
     UploadSource GetUploadSource();
 }

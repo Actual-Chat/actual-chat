@@ -1,0 +1,71 @@
+<svg width="512" height="512" viewBox="-2 -3 32 32" overflow="visible" style="overflow: visible;" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <style>
+        .character-base {
+            transform-origin: 14px 14px;
+            animation: sticker-float 4s infinite ease-in-out;
+        }
+        .upper-face {
+            transform-origin: 14px 14px;
+            animation: double-twitch 4s infinite cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .mouth-group {
+            transform-origin: 17px 21px;
+            animation: smirk-timing 4s infinite ease-in-out;
+        }
+        @keyframes sticker-float {
+            0%, 100% { transform: translateY(0); }
+            50%      { transform: translateY(-0.4px); }
+        }
+        @keyframes smirk-timing {
+            0%        { transform: rotate(0deg) scaleX(1); }
+            10%       { transform: rotate(-5deg) scaleX(1.15); }
+            20%, 100% { transform: rotate(0deg) scaleX(1); }
+        }
+        @keyframes double-twitch {
+            0%, 20% { transform: translateY(0); }
+            30%     { transform: translateY(-1.8px); }
+            45%     { transform: translateY(0); }
+            55%     { transform: translateY(-1.8px); }
+            70%     { transform: translateY(0); }
+            80%, 100% { transform: translateY(0); }
+        }
+    </style>
+
+    <g class="character-base">
+        <path d="M14.5676 26.4399C21.4351 26.4399 27.0024 20.8726 27.0024 14.0051C27.0024 7.13755 21.4351 1.57031 14.5676 1.57031C7.70005 1.57031 2.13281 7.13755 2.13281 14.0051C2.13281 20.8726 7.70005 26.4399 14.5676 26.4399Z" fill="white"/>
+        <path d="M26.9969 14.002C26.9969 12.4194 26.6578 10.9499 26.2056 9.59334C23.9448 6.08899 20.1013 3.82812 15.6926 3.82812C8.79694 3.82812 3.25781 9.36726 3.25781 16.2629C3.25781 17.8455 3.59694 19.3151 4.04912 20.6716C6.30999 24.1759 10.1535 26.4368 14.5622 26.4368C21.4578 26.4368 26.9969 20.8977 26.9969 14.002Z" fill="#FFDD52"/>
+        <path d="M14.5703 27C7.44857 27 1.57031 21.1217 1.57031 14C1.57031 6.87826 7.44857 1 14.5703 1C21.6921 1 27.5703 6.87826 27.5703 14C27.5703 21.1217 21.6921 27 14.5703 27ZM14.5703 2.13043C8.01379 2.13043 2.70075 7.44348 2.70075 14C2.70075 20.5565 8.01379 25.8696 14.5703 25.8696C21.1268 25.8696 26.4399 20.5565 26.4399 14C26.4399 7.44348 21.1268 2.13043 14.5703 2.13043Z" fill="#844432"/>
+
+        <g class="upper-face">
+            <path d="M16.7132 12.1876L15.9219 11.1702C15.9219 11.1702 20.5567 7.55284 25.1914 11.1702L24.4001 12.1876C20.6697 9.13545 16.9393 12.0746 16.7132 12.1876Z" fill="#1C1C1C"/>
+            <path d="M14.113 19.5468H12.9826C12.9826 17.1729 12.1913 15.3642 10.8348 14.2338C7.44348 11.6338 1.33913 13.3294 1.22609 13.3294L1 12.199C1.22609 12.199 7.66957 10.3903 11.513 13.3294C13.2087 14.686 14.113 16.7207 14.113 19.5468Z" fill="#1C1C1C"/>
+            <rect x="4" y="17" width="2" height="2" fill="#1C1C1C"/>
+            <rect x="6" y="17" width="2" height="2" fill="#1C1C1C"/>
+            <rect x="8" y="17" width="2" height="2" fill="#1C1C1C"/>
+            <rect x="8" y="15" width="2" height="2" fill="#1C1C1C"/>
+            <rect x="10" y="15" width="2" height="2" fill="#1C1C1C"/>
+            <rect x="6" y="15" width="2" height="2" fill="#1C1C1C"/>
+            <rect x="4" y="15" width="2" height="2" fill="#1C1C1C"/>
+            <rect x="2" y="15" width="2" height="2" fill="#1C1C1C"/>
+            <rect y="15" width="2" height="2" fill="#1C1C1C"/>
+            <rect x="2" y="17" width="2" height="2" fill="#1C1C1C"/>
+            <rect x="15" y="17" width="2" height="2" fill="#1C1C1C"/>
+            <rect x="17" y="17" width="2" height="2" fill="#1C1C1C"/>
+            <rect x="19" y="17" width="2" height="2" fill="#1C1C1C"/>
+            <rect x="19" y="15" width="2" height="2" fill="#1C1C1C"/>
+            <rect x="21" y="15" width="2" height="2" fill="#1C1C1C"/>
+            <rect x="21" y="17" width="2" height="2" fill="#1C1C1C"/>
+            <rect x="23" y="15" width="2" height="2" fill="#1C1C1C"/>
+            <rect x="25" y="15" width="2" height="2" fill="#1C1C1C"/>
+            <rect x="27" y="15" width="2" height="2" fill="#1C1C1C"/>
+            <rect x="17" y="15" width="2" height="2" fill="#1C1C1C"/>
+            <rect x="15" y="15" width="2" height="2" fill="#1C1C1C"/>
+            <rect x="13" y="15" width="2" height="2" fill="#1C1C1C"/>
+            <rect x="12" y="15" width="2" height="2" fill="#1C1C1C"/>
+        </g>
+
+        <g class="mouth-group">
+            <path d="M15 22.5C17 22.5 19 21.5 20 20" stroke="#1C1C1C" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+    </g>
+</svg>

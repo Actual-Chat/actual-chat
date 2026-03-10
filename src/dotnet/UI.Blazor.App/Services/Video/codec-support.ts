@@ -156,14 +156,13 @@ async function isCodecSupported(
 }
 
 export function getDefaultCodec(supportedCodecs: CodecInfo[]): string {
-    // Disabled for testing
-    // // Priority: AV1 > H.264, with hardware acceleration preferred
-    //
-    // // 1. Try AV1 with hardware acceleration
-    // const av1HW = supportedCodecs.find(
-    //     c => c.category === 'av1' && c.supported && c.hardwareAccelerated
-    // );
-    // if (av1HW) return av1HW.codec;
+    // Priority: AV1 > H.264, with hardware acceleration preferred
+
+    // 1. Try AV1 with hardware acceleration
+    const av1HW = supportedCodecs.find(
+        c => c.category === 'av1' && c.supported && c.hardwareAccelerated
+    );
+    if (av1HW) return av1HW.codec;
 
     // 2. Try H.264 with hardware acceleration (prefer High profile)
     const h264HW = supportedCodecs.find(

@@ -64,6 +64,14 @@ public sealed class FlowHub(IServiceProvider services) : IHasServices
         return (TFlow?)flowData?.GetFlow(this);
     }
 
+    // [ComputeMethod] - behaves exactly like a compute method
+    public async ValueTask<TFlow?> TryGet<TFlow>(FlowId flowId, CancellationToken cancellationToken = default)
+        where TFlow : Flow
+    {
+        var flowData = await Backend.TryGetData(flowId, cancellationToken).ConfigureAwait(false);
+        return (TFlow?)flowData?.GetFlow(this);
+    }
+
     // Get
 
     // [ComputeMethod] - behaves exactly like a compute method

@@ -102,6 +102,7 @@ export class VideoPipeline implements IVideoPipeline {
     private videoStream: VideoStream | null = null; // VideoStream instance
     private pendingStreamFrames: VideoStreamFrame[] = []; // Buffer frames until we get codec description
     private codecSettings: string | null = null; // Base64 encoded codec description (SPS/PPS for H.264)
+    private storedDescriptionBytes: Uint8Array | null = null; // Raw description bytes for attaching to every keyframe
     private firstEncodedTimestamp: number | null = null; // First encoded chunk timestamp (microseconds) for 0-based normalization
 
     // Preview callback for rendering segmented frames before encoding
@@ -119,6 +120,10 @@ export class VideoPipeline implements IVideoPipeline {
     private readonly reducedFrameIntervalMs: number;
     private savedBitrate: number;
 
+    // Encoder backpressure state
+    private backpressureStepDownCount = 0;
+    private lastBackpressureStepDown = 0;
+
     private currentStats: {
     encoder: EncoderStats;
     segmentation: SegmentationStats | null;
@@ -129,11 +134,18 @@ export class VideoPipeline implements IVideoPipeline {
                 keyFrames: 0,
                 totalBytes: 0,
                 averageEncodeTime: 0,
+                medianEncodeTime: 0,
+                configuredWidth: 0,
+                configuredHeight: 0,
+                configuredBitrate: 0,
                 hardwareAcceleration: 'unknown'
             },
             segmentation: null
         };
     private statsInterval: number | null = null;
+    private diagnosticsInterval: number | null = null;
+    private lastDiagTotalBytes = 0;
+    private lastDiagEncodedFrames = 0;
 
     private onSerializedChunk = (
         chunkBytes: ArrayBuffer,
@@ -187,6 +199,14 @@ export class VideoPipeline implements IVideoPipeline {
                     this.codecSettings = btoa(binary);
                     debugLog?.log('Captured codec description:', descBytes.length, 'bytes,', this.codecSettings.length, 'base64 chars');
                 }
+                this.storedDescriptionBytes = descBytes;
+            }
+
+            // Attach stored description to ALL keyframes (even if encoder didn't provide it this time).
+            // Chrome's WebCodecs only provides description on the first keyframe; subsequent keyframes lack it.
+            // Without this, remote viewers joining via skipTo get DescLen=0 keyframes.
+            if (isKeyFrame && !frame.description && this.storedDescriptionBytes) {
+                frame.description = this.storedDescriptionBytes;
             }
 
             // If videoStream doesn't exist yet, check if we can create it now
@@ -234,8 +254,6 @@ export class VideoPipeline implements IVideoPipeline {
     };
 
     private onSegmentationFrameProcessed = async (frame: VideoFrame, _sequenceNumber: number, _processingTime: number) => {
-        // Render to preview canvas before transferring to encoder
-        // (drawImage reads the frame without consuming it; encodeFrame transfers it)
         if (this.previewCallback) {
             try {
                 this.previewCallback(frame);
@@ -244,11 +262,9 @@ export class VideoPipeline implements IVideoPipeline {
             }
         }
 
-        // Send processed frame to encoder
         try {
-            await this.encoder.encodeFrame(frame);
+            await this.encoder.encodeFrame(frame, rpcNoWait);
         } catch {
-            // Close frame if RPC transfer failed (e.g., encoder shutting down)
             try { frame.close(); } catch { /* already transferred/closed */ }
         }
     };
@@ -277,7 +293,13 @@ export class VideoPipeline implements IVideoPipeline {
         this.encoder = rpcClientServer<EncoderWorker>(
             'VideoPipeline.encoder',
             this.encoderWorkerInstance,
-            { onSerializedChunk: this.onSerializedChunk }
+            {
+                onSerializedChunk: this.onSerializedChunk,
+                onBackpressure: (dropRate: number) => {
+                    this.handleEncoderBackpressure(dropRate);
+                    return Promise.resolve();
+                },
+            }
         );
 
         // Initialize segmentation worker if background blur is enabled
@@ -353,9 +375,14 @@ export class VideoPipeline implements IVideoPipeline {
 
         // Initialize segmentation worker if background blur is enabled
         if (this.segmentationWorker && this.config.backgroundBlur?.enabled) {
+            const segConfig = {
+                ...this.config.backgroundBlur.segmentationConfig,
+                outputWidth: this.config.encoderConfig.width,
+                outputHeight: this.config.encoderConfig.height,
+            };
             initPromises.push(
                 this.segmentationWorker.initialize(
-                    this.config.backgroundBlur.segmentationConfig,
+                    segConfig,
                     { timeoutMs: 10000 } // Longer timeout for model loading
                 ).catch((error: unknown) => {
                     errorLog?.log('Failed to initialize segmentation worker:', error);
@@ -388,6 +415,32 @@ export class VideoPipeline implements IVideoPipeline {
             })();
         }, 1000);
 
+        // Start 10s diagnostics timer
+        this.lastDiagTotalBytes = 0;
+        this.lastDiagEncodedFrames = 0;
+        this.diagnosticsInterval = window.setInterval(() => {
+            const s = this.currentStats.encoder;
+            const bytesDelta = s.totalBytes - this.lastDiagTotalBytes;
+            const framesDelta = s.encodedFrames - this.lastDiagEncodedFrames;
+            this.lastDiagTotalBytes = s.totalBytes;
+            this.lastDiagEncodedFrames = s.encodedFrames;
+
+            const actualMbps = (bytesDelta * 8 / 10_000_000).toFixed(2);
+            const cfgMbps = (s.configuredBitrate / 1_000_000).toFixed(1);
+            const codec = this.config.encoderConfig.codec;
+            const msg = `VIDEO_ENCODE: codec=${codec} median=${s.medianEncodeTime.toFixed(1)}ms avg=${s.averageEncodeTime.toFixed(1)}ms ` +
+                `cfg=${s.configuredWidth}x${s.configuredHeight}@${cfgMbps}Mbps actual=${actualMbps}Mbps ` +
+                `enc=${framesDelta} drop=${s.droppedFrames} kf=${s.keyFrames} hw=${s.hardwareAcceleration}`;
+            warnLog?.log(msg);
+
+            const seg = this.currentStats.segmentation;
+            if (seg) {
+                warnLog?.log(
+                    `VIDEO_SEG: infer=${seg.averageInferenceTime.toFixed(1)}ms blur=${seg.averageBlurTime.toFixed(1)}ms ` +
+                    `total=${seg.averageTotalTime.toFixed(1)}ms drop=${seg.droppedFrames} backend=${seg.backend}`);
+            }
+        }, 10_000);
+
         infoLog?.log('Pipeline started: Encoder Worker → Server streaming');
     }
 
@@ -409,6 +462,10 @@ export class VideoPipeline implements IVideoPipeline {
         if (this.statsInterval) {
             clearInterval(this.statsInterval);
             this.statsInterval = null;
+        }
+        if (this.diagnosticsInterval) {
+            clearInterval(this.diagnosticsInterval);
+            this.diagnosticsInterval = null;
         }
 
         // Stop pumping frames
@@ -479,6 +536,14 @@ export class VideoPipeline implements IVideoPipeline {
         // Track base bitrate for VAD-based reduction
         this.savedBitrate = params.bitrate;
 
+        // Update blur output dimensions to match encoder target (avoids resize in encoder worker)
+        if (this.segmentationWorker && this.config.backgroundBlur?.enabled) {
+            void this.segmentationWorker.updateConfig({
+                outputWidth: params.width,
+                outputHeight: params.height,
+            });
+        }
+
         // If currently in VAD silence, apply reduced ratio to new base bitrate
         if (!this.isSpeaking && this.config.adaptiveFramerate?.enabled) {
             const ratio = this.config.adaptiveFramerate.reducedBitrateRatio ?? 0.25;
@@ -489,6 +554,44 @@ export class VideoPipeline implements IVideoPipeline {
         }
 
         await this.encoder.reconfigure(params);
+    }
+
+    private handleEncoderBackpressure(dropRate: number): void {
+        const now = performance.now();
+
+        // Throttle: don't step down more than once per 5s
+        if (now - this.lastBackpressureStepDown < 5000) return;
+
+        const currentBitrate = this.config.encoderConfig.bitrate;
+        const currentWidth = this.config.encoderConfig.width;
+        const currentHeight = this.config.encoderConfig.height;
+
+        // Find current approximate quality level and step down
+        let target: { width: number; height: number; bitrate: number } | null = null;
+        if (currentWidth > 1280) {
+            target = { width: 1280, height: 720, bitrate: 4_000_000 };
+        } else if (currentWidth > 960) {
+            target = { width: 960, height: 540, bitrate: 2_500_000 };
+        } else if (currentWidth > 640) {
+            target = { width: 640, height: 360, bitrate: 1_000_000 };
+        }
+        // Already at lowest resolution — can only reduce bitrate further
+        if (!target && currentBitrate > 500_000) {
+            target = { width: currentWidth, height: currentHeight, bitrate: Math.round(currentBitrate * 0.5) };
+        }
+
+        if (!target) {
+            warnLog?.log('Backpressure step-down: already at minimum quality');
+            return;
+        }
+
+        this.backpressureStepDownCount++;
+        this.lastBackpressureStepDown = now;
+        warnLog?.log(`Backpressure step-down #${this.backpressureStepDownCount}: ` +
+            `${currentWidth}x${currentHeight}@${(currentBitrate/1e6).toFixed(1)}Mbps → ` +
+            `${target.width}x${target.height}@${(target.bitrate/1e6).toFixed(1)}Mbps, dropRate=${(dropRate*100).toFixed(0)}%`);
+
+        void this.reconfigure(target);
     }
 
     /**
@@ -571,9 +674,13 @@ export class VideoPipeline implements IVideoPipeline {
                 }
             );
 
-            // Initialize the worker
+            // Initialize the worker with encoder output dimensions
             await this.segmentationWorker.initialize(
-                this.config.backgroundBlur.segmentationConfig,
+                {
+                    ...this.config.backgroundBlur.segmentationConfig,
+                    outputWidth: this.config.encoderConfig.width,
+                    outputHeight: this.config.encoderConfig.height,
+                },
                 { timeoutMs: 10000 }
             );
 
@@ -1035,11 +1142,9 @@ export class VideoPipeline implements IVideoPipeline {
                 try {
                     if (this.segmentationWorker && this.config.backgroundBlur?.enabled) {
                         try {
-                            // Send frame to segmentation worker for processing
                             await this.segmentationWorker.processFrame(frame, rpcNoWait);
                         } catch (error) {
                             errorLog?.log(`Segmentation worker error on frame #${frameCount}:`, error);
-                            // Fallback: send frame directly to encoder if segmentation fails
                             await this.encoder.encodeFrame(frame);
                         }
                     } else {

@@ -50,8 +50,6 @@ public static class ApiModuleInitializer
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<ThreadChatId>());
         // Chat entry identifiers
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<ChatEntryId>());
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<TextEntryId>());
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<AudioEntryId>());
         // Other chat-related identifiers
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<MentionId>());
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<ConversationId>());

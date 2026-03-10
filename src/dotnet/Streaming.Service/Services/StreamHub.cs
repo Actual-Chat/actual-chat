@@ -34,11 +34,8 @@ public class StreamHub(IServiceProvider services) : Hub
 
     // The only method that is currently used by our JS client
     public Task ProcessAudioChunks(
-        string sessionToken,
-        string? chatId,
-        string? repliedChatEntryId,
-        double clientStartOffset,
-        int preSkip,
+        string sessionToken, string? chatId, string? repliedChatEntryId,
+        double clientStartOffset, int preSkip,
         IAsyncEnumerable<byte[][]> audioStream)
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
         => ProcessAudio(
@@ -162,8 +159,7 @@ public class StreamHub(IServiceProvider services) : Hub
 
         var frameCount = 0;
 
-        await foreach (var frame in ((IAsyncEnumerable<VideoFrame>)rpcStream)
-            .WithCancellation(stopCts.Token)) {
+        await foreach (var frame in rpcStream.WithCancellation(stopCts.Token).ConfigureAwait(false)) {
             frameCount++;
             if (frameCount <= 30 || frameCount % 30 == 0)
                 Log.LogInformation("GetVideo sending frame #{Total}", frameCount);
@@ -186,7 +182,7 @@ public class StreamHub(IServiceProvider services) : Hub
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
 
         var chatIdTyped = ChatId.Parse(chatId);
-        var repliedEntryIdTyped = TextEntryId.ParseNullable(repliedEntryId);
+        var repliedEntryIdTyped = ChatEntryId.ParseNullable(repliedEntryId);
         var httpContext = Context.GetHttpContext()!;
         var session = GetSessionFromToken(sessionToken) ?? httpContext.GetSessionFromCookie();
 
@@ -204,6 +200,7 @@ public class StreamHub(IServiceProvider services) : Hub
         var nodeRef = _preferThisNode ? MeshWatcher.ThisNode.Ref : nodes.GetRandom().Ref;
         var streamId = StreamId.New(nodeRef);
         var audioRecord = new AudioRecord(streamId, session, chatIdTyped, clientStartOffset, repliedEntryIdTyped);
+
         Log.LogInformation("ProcessAudio: {AudioRecord}", audioRecord);
         var frames = audioStream
             .Select((packet, i) => new AudioFrame {
@@ -342,7 +339,7 @@ public class StreamHub(IServiceProvider services) : Hub
 
     private static byte[] SerializeVideoFrame(VideoFrame frame)
     {
-        var buffer = new ArrayBufferWriter<byte>();
+        using var buffer = new ArrayPoolBuffer<byte>(1024, mustClear: false);
         var writer = new MessagePackWriter(buffer);
 
         var fieldCount = 3; // offset, duration, data

@@ -1,0 +1,49 @@
+.emoji-preview-overlay {
+    @apply fixed z-[10000];
+    @apply flex items-center justify-center;
+    @apply w-48 h-48;
+    @apply opacity-0;
+    @apply pointer-events-none;
+    @apply overflow-visible;
+    transform: scale(0.5);
+    transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+}
+.emoji-preview-overlay::before {
+    @apply content-empty;
+    @apply absolute inset-0 z-minus;
+    @apply rounded-full;
+    background: radial-gradient(circle, var(--background-01) 20%, transparent 55%);
+    transform: translate(var(--offset-x, 0), var(--offset-y, 0));
+}
+.emoji-preview-overlay.emoji-preview-visible {
+    @apply opacity-100;
+    transform: scale(1);
+}
+.emoji-preview-image {
+    @apply shrink-0;
+    @apply w-24 h-24;
+    @apply object-contain;
+}
+
+/* Reaction added animation */
+.emoji-reaction-animate {
+    @apply fixed z-[10000];
+    @apply flex items-center justify-center;
+    @apply w-48 h-48;
+    @apply pointer-events-none;
+    @apply overflow-visible;
+    animation: emoji-reaction-pop 1.5s ease-out forwards;
+}
+.emoji-reaction-animate::before {
+    @apply content-empty;
+    @apply absolute inset-0 z-minus;
+    @apply rounded-full;
+    background: radial-gradient(circle, var(--background-01) 20%, transparent 55%);
+    transform: translate(var(--offset-x, 0), var(--offset-y, 0));
+}
+@keyframes emoji-reaction-pop {
+    0% { transform: scale(0.3); opacity: 0; }
+    10% { transform: scale(1); opacity: 1; }
+    75% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(0.15); opacity: 0; }
+}

@@ -1,4 +1,3 @@
-using ActualChat.Maui;
 using Android.App;
 using Android.Runtime;
 

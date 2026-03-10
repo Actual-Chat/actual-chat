@@ -158,16 +158,16 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         var frenchEntry = await AliceTester.CreateStreamingEntry(chatId, Languages.French, cancellationToken);
 
         // assert
-        await AssertMustTranslate(frenchEntry.TextEntry, true);
-        await AssertMustTranslate(englishEntry.TextEntry, false);
+        await AssertMustTranslate(frenchEntry.ChatEntrySlim, true);
+        await AssertMustTranslate(englishEntry.ChatEntrySlim, false);
 
         // act
         englishEntry = await AliceTester.FinalizeStreamingEntry(englishEntry, "Hello!", cancellationToken);
         frenchEntry = await AliceTester.FinalizeStreamingEntry(frenchEntry, "Bonjour!", cancellationToken);
 
         // assert
-        await AssertMustTranslate(frenchEntry.TextEntry, true);
-        await AssertMustTranslate(englishEntry.TextEntry, false);
+        await AssertMustTranslate(frenchEntry.ChatEntrySlim, true);
+        await AssertMustTranslate(englishEntry.ChatEntrySlim, false);
     }
 
     [Fact]
@@ -185,8 +185,8 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         streamingEntry = await AliceTester.FinalizeStreamingEntry(streamingEntry, "Bonjour!", cancellationToken);
 
         // assert
-        await AssertMustTranslate(streamingEntry.TextEntry, true);
-        await AssertTranslation(streamingEntry.TextEntry, "Hello!");
+        await AssertMustTranslate(streamingEntry.ChatEntrySlim, true);
+        await AssertTranslation(streamingEntry.ChatEntrySlim, "Hello!");
     }
 
     [Fact(Skip = "Flaky")] // TODO: fix
@@ -390,13 +390,13 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
 
     private Task AssertMustTranslate(ChatEntry entry, bool expected)
         => ComputedTest.When(async ct => {
-            var mustTranslate = await TranslationUI.MustTranslate(entry, entry.IsStreaming, ct);
+            var mustTranslate = await TranslationUI.MustTranslate(entry, entry.IsContentStreaming, ct);
             mustTranslate.Should().Be(expected);
         }, TimeSpan.FromSeconds(10).Debuggable());
 
     private Task<TranscriptUI.StreamingState?> AssertIsStreaming(ChatEntry entry, bool expected)
         => ComputedTest.When(async ct => {
-            var streamingState = await TranscriptUI.GetStreamingState(entry.Id.ToTextEntryId(), ct);
+            var streamingState = await TranscriptUI.GetStreamingState(entry.Id, ct);
             var isStreaming = streamingState?.IsTranslation;
             isStreaming.Should().Be(expected);
             return streamingState;
@@ -404,7 +404,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
 
     private Task<Translation> AssertTranslation(ChatEntry entry, string expected, double similarity = 0.7)
         => ComputedTest.When(async ct => {
-            var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), ct).Require();
+            var translation = await TranslationUI.Get(entry.Id, ct).Require();
             if (expected.IsNullOrEmpty())
                 translation.Content.Should().Be(expected);
             else
@@ -417,7 +417,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     {
         var translations = new List<Translation?>();
         foreach (var entry in entries) {
-            var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), cancellationToken);
+            var translation = await TranslationUI.Get(entry.Id, cancellationToken);
             translations.Add(translation);
         }
         return translations;

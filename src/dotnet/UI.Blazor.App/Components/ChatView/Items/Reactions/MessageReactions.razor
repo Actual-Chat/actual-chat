@@ -34,14 +34,12 @@
         };
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        if (Entry.Id is not TextEntryId textEntryId)
-            return null;
-
-        var summaries = await Reactions.ListSummaries(Session, textEntryId, cancellationToken).ConfigureAwait(false);
+        var entryId = Entry.Id;
+        var summaries = await Reactions.ListSummaries(Session, entryId, cancellationToken).ConfigureAwait(false);
         if (summaries.Length == 0)
             return null;
 
-        var ownReaction = await Reactions.Get(Session, textEntryId, cancellationToken).ConfigureAwait(false);
+        var ownReaction = await Reactions.Get(Session, entryId, cancellationToken).ConfigureAwait(false);
         return new(summaries, ownReaction);
     }
 

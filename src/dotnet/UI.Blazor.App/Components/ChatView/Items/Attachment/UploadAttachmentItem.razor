@@ -2,8 +2,8 @@
 @inherits AttachmentItemBase
 
 @{
-    var attachment = Attachment;
     var m = State.Value;
+    var attachment = m.Attachment;
     var preview = m.Preview;
     var previewState = preview.State;
     var previewUrl = preview.PreviewUrl;
@@ -28,12 +28,12 @@
                 <i class="icon-trash03 text-2xl font-thin"></i>
             </ButtonSquare>
             @if (previewState is PreviewAccessState.Ok) {
-                @if (attachment.IsImage) {
-                    <img src="@previewUrl" alt="Image attachment" class="@plugClass"/>
-                } else if (attachment.IsVideo) {
+                @if (attachment.IsSupportedVideo) {
                     <video preload="metadata" class="@plugClass">
                         <source src="@previewUrl#t=0.5"/>
                     </video>
+                } else if (attachment.IsSupportedImage || m.HasPreview) {
+                    <img src="@previewUrl" alt="Attachment thumbnail" class="@plugClass" />
                 }
                 @if (!progress.IsReady) {
                     @if (isUploading) {

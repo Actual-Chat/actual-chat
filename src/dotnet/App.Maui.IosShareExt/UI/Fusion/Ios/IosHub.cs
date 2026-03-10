@@ -2,6 +2,7 @@ using ActualChat.App.Maui.IosShareExt.Services;
 using ActualChat.Chat;
 using ActualChat.Contacts;
 using ActualChat.Maui.Services;
+using ActualChat.UI.App.Services;
 using ActualChat.UI.Services;
 using ActualLab.Fusion.UI;
 using ShareUI = ActualChat.App.Maui.IosShareExt.Services.ShareUI;
@@ -29,6 +30,7 @@ public class IosHub(IServiceProvider services) : ProcessorBase, IHasServices
     public IHttpClientFactory HttpClientFactory => field ??= Services.GetRequiredService<IHttpClientFactory>();
     public ShareInputs SharedData => field ??= Services.GetRequiredService<ShareInputs>();
     public ChunkedFileUploader FileUploader => field ??= Services.GetRequiredService<ChunkedFileUploader>();
+    public VideoTranscoder VideoTranscoder => field ??= Services.GetRequiredService<VideoTranscoder>();
 }
 
 public static class IosHubExt

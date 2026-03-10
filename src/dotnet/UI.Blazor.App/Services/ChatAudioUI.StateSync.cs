@@ -1,7 +1,5 @@
 using ActualChat.Hosting;
-using ActualChat.Rpc;
 using ActualChat.UI.Blazor.Services;
-using ActualChat.Users;
 using ActualLab.Resilience;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -25,7 +23,6 @@ public partial class ChatAudioUI
             AsyncChain.From(StopReplayWhenRecordingStarts),
             AsyncChain.From(StopListeningWhenIdle),
             AsyncChain.From(ResetMicrophonePermissionAndStopRecordingOnDeviceAwake),
-            AsyncChain.From(ReconnectOnRpcReconnect),
             AsyncChain.From(UpdateNextBeepAt),
             AsyncChain.From(PlayBeep),
             AsyncChain.From(RecordingTroubleshooter),
@@ -440,20 +437,6 @@ public partial class ChatAudioUI
         if (!HostInfo.AppKind.IsMaui())
             AudioRecorder.MicrophonePermission.ForgetCached();
         await SetRecordingChatId(null).ConfigureAwait(false);
-    }
-
-    private async Task ReconnectOnRpcReconnect(CancellationToken cancellationToken)
-    {
-        var rpcDependentReconnectDelayer = Hub.Services.GetService<RpcDependentReconnectDelayer>();
-        if (rpcDependentReconnectDelayer == null)
-            return;
-
-        while (true) {
-            await rpcDependentReconnectDelayer.WhenDisconnected(cancellationToken).ConfigureAwait(false);
-            await rpcDependentReconnectDelayer.WhenConnected(cancellationToken).ConfigureAwait(false);
-            // AudioRecorder.Reconnect does nothing if the connection is already there
-            await AudioRecorder.EnsureConnected(quickReconnect: true, cancellationToken).ConfigureAwait(false);
-        }
     }
 
     private async Task UpdateNextBeepAt(CancellationToken cancellationToken)

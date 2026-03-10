@@ -28,7 +28,6 @@ public interface IChats : IComputeService
     Task<Range<long>> GetIdRange(
         Session session,
         ChatId chatId,
-        ChatEntryKind entryKind,
         CancellationToken cancellationToken);
 
     // Client-side methods always skips entries with IsRemoved flag
@@ -36,7 +35,6 @@ public interface IChats : IComputeService
     Task<ChatTile> GetTile(
         Session session,
         ChatId chatId,
-        ChatEntryKind entryKind,
         Range<long> idTileRange,
         CancellationToken cancellationToken);
 
@@ -60,7 +58,7 @@ public interface IChats : IComputeService
     Task<ReadPositionsStat> GetReadPositionsStat(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<bool> IsEntryReadByMentionedUser(Session session, TextEntryId textEntryId, MentionId mentionId, CancellationToken cancellationToken);
+    Task<bool> IsEntryReadByMentionedUser(Session session, ChatEntryId chatEntryId, MentionId mentionId, CancellationToken cancellationToken);
 
     // Commands
 
@@ -68,25 +66,25 @@ public interface IChats : IComputeService
     Task<Chat> OnChange(Chats_Change command, CancellationToken cancellationToken);
 
     [CommandHandler, RpcMethod(ConnectTimeout = double.PositiveInfinity)]
-    Task<ChatEntry> OnUpsertTextEntry(Chats_UpsertTextEntry command, CancellationToken cancellationToken);
+    Task<ChatEntry> OnUpsertEntry(Chats_UpsertEntry command, CancellationToken cancellationToken);
 
     [CommandHandler, RpcMethod(ConnectTimeout = double.PositiveInfinity)]
-    Task OnRemoveTextEntry(Chats_RemoveTextEntry command, CancellationToken cancellationToken);
+    Task OnRemoveEntry(Chats_RemoveEntry command, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task OnRestoreTextEntry(Chats_RestoreTextEntry command, CancellationToken cancellationToken);
+    Task OnRestoreEntry(Chats_RestoreEntry command, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task OnRemoveTextEntries(Chats_RemoveTextEntries command, CancellationToken cancellationToken);
+    Task OnRemoveEntries(Chats_RemoveEntries command, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task OnRestoreTextEntries(Chats_RestoreTextEntries command, CancellationToken cancellationToken);
+    Task OnRestoreEntries(Chats_RestoreEntries command, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<Chat> OnGetOrCreateFromTemplate(Chats_GetOrCreateFromTemplate command, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task<Unit> OnForwardTextEntries(Chats_ForwardTextEntries command, CancellationToken cancellationToken);
+    Task<Unit> OnForwardEntries(Chats_ForwardEntries command, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<Chat_CopyChatResult> OnCopyChat(Chat_CopyChat command, CancellationToken cancellationToken);
@@ -104,7 +102,7 @@ public sealed partial record Chats_GetOrCreateFromTemplate(
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Chats_RemoveTextEntry(
+public sealed partial record Chats_RemoveEntry(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(2)] long LocalId
@@ -112,7 +110,7 @@ public sealed partial record Chats_RemoveTextEntry(
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Chats_RestoreTextEntry(
+public sealed partial record Chats_RestoreEntry(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(2)] long LocalId
@@ -120,7 +118,7 @@ public sealed partial record Chats_RestoreTextEntry(
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Chats_RemoveTextEntries(
+public sealed partial record Chats_RemoveEntries(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(2)] long[] LocalIds
@@ -128,7 +126,7 @@ public sealed partial record Chats_RemoveTextEntries(
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Chats_RestoreTextEntries(
+public sealed partial record Chats_RestoreEntries(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(2)] long[] LocalIds
@@ -136,7 +134,7 @@ public sealed partial record Chats_RestoreTextEntries(
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Chats_UpsertTextEntry(
+public sealed partial record Chats_UpsertEntry(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(2)] long? LocalId
@@ -144,14 +142,10 @@ public sealed partial record Chats_UpsertTextEntry(
 {
     [DataMember, MemoryPackOrder(3)] public string Text { get => Sanitizer.MaskPrivate(field); init; } = "";
     [DataMember, MemoryPackOrder(4)] public Option<long?> RepliedEntryLid { get; init; }
-    [DataMember, MemoryPackOrder(6)] public ChatEntryId? ForwardedChatEntryId { get; set; }
-    [DataMember, MemoryPackOrder(7)] public AuthorId? ForwardedAuthorId { get; set; }
-    [DataMember, MemoryPackOrder(8)] public string? ForwardedChatTitle { get; set; }
-    [DataMember, MemoryPackOrder(9)] public string? ForwardedAuthorName { get; set; }
-    [DataMember, MemoryPackOrder(10)] public Moment? ForwardedChatEntryBeginsAt { get; set; }
-    [DataMember, MemoryPackOrder(11)] public TextEntryAttachment[] EntryAttachments { get; set; } = [];
-    [DataMember, MemoryPackOrder(12)] public bool HasAttachmentUploads { get; set; }
-    [DataMember, MemoryPackOrder(13)] public string ClientId { get; set; } = "";
+    [DataMember, MemoryPackOrder(11)] public ChatEntryAttachment[] Attachments { get; init; } = [];
+    [DataMember, MemoryPackOrder(12)] public bool HasUploadingAttachments { get; init; }
+    [DataMember, MemoryPackOrder(13)] public string ClientId { get; init; } = "";
+    [DataMember, MemoryPackOrder(14)] public ChatEntryForwarded? Forwarded { get; init; }
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
@@ -165,7 +159,7 @@ public sealed partial record Chats_Change(
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Chats_ForwardTextEntries(
+public sealed partial record Chats_ForwardEntries(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(2)] ChatEntryId[] ChatEntries,

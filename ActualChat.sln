@@ -160,7 +160,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6F6D1942-E726-4D5A-90A1-BDD668CFD906}"
 	ProjectSection(SolutionItems) = preProject
 		src\nodejs\src\async-processor.ts = src\nodejs\src\async-processor.ts
-		src\nodejs\src\connectivity.ts = src\nodejs\src\connectivity.ts
 		src\nodejs\src\device-info.ts = src\nodejs\src\device-info.ts
 		src\nodejs\src\disposable.ts = src\nodejs\src\disposable.ts
 		src\nodejs\src\dom-helpers.ts = src\nodejs\src\dom-helpers.ts

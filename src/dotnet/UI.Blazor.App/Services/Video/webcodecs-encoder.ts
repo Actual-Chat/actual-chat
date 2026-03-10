@@ -35,6 +35,10 @@ export interface EncoderStats {
   keyFrames: number;
   totalBytes: number;
   averageEncodeTime: number;
+  medianEncodeTime: number;
+  configuredWidth: number;
+  configuredHeight: number;
+  configuredBitrate: number;
   hardwareAcceleration: string;
 }
 
@@ -300,6 +304,16 @@ export class WebCodecsEncoder {
             ? this.encodeTimeHistory.reduce((a, b) => a + b, 0) / this.encodeTimeHistory.length
             : 0;
 
+        // Compute median encode time
+        let medianEncodeTime = 0;
+        if (this.encodeTimeHistory.length > 0) {
+            const sorted = [...this.encodeTimeHistory].sort((a, b) => a - b);
+            const mid = Math.floor(sorted.length / 2);
+            medianEncodeTime = sorted.length % 2 !== 0
+                ? sorted[mid]
+                : (sorted[mid - 1] + sorted[mid]) / 2;
+        }
+
         // Try to determine hardware acceleration status
         let hardwareAcceleration = 'unknown';
         try {
@@ -321,6 +335,10 @@ export class WebCodecsEncoder {
             keyFrames: this.keyFrameCount,
             totalBytes: this.totalBytes,
             averageEncodeTime,
+            medianEncodeTime,
+            configuredWidth: this.config.width,
+            configuredHeight: this.config.height,
+            configuredBitrate: this.config.bitrate,
             hardwareAcceleration
         };
     }

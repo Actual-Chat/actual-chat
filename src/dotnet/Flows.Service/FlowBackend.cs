@@ -130,6 +130,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
                 flow = originalFlow.Clone();
 
             // Run the HandleResume method
+            using var _ = Computed.BeginIsolation(); // Just in case
             await flow.HandleResume(FlowHub, initReason, ct).ConfigureAwait(false);
             return flow.Version;
         }, new RetryLogger(Log), cancellationToken).ConfigureAwait(false);

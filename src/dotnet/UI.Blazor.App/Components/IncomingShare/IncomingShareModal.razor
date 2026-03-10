@@ -167,7 +167,7 @@
             var width = 0;
             var height = 0;
             if (MediaTypeExt.IsVisualMedia(fileMetadata.FileType)) {
-                previewUrl = await fileProvider.GetPreviewUrl();
+                previewUrl = await fileProvider.GetPreviewUrl(Hub.StopToken);
                 var dimensions = await VisualMediaDimensions.GetVisualMediaDimensions(previewUrl, fileMetadata.FileType);
                 width = dimensions.width;
                 height = dimensions.height;

@@ -13,30 +13,58 @@ public static class Emojis
     public static readonly Emoji Nerd = new("🤓", "Nerd face", EmojiGroup.Positive);
     public static readonly Emoji SmileRotated = new("🙃", "Upside-down face", EmojiGroup.Positive);
     public static readonly Emoji Kiss = new("😘", "Face blowing a kiss", EmojiGroup.Positive);
+    public static readonly Emoji Blessed = new("😇", "Smiling face with halo", EmojiGroup.Positive);
+    public static readonly Emoji Hugging = new("🤗", "Hugging face", EmojiGroup.Positive);
+    public static readonly Emoji ExplodingHead = new("🤯", "Exploding head", EmojiGroup.Positive);
+    public static readonly Emoji Party = new("🥳", "Partying face", EmojiGroup.Positive);
+    public static readonly Emoji Saluting = new("🫡", "Saluting face", EmojiGroup.Positive);
 
     // Negative faces - anger, sadness, devil, clown
     public static readonly Emoji Angry = new("😠", "Angry face", EmojiGroup.Negative);
     public static readonly Emoji Sad = new("😥", "Sad but relieved face", EmojiGroup.Negative);
-    public static readonly Emoji Cry = new("😢", "Crying face", EmojiGroup.Negative);
-    public static readonly Emoji Melt = new("🫠", "Melting face", EmojiGroup.Negative);
+    public static readonly Emoji Crying = new("😭", "Loudly crying face", EmojiGroup.Negative);
+    public static readonly Emoji Melting = new("🫠", "Melting face", EmojiGroup.Negative);
     public static readonly Emoji Devil = new("😈", "Smiling face with horns", EmojiGroup.Negative);
     public static readonly Emoji Clown = new("🤡", "Clown face", EmojiGroup.Negative);
+    public static readonly Emoji ClownYellow = new("🤡", "clown-yellow", "Yellow clown face", EmojiGroup.Negative);
+    public static readonly Emoji Bored = new("😒", "Unamused face", EmojiGroup.Negative);
+    public static readonly Emoji Crazy = new("🤪", "Zany face", EmojiGroup.Negative);
+    public static readonly Emoji Dead = new("💀", "Skull", EmojiGroup.Negative);
+    public static readonly Emoji EyeRoll = new("🙄", "Face with rolling eyes", EmojiGroup.Negative);
+    public static readonly Emoji NoWords = new("😶", "Face without mouth", EmojiGroup.Negative);
+    public static readonly Emoji Scared = new("😨", "Fearful face", EmojiGroup.Negative);
+    public static readonly Emoji Sick = new("🤢", "Nauseated face", EmojiGroup.Negative);
+    public static readonly Emoji Sleeping = new("😴", "Sleeping face", EmojiGroup.Negative);
 
     // Hearts and love
-    public static readonly Emoji RedHeart = new("❤️", "Red heart", EmojiGroup.Love);
+    public static readonly Emoji Love = new("❤️", "Red heart", EmojiGroup.Love);
     public static readonly Emoji InLove = new("😍", "Smiling face with heart-eyes", EmojiGroup.Love);
     public static readonly Emoji BrokenHeart = new("💔", "Broken heart", EmojiGroup.Love);
-    public static readonly Emoji Please = new("🥺", "Pleading face", EmojiGroup.Love);
+    public static readonly Emoji KissLips = new("💋", "Kiss mark", EmojiGroup.Love);
+    public static readonly Emoji Praying = new("🙏", "Folded hands", EmojiGroup.Love);
 
     // Gestures and symbols
     public static readonly Emoji ThumbsUp = new("👍", "Thumbs up", EmojiGroup.Gestures);
+    public static readonly Emoji ThumbsDown = new("👎", "Thumbs down", EmojiGroup.Gestures);
     public static readonly Emoji Done = new("✅", "Check mark", EmojiGroup.Gestures);
     public static readonly Emoji Eyes = new("👀", "Eyes", EmojiGroup.Gestures);
-    public static readonly Emoji Poo = new("💩", "Pile of poo", EmojiGroup.Gestures);
-    public static readonly Emoji Boom = new("💥", "Boom", EmojiGroup.Gestures);
+    public static readonly Emoji Poop = new("💩", "Pile of poo", EmojiGroup.Gestures);
     public static readonly Emoji Surprise = new("😲", "Astonished face", EmojiGroup.Gestures);
     public static readonly Emoji Mysterious = new("🤫", "Shushing face", EmojiGroup.Gestures);
-    public static readonly Emoji Stone = new("🗿", "Moai", EmojiGroup.Gestures);
+    public static readonly Emoji StoneFaceMoai = new("🗿", "Moai", EmojiGroup.Gestures);
+    public static readonly Emoji Banana = new("🍌", "Banana", EmojiGroup.Gestures);
+    public static readonly Emoji Cup = new("☕", "Hot beverage", EmojiGroup.Gestures);
+    public static readonly Emoji Deal = new("🤝", "Handshake", EmojiGroup.Gestures);
+    public static readonly Emoji FuckYou = new("🖕", "Middle finger", EmojiGroup.Gestures);
+    public static readonly Emoji Lightning = new("⚡", "Lightning", EmojiGroup.Gestures);
+    public static readonly Emoji Ok = new("👌", "OK hand", EmojiGroup.Gestures);
+    public static readonly Emoji PeekingEye = new("🫣", "Face with peeking eye", EmojiGroup.Gestures);
+    public static readonly Emoji Pill = new("💊", "Pill", EmojiGroup.Gestures);
+    public static readonly Emoji RoboKitty = new("🐱", "Robo kitty", EmojiGroup.Gestures);
+    public static readonly Emoji Thinking = new("🤔", "Thinking face", EmojiGroup.Gestures);
+    public static readonly Emoji Writing = new("✍️", "Writing hand", EmojiGroup.Gestures);
+    public static readonly Emoji Fire = new("🔥", "Fire", EmojiGroup.Gestures);
+    public static readonly Emoji HundredPoints = new("💯", "Hundred points", EmojiGroup.Gestures);
 
     public static readonly Emoji[] All = [
         // Positive
@@ -47,27 +75,55 @@ public static class Emojis
         Nerd,
         SmileRotated,
         Kiss,
+        Blessed,
+        Hugging,
+        ExplodingHead,
+        Party,
+        Saluting,
         // Negative
         Angry,
         Sad,
-        Cry,
-        Melt,
+        Crying,
+        Melting,
         Devil,
         Clown,
+        ClownYellow,
+        Bored,
+        Crazy,
+        Dead,
+        EyeRoll,
+        NoWords,
+        Scared,
+        Sick,
+        Sleeping,
         // Love
-        RedHeart,
+        Love,
         InLove,
         BrokenHeart,
-        Please,
+        KissLips,
+        Praying,
         // Gestures
         ThumbsUp,
+        ThumbsDown,
         Done,
         Eyes,
-        Poo,
-        Boom,
+        Poop,
         Surprise,
         Mysterious,
-        Stone,
+        StoneFaceMoai,
+        Banana,
+        Cup,
+        Deal,
+        FuckYou,
+        Lightning,
+        Ok,
+        PeekingEye,
+        Pill,
+        RoboKitty,
+        Thinking,
+        Writing,
+        Fire,
+        HundredPoints,
     ];
 
     public static readonly Dictionary<string, Emoji> ById

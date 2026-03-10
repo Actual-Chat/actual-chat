@@ -198,7 +198,7 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
 
     // Private methods
 
-    private async Task<(IReadOnlyList<TextEntry> Entries, bool HasMore, bool HasImmatureInWindow)> GetEntries(
+    private async Task<(IReadOnlyList<ChatEntrySlim> Entries, bool HasMore, bool HasImmatureInWindow)> GetEntries(
         long lastId,
         CancellationToken cancellationToken)
     {
@@ -224,7 +224,7 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
         var take = Math.Min(maturedCount, BatchSize);
         var textEntries = entries
             .Take(take)
-            .Select(e => new TextEntry(e))
+            .Select(e => new ChatEntrySlim(e))
             .ToList();
 
         var hasMore = entries.Length > BatchSize;   // More pages exist

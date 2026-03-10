@@ -1,4 +1,5 @@
 using ActualChat.Media;
+using ActualLab.IO;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -21,4 +22,5 @@ public partial record UploadSessionSnapshot
     [DataMember, MemoryPackOrder(12)] public MediaId? ReservedMediaId { get; set; }
     [DataMember, MemoryPackOrder(13)] public double StageProgress { get; set; }
     [DataMember, MemoryPackOrder(14)] public string MediaScope { get; set; } = "";
+    [DataMember, MemoryPackOrder(15)] public FilePath? TranscodedFilePath { get; set; }
 }

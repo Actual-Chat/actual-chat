@@ -4,7 +4,6 @@ using ActualChat.App.Maui.Services.Playback;
 using ActualChat.App.Maui.Services.Recording;
 using ActualChat.Audio;
 using ActualChat.Hosting;
-using ActualChat.Maui.Services;
 using ActualChat.MediaPlayback;
 using ActualChat.UI;
 using ActualChat.UI.App.Services;
@@ -52,6 +51,9 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         // Permissions
         services.AddScoped<MicrophonePermissionHandler>(c => new MauiMicrophonePermissionHandler(c.UIHub()));
         services.AddScoped<IDataCollectionSettingsUI>(_ => new MauiDataCollectionSettingsUI());
+
+        // Connectivity
+        services.AddScoped<ConnectivityUI>(c => new MauiConnectivityUI(c.UIHub()));
 
         // Audio
         services.AddScoped<IAudioRecorderEngine>(c => new MauiRecorderEngine(c.AppUIHub()));

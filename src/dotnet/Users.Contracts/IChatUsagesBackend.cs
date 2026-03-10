@@ -20,7 +20,7 @@ public interface IChatUsagesBackend : IComputeService, IBackendService
     // Events
 
     [EventHandler]
-    Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
+    Task OnChatEntryChangedEvent(ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken);
 }
 
 /// <summary>

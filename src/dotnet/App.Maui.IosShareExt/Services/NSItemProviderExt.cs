@@ -1,4 +1,5 @@
 using ActualChat.Maui;
+using ActualChat.UI.Services;
 using UniformTypeIdentifiers;
 
 namespace ActualChat.App.Maui.IosShareExt.Services;
@@ -36,29 +37,32 @@ public static class NSItemProviderExt
             where T : NSObject
             => (T)await item.LoadItemAsync(contentType.Identifier, null).ConfigureAwait(false);
 
-        public async Task<UploadInput> ToUploadInput()
+        public async Task<UploadSource> ToUploadSource()
         {
-            var input = await item.GetInputFromInMemoryImage().ConfigureAwait(false);
-            if (input is not null)
-                return input;
+            var source = await item.GetSourceFromInMemoryImage().ConfigureAwait(false);
+            if (source is not null)
+                return source;
 
             var inPlaceResult = await item.LoadInPlaceFileRepresentationAsync(UTTypes.Item.Identifier).ConfigureAwait(false);
             var fileName = inPlaceResult.GetSuggestedFileName(item);
-            return new UploadInput(inPlaceResult.ImplyMimeType(item),
-                fileName,
-                Disposable.New<Stream>(File.OpenRead(inPlaceResult.Path), x => x.DisposeSilently()));
+            var filePath = inPlaceResult.Path;
+            var fileInfo = new FileInfo(filePath);
+            var metadata = new UploadSourceMetadata(
+                inPlaceResult.ImplyMimeType(item),
+                fileInfo.Length,
+                fileName);
+            return new UploadSource(metadata, new FileUploadSource(filePath));
         }
 
         private bool IsInMemoryImage()
             => item.HasItemConformingTo(UTTypes.Image.Identifier) && !item.HasItemConformingTo(UTTypes.FileUrl.Identifier);
 
-        private async Task<UploadInput?> GetInputFromInMemoryImage()
+        private async Task<UploadSource?> GetSourceFromInMemoryImage()
         {
             if (!item.IsInMemoryImage())
                 return null;
 
             var loadedItem = await item.LoadItemAsync(item.RegisteredContentTypes[0].Identifier, null).ConfigureAwait(false);
-            // TODO: dispose image
             var (image, fileName) = loadedItem switch {
                 UIImage uiImage => (uiImage, item.SuggestedName),
                 NSData data => (UIImage.LoadFromData(data), item.SuggestedName),
@@ -68,23 +72,26 @@ public static class NSItemProviderExt
             if (image is null)
                 return null;
 
-            if (image.AsJPEG() is { } jpeg)
-                return new UploadInput("image/jpeg", fileName.NullIfEmpty() ?? "image.jpg", Disposable.New(jpeg.AsStream(),
-                    x => {
-                        x.DisposeSilently();
-                        jpeg.DisposeSilently();
-                        image.DisposeSilently();
-                    }));
+            try {
+                if (image.AsJPEG() is { } jpeg) {
+                    var bytes = jpeg.ToArray();
+                    jpeg.DisposeSilently();
+                    var metadata = new UploadSourceMetadata("image/jpeg", bytes.Length, fileName.NullIfEmpty() ?? "image.jpg");
+                    return new UploadSource(metadata, new StreamUploadSource(() => Task.FromResult<Stream>(new MemoryStream(bytes))));
+                }
 
-            if (image.AsPNG() is { } png)
-                return new UploadInput("image/png", fileName.NullIfEmpty() ?? "image.png", Disposable.New(png.AsStream(),
-                    x => {
-                        x.DisposeSilently();
-                        png.DisposeSilently();
-                        image.DisposeSilently();
-                    }));
+                if (image.AsPNG() is { } png) {
+                    var bytes = png.ToArray();
+                    png.DisposeSilently();
+                    var metadata = new UploadSourceMetadata("image/png", bytes.Length, fileName.NullIfEmpty() ?? "image.png");
+                    return new UploadSource(metadata, new StreamUploadSource(() => Task.FromResult<Stream>(new MemoryStream(bytes))));
+                }
 
-            return null;
+                return null;
+            }
+            finally {
+                image.DisposeSilently();
+            }
         }
     }
 }

@@ -19,6 +19,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
     private readonly MutableState<double> _uploadPct;
     private readonly FuncWorker _sendWorker;
     private SearchPhrase _searchPhrase = SearchPhrase.None;
+    private readonly MutableState<bool> _isInitialized;
     private readonly MutableState<bool> _isSending;
     private readonly MutableState<bool> _isSent;
     private readonly MutableState<bool> _hasFailed;
@@ -32,6 +33,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
     private IContacts Contacts => Hub.Contacts;
     private ShareInputs SharedInputs => Hub.SharedData;
     private ChunkedFileUploader FileUploader => Hub.FileUploader;
+    private VideoTranscoder VideoTranscoder => Hub.VideoTranscoder;
     private Session Session => Hub.Session;
     private UICommander UICommander => Hub.UICommander;
     private ICommander Commander => Hub.Commander;
@@ -43,6 +45,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         Hub = hub;
         SelectedPlaceId = Hub.StateFactory.NewMutable<PlaceId?>();
         Hub.Services.GetRequiredService<ChunkSizeSelectorRecommendation>().Multiplier = 1;
+        _isInitialized = Hub.StateFactory.NewMutable<bool>();
         _isSending = Hub.StateFactory.NewMutable<bool>();
         _isSent = Hub.StateFactory.NewMutable<bool>();
         _hasFailed = Hub.StateFactory.NewMutable<bool>();
@@ -77,6 +80,9 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             Log.LogError(e, "Failed to initialize");
             _hasFailed.Value = true;
         }
+        finally {
+            _isInitialized.Value = true;
+        }
     }
 
     protected override Task DisposeAsyncCore()
@@ -100,6 +106,10 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         var isSending = await _isSending.Use(cancellationToken).ConfigureAwait(false);
         if (isSending)
             return ShareStep.Uploading;
+
+        var isInitialized = await _isInitialized.Use(cancellationToken).ConfigureAwait(false);
+        if (!isInitialized)
+            return ShareStep.None;
 
         return ShareStep.ContactSelection;
     }
@@ -182,16 +192,13 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
                 return;
             }
 
-            // TODO: max 10 attachments per message
-
-            Log.LogInformation("Uploading to chats: {ChatIds}", string.Join(",", chatIds));
             // TODO(FC): single upload for all chats !!!!!!!!!!!!!!!!!!!!!!!!!!!
+            var progress = new ForkableProgress(pct => _uploadPct.Value = pct);
+            var chatProgresses = progress.Fork(chatIds.Count);
             for (var i = 0; i < chatIds.Count; i++) {
                 // TODO: handle cancellation
-                var totalPct = i * 100 / chatIds.Count;
                 var chatId = chatIds[i];
-                var progress = new Progress<double>(pct => _uploadPct.Value = totalPct + (pct / chatIds.Count));
-                var attachments = await UploadFiles(chatId, fileInputs, progress, cancellationToken)
+                var attachments = await UploadFiles(chatId, fileInputs, chatProgresses[i], cancellationToken)
                     .ConfigureAwait(false);
                 var entryText = text;
                 foreach (var attachmentList in attachments.Chunk(10)) {
@@ -208,10 +215,11 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
             await UIKitExt.CloseApp(cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception e)
-        {
-            Log.LogError(e, "Failed to send message");
-            _hasFailed.Value = true;
+        catch (Exception e) {
+            if (!e.IsCancellationOf(cancellationToken)) {
+                Log.LogError(e, "Failed to send message");
+                _hasFailed.Value = true;
+            }
             throw;
         }
     }
@@ -222,57 +230,93 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             ShareSuggestions.Push(contactId);
     }
 
-    private async Task CreateChatEntry(ChatId chatId, string entryText, TextEntryAttachment[] attachmentList, CancellationToken cancellationToken)
+    private async Task CreateChatEntry(
+        ChatId chatId,
+        string text,
+        ChatEntryAttachment[] attachments,
+        CancellationToken cancellationToken)
     {
-        var cmd = new Chats_UpsertTextEntry(Session, chatId, null) {
-            Text = entryText,
+        var cmd = new Chats_UpsertEntry(Session, chatId, null) {
+            Text = text,
             ClientId = RandomStringGenerator.Default.Next(6),
-            EntryAttachments = attachmentList,
+            Attachments = attachments,
         };
         await UICommander.Call(cmd, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<TextEntryAttachment[]> UploadFiles(
+    private async Task<ChatEntryAttachment[]> UploadFiles(
         ChatId chatId,
-        IReadOnlyList<NSItemProvider> uploadInputs,
+        IReadOnlyList<NSItemProvider> fileInputs,
         IProgress<double> progress,
         CancellationToken cancellationToken)
     {
-        var attachments = new TextEntryAttachment[uploadInputs.Count];
-        for (var i = 0; i < uploadInputs.Count; i++) {
-            var totalPct = i * 100 / uploadInputs.Count;
-            var uploadInput = uploadInputs[i];
-            var fileProgress = new Progress<double>(pct => progress.Report(totalPct + (pct / uploadInputs.Count)));
-            attachments[i] = await UploadFile(chatId, uploadInput, fileProgress, cancellationToken).ConfigureAwait(false);
+        var attachments = new ChatEntryAttachment[fileInputs.Count];
+        var fileForks = progress.Fork(fileInputs.Count);
+        for (var i = 0; i < fileInputs.Count; i++) {
+            var fileInput = fileInputs[i];
+            attachments[i] = await UploadFile(chatId, fileInput, fileForks[i], cancellationToken).ConfigureAwait(false);
         }
         return attachments;
     }
 
-    private async Task<TextEntryAttachment> UploadFile(
+    private async Task<ChatEntryAttachment> UploadFile(
         ChatId chatId,
         NSItemProvider fileInput,
         IProgress<double> progress,
         CancellationToken cancellationToken)
     {
-        using var uploadInput = await fileInput.ToUploadInput().ConfigureAwait(false);
+        // Split progress: transcoding 20%, upload 80%
+        var (transcodingProgress, uploadProgress) = progress.Fork(0.2, 0.8);
+        using var dUploadSource = await PrepareUploadSource(fileInput, transcodingProgress, cancellationToken).ConfigureAwait(false);
+        var uploadSource = dUploadSource.Resource;
+
         var metadata = new PropertyBag()
-            .Set(nameof(Media.Media.FileName), uploadInput.FileName)
-            .Set(nameof(Media.Media.ContentType), uploadInput.ContentType);
+            .Set(nameof(Media.Media.FileName), uploadSource.Metadata.FileName.Value)
+            .Set(nameof(Media.Media.ContentType), uploadSource.Metadata.ContentType);
         var uploadId = await InitUpload().ConfigureAwait(false);
-        await FileUploader.UploadData(uploadId, Task.FromResult(uploadInput.Stream.Resource), progress, cancellationToken).ConfigureAwait(false);
+        var streamSource = (StreamUploadSource)uploadSource.StreamSource;
+        await FileUploader.UploadData(uploadId, streamSource.GetStream(), uploadProgress, cancellationToken).ConfigureAwait(false);
         var mediaRef = await CompleteUpload().ConfigureAwait(false);
-        return new TextEntryAttachment {
+        return new ChatEntryAttachment {
             MediaId = mediaRef.MediaId,
             ThumbnailMediaId = mediaRef.ThumbnailMediaId,
         };
 
         Task<UploadId> InitUpload()
         {
-            var cmd = new Uploads_Create(Session, uploadInput.Stream.Resource.Length, UploadExt.BuildTag(chatId), metadata);
+            var cmd = new Uploads_Create(Session, uploadSource.Metadata.Length, UploadExt.BuildTag(chatId), metadata);
             return UICommander.Call(cmd, cancellationToken);
         }
 
         Task<MediaRef> CompleteUpload()
             => Commander.Call(new Uploads_ConvertToMediaRef(Session, uploadId), CancellationToken.None);
+    }
+
+    private async Task<Disposable<UploadSource>> PrepareUploadSource(
+        NSItemProvider fileInput,
+        IProgress<double> progress,
+        CancellationToken cancellationToken)
+    {
+        var uploadSource = await fileInput.ToUploadSource().ConfigureAwait(false);
+        if (uploadSource.StreamSource is not FileUploadSource fileSource) {
+            progress.Report(100); // Mark transcoding phase as complete
+            return Disposable.New(uploadSource, Delegates<UploadSource>.Noop);
+        }
+
+        var transcodedFilePath = await VideoTranscoder
+            .Transcode(fileSource.FilePath, uploadSource.Metadata.ContentType, progress, cancellationToken)
+            .ConfigureAwait(false);
+        if (transcodedFilePath.IsEmpty) {
+            progress.Report(100); // Mark transcoding phase as complete
+            return Disposable.New(uploadSource, Delegates<UploadSource>.Noop);
+        }
+
+        // Use transcoded file's extension but keep original name stem
+        var newMetadata = new UploadSourceMetadata(
+            MediaMimeTypes.GetMimeType(transcodedFilePath),
+            new FileInfo(transcodedFilePath).Length,
+            uploadSource.Metadata.FileName.ChangeExtension(transcodedFilePath.Extension));
+        return Disposable.New(new UploadSource(newMetadata, new FileUploadSource(transcodedFilePath)),
+            _ => File.Delete(transcodedFilePath));
     }
 }

@@ -1,4 +1,4 @@
-﻿namespace ActualChat.Notification;
+namespace ActualChat.Notification;
 
 /// <summary>
 /// Service for managing user notifications and device registrations.
@@ -12,7 +12,7 @@ public interface INotifications : IComputeService
         Session session, Moment minSentAt, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 10)]
     Task<bool> HasNotifiedMentionedMembers(
-        Session session, TextEntryId textEntryId, CancellationToken cancellationToken);
+        Session session, ChatEntryId chatEntryId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task OnHandle(Notifications_Handle command, CancellationToken cancellationToken);
@@ -59,5 +59,5 @@ public sealed partial record Notifications_NotifyMembers(
 // ReSharper disable once InconsistentNaming
 public sealed partial record Notifications_NotifyMentionedMembers(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] TextEntryId TextEntryId
+    [property: DataMember, MemoryPackOrder(1)] ChatEntryId ChatEntryId
 ) : ISessionCommand<Unit>, IApiCommand;

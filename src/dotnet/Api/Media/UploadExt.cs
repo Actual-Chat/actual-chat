@@ -8,13 +8,13 @@ namespace ActualChat.Media;
 public static class UploadExt
 {
     public static string BuildTag(ChatId chatId)
-        => nameof(TextEntryAttachment) + "/v1/" + chatId.Value;
+        => nameof(ChatEntryAttachment) + "/v1/" + chatId.Value;
 
     public static ChatId ExtractChatIdFromTag(this Upload upload)
     {
         var parts = upload.Tag.Split('/');
         if (parts.Length == 3
-            && OrdinalEquals(parts[0], nameof(TextEntryAttachment))
+            && OrdinalEquals(parts[0], nameof(ChatEntryAttachment))
             && OrdinalEquals(parts[1], "v1")
             && ChatId.TryParse(parts[2], out var chatId))
             return chatId;

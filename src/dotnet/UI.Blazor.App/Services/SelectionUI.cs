@@ -57,8 +57,6 @@ public class SelectionUI : UIServiceBase<AppUIHub>
     }
     public async Task CopyToClipboard(ChatEntry sendingChatEntry)
     {
-        if (sendingChatEntry.Kind != ChatEntryKind.Text)
-            throw new ArgumentOutOfRangeException(nameof(sendingChatEntry), "Given chat entry should be a text chat entry.");
         if (!sendingChatEntry.IsSending)
             throw new ArgumentOutOfRangeException(nameof(sendingChatEntry), "Given chat entry should be a sending chat entry.");
         var textToCopy = await GetTextToCopy(sendingChatEntry).ConfigureAwait(true); // Get back to the Blazor Dispatcher
@@ -82,7 +80,7 @@ public class SelectionUI : UIServiceBase<AppUIHub>
             var mustTranslate = await TranslationUI.MustTranslate(chatEntry, false, cancellationToken).ConfigureAwait(false);
             Translation? translation = null;
             if (mustTranslate) {
-                translation = await TranslationUI.GetExisting(chatEntry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
+                translation = await TranslationUI.GetExisting(chatEntry.Id, cancellationToken).ConfigureAwait(false);
                 if (translation is not null && translation.MatchesOriginal(chatEntry.Content))
                     translation = null;
             }
@@ -131,14 +129,14 @@ public class SelectionUI : UIServiceBase<AppUIHub>
 
         var chatId = selection.Select(x => x.ChatId).First();
         var localIds = selection.Select(x => x.LocalId).ToArray();
-        var removeCommand = new Chats_RemoveTextEntries(Session, chatId, localIds);
+        var removeCommand = new Chats_RemoveEntries(Session, chatId, localIds);
         await UICommander.Run(removeCommand).ConfigureAwait(true);
 
         ToastUI.Show("Messages deleted", Restore, "Undo", ToastDismissDelay.Long);
         Clear();
 
         void Restore() {
-            var restoreCommand = new Chats_RestoreTextEntries(Session, chatId, localIds);
+            var restoreCommand = new Chats_RestoreEntries(Session, chatId, localIds);
             _ = UICommander.Run(restoreCommand);
         }
     }
@@ -157,7 +155,7 @@ public class SelectionUI : UIServiceBase<AppUIHub>
         if (selectedChatIds.Count == 0)
             return;
 
-        var cmd = new Chats_ForwardTextEntries(
+        var cmd = new Chats_ForwardEntries(
             Session,
             chatId,
             selection.ToArray(),
@@ -205,7 +203,7 @@ public class SelectionUI : UIServiceBase<AppUIHub>
             return;
 
         var chatId = selection.First().ChatId;
-        var textEntryIds = selection.OrderBy(c => c.LocalId).Select(c => c.ToTextEntryId()).ToArray();
+        var textEntryIds = selection.OrderBy(c => c.LocalId).ToArray();
         var modalModel = new NewThreadModal.Model(chatId, textEntryIds);
         await (await ModalUI.Show(modalModel).ConfigureAwait(true)).WhenClosed.ConfigureAwait(true);
         if (modalModel.Title.IsNullOrEmpty())

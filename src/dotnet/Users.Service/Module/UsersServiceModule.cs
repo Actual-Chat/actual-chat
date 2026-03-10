@@ -193,9 +193,8 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
                 .AddHostedService(c => c.GetRequiredService<ContactGreeter>());
 
             services.AddFlows()
-                .Add<MasterFlow>()
                 .Add<DigestFlow>()
-                .Add<AccountTouchFlow>();
+                .Add<AccountMigrationFlow>();
         }
 
         // TOTP codes - used by IPhoneAuth (API)

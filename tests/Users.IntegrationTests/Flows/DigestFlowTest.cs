@@ -1,3 +1,4 @@
+using ActualChat.App.Server.Flows;
 using ActualChat.Testing.Host;
 using ActualChat.Users.Flows;
 
@@ -7,11 +8,34 @@ public class DigestFlowTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(DigestFlowTest)}", TestAppHostOptions.Default, @out)
 {
     [Fact]
+    public async Task MigrationFlow_Should_Start_DigestFlow()
+    {
+        await using var h = await NewAppHost();
+
+        var flowHub = h.Services.FlowHub();
+        await flowHub.Get<MigrationFlow>(""); // We need to manually start it in this test
+        var userId = Constants.User.Admin.UserId;
+
+        // MigrationFlow should start AccountMigrationFlow
+        await ComputedTest.When(async ct => {
+            var flow = await flowHub.TryGet<AccountMigrationFlow>("", ct);
+            flow.Should().NotBeNull();
+        }, TimeSpan.FromSeconds(30));
+
+        // AccountMigrationFlow should start DigestFlow(admin)
+        await ComputedTest.When(async ct => {
+            var flow = await flowHub.TryGet<DigestFlow>(userId.Value, ct);
+            flow.Should().NotBeNull();
+        }, TimeSpan.FromSeconds(30));
+    }
+
+    [Fact]
     public async Task ShouldStopFlowIfUserHasNoTimeZone()
     {
         await using var h = await NewAppHost();
 
         var flowHub = h.Services.FlowHub();
+
         var userId = Constants.User.Admin.UserId.Value;
         var f0 = await flowHub.Get<DigestFlow>(userId);
 
@@ -27,11 +51,13 @@ public class DigestFlowTest(ITestOutputHelper @out)
     {
         await using var h = await NewAppHost();
 
-        var commander = h.Services.Commander();
         var flowHub = h.Services.FlowHub();
+        var commander = h.Services.Commander();
         var accountsBackend = h.Services.GetRequiredService<IAccountsBackend>();
 
         var userId = Constants.User.Admin.UserId;
+        await flowHub.Get<DigestFlow>(userId.Value);
+
         var account = await accountsBackend.Get(userId, CancellationToken.None).Require();
         var email = ActualChat.Email.Parse($"admin{Constants.Team.EmailSuffix}");
         var updateCmd = new AccountsBackend_Update(
@@ -54,11 +80,13 @@ public class DigestFlowTest(ITestOutputHelper @out)
     {
         await using var h = await NewAppHost();
 
-        var commander = h.Services.Commander();
         var flowHub = h.Services.FlowHub();
+        var commander = h.Services.Commander();
         var accountsBackend = h.Services.GetRequiredService<IAccountsBackend>();
 
         var userId = Constants.User.Admin.UserId;
+        await flowHub.Get<DigestFlow>(userId.Value);
+
         var account = await accountsBackend.Get(userId, default).Require();
         var email = ActualChat.Email.Parse($"admin{Constants.Team.EmailSuffix}");
         var updateCmd = new AccountsBackend_Update(
@@ -87,12 +115,14 @@ public class DigestFlowTest(ITestOutputHelper @out)
             },
         });
 
-        var commander = h.Services.Commander();
         var flowHub = h.Services.FlowHub();
+        var commander = h.Services.Commander();
         var accountsBackend = h.Services.GetRequiredService<IAccountsBackend>();
         var serverKvasBackend = h.Services.GetRequiredService<IServerKvasBackend>();
 
         var userId = Constants.User.Admin.UserId;
+        await flowHub.Get<DigestFlow>(userId.Value);
+
         var kvas = serverKvasBackend.GetUserClient(userId);
         await kvas.UserEmailsSettings()
             .Update(x => x with {

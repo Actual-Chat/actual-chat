@@ -24,7 +24,7 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
     public string Title { get; set; } = null!;
     public string Content { get; set; } = null!;
     public string? ChatId { get; set; }
-    public long? TextEntryLocalId { get; set; }
+    public long? ChatEntryLid { get; set; }
     public string? AuthorId { get; set; }
     public string IconUrl { get; set; } = null!;
     [NotMapped] public bool IsActive => _handledAt == null;
@@ -47,8 +47,8 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
     public Notification ToModel()
     {
         var chatId = ActualChat.ChatId.ParseNullable(ChatId);
-        var entryId = TextEntryLocalId is { } localId && chatId is not null
-            ? TextEntryId.New(chatId, localId)
+        var entryId = ChatEntryLid is { } localId && chatId is not null
+            ? ChatEntryId.New(chatId, localId)
             : default;
         var authorId = ActualChat.AuthorId.ParseNullable(AuthorId);
 
@@ -84,8 +84,6 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
         string? authorSid = null;
         var chatEntryNotification = model.ChatEntryNotification;
         if (chatEntryNotification != null) {
-            if (chatEntryNotification.EntryId.Kind != ChatEntryKind.Text)
-                throw new ArgumentOutOfRangeException(nameof(model), "EntryId must be a Text entry Id here.");
             textEntryLocalId = chatEntryNotification.EntryId.LocalId;
             authorSid = chatEntryNotification.AuthorId.Value.NullIfEmpty();
         }
@@ -104,7 +102,7 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
         Content = model.Content;
         IconUrl = model.IconUrl;
         ChatId = model.ChatId?.Value;
-        TextEntryLocalId = textEntryLocalId;
+        ChatEntryLid = textEntryLocalId;
         AuthorId = authorSid;
         CreatedAt = model.CreatedAt;
         SentAt = model.SentAt;

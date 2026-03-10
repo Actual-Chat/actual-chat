@@ -1,5 +1,6 @@
 using ActualChat.Chat.Db;
 using ActualChat.Contacts;
+using ActualChat.Media;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
@@ -15,6 +16,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
     private IRolesBackend RolesBackend { get; }
     private IContactsBackend ContactsBackend { get; }
     private IBlobStorages Blobs { get; }
+    private IMediaBackend MediaBackend { get; }
 
     public ChatsUpgradeBackend(IServiceProvider services) : base(services)
     {
@@ -25,6 +27,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
         RolesBackend = services.GetRequiredService<IRolesBackend>();
         ContactsBackend = services.GetRequiredService<IContactsBackend>();
         Blobs = Services.GetRequiredService<IBlobStorages>();
+        MediaBackend = services.GetRequiredService<IMediaBackend>();
     }
 
     // [CommandHandler]
@@ -135,7 +138,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
                 if (position.EntryLid <= 0)
                     continue;
 
-                var idRange = await ChatsBackend.GetIdRange(chatId, ChatEntryKind.Text, false, cancellationToken).ConfigureAwait(false);
+                var idRange = await ChatsBackend.GetIdRange(chatId, false, cancellationToken).ConfigureAwait(false);
                 var lastEntryLid = idRange.End - 1;
                 if (lastEntryLid >= position.EntryLid)
                     continue;

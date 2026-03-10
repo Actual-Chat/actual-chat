@@ -109,19 +109,16 @@ public partial class StreamingBackend
                 "Failed to publish audio stream",
                 cancellationToken)
             : null;
-        var audioEntryTask = mustStreamVoice
-            ? BackgroundTask.Run(
-                () => CreateAudioEntry(openSegment, beginsAt, recordedAt, cancellationToken),
-                Log,
-                $"{nameof(CreateAudioEntry)} failed",
-                cancellationToken)
-            : null;
 
+        // Pass streamId for Audio.StreamId during live phase; audio MediaId resolved after save
+        var liveStreamId = mustStreamVoice ? openSegment.StreamId.Value : null;
+        var audioMediaIdTcs = TaskCompletionSourceExt.New<MediaId?>();
         var transcribeTask = BackgroundTask.Run(
             () => TranscribeAudio(
                 openSegment,
                 beginsAt,
-                audioEntryTask,
+                liveStreamId,
+                audioMediaIdTcs.Task,
                 CancellationToken.None),
             Log,
             $"{nameof(TranscribeAudio)} failed",
@@ -132,26 +129,22 @@ public partial class StreamingBackend
 
         if (publishAudioTask != null)
             await publishAudioTask.ConfigureAwait(false);
-        var audioEntry = audioEntryTask != null
-            ? await audioEntryTask.ConfigureAwait(false)
-            : null;
 
         // Close an open audio segment when the duration becomes available
         await openSegment.Source.WhenDurationAvailable.ConfigureAwait(false);
         openSegment.Close(openSegment.Source.Duration);
         var closedSegment = await openSegment.ClosedSegment.ConfigureAwait(false);
 
-        string? audioBlobId = null;
+        MediaId? audioMediaId = null;
         if (mustStreamVoice) {
             // Unregister active stream from LiveBackend (use CancellationToken.None to ensure cleanup happens)
             await LiveBackend.UnregisterActiveStream(chatId, openSegment.StreamId.Value, CancellationToken.None).ConfigureAwait(false);
-            // We should finalize audio entry regardless of cancellation - that's why CancellationToken.None
-            audioBlobId = await AudioSegmentSaver.Save(closedSegment, CancellationToken.None).ConfigureAwait(false);
-        }
-
-        if (audioEntry != null)
-            await FinalizeAudioEntry(openSegment, audioEntry, audioBlobId, CancellationToken.None)
+            // Save audio blob and create Media record - use CancellationToken.None to ensure cleanup
+            audioMediaId = await AudioSegmentSaver
+                .SaveAndCreateMedia(closedSegment, chatId, beginsAt, recordedAt, CancellationToken.None)
                 .ConfigureAwait(false);
+        }
+        audioMediaIdTcs.TrySetResult(audioMediaId);
 
         // And we await for the last "pending" task, which is likely already completed
         var transcribeResult = await transcribeTask.ConfigureAwait(false);
@@ -160,15 +153,6 @@ public partial class StreamingBackend
             await RetranscribeTextEntry(transcribeResult.Value.Item1, transcribeResult.Value.Item2).SilentAwait();
         }
 
-        // Double-write: create media record for the audio entry so the text entry can reference it via AudioId
-        if (audioEntry != null && !audioBlobId.IsNullOrEmpty() && transcribeResult is not null) {
-            var audioEndsAt = audioEntry.BeginsAt + closedSegment.Duration;
-            var audioContentEndsAt = Moment.Min(audioEndsAt, audioEntry.BeginsAt + closedSegment.AudibleDuration);
-            await CreateAudioMedia(
-                    chatId, audioEntry.BeginsAt, audioEndsAt, audioContentEndsAt,
-                    audioBlobId, transcribeResult.Value.Item1, CancellationToken.None)
-                .SilentAwait();
-        }
     }
 
     private async Task<AudioSegmentLanguage> GetTranscriptionLanguage(AudioRecord record, CancellationToken cancellationToken)
@@ -186,10 +170,11 @@ public partial class StreamingBackend
         return settings.TranscriptionEngine;
     }
 
-    private async Task<(TextEntryId, Language)?> TranscribeAudio(
+    private async Task<(ChatEntryId, Language)?> TranscribeAudio(
         OpenAudioSegment audioSegment,
         Moment beginsAt,
-        Task<ChatEntry>? audioEntryTask,
+        string? liveStreamId,
+        Task<MediaId?> audioMediaIdTask,
         CancellationToken cancellationToken)
     {
         var (chatLanguage, userLanguageSettings) = audioSegment.Languages;
@@ -197,8 +182,8 @@ public partial class StreamingBackend
             var transcriptionOptions = new TranscriptionOptions {
                 Language = chatLanguage,
             };
-            var textEntryId = await TranscribeAudio(audioSegment, transcriptionOptions, beginsAt, audioEntryTask, cancellationToken).ConfigureAwait(false);
-            return textEntryId is not null ? (textEntryId, chatLanguage) : null;
+            var chatEntryId = await TranscribeAudio(audioSegment, transcriptionOptions, beginsAt, liveStreamId, audioMediaIdTask, cancellationToken).ConfigureAwait(false);
+            return chatEntryId is not null ? (chatEntryId, chatLanguage) : null;
         }
         else {
             var languageCandidates = userLanguageSettings.ListSpoken().ToArray();
@@ -217,18 +202,19 @@ public partial class StreamingBackend
                 }
             };
             var transcriptionOptions = TranscriptionOptions.AutoDetectLanguage(languageCandidates, onLanguageDetected);
-            var textEntryId = await TranscribeAudio(audioSegment, transcriptionOptions, beginsAt, audioEntryTask, cancellationToken).ConfigureAwait(false);
-            if (detectedLanguage is not null && textEntryId is not null)
-                return (textEntryId, detectedLanguage);
+            var chatEntryId = await TranscribeAudio(audioSegment, transcriptionOptions, beginsAt, liveStreamId, audioMediaIdTask, cancellationToken).ConfigureAwait(false);
+            if (detectedLanguage is not null && chatEntryId is not null)
+                return (chatEntryId, detectedLanguage);
             return null;
         }
     }
 
-    private async Task<TextEntryId?> TranscribeAudio(
+    private async Task<ChatEntryId?> TranscribeAudio(
         OpenAudioSegment audioSegment,
         TranscriptionOptions transcriptionOptions,
         Moment beginsAt,
-        Task<ChatEntry>? audioEntryTask,
+        string? liveStreamId,
+        Task<MediaId?> audioMediaIdTask,
         CancellationToken cancellationToken)
     {
         TranscriptionEngine transcriptionEngine;
@@ -251,7 +237,6 @@ public partial class StreamingBackend
         Transcript? lastTranscript = null;
         ChatEntry? textEntry = null;
         ChatEntryLanguage? entryLanguage = null;
-        var audioEntry = (ChatEntry?)null;
         try {
             await foreach (var transcript in transcripts.Replay(cancellationToken).ConfigureAwait(false)) {
                 lastTranscript = transcript;
@@ -277,25 +262,24 @@ public partial class StreamingBackend
             if (lastTranscript != null && textEntry != null)
                 await Task.WhenAll(FinalizeTextEntry(), FinalizeLanguages()).ConfigureAwait(false);
         }
-        return textEntry?.Id as TextEntryId;
+        return textEntry?.Id as ChatEntryId;
 
         async Task<ChatEntry> CreateTextEntry(Transcript transcript)
         {
-            audioEntry = audioEntryTask != null
-                ? await audioEntryTask.ConfigureAwait(false)
-                : null;
-            var textEntryId = TextEntryId.New(chatId, 0);
+            var chatEntryId = ChatEntryId.New(chatId, 0);
             var repliedEntryLid = repliedEntryId == null
                 ? (long?)null
                 : repliedEntryId.LocalId;
             var command = new ChatsBackend_ChangeEntry(
-                textEntryId,
+                chatEntryId,
                 null,
                 Change.Create(new ChatEntryDiff {
                     AuthorId = authorId,
                     Content = "",
-                    StreamId = transcriptStreamId.Value,
-                    AudioEntryLid = audioEntry?.LocalId,
+                    ContentStreamId = transcriptStreamId.Value,
+                    Audio = liveStreamId != null
+                        ? new ChatEntryAudio { StreamId = liveStreamId }
+                        : null,
                     BeginsAt = beginsAt + TimeSpan.FromSeconds(transcript.TimeRange.Start),
                     RepliedEntryLid = repliedEntryLid,
                 }));
@@ -308,22 +292,24 @@ public partial class StreamingBackend
 
         async Task FinalizeTextEntry()
         {
-            audioEntry ??= audioEntryTask != null
-                ? await audioEntryTask.ConfigureAwait(false)
-                : null;
+            // Wait for audio save to complete and get MediaId
+            var audioMediaId = await audioMediaIdTask.ConfigureAwait(false);
 
             // Final transcript is empty -> remove text entry
             // TODO(AY): Maybe publish [Audio: ...] markup here
+            var hasAudio = liveStreamId != null;
             var change = EmptyRegex.IsMatch(lastTranscript.Text)
                 ? Change.Remove<ChatEntryDiff>()
                 : Change.Update(new ChatEntryDiff {
                     Content = lastTranscript.Text,
-                    StreamId = "",
-                    AudioEntryLid = audioEntry?.LocalId,
+                    ContentStreamId = "",
+                    Audio = hasAudio && audioMediaId != null
+                        ? new ChatEntryAudio {
+                            MediaId = audioMediaId,
+                            TimeMap = lastTranscript.TimeMap.Move(-lastTranscript.TextRange.Start, 0),
+                        }
+                        : null,
                     EndsAt = beginsAt + TimeSpan.FromSeconds(lastTranscript.TimeRange.End),
-                    TimeMap = audioEntry != null
-                        ? lastTranscript.TimeMap.Move(-lastTranscript.TextRange.Start, 0)
-                        : default,
                 });
 
             var command = new ChatsBackend_ChangeEntry(
@@ -359,88 +345,12 @@ public partial class StreamingBackend
         }
     }
 
-    private async Task<ChatEntry> CreateAudioEntry(
-        OpenAudioSegment audioSegment,
-        Moment beginsAt,
-        Moment recordedAt,
-        CancellationToken cancellationToken)
-    {
-        var delay = beginsAt - recordedAt;
-        DebugLog?.LogDebug("CreateAudioEntry: delay={Delay:N1}ms", delay.TotalMilliseconds);
-
-        var chatId = audioSegment.Record.ChatId;
-        var audioEntryId = AudioEntryId.New(chatId, 0);
-        var command = new ChatsBackend_ChangeEntry(
-            audioEntryId,
-            null,
-            Change.Create(new ChatEntryDiff {
-                AuthorId = audioSegment.Author.Id,
-                Content = "",
-                StreamId = audioSegment.StreamId.Value,
-                BeginsAt = beginsAt,
-                ClientSideBeginsAt = recordedAt,
-            }));
-        var audioEntry = await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
-        return audioEntry;
-    }
-
-    private async Task FinalizeAudioEntry(
-        OpenAudioSegment audioSegment,
-        ChatEntry audioEntry,
-        string? audioBlobId,
-        CancellationToken cancellationToken)
-    {
-        var closedSegment = await audioSegment.ClosedSegment.ConfigureAwait(false);
-        var endsAt = audioEntry.BeginsAt + closedSegment.Duration;
-        var contentEndsAt = audioEntry.BeginsAt + closedSegment.AudibleDuration;
-        contentEndsAt = Moment.Min(endsAt, contentEndsAt);
-        var command = new ChatsBackend_ChangeEntry(
-            audioEntry.Id,
-            null, // do not perform version check there - it might have already been changed and it's OK
-            Change.Update(new ChatEntryDiff {
-                Content = audioBlobId ?? "",
-                StreamId = "",
-                EndsAt = endsAt,
-                ContentEndsAt = contentEndsAt,
-            }));
-        await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task RetranscribeTextEntry(ChatEntryId textEntryId, Language audioSegmentLanguage)
+    private async Task RetranscribeTextEntry(ChatEntryId chatEntryId, Language audioSegmentLanguage)
     {
         var command = new ChatsBackend_RetranscribeChatEntry(
-            textEntryId,
+            chatEntryId,
             audioSegmentLanguage);
         await Commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
-    }
-
-    private async Task CreateAudioMedia(
-        ChatId chatId,
-        Moment beginsAt,
-        Moment endsAt,
-        Moment contentEndsAt,
-        string audioBlobId,
-        ChatEntryId textEntryId,
-        CancellationToken cancellationToken)
-    {
-        var mediaId = MediaId.New(chatId.Value);
-        var media = new MediaFull(mediaId) {
-            BlobId = audioBlobId,
-            Kind = MediaKind.ChatEntryAudio,
-            ContentType = "audio/webm",
-            BeginsAt = beginsAt,
-            EndsAt = endsAt,
-            ContentEndsAt = contentEndsAt,
-        };
-        var changeCommand = new MediaBackend_Change(mediaId, null, new Change<MediaFull> { Create = media });
-        await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
-
-        // Update the text entry's AudioId
-        var updateCommand = new ChatsBackend_ChangeEntry(
-            textEntryId,
-            null,
-            Change.Update(new ChatEntryDiff { AudioId = mediaId.Value }));
-        await Commander.Call(updateCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     private void ApplyTranscriptionDetectedLanguage(AudioRecord audioSegmentRecord, Language detectedLanguage,

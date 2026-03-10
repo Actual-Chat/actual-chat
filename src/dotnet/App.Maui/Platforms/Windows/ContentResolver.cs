@@ -2,14 +2,12 @@ namespace ActualChat.App.Maui;
 
 public static class ContentResolver
 {
-    public const string UriContentScheme = "content://";
+    public const string UriContentScheme = UrlMapper.UriContentScheme;
     public const string FilesContentProvider = "files";
+    private const string FilesContentPrefix = $"{UriContentScheme}://{FilesContentProvider}/";
 
     public static string GetFileUri(string filePath)
-    {
-        const string prefix = "content://files/";
-        return prefix + Uri.EscapeDataString(filePath);
-    }
+        => $"{FilesContentPrefix}{Uri.EscapeDataString(filePath)}";
 
     public static bool TryGetFilePathFromUri(string uri, [NotNullWhen(true)] out string? filePath)
     {

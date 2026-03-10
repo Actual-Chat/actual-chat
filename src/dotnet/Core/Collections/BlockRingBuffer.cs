@@ -167,7 +167,6 @@ public class BlockRingBuffer<T>: IDisposable
         // _whenPushedTcs.TrySetResult();
     }
 
-
     // Internal methods
 
     internal ReadOnlySpan<T> GetAvailableContinuousData()

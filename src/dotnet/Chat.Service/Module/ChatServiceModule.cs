@@ -164,8 +164,8 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
 
         // Flows
         services.AddFlows()
-            .Add<ChatMasterFlow>()
-            .Add<ChatAudioEntryMigrationFlow>()
+            .Add<ChatEntryMigrationFlow>()
+            .Add<ChatEntryMigrationFixupFlow>()
             .Add<ConversationSplitMasterFlow>()
             .Add<ConversationSplitFlow>()
             .Add<TranslationCleanupFlow>();
@@ -182,9 +182,9 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             db.AddEntityResolver<string, DbChat>();
 
             // DbChatEntry
-            db.AddShardLocalIdGenerator<ChatDbContext, DbChatEntry, DbChatEntryShardRef>(
+            db.AddShardLocalIdGenerator<ChatDbContext, DbChatEntry, string>(
                 dbContext => dbContext.ChatEntries,
-                (e, shardKey) => e.ChatId == shardKey.ChatId.Value && e.Kind == shardKey.Kind,
+                (e, shardKey) => e.ChatId == shardKey && e.Kind == 0,
                 e => e.LocalId);
 
             // DbAuthor

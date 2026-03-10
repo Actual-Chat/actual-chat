@@ -1,14 +1,26 @@
 using ActualChat.UI.Blazor.App.Services;
+using ActualLab.Diagnostics;
 using ActualLab.IO;
 
 namespace ActualChat.App.Maui;
 
-public sealed class IosFileProviderImpl(FilePath filePath) : IMauiFileProviderImpl
+public sealed class IosFileProviderImpl(IServiceProvider services, FilePath filePath) : IMauiFileProviderImpl
 {
+    private IosVideoThumbnails VideoThumbnails => field ??= services.GetRequiredService<IosVideoThumbnails>();
+    private ILogger Log => field ??= services.LogFor(GetType());
+    private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.FileAttachments);
+
     private FileInfo FileInfo => field ??= new FileInfo(filePath);
 
-    public Task<string> GetPreviewUrl()
-        => Task.FromResult(ContentResolver.GetFileUri(filePath));
+    public async Task<string> GetPreviewUrl(CancellationToken cancellationToken = default)
+    {
+        if (!OrdinalIgnoreCaseEquals(filePath.Extension, ".mov"))
+            return ContentResolver.GetFileUri(filePath);
+
+        var thumbnailPath = await VideoThumbnails.Generate(filePath, cancellationToken).ConfigureAwait(false);
+        DebugLog?.LogDebug("Generated thumbnail: {ThumbnailPath}", thumbnailPath);
+        return ContentResolver.GetFileUri(thumbnailPath.IsEmpty ? filePath : thumbnailPath);
+    }
 
     public Task PrepareForSaving()
         => Task.CompletedTask;

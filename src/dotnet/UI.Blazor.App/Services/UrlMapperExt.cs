@@ -4,13 +4,15 @@ public static class UrlMapperExt
 {
     public static string AudioBlobUrl(this UrlMapper urlMapper, ChatEntry audioEntry)
     {
-        if (audioEntry.Kind != ChatEntryKind.Audio)
-            throw new ArgumentOutOfRangeException(nameof(audioEntry),
-                $"Only Audio entries are supported, but an entry of {audioEntry.Kind.ToString()} type was provides.");
-        if (audioEntry.Content.IsNullOrEmpty())
-            throw new ArgumentOutOfRangeException(nameof(audioEntry),
-                $"{nameof(audioEntry)} doesn't have Content.");
+        var contentId = audioEntry.Audio?.BlobId ?? audioEntry.Content;
+        return urlMapper.AudioBlobUrl(contentId);
+    }
 
-        return urlMapper.ToAbsolute(urlMapper.ApiBaseUrl, "audio/download/" + audioEntry.Content);
+    public static string AudioBlobUrl(this UrlMapper urlMapper, string contentId)
+    {
+        if (contentId.IsNullOrEmpty())
+            throw new ArgumentOutOfRangeException(nameof(contentId), "Content ID is empty.");
+
+        return urlMapper.ToAbsolute(urlMapper.ApiBaseUrl, "audio/download/" + contentId);
     }
 }

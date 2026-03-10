@@ -100,15 +100,15 @@ public sealed class ChatEntryPlayer : ProcessorBase
             await AudioInitializer.WhenInitialized.ConfigureAwait(false);
 
             cancellationToken.ThrowIfCancellationRequested();
-            if (audioEntry.Kind != ChatEntryKind.Audio)
-                throw StandardError.NotSupported($"The entry's Type must be {ChatEntryKind.Audio}.");
+            if (audioEntry.Audio is not { } audio)
+                throw StandardError.NotSupported("The entry must have audio (HasAudio must be true).");
             if (audioEntry.Duration is { } duration && skipTo.TotalSeconds > duration) {
                 Log.LogDebug("Skipping entry={EntryId} (skipTo > duration)", audioEntry.Id);
                 return PlayTrackCommand.PlayNothingProcess;
             }
             Log.LogDebug("Enqueuing entry={EntryId}, IsStreaming={IsStreaming}, skipTo={SkipTo}",
-                audioEntry.Id, audioEntry.IsStreaming, skipTo);
-            return await (audioEntry.IsStreaming
+                audioEntry.Id, audio.IsStreaming, skipTo);
+            return await (audio.IsStreaming
                 ? EnqueueStreamingEntry(audioEntry, skipTo, playAt, cancellationToken)
                 : EnqueueNonStreamingEntry(audioEntry, skipTo, playAt, cancellationToken)
                 ).ConfigureAwait(false);
@@ -118,40 +118,41 @@ public sealed class ChatEntryPlayer : ProcessorBase
                 "Error playing audio entry; chat #{ChatId}, entry #{AudioEntryId}, stream #{StreamId}",
                 audioEntry.ChatId,
                 audioEntry.Id,
-                audioEntry.StreamId);
+                audioEntry.Audio?.StreamId ?? "null");
             throw;
         }
     }
 
     private async Task<IMessageProcess<PlayTrackCommand>> EnqueueStreamingEntry(
-        ChatEntry audioEntry,
+        ChatEntry chatEntry,
         TimeSpan skipTo,
         Moment playAt,
         CancellationToken cancellationToken)
     {
-        var audioTask = StreamClient.GetAudio(audioEntry.StreamId, skipTo, cancellationToken);
-        var chatTask = Hub.Chats.Get(Hub.Session, audioEntry.ChatId, cancellationToken);
-        var authorTask = Hub.Authors.Get(Hub.Session, audioEntry.ChatId, audioEntry.AuthorId, cancellationToken);
+        var streamId = chatEntry.Audio!.StreamId;
+        var audioTask = StreamClient.GetAudio(streamId, skipTo, cancellationToken);
+        var chatTask = Hub.Chats.Get(Hub.Session, chatEntry.ChatId, cancellationToken);
+        var authorTask = Hub.Authors.Get(Hub.Session, chatEntry.ChatId, chatEntry.AuthorId, cancellationToken);
         await Task.WhenAll(audioTask, chatTask, authorTask).ConfigureAwait(false);
         var audio = await audioTask.ConfigureAwait(false);
         var chat = await chatTask.ConfigureAwait(false);
         var author = await authorTask.ConfigureAwait(false);
 
-        var trackInfo = new ChatAudioTrackInfo(audioEntry, chat!, author!) {
-            RecordedAt = audioEntry.BeginsAt + skipTo,
-            ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt ?? audioEntry.BeginsAt) + skipTo,
+        var trackInfo = new ChatAudioTrackInfo(chatEntry, chat!, author!) {
+            RecordedAt = chatEntry.BeginsAt + skipTo,
+            ClientSideRecordedAt = (chatEntry.Audio?.ClientSideBeginsAt ?? chatEntry.BeginsAt) + skipTo,
         };
-        var now = Clocks.SystemClock.Now;
+        var now = Clocks.ServerClock.Now;
         var latency = now - audio.CreatedAt;
         _ = BackgroundTask.Run(async () => {
             _ = StreamClient.ReportAudioLatency(latency, cancellationToken).ConfigureAwait(false);
             var recorderState = AudioRecorder.State.LastNonErrorValue;
-            if (!recorderState.IsRecording || recorderState.ChatId != audioEntry.ChatId)
+            if (!recorderState.IsRecording || recorderState.ChatId != chatEntry.ChatId)
                 return;
 
-            var ownAuthor = await Hub.Authors.GetOwn(Hub.Session, audioEntry.ChatId, cancellationToken).ConfigureAwait(false);
+            var ownAuthor = await Hub.Authors.GetOwn(Hub.Session, chatEntry.ChatId, cancellationToken).ConfigureAwait(false);
             // TODO(DF): review change
-            if (ownAuthor is null || audioEntry.AuthorId != ownAuthor.Id)
+            if (ownAuthor is null || chatEntry.AuthorId != ownAuthor.Id)
                 _ = AudioRecorder.ConversationSignal(cancellationToken).ConfigureAwait(false);
         }, cancellationToken);
         return Playback.Play(trackInfo, audio, playAt, cancellationToken);
@@ -163,7 +164,9 @@ public sealed class ChatEntryPlayer : ProcessorBase
         Moment playAt,
         CancellationToken cancellationToken)
     {
-        var audioBlobUrl = UrlMapper.AudioBlobUrl(audioEntry);
+        var audioBlobUrl = UrlMapper.AudioBlobUrl(audioEntry.Audio != null
+            ? audioEntry.Audio.BlobId
+            : audioEntry.Content);
         Log.LogDebug("Downloading audio from {Url}, entry={EntryId}", audioBlobUrl, audioEntry.Id);
         var audioTask = AudioDownloader.Download(audioBlobUrl, skipTo, cancellationToken);
         var chatTask = Hub.Chats.Get(Hub.Session, audioEntry.ChatId, cancellationToken);
@@ -175,7 +178,7 @@ public sealed class ChatEntryPlayer : ProcessorBase
         Log.LogDebug("Audio downloaded, format={Format}, entry={EntryId}", audio.Format, audioEntry.Id);
         var trackInfo = new ChatAudioTrackInfo(audioEntry, chat!, author!) {
             RecordedAt = audioEntry.BeginsAt + skipTo,
-            ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt ?? audioEntry.BeginsAt) + skipTo,
+            ClientSideRecordedAt = (audioEntry.Audio?.ClientSideBeginsAt ?? audioEntry.BeginsAt) + skipTo,
         };
         Log.LogInformation("Playing entry={EntryId}, playAt={PlayAt}", audioEntry.Id, playAt);
         return Playback.Play(trackInfo, audio, playAt, cancellationToken);

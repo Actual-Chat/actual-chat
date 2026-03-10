@@ -11,9 +11,9 @@ public class ChatEventSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     private static readonly PlaceId TestPlaceId = PlaceId.New();
 
     [Fact]
-    public void TextEntryChangedEvent_Basic()
+    public void ChatEntryChangedEvent_Basic()
     {
-        var entryId = ChatEntryId.New(TestChatId, ChatEntryKind.Text, 1);
+        var entryId = ChatEntryId.New(TestChatId, 1);
         var authorId = AuthorId.New(TestChatId, 5);
         var entry = new ChatEntry(entryId, 1) {
             AuthorId = authorId,
@@ -23,7 +23,7 @@ public class ChatEventSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         var author = new AuthorFull(TestUserId, authorId, 1) {
             Avatar = new Avatar("avatar-1") { Name = "Test" },
         };
-        var evt = new TextEntryChangedEvent(entry, author, ChangeKind.Create, null);
+        var evt = new ChatEntryChangedEvent(entry, author, ChangeKind.Create, null);
         evt.AssertPassesThroughAllSerializers(
             (deserialized, original) => {
                 deserialized.Entry.Id.Should().Be(original.Entry.Id);
@@ -154,7 +154,7 @@ public class ChatEventSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void ReactionChangedEvent_Basic()
     {
-        var entryId = ChatEntryId.New(TestChatId, ChatEntryKind.Text, 1);
+        var entryId = ChatEntryId.New(TestChatId, 1);
         var authorId = AuthorId.New(TestChatId, 5);
         var reactionAuthorId = AuthorId.New(TestChatId, 10);
         var entry = new ChatEntry(entryId, 1) {
@@ -162,7 +162,7 @@ public class ChatEventSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             BeginsAt = new Moment(DateTime.UtcNow),
             Content = "Hello",
         };
-        var entryIdText = TextEntryId.New(TestChatId, 1);
+        var entryIdText = ChatEntryId.New(TestChatId, 1);
         var reaction = new Reaction {
             Id = "reaction-1",
             AuthorId = reactionAuthorId,

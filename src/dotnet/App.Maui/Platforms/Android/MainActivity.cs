@@ -1,5 +1,4 @@
 using ActualChat.App.Maui.Services;
-using ActualChat.Maui;
 using Android.App;
 using Android.Content.PM;
 using Android.OS;

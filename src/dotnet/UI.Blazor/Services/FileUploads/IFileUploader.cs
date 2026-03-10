@@ -1,3 +1,5 @@
+using ActualChat.UI.Services;
+
 namespace ActualChat.UI.Blazor.Services;
 
 public interface IFileUploader

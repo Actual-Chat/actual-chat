@@ -97,7 +97,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         if (_latencyStates.TryGetValue(streamId, out var latencyState)) {
             var latency = Clocks.ServerClock.Now - (latencyState.StartedAt + TimeSpan.FromMilliseconds(streamOffsetMs));
             if (latency > TimeSpan.Zero) {
-                AppMeters.VideoLatency.Record((float)latency.TotalMilliseconds);
+                AppMeters.VideoLatency.Record(latency.TotalMilliseconds);
                 Log.LogWarning("ReportPeerLatency: StreamId={StreamId}, PeerId={PeerId}, StreamOffsetMs={StreamOffsetMs:F0}, LatencyMs={LatencyMs:F0}",
                     streamId, peerId, streamOffsetMs, latency.TotalMilliseconds);
                 latencyState.RecordPeerLatency(peerId, (float)latency.TotalMilliseconds);
@@ -183,7 +183,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         IAsyncEnumerable<VideoFrame> videoFrames,
         CancellationToken cancellationToken)
     {
-        var beginsAt = Clocks.SystemClock.Now;
+        var beginsAt = default(Moment) + TimeSpan.FromSeconds(record.ClientStartOffset);
         var rules = await Chats.GetRules(record.Session, record.ChatId, cancellationToken)
             .ConfigureAwait(false);
         rules.Require(ChatPermissions.Write);
@@ -366,9 +366,9 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         // Cap max quality to what the camera can actually provide — prevents wasteful upscaling
         private readonly VideoQualityLevel _maxQuality = format.Width >= 1920 && format.Height >= 1080
             ? VideoQualityLevel.Full
-            : format.Width >= 1280 && format.Height >= 720
+            : format is { Width: >= 1280, Height: >= 720 }
                 ? VideoQualityLevel.High
-                : format.Width >= 960 && format.Height >= 540
+                : format is { Width: >= 960, Height: >= 540 }
                     ? VideoQualityLevel.Medium
                     : VideoQualityLevel.Low;
 
@@ -425,17 +425,22 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 
                 var slowCount = peers.Count(p => p.Value.MedianLatencyMs > Constants.Video.HighLatencyThresholdMs);
                 var slowRatio = (float)slowCount / peers.Count;
+                // In small calls (1-3 peers), one slow peer should trigger step-down.
+                // In larger calls, use stricter ratio so one outlier doesn't degrade everyone.
+                var effectiveOutlierRatio = peers.Count <= 3
+                    ? Constants.Video.PeerOutlierRatioSmallCall
+                    : Constants.Video.PeerOutlierRatio;
 
-                // Step down sender quality if majority are slow
-                if (slowRatio > Constants.Video.PeerOutlierRatio) {
+                // Step down sender quality if enough peers are slow
+                if (slowRatio > effectiveOutlierRatio) {
                     var stepped = VideoQualityPreset.StepDown(_currentQuality);
                     if (stepped != null) {
                         var oldQuality = _currentQuality;
                         _currentQuality = stepped.Level;
                         _lastQualityChangeAt = CpuTimestamp.Now;
                         _qualityDirectives.Publish(stepped);
-                        log.LogInformation("EvaluateQuality: STEP DOWN {OldLevel} -> {NewLevel}, slowRatio={SlowRatio:F2} ({SlowCount}/{TotalCount})",
-                            oldQuality, stepped.Level, slowRatio, slowCount, peers.Count);
+                        log.LogInformation("EvaluateQuality: STEP DOWN {OldLevel} -> {NewLevel}, slowRatio={SlowRatio:F2} (threshold={Threshold:F2}, {SlowCount}/{TotalCount})",
+                            oldQuality, stepped.Level, slowRatio, effectiveOutlierRatio, slowCount, peers.Count);
                     }
                 }
                 // Step up quality if all peers are fast and hysteresis window has elapsed

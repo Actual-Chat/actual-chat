@@ -25,7 +25,7 @@ public interface IChatEntryLanguagesBackend : IComputeService, IBackendService
     // Event handlers
 
     [EventHandler]
-    Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
+    Task OnChatEntryChangedEvent(ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken);
 }
 
 /// <summary>

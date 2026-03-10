@@ -108,7 +108,7 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
             var lastMention = await lastMentionTask.ConfigureAwait(false);
             var chatPosition = await chatPositionTask.ConfigureAwait(false);
 
-            if (news?.LastTextEntry is { IsThreadStartEntry: true } lastTextEntry) {
+            if (news?.LastTextEntry is { IsThreadStart: true } lastTextEntry) {
                 var threadChatId = lastTextEntry.ChatId.CreateThreadId(lastTextEntry.LocalId);
                 var threadChatTask = chats.Get(session, threadChatId, cancellationToken);
                 var threadCreatorTask = chatThreads.GetThreadCreator(session, threadChatId, cancellationToken);

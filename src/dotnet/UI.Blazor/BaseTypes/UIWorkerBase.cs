@@ -7,8 +7,7 @@ public interface IUIWorker
     Task Run();
 }
 
-public abstract class UIWorkerBase<THub>(THub hub)
-    : UIServiceBase<THub>(hub), IUIWorker
+public abstract class UIWorkerBase<THub>(THub hub) : UIServiceBase<THub>(hub), IUIWorker
     where THub : UIHub
 {
     private volatile Task? _whenRunning;

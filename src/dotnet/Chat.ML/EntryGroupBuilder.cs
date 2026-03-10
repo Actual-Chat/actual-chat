@@ -5,7 +5,7 @@ namespace ActualChat.Chat.ML;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class EntryGroupBuilder
 {
-    private readonly List<TextEntry> _entries = [];
+    private readonly List<ChatEntrySlim> _entries = [];
     private readonly StringBuilder _stringBuilder = new();
     private int _wordCount;
     private string? _text;
@@ -14,7 +14,7 @@ public partial class EntryGroupBuilder
     private long _maxLid = 0;
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
-    public IReadOnlyList<TextEntry> Entries => _entries;
+    public IReadOnlyList<ChatEntrySlim> Entries => _entries;
 
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public IDictionary<AuthorId, int> AuthorActivity { get; } = new Dictionary<AuthorId, int>();
@@ -67,7 +67,7 @@ public partial class EntryGroupBuilder
     }
 
     [JsonConstructor, MemoryPackConstructor, SerializationConstructor]
-    public EntryGroupBuilder(IReadOnlyList<TextEntry> entries)
+    public EntryGroupBuilder(IReadOnlyList<ChatEntrySlim> entries)
     {
         _entries = [.. entries];
         Initialize();
@@ -89,7 +89,7 @@ public partial class EntryGroupBuilder
         }
     }
 
-    public EntryGroupBuilder Add(TextEntry entry)
+    public EntryGroupBuilder Add(ChatEntrySlim entry)
     {
         var currentPause = GetPauseBetween(entry);
         _entries.Add(entry);
@@ -117,9 +117,9 @@ public partial class EntryGroupBuilder
         return this;
     }
 
-    public EntryGroupBuilder AddRange(IEnumerable<TextEntry> entries)
+    public EntryGroupBuilder AddRange(IEnumerable<ChatEntrySlim> entries)
     {
-        if (entries is ICollection<TextEntry> entryList) {
+        if (entries is ICollection<ChatEntrySlim> entryList) {
             _entries.AddRange(entryList);
             _text = null;
             RecalculateAveragePause();
@@ -144,7 +144,7 @@ public partial class EntryGroupBuilder
         return this;
     }
 
-    public int GetPauseBetween(TextEntry entry)
+    public int GetPauseBetween(ChatEntrySlim entry)
     {
         if (_entries.Count == 0)
             return 0;

@@ -18,7 +18,7 @@ namespace ActualChat.Notification.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.8")
+                .HasAnnotation("ProductVersion", "10.0.2")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -130,6 +130,10 @@ namespace ActualChat.Notification.Migrations
                         .HasColumnName("author_id")
                         .UseCollation("C");
 
+                    b.Property<long?>("ChatEntryLid")
+                        .HasColumnType("bigint")
+                        .HasColumnName("chat_entry_lid");
+
                     b.Property<string>("ChatId")
                         .HasColumnType("text")
                         .HasColumnName("chat_id")
@@ -166,10 +170,6 @@ namespace ActualChat.Notification.Migrations
                         .HasColumnType("text")
                         .HasColumnName("similarity_key")
                         .UseCollation("C");
-
-                    b.Property<long?>("TextEntryLocalId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("text_entry_local_id");
 
                     b.Property<string>("Title")
                         .IsRequired()

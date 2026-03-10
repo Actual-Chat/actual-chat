@@ -67,7 +67,7 @@ public class IdentifierSerializationTest(ITestOutputHelper @out) : TestBase(@out
     public void ChatEntryId_Basic()
     {
         var chatId = ChatId.Parse("the-actual-one");
-        var id = ChatEntryId.New(chatId, ChatEntryKind.Text, 1);
+        var id = ChatEntryId.New(chatId, 1);
         id.AssertPassesThroughAllSerializers();
     }
 
@@ -75,7 +75,7 @@ public class IdentifierSerializationTest(ITestOutputHelper @out) : TestBase(@out
     public void TextEntryId_Basic()
     {
         var chatId = ChatId.Parse("the-actual-one");
-        var id = TextEntryId.New(chatId, 1);
+        var id = ChatEntryId.New(chatId, 1);
         id.AssertPassesThroughAllSerializers();
     }
 
@@ -153,7 +153,7 @@ public class IdentifierSerializationTest(ITestOutputHelper @out) : TestBase(@out
     public void TranslationId_Basic()
     {
         var chatId = ChatId.Parse("the-actual-one");
-        var sourceId = TranslationSourceId.New(TextEntryId.New(chatId, 1));
+        var sourceId = TranslationSourceId.New(ChatEntryId.New(chatId, 1));
         var id = TranslationId.New(sourceId, Languages.Russian);
         id.AssertPassesThroughAllSerializers();
     }
@@ -162,7 +162,7 @@ public class IdentifierSerializationTest(ITestOutputHelper @out) : TestBase(@out
     public void TranslationSourceId_Basic()
     {
         var chatId = ChatId.Parse("the-actual-one");
-        var id = TranslationSourceId.New(TextEntryId.New(chatId, 1));
+        var id = TranslationSourceId.New(ChatEntryId.New(chatId, 1));
         id.AssertPassesThroughAllSerializers();
     }
 

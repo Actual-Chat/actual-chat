@@ -89,7 +89,7 @@ public class GoogleCloudBlobStorage(string bucket, RecyclableMemoryStreamManager
             .ConfigureAwait(false);
 
         // Upload the new chunk to a temporary part file
-        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var timestamp = Moment.Now.ToUnixEpoch() * 1000; // Unix timestamp in milliseconds
         var partPath = $"{path}.part.{timestamp}";
         var savedPart = false;
 
