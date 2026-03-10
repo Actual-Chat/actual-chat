@@ -11,13 +11,14 @@ namespace ActualChat.UI.Blazor.App.Services;
 public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized, IDisposable
 {
     private static readonly SearchScope[] Scopes = [SearchScope.People, SearchScope.Groups, SearchScope.Places, SearchScope.Messages ];
-    private Cached _cached = Cached.None;
+
     private readonly MutableState<string> _text;
     private readonly MutableState<PlaceId?> _placeId;
     private readonly MutableState<bool> _isSearchModeOn;
     private readonly MutableState<bool> _isShowRecentOn;
     private readonly MutableState<bool> _isResultsNavigationOn;
     private readonly ComputedState<FoundItem?> _selectedItem;
+    private Cached _cached = Cached.None;
 
     public IMutableState<string> Text => _text;
     public IMutableState<PlaceId?> PlaceId => _placeId;
