@@ -497,6 +497,7 @@ export class MarkupEditor {
 
         debugLog?.log(`onDocumentClick: found data-editor-focus == 'true'`)
         this.focus();
+        this.restoreSelection();
     };
 
     private onBeforeInput = (e: InputEvent) => {
