@@ -54,9 +54,8 @@ public class IconUI(IServiceProvider services) : ProcessorBase, IComputeService
                 using var svg = SKSvg.CreateFromStream(stream);
                 svg.Save(filePath, SKColor.Empty);
             }
-            else {
+            else
                 await stream.CopyToFile(filePath, cancellationToken).ConfigureAwait(false);
-            }
             return filePath;
         }
         catch (Exception e) {
