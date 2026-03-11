@@ -109,6 +109,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<IAttachmentFilePicker>(c => new AndroidAttachmentFilePicker(c));
 #elif IOS
         services.AddScoped<IAttachmentFilePicker>(c => new IosAttachmentFilePicker(c));
+        services.AddSingleton<IosPhotoGalleryFiles>();
 #else
         services.AddScoped<IAttachmentFilePicker>(c => new MauiAttachmentFilePicker(c));
 #endif

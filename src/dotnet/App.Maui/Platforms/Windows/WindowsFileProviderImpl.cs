@@ -1,13 +1,17 @@
 using ActualChat.UI.Blazor.App.Services;
+using ActualLab.IO;
 
 namespace ActualChat.App.Maui;
 
-public class WindowsFileProviderImpl(string filePath) : IMauiFileProviderImpl
+public class WindowsFileProviderImpl(FilePath filePath) : IMauiFileProviderImpl
 {
     private FileInfo FileInfo => field ??= new FileInfo(filePath);
 
-    public Task<string> GetPreviewUrl(CancellationToken cancellationToken = default)
-        => Task.FromResult(ContentResolver.GetFileUri(filePath));
+    public Task WhenFileStreamReady()
+        => Task.CompletedTask;
+
+    public Task<FilePreview> GetPreview(CancellationToken cancellationToken = default)
+        => Task.FromResult(new FilePreview(ContentResolver.GetFileUri(filePath)));
 
     public Task PrepareForSaving()
         => Task.CompletedTask;

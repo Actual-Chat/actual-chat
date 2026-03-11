@@ -1,3 +1,4 @@
+using ActualChat.UI.App;
 using ActualChat.UI.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -13,10 +14,12 @@ public partial interface IFileProvider
     Task<bool> CheckAccess();
     Task<bool> WhenUserConsentGranted();
     Task ClearForRemoving();
-    Task<string> GetPreviewUrl(CancellationToken cancellationToken = default);
+    Task<FilePreview> GetPreview(CancellationToken cancellationToken = default);
     Task WhenFileStreamReady();
     UploadSource GetUploadSource();
 }
+
+public sealed record FilePreview(string Url, Size? Dimensions = null);
 
 // NOTE(DF): This is a workaround for the following issue:
 // When I apply MemoryPackUnion to the interface, this is working on Desktop, but fails on Android (MAUI) with an error:

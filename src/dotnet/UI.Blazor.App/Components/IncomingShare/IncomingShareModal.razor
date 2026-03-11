@@ -65,7 +65,7 @@
 
     private SendingMessages SendingMessages => Hub.SendingMessages;
     private ILogger Log => field ??= Hub.LogFor(GetType());
-    private VisualMediaDimensions VisualMediaDimensions => field ??= new VisualMediaDimensions(Hub.JS, Hub.LogFor<VisualMediaDimensions>());
+    private FilePreviews FilePreviews => field ??= Hub.Services.GetRequiredService<FilePreviews>();
 
     private ImmutableHashSet<ChatId> SelectedChatIds
         => _contactSelectorRef?.SelectedChatIds.Value ?? ImmutableHashSet<ChatId>.Empty;
@@ -163,22 +163,12 @@
             }
             // TODO: Do not request preview url here, because we are not going to display attachment,
             // but rather post a message immediately.
-            var previewUrl = "";
-            var width = 0;
-            var height = 0;
-            if (MediaTypeExt.IsVisualMedia(fileMetadata.FileType)) {
-                previewUrl = await fileProvider.GetPreviewUrl(Hub.StopToken);
-                var dimensions = await VisualMediaDimensions.GetVisualMediaDimensions(previewUrl, fileMetadata.FileType);
-                width = dimensions.width;
-                height = dimensions.height;
-            }
+            var preview = await FilePreviews.Get(fileProvider, fileMetadata.FileType, Hub.StopToken);
             var attachment = new SourceAttachment(
                 fileMetadata.FileName,
                 fileMetadata.FileType,
                 fileMetadata.Length,
-                width,
-                height,
-                previewUrl) {
+                preview) {
                 FileProvider = fileProvider,
             };
             attachment.Cleanups.Add(AttachmentCleanupFactory.ForFile(fileProvider));

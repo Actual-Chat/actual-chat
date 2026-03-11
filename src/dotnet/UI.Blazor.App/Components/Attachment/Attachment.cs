@@ -1,11 +1,14 @@
 using ActualChat.Media;
+using ActualChat.UI.App;
 using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public record Attachment(string FileName, string FileType, long Length, int Width, int Height)
+public record Attachment(string FileName, string FileType, long Length, Size Size)
 {
     public AttachmentId Id { get; init; } = AttachmentId.New();
+    public int Width => Size.Width;
+    public int Height => Size.Height;
 
     public IFileProvider? FileProvider { get; init; }
     public string UploadSessionId { get; init; } = "";
@@ -25,21 +28,14 @@ public record Attachment(string FileName, string FileType, long Length, int Widt
             .Set(nameof(Media.Media.Length), Length);
         if (IsSupportedImage || IsSupportedVideo)
             metadata = metadata
-                .Set(nameof(Media.Media.Width), Width)
-                .Set(nameof(Media.Media.Height), Height);
+                .Set(nameof(Media.Media.Width), Size.Width)
+                .Set(nameof(Media.Media.Height), Size.Height);
         return metadata;
     }
 }
 
-public record SourceAttachment(
-    string FileName,
-    string FileType,
-    long Length,
-    int Width,
-    int Height,
-    string PreviewUrl)
-    : Attachment(FileName,
-        FileType,
-        Length,
-        Width,
-        Height);
+public record SourceAttachment(string FileName, string FileType, long Length, FilePreview? Preview)
+    : Attachment(FileName, FileType, Length, Preview?.Dimensions ?? default)
+{
+    public string PreviewUrl => Preview?.Url ?? "";
+}

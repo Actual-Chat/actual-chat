@@ -1,5 +1,4 @@
-// TODO(AK): fix eslint ignored errors
-/* eslint-disable @typescript-eslint/require-await,@typescript-eslint/no-unused-vars,@typescript-eslint/no-unnecessary-condition */
+/* eslint-disable @typescript-eslint/no-unused-vars,@typescript-eslint/no-unnecessary-condition */
 import { debounce, PromiseSource, PromiseSourceWithTimeout, throttle } from 'promises';
 import { NumberRange, Range } from './ts/range';
 import { VirtualListEdge } from './ts/virtual-list-edge';
@@ -133,6 +132,7 @@ export class VirtualList {
     private skeletonWatchdogTimer: ReturnType<typeof setInterval> | null = null;
     private skeletonWatchdogLastVersion = -1;
     private userScrollDirection: 'up' | 'down' | 'none' = 'none';
+    private _restoreScrollPositionPending = false;
 
     private _state: VirtualListState;
     private readonly _stateHistory: VirtualListStateSnapshot[] = [];
@@ -666,7 +666,6 @@ export class VirtualList {
     }
 
     private onResize = (entries: ResizeObserverEntry[], _observer: ResizeObserver): void => {
-        //console.warn(`onResize: entries =`, [...entries]);
         let itemsWereMeasured = false;
         let notAnItem = false;
         let existingResizedCount = 0;
@@ -765,12 +764,17 @@ export class VirtualList {
             // Container is anchored from bottom — when items grow, the container extends
             // upward, shifting visible items. Shift the container's bottom position to
             // compensate, avoiding scrollTop changes that trigger scroll events and iOS issues.
-            // Do not use fastRaf there as it produces jumps up-down
+            // Skip when restoreScrollPosition is pending via fastRaf — the RAF read phase
+            // will see current sizes and compute the correct offset. ResizeObserver fires
+            // before RAF in the same frame, so there is no visual gap.
             if (totalExistingSizeDiff !== 0
                 && this.defaultEdge === VirtualListEdge.End
                 && this.state.stickyEdge?.edge !== VirtualListEdge.End) {
-                const currentBottom = parseFloat(this.containerRef.style.bottom) || 0;
-                this.containerRef.style.bottom = `${currentBottom - totalExistingSizeDiff}px`;
+                if (!this._restoreScrollPositionPending) {
+                    const currentBottom = parseFloat(this.containerRef.style.bottom) || 0;
+                    this.containerRef.style.bottom = `${currentBottom - totalExistingSizeDiff}px`;
+                    debugLog?.log(`onResize: compensate`, totalExistingSizeDiff, currentBottom);
+                }
             }
         }
     };
@@ -978,7 +982,8 @@ export class VirtualList {
 
             const scrollMetadata = this.getScrollMetadata(rs);
 
-            await this.restoreScrollPosition(rs, scrollMetadata);
+            // endRender is already being called from fastRaf, so useRaf = false
+            await this.restoreScrollPosition(rs, scrollMetadata, false);
         } finally {
             this.updateState('endRender: finalize', this.state, {
                 renderStartedAt: null,
@@ -1321,7 +1326,7 @@ export class VirtualList {
     private restoreScrollPositionOnResizeDebounced = debounce(() => {
         const renderState = { ...this.state.renderState, scrollToKey: undefined };
         const scrollMetadata = this.getScrollMetadata(renderState);
-        void this.restoreScrollPosition(renderState, scrollMetadata);
+        void this.restoreScrollPosition(renderState, scrollMetadata, true);
     }, ScrollDebounce);
 
     private turnOffIsScrolling() {
@@ -1572,7 +1577,7 @@ export class VirtualList {
         return false;
     }
 
-    private async restoreScrollPosition(rs: VirtualListRenderState, scrollMetadata: ScrollMetadata | null = null): Promise<void> {
+    private async restoreScrollPosition(rs: VirtualListRenderState, scrollMetadata: ScrollMetadata | null = null, useRaf = false): Promise<void> {
         const { endAnchorSize } = this.state;
         const { hasUnmeasuredItems, defaultSpacerSize } = this;
         const result = new PromiseSource();
@@ -1597,6 +1602,7 @@ export class VirtualList {
         const options = {
             key: `restoreScrollPosition_${this.identity}`,
             read: () => {
+                this._restoreScrollPositionPending = false;
                 if (hasUnmeasuredItems)
                     this.measureItems();
                 if (!this.state.itemRange)
@@ -1721,6 +1727,8 @@ export class VirtualList {
                     }
                     offset -= spacerSize; // adjust offset to include spacer size
                 }
+                // Set scrollPositionRestoredAt BEFORE write/scroll to guard onScroll from false "user scroll" detection
+                this.updateState('scrollRestored', this.state, { scrollPositionRestoredAt: Date.now() });
             },
             write: () => {
                 const showSpacer = spacerSize > 0;
@@ -1762,33 +1770,38 @@ export class VirtualList {
                 else {
                     this.containerRef.style.top = `${offset}px`;
                 }
-                if (scrollTopOffset) {
+                // Compensate scrollTop after item range reset to prevent visual jumps,
+                // but skip when pinned to the bottom edge — staying pinned matters more
+                const isPinnedToBottom = this.state.stickyEdge?.edge === VirtualListEdge.End
+                    && this.defaultEdge === VirtualListEdge.End;
+                if (scrollTopOffset && !isPinnedToBottom) {
                     this.ref.scrollTop = scrollTop + scrollTopOffset;
                 }
+
+                if (!isInteractivePositioning) {
+                    scrollMetadata?.scroll?.();
+                    debugLog?.log(`restoreScrollPosition: scroll set synchronously`, scrollMetadata?.scrollType);
+                } else {
+                    if (this.state.stickyEdge)
+                        this.setStickyEdge(null);
+                    debugLog?.log(`restoreScrollPosition: scroll set interactive`, scrollMetadata?.scrollType);
+                }
+                this.updateViewportThrottled();
+
                 // debugLog?.log(`restoreScrollPosition: scroll set`, offset, totalSize, scrollTop, spacerSize, endSpacerSize);
 
                 result.resolve(undefined);
             }
         };
 
-        // Handle restore position synchronously after render
-        options.read();
-        // Set scrollPositionRestoredAt BEFORE write/scroll to guard onScroll from false "user scroll" detection
-        this.updateState('scrollRestored', this.state, { scrollPositionRestoredAt: Date.now() });
-        options.write();
-        if (!isInteractivePositioning) {
-            scrollMetadata?.scroll?.();
-            debugLog?.log(`restoreScrollPosition: scroll set synchronously`, scrollMetadata?.scrollType);
+        if (useRaf) {
+            this._restoreScrollPositionPending = true;
+            fastRaf(options);
+        } else {
+            options.read();
+            options.write();
         }
-        else {
-            if (this.state.stickyEdge)
-                this.setStickyEdge(null);
-            debugLog?.log(`restoreScrollPosition: scroll set interactive`, scrollMetadata?.scrollType);
-        }
-
-        this.updateViewportThrottled();
-        // await delayAsync(50);
-        // debugLog?.log(`restoreScrollPosition: end`, rafResult);
+        await result;
     }
 
     private measureItems(): void {
@@ -1889,10 +1902,22 @@ export class VirtualList {
                     const rect = itemRef.getBoundingClientRect();
                     const measuredSize = Math.ceil(rect.height + this.rowGap);
                     if (measuredSize > 0 && measuredSize !== cornerstoneItem.size) {
+                        const oldSize = cornerstoneItem.size ?? 0;
+                        const cornerstoneSizeDiff = Math.abs(measuredSize - oldSize);
+                        const isDiffSmall = cornerstoneSizeDiff < measuredSize / 2 && cornerstoneSizeDiff < oldSize / 2;
                         cornerstoneItem.size = measuredSize;
-                        cornerstoneItem.range = new NumberRange(
-                            cornerstoneItem.range.start,
-                            cornerstoneItem.range.start + measuredSize);
+                        if (this.defaultEdge === VirtualListEdge.End && isDiffSmall) {
+                            // Start from the end for smaller diffs
+                            cornerstoneItem.range = new NumberRange(
+                                cornerstoneItem.range.end - measuredSize,
+                                cornerstoneItem.range.end);
+                        }
+                        else {
+                            // this change is usually caused by conversation expansion or significant message rewrite
+                            cornerstoneItem.range = new NumberRange(
+                                cornerstoneItem.range.start,
+                                cornerstoneItem.range.start + measuredSize);
+                        }
                         this.sizeCache.set(cornerstoneItem.key, measuredSize);
                     }
                 }

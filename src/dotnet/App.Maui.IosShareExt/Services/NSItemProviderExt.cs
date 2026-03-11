@@ -1,4 +1,5 @@
 using ActualChat.Maui;
+using ActualChat.Media;
 using ActualChat.UI.Services;
 using UniformTypeIdentifiers;
 
@@ -31,6 +32,22 @@ public static class NSItemProviderExt
 
             throw new InvalidOperationException("Unexpected content types: "
                 + string.Join(", ", item.RegisteredContentTypes));
+        }
+
+        public string ImplyMimeType()
+        {
+            var registeredContentTypes = item.RegisteredContentTypes;
+            foreach (var utType in registeredContentTypes) {
+                var ext = utType.PreferredFilenameExtension;
+                if (!ext.IsNullOrEmpty() && MediaMimeTypes.TryGetMimeType(ext, out var mimeType))
+                    return mimeType;
+
+                var preferredMimeType = utType.PreferredMimeType;
+                if (!preferredMimeType.IsNullOrEmpty() && MediaMimeTypes.TryGetExtension(preferredMimeType, out _))
+                    return preferredMimeType;
+            }
+
+            return "application/octet-stream";
         }
 
         public async Task<T> Read<T>(UTType contentType)

@@ -42,6 +42,7 @@ partial class SendingMessages
             RepliedEntryLid = request.RepliedEntryLid,
             ClientId = request.ClientId,
             Attachments = attachments,
+            HasUploadingAttachments = request.AttachmentUploads is not null,
         };
         // // Simulate long sending
         // await Task.Delay(5000, cancellationToken).ConfigureAwait(false);

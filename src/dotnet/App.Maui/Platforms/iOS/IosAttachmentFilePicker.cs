@@ -1,8 +1,6 @@
 using ActualChat.App.Maui.Services;
 using ActualChat.Media;
 using ActualChat.UI.Blazor.App.Components;
-using ActualChat.UI.Blazor.App.Services;
-using ActualLab.IO;
 using Photos;
 using PhotosUI;
 using UniformTypeIdentifiers;
@@ -12,7 +10,8 @@ namespace ActualChat.App.Maui;
 public class IosAttachmentFilePicker(IServiceProvider services) : MauiAttachmentFilePicker(services)
 {
     private const int MaxSelectionCount = 10;
-    private static readonly FilePath AttachmentsDirectoryName = Path.Combine(FileSystem.CacheDirectory, "attachments");
+
+    private IosPhotoGalleryFiles PhotoGalleryFiles => field ??= Services.GetRequiredService<IosPhotoGalleryFiles>();
 
     protected override async Task<AttachFileInfo[]?> TryPickVisualMediaFiles(string acceptTypes)
     {
@@ -20,8 +19,7 @@ public class IosAttachmentFilePicker(IServiceProvider services) : MauiAttachment
             return [];
 
         var pickerResults = await PickVisualMedia(acceptTypes).ConfigureAwait(false);
-        var preferredContentType = MediaTypeExt.IsImage(acceptTypes) ? UTTypes.Image : UTTypes.Movie;
-        return await LoadPickedFiles(pickerResults, preferredContentType).ConfigureAwait(false);
+        return await LoadPickedFiles(pickerResults).ConfigureAwait(false);
     }
 
     private async Task<PHPickerResult[]> PickVisualMedia(string acceptTypes)
@@ -37,56 +35,33 @@ public class IosAttachmentFilePicker(IServiceProvider services) : MauiAttachment
         var picker = new PHPickerViewController(configuration) {
             Delegate = new PickerDelegate(tcs),
         };
-        controller.PresentViewController(picker, true, null);
+        await controller.PresentViewControllerAsync(picker, true).ConfigureAwait(false);
         return await tcs.Task.ConfigureAwait(false);
     }
 
-    private Task<AttachFileInfo[]> LoadPickedFiles(PHPickerResult[] results, UTType preferredContentType)
-        => DispatchToMainThread(async () => {
-            var pickedMediaFiles = await results.Select(x => LoadPickedMedia(x, preferredContentType)).Collect().ConfigureAwait(false);
-            return pickedMediaFiles.SkipNullItems().ToArray();
+    private Task<AttachFileInfo[]> LoadPickedFiles(PHPickerResult[] results)
+        => DispatchToMainThread(() => {
+            var attachFileInfos = results
+                .Select(CreateAttachFileInfo)
+                .SkipNullItems()
+                .ToArray();
+            return Task.FromResult(attachFileInfos);
         });
 
-    private async Task<AttachFileInfo?> LoadPickedMedia(PHPickerResult pickerResult, UTType contentType)
+    private AttachFileInfo? CreateAttachFileInfo(PHPickerResult pickerResult)
     {
-        var item = pickerResult.ItemProvider;
         try {
-            var loadStartedAt = CpuTimestamp.Now;
-            var representation = await item
-                .LoadInPlaceFileRepresentationAsync(contentType.Identifier)
-                .ConfigureAwait(false);
-            FilePath tmpFileName = item.SuggestedName.NullIfEmpty() ?? representation.Path.FileName;
-            tmpFileName = tmpFileName.EnsureExt(representation.Path.Extension);
-            Log.LogInformation(
-                "Loaded in-place representation for '{FileName}' in {Elapsed}",
-                tmpFileName, loadStartedAt.Elapsed.ToShortString());
-
-            var tmpFilePath = AttachmentsDirectoryName | tmpFileName.ToUnique();
-            var copyStartedAt = CpuTimestamp.Now;
-            await representation.Copy(tmpFilePath).ConfigureAwait(false);
-            var fileInfo = new FileInfo(tmpFilePath);
-            Log.LogInformation(
-                "Copied picked media '{FileName}' ({Size} bytes) in {Elapsed}",
-                tmpFileName, fileInfo.Length, copyStartedAt.Elapsed.ToShortString());
-
-            var fileProvider = new MauiFileProvider {
-                FileRef = tmpFilePath,
-                Metadata = new() {
-                    FileName = tmpFileName,
-                    FileType = representation.ImplyMimeType(item),
-                    Length = fileInfo.Length,
-                },
-            };
-            fileProvider.Initialize(Services);
+            // Enqueue for background loading - returns MauiFileProvider immediately
+            var fileProvider = PhotoGalleryFiles.Enqueue(pickerResult);
             return new AttachFileInfo(fileProvider);
         }
         catch (Exception e) {
-            Log.LogWarning(e, "Failed to load picked media file.");
+            Log.LogWarning(e, "Failed to enqueue picked media file.");
             return null;
         }
     }
 
-    private PHPickerConfiguration GetConfiguration(string acceptTypes)
+    private static PHPickerConfiguration GetConfiguration(string acceptTypes)
     {
         var filter = MediaTypeExt.IsImage(acceptTypes) ? PHPickerFilter.ImagesFilter : PHPickerFilter.VideosFilter;
         return new PHPickerConfiguration(PHPhotoLibrary.SharedPhotoLibrary) {

@@ -92,10 +92,15 @@ public class ConcurrentPool<T> : IPool<T>
 <Using Include="ActualLab.Async" />
 ```
 
+**Before adding a `using` directive**, check if it's already a global using:
+1. Search for `<Using Include="YourNamespace"` in `src/dotnet/Directory.Build.props`
+2. If found, do NOT add an explicit `using` directive - it's redundant
+
 Search for `<Using>` to get the full list. Avoid adding explicit usings for global usings.
 
 ### Naming Conventions
 
+- **Async method names**: do NOT use the `Async` suffix (e.g., `GetUser` not `GetUserAsync`)
 - **Private static readonly fields and constants**: use PascalCase (`ReadonlyField`)
 - **All other private fields, including static ones**: use underscore prefix with camelCase (`_fieldName`)
 
@@ -380,6 +385,25 @@ public override async Task Require(CancellationToken cancellationToken)
    See `ActualLab.IO.FilePath` for the full API
    and `src/dotnet/Core/IO/FilePathExt.cs` for project-specific extensions.
 
+9. **Prefer `RandomStringGenerator` over `Guid.NewGuid()` for IDs.**
+   Use `RandomStringGenerator.Default.Next()` from `ActualLab.Generators`
+   instead of `Guid.NewGuid().ToString()` when generating unique identifiers.
+   Random strings are shorter, more URL-friendly, and avoid the overhead
+   of GUID formatting.
+
+| Instead of | Use |
+|---|---|
+| `Guid.NewGuid().ToString()` | `RandomStringGenerator.Default.Next()` |
+| `Guid.NewGuid().ToString("N")` | `RandomStringGenerator.Default.Next()` |
+
+   You can specify length: `RandomStringGenerator.Default.Next(10)` for 10 characters.
+
+10. **Prefer `sealed` classes and records** unless inheritance is intended.
+
+11. **Prefer `LogFor(GetType())` over `LogFor<T>()`** for the current type in non-static context.
+
+12. **Prefer primary constructors for services** when acceptable.
+
 ### Test Conventions
 
 #### Test Method Naming
@@ -415,6 +439,73 @@ public void ForkEqualPartsShouldDivideRangeEqually()
 - **act**: Execute the code being tested
 - **assert**: Verify the expected outcome
 - For simple tests where arrange is trivial, the comment can be omitted but act and assert should always be present
+
+### Background Workers
+
+Classes intended to perform background work must inherit from appropriate base classes
+and use `AsyncChain` for resilient async operations:
+
+- **`WorkerBase`** — for general-purpose background workers (non-UI)
+- **`UIWorkerBase<THub>`** — for UI-related background workers that need access to UI services
+
+**Key patterns:**
+
+1. Override `OnRun(CancellationToken)` to implement the worker logic
+2. Use `AsyncChain.From(...)` to wrap async operations with retry and logging
+3. Chain `.Log(LogLevel.Debug, Log)` for debug logging
+4. Chain `.RetryForever(retryDelays, Log)` for automatic retry on failure
+5. Chain `.CycleForever()` for continuous execution (polling/sync workers)
+
+**Example (general worker):**
+```csharp
+public sealed class MyWorker : WorkerBase
+{
+    private ILogger Log { get; }
+
+    public MyWorker(IServiceProvider services)
+    {
+        Log = services.LogFor(GetType());
+        this.Start();
+    }
+
+    protected override Task OnRun(CancellationToken cancellationToken)
+        => AsyncChain.From(DoWork)
+            .Log(LogLevel.Debug, Log)
+            .RetryForever(RetryDelaySeq.Exp(0.5, 60), Log)
+            .CycleForever()
+            .Run(cancellationToken);
+
+    private async Task DoWork(CancellationToken cancellationToken)
+    {
+        // Actual work here
+    }
+}
+```
+
+**Example (UI worker):**
+```csharp
+public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService
+{
+    protected override IEnumerable<AsyncChain> OnRun(CancellationToken cancellationToken)
+    {
+        var retryDelays = RetryDelaySeq.Exp(0.1, 1);
+        return
+            from chain in new[] {
+                AsyncChain.From(SyncState),
+                AsyncChain.From(ProcessUpdates),
+            }
+            select chain
+                .Log(LogLevel.Debug, Log)
+                .RetryForever(retryDelays, Log);
+    }
+}
+```
+
+**Common `RetryDelaySeq` patterns:**
+- `RetryDelaySeq.Exp(0.1, 1)` — fast retries for UI sync (100ms to 1s)
+- `RetryDelaySeq.Exp(0.5, 60)` — moderate retries (500ms to 60s)
+- `RetryDelaySeq.Exp(3, 60)` — slower retries for background tasks
+- `RetryDelaySeq.Fixed(1)` — fixed 1-second delay between retries
 
 ### Disabled/Silenced Warnings
 

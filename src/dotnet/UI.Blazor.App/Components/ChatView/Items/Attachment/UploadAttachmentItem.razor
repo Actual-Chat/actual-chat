@@ -28,12 +28,12 @@
                 <i class="icon-trash03 text-2xl font-thin"></i>
             </ButtonSquare>
             @if (previewState is PreviewAccessState.Ok) {
-                @if (attachment.IsSupportedVideo) {
+                @if (attachment.IsSupportedImage || m.HasCustomPreview) {
+                    <img src="@previewUrl" alt="Attachment thumbnail" class="@plugClass" />
+                } else if (attachment.IsSupportedVideo) {
                     <video preload="metadata" class="@plugClass">
                         <source src="@previewUrl#t=0.5"/>
                     </video>
-                } else if (attachment.IsSupportedImage || m.HasPreview) {
-                    <img src="@previewUrl" alt="Attachment thumbnail" class="@plugClass" />
                 }
                 @if (!progress.IsReady) {
                     @if (isUploading) {

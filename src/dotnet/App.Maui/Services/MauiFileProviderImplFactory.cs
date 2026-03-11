@@ -1,4 +1,5 @@
 using ActualChat.UI.Blazor.App.Services;
+using ActualLab.IO;
 
 namespace ActualChat.App.Maui.Services;
 
@@ -8,7 +9,7 @@ public class MauiFileProviderImplFactory(IServiceProvider services) : IMauiFileP
     private AndroidContentDownloader Downloader => field ??= services.GetRequiredService<AndroidContentDownloader>();
 #endif
 
-    public IMauiFileProviderImpl Create(string fileRef)
+    public IMauiFileProviderImpl Create(FilePath fileRef)
     {
 #if WINDOWS
         return new WindowsFileProviderImpl(fileRef);

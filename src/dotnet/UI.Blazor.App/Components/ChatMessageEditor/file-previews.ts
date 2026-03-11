@@ -1,6 +1,6 @@
 // TODO: Fix ESLint errors
 /* eslint-disable @typescript-eslint/prefer-promise-reject-errors */
-export class VisualMediaDimensions {
+export class FilePreviews {
     public static getDimensions(previewUrl: string, mimeType: string): Promise<{ width: number, height: number } | null> {
         return new Promise((resolve, reject) => {
             if (mimeType.startsWith('image/')) {

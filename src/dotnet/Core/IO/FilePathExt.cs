@@ -33,9 +33,44 @@ public static class FilePathExt
             : path;
     }
 
-    public static FilePath ToUnique(this FilePath path, int randomLength = 5)
-        => path.DirectoryPath | $"{path.FileNameWithoutExtension}-{RandomStringGenerator.Default.Next(randomLength)}{path.Extension}";
+    public static FilePath ToUnique(this FilePath path, bool ensureNotExists = true, int randomLength = 5)
+    {
+        var uniquePath = path.DirectoryPath | $"{path.FileNameWithoutExtension}-{RandomStringGenerator.Default.Next(randomLength)}{path.Extension}";
+        if (!ensureNotExists)
+            return uniquePath;
+
+        for (var i = 1; i < 100 && File.Exists(uniquePath); i++)
+            uniquePath = path.DirectoryPath | $"{path.FileNameWithoutExtension}-{RandomStringGenerator.Default.Next(randomLength)}{path.Extension}";
+        return uniquePath;
+    }
 
     public static FilePath EnsureExt(this FilePath path, string ext)
         => path.HasExtension && OrdinalEquals(path.Extension, ext) ? path : path.ChangeExtension(ext);
+
+    public static async Task CopyTo(this FilePath sourcePath, FilePath targetPath, CancellationToken cancellationToken = default)
+    {
+        sourcePath.RequireFileExists();
+        Directory.CreateDirectory(targetPath.DirectoryPath);
+        var source = File.OpenRead(sourcePath);
+        await using var _1 = source.ConfigureAwait(false);
+        var target = File.Open(targetPath, FileMode.Create, FileAccess.Write, FileShare.None);
+        await using var _2 = target.ConfigureAwait(false);
+        await source.CopyToAsync(target, cancellationToken).ConfigureAwait(false);
+    }
+
+    extension(FilePath path)
+    {
+        public long FileSize => path.GetFileInfo().Length;
+
+        public void DeleteSilently()
+        {
+            try {
+                if (File.Exists(path))
+                    File.Delete(path);
+            }
+            catch {
+                // ignore
+            }
+        }
+    }
 }

@@ -1,25 +1,32 @@
 using ActualChat.UI.Blazor.App.Services;
-using ActualLab.Diagnostics;
 using ActualLab.IO;
 
 namespace ActualChat.App.Maui;
 
 public sealed class IosFileProviderImpl(IServiceProvider services, FilePath filePath) : IMauiFileProviderImpl
 {
-    private IosVideoThumbnails VideoThumbnails => field ??= services.GetRequiredService<IosVideoThumbnails>();
-    private ILogger Log => field ??= services.LogFor(GetType());
-    private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.FileAttachments);
+    private IosPhotoGalleryFiles PhotoGalleryFiles => field ??= services.GetRequiredService<IosPhotoGalleryFiles>();
 
-    private FileInfo FileInfo => field ??= new FileInfo(filePath);
+    public Task WhenFileStreamReady()
+        => PhotoGalleryFiles.WhenFileReady(filePath);
 
-    public async Task<string> GetPreviewUrl(CancellationToken cancellationToken = default)
+    public async Task<FilePreview> GetPreview(CancellationToken cancellationToken = default)
     {
-        if (!OrdinalIgnoreCaseEquals(filePath.Extension, ".mov"))
-            return ContentResolver.GetFileUri(filePath);
+        // Try to get preview from photo gallery (awaits if pending)
+        var preview = await PhotoGalleryFiles.GetPreview(filePath).ConfigureAwait(false);
+        if (preview is not null)
+            return preview;
 
-        var thumbnailPath = await VideoThumbnails.Generate(filePath, cancellationToken).ConfigureAwait(false);
-        DebugLog?.LogDebug("Generated thumbnail: {ThumbnailPath}", thumbnailPath);
-        return ContentResolver.GetFileUri(thumbnailPath.IsEmpty ? filePath : thumbnailPath);
+        // Check for existing thumbnail (e.g., after app restart when in-memory tracking is lost)
+        var existingThumbnail = PhotoGalleryFiles.FindExistingThumbnail(filePath);
+        if (existingThumbnail is not null)
+            return existingThumbnail;
+
+        // No thumbnail available - wait for main file to be ready, then use it as preview
+        await WhenFileStreamReady().ConfigureAwait(false);
+        return File.Exists(filePath)
+            ? new FilePreview(ContentResolver.GetFileUri(filePath))
+            : throw StandardError.Internal($"Unable to generate file preview for '{filePath}'.");
     }
 
     public Task PrepareForSaving()
@@ -27,10 +34,13 @@ public sealed class IosFileProviderImpl(IServiceProvider services, FilePath file
 
     public Task ClearBeforeRemoving()
     {
-        File.Delete(filePath);
+        filePath.DeleteSilently();
         return Task.CompletedTask;
     }
 
-    public Task<Stream?> OpenRead()
-        => Task.FromResult<Stream?>(FileInfo.Exists ? FileInfo.OpenRead() : null);
+    public async Task<Stream?> OpenRead()
+    {
+        await WhenFileStreamReady().ConfigureAwait(false);
+        return File.OpenRead(filePath);
+    }
 }

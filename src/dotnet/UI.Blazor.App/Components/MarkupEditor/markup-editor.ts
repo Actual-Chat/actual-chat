@@ -276,7 +276,6 @@ export class MarkupEditor {
             this.fixEverything();
         });
         this.closeListUI();
-        this.moveCursorToTheEnd();
     }
 
     public beginMention() {
@@ -497,6 +496,7 @@ export class MarkupEditor {
 
         debugLog?.log(`onDocumentClick: found data-editor-focus == 'true'`)
         this.focus();
+        this.restoreSelection();
     };
 
     private onBeforeInput = (e: InputEvent) => {

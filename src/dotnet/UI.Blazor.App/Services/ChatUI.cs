@@ -48,6 +48,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private ChatListUI ChatListUI => Hub.ChatListUI;
     private SelectionUI SelectionUI => Hub.SelectionUI;
     private KeepAwakeUI KeepAwakeUI => Hub.KeepAwakeUI;
+    private LanguageUI LanguageUI => Hub.LanguageUI;
     private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
     private NavbarUI NavbarUI { get; }
 

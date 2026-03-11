@@ -13,6 +13,18 @@
             <div class="c-text">The message was deleted.</div>
         </div>
     </div>
+} else if (Entry.Version < 0) {
+    <div class="chat-message-quote">
+        <LeftLine Width="w-[0.1rem]"/>
+        <div class="c-content">
+            <div class="c-author">
+                <div class="message-content-skeleton width-3 h-3.5 animated-skeleton"></div>
+            </div>
+            <div class="c-text">
+                <div class="message-content-skeleton width-7 h-3.5 animated-skeleton"></div>
+            </div>
+        </div>
+    </div>
 } else {
     <div class="chat-message-quote" @onclick="@OnQuoteClick">
         <LeftLine Width="w-[0.1rem]"/>
