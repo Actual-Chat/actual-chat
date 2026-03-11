@@ -152,9 +152,14 @@
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (firstRender && ScreenSize.IsNarrow()) {
+        if (firstRender && ScreenSize.IsNarrow())
             JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
-        }
+
+        // Re-show listening hint bubble each time listening starts
+        var isListening = State is { Value.AudioState.IsListening: true };
+        if (isListening && !_wasListening)
+            _ = Hub.BubbleUI.UnreadBubble<ListeningTimerBubble>();
+        _wasListening = isListening;
     }
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
@@ -185,12 +190,6 @@
                 Computed.GetCurrent()?.Invalidate(TimeSpan.FromSeconds(delay));
             }
         }
-
-        // Re-show listening hint bubble each time listening starts
-        var isListening = audioState.IsListening;
-        if (isListening && !_wasListening)
-            _ = Hub.BubbleUI.UnreadBubble<ListeningTimerBubble>();
-        _wasListening = isListening;
 
         return new (chat, audioState, isAnyoneTalking, isAnyoneVideoStreaming, videoStreamMemberCount, stopListeningAt);
     }
