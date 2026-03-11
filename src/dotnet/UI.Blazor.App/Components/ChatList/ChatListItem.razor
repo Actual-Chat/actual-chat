@@ -1,5 +1,4 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using System.Text
 @inherits ComputedRenderStateComponent<AppUIHub, ChatListItem.Model>
 @{
     var m = State.Value;
@@ -92,12 +91,10 @@
             @if (!isHoverable) {
                 // Touch capable and not hoverable
                 <div class="slot c-touch">
-                    @if (isListeningOrRecording) {
-                        <UnreadCount
-                            Value="@m.UnreadCount"
-                            NotificationMode="@m.NotificationMode"
-                            HasMentions="@m.HasUnreadMentions"/>
-                    }
+                    <UnreadCount
+                        Value="@m.UnreadCount"
+                        NotificationMode="@m.NotificationMode"
+                        HasMentions="@m.HasUnreadMentions"/>
                     @if (hasButtons) {
                         @if (audioState?.IsRecording == true) {
                             <ChatListRecordingToggle Chat="@chat" IsRecording="@audioState.IsRecording" Class="ending-btn"/>
