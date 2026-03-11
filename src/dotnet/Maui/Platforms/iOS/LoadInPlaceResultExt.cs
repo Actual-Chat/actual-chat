@@ -21,6 +21,6 @@ public static class LoadInPlaceResultExt
         }
 
         public Task Copy(FilePath targetPath, CancellationToken cancellationToken = default)
-            => representation.Path.CopyTo(targetPath, cancellationToken);
+            => representation.Path.CopyFile(targetPath, cancellationToken);
     }
 }
