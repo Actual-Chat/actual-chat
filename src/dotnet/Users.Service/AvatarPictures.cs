@@ -1,4 +1,3 @@
-using System.Text;
 using ActualChat.Hashing;
 using ActualChat.Hosting;
 using ActualChat.Module;
@@ -40,40 +39,31 @@ public sealed class AvatarPictures(IServiceProvider services)
         if (File.Exists(filePath))
             return filePath;
 
-        // Generate and cache the avatar
-        var (bytes, svg) = GenerateAvatar(query);
-        var content = bytes ?? Encoding.UTF8.GetBytes(svg!);
-        await CacheAvatar(filePath, content, cancellationToken).ConfigureAwait(false);
-
+        await GenerateToFile(query, filePath, cancellationToken).ConfigureAwait(false);
         return filePath;
     }
 
-    private (byte[]? Bytes, string? Svg) GenerateAvatar(AvatarQuery query)
-    {
-        if (query.Format == AvatarFormat.Png) {
-            var pngSize = query.Size ?? 80;
-            var pngBytes = query.Kind switch {
-                AvatarKind.Marble => MarbleAvatars.GeneratePngBytes(query.Key, pngSize, title: query.Title ?? ""),
-                _ => BeamAvatars.GeneratePngBytes(query.Key, pngSize),
-            };
-            return (pngBytes, null);
-        }
-
-        var svg = query.Kind switch {
-            AvatarKind.Marble => MarbleAvatars.GenerateSvg(query.Key, title: query.Title ?? ""),
-            _ => BeamAvatars.GenerateSvg(query.Key),
-        };
-        return (null, svg);
-    }
-
-    private async Task CacheAvatar(FilePath filePath, byte[] content, CancellationToken cancellationToken)
+    private async Task GenerateToFile(AvatarQuery query, FilePath filePath, CancellationToken cancellationToken)
     {
         try {
             EnsureCacheDir();
-            await File.WriteAllBytesAsync(filePath, content, cancellationToken).ConfigureAwait(false);
+            if (query.Format == AvatarFormat.Png) {
+                var size = query.Size ?? 80;
+                if (query.Kind == AvatarKind.Marble)
+                    MarbleAvatars.GeneratePng(query.Key, filePath, title: query.Title ?? "", size: size);
+                else
+                    BeamAvatars.GeneratePng(query.Key, filePath, size: size);
+            }
+            else {
+                var svg = query.Kind == AvatarKind.Marble
+                    ? MarbleAvatars.GenerateSvg(query.Key, title: query.Title ?? "")
+                    : BeamAvatars.GenerateSvg(query.Key);
+                await File.WriteAllTextAsync(filePath, svg, cancellationToken).ConfigureAwait(false);
+            }
         }
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
-            Log.LogWarning(e, "Failed to cache avatar to '{Path}'", filePath);
+            Log.LogWarning(e, "Failed to generate avatar to '{Path}'", filePath);
+            throw;
         }
     }
 
