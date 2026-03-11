@@ -94,7 +94,15 @@ public class MauiThemeHandler
             Theme.Dark => StatusBarStyle.LightContent,
             _ => StatusBarStyle.Default,
         };
+
+#if ANDROID
+        if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.Q)
+            StatusBar.SetColor(Colors.Transparent);
+        else
+            StatusBar.SetColor(Color.FromArgb(topBarColor));
+#else
         StatusBar.SetColor(Colors.Transparent);
+#endif
         StatusBar.SetStyle(style);
         mainPage.BackgroundColor = Color.FromArgb(bottomBarColor);
         return true;
