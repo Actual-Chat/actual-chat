@@ -33,6 +33,12 @@ public sealed partial record UserBubbleSettings : IHasOrigin
         return this with { ReadBubbles = newReadBubbles };
     }
 
+    public UserBubbleSettings WithoutRead(string bubbleRef)
+    {
+        var newReadBubbles = ReadBubbles.Where(x => !StringComparer.Ordinal.Equals(x.Value, bubbleRef)).ToList();
+        return newReadBubbles.Count == ReadBubbles.Count ? this : this with { ReadBubbles = newReadBubbles };
+    }
+
     public UserBubbleSettings WithAllUnread()
         => this with { ReadBubbles = [] };
 }

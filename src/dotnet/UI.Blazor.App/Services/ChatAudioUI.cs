@@ -15,6 +15,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private static bool DebugMode => Constants.DebugMode.ChatAudioUI;
 
     private readonly MutableState<Moment?> _stopRecordingAt;
+    private readonly MutableState<ImmutableDictionary<ChatId, Moment>> _stopListeningAtMap;
     private readonly MutableState<NextBeepState?> _nextBeep;
     private readonly AsyncTaskMethodBuilder _whenEnabledSource = AsyncTaskMethodBuilderExt.New();
 
@@ -46,6 +47,9 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         var type = GetType();
         var stateFactory = StateFactory;
         _stopRecordingAt = stateFactory.NewMutable((Moment?)null, StateCategories.Get(type, nameof(StopRecordingAt)));
+        _stopListeningAtMap = stateFactory.NewMutable(
+            ImmutableDictionary<ChatId, Moment>.Empty,
+            StateCategories.Get(type, nameof(GetStopListeningAt)));
         _nextBeep = stateFactory.NewMutable((NextBeepState?)null, StateCategories.Get(type, nameof(NextBeep)));
         _replayState = stateFactory.NewMutable(
             (ReplayState?)null,
@@ -73,6 +77,13 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         var isReplaying = _replayState.Value is { } hps && hps.ChatId == chatId;
         var result = new ChatAudioState(chatId, isListening, isReplaying, isRecording);
         return Task.FromResult(result);
+    }
+
+    [ComputeMethod] // Synced
+    public virtual async Task<Moment?> GetStopListeningAt(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var map = await _stopListeningAtMap.Use(cancellationToken).ConfigureAwait(false);
+        return map.TryGetValue(chatId, out var stopAt) ? stopAt : null;
     }
 
     [ComputeMethod(MinCacheDuration = 300)] // Synced

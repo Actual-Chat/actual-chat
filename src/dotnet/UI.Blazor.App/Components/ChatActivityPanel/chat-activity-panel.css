@@ -131,9 +131,9 @@ body.narrow .chat-activity-panel > .c-buttons > .btn.not-listening {
 }
 .chat-activity-panel > .c-member-count {
     @apply flex-none;
+    @apply px-1;
     @apply text-caption-3 text-03;
     @apply whitespace-nowrap;
-    @apply px-1;
 }
 .activity-svg {
     @apply md:mt-1;
@@ -146,6 +146,79 @@ body.narrow .chat-activity-panel > .c-buttons > .btn.not-listening {
 .chat-activity-panel .btn-h.listening {
     @apply md:-mr-0.5 pb-1;
     @apply text-primary text-caption-3;
+}
+body.hoverable .chat-activity-panel .btn-h.listening:hover,
+.touch-capable .chat-activity-panel .btn-h.listening:active {
+    @apply text-primary;
+}
+
+/* Listening timer ring */
+.chat-activity-panel .listening-timer {
+    @apply relative;
+    @apply flex items-center justify-center;
+}
+.chat-activity-panel .listening-timer .timer-ring {
+    @apply absolute -inset-2;
+    @apply pointer-events-none;
+    width: calc(100% + 1rem);
+    height: calc(100% + 1rem);
+    transform: rotate(-90deg);
+}
+.chat-activity-panel .listening-timer .timer-ring-bg {
+    @apply fill-none stroke-primary;
+    @apply opacity-30;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+}
+.chat-activity-panel .listening-timer .timer-ring-circle {
+    @apply fill-none stroke-primary;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-dasharray: 100.531;
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 1s linear;
+}
+.chat-activity-panel .btn-h i.icon-listen {
+    @apply md:pr-0.5;
+}
+/* Alternating icon/countdown inside listening button */
+.timer-icon-swap {
+    @apply relative flex items-center justify-center;
+}
+.timer-icon-swap .swap-a,
+.timer-icon-swap .swap-b {
+    @apply md:pr-0.5;
+    animation: timer-swap 8s ease-in-out infinite;
+}
+.timer-icon-swap .swap-a {
+    @apply block;
+}
+.timer-icon-swap .swap-b {
+    @apply absolute inset-0;
+    @apply flex items-center justify-center;
+    animation-delay: -4s;
+}
+.timer-countdown-text {
+    @apply pt-0.5;
+    @apply text-primary text-[0.7rem] font-semibold leading-none tabular-nums;
+}
+@keyframes timer-swap {
+    0%, 40% {
+        opacity: 1;
+        filter: blur(0);
+    }
+    46%, 50% {
+        opacity: 0;
+        filter: blur(4px);
+    }
+    50.01%, 90% {
+        opacity: 0;
+        filter: blur(4px);
+    }
+    96%, 100% {
+        opacity: 1;
+        filter: blur(0);
+    }
 }
 .chat-activity-panel .btn-h.talking {
     @apply md:-mr-0.5;
