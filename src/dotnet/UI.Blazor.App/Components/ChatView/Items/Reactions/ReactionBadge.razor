@@ -24,7 +24,7 @@
 </li>
 
 @code {
-    public static readonly HashSet<(string EntryId, string EmojiId)> PendingAnimations = new();
+    public static readonly HashSet<(string SessionId, string EntryId, string EmojiId)> PendingAnimations = new();
 
     private string? _animateSvgName;
 
@@ -35,7 +35,7 @@
 
     protected override void OnParametersSet() {
         var isOwn = OwnReaction?.Emoji == Reaction.Emoji;
-        var key = (Entry.Id.Value, Reaction.Emoji.Id.Value);
+        var key = (Session.Id, Entry.Id.Value, Reaction.Emoji.Id.Value);
         _animateSvgName = isOwn && PendingAnimations.Remove(key)
             ? EmojiIcon.SvgNames.GetValueOrDefault(Reaction.Emoji)
             : null;
@@ -45,8 +45,8 @@
         _ = Hub.TuneUI.Play(Tune.React);
         var isRemove = OwnReaction?.Emoji == emoji;
         if (!isRemove)
-            PendingAnimations.Add((Entry.Id.Value, emoji.Id.Value));
-        MessageReactions.NotifyOptimisticReaction(Entry.Id, emoji, isRemove);
+            PendingAnimations.Add((Session.Id, Entry.Id.Value, emoji.Id.Value));
+        MessageReactions.NotifyOptimisticReaction(Session, Entry.Id, emoji, isRemove);
         var reaction = new Reaction {
             Id = Symbol.Empty,
             AuthorId = null!,
