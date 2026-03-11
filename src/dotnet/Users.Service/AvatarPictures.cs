@@ -19,6 +19,7 @@ public sealed class AvatarPictures(IServiceProvider services)
     private HostInfo HostInfo => field ??= services.GetRequiredService<HostInfo>();
     private CoreSettings CoreSettings => field ??= services.GetRequiredService<CoreSettings>();
     private FilePath CacheDir => _cacheDir ??= GetCacheDir();
+    private ThreadSafeLruCache<string, FilePath> Cache => field ??= CreateCache();
 
     private FilePath GetCacheDir()
     {
@@ -31,15 +32,37 @@ public sealed class AvatarPictures(IServiceProvider services)
         return baseDir | "avatars";
     }
 
+    private ThreadSafeLruCache<string, FilePath> CreateCache()
+    {
+        var cache = new ThreadSafeLruCache<string, FilePath>(
+            Settings.AvatarPicturesCacheCapacity,
+            null,
+            static (_, path) => path.DeleteSilently());
+
+        // Load existing files into cache (oldest first so recent ones are "most recent")
+        if (Directory.Exists(CacheDir)) {
+            var files = Directory.EnumerateFiles(CacheDir)
+                .Select(f => new FileInfo(f))
+                .OrderBy(f => f.LastWriteTimeUtc);
+            foreach (var file in files) {
+                var key = Path.GetFileNameWithoutExtension(file.Name);
+                cache.TryAdd(key, file.FullName);
+            }
+        }
+
+        return cache;
+    }
+
     public async Task<FilePath> Get(AvatarQuery query, CancellationToken cancellationToken)
     {
-        var filePath = GetCacheFilePath(query);
+        var (key, filePath) = GetCacheKey(query);
 
-        // Return cached file if exists
-        if (File.Exists(filePath))
-            return filePath;
+        // Check LRU cache and file existence
+        if (Cache.TryGetValue(key, out var cached) && File.Exists(cached))
+            return cached;
 
         await GenerateToFile(query, filePath, cancellationToken).ConfigureAwait(false);
+        Cache[key] = filePath;
         return filePath;
     }
 
@@ -67,12 +90,12 @@ public sealed class AvatarPictures(IServiceProvider services)
         }
     }
 
-    private FilePath GetCacheFilePath(AvatarQuery query)
+    private (string Key, FilePath Path) GetCacheKey(AvatarQuery query)
     {
         var ext = query.Format == AvatarFormat.Png ? ".png" : ".svg";
         var cacheKey = $"{query.Kind}_{query.Key}_{query.Format}_{query.Size ?? 0}_{query.Title ?? ""}";
         var hash = cacheKey.Hash().SHA256().AlphaNumeric();
-        return (CacheDir | hash).ChangeExtension(ext);
+        return (hash, (CacheDir | hash).ChangeExtension(ext));
     }
 
     private void EnsureCacheDir()
