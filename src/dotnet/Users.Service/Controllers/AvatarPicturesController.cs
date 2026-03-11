@@ -59,7 +59,7 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
 
     [HttpGet("{kind}/{key}")]
     [CacheControlImmutable(Duration = 2592000, VaryByQueryKeys = ["*"])] // 30 days
-    public ActionResult GetAvatar(AvatarKind kind, string key, AvatarFormat format, int? size = null)
+    public ActionResult GetAvatar(AvatarKind kind, string key, AvatarFormat format, int? size = null, string? title = null)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
@@ -68,6 +68,7 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
             Key = key,
             Format = format,
             Size = size,
+            Title = title,
         };
 
         // TODO: file cache
