@@ -171,7 +171,7 @@ public class AvatarEndpointsTest(AppHostFixture fixture, ITestOutputHelper @out)
         var response = await client.GetAsync($"/api/avatars/marble/{key}?title=Alice");
 
         // Assert
-        response.IsSuccessStatusCode.Should().BeTrue();
+        response.IsSuccessStatusCode.Should().BeTrue("unexpected status code {0}", response.StatusCode);
 
         var svg = await response.Content.ReadAsStringAsync();
         svg.Should().Contain("<text");

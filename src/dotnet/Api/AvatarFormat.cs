@@ -1,4 +1,4 @@
-namespace ActualChat.Users.AvatarIcons;
+namespace ActualChat;
 
 public enum AvatarFormat
 {

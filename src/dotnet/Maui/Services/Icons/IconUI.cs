@@ -1,5 +1,4 @@
 using ActualChat.Hashing;
-using ActualChat.UI;
 using ActualLab.IO;
 using Microsoft.Maui.Storage;
 using SkiaSharp;
@@ -64,7 +63,14 @@ public class IconUI(IServiceProvider services) : ProcessorBase, IComputeService
         if (File.Exists(filePath))
             return new LoadedImage(filePath, kind);
 
-        var url = UrlMapper.AvatarPngUrl(kind, key, size, title);
+        var avatarQuery = new AvatarQuery {
+            Kind = kind,
+            Key = key,
+            Format = AvatarFormat.Png,
+            Size = size,
+            Title = title,
+        };
+        var url = UrlMapper.AvatarUrl(avatarQuery);
 
         try {
             EnsureIconCacheDir();

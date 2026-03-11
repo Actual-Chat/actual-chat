@@ -2,7 +2,6 @@ using ActualChat.AspNetCore;
 using ActualChat.Controllers;
 using ActualChat.Media;
 using ActualChat.Security;
-using ActualChat.UI;
 using ActualChat.Uploads;
 using ActualChat.Users.AvatarIcons;
 using Microsoft.AspNetCore.Mvc;
@@ -60,10 +59,16 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
 
     [HttpGet("{kind}/{key}")]
     [CacheControlImmutable(Duration = 2592000, VaryByQueryKeys = ["*"])] // 30 days
-    public ActionResult GetAvatar(AvatarQuery query)
+    public ActionResult GetAvatar(AvatarKind kind, string key, AvatarFormat format, int? size = null)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
+        var query = new AvatarQuery {
+            Kind = kind,
+            Key = key,
+            Format = format,
+            Size = size,
+        };
 
         // TODO: file cache
         if (query.Format == AvatarFormat.Png) {
