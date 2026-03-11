@@ -1,7 +1,9 @@
 using ActualChat.Chat;
 using ActualChat.Contacts;
 using ActualChat.Db;
+using ActualChat.Flows;
 using ActualChat.Notification.Db;
+using ActualChat.Notification.Flows;
 using ActualChat.Queues;
 using ActualChat.Users;
 using ActualLab.Fusion.EntityFramework;
@@ -42,6 +44,7 @@ public class NotificationsBackend(IServiceProvider services)
         = services.GetRequiredService<FirebaseMessagingClient>();
     private IQueues Queues { get; } = services.Queues();
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
+    private FlowHub FlowHub => field ??= Services.FlowHub();
     private ILogger? DebugLog => Log;
 
     // [ComputeMethod]
@@ -433,7 +436,7 @@ public class NotificationsBackend(IServiceProvider services)
         if (entry is null)
             return;
 
-        var (text, mentionIds) = await GetText(entry, MarkupConsumer.Notification, cancellationToken)
+        var (text, mentionIds) = await NotificationHelper.GetText(entry, MarkupConsumer.Notification, ChatMarkupHubFactory, cancellationToken)
             .ConfigureAwait(false);
         var key = chatId.Id.Value;
         if (!_recentChatsWithNotifications.TryGetValue(key, out _)) {
@@ -472,7 +475,7 @@ public class NotificationsBackend(IServiceProvider services)
         if (entry.Id is not ChatEntryId entryId)
             return;
 
-        var (text, _) = await GetText(entry, MarkupConsumer.ReactionNotification, cancellationToken).ConfigureAwait(false);
+        var (text, _) = await NotificationHelper.GetText(entry, MarkupConsumer.ReactionNotification, ChatMarkupHubFactory, cancellationToken).ConfigureAwait(false);
         if (!entry.Content.IsNullOrEmpty())
             text = $"\"{text}\"";
         text = $"{reaction.Emoji} to {text}";
@@ -569,8 +572,8 @@ public class NotificationsBackend(IServiceProvider services)
             throw new ArgumentOutOfRangeException(nameof(entryId), "entry.ChatId should match given chatId");
 
         var chat = await ChatsBackend.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
-        var title = GetTitle(chat, changeAuthor);
-        var iconUrl = GetIconUrl(chat, changeAuthor);
+        var title = NotificationHelper.GetTitle(chat, changeAuthor);
+        var iconUrl = NotificationHelper.GetIconUrl(chat, changeAuthor, UrlMapper);
         var now = Clocks.CoarseSystemClock.Now;
         var otherUserIds = userIds.Where(userId => userId != changeAuthor.UserId);
 
@@ -578,11 +581,19 @@ public class NotificationsBackend(IServiceProvider services)
             var checkPresence = kind != NotificationKind.Attention;
             if (checkPresence) {
                 var presence = await UserPresences.Get(otherUserId, cancellationToken).ConfigureAwait(false);
-                // Do not send notifications to users who are online
+                // Delay notifications for online users — if still unread after delay, send anyway
                 if (presence is Presence.Online or Presence.Recording) {
-                    DebugLog?.LogInformation(
-                        "EnqueueMessageRelatedNotifications. Skipping online user. ChatId={ChatId}, EntryId={EntryId}, UserId={UserId}",
-                        chatId, entryId, otherUserId);
+                    if (entryId is not null) {
+                        DebugLog?.LogInformation(
+                            "EnqueueMessageRelatedNotifications. Scheduling delayed check for online user. ChatId={ChatId}, EntryId={EntryId}, UserId={UserId}",
+                            chatId, entryId, otherUserId);
+                        var flowArgs = NotificationFlow.GetArguments(
+                            otherUserId, chatId, entryId.LocalId, kind, changeAuthor.Id);
+                        await FlowHub.NewResumeEvent<NotificationFlow>(flowArgs)
+                            .WithDelay(Constants.Notification.OnlineCheckDelay)
+                            .Schedule(cancellationToken)
+                            .ConfigureAwait(false);
+                    }
                     continue;
                 }
             }
@@ -609,26 +620,6 @@ public class NotificationsBackend(IServiceProvider services)
         }
     }
 
-    private string GetIconUrl(Chat.Chat chat, AuthorFull author)
-    {
-        var query = chat.GetIconQuery(author);
-        return UrlMapper.IconUrl(query);
-    }
-
-    private static string GetTitle(Chat.Chat chat, AuthorFull author)
-        => chat.Kind switch {
-            ChatKind.Group or ChatKind.Place or ChatKind.Thread => $"{author.Avatar.Name} @ {chat.Title}",
-            ChatKind.Peer => $"{author.Avatar.Name}",
-            _ => throw new ArgumentOutOfRangeException($"{nameof(chat)}.{nameof(chat.Kind)}", chat.Kind, null),
-        };
-
-    private async ValueTask<(string Content, HashSet<MentionId> MentionIds)> GetText(ChatEntry entry, MarkupConsumer consumer, CancellationToken cancellationToken)
-    {
-        var chatMarkupHub = ChatMarkupHubFactory[entry.ChatId];
-        var markup = await chatMarkupHub.GetMarkup(entry, consumer, cancellationToken).ConfigureAwait(false);
-        var mentionIds = MentionExtractor.Instance.GetMentionIds(markup);
-        return (markup.ToReadableText(consumer), mentionIds);
-    }
 
     private static TimeSpan? GetThrottleInterval(Notification notification)
     {
