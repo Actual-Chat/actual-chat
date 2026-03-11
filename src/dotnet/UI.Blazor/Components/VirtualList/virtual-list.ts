@@ -661,11 +661,12 @@ export class VirtualList {
         }
 
         this.updateOrderedItems();
-        if (this.state.renderState.renderIndex <= 0)
-            void this.endRender();
+        // Call synchronously to prevent 1-frame jumps. Will force reflow
+        void this.endRender();
     }
 
     private onResize = (entries: ResizeObserverEntry[], _observer: ResizeObserver): void => {
+        // debugLog?.log('onResize: ', [...entries]);
         let itemsWereMeasured = false;
         let notAnItem = false;
         let existingResizedCount = 0;
@@ -764,9 +765,10 @@ export class VirtualList {
             // Container is anchored from bottom — when items grow, the container extends
             // upward, shifting visible items. Shift the container's bottom position to
             // compensate, avoiding scrollTop changes that trigger scroll events and iOS issues.
-            // Skip when restoreScrollPosition is pending via fastRaf — the RAF read phase
-            // will see current sizes and compute the correct offset. ResizeObserver fires
-            // before RAF in the same frame, so there is no visual gap.
+            // Skip when restoreScrollPosition is pending — endRender (triggered from
+            // MutationObserver microtask) will see current sizes and compute the correct
+            // offset. Per the HTML spec, ResizeObserver fires after rAF and layout in
+            // the same frame.
             if (totalExistingSizeDiff !== 0
                 && this.defaultEdge === VirtualListEdge.End
                 && this.state.stickyEdge?.edge !== VirtualListEdge.End) {
@@ -952,6 +954,7 @@ export class VirtualList {
 
     private async endRender(): Promise<void> {
         if (!this.isRendering) {
+            debugLog?.log('endRender: not rendering');
             this.whenRequestDataCompleted?.resolve(undefined);
             this.whenRequestDataCompleted = null;
             return;
