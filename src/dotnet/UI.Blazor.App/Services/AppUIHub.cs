@@ -68,6 +68,7 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public IPlaybackFactory PlaybackFactory => field ??= Services.GetRequiredService<IPlaybackFactory>();
     public ActivePlaybackInfo ActivePlaybackInfo => field ??= Services.GetRequiredService<ActivePlaybackInfo>();
     public AudioWidget AudioWidget => field ??= Services.GetRequiredService<AudioWidget>();
+    public OptimisticReactions OptimisticReactions => field ??= Services.GetRequiredService<OptimisticReactions>();
 
     public PlayableTextPaletteProvider PlayableTextPaletteProvider
         => field ??= Services.GetRequiredService<PlayableTextPaletteProvider>();

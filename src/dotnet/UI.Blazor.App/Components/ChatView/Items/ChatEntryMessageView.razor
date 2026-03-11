@@ -76,7 +76,7 @@
                     </p>
                 </div>
             </div>
-            @if (entry.HasReactions || MessageReactions.HasPendingAdd(Hub.Session, entry.Id)) {
+            @if (entry.HasReactions || Hub.OptimisticReactions.HasPendingAdd(entry.Id)) {
                 <MessageReactions Entry="@entry"/>
             }
         </div>
@@ -186,7 +186,7 @@
                     }
                 </div>
             }
-            @if (entry.HasReactions || MessageReactions.HasPendingAdd(Hub.Session, entry.Id)) {
+            @if (entry.HasReactions || OptimisticReactions.HasPendingAdd(entry.Id)) {
                 <MessageReactions Entry="@entry"/>
             }
             @if (!isForward && m.MentionedAuthorIds is not null && m.MentionedAuthorIds.Count != 0) {
@@ -226,6 +226,7 @@
     private SelectionUI SelectionUI => Hub.SelectionUI;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
+    private OptimisticReactions OptimisticReactions => Hub.OptimisticReactions;
     private ILogger Log => field ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 
@@ -235,11 +236,11 @@
 
     protected override void OnInitialized() {
         _onClickCallback = NoStateHasChanged.EventCallback<AuthorId>(OnAuthorBadgeClick);
-        MessageReactions.OptimisticReactionChanged += OnOptimisticReactionChanged;
+        OptimisticReactions.Changed += OnOptimisticReactionChanged;
     }
 
     public override ValueTask DisposeAsync() {
-        MessageReactions.OptimisticReactionChanged -= OnOptimisticReactionChanged;
+        OptimisticReactions.Changed -= OnOptimisticReactionChanged;
         return base.DisposeAsync();
     }
 
