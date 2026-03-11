@@ -35,6 +35,7 @@
 @code {
     private IChats Chats => Hub.Chats;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
+    private OptimisticReactions OptimisticReactions => Hub.OptimisticReactions;
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter] public bool IsSystem { get; set; }
@@ -63,7 +64,7 @@
     private Task OnReactionClick() {
         _ = TuneUI.Play(Tune.React);
         ReactionBadge.PendingAnimations.Add((Session.Id, Entry.Id.Value, Emojis.ThumbsUp.Id.Value));
-        MessageReactions.NotifyOptimisticReaction(Session, Entry.Id, Emojis.ThumbsUp, false);
+        OptimisticReactions.Set(Entry.Id, Emojis.ThumbsUp, false);
         var reaction = new Reaction {
             Id = Symbol.Empty,
             AuthorId = null!,

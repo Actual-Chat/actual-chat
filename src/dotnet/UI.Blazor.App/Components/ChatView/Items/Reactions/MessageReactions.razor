@@ -2,7 +2,7 @@
 @inherits ComputedStateComponent<AppUIHub, MessageReactions.Model?>
 @{
     var serverModel = State.Value;
-    var m = PendingOptimistic.TryGetValue((Hub.Session, Entry.Id), out var pending)
+    var m = OptimisticReactions.TryGet(Entry.Id, out var pending)
         ? ApplyOptimistic(serverModel, Entry.Id, pending.Emoji, pending.IsRemove)
         : serverModel;
     if (m is null)
@@ -24,28 +24,18 @@
 </ul>
 
 @code {
-    internal static readonly ConcurrentDictionary<(Session Session, ChatEntryId EntryId), OptimisticReactionInfo> PendingOptimistic = new();
-    internal static event Action<ChatEntryId>? OptimisticReactionChanged;
-
     private IReactions Reactions => Hub.Reactions;
+    private OptimisticReactions OptimisticReactions => Hub.OptimisticReactions;
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
-    internal static bool HasPendingAdd(Session session, ChatEntryId entryId)
-        => PendingOptimistic.TryGetValue((session, entryId), out var r) && !r.IsRemove;
-
-    internal static void NotifyOptimisticReaction(Session session, ChatEntryId entryId, Emoji emoji, bool isRemove) {
-        PendingOptimistic[(session, entryId)] = new(emoji, isRemove);
-        OptimisticReactionChanged?.Invoke(entryId);
-    }
-
     protected override void OnInitialized()
-        => OptimisticReactionChanged += OnOptimisticChanged;
+        => OptimisticReactions.Changed += OnOptimisticChanged;
 
     public override ValueTask DisposeAsync() {
-        OptimisticReactionChanged -= OnOptimisticChanged;
+        OptimisticReactions.Changed -= OnOptimisticChanged;
         return base.DisposeAsync();
     }
 
@@ -68,13 +58,12 @@
             : null;
 
         // Clear optimistic state once server data reflects the expected change
-        var key = (Session, entryId);
-        if (PendingOptimistic.TryGetValue(key, out var pending)) {
-            var serverReflects = pending.IsRemove
-                ? ownReaction?.Emoji != pending.Emoji
-                : ownReaction?.Emoji == pending.Emoji;
+        if (OptimisticReactions.TryGet(entryId, out var pending2)) {
+            var serverReflects = pending2.IsRemove
+                ? ownReaction?.Emoji != pending2.Emoji
+                : ownReaction?.Emoji == pending2.Emoji;
             if (serverReflects)
-                PendingOptimistic.TryRemove(key, out _);
+                OptimisticReactions.TryRemove(entryId);
         }
 
         return summaries.Length == 0 ? null : new(summaries, ownReaction);
@@ -125,8 +114,6 @@
     }
 
     // Nested types
-
-    internal readonly record struct OptimisticReactionInfo(Emoji Emoji, bool IsRemove);
 
     public sealed record Model(
         ReactionSummary[] Reactions,

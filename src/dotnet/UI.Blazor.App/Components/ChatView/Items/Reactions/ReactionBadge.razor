@@ -46,7 +46,7 @@
         var isRemove = OwnReaction?.Emoji == emoji;
         if (!isRemove)
             PendingAnimations.Add((Session.Id, Entry.Id.Value, emoji.Id.Value));
-        MessageReactions.NotifyOptimisticReaction(Session, Entry.Id, emoji, isRemove);
+        Hub.OptimisticReactions.Set(Entry.Id, emoji, isRemove);
         var reaction = new Reaction {
             Id = Symbol.Empty,
             AuthorId = null!,
