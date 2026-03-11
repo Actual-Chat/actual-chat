@@ -76,7 +76,7 @@
                     </p>
                 </div>
             </div>
-            @if (entry.HasReactions || MessageReactions.HasPendingAdd(entry.Id)) {
+            @if (entry.HasReactions || MessageReactions.HasPendingAdd(Hub.Session, entry.Id)) {
                 <MessageReactions Entry="@entry"/>
             }
         </div>
@@ -186,7 +186,7 @@
                     }
                 </div>
             }
-            @if (entry.HasReactions || MessageReactions.HasPendingAdd(entry.Id)) {
+            @if (entry.HasReactions || MessageReactions.HasPendingAdd(Hub.Session, entry.Id)) {
                 <MessageReactions Entry="@entry"/>
             }
             @if (!isForward && m.MentionedAuthorIds is not null && m.MentionedAuthorIds.Count != 0) {

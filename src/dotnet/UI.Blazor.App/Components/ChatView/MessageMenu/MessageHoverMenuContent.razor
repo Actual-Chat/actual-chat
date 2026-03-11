@@ -62,8 +62,8 @@
 
     private Task OnReactionClick() {
         _ = TuneUI.Play(Tune.React);
-        ReactionBadge.PendingAnimations.Add((Entry.Id.Value, Emojis.ThumbsUp.Id.Value));
-        MessageReactions.NotifyOptimisticReaction(Entry.Id, Emojis.ThumbsUp, false);
+        ReactionBadge.PendingAnimations.Add((Session.Id, Entry.Id.Value, Emojis.ThumbsUp.Id.Value));
+        MessageReactions.NotifyOptimisticReaction(Session, Entry.Id, Emojis.ThumbsUp, false);
         var reaction = new Reaction {
             Id = Symbol.Empty,
             AuthorId = null!,

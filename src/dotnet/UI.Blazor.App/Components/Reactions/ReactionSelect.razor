@@ -44,8 +44,8 @@
 
     private async Task React(Emoji emoji) {
         _ = TuneUI.Play(Tune.React);
-        ReactionBadge.PendingAnimations.Add((Entry.Id.Value, emoji.Id.Value));
-        MessageReactions.NotifyOptimisticReaction(Entry.Id, emoji, false);
+        ReactionBadge.PendingAnimations.Add((Session.Id, Entry.Id.Value, emoji.Id.Value));
+        MessageReactions.NotifyOptimisticReaction(Session, Entry.Id, emoji, false);
         var reaction = new Reaction {
             Id = Symbol.Empty,
             AuthorId = null!,

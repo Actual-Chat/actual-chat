@@ -2,7 +2,7 @@
 @inherits ComputedStateComponent<AppUIHub, MessageReactions.Model?>
 @{
     var serverModel = State.Value;
-    var m = PendingOptimistic.TryGetValue(Entry.Id, out var pending)
+    var m = PendingOptimistic.TryGetValue((Hub.Session, Entry.Id), out var pending)
         ? ApplyOptimistic(serverModel, Entry.Id, pending.Emoji, pending.IsRemove)
         : serverModel;
     if (m is null)
@@ -24,7 +24,7 @@
 </ul>
 
 @code {
-    internal static readonly ConcurrentDictionary<ChatEntryId, OptimisticReactionInfo> PendingOptimistic = new();
+    internal static readonly ConcurrentDictionary<(Session Session, ChatEntryId EntryId), OptimisticReactionInfo> PendingOptimistic = new();
     internal static event Action<ChatEntryId>? OptimisticReactionChanged;
 
     private IReactions Reactions => Hub.Reactions;
@@ -33,11 +33,11 @@
     [Parameter] public string Class { get; set; } = "";
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
-    internal static bool HasPendingAdd(ChatEntryId entryId)
-        => PendingOptimistic.TryGetValue(entryId, out var r) && !r.IsRemove;
+    internal static bool HasPendingAdd(Session session, ChatEntryId entryId)
+        => PendingOptimistic.TryGetValue((session, entryId), out var r) && !r.IsRemove;
 
-    internal static void NotifyOptimisticReaction(ChatEntryId entryId, Emoji emoji, bool isRemove) {
-        PendingOptimistic[entryId] = new(emoji, isRemove);
+    internal static void NotifyOptimisticReaction(Session session, ChatEntryId entryId, Emoji emoji, bool isRemove) {
+        PendingOptimistic[(session, entryId)] = new(emoji, isRemove);
         OptimisticReactionChanged?.Invoke(entryId);
     }
 
@@ -68,12 +68,13 @@
             : null;
 
         // Clear optimistic state once server data reflects the expected change
-        if (PendingOptimistic.TryGetValue(entryId, out var pending)) {
+        var key = (Session, entryId);
+        if (PendingOptimistic.TryGetValue(key, out var pending)) {
             var serverReflects = pending.IsRemove
                 ? ownReaction?.Emoji != pending.Emoji
                 : ownReaction?.Emoji == pending.Emoji;
             if (serverReflects)
-                PendingOptimistic.TryRemove(entryId, out _);
+                PendingOptimistic.TryRemove(key, out _);
         }
 
         return summaries.Length == 0 ? null : new(summaries, ownReaction);
