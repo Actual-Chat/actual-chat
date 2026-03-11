@@ -12,7 +12,7 @@ namespace ActualChat.App.Maui;
 /// Loads files from PHPickerResult in background while allowing the picker to return immediately.
 /// Provides two-phase processing: preview (thumbnail) first, then main file.
 /// </summary>
-public sealed class IosPhotoGalleryFiles(IServiceProvider services)
+public sealed class IosPhotoGalleryFiles(IServiceProvider services) : ProcessorBase
 {
     private static readonly FilePath AttachmentsDir = new FilePath(FileSystem.CacheDirectory) | "attachments";
     private static readonly FilePath ThumbnailDir = new FilePath(FileSystem.CacheDirectory) | "thumbnails";
@@ -42,7 +42,7 @@ public sealed class IosPhotoGalleryFiles(IServiceProvider services)
         Log.LogDebug("Enqueued file '{TargetPath}' for background loading", targetPath);
 
         // Start processing in background
-        _ = ProcessPhotoGalleryItem(pendingItem);
+        _ = ProcessPhotoGalleryItem(pendingItem, StopToken);
 
         var fileProvider = new MauiFileProvider {
             FileRef = targetPath,
@@ -83,15 +83,15 @@ public sealed class IosPhotoGalleryFiles(IServiceProvider services)
         return preview;
     }
 
-    private async Task ProcessPhotoGalleryItem(PendingItem item)
+    private async Task ProcessPhotoGalleryItem(PendingItem item, CancellationToken cancellationToken)
     {
         try {
             // Phase 1: Create preview (thumbnail)
-            var preview = await CreatePreview(item.TargetPath, item.ItemProvider).ConfigureAwait(false);
+            var preview = await CreatePreview(item.TargetPath, item.ItemProvider, cancellationToken).ConfigureAwait(false);
             item.SetPreview(preview);
 
             // Phase 2: Load main file
-            await LoadMainFile(item.TargetPath, item.ItemProvider).ConfigureAwait(false);
+            await LoadMainFile(item.TargetPath, item.ItemProvider, cancellationToken).ConfigureAwait(false);
             item.SetFileReady();
         }
         catch (Exception e) {
@@ -100,7 +100,7 @@ public sealed class IosPhotoGalleryFiles(IServiceProvider services)
         }
     }
 
-    private async Task<FilePreview?> CreatePreview(FilePath targetPath, NSItemProvider itemProvider)
+    private async Task<FilePreview?> CreatePreview(FilePath targetPath, NSItemProvider itemProvider, CancellationToken cancellationToken)
     {
         foreach (var thumbnailUTTypeId in ThumbnailUTTypeIds) {
             if (!itemProvider.HasItemConformingTo(thumbnailUTTypeId))
@@ -118,8 +118,7 @@ public sealed class IosPhotoGalleryFiles(IServiceProvider services)
                 var thumbnailFileName = targetPath.FileName.ChangeExtension(".jpg");
                 Directory.CreateDirectory(ThumbnailDir);
                 var thumbnailPath = ThumbnailDir | thumbnailFileName;
-
-                await representation.Path.CopyTo(thumbnailPath, CancellationToken.None).ConfigureAwait(false);
+                await representation.Copy(thumbnailPath, cancellationToken).ConfigureAwait(false);
 
                 var size = GetImageSize(thumbnailPath);
                 var preview = new FilePreview(ContentResolver.GetFileUri(thumbnailPath), size);
@@ -135,7 +134,10 @@ public sealed class IosPhotoGalleryFiles(IServiceProvider services)
         return null;
     }
 
-    private async Task LoadMainFile(FilePath targetPath, NSItemProvider itemProvider)
+    private async Task LoadMainFile(
+        FilePath targetPath,
+        NSItemProvider itemProvider,
+        CancellationToken cancellationToken)
     {
         var contentType = itemProvider.RegisteredContentTypes[0];
         var loadStartedAt = CpuTimestamp.Now;
@@ -145,7 +147,7 @@ public sealed class IosPhotoGalleryFiles(IServiceProvider services)
         var sourcePath = representation.Path;
 
         var copyStartedAt = CpuTimestamp.Now;
-        await sourcePath.CopyTo(targetPath, CancellationToken.None).ConfigureAwait(false);
+        await sourcePath.CopyFile(targetPath, cancellationToken).ConfigureAwait(false);
 
         Log.LogInformation(
             "Loaded '{FileName}' ({Size} bytes) in {LoadElapsed} + {CopyElapsed}",
