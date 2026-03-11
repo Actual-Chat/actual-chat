@@ -18,7 +18,7 @@ public class IconUI(IServiceProvider services) : ProcessorBase, IComputeService
     {
         var url = UrlMapper.PicturePreview128Url(query.Picture);
         if (url.IsNullOrEmpty())
-            return await GenerateAvatar(query.AvatarKey, query.AvatarKind, query.AvatarSize, query.AvatarTitle, cancellationToken).ConfigureAwait(false);
+            return await GenerateAvatar(query.AvatarQuery, cancellationToken).ConfigureAwait(false);
 
         var filePath = await GetExternalImage(url, cancellationToken).ConfigureAwait(false);
         return filePath.IsEmpty ? null : new LoadedImage(filePath, null);
@@ -57,23 +57,15 @@ public class IconUI(IServiceProvider services) : ProcessorBase, IComputeService
     }
 
     [ComputeMethod]
-    protected virtual async Task<LoadedImage?> GenerateAvatar(string key, AvatarKind kind, int? size, string title, CancellationToken cancellationToken)
+    protected virtual async Task<LoadedImage?> GenerateAvatar(AvatarQuery query, CancellationToken cancellationToken)
     {
-        var sSize = size > 0 ? $"@{size}" : "";
-        var sTitle = !title.IsNullOrEmpty() ? $"#{title}" : "";
-        var filePath = GetCacheFilePath($"avatar:{kind}:{key}{sSize}{sTitle}", ".png");
+        var sSize = query.Size > 0 ? $"@{query.Size}" : "";
+        var sTitle = !query.Title.IsNullOrEmpty() ? $"#{query.Title}" : "";
+        var filePath = GetCacheFilePath($"avatar:{query.Kind}:{query.Key}{sSize}{sTitle}", ".png");
         if (File.Exists(filePath))
-            return new LoadedImage(filePath, kind);
+            return new LoadedImage(filePath, query.Kind);
 
-        var avatarQuery = new AvatarQuery {
-            Kind = kind,
-            Key = key,
-            Format = AvatarFormat.Png,
-            Size = size,
-            Title = title,
-        };
-        var url = UrlMapper.AvatarUrl(avatarQuery);
-
+        var url = UrlMapper.AvatarUrl(query);
         try {
             EnsureIconCacheDir();
             var imgStream = await HttpClient.GetStreamAsync(url, cancellationToken).ConfigureAwait(false);
@@ -81,7 +73,7 @@ public class IconUI(IServiceProvider services) : ProcessorBase, IComputeService
             var fileStream = File.Create(filePath);
             await using var _2 = fileStream.ConfigureAwait(false);
             await imgStream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
-            return new LoadedImage(filePath, kind);
+            return new LoadedImage(filePath, query.Kind);
         }
         catch (Exception e) {
             if (!e.IsCancellationOf(cancellationToken))
