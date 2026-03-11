@@ -1,6 +1,5 @@
 using ActualChat.UI.Blazor.Services;
 using AndroidX.Core.View;
-using Color = Microsoft.Maui.Graphics.Color;
 
 namespace ActualChat.App.Maui;
 
@@ -31,9 +30,8 @@ public class AndroidThemeHandler : MauiThemeHandler
             return false;
 
         window.SetNavigationBarColor(Android.Graphics.Color.Transparent);
-#pragma warning disable CA1422 // Validate platform compatibility
-        window.NavigationBarContrastEnforced = false;
-#pragma warning restore CA1422
+        if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.Q)
+            window.NavigationBarContrastEnforced = false;
 
         // Set navigation bar icon appearance (light/dark)
         var androidColor = Android.Graphics.Color.ParseColor(bottomBarColor);
