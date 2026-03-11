@@ -70,5 +70,8 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
         redisModule.AddRedisDb<StreamingContext>(services);
+
+        // Disable Deepgram logging
+        Deepgram.Logger.Log.Initialize(Deepgram.Logger.LogLevel.Disable);
     }
 }
