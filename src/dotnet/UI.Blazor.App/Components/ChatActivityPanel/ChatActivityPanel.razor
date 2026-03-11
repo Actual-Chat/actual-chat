@@ -66,16 +66,50 @@
                 <i class="icon-phone-off"></i>
             </HeaderButton>
         } else {
-            <HeaderButton
-                Class="listening"
-                StopPropagation="true"
-                PreventDefault="true"
-                Click="@OnClick"
-                Tooltip="@tooltip"
-                TooltipPosition="FloatingPosition.Bottom"
-                MustKeepAwake="@(!IsListening)">
-                <i class="icon-listen"></i>
-            </HeaderButton>
+            const double countdownSeconds = 30;
+            const double circumference = 100.531;
+            var remainingSeconds = m.StopListeningAt.HasValue
+                ? Math.Max(0, (m.StopListeningAt.Value - Hub.Clocks.CpuClock.Now).TotalSeconds)
+                : 0;
+            var hasRing = m.StopListeningAt.HasValue || IsListening;
+            var isCountingDown = remainingSeconds > 0 && remainingSeconds <= countdownSeconds;
+            var dashOffset = isCountingDown
+                ? (circumference * (1 - remainingSeconds / countdownSeconds)).ToString("F2", CultureInfo.InvariantCulture)
+                : "0";
+            <div class="listening-timer">
+                @if (hasRing) {
+                    <svg class="timer-ring" viewBox="0 0 36 36"
+                         data-bubble="@(BubbleRef.New<ListeningTimerBubble>())"
+                         data-bubble-priority="115"
+                         data-bubble-placement="@(FloatingPosition.Bottom.ToPositionString())">
+                        <circle class="timer-ring-bg"
+                                cx="18" cy="18" r="16" />
+                        <circle class="timer-ring-circle"
+                                cx="18" cy="18" r="16"
+                                style="stroke-dashoffset: @(dashOffset)" />
+                    </svg>
+                }
+                <HeaderButton
+                    Class="listening"
+                    StopPropagation="true"
+                    PreventDefault="true"
+                    Click="@OnClick"
+                    Tooltip="@tooltip"
+                    TooltipPosition="FloatingPosition.Bottom"
+                    MustKeepAwake="@(!IsListening)">
+                    @if (isCountingDown) {
+                        var remaining = (int)Math.Ceiling(remainingSeconds);
+                        var mm = remaining / 60;
+                        var ss = remaining % 60;
+                        <span class="timer-icon-swap">
+                            <i class="icon-listen swap-a"></i>
+                            <span class="swap-b timer-countdown-text">@($"{mm:D2}:{ss:D2}")</span>
+                        </span>
+                    } else {
+                        <i class="icon-listen"></i>
+                    }
+                </HeaderButton>
+            </div>
         }
     </div>
 </div>
@@ -84,6 +118,7 @@
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.ChatActivityPanel.create";
     private readonly TaskSerializer _taskSerializer = new();
     private CpuTimestamp _lastActionAt;
+    private bool _wasListening;
 
     private ElementReference Ref { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
@@ -136,7 +171,28 @@
         var videoStreamMemberCount = isAnyoneVideoStreaming
             ? await ChatVideoUI.GetVideoStreamMemberCount(chatId, cancellationToken).ConfigureAwait(false)
             : 0;
-        return new (chat, audioState, isAnyoneTalking, isAnyoneVideoStreaming, videoStreamMemberCount);
+        var stopListeningAt = audioState.IsListening
+            ? await ChatAudioUI.GetStopListeningAt(chatId, cancellationToken).ConfigureAwait(false)
+            : null;
+        if (stopListeningAt.HasValue) {
+            var remaining = (stopListeningAt.Value - Hub.Clocks.CpuClock.Now).TotalSeconds;
+            if (remaining > 30)
+                Computed.GetCurrent()?.Invalidate(TimeSpan.FromSeconds(remaining - 30));
+            else if (remaining > 0) {
+                // Align invalidation to the next second boundary for consistent countdown ticks
+                var fractional = remaining - Math.Floor(remaining);
+                var delay = fractional > 0.05 ? fractional : fractional + 1.0;
+                Computed.GetCurrent()?.Invalidate(TimeSpan.FromSeconds(delay));
+            }
+        }
+
+        // Re-show listening hint bubble each time listening starts
+        var isListening = audioState.IsListening;
+        if (isListening && !_wasListening)
+            _ = Hub.BubbleUI.UnreadBubble<ListeningTimerBubble>();
+        _wasListening = isListening;
+
+        return new (chat, audioState, isAnyoneTalking, isAnyoneVideoStreaming, videoStreamMemberCount, stopListeningAt);
     }
 
     private void OnClick() {
@@ -181,5 +237,6 @@
         ChatAudioState AudioState,
         bool IsAnyoneTalking,
         bool IsAnyoneVideoStreaming,
-        int VideoStreamMemberCount);
+        int VideoStreamMemberCount,
+        Moment? StopListeningAt = null);
 }
