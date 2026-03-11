@@ -1,9 +1,6 @@
 using System.ComponentModel.DataAnnotations;
-using ActualChat.UI;
-using ActualChat.Users.AvatarIcons;
-using Microsoft.AspNetCore.Mvc;
 
-namespace ActualChat.Users.Controllers;
+namespace ActualChat;
 
 /// <summary>
 /// Query parameters for avatar generation endpoints.
@@ -12,25 +9,20 @@ namespace ActualChat.Users.Controllers;
 public sealed partial record AvatarQuery : IValidatableObject
 {
     [DataMember, MemoryPackOrder(0)]
-    [FromRoute(Name = "kind")]
     [Required]
     public required AvatarKind Kind { get; init; }
 
     [DataMember, MemoryPackOrder(1)]
-    [FromRoute(Name = "key")]
     [Required]
     public required string Key { get; init; }
 
     [DataMember, MemoryPackOrder(2)]
-    [FromQuery(Name = "format")]
     public AvatarFormat Format { get; init; } = AvatarFormat.Svg;
 
     [DataMember, MemoryPackOrder(3)]
-    [FromQuery(Name = "size")]
     public int? Size { get; init; }
 
     [DataMember, MemoryPackOrder(4)]
-    [FromQuery(Name = "title")]
     public string? Title { get; init; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
@@ -41,7 +33,7 @@ public sealed partial record AvatarQuery : IValidatableObject
             {
                 yield return new ValidationResult(
                     "Size must be 40, 80, or 160 for PNG format.",
-                    new[] { nameof(Size) });
+                    [nameof(Size)]);
             }
         }
     }
