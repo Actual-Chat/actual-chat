@@ -14,79 +14,56 @@ public class IconUI(IServiceProvider services) : ProcessorBase, IComputeService
     private UrlMapper UrlMapper => field ??= services.UrlMapper();
     private HttpClient HttpClient => field ??= services.HttpClientFactory().CreateClient("Avatars");
 
-    public async Task<LoadedImage?> Get(IconQuery query, CancellationToken cancellationToken = default)
+    [ComputeMethod]
+    public virtual async Task<LoadedImage?> Get(IconQuery query, CancellationToken cancellationToken = default)
     {
-        var url = UrlMapper.PicturePreview128Url(query.Picture);
-        if (url.IsNullOrEmpty())
-            return await GenerateAvatar(query.AvatarQuery, cancellationToken).ConfigureAwait(false);
-
-        var filePath = await GetExternalImage(url, cancellationToken).ConfigureAwait(false);
-        return filePath.IsEmpty ? null : new LoadedImage(filePath, null);
+        var (url, kind) = GetIconUrl(query);
+        var filePath = await FetchImage(url, cancellationToken).ConfigureAwait(false);
+        return filePath.IsEmpty ? null : new LoadedImage(filePath, kind);
     }
 
-    [ComputeMethod]
-    protected virtual async Task<FilePath> GetExternalImage(string url, CancellationToken cancellationToken)
+    private (string Url, AvatarKind? Kind) GetIconUrl(IconQuery query)
+    {
+        var pictureUrl = UrlMapper.PicturePreview128Url(query.Picture);
+        return pictureUrl.IsNullOrEmpty()
+            ? (UrlMapper.AvatarUrl(query.AvatarQuery), query.AvatarQuery.Kind)
+            : (pictureUrl, null);
+    }
+
+    private Task<FilePath> FetchImage(string url, CancellationToken cancellationToken)
     {
         if (url.IsNullOrEmpty())
-            return FilePath.Empty;
+            return Task.FromResult(FilePath.Empty);
+
+        var isSvg = url.OrdinalIgnoreCaseEndsWith(".svg");
+        var ext = isSvg ? ".png" : Path.GetExtension(url);
+        var filePath = GetCacheFilePath(url, ext);
+        return FetchToCache(url, filePath, isSvg, cancellationToken);
+    }
+
+    private async Task<FilePath> FetchToCache(string url, FilePath filePath, bool isSvg, CancellationToken cancellationToken)
+    {
+        if (File.Exists(filePath))
+            return filePath;
 
         try {
-            var isSvg = url.OrdinalIgnoreCaseEndsWith(".svg");
-            var ext = isSvg ? ".png" : Path.GetExtension(url);
-            var filePath = GetCacheFilePath(url, ext);
-            if (File.Exists(filePath))
-                return filePath;
-
-            var imgStream = await HttpClient.GetStreamAsync(url, cancellationToken).ConfigureAwait(false);
-            await using var _1 = imgStream.ConfigureAwait(false);
-            if (isSvg)
-                SaveSvgAsPng(imgStream, filePath);
+            var stream = await HttpClient.GetStreamAsync(url, cancellationToken).ConfigureAwait(false);
+            await using var _ = stream.ConfigureAwait(false);
+            EnsureIconCacheDir();
+            if (isSvg) {
+                using var svg = SKSvg.CreateFromStream(stream);
+                svg.Save(filePath, SKColor.Empty);
+            }
             else {
-                EnsureIconCacheDir();
-                var fileStream = File.Create(filePath);
-                await using var _2 = fileStream.ConfigureAwait(false);
-                await imgStream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
+                await stream.CopyToFile(filePath, cancellationToken).ConfigureAwait(false);
             }
             return filePath;
         }
         catch (Exception e) {
             if (!e.IsCancellationOf(cancellationToken))
-                Log.LogError(e, "Failed to fetch external image: '{Url}'", url);
+                Log.LogError(e, "Failed to fetch image: '{Url}'", url);
             return FilePath.Empty;
         }
-    }
-
-    [ComputeMethod]
-    protected virtual async Task<LoadedImage?> GenerateAvatar(AvatarQuery query, CancellationToken cancellationToken)
-    {
-        var sSize = query.Size > 0 ? $"@{query.Size}" : "";
-        var sTitle = !query.Title.IsNullOrEmpty() ? $"#{query.Title}" : "";
-        var filePath = GetCacheFilePath($"avatar:{query.Kind}:{query.Key}{sSize}{sTitle}", ".png");
-        if (File.Exists(filePath))
-            return new LoadedImage(filePath, query.Kind);
-
-        var url = UrlMapper.AvatarUrl(query);
-        try {
-            EnsureIconCacheDir();
-            var imgStream = await HttpClient.GetStreamAsync(url, cancellationToken).ConfigureAwait(false);
-            await using var _ = imgStream.ConfigureAwait(false);
-            var fileStream = File.Create(filePath);
-            await using var _2 = fileStream.ConfigureAwait(false);
-            await imgStream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
-            return new LoadedImage(filePath, query.Kind);
-        }
-        catch (Exception e) {
-            if (!e.IsCancellationOf(cancellationToken))
-                Log.LogError(e, "Failed to fetch avatar from API: '{Url}'", url);
-            return null;
-        }
-    }
-
-    private static void SaveSvgAsPng(Stream svgStream, FilePath filePath)
-    {
-        EnsureIconCacheDir();
-        using var svg = SKSvg.CreateFromStream(svgStream);
-        svg.Save(filePath, SKColor.Empty);
     }
 
     private static FilePath GetCacheFilePath(string key, string ext)
