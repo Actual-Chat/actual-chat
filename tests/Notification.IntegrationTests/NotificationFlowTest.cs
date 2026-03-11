@@ -1,0 +1,105 @@
+using ActualChat.Chat;
+using ActualChat.Notification.Flows;
+using ActualChat.Testing.Host;
+using ActualChat.Users;
+
+namespace ActualChat.Notification.IntegrationTests;
+
+[Collection(nameof(NotificationCollection))]
+public class NotificationFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
+    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
+{
+    private IWebClientTester Tester { get; } = fixture.AppHost.NewWebClientTester(@out);
+
+    [Fact]
+    public async Task ShouldSendNotificationForOnlineUserWhenUnread()
+    {
+        // arrange
+        var alice = await Tester.SignInAsAlice();
+        var bob = await Tester.SignInAsBob();
+        var (chatId, _) = await Tester.CreateChat(false, "Test chat");
+        await Tester.InviteToChat(chatId, alice);
+
+        // Make Alice online
+        await Commander.Call(new UserPresencesBackend_CheckIn(alice.Id, Clocks.SystemClock.Now, true));
+
+        // Bob sends a message
+        await Tester.SignIn(bob);
+        var entry = await Tester.CreateTextEntry(chatId, "Hello Alice!");
+
+        // act - schedule NotificationFlow with zero delay
+        var flowArgs = NotificationFlow.GetArguments(
+            alice.Id, chatId, entry.LocalId, NotificationKind.Message, entry.AuthorId);
+        await FlowHub.NewResumeEvent<NotificationFlow>(flowArgs)
+            .WithDelay(TimeSpan.Zero)
+            .WithDelayQuanta(TimeSpan.Zero)
+            .Schedule();
+
+        // assert - notification should appear for Alice
+        var notification = await GetNotification(alice, entry.Id);
+        notification.Title.Should().Contain("Test chat");
+        notification.Content.Should().Be("Hello Alice!");
+        notification.ChatEntryNotification.Should().NotBeNull();
+        notification.ChatEntryNotification!.EntryId.Should().Be(entry.Id);
+    }
+
+    [Fact]
+    public async Task ShouldNotSendNotificationForOnlineUserWhenRead()
+    {
+        // arrange
+        var alice = await Tester.SignInAsAlice();
+        var bob = await Tester.SignInAsBob();
+        var (chatId, _) = await Tester.CreateChat(false, "Test chat 2");
+        await Tester.InviteToChat(chatId, alice);
+
+        // Make Alice online
+        await Commander.Call(new UserPresencesBackend_CheckIn(alice.Id, Clocks.SystemClock.Now, true));
+
+        // Bob sends a message
+        await Tester.SignIn(bob);
+        var entry = await Tester.CreateTextEntry(chatId, "Hello Alice!");
+
+        // Alice reads the message before the flow fires
+        await Commander.Call(new ChatPositionsBackend_Set(
+            alice.Id, chatId, ChatPositionKind.Read, new ChatPosition(entry.LocalId)));
+
+        // act - schedule NotificationFlow with zero delay
+        var flowArgs = NotificationFlow.GetArguments(
+            alice.Id, chatId, entry.LocalId, NotificationKind.Message, entry.AuthorId);
+        await FlowHub.NewResumeEvent<NotificationFlow>(flowArgs)
+            .WithDelay(TimeSpan.Zero)
+            .WithDelayQuanta(TimeSpan.Zero)
+            .Schedule();
+
+        // assert - no notification should exist for Alice for this entry
+        await Task.Delay(TimeSpan.FromSeconds(5));
+        var since = Clocks.SystemClock.Now - TimeSpan.FromMinutes(1);
+        var ids = await Tester.NotificationsBackend.ListRecentNotificationIds(
+            alice.Id, since, CancellationToken.None);
+        var notifications = await ids
+            .Select(x => Tester.NotificationsBackend.Get(x, CancellationToken.None))
+            .Collect();
+        var matching = notifications
+            .SkipNullItems()
+            .Where(x => x.EntryId == entry.Id)
+            .ToList();
+        matching.Should().BeEmpty("Alice already read the message, so no notification should be sent");
+    }
+
+    private async Task<Notification> GetNotification(AccountFull user, ChatEntryId entryId)
+    {
+        Notification? notification = null!;
+        await TestExt.When(async () => {
+            var ids = await Tester.NotificationsBackend.ListRecentNotificationIds(
+                user.Id, Clocks.SystemClock.Now - TimeSpan.FromMinutes(1), CancellationToken.None);
+            ids.Should().NotBeEmpty();
+            var retrieved = await ids
+                .Select(x => Tester.NotificationsBackend.Get(x, CancellationToken.None))
+                .Collect();
+            var notifications = retrieved.SkipNullItems().Where(x => x.EntryId == entryId).ToList();
+            notifications.Should().HaveCount(1);
+            notification = notifications[0];
+        }, TimeSpan.FromSeconds(30));
+        return notification;
+    }
+}
