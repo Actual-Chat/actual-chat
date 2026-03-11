@@ -2,6 +2,7 @@ namespace ActualChat.Users.Module;
 
 public sealed class UsersSettings
 {
+    public string AvatarPicturesCacheDir { get; set; } = "";
     // Auth provider settings
     public string GoogleClientId { get; set; } = "CannotBeEmptyString";
     public string GoogleClientSecret { get; set; } = "";

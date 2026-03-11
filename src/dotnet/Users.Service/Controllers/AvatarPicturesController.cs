@@ -3,7 +3,6 @@ using ActualChat.Controllers;
 using ActualChat.Media;
 using ActualChat.Security;
 using ActualChat.Uploads;
-using ActualChat.Users.AvatarIcons;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ActualChat.Users.Controllers;
@@ -13,6 +12,7 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
 {
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IMediaSaver MediaSaver => services.GetRequiredService<IMediaSaver>();
+    private AvatarPictures AvatarPictures => services.GetRequiredService<AvatarPictures>();
 
     [HttpPost("upload-picture")]
     [DisableFormValueModelBinding]
@@ -59,7 +59,7 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
 
     [HttpGet("{kind}/{key}")]
     [CacheControlImmutable(Duration = 2592000, VaryByQueryKeys = ["*"])] // 30 days
-    public ActionResult GetAvatar(AvatarKind kind, string key, AvatarFormat format, int? size = null, string? title = null)
+    public async Task<ActionResult> GetAvatar(AvatarKind kind, string key, AvatarFormat format, int? size = null, string? title = null, CancellationToken cancellationToken = default)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
@@ -71,20 +71,7 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
             Title = title,
         };
 
-        // TODO: file cache
-        if (query.Format == AvatarFormat.Png) {
-            var pngSize = query.Size ?? 80;
-            var pngBytes = query.Kind switch {
-                AvatarKind.Marble => MarbleAvatars.GeneratePngBytes(query.Key, pngSize, title: query.Title ?? ""),
-                _ => BeamAvatars.GeneratePngBytes(query.Key, pngSize),
-            };
-            return File(pngBytes, "image/png");
-        }
-
-        var svg = query.Kind switch {
-            AvatarKind.Marble => MarbleAvatars.GenerateSvg(query.Key, title: query.Title ?? ""),
-            _ => BeamAvatars.GenerateSvg(query.Key),
-        };
-        return Content(svg, "image/svg+xml");
+        var filePath = await AvatarPictures.Get(query, cancellationToken).ConfigureAwait(false);
+        return PhysicalFile(filePath, MediaMimeTypes.GetMimeType(filePath));
     }
 }

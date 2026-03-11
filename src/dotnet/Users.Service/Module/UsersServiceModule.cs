@@ -147,6 +147,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         // Avatars
         rpcHost.AddLocalApi<IAvatars, Avatars>(); // Used by Authors -> Chats, etc.
         rpcHost.AddBackend<IAvatarsBackend, AvatarsBackend>();
+        services.AddSingleton<AvatarPictures>(); // Used by AvatarPicturesController for caching
 
         // ChatPositions
         rpcHost.AddApi<IChatPositions, ChatPositions>();
