@@ -250,6 +250,10 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         IProgress<double> progress,
         CancellationToken cancellationToken)
     {
+        if (fileInputs.Count == 0) {
+            progress.Report(100);
+            return [];
+        }
         var attachments = new ChatEntryAttachment[fileInputs.Count];
         var fileForks = progress.Fork(fileInputs.Count);
         for (var i = 0; i < fileInputs.Count; i++) {
