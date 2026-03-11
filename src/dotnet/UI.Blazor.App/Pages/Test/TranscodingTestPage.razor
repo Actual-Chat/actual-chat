@@ -1,5 +1,6 @@
 @using ActualChat.Kvas
 @using ActualChat.Media
+@using ActualChat.UI.Services
 @using ActualChat.UI.Blazor.Components.FileUpload
 @inherits ComputedStateComponent<AppUIHub, TranscodingTestPage.Model?>
 @page "/test/video-transcoding"
@@ -153,7 +154,7 @@
             // 2. Create Upload
             var tag = "TranscodingTest/v1";
             var metadata = new PropertyBag()
-                .Set("FileName", source.Metadata.FileName ?? "")
+                .Set("FileName", source.Metadata.FileName)
                 .Set("ContentType", source.Metadata.ContentType);
             var uploadId = await UICommander.Call(new Uploads_Create(Session, source.Metadata.Length, tag, metadata));
 
@@ -167,7 +168,7 @@
             // 4. Save to settings
             await UserTranscodingTestSettings().Set(
                 new UserTranscodingTestSettings {
-                    FileName = source.Metadata.FileName ?? "",
+                    FileName = source.Metadata.FileName,
                     UploadId = uploadId,
                     MediaId = mediaId,
                 }, CancellationToken.None);
