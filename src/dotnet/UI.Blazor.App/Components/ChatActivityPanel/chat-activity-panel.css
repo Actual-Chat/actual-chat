@@ -165,13 +165,15 @@ body.hoverable .chat-activity-panel .btn-h.listening:hover,
     transform: rotate(-90deg);
 }
 .chat-activity-panel .listening-timer .timer-ring-bg {
-    @apply fill-none stroke-primary;
     @apply opacity-30;
+    fill: none;
+    stroke: var(--primary);
     stroke-width: 1.5;
     stroke-linecap: round;
 }
 .chat-activity-panel .listening-timer .timer-ring-circle {
-    @apply fill-none stroke-primary;
+    fill: none;
+    stroke: var(--primary);
     stroke-width: 1.5;
     stroke-linecap: round;
     stroke-dasharray: 100.531;
