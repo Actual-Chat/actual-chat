@@ -28,6 +28,8 @@
 
     private string? _animateSvgName;
 
+    private OptimisticReactions OptimisticReactions => Hub.OptimisticReactions;
+
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter, EditorRequired] public Reaction? OwnReaction { get; set; }
     [Parameter, EditorRequired] public ReactionSummary Reaction { get; set; } = null!;
@@ -46,7 +48,7 @@
         var isRemove = OwnReaction?.Emoji == emoji;
         if (!isRemove)
             PendingAnimations.Add((Session.Id, Entry.Id.Value, emoji.Id.Value));
-        Hub.OptimisticReactions.Set(Entry.Id, emoji, isRemove);
+        OptimisticReactions.Set(Entry.Id, emoji, isRemove);
         var reaction = new Reaction {
             Id = Symbol.Empty,
             AuthorId = null!,

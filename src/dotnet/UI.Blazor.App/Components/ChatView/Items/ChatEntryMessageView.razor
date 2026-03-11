@@ -76,7 +76,7 @@
                     </p>
                 </div>
             </div>
-            @if (entry.HasReactions || Hub.OptimisticReactions.HasPendingAdd(entry.Id)) {
+            @if (entry.HasReactions || OptimisticReactions.HasPendingAdd(entry.Id)) {
                 <MessageReactions Entry="@entry"/>
             }
         </div>
