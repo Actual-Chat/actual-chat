@@ -31,13 +31,15 @@ public class IconUI(IServiceProvider services) : ProcessorBase, IComputeService
             return FilePath.Empty;
 
         try {
-            var filePath = GetCacheFilePath(url, Path.GetExtension(url));
+            var isSvg = url.OrdinalIgnoreCaseEndsWith(".svg");
+            var ext = isSvg ? ".png" : Path.GetExtension(url);
+            var filePath = GetCacheFilePath(url, ext);
             if (File.Exists(filePath))
                 return filePath;
 
             var imgStream = await HttpClient.GetStreamAsync(url, cancellationToken).ConfigureAwait(false);
             await using var _1 = imgStream.ConfigureAwait(false);
-            if (url.OrdinalIgnoreCaseEndsWith(".svg"))
+            if (isSvg)
                 SaveSvgAsPng(imgStream, filePath);
             else {
                 EnsureIconCacheDir();
