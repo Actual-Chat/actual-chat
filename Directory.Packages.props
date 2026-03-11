@@ -125,6 +125,7 @@
     <PackageVersion Include="Svg.Custom" Version="3.4.2-local" />
     <PackageVersion Include="Svg.Model" Version="3.4.2-local" />
     <PackageVersion Include="ShimSkiaSharp" Version="3.4.2-local" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="3.119.2" />
   </ItemGroup>
   <!-- All other packages -->
   <ItemGroup>

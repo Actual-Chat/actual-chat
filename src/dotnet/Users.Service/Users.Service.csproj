@@ -25,6 +25,7 @@
     <PackageReference Include="TimeZoneConverter" />
     <PackageReference Include="Google.Cloud.RecaptchaEnterprise.V1" />
     <PackageReference Include="Svg.Skia" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" />
   </ItemGroup>
 
 </Project>
