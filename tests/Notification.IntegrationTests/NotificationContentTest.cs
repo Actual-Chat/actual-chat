@@ -18,12 +18,12 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
         // arrange
         var alice = await Tester.SignInAsAlice();
         var bob = await Tester.SignInAsBob();
-        var (chatId, _) = await Tester.CreateChat(false, "Good chat");
-        await Tester.InviteToChat(chatId, alice);
+        var (chat, _) = await Tester.CreateAndGetChat(false, "Good chat");
+        await Tester.InviteToChat(chat.Id, alice);
 
         // act
         await Tester.SignIn(bob);
-        var entry = await Tester.CreateTextEntry(chatId, "Ok!");
+        var entry = await Tester.CreateTextEntry(chat.Id, "Ok!");
         await Tester.SignIn(alice);
         await Tester.React(entry.Id, Emojis.Love);
 
@@ -32,7 +32,7 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
         aliceNotification.Should()
             .BeEquivalentTo(
                 new Notification(null!) {
-                    Title = "Bobby @ Good chat",
+                    Title = $"Bobby @ {chat.Title}",
                     Content = "Ok!",
                 },
                 o => o.Text());
@@ -41,7 +41,7 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
         bobNotification.Should()
             .BeEquivalentTo(
                 new Notification(null!) {
-                    Title = "Alice @ Good chat",
+                    Title = $"Alice @ {chat.Title}",
                     Content = "❤️ to \"Ok!\"",
                 },
                 o => o.Text());
@@ -159,11 +159,7 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
 
         // Set custom picture on chat
         var mediaId = await Tester.SaveMedia(chatId, TestImages.GetUploadedImage(TestImages.DefaultJpg));
-        await Tester.Commander.Call(new Chats_Change(
-            Tester.Session,
-            chatId,
-            null,
-            Change.Update(new ChatDiff { MediaId = mediaId })));
+        await Tester.SetChatMedia(chatId, mediaId);
 
         // act
         var entry = await Tester.CreateTextEntry(chatId, "Hello with custom icon!");

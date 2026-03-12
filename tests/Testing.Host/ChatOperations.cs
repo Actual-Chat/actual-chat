@@ -1,6 +1,5 @@
 ﻿using ActualChat.Chat;
 using ActualChat.Invite;
-using ActualChat.Users;
 
 namespace ActualChat.Testing.Host;
 
@@ -71,6 +70,14 @@ public static class ChatOperations
             null,
             Change.Update(new ChatDiff {
                 Title = title
+            })));
+
+    public static Task<Chat.Chat> SetChatMedia(this IWebTester tester, ChatId chatId, MediaId mediaId)
+        => tester.Commander.Call(new Chats_Change(tester.Session,
+            chatId,
+            null,
+            Change.Update(new ChatDiff {
+                MediaId = mediaId
             })));
 
     public static Task<Chat.Chat> DeleteChat(this IWebTester tester, ChatId chatId)
