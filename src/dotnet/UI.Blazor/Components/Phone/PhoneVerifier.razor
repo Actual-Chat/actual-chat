@@ -82,7 +82,7 @@
                     ? ValidationState.Valid
                     : ValidationState.Invalid;
                 if (_validationState is ValidationState.Valid) {
-                    _canSendValidationMessage = await TotpUI.ValidateCanSendToPhone(Phone, TotpPurpose.VerifyPhone, CancellationToken.None);
+                    _canSendValidationMessage = await TotpUI.CheckIfBlocked(Phone, TotpPurpose.VerifyPhone, CancellationToken.None);
                     if (!_canSendValidationMessage.IsNullOrEmpty()) {
                         _validationState = ValidationState.CannotSend;
                         UICommander.ShowError(_canSendValidationMessage);

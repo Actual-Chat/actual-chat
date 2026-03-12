@@ -232,14 +232,14 @@
             // Determine kind and pre-validate sending for phones
             var phone = await Phones.Parse(_stepModel.Contact, CancellationToken.None);
             if (phone is not null) {
-                var canSendValidationMessage = await TotpUI.ValidateCanSendToPhone(phone, TotpPurpose.SignInPhone, CancellationToken.None);
+                var canSendValidationMessage = await TotpUI.CheckIfBlocked(phone, TotpPurpose.SignInPhone, CancellationToken.None);
                 if (!canSendValidationMessage.IsNullOrEmpty()) {
                     _validationState = ValidationState.CannotSend;
                     UICommander.ShowError(canSendValidationMessage);
                 }
                 // In sign-in mode, check if account exists before sending TOTP
                 else if (!TotpSignInModel.IsRegister) {
-                    var exists = await TotpUI.AccountExistsByPhone(phone, CancellationToken.None);
+                    var exists = await TotpUI.AccountExists(phone, CancellationToken.None);
                     if (!exists) {
                         _accountError = "Account not found. Register instead?";
                         _validationState = ValidationState.None;
@@ -257,14 +257,14 @@
                     _validationState = ValidationState.CannotSend;
                     UICommander.ShowError("Invalid phone number or email address.");
                 } else {
-                    var emailCheck = await TotpUI.ValidateCanSendToEmail(emailId, TotpPurpose.SignInEmail, CancellationToken.None);
+                    var emailCheck = await TotpUI.CheckIfBlocked(emailId, TotpPurpose.SignInEmail, CancellationToken.None);
                     if (!emailCheck.IsNullOrEmpty()) {
                         _validationState = ValidationState.CannotSend;
                         UICommander.ShowError(emailCheck);
                     }
                     // In sign-in mode, check if account exists before sending TOTP
                     else if (!TotpSignInModel.IsRegister) {
-                        var exists = await TotpUI.AccountExistsByEmail(emailId, CancellationToken.None);
+                        var exists = await TotpUI.AccountExists(emailId, CancellationToken.None);
                         if (!exists) {
                             _accountError = "Account not found. Register instead?";
                             _validationState = ValidationState.None;
