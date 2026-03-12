@@ -1,7 +1,8 @@
 using ActualChat.Chat;
+using ActualChat.Media;
 using ActualChat.Testing.Host;
 using ActualChat.Testing.Host.Assertion;
-using ActualChat.Users;
+using ActualChat.Uploads;
 
 namespace ActualChat.Notification.IntegrationTests;
 
@@ -145,6 +146,73 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
         notification.IconUrl.Should().NotBeNullOrEmpty();
         notification.IconUrl.Should().Contain("api/avatars/marble/");
         notification.IconUrl.Should().Contain("format=png");
+    }
+
+    [Fact]
+    public async Task ShouldUseCustomIconForGroupChatWithPicture()
+    {
+        // arrange
+        var alice = await Tester.SignInAsAlice();
+        var bob = await Tester.SignInAsBob();
+        var (chatId, _) = await Tester.CreateChat(false, "Chat With Icon");
+        await Tester.InviteToChat(chatId, alice);
+
+        // Set custom picture on chat
+        var mediaId = await Tester.SaveMedia(chatId, TestImages.GetUploadedImage(TestImages.DefaultJpg));
+        await Tester.Commander.Call(new Chats_Change(
+            Tester.Session,
+            chatId,
+            null,
+            Change.Update(new ChatDiff { MediaId = mediaId })));
+
+        // act
+        var entry = await Tester.CreateTextEntry(chatId, "Hello with custom icon!");
+
+        // assert
+        var notification = await GetNotification(alice, entry.Id);
+        notification.IconUrl.Should().NotBeNullOrEmpty();
+        // Should use content URL for custom picture, not generated avatar
+        notification.IconUrl.Should().NotContain("api/avatars/");
+        notification.IconUrl.Should().Contain("api/content/");
+    }
+
+    [Fact]
+    public async Task ShouldUseCustomAvatarForPeerChatWithUserPicture()
+    {
+        // arrange
+        var alice = await Tester.SignInAsUniqueAlice();
+        var bob = await Tester.SignInAsUniqueBob();
+        var ownAccount = await Tester.Accounts.GetOwn(Tester.Session, default);
+
+        // Save media with user scope (for avatar pictures)
+        var mediaSaver = Tester.AppServices.GetRequiredService<IMediaSaver>();
+        var mediaId = MediaId.New(ownAccount.Id.Value);
+        await mediaSaver.Save(mediaId, TestImages.GetUploadedImage(TestImages.DefaultJpg), null, MediaKind.UserAvatarPicture, default);
+
+        // Create avatar with custom picture for bob
+        var avatarWithPicture = await Tester.Commander.Call(new Avatars_Change(
+            Tester.Session,
+            Symbol.Empty,
+            null,
+            Change.Create(new AvatarFull(ownAccount.Id) {
+                Name = "Bob with Picture",
+                MediaId = mediaId,
+            })));
+
+        // Set as default avatar
+        await Tester.Commander.Call(new Avatars_SetDefault(Tester.Session, avatarWithPicture.Id));
+
+        var chatId = PeerChatId.New(alice.Id, bob.Id);
+
+        // act
+        var entry = await Tester.CreateTextEntry(chatId, "Hello with custom avatar!");
+
+        // assert
+        var notification = await GetNotification(alice, entry.Id);
+        notification.IconUrl.Should().NotBeNullOrEmpty();
+        // Should use content URL for custom avatar, not generated avatar
+        notification.IconUrl.Should().NotContain("api/avatars/");
+        notification.IconUrl.Should().Contain("api/content/");
     }
 
     private async Task<Notification> GetNotification(AccountFull user, ChatEntryId entryId)
