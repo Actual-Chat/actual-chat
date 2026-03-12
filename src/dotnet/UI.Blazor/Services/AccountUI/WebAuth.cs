@@ -13,8 +13,8 @@ internal sealed class WebAuth(UIHub hub) : IClientAuth
     public (string Name, string DisplayName)[] GetSchemas()
         => _cachedSchemas ??= AuthSchema.ToSchemasWithDisplayNames(AuthSchema.AllExternal);
 
-    public Task SignIn(string schema)
-        => JS.InvokeVoidAsync($"{_jsClassName}.signIn", schema).AsTask();
+    public async Task<string?> SignIn(string schema, bool isRegister = false)
+        => await JS.InvokeAsync<string?>($"{_jsClassName}.signIn", schema, isRegister).ConfigureAwait(false);
 
     public Task SignOut()
         => JS.InvokeVoidAsync($"{_jsClassName}.signOut").AsTask();

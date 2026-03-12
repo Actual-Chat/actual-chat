@@ -19,6 +19,12 @@ public class TotpUI(UIHub hub): UIServiceBase<UIHub>(hub), IComputeService
     public Task<string> ValidateCanSendToEmail(Email email, TotpPurpose purpose, CancellationToken cancellationToken)
         => EmailAuth.ValidateCanSendToEmail(Session, email, purpose, cancellationToken);
 
+    public Task<bool> AccountExistsByPhone(Phone phone, CancellationToken cancellationToken)
+        => PhoneAuth.AccountExistsByPhone(Session, phone, cancellationToken);
+
+    public Task<bool> AccountExistsByEmail(Email email, CancellationToken cancellationToken)
+        => EmailAuth.AccountExistsByEmail(Session, email, cancellationToken);
+
     [ComputeMethod]
     public virtual async Task<bool> HasSentCodeRecently(CancellationToken cancellationToken)
     {

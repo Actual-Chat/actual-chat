@@ -65,6 +65,17 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         }
     }
 
+    // [ComputeMethod]
+    public virtual async Task<bool> AccountExistsByPhone(
+        Session session,
+        ActualChat.Phone phone,
+        CancellationToken cancellationToken)
+    {
+        var identity = UserIdentityExt.NewPhoneIdentity(phone);
+        var userId = await AccountsBackend.GetIdByUserIdentity(identity, cancellationToken).ConfigureAwait(false);
+        return userId is not null;
+    }
+
     // [CommandHandler]
     public virtual async Task<Moment> OnSendTotp(PhoneAuth_SendTotp command, CancellationToken cancellationToken)
     {

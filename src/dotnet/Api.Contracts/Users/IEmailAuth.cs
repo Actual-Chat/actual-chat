@@ -7,6 +7,8 @@ public interface IEmailAuth : IComputeService
 {
     [ComputeMethod]
     Task<string> ValidateCanSendToEmail(Session session, Email email, TotpPurpose purpose, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<bool> AccountExistsByEmail(Session session, Email email, CancellationToken cancellationToken);
     [CommandHandler]
     Task<Moment> OnSendTotp(EmailAuth_SendTotp command, CancellationToken cancellationToken);
     [CommandHandler]
