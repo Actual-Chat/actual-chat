@@ -189,13 +189,15 @@
             return;
 
         _stepModel.Contact = newValue;
-        if (_validationState == ValidationState.CannotSend)
+        if (_validationState is ValidationState.CannotSend or ValidationState.Invalid)
             _validationState = ValidationState.None;
     }
 
     private void OnRegisterToggleChanged(bool value) {
         TotpSignInModel.IsRegister = value;
         _accountError = "";
+        if (_validationState is ValidationState.CannotSend or ValidationState.Invalid)
+            _validationState = ValidationState.None;
         StateHasChanged();
     }
 
@@ -239,12 +241,17 @@
                 }
                 // In sign-in mode, check if account exists before sending TOTP
                 else if (!TotpSignInModel.IsRegister) {
-                    var exists = await TotpUI.AccountExists(phone, CancellationToken.None);
-                    if (!exists) {
-                        _accountError = "Account not found. Register instead?";
-                        _validationState = ValidationState.None;
-                        StateHasChanged();
-                        return;
+                    try {
+                        var exists = await TotpUI.AccountExists(phone, CancellationToken.None);
+                        if (!exists) {
+                            _accountError = "Account not found. Register instead?";
+                            _validationState = ValidationState.None;
+                            StateHasChanged();
+                            return;
+                        }
+                    }
+                    catch {
+                        // If the check fails, proceed anyway — the server will validate during TOTP
                     }
                 }
             } else if (!_stepModel.Contact.IsNullOrEmpty()) {
@@ -264,12 +271,17 @@
                     }
                     // In sign-in mode, check if account exists before sending TOTP
                     else if (!TotpSignInModel.IsRegister) {
-                        var exists = await TotpUI.AccountExists(emailId, CancellationToken.None);
-                        if (!exists) {
-                            _accountError = "Account not found. Register instead?";
-                            _validationState = ValidationState.None;
-                            StateHasChanged();
-                            return;
+                        try {
+                            var exists = await TotpUI.AccountExists(emailId, CancellationToken.None);
+                            if (!exists) {
+                                _accountError = "Account not found. Register instead?";
+                                _validationState = ValidationState.None;
+                                StateHasChanged();
+                                return;
+                            }
+                        }
+                        catch {
+                            // If the check fails, proceed anyway — the server will validate during TOTP
                         }
                     }
                 }
@@ -292,7 +304,8 @@
 
     public sealed class StepModel(ComponentIdGenerator? componentIdGenerator = null)
         : FormModel<StepModel>("phone-signin", componentIdGenerator) {
-        [Required] public string Contact { get; set; } = "";
+        [Required(ErrorMessage = "Phone or email is required.")]
+        public string Contact { get; set; } = "";
         public string ContactFieldId { get; set; } = "";
     }
 }
