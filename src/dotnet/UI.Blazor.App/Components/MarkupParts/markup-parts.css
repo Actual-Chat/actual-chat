@@ -200,6 +200,12 @@ body.hoverable .playable-text-markup > span:hover {
     @apply text-sm;
     /*@apply whitespace-pre-wrap;*/
 }
+.code-block-markup code span {
+    font: inherit !important;
+    letter-spacing: inherit !important;
+    word-spacing: inherit !important;
+    text-decoration: none !important;
+}
 
 ol.list-markup {
     @apply flex-y;
@@ -230,4 +236,8 @@ ul.list-markup li::marker {
 .chat-message-markup .changes,
 .chat-message-markup {
     @apply min-h-5;
+}
+
+.chat-message-markup p.paragraph-markup + p.paragraph-markup {
+    @apply mt-2;
 }

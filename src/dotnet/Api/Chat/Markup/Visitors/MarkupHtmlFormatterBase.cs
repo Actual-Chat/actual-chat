@@ -13,6 +13,7 @@ public abstract partial record MarkupHtmlFormatterBase : MarkupFormatterBase
     public string UrlClass { get; init; } = "markup-url";
     public string MentionClass { get; init; } = "markup-mention";
     public string CodeBlockClass { get; init; } = "markup-code";
+    public string ParagraphClass { get; init; } = "markup-paragraph";
     public string PreformattedTextClass { get; init; } = "markup-preformatted-text";
     public string NewLineHtml { get; init; } = "<br/>";
     public string? NewLineReplacement { get; init; } = null;
@@ -67,6 +68,15 @@ public abstract partial record MarkupHtmlFormatterBase : MarkupFormatterBase
         AddText(markup.Code, ref state);
         AddHtml("</div>", ref state);
     }
+
+    // protected override void VisitParagraph(ParagraphMarkup markup, ref StringBuilder state)
+    // {
+    //     AddHtml("<p", ref state);
+    //     AddAttribute("class", ParagraphClass, false, ref state);
+    //     AddHtml(">", ref state);
+    //     Visit(markup.Content, ref state);
+    //     AddHtml("</p>", ref state);
+    // }
 
     protected override void VisitPreformattedText(PreformattedTextMarkup markup, ref StringBuilder state)
         => AddTextSpan(markup.Text, PreformattedTextClass, ref state);

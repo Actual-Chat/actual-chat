@@ -138,11 +138,9 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     {
         if (ForwardedAuthorId.IsNullOrEmpty())
             return null;
-        if (ChatEntryId.ParseNullable(ForwardedChatEntryId) is not { } forwardedChatEntryId)
-            return null;
 
         return new ChatEntryForwarded {
-            ChatEntryId = forwardedChatEntryId,
+            ChatEntryId = ChatEntryId.ParseNullable(ForwardedChatEntryId),
             AuthorId = ActualChat.AuthorId.Parse(ForwardedAuthorId),
             BeginsAt = ForwardedChatEntryBeginsAt.ToMoment() ?? default,
             ChatTitle = ForwardedChatTitle ?? "",

@@ -155,6 +155,8 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
             return default!;
 
         var (uploadId, mediaId) = command;
+        var totalSw = Stopwatch.StartNew();
+        var stepSw = Stopwatch.StartNew();
         ThrottledProgress<double>? progress = null;
         try {
             var upload = await Get(uploadId, cancellationToken).ConfigureAwait(false);
@@ -162,15 +164,27 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
                 throw UploadNotFound();
 
             await EnsureUploadHasBeenCompleted(upload, cancellationToken).ConfigureAwait(false);
+            Log.LogDebug("OnProcessAndSaveContent: upload validated in {Elapsed}ms (upload '{UploadId}', media '{MediaId}')",
+                stepSw.ElapsedMilliseconds, uploadId, mediaId);
 
             var uploadedFile = GetUploadedStreamFileFrom(upload, cancellationToken);
 
+            stepSw.Restart();
             progress = CreateMediaConvertingProgressTracker(mediaId);
             using var processedFile = await MediaProcessor.ProcessUpload(uploadedFile, progress, cancellationToken)
                 .ConfigureAwait(false);
+            Log.LogDebug("OnProcessAndSaveContent: ProcessUpload completed in {Elapsed}ms (upload '{UploadId}', media '{MediaId}')",
+                stepSw.ElapsedMilliseconds, uploadId, mediaId);
+
+            stepSw.Restart();
             var mediaRef = await MediaSaver
                 .Save(mediaId, processedFile, isUpdate: true, default, cancellationToken)
                 .ConfigureAwait(false);
+            Log.LogDebug("OnProcessAndSaveContent: MediaSaver.Save completed in {Elapsed}ms (upload '{UploadId}', media '{MediaId}')",
+                stepSw.ElapsedMilliseconds, uploadId, mediaId);
+
+            Log.LogDebug("OnProcessAndSaveContent: total {Elapsed}ms (upload '{UploadId}', media '{MediaId}')",
+                totalSw.ElapsedMilliseconds, uploadId, mediaId);
             return mediaRef;
         }
         catch (Exception e) {
@@ -250,14 +264,22 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
             throw StandardError.Constraint("Upload length mismatch. Upload has not been completed.");
     }
 
-    private UploadedStreamFile GetUploadedStreamFileFrom(Upload upload, CancellationToken cancellationToken)
+    private UploadedFile GetUploadedStreamFileFrom(Upload upload, CancellationToken cancellationToken)
     {
-        var uploadedFile = new UploadedStreamFile(
+        if (IsGoogleStorage) {
+            var blobPath = UploadsStorage.GetDataFileId(upload.Id);
+            return new UploadedBlobFile(
+                upload.FileName,
+                upload.ContentType,
+                upload.Length!.Value,
+                blobPath,
+                () => UploadsStorage.GetDataFile(upload.Id, cancellationToken));
+        }
+        return new UploadedStreamFile(
             upload.FileName,
             upload.ContentType,
             upload.Length!.Value,
             () => UploadsStorage.GetDataFile(upload.Id, cancellationToken));
-        return uploadedFile;
     }
 
     private ThrottledProgress<double> CreateMediaConvertingProgressTracker(MediaId mediaId)

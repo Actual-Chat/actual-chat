@@ -164,6 +164,7 @@
 
     private SelectionUI SelectionUI => Hub.SelectionUI;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
+    private OptimisticReactions OptimisticReactions => Hub.OptimisticReactions;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter, EditorRequired] public ChatEntry ChatEntry { get; set; } = null!;
@@ -182,7 +183,8 @@
 
     private async Task React(Emoji emoji) {
         _ = TuneUI.Play(Tune.React);
-        ReactionBadge.PendingAnimations.Add((ChatEntry.Id.Value, emoji.Id.Value));
+        OptimisticReactions.AddPendingAnimation(ChatEntry.Id.Value, emoji.Id.Value);
+        OptimisticReactions.Set(ChatEntry.Id, emoji, false);
         var reaction = new Reaction {
             Id = Symbol.Empty,
             AuthorId = null!,

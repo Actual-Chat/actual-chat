@@ -1,19 +1,14 @@
-@using ActualChat.UI.Blazor.Module
 @using ActualChat.UI.Blazor.Services
+@using ActualChat.UI.Services
 @using ActualChat.Media
 @inherits ComponentBase<UIHub>
-@implements IAsyncDisposable
 
-<input @ref="InputRef" type="file" @attributes="InputAttributes"/>
+<FileUploadPicker @ref="_picker" FileSelected="OnFileSelected" @attributes="InputAttributes"/>
 
 @code {
-    private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.FileUpload.create";
-
     private FileUploader FileUploader => field ??= Services.GetRequiredService<FileUploader>();
 
-    private ElementReference InputRef { get; set; }
-    private DotNetObjectReference<FileUpload> BlazorRef { get; set; } = null!;
-    private IJSObjectReference JSRef { get; set; } = null!;
+    private FileUploadPicker _picker = null!;
 
     [Parameter, EditorRequired] public string Scope { get; set; } = "";
     [Parameter] public int? MaxSize { get; set; }
@@ -22,45 +17,25 @@
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object> InputAttributes { get; set; } = new();
 
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (!firstRender)
-            return;
-
-        BlazorRef = DotNetObjectReference.Create(this);
-        JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, InputRef, BlazorRef);
-    }
-
-    public async ValueTask DisposeAsync() {
-        await JSRef.DisposeSilentlyAsync("dispose");
-        JSRef = null!;
-        BlazorRef.DisposeSilently();
-        BlazorRef = null!;
-    }
-
-    [JSInvokable]
-    public async Task FileSelected(string fileName, string contentType, long size)
-    {
-        if (MaxSize.HasValue && size > MaxSize.Value) {
-            var sizeStr = FileSizeFormatter.Format(MaxSize.Value);
-            UICommander.ShowError(StandardError.Constraint($"File is too big. Max file size: {sizeStr}."));
-            await ClearSelection();
-            return;
-        }
-
-        WebFileUploaderBackend? uploaderBackend = null;
+    private async Task OnFileSelected(UploadSource source) {
         try {
+            if (MaxSize.HasValue && source.Metadata.Length > MaxSize.Value) {
+                var sizeStr = FileSizeFormatter.Format(MaxSize.Value);
+                UICommander.ShowError(StandardError.Constraint($"File is too big. Max file size: {sizeStr}."));
+                return;
+            }
+
             // Reserve MediaId
             var mediaId = await UICommander.Call(new Media_ReserveMedia(Session, Scope));
 
             // Create Upload
             var tag = $"FileUpload/v1/{Scope}";
             var metadata = new PropertyBag()
-                .Set("FileName", fileName)
-                .Set("ContentType", contentType);
-            var uploadId = await UICommander.Call(new Uploads_Create(Session, size, tag, metadata));
+                .Set("FileName", source.Metadata.FileName)
+                .Set("ContentType", source.Metadata.ContentType);
+            var uploadId = await UICommander.Call(new Uploads_Create(Session, source.Metadata.Length, tag, metadata));
 
-            var webUploadStreamSource = new WebUploadStreamSource(JSRef);
-            await FileUploader.Upload(webUploadStreamSource, uploadId, null, CancellationToken.None);
+            await FileUploader.Upload(source.StreamSource, uploadId, null, CancellationToken.None);
 
             // Process upload
             var mediaRef = await UICommander.Call(new Media_ProcessUpload(Session, mediaId, uploadId));
@@ -70,11 +45,7 @@
             UICommander.ShowError(e);
         }
         finally {
-            uploaderBackend?.DisposeSilently();
-            await ClearSelection();
+            await _picker.ClearSelection();
         }
     }
-
-    private async Task ClearSelection()
-        => await JSRef.InvokeVoidAsync("clear");
 }

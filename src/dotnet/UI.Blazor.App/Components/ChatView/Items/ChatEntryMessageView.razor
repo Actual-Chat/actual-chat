@@ -69,14 +69,14 @@
         <div class="chat-message">
             <div class="c-content">
                 <div class="message-content">
-                    <p class="chat-message-markup">
+                    <div class="chat-message-markup">
                         <CascadingValue Value="@entry" IsFixed="true">
                             <MarkupView Markup="@markup"/>
                         </CascadingValue>
-                    </p>
+                    </div>
                 </div>
             </div>
-            @if (entry.HasReactions) {
+            @if (entry.HasReactions || OptimisticReactions.HasPendingAdd(entry.Id)) {
                 <MessageReactions Entry="@entry"/>
             }
         </div>
@@ -186,7 +186,7 @@
                     }
                 </div>
             }
-            @if (entry.HasReactions) {
+            @if (entry.HasReactions || OptimisticReactions.HasPendingAdd(entry.Id)) {
                 <MessageReactions Entry="@entry"/>
             }
             @if (!isForward && m.MentionedAuthorIds is not null && m.MentionedAuthorIds.Count != 0) {
@@ -204,11 +204,12 @@
 
 @code {
     private MessageHoverMenu? _messageHoverMenu;
+    private bool _forceRender;
     private Model? _rendered;
     private ChatEntryMessage? _renderedMessage;
     private Markup? _renderedMarkup;
-    private Task<Markup> _markupTask = Task.FromResult(Markup.Empty);
-    private Markup _markup = Markup.Empty;
+    private Task<Markup> _markupTask = Task.FromResult(Markup.EmptyText);
+    private Markup _markup = Markup.EmptyText;
     private ChatEntryMessage? _lastMessage;
     private EventCallback<AuthorId> _onClickCallback;
     private bool _hasBeenRead;
@@ -225,6 +226,7 @@
     private SelectionUI SelectionUI => Hub.SelectionUI;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
+    private OptimisticReactions OptimisticReactions => Hub.OptimisticReactions;
     private ILogger Log => field ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 
@@ -232,8 +234,22 @@
     [Parameter, EditorRequired] public ChatEntryMessage Message { get; set; } = null!;
     [Parameter] public bool ShowAuthorBadge { get; set; } = true;
 
-    protected override void OnInitialized()
-        => _onClickCallback = NoStateHasChanged.EventCallback<AuthorId>(OnAuthorBadgeClick);
+    protected override void OnInitialized() {
+        _onClickCallback = NoStateHasChanged.EventCallback<AuthorId>(OnAuthorBadgeClick);
+        OptimisticReactions.Changed += OnOptimisticReactionChanged;
+    }
+
+    public override ValueTask DisposeAsync() {
+        OptimisticReactions.Changed -= OnOptimisticReactionChanged;
+        return base.DisposeAsync();
+    }
+
+    private void OnOptimisticReactionChanged(ChatEntryId entryId) {
+        if (entryId == Entry.Id && !Entry.HasReactions) {
+            _forceRender = true;
+            this.NotifyStateHasChanged();
+        }
+    }
 
     private void OnAuthorBadgeClick(AuthorId authorId)
         => _ = AuthorUI.Show(authorId);
@@ -250,13 +266,13 @@
     }
 
     protected override bool ShouldRender() {
+        if (_forceRender) {
+            _forceRender = false;
+            return true;
+        }
         var shouldRender = !ReferenceEquals(_rendered, State.Value)
            || !ReferenceEquals(_renderedMessage, Message)
            || !ReferenceEquals(_renderedMarkup, _markup);
-        // if (!shouldRender) {
-        //     DebugLog?.LogDebug("Skipping rendering ChatEntryMessageView for chat {ChatId} with message {MessageId} because state has not changed (Content = '{Content}')"
-        //         , ChatId, Message.Entry.Id, Message.Entry.Content);
-        // }
         return shouldRender;
     }
 

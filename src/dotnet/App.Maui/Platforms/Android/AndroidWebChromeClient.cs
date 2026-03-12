@@ -75,7 +75,7 @@ public class AndroidWebChromeClient : WebChromeClient
     protected override void Dispose(bool disposing)
     {
         Log.LogDebug("Dispose. Disposing={Disposing}", disposing);
-        if (disposing && _client.IsNotNull())
+        if (disposing && _client.IsValid())
             _client.Dispose();
         base.Dispose(disposing);
     }

@@ -7,9 +7,12 @@ namespace ActualChat.Uploads;
 /// </summary>
 public sealed record ProcessedFile(UploadedFile File, Size? Size, UploadedFile? Thumbnail = null) : IDisposable
 {
+    public Action? OnDispose { get; init; }
+
     public void Dispose()
     {
         (File as UploadedTempFile)?.Delete();
         (Thumbnail as UploadedTempFile)?.Delete();
+        try { OnDispose?.Invoke(); } catch { /* best-effort */ }
     }
 }

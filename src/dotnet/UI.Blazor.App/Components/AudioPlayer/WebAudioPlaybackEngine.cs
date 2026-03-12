@@ -53,7 +53,7 @@ public sealed class WebAudioPlaybackEngine(
         if (_jsRef == null && _whenPlayerCreated != null)
             await _whenPlayerCreated.ConfigureAwait(false);
         if (_jsRef == null)
-            throw StandardError.StateTransition(GetType(), "Start command should be called first.");
+            throw StandardError.AudioPlayer.PlayingStateExpected(GetType());
 
         _ = _jsRef.InvokeVoidAsync("pause", CancellationToken.None);
     }
@@ -63,19 +63,19 @@ public sealed class WebAudioPlaybackEngine(
         if (_jsRef == null && _whenPlayerCreated != null)
             await _whenPlayerCreated.ConfigureAwait(false);
         if (_jsRef == null)
-            throw StandardError.StateTransition(GetType(), "Start command should be called first.");
+            throw StandardError.AudioPlayer.PlayingStateExpected(GetType());
 
         _ = _jsRef.InvokeVoidAsync("resume", CancellationToken.None);
     }
 
-    public async Task End(bool abort, CancellationToken cancellationToken)
+    public async Task End(bool mustAbort, CancellationToken cancellationToken)
     {
         if (_jsRef == null && _whenPlayerCreated != null)
             await _whenPlayerCreated.ConfigureAwait(false);
         if (_jsRef == null)
-            throw StandardError.StateTransition(GetType(), "Start command should be called first.");
+            throw StandardError.AudioPlayer.PlayingStateExpected(GetType());
 
-        _ = _jsRef.InvokeVoidAsync("end", CancellationToken.None, abort);
+        _ = _jsRef.InvokeVoidAsync("end", CancellationToken.None, mustAbort);
     }
 
     public ValueTask PushFrame(MediaFrame frame, CancellationToken cancellationToken)

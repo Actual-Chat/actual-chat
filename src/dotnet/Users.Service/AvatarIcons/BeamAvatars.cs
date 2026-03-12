@@ -1,7 +1,7 @@
 using ActualLab.IO;
 using SkiaSharp;
 
-namespace ActualChat.Maui.Services;
+namespace ActualChat.Users.AvatarIcons;
 
 /// <summary>
 /// Generates beam-style PNG avatars with facial features using SkiaSharp.
@@ -30,6 +30,55 @@ public static class BeamAvatars
         using var pixmap = surface.PeekPixels();
         using var stream = new SKFileWStream(filePath);
         pixmap.Encode(stream, SKEncodedImageFormat.Png, 100);
+    }
+
+    public static byte[] GeneratePngBytes(string key, int size = Size, string[]? colors = null, bool square = false)
+    {
+        colors ??= DefaultColors;
+        var scale = (float)size / DesignSize;
+        var data = GenerateData(key, colors, square);
+        var imageInfo = new SKImageInfo(size, size, SKColorType.Rgba8888, SKAlphaType.Premul);
+        using var surface = SKSurface.Create(imageInfo);
+        var canvas = surface.Canvas;
+        canvas.Clear(SKColors.Transparent);
+
+        canvas.Scale(scale);
+        DrawBackground(canvas, data.BackgroundColor);
+        DrawWrapper(canvas, data);
+        DrawFace(canvas, data);
+
+        using var image = surface.Snapshot();
+        using var pngData = image.Encode(SKEncodedImageFormat.Png, 100);
+        return pngData.ToArray();
+    }
+
+    public static string GenerateSvg(string key, string[]? colors = null, bool square = false)
+    {
+        colors ??= DefaultColors;
+        var data = GenerateData(key, colors, square);
+
+        var rx = square ? "" : $"rx='{DesignSize * 2}'";
+        var wrapperRx = data.IsCircle ? DesignSize : DesignSize / 6;
+        var mouth = data.IsMouthOpen
+            ? $"<path d='M15 {19 + data.MouthSpread}c2 1 4 1 6 0' stroke='#{data.FaceColor}' fill='none' stroke-linecap='round' />"
+            : $"<path d='M13,{19 + data.MouthSpread} a1,0.75 0 0,0 10,0' fill='#{data.FaceColor}' />";
+
+        return $"""
+            <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 {DesignSize} {DesignSize}' fill='none' width='{DesignSize}' height='{DesignSize}'>
+                <mask id='m' maskUnits='userSpaceOnUse' x='0' y='0' width='{DesignSize}' height='{DesignSize}'>
+                    <rect width='{DesignSize}' height='{DesignSize}' {rx} fill='#FFFFFF' />
+                </mask>
+                <g mask='url(#m)'>
+                    <rect width='{DesignSize}' height='{DesignSize}' fill='#{data.BackgroundColor}' />
+                    <rect x='0' y='0' width='{DesignSize}' height='{DesignSize}' transform='translate({data.WrapperTranslateX} {data.WrapperTranslateY}) rotate({data.WrapperRotate} {DesignSize / 2} {DesignSize / 2}) scale({data.WrapperScale:F2})' fill='#{data.WrapperColor}' rx='{wrapperRx}' />
+                    <g transform='translate({data.FaceTranslateX} {data.FaceTranslateY}) rotate({data.FaceRotate} {DesignSize / 2} {DesignSize / 2})'>
+                        {mouth}
+                        <rect x='{14 - data.EyeSpread}' y='14' width='1.5' height='2' rx='1' stroke='none' fill='#{data.FaceColor}' />
+                        <rect x='{20 + data.EyeSpread}' y='14' width='1.5' height='2' rx='1' stroke='none' fill='#{data.FaceColor}' />
+                    </g>
+                </g>
+            </svg>
+            """;
     }
 
     // Private methods
@@ -118,7 +167,7 @@ public static class BeamAvatars
         }
     }
 
-    private static AvatarData GenerateData(string key, string[] colors)
+    private static AvatarData GenerateData(string key, string[] colors, bool square = false)
     {
         var numFromName = AvatarUtils.HashCode(key);
         var range = colors.Length;

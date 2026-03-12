@@ -144,7 +144,7 @@ public static class ClientStartup
             CodeKeeper.CallSilently(() => _ = new InterfaceImmutableDictionaryFormatter<PlaceId, ChatId>());
             // TODO: Add support for parameter comparers
         });
-        CodeKeeper.Set<ProxyCodeKeeper, FusionProxyCodeKeeper>();
+        CodeKeeper.Set<ProxyCodeKeeper, AppProxyCodeKeeper>();
         if (CodeKeeper.AlwaysFalse) {
             // NOTE(AY): This block actually does nothing, it's just to measure the time RunActions() takes (if called).
             // Currently, any proxy uses .AddAction() to register its "actions", even though it's not needed -

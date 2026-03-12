@@ -83,6 +83,53 @@ if ($currentOS -eq "Windows" -and $hasWindowsTerminal -and -not $env:WT_SESSION 
     exit 0
 }
 
+# Convert worktree git paths from absolute to relative so they work across
+# Windows and Docker/Linux (where mount points differ).
+function Convert-WorktreeToRelativePaths {
+    param(
+        [string]$WorktreePath,
+        [string]$MainProjectPath,
+        [switch]$Debug
+    )
+
+    $worktreeName = Split-Path -Leaf $WorktreePath
+
+    # Fix <worktree>/.git file: convert absolute gitdir to relative
+    $dotGitFile = Join-Path $WorktreePath ".git"
+    if (Test-Path $dotGitFile) {
+        $content = Get-Content $dotGitFile -Raw
+        if ($content -match '^gitdir:\s*(.+)$') {
+            $currentGitDir = $Matches[1].Trim()
+            # Only fix if the path is absolute (not already relative)
+            if ([System.IO.Path]::IsPathRooted(($currentGitDir -replace "/", [System.IO.Path]::DirectorySeparatorChar))) {
+                $relPath = [System.IO.Path]::GetRelativePath($WorktreePath, ($currentGitDir -replace "/", [System.IO.Path]::DirectorySeparatorChar))
+                $relPath = $relPath -replace "\\", "/"
+                $newContent = "gitdir: $relPath`n"
+                Set-Content -Path $dotGitFile -Value $newContent -NoNewline
+                if ($Debug) { Write-Host "[DEBUG] Fixed $dotGitFile`: gitdir: $relPath" }
+            } elseif ($Debug) {
+                Write-Host "[DEBUG] $dotGitFile already has relative path: $currentGitDir"
+            }
+        }
+    }
+
+    # Fix <main>/.git/worktrees/<name>/gitdir: convert absolute path to relative
+    $mainGitDir = Join-Path $MainProjectPath ".git"
+    $worktreeGitDir = Join-Path $mainGitDir "worktrees" $worktreeName "gitdir"
+    if (Test-Path $worktreeGitDir) {
+        $content = (Get-Content $worktreeGitDir -Raw).Trim()
+        if ([System.IO.Path]::IsPathRooted(($content -replace "/", [System.IO.Path]::DirectorySeparatorChar))) {
+            $worktreeGitDirParent = Split-Path -Parent $worktreeGitDir
+            $relPath = [System.IO.Path]::GetRelativePath($worktreeGitDirParent, ($content -replace "/", [System.IO.Path]::DirectorySeparatorChar))
+            $relPath = $relPath -replace "\\", "/"
+            Set-Content -Path $worktreeGitDir -Value "$relPath`n" -NoNewline
+            if ($Debug) { Write-Host "[DEBUG] Fixed $worktreeGitDir`: $relPath" }
+        } elseif ($Debug) {
+            Write-Host "[DEBUG] $worktreeGitDir already has relative path: $content"
+        }
+    }
+}
+
 # Find project root via git. Detects worktrees automatically.
 function Find-ProjectRoot {
     param([switch]$Debug)
@@ -312,18 +359,39 @@ if ($argIndex -lt $args.Count) {
 }
 
 # Find current project
-$projectInfo = Find-ProjectRoot -Debug:$debugMode
-if (-not $projectInfo) {
-    Write-Error "Could not find project root."
-    Write-Error "Make sure you're inside a git repository."
-    exit 1
-}
+if ($fromMode -and $env:AC_ProjectPath) {
+    # Re-invoked inside Docker/WSL: derive project info from env vars set by outer invocation.
+    # This avoids calling git rev-parse, which fails in worktrees with absolute Windows paths.
+    $projectRoot  = $env:AC_ProjectPath
+    $folderName   = Split-Path -Leaf $env:AC_ProjectPath
+    $worktree     = if ($env:AC_Worktree) { $env:AC_Worktree } else { "" }
+    $projectName  = if ($worktree -and $folderName.EndsWith("-$worktree")) {
+        $folderName.Substring(0, $folderName.Length - $worktree.Length - 1)
+    } else { $folderName }
+    $relativePath = ""
+    if ($debugMode) {
+        Write-Host "[DEBUG] Using env vars: projectRoot=$projectRoot, folderName=$folderName, worktree=$worktree, projectName=$projectName"
+    }
 
-$projectName  = $projectInfo.ProjectName
-$folderName   = $projectInfo.FolderName
-$projectRoot  = $projectInfo.ProjectRoot
-$relativePath = $projectInfo.RelativePath -replace "\\", "/"
-$worktree     = $projectInfo.Worktree
+    # Fix worktree git paths if they still have absolute Windows paths (from host)
+    if ($worktree) {
+        $mainProjectPath = Join-Path $env:AC_ProjectRoot $projectName
+        Convert-WorktreeToRelativePaths -WorktreePath $projectRoot -MainProjectPath $mainProjectPath -Debug:$debugMode
+    }
+} else {
+    $projectInfo = Find-ProjectRoot -Debug:$debugMode
+    if (-not $projectInfo) {
+        Write-Error "Could not find project root."
+        Write-Error "Make sure you're inside a git repository."
+        exit 1
+    }
+
+    $projectName  = $projectInfo.ProjectName
+    $folderName   = $projectInfo.FolderName
+    $projectRoot  = $projectInfo.ProjectRoot
+    $relativePath = $projectInfo.RelativePath -replace "\\", "/"
+    $worktree     = $projectInfo.Worktree
+}
 
 # Save the original folder name (where c.ps1 was invoked from, before wt/fwt/bwt)
 $originalFolderName = $folderName
@@ -360,6 +428,9 @@ if ($worktreeSuffix) {
             Set-Location $originalLocation
         }
     }
+
+    # Convert worktree git paths to relative so they work in Docker
+    Convert-WorktreeToRelativePaths -WorktreePath $worktreePath -MainProjectPath $mainProjectPath -Debug:$debugMode
 
     # Update project info for the worktree
     $projectRoot  = $worktreePath
@@ -426,6 +497,10 @@ if ($featureWorktreeSuffix) {
             Set-Location $originalLocation
         }
     }
+
+    # Convert worktree git paths to relative so they work in Docker
+    $mainProjectPath = Join-Path $env:AC_ProjectRoot $projectName
+    Convert-WorktreeToRelativePaths -WorktreePath $worktreePath -MainProjectPath $mainProjectPath -Debug:$debugMode
 
     # Update project info for the worktree
     $projectRoot  = $worktreePath

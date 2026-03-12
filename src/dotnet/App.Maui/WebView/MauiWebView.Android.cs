@@ -42,8 +42,8 @@ public partial class MauiWebView
 
     private partial void SetupSessionCookie(Session session)
     {
-        var webView = AndroidWebView;
-        if (webView.IsNull())
+        using var webView = AndroidWebView.Hold();
+        if (!webView.IsValid)
             return;
 
         var cookieManager = CookieManager.Instance!;

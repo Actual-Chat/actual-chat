@@ -17,8 +17,8 @@ internal sealed class WindowsAudioPlaybackEngine(
     TrackInfo info,
     IMediaSource source,
     IAudioPlayerBackend playerBackend,
-    IServiceProvider services)
-    : IAudioPlaybackEngine
+    IServiceProvider services
+    ) : IAudioPlaybackEngine
 {
     private readonly Channel<IMemoryOwner<byte>> _packetChannel = Channel.CreateUnbounded<IMemoryOwner<byte>>(new UnboundedChannelOptions {
         SingleReader = true,
@@ -102,7 +102,7 @@ internal sealed class WindowsAudioPlaybackEngine(
     public Task Pause(CancellationToken cancellationToken)
     {
         if (_frameInput == null)
-            throw StandardError.StateTransition(GetType(), "Start command should be called first.");
+            throw StandardError.AudioPlayer.PlayingStateExpected(GetType());
 
         _frameInput.Stop();
         _isPaused = true;
@@ -116,7 +116,7 @@ internal sealed class WindowsAudioPlaybackEngine(
     public Task Resume(CancellationToken cancellationToken)
     {
         if (_frameInput == null)
-            throw StandardError.StateTransition(GetType(), "Start command should be called first.");
+            throw StandardError.AudioPlayer.PlayingStateExpected(GetType());
 
         _pauseCts = new CancellationTokenSource();
         _delayedPlayTask = StartWhenBuffered(_pauseCts.Token);
@@ -125,9 +125,9 @@ internal sealed class WindowsAudioPlaybackEngine(
         return Task.CompletedTask;
     }
 
-    public Task End(bool abort, CancellationToken cancellationToken)
+    public Task End(bool mustAbort, CancellationToken cancellationToken)
     {
-        if (!abort) {
+        if (!mustAbort) {
             // Normal end: indicate no more input packets; let decode/playback drain and finish naturally
             _packetChannel.Writer.TryComplete();
             return Task.CompletedTask;
@@ -137,7 +137,7 @@ internal sealed class WindowsAudioPlaybackEngine(
         try {
             _frameInput?.Stop();
             _graph?.Stop();
-        } catch { /* ignore */ }
+        } catch { /* Ignore */ }
         _packetChannel.Writer.TryComplete();
         _decodedSamples.Clear();
         _decodeCts.CancelAndDisposeSilently();
@@ -168,7 +168,7 @@ internal sealed class WindowsAudioPlaybackEngine(
         catch (OperationCanceledException) { }
         catch (Exception e) {
             Log.LogError(e, "Failed to wait for decode loop to complete");
-            /* ignore */
+            /* Ignore */
         }
 
         if (_graph != null) {
@@ -257,7 +257,7 @@ internal sealed class WindowsAudioPlaybackEngine(
             }
         }
         catch (OperationCanceledException) {
-            /* ignore */
+            /* Ignore */
         }
         catch (Exception e) {
             Log.LogError(e, "Decode/Feed loop failed");

@@ -1,0 +1,9 @@
+@inherits MarkupViewBase<ParagraphMarkup>
+
+<p class="paragraph-markup">
+    @if (Markup.Content is TextMarkup { Text.Length: 0 }) {
+        <br/>
+    } else {
+        <MarkupView Markup="@Markup.Content"/>
+    }
+</p>

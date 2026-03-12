@@ -1,4 +1,4 @@
-namespace ActualChat.Maui.Services;
+namespace ActualChat.Users.AvatarIcons;
 
 /// <summary>
 /// Utility methods for deterministic avatar generation from string keys.

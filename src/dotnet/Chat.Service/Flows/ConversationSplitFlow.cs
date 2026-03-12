@@ -145,7 +145,7 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
             var rangesAreEqual = lastRanges.SequenceEqual(currentRanges);
             var hasCurrentRanges = currentRanges.Count > 0;
 
-            var tooOften = LastSummaryAt + Settings.Summarization.ChatEntrySummarizationDelay >= now;
+            var tooOften = hasImmature && (LastSummaryAt + Settings.Summarization.ResummarizationDelay >= now);
             var readyToSummarize =
                 state.CurrentGroup != null
                 && state.WordCount >= Settings.Summarization.MinConversationWords
@@ -176,8 +176,11 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
 
             // Schedule next resume
             if (hasImmature || (tooOften && !rangesAreEqual && hasCurrentRanges)) {
-                Console.Log($"Scheduling delayed resume: hasImmature={hasImmature}, tooOften={tooOften}");
-                Runtime.StageResumeIn(Settings.Summarization.ChatEntrySummarizationDelay);
+                var resumeDelay = hasImmature && !tooOften
+                    ? Settings.Summarization.ChatEntrySummarizationDelay
+                    : Settings.Summarization.ResummarizationDelay;
+                Console.Log($"Scheduling delayed resume: hasImmature={hasImmature}, tooOften={tooOften}, delay={resumeDelay}");
+                Runtime.StageResumeIn(resumeDelay);
             }
             else
                 Console.Log("End-of-stream: completing (no resume needed)");

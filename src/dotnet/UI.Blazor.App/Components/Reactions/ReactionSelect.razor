@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using Microsoft.Extensions.ObjectPool
 @inherits ComponentBase<AppUIHub>
 
 <ul class="reaction-select">
@@ -25,6 +26,8 @@
     private bool _hasMore;
     private UserReactionSettings? _reactionSettings;
 
+    private OptimisticReactions OptimisticReactions => Hub.OptimisticReactions;
+
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter] public bool ShowDefaultReaction { get; set; } = true;
     [Parameter] public EventCallback OnExpandClick { get; set; }
@@ -44,7 +47,8 @@
 
     private async Task React(Emoji emoji) {
         _ = TuneUI.Play(Tune.React);
-        ReactionBadge.PendingAnimations.Add((Entry.Id.Value, emoji.Id.Value));
+        OptimisticReactions.AddPendingAnimation(Entry.Id.Value, emoji.Id.Value);
+        OptimisticReactions.Set(Entry.Id, emoji, false);
         var reaction = new Reaction {
             Id = Symbol.Empty,
             AuthorId = null!,

@@ -1,0 +1,233 @@
+@using ActualChat.Kvas
+@using ActualChat.Media
+@using ActualChat.UI.Services
+@using ActualChat.UI.Blazor.Components.FileUpload
+@inherits ComputedStateComponent<AppUIHub, TranscodingTestPage.Model?>
+@page "/test/video-transcoding"
+
+<RequireAccount MustBeAdmin="true"/>
+<MainHeader>Video Transcoding Test</MainHeader>
+
+@{
+    var m = State.LastNonErrorValue;
+    if (m is null)
+        return;
+    var error = State.Error;
+}
+
+@if (error != null) {
+    <ErrorToast Class="mb-3">@error.Message</ErrorToast>
+}
+
+<h3 class="section border-0">Upload</h3>
+<div class="flex-y gap-y-2">
+    <FileUploadPicker @ref="_picker" FileSelected="OnFileSelected" accept="video/*" disabled="@_isUploading"/>
+    @if (_pendingSource != null) {
+        <p>Selected: <b>@_pendingSource.Metadata.FileName</b> (@FileSizeFormatter.Format(_pendingSource.Metadata.Length))</p>
+        <Button Click="OnUpload" disabled="@_isUploading">Upload</Button>
+    }
+    @if (_isUploading) {
+        <p>Uploading... @_uploadProgress.ToInvariantString()%</p>
+    }
+    @if (_uploadError != null) {
+        <ErrorToast Class="mb-3">@_uploadError</ErrorToast>
+    }
+    @if (_uploadSuccess) {
+        <p style="color: green;">Upload complete.</p>
+    }
+</div>
+
+<h3 class="section">Saved State</h3>
+<ul>
+    <li>File name: <code>@(m.FileName ?? "(none)")</code></li>
+    <li>UploadId: <code>@(m.UploadId?.Value ?? "(none)")</code></li>
+    <li>MediaId: <code>@(m.MediaId?.Value ?? "(none)")</code></li>
+</ul>
+@if (m.UploadId != null || m.MediaId != null) {
+    <Button Click="OnForget">Forget</Button>
+}
+
+<h3 class="section">Process</h3>
+@if (m.MediaId != null && m.UploadId != null) {
+    <Button Click="OnProcess" disabled="@_isProcessing">Process</Button>
+    @if (_isProcessing) {
+        <p>Processing started...</p>
+    }
+    @if (_processError != null) {
+        <ErrorToast Class="mb-3">@_processError</ErrorToast>
+    }
+} else {
+    <p>Upload a video first (or verify saved state above).</p>
+}
+
+@if (m.Progress != null) {
+    <h4>Progress</h4>
+    <ul>
+        <li>Stage: <b>@m.Progress.Stage</b></li>
+        <li>StageProgress: <b>@m.Progress.StageProgress.ToInvariantString()%</b></li>
+        @if (m.Progress.HasFailed) {
+            <li style="color: red;">Error: @m.Progress.Error</li>
+        }
+    </ul>
+}
+
+@if (m.Content != null) {
+    <h4>Result</h4>
+    <ul>
+        <li>BlobId: <code>@m.Content.BlobId</code></li>
+        @if (m.Content.ThumbnailBlobId != null) {
+            <li>ThumbnailBlobId: <code>@m.Content.ThumbnailBlobId</code></li>
+        }
+    </ul>
+}
+
+@code {
+    private FileUploadPicker _picker = null!;
+    private UploadSource? _pendingSource;
+    private bool _isUploading;
+    private double _uploadProgress;
+    private string? _uploadError;
+    private bool _uploadSuccess;
+    private bool _isProcessing;
+    private string? _processError;
+
+    private IMedia Media => Hub.Media;
+    private ICommander Commander => Hub.Commander;
+    private FileUploader FileUploader => field ??= Hub.Services.GetRequiredService<FileUploader>();
+    private KvasAccessor<UserTranscodingTestSettings> UserTranscodingTestSettings()
+        => AccountSettings.UserTranscodingTestSettings();
+
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        var settings = await UserTranscodingTestSettings().Get(cancellationToken).ConfigureAwait(false);
+        var fileName = settings.FileName;
+        var uploadId = settings.UploadId;
+        var mediaId = settings.MediaId;
+
+        MediaProgress? progress = null;
+        MediaRef? content = null;
+        if (mediaId is not null) {
+            progress = await Media.GetProgress(Session, mediaId, cancellationToken).ConfigureAwait(false);
+            content = await Media.GetContent(Session, mediaId, cancellationToken).ConfigureAwait(false);
+        }
+
+        return new Model {
+            FileName = fileName,
+            UploadId = uploadId,
+            MediaId = mediaId,
+            Progress = progress,
+            Content = content,
+        };
+    }
+
+    private async Task OnFileSelected(UploadSource source) {
+        const int maxSize = Constants.Attachments.FileSizeLimit;
+        if (source.Metadata.Length > maxSize) {
+            var sizeStr = FileSizeFormatter.Format(maxSize);
+            UICommander.ShowError(StandardError.Constraint($"File is too big. Max file size: {sizeStr}."));
+            await _picker.ClearSelection();
+        } else {
+            _pendingSource = source;
+            _uploadError = null;
+            _uploadSuccess = false;
+        }
+        StateHasChanged();
+    }
+
+    private async Task OnUpload() {
+        if (_pendingSource == null)
+            return;
+
+        _isUploading = true;
+        _uploadError = null;
+        _uploadSuccess = false;
+        _uploadProgress = 0;
+        StateHasChanged();
+
+        try {
+            var source = _pendingSource;
+
+            // 1. Reserve MediaId
+            var mediaId = await UICommander.Call(new Media_ReserveMedia(Session, "transcoding-test") {
+                Kind = MediaKind.ChatEntryVideo,
+            });
+
+            // 2. Create Upload
+            var tag = "TranscodingTest/v1";
+            var metadata = new PropertyBag()
+                .Set("FileName", source.Metadata.FileName)
+                .Set("ContentType", source.Metadata.ContentType);
+            var uploadId = await UICommander.Call(new Uploads_Create(Session, source.Metadata.Length, tag, metadata));
+
+            // 3. Upload
+            var progress = new Progress<double>(p => {
+                _uploadProgress = p;
+                _ = InvokeAsync(StateHasChanged);
+            });
+            await FileUploader.Upload(source.StreamSource, uploadId, progress, CancellationToken.None);
+
+            // 4. Save to settings
+            await UserTranscodingTestSettings().Set(
+                new UserTranscodingTestSettings {
+                    FileName = source.Metadata.FileName,
+                    UploadId = uploadId,
+                    MediaId = mediaId,
+                }, CancellationToken.None);
+
+            _uploadSuccess = true;
+            _pendingSource = null;
+        }
+        catch (Exception e) {
+            _uploadError = e.Message;
+        }
+        finally {
+            _isUploading = false;
+            await _picker.ClearSelection();
+            StateHasChanged();
+            _ = State.Recompute();
+        }
+    }
+
+    private async Task OnForget() {
+        await UserTranscodingTestSettings().Set(
+            new UserTranscodingTestSettings(), CancellationToken.None);
+        _ = State.Recompute();
+    }
+
+    private async Task OnProcess() {
+        var m = State.LastNonErrorValue!;
+        if (m.MediaId is null || m.UploadId is null)
+            return;
+
+        _isProcessing = true;
+        _processError = null;
+        StateHasChanged();
+
+        try {
+            var cmd = new Uploads_StartProcessUpload(
+                Session,
+                m.UploadId.Require(),
+                m.MediaId.Require());
+            await Commander.Call(cmd);
+        }
+        catch (Exception e) {
+            _processError = e.Message;
+        }
+        finally {
+            _isProcessing = false;
+            StateHasChanged();
+            _ = State.Recompute();
+        }
+    }
+
+    public sealed record Model {
+        public string? FileName { get; init; }
+        public UploadId? UploadId { get; init; }
+        public MediaId? MediaId { get; init; }
+        public MediaProgress? Progress { get; init; }
+        public MediaRef? Content { get; init; }
+
+        // This record relies on referential equality
+        public bool Equals(Model? other) => ReferenceEquals(this, other);
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
+    }
+}

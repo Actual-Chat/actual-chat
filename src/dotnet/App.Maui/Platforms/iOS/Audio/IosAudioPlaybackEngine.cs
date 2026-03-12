@@ -10,7 +10,8 @@ namespace ActualChat.App.Maui.Audio;
 public class IosAudioPlaybackEngine(
     string playerId,
     IAudioPlayerBackend backend,
-    AppUIHub hub) : IAudioPlaybackEngine
+    AppUIHub hub
+    ) : IAudioPlaybackEngine
 {
     private VoicePlayer _voicePlayer = null!;
     private FuncWorker _processFeederWorker = null!;

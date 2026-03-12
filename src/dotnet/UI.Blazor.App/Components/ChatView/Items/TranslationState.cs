@@ -27,7 +27,7 @@ public record TranslatedText(string Text, TranslationState State)
 
 public record TranslatedMarkup(Markup Markup, TranslationState State)
 {
-    public static readonly TranslatedMarkup None = From(Markup.Empty);
+    public static readonly TranslatedMarkup None = From(Markup.EmptyText);
 
     public static TranslatedMarkup From(Markup originalMarkup)
         => new (originalMarkup, TranslationState.None);

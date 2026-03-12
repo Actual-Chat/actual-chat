@@ -53,8 +53,7 @@ public sealed class ForkableProgress : IProgress<double>
     /// <returns>Array of child progress reporters.</returns>
     public ForkableProgress[] Fork(int count)
     {
-        if (count <= 0)
-            throw new ArgumentOutOfRangeException(nameof(count), "Count must be positive.");
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(count, 0);
 
         var weightPerFork = _weight / count;
         var forks = new ForkableProgress[count];

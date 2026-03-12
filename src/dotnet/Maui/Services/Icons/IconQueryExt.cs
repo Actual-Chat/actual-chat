@@ -1,7 +1,6 @@
 using ActualChat.Chat;
 using ActualChat.Contacts;
 using ActualChat.Media;
-using ActualChat.UI;
 
 namespace ActualChat.Maui.Services;
 
@@ -13,28 +12,29 @@ public static class IconQueryExt
             ? threadChatId.ParentChatId.Kind
             : contact.ChatId.Kind;
 
-        switch (chatKind) {
-        case ChatKind.Peer:
-            var defaultAvatarKey = DefaultUserPicture.GetAvatarKey(contact.Account?.Id.Value ?? "");
-            return new IconQuery(contact.Account?.Avatar.Picture, AvatarKind.Beam, defaultAvatarKey, avatarSize);
-        case ChatKind.Group:
-        case ChatKind.Place:
-            return new IconQuery(contact.Chat.Picture.ToPicture(),
+        return chatKind switch {
+            ChatKind.Peer => IconQuery.Create(
+                contact.Account?.Avatar.Picture,
+                AvatarKind.Beam,
+                DefaultUserPicture.GetAvatarKey(contact.Account?.Id.Value ?? ""),
+                avatarSize),
+            ChatKind.Group or ChatKind.Place => IconQuery.Create(
+                contact.Chat.Picture.ToPicture(),
                 AvatarKind.Marble,
                 contact.ChatId.Value,
                 avatarSize,
-                renderAvatarTitle ? GetInitial(contact.Chat.Title) : "");
-        default:
-            throw new ArgumentOutOfRangeException();
-        }
+                renderAvatarTitle ? GetInitial(contact.Chat.Title) : null),
+            _ => throw new ArgumentOutOfRangeException(),
+        };
     }
 
     public static IconQuery GetIconQuery(this Place place, int? avatarSize = null, bool renderAvatarTitle = false)
-        => new (place.Picture.ToPicture(),
+        => IconQuery.Create(
+            place.Picture.ToPicture(),
             AvatarKind.Marble,
             place.Id.Value,
             avatarSize,
-            renderAvatarTitle ? GetInitial(place.Title) : "");
+            renderAvatarTitle ? GetInitial(place.Title) : null);
 
     private static string GetInitial(string title)
         => title.Length > 0 ? title[0].ToString().ToUpperInvariant() : "";

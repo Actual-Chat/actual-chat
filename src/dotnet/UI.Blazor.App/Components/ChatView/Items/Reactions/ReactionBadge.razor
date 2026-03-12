@@ -24,9 +24,9 @@
 </li>
 
 @code {
-    public static readonly HashSet<(string EntryId, string EmojiId)> PendingAnimations = new();
-
     private string? _animateSvgName;
+
+    private OptimisticReactions OptimisticReactions => Hub.OptimisticReactions;
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter, EditorRequired] public Reaction? OwnReaction { get; set; }
@@ -35,16 +35,17 @@
 
     protected override void OnParametersSet() {
         var isOwn = OwnReaction?.Emoji == Reaction.Emoji;
-        var key = (Entry.Id.Value, Reaction.Emoji.Id.Value);
-        _animateSvgName = isOwn && PendingAnimations.Remove(key)
+        _animateSvgName = isOwn && OptimisticReactions.RemovePendingAnimation(Entry.Id.Value, Reaction.Emoji.Id.Value)
             ? EmojiIcon.SvgNames.GetValueOrDefault(Reaction.Emoji)
             : null;
     }
 
     private Task ToggleReaction(Emoji emoji) {
         _ = Hub.TuneUI.Play(Tune.React);
-        if (OwnReaction?.Emoji != emoji)
-            PendingAnimations.Add((Entry.Id.Value, emoji.Id.Value));
+        var isRemove = OwnReaction?.Emoji == emoji;
+        if (!isRemove)
+            OptimisticReactions.AddPendingAnimation(Entry.Id.Value, emoji.Id.Value);
+        OptimisticReactions.Set(Entry.Id, emoji, isRemove);
         var reaction = new Reaction {
             Id = Symbol.Empty,
             AuthorId = null!,

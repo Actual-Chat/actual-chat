@@ -8,7 +8,7 @@ public class CachingMarkupParser(IMarkupParser parser, ILruCache<string, Markup>
     public Markup Parse(string text)
     {
         if (text.IsNullOrEmpty())
-            return Markup.Empty;
+            return MarkupParser.EmptyResult;
 
         if (cache.TryGetValue(text, out var markup))
             return markup;

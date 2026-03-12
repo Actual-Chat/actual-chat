@@ -47,6 +47,12 @@ public abstract record AsyncMarkupRewriter : AsyncMarkupVisitor<Markup>
             : new StylizedMarkup(newMarkup, markup.Style);
     }
 
+    protected override async ValueTask<Markup> VisitParagraph(ParagraphMarkup markup, CancellationToken cancellationToken)
+    {
+        var newContent = await Visit(markup.Content, cancellationToken).ConfigureAwait(false);
+        return newContent == markup.Content ? markup : new ParagraphMarkup(newContent);
+    }
+
     protected override ValueTask<Markup> VisitUrl(UrlMarkup markup, CancellationToken cancellationToken)
         => new (markup);
     protected override ValueTask<Markup> VisitMention(MentionMarkup markup, CancellationToken cancellationToken)

@@ -264,7 +264,7 @@ public class AndroidAudioFocusHelper : IDisposable
             try {
                 _audioManager.RemoveOnCommunicationDeviceChangedListener(_listener);
             }
-            catch { /* ignore */ }
+            catch { /* Ignore */ }
             _listener = null;
         }
 
@@ -400,7 +400,7 @@ public class AndroidAudioFocusHelper : IDisposable
             try {
                 _context.UnregisterReceiver(_scoReceiver);
             }
-            catch { /* ignore */ }
+            catch { /* Ignore */ }
 
             ClearCommunicationDevice();
         }

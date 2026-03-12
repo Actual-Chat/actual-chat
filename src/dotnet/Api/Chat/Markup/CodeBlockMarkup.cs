@@ -12,5 +12,7 @@ public sealed class CodeBlockMarkup(string code, string language = "") : Markup
     public string Language { get; } = language;
 
     public override string Format()
-        => $"```{Language}\r\n{Code}```";
+        => Code.Length > 0
+            ? $"```{Language}\r\n{Code}\r\n```"
+            : $"```{Language}\r\n```";
 }

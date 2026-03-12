@@ -1,3 +1,4 @@
+using ActualChat.AspNetCore;
 using ActualChat.Controllers;
 using ActualChat.Media;
 using ActualChat.Security;
@@ -11,6 +12,7 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
 {
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IMediaSaver MediaSaver => services.GetRequiredService<IMediaSaver>();
+    private AvatarPictures AvatarPictures => services.GetRequiredService<AvatarPictures>();
 
     [HttpPost("upload-picture")]
     [DisableFormValueModelBinding]
@@ -53,5 +55,23 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
             .Save(mediaId, uploadedFile, null, MediaKind.UserAvatarPicture, cancellationToken)
             .ConfigureAwait(false);
         return Ok(mediaRef);
+    }
+
+    [HttpGet("{kind}/{key}")]
+    [CacheControlImmutable(Duration = 2592000, VaryByQueryKeys = ["*"])] // 30 days
+    public async Task<ActionResult> GetAvatar(AvatarKind kind, string key, AvatarFormat format, int? size = null, string? title = null, CancellationToken cancellationToken = default)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+        var query = new AvatarQuery {
+            Kind = kind,
+            Key = key,
+            Format = format,
+            Size = size,
+            Title = title,
+        };
+
+        var filePath = await AvatarPictures.Get(query, cancellationToken).ConfigureAwait(false);
+        return PhysicalFile(filePath, MediaMimeTypes.GetMimeType(filePath));
     }
 }
