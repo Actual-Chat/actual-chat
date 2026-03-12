@@ -446,11 +446,9 @@ public class NotificationsBackend(IServiceProvider services)
             cacheEntry.AbsoluteExpirationRelativeToNow = Constants.Notification.ThrottleIntervals.Message;
         }
         else if (mentionIds.Count == 0) {
-            // Throttle low-priority notifications
             DebugLog?.LogInformation("Throttle low priority notifications. EntryId={EntryId}", entry.Id);
             return;
         }
-
         var userIds = await ListSubscribedUserIds(entry.ChatId, cancellationToken).ConfigureAwait(false);
         var similarityKey = entry.ChatId.Value;
         await EnqueueMessageRelatedNotifications(
@@ -583,12 +581,11 @@ public class NotificationsBackend(IServiceProvider services)
                 var presence = await UserPresences.Get(otherUserId, cancellationToken).ConfigureAwait(false);
                 // Delay notifications for online users — if still unread after delay, send anyway
                 if (presence is Presence.Online or Presence.Recording) {
-                    if (entryId is not null) {
+                    if (kind == NotificationKind.Message && entryId is not null) {
                         DebugLog?.LogInformation(
                             "EnqueueMessageRelatedNotifications. Scheduling delayed check for online user. ChatId={ChatId}, EntryId={EntryId}, UserId={UserId}",
                             chatId, entryId, otherUserId);
-                        var flowArgs = NotificationFlow.GetArguments(
-                            otherUserId, chatId, entryId.LocalId, kind, changeAuthor.Id);
+                        var flowArgs = NotificationFlow.GetArguments(otherUserId, chatId);
                         await FlowHub.NewResumeEvent<NotificationFlow>(flowArgs)
                             .WithDelay(Constants.Notification.OnlineCheckDelay)
                             .Schedule(cancellationToken)
