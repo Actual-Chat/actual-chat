@@ -162,13 +162,16 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
     {
         var result = new List<UserId>();
         UserId? lastId = null;
+        long minVersion = 0;
         while (true) {
-            var batch = await AccountsBackend.ListChanged(0, long.MaxValue, lastId, 1000, cancellationToken)
+            var batch = await AccountsBackend.ListChanged(minVersion, long.MaxValue, lastId, 1000, cancellationToken)
                 .ConfigureAwait(false);
             if (batch.Length == 0)
                 break;
-            result.AddRange(batch);
-            lastId = batch[^1];
+            result.AddRange(batch.Select(x => x.Id));
+            var last = batch[^1];
+            lastId = last.Id;
+            minVersion = last.Version;
         }
         return result.ToArray();
     }

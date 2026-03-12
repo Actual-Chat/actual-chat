@@ -49,6 +49,11 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public List<DbAccountIdentity> Identities { get; } = new();
 
+    public Account ToAccount()
+        => new(UserId.Parse(Id), Version) {
+            Status = Status,
+        };
+
     public AccountFull ToModel()
     {
         var identities = Identities.ToApiMap(ai => new UserIdentity(ai.Id), ai => ai.Secret);

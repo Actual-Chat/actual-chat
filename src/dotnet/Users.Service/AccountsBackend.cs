@@ -7,7 +7,6 @@ using ActualChat.Users.Db;
 using ActualChat.Users.Flows;
 using ActualChat.Users.Module;
 using ActualLab.Fusion.EntityFramework;
-using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Users;
@@ -98,7 +97,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     }
 
     // Not a [ComputeMethod]!
-    public async Task<UserId[]> ListChanged(
+    public async Task<Account[]> ListChanged(
         long minVersion,
         long maxVersion,
         UserId? lastId,
@@ -121,7 +120,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return dbAccounts.Select(x => UserId.Parse(x.Id)).ToArray();
+        return dbAccounts.Select(x => x.ToAccount()).ToArray();
     }
 
     public async Task<AccountFull?> GetLastChanged(CancellationToken cancellationToken)

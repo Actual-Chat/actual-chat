@@ -19,18 +19,16 @@ public static class AccountsBackendExt
         int batchSize,
         CancellationToken cancellationToken)
     {
-        var userIds = await accountsBackend
+        var accounts = await accountsBackend
             .ListChanged(minVersion, maxVersion, lastId, batchSize, cancellationToken)
             .ConfigureAwait(false);
-        return userIds.Length > 0 ? await GetAccounts().ConfigureAwait(false) : [];
+        if (accounts.Length == 0)
+            return [];
 
-        async Task<AccountFull[]> GetAccounts()
-        {
-            var accounts = await userIds
-                .Select(id => accountsBackend.Get(id, cancellationToken))
-                .Collect(cancellationToken)
-                .ConfigureAwait(false);
-            return accounts.SkipNullItems().ToArray();
-        }
+        var fullAccounts = await accounts
+            .Select(a => accountsBackend.Get(a.Id, cancellationToken))
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
+        return fullAccounts.SkipNullItems().ToArray();
     }
 }
