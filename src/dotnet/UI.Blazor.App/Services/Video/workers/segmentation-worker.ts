@@ -483,7 +483,7 @@ const serverImpl: SegmentationWorker = {
         processing = false;
 
         // Await all in-flight async readbacks
-        try { await awaitAllPendingReadbacks(); } catch { /* ignore */ }
+        try { await awaitAllPendingReadbacks(); } catch { /* Ignore */ }
 
         // Clear frame queue - close pending frames
         if (frameQueue) {

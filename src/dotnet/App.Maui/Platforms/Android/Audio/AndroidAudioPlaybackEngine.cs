@@ -3,7 +3,6 @@ using ActualChat.Media;
 using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor.App.Components;
 using Android.Media;
-using Android.Runtime;
 using AudioSource = ActualChat.Audio.AudioSource;
 using Encoding = Android.Media.Encoding;
 
@@ -14,42 +13,34 @@ internal sealed class AndroidAudioPlaybackEngine(
     TrackInfo info,
     IMediaSource source,
     IAudioPlayerBackend playerBackend,
-    IServiceProvider services)
-    : IAudioPlaybackEngine
+    IServiceProvider services
+    ) : ProcessorBase, IAudioPlaybackEngine
 {
-    private readonly Channel<IMemoryOwner<byte>> _packetChannel = Channel.CreateUnbounded<IMemoryOwner<byte>>(new UnboundedChannelOptions {
+    private readonly Channel<IMemoryOwner<byte>> _frames = Channel.CreateUnbounded<IMemoryOwner<byte>>(new UnboundedChannelOptions {
         SingleReader = true,
         SingleWriter = true,
         AllowSynchronousContinuations = false,
     });
 
-    private readonly CancellationTokenSource _decodeCts = new();
+    private CancellationTokenSource? _pauseEndTokenSource;
+    private volatile AudioTrack? _audioTrack;
+    private volatile PlayPositionListener? _positionListener;
+    private volatile Task? _decodeAndFeedTask;
+    private GCHandle _audioTrackHandle;
+    private GCHandle _positionListenerHandle;
 
-    private CancellationTokenSource? _pauseCts;
-
-    // Opus decoder pre-skip handling
     private int _remainingPreSkip;
-
-    private AudioTrack? _audioTrack;
-    private Task? _decodeAndFeedTask;
-    private PlayPositionListener? _listener;
-    private GCHandle? _listenerHandle;
-
-    // Last known number of played samples (playback head), used as a fallback when AudioTrack is not queryable
-    private int _lastPlayedSamples;
-
-    // Playback reporting state
-    private int _feedSamples;
-    private int _endedReported;
+    private volatile int _fedSampleCount;
+    private volatile int _lastPlayedSampleCount;
+    private int _isEnded;
 
     private IAudioCodec AudioCodec => field ??= services.GetRequiredService<IAudioCodec>();
-
     private ILogger Log => field ??= services.LogFor<AndroidAudioPlaybackEngine>();
 
     public async Task Play(CancellationToken cancellationToken)
     {
         Log.LogDebug("Play called: id={Id}", info.TrackId);
-        if (Volatile.Read(ref _decodeAndFeedTask) is not null)
+        if (_decodeAndFeedTask is not null)
             return;
 
         var audioSource = (AudioSource)source;
@@ -66,6 +57,7 @@ internal sealed class AndroidAudioPlaybackEngine(
 
         // Minimum buffer size to keep Feed blocked on track.WriteAsync
         var bufferBytes = Math.Max(minBufferBytes, Constants.Audio.PcmFrameLength * 4);
+        AudioTrack audioTrack;
         try {
             var attributes = new AudioAttributes.Builder()
                 .SetUsage(AudioUsageKind.VoiceCommunication)!
@@ -78,7 +70,7 @@ internal sealed class AndroidAudioPlaybackEngine(
                 .SetChannelMask(channelOut)
                 .Build();
 
-            _audioTrack = new AudioTrack.Builder()
+            audioTrack = new AudioTrack.Builder()
                 .SetAudioAttributes(attributes!)
                 .SetAudioFormat(audioFormat!)
                 .SetBufferSizeInBytes(bufferBytes)
@@ -91,81 +83,110 @@ internal sealed class AndroidAudioPlaybackEngine(
             throw;
         }
 
-        // Start background decode loop
-        var ct = _decodeCts.Token;
-        _decodeAndFeedTask = BackgroundTask.Run(() => DecodeAndFeed(ct), ct);
+        lock (Lock) {
+            _lastPlayedSampleCount = 0;
+            _pauseEndTokenSource = null;
 
-        _listener = new PlayPositionListener(this);
-        // Keep listener pinned to avoid GC while native code holds only weak reference
-        _listenerHandle = GCHandle.Alloc(_listener, GCHandleType.Normal);
-        // Reasonable period to receive callbacks; not too frequent
-        _audioTrack.SetPlaybackPositionUpdateListener(_listener);
-        _audioTrack.SetPositionNotificationPeriod(Constants.Audio.PcmFrameLength * 10); // 200 ms
+            _audioTrack = audioTrack;
+            _audioTrackHandle = GCHandle.Alloc(audioTrack, GCHandleType.Normal);
+            _positionListener = new PlayPositionListener(this);
+            _positionListenerHandle = GCHandle.Alloc(_positionListener, GCHandleType.Normal);
+            _audioTrack.SetPlaybackPositionUpdateListener(_positionListener);
+            _audioTrack.SetPositionNotificationPeriod(Constants.Audio.PcmFrameLength * 10); // 200 ms
+            _decodeAndFeedTask = BackgroundTask.Run(DecodeAndFeed, CancellationToken.None);
+        }
 
-        // Reset last known head position before starting playback
-        _lastPlayedSamples = 0;
+        audioTrack.Play();
+        _ = NotifyPlaying(0); // Initial report that we're ready to play
+    }
 
-        _audioTrack.Play();
-        // Initial report that we're ready to play
-        _ = ReportPlaying(0);
+    protected override async Task DisposeAsyncCore()
+    {
+        // This method starts inside lock (Lock)
+        if (_decodeAndFeedTask is not null) {
+            await _decodeAndFeedTask.SilentAwait();
+            _decodeAndFeedTask = null;
+        }
 
-        // Ensure not paused initially
-        _pauseCts = null;
+        lock (Lock) { // We must re-lock after await
+            if (_positionListener.IsValid())
+                _positionListener.DisposeSilently();
+            if (_audioTrack.IsValid()) {
+                try { _audioTrack.SetPlaybackPositionUpdateListener(null); } catch { /* Ignore */ }
+                try {
+                    if (_audioTrack.PlayState is PlayState.Playing or PlayState.Paused)
+                        _audioTrack.Stop();
+                }
+                catch { /* Ignore */ }
+                try { _audioTrack.Release(); } catch { /* Ignore */ }
+                _audioTrack.DisposeSilently();
+            }
+
+            if (_positionListenerHandle.IsAllocated)
+                _positionListenerHandle.Free();
+            if (_audioTrackHandle.IsAllocated)
+                _audioTrackHandle.Free();
+        }
     }
 
     public Task Pause(CancellationToken cancellationToken)
     {
-        if (_audioTrack == null)
-            throw StandardError.StateTransition(GetType(), "Start command should be called first.");
+        if (_audioTrack is null)
+            throw StandardError.AudioPlayer.PlayingStateExpected(GetType());
 
         _audioTrack.Pause();
         // Enter paused state: create a gate CTS that will be canceled on Resume()
-        _pauseCts?.CancelAndDisposeSilently();
-        _pauseCts = new CancellationTokenSource();
-        _ = ReportPlaying(GetSafePlayedSamples(_audioTrack));
+        _pauseEndTokenSource?.CancelAndDisposeSilently();
+        _pauseEndTokenSource = new CancellationTokenSource();
+        _ = NotifyPlaying(GetPlayedSampleCount());
         return Task.CompletedTask;
     }
 
     public Task Resume(CancellationToken cancellationToken)
     {
-        if (_audioTrack == null)
-            throw StandardError.StateTransition(GetType(), "Start command should be called first.");
+        if (_audioTrack is null)
+            throw StandardError.AudioPlayer.PlayingStateExpected(GetType());
 
-        // Exit paused state: cancel and dispose pause gate, then resume playback
-        _pauseCts?.CancelAndDisposeSilently();
-        _pauseCts = null;
+        _pauseEndTokenSource?.CancelAndDisposeSilently();
+        _pauseEndTokenSource = null;
         _audioTrack.Play();
-        _ = ReportPlaying(GetSafePlayedSamples(_audioTrack));
+        _ = NotifyPlaying(GetPlayedSampleCount());
         return Task.CompletedTask;
     }
 
-    public Task End(bool abort, CancellationToken cancellationToken)
+    public Task End(bool mustAbort, CancellationToken cancellationToken)
     {
-        var frames = _packetChannel.Reader.CanCount
-            ? _packetChannel.Reader.Count
+        var enqueuedSampleCount = _frames.Reader.CanCount
+            ? _frames.Reader.Count
             : -1;
-        var feedSamples = _feedSamples;
-        Log.LogDebug("End called: id={Id} abort={Abort} scheduled={Frames} feed={FeedSamples}", info.TrackId, abort, frames, feedSamples);
-        if (!abort) {
-            _packetChannel.Writer.TryComplete();
-            var track = _audioTrack;
-            if (track is null)
-                return Task.CompletedTask;
+        Log.LogDebug(
+            "End called: id={Id} abort={Abort} enqueued={Frames} fed={FeedSampleCount}",
+            info.TrackId, mustAbort, enqueuedSampleCount, _fedSampleCount);
 
-            if (track.PlayState == PlayState.Stopped)
-                track.Play(); // Start playback if stopped (not paused)
-            return Task.CompletedTask;
+        var audioTrack = _audioTrack.IfValid();
+        if (mustAbort) {
+            try {
+                if (audioTrack?.PlayState is PlayState.Playing or PlayState.Paused)
+                    audioTrack.Stop();
+            }
+            catch {
+                // Ignore
+            }
+            _frames.Writer.TryComplete();
+            StopTokenSource.CancelAndDisposeSilently();
+            _pauseEndTokenSource.CancelAndDisposeSilently();
+            NotifyEnded(null);
         }
-
-        // Abort immediately
-        try {
-            if (_audioTrack is { PlayState: PlayState.Playing or PlayState.Paused } audioTrack)
-                audioTrack.Stop();
-        } catch { /* ignore */ }
-        _packetChannel.Writer.TryComplete();
-        _decodeCts.CancelAndDisposeSilently();
-        _pauseCts?.CancelAndDisposeSilently();
-        TryReportEnded(null);
+        else {
+            _frames.Writer.TryComplete();
+            try {
+                if (audioTrack?.PlayState is PlayState.Stopped)
+                    audioTrack.Play(); // Start playback if stopped (not paused)
+            }
+            catch {
+                // Ignore
+            }
+        }
         return Task.CompletedTask;
     }
 
@@ -175,52 +196,21 @@ internal sealed class AndroidAudioPlaybackEngine(
         if (data.Length == 0)
             return ValueTask.CompletedTask;
 
-        _packetChannel.Writer.TryWrite(new ByteArrayMemoryOwner(data));
-        return ValueTask.CompletedTask;
-    }
-
-    public ValueTask DisposeAsync()
-    {
-        try {
-            _decodeCts.CancelAndDisposeSilently();
-        }
-        catch (OperationCanceledException) { }
-        catch (Exception e) {
-            Log.LogError(e, "Failed to dispose AndroidAudioPlaybackEngine tasks");
-        }
-
-        try {
-            var track = Interlocked.Exchange(ref _audioTrack, null);
-            if (track is not null) {
-                track.SetPlaybackPositionUpdateListener(null); // Deregister listener before releasing
-                if (track.PlayState is PlayState.Playing or PlayState.Paused)
-                    track.Stop();
-                track.Release();
-                track.Dispose();
-            }
-        }
-        finally {
-            _decodeAndFeedTask = null;
-
-            // Dispose the listener to help GC and prevent finalizer issues
-            if (_listenerHandle is { IsAllocated: true } handle)
-                handle.Free();
-
-            _listener?.DisposeSilently();
-            _listener = null;
-        }
-
+        _frames.Writer.TryWrite(new ByteArrayMemoryOwner(data));
         return ValueTask.CompletedTask;
     }
 
     // Private methods
 
-    private async Task DecodeAndFeed(CancellationToken cancellationToken)
+    private async Task DecodeAndFeed()
     {
+        var audioTrack = _audioTrack!;
+        var positionListener = _positionListener!;
+        var cancellationToken = StopToken;
         var audioData = new float[Constants.Audio.PcmFrameLength];
         try {
-            var input = _packetChannel.Reader.ReadAllAsync(cancellationToken);
-            await foreach (var pcmOwner in AudioCodec.Decode(input, cancellationToken).ConfigureAwait(false)) {
+            var frames = _frames.Reader.ReadAllAsync(cancellationToken);
+            await foreach (var pcmOwner in AudioCodec.Decode(frames, cancellationToken).ConfigureAwait(false)) {
                 using var _ = pcmOwner;
                 var pcm = pcmOwner.Memory;
                 var samples = pcm.Length;
@@ -237,75 +227,43 @@ internal sealed class AndroidAudioPlaybackEngine(
                 var skip = Math.Min(_remainingPreSkip, samples);
                 var playSamples = samples - skip;
                 if (playSamples > 0) {
-                    var track = _audioTrack;
-                    if (track is null) {
-                        Log.LogDebug("AudioTrack is null during DecodeAndFeed, terminating");
-                        _packetChannel.Writer.TryComplete();
-                        await End(true, cancellationToken).ConfigureAwait(false);
-                        break;
-                    }
-
                     // If playback is paused, wait until it is resumed before feeding more data
-                    await WaitIfPausedAsync(cancellationToken).ConfigureAwait(false);
+                    await WhenUnpaused(cancellationToken).ConfigureAwait(false);
 
-                    // Verify track is still valid before writing
-                    // Check if track was stopped or released while we were waiting
-                    if (!IsTrackValidForWrite(track)) {
-                        Log.LogDebug("AudioTrack became invalid during DecodeAndFeed, terminating");
-                        // Clean up the channel to prevent further processing
-                        _packetChannel.Writer.TryComplete();
+                    if (!CanContinuePlaying(out var _)) {
+                        _frames.Writer.TryComplete();
+                        Log.LogDebug($"AudioTrack became dead or stopped, terminating {nameof(DecodeAndFeed)}");
                         break;
                     }
 
                     pcm.Span.CopyTo(audioData.AsSpan(0, pcm.Length));
-                    var written = await track.WriteAsync(audioData, skip, playSamples, WriteMode.Blocking).ConfigureAwait(false);
+                    var written = await audioTrack.WriteAsync(audioData, skip, playSamples, WriteMode.Blocking).ConfigureAwait(false);
                     if (written > 0)
-                        _feedSamples += written;
+                        Interlocked.Add(ref _fedSampleCount, written);
                 }
 
                 _remainingPreSkip -= skip;
                 if (_remainingPreSkip < 0)
                     _remainingPreSkip = 0;
             }
-            var currentTrack = _audioTrack;
-            var listener = _listener;
-            if (currentTrack != null && listener != null && IsTrackValidForWrite(currentTrack)) {
-                var played = GetSafePlayedSamples(currentTrack);
-                if (_feedSamples > played) {
-                    currentTrack.SetNotificationMarkerPosition(_feedSamples);
-                    await listener.WhenCompleted.WaitAsync(cancellationToken).ConfigureAwait(false);
-                } else
-                    TryReportEnded(null);
-            } else
-                TryReportEnded(null);
+            if (GetPlayedSampleCount() < _fedSampleCount) {
+                audioTrack.SetNotificationMarkerPosition(_fedSampleCount);
+                await positionListener.WhenMarkerReached.WaitAsync(cancellationToken).ConfigureAwait(false);
+            }
             await End(true, CancellationToken.None).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) { /* ignore */ }
-        catch (Exception e) {
-            Log.LogError(e, "DecodeAndFeed loop failed");
-            TryReportEnded(e.Message);
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            Log.LogError(e, "DecodeAndFeed failed");
+            NotifyEnded(e.Message);
         }
     }
 
-    private Task ReportPlaying(int playedSamples)
+    private Task NotifyPlaying(int playedSampleCount)
     {
-        var played = (double)playedSamples / Constants.Audio.PlaybackSampleRate;
-        var buffered = TimeSpan.FromSeconds((double)(_feedSamples - playedSamples) / Constants.Audio.PlaybackSampleRate);
+        var played = (double)playedSampleCount / Constants.Audio.PlaybackSampleRate;
+        var buffered = TimeSpan.FromSeconds((double)(_fedSampleCount - playedSampleCount) / Constants.Audio.PlaybackSampleRate);
         var isBufferLow = buffered < Constants.Audio.LowPlaybackBufferDuration;
-
-        bool isPaused;
-        var track = _audioTrack;
-        if (track == null || track.Handle == IntPtr.Zero)
-            isPaused = true; // Assume ended/disposed
-        else
-            try {
-                isPaused = track.PlayState is PlayState.Paused or PlayState.Stopped;
-            }
-            catch (Exception e) {
-                Log.LogWarning(e, "Error checking PlayState in ReportPlaying, assuming paused");
-                isPaused = true;
-            }
-
+        var isPaused = !_audioTrack.IsValid() || _audioTrack.PlayState is PlayState.Paused or PlayState.Stopped;
         try {
             return playerBackend.OnPlaying(played, isPaused, isBufferLow);
         }
@@ -314,144 +272,98 @@ internal sealed class AndroidAudioPlaybackEngine(
         }
     }
 
-    // Safely read playback head position without throwing IllegalStateException
-    private int GetSafePlayedSamples(AudioTrack? track)
+    private void NotifyEnded(string? message)
     {
-        try {
-            if (track == null || track.Handle == IntPtr.Zero)
-                return GetFeedSamples();
-
-            // Avoid querying head position when the track is stopped or not initialized (released)
-            var playState = track.PlayState;
-            if (playState == PlayState.Stopped)
-                return GetFeedSamples();
-
-            var state = track.State;
-            // Only query when initialized; after Release() it's typically Uninitialized
-            if (state != AudioTrackState.Initialized)
-                return GetFeedSamples();
-
-            var head = track.PlaybackHeadPosition; // may throw in illegal state
-            // Clamp to [0, _feedSamples] and avoid regressions
-            var clamped = Math.Max(0, Math.Min(head, _feedSamples));
-            if (clamped < _lastPlayedSamples)
-                clamped = _lastPlayedSamples;
-            _lastPlayedSamples = clamped;
-            return clamped;
-        }
-        catch (Java.Lang.IllegalStateException) {
-            // GetFeedSamples to last known safe value within buffered range
-            return GetFeedSamples();
-        }
-        catch {
-            return GetFeedSamples();
-        }
-
-        int GetFeedSamples() => Math.Min(_feedSamples, _lastPlayedSamples);
+        if (Interlocked.Exchange(ref _isEnded, 1) == 0)
+            _ = playerBackend.OnEnded(message);
     }
 
-    private async Task WaitIfPausedAsync(CancellationToken cancellationToken)
+    private bool CanContinuePlaying([NotNullWhen(true)] out AudioTrack? audioTrack)
     {
-        var gate = Volatile.Read(ref _pauseCts);
-        if (gate is null)
-            return;
+        audioTrack = _audioTrack;
+        try {
+            if (!audioTrack.IsValid())
+                return false;
+            if (audioTrack.State != AudioTrackState.Initialized)
+                return false;
+
+            return audioTrack.PlayState != PlayState.Stopped;
+        }
+        catch {
+            return false;
+        }
+    }
+
+    private int GetPlayedSampleCount()
+    {
+        if (!CanContinuePlaying(out var audioTrack))
+            return Math.Max(_fedSampleCount, _lastPlayedSampleCount); // Pretend we played everything
 
         try {
-            await Task.Delay(-1, gate.Token).ConfigureAwait(false);
+            var playedSampleCount = audioTrack.PlaybackHeadPosition.Clamp(0, _fedSampleCount); // Can't go beyond end
+            playedSampleCount = Math.Max(playedSampleCount, _lastPlayedSampleCount); // Can't decrease
+            Interlocked.Exchange(ref _lastPlayedSampleCount, playedSampleCount);
+            return playedSampleCount;
         }
-        catch (OperationCanceledException) {
-            // resumed
+        catch {
+            return Math.Max(_fedSampleCount, _lastPlayedSampleCount); // Pretend we played everything
         }
+    }
+
+    private async Task WhenUnpaused(CancellationToken cancellationToken)
+    {
+        var pauseEndTokenSource = _pauseEndTokenSource;
+        if (pauseEndTokenSource is null)
+            return;
+
+        await TaskExt.NeverEnding(pauseEndTokenSource.Token).SilentAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
     }
 
-    private void TryReportEnded(string? message)
-    {
-        if (Interlocked.Exchange(ref _endedReported, 1) != 0)
-            return;
-
-        _ = playerBackend.OnEnded(message);
-    }
-
-    private static bool IsTrackValidForWrite(AudioTrack? track)
-    {
-        if (track is null)
-            return false;
-
-        try {
-            // Check if track state is initialized (not released)
-            var state = track.State;
-            if (state != AudioTrackState.Initialized)
-                return false;
-
-            // Check if track is not stopped
-            var playState = track.PlayState;
-            return playState != PlayState.Stopped;
-        }
-        catch {
-            // If we can't read the state, assume it's invalid
-            return false;
-        }
-    }
+    // Nested types
 
     private class PlayPositionListener : Java.Lang.Object, AudioTrack.IOnPlaybackPositionUpdateListener
     {
-        private readonly AndroidAudioPlaybackEngine? _parent;
-        private readonly TaskCompletionSource<bool> _whenCompletedSource = new (TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly AndroidAudioPlaybackEngine _parent;
+        private readonly TaskCompletionSource _whenMarkerReachedSource = TaskCompletionSourceExt.New();
 
-        public Task<bool> WhenCompleted => _whenCompletedSource.Task;
+        public Task WhenMarkerReached => _whenMarkerReachedSource.Task;
 
-        // Required by Android runtime when the listener is re-hydrated from a JNI handle
-        // (e.g., during callbacks after GC). Keeps managed type activation functional.
-        protected PlayPositionListener(IntPtr handle, JniHandleOwnership transfer)
-            : base(handle, transfer)
-        { }
-
+        // ReSharper disable once ConvertToPrimaryConstructor
         public PlayPositionListener(AndroidAudioPlaybackEngine parent)
             => _parent = parent;
 
-        public void OnMarkerReached(AudioTrack? track)
+        public void OnMarkerReached(AudioTrack? audioTrack)
         {
-            var parent = _parent;
-            if (parent is null)
-                return;
+            try {
+                if (!ReferenceEquals(audioTrack, _parent._audioTrack))
+                    return; // Something is off, this should never happen
 
-            // Defensive check: ensure parent's track is still valid
-            if (parent._audioTrack is null)
-                return;
-
-            parent.Log.LogDebug("AudioTrack marker reached");
-            parent._lastPlayedSamples = parent._feedSamples; // Align to end position
-            _whenCompletedSource.TrySetResult(true);
-
-            int head;
-            if (track is null || track.Handle == IntPtr.Zero)
-                head = parent._lastPlayedSamples;
-            else
-                head = parent.GetSafePlayedSamples(track);
-            _ = parent.ReportPlaying(head);
+                _ = _parent.NotifyPlaying(_parent._fedSampleCount);
+                _whenMarkerReachedSource.TrySetResult();
+            }
+            catch {
+                // Swallow to prevent native callback from crashing the process
+                _whenMarkerReachedSource.TrySetResult();
+            }
         }
 
-        public void OnPeriodicNotification(AudioTrack? track)
+        public void OnPeriodicNotification(AudioTrack? audioTrack)
         {
-            var parent = _parent;
-            if (parent is null)
-                return;
+            try {
+                if (!ReferenceEquals(audioTrack, _parent._audioTrack))
+                    return; // Something is off, this should never happen
 
-            // Defensive check: ensure parent's track is still valid
-            if (parent._audioTrack is null)
-                return;
-
-            // parent.Log.LogDebug("AudioTrack periodic notification");
-            if (track is null) {
-                _whenCompletedSource.TrySetResult(false);
-                var fallback = parent.GetSafePlayedSamples(null);
-                _ = parent.ReportPlaying(fallback);
-                return;
+                if (audioTrack.IsValid())
+                    _ = _parent.NotifyPlaying(_parent.GetPlayedSampleCount());
+                else {
+                    _ = _parent.NotifyPlaying(_parent._fedSampleCount);
+                    _whenMarkerReachedSource.TrySetResult();
+                }
             }
-
-            var head = parent.GetSafePlayedSamples(track);
-            _ = parent.ReportPlaying(head);
+            catch {
+                _whenMarkerReachedSource.TrySetResult();
+            }
         }
     }
 }

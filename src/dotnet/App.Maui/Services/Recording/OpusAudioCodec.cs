@@ -70,12 +70,12 @@ public sealed class OpusAudioCodec : IAudioCodec
                     }
                 }
                 catch (OperationCanceledException) {
-                    /* ignore */
+                    /* Ignore */
                 }
                 finally {
                     try { encoder?.Dispose(); }
                     catch {
-                        /* ignore */
+                        /* Ignore */
                     }
                     channel.Writer.TryComplete();
                 }
@@ -143,12 +143,12 @@ public sealed class OpusAudioCodec : IAudioCodec
                     }
                 }
                 catch (OperationCanceledException) {
-                    /* ignore */
+                    /* Ignore */
                 }
                 finally {
                     try { decoder?.Dispose(); }
                     catch {
-                        /* ignore */
+                        /* Ignore */
                     }
                     channel.Writer.TryComplete();
                 }

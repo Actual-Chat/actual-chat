@@ -6,5 +6,5 @@ namespace ActualChat.App.Maui;
 public class AndroidActivityResultCallback(Action<JObject?> callback) : JObject, IActivityResultCallback
 {
     public void OnActivityResult(JObject? p0)
-        => callback.Invoke(p0.IsNotNull() ? p0 : null);
+        => callback.Invoke(p0.IsValid() ? p0 : null);
 }

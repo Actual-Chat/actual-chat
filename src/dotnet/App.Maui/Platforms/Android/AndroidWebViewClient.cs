@@ -23,7 +23,7 @@ public class AndroidWebViewClient(
     {
         Log.LogDebug("Dispose. Disposing={Disposing}", disposing);
         var original = Original;
-        if (disposing && original.IsNotNull())
+        if (disposing && original.IsValid())
             original.Dispose();
         base.Dispose(disposing);
     }
@@ -47,7 +47,7 @@ public class AndroidWebViewClient(
         if (IsDisconnected)
             return false;
 
-        return Original.IfNotNull()?.ShouldOverrideUrlLoading(view, request) ?? false;
+        return Original.IfValid()?.ShouldOverrideUrlLoading(view, request) ?? false;
     }
 
     public override WebResourceResponse? ShouldInterceptRequest(WebView? view, IWebResourceRequest? request)

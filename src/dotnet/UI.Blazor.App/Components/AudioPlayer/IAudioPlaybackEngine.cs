@@ -7,6 +7,6 @@ public interface IAudioPlaybackEngine : IAsyncDisposable
     Task Play(CancellationToken cancellationToken);
     Task Pause(CancellationToken cancellationToken);
     Task Resume(CancellationToken cancellationToken);
-    Task End(bool abort, CancellationToken cancellationToken);
+    Task End(bool mustAbort, CancellationToken cancellationToken);
     ValueTask PushFrame(MediaFrame frame, CancellationToken cancellationToken);
 }

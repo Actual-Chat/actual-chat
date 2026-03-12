@@ -1,3 +1,5 @@
+using ActualChat.Reflection;
+
 namespace ActualChat.Diff.Handlers;
 
 /// <summary>
@@ -32,7 +34,7 @@ public sealed class RecordDiffHandler<
             properties.Add(property);
         }
         Properties = properties.ToArray();
-        Cloner = ObjectExt.GetCloner<TRecord>();
+        Cloner = ((RecordTypeInfo<TRecord>)typeof(TRecord).RecordInfo).Cloner;
     }
 
     public override TDiff Diff(TRecord source, TRecord target)

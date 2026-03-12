@@ -221,13 +221,13 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
                     loopbackCapture?.StopRecording();
                 }
                 catch {
-                    /* ignore */
+                    /* Ignore */
                 }
 
                 await processingCts.CancelAsync().ConfigureAwait(false);
                 try { await processingTask.ConfigureAwait(false); }
                 catch {
-                    /* ignore */
+                    /* Ignore */
                 }
                 apm.DisposeSilently();
                 inputNode?.DisposeSilently();

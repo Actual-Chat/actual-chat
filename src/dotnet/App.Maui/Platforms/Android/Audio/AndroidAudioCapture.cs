@@ -44,7 +44,7 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
                 recorder?.Release();
             }
             catch {
-                 /* ignore */
+                 /* Ignore */
             }
             return Task.FromResult<IAsyncEnumerable<IMemoryOwner<float>>?>(null);
         }
@@ -97,13 +97,13 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
                     if (recorder.RecordingState == RecordState.Recording)
                         recorder.Stop();
                 }
-                catch { /* ignore */ }
+                catch { /* Ignore */ }
 
                 try {
                     recorder.Release();
                 }
                 catch {
-                     /* ignore */
+                     /* Ignore */
                 }
             }
         }

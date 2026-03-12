@@ -22,7 +22,6 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private IMediaMetadataUI MediaMetadataUI => field ??= Services.GetRequiredService<IMediaMetadataUI>();
     private IAudioPlaybackEngineFactory Factory { get; }
 
-
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AudioTrackPlayer))]
     public AudioTrackPlayer(
         string id,
@@ -92,22 +91,22 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                 break;
             case PauseCommand:
                 if (_playbackEngine == null)
-                    throw StandardError.StateTransition(GetType(), "Start command should be called first.");
+                    throw StandardError.AudioPlayer.PlayingStateExpected(GetType());
                 await _playbackEngine.Pause(cancellationToken).ConfigureAwait(false);
                 break;
             case ResumeCommand:
                 if (_playbackEngine == null)
-                    throw StandardError.StateTransition(GetType(), "Start command should be called first.");
+                    throw StandardError.AudioPlayer.PlayingStateExpected(GetType());
                 await _playbackEngine.Resume(cancellationToken).ConfigureAwait(false);
                 break;
             case AbortCommand:
                 if (_playbackEngine == null)
-                    throw StandardError.StateTransition(GetType(), "Start command should be called first.");
+                    throw StandardError.AudioPlayer.PlayingStateExpected(GetType());
                 await _playbackEngine.End(true, cancellationToken).ConfigureAwait(false);
                 break;
             case EndCommand:
                 if (_playbackEngine == null)
-                    throw StandardError.StateTransition(GetType(), "Start command should be called first.");
+                    throw StandardError.AudioPlayer.PlayingStateExpected(GetType());
                 await _playbackEngine.End(false, cancellationToken).ConfigureAwait(false);
                 break;
             default:
@@ -118,7 +117,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     protected override async ValueTask ProcessMediaFrame(MediaFrame frame, CancellationToken cancellationToken)
     {
         if (_playbackEngine == null)
-            throw StandardError.StateTransition(GetType(), "Start command should be called first.");
+            throw StandardError.AudioPlayer.PlayingStateExpected(GetType());
 
         try {
             await _playbackEngine.PushFrame(frame, cancellationToken).ConfigureAwait(false);

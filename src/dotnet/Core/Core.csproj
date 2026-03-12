@@ -34,6 +34,9 @@
     <PackageReference Include="ActualLab.CommandR" />
     <PackageReference Include="ActualLab.Fusion" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Reflection\" />
+  </ItemGroup>
 
   <!-- Workaround: MessagePack 3.x analyzer/source generator crashes (StackOverflow) on types
        with self-referencing generic constraints like IAdditionOperators<T, T, T> (Trimmed<T>).
