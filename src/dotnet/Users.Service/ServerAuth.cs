@@ -65,9 +65,13 @@ public sealed class ServerAuth
 
     public Task<(Session Session, bool IsNew)> Authenticate(
         HttpContext httpContext, CancellationToken cancellationToken)
-        => Authenticate(httpContext, false, cancellationToken);
-    public async Task<(Session Session, bool IsNew)> Authenticate(
+        => Authenticate(httpContext, false, false, cancellationToken);
+    public Task<(Session Session, bool IsNew)> Authenticate(
         HttpContext httpContext, bool assumeAllowed,
+        CancellationToken cancellationToken = default)
+        => Authenticate(httpContext, assumeAllowed, false, cancellationToken);
+    public async Task<(Session Session, bool IsNew)> Authenticate(
+        HttpContext httpContext, bool assumeAllowed, bool mustExist,
         CancellationToken cancellationToken = default)
     {
         var originalSession = httpContext.TryGetSessionFromCookie();
@@ -81,7 +85,7 @@ public sealed class ServerAuth
                     throw new TimeoutException();
                 }
 #endif
-                await UpdateAuthState(session, httpContext, assumeAllowed, cancellationToken)
+                await UpdateAuthState(session, httpContext, assumeAllowed, mustExist, cancellationToken)
                     .WaitAsync(TimeSpan.FromSeconds(1), cancellationToken)
                     .ConfigureAwait(false);
                 var isNew = originalSession != session;
@@ -97,8 +101,13 @@ public sealed class ServerAuth
         }
     }
 
-    public async Task UpdateAuthState(
+    public Task UpdateAuthState(
         Session session, HttpContext httpContext, bool assumeAllowed,
+        CancellationToken cancellationToken)
+        => UpdateAuthState(session, httpContext, assumeAllowed, false, cancellationToken);
+
+    public async Task UpdateAuthState(
+        Session session, HttpContext httpContext, bool assumeAllowed, bool mustExist,
         CancellationToken cancellationToken)
     {
         var httpUser = httpContext.User;
@@ -137,7 +146,7 @@ public sealed class ServerAuth
                 if (!isSignInAllowed)
                     return; // Sign-in or user change is not allowed for the current location
 
-                await SignIn(session, existingAccount, httpUser, httpAuthenticationSchema, cancellationToken).ConfigureAwait(false);
+                await SignIn(session, existingAccount, httpUser, httpAuthenticationSchema, mustExist, cancellationToken).ConfigureAwait(false);
             }
             else if (isSignedIn && (assumeAllowed || AllowSignOut(this, httpContext)))
                 await SignOut(session, cancellationToken).ConfigureAwait(false);
@@ -152,9 +161,9 @@ public sealed class ServerAuth
 
     private async Task SignIn(
         Session session, AccountFull? existingAccount, ClaimsPrincipal httpUser, string httpAuthenticationSchema,
-        CancellationToken cancellationToken)
+        bool mustExist, CancellationToken cancellationToken)
     {
-        var signInCommand = await GetSignInCommand(session, httpUser, httpAuthenticationSchema, cancellationToken).ConfigureAwait(false);
+        var signInCommand = await GetSignInCommand(session, httpUser, httpAuthenticationSchema, mustExist, cancellationToken).ConfigureAwait(false);
         await Commander.Call(signInCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
@@ -177,7 +186,7 @@ public sealed class ServerAuth
     }
 
     private async Task<AccountsBackend_SignIn> GetSignInCommand(
-        Session session, ClaimsPrincipal httpUser, string schema, CancellationToken cancellationToken)
+        Session session, ClaimsPrincipal httpUser, string schema, bool mustExist, CancellationToken cancellationToken)
     {
         var httpUserIdentityName = httpUser.Identity?.Name ?? "";
         var claims = httpUser.Claims.ToApiMap(c => c.Type, c => c.Value);
@@ -210,7 +219,7 @@ public sealed class ServerAuth
         identities = identities.With(identity, "");
 
         exit:
-        return new AccountsBackend_SignIn(session, authenticatedIdentity, identities, claims);
+        return new AccountsBackend_SignIn(session, authenticatedIdentity, identities, claims, mustExist);
     }
 
     private static string? FirstClaimOrDefault(IReadOnlyDictionary<string, string> claims, string[] keys)

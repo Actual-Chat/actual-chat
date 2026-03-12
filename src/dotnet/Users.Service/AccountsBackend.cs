@@ -145,7 +145,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     // [CommandHandler]
     public virtual async Task OnSignIn(AccountsBackend_SignIn command, CancellationToken cancellationToken = default)
     {
-        var (session, authenticatedIdentity, identities, claims) = command;
+        var (session, authenticatedIdentity, identities, claims, mustExist) = command;
         session.RequireValid();
 
         identities = identities.With(authenticatedIdentity, "");
@@ -184,6 +184,9 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         }
 
         if (userId is null) {
+            if (mustExist)
+                throw StandardError.NotFound<AccountFull>("Account not found.");
+
             // No user found by identity or internalUserId - create new account
             account = UpdateExistingAccount(null, internalUserId);
             var dbAccount = await CreateDbAccount(dbContext, account, cancellationToken).ConfigureAwait(false);

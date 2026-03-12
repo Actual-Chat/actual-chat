@@ -22,6 +22,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     private UsersSettings UsersSettings { get; } = services.GetRequiredService<UsersSettings>();
     private IEmailSender EmailSender { get; } = services.GetRequiredService<IEmailSender>();
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
+    private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
     private TotpCodes TotpCodes { get; } = services.GetRequiredService<TotpCodes>();
     private TotpSecrets TotpSecrets { get; } = services.GetRequiredService<TotpSecrets>();
     private RedisDb<UsersDbContext> RedisDb { get; } = services.GetRequiredService<RedisDb<UsersDbContext>>();
@@ -34,6 +35,15 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
             System.Net.Mail.MailAddress.TryCreate(email.Value, out _)
                 ? string.Empty
                 : "Invalid email address.");
+
+    // [ComputeMethod]
+    public virtual async Task<bool> AccountExistsByEmail(
+        Session session, ActualChat.Email email, CancellationToken cancellationToken)
+    {
+        var identity = UserIdentityExt.NewEmailIdentity(email);
+        var userId = await AccountsBackend.GetIdByUserIdentity(identity, cancellationToken).ConfigureAwait(false);
+        return userId is not null;
+    }
 
     // [CommandHandler]
     public virtual async Task<Moment> OnSendTotp(EmailAuth_SendTotp command, CancellationToken cancellationToken)

@@ -25,7 +25,7 @@
                         <img draggable="false" src="@schema.Icon" class="@schema.Class" alt="@schema.DisplayName">
                     }
                 </Icon>
-                <Title>@("Sign in with " + schema.DisplayName)</Title>
+                <Title>@((TotpSignInModel.IsRegister ? "Register with " : "Sign in with ") + schema.DisplayName)</Title>
             </Button>
         }
     </div>
@@ -49,7 +49,7 @@
                 ValueExpression="@(() => _stepModel.Contact)"
                 Autocomplete="tel email username"
                 ValueChanged="@((string? v) => OnContactChanged(v))"
-                Placeholder="Sign in with email or phone number"
+                Placeholder="@(TotpSignInModel.IsRegister ? "Register with email or phone number" : "Sign in with email or phone number")"
                 disabled="@codeHasBeenSent"
                 type="text"
                 inputmode="text"
@@ -68,6 +68,12 @@
                 <a class="recaptcha-link" href="https://policies.google.com/terms">Terms of Service</a> apply.
             </div>
         }
+        @if (!_accountError.IsNullOrEmpty()) {
+            <div class="c-account-error">@_accountError</div>
+        }
+        <Toggle Label="Register a new account"
+                IsChecked="@TotpSignInModel.IsRegister"
+                IsCheckedChanged="@OnRegisterToggleChanged" />
         <FormButtons IsEndAligned="false" Class="dialog-buttons">
             <Button Type="@ButtonType.Submit"  Class="btn-primary btn-modal sign-in" IsDisabled="@(_validationState is ValidationState.Invalid or ValidationState.CannotSend)">
                 @switch (_validationState) {
@@ -81,7 +87,7 @@
                     case ValidationState.Valid:
                     case ValidationState.CodeSentRecently:
                     default:
-                        <span>Continue</span>
+                        <span>@(TotpSignInModel.IsRegister ? "Register" : "Continue")</span>
                         break;
                 }
             </Button>
@@ -97,6 +103,7 @@
     private List<AuthSchemaModel>? _authSchemas;
     private AsyncDataAnnotationsValidator _validator = null!;
     private bool _showPhoneValidationErrors;
+    private string _accountError = "";
 
     private IPhones Phones => Hub.Phones;
     private ICaptcha Captcha => Hub.Captcha;
@@ -164,11 +171,17 @@
 
     }
 
-    private void OnSignInWith(string schema)
-        => _ = AccountUI.SignIn(schema);
+    private async Task OnSignInWith(string schema) {
+        var error = await AccountUI.SignIn(schema, TotpSignInModel.IsRegister);
+        if (!error.IsNullOrEmpty()) {
+            _accountError = error;
+            StateHasChanged();
+        }
+    }
 
     private void OnContactChanged(string? value) {
         _showPhoneValidationErrors = true;
+        _accountError = "";
         var newValue = value ?? "";
         if (newValue == _defaultPhoneValue)
             newValue = "";
@@ -178,6 +191,12 @@
         _stepModel.Contact = newValue;
         if (_validationState == ValidationState.CannotSend)
             _validationState = ValidationState.None;
+    }
+
+    private void OnRegisterToggleChanged(bool value) {
+        TotpSignInModel.IsRegister = value;
+        _accountError = "";
+        StateHasChanged();
     }
 
     private async Task OnSignIn() {
@@ -218,6 +237,16 @@
                     _validationState = ValidationState.CannotSend;
                     UICommander.ShowError(canSendValidationMessage);
                 }
+                // In sign-in mode, check if account exists before sending TOTP
+                else if (!TotpSignInModel.IsRegister) {
+                    var exists = await TotpUI.AccountExistsByPhone(phone, CancellationToken.None);
+                    if (!exists) {
+                        _accountError = "Account not found. Register instead?";
+                        _validationState = ValidationState.None;
+                        StateHasChanged();
+                        return;
+                    }
+                }
             } else if (!_stepModel.Contact.IsNullOrEmpty()) {
                 // Parse contact as email identifier for validation
                 Email? emailId = null;
@@ -232,6 +261,16 @@
                     if (!emailCheck.IsNullOrEmpty()) {
                         _validationState = ValidationState.CannotSend;
                         UICommander.ShowError(emailCheck);
+                    }
+                    // In sign-in mode, check if account exists before sending TOTP
+                    else if (!TotpSignInModel.IsRegister) {
+                        var exists = await TotpUI.AccountExistsByEmail(emailId, CancellationToken.None);
+                        if (!exists) {
+                            _accountError = "Account not found. Register instead?";
+                            _validationState = ValidationState.None;
+                            StateHasChanged();
+                            return;
+                        }
                     }
                 }
             }

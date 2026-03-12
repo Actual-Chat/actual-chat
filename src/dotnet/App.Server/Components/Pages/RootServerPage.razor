@@ -229,7 +229,23 @@
     </script>
 }
 
-@if (_closeFlow != null) {
+@if (_signInError != null && _closeFlow != null) {
+    <script nonce="@closeFlowNonce">
+        try {
+            localStorage.setItem('signInError', '@_signInError');
+        } catch (e) { }
+        setTimeout(function () {
+            window.open('','_self').close();
+        }, 200)
+    </script>
+    <div class="fusion-close" data-flow-name="@_closeFlow.Name">
+        <div class="c-content">
+            <div class="c-title">
+                <span>Account not found.</span>
+            </div>
+        </div>
+    </div>
+} else if (_closeFlow != null) {
     @if (_closeFlow.MustClose) {
         <script nonce="@closeFlowNonce">
             setTimeout(function () {
@@ -358,6 +374,7 @@
     private ContentLinkInfo? _contentLinkInfo;
     private RenderModeDef _renderMode = RenderModeDef.ByKey["ss"]; // Static
     private CloseFlowInfo? _closeFlow;
+    private string? _signInError;
 
     [Inject] private IServiceProvider Services { get; init; } = null!;
     [Inject] private ISessionResolver SessionResolver { get; init; } = null!;
@@ -393,7 +410,20 @@
     private async Task Initialize() {
         var cancellationToken = HttpContext.RequestAborted;
         _url = new LocalUrl(HttpContext.Request.GetEncodedPathAndQuery());
-        (_session, _isNewSession) = await ServerAuth.Authenticate(HttpContext, cancellationToken);
+        var isRegister = HttpContext.Request.Query.ContainsKey("register");
+        var mustExist = !isRegister;
+        try {
+            (_session, _isNewSession) = await ServerAuth.Authenticate(HttpContext, false, mustExist, cancellationToken);
+        }
+        catch (Exception e) when (e is { } ex && ex.Message.Contains("Account not found", StringComparison.Ordinal)) {
+            // Sign-in mode but account doesn't exist - fall through with error
+            _signInError = "account_not_found";
+            var originalSession = HttpContext.TryGetSessionFromCookie();
+            _session = originalSession ?? Session.New();
+            if (originalSession is null)
+                HttpContext.AddSessionCookie(_session);
+            _isNewSession = originalSession is null;
+        }
         SessionResolver.Session = _session;
         Task<AccountFull?> accountTask;
         if (_isNewSession) {

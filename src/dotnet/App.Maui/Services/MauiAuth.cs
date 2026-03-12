@@ -17,7 +17,7 @@ internal sealed class MauiAuth(UIHub hub) : UIServiceBase<UIHub>(hub), IClientAu
         return AuthSchema.ToSchemasWithDisplayNames(schemas);
     }
 
-    public async Task SignIn(string schema)
+    public async Task<string?> SignIn(string schema, bool isRegister = false)
     {
         if (schema.IsNullOrEmpty())
             throw new ArgumentOutOfRangeException(nameof(schema));
@@ -27,7 +27,7 @@ internal sealed class MauiAuth(UIHub hub) : UIServiceBase<UIHub>(hub), IClientAu
             var googleAuth = Hub.Services.GetRequiredService<NativeGoogleAuth>();
             if (googleAuth.IsAvailable()) {
                 await googleAuth.SignIn().ConfigureAwait(false);
-                return;
+                return null;
             }
         }
 #endif
@@ -38,11 +38,13 @@ internal sealed class MauiAuth(UIHub hub) : UIServiceBase<UIHub>(hub), IClientAu
         {
             var appleAuth = Hub.Services.GetRequiredService<NativeAppleAuth>();
             await appleAuth.SignIn().ConfigureAwait(false);
-            return;
+            return null;
         }
 #endif
 
-        await WebSignInOrSignOut($"/signIn/{schema}", "Sign-in").ConfigureAwait(false);
+        var endpoint = isRegister ? $"/signIn/{schema}?register=1" : $"/signIn/{schema}";
+        await WebSignInOrSignOut(endpoint, "Sign-in").ConfigureAwait(false);
+        return null;
     }
 
     public async Task SignOut()

@@ -9,6 +9,8 @@ public interface IPhoneAuth : IComputeService
     Task<bool> IsEnabled(CancellationToken cancellationToken);
     [ComputeMethod]
     Task<string> ValidateCanSendToPhone(Session session, Phone phone, TotpPurpose purpose, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<bool> AccountExistsByPhone(Session session, Phone phone, CancellationToken cancellationToken);
     [CommandHandler]
     Task<Moment> OnSendTotp(PhoneAuth_SendTotp command, CancellationToken cancellationToken);
     [CommandHandler]
