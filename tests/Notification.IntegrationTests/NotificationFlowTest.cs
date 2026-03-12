@@ -28,8 +28,7 @@ public class NotificationFlowTest(AppHostFixture fixture, ITestOutputHelper @out
         var entry = await Tester.CreateTextEntry(chatId, "Hello Alice!");
 
         // act - schedule NotificationFlow with zero delay
-        var flowArgs = NotificationFlow.GetArguments(
-            alice.Id, chatId, entry.LocalId, NotificationKind.Message, entry.AuthorId);
+        var flowArgs = NotificationFlow.GetArguments(alice.Id, chatId);
         await FlowHub.NewResumeEvent<NotificationFlow>(flowArgs)
             .WithDelay(TimeSpan.Zero)
             .WithDelayQuanta(TimeSpan.Zero)
@@ -64,15 +63,14 @@ public class NotificationFlowTest(AppHostFixture fixture, ITestOutputHelper @out
             alice.Id, chatId, ChatPositionKind.Read, new ChatPosition(entry.LocalId)));
 
         // act - schedule NotificationFlow with zero delay
-        var flowArgs = NotificationFlow.GetArguments(
-            alice.Id, chatId, entry.LocalId, NotificationKind.Message, entry.AuthorId);
+        var flowArgs = NotificationFlow.GetArguments(alice.Id, chatId);
         await FlowHub.NewResumeEvent<NotificationFlow>(flowArgs)
             .WithDelay(TimeSpan.Zero)
             .WithDelayQuanta(TimeSpan.Zero)
             .Schedule();
 
         // assert - no notification should exist for Alice for this entry
-        await Task.Delay(TimeSpan.FromSeconds(5));
+        await Task.Delay(TimeSpan.FromSeconds(3));
         var since = Clocks.SystemClock.Now - TimeSpan.FromMinutes(1);
         var ids = await Tester.NotificationsBackend.ListRecentNotificationIds(
             alice.Id, since, CancellationToken.None);
@@ -84,6 +82,85 @@ public class NotificationFlowTest(AppHostFixture fixture, ITestOutputHelper @out
             .Where(x => x.EntryId == entry.Id)
             .ToList();
         matching.Should().BeEmpty("Alice already read the message, so no notification should be sent");
+    }
+
+    [Fact]
+    public async Task ShouldSendNotificationForFirstUnreadWhenMultipleMessages()
+    {
+        // arrange
+        var alice = await Tester.SignInAsAlice();
+        var bob = await Tester.SignInAsBob();
+        var (chatId, _) = await Tester.CreateChat(false, "Multi-msg chat");
+        await Tester.InviteToChat(chatId, alice);
+
+        // Make Alice online
+        await Commander.Call(new UserPresencesBackend_CheckIn(alice.Id, Clocks.SystemClock.Now, true));
+
+        // Bob sends 3 messages
+        await Tester.SignIn(bob);
+        var entry1 = await Tester.CreateTextEntry(chatId, "First");
+        var entry2 = await Tester.CreateTextEntry(chatId, "Second");
+        var entry3 = await Tester.CreateTextEntry(chatId, "Third");
+
+        // act - schedule NotificationFlow once with (userId, chatId) args
+        var flowArgs = NotificationFlow.GetArguments(alice.Id, chatId);
+        await FlowHub.NewResumeEvent<NotificationFlow>(flowArgs)
+            .WithDelay(TimeSpan.Zero)
+            .WithDelayQuanta(TimeSpan.Zero)
+            .Schedule();
+
+        // assert - exactly 1 notification, for the first unread entry
+        var notification = await GetNotification(alice, entry1.Id);
+        notification.Title.Should().Contain("Multi-msg chat");
+        notification.Content.Should().Be("First");
+        notification.ChatEntryNotification.Should().NotBeNull();
+        notification.ChatEntryNotification!.EntryId.Should().Be(entry1.Id);
+    }
+
+    [Fact]
+    public async Task ShouldDeduplicateFlowForSameChatAndUser()
+    {
+        // arrange
+        var alice = await Tester.SignInAsAlice();
+        var bob = await Tester.SignInAsBob();
+        var (chatId, _) = await Tester.CreateChat(false, "Dedup chat");
+        await Tester.InviteToChat(chatId, alice);
+
+        // Make Alice online
+        await Commander.Call(new UserPresencesBackend_CheckIn(alice.Id, Clocks.SystemClock.Now, true));
+
+        // Bob sends a message
+        await Tester.SignIn(bob);
+        var entry = await Tester.CreateTextEntry(chatId, "Dedup test message");
+
+        // act - schedule the same flow twice with nonzero quanta (enables UUID-based dedup)
+        var flowArgs = NotificationFlow.GetArguments(alice.Id, chatId);
+        await FlowHub.NewResumeEvent<NotificationFlow>(flowArgs)
+            .WithDelay(TimeSpan.FromMilliseconds(100))
+            .WithDelayQuanta(TimeSpan.FromSeconds(1))
+            .Schedule();
+        await FlowHub.NewResumeEvent<NotificationFlow>(flowArgs)
+            .WithDelay(TimeSpan.FromMilliseconds(100))
+            .WithDelayQuanta(TimeSpan.FromSeconds(1))
+            .Schedule();
+
+        // assert - only 1 notification (not 2)
+        var notification = await GetNotification(alice, entry.Id);
+        notification.Content.Should().Be("Dedup test message");
+
+        // Verify no duplicate by checking total count for this entry
+        await Task.Delay(TimeSpan.FromSeconds(3));
+        var since = Clocks.SystemClock.Now - TimeSpan.FromMinutes(1);
+        var ids = await Tester.NotificationsBackend.ListRecentNotificationIds(
+            alice.Id, since, CancellationToken.None);
+        var notifications = await ids
+            .Select(x => Tester.NotificationsBackend.Get(x, CancellationToken.None))
+            .Collect();
+        var matching = notifications
+            .SkipNullItems()
+            .Where(x => x.EntryId == entry.Id)
+            .ToList();
+        matching.Should().HaveCount(1, "duplicate flow scheduling should not produce duplicate notifications");
     }
 
     private async Task<Notification> GetNotification(AccountFull user, ChatEntryId entryId)
