@@ -1,3 +1,4 @@
+using ActualChat.Chat;
 using ActualChat.Testing.Host;
 using ActualChat.Testing.Host.Assertion;
 using ActualChat.Users;
@@ -80,6 +81,70 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
                     Content = "❤️ to your image",
                 },
                 o => o.Text());
+    }
+
+    [Fact]
+    public async Task ShouldHaveMarbleAvatarIconForGroupChat()
+    {
+        // arrange
+        var alice = await Tester.SignInAsAlice();
+        var bob = await Tester.SignInAsBob();
+        var (chatId, _) = await Tester.CreateChat(false, "Test Group");
+        await Tester.InviteToChat(chatId, alice);
+
+        // act
+        await Tester.SignIn(bob);
+        var entry = await Tester.CreateTextEntry(chatId, "Hello group!");
+
+        // assert
+        var notification = await GetNotification(alice, entry.Id);
+        notification.IconUrl.Should().NotBeNullOrEmpty();
+        notification.IconUrl.Should().Contain("api/avatars/marble/");
+        notification.IconUrl.Should().Contain("format=png");
+    }
+
+    [Fact]
+    public async Task ShouldHaveBeamAvatarIconForPeerChat()
+    {
+        // arrange
+        var alice = await Tester.SignInAsUniqueAlice();
+        var bob = await Tester.SignInAsUniqueBob();
+        var chatId = PeerChatId.New(alice.Id, bob.Id);
+
+        // act
+        await Tester.SignIn(bob);
+        var entry = await Tester.CreateTextEntry(chatId, "Hello peer!");
+
+        // assert
+        var notification = await GetNotification(alice, entry.Id);
+        notification.IconUrl.Should().NotBeNullOrEmpty();
+        notification.IconUrl.Should().Contain("api/avatars/beam/");
+        notification.IconUrl.Should().Contain("format=png");
+    }
+
+    [Fact]
+    public async Task ShouldHaveMarbleAvatarIconForPlaceChat()
+    {
+        // arrange
+        var bob = await Tester.SignInAsBob();
+        var place = await Tester.CreatePlace(false, "Test Place");
+        var alice = await Tester.SignInAsAlice();
+        await Tester.SignIn(bob);
+        await Tester.InviteToPlace(place.Id, alice);
+        await Tester.SignIn(alice);
+        await Tester.JoinPlace(place.Id);
+        await Tester.SignIn(bob);
+        var (chatId, _) = await Tester.CreateChat(false, "Place Chat", placeId: place.Id);
+        await Tester.InviteToChat(chatId, alice);
+
+        // act
+        var entry = await Tester.CreateTextEntry(chatId, "Hello place!");
+
+        // assert
+        var notification = await GetNotification(alice, entry.Id);
+        notification.IconUrl.Should().NotBeNullOrEmpty();
+        notification.IconUrl.Should().Contain("api/avatars/marble/");
+        notification.IconUrl.Should().Contain("format=png");
     }
 
     private async Task<Notification> GetNotification(AccountFull user, ChatEntryId entryId)
