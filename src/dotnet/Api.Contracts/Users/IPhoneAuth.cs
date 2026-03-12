@@ -8,15 +8,18 @@ public interface IPhoneAuth : IComputeService
     [ComputeMethod]
     Task<bool> IsEnabled(CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<string> ValidateCanSendToPhone(Session session, Phone phone, TotpPurpose purpose, CancellationToken cancellationToken);
+    Task<string> CheckIfBlocked(Session session, Phone phone, TotpPurpose purpose, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<bool> AccountExistsByPhone(Session session, Phone phone, CancellationToken cancellationToken);
+    Task<bool> AccountExists(Session session, Phone phone, CancellationToken cancellationToken);
     [CommandHandler]
     Task<Moment> OnSendTotp(PhoneAuth_SendTotp command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<bool> OnValidateTotp(PhoneAuth_ValidateTotp command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<bool> OnVerifyPhone(PhoneAuth_VerifyPhone command, CancellationToken cancellationToken);
+
+    [ComputeMethod, Obsolete("2026.03: Removed in favor of CheckIfBlocked")]
+    Task<string> ValidateCanSendToPhone(Session session, Phone phone, TotpPurpose purpose, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]

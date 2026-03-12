@@ -28,8 +28,14 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     private RedisDb<UsersDbContext> RedisDb { get; } = services.GetRequiredService<RedisDb<UsersDbContext>>();
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
 
+    [Obsolete("2026.03: Removed in favor of CheckIfBlocked")]
     // [ComputeMethod]
-    public virtual Task<string> ValidateCanSendToEmail(
+    public Task<string> ValidateCanSendToEmail(
+        Session session, ActualChat.Email email, TotpPurpose purpose, CancellationToken cancellationToken)
+        => CheckIfBlocked(session, email, purpose, cancellationToken);
+
+    // [ComputeMethod]
+    public virtual Task<string> CheckIfBlocked(
         Session session, ActualChat.Email email, TotpPurpose purpose, CancellationToken cancellationToken)
         => Task.FromResult(
             System.Net.Mail.MailAddress.TryCreate(email.Value, out _)
@@ -37,7 +43,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
                 : "Invalid email address.");
 
     // [ComputeMethod]
-    public virtual async Task<bool> AccountExistsByEmail(
+    public virtual async Task<bool> AccountExists(
         Session session, ActualChat.Email email, CancellationToken cancellationToken)
     {
         var identity = UserIdentityExt.NewEmailIdentity(email);
@@ -63,7 +69,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         if (await IsThrottled(session, email, cancellationToken).ConfigureAwait(false))
             return NextSendAt();
 
-        var canSendValidationMessage = await ValidateCanSendToEmail(session, command.Email, purpose, cancellationToken).ConfigureAwait(false);
+        var canSendValidationMessage = await CheckIfBlocked(session, command.Email, purpose, cancellationToken).ConfigureAwait(false);
         if (!canSendValidationMessage.IsNullOrEmpty())
             throw StandardError.Constraint(canSendValidationMessage);
 

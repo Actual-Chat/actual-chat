@@ -12,7 +12,9 @@ public sealed partial class AccountNameValidator
     [GeneratedRegex(@"[\p{Cc}\p{Cf}\p{Co}\p{Cs}\u200B-\u200D\uFEFF\u00AD]", RegexOptions.Compiled)]
     private static partial Regex InvisibleCharsRegex();
 
+#pragma warning disable CA1822
     public string? Validate(in ReadOnlySpan<char> name)
+#pragma warning restore CA1822
     {
         if (name.Length == 0)
             return "Name is empty.";

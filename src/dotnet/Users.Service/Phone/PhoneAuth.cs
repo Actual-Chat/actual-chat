@@ -40,8 +40,14 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
     public virtual Task<bool> IsEnabled(CancellationToken cancellationToken)
         => Task.FromResult(HostInfo.IsDevelopmentInstance || Settings.IsTwilioEnabled || Settings.IsSMSToEnabled);
 
+    [Obsolete("2026.03: Removed in favor of CheckIfBlocked")]
     // [ComputeMethod]
-    public virtual Task<string> ValidateCanSendToPhone(
+    public Task<string> ValidateCanSendToPhone(
+        Session session, ActualChat.Phone phone, TotpPurpose purpose, CancellationToken cancellationToken)
+        => CheckIfBlocked(session, phone, purpose, cancellationToken);
+
+    // [ComputeMethod]
+    public virtual Task<string> CheckIfBlocked(
         Session session,
         ActualChat.Phone phone,
         TotpPurpose purpose,
@@ -66,7 +72,7 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
     }
 
     // [ComputeMethod]
-    public virtual async Task<bool> AccountExistsByPhone(
+    public virtual async Task<bool> AccountExists(
         Session session,
         ActualChat.Phone phone,
         CancellationToken cancellationToken)
@@ -97,7 +103,7 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         var totp = Totps.Generate(securityToken, modifier); // generate totp with the newest one
         var nextSendAt = NextSendAt();
 
-        var canSendValidationMessage = await ValidateCanSendToPhone(session, phone, purpose, cancellationToken).ConfigureAwait(false);
+        var canSendValidationMessage = await CheckIfBlocked(session, phone, purpose, cancellationToken).ConfigureAwait(false);
         if (!canSendValidationMessage.IsNullOrEmpty())
             throw StandardError.Constraint(canSendValidationMessage);
 
