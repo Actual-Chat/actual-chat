@@ -61,6 +61,14 @@ public static class UrlMapperExt
             return mapper.ToAbsolute(url);
         }
 
+        public string IconUrl(IconQuery query)
+        {
+            var pictureUrl = mapper.PicturePreview128Url(query.Picture);
+            return pictureUrl.IsNullOrEmpty()
+                ? mapper.AvatarUrl(query.AvatarQuery)
+                : pictureUrl;
+        }
+
         private string PictureUrl(Picture picture)
             => picture.MediaRef != null
                 ? mapper.ContentUrl(picture.MediaRef.BlobId)
