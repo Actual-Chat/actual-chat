@@ -1,13 +1,12 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComponentBase<AppUIHub>
+@{
+    var text = IsChatLanguageSelected ? "Transcribing" : "Language detecting";
+}
 
 <p class="chat-message-markup">
     <span class="streaming-entry-badge" @onclick="@OnClick">
-        @if (IsChatLanguageSelected) {
-            <span>Transcribing</span>
-        } else {
-            <span>Language detecting</span>
-        }
+        <span>@text</span>
         <i class="icon-settings c-icon"></i>
     </span>
 </p>
