@@ -42,7 +42,7 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
 
     [Obsolete("2026.03: Removed in favor of CheckIfBlocked")]
     // [ComputeMethod]
-    public Task<string> ValidateCanSendToPhone(
+    public virtual Task<string> ValidateCanSendToPhone(
         Session session, ActualChat.Phone phone, TotpPurpose purpose, CancellationToken cancellationToken)
         => CheckIfBlocked(session, phone, purpose, cancellationToken);
 
