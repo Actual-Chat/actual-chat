@@ -6,7 +6,7 @@ using SixLabors.ImageSharp;
 
 namespace ActualChat.Uploads;
 
-public class LocalVideoUploadProcessor(ILogger<LocalVideoUploadProcessor> log) : IUploadProcessor
+public sealed class LocalVideoUploadProcessor(ILogger<LocalVideoUploadProcessor> log) : IUploadProcessor
 {
     private ILogger Log { get; } = log;
 

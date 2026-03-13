@@ -2,7 +2,7 @@ using ActualChat.UI.Services;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class StreamUploader(ChunkedFileUploader chunkedUploader) : IFileUploader
+public sealed class StreamUploader(ChunkedFileUploader chunkedUploader) : IFileUploader
 {
     public bool CanUpload(IUploadStreamSource source) => source is StreamUploadSource;
 

@@ -3,7 +3,7 @@ using ActualChat.UI.Services;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class WebSourceUploader(IJSRuntime js) : IFileUploader
+public sealed class WebSourceUploader(IJSRuntime js) : IFileUploader
 {
     private static readonly string JSStartMethod = $"{BlazorUICoreModule.ImportName}.ChunkedFileUpload.startWithReporter";
 

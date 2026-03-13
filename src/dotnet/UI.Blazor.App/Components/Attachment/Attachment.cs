@@ -34,8 +34,5 @@ public record Attachment(string FileName, string FileType, long Length, Size Siz
     }
 }
 
-public record SourceAttachment(string FileName, string FileType, long Length, FilePreview? Preview)
-    : Attachment(FileName, FileType, Length, Preview?.Dimensions ?? default)
-{
-    public string PreviewUrl => Preview?.Url ?? "";
-}
+public sealed record SourceAttachment(string FileName, string FileType, long Length, FilePreview? Preview)
+    : Attachment(FileName, FileType, Length, Preview?.Dimensions ?? default);
