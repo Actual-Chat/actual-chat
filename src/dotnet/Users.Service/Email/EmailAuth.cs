@@ -30,7 +30,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
 
     [Obsolete("2026.03: Removed in favor of CheckIfBlocked")]
     // [ComputeMethod]
-    public Task<string> ValidateCanSendToEmail(
+    public virtual Task<string> ValidateCanSendToEmail(
         Session session, ActualChat.Email email, TotpPurpose purpose, CancellationToken cancellationToken)
         => CheckIfBlocked(session, email, purpose, cancellationToken);
 
