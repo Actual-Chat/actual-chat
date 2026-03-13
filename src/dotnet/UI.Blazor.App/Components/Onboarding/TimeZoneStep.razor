@@ -110,7 +110,7 @@
     }
 
     public class Model {
-        [Required]
+        [Required, Display(Name = "Time zone")]
         public string SelectedTimeZoneId { get; set; } = "";
         public string SelectedTimeZoneName { get; set; } = "";
         public string BrowserTimeZoneId { get; set; } = "";

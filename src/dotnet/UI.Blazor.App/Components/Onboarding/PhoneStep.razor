@@ -183,6 +183,7 @@
     }
 
     public class Model {
-        [PhoneNumber(IsOptional = true)] public string Phone { get; set; } = PhoneCodes.Default.DisplayCode;
+        [PhoneAsync, Display(Name = "Phone")]
+        public string Phone { get; set; } = PhoneCodes.Default.DisplayCode;
     }
 }

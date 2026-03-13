@@ -6,7 +6,7 @@ namespace ActualChat.UI.Blazor.Components;
 public sealed class EditContextAsyncValidator : WorkerBase
 {
     private readonly AsyncLock _lock = new ();
-    private readonly Channel<FieldIdentifier?> _validationRequests = Channel.CreateBounded<FieldIdentifier?>(
+    private readonly Channel<FieldIdentifier?> _validationRequests = ChannelExt.Create<FieldIdentifier?>(
         new BoundedChannelOptions(100) {
             FullMode = BoundedChannelFullMode.DropOldest,
             SingleReader = true,
@@ -17,8 +17,6 @@ public sealed class EditContextAsyncValidator : WorkerBase
 
     private UIHub Hub { get; }
     private IServiceProvider Services => Hub.Services;
-    private ValidationModelStore ValidationModelStore { get; }
-    private AsyncValidator AsyncValidator { get; }
     private ILogger Log { get; }
 
     public EditContextAsyncValidator(EditContext editContext, UIHub hub)
@@ -26,9 +24,6 @@ public sealed class EditContextAsyncValidator : WorkerBase
         _editContext = editContext ?? throw new ArgumentNullException(nameof(editContext));
         _messages = new ValidationMessageStore(_editContext);
         Hub = hub;
-
-        ValidationModelStore = Services.GetRequiredService<ValidationModelStore>();
-        AsyncValidator = Services.GetRequiredService<AsyncValidator>();
         Log = hub.LogFor(GetType());
 
         _editContext.OnFieldChanged += OnFieldChanged;
@@ -69,6 +64,28 @@ public sealed class EditContextAsyncValidator : WorkerBase
                 : ValidateProperty(fieldIdentifier.Value, cancellationToken1);
     }
 
+    // Private methods
+
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Model types are expected to be untrimmed.")]
+    private async Task<bool> ValidateAll(CancellationToken cancellationToken)
+    {
+        using var _ = await _lock.Lock(cancellationToken).ConfigureAwait(false);
+        var validationContext = new ValidationContext(_editContext.Model, Services, null);
+        var validationResults = new List<ValidationResult>();
+        Validator.TryValidateObject(_editContext.Model, validationContext, validationResults, true);
+        await ClearAndAddValidationResults(null, validationResults).ConfigureAwait(false);
+
+        // Skip async validation for properties that already have sync errors
+        var syncErrorMembers = validationResults.Count == 0
+            ? null
+            : validationResults.SelectMany(r => r.MemberNames).ToHashSet(StringComparer.Ordinal);
+        var asyncValidationResults = await AsyncValidator
+            .Validate(validationContext, syncErrorMembers, cancellationToken)
+            .ConfigureAwait(false);
+        await AddValidationResults(asyncValidationResults).ConfigureAwait(false);
+        return validationResults.Count == 0 && asyncValidationResults.Count == 0;
+    }
+
     [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Model types are expected to be untrimmed.")]
     private async Task ValidateProperty(FieldIdentifier fieldIdentifier, CancellationToken cancellationToken)
     {
@@ -76,32 +93,21 @@ public sealed class EditContextAsyncValidator : WorkerBase
         var validationContext = new ValidationContext(_editContext.Model, Services, null) {
             MemberName = fieldIdentifier.FieldName,
         };
-        var ctx = ValidationModelStore.Get(validationContext);
+        var ctx = AsyncValidationModel.CreatePropertyValidationContext(validationContext);
         if (ctx == null)
             return;
 
         var results = new List<ValidationResult>();
         Validator.TryValidateProperty(ctx.Value, validationContext, results);
-        _messages.Clear(fieldIdentifier);
-        await AddValidationResults(results).ConfigureAwait(false);
-        var asyncValidationResults = await AsyncValidator
-            .ValidateProperty(validationContext.ObjectInstance, validationContext, cancellationToken)
-            .ConfigureAwait(false);
-        await AddValidationResults(asyncValidationResults).ConfigureAwait(false);
-    }
+        await ClearAndAddValidationResults(fieldIdentifier, results).ConfigureAwait(false);
 
-    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Model types are expected to be untrimmed.")]
-    private async Task<bool> ValidateAll(CancellationToken cancellationToken)
-    {
-        using var _ = await _lock.Lock(cancellationToken).ConfigureAwait(false);
-        var validationContext = new ValidationContext(_editContext.Model, Services, null);
-        _messages.Clear();
-        var validationResults = new List<ValidationResult>();
-        Validator.TryValidateObject(_editContext.Model, validationContext, validationResults, true);
-        await AddValidationResults(validationResults).ConfigureAwait(false);
-        var asyncValidationResults = await AsyncValidator.Validate(validationContext, cancellationToken).ConfigureAwait(false);
-        await AddValidationResults(asyncValidationResults).ConfigureAwait(false);
-        return validationResults.Count == 0 && asyncValidationResults.Count == 0;
+        // Run async validation only if sync validation passed for this property
+        if (results.Count == 0) {
+            var asyncValidationResults = await AsyncValidator
+                .ValidateProperty(validationContext, hasSyncErrors: false, cancellationToken)
+                .ConfigureAwait(false);
+            await AddValidationResults(asyncValidationResults).ConfigureAwait(false);
+        }
     }
 
     private void OnFieldChanged(object? sender, FieldChangedEventArgs e)
@@ -110,18 +116,31 @@ public sealed class EditContextAsyncValidator : WorkerBase
     private void OnValidationRequested(object? sender, ValidationRequestedEventArgs e)
         => _validationRequests.Writer.TryWrite(null);
 
-    private Task AddValidationResults(IReadOnlyCollection<ValidationResult> validationResults)
+    private Task ClearAndAddValidationResults(
+        FieldIdentifier? fieldIdentifier, IReadOnlyCollection<ValidationResult> validationResults)
         => Hub.Dispatcher.InvokeAsync(() => {
-            foreach (var validationResult in validationResults) {
-                var hasMemberNames = false;
-                foreach (var memberName in validationResult.MemberNames) {
-                    hasMemberNames = true;
-                    _messages.Add(_editContext.Field(memberName), validationResult.ErrorMessage!);
-                }
-
-                if (!hasMemberNames)
-                    _messages.Add(new FieldIdentifier(_editContext.Model, fieldName: string.Empty), validationResult.ErrorMessage!);
-            }
-            _editContext.NotifyValidationStateChanged();
+            if (fieldIdentifier is { } fi)
+                _messages.Clear(fi);
+            else
+                _messages.Clear();
+            AppendValidationResults(validationResults);
         });
+
+    private Task AddValidationResults(IReadOnlyCollection<ValidationResult> validationResults)
+        => Hub.Dispatcher.InvokeAsync(() => AppendValidationResults(validationResults));
+
+    private void AppendValidationResults(IReadOnlyCollection<ValidationResult> results)
+    {
+        foreach (var validationResult in results) {
+            var hasMemberNames = false;
+            foreach (var memberName in validationResult.MemberNames) {
+                hasMemberNames = true;
+                _messages.Add(_editContext.Field(memberName), validationResult.ErrorMessage!);
+            }
+
+            if (!hasMemberNames)
+                _messages.Add(new FieldIdentifier(_editContext.Model, fieldName: string.Empty), validationResult.ErrorMessage!);
+        }
+        _editContext.NotifyValidationStateChanged();
+    }
 }

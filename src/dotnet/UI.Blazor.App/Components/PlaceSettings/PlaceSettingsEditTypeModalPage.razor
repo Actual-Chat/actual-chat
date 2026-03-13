@@ -222,7 +222,7 @@
         public bool IsPublic { get; set; }
 
         public string CurrentAliasId { get; set; } = "";
-        [AliasId]
+        [AliasId, Display(Name = "Short name")]
         public string ActualAliasId => IsPublic ? AliasId : "";
 
         public string FormId { get; }

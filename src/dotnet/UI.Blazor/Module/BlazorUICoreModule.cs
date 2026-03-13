@@ -161,10 +161,6 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
             });
         }
 
-        // validation
-        services.AddScoped<AsyncValidator>();
-        services.AddScoped<ValidationModelStore>();
-
         // Test services
         if (HostInfo.IsDevelopmentInstance)
             fusion.AddService<ComputeStateTestService>(ServiceLifetime.Scoped);
