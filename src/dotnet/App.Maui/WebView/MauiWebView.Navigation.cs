@@ -66,7 +66,7 @@ public partial class MauiWebView
     private bool HandleLoading(Uri uri, UrlLoadingEventArgs eventArgs)
     {
         var wasOnLocalUri = IsOnLocalUri;
-        if (OrdinalEquals(uri.Host, MauiSettings.LocalHost)) {
+        if (uri.Host == MauiSettings.LocalHost) {
             // Local MAUI app URL
             eventArgs.UrlLoadingStrategy = UrlLoadingStrategy.OpenInWebView;
             return true;
@@ -88,7 +88,7 @@ public partial class MauiWebView
 
         if (IsAllowedHostUri(uri)) {
             // We never land here, coz IsAllowedHostUri(...) always returns false now
-            if (uri.PathAndQuery.OrdinalIgnoreCaseStartsWith("/fusion/close")) {
+            if (uri.PathAndQuery.StartsWith("/fusion/close", StringComparison.OrdinalIgnoreCase)) {
                 BeginDispatchToMainThread(
                     () => HardNavigateTo(LastLocalUri.ToString()),
                     allowInline: false);
@@ -114,13 +114,13 @@ public partial class MauiWebView
             return false;
 
         var pathAndQuery = uri.PathAndQuery.ToLowerInvariant();
-        if (pathAndQuery.OrdinalStartsWith("/maui-auth/"))
+        if (pathAndQuery.StartsWith("/maui-auth/"))
             return true;
-        if (pathAndQuery.OrdinalStartsWith("/signin"))
+        if (pathAndQuery.StartsWith("/signin"))
             return true;
-        if (pathAndQuery.OrdinalStartsWith("/signout"))
+        if (pathAndQuery.StartsWith("/signout"))
             return true;
-        if (pathAndQuery.OrdinalStartsWith("/fusion/close"))
+        if (pathAndQuery.StartsWith("/fusion/close"))
             return true;
         return false;
     }

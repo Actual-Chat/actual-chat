@@ -46,9 +46,9 @@ public sealed partial class UrlMapper
         _baseUrlWithoutBackslash = baseUrl.TrimSuffix("/");
         BaseUrl = baseUrl;
         BaseUri = baseUrl.ToUri();
-        IsVoxt = OrdinalIgnoreCaseEquals(BaseUri.Host, Constants.Hosts.Voxt);
-        IsDevVoxt = OrdinalIgnoreCaseEquals(BaseUri.Host, Constants.Hosts.DevVoxt);
-        IsLocalVoxt = OrdinalIgnoreCaseEquals(BaseUri.Host, Constants.Hosts.LocalVoxt);
+        IsVoxt = string.Equals(BaseUri.Host, Constants.Hosts.Voxt, StringComparison.OrdinalIgnoreCase);
+        IsDevVoxt = string.Equals(BaseUri.Host, Constants.Hosts.DevVoxt, StringComparison.OrdinalIgnoreCase);
+        IsLocalVoxt = string.Equals(BaseUri.Host, Constants.Hosts.LocalVoxt, StringComparison.OrdinalIgnoreCase);
 
         ApiBaseUrl = $"{BaseUrl}api/";
         ContentBaseUrl = $"{ApiBaseUrl}content/";
@@ -67,13 +67,13 @@ public sealed partial class UrlMapper
 
     public static string GetWebSocketUrl(string url)
     {
-        if (url.OrdinalStartsWith("ws://")
-            || url.OrdinalStartsWith("wss://"))
+        if (url.StartsWith("ws://")
+            || url.StartsWith("wss://"))
             return url;
 
-        if (url.OrdinalStartsWith("http://"))
+        if (url.StartsWith("http://"))
             return "ws://" + url[7..];
-        if (url.OrdinalStartsWith("https://"))
+        if (url.StartsWith("https://"))
             return "wss://" + url[8..];
 
         // No prefix at all
@@ -102,7 +102,7 @@ public sealed partial class UrlMapper
     /// <returns>A relative URI path.</returns>
     public string ToBaseRelativePath(string url)
     {
-        if (url.OrdinalStartsWith(BaseUri.OriginalString))
+        if (url.StartsWith(BaseUri.OriginalString))
         {
             // The absolute URI must be of the form "{baseUri}something" (where
             // baseUri ends with a slash), and from that we return "something"
@@ -111,7 +111,7 @@ public sealed partial class UrlMapper
 
         var pathEndIndex = url.IndexOfAny(UriPathEndChar);
         var uriPathOnly = pathEndIndex < 0 ? url : url.Substring(0, pathEndIndex);
-        if (OrdinalEquals($"{uriPathOnly}/", BaseUri.OriginalString))
+        if ($"{uriPathOnly}/" == BaseUri.OriginalString)
         {
             // Special case: for the base URI "/something/", if you're at
             // "/something" then treat it as if you were at "/something/" (i.e.,

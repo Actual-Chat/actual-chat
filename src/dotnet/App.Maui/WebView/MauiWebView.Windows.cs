@@ -47,7 +47,7 @@ public partial class MauiWebView
         // But I still have some doubts about using 2 subscribers for handling web resource requests
         // and using `args.GetDeferral()`.
         var sUri = args.Request.Uri;
-        if (!sUri.OrdinalStartsWith(ContentResolver.UriContentScheme))
+        if (!sUri.StartsWith(ContentResolver.UriContentScheme))
             return;
 
         if (!ContentResolver.TryGetFilePathFromUri(sUri, out var filePath))

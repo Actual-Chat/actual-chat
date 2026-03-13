@@ -37,7 +37,7 @@ public class EgressGuard(HostInfo hostInfo, MediaSettings settings, ILogger<Egre
     }
 
     private bool IsAllowedDomain(string host)
-        => !DomainDenyList.Any(host.OrdinalIgnoreCaseEndsWith);
+        => !DomainDenyList.Any(domain => host.EndsWith(domain, StringComparison.OrdinalIgnoreCase));
 
     private async Task<IPAddress[]> Resolve(string host, CancellationToken cancellationToken)
     {

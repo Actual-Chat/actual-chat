@@ -188,7 +188,7 @@ public partial class ChatsBackend
         var newChatMediaId = chat.MediaId != null
             ? MediaId.New(newChatId.Value, chat.MediaId.LocalId)
             : null;
-        var copyMedia = newChatMediaId != null && (dbChat == null || !OrdinalEquals(newChatMediaId.Value, dbChat.MediaId));
+        var copyMedia = newChatMediaId != null && (dbChat == null || newChatMediaId.Value != dbChat.MediaId);
         if (copyMedia)
             await Commander
                 .Call(new MediaBackend_CopyChat(newChatId, correlationId, [chat.MediaId!]), true, cancellationToken)
@@ -247,7 +247,7 @@ public partial class ChatsBackend
                 if (existentNewRole.SystemRole != originalRole.SystemRole)
                     throw StandardError.Constraint("Can't proceed migration. Role 'SystemRole' property has changed. "
                         + $"Expected value: '{originalRole.SystemRole}', but actual value: '{existentNewRole.SystemRole}'.");
-                if (!OrdinalEquals(existentNewRole.Name, originalRole.Name))
+                if (existentNewRole.Name != originalRole.Name)
                     throw StandardError.Constraint("Can't proceed migration. Role 'Name' property has changed. "
                         + $"Expected value: '{originalRole.Name}', but actual value: '{existentNewRole.Name}'.");
                 existentNewRole.UpdateFrom(newRole);
@@ -436,7 +436,7 @@ public partial class ChatsBackend
 
             if (chatEntryWithMentionIds.Contains(dbChatEntry.LocalId)) {
                 var content = UpdateMentionsInContent(context.ChatId, dbChatEntry.Content, migratedAuthors, mentionExtractor);
-                if (!OrdinalEquals(content, dbChatEntry.Content)) {
+                if (content != dbChatEntry.Content) {
                     dbChatEntry.Content = content;
                     mentionUpdatesInsideContent++;
                 }
@@ -577,7 +577,7 @@ public partial class ChatsBackend
         return;
 
         bool CanRemapMedia(MediaId mediaId)
-             => OrdinalEquals(mediaId.Scope, chatSid);
+             => mediaId.Scope == chatSid;
 
         string RemapMedia(string mediaSid)
         {
@@ -786,7 +786,7 @@ public partial class ChatsBackend
             // Extract mention_id from id.
             var parts = mention.Id.Split(':');
             var hasFixedMentionId = false;
-            if ((parts.Length == 5 || parts.Length == 6) && OrdinalEquals(parts[^3], "a")) {
+            if ((parts.Length == 5 || parts.Length == 6) && parts[^3] == "a") {
                 var authorChatSid = parts[^2];
                 var authorLocalSid = parts[^1];
                 if (ChatId.TryParse(authorChatSid, out var authorChatId)
@@ -842,7 +842,7 @@ public partial class ChatsBackend
         }
 
         public MigratedAuthor? GetMigratedAuthor(string authorSid)
-            => _migratedAuthors.FirstOrDefault(c => OrdinalEquals(c.OldAuthorId.Id.Value, authorSid));
+            => _migratedAuthors.FirstOrDefault(c => c.OldAuthorId.Id.Value == authorSid);
 
         public sealed record MigratedAuthor(AuthorId OldAuthorId, AuthorId? NewAuthorId);
     }

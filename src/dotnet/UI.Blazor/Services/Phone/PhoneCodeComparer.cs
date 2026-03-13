@@ -12,7 +12,7 @@ public class PhoneCodeComparer : IEqualityComparer<string>, IEqualityComparer<Ph
         if (x is null || y is null)
             return false;
 
-        return OrdinalEquals(Phone.NormalizePart(x), Phone.NormalizePart(y));
+        return Phone.NormalizePart(x) == Phone.NormalizePart(y);
     }
 
     public int GetHashCode(string obj)

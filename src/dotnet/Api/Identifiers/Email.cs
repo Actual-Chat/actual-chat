@@ -36,7 +36,7 @@ public sealed partial class Email : StringIdentifier, IStringIdentifier<Email>
     // Normalization
 
     public bool IsNormalized()
-        => OrdinalEquals(Value, Value.ToLowerInvariant());
+        => Value == Value.ToLowerInvariant();
 
     public Email Normalize()
         => IsNormalized()
@@ -108,5 +108,5 @@ public sealed partial class Email : StringIdentifier, IStringIdentifier<Email>
     private static bool IsValidEmail(string email)
         => MailAddress.TryCreate(email, out var mailAddress) &&
             // Ensure that the parsed address matches the original input
-            OrdinalEquals(mailAddress.Address, email);
+            mailAddress.Address == email;
 }

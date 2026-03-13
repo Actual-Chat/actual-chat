@@ -180,7 +180,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var cts = new CancellationTokenSource();
         var cancellationToken = cts.Token;
         _ = History
-            .When(x => !OrdinalEquals(x.Url, sUri), cancellationToken)
+            .When(x => x.Url != sUri, cancellationToken)
             .ContinueWith(_ => cts.CancelAndDisposeSilently(), TaskScheduler.Default);
         _ = ForegroundTask.Run(async () => {
                 try {
@@ -200,7 +200,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private void OnItemVisibilityChanged(VirtualListItemVisibility virtualListItemVisibility)
     {
         var identity = virtualListItemVisibility.ListIdentity;
-        if (!OrdinalEquals(identity, ChatId.Value)) {
+        if (identity != ChatId.Value) {
             Log.LogWarning(
                 $"{nameof(OnItemVisibilityChanged)} received wrong identity {{Identity}} while expecting {{ActualIdentity}}",
                 identity,

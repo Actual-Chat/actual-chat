@@ -24,7 +24,7 @@ public sealed class AppScopedServiceStarter
     public async Task PrepareFirstRender(string sessionHash)
     {
         var oldSessionHash = Interlocked.CompareExchange(ref _sessionHash, sessionHash, null);
-        if (OrdinalEquals(oldSessionHash, sessionHash)) {
+        if (oldSessionHash == sessionHash) {
             Log.LogError("{Method} is called more than once", nameof(PrepareFirstRender));
             return; // Already prepared
         }

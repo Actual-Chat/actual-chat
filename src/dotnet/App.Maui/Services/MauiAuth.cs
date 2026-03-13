@@ -23,7 +23,7 @@ internal sealed class MauiAuth(UIHub hub) : UIServiceBase<UIHub>(hub), IClientAu
             throw new ArgumentOutOfRangeException(nameof(schema));
 
 #if ANDROID
-        if (OrdinalEquals(schema, AuthSchema.Google)) {
+        if (schema == AuthSchema.Google) {
             var googleAuth = Hub.Services.GetRequiredService<NativeGoogleAuth>();
             if (googleAuth.IsAvailable()) {
                 await googleAuth.SignIn().ConfigureAwait(false);
@@ -32,7 +32,7 @@ internal sealed class MauiAuth(UIHub hub) : UIServiceBase<UIHub>(hub), IClientAu
         }
 #endif
 #if IOS
-        if (OrdinalEquals(schema, AuthSchema.Apple)
+        if (schema == AuthSchema.Apple
             && DeviceInfo.Platform == DevicePlatform.iOS
             && DeviceInfo.Version.Major >= 13)
         {
@@ -60,7 +60,7 @@ internal sealed class MauiAuth(UIHub hub) : UIServiceBase<UIHub>(hub), IClientAu
 
     private async Task WebSignInOrSignOut(string endpoint, string flowName)
     {
-        var isSignIn = endpoint.OrdinalIgnoreCaseStartsWith("sign-in");
+        var isSignIn = endpoint.StartsWith("sign-in", StringComparison.OrdinalIgnoreCase);
         try {
             var sessionToken = await SessionTokens.Get().ConfigureAwait(true);
             var url = $"{MauiSettings.BaseUrl}maui-auth/start"

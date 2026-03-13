@@ -21,7 +21,7 @@ public static class IntentHandler
     private static void OnCreate(Activity activity, Bundle? savedInstanceState)
     {
         var intent = activity.Intent;
-        if (intent is null || OrdinalEquals(intent.Action, Intent.ActionMain))
+        if (intent is null || intent.Action == Intent.ActionMain)
             return;
 
         if (intent.IsFromHistory()) {

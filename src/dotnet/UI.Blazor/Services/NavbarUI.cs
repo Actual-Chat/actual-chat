@@ -29,7 +29,7 @@ public class NavbarUI(IServiceProvider services)
 
     public void SelectGroup(string id, bool isUserAction)
     {
-        var group = _groups.FirstOrDefault(c => OrdinalEquals(c.Id, id));
+        var group = _groups.FirstOrDefault(c => c.Id == id);
         Log.LogDebug("Group changed (Id='{Id}', Title='{Title}')", id, group?.Title ?? "(unknown)");
         SelectedGroupId = id;
         SelectedGroupTitle = group?.Title ?? string.Empty;
@@ -38,7 +38,7 @@ public class NavbarUI(IServiceProvider services)
 
     public void RegisterGroup(string id, string title)
     {
-        var group = _groups.FirstOrDefault(c => OrdinalEquals(c.Id, id));
+        var group = _groups.FirstOrDefault(c => c.Id == id);
         if (group == null) {
             group = new Group(id);
             _groups.Add(group);
@@ -48,14 +48,14 @@ public class NavbarUI(IServiceProvider services)
     }
 
     public void UnregisterGroup(string id)
-        => _groups.RemoveAll(c => OrdinalEquals(c.Id, id));
+        => _groups.RemoveAll(c => c.Id == id);
 
     private void UpdateTitle(string id, string title)
     {
-        if (!OrdinalEquals(id, SelectedGroupId))
+        if (id != SelectedGroupId)
             return;
 
-        if (OrdinalEquals(title, SelectedGroupTitle))
+        if (title == SelectedGroupTitle)
             return;
 
         Log.LogDebug("Group title changed (Id='{Id}', Title='{Title}')", id, title);

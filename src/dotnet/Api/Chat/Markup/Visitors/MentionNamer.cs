@@ -19,7 +19,7 @@ public record MentionNamer(IMentionResolver<string> MentionResolver) : AsyncMark
         if (targetName is null)
             return UnresolvedMentionRewriter.Invoke(markup);
 
-        return OrdinalEquals(markup.Name, targetName)
+        return markup.Name == targetName
             ? markup
             : new MentionMarkup(markup.Id, targetName);
     }

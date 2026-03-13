@@ -58,7 +58,7 @@ public static class MigrationExt
                     .GetPendingMigrationsAsync(cancellationToken)
                     .ConfigureAwait(false);
                 var requiredMigrations = pendingMigrations
-                    .Where(m => OrdinalCompare(m, migrationId) < 0)
+                    .Where(m => string.Compare(m, migrationId) < 0)
                     .ToList();
                 if (requiredMigrations.Count == 0)
                     return dbInitializer;

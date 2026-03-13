@@ -56,7 +56,7 @@ public class AndroidAudioWidgetForegroundService : Service
     public override StartCommandResult OnStartCommand(Intent? intent, StartCommandFlags flags, int startId)
     {
         _requestId = Guid.NewGuid().ToString();
-        if (!OrdinalEquals(intent?.Action ?? "", ActionShow))
+        if ((intent?.Action ?? "") != ActionShow)
             return StartCommandResult.Sticky;
 
         var mode = (AudioWidgetMode)intent!.Extras!.GetInt(IntentExtras.Mode);

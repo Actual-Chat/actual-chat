@@ -288,7 +288,7 @@ public sealed class SyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedM
             return IsRecentlyWritten(value, true);
 
         var hasOrigin = value as IHasOrigin; // null only if value == null
-        return hasOrigin != null && OrdinalEquals(hasOrigin.Origin, OwnOrigin);
+        return hasOrigin != null && hasOrigin.Origin == OwnOrigin;
     }
 
     public void AddRecentlyWritten(T value)

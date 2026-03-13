@@ -68,7 +68,7 @@ public sealed partial class AudioInitializer(UIHub hub)
         if (!match.Success)
             return false;
 
-        if (OrdinalIgnoreCaseEquals( match.Groups["type"].Value,"mac"))
+        if (string.Equals( match.Groups["type"].Value,"mac", StringComparison.OrdinalIgnoreCase))
             return true;
 
         // only recent versions of apple hw have decent performance to run NN with WASM SIMD for VAD

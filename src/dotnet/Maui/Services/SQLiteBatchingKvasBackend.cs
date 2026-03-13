@@ -60,7 +60,7 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
 
         static int FindIndex(string[] keys, string key) {
             for (var i = 0; i < keys.Length; i++)
-                if (OrdinalEquals(keys[i], key))
+                if (keys[i] == key)
                     return i;
             return -1;
         }

@@ -9,7 +9,7 @@ public sealed class StringDiffHandler(DiffEngine engine) : DiffHandlerBase<strin
     private static readonly string EscapedNull = EscapeChar + "0";
 
     public override string? Diff(string? source, string? target)
-        => OrdinalEquals(source, target) ? null : Escape(target);
+        => source == target ? null : Escape(target);
 
     public override string? Patch(string? source, string? diff)
         => ReferenceEquals(diff, null) ? source : Unescape(diff);
@@ -32,7 +32,7 @@ public sealed class StringDiffHandler(DiffEngine engine) : DiffHandlerBase<strin
         if (s.IsNullOrEmpty())
             return s;
 
-        if (OrdinalEquals(s, EscapedNull))
+        if (s == EscapedNull)
             return null;
 
         return s[0] == EscapeChar

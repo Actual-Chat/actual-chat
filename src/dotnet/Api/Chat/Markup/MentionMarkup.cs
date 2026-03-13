@@ -32,5 +32,5 @@ public sealed partial class MentionMarkup(MentionId id, string name = "") : Mark
             : string.Concat("@", QuotedName, Id);
 
     public static string Quote(string name)
-        => string.Concat("`", name.OrdinalReplace("`", "``"), "`");
+        => string.Concat("`", name.Replace("`", "``"), "`");
 }

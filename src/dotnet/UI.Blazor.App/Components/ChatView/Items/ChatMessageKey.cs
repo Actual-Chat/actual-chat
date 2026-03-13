@@ -94,7 +94,7 @@ public partial class ChatMessageKey : StringIdentifier, IStringIdentifier<ChatMe
             return true;
         }
 
-        var firstDashIndex = s.OrdinalIndexOf('-');
+        var firstDashIndex = s.IndexOf('-');
         var sLocalId = firstDashIndex > 0 ? s[..firstDashIndex] : s;
         if (!long.TryParse(sLocalId, CultureInfo.InvariantCulture, out var localId))
             return false;

@@ -653,7 +653,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var externalContactName = await ExternalContactsBackend
             .GetDisplayNameFor(ownerUserId, peerUserId, cancellationToken)
             .ConfigureAwait(false);
-        if (OrdinalEquals(contact.ExternalContactName, externalContactName))
+        if (contact.ExternalContactName == externalContactName)
             return;
 
         try {

@@ -197,7 +197,7 @@ public static class BeamAvatars
 
     private static SKColor ParseColor(string hex)
     {
-        if (hex.OrdinalStartsWith("#"))
+        if (hex.StartsWith("#"))
             hex = hex[1..];
 
         var r = byte.Parse(hex[..2], NumberStyles.HexNumber, CultureInfo.InvariantCulture);

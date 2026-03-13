@@ -238,8 +238,8 @@ public static partial class Constants
             public const string EmailDomain = "@actual.chat";
 
             public static bool IsTestAgentEmail(string email)
-                => email.OrdinalIgnoreCaseStartsWith(EmailPrefix)
-                    && email.OrdinalIgnoreCaseEndsWith(EmailDomain);
+                => email.StartsWith(EmailPrefix, StringComparison.OrdinalIgnoreCase)
+                    && email.EndsWith(EmailDomain, StringComparison.OrdinalIgnoreCase);
         }
     }
 

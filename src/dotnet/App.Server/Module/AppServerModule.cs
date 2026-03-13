@@ -209,7 +209,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
 
         services.AddSingleton<IMeshLocks>(c => {
             var subspace = Settings.MeshLockSubspace;
-            if (OrdinalEquals(subspace, "?"))
+            if (subspace == "?")
                 subspace = Alphabet.AlphaNumeric.Generator8.Next();
             else if (subspace.IsNullOrWhiteSpace())
                 subspace = "";
@@ -239,7 +239,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         var binPath = new FilePath(Assembly.GetExecutingAssembly().Location).FullPath.DirectoryPath;
         var dataProtection = Settings.DataProtection.NullIfEmpty() ?? binPath & "data-protection-keys";
         Log.LogInformation("DataProtection path: {DataProtection}", dataProtection);
-        if (dataProtection.OrdinalStartsWith("gs://")) {
+        if (dataProtection.StartsWith("gs://")) {
             var bucket = dataProtection[5..dataProtection.IndexOf('/', 5)];
             var objectName = dataProtection[(6 + bucket.Length)..];
             services.AddDataProtection().PersistKeysToGoogleCloudStorage(bucket, objectName);

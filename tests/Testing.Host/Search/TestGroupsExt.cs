@@ -120,7 +120,7 @@ public static class TestGroupsExt
         this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats,
         string? filter = null)
         => chats.Where(x => x.Key.MustJoin)
-            .Where(x => filter.IsNullOrEmpty() || x.Value.Title.OrdinalIgnoreCaseContains(filter))
+            .Where(x => filter.IsNullOrEmpty() || x.Value.Title.Contains(filter, StringComparison.OrdinalIgnoreCase))
             .Select(x => x.Value)
             .ToList();
 
@@ -128,7 +128,7 @@ public static class TestGroupsExt
         this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats,
         string? filter = null)
         => chats.Where(x => x.Key is { MustJoin: true, IsPublic: false })
-            .Where(x => filter.IsNullOrEmpty() || x.Value.Title.OrdinalIgnoreCaseContains(filter))
+            .Where(x => filter.IsNullOrEmpty() || x.Value.Title.Contains(filter, StringComparison.OrdinalIgnoreCase))
             .Select(x => x.Value)
             .ToList();
 
@@ -136,7 +136,7 @@ public static class TestGroupsExt
         this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats,
         string? filter = null)
         => chats.Where(x => !x.Key.IsPublic && x.Key.PlaceKey?.IsPublic != true && !x.Key.MustJoin)
-            .Where(x => filter.IsNullOrEmpty() || x.Value.Title.OrdinalIgnoreCaseContains(filter))
+            .Where(x => filter.IsNullOrEmpty() || x.Value.Title.Contains(filter, StringComparison.OrdinalIgnoreCase))
             .Select(x => x.Value)
             .ToList();
 
@@ -144,7 +144,7 @@ public static class TestGroupsExt
         this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats,
         string? filter = null)
         => chats.Where(x => x.Key.IsPublic && x.Key.PlaceKey?.IsPublic != false && !x.Key.MustJoin)
-            .Where(x => filter.IsNullOrEmpty() || x.Value.Title.OrdinalIgnoreCaseContains(filter))
+            .Where(x => filter.IsNullOrEmpty() || x.Value.Title.Contains(filter, StringComparison.OrdinalIgnoreCase))
             .Select(x => x.Value)
             .ToList();
 
@@ -153,7 +153,7 @@ public static class TestGroupsExt
         TestPlaceKey placeKey,
         string? filter = null)
         => chats.Where(x => x.Key.PlaceKey == placeKey && (x.Key.MustJoin || x.Key.IsPublic))
-            .Where(x => filter.IsNullOrEmpty() || x.Value.Title.OrdinalIgnoreCaseContains(filter))
+            .Where(x => filter.IsNullOrEmpty() || x.Value.Title.Contains(filter, StringComparison.OrdinalIgnoreCase))
             .Select(x => x.Value)
             .ToList();
 
@@ -165,7 +165,7 @@ public static class TestGroupsExt
             .Where(x => x.Key.PlaceKey == placeKey
                 && x.Key.PlaceKey.MustJoin
                 && x.Key is { MustJoin: true, IsPublic: false })
-            .Where(x => filter.IsNullOrEmpty() || x.Value.Title.OrdinalIgnoreCaseContains(filter))
+            .Where(x => filter.IsNullOrEmpty() || x.Value.Title.Contains(filter, StringComparison.OrdinalIgnoreCase))
             .Select(x => x.Value)
             .ToList();
 
@@ -173,7 +173,7 @@ public static class TestGroupsExt
         this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats,
         string? filter = null)
         => chats.Where(x => x.Key.PlaceKey is null && x.Key.MustJoin && !x.Key.IsPublic)
-            .Where(x => filter.IsNullOrEmpty() || x.Value.Title.OrdinalIgnoreCaseContains(filter))
+            .Where(x => filter.IsNullOrEmpty() || x.Value.Title.Contains(filter, StringComparison.OrdinalIgnoreCase))
             .Select(x => x.Value)
             .ToList();
 

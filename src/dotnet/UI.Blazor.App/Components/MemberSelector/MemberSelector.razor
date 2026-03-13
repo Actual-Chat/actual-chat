@@ -126,7 +126,7 @@
         FilteredItems = string.IsNullOrWhiteSpace(filter)
             ? AllItems.ToArray()
             : AllItems
-                .Where(x => x.Account.Avatar.Name.OrdinalIgnoreCaseContains(filter))
+                .Where(x => x.Account.Avatar.Name.Contains(filter, StringComparison.OrdinalIgnoreCase))
                 .ToArray();
     }
 

@@ -84,14 +84,14 @@ public sealed partial class NotificationId : StringIdentifier, IStringIdentifier
             return true;
         }
 
-        var userIdLength = s.OrdinalIndexOf(" ");
+        var userIdLength = s.IndexOf(" ");
         if (userIdLength < 0)
             return false;
         if (!UserId.TryParse(s[..userIdLength], out var userId))
             return false;
 
         var kindStart = userIdLength + 1;
-        var kindLength = s.OrdinalIndexOf(":", kindStart);
+        var kindLength = s.IndexOf(":", kindStart);
         if (kindLength < 0)
             return false;
 

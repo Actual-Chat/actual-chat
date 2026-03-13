@@ -43,14 +43,14 @@ public partial class History
             fixedUriLogLevel = LogLevel.Information;
         }
         var fixedUri = localUrl.Value;
-        if (!OrdinalEquals(url, fixedUri)) {
+        if (url != fixedUri) {
             Log.Log(fixedUriLogLevel, "NavigateTo: {Uri} is fixed to {FixedUri}", url, fixedUri);
             url = fixedUri;
         }
 
         var title = $"NavigateTo: {(mustReplace ? "*>" : "->")} {url}{(force ? " + force" : "")}";
         var entry = NavigationQueue.Enqueue(addInFront, title, () => {
-            if (!force && OrdinalEquals(url, _url)) {
+            if (!force && url == _url) {
                 DebugLog?.LogDebug("{Entry} - skipped (same URI + no force option)", title);
                 return null;
             }

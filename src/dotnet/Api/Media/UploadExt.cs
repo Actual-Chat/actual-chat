@@ -14,8 +14,8 @@ public static class UploadExt
     {
         var parts = upload.Tag.Split('/');
         if (parts.Length == 3
-            && OrdinalEquals(parts[0], nameof(ChatEntryAttachment))
-            && OrdinalEquals(parts[1], "v1")
+            && parts[0] == nameof(ChatEntryAttachment)
+            && parts[1] == "v1"
             && ChatId.TryParse(parts[2], out var chatId))
             return chatId;
 

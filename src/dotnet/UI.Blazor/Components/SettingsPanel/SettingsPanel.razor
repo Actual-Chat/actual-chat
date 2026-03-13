@@ -139,7 +139,7 @@
             _tabs.Insert(indexToInsert, tab);
         else
             _tabs.Add(tab);
-        if (DefaultTabId.IsNullOrEmpty() || OrdinalEquals(tab.Id, DefaultTabId)) {
+        if (DefaultTabId.IsNullOrEmpty() || tab.Id == DefaultTabId) {
             ActiveTab ??= tab;
             if (!DefaultTabId.IsNullOrEmpty())
                 _isRightSideVisible = true;

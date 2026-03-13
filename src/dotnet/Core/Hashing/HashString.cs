@@ -101,7 +101,7 @@ public readonly partial struct HashString : ISymbolIdentifier<HashString>
         if (s.IsNullOrEmpty())
             return true; // None
 
-        var algoEndsAt = s.OrdinalIndexOf(Delimiter);
+        var algoEndsAt = s.IndexOf(Delimiter);
         if (algoEndsAt < 0)
             return false;
 
@@ -109,7 +109,7 @@ public readonly partial struct HashString : ISymbolIdentifier<HashString>
             return false;
 
         var encodingStartsAt = algoEndsAt + Delimiter.Length;
-        var encodingEndsAt = s.OrdinalIndexOf(Delimiter, encodingStartsAt);
+        var encodingEndsAt = s.IndexOf(Delimiter, encodingStartsAt);
         if (!Enum.TryParse<HashEncoding>(s[encodingStartsAt..encodingEndsAt], out var encoding))
             return false;
 

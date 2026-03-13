@@ -14,7 +14,7 @@ public static class SearchMatchExt
         if (searchMatchPartRanges.IsNullOrEmpty())
             return SearchMatch.New(fullName);
 
-        Range<int>[] uniquePartRanges = !uniquePart.IsNullOrEmpty() && fullName.OrdinalEndsWith(uniquePart)
+        Range<int>[] uniquePartRanges = !uniquePart.IsNullOrEmpty() && fullName.EndsWith(uniquePart)
             ? uniquePartRanges = [(fullName.Length - uniquePart.Length, fullName.Length)]
             : [];
 

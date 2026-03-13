@@ -27,7 +27,7 @@ public sealed class MauiHostNameRemapper : HostNameRemapper
     }
 
     public override string Get(string hostName)
-        => OrdinalIgnoreCaseEquals(hostName, MauiSettings.Host) && _ip is { } ip
+        => string.Equals(hostName, MauiSettings.Host, StringComparison.OrdinalIgnoreCase) && _ip is { } ip
             ? ip
             : hostName;
 

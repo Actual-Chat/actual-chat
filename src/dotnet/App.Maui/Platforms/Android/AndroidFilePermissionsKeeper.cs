@@ -16,7 +16,7 @@ internal static class AndroidFilePermissionsKeeper
                 States[uri] = state;
                 var permissions = Platform.AppContext.ContentResolver!
                     .PersistedUriPermissions.ToArray();
-                var hasReadPermission = permissions.Any(c => c.IsReadPermission && OrdinalEquals(c.Uri!.ToString(), uri));
+                var hasReadPermission = permissions.Any(c => c.IsReadPermission && c.Uri!.ToString() == uri);
                 state.HasReadPermission = hasReadPermission;
                 Log.LogDebug("Registering file provider for uri '{Uri}', app has persistent read permission: {HasPermission}", uri, hasReadPermission);
             }

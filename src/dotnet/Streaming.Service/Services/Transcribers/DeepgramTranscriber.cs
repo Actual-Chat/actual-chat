@@ -274,7 +274,7 @@ public partial class DeepgramTranscriber : ITranscriber
             if (word.PunctuatedWord == null)
                 continue;
 
-            var wordStart = text.OrdinalIgnoreCaseIndexOf(word.PunctuatedWord, parsedOffset);
+            var wordStart = text.IndexOf(word.PunctuatedWord, parsedOffset, StringComparison.OrdinalIgnoreCase);
             if (wordStart < 0)
                 continue;
 

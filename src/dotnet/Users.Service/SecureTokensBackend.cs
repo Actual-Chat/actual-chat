@@ -19,7 +19,7 @@ public class SecureTokensBackend(IServiceProvider services) : ISecureTokensBacke
     {
         if (value == null)
             throw new ArgumentNullException(nameof(value));
-        if (value.OrdinalContains(' '))
+        if (value.Contains(' '))
             throw new ArgumentOutOfRangeException(nameof(value), "Value cannot contain space symbols.");
 
         var augmentedPartLength = Random.Shared.Next(8, 16);
@@ -38,7 +38,7 @@ public class SecureTokensBackend(IServiceProvider services) : ISecureTokensBacke
 
         try {
             var augmentedValue = DataProtector.Unprotect(token[SecureToken.Prefix.Length..], out var expiresAt);
-            var delimiterIndex = augmentedValue.OrdinalIndexOf(' ');
+            var delimiterIndex = augmentedValue.IndexOf(' ');
             if (delimiterIndex < 0 || Clock.UtcNow > expiresAt)
                 return null;
 

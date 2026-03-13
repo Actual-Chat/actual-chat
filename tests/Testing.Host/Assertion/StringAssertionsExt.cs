@@ -62,12 +62,12 @@ public static class StringAssertionsExt
     }
 
     private static string Stem(string text)
-        => text.ToLower().OrdinalIgnoreCaseReplace("ё", "e").TrimFirstFoundPrefix().TrimFirstFoundSuffix();
+        => text.ToLower().Replace("ё", "e", StringComparison.OrdinalIgnoreCase).TrimFirstFoundPrefix().TrimFirstFoundSuffix();
 
     private static string TrimFirstFoundPrefix(this string source)
     {
         foreach (var prefix in Prefixes)
-            if (source.OrdinalIgnoreCaseHasPrefix(prefix, out var suffix)  && suffix.Length > 2)
+            if (source.HasPrefix(prefix, StringComparison.OrdinalIgnoreCase, out var suffix)  && suffix.Length > 2)
                 return suffix;
 
         return source;

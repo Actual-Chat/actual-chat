@@ -43,8 +43,8 @@ public sealed class ServerAuth
     public CloseFlowInfo? IsCloseFlow(HttpContext httpContext)
     {
         var request = httpContext.Request;
-        if (!OrdinalEquals(request.Path.Value, CloseFlowRequestPath)
-            && !OrdinalEquals(request.Path.Value, AppCloseFlowRequestPath))
+        if (request.Path.Value != CloseFlowRequestPath
+            && request.Path.Value != AppCloseFlowRequestPath)
             return null;
 
         var name = "";
@@ -113,8 +113,8 @@ public sealed class ServerAuth
         var sessionInfo = await Accounts.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
         var mustSetupSession =
             sessionInfo == null
-            || !OrdinalEquals(sessionInfo.IPAddress, ipAddress)
-            || !OrdinalEquals(sessionInfo.UserAgent, userAgent)
+            || sessionInfo.IPAddress != ipAddress
+            || sessionInfo.UserAgent != userAgent
             || sessionInfo.LastSeenAt + SessionInfoUpdatePeriod < Clocks.SystemClock.Now;
         if (mustSetupSession || sessionInfo == null) {
             var upsertSessionCmd = new SessionsBackend_Upsert(session, ipAddress, userAgent);

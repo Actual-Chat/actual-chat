@@ -46,7 +46,7 @@ public static class LoggingExt
 
     public static ILoggingBuilder ConfigureServerFilters(this ILoggingBuilder logging, string environment)
     {
-        MinLevel = DevLog.IsEmpty && !OrdinalEquals(environment, Environments.Development)
+        MinLevel = DevLog.IsEmpty && environment != Environments.Development
             ? LogLevel.Information
             : LogLevel.Debug;
 

@@ -51,7 +51,7 @@ public static class FirebaseAnalyticsExt
         private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
         {
             var location = _history.Uri;
-            if (OrdinalEquals(location, _location))
+            if (location == _location)
                 return; // Location has not changed. Apparently panel/modal/menu has been opened/closed.
 
             var parameters = CreateBaseParameters();

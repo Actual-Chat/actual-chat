@@ -14,7 +14,7 @@ public class VideoTranscoder
         IProgress<double> progress,
         CancellationToken cancellationToken = default)
     {
-        if (sourceFilePath.IsEmpty || !mimeType.OrdinalStartsWith("video/"))
+        if (sourceFilePath.IsEmpty || !mimeType.StartsWith("video/"))
             return Task.FromResult(FilePath.Empty);
 
         return TranscodeInternal(sourceFilePath, progress, cancellationToken);

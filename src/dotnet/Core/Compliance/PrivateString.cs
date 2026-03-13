@@ -17,8 +17,8 @@ public readonly struct PrivateString(string source)
         => Sanitizer.MaskPrivate(Source);
 
     // Equality
-    public bool Equals(PrivateString other) => OrdinalEquals(Source, other.Source);
-    public override bool Equals(object? obj) => obj is PrivateString other && OrdinalEquals(Source, other.Source);
+    public bool Equals(PrivateString other) => Source == other.Source;
+    public override bool Equals(object? obj) => obj is PrivateString other && Source == other.Source;
     public override int GetHashCode() => Source.GetOrdinalHashCode();
     public static bool operator ==(PrivateString left, PrivateString right) => left.Equals(right);
     public static bool operator !=(PrivateString left, PrivateString right) => !left.Equals(right);

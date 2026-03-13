@@ -6,10 +6,10 @@ namespace ActualChat.Users;
 public static class UserIdentityExt
 {
     public static UserIdentity GetIdentity(this ApiMap<UserIdentity, string> identities, string schema)
-        => identities.FirstOrDefault(x => OrdinalEquals(x.Key.Schema, schema)).Key;
+        => identities.FirstOrDefault(x => x.Key.Schema == schema).Key;
 
     public static List<UserIdentity> GetIdentities(this ApiMap<UserIdentity, string> identities, string schema)
-        => identities.Where(x => OrdinalEquals(x.Key.Schema, schema)).Select(x => x.Key).ToList();
+        => identities.Where(x => x.Key.Schema == schema).Select(x => x.Key).ToList();
 
     // Internal identity (for special users defined in Constants)
 
@@ -18,7 +18,7 @@ public static class UserIdentityExt
 
     public static bool HasInternalIdentity(this ApiMap<UserIdentity, string> identities, [NotNullWhen(true)] out UserId? userId)
     {
-        var identity = identities.Keys.FirstOrDefault(x => OrdinalEquals(x.Schema, UserIdentity.InternalSchema));
+        var identity = identities.Keys.FirstOrDefault(x => x.Schema == UserIdentity.InternalSchema);
         userId = identity.IsValid ? UserId.TryParse(identity.Value) : null;
         return userId is not null;
     }
@@ -34,7 +34,7 @@ public static class UserIdentityExt
 
     public static bool HasGoogleIdentity(this ApiMap<UserIdentity, string> identities, out UserIdentity googleIdentity)
     {
-        googleIdentity = identities.Keys.FirstOrDefault(x => OrdinalEquals(x.Schema, AuthSchema.Google));
+        googleIdentity = identities.Keys.FirstOrDefault(x => x.Schema == AuthSchema.Google);
         return googleIdentity.IsValid;
     }
 
@@ -49,7 +49,7 @@ public static class UserIdentityExt
 
     public static bool HasAppleIdentity(this ApiMap<UserIdentity, string> identities, out UserIdentity appleIdentity)
     {
-        appleIdentity = identities.Keys.FirstOrDefault(x => OrdinalEquals(x.Schema, AuthSchema.Apple));
+        appleIdentity = identities.Keys.FirstOrDefault(x => x.Schema == AuthSchema.Apple);
         return appleIdentity.IsValid;
     }
 
@@ -72,7 +72,7 @@ public static class UserIdentityExt
         => identities.GetHashedEmailIdentities().Select(x => x.Value).ToList();
 
     public static bool HasEmail(this ApiMap<UserIdentity, string> identities, string email)
-        => identities.GetEmails().Any(x => OrdinalEquals(x, email));
+        => identities.GetEmails().Any(x => x == email);
 
     public static ApiMap<UserIdentity, string> WithEmailIdentity(
         this ApiMap<UserIdentity, string> identities, Email email)

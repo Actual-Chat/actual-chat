@@ -12,7 +12,7 @@ public static class OpenGraphParser
         if (head is null)
             return null;
 
-        var props = head.ChildNodes.Where(x => OrdinalIgnoreCaseEquals(x.Name, "meta"))
+        var props = head.ChildNodes.Where(x => string.Equals(x.Name, "meta", StringComparison.OrdinalIgnoreCase))
             .Select(x => KeyValuePair.Create(x.GetAttributeValue("property", ""), x.GetAttributeValue("content", "")))
             .Where(x => !x.Key.IsNullOrEmpty() && !x.Value.IsNullOrEmpty());
         var metaMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);

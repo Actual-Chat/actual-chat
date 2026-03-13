@@ -20,7 +20,7 @@ public static class NavbarExt
     {
         placeId = null;
         var groupId = navbarUI.SelectedGroupId;
-        if (!groupId.OrdinalStartsWith(PlacePrefix))
+        if (!groupId.StartsWith(PlacePrefix))
             return false;
 
         var sPlaceId = groupId.Substring(PlacePrefix.Length);
@@ -32,7 +32,7 @@ public static class NavbarExt
     {
         chatId = null;
         var groupId = navbarUI.SelectedGroupId;
-        if (!groupId.OrdinalStartsWith(PinnedChatPrefix))
+        if (!groupId.StartsWith(PinnedChatPrefix))
             return false;
 
         var sChatId = groupId.Substring(PinnedChatPrefix.Length);

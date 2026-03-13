@@ -83,7 +83,7 @@ partial class SendingMessages
         var counter = 0;
         const int maxResendScanCount = 200; // Scan the last 200 messages
         await foreach (var chatEntry1 in entryReader.ReadReverse(range, cancellationToken).ConfigureAwait(false)) {
-            if (chatEntry1.AuthorId == ownAuthorId && OrdinalEquals(chatEntry1.ClientId, clientId))
+            if (chatEntry1.AuthorId == ownAuthorId && chatEntry1.ClientId == clientId)
                 return chatEntry1;
 
             counter++;

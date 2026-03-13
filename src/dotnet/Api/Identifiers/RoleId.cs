@@ -86,7 +86,7 @@ public sealed partial class RoleId : StringIdentifier, IStringIdentifier<RoleId>
             return true;
         }
 
-        var chatIdLength = s.OrdinalIndexOf(Delimiter);
+        var chatIdLength = s.IndexOf(Delimiter);
         if (chatIdLength < 0)
             return false;
 

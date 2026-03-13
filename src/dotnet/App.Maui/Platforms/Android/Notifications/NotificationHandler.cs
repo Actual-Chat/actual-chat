@@ -7,7 +7,7 @@ public static class NotificationHandler
 {
     public static void HandleIntent(Intent intent)
     {
-        if (!OrdinalEquals(NotificationHelper.NotificationViewAction, intent.Action))
+        if (NotificationHelper.NotificationViewAction != intent.Action)
             return;
 
         AppNavigationQueue.EnqueueOrNavigateToUrl(intent.Data?.ToString(), AutoNavigationReason.Notification);

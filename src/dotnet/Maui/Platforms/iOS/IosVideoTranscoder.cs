@@ -46,7 +46,7 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
 
     private async Task<bool> NeedsTranscoding(FilePath filePath, long sourceSize)
     {
-        if (!OrdinalIgnoreCaseEquals(filePath.Extension, ".mp4")) {
+        if (!string.Equals(filePath.Extension, ".mp4", StringComparison.OrdinalIgnoreCase)) {
             Log.LogInformation("NeedsTranscoding: true (extension '{Extension}' is not .mp4)", filePath.Extension);
             return true;
         }

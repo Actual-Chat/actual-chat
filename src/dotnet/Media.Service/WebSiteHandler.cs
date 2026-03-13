@@ -7,7 +7,7 @@ public sealed class WebSiteHandler(MediaSettings settings, ImageGrabber imageGra
     public bool Supports(HttpResponseMessage response)
     {
         var contentType = response.Content.Headers.ContentType?.MediaType ?? "";
-        return OrdinalIgnoreCaseEquals(contentType, "text/html");
+        return string.Equals(contentType, "text/html", StringComparison.OrdinalIgnoreCase);
     }
 
     public async Task<CrawledLink> Handle(HttpResponseMessage response, CancellationToken cancellationToken)

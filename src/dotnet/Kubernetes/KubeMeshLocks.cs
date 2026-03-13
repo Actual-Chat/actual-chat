@@ -74,7 +74,7 @@ public class KubeMeshLocks : MeshLocksBase
             if (IsExpired(lease) && change.Type == ChangeType.Added)
                 return; // Avoid processing an initial result of lease watch for expired leases
 
-            if (OrdinalEquals(lease.Metadata.Name, name) || key.IsNullOrEmpty()) {
+            if (lease.Metadata.Name == name || key.IsNullOrEmpty()) {
                 var fullName = lease.Metadata.Annotations?[FullName];
                 if (fullName == null && _leaseFullKeys.TryGetValue(key, out var names))
                     fullName = names.FullName;
@@ -189,7 +189,7 @@ public class KubeMeshLocks : MeshLocksBase
 
         // Try using cached lease first (single Replace call instead of GET+Replace)
         if (_cachedLeases.TryGetValue(key, out var cachedLease)
-            && OrdinalEquals(cachedLease.Spec.HolderIdentity, value)
+            && cachedLease.Spec.HolderIdentity == value
             && !IsExpired(cachedLease)) {
             var updatedLease = cachedLease with {
                 Spec = cachedLease.Spec with {
@@ -210,7 +210,7 @@ public class KubeMeshLocks : MeshLocksBase
 
         // Fallback: GET + Replace
         var existingLease = await LeaseClient.Get(Namespace, name, cancellationToken, requestTimeout).ConfigureAwait(false);
-        if (existingLease == null || !OrdinalEquals(existingLease.Spec.HolderIdentity, value) || IsExpired(existingLease))
+        if (existingLease == null || existingLease.Spec.HolderIdentity != value || IsExpired(existingLease))
             return false;
 
         existingLease = existingLease with {
@@ -241,7 +241,7 @@ public class KubeMeshLocks : MeshLocksBase
             return MeshLockReleaseResult.Released;
         }
 
-        if (!OrdinalEquals(existingLease.Spec.HolderIdentity, value))
+        if (existingLease.Spec.HolderIdentity != value)
             return MeshLockReleaseResult.AcquiredBySomeoneElse;
 
         try {
@@ -269,14 +269,14 @@ public class KubeMeshLocks : MeshLocksBase
             static (k, self) => {
                 var fullName = self._keyPrefix + "-"+ k;
                 if (fullName.Length < 31)
-                    return (fullName, fullName.OrdinalReplace(" ", "-").OrdinalReplace(",", ".").OrdinalReplace(":", "").ToKebabCase());
+                    return (fullName, fullName.Replace(" ", "-").Replace(",", ".").Replace(":", "").ToKebabCase());
 
                 var hashSuffix = fullName.Hash().Blake3().Base32(16);
                 var splitIndex = fullName.IndexOfAny([',', ':', ' ', '.']);
                 if (splitIndex < 0)
                     splitIndex = 31;
 
-                var name = fullName[..splitIndex].OrdinalReplace(" ", "-").OrdinalReplace(",", ".").OrdinalReplace(":", "").ToKebabCase() + "-" + hashSuffix;
+                var name = fullName[..splitIndex].Replace(" ", "-").Replace(",", ".").Replace(":", "").ToKebabCase() + "-" + hashSuffix;
                 return (fullName, name);
             }, this);
 

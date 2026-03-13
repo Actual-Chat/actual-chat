@@ -36,8 +36,8 @@ public sealed partial class Language : StringIdentifier, IStringIdentifier<Langu
     {
         ShortTitle = shortTitle;
         Title = title;
-        IsAnyEnglish = shortTitle.OrdinalIgnoreCaseStartsWith("en");
-        IsAnySpanish = shortTitle.OrdinalIgnoreCaseStartsWith("es");
+        IsAnyEnglish = shortTitle.StartsWith("en", StringComparison.OrdinalIgnoreCase);
+        IsAnySpanish = shortTitle.StartsWith("es", StringComparison.OrdinalIgnoreCase);
     }
 
     // Equality

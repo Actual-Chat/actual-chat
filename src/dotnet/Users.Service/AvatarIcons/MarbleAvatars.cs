@@ -185,7 +185,7 @@ public static class MarbleAvatars
 
     private static SKColor ParseColor(string hex)
     {
-        if (hex.OrdinalStartsWith("#"))
+        if (hex.StartsWith("#"))
             hex = hex[1..];
 
         if (hex.Length != 6 && hex.Length != 8)

@@ -78,7 +78,7 @@
         _aliasIsAvailable = null;
 
         var aliasSid = AliasIdReader();
-        if (aliasSid.IsNullOrEmpty() || OrdinalEquals(aliasSid, CurrentAliasId))
+        if (aliasSid.IsNullOrEmpty() || aliasSid == CurrentAliasId)
             return;
 
         if (!AliasId.TryParse(aliasSid, out var aliasId))

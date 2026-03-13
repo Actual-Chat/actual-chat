@@ -24,9 +24,9 @@ public readonly partial struct LocalUrl : IEquatable<LocalUrl>
             _value = "/";
             return;
         }
-        if (!value.OrdinalStartsWith("/"))
+        if (!value.StartsWith("/"))
             value = "/" + value;
-        if (value.OrdinalEndsWith("/") && value.Length > 1)
+        if (value.EndsWith("/") && value.Length > 1)
             value = value[..^1];
         _value = value;
     }
@@ -40,7 +40,7 @@ public readonly partial struct LocalUrl : IEquatable<LocalUrl>
     public static LocalUrl? FromAbsolute(string url, UrlMapper mapper)
     {
         var origin = mapper.BaseUri.OriginalString.TrimEnd('/');
-        if (!url.OrdinalStartsWith(origin))
+        if (!url.StartsWith(origin))
             return null;
 
         var relativeUrl = url[origin.Length..];
@@ -61,7 +61,7 @@ public readonly partial struct LocalUrl : IEquatable<LocalUrl>
     public static implicit operator string(LocalUrl localUrl) => localUrl.Value;
 
     // Equality
-    public bool Equals(LocalUrl other) => OrdinalEquals(Value, other.Value);
+    public bool Equals(LocalUrl other) => Value == other.Value;
     public override bool Equals(object? obj) => obj is LocalUrl other && Equals(other);
     public override int GetHashCode() => Value.GetOrdinalHashCode();
     public static bool operator ==(LocalUrl left, LocalUrl right) => left.Equals(right);

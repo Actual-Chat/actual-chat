@@ -46,7 +46,7 @@ public static class ModelBuilderExt
         if (name == null)
             return null;
 
-        if (name.OrdinalStartsWith("Db") && name.Length > 2)
+        if (name.StartsWith("Db") && name.Length > 2)
             name = name[2..];
         name = name.ToSnakeCase();
         return name;

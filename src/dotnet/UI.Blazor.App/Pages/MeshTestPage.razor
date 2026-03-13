@@ -81,7 +81,7 @@
                         <span>Id: <b>@peer.Id</b></span><br>
                         <span>@peer.Peer</span><br>
                         <span>ConnectionKind: <b>@peer.ConnectionKind</b></span><br>
-                        @if (!OrdinalIgnoreCaseEquals(peer.ConnectionKind, "local")) {
+                        @if (!string.Equals(peer.ConnectionKind, "local", StringComparison.OrdinalIgnoreCase)) {
                             <details class="main-collapsed" open="@(!peer.IsConnected)">
                                 <summary class="c-summary">
                                     <span class="underline cursor-pointer">> IsConnected: <b>@peer.IsConnected</b></span><br>

@@ -5,14 +5,13 @@ namespace ActualChat.App.Maui;
 [BroadcastReceiver(Exported = false)]
 public class AlarmReceiver : BroadcastReceiver
 {
-    private ILogger? _log;
-    private ILogger Log => _log ??= StaticLog.For<AlarmReceiver>();
+    private ILogger Log => field ??= StaticLog.For<AlarmReceiver>();
 
     public override void OnReceive(Context? context, Intent? intent)
     {
         try {
             Log.LogInformation("-> OnReceive");
-            if (intent!.Action.OrdinalStartsWith(ChatAttentionService.AlarmActionPrefix))
+            if ((intent!.Action ?? "").StartsWith(ChatAttentionService.AlarmActionPrefix))
                 ChatAttentionService.Instance.OnHandleIntent(intent);
         }
         catch (Exception e) {

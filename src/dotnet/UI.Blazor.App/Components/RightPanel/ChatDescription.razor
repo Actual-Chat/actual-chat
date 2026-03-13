@@ -55,7 +55,7 @@
         var peerOwnName = avatar?.Name ?? "";
         return new() {
             Description = bio,
-            PeerOwnName = !OrdinalEquals(chat.Title, peerOwnName) ? peerOwnName : ""
+            PeerOwnName = chat.Title != peerOwnName ? peerOwnName : ""
         };
     }
 

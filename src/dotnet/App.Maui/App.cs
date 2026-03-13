@@ -38,12 +38,12 @@ public class App : Application
 
     protected override void OnAppLinkRequestReceived(Uri uri)
     {
-        if (!OrdinalIgnoreCaseEquals(MauiSettings.Host, MauiSettings.DefaultHost)) {
+        if (!string.Equals(MauiSettings.Host, MauiSettings.DefaultHost, StringComparison.OrdinalIgnoreCase)) {
             // TODO(DF): Think if it's possible to handle this in host override mode.
             Log.LogWarning("OnAppLinkRequestReceived: {Uri} -> ignore (host override mode is on)", uri);
             return;
         }
-        if (!OrdinalIgnoreCaseEquals(uri.Host, MauiSettings.Host)) {
+        if (!string.Equals(uri.Host, MauiSettings.Host, StringComparison.OrdinalIgnoreCase)) {
             Log.LogWarning("OnAppLinkRequestReceived: {Uri} -> ignore (wrong host)", uri);
             return;
         }

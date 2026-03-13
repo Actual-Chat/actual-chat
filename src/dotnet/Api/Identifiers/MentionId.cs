@@ -82,12 +82,12 @@ public sealed partial class MentionId : StringIdentifier, IStringIdentifier<Ment
             return true;
         }
 
-        if (s.OrdinalStartsWith("a:")) {
+        if (s.StartsWith("a:")) {
             if (!AuthorId.TryParse(s[2..], out var authorId))
                 return false;
             result = NewAuthor(authorId);
         }
-        else if (s.OrdinalStartsWith("u:")) {
+        else if (s.StartsWith("u:")) {
             if (!UserId.TryParse(s[2..], out var userId))
                 return false;
             result = NewUser(userId);

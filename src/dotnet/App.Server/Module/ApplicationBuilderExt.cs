@@ -39,11 +39,11 @@ public static partial class ApplicationBuilderExt
         };
         return app.Use((context, next) => {
             var requestPath = context.Request.Path.Value ?? "";
-            if (requestPath.OrdinalStartsWith(EndpointsExt.BackendPathPrefix))
+            if (requestPath.StartsWith(EndpointsExt.BackendPathPrefix))
                 return next();
-            if (requestPath.OrdinalIgnoreCaseStartsWith(EndpointsExt.HealthPathPrefix))
+            if (requestPath.StartsWith(EndpointsExt.HealthPathPrefix, StringComparison.OrdinalIgnoreCase))
                 return next();
-            if (requestPath.OrdinalIgnoreCaseStartsWith(EndpointsExt.PrometheusPathPrefix))
+            if (requestPath.StartsWith(EndpointsExt.PrometheusPathPrefix, StringComparison.OrdinalIgnoreCase))
                 return next();
 
             var hostInfo = context.RequestServices.HostInfo();
@@ -126,11 +126,11 @@ public static partial class ApplicationBuilderExt
 
                 var hasImmutable = currentCacheControl?.EndsWith("immutable", StringComparison.OrdinalIgnoreCase) == true;
                 var fileExtension = Path.GetExtension(requestPathValue);
-                var isVideo = OrdinalIgnoreCaseEquals(fileExtension, ".mp4") || OrdinalIgnoreCaseEquals(fileExtension, ".webm");
+                var isVideo = string.Equals(fileExtension, ".mp4", StringComparison.OrdinalIgnoreCase) || string.Equals(fileExtension, ".webm", StringComparison.OrdinalIgnoreCase);
                 var isMedia = isVideo
-                    || OrdinalIgnoreCaseEquals(fileExtension, ".png")
-                    || OrdinalIgnoreCaseEquals(fileExtension, ".svg")
-                    || OrdinalIgnoreCaseEquals(fileExtension, ".jpg");
+                    || string.Equals(fileExtension, ".png", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(fileExtension, ".svg", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(fileExtension, ".jpg", StringComparison.OrdinalIgnoreCase);
 
                 var cacheControlHeader = hasImmutable
                     ? "public, max-age=5184000, immutable, stale-while-revalidate=86400, s-maxage=2592000" // immutable, 60 days + up to 1 for revalidation

@@ -95,7 +95,7 @@
         if (_searchPhrase.IsEmpty) {
             // ReSharper disable once ConvertToLocalFunction
             Comparison<(AuthorId, string)> comparison = (info1, info2)
-                => OrdinalCompare(info1.Item2, info2.Item2);
+                => string.Compare(info1.Item2, info2.Item2);
             authors.Sort(comparison);
         } else {
             authors = authors

@@ -11,7 +11,7 @@ public sealed record HistoryItemIdFormatter(string Prefix)
 
     public long? Parse(string? value)
     {
-        if (value?.OrdinalStartsWith(Prefix) != true)
+        if (value?.StartsWith(Prefix) != true)
             return null;
 
         var suffix = value.AsSpan(Prefix.Length);

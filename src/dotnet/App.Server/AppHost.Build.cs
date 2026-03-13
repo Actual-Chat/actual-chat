@@ -71,7 +71,7 @@ public partial class AppHost
         var hostSettings = cfg.Settings<HostSettings>();
         var appKind = hostSettings.AppKind ?? HostKind.Server;
         var isTested = hostSettings.IsTested ?? false;
-        var isLocalDev = hostSettings.BaseUri.OrdinalStartsWith($"https://{Constants.Hosts.LocalVoxt}");
+        var isLocalDev = hostSettings.BaseUri.StartsWith($"https://{Constants.Hosts.LocalVoxt}");
         var services = ctx.Services;
         var serverRole = HostRoles.Server.Parse(hostSettings.ServerRole);
         var roles = HostRoles.Server.GetAllRoles(serverRole, isTested);
@@ -120,7 +120,7 @@ public partial class AppHost
                 var baseUrlPrefix = isTested || Equals(env.EnvironmentName, Environments.Development)
                     ? "http" // Any http* endpoint is fine on dev/test
                     : "https://";
-                baseUrl = ServerEndpoints.List(c).FirstOrDefault(x => x.OrdinalStartsWith(baseUrlPrefix));
+                baseUrl = ServerEndpoints.List(c).FirstOrDefault(x => x.StartsWith(baseUrlPrefix));
                 if (baseUrl.IsNullOrEmpty())
                     throw StandardError.Internal("Can't resolve BaseUrl.");
             }
@@ -239,7 +239,7 @@ public partial class AppHost
         var transientDisposables = services.Where(x => x.Lifetime == ServiceLifetime.Transient)
             .Select(x => AsDisposable(x.ImplementationType))
             .SkipNullItems()
-            .Where(x => x.Namespace?.OrdinalIgnoreCaseStartsWith("Microsoft") != true)
+            .Where(x => x.Namespace?.StartsWith("Microsoft", StringComparison.OrdinalIgnoreCase) != true)
             .ToList();
         if (transientDisposables.Count != 0) {
             var transientDisposablesString = string.Join("", transientDisposables.Select(x => $"{Environment.NewLine}- {x}"));
