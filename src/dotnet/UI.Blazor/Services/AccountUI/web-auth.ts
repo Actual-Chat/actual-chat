@@ -13,15 +13,15 @@ export class WebAuth {
     public static allowPopup = !(DeviceInfo.isMobile || DeviceInfo.isWebKit);
     public static mustRedirectOnPopupBlock = true;
 
-    public static signIn(schema: string, isRegister: boolean = false): Promise<string | null> {
+    public static signIn(schema: string, isRegister = false): Promise<string | null> {
         const path = schema
             ? this.signInPath + '/' + schema
             : this.signInPath;
         return this.showPopupOrRedirect(path, 'Sign-in', isRegister);
     }
 
-    public static signOut() {
-        this.showPopupOrRedirect(this.signOutPath, 'Sign-out');
+    public static signOut(): Promise<string | null> {
+        return this.showPopupOrRedirect(this.signOutPath, 'Sign-out');
     }
 
     public static consumeSignInError(): string | null {
@@ -31,20 +31,20 @@ export class WebAuth {
                 localStorage.removeItem('signInError');
                 return error;
             }
-        } catch (e) { /* ignore */ }
+        } catch { /* ignore */ }
         return null;
     }
 
     // Private methods
 
-    private static showPopupOrRedirect(path: string, flowName: string, isRegister: boolean = false): Promise<string | null> {
+    private static showPopupOrRedirect(path: string, flowName: string, isRegister = false): Promise<string | null> {
         if (!this.allowPopup) {
             this.redirect(path, flowName, isRegister);
             return Promise.resolve(null); // Page navigates away, never resolves meaningfully
         }
 
         // Clear any stale error before opening popup
-        try { localStorage.removeItem('signInError'); } catch (e) { /* ignore */ }
+        try { localStorage.removeItem('signInError'); } catch { /* ignore */ }
 
         let closeFlowUrl = this.closeFlowPath + '?flow=' + encode(flowName);
         if (isRegister)
@@ -75,7 +75,7 @@ export class WebAuth {
         });
     }
 
-    private static redirect(path: string, flowName: string, isRegister: boolean = false) {
+    private static redirect(path: string, flowName: string, isRegister = false) {
         const redirectUrl = window.location.href;
         let closeFlowUrl = this.closeFlowPath +
             '?flow=' + encode(flowName) +
