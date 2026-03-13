@@ -8,5 +8,5 @@ public static class ChatCompletionServiceExt
     public static IChatCompletionService WrapWithRateLimiter(
         this IChatCompletionService chatCompletionService,
         RedisTokenBucketRateLimiter rateLimiter)
-        => new RateLimitedChatCompletionService(chatCompletionService, rateLimiter, new TokenEstimator());
+        => new RateLimitedChatCompletionService(chatCompletionService, rateLimiter);
 }
