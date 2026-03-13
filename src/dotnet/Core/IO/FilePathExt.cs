@@ -59,6 +59,9 @@ public static class FilePathExt
     {
         public long FileSize => path.GetFileInfo().Length;
 
+        public bool HasExtension(string ext)
+            => string.Equals(path.Extension.EnsurePrefix("."), ext, StringComparison.OrdinalIgnoreCase);
+
         public void DeleteSilently()
         {
             try {

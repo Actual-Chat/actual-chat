@@ -139,6 +139,7 @@ public sealed class IosPhotoGalleryFiles(IServiceProvider services) : ProcessorB
         NSItemProvider itemProvider,
         CancellationToken cancellationToken)
     {
+        Directory.CreateDirectory(AttachmentsDir);
         var contentType = itemProvider.RegisteredContentTypes[0];
         var loadStartedAt = CpuTimestamp.Now;
         var representation = await itemProvider
