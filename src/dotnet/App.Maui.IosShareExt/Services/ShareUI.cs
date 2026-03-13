@@ -192,14 +192,15 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
                 return;
             }
 
-            // TODO(FC): single upload for all chats !!!!!!!!!!!!!!!!!!!!!!!!!!!
+            // Upload files once, then create entries in each chat with the same attachments
             var progress = new ForkableProgress(pct => _uploadPct.Value = pct);
-            var chatProgresses = progress.Fork(chatIds.Count);
-            for (var i = 0; i < chatIds.Count; i++) {
-                // TODO: handle cancellation
-                var chatId = chatIds[i];
-                var attachments = await UploadFiles(chatId, fileInputs, chatProgresses[i], cancellationToken)
-                    .ConfigureAwait(false);
+            var mediaRefs = await UploadFiles(fileInputs, progress, cancellationToken)
+                .ConfigureAwait(false);
+            var attachments = mediaRefs
+                .Select(r => new ChatEntryAttachment { MediaId = r.MediaId, ThumbnailMediaId = r.ThumbnailMediaId })
+                .ToArray();
+
+            foreach (var chatId in chatIds) {
                 var entryText = text;
                 foreach (var attachmentList in attachments.Chunk(10)) {
                     await CreateChatEntry(chatId, entryText, attachmentList, cancellationToken).ConfigureAwait(false);
@@ -244,8 +245,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         await UICommander.Call(cmd, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<ChatEntryAttachment[]> UploadFiles(
-        ChatId chatId,
+    private async Task<MediaRef[]> UploadFiles(
         IReadOnlyList<NSItemProvider> fileInputs,
         IProgress<double> progress,
         CancellationToken cancellationToken)
@@ -254,17 +254,16 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             progress.Report(100);
             return [];
         }
-        var attachments = new ChatEntryAttachment[fileInputs.Count];
+        var mediaRefs = new MediaRef[fileInputs.Count];
         var fileForks = progress.Fork(fileInputs.Count);
         for (var i = 0; i < fileInputs.Count; i++) {
             var fileInput = fileInputs[i];
-            attachments[i] = await UploadFile(chatId, fileInput, fileForks[i], cancellationToken).ConfigureAwait(false);
+            mediaRefs[i] = await UploadFile(fileInput, fileForks[i], cancellationToken).ConfigureAwait(false);
         }
-        return attachments;
+        return mediaRefs;
     }
 
-    private async Task<ChatEntryAttachment> UploadFile(
-        ChatId chatId,
+    private async Task<MediaRef> UploadFile(
         NSItemProvider fileInput,
         IProgress<double> progress,
         CancellationToken cancellationToken)
@@ -280,15 +279,11 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         var uploadId = await InitUpload().ConfigureAwait(false);
         var streamSource = (StreamUploadSource)uploadSource.StreamSource;
         await FileUploader.UploadData(uploadId, streamSource.GetStream(), uploadProgress, cancellationToken).ConfigureAwait(false);
-        var mediaRef = await CompleteUpload().ConfigureAwait(false);
-        return new ChatEntryAttachment {
-            MediaId = mediaRef.MediaId,
-            ThumbnailMediaId = mediaRef.ThumbnailMediaId,
-        };
+        return await CompleteUpload().ConfigureAwait(false);
 
         Task<UploadId> InitUpload()
         {
-            var cmd = new Uploads_Create(Session, uploadSource.Metadata.Length, UploadExt.BuildTag(chatId), metadata);
+            var cmd = new Uploads_Create(Session, uploadSource.Metadata.Length, "", metadata);
             return UICommander.Call(cmd, cancellationToken);
         }
 
