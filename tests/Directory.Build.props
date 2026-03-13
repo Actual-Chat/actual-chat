@@ -24,19 +24,21 @@
     <EnableTrimAnalyzer>false</EnableTrimAnalyzer> <!-- Ok for tests -->
     <!-- Suppressed warnings (please sort alphabetically!) -->
     <!-- CS8604: Possible null reference argument -->
-    <!-- CA1034: Do not nest type -->
-    <!-- CA1822:	Member can be marked as static -->
-    <!-- CA2007: Consider calling ConfigureAwait on the awaited task -->
-    <!-- CA1861: Prefer 'static readonly' fields over constant array arguments if the called method is called repeatedly and is not mutating the passed array -->
-    <!-- CA2016: Forward the CancellationToken parameter to methods that take one -->
     <NoWarn>$(NoWarn);1701;1702;CS8604</NoWarn>
-    <NoWarn>$(NoWarn);CA1034;CA1822;CA2007;CA1861;CA2016;CA1859</NoWarn>
-    <!-- MA0004: Use Task.ConfigureAwait(false) as the current SynchronizationContext is not needed' -->
-    <!-- MA0011: Use an overload of 'Parse' that has a 'System.IFormatProvider' parameter -->
+    <!-- CA1034: Do not nest type -->
+    <!-- CA1822: Member can be marked as static -->
+    <!-- CA1859: Use a concrete type instead of interface for improved performance -->
+    <!-- CA1861: Prefer 'static readonly' fields over constant array arguments -->
+    <!-- CA2007: Consider calling ConfigureAwait on the awaited task -->
+    <!-- CA2016: Forward the CancellationToken parameter to methods that take one -->
+    <!-- CA2025: Do not pass 'IDisposable' instances into unawaited tasks -->
+    <NoWarn>$(NoWarn);CA1034;CA1822;CA1859;CA1861;CA2007;CA2016;CA2025</NoWarn>
+    <!-- MA0004: Use Task.ConfigureAwait(false) -->
+    <!-- MA0011: Use an overload of 'Parse' that has a 'IFormatProvider' parameter -->
     <NoWarn>$(NoWarn);MA0004;MA0011</NoWarn>
     <!-- RCS1090: Call 'ConfigureAwait(false)' -->
     <NoWarn>$(NoWarn);RCS1090</NoWarn>
-    <!-- xUnit1041: Fixture argument 'log' does not  have a fixture source -->
+    <!-- xUnit1041: Fixture argument does not have a fixture source -->
     <NoWarn>$(NoWarn);xUnit1041</NoWarn>
   </PropertyGroup>
 
