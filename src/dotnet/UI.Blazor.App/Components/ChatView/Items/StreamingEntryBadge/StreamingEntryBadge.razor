@@ -1,0 +1,21 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
+
+<p class="chat-message-markup">
+    <span class="streaming-entry-badge" @onclick="@OnClick">
+        @if (IsChatLanguageSelected) {
+            <span>Transcribing</span>
+        } else {
+            <span>Language detecting</span>
+        }
+        <i class="icon-settings c-icon"></i>
+    </span>
+</p>
+
+@code {
+    [Parameter] public ChatId ChatId { get; set; } = null!;
+    [Parameter] public bool IsChatLanguageSelected { get; set; }
+
+    private void OnClick()
+        => ModalUI.Show(new VoiceSettingsModal.Model(ChatId));
+}
