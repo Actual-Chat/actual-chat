@@ -1,6 +1,5 @@
 using ActualChat.Hosting;
 using ActualChat.Kvas;
-using ActualChat.Logging;
 using ActualChat.Search;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Internal;

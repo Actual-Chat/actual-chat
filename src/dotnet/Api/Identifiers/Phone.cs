@@ -102,7 +102,7 @@ public sealed partial class Phone : StringIdentifier, IStringIdentifier<Phone>
             return true;
         }
 
-        if (s.Length > 64)
+        if (s.Length > 32)
             return false;
 
         var idx = s.LastIndexOf(Delimiter);

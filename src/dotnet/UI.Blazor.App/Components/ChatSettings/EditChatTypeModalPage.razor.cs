@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using ActualChat.Invite;
 using ActualChat.UI.Blazor.Services;
 
@@ -195,7 +196,7 @@ public partial class EditChatTypeModalPage
         public bool AllowAnonymousAuthors { get; set; }
 
         public string CurrentAliasId { get; set; } = "";
-        [AliasId]
+        [AliasId, Display(Name = "Short name")]
         public string ActualAliasId => IsPublic ? AliasId : "";
 
         public string FormId { get; }

@@ -72,6 +72,7 @@
     <Using Include="ActualLab.Fusion" />
     <Using Include="ActualLab.Fusion.Operations" />
     <Using Include="ActualChat.Users" />
+    <Using Include="ActualChat.Validation" />
     <Using Include="ActualLab.CommandR" />
     <Using Include="ActualLab.CommandR.Configuration" />
     <Using Include="ActualLab.CommandR.Commands" />

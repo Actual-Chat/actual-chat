@@ -8,13 +8,15 @@ const { debugLog } = Log.get('TextBox');
 export class TextBox implements Disposable {
     private disposed$: Subject<void> = new Subject<void>();
     private input: HTMLInputElement;
+    private blazorRef: DotNet.DotNetObject | null;
 
-    public static create(input: HTMLInputElement): TextBox {
-        return new TextBox(input);
+    public static create(input: HTMLInputElement, blazorRef?: DotNet.DotNetObject): TextBox {
+        return new TextBox(input, blazorRef ?? null);
     }
 
-    constructor(input: HTMLInputElement) {
+    constructor(input: HTMLInputElement, blazorRef: DotNet.DotNetObject | null) {
         this.input = input;
+        this.blazorRef = blazorRef;
         fromEvent(input, 'input')
             .pipe(
                 takeUntil(this.disposed$),
@@ -22,7 +24,11 @@ export class TextBox implements Disposable {
             )
             .subscribe(() => {
                 debugLog?.log(`input handler, value:`, input.value);
-                input.dispatchEvent(new Event('change'));
+                if (this.blazorRef) {
+                    void this.blazorRef.invokeMethodAsync('OnDebouncedChange', input.value);
+                } else {
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                }
             });
 
         setupMobileKeyboardHandler(input, this.disposed$);
@@ -34,6 +40,7 @@ export class TextBox implements Disposable {
 
         this.disposed$.next();
         this.disposed$.complete();
+        this.blazorRef = null;
     }
 
     public focus() {

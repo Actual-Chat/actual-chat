@@ -232,15 +232,17 @@
 
     public sealed class FormModel(ComponentIdGenerator? componentIdGenerator)
         : FormModel<FormModel>("own-account-editor", componentIdGenerator) {
-        [Required]
+        [Required, Display(Name = "Name")]
         public string Name { get; set; } = "";
         public string NameFieldId { get; set; } = "";
-        [EmailAddress] public string? Email { get; set; }
+        [AppEmailAddress, Display(Name = "Email")]
+        public string? Email { get; set; }
         public string EmailFieldId { get; set; } = "";
-        [PhoneNumber(IsOptional = true)] public string Phone { get; set; } = "";
+        [PhoneAsync, Display(Name = "Phone")]
+        public string Phone { get; set; } = "";
         public Phone? ParsedPhone { get; set; }
         public string PhoneFieldId { get; set; } = "";
-        [AliasId]
+        [AliasId, Display(Name = "Short name")]
         public string AliasId { get; set; } = "";
         public string CurrentAliasId { get; set; } = "";
         public string AliasIdFormId { get; set; } = "";
