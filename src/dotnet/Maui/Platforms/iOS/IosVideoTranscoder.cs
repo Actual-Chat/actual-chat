@@ -12,6 +12,7 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
     private const int MaxLongSide = 1920;
     private const int MaxShortSide = 1080;
     private const int MaxBitrate = 8_000_000; // 8 Mbps - HEVC 1080p typically outputs around this
+    private const long MaxRemuxSize = 70L * 1024 * 1024; // 70 MB - remux instead of transcode for small videos
 
     private ILogger Log => field ??= services.LogFor<IosVideoTranscoder>();
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.VideoTranscoding);
@@ -24,42 +25,66 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
         DebugLog?.LogInformation("TranscodeInternal: '{Path}'", sourceFilePath);
 
         var sourceFileInfo = new FileInfo(sourceFilePath);
-        if (!await NeedsTranscoding(sourceFilePath, sourceFileInfo.Length).ConfigureAwait(false))
+        var sourceSize = sourceFileInfo.Length;
+        if (!await NeedsProcessing(sourceFilePath, sourceSize).ConfigureAwait(false))
             return FilePath.Empty;
 
-        Log.LogInformation("Transcoding video '{Path}' (size={Size})", sourceFilePath, sourceFileInfo.Length);
+        var remuxOnly = sourceSize <= MaxRemuxSize;
+        Log.LogInformation(
+            remuxOnly
+                ? "Remuxing video '{Path}' (size={Size})"
+                : "Transcoding video '{Path}' (size={Size})",
+            sourceFilePath, sourceSize);
         var startedAt = CpuTimestamp.Now;
-        var transcodedPath = await TranscodeVideo(sourceFilePath, progress, cancellationToken)
-            .ConfigureAwait(false);
-
+        var transcodedPath = await TranscodeVideo(sourceFilePath, remuxOnly, progress, cancellationToken).ConfigureAwait(false);
         if (transcodedPath.IsEmpty)
             return FilePath.Empty;
 
         var transcodedFileInfo = new FileInfo(transcodedPath);
-        Log.LogInformation("Transcoding completed: '{OutputPath}', size={Size} ({Ratio:P0} of source) in {Elapsed}",
+        Log.LogInformation(
+            remuxOnly
+                ? "Remuxing completed: '{OutputPath}', size={Size} ({Ratio:P0} of source) in {Elapsed}"
+                : "Transcoding completed: '{OutputPath}', size={Size} ({Ratio:P0} of source) in {Elapsed}",
             transcodedPath, transcodedFileInfo.Length,
-            (double)transcodedFileInfo.Length / sourceFileInfo.Length,
+            (double)transcodedFileInfo.Length / sourceSize,
             startedAt.Elapsed.ToShortString());
 
         return transcodedPath;
     }
 
-    private async Task<bool> NeedsTranscoding(FilePath filePath, long sourceSize)
+    private async Task<bool> NeedsProcessing(FilePath filePath, long sourceSize)
     {
-        if (!string.Equals(filePath.Extension, ".mp4", StringComparison.OrdinalIgnoreCase)) {
-            Log.LogInformation("NeedsTranscoding: true (extension '{Extension}' is not .mp4)", filePath.Extension);
+        var isMp4 = filePath.HasExtension(".mp4");
+
+        // Small videos: remux to MP4 only if not already MP4
+        if (sourceSize <= MaxRemuxSize) {
+            if (!isMp4) {
+                Log.LogInformation(
+                    "NeedsProcessing: true, will remux (extension '{Extension}' is not .mp4, size={Size} <= {MaxSize})",
+                    filePath.Extension, sourceSize, MaxRemuxSize);
+                return true;
+            }
+            Log.LogInformation(
+                "NeedsProcessing: false (already .mp4, size={Size} <= {MaxSize})",
+                sourceSize, MaxRemuxSize);
+            return false;
+        }
+
+        // Large videos: full transcoding checks
+        if (!isMp4) {
+            Log.LogInformation("NeedsProcessing: true (extension '{Extension}' is not .mp4)", filePath.Extension);
             return true;
         }
 
         var info = await GetVideoInfo(filePath).ConfigureAwait(false);
         if (info == null) {
-            Log.LogInformation("NeedsTranscoding: false (can't read video info)");
+            Log.LogInformation("NeedsProcessing: false (can't read video info)");
             return false;
         }
 
         var (resolution, bitrate, codec) = info.Value;
         if (codec is not CMVideoCodecType.Hevc and not CMVideoCodecType.H264) {
-            Log.LogInformation("NeedsTranscoding: true (codec '{Codec}' is not HEVC or H264)", codec);
+            Log.LogInformation("NeedsProcessing: true (codec '{Codec}' is not HEVC or H264)", codec);
             return true;
         }
 
@@ -68,7 +93,7 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
 
         if (!needsResize && !needsCompress) {
             Log.LogInformation(
-                "NeedsTranscoding: false ({Width}x{Height}, bitrate={Bitrate}, codec={Codec})",
+                "NeedsProcessing: false ({Width}x{Height}, bitrate={Bitrate}, codec={Codec})",
                 (int)resolution.Width, (int)resolution.Height, bitrate, codec);
             return false;
         }
@@ -78,24 +103,25 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
         var estimatedSize = await exportSession.EstimateOutputFileLengthAsync().ConfigureAwait(false);
         if (estimatedSize >= sourceSize) {
             Log.LogInformation(
-                "NeedsTranscoding: false (estimated {EstimatedSize} >= source {SourceSize})",
+                "NeedsProcessing: false (estimated {EstimatedSize} >= source {SourceSize})",
                 estimatedSize, sourceSize);
             return false;
         }
 
         Log.LogInformation(
-            "NeedsTranscoding: true ({Width}x{Height}, bitrate={Bitrate}, codec={Codec}, estimated={EstimatedSize}, source={SourceSize})",
+            "NeedsProcessing: true ({Width}x{Height}, bitrate={Bitrate}, codec={Codec}, estimated={EstimatedSize}, source={SourceSize})",
             (int)resolution.Width, (int)resolution.Height, bitrate, codec, estimatedSize, sourceSize);
         return true;
     }
 
     private async Task<FilePath> TranscodeVideo(
         FilePath sourcePath,
+        bool remuxOnly,
         IProgress<double> progress,
         CancellationToken cancellationToken)
     {
         var outputPath = GetOutputPath(sourcePath);
-        var exportSession = CreateExportSession(sourcePath);
+        var exportSession = CreateExportSession(sourcePath, remuxOnly);
         exportSession.OutputUrl = NSUrl.CreateFileUrl(outputPath);
 
         DebugLog?.LogInformation(
@@ -186,11 +212,14 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
         }
     }
 
-    private static AVAssetExportSession CreateExportSession(FilePath sourcePath)
+    private static AVAssetExportSession CreateExportSession(FilePath sourcePath, bool remuxOnly = false)
     {
         var sourceUrl = NSUrl.CreateFileUrl(sourcePath);
         var asset = new AVUrlAsset(sourceUrl);
-        var session = new AVAssetExportSession(asset, AVAssetExportSessionPreset.Hevc1920x1080);
+        var preset = remuxOnly
+            ? AVAssetExportSessionPreset.Passthrough
+            : AVAssetExportSessionPreset.Hevc1920x1080;
+        var session = new AVAssetExportSession(asset, preset);
         session.OutputFileType = AVFileTypes.Mpeg4.GetConstant();
         session.ShouldOptimizeForNetworkUse = true;
         return session;
