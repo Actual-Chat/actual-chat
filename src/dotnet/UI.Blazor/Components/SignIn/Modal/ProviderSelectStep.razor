@@ -75,7 +75,7 @@
                 IsChecked="@TotpSignInModel.IsRegister"
                 IsCheckedChanged="@OnRegisterToggleChanged" />
         <FormButtons IsEndAligned="false" Class="dialog-buttons">
-            <Button Type="@ButtonType.Submit"  Class="btn-primary btn-modal sign-in" IsDisabled="@(_validationState is ValidationState.Invalid or ValidationState.CannotSend)">
+            <Button Type="@ButtonType.Submit"  Class="btn-primary btn-modal sign-in" IsDisabled="@(_validationState is ValidationState.Invalid)">
                 @switch (_validationState) {
                     case ValidationState.Validating:
                         <i class="icon-refresh"></i><span>Validating...</span>
@@ -147,7 +147,7 @@
     }
 
     protected override async Task<bool> Validate() {
-        var isValid = _validationState is not (ValidationState.Invalid or ValidationState.CannotSend)
+        var isValid = _validationState is not ValidationState.Invalid
             && await _validator.Validate().ConfigureAwait(false);
         return isValid;
     }
@@ -203,11 +203,15 @@
 
     private async Task OnSignIn() {
         _showPhoneValidationErrors = true;
+        _accountError = "";
+        if (_validationState is ValidationState.CannotSend or ValidationState.Invalid)
+            _validationState = ValidationState.None;
+
         var hasSentCodeRecently = await TotpUI.HasSentCodeRecently(CancellationToken.None);
         if (hasSentCodeRecently) {
             _validationState = ValidationState.CodeSentRecently;
             StateHasChanged();
-            await Stepper.TryMoveForward().AsTask();
+            await Stepper.TryMoveForward();
             return;
         }
 
