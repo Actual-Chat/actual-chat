@@ -1,0 +1,43 @@
+.streaming-entry-badge {
+    @apply relative;
+    @apply flex items-center gap-2;
+    @apply w-fit h-5;
+    @apply pl-2;
+    @apply overflow-hidden;
+    @apply rounded-full border border-separator;
+    @apply cursor-pointer;
+}
+body.hoverable .streaming-entry-badge:hover::after,
+.touch-capable .streaming-entry-badge:active::after {
+    @apply hover-after;
+    @apply bg-hover-after-primary;
+}
+.streaming-entry-badge span,
+.chat-message-markup .streaming-entry-badge span {
+    @apply text-caption-4 text-03;
+    background: linear-gradient(
+        90deg,
+        currentColor 0%,
+        currentColor 40%,
+        var(--text-01) 50%,
+        currentColor 60%,
+        currentColor 100%
+    );
+    background-size: 200% 100%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: badge-shimmer 2.5s ease-in-out infinite;
+}
+@keyframes badge-shimmer {
+    0%   { background-position: 100% 0; }
+    100% { background-position: -100% 0; }
+}
+.streaming-entry-badge .c-icon,
+.chat-message-markup .streaming-entry-badge .c-icon {
+    @apply text-text-1 text-03;
+}
+body.hoverable .streaming-entry-badge:hover .c-icon,
+.touch-capable .streaming-entry-badge:active .c-icon {
+    @apply text-01;
+}
