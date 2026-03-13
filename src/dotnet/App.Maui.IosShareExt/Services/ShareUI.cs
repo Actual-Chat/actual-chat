@@ -193,7 +193,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             }
 
             var progress = new ForkableProgress(pct => _uploadPct.Value = pct);
-            var (uploadProgress, entryProgress) = progress.Fork(0.9, 0.1);
+            var (uploadProgress, entryProgress) = progress.Fork(0.95, 0.05);
             var mediaRefs = await UploadFiles(fileInputs, uploadProgress, cancellationToken)
                 .ConfigureAwait(false);
             var attachments = mediaRefs
