@@ -52,7 +52,7 @@
                 disabled="@codeHasBeenSent"
                 type="text"
                 inputmode="text"
-                />
+            />
             @if (codeHasBeenSent) {
                 <div class="c-info">
                     <i class="icon-info"></i>
@@ -60,13 +60,9 @@
                 </div>
             }
         </FormSection>
-        @if (CaptchaUI.IsAvailable) {
-            <div class="c-recaptcha-info">
-                This site is protected by reCAPTCHA and the Google
-                <a class="recaptcha-link" href="https://policies.google.com/privacy">Privacy Policy</a> and
-                <a class="recaptcha-link" href="https://policies.google.com/terms">Terms of Service</a> apply.
-            </div>
-        }
+
+        <CaptchaView />
+
         @if (!_serverError.IsNullOrEmpty()) {
             <div class="c-account-error">@_serverError</div>
         }
