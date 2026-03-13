@@ -34,13 +34,8 @@
             <Button Class="btn-outline c-verify-btn" IsDisabled="@isDisabled" Click="OnVerifyPhoneClick">@buttonText</Button>
             <p class="c-description">@description</p>
         </div>
-        @if (CaptchaUI.IsAvailable) {
-            <div class="c-recaptcha-info">
-                This site is protected by reCAPTCHA and the Google
-                <a class="recaptcha-link" href="https://policies.google.com/privacy">Privacy Policy</a> and
-                <a class="recaptcha-link" href="https://policies.google.com/terms">Terms of Service</a> apply.
-            </div>
-        }
+
+        <CaptchaView />
     }
 </div>
 

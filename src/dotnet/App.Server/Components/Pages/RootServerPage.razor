@@ -26,8 +26,7 @@
     var extraConnectSrc = isLocal ? "ws://localhost:* wss://localhost:* https://raw.githubusercontent.com" : "";
 
     // Re-captcha setup
-    var hasRecaptchaConfigured = !UserSettings.GoogleRecaptchaSiteKey.IsNullOrEmpty();
-    var recaptchaKey = UserSettings.GoogleRecaptchaSiteKey;
+    var recaptchaSiteKey = UserSettings.GoogleRecaptchaSiteKey;
     var recaptchaNonce = nonceGenerator.Next(12);
 
     // Build custom import map with WASM
@@ -163,8 +162,10 @@
 
     <link href="/@Assets["dist/bundle.css"]" rel="stylesheet" />
     <ImportMap nonce="@importMapNonce" ImportMapDefinition="importMap"/>
-    @if (hasRecaptchaConfigured) {
-        <script id="recaptcha-head-script" nonce="@recaptchaNonce" src="https://www.google.com/recaptcha/enterprise.js?render=@recaptchaKey" async defer></script>
+    @if (Captcha.IsAvailable(HostInfo, recaptchaSiteKey)) {
+        <script id="recaptcha-head-script" nonce="@recaptchaNonce" src="https://www.google.com/recaptcha/enterprise.js?render=@recaptchaSiteKey" async defer></script>
+    } else {
+        <meta id="recaptcha-fake" content="true" />
     }
     <script nonce="@startupNonce">
         history.scrollRestoration = "manual";

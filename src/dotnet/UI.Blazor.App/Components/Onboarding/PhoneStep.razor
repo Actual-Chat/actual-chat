@@ -56,13 +56,7 @@
             </div>
         }
 
-        @if (CaptchaUI.IsAvailable) {
-            <div class="c-recaptcha-info">
-                This site is protected by reCAPTCHA and the Google
-                <a class="recaptcha-link" href="https://policies.google.com/privacy">Privacy Policy</a> and
-                <a class="recaptcha-link" href="https://policies.google.com/terms">Terms of Service</a> apply.
-            </div>
-        }
+        <CaptchaView />
     </Form>
 </div>
 
