@@ -96,6 +96,9 @@
 
     <MauiVersion Condition="$(IsMauiProject)">10.0.30</MauiVersion>
 
+    <!-- Globalization: must be invariant in every executable! -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+
     <!-- Generators -->
     <EmitCompilerGeneratedFiles>false</EmitCompilerGeneratedFiles>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>

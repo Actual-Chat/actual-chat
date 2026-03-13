@@ -66,8 +66,6 @@
 
   <!-- Trimming & feature switches -->
   <PropertyGroup>
-    <!-- Reduces WASM size + we assume this mode is used on the client -->
-    <InvariantGlobalization>true</InvariantGlobalization>
     <!-- Required with PublishTrimmed=true in our case -->
     <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
   </PropertyGroup>
