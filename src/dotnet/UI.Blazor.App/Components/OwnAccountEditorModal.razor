@@ -218,6 +218,7 @@
             newValue = "";
         _form.Phone = newValue;
         _form.ParsedPhone = await Phones.Parse(newValue, default);
+        StateHasChanged();
     }
 
     private Task OnDeleteAccountClick()
