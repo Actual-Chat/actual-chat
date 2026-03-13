@@ -5,7 +5,7 @@ namespace ActualChat.Flows;
 /// <summary>
 /// Starts master flows (singleton background processes) on their owning shard.
 /// </summary>
-internal class MasterFlowStarter(IServiceProvider services) : ShardWorker(services, ShardScheme.FlowsBackend)
+internal sealed class MasterFlowStarter(IServiceProvider services) : ShardWorker(services, ShardScheme.FlowsBackend)
 {
     private readonly ConcurrentDictionary<Type, Unit> _flowTypesToStart = new();
 
@@ -41,6 +41,8 @@ internal class MasterFlowStarter(IServiceProvider services) : ShardWorker(servic
         else
             await TaskExt.NeverEnding(cancellationToken).ConfigureAwait(false);
     }
+
+    // Private methods
 
     private async Task StartMasterFlow(Type flowType, CancellationToken cancellationToken)
     {
