@@ -335,40 +335,85 @@ public override async Task Require(CancellationToken cancellationToken)
 - `.ResultAwait(true/false)` awaits a task and returns `Result<T>` w/o throwing any exceptions.
 
 
-6. **Prefer `OrdinalStringExt` extensions over raw `StringComparison` calls.**
-   Use extension methods from `OrdinalStringExt` (`ActualChat` namespace)
-   instead of passing `StringComparison.Ordinal` / `StringComparison.OrdinalIgnoreCase`
-   manually. They are shorter, more readable, and null-safe.
+6. **Invariant globalization: string comparisons, cultures, and formatting.**
 
-| Instead of | Use |
-|---|---|
-| `s.Equals(other, StringComparison.Ordinal)` | `OrdinalEquals(s, other)` |
-| `s.StartsWith(prefix, StringComparison.Ordinal)` | `s.OrdinalStartsWith(prefix)` |
-| `s.EndsWith(suffix, StringComparison.Ordinal)` | `s.OrdinalEndsWith(suffix)` |
-| `s.Contains(fragment, StringComparison.Ordinal)` | `s.OrdinalContains(fragment)` |
-| `s.IndexOf(value, StringComparison.Ordinal)` | `s.OrdinalIndexOf(value)` |
-| `s.LastIndexOf(value, StringComparison.Ordinal)` | `s.OrdinalLastIndexOf(value)` |
-| `s.Replace(old, new, StringComparison.Ordinal)` | `s.OrdinalReplace(old, new)` |
-| `StringComparer.Ordinal.Compare(x, y)` | `OrdinalCompare(x, y)` |
+   This project uses `<InvariantGlobalization>true</InvariantGlobalization>` on all
+   deployment targets (Server, MAUI, WASM). Under invariant globalization, the default
+   culture is permanently locked to `CultureInfo.InvariantCulture`, and all string
+   operations behave as ordinal by default. This means:
 
-   Case-insensitive variants follow the same pattern with `OrdinalIgnoreCase` prefix
-   (e.g., `OrdinalIgnoreCaseEquals`, `s.OrdinalIgnoreCaseStartsWith(prefix)`).
-   These extensions also support `Symbol` and `StringSegment` types
-   where applicable. See `src/dotnet/Core/Text/OrdinalStringExt.cs` for the full API.
+   **String comparison — do NOT pass `StringComparison.Ordinal`:**
 
-7. **Prefer `InvariantStringExt` extensions for `ToString` with invariant culture.**
-   Use `ToInvariantString()` from `InvariantStringExt` (`ActualChat` namespace)
-   instead of passing `CultureInfo.InvariantCulture` manually.
+   | Instead of | Use |
+   |---|---|
+   | `string.Equals(a, b, StringComparison.Ordinal)` | `a == b` |
+   | `!string.Equals(a, b, StringComparison.Ordinal)` | `a != b` |
+   | `string.Equals(a, b)` | `a == b` |
+   | `s.StartsWith(prefix, StringComparison.Ordinal)` | `s.StartsWith(prefix)` |
+   | `s.EndsWith(suffix, StringComparison.Ordinal)` | `s.EndsWith(suffix)` |
+   | `s.Contains(fragment, StringComparison.Ordinal)` | `s.Contains(fragment)` |
+   | `s.IndexOf(value, StringComparison.Ordinal)` | `s.IndexOf(value)` |
+   | `s.LastIndexOf(value, StringComparison.Ordinal)` | `s.LastIndexOf(value)` |
+   | `s.Replace(old, new, StringComparison.Ordinal)` | `s.Replace(old, new)` |
+   | `string.Compare(a, b, StringComparison.Ordinal)` | `string.Compare(a, b)` |
+   | `s.GetHashCode(StringComparison.Ordinal)` | `s.GetHashCode()` |
 
-| Instead of | Use |
-|---|---|
-| `value.ToString(CultureInfo.InvariantCulture)` | `value.ToInvariantString()` |
-| `value.ToString(format, CultureInfo.InvariantCulture)` | `value.ToInvariantString(format)` |
+   **Case-insensitive comparison — `StringComparison.OrdinalIgnoreCase` is still required**,
+   because there is no other way to express case-insensitivity:
 
-   Works on any `IConvertible` / `IFormattable` type and is null-safe.
-   See `src/dotnet/Core/Text/InvariantStringExt.cs` for the full API.
+   ```csharp
+   s.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)  // correct
+   string.Equals(a, b, StringComparison.OrdinalIgnoreCase)   // correct
+   ```
 
-8. **Prefer `FilePath` over `string` for file paths and file names.**
+   **Formatting and cultures — do NOT pass `CultureInfo.InvariantCulture`:**
+
+   | Instead of | Use |
+   |---|---|
+   | `value.ToString(CultureInfo.InvariantCulture)` | `value.ToString()` |
+   | `value.ToString(format, CultureInfo.InvariantCulture)` | `value.ToString(format, null)` |
+   | `int.Parse(s, CultureInfo.InvariantCulture)` | `int.Parse(s)` |
+   | `int.TryParse(s, CultureInfo.InvariantCulture, out x)` | `int.TryParse(s, out x)` |
+   | `int.Parse(s, NumberStyles.Hex, CultureInfo.InvariantCulture)` | `int.Parse(s, NumberStyles.Hex, null)` |
+   | `string.Format(CultureInfo.InvariantCulture, fmt, args)` | `string.Format(fmt, args)` |
+   | `sb.AppendFormat(CultureInfo.InvariantCulture, fmt, args)` | `sb.AppendFormat(fmt, args)` |
+   | `Convert.ToString(obj, CultureInfo.InvariantCulture)` | `Convert.ToString(obj)` |
+   | `char.ToUpperInvariant(c)` / `char.ToLowerInvariant(c)` | `char.ToUpper(c)` / `char.ToLower(c)` |
+   | `s.ToLowerInvariant()` / `s.ToUpperInvariant()` | `s.ToLower()` / `s.ToUpper()` |
+
+   When a method signature requires an `IFormatProvider` parameter and you cannot omit it
+   (e.g., `IFormattable.ToString(string?, IFormatProvider?)`), pass `null`.
+
+   **`StringComparer.Ordinal` — not needed for collections either.**
+   Since .NET 5, `Dictionary`, `HashSet`, and `ConcurrentDictionary` internally
+   optimize both the default comparer and `StringComparer.Ordinal` identically
+   via `NonRandomizedStringEqualityComparer`. Under invariant globalization,
+   `EqualityComparer<string>.Default` is already ordinal, so there is no
+   performance benefit to passing `StringComparer.Ordinal` explicitly.
+
+   ```csharp
+   // Correct — no comparer needed
+   new Dictionary<string, T>();
+   new HashSet<string>();
+   items.ToDictionary(x => x.Key);
+   items.ToHashSet();
+   items.GroupBy(x => x.Name);
+   items.Distinct();
+   ```
+
+   Use `StringComparer.OrdinalIgnoreCase` when you need case-insensitive
+   collection keys — this is the only case where an explicit comparer is required:
+
+   ```csharp
+   new Dictionary<string, T>(StringComparer.OrdinalIgnoreCase);
+   ```
+
+   **Suppressed warnings.** The following culture/string-comparison warnings are
+   globally suppressed in `Directory.Build.props` because invariant globalization
+   makes them unnecessary: CA1304, CA1305, CA1307, CA1309, CA1310, CA1311,
+   CA1862, MA0002, MA0006, MA0074.
+
+7. **Prefer `FilePath` over `string` for file paths and file names.**
    Use `FilePath` from `ActualLab.IO` instead of raw strings when working
    with file paths or file names. `FilePath` provides path combination
    via `&` and `|` operators, `RelativeTo`, `DirectoryPath`,
@@ -385,7 +430,7 @@ public override async Task Require(CancellationToken cancellationToken)
    See `ActualLab.IO.FilePath` for the full API
    and `src/dotnet/Core/IO/FilePathExt.cs` for project-specific extensions.
 
-9. **Prefer `RandomStringGenerator` over `Guid.NewGuid()` for IDs.**
+8. **Prefer `RandomStringGenerator` over `Guid.NewGuid()` for IDs.**
    Use `RandomStringGenerator.Default.Next()` from `ActualLab.Generators`
    instead of `Guid.NewGuid().ToString()` when generating unique identifiers.
    Random strings are shorter, more URL-friendly, and avoid the overhead
@@ -398,11 +443,11 @@ public override async Task Require(CancellationToken cancellationToken)
 
    You can specify length: `RandomStringGenerator.Default.Next(10)` for 10 characters.
 
-10. **Prefer `sealed` classes and records** unless inheritance is intended.
+9. **Prefer `sealed` classes and records** unless inheritance is intended.
 
-11. **Prefer `LogFor(GetType())` over `LogFor<T>()`** for the current type in non-static context.
+10. **Prefer `LogFor(GetType())` over `LogFor<T>()`** for the current type in non-static context.
 
-12. **Prefer primary constructors for services** when acceptable.
+11. **Prefer primary constructors for services** when acceptable.
 
 ### Test Conventions
 
