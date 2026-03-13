@@ -256,7 +256,10 @@ public partial class StreamingBackend
                 // NOTE(DF): in detect language mode, we should persist languages only on text entry finalization.
                 if (!transcriptionOptions.DetectLanguage)
                     entryLanguage = await CreateLanguages(lastTranscript.Languages).ConfigureAwait(false);
-                var transcriptDiffStream = transcripts.Replay(cancellationToken).ToTranscriptDiffs().Memoize();
+                var transcriptDiffStream = transcripts
+                    .Replay(cancellationToken)
+                    .ToTranscriptDiffs()
+                    .Memoize(cancellationToken);
                 await _transcriptStreams
                     .Publish(transcriptStreamId, transcriptDiffStream)
                     .ConfigureAwait(false);

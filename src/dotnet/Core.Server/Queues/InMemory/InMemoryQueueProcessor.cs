@@ -16,8 +16,7 @@ public sealed class InMemoryQueueProcessor : LocalQueueProcessor<InMemoryQueues.
             });
         _knownCommands = new RecentlySeenMap<string, Unit>(
             Settings.MaxKnownCommandCount,
-            Settings.MaxKnownCommandAge,
-            keyComparer: StringComparer.Ordinal);
+            Settings.MaxKnownCommandAge);
     }
 
     public override Task Enqueue(QueueShardRef queueShardRef, QueuedCommand queuedCommand, CancellationToken cancellationToken = default)

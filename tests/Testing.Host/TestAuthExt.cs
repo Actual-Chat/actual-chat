@@ -118,7 +118,7 @@ public static class TestAuthExt
             .Capture(() => accounts.GetOwn(session, cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         cAccount = await cAccount
-            .When(x => !x.IsGuestOrNull() && x.Identities.Keys.Contains(userIdentity), cancellationToken)
+            .When(x => !x.IsGuestOrNull() && x.Identities.ContainsKey(userIdentity), cancellationToken)
             .WaitAsync(TimeSpan.FromSeconds(1), cancellationToken)
             .ConfigureAwait(false);
         return cAccount.Value;

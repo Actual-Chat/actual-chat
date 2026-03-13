@@ -181,7 +181,15 @@ export class AudioPlayer implements Resettable {
     }
 
     /** Called from Blazor */
-    public static async create(blazorRef: DotNet.DotNetObject, id: string, preSkip: number, title: string, album: string, authorId: string | null, recordedAtMs: number): Promise<AudioPlayer> {
+    public static async create(
+        blazorRef: DotNet.DotNetObject,
+        id: string,
+        preSkip: number,
+        title: string,
+        album: string,
+        authorId: string | null,
+        recordedAtMs: number
+    ): Promise<AudioPlayer> {
         await AudioPlayer.init();
         const player = AudioPlayer.pool.get();
         await player.startPlayback(blazorRef, id, preSkip, title, album, authorId, recordedAtMs);

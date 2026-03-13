@@ -41,7 +41,7 @@ public static class AvatarUtils
     public static string GetContrast(string hexColor)
     {
         // If a leading # is provided, remove it
-        if (hexColor.StartsWith("#"))
+        if (hexColor.StartsWith('#'))
             hexColor = hexColor[1..];
 
         // Convert to RGB value

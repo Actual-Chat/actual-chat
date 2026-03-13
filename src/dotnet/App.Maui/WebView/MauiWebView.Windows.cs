@@ -138,7 +138,7 @@ public partial class MauiWebView
  #pragma warning disable IL2075
             var methodInfo = type.GetMethod("GetResponseContentTypeOrDefault", BindingFlags.Static | BindingFlags.NonPublic)!;
  #pragma warning restore IL2075
-            GetResponseContentTypeOrDefaultFunc = (Func<string, string>)methodInfo.CreateDelegate(typeof(Func<string, string>));
+            GetResponseContentTypeOrDefaultFunc = methodInfo.CreateDelegate<Func<string, string>>();
         }
 
         public static string GetResponseContentTypeOrDefault(string path)

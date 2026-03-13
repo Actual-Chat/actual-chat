@@ -21,7 +21,7 @@ public static partial class Validators
                 return "Email address is invalid.";
 
             // Ensure parsed address matches the original input (catches display name injection)
-            if (!OrdinalEquals(mailAddress.Address, trimmed))
+            if (mailAddress.Address != trimmed)
                 return "Email address is invalid.";
 
             return null;

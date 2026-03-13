@@ -517,7 +517,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                                     .ConfigureAwait(false);
                                 if (string.Equals(translatedText, Constants.Translation.NoTranslationNeededText, StringComparison.OrdinalIgnoreCase))
                                     translatedText = text; // No translation needed, use original content
-                                if (!translatedText.StartsWith(" ", StringComparison.OrdinalIgnoreCase)
+                                if (!translatedText.StartsWith(' ')
                                     && stableTranslatedTranscript.Text.Length > 0)
                                     translatedText = $" {translatedText}";
                                 lastTranslatedTranscript = stableTranslatedTranscript.WithSuffix(translatedText,

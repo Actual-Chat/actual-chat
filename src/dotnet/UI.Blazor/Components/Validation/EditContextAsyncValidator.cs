@@ -78,7 +78,7 @@ public sealed class EditContextAsyncValidator : WorkerBase
         // Skip async validation for properties that already have sync errors
         var syncErrorMembers = validationResults.Count == 0
             ? null
-            : validationResults.SelectMany(r => r.MemberNames).ToHashSet(StringComparer.Ordinal);
+            : validationResults.SelectMany(r => r.MemberNames).ToHashSet();
         var asyncValidationResults = await AsyncValidator
             .Validate(validationContext, syncErrorMembers, cancellationToken)
             .ConfigureAwait(false);

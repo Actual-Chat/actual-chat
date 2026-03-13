@@ -1,13 +1,12 @@
 using ActualChat.Audio;
-using ActualChat.Chat;
 using ActualChat.Media;
 
 namespace ActualChat.Streaming.Services;
 
 public sealed class AudioSegmentSaver(IServiceProvider services) : AudioProcessorBase(services)
 {
-    private IBlobStorages Blobs { get; } = services.GetRequiredService<IBlobStorages>();
-    private ICommander Commander => field ??= services.Commander();
+    private IBlobStorages Blobs => field ??= Services.GetRequiredService<IBlobStorages>();
+    private ICommander Commander => field ??= Services.Commander();
 
     public async Task<string> Save(
         ClosedAudioSegment closedAudioSegment,

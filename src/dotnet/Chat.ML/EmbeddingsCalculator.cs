@@ -11,8 +11,6 @@ public interface IEmbeddingsCalculator
 
 public class EmbeddingsCalculator : IEmbeddingsCalculator
 {
-    private const int MaxTokenCount = 8192;
-
     private readonly Uri? _predictionsUri;
 
     private readonly JsonSerializerOptions _jsonSerializerOptions = new (JsonSerializerOptions.Default) {

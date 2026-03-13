@@ -10,7 +10,7 @@ public class CaptchaUI(UIHub hub) : UIServiceBase<UIHub>(hub)
 
     public string SiteKey { get; private set; } = "";
     public bool IsAvailable => !SiteKey.IsNullOrEmpty();
-    public bool IsFake => OrdinalEquals(SiteKey, "fake");
+    public bool IsFake => SiteKey == "fake";
     public Task WhenReady => field ??= Initialize();
 
     public Task<string> GetActionToken(string action, CancellationToken cancellationToken)

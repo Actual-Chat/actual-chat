@@ -166,12 +166,12 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
             .Collect(1);
         foreach (var entry in entries) {
             // act
-            var translation = await WhenTranslated((ChatEntryId)entry.Id, targetLanguage);
+            var translation = await WhenTranslated(entry.Id, targetLanguage);
 
             // assert
             if (!translation.Content.IsNullOrEmpty())
                 translation.Content.Should()
-                    .BeSimilarTo(original, 0.7, "entry #{0} should remain in English", entry.Id);
+                    .BeSimilarTo(original, 0.7, "entry #{0} should remain in English", entry.Id.Value);
         }
     }
 
