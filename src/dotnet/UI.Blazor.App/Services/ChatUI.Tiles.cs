@@ -443,8 +443,15 @@ public partial class ChatUI
             entries.AddRange(newMessages);
 
             var audioRecordingEntry = await GetAudioRecordingEntry(chatId, currentAuthorId!, cancellationToken).ConfigureAwait(false);
-            if (audioRecordingEntry is not null)
-                entries.Add(audioRecordingEntry);
+            if (audioRecordingEntry is not null) {
+                // Hide "Transcribing..." when a real transcription entry already exists
+                // (i.e., the last entry from this author is streaming content).
+                var lastEntry = entries.Count > 0 ? entries[^1] : null;
+                var hasTranscription = lastEntry is { IsContentStreaming: true, AuthorId: var authorId }
+                    && authorId == currentAuthorId;
+                if (!hasTranscription)
+                    entries.Add(audioRecordingEntry);
+            }
         }
         if (entries.Count == 0 && conversations.Length == 0)
             return new VirtualListTile<ChatMessage>(idRange);

@@ -72,7 +72,7 @@
              && sm.AnimatedText.IsNullOrEmpty()
              && IsFirstAuthorMessage
              && !IsChatLanguageSelected) {
-            <span class="language-detecting">Language detecting...</span>
+            <StreamingEntryBadge ChatId="@ChatContext.ChatId" IsChatLanguageSelected="@false"/>
         }
         @if (!sm.RetainedText.IsNullOrEmpty()) {
             <span class="retained">@sm.RetainedText</span>
