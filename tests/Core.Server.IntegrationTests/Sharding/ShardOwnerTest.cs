@@ -98,7 +98,7 @@ public class ShardOwnerTest(ITestOutputHelper @out)
 
     // Nested types
 
-    private class SimpleShardWorker(IServiceProvider services, ITestOutputHelper @out, string name) : WorkerBase
+    private sealed class SimpleShardWorker(IServiceProvider services, ITestOutputHelper @out, string name) : WorkerBase
     {
         public ShardOwner ShardOwner { get; } = services.ShardOwner(ShardScheme.TestBackend);
 
@@ -118,7 +118,7 @@ public class ShardOwnerTest(ITestOutputHelper @out)
         }
     }
 
-    private class ChannelShardWorker(IServiceProvider services, ITestOutputHelper @out, string name) : WorkerBase
+    private sealed class ChannelShardWorker(IServiceProvider services, ITestOutputHelper @out, string name) : WorkerBase
     {
         private string? _toString;
 

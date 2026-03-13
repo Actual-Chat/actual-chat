@@ -89,11 +89,8 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
         var localId2 = 1600;
 
         var dbHub = appHost.Services.GetRequiredService<DbHub<ChatDbContext>>();
-
         var task1 = Task.Run(() => ProvokeDeadlock(dbHub, chatId, entryKind, localId1, localId2, default));
-
         var task2 = Task.Run(() => ProvokeDeadlock(dbHub, chatId, entryKind, localId2, localId1, default));
-
         Exception? exception = null;
         try {
             await Task.WhenAll(task1, task2);
