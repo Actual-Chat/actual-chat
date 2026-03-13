@@ -9,8 +9,8 @@ public partial class MauiWebView
 {
     // ReSharper disable once CollectionNeverUpdated.Local
     private static readonly HashSet<string> AllowedExternalHosts = MauiSettings.WebAuth.UseSystemBrowser
-        ? new(StringComparer.Ordinal) { "www.youtube.com" }
-        : new(StringComparer.Ordinal) { "accounts.google.com", "appleid.apple.com" };
+        ? new() { "www.youtube.com" }
+        : new() { "accounts.google.com", "appleid.apple.com" };
 
     public static readonly Uri BaseLocalUri = new($"https://{MauiSettings.LocalHost}/");
     public Uri LastUri { get; private set; } = BaseLocalUri;
@@ -113,7 +113,7 @@ public partial class MauiWebView
         if (MauiSettings.WebAuth.UseSystemBrowser)
             return false;
 
-        var pathAndQuery = uri.PathAndQuery.ToLowerInvariant();
+        var pathAndQuery = uri.PathAndQuery.ToLower();
         if (pathAndQuery.StartsWith("/maui-auth/"))
             return true;
         if (pathAndQuery.StartsWith("/signin"))

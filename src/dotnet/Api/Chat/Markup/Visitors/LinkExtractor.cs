@@ -4,7 +4,7 @@ public record LinkExtractor : MarkupVisitorWithState<HashSet<string>>
 {
     public HashSet<string> GetLinks(Markup markup)
     {
-        var mentions = new HashSet<string>(StringComparer.Ordinal);
+        var mentions = new HashSet<string>();
         Visit(markup, ref mentions);
         return mentions;
     }

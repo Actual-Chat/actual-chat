@@ -5,7 +5,7 @@ namespace ActualChat.App.Maui;
 internal static class AndroidFilePermissionsKeeper
 {
     private static readonly Lock Lock = new();
-    private static readonly Dictionary<string, State> States = new (StringComparer.Ordinal);
+    private static readonly Dictionary<string, State> States = new ();
     private static ILogger Log => StaticLog.For(typeof(AndroidFilePermissionsKeeper));
 
     public static void Register(string uri, AndroidFileProviderImpl androidFileProviderImpl)

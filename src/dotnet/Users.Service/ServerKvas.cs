@@ -180,10 +180,10 @@ public class ServerKvas : IServerKvas
         Dictionary<string, byte[]> movedKeys;
         HashSet<string> skippedKeys;
         using (Computed.BeginIsolation()) {
-            movedKeys = new Dictionary<string, byte[]>(StringComparer.Ordinal) {
+            movedKeys = new Dictionary<string, byte[]>() {
                 { Kvas.KvasExt.MigratedKey, KvasSerializer.SerializedTrue },
             };
-            skippedKeys = new HashSet<string>(StringComparer.Ordinal);
+            skippedKeys = new HashSet<string>();
             foreach (var (key, value) in keys) {
                 var userValue = await Backend.Get(toPrefix, key, cancellationToken).ConfigureAwait(false);
                 if (userValue == null)
@@ -195,8 +195,8 @@ public class ServerKvas : IServerKvas
 
         Log.LogInformation("TryMigrateKeys: {FromPrefix} -> {ToPrefix}, move {MoveKeys}, skip {SkipKeys}",
             fromPrefix, toPrefix,
-            movedKeys.Keys.OrderBy(x => x, StringComparer.Ordinal).ToDelimitedString(),
-            skippedKeys.OrderBy(x => x, StringComparer.Ordinal).ToDelimitedString());
+            movedKeys.Keys.OrderBy(x => x).ToDelimitedString(),
+            skippedKeys.OrderBy(x => x).ToDelimitedString());
 
         // Create missing keys in toPrefix
         var createMissingKeysCommand = new ServerKvasBackend_SetMany(toPrefix,

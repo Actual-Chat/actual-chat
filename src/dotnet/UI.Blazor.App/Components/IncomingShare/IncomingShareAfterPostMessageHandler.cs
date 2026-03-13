@@ -10,7 +10,7 @@ public class IncomingShareAfterSendMessageHandler(AppUIHub hub) : IAfterSendMess
 
     public void Invoke(string args, Result<ChatEntry?> result)
     {
-        var expectedUploadedFilesNumber = int.Parse(args, CultureInfo.InvariantCulture);
+        var expectedUploadedFilesNumber = int.Parse(args);
 
         ChatEntryAttachment[]? attachments;
         if (result.HasError) {
@@ -31,7 +31,7 @@ public class IncomingShareAfterSendMessageHandler(AppUIHub hub) : IAfterSendMess
 
         int attachmentsLength = attachments.Length;
         var info = expectedUploadedFilesNumber == attachmentsLength
-            ? attachmentsLength.ToInvariantString()
+            ? attachmentsLength.ToString()
             : $"{attachmentsLength} of {expectedUploadedFilesNumber}";
         var isImage = attachments.All(c => c.IsSupportedImage());
         var isVideo = attachments.All(c => c.IsSupportedVideo());

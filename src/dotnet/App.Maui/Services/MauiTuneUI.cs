@@ -7,7 +7,7 @@ namespace ActualChat.App.Maui.Services;
 
 public class MauiTuneUI : TuneUI
 {
-    private readonly ConcurrentDictionary<string, Task<AsyncAudioPlayer>> _players = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, Task<AsyncAudioPlayer>> _players = new();
     private readonly AudioFocusRequester _audioFocusRequester;
     private AudioFocusScope? _audioFocusScope;
 

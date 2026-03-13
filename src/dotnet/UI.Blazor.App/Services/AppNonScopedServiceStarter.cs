@@ -170,11 +170,11 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
         Warmup(default(bool?));
         Warmup(Symbol.Empty);
         Warmup(new[] { "a", null }); // WebKvasBackend.GetMany,SetMany
-        Warmup(new Dictionary<string, string>(StringComparer.Ordinal) { ["a"] = "b" }); // WebKvasBackend.List*
+        Warmup(new Dictionary<string, string>() { ["a"] = "b" }); // WebKvasBackend.List*
         Warmup(default(JSCallResultType));
         Warmup(default(ElementReference));
         Warmup(default(SideNavSide));
-        Warmup(new HashSet<string>(StringComparer.Ordinal) { "a" }); // BrowserInit.Initialize
+        Warmup(new HashSet<string>() { "a" }); // BrowserInit.Initialize
         Warmup(KeyValuePair.Create("", new List<string>()));
         Warmup(KeyValuePair.Create(default(Tune), new TuneInfo([]))); // TuneUI
         Warmup(new Dictionary<Tune, TuneInfo> { [default] = new([]) }); // TuneUI

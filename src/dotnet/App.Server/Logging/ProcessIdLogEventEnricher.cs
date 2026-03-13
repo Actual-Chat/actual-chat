@@ -10,5 +10,5 @@ public class ProcessIdLogEventEnricher : ILogEventEnricher
 {
     public void Enrich(LogEvent logEvent, ILogEventPropertyFactory propertyFactory)
         => logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty(
-            "ProcessID", Environment.ProcessId.ToString("D", CultureInfo.InvariantCulture)));
+            "ProcessID", Environment.ProcessId.ToString("D")));
 }

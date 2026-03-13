@@ -78,7 +78,7 @@ public static class Links
             : User(aliasInfo.Id);
 
     public static LocalUrl Invite(string format, string inviteId)
-        => string.Format(CultureInfo.InvariantCulture, format, inviteId.UrlEncode());
+        => string.Format(format, inviteId.UrlEncode());
 
     public static LocalUrl CloseFlow(string flowName, bool mustClose = true, string? redirectUrl = null)
     {

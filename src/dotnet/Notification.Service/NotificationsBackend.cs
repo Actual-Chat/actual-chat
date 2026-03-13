@@ -669,7 +669,7 @@ public class NotificationsBackend(IServiceProvider services)
             .ConfigureAwait(false);
 
         var now = Clocks.CoarseSystemClock.Now;
-        var similarityKey = now.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
+        var similarityKey = now.ToString("yyyy-MM-dd HH:mm:ss.fff");
         var content = $"{author.Avatar.Name} asks for attention";
         var lastEntryId = ChatEntryId.New(chatId, textEntryLid);
         await EnqueueMessageRelatedNotifications(

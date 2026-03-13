@@ -33,7 +33,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     private static readonly Task<IReadOnlyDictionary<Symbol, LinkPreview>> EmptyLinkPreviewsTask
         = Task.FromResult(EmptyLinkPreviews);
     private static readonly IReadOnlyDictionary<string, ChatEntryAudio> EmptyAudioMap
-        = new Dictionary<string, ChatEntryAudio>(StringComparer.Ordinal).AsReadOnly();
+        = new Dictionary<string, ChatEntryAudio>().AsReadOnly();
     private static readonly Task<IReadOnlyDictionary<string, ChatEntryAudio>> EmptyAudioMapTask
         = Task.FromResult(EmptyAudioMap);
 
@@ -1562,7 +1562,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return;
         }
 
-        var chatEntriesToInvalidate = new Dictionary<string, long>(StringComparer.Ordinal);
+        var chatEntriesToInvalidate = new Dictionary<string, long>();
         var userId = command.UserId;
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -2473,7 +2473,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .Select(mid => MediaBackend.Get(mid, cancellationToken))
                 .Collect(cancellationToken)
                 .ConfigureAwait(false);
-            var map = new Dictionary<string, ChatEntryAudio>(StringComparer.Ordinal);
+            var map = new Dictionary<string, ChatEntryAudio>();
             foreach (var media in mediaList) {
                 if (media is null)
                     continue;

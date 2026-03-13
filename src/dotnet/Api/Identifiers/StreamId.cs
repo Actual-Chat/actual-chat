@@ -58,7 +58,7 @@ public sealed partial class StreamId : StringIdentifier, IStringIdentifier<Strea
     public bool Equals(StreamId? other)
         => !ReferenceEquals(other, null)
             && HashCode == other.HashCode
-            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+            && string.Equals(Value, other.Value);
     public override bool Equals(object? obj)
         => obj is StreamId other && Equals(other);
 

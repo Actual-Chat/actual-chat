@@ -143,7 +143,7 @@ namespace ActualChat.Transcription
 
                 // NOTE: We normalize token TEXT to lowercase for robust matching,
                 // but Start/Length remain positions into the original string.
-                foreach (Match m in WordRegex.Matches(text.ToLowerInvariant()))
+                foreach (Match m in WordRegex.Matches(text.ToLower()))
                     list.Add(new Token(m.Value, m.Index, m.Length));
                 return list;
             }

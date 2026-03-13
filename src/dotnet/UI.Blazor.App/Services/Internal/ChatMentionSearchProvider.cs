@@ -20,7 +20,7 @@ internal class ChatMentionSearchProvider(IServiceProvider services, ChatId chatI
             .Select(author => new { author, searchMatch = searchPhrase.GetMatch(author.Avatar.Name) })
             .Where(x => x.searchMatch.Rank > 0 || searchPhrase.IsEmpty)
             .OrderByDescending(x => x.searchMatch.Rank)
-            .ThenBy(x => x.author.Avatar.Name, StringComparer.Ordinal)
+            .ThenBy(x => x.author.Avatar.Name)
             .Select(x => new MentionSearchResult(MentionId.NewAuthor(x.author.Id), x.searchMatch, x.author.Avatar.Picture!))
             .Take(limit)
             .ToArray();

@@ -58,7 +58,7 @@ public static partial class StringExt
         => input.IsNullOrEmpty()
             ? input
             : CamelCaseRegex.Replace(input, "$1_$2")
-                .ToLower(CultureInfo.InvariantCulture)
+                .ToLower()
                 .Replace("__", "_");
 
     public static string ToKebabCase(this string input)
@@ -73,20 +73,20 @@ public static partial class StringExt
             "$1$3-$2$4"
         );
 
-        return withDashes.ToLowerInvariant();
+        return withDashes.ToLower();
     }
 
     public static string Capitalize(this string source)
         => source.IsNullOrEmpty() ? source : source.Capitalize(0);
 
     public static string Capitalize(this string source, int position)
-        => ChangeCase(source, position, char.ToUpperInvariant);
+        => ChangeCase(source, position, char.ToUpper);
 
     public static string Decapitalize(this string source)
         => source.IsNullOrEmpty() ? source : source.Decapitalize(0);
 
     public static string Decapitalize(this string source, int position)
-        => ChangeCase(source, position, char.ToLowerInvariant);
+        => ChangeCase(source, position, char.ToLower);
 
     private static string ChangeCase(string source, int position, Func<char, char> changeCase)
     {
@@ -296,7 +296,7 @@ public static partial class StringExt
         if (portStr.IsNullOrEmpty())
             return true;
 
-        if (!ushort.TryParse(portStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out var portValue))
+        if (!ushort.TryParse(portStr, NumberStyles.Integer, null, out var portValue))
             return false;
 
         port = portValue;

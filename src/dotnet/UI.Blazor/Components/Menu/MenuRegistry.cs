@@ -3,7 +3,7 @@ namespace ActualChat.UI.Blazor.Components;
 public static class MenuRegistry
 {
     private static readonly ConcurrentDictionary<Type, string> TypeToId = new();
-    private static readonly ConcurrentDictionary<string, Type> IdToType = new(StringComparer.Ordinal);
+    private static readonly ConcurrentDictionary<string, Type> IdToType = new();
     private static int _lastMenuId;
 
     public static string GetTypeId([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type)

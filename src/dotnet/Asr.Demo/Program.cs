@@ -5,7 +5,7 @@ using static System.Console;
 var loggerFactory = LoggerFactory.Create(b => b.AddConsole().SetMinimumLevel(LogLevel.Information));
 var log = loggerFactory.CreateLogger("AsrDemo");
 
-var command = args.SingleOrDefault()?.ToLowerInvariant() ?? "mic";
+var command = args.SingleOrDefault()?.ToLower() ?? "mic";
 
 // Download model
 log.LogInformation("Ensuring model files are downloaded...");
@@ -147,7 +147,7 @@ async Task TranscribeMicrophone()
             var speed = (int)(1.0 / Math.Max(0.001, rtf));
 
             // Print new fixed text increments as permanent lines
-            if (!string.Equals(partial.FixedText, lastFixedText, StringComparison.Ordinal) && !string.IsNullOrEmpty(partial.FixedText)) {
+            if (!string.Equals(partial.FixedText, lastFixedText) && !string.IsNullOrEmpty(partial.FixedText)) {
                 var newPart = partial.FixedText.Length > lastFixedText.Length
                     ? partial.FixedText[lastFixedText.Length..].TrimStart()
                     : partial.FixedText;
@@ -158,7 +158,7 @@ async Task TranscribeMicrophone()
             }
 
             // Update active text tail on current line
-            if (!string.Equals(partial.ActiveText, lastActiveText, StringComparison.Ordinal)) {
+            if (!string.Equals(partial.ActiveText, lastActiveText)) {
                 lastActiveText = partial.ActiveText;
                 var tail = lastActiveText.Length > 60
                     ? "..." + lastActiveText[^57..]

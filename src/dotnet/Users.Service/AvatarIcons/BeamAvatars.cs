@@ -200,9 +200,9 @@ public static class BeamAvatars
         if (hex.StartsWith("#"))
             hex = hex[1..];
 
-        var r = byte.Parse(hex[..2], NumberStyles.HexNumber, CultureInfo.InvariantCulture);
-        var g = byte.Parse(hex[2..4], NumberStyles.HexNumber, CultureInfo.InvariantCulture);
-        var b = byte.Parse(hex[4..6], NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+        var r = byte.Parse(hex[..2], NumberStyles.HexNumber);
+        var g = byte.Parse(hex[2..4], NumberStyles.HexNumber);
+        var b = byte.Parse(hex[4..6], NumberStyles.HexNumber);
 
         return new SKColor(r, g, b);
     }

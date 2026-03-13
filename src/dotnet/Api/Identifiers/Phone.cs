@@ -63,7 +63,7 @@ public sealed partial class Phone : StringIdentifier, IStringIdentifier<Phone>
     public bool Equals(Phone? other)
         => !ReferenceEquals(other, null)
             && HashCode == other.HashCode
-            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+            && string.Equals(Value, other.Value);
     public override bool Equals(object? obj)
         => obj is Phone other && Equals(other);
 

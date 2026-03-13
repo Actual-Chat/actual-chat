@@ -63,7 +63,7 @@ public partial class ContentId : StringIdentifier, IStringIdentifier<ContentId>
     public bool Equals(ContentId? other)
         => !ReferenceEquals(other, null)
             && HashCode == other.HashCode
-            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+            && string.Equals(Value, other.Value);
     public override bool Equals(object? obj)
         => obj is ContentId other && Equals(other);
 
@@ -106,7 +106,7 @@ public partial class ContentId : StringIdentifier, IStringIdentifier<ContentId>
         if (kindLength < 0)
             return false;
 
-        if (!int.TryParse(s[..kindLength], CultureInfo.InvariantCulture, out var iKind))
+        if (!int.TryParse(s[..kindLength], out var iKind))
             return false;
 
         var kind = (ContentKind)iKind;

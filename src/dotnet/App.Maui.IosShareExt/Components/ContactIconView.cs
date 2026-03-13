@@ -36,7 +36,7 @@ public sealed class ContactIconView(IconQuery? iconQuery, UIImage? defaultImage,
             Font = UIFont.SystemFontOfSize(Size / 2f, UIFontWeight.Medium),
             TextColor = UIColor.White,
             TextAlignment = UITextAlignment.Center,
-            Text = title.Length > 0 ? title[0].ToString().ToUpperInvariant() : string.Empty,
+            Text = title.Length > 0 ? title[0].ToString().ToUpper() : string.Empty,
         };
         _image.AddSubview(_initialLabel);
         SetImage(imageData);

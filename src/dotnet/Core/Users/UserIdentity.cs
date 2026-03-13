@@ -48,7 +48,7 @@ public readonly partial record struct UserIdentity : IComparable<UserIdentity>
     // Equality
 
     public bool Equals(UserIdentity other)
-        => string.Equals(Id, other.Id, StringComparison.Ordinal);
+        => string.Equals(Id, other.Id);
     public override int GetHashCode()
         => Id.GetOrdinalHashCode();
 
@@ -62,7 +62,7 @@ public readonly partial record struct UserIdentity : IComparable<UserIdentity>
     private static string FormatId(string schema, string value)
     {
         using var f = IdFormat.CreateFormatter();
-        if (!StringComparer.Ordinal.Equals(schema, DefaultSchema))
+        if (schema != DefaultSchema)
             f.Append(schema);
         f.Append(value);
         f.AppendEnd();

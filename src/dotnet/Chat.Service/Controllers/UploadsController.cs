@@ -37,7 +37,7 @@ public sealed class UploadsController(IServiceProvider services) : ControllerBas
 
         try {
             var offset = await Uploads.GetOffset(session, uploadId, cancellationToken).ConfigureAwait(false);
-            Response.Headers[Headers.UploadOffset] = offset.ToInvariantString();
+            Response.Headers[Headers.UploadOffset] = offset.ToString();
             Response.Headers["Access-Control-Expose-Headers"] = "Upload-Offset, Tus-Resumable, Location, Upload-Length";
             return Ok();
         }
@@ -79,7 +79,7 @@ public sealed class UploadsController(IServiceProvider services) : ControllerBas
             var command = new Uploads_Append(session, uploadId, uploadOffset, chunk);
             try {
                 var newOffset = await Commander.Call(command, cancellationToken).ConfigureAwait(false);
-                Response.Headers[Headers.UploadOffset] = newOffset.ToInvariantString();
+                Response.Headers[Headers.UploadOffset] = newOffset.ToString();
                 Response.Headers["Access-Control-Expose-Headers"] = "Upload-Offset, Tus-Resumable, Location, Upload-Length";
                 return NoContent();
             }

@@ -30,7 +30,7 @@ public sealed class FlowConsole(IFlowImpl flow, string prefix = "")
 
     public FlowConsole LogSection(string section)
     {
-        Suffix.AppendFormat(CultureInfo.InvariantCulture, LogSectionFormat, DateTime.Now, section);
+        Suffix.AppendFormat(LogSectionFormat, DateTime.Now, section);
         if (flow.Runtime?.Log is { } log)
             // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
             log.LogInformation("`{FlowId}`: {Section}", flow.Id, section);
@@ -51,10 +51,10 @@ public sealed class FlowConsole(IFlowImpl flow, string prefix = "")
         var cLevel = GetLogLevelChar(level);
         if (cLevel is not ' ') {
             if (error is not null)
-                Suffix.AppendFormat(CultureInfo.InvariantCulture, LogErrorFormat,
+                Suffix.AppendFormat(LogErrorFormat,
                     CreatedAt.Elapsed.TotalSeconds, cLevel, message, error.GetType().GetName(), error.Message);
             else
-                Suffix.AppendFormat(CultureInfo.InvariantCulture, LogFormat,
+                Suffix.AppendFormat(LogFormat,
                     CreatedAt.Elapsed.TotalSeconds, cLevel, message);
             if (flow.Runtime?.Log is { } log)
                 // ReSharper disable once TemplateIsNotCompileTimeConstantProblem

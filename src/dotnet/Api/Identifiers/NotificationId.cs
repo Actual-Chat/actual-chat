@@ -45,7 +45,7 @@ public sealed partial class NotificationId : StringIdentifier, IStringIdentifier
     public bool Equals(NotificationId? other)
         => !ReferenceEquals(other, null)
             && HashCode == other.HashCode
-            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+            && string.Equals(Value, other.Value);
     public override bool Equals(object? obj)
         => obj is NotificationId other && Equals(other);
 

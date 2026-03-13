@@ -27,7 +27,7 @@ public partial class ChatMessageKey : StringIdentifier, IStringIdentifier<ChatMe
     };
 
     private static readonly Dictionary<string, ChatMessageKind> KindBySuffix =
-        SuffixByKind.ToDictionary(x => x.Value, x => x.Key, StringComparer.Ordinal);
+        SuffixByKind.ToDictionary(x => x.Value, x => x.Key);
 
     public const char Delimiter = '-';
 
@@ -55,7 +55,7 @@ public partial class ChatMessageKey : StringIdentifier, IStringIdentifier<ChatMe
     public bool Equals(ChatMessageKey? other)
         => !ReferenceEquals(other, null)
             && HashCode == other.HashCode
-            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+            && string.Equals(Value, other.Value);
     public override bool Equals(object? obj)
         => obj is ChatMessageKey other && Equals(other);
 
@@ -96,7 +96,7 @@ public partial class ChatMessageKey : StringIdentifier, IStringIdentifier<ChatMe
 
         var firstDashIndex = s.IndexOf('-');
         var sLocalId = firstDashIndex > 0 ? s[..firstDashIndex] : s;
-        if (!long.TryParse(sLocalId, CultureInfo.InvariantCulture, out var localId))
+        if (!long.TryParse(sLocalId, out var localId))
             return false;
 
         var kind = ChatMessageKind.None;

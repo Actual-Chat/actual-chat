@@ -38,7 +38,7 @@ internal class ConversationTranslationSource(Conversation conversation, Translat
     // If Conversation is updated => version id is updated, and we consider that we need to update translations.
     public override HashString ContentHash => new HashString(HashAlgorithm.None,
         HashEncoding.Base64,
-        Conversation.Version.ToInvariantString().ToBase64());
+        Conversation.Version.ToString().ToBase64());
 
     public override string Content => TranslationSourceId.Kind switch {
         TranslationIdKind.ConversationTitle => Conversation.Title,
@@ -69,7 +69,7 @@ internal class ThreadTranslationSource(Chat treadChat, TranslationSourceId sourc
     // If ThreadChat is updated => version id is updated, and we consider that we need to update translations.
     public override HashString ContentHash => new HashString(HashAlgorithm.None,
         HashEncoding.Base64,
-        ThreadChat.Version.ToInvariantString().ToBase64());
+        ThreadChat.Version.ToString().ToBase64());
 
     public override string Content => TranslationSourceId.Kind switch {
         TranslationIdKind.ThreadTitle => ThreadChat.Title,

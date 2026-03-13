@@ -60,7 +60,7 @@ public class TestAgentSignInTest(AppHostFixture fixture, ITestOutputHelper @out)
 
     private async Task<(AccountFull Account, string Email)> SignInAsTestAgent()
     {
-        var emailString = $"test-{Ulid.NewUlid().ToString().ToLowerInvariant()}@actual.chat";
+        var emailString = $"test-{Ulid.NewUlid().ToString().ToLower()}@actual.chat";
         var email = ActualChat.Email.Parse(emailString);
         var session = _tester.Session;
 

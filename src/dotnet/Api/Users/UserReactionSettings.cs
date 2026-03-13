@@ -18,11 +18,11 @@ public sealed partial record UserReactionSettings : IHasKvasKey<UserReactionSett
     /// Maps emoji ID to rank (1-6 for top emojis, 0 for others).
     /// </summary>
     [DataMember, MemoryPackOrder(0)]
-    public Dictionary<string, int> EmojiRanks { get; init; } = new(StringComparer.Ordinal);
+    public Dictionary<string, int> EmojiRanks { get; init; } = new();
 
     public UserReactionSettings WithBubbleUp(string emojiId)
     {
-        var newRanks = new Dictionary<string, int>(EmojiRanks, StringComparer.Ordinal);
+        var newRanks = new Dictionary<string, int>(EmojiRanks);
         var currentRank = newRanks.GetValueOrDefault(emojiId);
 
         if (currentRank >= TopCount) {

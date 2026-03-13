@@ -43,7 +43,7 @@ public sealed partial class MentionId : StringIdentifier, IStringIdentifier<Ment
     public bool Equals(MentionId? other)
         => !ReferenceEquals(other, null)
             && HashCode == other.HashCode
-            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+            && string.Equals(Value, other.Value);
     public override bool Equals(object? obj)
         => obj is MentionId other && Equals(other);
 

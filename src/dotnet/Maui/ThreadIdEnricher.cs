@@ -7,7 +7,7 @@ internal class ThreadIdEnricher : ILogEventEnricher
 {
     public void Enrich(LogEvent logEvent, ILogEventPropertyFactory propertyFactory)
     {
-        var managedThreadId = Environment.CurrentManagedThreadId.ToString("D4", CultureInfo.InvariantCulture);
+        var managedThreadId = Environment.CurrentManagedThreadId.ToString("D4");
         var threadId = managedThreadId;
 #if ANDROID
         var myTid = Android.OS.Process.MyTid();

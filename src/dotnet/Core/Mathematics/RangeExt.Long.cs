@@ -100,8 +100,8 @@ public static partial class RangeExt
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Range<long> ToLongRange(this Range<string> range)
         => new (
-            long.Parse(range.Start, NumberStyles.Integer, CultureInfo.InvariantCulture),
-            long.Parse(range.End, NumberStyles.Integer, CultureInfo.InvariantCulture));
+            long.Parse(range.Start, NumberStyles.Integer),
+            long.Parse(range.End, NumberStyles.Integer));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Range<long> ToLongRange(this Range<string> range, bool useFirstDigits)
@@ -115,8 +115,8 @@ public static partial class RangeExt
             throw StandardError.Constraint($"Unable to parse digit prefix. Range={range}.");
 
         return new Range<long>(
-            long.Parse(startMatch.Value, NumberStyles.Integer, CultureInfo.InvariantCulture),
-            long.Parse(endMatch.Value, NumberStyles.Integer, CultureInfo.InvariantCulture));
+            long.Parse(startMatch.Value, NumberStyles.Integer),
+            long.Parse(endMatch.Value, NumberStyles.Integer));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

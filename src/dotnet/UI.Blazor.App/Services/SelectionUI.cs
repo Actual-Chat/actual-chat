@@ -96,8 +96,8 @@ public class SelectionUI : UIServiceBase<AppUIHub>
                 currentAuthorId = chatEntry.AuthorId;
                 var author = await Authors.Get(Session, chatEntry.ChatId, chatEntry.AuthorId, cancellationToken).ConfigureAwait(false);
                 var authorName = author?.Avatar.Name ?? "(N/A)";
-                var timestamp = DateTimeConverter.ToLocalTime(chatEntry.BeginsAt).ToString("g", CultureInfo.InvariantCulture);
-                sb.AppendFormat(CultureInfo.InvariantCulture, "{0}, [{1}]", authorName, timestamp);
+                var timestamp = DateTimeConverter.ToLocalTime(chatEntry.BeginsAt).ToString("g");
+                sb.AppendFormat("{0}, [{1}]", authorName, timestamp);
                 sb.AppendLine();
             }
 

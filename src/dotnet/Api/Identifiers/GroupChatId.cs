@@ -38,7 +38,7 @@ public sealed partial class GroupChatId : ChatId, IStringIdentifier<GroupChatId>
     public bool Equals(GroupChatId? other)
         => !ReferenceEquals(other, null)
             && HashCode == other.HashCode
-            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+            && string.Equals(Value, other.Value);
     public override bool Equals(object? obj)
         => obj is GroupChatId other && Equals(other);
 

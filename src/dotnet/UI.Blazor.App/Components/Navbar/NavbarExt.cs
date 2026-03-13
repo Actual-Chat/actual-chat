@@ -14,7 +14,7 @@ public static class NavbarExt
         => PinnedChatPrefix + pinnedChatId.Value;
 
     public static bool IsGroupSelected(this NavbarUI navbarUI, string groupId)
-        => navbarUI.SelectedGroupId.Equals(groupId, StringComparison.Ordinal);
+        => navbarUI.SelectedGroupId.Equals(groupId);
 
     public static bool IsPlaceSelected(this NavbarUI navbarUI, [NotNullWhen(true)] out PlaceId? placeId)
     {

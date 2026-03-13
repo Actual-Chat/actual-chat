@@ -68,7 +68,7 @@ public class TranscriptUpdateTests(ITestOutputHelper @out) : TestBase(@out)
     {
         var state = new GoogleTranscribeState(null!, null!, null!, null!);
         state.Append("X", null).MakeStable();
-        var text = Enumerable.Range(0, 100).Select(i => i.ToString(CultureInfo.InvariantCulture)).ToDelimitedString("-");
+        var text = Enumerable.Range(0, 100).Select(i => i.ToString()).ToDelimitedString("-");
         var rnd = new Random(0);
         var lastOffset = 1;
         for (var offset = 1; offset <= text.Length; offset += 1 + rnd.Next(3)) {

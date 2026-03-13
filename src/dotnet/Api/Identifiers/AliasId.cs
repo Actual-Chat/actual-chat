@@ -24,7 +24,7 @@ public sealed partial class AliasId : StringIdentifier, IStringIdentifier<AliasI
     public static readonly Alphabet Alphabet = Alphabet.AlphaNumeric.Symbols + "_-";
 
     [IgnoreDataMember]
-    public string NormalizedValue => field ??= Value.ToLowerInvariant();
+    public string NormalizedValue => field ??= Value.ToLower();
 
     // Factories and constructors
 
@@ -36,7 +36,7 @@ public sealed partial class AliasId : StringIdentifier, IStringIdentifier<AliasI
     public bool Equals(AliasId? other)
         => !ReferenceEquals(other, null)
             && HashCode == other.HashCode
-            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+            && string.Equals(Value, other.Value);
     public override bool Equals(object? obj)
         => obj is AliasId other && Equals(other);
 

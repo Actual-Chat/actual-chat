@@ -57,7 +57,7 @@ public sealed partial record AccountFull : Account
     [DataMember(Name = nameof(Identities)), MemoryPackOrder(20)]
     [JsonPropertyName(nameof(Identities)), Newtonsoft.Json.JsonProperty(nameof(Identities))]
     public ApiMap<string, string> JsonCompatibleIdentities {
-        get => Identities.UnorderedItems.ToApiMap(p => p.Key.Id, p => p.Value, StringComparer.Ordinal);
+        get => Identities.UnorderedItems.ToApiMap(p => p.Key.Id, p => p.Value);
         init => Identities = value.ToApiMap(p => new UserIdentity(p.Key), p => p.Value);
     }
 

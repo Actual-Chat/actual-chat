@@ -80,7 +80,7 @@ public sealed class Crawler(
 
     private async Task<IReadOnlyCollection<string>> ListSupportedUserAgents(Uri uri, CancellationToken cancellationToken)
     {
-        if (settings.DomainsWithoutRobots.Contains(uri.DnsSafeHost.ToLowerInvariant(), StringComparer.Ordinal))
+        if (settings.DomainsWithoutRobots.Contains(uri.DnsSafeHost.ToLower()))
             return UserAgents;
 
         var robotsFile = await robotsFiles.Get(uri, cancellationToken).ConfigureAwait(false);

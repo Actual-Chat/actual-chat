@@ -18,7 +18,7 @@ namespace ActualChat.Users;
 public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IAccountsBackend
 {
     private const string AdminEmailDomain = Constants.Team.EmailDomain;
-    private static HashSet<string> AdminEmails { get; } = new(StringComparer.Ordinal) {
+    private static HashSet<string> AdminEmails { get; } = new() {
         "alex.yakunin@gmail.com",
         "ustinovas@gmail.com",
     };
@@ -446,10 +446,10 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         dbAccount.IsGreetingCompleted = account.IsGreetingCompleted;
         dbAccount.TimeZone = account.TimeZone;
         dbAccount.AliasId = account.AliasId?.NormalizedValue ?? "";
-        dbAccount.Claims = account.Claims.ToImmutableDictionary(StringComparer.Ordinal);
+        dbAccount.Claims = account.Claims.ToImmutableDictionary();
 
         // Sync identities to DbAccount
-        var dbIdentities = dbAccount.Identities.ToDictionary(ai => ai.Id, StringComparer.Ordinal);
+        var dbIdentities = dbAccount.Identities.ToDictionary(ai => ai.Id);
         foreach (var (userIdentity, secret) in account.Identities) {
             if (!userIdentity.IsValid)
                 continue;
@@ -514,7 +514,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             IsEmailVerified = account.IsEmailVerified(),
             Phone = account.Phone?.Value ?? account.Claims.GetValueOrDefault(ClaimTypes.MobilePhone, ""),
             CreatedAt = Clocks.SystemClock.Now,
-            Claims = account.Claims.ToImmutableDictionary(StringComparer.Ordinal),
+            Claims = account.Claims.ToImmutableDictionary(),
         };
         // Sync identities to DbAccount
         foreach (var (userIdentity, secret) in account.Identities) {

@@ -49,7 +49,7 @@ public static class UrlMapperExt
             var url = $"api/avatars/{kindPath}/{Uri.EscapeDataString(query.Key)}";
             var separator = '?';
             if (query.Format != AvatarFormat.Svg) {
-                url += $"{separator}format={query.Format.ToString().ToLowerInvariant()}";
+                url += $"{separator}format={query.Format.ToString().ToLower()}";
                 separator = '&';
             }
             if (query.Size > 0) {

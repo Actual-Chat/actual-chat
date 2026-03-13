@@ -37,7 +37,7 @@ public sealed partial class UploadId : StringIdentifier, IStringIdentifier<Uploa
     public bool Equals(UploadId? other)
         => !ReferenceEquals(other, null)
             && HashCode == other.HashCode
-            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+            && string.Equals(Value, other.Value);
     public override bool Equals(object? obj)
         => obj is UploadId other && Equals(other);
 

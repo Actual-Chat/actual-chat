@@ -79,7 +79,7 @@ public class InteractiveUI : UIServiceBase<UIHub>, IInteractiveUIBackend
                     // so the best we can do is to report that demand is satisfied (or not).
                     return true;
                 }
-                if (!activeDemand.Operations.Contains(operation, StringComparer.Ordinal))
+                if (!activeDemand.Operations.Contains(operation))
                     _activeDemand.Value = activeDemand with {
                         Operations = activeDemand.Operations.Add(operation),
                     };

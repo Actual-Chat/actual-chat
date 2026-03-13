@@ -7,7 +7,7 @@ public sealed record HistoryItemIdFormatter(string Prefix)
     { }
 
     public string Format(long id)
-        => string.Concat(Prefix, id.ToInvariantString());
+        => string.Concat(Prefix, id.ToString());
 
     public long? Parse(string? value)
     {

@@ -59,7 +59,7 @@ public sealed class ServerAuth
 
         var mustClose = true;
         if (request.Query.TryGetValue("mustClose", out var mustCloseValues))
-            mustClose = int.TryParse(mustCloseValues.FirstOrDefault(), CultureInfo.InvariantCulture, out var x) && x != 0;
+            mustClose = int.TryParse(mustCloseValues.FirstOrDefault(), out var x) && x != 0;
         return new CloseFlowInfo(name, redirectUrl, mustClose);
     }
 
@@ -180,13 +180,13 @@ public sealed class ServerAuth
         Session session, ClaimsPrincipal httpUser, string schema, CancellationToken cancellationToken)
     {
         var httpUserIdentityName = httpUser.Identity?.Name ?? "";
-        var claims = httpUser.Claims.ToApiMap(c => c.Type, c => c.Value, StringComparer.Ordinal);
+        var claims = httpUser.Claims.ToApiMap(c => c.Type, c => c.Value);
         var id = FirstClaimOrDefault(claims, IdClaimKeys) ?? httpUserIdentityName;
         var identity = new UserIdentity(schema, id);
         var identities = ApiMap<UserIdentity, string>.Empty;
 
         // Map claims using ClaimMapper
-        var httpClaims = httpUser.Claims.ToDictionary(c => c.Type, c => c.Value, StringComparer.Ordinal);
+        var httpClaims = httpUser.Claims.ToDictionary(c => c.Type, c => c.Value);
         (claims, _) = ClaimMapper.UpdateClaims(claims, httpClaims);
 
         // For external providers, try to link by email if the identity doesn't exist yet

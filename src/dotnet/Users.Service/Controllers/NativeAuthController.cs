@@ -114,7 +114,7 @@ public sealed class NativeAuthController(IServiceProvider services) : Controller
     // Implementation is a copy from Microsoft.AspNetCore.Authentication.OAuth.OAuthHandler with small modifications.
     private static async Task<OAuthTokenResponse> ExchangeCode(string code, OAuthOptions options, CancellationToken requestAborted)
     {
-        var requestParameters = new Dictionary<string, string>(StringComparer.Ordinal) {
+        var requestParameters = new Dictionary<string, string>() {
             { "client_id", options.ClientId },
             { "redirect_uri", ""  /* context.RedirectUri */ },
             { "client_secret", options.ClientSecret },

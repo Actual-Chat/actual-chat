@@ -37,5 +37,5 @@ public static class IconQueryExt
             renderAvatarTitle ? GetInitial(place.Title) : null);
 
     private static string GetInitial(string title)
-        => title.Length > 0 ? title[0].ToString().ToUpperInvariant() : "";
+        => title.Length > 0 ? title[0].ToString().ToUpper() : "";
 }

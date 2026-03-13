@@ -27,7 +27,7 @@
         <Button Click="OnUpload" disabled="@_isUploading">Upload</Button>
     }
     @if (_isUploading) {
-        <p>Uploading... @_uploadProgress.ToInvariantString()%</p>
+        <p>Uploading... @_uploadProgress.ToString()%</p>
     }
     @if (_uploadError != null) {
         <ErrorToast Class="mb-3">@_uploadError</ErrorToast>
@@ -64,7 +64,7 @@
     <h4>Progress</h4>
     <ul>
         <li>Stage: <b>@m.Progress.Stage</b></li>
-        <li>StageProgress: <b>@m.Progress.StageProgress.ToInvariantString()%</b></li>
+        <li>StageProgress: <b>@m.Progress.StageProgress.ToString()%</b></li>
         @if (m.Progress.HasFailed) {
             <li style="color: red;">Error: @m.Progress.Error</li>
         }

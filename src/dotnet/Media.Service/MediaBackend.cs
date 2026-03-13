@@ -146,11 +146,11 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
         Log.LogInformation("OnCopyChat({CorrelationId}): {Count} medias found",
             correlationId, medias.Count);
 
-        var foundMediaIds = new HashSet<string>(medias.Select(c => c.Id), StringComparer.Ordinal);
-        var missingMediaIds = sids.Except(foundMediaIds, StringComparer.Ordinal)
-            .OrderBy(c => c, StringComparer.Ordinal).ToList();
-        var mistakenlyFoundMediaIds = foundMediaIds.Except(sids, StringComparer.Ordinal)
-            .OrderBy(c => c, StringComparer.Ordinal).ToList();
+        var foundMediaIds = new HashSet<string>(medias.Select(c => c.Id));
+        var missingMediaIds = sids.Except(foundMediaIds)
+            .OrderBy(c => c).ToList();
+        var mistakenlyFoundMediaIds = foundMediaIds.Except(sids)
+            .OrderBy(c => c).ToList();
         if (missingMediaIds.Count > 0)
             Log.LogWarning("OnCopyChat({CorrelationId}) detected missing media ids ({Count}): {MediaIds}",
                 correlationId, missingMediaIds.Count, missingMediaIds.ToCommaPhrase());
@@ -170,10 +170,10 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var existentMediaSidSet = new HashSet<string>(existentMediaSids, StringComparer.Ordinal);
+        var existentMediaSidSet = new HashSet<string>(existentMediaSids);
         if (existentMediaSidSet.Count > 0)
             Log.LogWarning("OnCopyChat({CorrelationId}) detected existent media ids ({Count}): {MediaIds}",
-            correlationId, existentMediaSidSet.Count, existentMediaSidSet.OrderBy(c => c, StringComparer.Ordinal) .ToCommaPhrase());
+            correlationId, existentMediaSidSet.Count, existentMediaSidSet.OrderBy(c => c) .ToCommaPhrase());
 
         var updateCount = 0;
 

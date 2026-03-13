@@ -64,7 +64,7 @@ public static class ChatListExt
                 .ThenByDescending(c => c.LastTextEntry?.Version ?? c.Contact.Version),
             ChatListOrder.ByAlphabet => preOrderedChats
                 .OrderByDescending(c => c.Contact.IsPinned)
-                .ThenBy(c => c.Chat.Title, StringComparer.Ordinal),
+                .ThenBy(c => c.Chat.Title),
             _ => throw new ArgumentOutOfRangeException(nameof(order)),
         };
     }

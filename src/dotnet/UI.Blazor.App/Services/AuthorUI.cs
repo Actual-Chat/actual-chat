@@ -54,7 +54,7 @@ public class AuthorUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
     public async Task StartAnonymousPeerChat(UserId userId, CancellationToken cancellationToken = default)
     {
         var now = Clocks.SystemClock.Now;
-        var sDate = now.ToDateTime().ToString("MM/dd/yyyy", CultureInfo.InvariantCulture);
+        var sDate = now.ToDateTime().ToString("MM/dd/yyyy");
         var createCommand = new Chats_Change(Session, default, null, new() {
             Create = new ChatDiff {
                 Title = $"Anonymous chat ({sDate})",

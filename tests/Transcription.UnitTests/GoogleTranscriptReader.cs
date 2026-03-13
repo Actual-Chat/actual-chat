@@ -62,7 +62,7 @@ public static class GoogleTranscriptReader
             return null;
 
         var (sec, ms, _) = duration.TrimEnd('s').Split('.');
-        return new Duration { Seconds = long.Parse(sec, CultureInfo.InvariantCulture), Nanos = int.Parse(ms ?? "0", CultureInfo.InvariantCulture) * 1_000_000 };
+        return new Duration { Seconds = long.Parse(sec), Nanos = int.Parse(ms ?? "0") * 1_000_000 };
     }
 }
 

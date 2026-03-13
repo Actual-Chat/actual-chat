@@ -90,7 +90,7 @@ internal sealed class OpenSearchJsonSerializer(
         await JsonSerializer.SerializeAsync(stream, data, options, cancellationToken).ConfigureAwait(false);
     }
 
-    private readonly ConcurrentDictionary<string, IPropertyMapping?> _properties = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, IPropertyMapping?> _properties = new();
 
     public IPropertyMapping? CreatePropertyMapping(MemberInfo memberInfo)
     {

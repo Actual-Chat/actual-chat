@@ -150,7 +150,7 @@ public sealed class ParakeetModel(ILogger? log = null) : IDisposable
     private static int GetIntOutput(IDisposableReadOnlyCollection<DisposableNamedOnnxValue> results, string name)
     {
         foreach (var r in results) {
-            if (!string.Equals(r.Name, name, StringComparison.Ordinal))
+            if (!string.Equals(r.Name, name))
                 continue;
 
             var value = r.Value;
@@ -174,7 +174,7 @@ public sealed class ParakeetModel(ILogger? log = null) : IDisposable
         where T : unmanaged
     {
         foreach (var r in results) {
-            if (string.Equals(r.Name, name, StringComparison.Ordinal))
+            if (string.Equals(r.Name, name))
                 return r.AsTensor<T>();
         }
         throw new InvalidOperationException($"Output '{name}' not found.");

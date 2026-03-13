@@ -70,7 +70,7 @@ public sealed partial class Language : StringIdentifier, IStringIdentifier<Langu
 
     public static bool TryParse(string? s, [NotNullWhen(true)] out Language? result)
     {
-        if (!s.IsNullOrEmpty() && (Languages.ById.TryGetValue(s, out result) || Languages.ById.TryGetValue(s.ToLowerInvariant(), out result)))
+        if (!s.IsNullOrEmpty() && (Languages.ById.TryGetValue(s, out result) || Languages.ById.TryGetValue(s.ToLower(), out result)))
             return true;
 
         result = null;

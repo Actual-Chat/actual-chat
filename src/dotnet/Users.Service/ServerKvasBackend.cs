@@ -55,18 +55,18 @@ public class ServerKvasBackend(IServiceProvider services) : DbServiceBase<UsersD
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var keys = command.Items.Select(i => prefix + i.Key).ToHashSet(StringComparer.Ordinal);
-        foreach (var key in keys.Order(StringComparer.Ordinal)) // Has to be ordered to prevent deadlocks
+        var keys = command.Items.Select(i => prefix + i.Key).ToHashSet();
+        foreach (var key in keys.Order()) // Has to be ordered to prevent deadlocks
             await dbContext.KvasEntries.Lock(key, cancellationToken).ConfigureAwait(false);
         var dbKvasEntryList = await dbContext.KvasEntries
             .Where(e => keys.Contains(e.Key))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        var dbKvasEntries = dbKvasEntryList.ToDictionary(e => e.Key, StringComparer.Ordinal);
+        var dbKvasEntries = dbKvasEntryList.ToDictionary(e => e.Key);
 
         var items = command.Items.Length <= 1
             ? command.Items
-            : command.Items.Revert().DistinctBy(e => e.Key, StringComparer.Ordinal);
+            : command.Items.Revert().DistinctBy(e => e.Key);
         foreach (var (key, value) in items) {
             var fullKey = prefix + key;
             var dbKvasEntry = dbKvasEntries.GetValueOrDefault(fullKey);

@@ -60,7 +60,7 @@ public sealed partial class PlaceChatId : ChatId, IStringIdentifier<PlaceChatId>
     public bool Equals(PlaceChatId? other)
         => !ReferenceEquals(other, null)
             && HashCode == other.HashCode
-            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+            && string.Equals(Value, other.Value);
     public override bool Equals(object? obj)
         => obj is PlaceChatId other && Equals(other);
 

@@ -35,7 +35,7 @@ public class AndroidLogAccessor : IMauiLogAccessor
         var now = DateTime.Now;
         var fileName = "log_"
             + (MauiSettings.IsDevApp ? "dev_actual_chat_" : "actual_chat_")
-            + now.ToString("yyyyMMdd_HH.mm.ss", CultureInfo.InvariantCulture)
+            + now.ToString("yyyyMMdd_HH.mm.ss")
             + ".txt";
         var filePath = Path.Combine(_downloadFolder, fileName);
         var age = TimeSpan.FromMinutes(30); // Get log for the last 30 minutes.
@@ -71,7 +71,7 @@ public class AndroidLogAccessor : IMauiLogAccessor
                         if (index >= 0) {
                             const int sPidStartIndex = 2;
                             var sPid = line.Substring(sPidStartIndex, index - sPidStartIndex);
-                            if (int.TryParse(sPid, CultureInfo.InvariantCulture, out var pid))
+                            if (int.TryParse(sPid, out var pid))
                                 result.Add(pid);
                         }
                         return Task.CompletedTask;
@@ -116,7 +116,7 @@ public class AndroidLogAccessor : IMauiLogAccessor
 
     private Task<bool> DumpMainBufferLogToFile(StreamWriter outputFile, ICollection<int> pids, DateTime logStartThreshold)
     {
-        var pidFilters = pids.Select(c => c.ToString(CultureInfo.InvariantCulture)).ToArray();
+        var pidFilters = pids.Select(c => c.ToString()).ToArray();
         var tagFilter = MauiDiagnostics.LogTag;
         const string bufferFilter = "--------- beginning of";
 
@@ -132,10 +132,10 @@ public class AndroidLogAccessor : IMauiLogAccessor
         bool LineFilter(string line)
         {
             var match = line.Contains(tagFilter)
-                || line.StartsWith(bufferFilter, StringComparison.Ordinal);
+                || line.StartsWith(bufferFilter);
             if (!match) {
                 foreach (var pidFilter in pidFilters) {
-                    if (line.Contains(pidFilter, StringComparison.Ordinal)) {
+                    if (line.Contains(pidFilter)) {
                         match = true;
                         break;
                     }

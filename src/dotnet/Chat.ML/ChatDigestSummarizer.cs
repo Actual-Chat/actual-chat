@@ -39,7 +39,7 @@ public class ChatDigestSummarizer(ChatDigestSummarizer.Options settings, IServic
         var text = await ChatDialogFormatter.EntriesToText(chatEntries).ConfigureAwait(false);
         var prompt = PromptHelpers.BuildPrompt(
             Prompt,
-            new Dictionary<string, string>(StringComparer.Ordinal) {
+            new Dictionary<string, string>() {
                 { "DOCUMENT", text.Substring(0, Math.Min(text.Length, 1_000_000)) },
             });
         try {

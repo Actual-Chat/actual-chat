@@ -13,7 +13,7 @@ public sealed partial class FailingThrottledUpdateFlow : ThrottledUpdateFlow
     /// Tests set <see cref="FailUntilCallCount"/> and the flow throws until
     /// the call count for its target reaches that threshold.
     /// </summary>
-    public static readonly ConcurrentDictionary<string, int> CallCounts = new(StringComparer.Ordinal);
+    public static readonly ConcurrentDictionary<string, int> CallCounts = new();
 
     /// <summary>
     /// When > 0, Run() throws for the first N calls (per target).
