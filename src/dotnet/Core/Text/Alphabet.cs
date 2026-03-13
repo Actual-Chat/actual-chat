@@ -14,7 +14,7 @@ public sealed class Alphabet
     public static readonly Alphabet Numeric = "0123456789";
     public static readonly Alphabet NumericDash = "0123456789-";
     public static readonly Alphabet AlphaLower = "abcdefghijklmnopqrstuvwxyz";
-    public static readonly Alphabet AlphaUpper = AlphaLower.Symbols.ToUpperInvariant();
+    public static readonly Alphabet AlphaUpper = AlphaLower.Symbols.ToUpper();
     public static readonly Alphabet Alpha = AlphaLower + AlphaUpper;
     public static readonly Alphabet AlphaNumeric = Alpha + Numeric;
     public static readonly Alphabet AlphaNumericDash = Alpha + NumericDash;

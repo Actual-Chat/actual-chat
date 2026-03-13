@@ -15,7 +15,7 @@ public static class ContentResolver
         if (!Uri.TryCreate(uri, UriKind.Absolute, out var uri1))
             return false;
 
-        if (!OrdinalEquals(uri1.Host, FilesContentProvider) || !uri1.IsDefaultPort)
+        if (uri1.Host != FilesContentProvider || !uri1.IsDefaultPort)
             return false;
 
         filePath = Uri.UnescapeDataString(uri1.LocalPath.TrimStart('/'));

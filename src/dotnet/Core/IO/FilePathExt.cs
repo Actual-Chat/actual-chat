@@ -10,10 +10,10 @@ public static class FilePathExt
     {
         var relativePath = path.RelativeTo(baseBath);
         var pathValue = relativePath.Value;
-        return !OrdinalEquals(pathValue, ".")
-            && !OrdinalEquals(pathValue, "..")
-            && !pathValue.OrdinalStartsWith("../")
-            && !pathValue.OrdinalStartsWith(@"..\")
+        return pathValue != "."
+            && pathValue != ".."
+            && !pathValue.StartsWith("../")
+            && !pathValue.StartsWith(@"..\")
             && !relativePath.IsRooted;
     }
 
@@ -28,7 +28,7 @@ public static class FilePathExt
         if (trim)
             text = text.Trim();
         var hash = text.Hash().SHA256().AlphaNumeric();
-        return !OrdinalEquals(hash, expectedHash)
+        return hash != expectedHash
             ? throw StandardError.Configuration($"{name} ('{path}'): hash '{hash}' does not match '{expectedHash}'.")
             : path;
     }
@@ -45,7 +45,7 @@ public static class FilePathExt
     }
 
     public static FilePath EnsureExt(this FilePath path, string ext)
-        => path.HasExtension && OrdinalEquals(path.Extension, ext) ? path : path.ChangeExtension(ext);
+        => path.HasExtension && path.Extension == ext ? path : path.ChangeExtension(ext);
 
     public static async Task CopyFile(this FilePath sourcePath, FilePath targetPath, CancellationToken cancellationToken = default)
     {

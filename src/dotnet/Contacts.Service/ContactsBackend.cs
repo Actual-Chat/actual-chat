@@ -653,7 +653,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var externalContactName = await ExternalContactsBackend
             .GetDisplayNameFor(ownerUserId, peerUserId, cancellationToken)
             .ConfigureAwait(false);
-        if (OrdinalEquals(contact.ExternalContactName, externalContactName))
+        if (contact.ExternalContactName == externalContactName)
             return;
 
         try {
@@ -866,7 +866,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
 
         var (ownerUserId, links) = eventCommand;
         var peerUserIds = new List<UserId>();
-        foreach (var link in links.OrderBy(c => c, StringComparer.Ordinal)) {
+        foreach (var link in links.OrderBy(c => c)) {
             var peerUserId = await ExternalContactExt2.FindUser(AccountsBackend, link, cancellationToken).ConfigureAwait(false);
             if (peerUserId is not null && !peerUserIds.Contains(peerUserId))
                 peerUserIds.Add(peerUserId);

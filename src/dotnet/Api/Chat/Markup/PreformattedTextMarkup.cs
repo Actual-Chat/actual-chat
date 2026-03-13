@@ -15,7 +15,7 @@ public sealed class PreformattedTextMarkup(string text) : TextMarkup(text)
     public PreformattedTextMarkup() : this("") { }
 
     public override string Format()
-        => $"`{Text.OrdinalReplace("`", "``")}`";
+        => $"`{Text.Replace("`", "``")}`";
 
     public override TextMarkup WithText(string text)
         => new PreformattedTextMarkup(text);

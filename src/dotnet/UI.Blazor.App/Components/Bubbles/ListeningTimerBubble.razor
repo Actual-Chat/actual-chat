@@ -1,0 +1,30 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits BubbleBase
+@inject ModalUI ModalUI
+@inject ChatUI ChatUI
+
+<div class="bubble-content">
+    <div class="c-body">
+        <div class="c-content">
+            <div class="bubble-body">
+                Listening will automatically stop once the timer runs out.
+            </div>
+        </div>
+    </div>
+    <div class="bubble-buttons flex justify-end">
+        <Button Class="btn-bubble" Click="@OnSetListeningTime">Set listening time</Button>
+        <Button Class="btn-bubble btn-next" Click="@OnOk">Ok</Button>
+    </div>
+</div>
+
+@code {
+    private void OnSetListeningTime() {
+        var chatId = ChatUI.SelectedChatId.Value;
+        if (chatId is { } cid)
+            ModalUI.Show(new VoiceSettingsModal.Model(cid, StartAtListening: true));
+        _ = Host.ReadBubble(this);
+    }
+
+    private Task OnOk()
+        => Host.ReadBubble(this);
+}

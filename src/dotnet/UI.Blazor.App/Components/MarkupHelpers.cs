@@ -38,11 +38,11 @@ public class MarkupHelpers(AppUIHub hub)
             else if (isYesterday)
                 timestamp = $"Yesterday, {beginsAt.ToShortTimeString()}";
             else if (inWeek)
-                timestamp = beginsAt.ToInvariantString("ddd, HH:mm");
+                timestamp = beginsAt.ToString("ddd, HH:mm", null);
             else if (now.Year == beginsAt.Year)
-                timestamp = beginsAt.ToInvariantString("MMM dd");
+                timestamp = beginsAt.ToString("MMM dd", null);
             else
-                timestamp = beginsAt.ToInvariantString("MMM dd, yyyy");
+                timestamp = beginsAt.ToString("MMM dd, yyyy", null);
         }
         return new MarkupString($"<div class=\"last-entry-time\">{timestamp}</div>");
     }

@@ -2,18 +2,20 @@ using Microsoft.SemanticKernel.ChatCompletion;
 
 namespace ActualChat.Chat.ML;
 
-public class TokenEstimator
+public static class TokenEstimator
 {
-    public Task<int> Estimate(ChatHistory chatHistory, CancellationToken cancellationToken)
+    public static int Estimate(ChatHistory chatHistory)
     {
         // Estimate roughly
         var tokens = 0;
         foreach (var chatMessage in chatHistory)
             tokens += CountWords(chatMessage.Content ?? "");
-        return Task.FromResult((int)Math.Ceiling(tokens * 2.4));
+        return (int)Math.Ceiling(tokens * 2.4);
     }
 
-    private int CountWords(string text)
+    // Private methods
+
+    private static int CountWords(string text)
     {
         int wordCount = 0, index = 0;
 

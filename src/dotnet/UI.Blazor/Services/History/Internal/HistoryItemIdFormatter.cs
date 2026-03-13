@@ -7,11 +7,11 @@ public sealed record HistoryItemIdFormatter(string Prefix)
     { }
 
     public string Format(long id)
-        => string.Concat(Prefix, id.ToInvariantString());
+        => string.Concat(Prefix, id.ToString());
 
     public long? Parse(string? value)
     {
-        if (value?.OrdinalStartsWith(Prefix) != true)
+        if (value?.StartsWith(Prefix) != true)
             return null;
 
         var suffix = value.AsSpan(Prefix.Length);

@@ -1,7 +1,8 @@
-using ActualChat.UI;
+namespace ActualChat;
 
-namespace ActualChat.Maui.Services;
-
+/// <summary>
+/// Represents an icon query that combines a custom picture with a fallback avatar.
+/// </summary>
 public record IconQuery(Picture? Picture, AvatarQuery AvatarQuery)
 {
     public static IconQuery Create(

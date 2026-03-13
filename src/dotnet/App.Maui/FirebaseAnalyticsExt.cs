@@ -51,7 +51,7 @@ public static class FirebaseAnalyticsExt
         private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
         {
             var location = _history.Uri;
-            if (OrdinalEquals(location, _location))
+            if (location == _location)
                 return; // Location has not changed. Apparently panel/modal/menu has been opened/closed.
 
             var parameters = CreateBaseParameters();
@@ -95,7 +95,7 @@ public static class FirebaseAnalyticsExt
 
         private Dictionary<string, object> CreateBaseParameters()
         {
-            var parameters = new Dictionary<string, object>(StringComparer.Ordinal) {
+            var parameters = new Dictionary<string, object>() {
                 {"page_location", _history.Uri },
                 {"isMauiApp", _isMauiApp },
                 {"isAdmin", _accountUI.OwnAccount.Value.IsAdmin },

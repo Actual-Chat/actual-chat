@@ -7,7 +7,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     private readonly Task _cleanupTask;
     private readonly IUploadSessionRepo _repo;
     private readonly UploadOperations _uploadOperations;
-    private readonly ConcurrentDictionary<string, SessionRef> _sessions = new (StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, SessionRef> _sessions = new ();
     private readonly Func<UploadSessionSnapshot, CancellationToken, Task> _storage;
 
     private UploadSessionsState UploadSessionsState => Hub.UploadSessionsState;

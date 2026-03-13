@@ -122,7 +122,7 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>
             var chatSettings = await placeChatListSettings.Get(cancellationToken).ConfigureAwait(false);
             var allChats = await ChatListUI.List(PlaceId, chatSettings, cancellationToken).ConfigureAwait(false);
             var chatIds = visibility.VisibleKeys
-                .Select(idx => int.TryParse(idx, NumberStyles.Integer, CultureInfo.InvariantCulture, out var i) ? i : -1)
+                .Select(idx => int.TryParse(idx, NumberStyles.Integer, null, out var i) ? i : -1)
                 .Where(idx => idx >= 0 && idx < allChats.Count)
                 .Select(idx => allChats[idx].Id)
                 .ToHashSet();

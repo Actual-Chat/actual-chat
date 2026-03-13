@@ -1,19 +1,18 @@
 using ActualChat.Audio;
-using ActualChat.Chat;
 using ActualChat.Media;
 
 namespace ActualChat.Streaming.Services;
 
 public sealed class AudioSegmentSaver(IServiceProvider services) : AudioProcessorBase(services)
 {
-    private IBlobStorages Blobs { get; } = services.GetRequiredService<IBlobStorages>();
-    private ICommander Commander => field ??= services.Commander();
+    private IBlobStorages Blobs => field ??= Services.GetRequiredService<IBlobStorages>();
+    private ICommander Commander => field ??= Services.Commander();
 
     public async Task<string> Save(
         ClosedAudioSegment closedAudioSegment,
         CancellationToken cancellationToken)
     {
-        var streamIndex = closedAudioSegment.StreamId.OrdinalReplace($"{closedAudioSegment.AudioRecord.StreamId}-", "");
+        var streamIndex = closedAudioSegment.StreamId.Replace($"{closedAudioSegment.AudioRecord.StreamId}-", "");
         var blobId = BlobPath.Format(BlobScope.AudioRecord, closedAudioSegment.AudioRecord.StreamId.Value, streamIndex + ".webm");
 
         var converter = new WebMStreamConverter(Clocks, Log);

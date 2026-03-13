@@ -71,9 +71,9 @@ public class GoogleSpeechToTextTest(ITestOutputHelper @out, ILogger<GoogleSpeech
         await Task.Delay(500);
         // await Task.Delay(20000);
 
-        _ = BackgroundTask.Run(() => PushAudio(resultStream, recognizeRequests, streamingRecognitionConfig),
-            Log,
-            "Error");
+        _ = BackgroundTask.Run(
+            () => PushAudio(resultStream, recognizeRequests, streamingRecognitionConfig),
+            Log, "Error");
         var startedAt = CpuTimestamp.Now;
         // var firstResponse = await recognizeResponses.FirstAsync();
         var first = false;

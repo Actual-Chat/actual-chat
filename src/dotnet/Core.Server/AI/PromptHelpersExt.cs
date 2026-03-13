@@ -6,5 +6,5 @@ public static class PromptHelpersExt
         this IPromptHelpers promptHelpers,
         string promptTemplate,
         params (string Key, string Value)[] variables)
-        => promptHelpers.BuildPrompt(promptTemplate, variables.ToDictionary(x => x.Key, x => x.Value, StringComparer.Ordinal));
+        => promptHelpers.BuildPrompt(promptTemplate, variables.ToDictionary(x => x.Key, x => x.Value));
 }

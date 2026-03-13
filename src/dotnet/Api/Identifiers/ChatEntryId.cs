@@ -45,7 +45,7 @@ public sealed partial class ChatEntryId : StringIdentifier, IStringIdentifier<Ch
     public bool Equals(ChatEntryId? other)
         => !ReferenceEquals(other, null)
             && HashCode == other.HashCode
-            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+            && string.Equals(Value, other.Value);
     public override bool Equals(object? obj)
         => obj is ChatEntryId other && Equals(other);
 
@@ -90,14 +90,14 @@ public sealed partial class ChatEntryId : StringIdentifier, IStringIdentifier<Ch
             return true;
         }
 
-        var chatIdLength = s.OrdinalIndexOf(Delimiter);
+        var chatIdLength = s.IndexOf(Delimiter);
         if (chatIdLength < 0)
             return false;
         if (!ChatId.TryParse(s[..chatIdLength], out var chatId))
             return false;
 
         var kindStart = chatIdLength + 1;
-        var kindLength = s.OrdinalIndexOf(Delimiter, kindStart);
+        var kindLength = s.IndexOf(Delimiter, kindStart);
         if (kindLength < 0)
             return false;
 

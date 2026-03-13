@@ -94,8 +94,8 @@ public class ConversationSummarizer(ConversationSummarizer.Options settings, ISe
 
         try {
             var json = result
-                .OrdinalIgnoreCaseReplace("```json", "")
-                .OrdinalReplace("```", "")
+                .Replace("```json", "", StringComparison.OrdinalIgnoreCase)
+                .Replace("```", "")
                 .Trim();
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
@@ -120,7 +120,7 @@ public class ConversationSummarizer(ConversationSummarizer.Options settings, ISe
     {
         // Build a JSON object mapping:
         // "[Author Name|LocalId]" -> "@a:<chatId>:<localId>"
-        var map = new Dictionary<string, string>(StringComparer.Ordinal);
+        var map = new Dictionary<string, string>();
         foreach (var authorId in authorIds) {
             var authorName = await AuthorNameRetriever.GetAuthorName(authorId).ConfigureAwait(false);
             var key = $"[{authorName}|{authorId.LocalId}]";
@@ -209,11 +209,11 @@ public class ConversationSummarizer(ConversationSummarizer.Options settings, ISe
     {
         tryAgainInDelay = TimeSpan.Zero;
         const string pleaseTryAgainIn = "Please try again in";
-        var index1 = message.IndexOf(pleaseTryAgainIn, StringComparison.Ordinal);
+        var index1 = message.IndexOf(pleaseTryAgainIn);
         if (index1 < 0)
             return false;
 
-        var index2 = message.IndexOf(". Visit", index1, StringComparison.Ordinal);
+        var index2 = message.IndexOf(". Visit", index1);
         if (index2 < 0)
             return false;
 
@@ -225,12 +225,12 @@ public class ConversationSummarizer(ConversationSummarizer.Options settings, ISe
 
         var sValue = sDelay.Substring(0, index3);
         var units = sDelay.Substring(index3);
-        if (!double.TryParse(sValue, CultureInfo.InvariantCulture, out var value))
+        if (!double.TryParse(sValue, out var value))
             return false;
 
-        if (OrdinalEquals(units, "ms"))
+        if (units == "ms")
             tryAgainInDelay = TimeSpan.FromMilliseconds(value);
-        else if (OrdinalEquals(units, "s"))
+        else if (units == "s")
             tryAgainInDelay = TimeSpan.FromSeconds(value);
         else
             tryAgainInDelay = TimeSpan.FromSeconds(55);

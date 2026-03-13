@@ -192,7 +192,6 @@ public readonly struct RpcHostBuilder
             var host = Environment.GetEnvironmentVariable("POD_IP") ?? "";
             _ = int.TryParse(
                 Environment.GetEnvironmentVariable("POD_PORT") ?? "80",
-                CultureInfo.InvariantCulture,
                 out var port);
             if (host.IsNullOrEmpty() || port == 0) {
                 var endpoint = ServerEndpoints.List(c, "http://").FirstOrDefault();

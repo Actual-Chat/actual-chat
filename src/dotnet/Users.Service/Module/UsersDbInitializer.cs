@@ -220,7 +220,7 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
             return;
 
         var avatar = account.Avatar;
-        if (avatar.MediaId != null && OrdinalEquals(avatar.Bio, Constants.User.Sherlock.Name))
+        if (avatar.MediaId != null && avatar.Bio == Constants.User.Sherlock.Name)
             return;
 
         //using var dbContext = dbInitializer.CreateDbContext(true);
@@ -249,7 +249,7 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
         public MediaId? AvatarMediaId { get; init; }
         public string AvatarPictureUrl { get; init; } = "";
 
-        public string UserNameOrDefault => !UserName.IsNullOrEmpty() ? UserName : $"{FirstName.ToLowerInvariant()}_{LastName.ToLowerInvariant()}";
+        public string UserNameOrDefault => !UserName.IsNullOrEmpty() ? UserName : $"{FirstName.ToLower()}_{LastName.ToLower()}";
         public string AvatarNameOrDefault => AvatarName.NullIfEmpty() ?? $"{FirstName} {LastName}".Trim().NullIfEmpty() ?? UserNameOrDefault;
     }
 }

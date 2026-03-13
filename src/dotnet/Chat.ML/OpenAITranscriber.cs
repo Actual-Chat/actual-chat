@@ -44,7 +44,7 @@ public class OpenAITranscriber
                     Language = GetSupportedLanguage(options),
                     TimestampGranularities = AudioTimestampGranularities.Word,
                 };
-                if (_options.Model.OrdinalStartsWith("whisper"))
+                if (_options.Model.StartsWith("whisper"))
                     options1.ResponseFormat = AudioTranscriptionFormat.Verbose;
                 const string filename = "speech.ogg"; // use file name with ogg extension to indicate the audio format.
                 AudioTranscription transcription = await _audioClient
@@ -83,7 +83,7 @@ public class OpenAITranscriber
 
         var start = 0;
         foreach (var transcriptionWord in transcription.Words) {
-            var i = text.IndexOf(transcriptionWord.Word, start, StringComparison.Ordinal);
+            var i = text.IndexOf(transcriptionWord.Word, start);
             if (i < 0)
                 continue;
             linearMap.Append(new Vector2(i, (float)transcriptionWord.StartTime.TotalSeconds));

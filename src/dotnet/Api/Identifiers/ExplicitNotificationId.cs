@@ -46,7 +46,7 @@ public sealed partial class ExplicitNotificationId : StringIdentifier, IStringId
     public bool Equals(ExplicitNotificationId? other)
         => !ReferenceEquals(other, null)
             && HashCode == other.HashCode
-            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+            && string.Equals(Value, other.Value);
     public override bool Equals(object? obj)
         => obj is ExplicitNotificationId other && Equals(other);
 
@@ -80,7 +80,7 @@ public sealed partial class ExplicitNotificationId : StringIdentifier, IStringId
         if (s.IsNullOrEmpty())
             return false;
 
-        var userIdLength = s.OrdinalIndexOf(" ");
+        var userIdLength = s.IndexOf(" ");
         if (userIdLength < 0)
             return false;
         if (!UserId.TryParse(s[..userIdLength], out var userId))

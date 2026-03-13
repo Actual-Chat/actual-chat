@@ -78,8 +78,8 @@ public class ChannelMuxerTest
         }
 
         Assert.Equal(10, items.Count);
-        Assert.Equal(5, items.Count(x => x.Value.StartsWith("S1-", StringComparison.Ordinal)));
-        Assert.Equal(5, items.Count(x => x.Value.StartsWith("S2-", StringComparison.Ordinal)));
+        Assert.Equal(5, items.Count(x => x.Value.StartsWith("S1-")));
+        Assert.Equal(5, items.Count(x => x.Value.StartsWith("S2-")));
     }
 
     [Fact]
@@ -123,7 +123,7 @@ public class ChannelMuxerTest
         }
     }
 
-    private class TestItem : IMuxable
+    private sealed class TestItem : IMuxable
     {
         public int StreamIndex { get; set; }
         public string Value { get; init; } = "";

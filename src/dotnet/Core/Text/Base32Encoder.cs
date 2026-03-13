@@ -78,7 +78,6 @@ public static class Base32Encoder
     public static ulong Decode(string value)
     {
         if (string.IsNullOrEmpty(value)) return 0;
-        if (value.Equals("0", StringComparison.Ordinal)) return 0;
 
         ulong result = 0;
         foreach (var c in value) {

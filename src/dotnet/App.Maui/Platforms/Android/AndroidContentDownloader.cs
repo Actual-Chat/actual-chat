@@ -11,7 +11,7 @@ public sealed class AndroidContentDownloader(IServiceProvider services)
     private ILogger Log => field ??= services.LogFor(GetType());
 
     public static bool CanHandleWebRequestUri(string? relativeUrl)
-        => relativeUrl.OrdinalStartsWith(Prefix);
+        => (relativeUrl ?? "").StartsWith(Prefix);
 
     public static string CreateWebRequestUri(string url)
         => Prefix + System.Uri.EscapeDataString(url);
@@ -51,7 +51,7 @@ public sealed class AndroidContentDownloader(IServiceProvider services)
             if (uri is null)
                 return false;
 
-            if (OrdinalEquals(uri.Scheme, "content")) {
+            if (uri.Scheme == "content") {
                 var contentResolver = Platform.AppContext.ContentResolver!;
                 var cursor = contentResolver.Query(uri, null, null, null, null);
                 if (cursor is not null) {
@@ -90,7 +90,7 @@ public sealed class AndroidContentDownloader(IServiceProvider services)
 
     public (Stream?, string?) GetWebRequestStream(string requestUri)
     {
-        if (!requestUri.OrdinalStartsWith(Prefix))
+        if (!requestUri.StartsWith(Prefix))
             return (null, null);
 
         var uri = System.Uri.UnescapeDataString(requestUri[Prefix.Length..]);

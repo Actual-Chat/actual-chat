@@ -60,8 +60,8 @@ public class LanguageDetector(IServiceProvider services)
         try {
             var result = response.Content ?? "[]";
             var json = result
-                .OrdinalIgnoreCaseReplace("```json", "")
-                .OrdinalReplace("`", "");
+                .Replace("```json", "", StringComparison.OrdinalIgnoreCase)
+                .Replace("`", "");
             return SystemJsonSerializer.Default.Read<string[]>(json)
                 .Select(Language.ParseNullable)
                 .SkipNullItems()

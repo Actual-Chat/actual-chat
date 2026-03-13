@@ -18,17 +18,17 @@ public static class IncomingShareHandler
     private static void TryHandleSend(Intent intent)
     {
         var action = intent.Action;
-        if (!OrdinalEquals(action, Intent.ActionSend) &&
-            !OrdinalEquals(action, Intent.ActionSendMultiple))
+        if (action != Intent.ActionSend &&
+            action != Intent.ActionSendMultiple)
             return;
 
         Log.LogInformation("-> IncomingShare, send intent is detected. Action: {Action}", action);
         var mimeType = intent.Type ?? "";
         var hasExtraStream = intent.Extras?.ContainsKey(Intent.ExtraStream) ?? false;
-        if (OrdinalEquals(action, Intent.ActionSend)) {
+        if (action == Intent.ActionSend) {
             if (hasExtraStream)
                 HandleFilesSend(mimeType, GetStreams(intent, false));
-            else if (OrdinalEquals(mimeType, System.Net.Mime.MediaTypeNames.Text.Plain))
+            else if (mimeType == System.Net.Mime.MediaTypeNames.Text.Plain)
                 HandlePlainTextSend(intent.GetStringExtra(Intent.ExtraText));
             else
                 Log.LogWarning("Unsupported send mime type: '{MimiType}'", mimeType);

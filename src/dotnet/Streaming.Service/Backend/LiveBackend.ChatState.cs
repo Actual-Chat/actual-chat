@@ -6,7 +6,7 @@ public partial class LiveBackend
 {
     public sealed class ChatState(LiveBackend owner, ChatId chatId)
     {
-        private readonly ConcurrentDictionary<string, LiveStreamInfo> _streams = new(StringComparer.Ordinal);
+        private readonly ConcurrentDictionary<string, LiveStreamInfo> _streams = new();
         private readonly AsyncObservable<LiveStreamInfo> _newStreams = new();
         private readonly SemaphoreSlim _populateLock = new(1, 1);
         private volatile bool _isPopulated;
@@ -42,7 +42,7 @@ public partial class LiveBackend
                 if (initialStreams != null) {
                     if (CpuTimestamp.Now > dedupeEndsAt)
                         initialStreams = null;
-                    else if (initialStreams.Exists(x => OrdinalEquals(x.StreamId, stream.StreamId)))
+                    else if (initialStreams.Exists(x => x.StreamId == stream.StreamId))
                         continue;
                 }
                 yield return stream;

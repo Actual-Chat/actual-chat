@@ -270,7 +270,7 @@ public class RoutingStressTest(ITestOutputHelper @out)
         }, cancellationToken);
 
         await callTask;
-        cts.Cancel(); // Stop adding hosts
+        await cts.CancelAsync(); // Stop adding hosts
         await addHostTask.SilentAwait();
 
         // Cleanup hosts in parallel

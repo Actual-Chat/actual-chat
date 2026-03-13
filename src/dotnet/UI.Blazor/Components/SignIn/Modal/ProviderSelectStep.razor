@@ -1,13 +1,12 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Services
-@using System.ComponentModel.DataAnnotations
 @using ActualChat.Users
 @inherits Step<UIHub, ProviderSelectStep.Model>;
 @{
     if (CurrentStep != this)
         return;
 
-    if (_authSchemas is null)
+    if (_authProviders is null)
         return;
 
     var m = State.LastNonErrorValue;
@@ -16,16 +15,16 @@
 
 <div class="sign-in-step provider-select-step">
     <div class="c-auth-providers">
-        @foreach (var schema in _authSchemas!) {
+        @foreach (var provider in _authProviders!) {
             <Button
                 Class="btn-modal sign-in sign-in-with"
-                Click="@(_ => OnSignInWith(schema.Name))">
+                Click="@(_ => OnSignInWithProvider(provider.Name))">
                 <Icon>
-                    @if (schema.Icon != null) {
-                        <img draggable="false" src="@schema.Icon" class="@schema.Class" alt="@schema.DisplayName">
+                    @if (provider.Icon != null) {
+                        <img draggable="false" src="@provider.Icon" class="@provider.Class" alt="@provider.DisplayName">
                     }
                 </Icon>
-                <Title>@("Sign in with " + schema.DisplayName)</Title>
+                <Title>@((TotpSignInModel.IsRegister ? "Register with " : "Sign in with ") + provider.DisplayName)</Title>
             </Button>
         }
     </div>
@@ -33,27 +32,26 @@
     <div class="c-separator">or</div>
     <Form
         Class="c-phone-form"
-        Model="@_stepModel"
-        OnSubmit="@OnSignIn">
-        <AsyncDataAnnotationsValidator @ref="_validator"/>
+        Model="@_formModel"
+        OnSubmit="@OnSubmit">
+        <AsyncDataAnnotationsValidator @ref="_formValidator"/>
         <FormSection
-            For="() => _stepModel.Contact"
-            InputId="@_stepModel.ContactFieldId"
+            For="() => _formModel.PhoneOrEmail"
+            InputId="@_formModel.PhoneOrEmailFieldId"
             Class="grow"
-            ShowErrors="@_showPhoneValidationErrors"
-            IsLabelInsideInput="true"
-            IsRequired="true">
+            ShowErrors="@_showFieldErrors"
+            IsLabelInsideInput="true">
             <TextBox
-                Id="@_stepModel.ContactFieldId"
-                Value="@(!_stepModel.Contact.IsNullOrEmpty() ? _stepModel.Contact : "")"
-                ValueExpression="@(() => _stepModel.Contact)"
+                Id="@_formModel.PhoneOrEmailFieldId"
+                Value="@(!_formModel.PhoneOrEmail.IsNullOrEmpty() ? _formModel.PhoneOrEmail : "")"
+                ValueExpression="@(() => _formModel.PhoneOrEmail)"
                 Autocomplete="tel email username"
-                ValueChanged="@((string? v) => OnContactChanged(v))"
-                Placeholder="Sign in with email or phone number"
+                ValueChanged="@((string? v) => OnPhoneOrEmailChanged(v))"
+                Placeholder="+1-555-55-55 or email@gmail.com"
                 disabled="@codeHasBeenSent"
                 type="text"
                 inputmode="text"
-                />
+            />
             @if (codeHasBeenSent) {
                 <div class="c-info">
                     <i class="icon-info"></i>
@@ -61,15 +59,17 @@
                 </div>
             }
         </FormSection>
-        @if (CaptchaUI.IsAvailable) {
-            <div class="c-recaptcha-info">
-                This site is protected by reCAPTCHA and the Google
-                <a class="recaptcha-link" href="https://policies.google.com/privacy">Privacy Policy</a> and
-                <a class="recaptcha-link" href="https://policies.google.com/terms">Terms of Service</a> apply.
-            </div>
+
+        <CaptchaView />
+
+        @if (!_serverError.IsNullOrEmpty()) {
+            <div class="c-account-error">@_serverError</div>
         }
+        <Toggle Label="Register a new account"
+                IsChecked="@TotpSignInModel.IsRegister"
+                IsCheckedChanged="@OnRegisterToggleChanged" />
         <FormButtons IsEndAligned="false" Class="dialog-buttons">
-            <Button Type="@ButtonType.Submit"  Class="btn-primary btn-modal sign-in" IsDisabled="@(_validationState is ValidationState.Invalid or ValidationState.CannotSend)">
+            <Button Type="@ButtonType.Submit"  Class="btn-primary btn-modal sign-in" IsDisabled="@(_validationState is ValidationState.Invalid || _formModel.PhoneOrEmail.IsNullOrEmpty())">
                 @switch (_validationState) {
                     case ValidationState.Validating:
                         <i class="icon-refresh"></i><span>Validating...</span>
@@ -81,7 +81,7 @@
                     case ValidationState.Valid:
                     case ValidationState.CodeSentRecently:
                     default:
-                        <span>Continue</span>
+                        <span>@(TotpSignInModel.IsRegister ? "Register" : "Continue")</span>
                         break;
                 }
             </Button>
@@ -91,12 +91,12 @@
 </div>
 
 @code {
-    private readonly string _defaultPhoneValue = PhoneCodes.Default.DisplayCode;
     private ValidationState _validationState = ValidationState.None;
-    private StepModel _stepModel = null!;
-    private List<AuthSchemaModel>? _authSchemas;
-    private AsyncDataAnnotationsValidator _validator = null!;
-    private bool _showPhoneValidationErrors;
+    private StepModel _formModel = null!;
+    private List<AuthProviderModel>? _authProviders;
+    private AsyncDataAnnotationsValidator _formValidator = null!;
+    private bool _showFieldErrors;
+    private string _serverError = "";
 
     private IPhones Phones => Hub.Phones;
     private ICaptcha Captcha => Hub.Captcha;
@@ -107,8 +107,8 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
 
     protected override async Task OnInitializedAsync() {
-        _authSchemas = AccountUI.GetAuthSchemas()
-            .Select(schema => new AuthSchemaModel {
+        _authProviders = AccountUI.GetAuthSchemas()
+            .Select(schema => new AuthProviderModel {
                 Name = schema.Name,
                 DisplayName = schema.DisplayName,
                 Icon = schema.Name switch {
@@ -122,7 +122,7 @@
                 },
             })
             .ToList();
-        _stepModel = new StepModel(ComponentIdGenerator).CopyToBase();
+        _formModel = new StepModel(ComponentIdGenerator).CopyToBase();
         await CaptchaUI.WhenReady.ConfigureAwait(false);
     }
 
@@ -140,53 +140,68 @@
     }
 
     protected override async Task<bool> Validate() {
-        var isValid = _validationState is not (ValidationState.Invalid or ValidationState.CannotSend)
-            && await _validator.Validate().ConfigureAwait(false);
+        var isValid = _validationState is not ValidationState.Invalid
+            && await _formValidator.Validate().ConfigureAwait(false);
         return isValid;
     }
 
     protected override async Task<bool> Save() {
-        var input = _stepModel.Contact;
-        if (!input.IsNullOrEmpty() && System.Net.Mail.MailAddress.TryCreate(input, out var email)) {
-            // Parse into Email identifier
+        var input = _formModel.PhoneOrEmail;
+        if (!input.IsNullOrEmpty() && System.Net.Mail.MailAddress.TryCreate(input, out _)) {
             TotpSignInModel.Email = Email.Parse(input);
             TotpSignInModel.Phone = null;
             return true;
         }
 
-        var phone = await Phones.Parse(input, CancellationToken.None);
+        var phone = await ParsePhone(input);
         if (phone == null)
             return false;
 
         TotpSignInModel.Phone = phone;
         TotpSignInModel.Email = null;
         return true;
-
     }
 
-    private void OnSignInWith(string schema)
-        => _ = AccountUI.SignIn(schema);
+    private async Task OnSignInWithProvider(string schema) {
+        var error = await AccountUI.SignIn(schema, TotpSignInModel.IsRegister);
+        if (!error.IsNullOrEmpty()) {
+            _serverError = error;
+            StateHasChanged();
+        }
+    }
 
-    private void OnContactChanged(string? value) {
-        _showPhoneValidationErrors = true;
+    private void OnPhoneOrEmailChanged(string? value) {
+        _serverError = "";
+        _showFieldErrors = true;
         var newValue = value ?? "";
-        if (newValue == _defaultPhoneValue)
-            newValue = "";
-        if (Equals(_stepModel.Contact, newValue))
+        if (Equals(_formModel.PhoneOrEmail, newValue))
             return;
 
-        _stepModel.Contact = newValue;
-        if (_validationState == ValidationState.CannotSend)
+        _formModel.PhoneOrEmail = newValue;
+        if (_validationState is ValidationState.CannotSend or ValidationState.Invalid)
             _validationState = ValidationState.None;
+        StateHasChanged();
     }
 
-    private async Task OnSignIn() {
-        _showPhoneValidationErrors = true;
+    private void OnRegisterToggleChanged(bool value) {
+        TotpSignInModel.IsRegister = value;
+        _serverError = "";
+        if (_validationState is ValidationState.CannotSend or ValidationState.Invalid)
+            _validationState = ValidationState.None;
+        StateHasChanged();
+    }
+
+    private async Task OnSubmit() {
+        _showFieldErrors = true;
+        _serverError = "";
+        if (_validationState is ValidationState.CannotSend or ValidationState.Invalid)
+            _validationState = ValidationState.None;
+
         var hasSentCodeRecently = await TotpUI.HasSentCodeRecently(CancellationToken.None);
         if (hasSentCodeRecently) {
             _validationState = ValidationState.CodeSentRecently;
             StateHasChanged();
-            await Stepper.TryMoveForward().AsTask();
+            await Stepper.TryMoveForward();
             return;
         }
 
@@ -194,7 +209,7 @@
             _validationState = ValidationState.Validating;
             StateHasChanged();
             try {
-                var captchaAction = Constants.Recaptcha.Actions.PhoneSignIn; // reuse action unless project defines a separate EmailSignIn
+                var captchaAction = Constants.Recaptcha.Actions.PhoneSignIn;
                 var captchaToken = await CaptchaUI.GetActionToken(captchaAction, CancellationToken.None);
                 var validationResult = await Captcha.Validate(captchaToken, captchaAction, CancellationToken.None);
                 _validationState = validationResult.Success
@@ -210,39 +225,94 @@
         }
 
         if (_validationState is ValidationState.Valid) {
-            // Determine kind and pre-validate sending for phones
-            var phone = await Phones.Parse(_stepModel.Contact, CancellationToken.None);
+            var input = _formModel.PhoneOrEmail;
+            var phone = await ParsePhone(input);
             if (phone is not null) {
-                var canSendValidationMessage = await TotpUI.ValidateCanSendToPhone(phone, TotpPurpose.SignInPhone, CancellationToken.None);
-                if (!canSendValidationMessage.IsNullOrEmpty()) {
-                    _validationState = ValidationState.CannotSend;
-                    UICommander.ShowError(canSendValidationMessage);
-                }
-            } else if (!_stepModel.Contact.IsNullOrEmpty()) {
-                // Parse contact as email identifier for validation
-                Email? emailId = null;
-                if (System.Net.Mail.MailAddress.TryCreate(_stepModel.Contact, out var mail))
-                    Email.TryParse(mail.Address, out emailId);
-
-                if (emailId is null) {
-                    _validationState = ValidationState.CannotSend;
-                    UICommander.ShowError("Invalid phone number or email address.");
-                } else {
-                    var emailCheck = await TotpUI.ValidateCanSendToEmail(emailId, TotpPurpose.SignInEmail, CancellationToken.None);
-                    if (!emailCheck.IsNullOrEmpty()) {
-                        _validationState = ValidationState.CannotSend;
-                        UICommander.ShowError(emailCheck);
-                    }
-                }
+                if (!await ValidatePhoneForSend(phone))
+                    return;
+            } else if (!input.IsNullOrEmpty()) {
+                if (!await ValidateEmailForSend(input))
+                    return;
             }
         }
 
         await Stepper.TryMoveForward().AsTask();
     }
 
+    private async Task<bool> ValidatePhoneForSend(Phone phone) {
+        var blocked = await TotpUI.CheckIfBlocked(phone, TotpPurpose.SignInPhone, CancellationToken.None);
+        if (!blocked.IsNullOrEmpty()) {
+            _serverError = blocked;
+            StateHasChanged();
+            return false;
+        }
+
+        if (!TotpSignInModel.IsRegister) {
+            try {
+                var exists = await TotpUI.AccountExists(phone, CancellationToken.None);
+                if (!exists) {
+                    _serverError = "Account not found. Register instead?";
+                    _validationState = ValidationState.None;
+                    StateHasChanged();
+                    return false;
+                }
+            }
+            catch {
+                // If the check fails, proceed anyway — the server will validate during TOTP
+            }
+        }
+        return true;
+    }
+
+    private async Task<bool> ValidateEmailForSend(string input) {
+        Email? emailId = null;
+        if (System.Net.Mail.MailAddress.TryCreate(input, out var mail))
+            Email.TryParse(mail.Address, out emailId);
+
+        if (emailId is null) {
+            _serverError = "Invalid phone number or email address.";
+            StateHasChanged();
+            return false;
+        }
+
+        var blocked = await TotpUI.CheckIfBlocked(emailId, TotpPurpose.SignInEmail, CancellationToken.None);
+        if (!blocked.IsNullOrEmpty()) {
+            _serverError = blocked;
+            StateHasChanged();
+            return false;
+        }
+
+        if (!TotpSignInModel.IsRegister) {
+            try {
+                var exists = await TotpUI.AccountExists(emailId, CancellationToken.None);
+                if (!exists) {
+                    _serverError = "Account not found. Register instead?";
+                    _validationState = ValidationState.None;
+                    StateHasChanged();
+                    return false;
+                }
+            }
+            catch {
+                // If the check fails, proceed anyway — the server will validate during TOTP
+            }
+        }
+        return true;
+    }
+
+    private async Task<Phone?> ParsePhone(string? input) {
+        if (input.IsNullOrEmpty())
+            return null;
+
+        var phone = await Phones.Parse(input, CancellationToken.None);
+        // Try with '+' prefix — libphonenumber requires it when no region is specified
+        if (phone == null && !input.StartsWith('+'))
+            phone = await Phones.Parse("+" + input, CancellationToken.None);
+        return phone;
+    }
+
     // Nested types
 
-    private class AuthSchemaModel {
+    private class AuthProviderModel {
         public string Name { get; init; } = null!;
         public string DisplayName { get; init; } = null!;
         public string? Icon { get; init; }
@@ -253,7 +323,8 @@
 
     public sealed class StepModel(ComponentIdGenerator? componentIdGenerator = null)
         : FormModel<StepModel>("phone-signin", componentIdGenerator) {
-        [Required] public string Contact { get; set; } = "";
-        public string ContactFieldId { get; set; } = "";
+        [PhoneOrEmailAsync, Display(Name = "Phone or email")]
+        public string PhoneOrEmail { get; set; } = "";
+        public string PhoneOrEmailFieldId { get; set; } = "";
     }
 }

@@ -86,7 +86,8 @@ public class DeepgramOfflineTranscriber  : ITranscriber
                 "es-US" => "es-419",
                 "ru-RU" => "ru",
                 "zh-CN" => "zh-CN",
-                _ => throw StandardError.NotSupported(typeof(DeepgramTranscriber), $"Language '{options1.Language.Id}' is not supported"),
+                _ => throw StandardError.NotSupported<DeepgramTranscriber>(
+                    $"Language '{options1.Language.Id}' is not supported"),
             };
         }
     }
@@ -111,7 +112,7 @@ public class DeepgramOfflineTranscriber  : ITranscriber
             if (word.PunctuatedWord == null)
                 continue;
 
-            var wordStart = text.OrdinalIgnoreCaseIndexOf(word.PunctuatedWord, parsedOffset);
+            var wordStart = text.IndexOf(word.PunctuatedWord, parsedOffset, StringComparison.OrdinalIgnoreCase);
             if (wordStart < 0)
                 continue;
 

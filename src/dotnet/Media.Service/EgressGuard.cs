@@ -12,7 +12,7 @@ public class EgressGuard(HostInfo hostInfo, MediaSettings settings, ILogger<Egre
 
     private HostWildcard[] AllowedHostWildcards => field ??= [..settings.CrawlingHostAllowList.Select(x => new HostWildcard(x))];
 
-    private IPNetwork[] SpecialSubnets => field ??= [..SpecialAddresses.Subnets.Union(settings.CrawlingCidrDenylist, StringComparer.Ordinal).Select(IPNetwork.Parse)];
+    private IPNetwork[] SpecialSubnets => field ??= [..SpecialAddresses.Subnets.Union(settings.CrawlingCidrDenylist).Select(IPNetwork.Parse)];
 
     private string[] DomainDenyList => field ??= [
         ..new[] { ".local" }.Union(settings.CrawlingCidrDenylist, StringComparer.OrdinalIgnoreCase),
@@ -37,7 +37,7 @@ public class EgressGuard(HostInfo hostInfo, MediaSettings settings, ILogger<Egre
     }
 
     private bool IsAllowedDomain(string host)
-        => !DomainDenyList.Any(host.OrdinalIgnoreCaseEndsWith);
+        => !DomainDenyList.Any(domain => host.EndsWith(domain, StringComparison.OrdinalIgnoreCase));
 
     private async Task<IPAddress[]> Resolve(string host, CancellationToken cancellationToken)
     {

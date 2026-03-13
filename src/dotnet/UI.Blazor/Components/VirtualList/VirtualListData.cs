@@ -43,7 +43,7 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<TItem> items)
         => ReferenceEquals(this, other) ||
             (HasVeryFirstItem == other.HasVeryFirstItem
             && HasVeryLastItem == other.HasVeryLastItem
-            && OrdinalEquals(ScrollToKey, other.ScrollToKey)
+            && ScrollToKey == other.ScrollToKey
             && Items.SequenceEqual(other.Items));
 
 

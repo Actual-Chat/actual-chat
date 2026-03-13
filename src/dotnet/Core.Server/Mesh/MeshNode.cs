@@ -66,7 +66,7 @@ public sealed record MeshNode(
     public int CompareTo(MeshNode? other)
         => ReferenceEquals(other, null)
             ? 1
-            : StringComparer.Ordinal.Compare(Ref.Value, other.Ref.Value);
+            : string.Compare(Ref.Value, other.Ref.Value);
 
     public static bool operator <(MeshNode left, MeshNode right)
         => ReferenceEquals(left, null) ? !ReferenceEquals(right, null) : left.CompareTo(right) < 0;

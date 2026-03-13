@@ -51,6 +51,7 @@
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.TextBox.create";
     private bool _refCreated;
+    private DotNetObjectReference<TextBox>? _blazorRef;
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
@@ -71,7 +72,8 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
+            _blazorRef = DotNetObjectReference.Create(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, _blazorRef);
             if (Autofocus)
                 await Focus();
         }
@@ -86,7 +88,13 @@
         Dispose(true);
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
+        _blazorRef?.Dispose();
+        _blazorRef = null;
     }
+
+    [JSInvokable]
+    public void OnDebouncedChange(string value)
+        => CurrentValueAsString = value;
 
     private async Task Focus()
         => await JSRef.InvokeVoidAsync("focus", Ref);

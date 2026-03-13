@@ -8,7 +8,7 @@ public partial class LiveVideoBackend
     {
         private readonly ConcurrentDictionary<StreamId, VideoStreamInfo> _streams = new();
         private readonly AsyncObservable<VideoStreamInfo> _newStreams = new();
-        private readonly Dictionary<string, ApiArray<string>> _members = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, ApiArray<string>> _members = new();
         private readonly Lock _membersLock = new();
 
         // Codec recommendation
@@ -135,14 +135,14 @@ public partial class LiveVideoBackend
             var newPrimary = newCodecs.Count > 0 ? newCodecs[0] : "h264";
 
             // Delay switching UP to AV1 by CodecSwitchHysteresisWindow
-            if (OrdinalEquals(newPrimary, "av1") && OrdinalEquals(currentPrimary, "h264")) {
+            if (newPrimary == "av1" && currentPrimary == "h264") {
                 var elapsed = _lastCodecDowngradeAt.Elapsed;
                 if (elapsed < Constants.Video.CodecSwitchHysteresisWindow)
                     return; // Not enough time since last downgrade
             }
 
             // Track downgrade timing
-            if (OrdinalEquals(newPrimary, "h264") && OrdinalEquals(currentPrimary, "av1"))
+            if (newPrimary == "h264" && currentPrimary == "av1")
                 _lastCodecDowngradeAt = CpuTimestamp.Now;
 
             _currentSupportedDecoderCodecs = newCodecs;
@@ -160,7 +160,7 @@ public partial class LiveVideoBackend
             foreach (var (_, codecs) in _members) {
                 var supportsAv1 = false;
                 foreach (var codec in codecs) {
-                    if (OrdinalEquals(codec, "av1")) {
+                    if (codec == "av1") {
                         supportsAv1 = true;
                         break;
                     }

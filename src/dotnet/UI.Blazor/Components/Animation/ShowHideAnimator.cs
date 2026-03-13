@@ -8,7 +8,7 @@ public class ShowHideAnimator : ComponentAnimator
 
     public bool State { get => _state; set => ChangeState(value); }
     public string Class { get; private set; }
-    public bool MustHideComponent => OrdinalEquals(Class, "hidden");
+    public bool MustHideComponent => Class == "hidden";
 
     public ShowHideAnimator(ComponentBase component, TimeSpan duration, bool state = false)
         : base(component, duration)

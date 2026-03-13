@@ -93,7 +93,7 @@ public static class MarbleAvatars
             ? ""
             : "<feGaussianBlur stdDeviation='7' result='effect1_foregroundBlur' />";
 
-        var displayTitle = string.IsNullOrEmpty(title) ? "" : title[0].ToString().ToUpperInvariant();
+        var displayTitle = string.IsNullOrEmpty(title) ? "" : title[0].ToString().ToUpper();
 
         return $"""
             <svg viewBox='0 0 {Size} {Size}' fill='none' xmlns='http://www.w3.org/2000/svg' width='{Size}' height='{Size}'>
@@ -185,17 +185,17 @@ public static class MarbleAvatars
 
     private static SKColor ParseColor(string hex)
     {
-        if (hex.OrdinalStartsWith("#"))
+        if (hex.StartsWith('#'))
             hex = hex[1..];
 
         if (hex.Length != 6 && hex.Length != 8)
             throw new ArgumentException("Expected a 6- or 8-digit hex color.", nameof(hex));
 
-        var r = byte.Parse(hex[..2], NumberStyles.HexNumber, CultureInfo.InvariantCulture);
-        var g = byte.Parse(hex[2..4], NumberStyles.HexNumber, CultureInfo.InvariantCulture);
-        var b = byte.Parse(hex[4..6], NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+        var r = byte.Parse(hex[..2], NumberStyles.HexNumber);
+        var g = byte.Parse(hex[2..4], NumberStyles.HexNumber);
+        var b = byte.Parse(hex[4..6], NumberStyles.HexNumber);
         var a = hex.Length == 8
-            ? byte.Parse(hex[6..8], NumberStyles.HexNumber, CultureInfo.InvariantCulture)
+            ? byte.Parse(hex[6..8], NumberStyles.HexNumber)
             : (byte)255;
 
         return new SKColor(r, g, b, a);

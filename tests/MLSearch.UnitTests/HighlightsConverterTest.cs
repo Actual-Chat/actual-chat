@@ -66,6 +66,6 @@ public class HighlightsConverterTest
     private Range<int> ParseRange(string sRange)
     {
         var parts = sRange.Split(',');
-        return (int.Parse(parts[0], CultureInfo.InvariantCulture), int.Parse(parts[1], CultureInfo.InvariantCulture));
+        return (int.Parse(parts[0]), int.Parse(parts[1]));
     }
 }

@@ -22,7 +22,7 @@ public sealed class ChatEntryMessage(ChatEntry entry): ChatMessage(entry.Id.Loca
             && Entry.IsRemoved == otherEntryMessage.Entry.IsRemoved
             && Entry.HasReactions == otherEntryMessage.Entry.HasReactions
             && Entry.HasAudio == otherEntryMessage.Entry.HasAudio
-            && OrdinalEquals(Entry.Content, otherEntryMessage.Entry.Content)
+            && Entry.Content == otherEntryMessage.Entry.Content
             && Kind == other.Kind
             && Date == other.Date
             && Flags == other.Flags

@@ -171,7 +171,7 @@ public class KubeLeaseClientTest(ITestOutputHelper @out) : TestBase(@out)
                 },
                 new LeaseSpec("holder-1", 3, now, now)
             );
-            await client.Create(ns, lease, cancellationToken);
+            await client.Create(ns, lease, null, cancellationToken);
             Out.WriteLine($"Created lease {name}");
 
             var change = await channel.Reader.ReadAsync(cancellationToken);
@@ -180,7 +180,7 @@ public class KubeLeaseClientTest(ITestOutputHelper @out) : TestBase(@out)
             Out.WriteLine($"Change create {name} has been captured");
 
             // 2. Delete
-            await client.Delete(ns, name, cancellationToken);
+            await client.Delete(ns, name, null, cancellationToken);
             Out.WriteLine($"Deleted lease {name}");
 
             change = await channel.Reader.ReadAsync(cancellationToken);

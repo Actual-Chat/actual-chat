@@ -27,7 +27,7 @@ public static class MauiSettings
                 ? Constants.Hosts.DevVoxt
                 : Constants.Hosts.Voxt;
     public static readonly string Host;
-    public static bool IsHostOverridden => !OrdinalIgnoreCaseEquals(Host, DefaultHost);
+    public static bool IsHostOverridden => !string.Equals(Host, DefaultHost, StringComparison.OrdinalIgnoreCase);
     public static readonly Uri BaseUri;
     public static readonly string BaseUrl;
     public static readonly AppKind AppKind;

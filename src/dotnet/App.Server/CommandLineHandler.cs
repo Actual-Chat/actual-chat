@@ -36,14 +36,14 @@ public static class CommandLineHandler
     public static void Process(string[] args)
     {
         // -kb argument
-        UseKeyboard = args.Any(x => OrdinalEquals(x, KeyboardArg));
+        UseKeyboard = args.Any(x => x == KeyboardArg);
         // -distributed argument
         ForceDistributed = HostRolesExt.ForceDistributedModeForServerModeServices
-            = args.Any(x => OrdinalEquals(x, ForceDistributedArg));
+            = args.Any(x => x == ForceDistributedArg);
 
         // -url:<url> argument
         var urlOverride = args
-            .Select(x => x.OrdinalStartsWith(UrlArgPrefix) ? x[UrlArgPrefix.Length..].Trim() : null)
+            .Select(x => x.StartsWith(UrlArgPrefix) ? x[UrlArgPrefix.Length..].Trim() : null)
             .SingleOrDefault(x => !x.IsNullOrEmpty());
         if (!urlOverride.IsNullOrEmpty()) {
             WriteLine($"URL override: {urlOverride}");
@@ -74,7 +74,7 @@ public static class CommandLineHandler
         if (TryParseRoleArgument(args, MultiHostRoleArgPrefix)) {
             var hostSettings = ConfigOnlyAppHost.Configuration.Settings<HostSettings>();
             var meshLockSubspace = hostSettings.MeshLockSubspace;
-            if (OrdinalEquals(meshLockSubspace, "?"))
+            if (meshLockSubspace == "?")
                 meshLockSubspace = Alphabet.AlphaNumeric.Generator8.Next();
             var meshLockOptionsPreset =
                 hostSettings.MeshLockOptionsPreset.NullIfEmpty()
@@ -102,7 +102,7 @@ public static class CommandLineHandler
     private static bool TryParseRoleArgument(string[] args, string argPrefix)
     {
         var value = args
-            .Select(x => x.OrdinalStartsWith(argPrefix) ? x[argPrefix.Length..].Trim().NullIfEmpty() : null)
+            .Select(x => x.StartsWith(argPrefix) ? x[argPrefix.Length..].Trim().NullIfEmpty() : null)
             .SingleOrDefault(x => !x.IsNullOrEmpty());
         if (value.IsNullOrEmpty())
             return false;

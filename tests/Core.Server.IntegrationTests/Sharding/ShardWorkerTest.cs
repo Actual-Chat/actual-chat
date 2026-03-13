@@ -104,7 +104,7 @@ public class ShardWorkerTest(ITestOutputHelper @out)
 
     // Nested types
 
-    private class SimpleShardWorker(IServiceProvider services, ITestOutputHelper @out, string name)
+    private sealed class SimpleShardWorker(IServiceProvider services, ITestOutputHelper @out, string name)
         : ShardWorker(services, ShardScheme.TestBackend)
     {
         private ITestOutputHelper Out { get; } = @out;
@@ -119,7 +119,7 @@ public class ShardWorkerTest(ITestOutputHelper @out)
         }
     }
 
-    private class ChannelShardWorker(IServiceProvider services, ITestOutputHelper @out, string name)
+    private sealed class ChannelShardWorker(IServiceProvider services, ITestOutputHelper @out, string name)
         : ShardWorker(services, ShardScheme.TestBackend)
     {
         // Track workers along with their cancellation tokens to properly handle handoff periods

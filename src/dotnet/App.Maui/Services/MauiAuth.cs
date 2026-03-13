@@ -17,32 +17,34 @@ internal sealed class MauiAuth(UIHub hub) : UIServiceBase<UIHub>(hub), IClientAu
         return AuthSchema.ToSchemasWithDisplayNames(schemas);
     }
 
-    public async Task SignIn(string schema)
+    public async Task<string?> SignIn(string schema, bool isRegister = false)
     {
         if (schema.IsNullOrEmpty())
             throw new ArgumentOutOfRangeException(nameof(schema));
 
 #if ANDROID
-        if (OrdinalEquals(schema, AuthSchema.Google)) {
+        if (schema == AuthSchema.Google) {
             var googleAuth = Hub.Services.GetRequiredService<NativeGoogleAuth>();
             if (googleAuth.IsAvailable()) {
                 await googleAuth.SignIn().ConfigureAwait(false);
-                return;
+                return null;
             }
         }
 #endif
 #if IOS
-        if (OrdinalEquals(schema, AuthSchema.Apple)
+        if (schema == AuthSchema.Apple
             && DeviceInfo.Platform == DevicePlatform.iOS
             && DeviceInfo.Version.Major >= 13)
         {
             var appleAuth = Hub.Services.GetRequiredService<NativeAppleAuth>();
             await appleAuth.SignIn().ConfigureAwait(false);
-            return;
+            return null;
         }
 #endif
 
-        await WebSignInOrSignOut($"/signIn/{schema}", "Sign-in").ConfigureAwait(false);
+        var endpoint = isRegister ? $"/signIn/{schema}?register=1" : $"/signIn/{schema}";
+        await WebSignInOrSignOut(endpoint, "Sign-in").ConfigureAwait(false);
+        return null;
     }
 
     public async Task SignOut()
@@ -60,7 +62,7 @@ internal sealed class MauiAuth(UIHub hub) : UIServiceBase<UIHub>(hub), IClientAu
 
     private async Task WebSignInOrSignOut(string endpoint, string flowName)
     {
-        var isSignIn = endpoint.OrdinalIgnoreCaseStartsWith("sign-in");
+        var isSignIn = endpoint.StartsWith("sign-in", StringComparison.OrdinalIgnoreCase);
         try {
             var sessionToken = await SessionTokens.Get().ConfigureAwait(true);
             var url = $"{MauiSettings.BaseUrl}maui-auth/start"

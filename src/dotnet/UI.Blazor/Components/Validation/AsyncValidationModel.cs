@@ -1,0 +1,85 @@
+using System.ComponentModel.DataAnnotations;
+
+namespace ActualChat.UI.Blazor.Components;
+
+public static class AsyncValidationModel
+{
+    private static readonly ConcurrentDictionary<Type, ValidatedType> Cache = new ();
+
+    [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Model types are expected to be untrimmed.")]
+    public static ValidatedType Get(Type modelType)
+        => Cache.GetOrAdd(modelType, BuildModel);
+
+    [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Model types are expected to be untrimmed.")]
+    public static PropertyValidationContext? CreatePropertyValidationContext(ValidationContext validationContext)
+        => Get(validationContext.ObjectType).CreatePropertyValidationContext(validationContext);
+
+    // Private methods
+
+    private static ValidatedType BuildModel(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type type)
+    {
+        var properties = (
+            from property in type.GetProperties()
+            let asyncValidationAttributes = property.GetCustomAttributes<AsyncValidationAttribute>().ToList()
+            let hasValidationAttributes = property.GetCustomAttributes<ValidationAttribute>().Any()
+            where hasValidationAttributes || asyncValidationAttributes.Count != 0
+            select new ValidatedProperty(property, asyncValidationAttributes)
+            ).ToDictionary(x => x.Property.Name);
+        return new ValidatedType(type, properties);
+    }
+
+    // Nested types
+
+    public sealed record ValidatedType(
+        Type Type,
+        IReadOnlyDictionary<string, ValidatedProperty> Properties)
+    {
+        public IReadOnlyDictionary<string, ValidatedProperty> AsyncOnlyProperties { get; }
+            = Properties.Where(x => x.Value.AsyncAttributes.Count != 0).ToDictionary(x => x.Key, x => x.Value);
+
+        public ValidatedProperty? this[string? propertyName]
+            => propertyName is null ? null : Properties.GetValueOrDefault(propertyName);
+
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Model types are expected to be untrimmed.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Model types are expected to be untrimmed.")]
+        public PropertyValidationContext[] CreateAsyncPropertyValidationContexts(ValidationContext validationContext)
+        {
+            var result = new PropertyValidationContext[AsyncOnlyProperties.Count];
+            var i = 0;
+            foreach (var property in AsyncOnlyProperties.Values)
+                result[i++] = CreatePropertyValidationContext(validationContext, property);
+            return result;
+        }
+
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Model types are expected to be untrimmed.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Model types are expected to be untrimmed.")]
+        // ReSharper disable once MemberHidesStaticFromOuterClass
+        public PropertyValidationContext? CreatePropertyValidationContext(ValidationContext validationContext)
+        {
+            var property = this[validationContext.MemberName];
+            return property is null ? null : CreatePropertyValidationContext(validationContext, property);
+        }
+
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Model types are expected to be untrimmed.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Model types are expected to be untrimmed.")]
+        public static PropertyValidationContext CreatePropertyValidationContext(
+            ValidationContext validationContext, ValidatedProperty property)
+        {
+            var propertyValue = property.Property.GetValue(validationContext.ObjectInstance);
+            var context = new ValidationContext(validationContext.ObjectInstance, validationContext, validationContext.Items) {
+                MemberName = property.Property.Name,
+            };
+            return new PropertyValidationContext(context, property, propertyValue);
+        }
+    }
+
+    public sealed record ValidatedProperty(
+        PropertyInfo Property,
+        IReadOnlyList<AsyncValidationAttribute> AsyncAttributes);
+
+    public sealed record PropertyValidationContext(
+        ValidationContext ValidationContext,
+        ValidatedProperty Property,
+        object? Value);
+}

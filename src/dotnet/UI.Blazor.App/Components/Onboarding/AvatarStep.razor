@@ -129,7 +129,7 @@
     }
 
     public class Model {
-        [Required] public string Name { get; set; } = "";
+        [Required, Display(Name = "Name")] public string Name { get; set; } = "";
         public Symbol AvatarId { get; set; } = "";
         public Picture Picture { get; set; } = null!;
     }

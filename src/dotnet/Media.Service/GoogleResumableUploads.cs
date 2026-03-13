@@ -30,7 +30,7 @@ internal class GoogleResumableUploads(StorageClient client, ILogger<GoogleResuma
             if (response.Headers.TryGetValues("Range", out var values)) {
                 string range = values.First();
                 var parts = range.Replace("bytes=", "").Split('-');
-                long lastByte = long.Parse(parts[1], CultureInfo.InvariantCulture);
+                long lastByte = long.Parse(parts[1]);
                 return lastByte + 1;
             }
             return 0;

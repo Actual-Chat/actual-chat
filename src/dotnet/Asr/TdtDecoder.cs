@@ -157,7 +157,7 @@ public sealed class TdtDecoder
         where T : unmanaged
     {
         foreach (var r in results) {
-            if (string.Equals(r.Name, name, StringComparison.Ordinal))
+            if (string.Equals(r.Name, name))
                 return r.AsTensor<T>();
         }
         throw new InvalidOperationException($"Output '{name}' not found in decoder_joint results.");

@@ -5,7 +5,7 @@ namespace ActualChat.Media.IntegrationTests;
 
 public class OpenGrapHtmlBuilder
 {
-    private readonly Dictionary<string, string> _values = new (StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _values = new ();
 
     public OpenGrapHtmlBuilder Title(string value)
         => Set("og:title", value);
@@ -37,7 +37,7 @@ public class OpenGrapHtmlBuilder
                       <title>Bla bla bla</title>
                       """);
         foreach (var (key, value) in _values)
-            sb.AppendLine(CultureInfo.InvariantCulture, $"""<meta property="{key}" content="{value}" />""");
+            sb.AppendLine($"""<meta property="{key}" content="{value}" />""");
         sb.AppendLine("""
                       </head>
                       <body></body>

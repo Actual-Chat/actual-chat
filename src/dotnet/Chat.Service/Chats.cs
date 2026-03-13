@@ -150,7 +150,7 @@ public partial class Chats(IServiceProvider services) : IChats
             .ConfigureAwait(false);
         return authors
             .SkipNullItems()
-            .OrderBy(a => a.Avatar.Name, StringComparer.Ordinal)
+            .OrderBy(a => a.Avatar.Name)
             .ToArray();
     }
 
@@ -365,7 +365,7 @@ public partial class Chats(IServiceProvider services) : IChats
                 throw StandardError.Unauthorized("You can edit only your own messages.");
             if (textEntry.IsContentStreaming)
                 throw StandardError.Constraint("Streaming messages cannot be edited.");
-            if (textEntry.Forwarded is not null && !OrdinalEquals(command.Text, textEntry.Content))
+            if (textEntry.Forwarded is not null && command.Text != textEntry.Content)
                 throw StandardError.Constraint("Forwarded messages cannot be edited.");
             if (repliedEntryLid.IsSome(out var v) && textEntry.RepliedEntryLid != v)
                 throw StandardError.Constraint("Replied entry Id cannot be changed.");
@@ -614,7 +614,7 @@ public partial class Chats(IServiceProvider services) : IChats
             .ConfigureAwait(false);
         var guestAvatar = avatars
             .Where(a => a != null)
-            .FirstOrDefault(a => OrdinalEquals(a!.Name, Avatar.GuestName));
+            .FirstOrDefault(a => a!.Name == Avatar.GuestName);
         if (guestAvatar == null) {
             var createAvatarCommand = new Avatars_Change(session, Symbol.Empty, null, new Change<AvatarFull> {
                 Create = new AvatarFull(account.Id) {
@@ -827,7 +827,7 @@ public partial class Chats(IServiceProvider services) : IChats
         var localChatId = sourceChatId is PlaceChatId sourcePlaceChatId
             ? ChatId.Parse(sourcePlaceChatId.LocalChatId)
             : sourceChatId;
-        if (!OrdinalEquals(newChatId.LocalChatId, localChatId.Value))
+        if (newChatId.LocalChatId != localChatId.Value)
             throw StandardError.Constraint("New chat is seems not a copy of provided source chat.");
 
         var newChat = await Get(session, newChatId, cancellationToken).Require().ConfigureAwait(false);

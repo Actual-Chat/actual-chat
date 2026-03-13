@@ -14,17 +14,17 @@ public class TimestampedTestOutput(ITestOutputHelper wrapped) : ITestOutputWrapp
     public void WriteLine(string message)
     {
         FormattableString prefixFormat = $"{_startedAt.Elapsed.TotalSeconds:F3} ";
-        var prefix = prefixFormat.ToString(CultureInfo.InvariantCulture);
-        message = message.Replace(Environment.NewLine, Indents[prefix.Length], StringComparison.Ordinal);
+        var prefix = prefixFormat.ToString();
+        message = message.Replace(Environment.NewLine, Indents[prefix.Length]);
         Wrapped.WriteLine(prefix + message);
     }
 
     public void WriteLine(string format, params object[] args)
     {
         FormattableString prefixFormat = $"{_startedAt.Elapsed.TotalSeconds:F3} ";
-        var prefix = prefixFormat.ToString(CultureInfo.InvariantCulture);
-        var message = string.Format(CultureInfo.InvariantCulture, format, args)
-            .Replace(Environment.NewLine, Indents[prefix.Length], StringComparison.Ordinal);
+        var prefix = prefixFormat.ToString();
+        var message = string.Format(format, args)
+            .Replace(Environment.NewLine, Indents[prefix.Length]);
         Wrapped.WriteLine(prefix + message);
     }
 }

@@ -49,7 +49,7 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
         }
         else {
             // Large number of keys, use a dictionary
-            var keyIndexes = new Dictionary<string, int>(StringComparer.Ordinal);
+            var keyIndexes = new Dictionary<string, int>();
             for (var i = 0; i < keys.Length; i++)
                 keyIndexes[keys[i]] = i;
             foreach (var dbItem in DbHelpers.FindMany(connection, keys))
@@ -60,7 +60,7 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
 
         static int FindIndex(string[] keys, string key) {
             for (var i = 0; i < keys.Length; i++)
-                if (OrdinalEquals(keys[i], key))
+                if (keys[i] == key)
                     return i;
             return -1;
         }

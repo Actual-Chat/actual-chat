@@ -30,7 +30,7 @@ public class NotificationData(string messageId, Dictionary<string, string> data)
     public long LastEntryLocalId {
         get {
             data.TryGetValue(Constants.Notification.MessageDataKeys.LastEntryLocalId, out var sLastEntryLocalId);
-            if (!long.TryParse(sLastEntryLocalId, CultureInfo.InvariantCulture, out var lastEntryLocalId)) {
+            if (!long.TryParse(sLastEntryLocalId, out var lastEntryLocalId)) {
                 Log.LogWarning("Invalid LastEntryLocalId: '{LastEntryLocalId}'", sLastEntryLocalId);
                 lastEntryLocalId = 0;
             }

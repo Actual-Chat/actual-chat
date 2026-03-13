@@ -43,13 +43,13 @@ public partial class Chats
         ChatId chatId, Author author, Match match,
         CancellationToken cancellationToken)
     {
-        var count = int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
+        var count = int.Parse(match.Groups[1].Value);
         count = Math.Clamp(count, 1, 500);
         var minLines = match.Groups[2].Success
-            ? int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture)
+            ? int.Parse(match.Groups[2].Value)
             : 1;
         var maxLines = match.Groups[3].Success
-            ? int.Parse(match.Groups[3].Value, CultureInfo.InvariantCulture)
+            ? int.Parse(match.Groups[3].Value)
             : 10;
         minLines = Math.Clamp(minLines, 1, 100);
         maxLines = Math.Clamp(maxLines, minLines, 100);
@@ -89,7 +89,7 @@ public partial class Chats
         CancellationToken cancellationToken)
     {
         var count = match.Groups[1].Success
-            ? int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture)
+            ? int.Parse(match.Groups[1].Value)
             : 100;
         count = Math.Clamp(count, 1, 500);
 
@@ -146,7 +146,7 @@ public partial class Chats
 
         // Create avatar
         var name = $"Robo {RandomNameGenerator.Default.Generate()}";
-        var seed = userId.Value.GetHashCode(StringComparison.Ordinal);
+        var seed = userId.Value.GetHashCode();
         var pictureUrl = $"https://api.dicebear.com/7.x/bottts/svg?seed={seed}";
         var changeAvatarCommand = new Avatars_Change(callerSession, Symbol.Empty, null, new Change<AvatarFull> {
             Create = new AvatarFull(botAccount.Id) {

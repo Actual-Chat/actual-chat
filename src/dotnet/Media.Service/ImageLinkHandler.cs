@@ -5,7 +5,7 @@ public sealed class ImageLinkHandler(ImageGrabber imageGrabber, ILogger<ImageLin
     public bool Supports(HttpResponseMessage response)
     {
         var contentType = response.Content.Headers.ContentType?.MediaType ?? "";
-        return contentType.OrdinalIgnoreCaseStartsWith("image/");
+        return contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
     }
 
     public async Task<CrawledLink> Handle(HttpResponseMessage response, CancellationToken cancellationToken)

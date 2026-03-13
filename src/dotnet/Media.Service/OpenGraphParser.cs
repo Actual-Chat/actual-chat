@@ -12,7 +12,7 @@ public static class OpenGraphParser
         if (head is null)
             return null;
 
-        var props = head.ChildNodes.Where(x => OrdinalIgnoreCaseEquals(x.Name, "meta"))
+        var props = head.ChildNodes.Where(x => string.Equals(x.Name, "meta", StringComparison.OrdinalIgnoreCase))
             .Select(x => KeyValuePair.Create(x.GetAttributeValue("property", ""), x.GetAttributeValue("content", "")))
             .Where(x => !x.Key.IsNullOrEmpty() && !x.Value.IsNullOrEmpty());
         var metaMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -37,7 +37,7 @@ public static class OpenGraphParser
     }
 
     private static int? GetInt(Dictionary<string, string> metaMap, string key)
-        => int.TryParse(metaMap.GetValueOrDefault(key)?.HtmlDecode(), CultureInfo.InvariantCulture, out var i) ? i : null;
+        => int.TryParse(metaMap.GetValueOrDefault(key)?.HtmlDecode(), out var i) ? i : null;
 
     private struct UrlExtractor(Uri? requestUri)
     {

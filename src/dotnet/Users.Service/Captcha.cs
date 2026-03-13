@@ -1,3 +1,4 @@
+using ActualChat.Hosting;
 using ActualChat.Module;
 using ActualChat.Users.Module;
 using Google.Api.Gax.ResourceNames;
@@ -6,29 +7,44 @@ using Grpc.Core;
 
 namespace ActualChat.Users;
 
-public class Captcha(UsersSettings settings, CoreServerSettings serverSettings, UrlMapper urlMapper, ILogger<Captcha> log) : ICaptcha
+public class Captcha : ICaptcha
 {
     private readonly RecaptchaEnterpriseServiceClient _client = RecaptchaEnterpriseServiceClient.Create();
-    private readonly ProjectName _projectName = new (serverSettings.GoogleProjectId);
-    private UsersSettings Settings { get; } = settings;
-    private UrlMapper UrlMapper { get; } = urlMapper;
-    private ILogger<Captcha> Log { get; } = log;
+    private readonly ProjectName _projectName;
+    private readonly string _siteKey;
+    private readonly bool _isAvailable;
+
+    private UrlMapper UrlMapper { get; }
+    private ILogger<Captcha> Log { get; }
+
+    public static bool IsAvailable(HostInfo hostInfo, string? siteKey)
+        => hostInfo.IsProductionInstance && !siteKey.IsNullOrEmpty();
+
+    public Captcha(IServiceProvider services)
+    {
+        UrlMapper = services.UrlMapper();
+        Log = services.LogFor<Captcha>();
+
+        var hostInfo = services.HostInfo();
+        var coreServerSettings = services.GetRequiredService<CoreServerSettings>();
+        var userSettings = services.GetRequiredService<UsersSettings>();
+        _projectName = new ProjectName(coreServerSettings.GoogleProjectId);
+        _siteKey = userSettings.GoogleRecaptchaSiteKey;
+        _isAvailable = IsAvailable(hostInfo, _siteKey);
+    }
 
     public virtual async Task<RecaptchaValidationResult> Validate(string token, string action, CancellationToken cancellationToken)
     {
-        // Skip CAPTCHA validation on local development (localhost, local.voxt.ai)
-        if (IsLocalDevBypassAllowed())
-            return new RecaptchaValidationResult(true, null, 1.0f);
-
-        if (Settings.GoogleRecaptchaSiteKey.IsNullOrEmpty())
-            return new RecaptchaValidationResult(false, "reCAPTCHA is not configured.");
+        // Skip CAPTCHA validation on non-production hosts
+        if (!_isAvailable)
+            return new RecaptchaValidationResult(token != "fake-fail", null, 1.0f);
 
         var request = new CreateAssessmentRequest {
             Assessment = new Assessment {
                 Event = new Event {
-                    SiteKey = Settings.GoogleRecaptchaSiteKey,
+                    SiteKey = _siteKey,
                     Token = token,
-                    ExpectedAction = action
+                    ExpectedAction = action,
                 },
             },
             ParentAsProjectName = _projectName
@@ -37,7 +53,6 @@ public class Captcha(UsersSettings settings, CoreServerSettings serverSettings, 
             var response = await _client.CreateAssessmentAsync(request, cancellationToken).ConfigureAwait(false);
             if (response.TokenProperties.Valid == false)
                 return new RecaptchaValidationResult(false, response.TokenProperties.InvalidReason.ToString());
-
 
             var score = response.RiskAnalysis.Score;
             return new RecaptchaValidationResult(score >= Constants.Recaptcha.ValidScore, null, score);
@@ -49,18 +64,5 @@ public class Captcha(UsersSettings settings, CoreServerSettings serverSettings, 
             Log.LogWarning(e, "Error validating reCAPTCHA token");
             return new RecaptchaValidationResult(false, "reCAPTCHA validation failed.");
         }
-    }
-
-    private bool IsLocalDevBypassAllowed()
-    {
-        // Check if bypass is explicitly enabled via environment variable
-        var bypassEnvVar = Environment.GetEnvironmentVariable("ActualChat_CaptchaBypassEnabled");
-        if (!bool.TryParse(bypassEnvVar, out var bypassEnabled) || !bypassEnabled)
-            return false;
-
-        var host = UrlMapper.BaseUri.Host;
-        // Bypass CAPTCHA on local development hosts (not on prod or dev domains)
-        return !Constants.Hosts.AllProd.Contains(host)
-            && !Constants.Hosts.AllDev.Contains(host);
     }
 }

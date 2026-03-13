@@ -11,7 +11,7 @@ public class MauiHttpClientFactory(IServiceProvider services) : IHttpClientFacto
 {
     private static readonly Tracer Tracer = Tracer.Default[nameof(MauiHttpClientFactory)];
     private readonly ConcurrentDictionary<string, LazySlim<string, MauiHttpClientFactory, HttpMessageHandler>> _messageHandlers
-        = new(StringComparer.Ordinal);
+        = new();
 
     public static bool IsEnabled
 #if IOS || MACCATALYST

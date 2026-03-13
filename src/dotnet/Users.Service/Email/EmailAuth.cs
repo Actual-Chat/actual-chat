@@ -22,18 +22,34 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     private UsersSettings UsersSettings { get; } = services.GetRequiredService<UsersSettings>();
     private IEmailSender EmailSender { get; } = services.GetRequiredService<IEmailSender>();
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
+    private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
     private TotpCodes TotpCodes { get; } = services.GetRequiredService<TotpCodes>();
     private TotpSecrets TotpSecrets { get; } = services.GetRequiredService<TotpSecrets>();
     private RedisDb<UsersDbContext> RedisDb { get; } = services.GetRequiredService<RedisDb<UsersDbContext>>();
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
 
+    [Obsolete("2026.03: Removed in favor of CheckIfBlocked")]
     // [ComputeMethod]
     public virtual Task<string> ValidateCanSendToEmail(
+        Session session, ActualChat.Email email, TotpPurpose purpose, CancellationToken cancellationToken)
+        => CheckIfBlocked(session, email, purpose, cancellationToken);
+
+    // [ComputeMethod]
+    public virtual Task<string> CheckIfBlocked(
         Session session, ActualChat.Email email, TotpPurpose purpose, CancellationToken cancellationToken)
         => Task.FromResult(
             System.Net.Mail.MailAddress.TryCreate(email.Value, out _)
                 ? string.Empty
                 : "Invalid email address.");
+
+    // [ComputeMethod]
+    public virtual async Task<bool> AccountExists(
+        Session session, ActualChat.Email email, CancellationToken cancellationToken)
+    {
+        var identity = UserIdentityExt.NewEmailIdentity(email);
+        var userId = await AccountsBackend.GetIdByUserIdentity(identity, cancellationToken).ConfigureAwait(false);
+        return userId is not null;
+    }
 
     // [CommandHandler]
     public virtual async Task<Moment> OnSendTotp(EmailAuth_SendTotp command, CancellationToken cancellationToken)
@@ -53,7 +69,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         if (await IsThrottled(session, email, cancellationToken).ConfigureAwait(false))
             return NextSendAt();
 
-        var canSendValidationMessage = await ValidateCanSendToEmail(session, command.Email, purpose, cancellationToken).ConfigureAwait(false);
+        var canSendValidationMessage = await CheckIfBlocked(session, command.Email, purpose, cancellationToken).ConfigureAwait(false);
         if (!canSendValidationMessage.IsNullOrEmpty())
             throw StandardError.Constraint(canSendValidationMessage);
 
@@ -61,7 +77,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         var totp = TotpCodes.Generate(securityToken, modifier);
         var nextSendAt = NextSendAt();
 
-        var sTotp = totp.ToString(TotpFormat, CultureInfo.InvariantCulture);
+        var sTotp = totp.ToString(TotpFormat);
         if (!HostInfo.IsProductionInstance)
             Log.LogWarning("!!! Email verification code for {Email}: {Code}", email, sTotp);
 
@@ -71,7 +87,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
             _ => $"{CoreConstants.AppName}: code",
         };
 
-        var parameters = new Dictionary<string, object?>(StringComparer.Ordinal) {
+        var parameters = new Dictionary<string, object?>() {
             { nameof(EmailVerification.Token), sTotp },
         };
         var blazorRenderer = new BlazorRenderer();
@@ -132,7 +148,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         var conflictingUserId = await dbContext
             .GetUserIdByIdentity(emailIdentity, false, cancellationToken)
             .ConfigureAwait(false);
-        if (conflictingUserId != null && !OrdinalEquals(conflictingUserId.Value, account.Id.Value))
+        if (conflictingUserId != null && conflictingUserId.Value != account.Id.Value)
             throw StandardError.Unauthorized("Email has already been taken by another account.");
 
         var cmd = new AccountsBackend_Update(updatedAccount, account.Version);

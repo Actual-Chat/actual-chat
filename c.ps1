@@ -909,11 +909,16 @@ switch ($mode) {
             "--label", "worktree=$containerBaseName"
         )
 
+        # Chrome DevTools MCP: pass debug port so the MCP wrapper script can resolve the host IP
+        # Docker Desktop on Windows uses a VM, so localhost/127.0.0.1 won't reach the host.
+        # Chrome rejects non-IP Host headers, so the wrapper resolves host.docker.internal to an IPv4 IP.
+
         $dockerArgs += $volumeMounts + $propagatedEnvVars + @(
             "-e", "ANTHROPIC_API_KEY=$env:ANTHROPIC_API_KEY"
             "-e", "DISABLE_AUTOUPDATER=1"
             "-e", "DOTNET_SYSTEM_NET_DISABLEIPV6=1"
             "-e", "AC_ProjectRoot=/proj"
+            "-e", "AC_CHROME_DEBUG_PORT=$ChromeDebugPort"
         ) + $projectEnvVars
 
         $dockerArgs += @(

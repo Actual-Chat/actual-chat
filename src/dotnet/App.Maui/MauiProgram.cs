@@ -325,11 +325,11 @@ public static partial class MauiProgram
                 return true;
         }
         else if (e is TimeoutException) {
-            if (OrdinalEquals(e.Message, "Timeout while connecting to remote host.")
+            if (e.Message == "Timeout while connecting to remote host."
                 && e.StackTrace is not null
                 && e.StackTrace.Contains("ActualLab.Rpc"))
                 return true;
-            if (OrdinalEquals(e.Message, "Timeout while waiting for RPC keep-alive."))
+            if (e.Message == "Timeout while waiting for RPC keep-alive.")
                 return true;
         }
         return false;

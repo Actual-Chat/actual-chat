@@ -157,7 +157,7 @@ public abstract class MeshLocksBase : IMeshLocksBackend
     }
 
     protected virtual string NextHolderId()
-        => string.Concat(HolderKeyPrefix, Interlocked.Increment(ref LastHolderId).ToInvariantString());
+        => string.Concat(HolderKeyPrefix, Interlocked.Increment(ref LastHolderId).ToString());
 
     protected abstract Task<bool> TryLock(string key, string value, TimeSpan expiresIn, CancellationToken cancellationToken);
     protected abstract Task<bool> TryRenew(string key, string value, TimeSpan expiresIn, CancellationToken cancellationToken);

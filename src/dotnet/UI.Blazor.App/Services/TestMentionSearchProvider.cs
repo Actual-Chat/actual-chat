@@ -21,7 +21,7 @@ public class TestMentionSearchProvider : ISearchProvider<MentionSearchResult>
         var mentions = Authors.Select(author => new { author, searchMatch = searchPhrase.GetMatch(author.Name) })
             .Where(x => x.searchMatch.Rank > 0 || searchPhrase.IsEmpty)
             .OrderByDescending(@t => t.searchMatch.Rank)
-            .ThenBy(x => x.author.Name, StringComparer.Ordinal)
+            .ThenBy(x => x.author.Name)
             .Select(x => new MentionSearchResult(MentionId.NewAuthor(x.author.AuthorId), x.searchMatch, new (null, null, DefaultUserPicture.GetAvatarKey(x.author.AuthorId.Value))))
             .Take(limit)
             .ToArray();

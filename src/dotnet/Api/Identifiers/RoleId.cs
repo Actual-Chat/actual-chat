@@ -47,7 +47,7 @@ public sealed partial class RoleId : StringIdentifier, IStringIdentifier<RoleId>
     public bool Equals(RoleId? other)
         => !ReferenceEquals(other, null)
             && HashCode == other.HashCode
-            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+            && string.Equals(Value, other.Value);
     public override bool Equals(object? obj)
         => obj is RoleId other && Equals(other);
 
@@ -86,7 +86,7 @@ public sealed partial class RoleId : StringIdentifier, IStringIdentifier<RoleId>
             return true;
         }
 
-        var chatIdLength = s.OrdinalIndexOf(Delimiter);
+        var chatIdLength = s.IndexOf(Delimiter);
         if (chatIdLength < 0)
             return false;
 

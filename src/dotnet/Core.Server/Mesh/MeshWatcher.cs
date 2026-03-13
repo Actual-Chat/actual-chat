@@ -179,7 +179,7 @@ public sealed class MeshWatcher : WorkerBase, IHasServices
         try {
             var keys = await NodeLocks.ListKeys("", cancellationToken).ConfigureAwait(false);
             var ownKey = ThisNode.LockKey;
-            if (!keys.Contains(ownKey, StringComparer.Ordinal))
+            if (!keys.Contains(ownKey))
                 keys.Add(ownKey);
 
             var nodes = ImmutableArray.CreateRange(
@@ -187,7 +187,7 @@ public sealed class MeshWatcher : WorkerBase, IHasServices
                     var node = MeshNode.FromLockKey(key);
                     return node == ThisNode ? ThisNode : node;
                 }).Where(node => {
-                    if (!OrdinalEquals(node.Endpoint, ThisNode.Endpoint) || node == ThisNode)
+                    if (node.Endpoint != ThisNode.Endpoint || node == ThisNode)
                         return true;
 
                     Log.LogError(

@@ -101,7 +101,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
 
             var links = ExtractLinks(entry);
             var oldLinks = ExtractLinks(oldEntry);
-            foreach (var link in links.Take(Constants.Media.LinkPreviewsPerMessageLimit).Except(oldLinks, StringComparer.Ordinal))
+            foreach (var link in links.Take(Constants.Media.LinkPreviewsPerMessageLimit).Except(oldLinks))
                 await FlowHub.TryScheduleUpdate<LinkPreviewFlow>(link, cancellationToken).ConfigureAwait(false);
         }
     }

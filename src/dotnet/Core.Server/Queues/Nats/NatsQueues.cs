@@ -46,7 +46,7 @@ public sealed partial class NatsQueues(NatsQueues.Options settings, IServiceProv
         var instancePrefix = NatsSettings.InstancePrefix;
         var context = new NatsJSContext(Connection);
         await foreach (var stream in context.ListStreamsAsync(cancellationToken: cancellationToken).ConfigureAwait(false)) {
-            if (!stream.Info.Config.Name.OrdinalStartsWith(instancePrefix))
+            if (!stream.Info.Config.Name.StartsWith(instancePrefix))
                 continue;
 
             // await stream.DeleteAsync(cancellationToken).ConfigureAwait(false);
@@ -63,9 +63,9 @@ public sealed partial class NatsQueues(NatsQueues.Options settings, IServiceProv
             if (chainId.IsNullOrEmpty())
                 return sCommandType;
 
-            if (chainId.OrdinalHasPrefix("ActualChat.", out var suffix))
+            if (chainId.HasPrefix("ActualChat.", out var suffix))
                 chainId = suffix;
-            if (chainId.OrdinalHasPrefix("ActualLab.", out suffix))
+            if (chainId.HasPrefix("ActualLab.", out suffix))
                 chainId = suffix;
             chainId = SpecialCharacterRegex.Replace(chainId, "-");
             return $"{sCommandType}-{chainId}";

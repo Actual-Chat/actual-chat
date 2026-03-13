@@ -16,21 +16,21 @@ public static partial class LocalUrlExt
     private static readonly Regex IsChatRegex = IsChatRegexFactory();
 
     public static bool IsHome(this LocalUrl url)
-        => url == Links.Home || url.Value.OrdinalStartsWith("/?");
+        => url == Links.Home || url.Value.StartsWith("/?");
 
     public static bool IsDocsOrDocsRoot(this LocalUrl url)
         => url.IsDocs() || url.IsDocsRoot();
     public static bool IsDocsRoot(this LocalUrl url)
-        => OrdinalEquals(url.Value, "/docs");
+        => url.Value == "/docs";
     public static bool IsDocs(this LocalUrl url)
-        => url.Value.OrdinalStartsWith("/docs/");
+        => url.Value.StartsWith("/docs/");
 
     public static bool IsChatOrChatRoot(this LocalUrl url)
         => url.IsChat() || url.IsChatRoot();
     public static bool IsChatRoot(this LocalUrl url)
-        => OrdinalEquals(url.Value, "/chat");
+        => url.Value == "/chat";
     public static bool IsChat(this LocalUrl url)
-        => url.Value.OrdinalStartsWith("/chat/");
+        => url.Value.StartsWith("/chat/");
 
     public static bool IsChat(this LocalUrl url, [NotNullWhen(true)] out ChatId? chatId)
         => url.IsChat(out chatId, out _, out _);
@@ -82,7 +82,7 @@ public static partial class LocalUrlExt
     }
 
     public static bool IsUser(this LocalUrl url)
-        => url.Value.OrdinalStartsWith(UserPagePath);
+        => url.Value.StartsWith(UserPagePath);
 
     public static bool IsUser(this LocalUrl url, [NotNullWhen(true)] out string? userIdSegment)
     {
@@ -95,10 +95,10 @@ public static partial class LocalUrlExt
     }
 
     public static bool IsSettings(this LocalUrl url)
-        => url.Value.OrdinalStartsWith("/settings");
+        => url.Value.StartsWith("/settings");
 
     public static bool IsPrivateChatInvite(this LocalUrl url)
-        => url.Value.OrdinalStartsWith(JoinPagePath);
+        => url.Value.StartsWith(JoinPagePath);
 
     public static bool IsPrivateChatInvite(this LocalUrl url, [NotNullWhen(true)] out string? inviteIdSegment)
     {

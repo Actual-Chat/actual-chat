@@ -13,9 +13,9 @@ public static class AssertOptionsExt
 
     public static EquivalencyOptions<T> ExcludingSystemProperties<T>(
         this EquivalencyOptions<T> options) where T : notnull
-        => options.Excluding(mi => OrdinalEquals(mi.Name, nameof(IHasVersion<T>.Version)))
-            .Excluding(mi => OrdinalEquals(mi.Name, "CreatedAt"))
-            .Excluding(mi => OrdinalEquals(mi.Name, "ModifiedAt"));
+        => options.Excluding(mi => mi.Name == nameof(IHasVersion<T>.Version))
+            .Excluding(mi => mi.Name == "CreatedAt")
+            .Excluding(mi => mi.Name == "ModifiedAt");
 
     public static EquivalencyOptions<ContactSearchResult> ExcludingRank(
         this EquivalencyOptions<ContactSearchResult> options)

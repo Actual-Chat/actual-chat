@@ -199,7 +199,7 @@ public partial class MauiWebView
                 // and render images/videos for custom schemes.
                 var headers = new NSDictionary(
                     new NSString("Content-Type"), new NSString(contentType),
-                    new NSString("Content-Length"), new NSString(fileInfo.Length.ToString(CultureInfo.InvariantCulture)));
+                    new NSString("Content-Length"), new NSString(fileInfo.Length.ToString()));
                 var response = new NSHttpUrlResponse(urlSchemeTask.Request!.Url!, 200, "HTTP/1.1", headers);
                 urlSchemeTask.DidReceiveResponse(response);
 

@@ -160,7 +160,7 @@ public class ChannelDemuxerTest
         }
     }
 
-    private class TestItem : IMuxable
+    private sealed class TestItem : IMuxable
     {
         public int StreamIndex { get; set; }
         public string Value { get; init; } = "";

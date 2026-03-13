@@ -27,8 +27,8 @@ public static partial class RangeExt
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Range<int> ToIntRange(this Range<string> range)
         => new (
-            int.Parse(range.Start, NumberStyles.Integer, CultureInfo.InvariantCulture),
-            int.Parse(range.End, NumberStyles.Integer, CultureInfo.InvariantCulture));
+            int.Parse(range.Start, NumberStyles.Integer),
+            int.Parse(range.End, NumberStyles.Integer));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Range<long> AsLongRange(this Range<int> range)

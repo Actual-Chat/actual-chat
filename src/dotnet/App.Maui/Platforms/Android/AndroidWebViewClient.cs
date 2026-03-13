@@ -60,14 +60,14 @@ public class AndroidWebViewClient(
 
         var requestUrl = request?.Url;
         if (request != null && requestUrl != null
-            && OrdinalEquals(requestUrl.Host, MauiSettings.LocalHost)
+            && requestUrl.Host == MauiSettings.LocalHost
             && AndroidContentDownloader.CanHandleWebRequestUri(requestUrl.EncodedPath)) {
             var (stream, mimeType) = ContentDownloader.GetWebRequestStream(requestUrl.EncodedPath!);
             if (stream == null)
                 return null;
 
             // Prevent response caching by WebView
-            var headers = new Dictionary<string, string>(StringComparer.Ordinal) {
+            var headers = new Dictionary<string, string>() {
                 { cacheControlKey, "no-store, no-cache, max-age=0" },
             };
             return new WebResourceResponse(mimeType, null, 200, "OK", headers, stream);
@@ -77,7 +77,7 @@ public class AndroidWebViewClient(
         if (resourceResponse == null)
             return null;
 
-        if (!OrdinalEquals(requestUrl?.Host, MauiSettings.LocalHost))
+        if (requestUrl?.Host != MauiSettings.LocalHost)
             return resourceResponse;
 
         resourceResponse.ResponseHeaders?.Remove(cacheControlKey);

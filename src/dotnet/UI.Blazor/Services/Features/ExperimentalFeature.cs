@@ -4,7 +4,7 @@ namespace ActualChat.UI.Blazor.Services;
 
 public abstract class ExperimentalFeature : FeatureDef<bool>, IClientFeatureDef
 {
-    private static readonly HashSet<string> FocusGroupEmails = new(StringComparer.Ordinal) { "grigory.yakushev@gmail.com" };
+    private static readonly HashSet<string> FocusGroupEmails = new() { "grigory.yakushev@gmail.com" };
 
     public override async Task<bool> Compute(IServiceProvider services, CancellationToken cancellationToken)
     {

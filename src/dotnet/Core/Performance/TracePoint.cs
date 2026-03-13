@@ -26,5 +26,5 @@ public readonly record struct TracePoint(Tracer Tracer, string Label, TimeSpan E
     }
 
     public static void FormatDuration(TimeSpan duration, StringBuilder sb)
-        => sb.AppendFormat(CultureInfo.InvariantCulture, "{0:N3}s", duration.TotalSeconds);
+        => sb.AppendFormat("{0:N3}s", duration.TotalSeconds);
 }

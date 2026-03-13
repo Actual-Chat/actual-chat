@@ -30,6 +30,6 @@ public abstract class AttachmentItemBase : ComputedStateComponent<AppUIHub, Atta
 
         // Custom preview is a generated thumbnail (e.g., iOS MOV thumbnail) with content:// scheme
         public bool HasCustomPreview => !Attachment.Size.IsEmpty
-            && Preview.PreviewUrl.OrdinalStartsWith($"{UrlMapper.UriContentScheme}://");
+            && Preview.PreviewUrl.StartsWith($"{UrlMapper.UriContentScheme}://");
     }
 }

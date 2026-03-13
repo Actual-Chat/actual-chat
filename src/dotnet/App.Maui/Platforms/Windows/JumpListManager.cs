@@ -32,7 +32,7 @@ public static class JumpListManager
 
     private static void AddJumpListItem(JumpList jumpList, string args, string displayName, string? logo = null)
     {
-        if (jumpList.Items.Any(c => OrdinalEquals(c.Arguments, args)))
+        if (jumpList.Items.Any(c => c.Arguments == args))
             return;
 
         var item = JumpListItem.CreateWithArguments(args, displayName);
@@ -42,7 +42,7 @@ public static class JumpListManager
 
     private static void RemoveJumpListItem(JumpList jumpList, string args)
     {
-        var quitItem = jumpList.Items.FirstOrDefault(c => OrdinalEquals(c.Arguments, args));
+        var quitItem = jumpList.Items.FirstOrDefault(c => c.Arguments == args);
         if (quitItem == null)
             return;
 

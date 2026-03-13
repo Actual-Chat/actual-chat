@@ -2,7 +2,7 @@ namespace ActualChat.UI.Blazor.Services;
 
 public sealed class RenderVars
 {
-    private readonly Dictionary<string, RenderVar> _vars = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, RenderVar> _vars = new();
 
     public RenderVar<T> Get<T>(string name, Func<T>? factory = null)
     {

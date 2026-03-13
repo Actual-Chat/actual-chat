@@ -444,5 +444,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
     private Identities NewIdentities(string owner)
         => new (UniqueNames.Phone(), UniqueNames.Email(owner));
 
+    // Nested types
+
     private record Identities(Phone Phone, string Email);
 }

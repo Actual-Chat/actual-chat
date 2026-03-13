@@ -23,7 +23,7 @@ public partial class TranslationSourceId  : StringIdentifier, IStringIdentifier<
     public const char Delimiter = ':';
 
     public static TranslationSourceId New(ChatId chatId, TranslationIdKind kind, long refLid)
-        => new (Format(chatId, kind, refLid.ToInvariantString()), chatId, kind, refLid);
+        => new (Format(chatId, kind, refLid.ToString()), chatId, kind, refLid);
 
     public static TranslationSourceId New(ChatEntryId chatEntryId)
         => new (chatEntryId.Value, chatEntryId);
@@ -39,7 +39,7 @@ public partial class TranslationSourceId  : StringIdentifier, IStringIdentifier<
         => EntryId = chatEntryId;
 
     private TranslationSourceId(string value, ChatId chatId, TranslationIdKind kind, long refLid)
-        : this(value, chatId, kind, refLid.ToInvariantString())
+        : this(value, chatId, kind, refLid.ToString())
         => RefLid = refLid;
 
     private TranslationSourceId(string value, ChatId chatId, TranslationIdKind kind, string extra)
@@ -73,7 +73,7 @@ public partial class TranslationSourceId  : StringIdentifier, IStringIdentifier<
     public bool Equals(TranslationSourceId? other)
         => !ReferenceEquals(other, null)
             && HashCode == other.HashCode
-            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+            && string.Equals(Value, other.Value);
 
     public override bool Equals(object? obj)
         => obj is TranslationSourceId other && Equals(other);
@@ -89,7 +89,7 @@ public partial class TranslationSourceId  : StringIdentifier, IStringIdentifier<
     // Format & Parse
 
     public static string Format(ChatId chatId, TranslationIdKind kind, string extra)
-        => $"{chatId.Value}{Delimiter}{((int)kind).ToInvariantString()}{Delimiter}{extra}";
+        => $"{chatId.Value}{Delimiter}{((int)kind).ToString()}{Delimiter}{extra}";
 
     public static TranslationSourceId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<TranslationSourceId>(s);
@@ -113,7 +113,7 @@ public partial class TranslationSourceId  : StringIdentifier, IStringIdentifier<
             return true;
         }
 
-        var chatIdLength = s.OrdinalIndexOf(Delimiter);
+        var chatIdLength = s.IndexOf(Delimiter);
         var s1 = s.Substring(0, chatIdLength);
         if (!ChatId.TryParse(s1, out var chatId))
             return false;
@@ -121,7 +121,7 @@ public partial class TranslationSourceId  : StringIdentifier, IStringIdentifier<
         var kindStartIndex = chatIdLength + 1;
         var kindEndIndex = s.IndexOf(Delimiter, kindStartIndex);
         var s2 = s.Substring(kindStartIndex, kindEndIndex - kindStartIndex);
-        if (!int.TryParse(s2, CultureInfo.InvariantCulture, out var iKind))
+        if (!int.TryParse(s2, out var iKind))
             return false;
 
         var kind = (TranslationIdKind)iKind;
@@ -130,7 +130,7 @@ public partial class TranslationSourceId  : StringIdentifier, IStringIdentifier<
 
         var extraStartIndex = kindEndIndex + 1;
         var s3 = s.Substring(extraStartIndex);
-        if (!long.TryParse(s3, CultureInfo.InvariantCulture, out var lid) || lid <= 0)
+        if (!long.TryParse(s3, out var lid) || lid <= 0)
             return false;
 
         if (kind is TranslationIdKind.ChatEntry)

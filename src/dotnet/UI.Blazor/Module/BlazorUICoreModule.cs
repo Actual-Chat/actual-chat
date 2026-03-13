@@ -161,10 +161,6 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
             });
         }
 
-        // validation
-        services.AddScoped<AsyncValidator>();
-        services.AddScoped<ValidationModelStore>();
-
         // Test services
         if (HostInfo.IsDevelopmentInstance)
             fusion.AddService<ComputeStateTestService>(ServiceLifetime.Scoped);
@@ -200,22 +196,22 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
             {
                 if (isServer) {
                     foreach (var key in stats.Keys.ToList()) {
-                        if (key.OrdinalStartsWith("DbAuthService"))
+                        if (key.StartsWith("DbAuthService"))
                             continue;
-                        if (key.OrdinalContains("Backend."))
+                        if (key.Contains("Backend."))
                             continue;
                         stats.Remove(key);
                     }
                 }
                 else {
                     foreach (var key in stats.Keys.ToList()) {
-                        if (key.OrdinalContains(".Pseudo"))
+                        if (key.Contains(".Pseudo"))
                             stats.Remove(key);
-                        if (key.OrdinalStartsWith("FusionTime."))
+                        if (key.StartsWith("FusionTime."))
                             stats.Remove(key);
-                        if (key.OrdinalStartsWith("LiveTime."))
+                        if (key.StartsWith("LiveTime."))
                             stats.Remove(key);
-                        if (key.OrdinalStartsWith("LiveTimeDelta"))
+                        if (key.StartsWith("LiveTimeDelta"))
                             stats.Remove(key);
                     }
                 }

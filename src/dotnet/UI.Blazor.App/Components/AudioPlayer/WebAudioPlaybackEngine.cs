@@ -40,10 +40,13 @@ public sealed class WebAudioPlaybackEngine(
         Log.LogDebug(
             "[WebAudioPlaybackEngine #{AudioTrackPlayerId}] Play: authorId={AuthorId}, recordedAtMs={RecordedAtMs}",
             id, authorId, recordedAtMs);
+
         var js = services.JSRuntime();
+        var title = author?.Avatar.Name ?? "";
+        var album = chat?.Title ?? "";
         var whenPlayerCreated = js.InvokeAsync<IJSObjectReference>(JSCreateMethod,
             CancellationToken.None,
-            _blazorRef, id, preSkip, author.Avatar.Name, chat.Title, authorId, recordedAtMs);
+            _blazorRef, id, preSkip, title, album, authorId, recordedAtMs);
         _whenPlayerCreated = whenPlayerCreated.AsTask();
         _jsRef = await whenPlayerCreated.ConfigureAwait(false);
     }
@@ -115,4 +118,3 @@ public sealed class WebAudioPlaybackEngine(
         }
     }
 }
-

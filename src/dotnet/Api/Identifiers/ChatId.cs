@@ -46,7 +46,7 @@ public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasS
     public bool Equals(ChatId? other)
         => !ReferenceEquals(other, null)
             && HashCode == other.HashCode
-            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+            && string.Equals(Value, other.Value);
     public override bool Equals(object? obj)
         => obj is ChatId other && Equals(other);
 
@@ -85,11 +85,11 @@ public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasS
         if (s.Length < 6)
             return false;
 
-        if (s.OrdinalStartsWith(PeerChatId.IdPrefix)) {
+        if (s.StartsWith(PeerChatId.IdPrefix)) {
             result = TryParsePeerChatId(s);
             return result != null;
         }
-        if (s.OrdinalStartsWith(PlaceChatId.IdPrefix)) {
+        if (s.StartsWith(PlaceChatId.IdPrefix)) {
             result = TryParsePlaceChatId(s);
             return result != null;
         }
@@ -190,7 +190,7 @@ public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasS
 
         static bool SpecialChatId(string s1)
         {
-            return OrdinalEquals(s1, "the-actual-one") || OrdinalEquals(s1, "feedback-template");
+            return s1 == "the-actual-one" || s1 == "feedback-template";
         }
     }
 }

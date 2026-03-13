@@ -746,7 +746,7 @@ public partial class ChatUI
             .Get<string>(ShowIndexDocIdChatIdsSettingsKey, cancellationToken)
             .ConfigureAwait(false);
         var chatSidsShowIndexDocId = chatIdListToShowIndexDocId?.Split(';') ?? [];
-        var showIndexDocId = chatSidsShowIndexDocId.Contains(chatId.Value, StringComparer.Ordinal);
+        var showIndexDocId = chatSidsShowIndexDocId.Contains(chatId.Value);
         return showIndexDocId;
     }
 

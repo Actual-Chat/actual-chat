@@ -165,7 +165,7 @@ public class FileAttachments : UIServiceBase<AppUIHub>
 
         var decodedUrl = Uri.UnescapeDataString(previewUrl);
         var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp" };
-        return imageExtensions.Any(ext => decodedUrl.OrdinalIgnoreCaseEndsWith(ext));
+        return imageExtensions.Any(ext => decodedUrl.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
     }
 
     private struct CreateWebFileProviderResult

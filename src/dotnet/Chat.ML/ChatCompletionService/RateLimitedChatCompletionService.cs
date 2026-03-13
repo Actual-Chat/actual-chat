@@ -6,8 +6,7 @@ namespace ActualChat.Chat.ML;
 
 public class RateLimitedChatCompletionService(
     IChatCompletionService chatCompletionService,
-    RedisTokenBucketRateLimiter rateLimiter,
-    TokenEstimator estimator)
+    RedisTokenBucketRateLimiter rateLimiter)
     : IChatCompletionService
 {
     public IReadOnlyDictionary<string, object?> Attributes => chatCompletionService.Attributes;
@@ -19,8 +18,8 @@ public class RateLimitedChatCompletionService(
         Kernel? kernel = null,
         CancellationToken cancellationToken = default)
     {
-        var tokens = await estimator.Estimate(chatHistory, cancellationToken).ConfigureAwait(false);
-        await rateLimiter.Acquire(tokens, cancellationToken).ConfigureAwait(false);
+        var tokenCount = TokenEstimator.Estimate(chatHistory);
+        await rateLimiter.Acquire(tokenCount, cancellationToken).ConfigureAwait(false);
         return await chatCompletionService.GetChatMessageContentsAsync(chatHistory,
             executionSettings,
             kernel,
@@ -34,8 +33,8 @@ public class RateLimitedChatCompletionService(
         Kernel? kernel = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var tokens = await estimator.Estimate(chatHistory, cancellationToken).ConfigureAwait(false);
-        await rateLimiter.Acquire(tokens, cancellationToken).ConfigureAwait(false);
+        var tokenCount = TokenEstimator.Estimate(chatHistory);
+        await rateLimiter.Acquire(tokenCount, cancellationToken).ConfigureAwait(false);
         var chatMessages = chatCompletionService.GetStreamingChatMessageContentsAsync(chatHistory,
             executionSettings,
             kernel,

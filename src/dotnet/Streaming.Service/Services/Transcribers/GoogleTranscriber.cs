@@ -72,7 +72,7 @@ public partial class GoogleTranscriber : ITranscriber
                 $"Requires GKE or explicit settings of {nameof(CoreServerSettings)}.{nameof(CoreServerSettings.GoogleProjectId)}");
         }
 
-        if (!OrdinalEquals(GoogleProjectId, "n/a"))
+        if (GoogleProjectId != "n/a")
             SpeechClient = await speechClientTask.ConfigureAwait(false);
     }
 
@@ -88,7 +88,7 @@ public partial class GoogleTranscriber : ITranscriber
             Log.LogDebug("Starting recognize process for {AudioStreamId}", audioStreamId);
 
             var languageCode = GetRecognizerOptions(options.Language).LanguageCode;
-            var recognizerId = $"{languageCode.ToLowerInvariant()}";
+            var recognizerId = $"{languageCode.ToLower()}";
             var parent = $"projects/{GoogleProjectId}/locations/{RegionId}";
             var recognizerName = $"{parent}/recognizers/{recognizerId}";
 
@@ -98,7 +98,7 @@ public partial class GoogleTranscriber : ITranscriber
             }
             catch (RpcException e) when (
                 e.StatusCode is StatusCode.NotFound
-                && e.Status.Detail.OrdinalStartsWith("Unable to find Recognizer"))
+                && e.Status.Detail.StartsWith("Unable to find Recognizer"))
             {
                 await CreateRecognizer(recognizerId, parent, options, cancellationToken)
                     .ConfigureAwait(false);
@@ -378,7 +378,7 @@ public partial class GoogleTranscriber : ITranscriber
                 : (float)word.StartOffset.ToTimeSpan().TotalSeconds;
             if (wordStartTime < parsedDuration)
                 continue;
-            var wordStart = text.OrdinalIgnoreCaseIndexOf(word.Word, parsedOffset);
+            var wordStart = text.IndexOf(word.Word, parsedOffset, StringComparison.OrdinalIgnoreCase);
             if (wordStart < 0)
                 continue;
 

@@ -377,6 +377,8 @@ public partial class ChatAudioUI
         RecordingIdleOptions options,
         CancellationToken cancellationToken)
     {
+        var serverClock = Clocks.ServerClock;
+        var cpuClock = Clocks.CpuClock;
         var mustStop = true;
         try {
             while (!cancellationToken.IsCancellationRequested) {
@@ -390,6 +392,7 @@ public partial class ChatAudioUI
                         break;
                 }
                 finally {
+                    SetStopListeningAt(chatId, null);
                     cts.CancelAndDisposeSilently();
                 }
             }
@@ -402,6 +405,7 @@ public partial class ChatAudioUI
             throw;
         }
         finally {
+            SetStopListeningAt(chatId, null);
             if (mustStop) {
                 var listeningMode = await AccountSettings.UserChatSettings(chatId)
                     .Get(x => x.ListeningMode, cancellationToken)
@@ -422,9 +426,20 @@ public partial class ChatAudioUI
         }
 
         async Task WhenIdle(CancellationToken ct) {
+            SetStopListeningAt(chatId, cpuClock.Now + options.PreCountdownTimeout + options.IdleTimeout);
             var idleBoundaries = ObserveStreamingIdleBoundaries(chatId, options, ct);
-            await foreach (var _ in idleBoundaries.ConfigureAwait(false)) { }
+            await foreach (var serverStopAt in idleBoundaries.ConfigureAwait(false))
+                if (serverStopAt.HasValue)
+                    SetStopListeningAt(chatId, serverStopAt.Value.Convert(serverClock, cpuClock));
         }
+    }
+
+    private void SetStopListeningAt(ChatId chatId, Moment? stopAt)
+    {
+        if (stopAt.HasValue)
+            _stopListeningAtMap.Value = _stopListeningAtMap.Value.SetItem(chatId, stopAt.Value);
+        else
+            _stopListeningAtMap.Value = _stopListeningAtMap.Value.Remove(chatId);
     }
 
     private async Task ResetMicrophonePermissionAndStopRecordingOnDeviceAwake(CancellationToken cancellationToken)
@@ -616,6 +631,7 @@ public partial class ChatAudioUI
 
         // We just started, so it's ok to await for the countdown interval first
         await Task.Delay(options.PreCountdownTimeout, cancellationToken).ConfigureAwait(false);
+        lastTranscribedAt = Clocks.ServerClock.Now; // Reset after pre-countdown wait to avoid stale timestamp on repeat activations
 
         while (!cancellationToken.IsCancellationRequested) {
             // If own video is streaming for this chat, treat as activity — don't countdown

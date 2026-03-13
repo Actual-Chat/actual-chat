@@ -18,7 +18,7 @@ namespace ActualChat.Users;
 public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IAccountsBackend
 {
     private const string AdminEmailDomain = Constants.Team.EmailDomain;
-    private static HashSet<string> AdminEmails { get; } = new(StringComparer.Ordinal) {
+    private static HashSet<string> AdminEmails { get; } = new() {
         "alex.yakunin@gmail.com",
         "ustinovas@gmail.com",
     };
@@ -145,7 +145,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     // [CommandHandler]
     public virtual async Task OnSignIn(AccountsBackend_SignIn command, CancellationToken cancellationToken = default)
     {
-        var (session, authenticatedIdentity, identities, claims) = command;
+        var (session, authenticatedIdentity, identities, claims, mustExist) = command;
         session.RequireValid();
 
         identities = identities.With(authenticatedIdentity, "");
@@ -184,6 +184,9 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         }
 
         if (userId is null) {
+            if (mustExist)
+                throw StandardError.NotFound<AccountFull>("Account not found.");
+
             // No user found by identity or internalUserId - create new account
             account = UpdateExistingAccount(null, internalUserId);
             var dbAccount = await CreateDbAccount(dbContext, account, cancellationToken).ConfigureAwait(false);
@@ -292,7 +295,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         dbAccount = dbAccount.Require().RequireVersion(expectedVersion);
 
         var mustGreet = !account.IsGreetingCompleted && dbAccount.IsGreetingCompleted;
-        var mustResetDigestFlow = !OrdinalEquals(dbAccount.TimeZone, account.TimeZone);
+        var mustResetDigestFlow = dbAccount.TimeZone != account.TimeZone;
         account = account with {
             Version = VersionGenerator.NextVersion(dbAccount.Version),
             Name = AccountNameValidator.Normalize(account.Name),
@@ -405,7 +408,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
             if (AdminEmails.Contains(email))
                 return true; // Predefined admin email
-            if (OrdinalEquals(emailAddress.Host, AdminEmailDomain))
+            if (emailAddress.Host == AdminEmailDomain)
                 return true; // company email
             if (Constants.Auth.TestAgent.IsTestAgentEmail(email))
                 return true; // test agent email
@@ -446,10 +449,10 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         dbAccount.IsGreetingCompleted = account.IsGreetingCompleted;
         dbAccount.TimeZone = account.TimeZone;
         dbAccount.AliasId = account.AliasId?.NormalizedValue ?? "";
-        dbAccount.Claims = account.Claims.ToImmutableDictionary(StringComparer.Ordinal);
+        dbAccount.Claims = account.Claims.ToImmutableDictionary();
 
         // Sync identities to DbAccount
-        var dbIdentities = dbAccount.Identities.ToDictionary(ai => ai.Id, StringComparer.Ordinal);
+        var dbIdentities = dbAccount.Identities.ToDictionary(ai => ai.Id);
         foreach (var (userIdentity, secret) in account.Identities) {
             if (!userIdentity.IsValid)
                 continue;
@@ -514,7 +517,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             IsEmailVerified = account.IsEmailVerified(),
             Phone = account.Phone?.Value ?? account.Claims.GetValueOrDefault(ClaimTypes.MobilePhone, ""),
             CreatedAt = Clocks.SystemClock.Now,
-            Claims = account.Claims.ToImmutableDictionary(StringComparer.Ordinal),
+            Claims = account.Claims.ToImmutableDictionary(),
         };
         // Sync identities to DbAccount
         foreach (var (userIdentity, secret) in account.Identities) {

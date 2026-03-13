@@ -143,7 +143,7 @@ namespace ActualChat.Transcription
 
                 // NOTE: We normalize token TEXT to lowercase for robust matching,
                 // but Start/Length remain positions into the original string.
-                foreach (Match m in WordRegex.Matches(text.ToLowerInvariant()))
+                foreach (Match m in WordRegex.Matches(text.ToLower()))
                     list.Add(new Token(m.Value, m.Index, m.Length));
                 return list;
             }
@@ -301,7 +301,7 @@ namespace ActualChat.Transcription
                     // Count new-prefix tokens until the first exact text match along mapping.
                     while (leadingTrim < m) {
                         int map = newToOld[leadingTrim];
-                        if (map >= 0 && map < n && OrdinalEquals(newTokens[leadingTrim].Text, oldTokens[map].Text))
+                        if (map >= 0 && map < n && newTokens[leadingTrim].Text == oldTokens[map].Text)
                             break;
 
                         leadingTrim++;
@@ -311,7 +311,7 @@ namespace ActualChat.Transcription
                     while (trailingTrim < m - leadingTrim) {
                         int jIdx = m - 1 - trailingTrim;
                         int map = newToOld[jIdx];
-                        if (map >= 0 && map < n && OrdinalEquals(newTokens[jIdx].Text, oldTokens[map].Text))
+                        if (map >= 0 && map < n && newTokens[jIdx].Text == oldTokens[map].Text)
                             break;
 
                         trailingTrim++;
@@ -328,7 +328,7 @@ namespace ActualChat.Transcription
                 if (coreLen > 0) {
                     for (int j = coreStart; j <= coreEnd; j++) {
                         int iMap = newToOld[j];
-                        if (iMap >= 0 && iMap < n && OrdinalEquals(newTokens[j].Text, oldTokens[iMap].Text))
+                        if (iMap >= 0 && iMap < n && newTokens[j].Text == oldTokens[iMap].Text)
                             coreMatches++;
                     }
                 }

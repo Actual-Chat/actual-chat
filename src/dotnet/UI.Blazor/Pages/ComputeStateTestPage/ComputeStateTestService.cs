@@ -38,7 +38,7 @@ public class ComputeStateTestService : SafeAsyncDisposableBase, IHasServices, IC
             if (i % 10 == 0)
                 await Task.Delay(100, cancellationToken).ConfigureAwait(false);
 
-            _state.Value = i.ToString(CultureInfo.InvariantCulture);
+            _state.Value = i.ToString();
         }
         _state.Value = finalValue;
         using (Invalidation.Begin())

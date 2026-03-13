@@ -24,13 +24,13 @@ public sealed partial class Vocabulary
             if (lastSpace < 0)
                 continue;
 
-            var token = line[..lastSpace].Replace("\u2581", " ", StringComparison.Ordinal);
-            var id = int.Parse(line[(lastSpace + 1)..], CultureInfo.InvariantCulture);
+            var token = line[..lastSpace].Replace("\u2581", " ");
+            var id = int.Parse(line[(lastSpace + 1)..]);
             _tokens[id] = token;
         }
 
         VocabSize = _tokens.Count;
-        BlankIndex = _tokens.FirstOrDefault(kv => string.Equals(kv.Value, "<blk>", StringComparison.Ordinal)).Key;
+        BlankIndex = _tokens.FirstOrDefault(kv => string.Equals(kv.Value, "<blk>")).Key;
         if (BlankIndex == 0 && !_tokens.ContainsKey(0))
             BlankIndex = VocabSize; // Convention: blank = vocab_size
     }

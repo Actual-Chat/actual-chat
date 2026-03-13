@@ -17,7 +17,7 @@ public static class ContentResolver
         if (!Uri.TryCreate(uri, UriKind.Absolute, out var uri1))
             return false;
 
-        if (!string.Equals(uri1.Host, FilesContentProvider, StringComparison.Ordinal) || !uri1.IsDefaultPort)
+        if (!string.Equals(uri1.Host, FilesContentProvider) || !uri1.IsDefaultPort)
             return false;
 
         // IMPORTANT(iOS): keep absolute paths.

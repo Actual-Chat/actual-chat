@@ -1,4 +1,5 @@
 using ActualChat.Kvas;
+using ActualChat.UI.Blazor.Components;
 
 namespace ActualChat.UI.Blazor.Services;
 
@@ -44,6 +45,18 @@ public sealed class BubbleUI : UIServiceBase<UIHub>
 
     public void UpdateSettings(UserBubbleSettings value)
         => _settings.Value = value;
+
+    public async Task UnreadBubble<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TBubble>()
+        where TBubble : IBubble
+    {
+        var bubbleRef = BubbleRegistry.GetTypeId(typeof(TBubble));
+        var updated = Settings.Value.WithoutRead(bubbleRef);
+        if (ReferenceEquals(updated, Settings.Value))
+            return;
+        UpdateSettings(updated);
+        await Host.ResetBubbles(updated.ReadBubbles).ConfigureAwait(false);
+    }
 
     public async Task ResetSettings() {
         await WhenReady.ConfigureAwait(true);

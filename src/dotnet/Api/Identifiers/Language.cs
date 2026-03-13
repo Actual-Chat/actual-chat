@@ -36,8 +36,8 @@ public sealed partial class Language : StringIdentifier, IStringIdentifier<Langu
     {
         ShortTitle = shortTitle;
         Title = title;
-        IsAnyEnglish = shortTitle.OrdinalIgnoreCaseStartsWith("en");
-        IsAnySpanish = shortTitle.OrdinalIgnoreCaseStartsWith("es");
+        IsAnyEnglish = shortTitle.StartsWith("en", StringComparison.OrdinalIgnoreCase);
+        IsAnySpanish = shortTitle.StartsWith("es", StringComparison.OrdinalIgnoreCase);
     }
 
     // Equality
@@ -70,7 +70,7 @@ public sealed partial class Language : StringIdentifier, IStringIdentifier<Langu
 
     public static bool TryParse(string? s, [NotNullWhen(true)] out Language? result)
     {
-        if (!s.IsNullOrEmpty() && (Languages.ById.TryGetValue(s, out result) || Languages.ById.TryGetValue(s.ToLowerInvariant(), out result)))
+        if (!s.IsNullOrEmpty() && (Languages.ById.TryGetValue(s, out result) || Languages.ById.TryGetValue(s.ToLower(), out result)))
             return true;
 
         result = null;

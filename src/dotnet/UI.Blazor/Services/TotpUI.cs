@@ -1,5 +1,3 @@
-using ActualChat.Users;
-
 namespace ActualChat.UI.Blazor.Services;
 
 /// <summary>
@@ -8,16 +6,21 @@ namespace ActualChat.UI.Blazor.Services;
 public class TotpUI(UIHub hub): UIServiceBase<UIHub>(hub), IComputeService
 {
     private readonly IMutableState<Moment> _totpNextSendAt = hub.StateFactory.NewMutable<Moment>();
-    public IState<Moment> TotpNextSendAt => _totpNextSendAt;
 
     private IPhoneAuth PhoneAuth => field ??= Services.GetRequiredService<IPhoneAuth>();
     private IEmailAuth EmailAuth => field ??= Services.GetRequiredService<IEmailAuth>();
 
-    public Task<string> ValidateCanSendToPhone(Phone phone, TotpPurpose purpose, CancellationToken cancellationToken)
-        => PhoneAuth.ValidateCanSendToPhone(Session, phone, purpose, cancellationToken);
+    public IState<Moment> TotpNextSendAt => _totpNextSendAt;
 
-    public Task<string> ValidateCanSendToEmail(Email email, TotpPurpose purpose, CancellationToken cancellationToken)
-        => EmailAuth.ValidateCanSendToEmail(Session, email, purpose, cancellationToken);
+    public Task<string> CheckIfBlocked(Phone phone, TotpPurpose purpose, CancellationToken cancellationToken)
+        => PhoneAuth.CheckIfBlocked(Session, phone, purpose, cancellationToken);
+    public Task<string> CheckIfBlocked(Email email, TotpPurpose purpose, CancellationToken cancellationToken)
+        => EmailAuth.CheckIfBlocked(Session, email, purpose, cancellationToken);
+
+    public Task<bool> AccountExists(Phone phone, CancellationToken cancellationToken)
+        => PhoneAuth.AccountExists(Session, phone, cancellationToken);
+    public Task<bool> AccountExists(Email email, CancellationToken cancellationToken)
+        => EmailAuth.AccountExists(Session, email, cancellationToken);
 
     [ComputeMethod]
     public virtual async Task<bool> HasSentCodeRecently(CancellationToken cancellationToken)
@@ -30,7 +33,7 @@ public class TotpUI(UIHub hub): UIServiceBase<UIHub>(hub), IComputeService
         return hasSentRecently;
     }
 
-    public async Task<bool> SendPhoneCode(TotpPurpose purpose, Phone phone, CancellationToken cancellationToken)
+    public async Task<bool> SendCode(TotpPurpose purpose, Phone phone, CancellationToken cancellationToken)
     {
         var cmd = purpose switch {
             TotpPurpose.SignInPhone or TotpPurpose.VerifyPhone => new PhoneAuth_SendTotp(Session, phone, purpose),
@@ -44,7 +47,7 @@ public class TotpUI(UIHub hub): UIServiceBase<UIHub>(hub), IComputeService
         return true;
     }
 
-    public async Task<bool> SendEmailCode(TotpPurpose purpose, Email email, CancellationToken cancellationToken)
+    public async Task<bool> SendCode(TotpPurpose purpose, Email email, CancellationToken cancellationToken)
     {
         var (totpNextSendAt, error) = await UICommander.Run(new EmailAuth_SendTotp(Session, email, purpose), cancellationToken).ConfigureAwait(false);
         if (error != null)

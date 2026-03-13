@@ -40,8 +40,14 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
     public virtual Task<bool> IsEnabled(CancellationToken cancellationToken)
         => Task.FromResult(HostInfo.IsDevelopmentInstance || Settings.IsTwilioEnabled || Settings.IsSMSToEnabled);
 
+    [Obsolete("2026.03: Removed in favor of CheckIfBlocked")]
     // [ComputeMethod]
     public virtual Task<string> ValidateCanSendToPhone(
+        Session session, ActualChat.Phone phone, TotpPurpose purpose, CancellationToken cancellationToken)
+        => CheckIfBlocked(session, phone, purpose, cancellationToken);
+
+    // [ComputeMethod]
+    public virtual Task<string> CheckIfBlocked(
         Session session,
         ActualChat.Phone phone,
         TotpPurpose purpose,
@@ -59,10 +65,21 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
 
         bool IsBlocked() {
             foreach (var blockedPrefix in _blockedPhonePrefixes.Value)
-                if (value.OrdinalStartsWith(blockedPrefix))
+                if (value.StartsWith(blockedPrefix))
                     return true;
             return false;
         }
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<bool> AccountExists(
+        Session session,
+        ActualChat.Phone phone,
+        CancellationToken cancellationToken)
+    {
+        var identity = UserIdentityExt.NewPhoneIdentity(phone);
+        var userId = await AccountsBackend.GetIdByUserIdentity(identity, cancellationToken).ConfigureAwait(false);
+        return userId is not null;
     }
 
     // [CommandHandler]
@@ -86,11 +103,11 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         var totp = Totps.Generate(securityToken, modifier); // generate totp with the newest one
         var nextSendAt = NextSendAt();
 
-        var canSendValidationMessage = await ValidateCanSendToPhone(session, phone, purpose, cancellationToken).ConfigureAwait(false);
+        var canSendValidationMessage = await CheckIfBlocked(session, phone, purpose, cancellationToken).ConfigureAwait(false);
         if (!canSendValidationMessage.IsNullOrEmpty())
             throw StandardError.Constraint(canSendValidationMessage);
 
-        var sTotp = totp.ToString(TotpFormat, CultureInfo.InvariantCulture);
+        var sTotp = totp.ToString(TotpFormat);
         if (!HostInfo.IsProductionInstance)
             Log.LogWarning("!!! Phone verification code for {Phone}: {Code}", phone.Value, sTotp);
         await TextMessage.Send(phone, $"{CoreConstants.AppName}: your phone verification code is {sTotp}. Don't share it with anyone.").ConfigureAwait(false);
@@ -146,7 +163,7 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         var conflictingUserId = await dbContext
             .GetUserIdByIdentity(phoneIdentity, false, cancellationToken)
             .ConfigureAwait(false);
-        if (conflictingUserId != null && !OrdinalEquals(conflictingUserId.Value, account.Id.Value))
+        if (conflictingUserId != null && conflictingUserId.Value != account.Id.Value)
             throw StandardError.Unauthorized("Phone number has already been taken by another account.");
 
         var cmd = new AccountsBackend_Update(updatedAccount, account.Version);

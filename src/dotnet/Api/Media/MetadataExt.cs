@@ -21,7 +21,7 @@ internal static class MetadataExt
 
         // TODO(AY): remove this workaround when int is not deserialized as long
         if (typeof(T) == typeof(int) && value is not int)
-            value = Convert.ToInt32(value, CultureInfo.InvariantCulture);
+            value = Convert.ToInt32(value);
 
         // TODO(AY): remove this workaround once we touch all Media
         if (typeof(T) == typeof(Moment) && value is not Moment) {

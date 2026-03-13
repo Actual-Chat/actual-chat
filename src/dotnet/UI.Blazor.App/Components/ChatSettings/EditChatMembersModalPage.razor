@@ -118,7 +118,7 @@
         };
 
         int Compare((AuthorId, string) info1, (AuthorId, string) info2)
-            => OrdinalCompare(info1.Item2, info2.Item2);
+            => string.Compare(info1.Item2, info2.Item2);
     }
 
     private void OnInviteClick()

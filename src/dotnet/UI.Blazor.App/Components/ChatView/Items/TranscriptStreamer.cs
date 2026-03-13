@@ -141,8 +141,8 @@ public class TranscriptStreamer(ChatEntryId id, AppUIHub hub) : WorkerBase
                     isTranslation);
         }
         catch (Exception e) {
-            if (OrdinalEquals(e.GetType().FullName, "Microsoft.AspNetCore.SignalR.HubException")
-                || !e.Message.OrdinalContains(nameof(OperationCanceledException)))
+            if (e.GetType().FullName == "Microsoft.AspNetCore.SignalR.HubException"
+                || !e.Message.Contains(nameof(OperationCanceledException)))
                 throw;
             // Not fully sure if it's the case, but it seems that sometimes SignalR
             // wraps OperationCanceledException into HubException, so here we suppress it.
@@ -162,7 +162,7 @@ public class TranscriptStreamer(ChatEntryId id, AppUIHub hub) : WorkerBase
         if (previous.Length <= current.Length) {
             var prevSuffix = previous.AsSpan(baseLen);
             var currSuffix = current.AsSpan(baseLen);
-            if (currSuffix.StartsWith(prevSuffix, StringComparison.Ordinal))
+            if (currSuffix.StartsWith(prevSuffix))
                 return previous.Length;
         }
 
@@ -170,7 +170,7 @@ public class TranscriptStreamer(ChatEntryId id, AppUIHub hub) : WorkerBase
         if (current.Length <= previous.Length) {
             var currSuffix = current.AsSpan(baseLen);
             var prevSuffix = previous.AsSpan(baseLen);
-            if (prevSuffix.StartsWith(currSuffix, StringComparison.Ordinal))
+            if (prevSuffix.StartsWith(currSuffix))
                 return current.Length;
         }
 

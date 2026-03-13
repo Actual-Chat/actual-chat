@@ -49,7 +49,7 @@ public static class UrlMapperExt
             var url = $"api/avatars/{kindPath}/{Uri.EscapeDataString(query.Key)}";
             var separator = '?';
             if (query.Format != AvatarFormat.Svg) {
-                url += $"{separator}format={query.Format.ToString().ToLowerInvariant()}";
+                url += $"{separator}format={query.Format.ToString().ToLower()}";
                 separator = '&';
             }
             if (query.Size > 0) {
@@ -59,6 +59,14 @@ public static class UrlMapperExt
             if (query.Kind is AvatarKind.Marble && !query.Title.IsNullOrEmpty())
                 url += $"{separator}title={Uri.EscapeDataString(query.Title)}";
             return mapper.ToAbsolute(url);
+        }
+
+        public string IconUrl(IconQuery query)
+        {
+            var pictureUrl = mapper.PicturePreview128Url(query.Picture);
+            return pictureUrl.IsNullOrEmpty()
+                ? mapper.AvatarUrl(query.AvatarQuery)
+                : pictureUrl;
         }
 
         private string PictureUrl(Picture picture)

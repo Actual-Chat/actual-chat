@@ -107,3 +107,8 @@ body.narrow .sign-in-modal.narrow-view__modal__position-stretch {
 .sign-in-step .c-recaptcha-info .recaptcha-link {
     @apply text-caption-3 text-primary;
 }
+
+/* Sign-in step - account error */
+.sign-in-step .c-account-error {
+    @apply text-caption-1 text-danger;
+}

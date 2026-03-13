@@ -58,7 +58,7 @@ public sealed partial class MediaId : StringIdentifier, IStringIdentifier<MediaI
     public bool Equals(MediaId? other)
         => !ReferenceEquals(other, null)
             && HashCode == other.HashCode
-            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+            && string.Equals(Value, other.Value);
     public override bool Equals(object? obj)
         => obj is MediaId other && Equals(other);
 

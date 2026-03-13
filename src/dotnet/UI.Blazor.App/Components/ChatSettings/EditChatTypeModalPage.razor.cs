@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using ActualChat.Invite;
 using ActualChat.UI.Blazor.Services;
 
@@ -52,7 +53,7 @@ public partial class EditChatTypeModalPage
         var chat = await Chats.Get(Session, ChatId, CancellationToken.None).Require();
         _placeId = (chat.Id as PlaceChatId)?.PlaceId;
         if (_placeId is not null) {
-            _isPlaceWelcomeChat = OrdinalEquals(Constants.Chat.SystemTags.Welcome, chat.SystemTag);
+            _isPlaceWelcomeChat = Constants.Chat.SystemTags.Welcome == chat.SystemTag;
             _place = await Places.Get(Session, _placeId, CancellationToken.None).Require().ConfigureAwait(false);
             if (_place.IsPublic && _place.AliasId is not null)
                 _aliasLocalPrefix = $"{Links.ChatAliasPrefix}{_place.AliasId.Value}{Links.Separator}{Links.AliasPrefix}";
@@ -80,8 +81,8 @@ public partial class EditChatTypeModalPage
 
         _editContext = new EditContext(_form);
         _editContext.OnFieldChanged += (_, e) => {
-            if (OrdinalEquals(e.FieldIdentifier.FieldName, nameof(_form.AliasId))
-                || OrdinalEquals(e.FieldIdentifier.FieldName, nameof(_form.IsPublic)))
+            if (e.FieldIdentifier.FieldName == nameof(_form.AliasId)
+                || e.FieldIdentifier.FieldName == nameof(_form.IsPublic))
             {
                 _editContext.NotifyFieldChanged(_editContext.Field(nameof(_form.ActualAliasId)));
             }
@@ -195,7 +196,7 @@ public partial class EditChatTypeModalPage
         public bool AllowAnonymousAuthors { get; set; }
 
         public string CurrentAliasId { get; set; } = "";
-        [AliasId]
+        [AliasId, Display(Name = "Short name")]
         public string ActualAliasId => IsPublic ? AliasId : "";
 
         public string FormId { get; }

@@ -17,7 +17,7 @@ public class OpenAIRateLimitsLoggingHandler(OpenAIRateLimitsLoggingHandler.Optio
         var isTooManyRequests = response.StatusCode == HttpStatusCode.TooManyRequests;
         if (isTooManyRequests || options.LogLimits) {
             var sb = new StringBuilder();
-            foreach (var header in response.Headers.Where(x => x.Key.OrdinalIgnoreCaseStartsWith(Prefix)))
+            foreach (var header in response.Headers.Where(x => x.Key.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase)))
                 sb.AppendLine().Append(header.Key[Prefix.Length..]).Append('=').AppendJoin(',', header.Value);
             Log.LogWarning("OpenAI rate limits: {Headers}", sb);
         }

@@ -20,8 +20,8 @@ public partial class TimerFlow : Flow<Unit>
     {
         Console.Log($"Init @ {Runtime.Services.MeshWatcher().ThisNode.Ref.Value}");
         var args = Id.SplitArguments("", "1", "1");
-        RemainingCount = int.Parse(args[1], CultureInfo.InvariantCulture);
-        Period = TimeSpan.FromSeconds(double.Parse(args[2], CultureInfo.InvariantCulture));
+        RemainingCount = int.Parse(args[1]);
+        Period = TimeSpan.FromSeconds(double.Parse(args[2]));
         Console.Log($"Init: RemainingCount={RemainingCount}, Period={Period.ToShortString()}");
         return default;
     }

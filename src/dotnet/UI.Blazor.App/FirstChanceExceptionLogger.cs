@@ -30,8 +30,8 @@ public static class FirstChanceExceptionLogger
 
         var withStackTrace = true;
         // Handles System.IO.FileNotFoundException and Java.IO.FileNotFoundException exceptions as well
-        if (OrdinalEquals(error.GetType().Name, nameof(FileNotFoundException)))
-            if (error.Message.OrdinalStartsWith("wwwroot/"))
+        if (error.GetType().Name == nameof(FileNotFoundException))
+            if (error.Message.StartsWith("wwwroot/"))
                 withStackTrace = false;
 
         LogInternal(error, withStackTrace);

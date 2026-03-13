@@ -45,18 +45,11 @@
             ? totpNextSendAt - Clocks.SystemClock.Now + TimeSpan.FromMilliseconds(10)
             : default; // No ticks
 
-    protected override Task OnInitializedAsync() {
-        var now = Clocks.ServerClock.Now;
-        var totpNextSendAt = TotpUI.TotpNextSendAt.Value;
-        if (totpNextSendAt > now) {
-            _totpNextSendAt = totpNextSendAt;
-            _timerKey = new(); // To make sure the timer is renewed
-        } else {
-            _totpNextSendAt = null;
-            return SendTotp();
-        }
-        return Task.CompletedTask;
-    }
+    protected override Task OnInitializedAsync()
+        // Always send TOTP on init - server-side throttling prevents duplicate sends.
+        // We can't rely on TotpUI.TotpNextSendAt here because it's shared across
+        // phone and email flows, so a prior phone verification would suppress email sending.
+        => SendTotp();
 
     public ValueTask Focus()
         => _totpInput?.Focus() ?? ValueTask.CompletedTask;
@@ -104,8 +97,8 @@
 
     private async Task SendTotp() {
         var codeSent = Purpose is TotpPurpose.VerifyEmail or TotpPurpose.SignInEmail
-            ? await TotpUI.SendEmailCode(Purpose, Email!, CancellationToken.None)
-            : await TotpUI.SendPhoneCode(Purpose, Phone!, CancellationToken.None);
+            ? await TotpUI.SendCode(Purpose, Email!, CancellationToken.None)
+            : await TotpUI.SendCode(Purpose, Phone!, CancellationToken.None);
         if (!codeSent)
             return;
 

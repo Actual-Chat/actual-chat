@@ -26,9 +26,9 @@ public class VirtualListTestService : IComputeService
         var end = range.End;
         if (!query.IsNone) {
             var queryRange = query.KeyRange;
-            start = int.Parse(queryRange.Start, NumberStyles.Integer, CultureInfo.InvariantCulture);
+            start = int.Parse(queryRange.Start, NumberStyles.Integer);
             start += query.MoveRange.Start;
-            end = int.Parse(queryRange.End, NumberStyles.Integer, CultureInfo.InvariantCulture);
+            end = int.Parse(queryRange.End, NumberStyles.Integer);
             end += query.MoveRange.End;
         }
 

@@ -17,11 +17,11 @@ public sealed class KubeLeaseClient(IServiceProvider services)
 
     public async Task<Api.Lease?> Get(
         string @namespace, string name,
-        CancellationToken cancellationToken = default,
-        TimeSpan? requestTimeout = null)
+        TimeSpan? requestTimeout = null,
+        CancellationToken cancellationToken = default)
     {
         Log.LogDebug("Getting lease {LeaseName} in namespace {Namespace}", name, @namespace);
-        using var cts = CreateTimeoutCts(cancellationToken, requestTimeout);
+        using var cts = CreateTimeoutCts(requestTimeout, cancellationToken);
         var ct = cts?.Token ?? cancellationToken;
         using var httpClient = await CreateHttpClient(ct).ConfigureAwait(false);
         var response = await httpClient.GetAsync(GetUrl(@namespace, name), ct).ConfigureAwait(false);
@@ -39,15 +39,15 @@ public sealed class KubeLeaseClient(IServiceProvider services)
 
     public async Task<Api.Lease> Create(
         string @namespace, Api.Lease lease,
-        CancellationToken cancellationToken = default,
-        TimeSpan? requestTimeout = null)
+        TimeSpan? requestTimeout = null,
+        CancellationToken cancellationToken = default)
     {
         Log.LogDebug("Creating lease {LeaseName} in namespace {Namespace}", lease.Metadata.Name, @namespace);
         var labels = lease.Metadata.Labels;
         if (labels == null || labels.Count == 0)
             throw StandardError.Internal("Lease metadata labels cannot be null or empty.");
 
-        using var cts = CreateTimeoutCts(cancellationToken, requestTimeout);
+        using var cts = CreateTimeoutCts(requestTimeout, cancellationToken);
         var ct = cts?.Token ?? cancellationToken;
         using var httpClient = await CreateHttpClient(ct).ConfigureAwait(false);
         var response = await httpClient.PostAsJsonAsync(GetUrl(@namespace), lease, WebJsonSerializeOptions, ct).ConfigureAwait(false);
@@ -62,15 +62,15 @@ public sealed class KubeLeaseClient(IServiceProvider services)
 
     public async Task<Api.Lease> Replace(
         string @namespace, Api.Lease lease,
-        CancellationToken cancellationToken = default,
-        TimeSpan? requestTimeout = null)
+        TimeSpan? requestTimeout = null,
+        CancellationToken cancellationToken = default)
     {
         Log.LogDebug("Replacing lease {LeaseName} in namespace {Namespace}", lease.Metadata.Name, @namespace);
         var labels = lease.Metadata.Labels;
         if (labels == null || labels.Count == 0)
             throw StandardError.Internal("Lease metadata labels cannot be null or empty.");
 
-        using var cts = CreateTimeoutCts(cancellationToken, requestTimeout);
+        using var cts = CreateTimeoutCts(requestTimeout, cancellationToken);
         var ct = cts?.Token ?? cancellationToken;
         using var httpClient = await CreateHttpClient(ct).ConfigureAwait(false);
         var response = await httpClient.PutAsJsonAsync(GetUrl(@namespace, lease.Metadata.Name), lease, WebJsonSerializeOptions, ct).ConfigureAwait(false);
@@ -83,11 +83,11 @@ public sealed class KubeLeaseClient(IServiceProvider services)
 
     public async Task<bool> Delete(
         string @namespace, string name,
-        CancellationToken cancellationToken = default,
-        TimeSpan? requestTimeout = null)
+        TimeSpan? requestTimeout = null,
+        CancellationToken cancellationToken = default)
     {
         Log.LogDebug("Deleting lease {LeaseName} in namespace {Namespace}", name, @namespace);
-        using var cts = CreateTimeoutCts(cancellationToken, requestTimeout);
+        using var cts = CreateTimeoutCts(requestTimeout, cancellationToken);
         var ct = cts?.Token ?? cancellationToken;
         using var httpClient = await CreateHttpClient(ct).ConfigureAwait(false);
         var response = await httpClient.DeleteAsync(GetUrl(@namespace, name), ct).ConfigureAwait(false);
@@ -224,7 +224,7 @@ public sealed class KubeLeaseClient(IServiceProvider services)
         return kube.CreateHttpClient(HttpClientFactory);
     }
 
-    private static CancellationTokenSource? CreateTimeoutCts(CancellationToken cancellationToken, TimeSpan? requestTimeout)
+    private static CancellationTokenSource? CreateTimeoutCts(TimeSpan? requestTimeout, CancellationToken cancellationToken)
     {
         if (requestTimeout is not { } timeout)
             return null;

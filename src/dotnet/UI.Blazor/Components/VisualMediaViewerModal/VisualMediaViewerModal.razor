@@ -144,7 +144,7 @@
 
     protected override void OnInitialized() {
         _attachments = ModalModel.Attachments.ToList();
-        var selectedAttachment = _attachments.FirstOrDefault(x => OrdinalIgnoreCaseEquals(UrlMapper.ContentUrl(x.Media.BlobId), ModalModel.Url));
+        var selectedAttachment = _attachments.FirstOrDefault(x => string.Equals(UrlMapper.ContentUrl(x.Media.BlobId), ModalModel.Url, StringComparison.OrdinalIgnoreCase));
         if (selectedAttachment != null) {
             _selectedSlide = _attachments.IndexOf(selectedAttachment);
         }

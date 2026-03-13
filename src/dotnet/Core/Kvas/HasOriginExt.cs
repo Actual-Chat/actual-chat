@@ -11,7 +11,7 @@ public static class HasOriginExt
     {
         if (origin.IsNullOrEmpty())
             throw new ArgumentOutOfRangeException(nameof(origin));
-        if (OrdinalEquals(target.Origin, origin))
+        if (target.Origin == origin)
             return;
 
         var setter = OriginSetters.GetOrAdd(

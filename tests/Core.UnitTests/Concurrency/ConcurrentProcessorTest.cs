@@ -261,9 +261,9 @@ public class ConcurrentProcessorTest(ITestOutputHelper @out) : TestBase(@out)
 
     // Nested types
 
-    private class Fetcher
+    private sealed class Fetcher
     {
-        private readonly Dictionary<string, TaskCompletionSource<string>> _taskSources = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, TaskCompletionSource<string>> _taskSources = new();
 
         public void Cancel(string id)
             => _taskSources[id].TrySetCanceled();

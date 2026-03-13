@@ -502,11 +502,11 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                                 if (text.IsNullOrWhiteSpace())
                                     return;
 
-                                if (OrdinalEquals(text, lastText))
+                                if (text == lastText)
                                     return; // No need to translate the same text (it's already been translated')
 
                                 var context = new List<TranslationResult>();
-                                if (!OrdinalEquals(stableTranscript.Text, stableTranslatedTranscript.Text))
+                                if (stableTranscript.Text != stableTranslatedTranscript.Text)
                                     context.Add(new TranslationResult(stableTranscript.Text,
                                         stableTranslatedTranscript.Text));
                                 var translatedText = await RealtimeTranslator.Translate(
@@ -515,9 +515,9 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                                         context.ToArray(),
                                         cancellationToken)
                                     .ConfigureAwait(false);
-                                if (OrdinalIgnoreCaseEquals(translatedText, Constants.Translation.NoTranslationNeededText))
+                                if (string.Equals(translatedText, Constants.Translation.NoTranslationNeededText, StringComparison.OrdinalIgnoreCase))
                                     translatedText = text; // No translation needed, use original content
-                                if (!translatedText.StartsWith(" ", StringComparison.OrdinalIgnoreCase)
+                                if (!translatedText.StartsWith(' ')
                                     && stableTranslatedTranscript.Text.Length > 0)
                                     translatedText = $" {translatedText}";
                                 lastTranslatedTranscript = stableTranslatedTranscript.WithSuffix(translatedText,

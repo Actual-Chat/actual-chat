@@ -517,7 +517,7 @@ public static class Countries
 
     public static readonly Dictionary<string, Country> ById = All
         .Select(x => new KeyValuePair<string, Country>(x.Id.Value, x))
-        .Concat(All.Select(x => new KeyValuePair<string, Country>(x.Id.Value.ToLowerInvariant(), x)))
+        .Concat(All.Select(x => new KeyValuePair<string, Country>(x.Id.Value.ToLower(), x)))
         .DistinctBy(kv => kv.Key)
-        .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
+        .ToDictionary(kv => kv.Key, kv => kv.Value);
 }

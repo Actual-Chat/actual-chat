@@ -45,7 +45,7 @@ public sealed partial record Transcript(
         => $"`{Sanitizer.MaskPrivate(Text)}` + {TimeMap}";
 
     public bool IsIdenticalTo(Transcript other)
-        => OrdinalEquals(Text, other.Text)
+        => Text == other.Text
             && TimeMap.IsIdenticalTo(other.TimeMap, TimeMapEpsilon);
 
     public Transcript RequireValid()

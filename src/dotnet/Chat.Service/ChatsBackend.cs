@@ -33,7 +33,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     private static readonly Task<IReadOnlyDictionary<Symbol, LinkPreview>> EmptyLinkPreviewsTask
         = Task.FromResult(EmptyLinkPreviews);
     private static readonly IReadOnlyDictionary<string, ChatEntryAudio> EmptyAudioMap
-        = new Dictionary<string, ChatEntryAudio>(StringComparer.Ordinal).AsReadOnly();
+        = new Dictionary<string, ChatEntryAudio>().AsReadOnly();
     private static readonly Task<IReadOnlyDictionary<string, ChatEntryAudio>> EmptyAudioMapTask
         = Task.FromResult(EmptyAudioMap);
 
@@ -867,7 +867,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 if (chatId is null) {
                     if (placeId is null) // No place is created yet, so we're creating its root chat
                         chatId = PlaceId.New().RootChatId;
-                    else if (OrdinalEquals(Constants.Chat.SystemTags.Welcome, update.SystemTag))
+                    else if (Constants.Chat.SystemTags.Welcome == update.SystemTag)
                         chatId = PlaceChatId.Parse(PlaceChatId.Format(placeId, Constants.Chat.SystemTags.Welcome));
                     else
                         chatId = PlaceChatId.New(placeId);
@@ -969,7 +969,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             dbChat.RequireVersion(expectedVersion);
             if (chatId.Kind is ChatKind.Place) {
                 update.ValidateForPlaceChat();
-                if (OrdinalEquals(Constants.Chat.SystemTags.Welcome, dbChat.SystemTag)
+                if (Constants.Chat.SystemTags.Welcome == dbChat.SystemTag
                     && update.IsPublic == false)
                     throw StandardError.Constraint("Can't change chat type to private for 'Welcome' chat.");
             }
@@ -985,7 +985,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             chatId.Require();
             dbChat.Require();
 
-            if (OrdinalEquals(Constants.Chat.SystemTags.Welcome, dbChat.SystemTag))
+            if (Constants.Chat.SystemTags.Welcome == dbChat.SystemTag)
                 throw StandardError.Constraint("It's prohibited to remove 'Welcome' chat.");
 
             await RemoveMedia(dbChat.MediaId, cancellationToken).ConfigureAwait(false);
@@ -997,7 +997,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .ConfigureAwait(false);
             foreach (var mediaSid in attachmentMediaIds) {
                 var mediaId = MediaId.Parse(mediaSid);
-                if (!OrdinalEquals(mediaId.Scope, chatId.Value))
+                if (mediaId.Scope != chatId.Value)
                     continue; // NOTE(DF): Do not remove media from current chat scope. Forwarded messages can contain media from another chat.
 
                 await RemoveMedia(mediaId, cancellationToken).ConfigureAwait(false);
@@ -1319,7 +1319,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             var oldMediaSid = oldEntry.Audio?.MediaId?.Value;
             var newMediaSid = entry.Audio?.MediaId?.Value;
             if (!oldMediaSid.IsNullOrEmpty()
-                && !OrdinalEquals(oldMediaSid, newMediaSid)
+                && oldMediaSid != newMediaSid
                 && MediaId.TryParse(oldMediaSid, out var strippedMediaId)) {
                 await RemoveMedia(strippedMediaId, cancellationToken).ConfigureAwait(false);
             }
@@ -1562,7 +1562,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return;
         }
 
-        var chatEntriesToInvalidate = new Dictionary<string, long>(StringComparer.Ordinal);
+        var chatEntriesToInvalidate = new Dictionary<string, long>();
         var userId = command.UserId;
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -2026,7 +2026,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var chatIds = await ListPlaceChatIds(placeId, cancellationToken).ConfigureAwait(false);
         foreach (var chatId in chatIds) {
             var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
-            if (chat != null && OrdinalEquals(Constants.Chat.SystemTags.Welcome, chat.SystemTag)) {
+            if (chat != null && Constants.Chat.SystemTags.Welcome == chat.SystemTag) {
                 var resetChatTagCommand = new ChatsBackend_Change(chatId, null, new Change<ChatDiff> {
                     Update = new ChatDiff { SystemTag = Symbol.Empty }
                 });
@@ -2280,7 +2280,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (entry.IsSystemEntry || entry.IsContentStreaming)
             return entry;
 
-        var wasContentChanged = !OrdinalEquals(entry.Content, existing?.Content ?? "");
+        var wasContentChanged = entry.Content != (existing?.Content ?? "");
         if (!wasContentChanged)
             return entry with {
                 LinkPreviewIds = existing?.LinkPreviewIds ?? [],
@@ -2342,7 +2342,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return;
 
         var emails = account.Identities.GetEmails();
-        var hasTeamEmail = emails.Any(e => e.OrdinalEndsWith(Constants.Team.EmailSuffix));
+        var hasTeamEmail = emails.Any(e => e.EndsWith(Constants.Team.EmailSuffix));
         if (!hasTeamEmail)
             return;
 
@@ -2473,7 +2473,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .Select(mid => MediaBackend.Get(mid, cancellationToken))
                 .Collect(cancellationToken)
                 .ConfigureAwait(false);
-            var map = new Dictionary<string, ChatEntryAudio>(StringComparer.Ordinal);
+            var map = new Dictionary<string, ChatEntryAudio>();
             foreach (var media in mediaList) {
                 if (media is null)
                     continue;

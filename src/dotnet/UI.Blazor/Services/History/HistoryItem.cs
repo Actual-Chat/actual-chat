@@ -38,14 +38,14 @@ public sealed record HistoryItem(
     public bool IsIdenticalTo(HistoryItem other)
     {
         if (ReferenceEquals(States, other.States)) // Quick way to check if they're 100% equal
-            return OrdinalEquals(Url, other.Url);
+            return Url == other.Url;
 
         foreach (var (stateType, state) in States) {
             var otherState = other[stateType];
             if (!ReferenceEquals(state, otherState) && !Equals(state, otherState))
                 return false;
         }
-        return OrdinalEquals(Url, other.Url);
+        return Url == other.Url;
     }
 
     public int CompareBackStepCount(HistoryItem otherItem)
@@ -94,7 +94,7 @@ public sealed record HistoryItem(
     public HistoryItem WithUrl(NavigationManager nav)
         => WithUrl(nav.GetLocalUrl().Value);
     public HistoryItem WithUrl(string url)
-        => OrdinalEquals(url, Url) ? this : this with { Url = url };
+        => url == Url ? this : this with { Url = url };
 
     public HistoryItem With<TState>(TState state)
         where TState : HistoryState

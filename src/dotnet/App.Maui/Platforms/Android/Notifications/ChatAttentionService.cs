@@ -69,9 +69,9 @@ public sealed class ChatAttentionService
     public void OnHandleIntent(Intent intent)
     {
         var action = intent.Action;
-        if (OrdinalEquals(action, AlarmAction))
+        if (action == AlarmAction)
             DispatchOnNonMainThread(OnAlarmTriggered);
-        else if (OrdinalEquals(action, SnoozeAction))
+        else if (action == SnoozeAction)
             DispatchOnNonMainThread(OnSnooze);
     }
 
@@ -165,7 +165,7 @@ public sealed class ChatAttentionService
         var notificationManager = NotificationManagerCompat.From(Context)!;
         var activeNotifications = notificationManager.ActiveNotifications!;
         var existentNotifications = activeNotifications
-            .Where(c => OrdinalEquals(c.Tag, NotificationTag))
+            .Where(c => c.Tag == NotificationTag)
             .ToArray();
         var hasRequests = state != null && state.HasRequest();
         if (clear || !hasRequests) {

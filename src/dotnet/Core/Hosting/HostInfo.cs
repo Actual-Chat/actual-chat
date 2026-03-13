@@ -33,17 +33,17 @@ public sealed record HostInfo
     {
         _baseUrlKindLazy = LazySlim.New(this, static self => {
             var host = self.BaseUrl.EnsureSuffix("/").ToUri().Host;
-            return OrdinalIgnoreCaseEquals(host, CoreConstants.Hosts.Prod) ? BaseUrlKind.Production
-                : OrdinalIgnoreCaseEquals(host, CoreConstants.Hosts.Dev) ? BaseUrlKind.Development
-                : OrdinalIgnoreCaseEquals(host, CoreConstants.Hosts.Local) ? BaseUrlKind.Local
+            return string.Equals(host, CoreConstants.Hosts.Prod, StringComparison.OrdinalIgnoreCase) ? BaseUrlKind.Production
+                : string.Equals(host, CoreConstants.Hosts.Dev, StringComparison.OrdinalIgnoreCase) ? BaseUrlKind.Development
+                : string.Equals(host, CoreConstants.Hosts.Local, StringComparison.OrdinalIgnoreCase) ? BaseUrlKind.Local
                 : BaseUrlKind.Unknown;
         });
         _isProductionInstanceLazy = LazySlim.New(this,
-            static self => OrdinalEquals(self.Environment.Value, Environments.Production));
+            static self => self.Environment.Value == Environments.Production);
         _isStagingInstanceLazy ??= LazySlim.New(this,
-            static self => OrdinalEquals(self.Environment.Value, Environments.Staging));
+            static self => self.Environment.Value == Environments.Staging);
         _isDevelopmentInstanceLazy ??= LazySlim.New(this,
-            static self => OrdinalEquals(self.Environment.Value, Environments.Development));
+            static self => self.Environment.Value == Environments.Development);
     }
 
     public bool HasRole(HostRole role) => Roles.Contains(role);

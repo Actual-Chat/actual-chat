@@ -18,7 +18,7 @@ public static partial class ServerEndpoints
     {
         var endpoints = (configuration.GetValue<string>("URLS") ?? "").Split(";");
         if (!prefix.IsNullOrEmpty())
-            endpoints = endpoints.Where(x => x.OrdinalStartsWith(prefix)).ToArray();
+            endpoints = endpoints.Where(x => x.StartsWith(prefix)).ToArray();
         return endpoints;
     }
 
@@ -38,7 +38,7 @@ public static partial class ServerEndpoints
         if (!m.Success)
             return false;
 
-        if (!int.TryParse(m.Groups[3].Value, CultureInfo.InvariantCulture, out port))
+        if (!int.TryParse(m.Groups[3].Value, out port))
             return false;
 
         host = m.Groups[2].Value;

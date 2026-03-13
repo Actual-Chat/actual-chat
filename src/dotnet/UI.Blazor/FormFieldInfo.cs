@@ -25,7 +25,7 @@ public abstract class FormFieldInfo
             foreach (var fieldIdProperty in formType1.GetProperties(BindingFlags.Instance | BindingFlags.Public)) {
                 if (fieldIdProperty.PropertyType != typeof(string))
                     continue;
-                if (!fieldIdProperty.Name.OrdinalEndsWith(FieldIdSuffix))
+                if (!fieldIdProperty.Name.EndsWith(FieldIdSuffix))
                     continue;
                 var field = New(formType1, fieldIdProperty);
                 fields.Add(field);
@@ -38,7 +38,7 @@ public abstract class FormFieldInfo
     [UnconditionalSuppressMessage("Trimming", "IL2111:DoesNotSatisfyDynamicallyAccessedMemberTypes.PublicProperties", Justification = "FormType is marked with DynamicallyAccessedMembers.")]
     public static FormFieldInfo New([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]Type formType, PropertyInfo fieldIdProperty)
     {
-        if (!fieldIdProperty.Name.OrdinalEndsWith(FieldIdSuffix))
+        if (!fieldIdProperty.Name.EndsWith(FieldIdSuffix))
             throw new ArgumentOutOfRangeException(nameof(fieldIdProperty),
                 $"'{fieldIdProperty.Name}' must end with '{FieldIdSuffix}'.");
         if (fieldIdProperty.PropertyType != typeof(string))

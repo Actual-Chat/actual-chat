@@ -13,7 +13,7 @@ public class BatchingKvas : SafeAsyncDisposableBase, IKvas
         public IBatchProcessorWorkerPolicy ReaderWorkerPolicy { get; init; }
             = new BatchProcessorWorkerPolicy() { MaxWorkerCount = 4 };
         public Func<IThreadSafeLruCache<string, byte[]?>> ReaderCacheFactory { get; init; }
-            = () => new ThreadSafeLruCache<string, byte[]?>(256, StringComparer.Ordinal);
+            = () => new ThreadSafeLruCache<string, byte[]?>(256);
         public int FlushBatchSize { get; init; } = 64;
         public TimeSpan FlushDelay { get; init; } = TimeSpan.FromSeconds(0.25);
         public TimeSpan DisposeTimeout { get; init; } = TimeSpan.FromSeconds(3);

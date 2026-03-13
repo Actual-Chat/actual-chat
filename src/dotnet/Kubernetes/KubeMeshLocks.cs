@@ -10,8 +10,8 @@ public class KubeMeshLocks : MeshLocksBase
     public const string FullName = "voxt.ai/full-name";
     public static readonly TimeSpan StaleLeaseAge = TimeSpan.FromDays(7);
 
-    private readonly ConcurrentDictionary<string, (string FullName, string LeaseName)> _leaseFullKeys = new(StringComparer.Ordinal);
-    private readonly ConcurrentDictionary<string, Api.Lease> _cachedLeases = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, (string FullName, string LeaseName)> _leaseFullKeys = new();
+    private readonly ConcurrentDictionary<string, Api.Lease> _cachedLeases = new();
     private readonly string _keyPrefix;
     private readonly int _keyPrefixLength;
     private readonly string _labelSelector;
@@ -40,7 +40,7 @@ public class KubeMeshLocks : MeshLocksBase
     public override async Task<MeshLockInfo?> GetInfo(string key, CancellationToken cancellationToken = default)
     {
         var (_, name) = GetName(key);
-        var lease = await LeaseClient.Get(Namespace, name, cancellationToken).ConfigureAwait(false);
+        var lease = await LeaseClient.Get(Namespace, name, cancellationToken: cancellationToken).ConfigureAwait(false);
         if (lease?.Metadata.Annotations == null)
             return null;
 
@@ -74,7 +74,7 @@ public class KubeMeshLocks : MeshLocksBase
             if (IsExpired(lease) && change.Type == ChangeType.Added)
                 return; // Avoid processing an initial result of lease watch for expired leases
 
-            if (OrdinalEquals(lease.Metadata.Name, name) || key.IsNullOrEmpty()) {
+            if (lease.Metadata.Name == name || key.IsNullOrEmpty()) {
                 var fullName = lease.Metadata.Annotations?[FullName];
                 if (fullName == null && _leaseFullKeys.TryGetValue(key, out var names))
                     fullName = names.FullName;
@@ -99,7 +99,7 @@ public class KubeMeshLocks : MeshLocksBase
             var isExpired = IsExpired(lease);
             var hasAnnotation = lease.Metadata.Annotations != null
                 && lease.Metadata.Annotations.TryGetValue(FullName, out var fullName)
-                && fullName.StartsWith(fullPrefix, StringComparison.Ordinal);
+                && fullName.StartsWith(fullPrefix);
 
             if (!isExpired && hasAnnotation)
                 activeKeys.Add(lease.Metadata.Annotations![FullName][_keyPrefixLength..]);
@@ -141,13 +141,13 @@ public class KubeMeshLocks : MeshLocksBase
         );
 
         try {
-            var created = await LeaseClient.Create(Namespace, lease, cancellationToken, requestTimeout).ConfigureAwait(false);
+            var created = await LeaseClient.Create(Namespace, lease, requestTimeout, cancellationToken).ConfigureAwait(false);
             _cachedLeases[key] = created;
             return true;
         }
         catch (HttpRequestException e) when (e.StatusCode == HttpStatusCode.Conflict) {
             // Lease already exists, check if it's expired
-            var existingLease = await LeaseClient.Get(Namespace, name, cancellationToken, requestTimeout).ConfigureAwait(false);
+            var existingLease = await LeaseClient.Get(Namespace, name, requestTimeout, cancellationToken).ConfigureAwait(false);
             if (existingLease == null)
                 return await TryLock(key, value, expiresIn, cancellationToken).ConfigureAwait(false);
 
@@ -167,7 +167,7 @@ public class KubeMeshLocks : MeshLocksBase
                 }
             };
             try {
-                var replaced = await LeaseClient.Replace(Namespace, existingLease, cancellationToken, requestTimeout).ConfigureAwait(false);
+                var replaced = await LeaseClient.Replace(Namespace, existingLease, requestTimeout, cancellationToken).ConfigureAwait(false);
                 _cachedLeases[key] = replaced;
                 return true;
             }
@@ -189,7 +189,7 @@ public class KubeMeshLocks : MeshLocksBase
 
         // Try using cached lease first (single Replace call instead of GET+Replace)
         if (_cachedLeases.TryGetValue(key, out var cachedLease)
-            && OrdinalEquals(cachedLease.Spec.HolderIdentity, value)
+            && cachedLease.Spec.HolderIdentity == value
             && !IsExpired(cachedLease)) {
             var updatedLease = cachedLease with {
                 Spec = cachedLease.Spec with {
@@ -198,7 +198,7 @@ public class KubeMeshLocks : MeshLocksBase
                 }
             };
             try {
-                var replaced = await LeaseClient.Replace(Namespace, updatedLease, cancellationToken, requestTimeout).ConfigureAwait(false);
+                var replaced = await LeaseClient.Replace(Namespace, updatedLease, requestTimeout, cancellationToken).ConfigureAwait(false);
                 _cachedLeases[key] = replaced;
                 return true;
             }
@@ -209,8 +209,8 @@ public class KubeMeshLocks : MeshLocksBase
         }
 
         // Fallback: GET + Replace
-        var existingLease = await LeaseClient.Get(Namespace, name, cancellationToken, requestTimeout).ConfigureAwait(false);
-        if (existingLease == null || !OrdinalEquals(existingLease.Spec.HolderIdentity, value) || IsExpired(existingLease))
+        var existingLease = await LeaseClient.Get(Namespace, name, requestTimeout, cancellationToken).ConfigureAwait(false);
+        if (existingLease == null || existingLease.Spec.HolderIdentity != value || IsExpired(existingLease))
             return false;
 
         existingLease = existingLease with {
@@ -221,7 +221,7 @@ public class KubeMeshLocks : MeshLocksBase
         };
 
         try {
-            var replaced = await LeaseClient.Replace(Namespace, existingLease, cancellationToken, requestTimeout).ConfigureAwait(false);
+            var replaced = await LeaseClient.Replace(Namespace, existingLease, requestTimeout, cancellationToken).ConfigureAwait(false);
             _cachedLeases[key] = replaced;
             return true;
         }
@@ -235,17 +235,17 @@ public class KubeMeshLocks : MeshLocksBase
     {
         var requestTimeout = KubeLeaseClient.DefaultRequestTimeout;
         var (_, name) = GetName(key);
-        var existingLease = await LeaseClient.Get(Namespace, name, cancellationToken, requestTimeout).ConfigureAwait(false);
+        var existingLease = await LeaseClient.Get(Namespace, name, requestTimeout, cancellationToken).ConfigureAwait(false);
         if (existingLease == null) {
             _cachedLeases.TryRemove(key, out _);
             return MeshLockReleaseResult.Released;
         }
 
-        if (!OrdinalEquals(existingLease.Spec.HolderIdentity, value))
+        if (existingLease.Spec.HolderIdentity != value)
             return MeshLockReleaseResult.AcquiredBySomeoneElse;
 
         try {
-            await LeaseClient.Delete(Namespace, name, cancellationToken, requestTimeout).ConfigureAwait(false);
+            await LeaseClient.Delete(Namespace, name, requestTimeout, cancellationToken).ConfigureAwait(false);
             _cachedLeases.TryRemove(key, out _);
             return MeshLockReleaseResult.Released;
         }
@@ -259,7 +259,7 @@ public class KubeMeshLocks : MeshLocksBase
     {
         var requestTimeout = KubeLeaseClient.DefaultRequestTimeout;
         var (_, name) = GetName(key);
-        var result = await LeaseClient.Delete(Namespace, name, cancellationToken, requestTimeout).ConfigureAwait(false);
+        var result = await LeaseClient.Delete(Namespace, name, requestTimeout, cancellationToken).ConfigureAwait(false);
         _cachedLeases.TryRemove(key, out _);
         return result;
     }
@@ -269,14 +269,14 @@ public class KubeMeshLocks : MeshLocksBase
             static (k, self) => {
                 var fullName = self._keyPrefix + "-"+ k;
                 if (fullName.Length < 31)
-                    return (fullName, fullName.OrdinalReplace(" ", "-").OrdinalReplace(",", ".").OrdinalReplace(":", "").ToKebabCase());
+                    return (fullName, fullName.Replace(" ", "-").Replace(",", ".").Replace(":", "").ToKebabCase());
 
                 var hashSuffix = fullName.Hash().Blake3().Base32(16);
                 var splitIndex = fullName.IndexOfAny([',', ':', ' ', '.']);
                 if (splitIndex < 0)
                     splitIndex = 31;
 
-                var name = fullName[..splitIndex].OrdinalReplace(" ", "-").OrdinalReplace(",", ".").OrdinalReplace(":", "").ToKebabCase() + "-" + hashSuffix;
+                var name = fullName[..splitIndex].Replace(" ", "-").Replace(",", ".").Replace(":", "").ToKebabCase() + "-" + hashSuffix;
                 return (fullName, name);
             }, this);
 
@@ -298,7 +298,7 @@ public class KubeMeshLocks : MeshLocksBase
                 ? age.ToShortString()
                 : "more than 30 days";
             try {
-                await LeaseClient.Delete(Namespace, lease.Metadata.Name, CancellationToken.None).ConfigureAwait(false);
+                await LeaseClient.Delete(Namespace, lease.Metadata.Name, cancellationToken: CancellationToken.None).ConfigureAwait(false);
                 Log.LogInformation("Pruned lease: {LeaseName} (age: {Age})", lease.Metadata.Name, sAge);
             }
             catch (Exception e) {

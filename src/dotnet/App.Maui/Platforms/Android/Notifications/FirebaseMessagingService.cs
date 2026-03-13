@@ -60,7 +60,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
         // https://firebase.google.com/docs/cloud-messaging/concept-options#notifications_and_data_messages
         // Now we use Data message to deliver notifications to Android.
         // This allows us to control notification display style both when app is in foreground and in background modes.
-        var dataRaw = message.Data.ToDictionary(StringComparer.Ordinal);
+        var dataRaw = message.Data.ToDictionary();
         if (Log.IsEnabled(LogLevel.Debug)) {
             var dataAsText = dataRaw.Select(c => $"'{c.Key}':'{c.Value}'").ToCommaPhrase();
             Log.LogDebug("OnMessageReceived: message #{MessageId}, Data: {Data}",

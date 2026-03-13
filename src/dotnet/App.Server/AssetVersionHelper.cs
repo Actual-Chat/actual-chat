@@ -22,17 +22,17 @@ public static partial class AssetVersionHelper
 
     public static ImportMapDefinition StripRelativePaths(ImportMapDefinition importMap)
     {
-        var assetMap = new Dictionary<string, string>(StringComparer.Ordinal);
-        var integrityMap = new Dictionary<string, string>(StringComparer.Ordinal);
+        var assetMap = new Dictionary<string, string>();
+        var integrityMap = new Dictionary<string, string>();
         if (importMap.Imports != null)
             foreach (var (key, value) in importMap.Imports)
-                if (key.StartsWith("./", StringComparison.Ordinal))
+                if (key.StartsWith("./"))
                     assetMap[key[1..]] = value[1..];
                 else
                     assetMap[key] = value;
         if (importMap.Integrity != null)
             foreach (var (key, value) in importMap.Integrity)
-                if (key.StartsWith("./", StringComparison.Ordinal))
+                if (key.StartsWith("./"))
                     integrityMap[key[1..]] = value;
                 else
                     integrityMap[key] = value;
@@ -41,8 +41,8 @@ public static partial class AssetVersionHelper
 
     public static ImportMapDefinition GetWasmAssetsImportMap(ResourceAssetCollection assets)
     {
-        var assetMap = new Dictionary<string, string>(StringComparer.Ordinal);
-        var integrityMap = new Dictionary<string, string>(StringComparer.Ordinal);
+        var assetMap = new Dictionary<string, string>();
+        var integrityMap = new Dictionary<string, string>();
         foreach (var asset in assets) {
             if (!asset.Url.EndsWith(".wasm", StringComparison.OrdinalIgnoreCase) ||
                 !asset.Url.StartsWith("dist", StringComparison.OrdinalIgnoreCase) ||
@@ -55,7 +55,7 @@ public static partial class AssetVersionHelper
             if (label != null)
                 assetMap[$"./{label}"] = $"./{asset.Url}";
         }
-        return new(assetMap, new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.Ordinal), integrityMap);
+        return new(assetMap, new Dictionary<string, IReadOnlyDictionary<string, string>>(), integrityMap);
     }
 
     private static (string? integrity, string? label) GetAssetProperties(ResourceAsset asset) {

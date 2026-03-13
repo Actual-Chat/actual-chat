@@ -63,7 +63,7 @@ public sealed partial class Country : StringIdentifier, IStringIdentifier<Countr
 
     public static bool TryParse(string? s, [NotNullWhen(true)] out Country? result)
     {
-        if (!s.IsNullOrEmpty() && (Countries.ById.TryGetValue(s, out result) || Countries.ById.TryGetValue(s.ToLowerInvariant(), out result)))
+        if (!s.IsNullOrEmpty() && (Countries.ById.TryGetValue(s, out result) || Countries.ById.TryGetValue(s.ToLower(), out result)))
             return true;
 
         result = null;

@@ -28,21 +28,21 @@ public static class MediaTypeExt
         new (ImageExtensionByContentType.Concat(VideoExtensionByContentType), StringComparer.OrdinalIgnoreCase);
 
     public static bool IsSupportedImage(string? contentType)
-        => !contentType.IsNullOrEmpty() && ImageExtensionByContentType.ContainsKey(contentType.ToLowerInvariant());
+        => !contentType.IsNullOrEmpty() && ImageExtensionByContentType.ContainsKey(contentType.ToLower());
     public static bool IsGif(string? contentType)
-        => OrdinalIgnoreCaseEquals(contentType, "image/gif");
+        => string.Equals(contentType, "image/gif", StringComparison.OrdinalIgnoreCase);
     public static bool IsSvg(string? contentType)
-        => OrdinalIgnoreCaseEquals(contentType, "image/svg+xml");
+        => string.Equals(contentType, "image/svg+xml", StringComparison.OrdinalIgnoreCase);
     public static bool IsSupportedVideo(string? contentType)
-        => !contentType.IsNullOrEmpty() && VideoExtensionByContentType.ContainsKey(contentType.ToLowerInvariant());
+        => !contentType.IsNullOrEmpty() && VideoExtensionByContentType.ContainsKey(contentType.ToLower());
     public static bool IsSupportedVisualMedia(string? contentType)
         => IsSupportedImage(contentType) || IsSupportedVideo(contentType);
     public static string? GetFileExtension(string? contentType)
         => !contentType.IsNullOrEmpty() ? ExtensionByContentType.GetValueOrDefault(contentType).NullIfEmpty() : null;
     public static bool IsImage(string? contentType)
-        => contentType?.OrdinalIgnoreCaseStartsWith("image/") ?? false;
+        => contentType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) ?? false;
     public static bool IsVideo(string? contentType)
-        => contentType?.OrdinalIgnoreCaseStartsWith("video/") ?? false;
+        => contentType?.StartsWith("video/", StringComparison.OrdinalIgnoreCase) ?? false;
     public static bool IsVisualMedia(string? contentType)
         => IsImage(contentType) || IsVideo(contentType);
 }

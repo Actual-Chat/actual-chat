@@ -48,7 +48,7 @@ public class ThreadInsightExtractor(ThreadInsightExtractor.Options settings, ISe
         var discussion = await ChatDialogFormatter.EntriesToText(chatEntries, _chatDialogFormatterOptions).ConfigureAwait(false);
         var prompt = PromptHelpers.BuildPrompt(
             promptTemplate,
-            new Dictionary<string, string>(StringComparer.Ordinal) {
+            new Dictionary<string, string>() {
                 { "DISCUSSION", discussion.Truncate(10_000) },
             });
         string? reply;

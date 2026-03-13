@@ -47,7 +47,7 @@ public partial class MauiWebView
         // But I still have some doubts about using 2 subscribers for handling web resource requests
         // and using `args.GetDeferral()`.
         var sUri = args.Request.Uri;
-        if (!sUri.OrdinalStartsWith(ContentResolver.UriContentScheme))
+        if (!sUri.StartsWith(ContentResolver.UriContentScheme))
             return;
 
         if (!ContentResolver.TryGetFilePathFromUri(sUri, out var filePath))
@@ -138,14 +138,14 @@ public partial class MauiWebView
  #pragma warning disable IL2075
             var methodInfo = type.GetMethod("GetResponseContentTypeOrDefault", BindingFlags.Static | BindingFlags.NonPublic)!;
  #pragma warning restore IL2075
-            GetResponseContentTypeOrDefaultFunc = (Func<string, string>)methodInfo.CreateDelegate(typeof(Func<string, string>));
+            GetResponseContentTypeOrDefaultFunc = methodInfo.CreateDelegate<Func<string, string>>();
         }
 
         public static string GetResponseContentTypeOrDefault(string path)
             => GetResponseContentTypeOrDefaultFunc.Invoke(path);
 
         public static IDictionary<string, string> GetResponseHeaders(string contentType)
-            => new Dictionary<string, string>(StringComparer.Ordinal) {
+            => new Dictionary<string, string>() {
                 { "Content-Type", contentType },
                 { "Cache-Control", "no-cache, max-age=0, must-revalidate, no-store" },
             };

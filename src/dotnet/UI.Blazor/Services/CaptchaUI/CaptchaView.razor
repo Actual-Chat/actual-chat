@@ -1,0 +1,39 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Services
+@inherits ComponentBase<UIHub>
+@{
+    if (!_isInitialized)
+        return;
+
+    if (CaptchaUI.IsFake) {
+        <div class="c-recaptcha-info">
+            This is fake reCAPTCHA. Should I fail?
+            <a href=""
+               @onclick="@OnToggleFakeCaptcha"
+               @onclick:preventDefault>@(_fakeCaptchaMustFail ? "Yes" : "No")</a>
+        </div>
+    } else if (CaptchaUI.IsAvailable) {
+        <div class="c-recaptcha-info">
+            This site is protected by reCAPTCHA and the Google
+            <a class="recaptcha-link" href="https://policies.google.com/privacy">Privacy Policy</a> and
+            <a class="recaptcha-link" href="https://policies.google.com/terms">Terms of Service</a> apply.
+        </div>
+    }
+}
+
+@code {
+    private bool _isInitialized;
+    private bool _fakeCaptchaMustFail;
+
+    private CaptchaUI CaptchaUI => field ??= Hub.CaptchaUI;
+
+    protected override async Task OnInitializedAsync() {
+        await CaptchaUI.WhenReady;
+        _isInitialized = true;
+    }
+
+    private async Task OnToggleFakeCaptcha() {
+        _fakeCaptchaMustFail = !_fakeCaptchaMustFail;
+        await Hub.CaptchaUI.SetFakeCaptchaFail(_fakeCaptchaMustFail);
+    }
+}

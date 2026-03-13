@@ -182,7 +182,7 @@
     private async Task PostMessage(ChatId chatId, string text, FilesUploadHandle uploads, int attachmentCount) {
         var afterHandler = new AfterSendMessageHandler(
             SendingMessages.AfterSendMessageHandlerKeys.IncomingShare,
-            attachmentCount.ToInvariantString());
+            attachmentCount.ToString());
         var cmd = SendMessageRequest.NewMessage(chatId, text, uploads, afterHandler);
         var postTask = await SendingMessages.Send(cmd, default).ConfigureAwait(false);
         await postTask.SilentAwait(); // IncomingShareAfterSendMessageHandler will handle a send result.

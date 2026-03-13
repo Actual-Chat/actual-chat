@@ -92,7 +92,7 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
         startedAt.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(1));
 
         await changes.DisposeAsync();
-        var changeSet = await changes.Reader.ReadAllAsync().ToHashSetAsync(StringComparer.Ordinal);
+        var changeSet = await changes.Reader.ReadAllAsync().ToHashSetAsync();
         changeSet.Count.Should().Be(1);
         changeSet.Contains(key).Should().BeTrue();
     }

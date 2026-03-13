@@ -17,7 +17,7 @@ public static class UnitTestExt
         // We drop the namespace to have a more readable instance name
         // (with test method name) after the length is truncated.
         var ns = test.TestCase.TestMethod.TestClass.Class.ToRuntimeType().Namespace;
-        if (displayName.OrdinalStartsWith(ns))
+        if (displayName.StartsWith(ns))
             displayName = displayName[(ns.Length + 1)..];
         // Postgres identifier size limit: 63 characters
         return FilePath.GetHashedName(test.TestCase.UniqueID, displayName, maxLength: 32);

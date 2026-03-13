@@ -55,7 +55,7 @@ public static class TestPeopleExt
         this IReadOnlyDictionary<TestChatKey, AccountFull> people,
         string filter = "")
         => people.Where(x => x.Key.MustJoin)
-            .Where(x => filter.IsNullOrEmpty() || x.Value.Name.OrdinalIgnoreCaseContains(filter))
+            .Where(x => filter.IsNullOrEmpty() || x.Value.Name.Contains(filter, StringComparison.OrdinalIgnoreCase))
             .Select(x => x.Value)
             .ToList();
 
@@ -63,7 +63,7 @@ public static class TestPeopleExt
         this IReadOnlyDictionary<TestChatKey, AccountFull> people,
         string filter = "")
         => people.Where(x => !x.Key.MustJoin)
-            .Where(x => filter.IsNullOrEmpty() || x.Value.Name.OrdinalIgnoreCaseContains(filter))
+            .Where(x => filter.IsNullOrEmpty() || x.Value.Name.Contains(filter, StringComparison.OrdinalIgnoreCase))
             .Select(x => x.Value)
             .ToList();
 }

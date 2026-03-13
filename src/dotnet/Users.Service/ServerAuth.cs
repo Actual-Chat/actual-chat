@@ -43,8 +43,8 @@ public sealed class ServerAuth
     public CloseFlowInfo? IsCloseFlow(HttpContext httpContext)
     {
         var request = httpContext.Request;
-        if (!OrdinalEquals(request.Path.Value, CloseFlowRequestPath)
-            && !OrdinalEquals(request.Path.Value, AppCloseFlowRequestPath))
+        if (request.Path.Value != CloseFlowRequestPath
+            && request.Path.Value != AppCloseFlowRequestPath)
             return null;
 
         var name = "";
@@ -59,15 +59,19 @@ public sealed class ServerAuth
 
         var mustClose = true;
         if (request.Query.TryGetValue("mustClose", out var mustCloseValues))
-            mustClose = int.TryParse(mustCloseValues.FirstOrDefault(), CultureInfo.InvariantCulture, out var x) && x != 0;
+            mustClose = int.TryParse(mustCloseValues.FirstOrDefault(), out var x) && x != 0;
         return new CloseFlowInfo(name, redirectUrl, mustClose);
     }
 
     public Task<(Session Session, bool IsNew)> Authenticate(
         HttpContext httpContext, CancellationToken cancellationToken)
-        => Authenticate(httpContext, false, cancellationToken);
-    public async Task<(Session Session, bool IsNew)> Authenticate(
+        => Authenticate(httpContext, false, false, cancellationToken);
+    public Task<(Session Session, bool IsNew)> Authenticate(
         HttpContext httpContext, bool assumeAllowed,
+        CancellationToken cancellationToken = default)
+        => Authenticate(httpContext, assumeAllowed, false, cancellationToken);
+    public async Task<(Session Session, bool IsNew)> Authenticate(
+        HttpContext httpContext, bool assumeAllowed, bool mustExist,
         CancellationToken cancellationToken = default)
     {
         var originalSession = httpContext.TryGetSessionFromCookie();
@@ -81,7 +85,7 @@ public sealed class ServerAuth
                     throw new TimeoutException();
                 }
 #endif
-                await UpdateAuthState(session, httpContext, assumeAllowed, cancellationToken)
+                await UpdateAuthState(session, httpContext, assumeAllowed, mustExist, cancellationToken)
                     .WaitAsync(TimeSpan.FromSeconds(1), cancellationToken)
                     .ConfigureAwait(false);
                 var isNew = originalSession != session;
@@ -97,8 +101,13 @@ public sealed class ServerAuth
         }
     }
 
-    public async Task UpdateAuthState(
+    public Task UpdateAuthState(
         Session session, HttpContext httpContext, bool assumeAllowed,
+        CancellationToken cancellationToken)
+        => UpdateAuthState(session, httpContext, assumeAllowed, false, cancellationToken);
+
+    public async Task UpdateAuthState(
+        Session session, HttpContext httpContext, bool assumeAllowed, bool mustExist,
         CancellationToken cancellationToken)
     {
         var httpUser = httpContext.User;
@@ -113,8 +122,8 @@ public sealed class ServerAuth
         var sessionInfo = await Accounts.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
         var mustSetupSession =
             sessionInfo == null
-            || !OrdinalEquals(sessionInfo.IPAddress, ipAddress)
-            || !OrdinalEquals(sessionInfo.UserAgent, userAgent)
+            || sessionInfo.IPAddress != ipAddress
+            || sessionInfo.UserAgent != userAgent
             || sessionInfo.LastSeenAt + SessionInfoUpdatePeriod < Clocks.SystemClock.Now;
         if (mustSetupSession || sessionInfo == null) {
             var upsertSessionCmd = new SessionsBackend_Upsert(session, ipAddress, userAgent);
@@ -137,7 +146,7 @@ public sealed class ServerAuth
                 if (!isSignInAllowed)
                     return; // Sign-in or user change is not allowed for the current location
 
-                await SignIn(session, existingAccount, httpUser, httpAuthenticationSchema, cancellationToken).ConfigureAwait(false);
+                await SignIn(session, existingAccount, httpUser, httpAuthenticationSchema, mustExist, cancellationToken).ConfigureAwait(false);
             }
             else if (isSignedIn && (assumeAllowed || AllowSignOut(this, httpContext)))
                 await SignOut(session, cancellationToken).ConfigureAwait(false);
@@ -152,9 +161,9 @@ public sealed class ServerAuth
 
     private async Task SignIn(
         Session session, AccountFull? existingAccount, ClaimsPrincipal httpUser, string httpAuthenticationSchema,
-        CancellationToken cancellationToken)
+        bool mustExist, CancellationToken cancellationToken)
     {
-        var signInCommand = await GetSignInCommand(session, httpUser, httpAuthenticationSchema, cancellationToken).ConfigureAwait(false);
+        var signInCommand = await GetSignInCommand(session, httpUser, httpAuthenticationSchema, mustExist, cancellationToken).ConfigureAwait(false);
         await Commander.Call(signInCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
@@ -177,16 +186,16 @@ public sealed class ServerAuth
     }
 
     private async Task<AccountsBackend_SignIn> GetSignInCommand(
-        Session session, ClaimsPrincipal httpUser, string schema, CancellationToken cancellationToken)
+        Session session, ClaimsPrincipal httpUser, string schema, bool mustExist, CancellationToken cancellationToken)
     {
         var httpUserIdentityName = httpUser.Identity?.Name ?? "";
-        var claims = httpUser.Claims.ToApiMap(c => c.Type, c => c.Value, StringComparer.Ordinal);
+        var claims = httpUser.Claims.ToApiMap(c => c.Type, c => c.Value);
         var id = FirstClaimOrDefault(claims, IdClaimKeys) ?? httpUserIdentityName;
         var identity = new UserIdentity(schema, id);
         var identities = ApiMap<UserIdentity, string>.Empty;
 
         // Map claims using ClaimMapper
-        var httpClaims = httpUser.Claims.ToDictionary(c => c.Type, c => c.Value, StringComparer.Ordinal);
+        var httpClaims = httpUser.Claims.ToDictionary(c => c.Type, c => c.Value);
         (claims, _) = ClaimMapper.UpdateClaims(claims, httpClaims);
 
         // For external providers, try to link by email if the identity doesn't exist yet
@@ -210,7 +219,7 @@ public sealed class ServerAuth
         identities = identities.With(identity, "");
 
         exit:
-        return new AccountsBackend_SignIn(session, authenticatedIdentity, identities, claims);
+        return new AccountsBackend_SignIn(session, authenticatedIdentity, identities, claims, mustExist);
     }
 
     private static string? FirstClaimOrDefault(IReadOnlyDictionary<string, string> claims, string[] keys)

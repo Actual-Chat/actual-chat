@@ -34,7 +34,7 @@
                         key="@_avatarKey"/>
                     break;
                 case AvatarKind.Marble:
-                    var title = Title.IsNullOrEmpty() || HideTitle ? "" : char.ToUpperInvariant(Title[0]).ToString();
+                    var title = Title.IsNullOrEmpty() || HideTitle ? "" : char.ToUpper(Title[0]).ToString();
                     <marble-avatar
                         class="pic-generated"
                         key="@_avatarKey"

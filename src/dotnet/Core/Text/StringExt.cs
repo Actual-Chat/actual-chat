@@ -36,7 +36,7 @@ public static partial class StringExt
         => source.NullIfEmpty() ?? throw StandardError.Constraint($"{name} is required here.");
     [return: NotNullIfNotNull(nameof(source))]
     public static string? RequireNotEqual(this string? source, string target, [CallerArgumentExpression(nameof(source))] string name = "")
-        => OrdinalEquals(source, target)
+        => source == target
             ? throw StandardError.Constraint($"{name} should not be {target}.")
             : source;
     [return: NotNullIfNotNull(nameof(source))]
@@ -58,8 +58,8 @@ public static partial class StringExt
         => input.IsNullOrEmpty()
             ? input
             : CamelCaseRegex.Replace(input, "$1_$2")
-                .ToLower(CultureInfo.InvariantCulture)
-                .OrdinalReplace("__", "_");
+                .ToLower()
+                .Replace("__", "_");
 
     public static string ToKebabCase(this string input)
     {
@@ -73,20 +73,20 @@ public static partial class StringExt
             "$1$3-$2$4"
         );
 
-        return withDashes.ToLowerInvariant();
+        return withDashes.ToLower();
     }
 
     public static string Capitalize(this string source)
         => source.IsNullOrEmpty() ? source : source.Capitalize(0);
 
     public static string Capitalize(this string source, int position)
-        => ChangeCase(source, position, char.ToUpperInvariant);
+        => ChangeCase(source, position, char.ToUpper);
 
     public static string Decapitalize(this string source)
         => source.IsNullOrEmpty() ? source : source.Decapitalize(0);
 
     public static string Decapitalize(this string source, int position)
-        => ChangeCase(source, position, char.ToLowerInvariant);
+        => ChangeCase(source, position, char.ToLower);
 
     private static string ChangeCase(string source, int position, Func<char, char> changeCase)
     {
@@ -120,10 +120,10 @@ public static partial class StringExt
             : $"{source}{separator}{suffix}";
 
     public static string EnsurePrefix(this string source, string prefix)
-        => source.OrdinalStartsWith(prefix) ? source : prefix + source;
+        => source.StartsWith(prefix) ? source : prefix + source;
 
     public static string EnsureSuffix(this string source, string suffix)
-        => source.OrdinalEndsWith(suffix) ? source : source + suffix;
+        => source.EndsWith(suffix) ? source : source + suffix;
 
     public static string Truncate(this string source, int maxLength)
         => source.Length <= maxLength ? source : source[..maxLength];
@@ -137,14 +137,40 @@ public static partial class StringExt
         return iStart < 0 || iEnd < 0 ? "" : s[iStart..(iEnd + 1)];
     }
 
-    public static string OrdinalSuffix(this string s, string separator)
-        => s.Suffix(separator, StringComparison.Ordinal);
+    public static string Suffix(this string s, string separator)
+    {
+        if (s.IsNullOrEmpty())
+            return s;
+        var i = s.LastIndexOf(separator);
+        return i < 0 ? s : s[(i + separator.Length)..];
+    }
 
-    public static string Suffix(this string s, string separator, StringComparison comparison){
+    public static string Suffix(this string s, string separator, StringComparison comparison)
+    {
         if (s.IsNullOrEmpty())
             return s;
         var i = s.LastIndexOf(separator, comparison);
         return i < 0 ? s : s[(i + separator.Length)..];
+    }
+
+    public static bool HasPrefix(this string source, string prefix, out string suffix)
+    {
+        if (source.StartsWith(prefix)) {
+            suffix = source[prefix.Length..];
+            return true;
+        }
+        suffix = "";
+        return false;
+    }
+
+    public static bool HasPrefix(this string source, string prefix, StringComparison stringComparison, out string suffix)
+    {
+        if (source.StartsWith(prefix, stringComparison)) {
+            suffix = source[prefix.Length..];
+            return true;
+        }
+        suffix = "";
+        return false;
     }
 
     public static string[] SplitIntoWords(this string text) =>
@@ -259,7 +285,7 @@ public static partial class StringExt
         if (hostPortOrUrl.IsNullOrEmpty())
             return false;
 
-        var columnIndex = hostPortOrUrl.OrdinalIndexOf(":");
+        var columnIndex = hostPortOrUrl.IndexOf(":");
         if (columnIndex <= 0) {
             host = hostPortOrUrl;
             return true;
@@ -270,7 +296,7 @@ public static partial class StringExt
         if (portStr.IsNullOrEmpty())
             return true;
 
-        if (!ushort.TryParse(portStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out var portValue))
+        if (!ushort.TryParse(portStr, NumberStyles.Integer, null, out var portValue))
             return false;
 
         port = portValue;

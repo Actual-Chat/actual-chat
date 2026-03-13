@@ -10,7 +10,7 @@ public interface IPromptHelpers
 
 internal sealed class PromptHelpers : IPromptHelpers
 {
-    private readonly ConcurrentDictionary<string, PromptTemplate> _promptTemplates = new (StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, PromptTemplate> _promptTemplates = new ();
 
     public string BuildPrompt(string promptTemplate, IReadOnlyDictionary<string, string> variables)
     {
@@ -23,7 +23,7 @@ internal sealed class PromptHelpers : IPromptHelpers
 
             variableValues[i] = value;
         }
-        return string.Format(CultureInfo.InvariantCulture, template.FormatString, variableValues);
+        return string.Format(template.FormatString, variableValues);
     }
 
     public string GetXmlTagValue(string text, string tagName)
@@ -61,11 +61,11 @@ internal sealed class PromptHelpers : IPromptHelpers
         var variables = new List<(string Name, int StartIndex)>();
         var index = 0;
         while (true) {
-            var varStart = template.IndexOf("{{", index, StringComparison.Ordinal);
+            var varStart = template.IndexOf("{{", index);
             if (varStart < 0)
                 break;
 
-            var varEnd = template.IndexOf("}}", varStart, StringComparison.Ordinal);
+            var varEnd = template.IndexOf("}}", varStart);
             if (varEnd < 0)
                 break;
 
@@ -81,7 +81,7 @@ internal sealed class PromptHelpers : IPromptHelpers
             var startIndex = variable.StartIndex;
             formatString = formatString
                 .Remove(startIndex, variable.Name.Length)
-                .Insert(startIndex, "{" + i.ToInvariantString() + "}");
+                .Insert(startIndex, "{" + i.ToString() + "}");
         }
         return new PromptTemplate(
             template,

@@ -6,13 +6,18 @@
 public interface IEmailAuth : IComputeService
 {
     [ComputeMethod]
-    Task<string> ValidateCanSendToEmail(Session session, Email email, TotpPurpose purpose, CancellationToken cancellationToken);
+    Task<string> CheckIfBlocked(Session session, Email email, TotpPurpose purpose, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<bool> AccountExists(Session session, Email email, CancellationToken cancellationToken);
     [CommandHandler]
     Task<Moment> OnSendTotp(EmailAuth_SendTotp command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<bool> OnValidateTotp(EmailAuth_ValidateTotp command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<bool> OnVerifyEmail(EmailAuth_VerifyEmail command, CancellationToken cancellationToken);
+
+    [ComputeMethod, Obsolete("2026.03: Removed in favor of CheckIfBlocked")]
+    Task<string> ValidateCanSendToEmail(Session session, Email email, TotpPurpose purpose, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]

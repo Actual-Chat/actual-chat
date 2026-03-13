@@ -38,7 +38,7 @@ public class MauiThemeHandler
         _theme = themeInfo.Theme;
         _colors = themeInfo.Colors;
         var serialized = string.Join('|', themeInfo.Theme?.ToString("G") ?? "", themeInfo.Colors);
-        if (!OrdinalEquals(serialized, _serialized)) {
+        if (serialized != _serialized) {
             _serialized = serialized;
             MauiPreferences.Theme = serialized;
         }
@@ -59,7 +59,7 @@ public class MauiThemeHandler
             return;
 
         BeginDispatchToMainThread(() => {
-            if (OrdinalEquals(colors, _appliedColors))
+            if (colors == _appliedColors)
                 return;
 
             try {

@@ -40,7 +40,7 @@ public sealed partial class PlaceId : StringIdentifier, IStringIdentifier<PlaceI
     public bool Equals(PlaceId? other)
         => !ReferenceEquals(other, null)
             && HashCode == other.HashCode
-            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+            && string.Equals(Value, other.Value);
     public override bool Equals(object? obj)
         => obj is PlaceId other && Equals(other);
 
@@ -79,7 +79,7 @@ public sealed partial class PlaceId : StringIdentifier, IStringIdentifier<PlaceI
         if (s.Length is < 10 or > 64)
             return false;
 
-        if (!(Alphabet.AlphaNumeric.IsMatch(s) || OrdinalEquals(s, "chat-roulette")))
+        if (!(Alphabet.AlphaNumeric.IsMatch(s) || s == "chat-roulette"))
             return false;
 
         result = new PlaceId(s);
