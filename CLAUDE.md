@@ -73,13 +73,13 @@ Build artifacts are stored in `artifacts/claude-docker/` to avoid permission con
 
 **Isolated mode**: Set `AC_CLAUDE_ISOLATE=true` (or `1`) to run with an isolated `.claude.json` config file. When enabled, the launcher copies `.claude.json` to `artifacts/claude-docker/.claude-{timestamp}.json` and mounts that copy instead of the original. Changes made inside the container are not synced back to the host's `.claude.json`. This is useful for parallel Claude instances or testing without affecting the main config.
 
-## Playwright and Browser Automation
+## Browser Automation and Chrome Debugging
 
-Playwright and Chromium are pre-installed in the Docker image for browser automation tasks.
+The user starts Chrome with remote debugging via `c chrome` command (port 9222). On Windows, this also creates a firewall rule to allow connections from WSL/Docker.
 
-**Using host Chrome**: When the user asks you to "use host Chrome", connect Playwright to Chrome running on the Windows host instead of launching a headless browser. This allows the user to visually observe browser automation.
+**chrome-devtools MCP (preferred)**: If the `chrome-devtools` MCP server is available (configured in `.mcp.json`), prefer using it over Playwright for browser inspection, debugging, and interaction. It provides direct access to Chrome DevTools capabilities — taking screenshots/snapshots, clicking elements, filling forms, evaluating scripts, reading console messages, and more. The MCP server connects to host Chrome automatically via `tools/chrome-devtools-mcp-wrapper`.
 
-The user starts Chrome with remote debugging via `c chrome` command (port 9222). On Windows, this also creates a firewall rule to allow connections from WSL/Docker. Connect to it using:
+**Playwright**: Playwright and Chromium are also pre-installed in the Docker image. Use Playwright when you need to write automated test scripts or when the chrome-devtools MCP is not available. When the user asks you to "use host Chrome", connect Playwright to Chrome on the host:
 
 ```typescript
 import { chromium } from 'playwright';
