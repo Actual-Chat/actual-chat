@@ -81,7 +81,7 @@ public class StreamHub(IServiceProvider services) : Hub
             var failedFrameCount = 0;
             var lastWidth = width;
             var lastHeight = height;
-            await foreach (var frameBytes in source) {
+            await foreach (var frameBytes in source.ConfigureAwait(false)) {
                 if (frameBytes.Length == 0)
                     continue;
 

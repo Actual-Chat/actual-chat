@@ -25,7 +25,7 @@ public static class AsyncValidationModel
             let hasValidationAttributes = property.GetCustomAttributes<ValidationAttribute>().Any()
             where hasValidationAttributes || asyncValidationAttributes.Count != 0
             select new ValidatedProperty(property, asyncValidationAttributes)
-            ).ToDictionary(x => x.Property.Name, StringComparer.Ordinal);
+            ).ToDictionary(x => x.Property.Name);
         return new ValidatedType(type, properties);
     }
 
@@ -36,8 +36,7 @@ public static class AsyncValidationModel
         IReadOnlyDictionary<string, ValidatedProperty> Properties)
     {
         public IReadOnlyDictionary<string, ValidatedProperty> AsyncOnlyProperties { get; }
-            = Properties.Where(x => x.Value.AsyncAttributes.Count != 0)
-                .ToDictionary(x => x.Key, x => x.Value, StringComparer.Ordinal);
+            = Properties.Where(x => x.Value.AsyncAttributes.Count != 0).ToDictionary(x => x.Key, x => x.Value);
 
         public ValidatedProperty? this[string? propertyName]
             => propertyName is null ? null : Properties.GetValueOrDefault(propertyName);

@@ -43,12 +43,12 @@ public static class DeepgramLanguage
     public static string ToDeepgram(this Language language)
         => Map.TryGetValue(language, out var deepgramLanguage)
             ? deepgramLanguage
-            : throw StandardError.NotSupported(typeof(DeepgramTranscriber),
+            : throw StandardError.NotSupported<DeepgramTranscriber>(
                 $"Language '{language.Id}' is not supported");
 
     public static Language FromDeepgram(string deepgramLanguage)
         => InvertedMap.TryGetValue(deepgramLanguage, out var language)
             ? language
-            : throw StandardError.NotSupported(typeof(DeepgramTranscriber),
+            : throw StandardError.NotSupported<DeepgramTranscriber>(
                 $"Deepgram Language '{deepgramLanguage}' is not supported");
 }

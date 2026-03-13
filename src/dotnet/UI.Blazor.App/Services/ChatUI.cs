@@ -370,7 +370,8 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     public void ToggleExpandConversation(ConversationId conversationId)
     {
         var expandedConversations = _expandedConversations.Value;
-        expandedConversations = expandedConversations.Contains(conversationId)
+        var mustRemove = expandedConversations.Contains(conversationId);
+        expandedConversations = mustRemove
             ? expandedConversations.Remove(conversationId)
             : expandedConversations.Add(conversationId);
         _expandedConversations.Value = expandedConversations;

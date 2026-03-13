@@ -2,9 +2,7 @@
 
 internal sealed class AppHostLifecycleMonitor(IServiceProvider services) : IHostedLifecycleService
 {
-    private Tracer? _tracer;
-
-    private Tracer Tracer => _tracer ??= services.TracerFor(typeof(AppHostLifecycleMonitor));
+    private Tracer Tracer => field ??= services.TracerFor<AppHostLifecycleMonitor>();
 
     public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     public Task StartingAsync(CancellationToken cancellationToken)

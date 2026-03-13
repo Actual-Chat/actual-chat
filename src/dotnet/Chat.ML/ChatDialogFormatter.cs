@@ -40,15 +40,15 @@ internal sealed class ChatDialogFormatter(IAuthorNameRetriever authorNameRetriev
 
         var sb = ActualLab.Text.StringBuilderExt.Acquire();
         if (options.UseSquareBracketsFormat) {
-            sb.Append("[");
+            sb.Append('[');
             sb.Append(authorName);
             if (options.AddAuthorId) {
-                sb.Append("|");
+                sb.Append('|');
                 sb.Append(entry.AuthorId.LocalId);
             }
             sb.Append("] ");
             if (options.DisplayTimestamp) {
-                sb.Append("[");
+                sb.Append('[');
                 sb.Append(sTimestamp);
                 sb.Append("] ");
             }

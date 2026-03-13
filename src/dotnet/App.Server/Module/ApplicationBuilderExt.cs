@@ -69,7 +69,7 @@ public static partial class ApplicationBuilderExt
     {
         // Regex to detect fingerprinted files (10-char hash before extension)
         // Matches patterns like: file.abc1234xyz.js, dotnet.native.kx5e2qo6u9.wasm
-        [GeneratedRegex(@"\.[a-z0-9]{10}\.(js|mjs|wasm|css|dll|webcil|onnx|ort)$", RegexOptions.IgnoreCase)]
+        [GeneratedRegex(@"\.[a-z0-9]{10}\.(js|mjs|wasm|css|dll|webcil|onnx|ort)$", RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture)]
         private static partial Regex FingerprintRegex();
 
         public Task InvokeAsync(HttpContext context)

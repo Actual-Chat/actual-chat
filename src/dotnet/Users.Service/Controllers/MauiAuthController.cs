@@ -27,7 +27,7 @@ public sealed class MauiAuthController(IServiceProvider services) : ControllerBa
         HttpContext.AddSessionCookie(session);
         var baseUrl = HostInfo.GetAllowedBaseUrl(Request.Host.Host);
         var closeFlowUrl = UrlMapper.ToAbsolute(baseUrl, Links.CloseFlow(flowName, false, redirectUrl));
-        if (!endpoint.StartsWith("/"))
+        if (!endpoint.StartsWith('/'))
             endpoint = $"/{endpoint}";
         return Redirect($"{endpoint}?returnUrl={closeFlowUrl.UrlEncode()}");
     }

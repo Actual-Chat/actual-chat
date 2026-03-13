@@ -51,7 +51,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         var frameCount = 0;
         async IAsyncEnumerable<VideoFrame> LogFrames(IAsyncEnumerable<VideoFrame> source)
         {
-            await foreach (var frame in source.WithCancellation(cancellationToken)) {
+            await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                 frameCount++;
                 if (frameCount <= 3 || frameCount % 100 == 0)
                     Log.LogDebug("GetVideo sending frame #{Count}: Offset={Offset}ms, Size={Size}, IsKey={IsKey}, PeerId={PeerId}",
@@ -156,7 +156,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         var skippingGop = false;
         var gopCount = 0;
         var skippedGopCount = 0;
-        await foreach (var frame in source.WithCancellation(cancellationToken)) {
+        await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
             if (frame.IsKeyFrame) {
                 var wasSkipping = skippingGop;
                 // Re-evaluate at each GOP boundary
@@ -214,7 +214,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             var frameCount = 0;
             async IAsyncEnumerable<VideoFrame> LogFrames(IAsyncEnumerable<VideoFrame> source)
             {
-                await foreach (var frame in source.WithCancellation(cancellationToken)) {
+                await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                     frameCount++;
                     if (frameCount <= 3 || frameCount % 100 == 0)
                         Log.LogDebug("PushVideoInternal frame #{Count}: Offset={Offset}ms, IsKey={IsKey}, DataLen={DataLen}, DescLen={DescLen}",
@@ -272,7 +272,8 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         var buffer = new List<VideoFrame>();
         var lastKeyFrameIdx = -1;
 
-        await using var enumerator = stream.GetAsyncEnumerator(cancellationToken);
+        var enumerator = stream.GetAsyncEnumerator(cancellationToken);
+        await using var _ = enumerator.ConfigureAwait(false);
 
         // Phase 1: Read all synchronously-available (buffered) frames
         while (true) {
