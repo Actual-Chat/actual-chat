@@ -13,7 +13,7 @@ public class TokenEstimator
         return Task.FromResult((int)Math.Ceiling(tokens * 2.4));
     }
 
-    private int CountWords(string text)
+    private static int CountWords(string text)
     {
         int wordCount = 0, index = 0;
 
