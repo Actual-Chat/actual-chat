@@ -202,7 +202,7 @@
 
 <body class="app-web" style="background-color: #0C003D">
 
-@if (_closeFlow == null && !renderModeKey.OrdinalStartsWith("s")) {
+@if (_closeFlow == null && !renderModeKey.StartsWith("s")) {
     <div id="web-splash" class="web-splash"></div>
     <script nonce="@webSplashNonce">
         @* We use script here to make sure this overlay isn't used as content image by crawlers *@

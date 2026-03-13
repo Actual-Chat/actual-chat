@@ -18,7 +18,7 @@ public static partial class ServerEndpoints
     {
         var endpoints = (configuration.GetValue<string>("URLS") ?? "").Split(";");
         if (!prefix.IsNullOrEmpty())
-            endpoints = endpoints.Where(x => x.OrdinalStartsWith(prefix)).ToArray();
+            endpoints = endpoints.Where(x => x.StartsWith(prefix)).ToArray();
         return endpoints;
     }
 

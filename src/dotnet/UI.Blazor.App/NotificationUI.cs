@@ -139,7 +139,7 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
             Log.LogInformation("EnsureDeviceRegistered. RegisterDeviceTask exists");
             var alreadyRegisteredDeviceId = await existingTask.ConfigureAwait(false);
             Log.LogInformation("EnsureDeviceRegistered. RegisterDeviceTask has completed");
-            if (OrdinalEquals(alreadyRegisteredDeviceId, deviceId)) {
+            if (alreadyRegisteredDeviceId == deviceId) {
                 Log.LogInformation("EnsureDeviceRegistered. Device token is already registered");
                 return;
             }

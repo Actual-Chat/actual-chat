@@ -29,8 +29,8 @@ public sealed partial record Translation(
     public bool MatchesOriginal(string originalContent)
         // we ask llm to ignore text already in the target language
         => Content.IsNullOrEmpty()
-            || OrdinalIgnoreCaseEquals(Content, Constants.Translation.NoTranslationNeededText)
-            || OrdinalIgnoreCaseEquals(originalContent, Content);
+            || string.Equals(Content, Constants.Translation.NoTranslationNeededText, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(originalContent, Content, StringComparison.OrdinalIgnoreCase);
 
     // This record relies on referential equality
     public bool Equals(Translation? other) => ReferenceEquals(this, other);

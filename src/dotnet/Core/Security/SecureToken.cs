@@ -12,5 +12,5 @@ public sealed partial record SecureToken(
     public static readonly string Prefix = "! "; // Must contain space!
 
     public static bool HasValidPrefix([NotNullWhen(true)] string? token)
-        => token.OrdinalStartsWith(Prefix);
+        => (token ?? "").StartsWith(Prefix);
 }

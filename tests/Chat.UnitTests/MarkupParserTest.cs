@@ -745,9 +745,9 @@ code
         WriteLine($"  Raw: {parsed}");
         var result = simplified.Should().BeOfType<TResult>().Subject;
         if (validateFormat) {
-            var expectedMarkupText = text.OrdinalReplace("\r\n", "\n");
-            var markupText1 = simplified.Format().OrdinalReplace("\r\n", "\n");
-            var markupText2 = MarkupFormatter.Default.Format(simplified).OrdinalReplace("\r\n", "\n");
+            var expectedMarkupText = text.Replace("\r\n", "\n");
+            var markupText1 = simplified.Format().Replace("\r\n", "\n");
+            var markupText2 = MarkupFormatter.Default.Format(simplified).Replace("\r\n", "\n");
             markupText1.Should().Be(expectedMarkupText);
             markupText2.Should().Be(expectedMarkupText);
         }

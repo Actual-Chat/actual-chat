@@ -14,7 +14,7 @@ public class DiveInModalPageContext
     public string Title {
         get;
         set {
-            if (OrdinalEquals(Title, value))
+            if (Title == value)
                 return;
 
             field = value ?? throw new ArgumentOutOfRangeException(nameof(value));
@@ -25,7 +25,7 @@ public class DiveInModalPageContext
     public string Class {
         get;
         set {
-            if (OrdinalEquals(field, value))
+            if (field == value)
                 return;
 
             field = value ?? throw new ArgumentOutOfRangeException(nameof(value));

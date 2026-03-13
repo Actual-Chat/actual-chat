@@ -39,11 +39,11 @@ public partial class ChatsUpgradeBackend
             var emails = account.Identities.GetEmails();
             foreach (var email in emails) {
                 if (hostInfo.IsDevelopmentInstance) {
-                    if (email.OrdinalIgnoreCaseEndsWith(Constants.Team.EmailSuffix))
+                    if (email.EndsWith(Constants.Team.EmailSuffix, StringComparison.OrdinalIgnoreCase))
                         userIdByEmail.TryAdd(email, userId);
                 }
-                else if (OrdinalIgnoreCaseEquals(email, Constants.Team.Member1Email)
-                    || OrdinalIgnoreCaseEquals(email, Constants.Team.Member2Email))
+                else if (string.Equals(email, Constants.Team.Member1Email, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(email, Constants.Team.Member2Email, StringComparison.OrdinalIgnoreCase))
                     userIdByEmail.TryAdd(email, userId);
             }
         }
@@ -333,7 +333,7 @@ public partial class ChatsUpgradeBackend
 
         string ConvertOldTextToTimeMap(string textToTimeMapJson)
         {
-            if (!textToTimeMapJson.OrdinalIgnoreCaseStartsWith("{\"SourcePoints\""))
+            if (!textToTimeMapJson.StartsWith("{\"SourcePoints\"", StringComparison.OrdinalIgnoreCase))
                 return textToTimeMapJson;
 
             var oldMap = NewtonsoftJsonSerialized.New<OldLinearMap>(textToTimeMapJson).Value;
@@ -367,11 +367,11 @@ public partial class ChatsUpgradeBackend
             var emails = account.Identities.GetEmails();
             foreach (var email in emails) {
                 if (hostInfo.IsDevelopmentInstance) {
-                    if (email.OrdinalIgnoreCaseEndsWith(Constants.Team.EmailSuffix))
+                    if (email.EndsWith(Constants.Team.EmailSuffix, StringComparison.OrdinalIgnoreCase))
                         userIdByEmail.TryAdd(email, userId);
                 }
-                else if (OrdinalIgnoreCaseEquals(email, Constants.Team.Member1Email)
-                    || OrdinalIgnoreCaseEquals(email, Constants.Team.Member2Email))
+                else if (string.Equals(email, Constants.Team.Member1Email, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(email, Constants.Team.Member2Email, StringComparison.OrdinalIgnoreCase))
                     userIdByEmail.TryAdd(email, userId);
             }
         }

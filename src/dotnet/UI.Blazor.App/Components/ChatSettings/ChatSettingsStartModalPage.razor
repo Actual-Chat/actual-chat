@@ -190,7 +190,7 @@
         };
         _placeId = (chat.Id as PlaceChatId)?.PlaceId;
         if (_placeId is not null)
-            _isPlaceWelcomeChat = OrdinalEquals(Constants.Chat.SystemTags.Welcome, chat.SystemTag);
+            _isPlaceWelcomeChat = Constants.Chat.SystemTags.Welcome == chat.SystemTag;
         Context.Items.KeylessSet(_form);
     }
 

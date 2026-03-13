@@ -18,7 +18,7 @@ public sealed record KubeServiceEndpoints(
     public KubePort? GetPort(string portName = "http")
     {
         foreach (var p in Ports)
-            if (OrdinalEquals(p.Name, portName))
+            if (p.Name == portName)
                 return p;
         return null;
     }

@@ -110,7 +110,7 @@ public class ImageGrabber(IServiceProvider services)
             HttpResponseMessage response;
             try {
                 var request = new HttpRequestMessage(HttpMethod.Get, uri);
-                if (OrdinalIgnoreCaseEquals(uri.DnsSafeHost, "opengraph.githubassets.com") && !Settings.GithubApiKey.IsNullOrEmpty())
+                if (string.Equals(uri.DnsSafeHost, "opengraph.githubassets.com", StringComparison.OrdinalIgnoreCase) && !Settings.GithubApiKey.IsNullOrEmpty())
                     request.Headers.Authorization = AuthenticationHeaderValue.Parse($"Bearer {Settings.GithubApiKey}");
                 response = await HttpClient.SendAsync(request, cancellationToken1).ConfigureAwait(false);
                 if (!response.IsSuccessStatusCode)

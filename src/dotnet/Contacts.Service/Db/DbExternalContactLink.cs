@@ -33,7 +33,7 @@ public class DbExternalContactLink
     public static bool IsPhoneLink(string link, out string hash)
     {
         hash = string.Empty;
-        if (!link.OrdinalStartsWith(PhonePrefix))
+        if (!link.StartsWith(PhonePrefix))
             return false;
 
         hash = link[PhonePrefix.Length..];
@@ -43,7 +43,7 @@ public class DbExternalContactLink
     public static bool IsEmailLink(string link, out string hash)
     {
         hash = string.Empty;
-        if (!link.OrdinalStartsWith(EmailPrefix))
+        if (!link.StartsWith(EmailPrefix))
             return false;
 
         hash = link[EmailPrefix.Length..];

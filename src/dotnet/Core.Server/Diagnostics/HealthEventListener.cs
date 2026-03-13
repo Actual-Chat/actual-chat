@@ -18,7 +18,7 @@ public class HealthEventListener(IServiceProvider services, int interval = 10) :
 
     protected override void OnEventSourceCreated(EventSource eventSource)
     {
-        if (!OrdinalEquals(eventSource.Name, "System.Runtime"))
+        if (eventSource.Name != "System.Runtime")
             return;
 
         var refreshInterval = new Dictionary<string, string>(StringComparer.Ordinal) {

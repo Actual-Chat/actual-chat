@@ -132,7 +132,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         var conflictingUserId = await dbContext
             .GetUserIdByIdentity(emailIdentity, false, cancellationToken)
             .ConfigureAwait(false);
-        if (conflictingUserId != null && !OrdinalEquals(conflictingUserId.Value, account.Id.Value))
+        if (conflictingUserId != null && conflictingUserId.Value != account.Id.Value)
             throw StandardError.Unauthorized("Email has already been taken by another account.");
 
         var cmd = new AccountsBackend_Update(updatedAccount, account.Version);

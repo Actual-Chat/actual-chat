@@ -41,7 +41,7 @@ public class LogUI(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService, ILogS
         }
 
         // Skip own logs
-        if (categoryName.OrdinalStartsWith(OwnLogCategory)) {
+        if (categoryName.StartsWith(OwnLogCategory)) {
             DiagLog?.LogDebug("Log: Is own log, skipped log entry: {LogLevel} {Category}: {Message}\n{Exception}", logLevel, categoryName, message, exception);
             return;
         }

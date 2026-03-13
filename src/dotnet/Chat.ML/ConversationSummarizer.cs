@@ -94,8 +94,8 @@ public class ConversationSummarizer(ConversationSummarizer.Options settings, ISe
 
         try {
             var json = result
-                .OrdinalIgnoreCaseReplace("```json", "")
-                .OrdinalReplace("```", "")
+                .Replace("```json", "", StringComparison.OrdinalIgnoreCase)
+                .Replace("```", "")
                 .Trim();
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
@@ -228,9 +228,9 @@ public class ConversationSummarizer(ConversationSummarizer.Options settings, ISe
         if (!double.TryParse(sValue, CultureInfo.InvariantCulture, out var value))
             return false;
 
-        if (OrdinalEquals(units, "ms"))
+        if (units == "ms")
             tryAgainInDelay = TimeSpan.FromMilliseconds(value);
-        else if (OrdinalEquals(units, "s"))
+        else if (units == "s")
             tryAgainInDelay = TimeSpan.FromSeconds(value);
         else
             tryAgainInDelay = TimeSpan.FromSeconds(55);

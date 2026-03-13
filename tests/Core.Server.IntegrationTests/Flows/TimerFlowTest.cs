@@ -20,7 +20,7 @@ public class TimerFlowTest(ITestOutputHelper @out)
                 .Filtered("ShardOwners only && Now <= T",
                     x => chaosMakerStopsAt.Elapsed < TimeSpan.Zero
                         && x is MeshLockHolder h
-                        && h.FullKey.OrdinalContains("ShardOwner"))
+                        && h.FullKey.Contains("ShardOwner"))
                 .Gated(isEnabled: !TestRunnerInfo.IsBuildAgent());
             services.AddSingleton<ChaosMaker>(chaosMaker);
         },

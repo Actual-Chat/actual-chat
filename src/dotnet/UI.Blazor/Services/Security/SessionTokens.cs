@@ -41,7 +41,7 @@ public sealed class SessionTokens(UIHub hub) : UIWorkerBase<UIHub>(hub), IComput
         var minLifespan = RefreshLifespan;
         while (!cancellationToken.IsCancellationRequested) {
             var current = await Get(minLifespan, cancellationToken).ConfigureAwait(false);
-            if (!OrdinalEquals(jsToken, current.Token)) {
+            if (jsToken != current.Token) {
                 await JS.InvokeVoidAsync(JSSetCurrentMethod, CancellationToken.None, current.Token)
                     .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
                 jsToken = current.Token;

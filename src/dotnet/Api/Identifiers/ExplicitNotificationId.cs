@@ -80,7 +80,7 @@ public sealed partial class ExplicitNotificationId : StringIdentifier, IStringId
         if (s.IsNullOrEmpty())
             return false;
 
-        var userIdLength = s.OrdinalIndexOf(" ");
+        var userIdLength = s.IndexOf(" ");
         if (userIdLength < 0)
             return false;
         if (!UserId.TryParse(s[..userIdLength], out var userId))

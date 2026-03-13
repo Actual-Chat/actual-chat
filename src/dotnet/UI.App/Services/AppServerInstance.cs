@@ -9,9 +9,9 @@ public sealed record AppServerInstance(string HostName)
     {
         if (hostName.IsNullOrEmpty())
             return null;
-        if (OrdinalIgnoreCaseEquals(Prod.HostName, hostName))
+        if (string.Equals(Prod.HostName, hostName, StringComparison.OrdinalIgnoreCase))
             return Prod;
-        if (OrdinalIgnoreCaseEquals(Dev.HostName, hostName))
+        if (string.Equals(Dev.HostName, hostName, StringComparison.OrdinalIgnoreCase))
             return Dev;
 
         var hostType = Uri.CheckHostName(hostName);

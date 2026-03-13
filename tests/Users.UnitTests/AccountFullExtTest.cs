@@ -16,8 +16,8 @@ public class AccountFullExtTest
             .Should()
             .BeEquivalentTo(
                 $"email/{email}",
-                $"email-hash/{expectedEmailHash.OrdinalReplace("/", "\\/")}",
+                $"email-hash/{expectedEmailHash.Replace("/", "\\/")}",
                 $"phone/{phone}",
-                $"phone-hash/{expectedPhoneHash.OrdinalReplace("/", "\\/")}");
+                $"phone-hash/{expectedPhoneHash.Replace("/", "\\/")}");
     }
 }

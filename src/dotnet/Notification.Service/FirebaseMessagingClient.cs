@@ -101,7 +101,7 @@ public class FirebaseMessagingClient(
                     Icon = absoluteIconUrl,
                 },
                 FcmOptions = new WebpushFcmOptions {
-                    Link = OrdinalEquals(UrlMapper.BaseUri.Host, "localhost")
+                    Link = UrlMapper.BaseUri.Host == "localhost"
                         ? null
                         : link,
                 },

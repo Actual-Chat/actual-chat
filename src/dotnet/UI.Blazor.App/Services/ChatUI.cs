@@ -525,7 +525,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         var selectedPlaceId = SelectedPlaceId.Value;
         if (chatId.Kind == ChatKind.Peer
             && selectedPlaceId is not null
-            && OrdinalEquals(NavbarUI.SelectedGroupId, selectedPlaceId.GetNavbarGroupId())) {
+            && NavbarUI.SelectedGroupId == selectedPlaceId.GetNavbarGroupId()) {
             var placeChatListSettings = ChatListUI.GetPlaceChatListSettings(selectedPlaceId);
             // When a peer chat is "selected" via URL, we should retain the selected place
             // nav group if we're on the "People" tab (or no tab is selected) and the peer is a member of this place
@@ -613,7 +613,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     {
         _selectedNavbarGroupId.Value = e.Id;
         var placeId = (PlaceId?)null;
-        var isChatOrPlace = OrdinalEquals(NavbarUI.SelectedGroupId, NavbarGroupIds.Chats)
+        var isChatOrPlace = NavbarUI.SelectedGroupId == NavbarGroupIds.Chats
             || NavbarUI.IsPlaceSelected(out placeId);
         if (NavbarUI.IsPinnedChatSelected(out var pinnedChatId)) {
             isChatOrPlace = true;

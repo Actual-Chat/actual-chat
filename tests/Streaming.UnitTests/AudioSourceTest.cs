@@ -104,7 +104,7 @@ public class AudioSourceTest(ILogger log)
         bool? isWebMStream = null,
         CancellationToken cancellationToken = default)
     {
-        var isWebMStream1 = isWebMStream ?? OrdinalIgnoreCaseEquals(fileName.Extension, ".webm");
+        var isWebMStream1 = isWebMStream ?? string.Equals(fileName.Extension, ".webm", StringComparison.OrdinalIgnoreCase);
         var byteStream = GetAudioFilePath(fileName)
             .ReadByteStream(blobSize, cancellationToken);
         var converter = isWebMStream1
@@ -122,7 +122,7 @@ public class AudioSourceTest(ILogger log)
 
     private async Task WriteToFile(AudioSource source, TimeSpan skipTo, FilePath fileName, bool? isWebMStream = null)
     {
-        var isWebMStream1 = isWebMStream ?? OrdinalIgnoreCaseEquals(fileName.Extension, ".webm");
+        var isWebMStream1 = isWebMStream ?? string.Equals(fileName.Extension, ".webm", StringComparison.OrdinalIgnoreCase);
         await using var stream = new FileStream(GetAudioFilePath(fileName), FileMode.OpenOrCreate, FileAccess.ReadWrite);
         var converter = isWebMStream1
             ? new WebMStreamConverter(MomentClockSet.Default, Log)

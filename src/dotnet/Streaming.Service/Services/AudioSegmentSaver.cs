@@ -13,7 +13,7 @@ public sealed class AudioSegmentSaver(IServiceProvider services) : AudioProcesso
         ClosedAudioSegment closedAudioSegment,
         CancellationToken cancellationToken)
     {
-        var streamIndex = closedAudioSegment.StreamId.OrdinalReplace($"{closedAudioSegment.AudioRecord.StreamId}-", "");
+        var streamIndex = closedAudioSegment.StreamId.Replace($"{closedAudioSegment.AudioRecord.StreamId}-", "");
         var blobId = BlobPath.Format(BlobScope.AudioRecord, closedAudioSegment.AudioRecord.StreamId.Value, streamIndex + ".webm");
 
         var converter = new WebMStreamConverter(Clocks, Log);

@@ -58,7 +58,7 @@
                 }
                 break;
             case UrlMarkupKind.Email:
-                _hrefUrl = url.OrdinalStartsWith("mailto:") ? url : "mailto:" + url;
+                _hrefUrl = url.StartsWith("mailto:") ? url : "mailto:" + url;
                 break;
         }
     }
@@ -66,9 +66,9 @@
     private LocalUrl? TryGetLocalUrl(string url)
     {
         url = url.EnsureSuffix("/");
-        if (url.OrdinalStartsWith(Nav.BaseUri))
+        if (url.StartsWith(Nav.BaseUri))
             return new LocalUrl(Nav.ToBaseRelativePath(url));
-        if (url.OrdinalStartsWith(UrlMapper.BaseUrl))
+        if (url.StartsWith(UrlMapper.BaseUrl))
             return new LocalUrl(UrlMapper.ToBaseRelativePath(url));
         return null;
     }

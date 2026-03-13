@@ -16,7 +16,7 @@
             return;
 
         var modalRef = await ModalUI.Show(SettingsModal.Model.Instance, ModalOptions.FullScreen);
-        if (SettingsOption.OrdinalIgnoreCaseStartsWith("delete-account"))
+        if ((SettingsOption ?? "").StartsWith("delete-account", StringComparison.OrdinalIgnoreCase))
             _ = ModalUI.Show(OwnAccountEditorModal.Model.Default);
         _ = NavigateToChatsWhen(modalRef.WhenClosed);
     }

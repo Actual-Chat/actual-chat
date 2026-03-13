@@ -130,7 +130,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
 
     private async Task<AudioSource> CreateAudioSource(string audioBlobUrl, CancellationToken cancellationToken)
     {
-        if (_audioSource == null || !OrdinalEquals(_audioBlobStreamUri, audioBlobUrl)) {
+        if (_audioSource == null || _audioBlobStreamUri != audioBlobUrl) {
             _audioSource = await AudioDownloader.Download(audioBlobUrl, TimeSpan.Zero, cancellationToken);
             _audioBlobStreamUri = audioBlobUrl;
         }

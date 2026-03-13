@@ -292,7 +292,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         dbAccount = dbAccount.Require().RequireVersion(expectedVersion);
 
         var mustGreet = !account.IsGreetingCompleted && dbAccount.IsGreetingCompleted;
-        var mustResetDigestFlow = !OrdinalEquals(dbAccount.TimeZone, account.TimeZone);
+        var mustResetDigestFlow = dbAccount.TimeZone != account.TimeZone;
         account = account with {
             Version = VersionGenerator.NextVersion(dbAccount.Version),
             Name = AccountNameValidator.Normalize(account.Name),
@@ -405,7 +405,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
             if (AdminEmails.Contains(email))
                 return true; // Predefined admin email
-            if (OrdinalEquals(emailAddress.Host, AdminEmailDomain))
+            if (emailAddress.Host == AdminEmailDomain)
                 return true; // company email
             if (Constants.Auth.TestAgent.IsTestAgentEmail(email))
                 return true; // test agent email

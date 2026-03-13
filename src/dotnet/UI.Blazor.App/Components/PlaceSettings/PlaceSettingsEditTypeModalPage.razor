@@ -146,8 +146,8 @@
         };
         _editContext = new EditContext(_form);
         _editContext.OnFieldChanged += (_, e) => {
-            if (OrdinalEquals(e.FieldIdentifier.FieldName, nameof(_form.AliasId))
-                || OrdinalEquals(e.FieldIdentifier.FieldName, nameof(_form.IsPublic)))
+            if (e.FieldIdentifier.FieldName == nameof(_form.AliasId)
+                || e.FieldIdentifier.FieldName == nameof(_form.IsPublic))
             {
                 _editContext.NotifyFieldChanged(_editContext.Field(nameof(_form.ActualAliasId)));
             }

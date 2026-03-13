@@ -24,7 +24,7 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
 
     private string PromptTemplateString => field
         ??= File.ReadAllText(
-            OrdinalEquals(ServiceKey, Constants.Translation.RealtimeServiceKey) && !Settings.Translation.RealtimePromptFile.IsEmpty
+            ServiceKey == Constants.Translation.RealtimeServiceKey && !Settings.Translation.RealtimePromptFile.IsEmpty
                 ? CoreServerSettings.PromptsDir | Settings.Translation.RealtimePromptFile
                 : CoreServerSettings.PromptsDir | Settings.Translation.PromptFile
         ).RequireNonEmpty();
@@ -63,11 +63,11 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
                 .ConfigureAwait(false);
             activity?.SetStatus(ActivityStatusCode.Ok);
             var result = response.Content ?? "";
-            if (!textToTranslate.OrdinalEndsWith(" .") && result.OrdinalEndsWith(" ."))
+            if (!textToTranslate.EndsWith(" .") && result.EndsWith(" ."))
                 result = result[..^2];
 
             // DebugLog?.LogDebug("Translate: {Content} = {TranslatedContent} with [{Context}]", textToTranslate, result, string.Join(',', context));
-            return OrdinalIgnoreCaseEquals(result, Constants.Translation.NoTranslationNeededText)
+            return string.Equals(result, Constants.Translation.NoTranslationNeededText, StringComparison.OrdinalIgnoreCase)
                 ? textToTranslate // If the translation is not needed, return the original text
                 : result;
         }
@@ -114,10 +114,10 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
 
                 sb.Append(suffix);
                 var translatedText = sb.ToString().Trim();
-                if (OrdinalEquals(translatedText, Constants.Translation.NoTranslationNeededText))
+                if (translatedText == Constants.Translation.NoTranslationNeededText)
                     yield break;
 
-                if (Constants.Translation.NoTranslationNeededText.OrdinalStartsWith(translatedText))
+                if (Constants.Translation.NoTranslationNeededText.StartsWith(translatedText))
                     continue; // wait for the whole NO_TRANSLATION_NEEDED
 
                 yield return StringDiff.New(translatedText, last);
@@ -139,7 +139,7 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
         }
 
         // estimate for the response length
-        var maxTokens = OrdinalEquals(ServiceKey, Constants.Translation.RealtimeServiceKey)
+        var maxTokens = ServiceKey == Constants.Translation.RealtimeServiceKey
             ? Math.Min(textToTranslate.Length * 8, Settings.Translation.RealtimeOpenAIModelMaxTokens)
             : Math.Min(textToTranslate.Length * 8, Settings.Translation.OpenAIModelMaxTokens);
 

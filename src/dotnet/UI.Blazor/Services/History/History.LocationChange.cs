@@ -34,7 +34,7 @@ public partial class History
             var hasValidHistoryEntryState = existingItemId > 0;
             var existingItem = hasValidHistoryEntryState && GetItemById(existingItemId) is { } item ? item : null;
             if (existingItem != null) {
-                if (OrdinalEquals(url, existingItem.Url)) {
+                if (url == existingItem.Url) {
                     currentItem = _currentItem = existingItem;
                     if (currentItem.OnNavigation is { IsNone: false } onNavigation) {
                         DebugLog?.LogDebug("LocationChange: OnNavigation action: {OnNavigation}", onNavigation);

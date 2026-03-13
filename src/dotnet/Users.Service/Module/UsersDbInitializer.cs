@@ -220,7 +220,7 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
             return;
 
         var avatar = account.Avatar;
-        if (avatar.MediaId != null && OrdinalEquals(avatar.Bio, Constants.User.Sherlock.Name))
+        if (avatar.MediaId != null && avatar.Bio == Constants.User.Sherlock.Name)
             return;
 
         //using var dbContext = dbInitializer.CreateDbContext(true);

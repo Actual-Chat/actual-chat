@@ -23,7 +23,7 @@
         <div class="c-header">
             <div class="c-timestamp">@sTime</div>
             <div class="c-level" data-tooltip="@Entry.LogLevel">@Entry.LogLevel.ToString()[0]</div>
-            <div class="c-category" data-tooltip="@Entry.CategoryName">@Entry.CategoryName.OrdinalSuffix(".")</div>
+            <div class="c-category" data-tooltip="@Entry.CategoryName">@Entry.CategoryName.Suffix(".")</div>
             <div class="c-id">#@Entry.Id</div>
         </div>
         <div class="c-body">

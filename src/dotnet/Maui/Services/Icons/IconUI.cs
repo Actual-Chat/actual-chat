@@ -35,7 +35,7 @@ public class IconUI(IServiceProvider services) : ProcessorBase, IComputeService
         if (url.IsNullOrEmpty())
             return Task.FromResult(FilePath.Empty);
 
-        var isSvg = url.OrdinalIgnoreCaseEndsWith(".svg");
+        var isSvg = url.EndsWith(".svg", StringComparison.OrdinalIgnoreCase);
         var ext = isSvg ? ".png" : Path.GetExtension(url);
         var filePath = GetCacheFilePath(url, ext);
         return FetchToCache(url, filePath, isSvg, cancellationToken);

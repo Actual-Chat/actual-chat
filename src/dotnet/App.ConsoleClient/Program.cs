@@ -48,11 +48,11 @@ await foreach (var entry in entries.ConfigureAwait(false)) {
 string GetArgument(string shortName, string longName, string? prompt = null)
 {
     var prefix = $"-{shortName}:";
-    var value = args.Where(x => x.OrdinalStartsWith(prefix)).Select(x => x[prefix.Length..]).LastOrDefault();
+    var value = args.Where(x => x.StartsWith(prefix)).Select(x => x[prefix.Length..]).LastOrDefault();
     if (!value.IsNullOrEmpty())
         return value;
     prefix = $"-{longName}:";
-    value = args.Where(x => x.OrdinalStartsWith(prefix)).Select(x => x[prefix.Length..]).LastOrDefault();
+    value = args.Where(x => x.StartsWith(prefix)).Select(x => x[prefix.Length..]).LastOrDefault();
     if (!value.IsNullOrEmpty())
         return value;
 

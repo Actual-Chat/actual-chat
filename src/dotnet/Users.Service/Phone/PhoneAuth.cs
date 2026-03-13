@@ -59,7 +59,7 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
 
         bool IsBlocked() {
             foreach (var blockedPrefix in _blockedPhonePrefixes.Value)
-                if (value.OrdinalStartsWith(blockedPrefix))
+                if (value.StartsWith(blockedPrefix))
                     return true;
             return false;
         }
@@ -146,7 +146,7 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         var conflictingUserId = await dbContext
             .GetUserIdByIdentity(phoneIdentity, false, cancellationToken)
             .ConfigureAwait(false);
-        if (conflictingUserId != null && !OrdinalEquals(conflictingUserId.Value, account.Id.Value))
+        if (conflictingUserId != null && conflictingUserId.Value != account.Id.Value)
             throw StandardError.Unauthorized("Phone number has already been taken by another account.");
 
         var cmd = new AccountsBackend_Update(updatedAccount, account.Version);

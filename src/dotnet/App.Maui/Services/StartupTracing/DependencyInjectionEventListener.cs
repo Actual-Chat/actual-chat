@@ -13,7 +13,7 @@ internal sealed class DependencyInjectionEventListener : EventListener
         // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
         Log.Information($"{nameof(OnEventSourceCreated)}: {eventSource.Name}");
         // https://github.com/dotnet/runtime/blob/main/src/libraries/Microsoft.Extensions.DependencyInjection/src/DependencyInjectionEventSource.cs
-        if (OrdinalEquals(eventSource.Name, "Microsoft-Extensions-DependencyInjection"))
+        if (eventSource.Name == "Microsoft-Extensions-DependencyInjection")
             EnableEvents(eventSource, EventLevel.Verbose);
     }
 

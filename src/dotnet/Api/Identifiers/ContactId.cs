@@ -111,7 +111,7 @@ public sealed partial class ContactId : StringIdentifier, IStringIdentifier<Cont
             return true;
         }
 
-        var ownerIdLength = s.OrdinalIndexOf(' ');
+        var ownerIdLength = s.IndexOf(' ');
         if (ownerIdLength <= 0)
             return false;
 

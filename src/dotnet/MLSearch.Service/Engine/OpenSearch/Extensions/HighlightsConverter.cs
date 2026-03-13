@@ -93,12 +93,12 @@ public static partial class HighlightsConverter
     {
         var position = 0;
         while (position <= highlight.Length) {
-            var iStart = highlight.OrdinalIndexOf(PreTag, position);
+            var iStart = highlight.IndexOf(PreTag, position);
             if (iStart < 0)
                 yield break;
 
             iStart += PreTag.Length;
-            var iEnd = highlight.OrdinalIndexOf(PostTag, iStart);
+            var iEnd = highlight.IndexOf(PostTag, iStart);
             if (iEnd < 0)
                 yield break;
 
@@ -111,9 +111,9 @@ public static partial class HighlightsConverter
 
     public static SearchMatch ToSearchMatch(string plain, string highlight, double score)
     {
-        var plainHighlight = highlight.OrdinalReplace(PreTag, "").OrdinalReplace(PostTag, "");
+        var plainHighlight = highlight.Replace(PreTag, "").Replace(PostTag, "");
         var offset = 0;
-        if (!OrdinalEquals(plain, plainHighlight)) {
+        if (plain != plainHighlight) {
             plainHighlight = string.Concat(SkippedPartReplacement, plainHighlight, SkippedPartReplacement);
             offset = SkippedPartReplacement.Length;
         }
@@ -128,12 +128,12 @@ public static partial class HighlightsConverter
         var position = 0;
         var plainOffset = 0;
         while (position < highlightedString.Length) {
-            var iStart = highlightedString.OrdinalIndexOf(PreTag, position);
+            var iStart = highlightedString.IndexOf(PreTag, position);
             if (iStart < 0)
                 yield break;
 
             iStart += PreTag.Length;
-            var iEnd = highlightedString.OrdinalIndexOf(PostTag, iStart);
+            var iEnd = highlightedString.IndexOf(PostTag, iStart);
             if (iEnd < 0)
                 yield break;
 

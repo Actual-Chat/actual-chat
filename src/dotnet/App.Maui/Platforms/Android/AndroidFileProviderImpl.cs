@@ -26,7 +26,7 @@ public class AndroidFileProviderImpl : IMauiFileProviderImpl
         // on an attempt to take persisted permission.
         // However, we can open such files on the next app launch.
         // So we can safely ignore this case.
-        if (!Uri.OrdinalStartsWith(System.Uri.UriSchemeFile))
+        if (!Uri.StartsWith(System.Uri.UriSchemeFile))
             AndroidFilePermissionsKeeper.TakeReadPermission(Uri, this);
         return Task.CompletedTask;
     }

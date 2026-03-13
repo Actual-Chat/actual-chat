@@ -113,7 +113,7 @@ public partial class TranslationSourceId  : StringIdentifier, IStringIdentifier<
             return true;
         }
 
-        var chatIdLength = s.OrdinalIndexOf(Delimiter);
+        var chatIdLength = s.IndexOf(Delimiter);
         var s1 = s.Substring(0, chatIdLength);
         if (!ChatId.TryParse(s1, out var chatId))
             return false;

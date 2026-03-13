@@ -158,7 +158,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
             }
 
             // NOTE(DF): force sync after changes are committed
-            var isLocal = OrdinalEquals(context.Operation.HostId, HostId.Id);
+            var isLocal = context.Operation.HostId == HostId.Id;
             if (isLocal && command.Changes.Any(x => x.Change.Kind is ChangeKind.Update or ChangeKind.Create))
                 ContactLinker.Activate();
             return default!;

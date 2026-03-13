@@ -104,7 +104,7 @@
     private async Task<string?> GetPeerOwnName(CancellationToken cancellationToken) {
         var avatar = await Avatars.Get(Session, Author.Avatar.Id, cancellationToken).ConfigureAwait(false);
         var peerOwnName = avatar?.Name ?? "";
-        return !OrdinalEquals(Author.Avatar.Name, peerOwnName) ? peerOwnName : "";
+        return Author.Avatar.Name != peerOwnName ? peerOwnName : "";
     }
 
     private async Task<ShareModalModel?> GetShareModalModel(CancellationToken cancellationToken) {

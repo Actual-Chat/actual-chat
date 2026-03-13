@@ -13,12 +13,12 @@ public static class TestPlacesExt
         this IReadOnlyDictionary<TestPlaceKey, Place> places,
         string? filter = null)
         => new[] { places.JoinedPublicPlace1(), places.JoinedPrivatePlace1() }.Where(x
-                => filter.IsNullOrEmpty() || x.Title.OrdinalIgnoreCaseContains(filter))
+                => filter.IsNullOrEmpty() || x.Title.Contains(filter, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
     public static List<Place> Joined(this IReadOnlyDictionary<TestPlaceKey, Place> places, string? filter = null)
         => places.Where(x => x.Key.MustJoin)
-            .Where(x => filter.IsNullOrEmpty() || x.Value.Title.OrdinalIgnoreCaseContains(filter))
+            .Where(x => filter.IsNullOrEmpty() || x.Value.Title.Contains(filter, StringComparison.OrdinalIgnoreCase))
             .Select(x => x.Value)
             .ToList();
 
@@ -26,7 +26,7 @@ public static class TestPlacesExt
         this IReadOnlyDictionary<TestPlaceKey, Place> places,
         string? filter = null)
         => places.Where(x => x.Key is { MustJoin: false, IsPublic: true })
-            .Where(x => filter.IsNullOrEmpty() || x.Value.Title.OrdinalIgnoreCaseContains(filter))
+            .Where(x => filter.IsNullOrEmpty() || x.Value.Title.Contains(filter, StringComparison.OrdinalIgnoreCase))
             .Select(x => x.Value)
             .ToList();
 

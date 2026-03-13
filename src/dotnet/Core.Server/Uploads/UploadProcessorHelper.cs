@@ -15,7 +15,7 @@ public static class UploadProcessorHelper
             : new Size(video.Width, video.Height);
 
     public static T EnsureMp4Extension<T>(T file) where T : UploadedFile
-        => OrdinalIgnoreCaseEquals(file.FileName.Extension, ".mp4")
+        => string.Equals(file.FileName.Extension, ".mp4", StringComparison.OrdinalIgnoreCase)
             ? file
             : file with { FileName = Path.ChangeExtension(file.FileName, ".mp4"), ContentType = "video/mp4" };
 
@@ -29,10 +29,10 @@ public static class UploadProcessorHelper
     {
         var codecName = videoStream.CodecName;
         // Skip transcoding for H.264 and HEVC (H.265) codecs — a simple rename to .mp4 is enough
-        return !OrdinalIgnoreCaseEquals(codecName, "h264")
-            && !OrdinalIgnoreCaseEquals(codecName, "libx264")
-            && !OrdinalIgnoreCaseEquals(codecName, "hevc")
-            && !OrdinalIgnoreCaseEquals(codecName, "h265");
+        return !string.Equals(codecName, "h264", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(codecName, "libx264", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(codecName, "hevc", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(codecName, "h265", StringComparison.OrdinalIgnoreCase);
     }
 
     public static bool MustConvertVideo(MediaFormat mediaFormat)

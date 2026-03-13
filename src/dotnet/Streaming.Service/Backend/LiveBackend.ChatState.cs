@@ -42,7 +42,7 @@ public partial class LiveBackend
                 if (initialStreams != null) {
                     if (CpuTimestamp.Now > dedupeEndsAt)
                         initialStreams = null;
-                    else if (initialStreams.Exists(x => OrdinalEquals(x.StreamId, stream.StreamId)))
+                    else if (initialStreams.Exists(x => x.StreamId == stream.StreamId))
                         continue;
                 }
                 yield return stream;

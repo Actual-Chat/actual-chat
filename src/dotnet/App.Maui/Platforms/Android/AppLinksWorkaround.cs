@@ -19,7 +19,7 @@ public static class AppLinksWorkaround
 
         var action = intent.Action;
         var link = intent.DataString.NullIfWhiteSpace();
-        if (link == null || !OrdinalEquals(Intent.ActionView, action))
+        if (link == null || Intent.ActionView != action)
             return;
 
         App.Current.SendOnAppLinkRequestReceived(link.ToUri());

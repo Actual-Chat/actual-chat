@@ -461,7 +461,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
 
                 var roleIds = dbAuthor.Roles.Select(c => c.DbRoleId).ToList();
                 foreach (var roleId in roleIds) {
-                    var migratedRole = rolesMap.First(c => OrdinalEquals(roleId, c.Item1.Value));
+                    var migratedRole = rolesMap.First(c => roleId == c.Item1.Value);
                     dbContext.AuthorRoles.Add(new DbAuthorRole {
                         DbAuthorId = newAuthorId.Value,
                         DbRoleId = migratedRole.Item2.Value,

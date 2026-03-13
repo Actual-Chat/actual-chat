@@ -10,7 +10,7 @@ public static class ChatEntryAttachmentExt
         => MediaTypeExt.IsGif(attachment.Media.ContentType);
     public static bool IsSvg(this ChatEntryAttachment attachment)
         => MediaTypeExt.IsSvg(attachment.Media.ContentType)
-            || (attachment.IsSupportedImage() && OrdinalIgnoreCaseEquals(Path.GetExtension(attachment.Media.FileName), ".svg"));
+            || (attachment.IsSupportedImage() && string.Equals(Path.GetExtension(attachment.Media.FileName), ".svg", StringComparison.OrdinalIgnoreCase));
     public static bool IsSupportedVideo(this ChatEntryAttachment attachment)
         => MediaTypeExt.IsSupportedVideo(attachment.Media.ContentType);
     public static bool IsVisualMedia(this ChatEntryAttachment attachment)

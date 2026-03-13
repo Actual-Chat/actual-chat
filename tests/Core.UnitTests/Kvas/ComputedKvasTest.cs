@@ -94,10 +94,10 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
         s2.Value.Should().Be("a");
 
         s1.Value = "b";
-        await s2.Computed.When(x => OrdinalEquals(x, "b")).WaitAsync(timeout);
+        await s2.Computed.When(x => x == "b").WaitAsync(timeout);
 
         s2.Value = "c";
-        await s1.Computed.When(x => OrdinalEquals(x, "c")).WaitAsync(timeout);
+        await s1.Computed.When(x => x == "c").WaitAsync(timeout);
 
         s1.Value = "x1";
         s2.Value = "x2";
@@ -122,9 +122,9 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
             UpdateDelayer = updateDelayer,
         });
         s1.Value = "a";
-        OrdinalEquals(s1.Value.Origin, s1.OwnOrigin).Should().BeTrue();
+        (s1.Value.Origin == s1.OwnOrigin).Should().BeTrue();
         await Task.Delay(100);
-        OrdinalEquals(s1.Value.Origin, s1.OwnOrigin).Should().BeTrue();
+        (s1.Value.Origin == s1.OwnOrigin).Should().BeTrue();
         await s1.WhenWritten().WaitAsync(timeout);
 
         var s2 = stateFactory.NewKvasSynced<StringState>(new(kvas, "s1") {
@@ -136,12 +136,12 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
 
         s1.Value = "b";
         s1.Value.Origin.Should().Be(s1.OwnOrigin);
-        await s2.Computed.When(x => OrdinalEquals(x.Value, "b")).WaitAsync(timeout);
+        await s2.Computed.When(x => x.Value == "b").WaitAsync(timeout);
         s2.Value.Origin.Should().Be(s1.OwnOrigin);
 
         s2.Value = "c";
         s2.Value.Origin.Should().Be(s2.OwnOrigin);
-        await s1.Computed.When(x => OrdinalEquals(x.Value, "c")).WaitAsync(timeout);
+        await s1.Computed.When(x => x.Value == "c").WaitAsync(timeout);
         s1.Value.Origin.Should().Be(s2.OwnOrigin);
 
         s1.Value = "x1";

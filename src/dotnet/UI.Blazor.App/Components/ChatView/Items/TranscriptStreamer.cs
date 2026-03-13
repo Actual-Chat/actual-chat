@@ -141,8 +141,8 @@ public class TranscriptStreamer(ChatEntryId id, AppUIHub hub) : WorkerBase
                     isTranslation);
         }
         catch (Exception e) {
-            if (OrdinalEquals(e.GetType().FullName, "Microsoft.AspNetCore.SignalR.HubException")
-                || !e.Message.OrdinalContains(nameof(OperationCanceledException)))
+            if (e.GetType().FullName == "Microsoft.AspNetCore.SignalR.HubException"
+                || !e.Message.Contains(nameof(OperationCanceledException)))
                 throw;
             // Not fully sure if it's the case, but it seems that sometimes SignalR
             // wraps OperationCanceledException into HubException, so here we suppress it.

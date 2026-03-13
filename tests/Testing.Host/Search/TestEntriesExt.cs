@@ -8,7 +8,7 @@ public static class TestEntriesExt
         this IReadOnlyDictionary<TestEntryKey, ChatEntry> entries,
         string? filter = null)
         => entries.Where(x => x.Key.ChatKey.MustJoin)
-            .Where(x => filter.IsNullOrEmpty() || x.Value.Content.OrdinalIgnoreCaseContains(filter))
+            .Where(x => filter.IsNullOrEmpty() || x.Value.Content.Contains(filter, StringComparison.OrdinalIgnoreCase))
             .Select(x => x.Value)
             .ToList();
 
@@ -16,7 +16,7 @@ public static class TestEntriesExt
         this IReadOnlyDictionary<TestEntryKey, ChatEntry> entries,
         string? filter = null)
         => entries.Where(x => x.Key.ChatKey.PlaceKey == TestPlaceKey.JoinedPrivatePlace2 && x.Key.ChatKey.MustJoin)
-            .Where(x => filter.IsNullOrEmpty() || x.Value.Content.OrdinalIgnoreCaseContains(filter))
+            .Where(x => filter.IsNullOrEmpty() || x.Value.Content.Contains(filter, StringComparison.OrdinalIgnoreCase))
             .Select(x => x.Value)
             .ToList();
 
@@ -24,7 +24,7 @@ public static class TestEntriesExt
         this IReadOnlyDictionary<TestEntryKey, ChatEntry> entries,
         string? filter = null)
         => entries.Where(x => x.Key.ChatKey.MustJoin && x.Key.Index == 0)
-            .Where(x => filter.IsNullOrEmpty() || x.Value.Content.OrdinalIgnoreCaseContains(filter))
+            .Where(x => filter.IsNullOrEmpty() || x.Value.Content.Contains(filter, StringComparison.OrdinalIgnoreCase))
             .Select(x => x.Value)
             .ToList();
 
@@ -32,7 +32,7 @@ public static class TestEntriesExt
         this IReadOnlyDictionary<TestEntryKey, ChatEntry> entries,
         string? filter = null)
         => entries.Where(x => !x.Key.ChatKey.MustJoin)
-            .Where(x => filter.IsNullOrEmpty() || x.Value.Content.OrdinalIgnoreCaseContains(filter))
+            .Where(x => filter.IsNullOrEmpty() || x.Value.Content.Contains(filter, StringComparison.OrdinalIgnoreCase))
             .Select(x => x.Value)
             .ToList();
 }

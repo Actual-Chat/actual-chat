@@ -110,9 +110,9 @@ public class AndroidMediaSaver(IServiceProvider services)
 
     private static ContentKind GetContentKind(string contentType)
     {
-        var contentKind = contentType.OrdinalStartsWith("image/")
+        var contentKind = contentType.StartsWith("image/")
             ? ContentKind.Image
-            : contentType.OrdinalStartsWith("video/")
+            : contentType.StartsWith("video/")
                 ? ContentKind.Video
                 : ContentKind.Other;
         return contentKind;

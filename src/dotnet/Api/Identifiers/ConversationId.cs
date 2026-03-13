@@ -87,7 +87,7 @@ public sealed partial class ConversationId : StringIdentifier, IStringIdentifier
             return true;
         }
 
-        var chatIdLength = s.OrdinalIndexOf(Delimiter);
+        var chatIdLength = s.IndexOf(Delimiter);
         if (chatIdLength < 0)
             return false;
 

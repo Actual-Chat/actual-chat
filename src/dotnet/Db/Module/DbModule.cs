@@ -48,9 +48,9 @@ public sealed class DbModule(IServiceProvider moduleServices)
 
         // Creating DbInfo<TDbContext>
         var (dbKind, connectionStringSuffix) = connectionString switch {
-            { } s when s.OrdinalHasPrefix("memory:", out var suffix)
+            { } s when s.HasPrefix("memory:", out var suffix)
                 => (DbKind.InMemory, suffix.Trim()),
-            { } s when s.OrdinalHasPrefix("postgresql:", out var suffix)
+            { } s when s.HasPrefix("postgresql:", out var suffix)
                 => (DbKind.PostgreSql, suffix.Trim()),
             _ => throw StandardError.Format("Unrecognized database connection string."),
         };
