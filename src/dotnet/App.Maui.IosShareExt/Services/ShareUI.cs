@@ -192,15 +192,17 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
                 return;
             }
 
-            // Upload files once, then create entries in each chat with the same attachments
             var progress = new ForkableProgress(pct => _uploadPct.Value = pct);
-            var mediaRefs = await UploadFiles(fileInputs, progress, cancellationToken)
+            var (uploadProgress, entryProgress) = progress.Fork(0.9, 0.1);
+            var mediaRefs = await UploadFiles(fileInputs, uploadProgress, cancellationToken)
                 .ConfigureAwait(false);
             var attachments = mediaRefs
                 .Select(r => new ChatEntryAttachment { MediaId = r.MediaId, ThumbnailMediaId = r.ThumbnailMediaId })
                 .ToArray();
 
-            foreach (var chatId in chatIds) {
+            var chatProgresses = entryProgress.Fork(chatIds.Count);
+            for (var i = 0; i < chatIds.Count; i++) {
+                var chatId = chatIds[i];
                 var entryText = text;
                 foreach (var attachmentList in attachments.Chunk(10)) {
                     await CreateChatEntry(chatId, entryText, attachmentList, cancellationToken).ConfigureAwait(false);
@@ -208,6 +210,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
                 }
                 if (!entryText.IsNullOrWhiteSpace())
                     await CreateChatEntry(chatId, entryText, [], cancellationToken).ConfigureAwait(false);
+                chatProgresses[i].Report(100);
             }
 
             _isSent.Value = true;
