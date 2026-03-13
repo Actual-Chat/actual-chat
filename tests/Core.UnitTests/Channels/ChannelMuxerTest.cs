@@ -78,8 +78,8 @@ public class ChannelMuxerTest
         }
 
         Assert.Equal(10, items.Count);
-        Assert.Equal(5, items.Count(x => x.Value.StartsWith("S1-", StringComparison.Ordinal)));
-        Assert.Equal(5, items.Count(x => x.Value.StartsWith("S2-", StringComparison.Ordinal)));
+        Assert.Equal(5, items.Count(x => x.Value.StartsWith("S1-")));
+        Assert.Equal(5, items.Count(x => x.Value.StartsWith("S2-")));
     }
 
     [Fact]

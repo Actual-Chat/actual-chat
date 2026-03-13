@@ -32,5 +32,5 @@ public static class Interests
         ];
 
     public static readonly Dictionary<string, Interest> ById
-        = All.ToDictionary(x => x.Id.Value, StringComparer.Ordinal);
+        = All.ToDictionary(x => x.Id.Value);
 }

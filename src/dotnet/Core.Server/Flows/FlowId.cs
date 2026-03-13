@@ -113,7 +113,7 @@ public readonly partial struct FlowId : ISymbolIdentifier<FlowId>
         if (s.IsNullOrEmpty())
             return true; // None
 
-        var nameLength = s.IndexOf(':', StringComparison.Ordinal);
+        var nameLength = s.IndexOf(':');
         if (nameLength <= 0)
             return false;
 

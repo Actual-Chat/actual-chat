@@ -17,7 +17,7 @@ public class ThemeUI(UIHub hub) : UIWorkerBase<UIHub>(hub)
 
     public ValueTask SetTheme(Theme? theme)
     {
-        var sTheme = theme?.ToString().ToLowerInvariant();
+        var sTheme = theme?.ToString().ToLower();
         return JS.InvokeVoidAsync(JSSetMethod, sTheme);
     }
 

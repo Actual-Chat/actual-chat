@@ -45,7 +45,7 @@ internal class LocalChatId
                 break;
 
             var sThreadId = span.Slice(threadIdIndex + 1);
-            if (!long.TryParse(sThreadId, CultureInfo.InvariantCulture, out var threadId))
+            if (!long.TryParse(sThreadId, out var threadId))
                 break;
 
             threadIds ??= new List<long>();
@@ -72,7 +72,7 @@ internal class LocalChatId
 
     private LocalChatId CreateThreadId(long threadId)
     {
-        var s = Id + ChatId.ThreadIdSeparator + threadId.ToInvariantString();
+        var s = Id + ChatId.ThreadIdSeparator + threadId.ToString();
         return new LocalChatId(s, this, threadId);
     }
 }

@@ -37,7 +37,7 @@ public static class OpenGraphParser
     }
 
     private static int? GetInt(Dictionary<string, string> metaMap, string key)
-        => int.TryParse(metaMap.GetValueOrDefault(key)?.HtmlDecode(), CultureInfo.InvariantCulture, out var i) ? i : null;
+        => int.TryParse(metaMap.GetValueOrDefault(key)?.HtmlDecode(), out var i) ? i : null;
 
     private struct UrlExtractor(Uri? requestUri)
     {

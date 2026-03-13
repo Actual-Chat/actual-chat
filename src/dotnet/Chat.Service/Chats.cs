@@ -150,7 +150,7 @@ public partial class Chats(IServiceProvider services) : IChats
             .ConfigureAwait(false);
         return authors
             .SkipNullItems()
-            .OrderBy(a => a.Avatar.Name, StringComparer.Ordinal)
+            .OrderBy(a => a.Avatar.Name)
             .ToArray();
     }
 

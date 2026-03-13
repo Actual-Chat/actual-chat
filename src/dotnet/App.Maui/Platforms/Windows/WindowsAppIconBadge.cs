@@ -15,7 +15,7 @@ public class WindowsAppIconBadge : IAppIconBadge
             var badgeXml = BadgeUpdateManager.GetTemplateContent(BadgeTemplateType.BadgeNumber);
 
             var badgeElement = badgeXml.SelectSingleNode("/badge") as XmlElement;
-            badgeElement?.SetAttribute("value", count.ToString(CultureInfo.InvariantCulture));
+            badgeElement?.SetAttribute("value", count.ToString());
 
             var badge = new BadgeNotification(badgeXml);
             badgeUpdater.Update(badge);

@@ -14,7 +14,7 @@ public sealed record TranscriptionResult(string Text, IReadOnlyList<WordResult> 
         foreach (var word in Words) {
             currentWords.Add(word);
             var trimmed = word.Text.TrimEnd();
-            if (trimmed.Length > 0 && ".!?".Contains(trimmed[^1], StringComparison.Ordinal)) {
+            if (trimmed.Length > 0 && ".!?".Contains(trimmed[^1])) {
                 var text = string.Join("", currentWords.Select(w => w.Text));
                 sentences.Add(new SentenceResult(text, currentWords[0].StartTime, currentWords[^1].EndTime));
                 currentWords = [];

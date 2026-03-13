@@ -8,7 +8,7 @@ public partial class LiveVideoBackend
     {
         private readonly ConcurrentDictionary<StreamId, VideoStreamInfo> _streams = new();
         private readonly AsyncObservable<VideoStreamInfo> _newStreams = new();
-        private readonly Dictionary<string, ApiArray<string>> _members = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, ApiArray<string>> _members = new();
         private readonly Lock _membersLock = new();
 
         // Codec recommendation

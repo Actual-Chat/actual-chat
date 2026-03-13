@@ -95,7 +95,7 @@ public static class FirebaseAnalyticsExt
 
         private Dictionary<string, object> CreateBaseParameters()
         {
-            var parameters = new Dictionary<string, object>(StringComparer.Ordinal) {
+            var parameters = new Dictionary<string, object>() {
                 {"page_location", _history.Uri },
                 {"isMauiApp", _isMauiApp },
                 {"isAdmin", _accountUI.OwnAccount.Value.IsAdmin },

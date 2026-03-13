@@ -36,7 +36,7 @@ public abstract class StringIdentifier(string value) : IStringIdentifier
     [DataMember(Order = 0)]
     public readonly string Value = value;
     [IgnoreDataMember]
-    public readonly int HashCode = value.GetHashCode(StringComparison.Ordinal);
+    public readonly int HashCode = value.GetHashCode();
     [IgnoreDataMember]
     public Symbol Id => new(Value, HashCode);
 

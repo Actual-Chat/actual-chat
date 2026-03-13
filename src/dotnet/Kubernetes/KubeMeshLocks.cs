@@ -10,8 +10,8 @@ public class KubeMeshLocks : MeshLocksBase
     public const string FullName = "voxt.ai/full-name";
     public static readonly TimeSpan StaleLeaseAge = TimeSpan.FromDays(7);
 
-    private readonly ConcurrentDictionary<string, (string FullName, string LeaseName)> _leaseFullKeys = new(StringComparer.Ordinal);
-    private readonly ConcurrentDictionary<string, Api.Lease> _cachedLeases = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, (string FullName, string LeaseName)> _leaseFullKeys = new();
+    private readonly ConcurrentDictionary<string, Api.Lease> _cachedLeases = new();
     private readonly string _keyPrefix;
     private readonly int _keyPrefixLength;
     private readonly string _labelSelector;
@@ -99,7 +99,7 @@ public class KubeMeshLocks : MeshLocksBase
             var isExpired = IsExpired(lease);
             var hasAnnotation = lease.Metadata.Annotations != null
                 && lease.Metadata.Annotations.TryGetValue(FullName, out var fullName)
-                && fullName.StartsWith(fullPrefix, StringComparison.Ordinal);
+                && fullName.StartsWith(fullPrefix);
 
             if (!isExpired && hasAnnotation)
                 activeKeys.Add(lease.Metadata.Annotations![FullName][_keyPrefixLength..]);

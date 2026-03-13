@@ -102,7 +102,7 @@ public sealed partial class PeerChatId : ChatId, IStringIdentifier<PeerChatId>
     public bool Equals(PeerChatId? other)
         => !ReferenceEquals(other, null)
             && HashCode == other.HashCode
-            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+            && string.Equals(Value, other.Value);
     public override bool Equals(object? obj)
         => obj is PeerChatId other && Equals(other);
 

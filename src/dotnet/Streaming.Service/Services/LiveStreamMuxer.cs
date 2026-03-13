@@ -68,7 +68,7 @@ public sealed class LiveStreamMuxer : WorkerBase
             var serverClock = Clocks.ServerClock;
             await serverClock.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-            var streamTasks = new Dictionary<string, Task>(StringComparer.Ordinal);
+            var streamTasks = new Dictionary<string, Task>();
 
             // Watch for streams via LiveBackend with auto-reconnect
             while (true) {

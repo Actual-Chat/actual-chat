@@ -45,7 +45,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
             return default;
         }
 
-        var parameters = new Dictionary<string, object?>(StringComparer.Ordinal) {
+        var parameters = new Dictionary<string, object?>() {
             { nameof(Digest.Parameters), digestParameters },
         };
         var renderer = new BlazorRenderer();

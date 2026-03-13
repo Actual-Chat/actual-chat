@@ -44,7 +44,7 @@ public sealed partial class AuthorId : PrincipalId, IStringIdentifier<AuthorId>
     public bool Equals(AuthorId? other)
         => !ReferenceEquals(other, null)
             && HashCode == other.HashCode
-            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+            && string.Equals(Value, other.Value);
     public override bool Equals(object? obj)
         => obj is AuthorId other && Equals(other);
 

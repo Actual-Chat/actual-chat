@@ -45,7 +45,7 @@ public static partial class Constants
     public static class Place
     {
         public static readonly IReadOnlySet<Symbol> SystemPlaceIds = new HashSet<Symbol>();
-        public static readonly HashSet<string> SystemPlaceIdValues = SystemPlaceIds.Select(x => x.Value).ToHashSet(StringComparer.Ordinal);
+        public static readonly HashSet<string> SystemPlaceIdValues = SystemPlaceIds.Select(x => x.Value).ToHashSet();
     }
 
     public static class Chat
@@ -54,7 +54,7 @@ public static partial class Constants
         public static readonly GroupChatId AnnouncementsChatId = GroupChatId.Parse("announcements");
         public static readonly GroupChatId FeedbackTemplateChatId = GroupChatId.Parse("feedback-template");
         public static readonly HashSet<ChatId> SystemChatIds = [DefaultChatId, AnnouncementsChatId, FeedbackTemplateChatId];
-        public static readonly HashSet<string> SystemChatIdValues = SystemChatIds.Select(x => x.Value).ToHashSet(StringComparer.Ordinal);
+        public static readonly HashSet<string> SystemChatIdValues = SystemChatIds.Select(x => x.Value).ToHashSet();
 
         public static readonly TileStack<long> ServerIdTileStack = TileStacks.Long5To1K;
         public static readonly TileStack<long> ReaderIdTileStack = TileStacks.Long5To80;
@@ -265,7 +265,7 @@ public static partial class Constants
             };
 
             public static bool IsValidKey(string key)
-                => ValidKeys.Contains(key, StringComparer.Ordinal);
+                => ValidKeys.Contains(key);
         }
 
         public static class ThrottleIntervals

@@ -46,7 +46,7 @@ public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasS
     public bool Equals(ChatId? other)
         => !ReferenceEquals(other, null)
             && HashCode == other.HashCode
-            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+            && string.Equals(Value, other.Value);
     public override bool Equals(object? obj)
         => obj is ChatId other && Equals(other);
 

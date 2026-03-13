@@ -72,15 +72,15 @@
         }
 
         if (isToday)
-            timestamp = StartsAt.ToInvariantString("HH:mm");
+            timestamp = StartsAt.ToString("HH:mm", null);
         else if (isYesterday)
-            timestamp = $"{StartsAt.ToInvariantString("HH:mm")}, Yesterday";
+            timestamp = $"{StartsAt.ToString("HH:mm", null)}, Yesterday";
         else if (inWeek)
-            timestamp = StartsAt.ToInvariantString("HH:mm, ddd");
+            timestamp = StartsAt.ToString("HH:mm, ddd", null);
         else if (now.Year == StartsAt.Year)
-            timestamp = StartsAt.ToInvariantString("HH:mm, MMM dd");
+            timestamp = StartsAt.ToString("HH:mm, MMM dd", null);
         else
-            timestamp = StartsAt.ToInvariantString("HH:mm, MMM dd, yyyy");
+            timestamp = StartsAt.ToString("HH:mm, MMM dd, yyyy", null);
         return $"{timeRange} at {timestamp}";
     }
 }

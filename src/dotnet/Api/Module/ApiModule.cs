@@ -27,13 +27,13 @@ public sealed class ApiModule(IServiceProvider moduleServices)
             var sharedParser = new CachingMarkupParser(rawParser, sharedCache);
             services.AddSingleton(sharedParser);
             services.AddSingleton<IMarkupParser>(_ => {
-                var scopedCache = new ThreadSafeLruCache<string, Markup>(256, StringComparer.Ordinal);
+                var scopedCache = new ThreadSafeLruCache<string, Markup>(256);
                 var scopedParser = new CachingMarkupParser(sharedParser, scopedCache);
                 return scopedParser;
             });
         }
         else { // WASM and MAUI apps
-            var sharedCache = new ThreadSafeLruCache<string, Markup>(4096, StringComparer.Ordinal);
+            var sharedCache = new ThreadSafeLruCache<string, Markup>(4096);
             var sharedParser = new CachingMarkupParser(rawParser, sharedCache);
             services.AddSingleton(sharedParser);
             services.AddScoped<IMarkupParser>(_ => sharedParser);

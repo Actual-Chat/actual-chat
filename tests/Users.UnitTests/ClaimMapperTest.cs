@@ -7,7 +7,7 @@ public class ClaimMapperTest
     {
         var claimMapper = new ClaimMapper();
         var account = new AccountFull("");
-        var claims = new Dictionary<string, string>(StringComparer.Ordinal) {
+        var claims = new Dictionary<string, string>() {
             {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name","vchirikov"},
             {"urn:github:name","Vladimir Chirikov"},
         };
@@ -21,7 +21,7 @@ public class ClaimMapperTest
     {
         var claimMapper = new ClaimMapper();
         var account = new AccountFull("");
-        var claims = new Dictionary<string, string>(StringComparer.Ordinal) {
+        var claims = new Dictionary<string, string>() {
             {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name","vchirikov"},
             {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname","Chirikov"},
             {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname","Vladimir"},

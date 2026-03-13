@@ -2,7 +2,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class UploadSessionsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
-    private readonly ConcurrentDictionary<string, UploadSessionProgress> _progresses = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, UploadSessionProgress> _progresses = new();
 
     [ComputeMethod]
     public virtual Task<UploadSessionProgress> GetProgress(string sessionId, CancellationToken cancellationToken)

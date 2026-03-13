@@ -372,7 +372,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                     ? VideoQualityLevel.Medium
                     : VideoQualityLevel.Low;
 
-        private readonly ConcurrentDictionary<string, PeerLatencyState> _peers = new(StringComparer.Ordinal);
+        private readonly ConcurrentDictionary<string, PeerLatencyState> _peers = new();
         private readonly AsyncObservable<VideoQualityPreset> _qualityDirectives = new();
         private readonly Lock _evaluationLock = new();
 

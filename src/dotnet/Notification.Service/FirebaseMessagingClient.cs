@@ -47,7 +47,7 @@ public class FirebaseMessagingClient(
             : isChatRelated ? UrlMapper.ToAbsolute(Links.Chat(chatId!))
             : "";
 
-        var data = new Dictionary<string, string>(StringComparer.Ordinal) {
+        var data = new Dictionary<string, string>() {
             { Constants.Notification.MessageDataKeys.NotificationId, notificationId.Value },
             { Constants.Notification.MessageDataKeys.Tag, tag },
             { Constants.Notification.MessageDataKeys.ChatId, chatId?.Value ?? "" },
@@ -55,10 +55,10 @@ public class FirebaseMessagingClient(
             { Constants.Notification.MessageDataKeys.Icon, absoluteIconUrl },
             { Constants.Notification.MessageDataKeys.Kind, kind.ToString() },
             { Constants.Notification.MessageDataKeys.Link, link },
-            { Constants.Notification.MessageDataKeys.Timestamp, ((long)notification.CreatedAt.EpochOffset.TotalMilliseconds).ToString(CultureInfo.InvariantCulture) },
+            { Constants.Notification.MessageDataKeys.Timestamp, ((long)notification.CreatedAt.EpochOffset.TotalMilliseconds).ToString() },
         };
         if (lastEntryLocalId > 0)
-            data.Add(Constants.Notification.MessageDataKeys.LastEntryLocalId, lastEntryLocalId.ToString(CultureInfo.InvariantCulture));
+            data.Add(Constants.Notification.MessageDataKeys.LastEntryLocalId, lastEntryLocalId.ToString());
         var multicastMessage = new MulticastMessage {
             Tokens = deviceIds.Select(id => id.Value).ToList(),
             // We do not specify Notification instance, because we use Data messages to deliver notifications to Android
@@ -67,7 +67,7 @@ public class FirebaseMessagingClient(
             Android = new AndroidConfig {
                 // We do not specify Notification instance, because we use Data messages to deliver notifications to Android
                 // Notification = default,
-                Data = new Dictionary<string, string>(StringComparer.Ordinal) {
+                Data = new Dictionary<string, string>() {
                     { Constants.Notification.MessageDataKeys.Title, title },
                     { Constants.Notification.MessageDataKeys.Body, content },
                     { Constants.Notification.MessageDataKeys.ImageUrl, absoluteIconUrl },
@@ -77,7 +77,7 @@ public class FirebaseMessagingClient(
                 TimeToLive = TimeSpan.FromDays(10),
             },
             Apns = new ApnsConfig {
-                Headers = new Dictionary<string, string>(StringComparer.Ordinal) {
+                Headers = new Dictionary<string, string>() {
                     ["apns-push-type"] = "alert",
                     ["apns-priority"] = notification.GetAttentionNotification is not null ? "10" : "5",
                 },

@@ -5,13 +5,13 @@ public readonly struct AttributeMapBuilder
     public Dictionary<string, object> Map { get; init; }
 
     public static AttributeMapBuilder New()
-        => new(new Dictionary<string, object>(StringComparer.Ordinal));
+        => new(new Dictionary<string, object>());
 
     public static AttributeMapBuilder From(IReadOnlyDictionary<string, object>? attributes)
-        => new(attributes?.ToDictionary() ?? new Dictionary<string, object>(StringComparer.Ordinal));
+        => new(attributes?.ToDictionary() ?? new Dictionary<string, object>());
 
     public static AttributeMapBuilder From(Dictionary<string, object>? attributes)
-        => new(attributes ?? new Dictionary<string, object>(StringComparer.Ordinal));
+        => new(attributes ?? new Dictionary<string, object>());
 
     private AttributeMapBuilder(Dictionary<string, object> map)
         => Map = map;

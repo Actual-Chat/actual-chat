@@ -36,7 +36,7 @@ public sealed partial class ThreadChatId : ChatId, IStringIdentifier<ThreadChatI
     public bool Equals(ThreadChatId? other)
         => !ReferenceEquals(other, null)
             && HashCode == other.HashCode
-            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+            && string.Equals(Value, other.Value);
     public override bool Equals(object? obj)
         => obj is ThreadChatId other && Equals(other);
 
@@ -51,7 +51,7 @@ public sealed partial class ThreadChatId : ChatId, IStringIdentifier<ThreadChatI
     // Format & Parse
 
     private static string Format(ChatId parentChatId, long threadId)
-        => parentChatId.Value + ThreadIdSeparator + threadId.ToInvariantString();
+        => parentChatId.Value + ThreadIdSeparator + threadId.ToString();
 
     public static new ThreadChatId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ThreadChatId>(s);

@@ -37,7 +37,7 @@ public sealed class DbModule(IServiceProvider moduleServices)
 
         // Replacing variables
         var instance = Host.GetModule<CoreModule>().Settings.Instance;
-        var contextName = typeof(TDbContext).Name.TrimSuffix("DbContext").ToLowerInvariant();
+        var contextName = typeof(TDbContext).Name.TrimSuffix("DbContext").ToLower();
         connectionString = Variables.Inject(connectionString,
             ("instance", instance),
             ("instance_", instance.IsNullOrEmpty() ? "" : $"{instance}_"),

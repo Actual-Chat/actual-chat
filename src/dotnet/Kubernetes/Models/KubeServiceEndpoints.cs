@@ -9,7 +9,7 @@ public sealed record KubeServiceEndpoints(
     KubeEndpoint[] ReadyEndpoints,
     KubePort[] Ports)
 {
-    private readonly Dictionary<string, HashRing<string>> _hashRingCache = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, HashRing<string>> _hashRingCache = new();
 
     public KubeServiceEndpoints(KubeService service)
         : this(service, [], [], [])
@@ -68,8 +68,8 @@ public sealed record KubeServiceEndpoints(
             : Endpoints;
         var addresses = endpoints
             .SelectMany(e => e.Addresses)
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(a => a, StringComparer.Ordinal);
+            .Distinct()
+            .OrderBy(a => a);
         return new HashRing<string>(addresses, static a => a.GetXxHash3());
     }
 }

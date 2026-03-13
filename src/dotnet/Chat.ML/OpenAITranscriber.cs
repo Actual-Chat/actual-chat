@@ -83,7 +83,7 @@ public class OpenAITranscriber
 
         var start = 0;
         foreach (var transcriptionWord in transcription.Words) {
-            var i = text.IndexOf(transcriptionWord.Word, start, StringComparison.Ordinal);
+            var i = text.IndexOf(transcriptionWord.Word, start);
             if (i < 0)
                 continue;
             linearMap.Append(new Vector2(i, (float)transcriptionWord.StartTime.TotalSeconds));

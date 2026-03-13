@@ -56,7 +56,7 @@ public sealed class FakeDeviceContacts(IServiceProvider services) : DeviceContac
         Phone GeneratePhone(int contactIndex, int i)
         {
             var code = phoneCodes[random.Next(0, phoneCodes.Count)];
-            var number = "555" + contactIndex.ToString("00000", CultureInfo.InvariantCulture) + i.ToString("00", CultureInfo.InvariantCulture);
+            var number = "555" + contactIndex.ToString("00000") + i.ToString("00");
             return Phone.New(code.Code, number);
         }
 

@@ -131,11 +131,11 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
 
     private PromptExecutionSettings CreateExecutionSettings(string textToTranslate, Language targetLanguage)
     {
-        var isGemini = Completion.GetType().Name.Contains("Gemini", StringComparison.Ordinal);
-        var isOpenAI = Completion.GetType().Name.Contains("OpenAI", StringComparison.Ordinal);
+        var isGemini = Completion.GetType().Name.Contains("Gemini");
+        var isOpenAI = Completion.GetType().Name.Contains("OpenAI");
         if (Completion is RateLimitedChatCompletionService rateLimited) {
-            isGemini = rateLimited.ChatCompletionService.GetType().Name.Contains("Gemini", StringComparison.Ordinal);
-            isOpenAI = rateLimited.ChatCompletionService.GetType().Name.Contains("OpenAI", StringComparison.Ordinal);
+            isGemini = rateLimited.ChatCompletionService.GetType().Name.Contains("Gemini");
+            isOpenAI = rateLimited.ChatCompletionService.GetType().Name.Contains("OpenAI");
         }
 
         // estimate for the response length

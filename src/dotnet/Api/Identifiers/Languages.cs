@@ -126,13 +126,13 @@ public static class Languages
 
     public static readonly Dictionary<string, Language> ById =
         All.Select(x => new KeyValuePair<string, Language>(x.Value, x))
-            .Concat(All.Select(x => new KeyValuePair<string, Language>(x.Value.ToLowerInvariant(), x)))
+            .Concat(All.Select(x => new KeyValuePair<string, Language>(x.Value.ToLower(), x)))
             .Concat(All.Select(x => new KeyValuePair<string, Language>(x.ShortTitle, x)))
-            .Concat(All.Select(x => new KeyValuePair<string, Language>(x.ShortTitle.ToLowerInvariant(), x)))
+            .Concat(All.Select(x => new KeyValuePair<string, Language>(x.ShortTitle.ToLower(), x)))
             .DistinctBy(kv => kv.Key)
-            .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
+            .ToDictionary(kv => kv.Key, kv => kv.Value);
 
     public static readonly Dictionary<string, Language> SupportedById =
         ById.Where(x => AllSupported.Contains(x.Value))
-            .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
+            .ToDictionary(kv => kv.Key, kv => kv.Value);
 }

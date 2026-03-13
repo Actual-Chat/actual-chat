@@ -18,7 +18,7 @@ public static class TimeSpanFormatExt
         => format switch {
             "Default" => FormatDefault(value),
             "Short" => value.ToShortString(),
-            _ => value.ToString(format, CultureInfo.InvariantCulture),
+            _ => value.ToString(format),
         };
 
     public static string Format(this TimeSpan value, TimeSpanFormat format = TimeSpanFormat.Default)

@@ -49,7 +49,7 @@ public sealed partial class TranslationId : StringIdentifier, IStringIdentifier<
     public bool Equals(TranslationId? other)
         => !ReferenceEquals(other, null)
             && HashCode == other.HashCode
-            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+            && string.Equals(Value, other.Value);
     public override bool Equals(object? obj)
         => obj is TranslationId other && Equals(other);
 

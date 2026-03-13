@@ -38,7 +38,7 @@ public static partial class ServerEndpoints
         if (!m.Success)
             return false;
 
-        if (!int.TryParse(m.Groups[3].Value, CultureInfo.InvariantCulture, out port))
+        if (!int.TryParse(m.Groups[3].Value, out port))
             return false;
 
         host = m.Groups[2].Value;

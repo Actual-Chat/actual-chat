@@ -127,7 +127,7 @@ public static class Emojis
     ];
 
     public static readonly Dictionary<string, Emoji> ById
-        = All.ToDictionary(x => x.Id.Value, StringComparer.Ordinal);
+        = All.ToDictionary(x => x.Id.Value);
 
     public static readonly IReadOnlyDictionary<EmojiGroup, Emoji[]> ByGroup
         = All.GroupBy(x => x.Group).ToDictionary(g => g.Key, g => g.ToArray());

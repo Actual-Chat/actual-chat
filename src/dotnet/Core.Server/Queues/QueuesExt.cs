@@ -32,7 +32,7 @@ public static class QueuesExt
         Dictionary<string, StringValues>? contextHeaders = null;
         if (activity is { Context: var activityContext }) {
             var propagationContext = new PropagationContext(activityContext, Baggage.Current);
-            contextHeaders = new Dictionary<string, StringValues>(StringComparer.Ordinal);
+            contextHeaders = new Dictionary<string, StringValues>();
             Propagators.DefaultTextMapPropagator.Inject(
                 propagationContext, contextHeaders, static (headers, key, value) => headers[key] = value);
             activity.AddTag(OtelConstants.MessagingOperation, "enqueue");

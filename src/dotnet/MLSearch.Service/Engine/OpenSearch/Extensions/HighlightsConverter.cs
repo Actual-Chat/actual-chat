@@ -15,7 +15,7 @@ public static partial class HighlightsConverter
     private static readonly string AccountNameField = nameof(IndexedUser.Name).Decapitalize();
     private static readonly string ContactNameField = nameof(IndexedUserContact.Name).Decapitalize();
     private static readonly string ExternalContactNameField = nameof(IndexedUserContact.ExternalContactName).Decapitalize();
-    private static readonly string UserRelationName = nameof(IndexedUser).ToLowerInvariant();
+    private static readonly string UserRelationName = nameof(IndexedUser).ToLower();
     private static readonly string TitleField = nameof(Chat.Chat.Title).Decapitalize();
     private static readonly string ContentField = nameof(ChatEntry.Content).Decapitalize();
 
@@ -103,7 +103,7 @@ public static partial class HighlightsConverter
                 yield break;
 
             foreach (var word in WordRegex.Split(highlight[iStart..iEnd]))
-                yield return word.ToLowerInvariant();
+                yield return word.ToLower();
 
             position = iEnd + PostTag.Length;
         }

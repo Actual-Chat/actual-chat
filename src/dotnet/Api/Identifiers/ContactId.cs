@@ -72,7 +72,7 @@ public sealed partial class ContactId : StringIdentifier, IStringIdentifier<Cont
     public bool Equals(ContactId? other)
         => !ReferenceEquals(other, null)
             && HashCode == other.HashCode
-            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+            && string.Equals(Value, other.Value);
     public override bool Equals(object? obj)
         => obj is ContactId other && Equals(other);
 

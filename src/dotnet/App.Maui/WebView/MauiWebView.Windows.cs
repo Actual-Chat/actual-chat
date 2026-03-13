@@ -145,7 +145,7 @@ public partial class MauiWebView
             => GetResponseContentTypeOrDefaultFunc.Invoke(path);
 
         public static IDictionary<string, string> GetResponseHeaders(string contentType)
-            => new Dictionary<string, string>(StringComparer.Ordinal) {
+            => new Dictionary<string, string>() {
                 { "Content-Type", contentType },
                 { "Cache-Control", "no-cache, max-age=0, must-revalidate, no-store" },
             };

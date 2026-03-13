@@ -4,7 +4,7 @@ public abstract class Temporals(UIHub hub) : UIServiceBase<UIHub>(hub), ICompute
 {
     public readonly TimeSpan DefaultExpiresIn = TimeSpan.FromSeconds(3);
 
-    protected readonly ConcurrentDictionary<string, Entry> Entries = new(StringComparer.Ordinal);
+    protected readonly ConcurrentDictionary<string, Entry> Entries = new();
 
     public async ValueTask<T?> Get<T>(string key)
         where T : notnull

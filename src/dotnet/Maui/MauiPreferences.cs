@@ -16,7 +16,7 @@ public static class MauiPreferences
     private const string ThemeKey = "Theme";
 
     private static readonly Lock Lock = new();
-    private static readonly ConcurrentDictionary<string, object?> Cache = new(StringComparer.Ordinal);
+    private static readonly ConcurrentDictionary<string, object?> Cache = new();
     // A sentinel to distinguish "cached null/not-set" from "not yet cached"
     private static readonly object NotCachedTag = new();
 

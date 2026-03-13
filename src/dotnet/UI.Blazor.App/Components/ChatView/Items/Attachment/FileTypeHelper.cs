@@ -11,7 +11,7 @@ public static class FileTypeHelper
         { FileType.Archive, "file-archive" },
     };
 
-    public static readonly Dictionary<string, string> FileColors = new(StringComparer.Ordinal) {
+    public static readonly Dictionary<string, string> FileColors = new() {
         { "png", FileClasses[FileType.Image] },
         { "jpg", FileClasses[FileType.Image] },
         { "jpeg", FileClasses[FileType.Image] },

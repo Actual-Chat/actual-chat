@@ -61,7 +61,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         var totp = TotpCodes.Generate(securityToken, modifier);
         var nextSendAt = NextSendAt();
 
-        var sTotp = totp.ToString(TotpFormat, CultureInfo.InvariantCulture);
+        var sTotp = totp.ToString(TotpFormat);
         if (!HostInfo.IsProductionInstance)
             Log.LogWarning("!!! Email verification code for {Email}: {Code}", email, sTotp);
 
@@ -71,7 +71,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
             _ => $"{CoreConstants.AppName}: code",
         };
 
-        var parameters = new Dictionary<string, object?>(StringComparer.Ordinal) {
+        var parameters = new Dictionary<string, object?>() {
             { nameof(EmailVerification.Token), sTotp },
         };
         var blazorRenderer = new BlazorRenderer();

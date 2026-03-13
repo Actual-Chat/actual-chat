@@ -3,7 +3,7 @@ namespace ActualChat.UI.Blazor.Components;
 public static class BubbleRegistry
 {
     private static readonly ConcurrentDictionary<Type, string> TypeToId = new();
-    private static readonly ConcurrentDictionary<string, Type> IdToType = new(StringComparer.Ordinal);
+    private static readonly ConcurrentDictionary<string, Type> IdToType = new();
 
     public static string GetTypeId([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type)
         => TypeToId.GetOrAdd(type, static type1 => {

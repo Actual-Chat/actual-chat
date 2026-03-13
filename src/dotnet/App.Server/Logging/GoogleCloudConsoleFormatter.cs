@@ -157,7 +157,7 @@ public sealed class GoogleCloudConsoleFormatter : ConsoleFormatter, IDisposable
 
     public void Dispose() => _optionsReloadToken?.Dispose();
 
-    private static string? ToInvariantString(object? obj) => Convert.ToString(obj, CultureInfo.InvariantCulture);
+    private static string? ToInvariantString(object? obj) => Convert.ToString(obj);
 
     /// <summary>
     /// <see href="https://github.com/dotnet/runtime/blob/main/src/libraries/Common/src/System/Text/Json/PooledByteBufferWriter.cs"/>

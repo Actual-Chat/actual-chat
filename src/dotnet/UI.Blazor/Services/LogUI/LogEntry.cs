@@ -9,7 +9,7 @@ public record LogEntry(
     Exception? Exception,
     Moment Timestamp) : IVirtualListItem
 {
-    public string Key { get; } = Id.ToInvariantString();
+    public string Key { get; } = Id.ToString();
     public bool IsGroup => false;
     public bool ShouldSkipKey => false;
 

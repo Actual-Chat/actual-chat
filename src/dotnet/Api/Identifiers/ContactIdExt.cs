@@ -14,5 +14,5 @@ public static class ContactIdExt
             : throw StandardError.Constraint("Only peer chat contacts are allowed.");
 
     public static string Hash(string value)
-        => value.ToLowerInvariant().Hash(Encoding.UTF8).SHA256().Base64();
+        => value.ToLower().Hash(Encoding.UTF8).SHA256().Base64();
 }

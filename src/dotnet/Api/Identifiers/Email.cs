@@ -36,12 +36,12 @@ public sealed partial class Email : StringIdentifier, IStringIdentifier<Email>
     // Normalization
 
     public bool IsNormalized()
-        => Value == Value.ToLowerInvariant();
+        => Value == Value.ToLower();
 
     public Email Normalize()
         => IsNormalized()
             ? this
-            : New(Value.ToLowerInvariant());
+            : New(Value.ToLower());
 
     public Email RequireNormalized()
         => IsNormalized()
@@ -53,7 +53,7 @@ public sealed partial class Email : StringIdentifier, IStringIdentifier<Email>
     public bool Equals(Email? other)
         => !ReferenceEquals(other, null)
             && HashCode == other.HashCode
-            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+            && string.Equals(Value, other.Value);
     public override bool Equals(object? obj)
         => obj is Email other && Equals(other);
 
@@ -91,7 +91,7 @@ public sealed partial class Email : StringIdentifier, IStringIdentifier<Email>
             return false;
 
         // Normalize email to lowercase before caching and storing
-        var normalizedEmail = s.ToLowerInvariant();
+        var normalizedEmail = s.ToLower();
 
         if (Cache.TryGetValue(normalizedEmail, out var cached)) {
             result = cached;

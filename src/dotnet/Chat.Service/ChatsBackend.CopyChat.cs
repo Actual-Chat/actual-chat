@@ -286,7 +286,7 @@ public partial class ChatsBackend
 
         var newDbAuthorByUserId = newDbAuthors
             .Where(c => !c.UserId.IsNullOrEmpty())
-            .ToDictionary(c => c.UserId!, StringComparer.Ordinal);
+            .ToDictionary(c => c.UserId!);
 
         var migratedAuthors = new MigratedAuthors();
 
@@ -513,7 +513,7 @@ public partial class ChatsBackend
 
             var newAuthorId = migratedAuthors.GetNewAuthorId(authorId);
             var newMentionId = MentionId.NewAuthor(newAuthorId);
-            content = content.Replace(mentionId.Id.Value, newMentionId.Id.Value, StringComparison.Ordinal);
+            content = content.Replace(mentionId.Id.Value, newMentionId.Id.Value);
         }
         return content;
     }
@@ -725,7 +725,7 @@ public partial class ChatsBackend
             mention.ChatId = newChatSid;
             var mentionSid = mention.MentionId;
             MentionId mentionId;
-            if (mentionSid.StartsWith(mentionIdAuthorPrefix, StringComparison.Ordinal)) {
+            if (mentionSid.StartsWith(mentionIdAuthorPrefix)) {
                 var authorSid = mentionSid.Substring(mentionIdAuthorPrefix.Length);
                 if (!AuthorId.TryParse(authorSid, out var tempAuthorId)) {
                     Log.LogWarning("OnCopyChat({CorrelationId}): skipping mention {MentionId}: invalid AuthorId",
@@ -778,7 +778,7 @@ public partial class ChatsBackend
 
         string FixMentionAuthorSid(DbMention mention, string authorSid)
         {
-            if (mention.Id.EndsWith(authorSid, StringComparison.Ordinal))
+            if (mention.Id.EndsWith(authorSid))
                 return authorSid;
 
             // At some point DbMention.AuthorId field (later renamed to MentionId) mistakenly hold value of author of text entry instead of mentioned author.
@@ -790,7 +790,7 @@ public partial class ChatsBackend
                 var authorChatSid = parts[^2];
                 var authorLocalSid = parts[^1];
                 if (ChatId.TryParse(authorChatSid, out var authorChatId)
-                    && long.TryParse(authorLocalSid, CultureInfo.InvariantCulture, out var authorLocalId)) {
+                    && long.TryParse(authorLocalSid, out var authorLocalId)) {
                     var authorId = AuthorId.New(authorChatId, authorLocalId);
                     authorSid = authorId.Value;
                     hasFixedMentionId = true;

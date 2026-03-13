@@ -55,7 +55,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
             var subjectName = GetSubjectName(shardIndex, Queues.GetTopic(queuedCommand.UntypedCommand));
             var headers = ReferenceEquals(queuedCommand.Headers, null)
                 ? null
-                : new NatsHeaders(queuedCommand.Headers.ToDictionary(StringComparer.Ordinal));
+                : new NatsHeaders(queuedCommand.Headers.ToDictionary());
             var response = await context.PublishAsync(subjectName,
                     buffer.WrittenMemory,
                     opts: new NatsJSPubOpts { MsgId = queuedCommand.Uuid },

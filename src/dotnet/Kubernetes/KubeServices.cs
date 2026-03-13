@@ -129,7 +129,7 @@ public class KubeServices : IKubeInfo, IAsyncDisposable
                 return resourceVersion;
             }
 
-            var endpointsMap = new Dictionary<string, (EndpointSlice Slice, KubeEndpoint[] Endpoints)>(StringComparer.Ordinal);
+            var endpointsMap = new Dictionary<string, (EndpointSlice Slice, KubeEndpoint[] Endpoints)>();
 
             using var httpClient = Kube.CreateHttpClient(HttpClientFactory);
             if (resourceVersion.IsNullOrEmpty()) {

@@ -26,7 +26,7 @@ public sealed class RedisModule(IServiceProvider moduleServices)
             ("instance.", instance.IsNullOrEmpty() ? "" : $"{instance}."),
             ("_instance", instance.IsNullOrEmpty() ? "" : $"_{instance}"),
             (".instance", instance.IsNullOrEmpty() ? "" : $".{instance}"),
-            ("context", typeof(TContext).Name.TrimSuffix("DbContext").ToLowerInvariant()));
+            ("context", typeof(TContext).Name.TrimSuffix("DbContext").ToLower()));
 
         var parts = connectionString.Split('|', 2);
         var configuration = parts.FirstOrDefault() ?? "";

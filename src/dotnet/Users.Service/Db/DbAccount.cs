@@ -105,10 +105,10 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
         CreatedAt = model.CreatedAt;
         TimeZone = model.TimeZone;
         AliasId = model.AliasId?.NormalizedValue ?? "";
-        Claims = model.Claims.ToImmutableDictionary(StringComparer.Ordinal);
+        Claims = model.Claims.ToImmutableDictionary();
 
         // Add + update identities
-        var identities = Identities.ToDictionary(ai => ai.Id, StringComparer.Ordinal);
+        var identities = Identities.ToDictionary(ai => ai.Id);
         foreach (var (userIdentity, secret) in model.Identities) {
             if (!userIdentity.IsValid)
                 continue;

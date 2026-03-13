@@ -77,8 +77,8 @@ public class DbExternalContact : IHasId<string>, IHasVersion<long>, IRequirement
 
         var links = model.PhoneHashes.Select(DbExternalContactLink.GetPhoneLink)
             .Concat(model.EmailHashes.Select(DbExternalContactLink.GetEmailLink))
-            .ToHashSet(StringComparer.Ordinal);
-        var linksToAdd = links.Except(ExternalContactLinks.Select(x => x.Value), StringComparer.Ordinal).ToList();
+            .ToHashSet();
+        var linksToAdd = links.Except(ExternalContactLinks.Select(x => x.Value)).ToList();
         ExternalContactLinks.RemoveAll(x => !links.Contains(x.Value));
         ExternalContactLinks.AddRange(linksToAdd.Select(x => new DbExternalContactLink {
             DbExternalContactId = model.Id.Value,

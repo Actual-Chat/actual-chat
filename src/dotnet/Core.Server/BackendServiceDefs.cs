@@ -31,7 +31,7 @@ public sealed class BackendServiceDefs
         var items = _items.Values
             .Distinct()
             .Select(x => $"{Environment.NewLine}- {x}")
-            .Order(StringComparer.Ordinal)
+            .Order()
             .ToDelimitedString("");
         return _toStringCached = $"{nameof(BackendServiceDefs)}:" + items;
     }

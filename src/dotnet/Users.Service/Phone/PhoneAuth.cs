@@ -90,7 +90,7 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         if (!canSendValidationMessage.IsNullOrEmpty())
             throw StandardError.Constraint(canSendValidationMessage);
 
-        var sTotp = totp.ToString(TotpFormat, CultureInfo.InvariantCulture);
+        var sTotp = totp.ToString(TotpFormat);
         if (!HostInfo.IsProductionInstance)
             Log.LogWarning("!!! Phone verification code for {Phone}: {Code}", phone.Value, sTotp);
         await TextMessage.Send(phone, $"{CoreConstants.AppName}: your phone verification code is {sTotp}. Don't share it with anyone.").ConfigureAwait(false);

@@ -37,14 +37,14 @@ public class AndroidWebChromeClient : WebChromeClient
         = $"{CoreConstants.AppName} uses your microphone to record and transcribe your audio messages. "
         + "Please grant access to your microphone when requested.";
 
-    private static readonly Dictionary<string, string> RationalesByPermission = new(StringComparer.Ordinal) {
+    private static readonly Dictionary<string, string> RationalesByPermission = new() {
         [Manifest.Permission.Camera] = CameraAccessRationale,
         [Manifest.Permission.AccessFineLocation] = LocationAccessRationale,
         [Manifest.Permission.RecordAudio] = MicrophoneAccessRationale,
         // Add more rationales as you add more supported permissions.
     };
 
-    private static readonly Dictionary<string, string[]> RequiredPermissionsByWebkitResource = new(StringComparer.Ordinal) {
+    private static readonly Dictionary<string, string[]> RequiredPermissionsByWebkitResource = new() {
         [PermissionRequest.ResourceVideoCapture] = new[] { Manifest.Permission.Camera },
         [PermissionRequest.ResourceAudioCapture] = new[] { Manifest.Permission.ModifyAudioSettings, Manifest.Permission.RecordAudio },
         // Add more Webkit resource -> Android permission mappings as needed.

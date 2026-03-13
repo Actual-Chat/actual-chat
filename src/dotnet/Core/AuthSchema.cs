@@ -12,7 +12,7 @@ public static class AuthSchema
     public static readonly string[] AllExternal = [Google, Apple];
 
     public static readonly IReadOnlyDictionary<string, string> DisplayNames
-        = new Dictionary<string, string>(StringComparer.Ordinal) {
+        = new Dictionary<string, string>() {
             [Google] = "Google",
             [Apple] = "Apple",
             [Phone] = "Phone",
@@ -21,7 +21,7 @@ public static class AuthSchema
             [HashedEmail] = "Email",
         };
     public static readonly IReadOnlySet<string> ExternalSchemas
-        = new HashSet<string>(StringComparer.Ordinal) { Google, Apple };
+        = new HashSet<string>() { Google, Apple };
 
     public static bool IsExternal(string schema)
 #pragma warning disable MA0002

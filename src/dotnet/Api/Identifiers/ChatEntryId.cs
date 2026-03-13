@@ -45,7 +45,7 @@ public sealed partial class ChatEntryId : StringIdentifier, IStringIdentifier<Ch
     public bool Equals(ChatEntryId? other)
         => !ReferenceEquals(other, null)
             && HashCode == other.HashCode
-            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+            && string.Equals(Value, other.Value);
     public override bool Equals(object? obj)
         => obj is ChatEntryId other && Equals(other);
 

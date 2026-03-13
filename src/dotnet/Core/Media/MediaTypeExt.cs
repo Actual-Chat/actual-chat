@@ -28,13 +28,13 @@ public static class MediaTypeExt
         new (ImageExtensionByContentType.Concat(VideoExtensionByContentType), StringComparer.OrdinalIgnoreCase);
 
     public static bool IsSupportedImage(string? contentType)
-        => !contentType.IsNullOrEmpty() && ImageExtensionByContentType.ContainsKey(contentType.ToLowerInvariant());
+        => !contentType.IsNullOrEmpty() && ImageExtensionByContentType.ContainsKey(contentType.ToLower());
     public static bool IsGif(string? contentType)
         => string.Equals(contentType, "image/gif", StringComparison.OrdinalIgnoreCase);
     public static bool IsSvg(string? contentType)
         => string.Equals(contentType, "image/svg+xml", StringComparison.OrdinalIgnoreCase);
     public static bool IsSupportedVideo(string? contentType)
-        => !contentType.IsNullOrEmpty() && VideoExtensionByContentType.ContainsKey(contentType.ToLowerInvariant());
+        => !contentType.IsNullOrEmpty() && VideoExtensionByContentType.ContainsKey(contentType.ToLower());
     public static bool IsSupportedVisualMedia(string? contentType)
         => IsSupportedImage(contentType) || IsSupportedVideo(contentType);
     public static string? GetFileExtension(string? contentType)

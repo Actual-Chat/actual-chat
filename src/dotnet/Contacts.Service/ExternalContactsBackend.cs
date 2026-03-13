@@ -164,7 +164,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
             return default!;
         }
 
-        var overallAffectedHashes = new HashSet<string>(StringComparer.Ordinal);
+        var overallAffectedHashes = new HashSet<string>();
         var updatedItemHashes = new List<IReadOnlyCollection<string>>();
         var result = new List<Result<ExternalContactFull?>>(command.Changes.Length);
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
@@ -184,7 +184,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
             catch (Exception e) {
                 Log.LogError(e,
                     "Failed to {ChangeKind} external contact #{ExternalContactId}",
-                    itemChange.Change.Kind.ToString().ToLowerInvariant(),
+                    itemChange.Change.Kind.ToString().ToLower(),
                     itemChange.Id);
                 result.Add(new Result<ExternalContactFull?>(null, e));
             }
@@ -215,7 +215,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
             .ConfigureAwait(false);
         var existing = dbExternalContact?.ToModel();
         var now = Clocks.SystemClock.Now;
-        var modifiedItemHashes = new HashSet<string>(StringComparer.Ordinal);
+        var modifiedItemHashes = new HashSet<string>();
 
         if (change.IsCreate(out var externalContact)) {
             if (existing != null)

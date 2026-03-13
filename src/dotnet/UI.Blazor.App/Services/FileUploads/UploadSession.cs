@@ -239,7 +239,7 @@ public class UploadSession
     private async Task OnFailed(Exception ex, CancellationToken cancellationToken = default)
     {
         Log.LogError(ex, "Upload '{SessionId}' session for file '{FileName}' failed on step '{Step}'",
-            SessionId, FileProvider.Metadata.FileName, _snapshot.CurrentState.ToInvariantString());
+            SessionId, FileProvider.Metadata.FileName, _snapshot.CurrentState.ToString());
         LastError = ex;
         await UpdateState(s => s with { IsFailed = true }, cancellationToken: cancellationToken).ConfigureAwait(false);
     }

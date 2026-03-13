@@ -67,7 +67,7 @@ public class AndroidWebViewClient(
                 return null;
 
             // Prevent response caching by WebView
-            var headers = new Dictionary<string, string>(StringComparer.Ordinal) {
+            var headers = new Dictionary<string, string>() {
                 { cacheControlKey, "no-store, no-cache, max-age=0" },
             };
             return new WebResourceResponse(mimeType, null, 200, "OK", headers, stream);

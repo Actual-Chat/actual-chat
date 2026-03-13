@@ -42,7 +42,7 @@ public sealed class ValidationModelStore
             let asyncValidationAttributes = property.GetCustomAttributes<AsyncValidationAttribute>().ToList()
             let hasValidationAttributes = property.GetCustomAttributes<ValidationAttribute>().Any()
             where hasValidationAttributes || asyncValidationAttributes.Count != 0
-            select new ValidatedProperty(property, asyncValidationAttributes)).ToDictionary(x => x.Property.Name, StringComparer.Ordinal);
+            select new ValidatedProperty(property, asyncValidationAttributes)).ToDictionary(x => x.Property.Name);
 
     public sealed record ValidatedProperty(PropertyInfo Property, IReadOnlyList<AsyncValidationAttribute> AsyncAttributes);
 

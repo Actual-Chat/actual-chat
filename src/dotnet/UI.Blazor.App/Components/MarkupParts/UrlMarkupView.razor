@@ -35,7 +35,7 @@
     private static readonly Dictionary<UrlMarkupKind, string> Classes = new[] {
         UrlMarkupKind.Www,
         UrlMarkupKind.Email,
-    }.ToDictionary(x => x, x => $"url-markup url-markup-{x.ToString().ToLowerInvariant()}");
+    }.ToDictionary(x => x, x => $"url-markup url-markup-{x.ToString().ToLower()}");
 
     private string _hrefUrl = "";
     private LocalUrl? _localUrl;

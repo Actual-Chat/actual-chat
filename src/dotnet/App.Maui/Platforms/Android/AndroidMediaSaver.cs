@@ -200,7 +200,7 @@ public class AndroidMediaSaver(IServiceProvider services)
 
         string NewFileName(long index)
         {
-            var newFileName = fileNameWithoutExtension + " (" + index.ToInvariantString() + ")";
+            var newFileName = fileNameWithoutExtension + " (" + index.ToString() + ")";
             if (!extension.IsNullOrEmpty())
                 newFileName += extension;
             return newFileName;

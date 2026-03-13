@@ -93,7 +93,7 @@ public class LinkPreviewTest(AppHostFixture fixture, ITestOutputHelper @out)
         for (int i = 0; i < count; i++) {
             var url = urls[i];
             var imgUrl = imgUrls[i];
-            var suffix = (i + 1).ToInvariantString();
+            var suffix = (i + 1).ToString();
             Http.SetupImage(imgUrl)
                 .SetupHtml(url, h => h.Title($"Title {suffix}").Description($"Description {suffix}").Image(imgUrl))
                 .SetupEmptyRobots(url);

@@ -88,7 +88,7 @@ public partial class GoogleTranscriber : ITranscriber
             Log.LogDebug("Starting recognize process for {AudioStreamId}", audioStreamId);
 
             var languageCode = GetRecognizerOptions(options.Language).LanguageCode;
-            var recognizerId = $"{languageCode.ToLowerInvariant()}";
+            var recognizerId = $"{languageCode.ToLower()}";
             var parent = $"projects/{GoogleProjectId}/locations/{RegionId}";
             var recognizerName = $"{parent}/recognizers/{recognizerId}";
 
