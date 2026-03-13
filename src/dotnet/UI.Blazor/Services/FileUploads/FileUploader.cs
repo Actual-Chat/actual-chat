@@ -2,7 +2,7 @@ using ActualChat.UI.Services;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class FileUploader(IEnumerable<IFileUploader> uploaders)
+public sealed class FileUploader(IEnumerable<IFileUploader> uploaders)
 {
     private IReadOnlyList<IFileUploader> Uploaders { get; } = uploaders.ToList();
 

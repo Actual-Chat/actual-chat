@@ -1,6 +1,6 @@
 namespace ActualChat.Uploads;
 
-public class MediaProcessor(IServiceProvider services) : IMediaProcessor
+public sealed class MediaProcessor(IServiceProvider services) : IMediaProcessor
 {
     private IReadOnlyCollection<IUploadProcessor> Processors { get; }
         = services.GetRequiredService<IEnumerable<IUploadProcessor>>().ToList();
