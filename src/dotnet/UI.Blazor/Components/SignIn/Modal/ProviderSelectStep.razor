@@ -40,8 +40,7 @@
             InputId="@_formModel.PhoneOrEmailFieldId"
             Class="grow"
             ShowErrors="@_showFieldErrors"
-            IsLabelInsideInput="true"
-            IsRequired="true">
+            IsLabelInsideInput="true">
             <TextBox
                 Id="@_formModel.PhoneOrEmailFieldId"
                 Value="@(!_formModel.PhoneOrEmail.IsNullOrEmpty() ? _formModel.PhoneOrEmail : "")"
@@ -70,7 +69,7 @@
                 IsChecked="@TotpSignInModel.IsRegister"
                 IsCheckedChanged="@OnRegisterToggleChanged" />
         <FormButtons IsEndAligned="false" Class="dialog-buttons">
-            <Button Type="@ButtonType.Submit"  Class="btn-primary btn-modal sign-in" IsDisabled="@(_validationState is ValidationState.Invalid)">
+            <Button Type="@ButtonType.Submit"  Class="btn-primary btn-modal sign-in" IsDisabled="@(_validationState is ValidationState.Invalid || _formModel.PhoneOrEmail.IsNullOrEmpty())">
                 @switch (_validationState) {
                     case ValidationState.Validating:
                         <i class="icon-refresh"></i><span>Validating...</span>
@@ -324,7 +323,7 @@
 
     public sealed class StepModel(ComponentIdGenerator? componentIdGenerator = null)
         : FormModel<StepModel>("phone-signin", componentIdGenerator) {
-        [Required, PhoneOrEmailAsync, Display(Name = "Phone or email")]
+        [PhoneOrEmailAsync, Display(Name = "Phone or email")]
         public string PhoneOrEmail { get; set; } = "";
         public string PhoneOrEmailFieldId { get; set; } = "";
     }
