@@ -10,7 +10,6 @@
   <!-- Runtime properties -->
   <PropertyGroup>
     <ServerGarbageCollection>true</ServerGarbageCollection>
-    <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(RunConfiguration)' == 'Debug' " />
