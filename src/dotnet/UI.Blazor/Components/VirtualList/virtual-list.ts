@@ -757,27 +757,23 @@ export class VirtualList {
             if (this.state.renderState.scrollToKey && now - this.state.scrollPositionRestoredAt < ScrollDebounce)
                 return;
 
-            // Use debounced scroll restoration to batch multiple resize events together
-            // This prevents jittering when returning to a chat and items are being measured
-            this.restoreScrollPositionOnResizeDebounced();
+            // Skip scroll position restoration if we are currently rendering - restoreScrollPosition() will be called
+            // later in endRender() and will have up-to-date information about item sizes and positions
+            if (this.state.renderStartedAt)
+                return;
 
-            // Immediate scroll compensation when items resize while not at sticky end.
-            // Container is anchored from bottom — when items grow, the container extends
-            // upward, shifting visible items. Shift the container's bottom position to
-            // compensate, avoiding scrollTop changes that trigger scroll events and iOS issues.
-            // Skip when restoreScrollPosition is pending — endRender (triggered from
-            // MutationObserver microtask) will see current sizes and compute the correct
-            // offset. Per the HTML spec, ResizeObserver fires after rAF and layout in
-            // the same frame.
-            if (totalExistingSizeDiff !== 0
-                && this.defaultEdge === VirtualListEdge.End
-                && this.state.stickyEdge?.edge !== VirtualListEdge.End) {
-                if (!this._restoreScrollPositionPending) {
-                    const currentBottom = parseFloat(this.containerRef.style.bottom) || 0;
-                    this.containerRef.style.bottom = `${currentBottom - totalExistingSizeDiff}px`;
-                    debugLog?.log(`onResize: compensate`, totalExistingSizeDiff, currentBottom);
-                }
-            }
+            // Skip scroll position restoration if we are recently completed rendering - endRender()
+            // will have done it already, and we want to avoid doing it twice in a short time
+            if (now - this.state.renderCompletedAt < ScrollDebounce)
+                return;
+
+            const renderState = { ...this.state.renderState, scrollToKey: undefined };
+            const scrollMetadata = this.getScrollMetadata(renderState);
+
+            // It is safe to avoid fastRaf and call restoreScrollPosition() directly as layout is already recalculated
+            // at this point, and we are not in the middle of a render, so there will be no new information about
+            // item sizes that could come in before the next paint
+            void this.restoreScrollPosition(renderState, scrollMetadata, false);
         }
     };
 
