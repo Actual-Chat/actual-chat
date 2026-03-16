@@ -175,17 +175,8 @@
         _ = InvokeAsync(() => {
             var m = State.Value;
             if (m?.Player != null && m.Player.ChatId == chatId)
-                _ = PlayAt(m.Player, origin, offset);
+                ChatAudioUI.StartReplay(chatId, origin, offset);
         });
-    }
-
-    private async Task PlayAt(ChatReplayer chatPlayer, Moment origin, TimeSpan offset, CancellationToken cancellationToken = default)
-    {
-        var newMoment = await chatPlayer.GetRewindMoment(origin, offset, cancellationToken);
-        if (!newMoment.HasValue)
-            return;
-
-        ChatAudioUI.StartReplay(chatPlayer.ChatId, newMoment.Value);
     }
 
     // Nested types

@@ -18,4 +18,6 @@ public sealed partial record LiveStreamInfo
     public Moment BeginsAt { get; init; }
     [DataMember(Order = 4), MemoryPackOrder(4)]
     public AudioFormat? Format { get; init; }
+    [DataMember(Order = 5), MemoryPackOrder(5)]
+    public ChatEntryId? EntryId { get; init; }
 }

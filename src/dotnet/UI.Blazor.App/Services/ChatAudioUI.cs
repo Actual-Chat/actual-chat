@@ -5,7 +5,7 @@ using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public sealed record ReplayState(ChatId ChatId, Moment StartAt);
+public sealed record ReplayState(ChatId ChatId, Moment StartAt, TimeSpan Offset = default);
 
 /// <summary>
 /// Manages audio listening and recording state for chats in the UI.

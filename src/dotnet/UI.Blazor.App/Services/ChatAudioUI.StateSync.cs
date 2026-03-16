@@ -309,7 +309,7 @@ public partial class ChatAudioUI
                 }
 
                 _ = TuneUI.Play(Tune.StartReplay);
-                var startTask = StartReplayPlayer(newState.ChatId, newState.StartAt, cancellationToken);
+                var startTask = StartReplayPlayer(newState.ChatId, newState.StartAt, newState.Offset, cancellationToken);
                 // Set up "resume listening after done" background task
                 _ = BackgroundTask.Run(async () => {
                     var endPlaybackTask = await startTask.ConfigureAwait(false);
