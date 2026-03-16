@@ -130,6 +130,10 @@ The worktree is created using `git worktree add` from the main project directory
 
 Use `docs/api-index.md` to discover existing abstractions before writing new code. It lists key public types across all non-test projects, organized by project. For the complete list, see `docs/api-index-full.md`.
 
+# Architecture Docs
+
+Consult `docs/architecture/video-system.md` for the video system design — covers video streaming, recording, playback, and server/client components.
+
 # Building
 
 If a `*.CI.slnf` (solution filter) file exists in the project root, use it instead of the main `*.sln` file for building. The CI solution filter excludes projects that require additional workloads (like MAUI) that may not be installed in your environment.
