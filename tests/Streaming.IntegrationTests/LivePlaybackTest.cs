@@ -3,6 +3,7 @@ using ActualChat.Chat;
 using ActualChat.Kvas;
 using ActualChat.Live;
 using ActualChat.Testing.Host;
+using ActualChat.UI.Blazor.App.Services;
 using ActualLab.Rpc;
 
 namespace ActualChat.Streaming.IntegrationTests;
@@ -132,7 +133,7 @@ public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
         var rpcStream = RpcStream.New(testItems.ToAsyncEnumerable());
 
         // Create demuxer
-        var demuxer = new ActualChat.UI.Blazor.App.Services.Live.LiveStreamDemuxer(rpcStream, log);
+        var demuxer = new LiveStreamDemuxer(rpcStream, log);
         demuxer.StreamStarted += (streamInfo, audioFrames) => {
             log.LogInformation("StreamStarted event: StreamId={StreamId}", streamInfo.StreamId);
             streamStartedEvents.Add(1); // Using 1 as placeholder since we no longer have StreamIndex

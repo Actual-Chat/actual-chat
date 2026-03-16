@@ -1,7 +1,7 @@
 using ActualChat.Live;
 using ActualLab.Rpc;
 
-namespace ActualChat.UI.Blazor.App.Services.Live;
+namespace ActualChat.UI.Blazor.App.Services;
 
 /// <summary>
 /// Demultiplexes a single live stream into individual audio streams.

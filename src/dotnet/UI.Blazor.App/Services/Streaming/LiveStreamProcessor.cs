@@ -1,6 +1,7 @@
 using ActualChat.Live;
+using ActualChat.Streaming;
 
-namespace ActualChat.UI.Blazor.App.Services.Live;
+namespace ActualChat.UI.Blazor.App.Services;
 
 /// <summary>
 /// Manages live stream connection with automatic reconnection on disconnect.
@@ -24,14 +25,16 @@ public sealed class LiveStreamProcessor : WorkerBase
         Session session,
         ChatId chatId,
         LiveStreamSettings settings,
-        CancellationTokenSource? stopTokenSource = null) : base(stopTokenSource)
+        CancellationTokenSource? stopTokenSource = null
+        ) : base(stopTokenSource)
     {
+        Log = services.LogFor(GetType());
+        DebugLog = DebugMode ? Log : null;
+
         Services = services;
         Session = session;
         ChatId = chatId;
         Settings = settings;
-        Log = services.LogFor(GetType());
-        DebugLog = DebugMode ? Log : null;
     }
 
     protected override async Task OnRun(CancellationToken cancellationToken)

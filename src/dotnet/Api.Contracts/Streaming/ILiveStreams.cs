@@ -1,6 +1,7 @@
+using ActualChat.Live;
 using ActualLab.Rpc;
 
-namespace ActualChat.Live;
+namespace ActualChat.Streaming;
 
 /// <summary>
 /// RPC service for multiplexed real-time audio streaming.
