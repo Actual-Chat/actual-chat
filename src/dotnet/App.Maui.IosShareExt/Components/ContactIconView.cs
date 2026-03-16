@@ -9,7 +9,7 @@ namespace ActualChat.App.Maui.IosShareExt.Components;
 public sealed class ContactIconView(IconQuery? iconQuery, UIImage? defaultImage, string title, bool isRound, IosHub hub)
     : ComputedStateView<LoadedImage?>(hub)
 {
-    private const int Size = 40;
+    public const int Size = 40;
     private UIImageView _image = null!;
     private UILabel _initialLabel = null!;
 
@@ -51,12 +51,6 @@ public sealed class ContactIconView(IconQuery? iconQuery, UIImage? defaultImage,
 
             _initialLabel.CenterXAnchor.ConstraintEqualTo(_image.CenterXAnchor),
             _initialLabel.CenterYAnchor.ConstraintEqualTo(_image.CenterYAnchor),
-            HeightAnchor.ConstraintEqualTo(Size),
-            WidthAnchor.ConstraintEqualTo(Size),
-            TopAnchor.ConstraintEqualTo(_image.TopAnchor),
-            TrailingAnchor.ConstraintEqualTo(_image.TrailingAnchor),
-            BottomAnchor.ConstraintEqualTo(_image.BottomAnchor),
-            LeadingAnchor.ConstraintEqualTo(_image.LeadingAnchor),
         ]);
     }
 
