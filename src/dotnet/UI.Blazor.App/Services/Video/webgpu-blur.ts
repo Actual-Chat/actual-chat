@@ -407,13 +407,11 @@ const COMPOSITE_WGSL = /* wgsl */`
   @group(0) @binding(1) var blurred:   texture_2d<f32>;
   @group(0) @binding(2) var mask:      texture_2d<f32>;
   @group(0) @binding(3) var blurSampler: sampler;
-  @group(0) @binding(4) var<uniform> cropOffset: vec2f;
+  @group(0) @binding(4) var<uniform> outSize: vec2f;
 
   @fragment fn fs(@builtin(position) pos: vec4f) -> @location(0) vec4f {
-      let origSize = vec2f(textureDimensions(original));
-
-      // Apply crop offset so we sample a centered crop region of the original frame
-      let uv       = (pos.xy + cropOffset) / origSize;
+      // Scale: map output pixel position to [0,1] UV covering the full source frame
+      let uv = pos.xy / outSize;
 
       let orig = textureSampleBaseClampToEdge(original, blurSampler, uv);
       let blur = textureSample(blurred, blurSampler, uv);
@@ -553,7 +551,7 @@ function initializeGpuResources() {
             { binding: 1, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
             { binding: 2, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } }, // upscaled mask (now bgra8unorm, filterable)
             { binding: 3, visibility: GPUShaderStage.FRAGMENT, sampler: { type: 'filtering' } },
-            { binding: 4, visibility: GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } }, // cropOffset vec2f
+            { binding: 4, visibility: GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } }, // outSize vec2f
         ]
     });
 
@@ -751,8 +749,8 @@ export function applyTemporalSmoothing(
 }
 
 // Cached crop offset buffer — reused when dimensions don't change
-let cachedCropOffsetBuffer: GPUBuffer | null = null;
-let cachedCropOffsetKey = '';
+let cachedOutSizeBuffer: GPUBuffer | null = null;
+let cachedOutSizeKey = '';
 
 // Public API - accepts either CPU Float32Array or GPU buffer
 export function applyBackgroundBlur(
@@ -927,19 +925,17 @@ function encodeBlurPasses(
         pass.end();
     }
 
-    // Get or create crop offset uniform buffer
-    const cropOffsetX = Math.max(0, (frameW - outW) / 2);
-    const cropOffsetY = Math.max(0, (frameH - outH) / 2);
-    const cropKey = `${cropOffsetX},${cropOffsetY}`;
-    if (cachedCropOffsetKey !== cropKey || !cachedCropOffsetBuffer) {
-        cachedCropOffsetBuffer ??= device!.createBuffer({
+    // Get or create output size uniform buffer (used by composite shader to scale full frame)
+    const sizeKey = `${outW},${outH}`;
+    if (cachedOutSizeKey !== sizeKey || !cachedOutSizeBuffer) {
+        cachedOutSizeBuffer ??= device!.createBuffer({
             size: 8,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
-        tempFloat32Array2[0] = cropOffsetX;
-        tempFloat32Array2[1] = cropOffsetY;
-        device!.queue.writeBuffer(cachedCropOffsetBuffer, 0, tempFloat32Array2);
-        cachedCropOffsetKey = cropKey;
+        tempFloat32Array2[0] = outW;
+        tempFloat32Array2[1] = outH;
+        device!.queue.writeBuffer(cachedOutSizeBuffer, 0, tempFloat32Array2);
+        cachedOutSizeKey = sizeKey;
     }
 
     // Composite render to the provided target (canvas or composite texture)
@@ -954,7 +950,7 @@ function encodeBlurPasses(
             { binding: 1, resource: getPyramidView(pyramid, 0) },
             { binding: 2, resource: getMaskTextureView(maskTex) },
             { binding: 3, resource: sampler },
-            { binding: 4, resource: { buffer: cachedCropOffsetBuffer } },
+            { binding: 4, resource: { buffer: cachedOutSizeBuffer } },
         ]
     }));
     compositePass.draw(4);
