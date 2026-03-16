@@ -21,6 +21,13 @@ public static partial class Constants
         public static readonly float PeerOutlierRatio = 0.5f;
         public static readonly float PeerOutlierRatioSmallCall = 0.34f; // 1 of 2 peers triggers step-down
 
+        // Root-cause classification thresholds
+        public static readonly float HighDecodeTimeThresholdMs = 15f; // Receiver's decoder is struggling
+        public static readonly int HighBufferDepthThreshold = 10;     // Receiver's buffer is bloated
+
+        // Warmup
+        public static readonly TimeSpan PeerWarmupDuration = TimeSpan.FromSeconds(10);
+
         // Codec selection
         public static readonly TimeSpan CodecSwitchHysteresisWindow = TimeSpan.FromSeconds(10);
     }

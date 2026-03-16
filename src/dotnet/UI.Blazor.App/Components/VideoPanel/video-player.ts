@@ -80,8 +80,8 @@ export class VideoPlayer {
 
     // Adaptive catch-up playback state (wall-clock path only)
     private playbackRate = 1.0;
-    private readonly catchUpStartMs = 1000;      // start speed-up when buffer > 1s
-    private readonly catchUpTargetMs = 200;       // target buffer level to settle at
+    private readonly catchUpStartMs = 300;       // start speed-up when buffer > 300ms
+    private readonly catchUpTargetMs = 150;       // target buffer level to settle at
     private readonly maxPlaybackRate = 1.15;      // max speed (barely noticeable for video)
     private readonly seekThresholdMs = 5000;      // hard seek fallback when >5s behind
     private lastSeekTime = 0;                     // cooldown for hard seek
@@ -326,7 +326,12 @@ export class VideoPlayer {
         if (this.playbackStartTime === 0) {
             this.playbackStartTime = now + this.rebufferDelayMs;
             this.rebufferDelayMs = 0;
-            this.firstFrameTimestamp = this.pendingFrames[0].timestamp; // μs
+            // Anchor to near real-time: skip ahead to where live frames should be,
+            // rather than pacing stale buffered frames at 1x from their old timestamps.
+            // This makes the renderer immediately drop stale frames and start from the latest.
+            const liveOffsetMs = ServerClock.now() - this.startedAtMs;
+            const liveTimestamp = liveOffsetMs * 1000; // ms → μs
+            this.firstFrameTimestamp = liveTimestamp;
         }
 
         this.renderFrameCount++;
@@ -342,6 +347,34 @@ export class VideoPlayer {
 
             this.playbackStartTime = now;
             this.firstFrameTimestamp = targetTimestamp;
+
+            // Safety cap: flush old frames if buffer span exceeds 2s even in audio-sync mode.
+            // This prevents buffer bloat from bursty delivery causing unbounded latency growth.
+            if (this.pendingFrames.length >= 2) {
+                const bufferSpanMs = (this.pendingFrames[this.pendingFrames.length - 1].timestamp
+                    - this.pendingFrames[0].timestamp) / 1000;
+                if (bufferSpanMs > 2000) {
+                    // Find the frame closest to target and drop everything before it
+                    let flushIdx = 0;
+                    for (let i = 0; i < this.pendingFrames.length; i++) {
+                        if (this.pendingFrames[i].timestamp <= targetTimestamp) {
+                            flushIdx = i;
+                        } else {
+                            break;
+                        }
+                    }
+                    if (flushIdx > 0) {
+                        for (let i = 0; i < flushIdx; i++) {
+                            this.pendingFrames[i].close();
+                            this.bufferSize--;
+                        }
+                        this.pendingFrames.splice(0, flushIdx);
+                        warnLog?.log(
+                            `audioSync buffer flush: dropped ${flushIdx} frames, ` +
+                            `bufferSpanMs=${bufferSpanMs.toFixed(0)}, remaining=${this.pendingFrames.length}`);
+                    }
+                }
+            }
 
             if (now - this.lastSyncLogTime > 1000) {
                 this.lastSyncLogTime = now;
@@ -837,7 +870,10 @@ export class VideoPlayer {
             `(startedAt=${this.startedAtMs.toFixed(0)}+offset=${this.lastRenderedOffsetMs.toFixed(0)}), ` +
             `latency=${latencyMs.toFixed(0)}ms`);
 
-        // Decoder diagnostics
+        // Collect decoder diagnostics and send enriched latency report
+        const connection = VideoStreamer.connection;
+        const sessionToken = SessionTokens.current;
+
         if (this.decoderWorker) {
             void this.decoderWorker.getStats().then(ds => {
                 const recvDelta = this.receivedFrameCount - this.lastDiagReceivedFrames;
@@ -845,9 +881,17 @@ export class VideoPlayer {
                 this.lastDiagReceivedFrames = this.receivedFrameCount;
                 this.lastDiagDecodedFrames = ds.decodedFrames;
 
+                // Compute buffer span (time range of buffered frames)
+                let currentBufferSpanMs = 0;
+                if (this.pendingFrames.length >= 2) {
+                    currentBufferSpanMs = (this.pendingFrames[this.pendingFrames.length - 1].timestamp
+                        - this.pendingFrames[0].timestamp) / 1000;
+                }
+
                 warnLog?.log(
                     `VIDEO_DECODE: median=${ds.medianDecodeTime.toFixed(1)}ms avg=${ds.averageDecodeTime.toFixed(1)}ms ` +
                     `e2e=${this.pipelineLatencyMs.toFixed(0)}ms buf=${this.pendingFrames.length} ` +
+                    `bufSpanMs=${currentBufferSpanMs.toFixed(0)} ` +
                     `recv=${recvDelta} decoded=${decodedDelta} drop=${ds.droppedFrames} ` +
                     `res=${ds.resolution} hw=${ds.hardwareAcceleration}`);
 
@@ -867,12 +911,26 @@ export class VideoPlayer {
                 } else {
                     warnLog?.log(`AV_SYNC: no audio state for authorId=${this.authorId}`);
                 }
-            });
-        }
 
-        const connection = VideoStreamer.connection;
-        const sessionToken = SessionTokens.current;
-        if (connection) {
+                // Send enriched latency report with diagnostics
+                if (connection) {
+                    try {
+                        void connection.invoke(
+                            'ReportVideoLatency',
+                            sessionToken,
+                            this.streamId,
+                            streamOffsetMs,
+                            ds.medianDecodeTime,
+                            this.pendingFrames.length,
+                            currentBufferSpanMs
+                        );
+                    } catch (e) {
+                        warnLog?.log('reportLatencyTick error:', e);
+                    }
+                }
+            });
+        } else if (connection) {
+            // No decoder worker — send basic report without diagnostics
             try {
                 void connection.invoke('ReportVideoLatency', sessionToken, this.streamId, streamOffsetMs);
             } catch (e) {

@@ -626,6 +626,7 @@ const serverImpl: DecoderWorker = {
             droppedFrames: 0,
             averageDecodeTime: 0,
             medianDecodeTime: 0,
+            pureMedianDecodeTime: -1,
             hardwareAcceleration: 'unknown',
             resolution: 'N/A'
         };

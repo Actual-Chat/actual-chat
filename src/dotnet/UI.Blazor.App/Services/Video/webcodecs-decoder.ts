@@ -20,6 +20,8 @@ export interface DecoderStats {
   droppedFrames: number;
   averageDecodeTime: number;
   medianDecodeTime: number;
+  /** Decode time measured only when decode queue was empty (no wait component). -1 if no samples. */
+  pureMedianDecodeTime: number;
   hardwareAcceleration: string;
   resolution: string;
 }
@@ -30,6 +32,8 @@ export class WebCodecsDecoder {
     private droppedFrames = 0;
     private decodeTimeHistory: number[] = [];
     private decodeStartTimes: number[] = [];
+    private decodeQueueAtStart: number[] = []; // Queue depth when decode was called
+    private pureDecodeTimeHistory: number[] = []; // Times when queue was 0 at start
     private lastResolution: { width: number; height: number } | null = null;
 
     constructor(
@@ -39,13 +43,21 @@ export class WebCodecsDecoder {
     ) {
         this.decoder = new VideoDecoder({
             output: (frame: VideoFrame) => {
-                // Track decode time - pop the start time from queue
+                // Track decode time - pop the start time and queue depth from queues
                 const startTime = this.decodeStartTimes.shift();
+                const queueAtStart = this.decodeQueueAtStart.shift();
                 if (startTime !== undefined) {
                     const decodeTime = performance.now() - startTime;
                     this.decodeTimeHistory.push(decodeTime);
                     if (this.decodeTimeHistory.length > 100) {
                         this.decodeTimeHistory.shift();
+                    }
+                    // Pure decode time: only when queue was empty at decode start
+                    if (queueAtStart === 0) {
+                        this.pureDecodeTimeHistory.push(decodeTime);
+                        if (this.pureDecodeTimeHistory.length > 100) {
+                            this.pureDecodeTimeHistory.shift();
+                        }
                     }
                 }
 
@@ -112,6 +124,7 @@ export class WebCodecsDecoder {
                 description
             });
             this.decodeStartTimes = []; // flush stale timings — configure() aborts pending decodes
+            this.decodeQueueAtStart = [];
             infoLog?.log('Decoder reconfigured with description');
         }
     }
@@ -122,11 +135,13 @@ export class WebCodecsDecoder {
             return;
         }
         this.decodeStartTimes.push(performance.now());
+        this.decodeQueueAtStart.push(this.decoder.decodeQueueSize);
         try {
             this.decoder.decode(chunk);
         } catch (error) {
             this.droppedFrames++;
             this.decodeStartTimes.pop();
+            this.decodeQueueAtStart.pop();
             this.onError(error as Error);
         }
     }
@@ -147,8 +162,9 @@ export class WebCodecsDecoder {
             return;
         }
 
-        // Record start time for async timing measurement
+        // Record start time and queue depth for async timing measurement
         this.decodeStartTimes.push(performance.now());
+        this.decodeQueueAtStart.push(this.decoder.decodeQueueSize);
 
         try {
             this.decoder.decode(chunkData.chunk);
@@ -160,8 +176,9 @@ export class WebCodecsDecoder {
             }
         } catch (error) {
             this.droppedFrames++;
-            // Remove the start time since decode failed
+            // Remove the start time and queue depth since decode failed
             this.decodeStartTimes.pop();
+            this.decodeQueueAtStart.pop();
             errorLog?.log(`Error decoding ${chunkData.type} chunk at timestamp ${chunkData.timestamp}:`, error);
             this.onError(error as Error);
         }
@@ -202,6 +219,16 @@ export class WebCodecsDecoder {
                 : (sorted[mid - 1] + sorted[mid]) / 2;
         }
 
+        // Compute pure median decode time (queue was empty at start — actual codec cost)
+        let pureMedianDecodeTime = -1;
+        if (this.pureDecodeTimeHistory.length > 0) {
+            const sorted = [...this.pureDecodeTimeHistory].sort((a, b) => a - b);
+            const mid = Math.floor(sorted.length / 2);
+            pureMedianDecodeTime = sorted.length % 2 !== 0
+                ? sorted[mid]
+                : (sorted[mid - 1] + sorted[mid]) / 2;
+        }
+
         // Try to determine hardware acceleration status
         let hardwareAcceleration = 'unknown';
         try {
@@ -225,6 +252,7 @@ export class WebCodecsDecoder {
             droppedFrames: this.droppedFrames,
             averageDecodeTime,
             medianDecodeTime,
+            pureMedianDecodeTime,
             hardwareAcceleration,
             resolution
         };
@@ -235,5 +263,7 @@ export class WebCodecsDecoder {
         this.droppedFrames = 0;
         this.decodeTimeHistory = [];
         this.decodeStartTimes = [];
+        this.decodeQueueAtStart = [];
+        this.pureDecodeTimeHistory = [];
     }
 }

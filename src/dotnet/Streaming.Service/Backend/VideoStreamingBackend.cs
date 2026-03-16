@@ -61,6 +61,10 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             Log.LogDebug("GetVideo stream ended after {Count} frames for PeerId={PeerId}", frameCount, peerId);
         }
 
+        // Always skip to the latest buffered keyframe to minimize stale frame delivery.
+        // skipTo is typically ~0ms (viewer discovers stream nearly simultaneously with registration),
+        // so SkipToKeyFrame would replay the entire buffer. SkipToLatestBufferedKeyFrame jumps to
+        // the most recent keyframe in the memoizer's replay buffer for efficient near-live start.
         stream = SkipToLatestBufferedKeyFrame(LogFrames(stream), Log, cancellationToken);
 
         stream = ApplyGopSkipping(stream, streamId, peerId, cancellationToken);
@@ -92,15 +96,23 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         }
     }
 
-    public virtual Task ReportPeerLatency(StreamId streamId, string peerId, double streamOffsetMs, CancellationToken cancellationToken = default)
+    public virtual Task ReportPeerLatency(
+        StreamId streamId,
+        string peerId,
+        double streamOffsetMs,
+        double medianDecodeTimeMs = -1,
+        int bufferDepth = -1,
+        double bufferSpanMs = -1,
+        CancellationToken cancellationToken = default)
     {
         if (_latencyStates.TryGetValue(streamId, out var latencyState)) {
             var latency = Clocks.ServerClock.Now - (latencyState.StartedAt + TimeSpan.FromMilliseconds(streamOffsetMs));
             if (latency > TimeSpan.Zero) {
                 AppMeters.VideoLatency.Record(latency.TotalMilliseconds);
-                Log.LogWarning("ReportPeerLatency: StreamId={StreamId}, PeerId={PeerId}, StreamOffsetMs={StreamOffsetMs:F0}, LatencyMs={LatencyMs:F0}",
-                    streamId, peerId, streamOffsetMs, latency.TotalMilliseconds);
-                latencyState.RecordPeerLatency(peerId, (float)latency.TotalMilliseconds);
+                Log.LogWarning("ReportPeerLatency: StreamId={StreamId}, PeerId={PeerId}, StreamOffsetMs={StreamOffsetMs:F0}, LatencyMs={LatencyMs:F0}, DecodeMs={DecodeMs:F1}, BufDepth={BufDepth}, BufSpanMs={BufSpanMs:F0}",
+                    streamId, peerId, streamOffsetMs, latency.TotalMilliseconds, medianDecodeTimeMs, bufferDepth, bufferSpanMs);
+                latencyState.RecordPeerLatency(peerId, (float)latency.TotalMilliseconds,
+                    (float)medianDecodeTimeMs, bufferDepth, (float)bufferSpanMs);
             }
             else {
                 Log.LogWarning("ReportPeerLatency: StreamId={StreamId}, PeerId={PeerId}, negative latency={LatencyMs:F0}ms (clock skew?), skipping",
@@ -244,20 +256,6 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                 $"Wrong mesh node: expected {ThisNode.Ref}, but got {streamId.NodeRef}.");
     }
 
-    private static IAsyncEnumerable<VideoFrame> SkipToKeyFrame(
-        IAsyncEnumerable<VideoFrame> stream,
-        TimeSpan skipTo,
-        CancellationToken cancellationToken)
-    {
-        _ = cancellationToken; // Reserved for future use
-        if (skipTo <= TimeSpan.Zero)
-            return stream;
-
-        // Skip frames until we find a keyframe at or after the requested position.
-        // For video, we must start from a keyframe to decode correctly.
-        return stream.SkipWhile(frame => frame.Offset < skipTo || !frame.IsKeyFrame);
-    }
-
     /// <summary>
     /// Skips to the latest keyframe in the memoizer's replay buffer.
     /// Buffered frames are detected by checking MoveNextAsync().IsCompleted —
@@ -323,15 +321,36 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
     {
         private readonly Queue<float> _samples = new();
         private readonly Lock _lock = new();
+        private readonly CpuTimestamp _createdAt = CpuTimestamp.Now;
         private int _gopCounter;
 
         public float MedianLatencyMs { get; private set; }
+        public float MedianDecodeTimeMs { get; private set; } = -1;
+        public int BufferDepth { get; private set; } = -1;
+        public float BufferSpanMs { get; private set; } = -1;
         public int GopSkipRatio { get; set; } // 0=none, 1=skip every other GOP, 2=skip 2 of 3
 
-        public void RecordLatency(float latencyMs)
+        /// <summary>
+        /// True when high latency is caused by receiver-side issues (slow decoder or buffer bloat)
+        /// rather than network/sender problems.
+        /// </summary>
+        public bool IsReceiverBound =>
+            MedianDecodeTimeMs > Constants.Video.HighDecodeTimeThresholdMs
+            || BufferDepth > Constants.Video.HighBufferDepthThreshold;
+
+        public void RecordLatency(float latencyMs, float medianDecodeTimeMs = -1, int bufferDepth = -1, float bufferSpanMs = -1)
         {
+            // Discard samples during warmup to prevent initial-buffer latency from contaminating the median
+            if (_createdAt.Elapsed < Constants.Video.PeerWarmupDuration)
+                return;
+
             lock (_lock) {
-                _samples.Enqueue(latencyMs);
+                // When GOP skipping is active, server-induced gaps inflate latency.
+                // Cap to prevent self-reinforcing feedback loop.
+                var effectiveLatency = GopSkipRatio > 0
+                    ? Math.Min(latencyMs, Constants.Video.GopSkipRecoveryMs)
+                    : latencyMs;
+                _samples.Enqueue(effectiveLatency);
                 while (_samples.Count > Constants.Video.LatencyHistorySize)
                     _samples.Dequeue();
 
@@ -341,6 +360,14 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                 MedianLatencyMs = sorted.Count % 2 == 0
                     ? (sorted[mid - 1] + sorted[mid]) / 2f
                     : sorted[mid];
+
+                // Update diagnostics if provided (>= 0 means client sent the value)
+                if (medianDecodeTimeMs >= 0)
+                    MedianDecodeTimeMs = medianDecodeTimeMs;
+                if (bufferDepth >= 0)
+                    BufferDepth = bufferDepth;
+                if (bufferSpanMs >= 0)
+                    BufferSpanMs = bufferSpanMs;
             }
         }
 
@@ -383,12 +410,13 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 
         public VideoQualityLevel CurrentQuality => _currentQuality;
 
-        public void RecordPeerLatency(string peerId, float latencyMs)
+        public void RecordPeerLatency(string peerId, float latencyMs,
+            float medianDecodeTimeMs = -1, int bufferDepth = -1, float bufferSpanMs = -1)
         {
             var peer = _peers.GetOrAdd(peerId, _ => new PeerLatencyState());
-            peer.RecordLatency(latencyMs);
-            log.LogDebug("RecordPeerLatency: PeerId={PeerId}, LatencyMs={LatencyMs:F0}, MedianMs={MedianMs:F0}",
-                peerId, latencyMs, peer.MedianLatencyMs);
+            peer.RecordLatency(latencyMs, medianDecodeTimeMs, bufferDepth, bufferSpanMs);
+            log.LogDebug("RecordPeerLatency: PeerId={PeerId}, LatencyMs={LatencyMs:F0}, MedianMs={MedianMs:F0}, ReceiverBound={ReceiverBound}",
+                peerId, latencyMs, peer.MedianLatencyMs, peer.IsReceiverBound);
 
             // Throttle evaluation to QualityDecisionInterval
             if (_lastEvaluationAt.Elapsed >= Constants.Video.QualityDecisionInterval)
@@ -424,34 +452,53 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                 if (peers.Count == 0)
                     return;
 
-                var slowCount = peers.Count(p => p.Value.MedianLatencyMs > Constants.Video.HighLatencyThresholdMs);
-                var slowRatio = (float)slowCount / peers.Count;
-                // In small calls (1-3 peers), one slow peer should trigger step-down.
-                // In larger calls, use stricter ratio so one outlier doesn't degrade everyone.
+                // Classify slow peers by root cause:
+                // - Network/sender-bound: high latency + low decode time + low buffer → step down helps
+                // - Receiver-bound: high latency + high decode time or large buffer → step down won't help
+                var networkSlowCount = 0;
+                var receiverSlowCount = 0;
+                foreach (var (peerId, peer) in peers) {
+                    if (peer.MedianLatencyMs <= Constants.Video.HighLatencyThresholdMs)
+                        continue;
+
+                    if (peer.IsReceiverBound) {
+                        receiverSlowCount++;
+                        log.LogDebug("EvaluateQuality: PeerId={PeerId} receiver-bound (decodeMs={DecodeMs:F1}, bufDepth={BufDepth})",
+                            peerId, peer.MedianDecodeTimeMs, peer.BufferDepth);
+                    }
+                    else {
+                        networkSlowCount++;
+                    }
+                }
+
+                var totalSlowCount = networkSlowCount + receiverSlowCount;
+                // Only count network-bound slow peers toward sender quality step-down.
+                // Receiver-bound peers are handled via GOP skipping — reducing sender quality
+                // would hurt everyone without helping the slow receiver.
+                var networkSlowRatio = (float)networkSlowCount / peers.Count;
                 var effectiveOutlierRatio = peers.Count <= 3
                     ? Constants.Video.PeerOutlierRatioSmallCall
                     : Constants.Video.PeerOutlierRatio;
 
-                // Step down sender quality if enough peers are slow
-                if (slowRatio > effectiveOutlierRatio) {
+                // Step down sender quality only if enough NETWORK-bound peers are slow
+                if (networkSlowRatio > effectiveOutlierRatio) {
                     var stepped = VideoQualityPreset.StepDown(_currentQuality);
                     if (stepped != null) {
                         var oldQuality = _currentQuality;
                         _currentQuality = stepped.Level;
                         _lastQualityChangeAt = CpuTimestamp.Now;
                         _qualityDirectives.Publish(stepped);
-                        log.LogInformation("EvaluateQuality: STEP DOWN {OldLevel} -> {NewLevel}, slowRatio={SlowRatio:F2} (threshold={Threshold:F2}, {SlowCount}/{TotalCount})",
-                            oldQuality, stepped.Level, slowRatio, effectiveOutlierRatio, slowCount, peers.Count);
+                        log.LogInformation("EvaluateQuality: STEP DOWN {OldLevel} -> {NewLevel}, networkSlow={NetworkSlow}, receiverSlow={ReceiverSlow}, total={TotalCount} (threshold={Threshold:F2})",
+                            oldQuality, stepped.Level, networkSlowCount, receiverSlowCount, peers.Count, effectiveOutlierRatio);
                     }
                 }
                 // Step up quality if all peers are fast and hysteresis window has elapsed
-                else if (slowCount == 0
+                else if (totalSlowCount == 0
                     && _lastQualityChangeAt.Elapsed >= Constants.Video.QualityHysteresisWindow) {
                     var allFast = peers.All(p => p.Value.MedianLatencyMs < Constants.Video.LowLatencyThresholdMs);
                     if (allFast) {
                         var stepped = VideoQualityPreset.StepUp(_currentQuality);
                         if (stepped != null && stepped.Level < _maxQuality) {
-                            // stepped.Level is higher quality than camera can provide (lower enum value) — skip
                             log.LogInformation("EvaluateQuality: SKIP step-up to {Level}, camera max is {MaxLevel}",
                                 stepped.Level, _maxQuality);
                             stepped = null;
@@ -467,17 +514,19 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                     }
                 }
                 else {
-                    log.LogDebug("EvaluateQuality: HOLD at {Level}, slowRatio={SlowRatio:F2} ({SlowCount}/{TotalCount})",
-                        _currentQuality, slowRatio, slowCount, peers.Count);
+                    log.LogDebug("EvaluateQuality: HOLD at {Level}, networkSlow={NetworkSlow}, receiverSlow={ReceiverSlow}, total={TotalCount}",
+                        _currentQuality, networkSlowCount, receiverSlowCount, peers.Count);
                 }
 
                 // Per-peer GOP skipping for individual outliers
+                // Receiver-bound peers get more aggressive GOP skipping since their decode can't keep up
                 foreach (var (peerId, peer) in peers)
                     if (peer.MedianLatencyMs > Constants.Video.GopSkipThresholdMs) {
-                        if (peer.GopSkipRatio == 0) {
-                            peer.GopSkipRatio = 1;
-                            log.LogInformation("EvaluateQuality: Enable GOP skipping for PeerId={PeerId}, MedianMs={MedianMs:F0}, ratio=1",
-                                peerId, peer.MedianLatencyMs);
+                        var targetRatio = peer.IsReceiverBound ? 2 : 1;
+                        if (peer.GopSkipRatio < targetRatio) {
+                            peer.GopSkipRatio = targetRatio;
+                            log.LogInformation("EvaluateQuality: Enable GOP skipping for PeerId={PeerId}, MedianMs={MedianMs:F0}, ratio={Ratio}, receiverBound={ReceiverBound}",
+                                peerId, peer.MedianLatencyMs, targetRatio, peer.IsReceiverBound);
                         }
                     }
                     else if (peer.MedianLatencyMs < Constants.Video.GopSkipRecoveryMs)

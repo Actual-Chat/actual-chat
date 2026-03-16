@@ -572,6 +572,7 @@ const serverImpl: EncoderWorker = {
             totalBytes: 0,
             averageEncodeTime: 0,
             medianEncodeTime: 0,
+            pureMedianEncodeTime: -1,
             configuredWidth: 0,
             configuredHeight: 0,
             configuredBitrate: 0,

@@ -113,12 +113,21 @@ public class StreamHub(IServiceProvider services) : Hub
     }
 
     // Latency reporting for JS video clients — uses same ConnectionId as GetVideo
-    public Task ReportVideoLatency(string sessionToken, string streamId, double streamOffsetMs)
+    public Task ReportVideoLatency(
+        string sessionToken,
+        string streamId,
+        double streamOffsetMs,
+        double medianDecodeTimeMs = -1,
+        int bufferDepth = -1,
+        double bufferSpanMs = -1)
     {
         _ = GetSessionFromToken(sessionToken); // validate token
         var peerId = Context.ConnectionId;
         var parsedStreamId = StreamId.Parse(streamId);
-        return VideoStreamingBackend.ReportPeerLatency(parsedStreamId, peerId, streamOffsetMs, CancellationToken.None);
+        return VideoStreamingBackend.ReportPeerLatency(
+            parsedStreamId, peerId, streamOffsetMs,
+            medianDecodeTimeMs, bufferDepth, bufferSpanMs,
+            CancellationToken.None);
     }
 
     // Video pull method for JS client — streams video frames via SignalR

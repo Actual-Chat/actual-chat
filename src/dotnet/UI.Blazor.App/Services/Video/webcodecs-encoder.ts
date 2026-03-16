@@ -36,6 +36,8 @@ export interface EncoderStats {
   totalBytes: number;
   averageEncodeTime: number;
   medianEncodeTime: number;
+  /** Encode time measured only when queue was empty (no wait component). -1 if no samples. */
+  pureMedianEncodeTime: number;
   configuredWidth: number;
   configuredHeight: number;
   configuredBitrate: number;
@@ -51,6 +53,8 @@ export class WebCodecsEncoder {
     private totalBytes = 0;
     private encodeTimeHistory: number[] = [];
     private encodeStartTimes: number[] = [];
+    private encodeQueueAtStart: number[] = []; // Queue size when encode was called (parallel to encodeStartTimes)
+    private pureEncodeTimeHistory: number[] = []; // Times when queue was 0 at start (actual codec cost)
     private chunkSequence = 0; // Track chunk sequence for proper ordering
 
     constructor(
@@ -60,13 +64,21 @@ export class WebCodecsEncoder {
     ) {
         this.encoder = new VideoEncoder({
             output: (chunk: EncodedVideoChunk, metadata?: EncodedVideoChunkMetadata) => {
-                // Track encode time - pop the start time from queue
+                // Track encode time - pop the start time and queue size from queues
                 const startTime = this.encodeStartTimes.shift();
+                const queueAtStart = this.encodeQueueAtStart.shift();
                 if (startTime !== undefined) {
                     const encodeTime = performance.now() - startTime;
                     this.encodeTimeHistory.push(encodeTime);
                     if (this.encodeTimeHistory.length > 100) {
                         this.encodeTimeHistory.shift();
+                    }
+                    // Pure encode time: only when queue was empty at encode start (no wait component)
+                    if (queueAtStart === 0) {
+                        this.pureEncodeTimeHistory.push(encodeTime);
+                        if (this.pureEncodeTimeHistory.length > 100) {
+                            this.pureEncodeTimeHistory.shift();
+                        }
                     }
                 }
 
@@ -138,8 +150,9 @@ export class WebCodecsEncoder {
             return;
         }
 
-        // Record start time for async timing measurement
+        // Record start time and queue size for async timing measurement
         this.encodeStartTimes.push(performance.now());
+        this.encodeQueueAtStart.push(this.encoder.encodeQueueSize);
 
         // Determine if this should be a keyframe
         const shouldBeKeyFrame = forceKeyFrame ||
@@ -155,8 +168,9 @@ export class WebCodecsEncoder {
             this.frameCount++;
         } catch (error) {
             this.droppedFrames++;
-            // Remove the start time since encode failed
+            // Remove the start time and queue size since encode failed
             this.encodeStartTimes.pop();
+            this.encodeQueueAtStart.pop();
             errorLog?.log('Error encoding frame:', error);
             this.onError(error as Error);
         } finally {
@@ -250,11 +264,18 @@ export class WebCodecsEncoder {
         this.encoder = new VideoEncoder({
             output: (chunk: EncodedVideoChunk, metadata?: EncodedVideoChunkMetadata) => {
                 const startTime = this.encodeStartTimes.shift();
+                const queueAtStart = this.encodeQueueAtStart.shift();
                 if (startTime !== undefined) {
                     const encodeTime = performance.now() - startTime;
                     this.encodeTimeHistory.push(encodeTime);
                     if (this.encodeTimeHistory.length > 100) {
                         this.encodeTimeHistory.shift();
+                    }
+                    if (queueAtStart === 0) {
+                        this.pureEncodeTimeHistory.push(encodeTime);
+                        if (this.pureEncodeTimeHistory.length > 100) {
+                            this.pureEncodeTimeHistory.shift();
+                        }
                     }
                 }
 
@@ -314,6 +335,16 @@ export class WebCodecsEncoder {
                 : (sorted[mid - 1] + sorted[mid]) / 2;
         }
 
+        // Compute pure median encode time (queue was empty at start — no wait component)
+        let pureMedianEncodeTime = -1;
+        if (this.pureEncodeTimeHistory.length > 0) {
+            const sorted = [...this.pureEncodeTimeHistory].sort((a, b) => a - b);
+            const mid = Math.floor(sorted.length / 2);
+            pureMedianEncodeTime = sorted.length % 2 !== 0
+                ? sorted[mid]
+                : (sorted[mid - 1] + sorted[mid]) / 2;
+        }
+
         // Try to determine hardware acceleration status
         let hardwareAcceleration = 'unknown';
         try {
@@ -336,6 +367,7 @@ export class WebCodecsEncoder {
             totalBytes: this.totalBytes,
             averageEncodeTime,
             medianEncodeTime,
+            pureMedianEncodeTime,
             configuredWidth: this.config.width,
             configuredHeight: this.config.height,
             configuredBitrate: this.config.bitrate,
@@ -351,6 +383,8 @@ export class WebCodecsEncoder {
         this.totalBytes = 0;
         this.encodeTimeHistory = [];
         this.encodeStartTimes = [];
+        this.encodeQueueAtStart = [];
+        this.pureEncodeTimeHistory = [];
         this.chunkSequence = 0;
     }
 }

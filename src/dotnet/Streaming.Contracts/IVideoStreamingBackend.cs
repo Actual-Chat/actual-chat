@@ -15,5 +15,12 @@ public interface IVideoStreamingBackend : IRpcService, IBackendService
     [RpcMethod(LocalExecutionMode = RpcLocalExecutionMode.Unconstrained)]
     Task<RpcStream<VideoQualityPreset>> ObserveStreamQualityRequests(StreamId streamId, CancellationToken cancellationToken);
 
-    Task ReportPeerLatency(StreamId streamId, string peerId, double streamOffsetMs, CancellationToken cancellationToken = default);
+    Task ReportPeerLatency(
+        StreamId streamId,
+        string peerId,
+        double streamOffsetMs,
+        double medianDecodeTimeMs = -1,
+        int bufferDepth = -1,
+        double bufferSpanMs = -1,
+        CancellationToken cancellationToken = default);
 }
