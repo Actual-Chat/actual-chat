@@ -17,5 +17,7 @@
 	<array>
 		<string>M287G8G83F.chat.actual.app.shared</string>
     </array>
+	<key>aps-environment</key>
+	<string>production</string>
 </dict>
 </plist>

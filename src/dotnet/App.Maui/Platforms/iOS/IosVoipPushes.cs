@@ -31,11 +31,12 @@ public class IosVoipPushes : PKPushRegistryDelegate
             return;
         }
 
+        Log.LogInformation("DidUpdatePushCredentials: token received, length={Length}", sToken.Length);
         _ = DispatchToBlazor(c => {
             DebugLog?.LogInformation("DidUpdatePushCredentials: refreshing token");
             var mauiNotifications = c.GetRequiredService<MauiNotifications>();
             return mauiNotifications.RefreshNotificationToken(sToken, DeviceType.iOSApp, NotificationChannel.Call);
-        });
+        }, "DidUpdatePushCredentials");
     }
 
     public override void DidReceiveIncomingPush(

@@ -48,7 +48,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
             _ = BackgroundTask.Run(
                 () => mauiNotifications.RefreshNotificationToken(token,
                     DeviceType.AndroidApp,
-                    NotificationChannel.Push,
+                    NotificationChannel.Text,
                     CancellationToken.None),
                 Log,
                 "OnNewToken failed.");

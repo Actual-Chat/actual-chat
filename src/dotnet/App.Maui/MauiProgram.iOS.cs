@@ -38,7 +38,7 @@ public static partial class MauiProgram
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
         => events.AddiOS(ios =>
-            ios.FinishedLaunching(InitFirebase).FinishedLaunching(RegisterPushkit));
+            ios.FinishedLaunching(RegisterPushkit).FinishedLaunching(InitFirebase));
 
     private static bool InitFirebase(UIApplication app, NSDictionary options)
     {

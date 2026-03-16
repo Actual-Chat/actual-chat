@@ -196,7 +196,9 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
                             Log.LogInformation("RegisterDeviceTask. About to send register command. UserId is {UserId}", Hub.AccountUI.OwnAccount.Value.Id);
                         else
                             Log.LogInformation("RegisterDeviceTask. About to send register command");
-                        var command = new Notifications_RegisterDevice(Session, deviceId, GetDeviceType(), NotificationChannel.Push);
+                        var command = new Notifications_RegisterDevice(Session, deviceId, GetDeviceType()) {
+                            NotificationChannel = NotificationChannel.Text,
+                        };
                         await Hub.Commander.Call(command, linkedToken).ConfigureAwait(false);
                         Log.LogInformation("RegisterDeviceTask. Register command has been executed");
                         return deviceId;

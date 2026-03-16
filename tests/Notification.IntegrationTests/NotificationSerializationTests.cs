@@ -142,7 +142,9 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
     [Fact]
     public void Notifications_RegisterDevice_Basic()
     {
-        var cmd = new Notifications_RegisterDevice(TestSession, "device-1", DeviceType.AndroidApp, NotificationChannel.Push);
+        var cmd = new Notifications_RegisterDevice(TestSession, "device-1", DeviceType.AndroidApp) {
+            NotificationChannel = NotificationChannel.Text,
+        };
         cmd.AssertPassesThroughAllSerializers();
     }
 
@@ -197,7 +199,7 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
     [Fact]
     public void NotificationsBackend_RegisterDevice_Basic()
     {
-        var cmd = new NotificationsBackend_RegisterDevice(TestUserId, "device-1", DeviceType.AndroidApp, "session-hash", NotificationChannel.Push);
+        var cmd = new NotificationsBackend_RegisterDevice(TestUserId, "device-1", DeviceType.AndroidApp, "session-hash", NotificationChannel.Text);
         cmd.AssertPassesThroughAllSerializers();
     }
 

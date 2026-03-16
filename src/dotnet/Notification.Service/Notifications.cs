@@ -1,4 +1,5 @@
 using ActualChat.Users;
+using ActualChat.Chat;
 
 namespace ActualChat.Notification;
 
@@ -90,15 +91,21 @@ public class Notifications(IServiceProvider services) : INotifications
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, deviceId, deviceType, notificationChannel) = command;
+        var (session, deviceId, deviceType) = command;
+        var channel = command.NotificationChannel;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        Log.LogInformation("RegisterDevice: DeviceId: '{DeviceId}', DeviceType: '{DeviceType}', NotificationChannel: {NotificatinChannel}, UserId: '{UserId}'",
+            deviceId,
+            deviceType,
+            channel,
+            account.Id);
         if (account.IsGuestOrNull()) {
             Log.LogWarning("Skipping RegisterDevice for guest or none user." +
                 " DeviceId: '{DeviceId}', DeviceType: '{DeviceType}', SessionHash: '{SessionHash}', UserId: '{UserId}'" ,
                 deviceId, deviceType, session.Hash, account.Id);
             return;
         }
-        var registerDeviceCommand = new NotificationsBackend_RegisterDevice(account.Id, deviceId, deviceType, session.Hash, notificationChannel);
+        var registerDeviceCommand = new NotificationsBackend_RegisterDevice(account.Id, deviceId, deviceType, session.Hash, channel);
         await Commander.Run(registerDeviceCommand, cancellationToken).ConfigureAwait(false);
     }
 

@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace ActualChat.Notification;
 
 /// <summary>
@@ -40,9 +42,13 @@ public sealed partial record Notifications_Handle(
 public sealed partial record Notifications_RegisterDevice(
     [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1), Key(1)] Symbol DeviceId,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] DeviceType DeviceType,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] NotificationChannel NotificationChannel
-) : ISessionCommand<Unit>, IApiCommand;
+    [property: DataMember, MemoryPackOrder(2), Key(2)] DeviceType DeviceType
+) : ISessionCommand<Unit>, IApiCommand
+{
+    [DataMember, MemoryPackOrder(3), Key(3)]
+    public required NotificationChannel NotificationChannel { get; init; }
+}
+
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming

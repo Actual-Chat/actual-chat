@@ -65,7 +65,7 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
             _ = BackgroundTask.Run(
                 () => mauiNotifications.RefreshNotificationToken(token,
                     DeviceType.iOSApp,
-                    NotificationChannel.Push,
+                    NotificationChannel.Text,
                     CancellationToken.None),
                 Log,
                 "DidReceiveRegistrationToken failed");
