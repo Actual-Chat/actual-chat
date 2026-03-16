@@ -734,6 +734,7 @@ body.narrow .audio-panel-wrapper .recorder-wrapper {
     @apply flex-x justify-center gap-x-28;
     @apply w-full;
     @apply px-4;
+    @apply pointer-events-auto;
     animation: showAudioHeader 0.3s ease-in-out forwards;
 }
 .narrow-panel .audio-panel-header {
