@@ -3,6 +3,13 @@
     "chrome-devtools": {
       "command": "tools/chrome-devtools-mcp-wrapper"
     },
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer ${GITHUB_TOKEN}"
+      }
+    },
     "figma": {
       "type": "http",
       "url": "https://mcp.figma.com/mcp"
