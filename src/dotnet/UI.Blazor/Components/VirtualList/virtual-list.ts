@@ -671,6 +671,7 @@ export class VirtualList {
         let notAnItem = false;
         let existingResizedCount = 0;
         let totalExistingSizeDiff = 0;
+        let endAnchorHasChanged = false;
         const itemRefsWithWrongSize = new Array<HTMLElement>();
         for (const entry of entries) {
             const rect = entry.contentRect;
@@ -679,8 +680,10 @@ export class VirtualList {
             const size = Math.ceil(rect.height + rowGap);
             if (!key) {
                 notAnItem = true;
-                if (entry.target === this.endAnchorRef)
+                if (entry.target === this.endAnchorRef) {
                     this.updateState('onResize: endAnchor', this.state, { endAnchorSize: size });
+                    endAnchorHasChanged = true;
+                }
                 continue; // container or footer also can be resized
             }
 
@@ -749,7 +752,7 @@ export class VirtualList {
         }
 
         // recalculate item range as some elements were updated
-        if (itemsWereMeasured || existingResizedCount > 0) {
+        if (itemsWereMeasured || existingResizedCount > 0 || endAnchorHasChanged) {
             this.updateState('onResize: measured', this.state, { itemRange: null });
 
             const now = Date.now();
