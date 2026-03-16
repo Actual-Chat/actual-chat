@@ -4,6 +4,7 @@ using ActualChat.Db;
 using ActualChat.Notification.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Notification.Migrations
 {
     [DbContext(typeof(NotificationDbContext))]
-    partial class NotificationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260219120939_DeviceNotificationChannel")]
+    partial class DeviceNotificationChannel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -134,10 +137,6 @@ namespace ActualChat.Notification.Migrations
                         .HasColumnName("author_id")
                         .UseCollation("C");
 
-                    b.Property<long?>("ChatEntryLid")
-                        .HasColumnType("bigint")
-                        .HasColumnName("chat_entry_lid");
-
                     b.Property<string>("ChatId")
                         .HasColumnType("text")
                         .HasColumnName("chat_id")
@@ -174,6 +173,10 @@ namespace ActualChat.Notification.Migrations
                         .HasColumnType("text")
                         .HasColumnName("similarity_key")
                         .UseCollation("C");
+
+                    b.Property<long?>("TextEntryLocalId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("text_entry_local_id");
 
                     b.Property<string>("Title")
                         .IsRequired()

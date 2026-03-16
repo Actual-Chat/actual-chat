@@ -11,7 +11,6 @@ public sealed class UsersSettings
     public string MicrosoftAccountClientId { get; set; } = "CannotBeEmptyString";
     public string MicrosoftAccountClientSecret { get; set; } = "";
     public string AppleClientId { get; set; } = "CannotBeEmptyString";
-    public string AppleAppId { get; set; } = "";
     public string? AppleKeyId { get; set; } = "CannotBeEmptyString";
     public string AppleTeamId { get; set; } = "CannotBeEmptyString";
     public string ApplePrivateKeyPath { get; set; } = "";

@@ -7,7 +7,7 @@ public static class MauiSettings
 {
     public static readonly string LocalHost = "0.0.0.1";
     // NOTE: UseLocalhost is used only for development purposes. Do not commit it to the repo.
-    public const bool UseLocalhost = false;
+    public const bool UseLocalhost = true; // TODO: revert to false before PR !!!!!!!!!!!!!
 #if IS_DEV_MAUI
     public const bool IsDevApp = true;
     public const bool AreDevToolsEnabled = true;

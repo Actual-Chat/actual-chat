@@ -9,6 +9,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="dotAPNS.AspNetCore" />
     <PackageReference Include="FirebaseAdmin" />
     <PackageReference Include="Google.Apis" />
     <PackageReference Include="Google.Api.Gax.Rest" />

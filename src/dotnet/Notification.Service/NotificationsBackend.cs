@@ -4,7 +4,6 @@ using ActualChat.Flows;
 using ActualChat.Notification.Db;
 using ActualChat.Notification.Flows;
 using ActualChat.Queues;
-using ActualChat.Users;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -63,8 +62,14 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
     // [ComputeMethod]
-    public virtual Task<IReadOnlyList<Device>> ListDevices(UserId userId, CancellationToken cancellationToken)
-        => ListDevices(userId, Symbol.Empty, null, cancellationToken);
+    public virtual async Task<IReadOnlyList<Device>> ListDevices(UserId userId, NotificationChannel? notificationChannel, CancellationToken cancellationToken)
+    {
+        if (notificationChannel is null)
+            return await ListDevicesFromDb(userId, Symbol.Empty, null, cancellationToken).ConfigureAwait(false);
+
+        var devices = await ListDevicesFromDb(userId, Symbol.Empty, null, cancellationToken).ConfigureAwait(false);
+        return devices.Where(x => x.NotificationChannel == notificationChannel).ToList();
+    }
 
     // [ComputeMethod]
     public virtual async Task<IReadOnlyList<UserId>> ListSubscribedUserIds(ChatId chatId, CancellationToken cancellationToken)
@@ -256,18 +261,18 @@ public class NotificationsBackend(IServiceProvider services)
     public virtual async Task OnRegisterDevice(NotificationsBackend_RegisterDevice command, CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
+        var (userId, deviceId, deviceType, sessionHash, notificationChannel) = command;
 
         if (Invalidation.IsActive) {
             var device = context.Operation.Items.KeylessGet<DbDevice>();
             var isNew = context.Operation.Items.KeylessGet(false);
             if (isNew && device != null)
-                _ = ListDevices(UserId.Parse(device.UserId), default);
+                _ = ListDevices(UserId.Parse(device.UserId), command.NotificationChannel, default);
             return;
         }
 
-        var (userId, deviceId, deviceType, sessionHash) = command;
-        DebugLog?.LogInformation("-> OnRegisterDevice. UserId={UserId}, DeviceId={DeviceId}, DeviceType={DeviceType}, SessionHash={SessionHash}",
-            userId, deviceId, deviceType, sessionHash);
+        DebugLog?.LogInformation("-> OnRegisterDevice. UserId={UserId}, DeviceId={DeviceId}, DeviceType={DeviceType}, SessionHash={SessionHash}, NotificationChannel={NotificationChannel}",
+            userId, deviceId, deviceType, sessionHash, notificationChannel);
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
         var existingDbDevice = await dbContext.Devices.ForUpdate()
@@ -279,6 +284,7 @@ public class NotificationsBackend(IServiceProvider services)
             dbDevice = new DbDevice {
                 Id = deviceId,
                 Type = deviceType,
+                NotificationChannel = notificationChannel,
                 UserId = userId.Value,
                 SessionHash = sessionHash,
                 Version = VersionGenerator.NextVersion(),
@@ -320,7 +326,7 @@ public class NotificationsBackend(IServiceProvider services)
             var invUserIds = context.Operation.Items.KeylessGet<HashSet<UserId>>();
             if (invUserIds is { Count: > 0 })
                 foreach (var invUserId in invUserIds)
-                    _ = ListDevices(invUserId, default);
+                    _ = ListDevices(invUserId, null, default);
             return;
         }
 
@@ -486,7 +492,7 @@ public class NotificationsBackend(IServiceProvider services)
             return; // It just spawns other commands, so nothing to do here
 
         var session = eventCommand.Session;
-        var devices = await ListDevices(eventCommand.UserId, session.Hash, null, cancellationToken).ConfigureAwait(false);
+        var devices = await ListDevicesFromDb(eventCommand.UserId, session.Hash, null, cancellationToken).ConfigureAwait(false);
         if (devices.Count == 0)
             return;
 
@@ -536,21 +542,21 @@ public class NotificationsBackend(IServiceProvider services)
             .ConfigureAwait(false);
     }
 
-    private async Task Send(UserId userId, Notification notification, CancellationToken cancellationToken1)
+    private async Task Send(UserId userId, Notification notification, CancellationToken cancellationToken)
     {
         var minActiveAt = Clocks.SystemClock.Now - Constants.Notification.ActiveDevicePeriod;
-        var devices = await ListDevices(userId, Symbol.Empty, minActiveAt, cancellationToken1).ConfigureAwait(false);
+        var devices = await ListDevicesFromDb(userId, Symbol.Empty, minActiveAt, cancellationToken).ConfigureAwait(false);
         if (devices.Count == 0) {
             Log.LogInformation("No recipient devices found for notification #{NotificationId}", notification.Id);
             return;
         }
 
-        var account = await AccountsBackend.Get(userId, cancellationToken1).ConfigureAwait(false);
+        var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
         var isAdmin = account is { IsAdmin: true };
         var deviceIds = devices.Select(d => d.DeviceId).ToList();
         DebugLog?.LogInformation("-> Send. EntryId={EntryId}, UserId={UserId}, NotificationId={Kind}, DeviceIds#={DeviceIdCount}",
             notification.EntryId, userId, notification.Id, deviceIds.Count);
-        await FirebaseMessagingClient.SendMessage(notification, deviceIds, isAdmin, cancellationToken1).ConfigureAwait(false);
+        await FirebaseMessagingClient.SendMessage(notification, deviceIds, isAdmin, cancellationToken).ConfigureAwait(false);
         DebugLog?.LogInformation("<- Send. EntryId={EntryId}, UserId={UserId}, NotificationId={Kind}, DeviceIds#={DeviceIdCount}",
             notification.EntryId, userId, notification.Id, deviceIds.Count);
     }
@@ -630,8 +636,7 @@ public class NotificationsBackend(IServiceProvider services)
         return null;
     }
 
-    private async Task<IReadOnlyList<Device>> ListDevices(
-        UserId userId, Symbol sessionHash, Moment? minActiveAt, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<Device>> ListDevicesFromDb(UserId userId, Symbol sessionHash, Moment? minActiveAt, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
@@ -644,8 +649,7 @@ public class NotificationsBackend(IServiceProvider services)
             .WhereIf(d => (d.AccessedAt ?? d.CreatedAt) >= minActiveAtValue, minActiveAt.HasValue)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        var devices = dbDevices.Select(d => d.ToModel()).ToList();
-        return devices;
+        return dbDevices.Select(d => d.ToModel()).ToList();
     }
 
     private async Task NotifyMembersInternal(

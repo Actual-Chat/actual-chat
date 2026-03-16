@@ -13,6 +13,7 @@ public class Notifications(IServiceProvider services) : INotifications
     private IPlaces Places { get; } = services.GetRequiredService<IPlaces>();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
+    private Apns Apns { get; } = services.GetRequiredService<Apns>();
     private ILogger Log { get; } = services.LogFor<Notifications>();
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
         = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
@@ -89,7 +90,7 @@ public class Notifications(IServiceProvider services) : INotifications
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, deviceId, deviceType) = command;
+        var (session, deviceId, deviceType, notificationChannel) = command;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account.IsGuestOrNull()) {
             Log.LogWarning("Skipping RegisterDevice for guest or none user." +
@@ -97,7 +98,7 @@ public class Notifications(IServiceProvider services) : INotifications
                 deviceId, deviceType, session.Hash, account.Id);
             return;
         }
-        var registerDeviceCommand = new NotificationsBackend_RegisterDevice(account.Id, deviceId, deviceType, session.Hash);
+        var registerDeviceCommand = new NotificationsBackend_RegisterDevice(account.Id, deviceId, deviceType, session.Hash, notificationChannel);
         await Commander.Run(registerDeviceCommand, cancellationToken).ConfigureAwait(false);
     }
 
@@ -110,7 +111,7 @@ public class Notifications(IServiceProvider services) : INotifications
 
         var (session, deviceId) = command;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        var existingDevices = await Backend.ListDevices(account.Id, cancellationToken).ConfigureAwait(false);
+        var existingDevices = await Backend.ListDevices(account.Id, null, cancellationToken).ConfigureAwait(false);
         if (existingDevices.All(d => d.DeviceId != deviceId)) {
             Log.LogWarning("OnDeregisterDevice: non-existing device");
             return;
@@ -225,6 +226,29 @@ public class Notifications(IServiceProvider services) : INotifications
                 .Distinct()
                 .ToArray();
         }
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnSendVoip(
+        Notifications_SendVoip command,
+        CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
+        var (session, chatId) = command;
+        var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        chat.Rules.IsMember().Require();
+        var ownAuthor = chat.Rules.Author.Require();
+        if (chat.Id.Kind != ChatKind.Peer)
+            throw StandardError.Unavailable("Calls are not supported in groups yet.");
+
+        var ownAccount = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var peerChatId = (PeerChatId)chat.Id;
+        var anotherUserId = peerChatId.AnotherUserId(ownAuthor.UserId);
+        var devices = await Backend.ListDevices(anotherUserId, NotificationChannel.Call, cancellationToken).ConfigureAwait(false);
+        var deviceIds = devices.Select(d => d.DeviceId).ToList();
+        await Apns.SendVoip(chatId, deviceIds, ownAuthor.Avatar.Name, ownAccount.Phone, ownAccount.Email, cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods

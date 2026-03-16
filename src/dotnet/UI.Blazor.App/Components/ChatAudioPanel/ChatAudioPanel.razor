@@ -72,6 +72,11 @@
         @if (IsNarrow) {
             <VoiceSettingsButton Chat="@Chat" IsNarrow="true" />
         }
+        @if (!IsNarrow) {
+            <div class="call-button">
+                <CallToggle Chat="@Chat"/>
+            </div>
+        }
         <div class="language-button"
              data-bubble="@(BubbleRef.New<VoiceSettingsButtonBubble>())"
              data-bubble-priority="120"

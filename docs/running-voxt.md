@@ -69,6 +69,11 @@ dotnet run --project src/dotnet/App.Server
 
 # Or use the watch mode for development
 ./dotnet-watch.cmd
+
+# Or use build watch (optionally with git sync)
+./run-watch.cmd                       # build watch only
+./run-watch.cmd --git-sync pull       # + git pull every 15s
+./run-watch.cmd --git-sync reset      # + git fetch & reset to origin/<branch> every 15s
 ```
 
 The server will be available at https://local.voxt.ai (or https://localhost:5001).

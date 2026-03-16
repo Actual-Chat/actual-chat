@@ -1,0 +1,45 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Notification
+@inherits ComputedStateComponent<AppUIHub, CallToggle.Model>
+@{
+    var m = State.Value;
+    var text = m.IsCalling ? "End call" : "Call";
+}
+
+<button @onclick="OnCallClick">@text</button>
+
+@code {
+    private bool _isCalling;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private NotificationUI NotificationUI => Hub.NotificationUI;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.NewLoading(Chat),
+            UpdateDelayer = FixedDelayer.NextTick,
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override Task<Model> ComputeState(CancellationToken cancellationToken) {
+        return Task.FromResult(new Model(Chat, _isCalling));
+    }
+
+    private async Task OnCallClick() {
+        _isCalling = !State.Value.IsCalling;
+        if (_isCalling) {
+            await ChatAudioUI.SetRecordingChatId(State.Value.Chat.Id);
+            await UICommander.Run(new Notifications_SendVoip(Session, State.Value.Chat.Id));
+        }
+        State.Invalidate();
+    }
+
+    // Nested types
+
+    public sealed record Model(
+        Chat Chat,
+        bool IsCalling = false
+    ) {
+        public static Model NewLoading(Chat chat) => new(chat, false);
+    }
+}

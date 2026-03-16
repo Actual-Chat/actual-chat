@@ -47,6 +47,9 @@ dotnet workload install wasm-tools maui aspire
 
 # Build and run with watch
 ./run-build.cmd watch
+
+# Or with auto git pull/reset
+./run-watch.cmd --git-sync pull
 ```
 
 Access the app at https://local.voxt.ai (see [Running Voxt](./docs/running-voxt.md) for host setup).

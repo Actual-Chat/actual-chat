@@ -2,14 +2,16 @@
 using ActualChat.Notification.Db;
 using ActualChat.Notification.Flows;
 using ActualChat.Hosting;
+using ActualChat.Notification.Db;
 using ActualChat.Redis.Module;
+using dotAPNS.AspNetCore;
 using FirebaseAdmin;
 using FirebaseAdmin.Messaging;
 
 namespace ActualChat.Notification.Module;
 
 public sealed class NotificationServiceModule(IServiceProvider moduleServices)
-    : HostModule(moduleServices), IServerModule
+    : HostModule<NotificationSettings>(moduleServices), IServerModule
 {
     private static readonly Lock FirebaseAppFactoryLock = new();
 
@@ -37,6 +39,10 @@ public sealed class NotificationServiceModule(IServiceProvider moduleServices)
             }
         });
         services.AddSingleton<FirebaseMessagingClient>();
+
+        // APNs
+        services.AddApns();
+        services.AddSingleton<Apns>();
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();

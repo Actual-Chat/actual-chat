@@ -10,4 +10,6 @@ public sealed class CoreServerSettings
     public string GoogleRegionId { get; set; } = "us-central1";
     public bool UseGoogleTranscoder { get; set; }
     public FilePath PromptsDir { get; set; }
+    public string AppleTeamId { get; set; } = "";
+    public string AppleAppId { get; set; } = "";
 }

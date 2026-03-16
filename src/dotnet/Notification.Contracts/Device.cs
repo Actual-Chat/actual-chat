@@ -1,4 +1,4 @@
-﻿namespace ActualChat.Notification;
+namespace ActualChat.Notification;
 
 /// <summary>
 /// Represents a device registered for push notifications.
@@ -21,4 +21,5 @@ public sealed partial record Device(
     #endregion
 
     [DataMember(Order = 3), MemoryPackIgnore, Key(3)] public Moment? AccessedAt { get; init; }
+    [DataMember(Order = 4), MemoryPackIgnore, Key(4)] public NotificationChannel NotificationChannel { get; init; } = NotificationChannel.Push;
 }

@@ -12,7 +12,7 @@ public interface INotificationsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<ExplicitNotification?> GetExplicit(ExplicitNotificationId notificationId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<IReadOnlyList<Device>> ListDevices(UserId userId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<Device>> ListDevices(UserId userId, NotificationChannel? channel, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<IReadOnlyList<UserId>> ListSubscribedUserIds(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
@@ -101,7 +101,8 @@ public sealed partial record NotificationsBackend_RegisterDevice(
     [property: DataMember, MemoryPackOrder(0), Key(0)] UserId UserId,
     [property: DataMember, MemoryPackOrder(1), Key(1)] Symbol DeviceId,
     [property: DataMember, MemoryPackOrder(2), Key(2)] DeviceType DeviceType,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] Symbol SessionHash
+    [property: DataMember, MemoryPackOrder(3), Key(3)] Symbol SessionHash,
+    [property: DataMember, MemoryPackOrder(3), Key(3)] NotificationChannel NotificationChannel
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]

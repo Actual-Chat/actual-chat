@@ -208,6 +208,7 @@ The shared test host provides:
 | Script | Purpose |
 |--------|---------|
 | `run-build.cmd` | Main build orchestration |
+| `run-watch.cmd` | Build watch with optional git sync (`--git-sync pull\|reset`) |
 | `npm-install.cmd` | Install Node dependencies |
 | `npm-build.cmd` | Build TypeScript |
 | `docker-start.cmd` | Start infrastructure |

@@ -44,7 +44,8 @@ public static partial class Constants
         public static readonly bool ChatAudioUI = false;
         public static readonly bool AudioRecording = false;
         public static readonly bool AudioRecordingStream = false;
-        public static bool ListenOwnAudio => HostInfo.IsDevelopmentInstance && HostInfo.HostKind != HostKind.MauiApp;
+        public static bool ListenOwnAudio => false; // TODO: revert
+        // public static bool ListenOwnAudio => HostInfo.IsDevelopmentInstance && HostInfo.HostKind != HostKind.MauiApp;
 
         // Transcription
         public static readonly bool TranscriberAny = false;
@@ -73,5 +74,9 @@ public static partial class Constants
         // File upload
         public const bool FileAttachments = false;
         public const bool VideoTranscoding = false;
+
+        // Notifications
+        public const bool VoipPushes = true; // TODO: false before PR !!!
+
     }
 }

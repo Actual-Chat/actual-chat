@@ -1,5 +1,6 @@
 using ActualChat.App.Maui.Services;
 using ActualChat.Maui.Services;
+using ActualChat.Notification;
 using CoreSpotlight;
 using Firebase.CloudMessaging;
 using Foundation;
@@ -60,10 +61,14 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
         Log.LogDebug("OnNewToken: '{Token}'", token);
         var appServices = IPlatformApplication.Current?.Services;
         var mauiNotifications = appServices?.GetService<MauiNotifications>();
-        if (mauiNotifications != null )
+        if (mauiNotifications != null)
             _ = BackgroundTask.Run(
-                () => mauiNotifications.RefreshNotificationToken(token, DeviceType.iOSApp, CancellationToken.None),
-                Log, "DidReceiveRegistrationToken failed");
+                () => mauiNotifications.RefreshNotificationToken(token,
+                    DeviceType.iOSApp,
+                    NotificationChannel.Push,
+                    CancellationToken.None),
+                Log,
+                "DidReceiveRegistrationToken failed");
     }
 
     // Private methods

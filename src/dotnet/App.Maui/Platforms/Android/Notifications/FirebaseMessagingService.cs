@@ -6,6 +6,7 @@ using Firebase.Analytics;
 using Firebase.Messaging;
 using DeviceType = ActualChat.Notification.DeviceType;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
+using NotificationChannel = ActualChat.Notification.NotificationChannel;
 
 namespace ActualChat.App.Maui;
 
@@ -43,10 +44,14 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
         Log.LogDebug("OnNewToken: '{Token}'", token);
         var appServices = IPlatformApplication.Current?.Services;
         var mauiNotifications = appServices?.GetService<MauiNotifications>();
-        if (mauiNotifications != null )
+        if (mauiNotifications != null)
             _ = BackgroundTask.Run(
-                () => mauiNotifications.RefreshNotificationToken(token, DeviceType.AndroidApp, CancellationToken.None),
-                Log, "OnNewToken failed.");
+                () => mauiNotifications.RefreshNotificationToken(token,
+                    DeviceType.AndroidApp,
+                    NotificationChannel.Push,
+                    CancellationToken.None),
+                Log,
+                "OnNewToken failed.");
         base.OnNewToken(token);
     }
 

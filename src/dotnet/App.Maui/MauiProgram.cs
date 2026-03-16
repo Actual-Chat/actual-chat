@@ -20,6 +20,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.JSInterop;
 using Microsoft.Maui.LifecycleEvents;
+using PhoneNumbers;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 using Tracer = ActualChat.Performance.Tracer;
 #if IOS
@@ -323,6 +324,9 @@ public static partial class MauiProgram
 
     private static bool ShouldSkipFce(Exception e)
     {
+        if (e is NumberParseException)
+            return true;
+
         if (e is PlatformNotSupportedException) {
             if (e.StackTrace is not null
                 && e.StackTrace.Contains("OpenTelemetry.Resources.ResourceBuilder..cctor"))

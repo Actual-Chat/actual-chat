@@ -3,6 +3,7 @@ using ActualChat.Authentication;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
+using ActualChat.Module;
 using ActualChat.Redis.Module;
 using ActualChat.Security;
 using ActualChat.Users.Db;
@@ -79,6 +80,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
                 options.ClaimActions.MapJsonKey(Constants.User.Claims.GooglePicture, "picture");
             });
             authentication.AddApple(options => {
+                var coreServerSettings = Cfg.GetSettings<CoreServerSettings>("CoreSettings");
                 options.Events.OnCreatingTicket = context => {
                     if (context.Identity == null)
                         return Task.CompletedTask;
@@ -100,7 +102,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
                 };
                 options.ClientId = Settings.AppleClientId;
                 options.KeyId = Settings.AppleKeyId;
-                options.TeamId = Settings.AppleTeamId;
+                options.TeamId = coreServerSettings.AppleTeamId;
                 options.GenerateClientSecret = true;
                 options.UsePrivateKey(_ => new PhysicalFileInfo(new FileInfo(Settings.ApplePrivateKeyPath)));
             });

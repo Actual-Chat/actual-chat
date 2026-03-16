@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Microsoft.EntityFrameworkCore;
 using ActualLab.Versioning;
+using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Notification.Db;
 
@@ -16,6 +16,7 @@ public class DbDevice : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string UserId { get; set; } = null!;
     public string SessionHash { get; set; } = null!;
     public DeviceType Type { get; set; }
+    public NotificationChannel NotificationChannel { get; set; }
 
     public DateTime CreatedAt {
         get => field.DefaultKind(DateTimeKind.Utc);
@@ -30,5 +31,6 @@ public class DbDevice : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public Device ToModel()
         => new (Id, Type, CreatedAt) {
             AccessedAt = AccessedAt.ToMoment(),
+            NotificationChannel = NotificationChannel,
         };
 }
