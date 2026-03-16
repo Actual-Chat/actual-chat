@@ -14,6 +14,7 @@ export interface VideoStreamConfig {
     width: number;
     height: number;
     codecSettings?: string; // Base64 encoded codec-specific data (SPS/PPS for H.264)
+    onReconnect?: () => void; // Called before each PushVideo to reset sender-side state (e.g., timestamp anchor)
 }
 
 export interface VideoStreamFrame {
@@ -118,6 +119,9 @@ export class VideoStream {
                     await VideoStreamer.ensureConnected();
 
                     infoLog?.log('Connected, calling PushVideo with codecSettings:', this.config.codecSettings?.length ?? 0, 'chars');
+                    // Reset sender-side state (e.g., timestamp anchor) so frame offsets
+                    // align with the fresh clientStartOffset passed to PushVideo
+                    this.config.onReconnect?.();
                     subject = new signalR.Subject<Uint8Array>();
                     // Use PushVideo - simple forwarding, no processing
                     await VideoStreamer.connection!.send(

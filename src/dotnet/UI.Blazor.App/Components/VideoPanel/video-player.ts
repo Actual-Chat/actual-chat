@@ -461,7 +461,11 @@ export class VideoPlayer {
             this.consecutiveEmptyRenders++;
             if (this.consecutiveEmptyRenders >= 60) {
                 warnLog?.log(`Render stuck for ${this.consecutiveEmptyRenders} frames, resetting timing anchor`);
-                this.playbackStartTime = 0;
+                // Anchor to actual buffer content — clock-based liveOffsetMs may be wrong
+                // (e.g., after sender reconnection where startedAtMs and frame offsets diverge)
+                this.playbackStartTime = performance.now();
+                this.firstFrameTimestamp = this.pendingFrames[0].timestamp;
+                this.playbackRate = 1.0;
                 this.consecutiveEmptyRenders = 0;
             }
         } else {
