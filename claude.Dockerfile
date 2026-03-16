@@ -118,10 +118,6 @@ RUN npm install -g chrome-devtools-mcp
 ENV DISABLE_AUTOUPDATER=1
 RUN curl -fsSL https://claude.ai/install.sh | bash -s -- 2.1.76
 
-# Install frontend-design plugin
-RUN mkdir -p /home/claude/.claude/skills/frontend-design && \
-    curl -fsSL -o /home/claude/.claude/skills/frontend-design/SKILL.md \
-    https://raw.githubusercontent.com/anthropics/claude-code/main/plugins/frontend-design/skills/frontend-design/SKILL.md
 
 # Default working directory (overridden by -w flag in docker run)
 WORKDIR /proj
