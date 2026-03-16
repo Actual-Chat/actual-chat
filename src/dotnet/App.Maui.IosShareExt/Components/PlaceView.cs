@@ -30,11 +30,16 @@ public sealed class PlaceView(Place? place, IosHub hub) : ComputedStateView<bool
         AddSubview(_iconView);
         AddSubview(_underlineView);
 
+        // Fixed underline position to avoid dependency on icon view anchors
+        const int underlineTop = ContactIconView.Size + 4; // 40 + 4 = 44
+
         NSLayoutConstraint.ActivateConstraints([
             _iconView.TopAnchor.ConstraintEqualTo(TopAnchor),
             _iconView.CenterXAnchor.ConstraintEqualTo(CenterXAnchor),
+            _iconView.WidthAnchor.ConstraintEqualTo(ContactIconView.Size),
+            _iconView.HeightAnchor.ConstraintEqualTo(ContactIconView.Size),
 
-            _underlineView.TopAnchor.ConstraintEqualTo(_iconView.BottomAnchor, 4),
+            _underlineView.TopAnchor.ConstraintEqualTo(TopAnchor, underlineTop),
             _underlineView.CenterXAnchor.ConstraintEqualTo(CenterXAnchor),
             _underlineView.WidthAnchor.ConstraintEqualTo(32),
             _underlineView.HeightAnchor.ConstraintEqualTo(3),

@@ -74,13 +74,19 @@ public sealed class ContactView(Contact contact, IosHub hub) : ComputedStateView
         AddSubview(textContainer);
         AddSubview(_checkbox);
 
+        // Fixed layout values to avoid any dependency on icon view anchors
+        const int iconLeading = 16;
+        const int textLeading = iconLeading + ContactIconView.Size + 12; // 16 + 40 + 12 = 68
+
         NSLayoutConstraint.ActivateConstraints([
             // Avatar
-            _iconView.LeadingAnchor.ConstraintEqualTo(LeadingAnchor, 16),
+            _iconView.LeadingAnchor.ConstraintEqualTo(LeadingAnchor, iconLeading),
             _iconView.CenterYAnchor.ConstraintEqualTo(CenterYAnchor),
+            _iconView.WidthAnchor.ConstraintEqualTo(ContactIconView.Size),
+            _iconView.HeightAnchor.ConstraintEqualTo(ContactIconView.Size),
 
-            // Text container
-            textContainer.LeadingAnchor.ConstraintEqualTo(_iconView.TrailingAnchor, 12),
+            // Text container - use fixed leading to avoid dependency on icon view
+            textContainer.LeadingAnchor.ConstraintEqualTo(LeadingAnchor, textLeading),
             textContainer.CenterYAnchor.ConstraintEqualTo(CenterYAnchor),
             textContainer.TrailingAnchor.ConstraintLessThanOrEqualTo(_checkbox.LeadingAnchor, -12),
 
