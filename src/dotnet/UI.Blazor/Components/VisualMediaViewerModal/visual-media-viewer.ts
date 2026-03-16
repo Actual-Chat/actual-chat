@@ -475,7 +475,8 @@ export class VisualMediaViewer {
 
         if (target.classList.contains('media-swiper')) {
             // click on prev / next buttons
-        } else if (target.classList.contains('swiper-zoom-container')) {
+        } else if (target.classList.contains('swiper-zoom-container')
+            || target.classList.contains('video-wrapper')) {
             // click outside image/video
             void this.blazorRef.invokeMethodAsync('Close');
         } else {
@@ -679,6 +680,8 @@ export class VisualMediaViewer {
             progressBar.value = percent;
         };
 
+        const line2 = progressBar.closest('.c-line-2');
+
         const onLinePointerDown = (e: PointerEvent) => {
             e.preventDefault();
             e.stopPropagation();
@@ -690,6 +693,7 @@ export class VisualMediaViewer {
 
             updateThumbPosition(percent);
             this.isDraggingThumb = true;
+            line2?.classList.add('thumb-active');
             document.body.classList.add('no-select');
             void this.showHeaderAndFooter();
         };
@@ -716,6 +720,7 @@ export class VisualMediaViewer {
 
             setTimeout(() => {
                 this.isDraggingThumb = false;
+                line2?.classList.remove('thumb-active');
             }, 50);
 
             document.body.classList.remove('no-select');
@@ -792,8 +797,10 @@ export class VisualMediaViewer {
         if (spinner)
             spinner.remove();
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        if (control)
+        if (control) {
             control.classList.remove('invisible');
+            control.classList.add('has-mini-progress');
+        }
         this.updateLoading(video);
     }
 

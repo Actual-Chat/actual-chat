@@ -118,7 +118,6 @@
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.ChatActivityPanel.create";
     private readonly TaskSerializer _taskSerializer = new();
     private CpuTimestamp _lastActionAt;
-    private bool _wasListening;
 
     private ElementReference Ref { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
@@ -154,12 +153,6 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender && ScreenSize.IsNarrow())
             JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
-
-        // Re-show listening hint bubble each time listening starts
-        var isListening = State is { Value.AudioState.IsListening: true };
-        if (isListening && !_wasListening)
-            _ = Hub.BubbleUI.UnreadBubble<ListeningTimerBubble>();
-        _wasListening = isListening;
     }
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {

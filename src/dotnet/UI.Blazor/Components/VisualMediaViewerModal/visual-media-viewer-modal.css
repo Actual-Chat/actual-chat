@@ -163,62 +163,42 @@ swiper-container::part(button-prev) {
         var(--black-80) 90%,
         var(--black-60) 100%);
     backdrop-filter: blur(2px);
-    transition: opacity 300ms ease-in-out;
+    transition: opacity 300ms ease-in-out 150ms;
 }
 .video-wrapper .video-control.hide-control {
-    @apply z-minus;
     opacity: 0;
+    pointer-events: none;
 }
 .video-wrapper .video-control:not(.single-attachment) {
     bottom: var(--footer-height);
 }
-.video-wrapper .video-control {
-    opacity: 1;
-    animation: show-control 300ms linear forwards;
-}
 .image-viewer-modal:has(.show-to-hide) .video-wrapper .video-control {
-    filter: opacity(0);
-    animation: hide-control 100ms linear forwards;
+    opacity: 0;
+    pointer-events: none;
+    transition-delay: 0s;
 }
-@keyframes hide-control {
-    0% {
-        filter: opacity(1);
-        transform: translateY(0);
-        z-index: 10;
-    }
-    90% {
-        filter: opacity(0.1);
-        transform: translateY(90%);
-        z-index: 10;
-    }
-    100% {
-        filter: opacity(0);
-        transform: translateY(100%);
-        z-index: -1;
-    }
+.image-viewer-modal:has(.show-to-hide) .video-wrapper .video-control .c-line-1,
+.image-viewer-modal:has(.show-to-hide) .video-wrapper .video-control .c-thumb {
+    @apply hidden;
 }
-@keyframes show-control {
-    0%, 50% {
-        filter: opacity(0);
-        transform: translateY(100%);
-        z-index: -1;
-    }
-    60% {
-        filter: opacity(0.1);
-        transform: translateY(100%);
-        z-index: 10;
-    }
-    100% {
-        filter: opacity(1);
-        transform: translateY(0);
-        z-index: 10;
-    }
+.image-viewer-modal:has(.show-to-hide) .video-wrapper .video-control.has-mini-progress {
+    opacity: 1;
+    pointer-events: none;
+    background: none;
+    backdrop-filter: none;
+    padding: 0;
+}
+.image-viewer-modal:has(.show-to-hide) .video-wrapper .video-control.has-mini-progress .c-line-2 {
+    @apply min-h-0 gap-x-0;
+}
+.image-viewer-modal:has(.show-to-hide) .video-wrapper .video-control.has-mini-progress progress {
+    @apply h-[3px] rounded-none;
 }
 .video-wrapper .video-control * {
     @apply always-white;
 }
 .video-wrapper .video-control .c-line-1 {
-    @apply flex-1 flex-x items-center justify-center gap-x-4;
+    @apply relative flex-1 flex-x items-center justify-center gap-x-4;
     @apply w-full min-h-10;
 }
 .video-control .c-line-1 .play-btn.is-playing .play-icon {
@@ -236,8 +216,8 @@ swiper-container::part(button-prev) {
 
 .video-wrapper .video-control .c-line-2 {
     @apply relative;
-    @apply flex-x items-center gap-x-4;
-    @apply w-full min-h-10;
+    @apply flex-x items-center;
+    @apply w-full min-h-6;
 }
 .video-wrapper .video-control progress {
     @apply relative;
@@ -255,9 +235,10 @@ swiper-container::part(button-prev) {
     @apply bg-[var(--white)];
     @apply rounded-full;
 }
-.video-wrapper .video-control .c-line-2 .c-timeline {
-    @apply flex-none flex-x items-center justify-end gap-x-1;
-    @apply w-32;
+.video-wrapper .video-control .c-line-1 .c-timeline {
+    @apply absolute right-0;
+    @apply flex-none flex-x items-center gap-x-1;
+    @apply whitespace-nowrap;
     @apply text-caption-1;
 }
 .video-wrapper .video-control progress:before {
@@ -270,12 +251,15 @@ swiper-container::part(button-prev) {
 }
 .video-wrapper .video-control .c-thumb {
     @apply absolute top-1/2 z-10;
-    @apply w-5 h-5;
+    @apply w-3 h-3;
     @apply rounded-full;
     @apply -translate-y-1/2;
     @apply cursor-pointer pointer-events-auto;
-    background: linear-gradient(180deg, #2970FF 0.32%, #C60077 133.76%);
-    border: 2px solid white;
+    @apply bg-white;
+    transition: width 150ms ease, height 150ms ease;
+}
+.video-wrapper .video-control .c-line-2.thumb-active .c-thumb {
+    @apply w-5 h-5;
 }
 
 .media-preview-swiper {
