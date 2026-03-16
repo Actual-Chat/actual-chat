@@ -116,7 +116,7 @@ RUN npm install -g chrome-devtools-mcp
 
 # Install Claude Code CLI (native installer, auto-update disabled at runtime)
 ENV DISABLE_AUTOUPDATER=1
-RUN curl -fsSL https://claude.ai/install.sh | bash -s -- 2.1.69
+RUN curl -fsSL https://claude.ai/install.sh | bash -s -- 2.1.76
 
 # Install frontend-design plugin
 RUN mkdir -p /home/claude/.claude/skills/frontend-design && \
