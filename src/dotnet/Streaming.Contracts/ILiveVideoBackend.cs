@@ -5,8 +5,8 @@ using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
 
-[BackendService(nameof(HostRole.VideoBackend), ServiceMode.Distributed)]
-[BackendShardScheme(nameof(HostRole.VideoBackend))]
+[BackendService(nameof(HostRole.LiveBackend), ServiceMode.Distributed)]
+[BackendShardScheme(nameof(HostRole.LiveBackend))]
 public interface ILiveVideoBackend : IComputeService, IBackendService
 {
     [ComputeMethod]

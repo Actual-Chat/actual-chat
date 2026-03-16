@@ -4,7 +4,7 @@ using ActualChat.Live;
 namespace ActualChat.Streaming.Services;
 
 /// <summary>
-/// Watches for active streams via ILiveBackend and multiplexes audio into a single output channel.
+/// Watches for active streams via ILiveAudioBackend and multiplexes audio into a single output channel.
 /// </summary>
 public sealed class LiveStreamMuxer : WorkerBase
 {
@@ -20,7 +20,7 @@ public sealed class LiveStreamMuxer : WorkerBase
     private Session Session { get; }
     private ChatId ChatId { get; }
     private IChats Chats => field ??= Services.GetRequiredService<IChats>();
-    private ILiveBackend LiveBackend => field ??= Services.GetRequiredService<ILiveBackend>();
+    private ILiveAudioBackend LiveBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
     private IStreamClient StreamClient => field ??= Services.GetRequiredService<IStreamClient>();
     private MomentClockSet Clocks => field ??= Services.Clocks();
     private ILogger Log => field ??= Services.LogFor<LiveStreamMuxer>();

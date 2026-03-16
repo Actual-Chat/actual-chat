@@ -23,7 +23,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var services = appHost.Services;
         var session = Session.New();
         _ = await appHost.SignIn(session, new AccountFull("Bobby"));
-        var backend = services.GetRequiredService<IStreamingBackend>();
+        var backend = services.GetRequiredService<IAudioStreamingBackend>();
         var client = services.GetRequiredService<IStreamClient>();
         var accountSettings = services.AccountSettings(session);
         if (mustSetUserLanguageSettings) {
@@ -55,7 +55,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var commander = services.Commander();
         var session = Session.New();
         _ = await appHost.SignIn(session, new AccountFull("Bobby"));
-        var backend = services.GetRequiredService<IStreamingBackend>();
+        var backend = services.GetRequiredService<IAudioStreamingBackend>();
         var client = services.GetRequiredService<IStreamClient>();
         var log = services.LogFor<StreamingBackendTest>();
         var accountSettings = services.AccountSettings(session);
@@ -104,7 +104,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var commander = services.Commander();
         var session = Session.New();
         _ = await appHost.SignIn(session, new AccountFull("Bobby"));
-        var backend = services.GetRequiredService<IStreamingBackend>();
+        var backend = services.GetRequiredService<IAudioStreamingBackend>();
         var client = services.GetRequiredService<IStreamClient>();
         var chats = services.GetRequiredService<IChatsBackend>();
         var log = services.LogFor<StreamingBackendTest>();
@@ -171,7 +171,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var commander = services.Commander();
         var session = Session.New();
         _ = await appHost.SignIn(session, new AccountFull("Bobby"));
-        var backend = services.GetRequiredService<IStreamingBackend>();
+        var backend = services.GetRequiredService<IAudioStreamingBackend>();
         var client = services.GetRequiredService<IStreamClient>();
         var chats = services.GetRequiredService<IChatsBackend>();
         var log = services.LogFor<StreamingBackendTest>();
@@ -240,7 +240,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var commander = services.Commander();
         var session = Session.New();
         _ = await appHost.SignIn(session, new AccountFull("Bobby"));
-        var backend = services.GetRequiredService<IStreamingBackend>();
+        var backend = services.GetRequiredService<IAudioStreamingBackend>();
         var client = services.GetRequiredService<IStreamClient>();
         var log = services.LogFor<StreamingBackendTest>();
         var accountSettings = services.AccountSettings(session);
@@ -282,7 +282,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var commander = services.Commander();
         var session = Session.New();
         _ = await appHost.SignIn(session, new AccountFull("Bobby"));
-        var backend = services.GetRequiredService<IStreamingBackend>();
+        var backend = services.GetRequiredService<IAudioStreamingBackend>();
         var client = services.GetRequiredService<IStreamClient>();
         var log = services.LogFor<StreamingBackendTest>();
         var accountSettings = services.AccountSettings(session);
@@ -351,7 +351,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
     }
 
     private async Task<int> ProcessAudioFile(
-        IStreamingBackend backend,
+        IAudioStreamingBackend backend,
         AudioRecord audioRecord,
         ILogger log,
         string fileName = "file.webm",

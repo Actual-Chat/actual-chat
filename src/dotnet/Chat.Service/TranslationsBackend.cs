@@ -32,7 +32,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     private IQueues Queues => field ??= Services.Queues();
     private MeshWatcher MeshWatcher => field ??= Services.MeshWatcher();
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
-    private IStreamingBackend StreamingBackend => field ??= Services.GetRequiredService<IStreamingBackend>();
+    private IAudioStreamingBackend StreamingBackend => field ??= Services.GetRequiredService<IAudioStreamingBackend>();
     private IConversationsBackend ConversationsBackend => field ??= Services.GetRequiredService<IConversationsBackend>();
     private IHostApplicationLifetime HostLifetime => field ??= Services.HostLifetime();
     private FlowHub FlowHub => field ??= Services.FlowHub();

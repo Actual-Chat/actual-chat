@@ -10,7 +10,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     private new ILogger Log => field ??= Services.LogFor(GetType());
 
     public LiveVideoBackend(IServiceProvider services)
-        : base(services, ShardScheme.VideoBackend)
+        : base(services, ShardScheme.LiveBackend)
     {
         var stopToken = ShardOwner.StopToken;
         foreach (var shardIndex in ShardScheme.ShardIndexes) {

@@ -28,6 +28,7 @@ public partial record struct HostRole(
     public static readonly HostRole FlowsBackend = nameof(FlowsBackend);
     public static readonly HostRole AudioBackend = nameof(AudioBackend);
     public static readonly HostRole VideoBackend = nameof(VideoBackend);
+    public static readonly HostRole LiveBackend = nameof(LiveBackend);
     public static readonly HostRole MediaBackend = nameof(MediaBackend);
     public static readonly HostRole ChatBackend = nameof(ChatBackend);
     public static readonly HostRole ContactsBackend = nameof(ContactsBackend);

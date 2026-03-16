@@ -11,7 +11,7 @@ public class StreamServer(IServiceProvider services) : IStreamServer
     private readonly bool _preferThisNode = services.HostInfo().HasRole(HostRole.OneServer);
 
     private MeshWatcher MeshWatcher { get; } = services.MeshWatcher();
-    private IStreamingBackend Backend { get; } = services.GetRequiredService<IStreamingBackend>();
+    private IAudioStreamingBackend Backend { get; } = services.GetRequiredService<IAudioStreamingBackend>();
     private ILogger Log { get; } = services.LogFor<StreamServer>();
 
     public async Task<RpcStream<byte[]>?> GetAudio(string streamId, TimeSpan skipTo, CancellationToken cancellationToken)

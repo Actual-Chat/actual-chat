@@ -8,9 +8,9 @@ namespace ActualChat.Streaming;
 /// <summary>
 /// Backend service for managing live audio streams in chats.
 /// </summary>
-[BackendService(nameof(HostRole.AudioBackend), ServiceMode.Distributed)]
-[BackendShardScheme(nameof(HostRole.AudioBackend))]
-public interface ILiveBackend : IComputeService, IBackendService
+[BackendService(nameof(HostRole.LiveBackend), ServiceMode.Distributed)]
+[BackendShardScheme(nameof(HostRole.LiveBackend))]
+public interface ILiveAudioBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
     Task<ApiArray<LiveStreamInfo>> ListActiveStreams(ChatId chatId, CancellationToken cancellationToken);

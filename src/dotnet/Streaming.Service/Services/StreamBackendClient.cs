@@ -8,7 +8,7 @@ namespace ActualChat.Streaming.Services;
 
 public sealed class StreamBackendClient : IStreamClient
 {
-    private IStreamingBackend Backend { get; }
+    private IAudioStreamingBackend Backend { get; }
     private MeshWatcher MeshWatcher { get; }
     private ILogger Log { get; }
     private ILogger AudioSourceLog { get; }
@@ -17,7 +17,7 @@ public sealed class StreamBackendClient : IStreamClient
     {
         Log = services.LogFor(GetType());
         AudioSourceLog = services.LogFor<AudioSource>();
-        Backend = services.GetRequiredService<IStreamingBackend>();
+        Backend = services.GetRequiredService<IAudioStreamingBackend>();
         MeshWatcher = services.MeshWatcher();
     }
 

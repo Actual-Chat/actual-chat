@@ -48,6 +48,7 @@ public static class HostRoles
                         roles.Add(HostRole.FlowsBackend);
                         roles.Add(HostRole.AudioBackend);
                         roles.Add(HostRole.VideoBackend);
+                        roles.Add(HostRole.LiveBackend);
                         roles.Add(HostRole.MediaBackend);
                         roles.Add(HostRole.ChatBackend);
                         roles.Add(HostRole.ContactsBackend);

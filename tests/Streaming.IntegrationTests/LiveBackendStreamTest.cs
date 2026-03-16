@@ -10,7 +10,7 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     /// <summary>
-    /// Tests that ILiveBackend.ObserveStreams works in loopback mode (same host produces and consumes).
+    /// Tests that ILiveAudioBackend.ObserveStreams works in loopback mode (same host produces and consumes).
     /// This is the simplest possible test for the RPC stream functionality.
     /// </summary>
     [Fact]
@@ -36,7 +36,7 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
         log.LogInformation("Created chat {ChatId}", chatId);
 
         // Get the backend service
-        var liveBackend = services.GetRequiredService<ILiveBackend>();
+        var liveBackend = services.GetRequiredService<ILiveAudioBackend>();
 
         // Start observing streams
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
@@ -80,7 +80,7 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
 
         log.LogInformation("Registering active stream: {StreamId}", testStreamInfo.StreamId);
 
-        // Use the interface method (now part of ILiveBackend)
+        // Use the interface method (now part of ILiveAudioBackend)
         await liveBackend.RegisterActiveStream(chatId, testStreamInfo, cts.Token);
 
         log.LogInformation("Stream registered, waiting for it to be received...");
@@ -122,7 +122,7 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
         chat.Require();
         var chatId = chat.Id;
 
-        var liveBackend = services.GetRequiredService<ILiveBackend>();
+        var liveBackend = services.GetRequiredService<ILiveAudioBackend>();
 
         // First, register a stream BEFORE calling ObserveStreams
         var existingStreamInfo = new LiveStreamInfo {
@@ -184,7 +184,7 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
         chat.Require();
         var chatId = chat.Id;
 
-        var liveBackend = services.GetRequiredService<ILiveBackend>();
+        var liveBackend = services.GetRequiredService<ILiveAudioBackend>();
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 

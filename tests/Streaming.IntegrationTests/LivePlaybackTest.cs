@@ -61,7 +61,7 @@ public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Task.Delay(500, cts.Token);
 
         // Now start recording audio
-        var backend = services.GetRequiredService<IStreamingBackend>();
+        var backend = services.GetRequiredService<IAudioStreamingBackend>();
         var thisNode = services.MeshWatcher().ThisNode;
         var streamId = StreamId.New(thisNode.Ref);
         var audioRecord = new AudioRecord(

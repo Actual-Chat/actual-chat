@@ -14,7 +14,7 @@ public class LiveStreams(IServiceProvider services) : ILiveStreams
 
     private IServiceProvider Services { get; } = services;
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
-    private ILiveBackend LiveBackend => field ??= Services.GetRequiredService<ILiveBackend>();
+    private ILiveAudioBackend LiveBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
     private ILogger Log => field ??= Services.LogFor<LiveStreams>();
 
     // [ComputeMethod]

@@ -2,16 +2,16 @@ using ActualChat.Live;
 
 namespace ActualChat.Streaming;
 
-public partial class LiveBackend
+public partial class LiveAudioBackend
 {
-    public sealed class ChatState(LiveBackend owner, ChatId chatId)
+    public sealed class ChatState(LiveAudioBackend owner, ChatId chatId)
     {
         private readonly ConcurrentDictionary<string, LiveStreamInfo> _streams = new();
         private readonly AsyncObservable<LiveStreamInfo> _newStreams = new();
         private readonly SemaphoreSlim _populateLock = new(1, 1);
         private volatile bool _isPopulated;
 
-        public LiveBackend Owner { get; } = owner;
+        public LiveAudioBackend Owner { get; } = owner;
         public ChatId ChatId { get; } = chatId;
 
         public async Task<ApiArray<LiveStreamInfo>> ListActiveStreams(CancellationToken cancellationToken)

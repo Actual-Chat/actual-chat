@@ -24,7 +24,7 @@ public class StreamHub(IServiceProvider services) : Hub
     private MeshWatcher MeshWatcher { get; } = services.MeshWatcher();
     private ISecureTokensBackend SecureTokensBackend { get; } = services.GetRequiredService<ISecureTokensBackend>();
     private IHostApplicationLifetime HostLifetime { get; } = services.HostLifetime();
-    private IStreamingBackend Backend { get; } = services.GetRequiredService<IStreamingBackend>();
+    private IAudioStreamingBackend Backend { get; } = services.GetRequiredService<IAudioStreamingBackend>();
     private IVideoStreamingBackend VideoStreamingBackend { get; } = services.GetRequiredService<IVideoStreamingBackend>();
     private ILogger Log { get; } = services.LogFor<StreamHub>();
 

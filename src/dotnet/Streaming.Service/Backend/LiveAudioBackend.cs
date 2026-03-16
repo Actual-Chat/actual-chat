@@ -7,15 +7,15 @@ namespace ActualChat.Streaming;
 /// <summary>
 /// Backend service implementation for managing active live audio streams in chats.
 /// </summary>
-public partial class LiveBackend : ShardComputeService, ILiveBackend
+public partial class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
 {
     private readonly ConcurrentDictionary<ChatId, ChatState> _chatStates = new();
 
     internal IChatsBackend ChatsBackend { get; }
     internal MomentClock ServerClock { get; }
 
-    public LiveBackend(IServiceProvider services)
-        : base(services, ShardScheme.AudioBackend)
+    public LiveAudioBackend(IServiceProvider services)
+        : base(services, ShardScheme.LiveBackend)
     {
         ChatsBackend = services.GetRequiredService<IChatsBackend>();
         ServerClock = services.Clocks().ServerClock;

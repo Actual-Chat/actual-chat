@@ -9,7 +9,7 @@ using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
 
-public partial class StreamingBackend
+public partial class AudioStreamingBackend
 {
     [GeneratedRegex("^\\s*$")]
     private static partial Regex EmptyRegexFactory();

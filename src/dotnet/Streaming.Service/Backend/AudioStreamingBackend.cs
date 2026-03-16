@@ -13,7 +13,7 @@ namespace ActualChat.Streaming;
 /// <summary>
 /// Backend service implementation for audio and transcript streaming with real-time transcription.
 /// </summary>
-public partial class StreamingBackend : IStreamingBackend, IDisposable
+public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
 {
     private readonly StreamStore<byte[]> _audioStreams;
     private readonly StreamStore<TranscriptDiff> _transcriptStreams;
@@ -36,10 +36,10 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
     private ICommander Commander => field ??= Services.Commander();
     private MomentClockSet Clocks => field ??= Services.Clocks();
     private IHostApplicationLifetime HostLifetime => field ??= Services.HostLifetime();
-    private ILiveBackend LiveBackend => field ??= Services.GetRequiredService<ILiveBackend>();
+    private ILiveAudioBackend LiveBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
     private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
 
-    public StreamingBackend(IServiceProvider services)
+    public AudioStreamingBackend(IServiceProvider services)
     {
         Services = services;
         AudioSettings = services.GetRequiredService<AudioSettings>();

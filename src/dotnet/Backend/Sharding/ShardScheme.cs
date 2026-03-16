@@ -26,6 +26,7 @@ public sealed class ShardScheme(
     public static readonly ShardScheme MediaBackend = new(nameof(MediaBackend), N, HostRole.MediaBackend);
     public static readonly ShardScheme AudioBackend = new(nameof(AudioBackend), N, HostRole.AudioBackend);
     public static readonly ShardScheme VideoBackend = new(nameof(VideoBackend), N, HostRole.VideoBackend);
+    public static readonly ShardScheme LiveBackend = new(nameof(LiveBackend), N, HostRole.LiveBackend);
     public static readonly ShardScheme ChatBackend = new(nameof(ChatBackend), N, HostRole.ChatBackend);
     public static readonly ShardScheme ContactsBackend = new(nameof(ContactsBackend), N, HostRole.ContactsBackend);
     public static readonly ShardScheme InviteBackend = new(nameof(InviteBackend), 1, HostRole.InviteBackend);
@@ -45,6 +46,7 @@ public sealed class ShardScheme(
         { MediaBackend.Id, MediaBackend },
         { AudioBackend.Id, AudioBackend },
         { VideoBackend.Id, VideoBackend },
+        { LiveBackend.Id, LiveBackend },
         { ChatBackend.Id, ChatBackend },
         { ContactsBackend.Id, ContactsBackend },
         { FlowsBackend.Id, FlowsBackend },

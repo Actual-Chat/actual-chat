@@ -28,7 +28,7 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
     {
         // RPC host
         var rpcHost = services.AddRpcHost(HostInfo);
-        var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IStreamingBackend>() is ServiceMode.Client;
+        var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IAudioStreamingBackend>() is ServiceMode.Client;
 
         // SignalR hub
         if (rpcHost.IsApiHost) {
@@ -47,11 +47,11 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApi<IStreamServer, StreamServer>();
         rpcHost.AddApi<ILiveStreams, LiveStreams>();
         rpcHost.AddApi<ILiveVideoStreams, LiveVideoStreams>();
-        rpcHost.AddBackend<IStreamingBackend, StreamingBackend>();
+        rpcHost.AddBackend<IAudioStreamingBackend, AudioStreamingBackend>();
         rpcHost.AddBackend<IVideoStreamingBackend, VideoStreamingBackend>();
-		rpcHost.AddBackend<ILiveBackend, LiveBackend>();
+		rpcHost.AddBackend<ILiveAudioBackend, LiveAudioBackend>();
         rpcHost.AddBackend<ILiveVideoBackend, LiveVideoBackend>();
-        services.AddSingleton<IStreamClient, StreamBackendClient>(); // Client for IStreamingBackend
+        services.AddSingleton<IStreamClient, StreamBackendClient>(); // Client for IAudioStreamingBackend
         services.AddSingleton<AudioDownloader, BlobStorageAudioDownloader>(); // Server-side AudioDownloader
         services.TryAddSingleton<AudioSettings>(); // AudioSettings are not configured now
         services.AddHostedService<VideoBackendWarmup>();

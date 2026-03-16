@@ -19,7 +19,7 @@ public class ChatActivityTest(ChatActivityCollection.AppHostFixture fixture, ITe
         var services = tester.AppServices;
         var clientServices = tester.ScopedAppServices;
         var authors = services.GetRequiredService<IAuthors>();
-        var liveBackend = services.GetRequiredService<ILiveBackend>();
+        var liveBackend = services.GetRequiredService<ILiveAudioBackend>();
         await tester.SignInAsBob();
         var session = tester.Session;
 

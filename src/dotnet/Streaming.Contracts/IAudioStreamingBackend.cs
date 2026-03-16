@@ -11,7 +11,7 @@ namespace ActualChat.Streaming;
 /// </summary>
 [BackendService(nameof(HostRole.AudioBackend), ServiceMode.Distributed)]
 [BackendShardScheme(nameof(HostRole.AudioBackend))]
-public interface IStreamingBackend : IRpcService, IBackendService
+public interface IAudioStreamingBackend : IRpcService, IBackendService
 {
     Task<RpcStream<byte[]>?> GetAudio(
         StreamId streamId,
