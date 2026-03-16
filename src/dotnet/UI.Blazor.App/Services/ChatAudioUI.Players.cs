@@ -44,12 +44,12 @@ public partial class ChatAudioUI
 
     // Actions
 
-    public void StartReplay(ChatId chatId, Moment startAt)
+    public void StartReplay(ChatId chatId, Moment startAt, TimeSpan offset = default)
     {
-        DebugLog?.LogInformation("StartReplay: chatId={ChatId}, startAt={StartAt}", chatId, startAt);
+        DebugLog?.LogInformation("StartReplay: chatId={ChatId}, startAt={StartAt}, offset={Offset}", chatId, startAt, offset);
 
         StopReplay();
-        _replayState.Value = new ReplayState(chatId, startAt);
+        _replayState.Value = new ReplayState(chatId, startAt, offset);
     }
 
     public void StopReplay()
@@ -151,7 +151,7 @@ public partial class ChatAudioUI
         return Task.WhenAll(resultPlayingTasks);
     }
 
-    private Task<Task> StartReplayPlayer(ChatId chatId, Moment startAt, CancellationToken cancellationToken)
+    private Task<Task> StartReplayPlayer(ChatId chatId, Moment startAt, TimeSpan offset, CancellationToken cancellationToken)
     {
         DebugLog?.LogInformation("StartReplayPlayer: getting or creating player for {ChatId}", chatId);
         var player = GetOrCreatePlayer(chatId, ChatPlayerKind.Replaying);

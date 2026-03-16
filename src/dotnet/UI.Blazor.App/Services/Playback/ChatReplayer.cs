@@ -1,3 +1,6 @@
+using ActualChat.Audio;
+using ActualChat.Live;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
 public sealed class ChatReplayer : ChatPlayer
@@ -30,221 +33,114 @@ public sealed class ChatReplayer : ChatPlayer
     protected override async Task Play(
         ChatEntryPlayer entryPlayer, Moment minPlayAt, CancellationToken cancellationToken)
     {
-        Log.LogInformation("Starting playback in chat {ChatId} from {MinPlayAt}", ChatId, minPlayAt);
+        // Read offset from ReplayState (set by ChatAudioUI.StartReplay)
+        var replayState = ChatAudioUI?.ReplayState.Value;
+        var offset = replayState is { ChatId: var rsChat } && rsChat == ChatId
+            ? replayState.Offset
+            : TimeSpan.Zero;
+
+        Log.LogInformation("Starting server-streamed replay in chat {ChatId} from {MinPlayAt}, offset={Offset}",
+            ChatId, minPlayAt, offset);
         var chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(false);
-        if (chat == null || !chat.Rules.CanRead()) {
+        if (chat?.Rules.CanRead() != true) {
             Log.LogWarning("Cannot read chat {ChatId}", ChatId);
             return;
         }
 
         Operation = $"replaying in \"{chat.Title}\"";
-        var clock = Clocks.CpuClock;
-        var initialSleepAndPauseDuration = SleepAndPauseDuration;
-        var realStartAt = RealNow();
-        var lastPlaybackBlockEnd = PlaybackNow(); // Any time in past, actually
-        var entryCount = 0;
 
-        await foreach (var entry in ListHistoricalAudioEntries(minPlayAt, cancellationToken).ConfigureAwait(false)) {
-            entryCount++;
-            Log.LogDebug("Found entry {EntryId}, IsStreaming={IsStreaming}, BeginsAt={BeginsAt}",
-                entry.Id, entry.IsContentStreaming, entry.BeginsAt);
-            if (entry.IsContentStreaming)
-                continue;
+        var processor = new ReplayStreamProcessor(
+            Hub.Services, Session, ChatId, minPlayAt, offset, cancellationToken.CreateLinkedTokenSource());
+        await using var _ = processor.ConfigureAwait(false);
 
-            var playbackNow = PlaybackNow();
-            var entryEndsAt = entry.GetEndsAt();
-            if (entryEndsAt < playbackNow)
-                continue;
-
-            if (lastPlaybackBlockEnd < entry.BeginsAt) {
-                // There is a gap between the last playing "block" and the entry,
-                // so we should move forward minPlayAt to skip it.
-                minPlayAt += entry.BeginsAt - lastPlaybackBlockEnd; // We must re-sync playbackNow after this!
-            }
-            lastPlaybackBlockEnd = Moment.Max(entryEndsAt, lastPlaybackBlockEnd);
-
-            if (!await CanContinuePlayback(cancellationToken).ConfigureAwait(false))
-                return;
-
-            playbackNow = PlaybackNow(); // Re-sync to account for sleep during CanContinuePlayback & possible minPlayAt update above
-            var enqueueDelay = (entry.BeginsAt - playbackNow - EnqueueAheadDuration).Positive();
-            if (enqueueDelay > TimeSpan.Zero) {
-                Log.LogInformation("Play: delaying #{EntryId} for {EnqueueDelay}", entry.Id.Value, enqueueDelay);
-                await EnqueueDelay(enqueueDelay, cancellationToken).ConfigureAwait(false);
-                playbackNow = PlaybackNow(); // Re-sync to account for sleep during EnqueueDelay
-            }
-
-            if (entryEndsAt < playbackNow)
-                continue;
-
-            var skipOffset = playbackNow - entry.BeginsAt;
-            var skipTo = skipOffset.Positive();
-            var playAt = clock.Now + (-skipOffset).Positive();
-            Log.LogDebug("Play: enqueuing #{EntryId} @ {SkipTo}", entry.Id, skipTo.ToShortString());
-            entryPlayer.EnqueueEntry(entry, skipTo, playAt);
-        }
-
-        Log.LogInformation("Completed, processed {EntryCount} entries", entryCount);
-        return;
-
-        Moment RealNow() => Clocks.CpuClock.Now + initialSleepAndPauseDuration - SleepAndPauseDuration;
-        TimeSpan PlaybackDuration() => RealNow() - realStartAt;
-        Moment PlaybackNow() => minPlayAt + PlaybackDuration();
+        processor.StreamStarted += (info, frames) =>
+            OnStreamStarted(entryPlayer, info, frames, cancellationToken);
+        await processor.Run().ConfigureAwait(false);
     }
 
-    public Task<Moment?> GetRewindMoment(Moment playingAt, TimeSpan offset, CancellationToken cancellationToken)
-        => offset < TimeSpan.Zero
-            ? GetRewindMomentInPast(playingAt, offset.Negate(), cancellationToken)
-            : GetRewindMomentInFuture(playingAt, offset, cancellationToken);
-
-    private async IAsyncEnumerable<ChatEntry> ListHistoricalAudioEntries(Moment minPlayAt, [EnumeratorCancellation] CancellationToken cancellationToken)
+    private void OnStreamStarted(
+        ChatEntryPlayer entryPlayer,
+        LiveStreamInfo streamInfo,
+        IAsyncEnumerable<byte[]> audioFrames,
+        CancellationToken cancellationToken)
     {
-        var textEntryReader = Hub.NewEntryReader(ChatId);
-        var idRange = await Chats.GetIdRange(Session, ChatId, cancellationToken)
-            .ConfigureAwait(false);
-        var startEntry = await textEntryReader
-            .FindByMinBeginsAt(minPlayAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
-            .ConfigureAwait(false);
-        if (startEntry == null) {
-            Log.LogWarning("Couldn't find start entry");
-            yield break;
-        }
+        _ = BackgroundTask.Run(async () => {
+            try {
+                if (!await CanContinuePlayback(cancellationToken).ConfigureAwait(false))
+                    return;
 
-        idRange = (startEntry.LocalId, idRange.End);
-        while (!idRange.IsEmptyOrNegative) {
-            var entries = textEntryReader.Read(idRange, cancellationToken)
-                .Where(x => x.HasAudio && !x.IsContentStreaming);
-            await foreach (var entry in entries.ConfigureAwait(false))
-                yield return entry;
+                // Create AudioSource from the stream frames
+                var skipTo = TimeSpan.Zero; // Server already handles skip
+                var audioSource = CreateAudioSource(streamInfo, audioFrames, skipTo, cancellationToken);
 
-            var newIdRange = await Chats.GetIdRange(Session, ChatId, cancellationToken).ConfigureAwait(false);
-            idRange = new (idRange.End, newIdRange.End);
-        }
-    }
+                // Get chat and author info for track metadata
+                var chat = await Hub.Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(false);
+                var author = await Hub.Authors.Get(Session, ChatId, streamInfo.AuthorId, cancellationToken)
+                    .ConfigureAwait(false);
 
-    private async Task<Moment?> GetRewindMomentInFuture(Moment playingAt, TimeSpan offset, CancellationToken cancellationToken)
-    {
-        ArgumentOutOfRangeException.ThrowIfLessThan(offset, TimeSpan.Zero);
-        if (offset == TimeSpan.Zero)
-            return playingAt;
+                if (chat == null)
+                    return;
 
-        var textEntryReader = Hub.NewEntryReader(ChatId);
-        var idRange = await Chats.GetIdRange(Session, ChatId, cancellationToken)
-            .ConfigureAwait(false);
-        var startEntry = await textEntryReader
-            .FindByMinBeginsAt(playingAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
-            .ConfigureAwait(false);
-        if (startEntry == null) {
-            Log.LogWarning("Couldn't find start entry");
-            return null;
-        }
+                // Look up ChatEntry from EntryId if available
+                ChatEntry? audioEntry = null;
+                if (streamInfo.EntryId is { } entryId) {
+                    var entryReader = Hub.NewEntryReader(ChatId);
+                    audioEntry = await entryReader.Get(entryId.LocalId, cancellationToken).ConfigureAwait(false);
+                }
 
-        idRange = (startEntry.LocalId, idRange.End);
-        var entries = textEntryReader.Read(idRange, cancellationToken);
-        var remainingOffset = offset;
-        var lastPlayingAt = playingAt;
-        await foreach (var entry in entries.ConfigureAwait(false)) {
-            if (!entry.HasAudio || entry.IsContentStreaming)
-                continue;
-            if (entry.EndsAt < playingAt)
-                // We're normally starting @ (playingAt - ChatConstants.MaxEntryDuration),
-                // so we need to skip a few entries.
-                continue;
+                // Create track info
+                ChatAudioTrackInfo trackInfo;
+                if (audioEntry != null) {
+                    trackInfo = new ChatAudioTrackInfo(audioEntry, chat, author!) {
+                        RecordedAt = streamInfo.BeginsAt,
+                        ClientSideRecordedAt = streamInfo.BeginsAt,
+                    };
+                }
+                else {
+                    trackInfo = new ChatAudioTrackInfo(ChatId, streamInfo.EntryId, chat, author) {
+                        RecordedAt = streamInfo.BeginsAt,
+                        ClientSideRecordedAt = streamInfo.BeginsAt,
+                    };
+                }
 
-            var entryBeginsAt = Moment.Max(entry.BeginsAt, lastPlayingAt);
-            var entryEndsAt = entry.GetEndsAt();
-
-            var expectedRewindPosition = entryBeginsAt + remainingOffset;
-            if (expectedRewindPosition <= entryEndsAt)
-                return expectedRewindPosition;
-            var shiftDuration = entryEndsAt - entryBeginsAt;
-            remainingOffset -= shiftDuration;
-            lastPlayingAt = entryEndsAt;
-        }
-        return lastPlayingAt; // return max position that we reached
-    }
-
-    private async Task<Moment?> GetRewindMomentInPast(Moment playingAt, TimeSpan offset, CancellationToken cancellationToken)
-    {
-        ArgumentOutOfRangeException.ThrowIfLessThan(offset, TimeSpan.Zero);
-        if (offset == TimeSpan.Zero)
-            return playingAt;
-
-        var textEntryReader = Hub.NewEntryReader(ChatId);
-        var fullIdRange = await Chats.GetIdRange(Session, ChatId, cancellationToken)
-            .ConfigureAwait(false);
-        var startEntry = await textEntryReader
-            .FindByMinBeginsAt(playingAt - Constants.Chat.MaxEntryDuration, fullIdRange, cancellationToken)
-            .ConfigureAwait(false);
-        if (startEntry == null) {
-            Log.LogWarning("Couldn't find start entry");
-            return null;
-        }
-
-        Range<long> idRange = (startEntry.LocalId, fullIdRange.End);
-        var entries = textEntryReader.Read(idRange, cancellationToken);
-        ChatEntry? lastEntry = null;
-        await foreach (var entry in entries.ConfigureAwait(false)) {
-            if (!entry.HasAudio || entry.IsContentStreaming)
-                continue;
-            if (entry.EndsAt >= playingAt) {
-                // We're normally starting @ (playingAt - ChatConstants.MaxEntryDuration),
-                // so we need to find an entry that completes after @ playingAt.
-                lastEntry = entry;
-                break;
+                var playAt = Clocks.CpuClock.Now;
+                entryPlayer.Playback.Play(trackInfo, audioSource, playAt, cancellationToken);
             }
-        }
-        if (lastEntry == null) {
-            Log.LogWarning("Couldn't find last entry");
-            return null;
-        }
-
-        idRange = ((Range<long>)(fullIdRange.Start, lastEntry.LocalId)).MoveEnd(1);
-        var reverseEntries = textEntryReader.ReadReverse(idRange, cancellationToken);
-        var remainingOffset = offset;
-        var lastPlayingAt = playingAt;
-        await foreach (var entry in reverseEntries.ConfigureAwait(false)) {
-            if (!entry.HasAudio || entry.IsContentStreaming)
-                continue;
-            if (entry.BeginsAt >= playingAt)
-                // We normally should not enter here due to way how last entry is looked up.
-                continue;
-
-            var entryBeginsAt = entry.BeginsAt;
-            var entryEndsAt = entry.EndsAt is { } endsAt
-                ? Moment.Min(endsAt, lastPlayingAt)
-                : lastPlayingAt;
-
-            var expectedRewindPosition = entryEndsAt - remainingOffset;
-            if (expectedRewindPosition >= entryBeginsAt)
-                return expectedRewindPosition;
-            var shiftDuration = entryEndsAt - entryBeginsAt;
-            remainingOffset -= shiftDuration;
-            lastPlayingAt = entryBeginsAt;
-        }
-        return lastPlayingAt; // return min position that we reached
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+                // Expected
+            }
+            catch (Exception e) {
+                Log.LogWarning(e, "Error processing replay stream {StreamId}", streamInfo.StreamId);
+            }
+        }, CancellationToken.None);
     }
 
-    private async Task EnqueueDelay(TimeSpan delay, CancellationToken cancellationToken)
+    private AudioSource CreateAudioSource(
+        LiveStreamInfo streamInfo,
+        IAsyncEnumerable<byte[]> audioFrames,
+        TimeSpan skipTo,
+        CancellationToken cancellationToken)
     {
-        // Waits for enqueue delay.
-        // If pause or sleep is activated during the enqueue delay, the
-        // enqueue delay is extended by the duration of the pause.
-        while (true) {
-            delay = delay.Positive();
-            if (delay <= TimeSpan.FromMilliseconds(50)) {
-                // Extremely short delays increase the CPU load,
-                // but don't add much of extra value here, coz all we want
-                // is to avoid scheduling of too many playbacks in advance.
-                return;
-            }
+        var format = streamInfo.Format ?? AudioSource.DefaultFormat;
+        var frameStream = audioFrames
+            .Select((data, i) => new AudioFrame {
+                Data = data,
+                Offset = TimeSpan.FromMilliseconds(i * Constants.Audio.OpusFrameDurationMs),
+                Duration = Constants.Audio.OpusFrameDuration,
+            })
+            .SkipWhile(f => f.Offset < skipTo)
+            .Select(f => new AudioFrame {
+                Data = f.Data,
+                Offset = f.Offset - skipTo,
+                Duration = f.Duration,
+            });
 
-            var initialSleepAndPauseDuration = SleepAndPauseDuration;
-            var startedAt = CpuTimestamp.Now;
-            await Clocks.CpuClock.Delay(delay, cancellationToken).ConfigureAwait(false);
-            await Playback.IsPaused.Computed.When(x => !x, cancellationToken).ConfigureAwait(false);
-            var actualDelay = startedAt.Elapsed - SleepAndPauseDuration + initialSleepAndPauseDuration;
-            delay -= actualDelay;
-        }
+        return new AudioSource(
+            streamInfo.BeginsAt,
+            format,
+            frameStream,
+            TimeSpan.Zero,
+            Log,
+            cancellationToken);
     }
 }

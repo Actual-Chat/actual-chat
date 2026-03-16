@@ -46,6 +46,7 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
 
         rpcHost.AddApi<IStreamServer, StreamServer>();
         rpcHost.AddApi<ILiveStreams, LiveStreams>();
+        rpcHost.AddApi<IReplayStreams, ReplayStreams>();
         rpcHost.AddApi<ILiveVideoStreams, LiveVideoStreams>();
         rpcHost.AddBackend<IAudioStreamingBackend, AudioStreamingBackend>();
         rpcHost.AddBackend<IVideoStreamingBackend, VideoStreamingBackend>();
