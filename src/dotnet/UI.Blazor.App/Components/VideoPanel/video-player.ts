@@ -71,7 +71,7 @@ export class VideoPlayer {
 
     // Latency measurement
     private lastRenderedOffsetMs = 0;   // offset of the latest decoded frame (ms from stream start)
-    private latencyReportTimer: ReturnType<typeof setInterval> | null = null;
+    private lastLatencyReportTime = 0;
     private pipelineLatencyMs = 0;      // Smoothed video pipeline latency estimate (ms)
     private skipFramesBelowOffsetMs = 0; // After tab restore, skip decoded frames below this offset
     private skippedBacklogFrames = 0;
@@ -474,6 +474,13 @@ export class VideoPlayer {
 
         this.updateBufferState();
 
+        // Report latency from RAF — naturally pauses when tab is hidden,
+        // preventing stale reports that trigger server-side skip-to-live
+        if (now - this.lastLatencyReportTime >= 5000) {
+            this.lastLatencyReportTime = now;
+            this.reportLatencyTick();
+        }
+
         if (this.pendingFrames.length > 0)
             this.scheduleRender();
     }
@@ -702,9 +709,6 @@ export class VideoPlayer {
         const streamResult = connection.stream<Uint8Array>(
             'GetVideo', sessionToken, streamId, skipToMs);
 
-        // Start latency report timer now that we're receiving frames
-        this.latencyReportTimer ??= setInterval(() => this.reportLatencyTick(), 5_000);
-
         this.pullSubscription = streamResult.subscribe({
             next: (frameBytes: Uint8Array) => {
                 receivedFramesDuringPull = true;
@@ -811,12 +815,7 @@ export class VideoPlayer {
         this.playbackRate = 1.0;
         this.lastSeekTime = 0;
         this.pullRetryCount = 0;
-
-        // Stop latency reporting
-        if (this.latencyReportTimer !== null) {
-            clearInterval(this.latencyReportTimer);
-            this.latencyReportTimer = null;
-        }
+        this.lastLatencyReportTime = 0;
 
         // Remove visibility subscription
         if (this.visibilitySubscription) {
@@ -952,12 +951,6 @@ export class VideoPlayer {
     }
 
     private async reportEnded(error?: string): Promise<void> {
-        // Stop latency reporting — stream is done, no more meaningful data
-        if (this.latencyReportTimer !== null) {
-            clearInterval(this.latencyReportTimer);
-            this.latencyReportTimer = null;
-        }
-
         try {
             debugLog?.log(`VideoPlayer reporting ended for stream ${this.streamId}:`, error);
             await this.blazorRef.invokeMethodAsync('OnEnded', error ?? null);

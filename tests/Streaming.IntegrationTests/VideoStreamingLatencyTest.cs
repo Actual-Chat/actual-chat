@@ -273,6 +273,136 @@ public class VideoStreamingLatencyTest(AppHostFixture fixture, ITestOutputHelper
         Out.WriteLine($"Frame delivery (from join point): {receivedOffsets.Count} frames ({deliveryRatio:P1})");
     }
 
+    [Fact(Skip="Manual")]
+    public async Task ShouldSkipToLiveWhenLatencyExceedsThreshold()
+    {
+        // Arrange
+        const int skipToLiveTotalFrames = 600; // 20 seconds at 30fps
+        const int normalReadFrames = 360; // ~12 seconds
+        var services = AppHost.Services;
+        var session = Session.New();
+        _ = await AppHost.SignIn(session, new AccountFull("VideoSkipToLiveUser"));
+
+        var chatId = await CreateTestChat(session);
+        var sessionToken = await CreateSessionToken(session);
+        var hubUrl = services.UrlMapper().ToAbsolute("/api/hub/streams");
+
+        var sentTimestamps = new ConcurrentDictionary<long, long>();
+
+        // Start producer — push 600 frames (20s at 30fps)
+        await using var producerConnection = CreateHubConnection(hubUrl);
+        await producerConnection.StartAsync();
+
+        var clientStartOffset = CpuClock.Instance.Now.EpochOffset.TotalSeconds;
+        var pushTask = producerConnection.SendAsync("PushVideo",
+            sessionToken, chatId.Value, Codec, FrameWidth, FrameHeight, "",
+            clientStartOffset,
+            PushFramesAsync(skipToLiveTotalFrames, sentTimestamps));
+
+        // Discover stream
+        using var observeCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var streamInfo = await ObserveNewStream(chatId, observeCts.Token);
+        Out.WriteLine($"Discovered stream: {streamInfo.StreamId}");
+
+        // Start consumer
+        await using var consumerConnection = CreateHubConnection(hubUrl);
+        await consumerConnection.StartAsync();
+
+        var receivedOffsets = new List<long>();
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        long lastPreGateOffsetTicks = 0;
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(45));
+        var stream = consumerConnection.StreamAsync<byte[]>(
+            "GetVideo", sessionToken, streamInfo.StreamId.Value, 0.0, cts.Token);
+
+        // Trigger task — runs concurrently with consumer reading
+        var triggerTask = Task.Run(async () => {
+            // Wait for consumer to reach the gate (~12s of reading)
+            await gate.Task;
+            Out.WriteLine($"Consumer paused at frame {normalReadFrames}, letting frames buffer...");
+
+            // Wait ~3s more so frames accumulate while consumer is paused
+            await Task.Delay(TimeSpan.FromSeconds(3), cts.Token);
+
+            // Report latency with streamOffsetMs=0 — backend computes latency ≈ elapsed >> 3000ms
+            Out.WriteLine("Reporting high latency (streamOffsetMs=0) to trigger SkipToLive...");
+            await consumerConnection.InvokeAsync(
+                "ReportVideoLatency", sessionToken, streamInfo.StreamId.Value, 0.0, cts.Token);
+
+            // Wait for flag propagation through the pipeline
+            await Task.Delay(TimeSpan.FromMilliseconds(500), cts.Token);
+            Out.WriteLine("SkipToLive triggered, resuming consumer...");
+        }, cts.Token);
+
+        // Phase 1: Read frames normally, pause after normalReadFrames
+        var frameCount = 0;
+        var skipDetected = false;
+        long firstPostSkipOffsetTicks = 0;
+        var firstPostSkipIsKeyFrame = false;
+        var streamEndedCleanly = true;
+
+        try {
+            await foreach (var frameBytes in stream) {
+                var frame = DeserializeVideoFrame(frameBytes);
+                if (frame == null)
+                    continue;
+
+                frameCount++;
+                receivedOffsets.Add(frame.Offset.Ticks);
+
+                if (frameCount <= normalReadFrames) {
+                    // Phase 1: normal reading
+                    lastPreGateOffsetTicks = frame.Offset.Ticks;
+
+                    if (frameCount == normalReadFrames) {
+                        Out.WriteLine($"Phase 1 complete: read {frameCount} frames, last offset={new TimeSpan(lastPreGateOffsetTicks).TotalSeconds:F2}s");
+                        gate.TrySetResult();
+
+                        // Wait for trigger task to complete before resuming
+                        await triggerTask;
+                    }
+                }
+                else if (!skipDetected) {
+                    // First frame after gate — check for skip
+                    firstPostSkipOffsetTicks = frame.Offset.Ticks;
+                    firstPostSkipIsKeyFrame = frame.IsKeyFrame;
+                    skipDetected = true;
+
+                    var gapSeconds = (firstPostSkipOffsetTicks - lastPreGateOffsetTicks) / (double)TimeSpan.TicksPerSecond;
+                    Out.WriteLine($"Phase 2: first frame after skip at offset={frame.Offset.TotalSeconds:F2}s, gap={gapSeconds:F2}s, isKeyFrame={frame.IsKeyFrame}");
+
+                    // We've detected the skip — no need to read the rest
+                    break;
+                }
+            }
+        }
+        catch (Exception e) when (e is WebSocketException or IOException or OperationCanceledException) {
+            streamEndedCleanly = false;
+            Out.WriteLine($"Consumer stream disconnected ({e.GetType().Name}): {e.Message}");
+        }
+
+        // Wait for producer to finish
+        try { await pushTask; }
+        catch (Exception e) {
+            Out.WriteLine($"Producer ended with {e.GetType().Name}: {e.Message}");
+        }
+
+        // Assertions
+        skipDetected.Should().BeTrue("consumer should have received frames after the skip");
+
+        firstPostSkipIsKeyFrame.Should().BeTrue(
+            "first frame after SkipToLive should be a keyframe");
+
+        var offsetGap = TimeSpan.FromTicks(firstPostSkipOffsetTicks - lastPreGateOffsetTicks);
+        Out.WriteLine($"Offset gap: {offsetGap.TotalSeconds:F2}s ({offsetGap.Ticks / FrameDuration.Ticks} frames)");
+
+        offsetGap.Should().BeGreaterThanOrEqualTo(TimeSpan.FromSeconds(2),
+            "SkipToLive should jump past buffered frames (≥2s gap expected)");
+
+        Out.WriteLine($"Total frames read: {receivedOffsets.Count}");
+    }
+
     // Helper methods
 
     private async Task<VideoStreamInfo> ObserveNewStream(ChatId chatId, CancellationToken ct)

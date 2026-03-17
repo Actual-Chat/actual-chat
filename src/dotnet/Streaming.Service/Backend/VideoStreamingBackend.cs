@@ -67,7 +67,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         // the most recent keyframe in the memoizer's replay buffer for efficient near-live start.
         stream = SkipToLatestBufferedKeyFrame(LogFrames(stream), Log, cancellationToken);
 
-        stream = ApplyGopSkipping(stream, streamId, peerId, cancellationToken);
+        stream = ApplySkipToLive(stream, streamId, peerId, cancellationToken);
 
         return RpcStream.New(stream);
     }
@@ -152,41 +152,72 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             ls.Complete();
     }
 
-    private bool ShouldSkipGopsForPeer(StreamId streamId, string peerId)
+    private bool ShouldSkipToLive(StreamId streamId, string peerId)
     {
         if (!_latencyStates.TryGetValue(streamId, out var latencyState))
             return false;
-        return latencyState.ShouldSkipGopsForPeer(peerId);
+        return latencyState.ShouldSkipToLive(peerId);
     }
 
-    private async IAsyncEnumerable<VideoFrame> ApplyGopSkipping(
+    private void ClearSkipToLive(StreamId streamId, string peerId)
+    {
+        if (_latencyStates.TryGetValue(streamId, out var latencyState))
+            latencyState.ClearSkipToLive(peerId);
+    }
+
+    private async IAsyncEnumerable<VideoFrame> ApplySkipToLive(
         IAsyncEnumerable<VideoFrame> source,
         StreamId streamId,
         string peerId,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var skippingGop = false;
-        var gopCount = 0;
-        var skippedGopCount = 0;
-        await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-            if (frame.IsKeyFrame) {
-                var wasSkipping = skippingGop;
-                // Re-evaluate at each GOP boundary
-                skippingGop = ShouldSkipGopsForPeer(streamId, peerId);
-                gopCount++;
-                if (skippingGop)
-                    skippedGopCount++;
+        var enumerator = source.GetAsyncEnumerator(cancellationToken);
+        await using var _ = enumerator.ConfigureAwait(false);
 
-                if (wasSkipping != skippingGop)
-                    Log.LogInformation("ApplyGopSkipping: {Action} skipping GOPs for PeerId={PeerId}, StreamId={StreamId}",
-                        skippingGop ? "START" : "STOP", peerId, streamId);
+        while (true) {
+            // Check skip-to-live flag before awaiting next frame
+            if (ShouldSkipToLive(streamId, peerId)) {
+                Log.LogInformation("ApplySkipToLive: START for PeerId={PeerId}, StreamId={StreamId}",
+                    peerId, streamId);
+                VideoFrame? lastKeyFrame = null;
+                var skippedCount = 0;
 
-                if (gopCount % 100 == 0)
-                    Log.LogDebug("ApplyGopSkipping: PeerId={PeerId}, StreamId={StreamId}, GOPs={GopCount}, Skipped={SkippedCount}",
-                        peerId, streamId, gopCount, skippedGopCount);
+                // Consume all synchronously-available (buffered) frames
+                while (true) {
+                    var moveNext = enumerator.MoveNextAsync();
+                    if (!moveNext.IsCompleted) {
+                        // Reached live edge
+                        ClearSkipToLive(streamId, peerId);
+                        if (lastKeyFrame != null) {
+                            Log.LogInformation(
+                                "ApplySkipToLive: DONE for PeerId={PeerId}, skipped {Skipped} frames, resuming from keyframe at {Offset}ms",
+                                peerId, skippedCount, lastKeyFrame.Offset.TotalMilliseconds);
+                            yield return lastKeyFrame;
+                        } else
+                            Log.LogInformation(
+                                "ApplySkipToLive: DONE for PeerId={PeerId}, no keyframe found in {Skipped} buffered frames, continuing",
+                                peerId, skippedCount);
+                        // Await the pending live frame
+                        if (!await moveNext.ConfigureAwait(false))
+                            yield break;
+                        yield return enumerator.Current;
+                        break; // back to outer while(true) loop
+                    }
+                    if (!moveNext.Result)
+                        yield break; // stream ended
+
+                    var frame = enumerator.Current;
+                    if (frame.IsKeyFrame)
+                        lastKeyFrame = frame;
+                    skippedCount++;
+                }
             }
-            if (!skippingGop)
-                yield return frame;
+            else {
+                // Normal pass-through
+                if (!await enumerator.MoveNextAsync().ConfigureAwait(false))
+                    yield break;
+                yield return enumerator.Current;
+            }
         }
     }
 
@@ -322,13 +353,14 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         private readonly Queue<float> _samples = new();
         private readonly Lock _lock = new();
         private readonly CpuTimestamp _createdAt = CpuTimestamp.Now;
-        private int _gopCounter;
 
         public float MedianLatencyMs { get; private set; }
         public float MedianDecodeTimeMs { get; private set; } = -1;
         public int BufferDepth { get; private set; } = -1;
         public float BufferSpanMs { get; private set; } = -1;
-        public int GopSkipRatio { get; set; } // 0=none, 1=skip every other GOP, 2=skip 2 of 3
+        public volatile bool SkipToLive;
+
+        public bool IsWarmedUp => _createdAt.Elapsed >= Constants.Video.PeerWarmupDuration;
 
         /// <summary>
         /// True when high latency is caused by receiver-side issues (slow decoder or buffer bloat)
@@ -341,16 +373,11 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         public void RecordLatency(float latencyMs, float medianDecodeTimeMs = -1, int bufferDepth = -1, float bufferSpanMs = -1)
         {
             // Discard samples during warmup to prevent initial-buffer latency from contaminating the median
-            if (_createdAt.Elapsed < Constants.Video.PeerWarmupDuration)
+            if (!IsWarmedUp)
                 return;
 
             lock (_lock) {
-                // When GOP skipping is active, server-induced gaps inflate latency.
-                // Cap to prevent self-reinforcing feedback loop.
-                var effectiveLatency = GopSkipRatio > 0
-                    ? Math.Min(latencyMs, Constants.Video.GopSkipRecoveryMs)
-                    : latencyMs;
-                _samples.Enqueue(effectiveLatency);
+                _samples.Enqueue(latencyMs);
                 while (_samples.Count > Constants.Video.LatencyHistorySize)
                     _samples.Dequeue();
 
@@ -369,21 +396,6 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                 if (bufferSpanMs >= 0)
                     BufferSpanMs = bufferSpanMs;
             }
-        }
-
-        public bool ShouldSkipNextGop()
-        {
-            if (GopSkipRatio <= 0)
-                return false;
-
-            var counter = Interlocked.Increment(ref _gopCounter);
-            // ratio=1 → skip every other (skip when counter%2==0)
-            // ratio=2 → skip 2 of 3 (skip when counter%3!=0)
-            return GopSkipRatio switch {
-                1 => counter % 2 == 0,
-                2 => counter % 3 != 0,
-                _ => false,
-            };
         }
     }
 
@@ -418,16 +430,28 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             log.LogDebug("RecordPeerLatency: PeerId={PeerId}, LatencyMs={LatencyMs:F0}, MedianMs={MedianMs:F0}, ReceiverBound={ReceiverBound}",
                 peerId, latencyMs, peer.MedianLatencyMs, peer.IsReceiverBound);
 
+            // Skip-to-live trigger: if raw latency exceeds threshold and peer is warmed up
+            if (latencyMs > Constants.Video.SkipToLiveThresholdMs
+                && peer.IsWarmedUp
+                && !peer.SkipToLive) {
+                peer.SkipToLive = true;
+                log.LogInformation(
+                    "RecordPeerLatency: SkipToLive triggered for PeerId={PeerId}, LatencyMs={LatencyMs:F0}",
+                    peerId, latencyMs);
+            }
+
             // Throttle evaluation to QualityDecisionInterval
             if (_lastEvaluationAt.Elapsed >= Constants.Video.QualityDecisionInterval)
                 EvaluateQuality();
         }
 
-        public bool ShouldSkipGopsForPeer(string peerId)
+        public bool ShouldSkipToLive(string peerId)
+            => _peers.TryGetValue(peerId, out var peer) && peer.SkipToLive;
+
+        public void ClearSkipToLive(string peerId)
         {
-            if (!_peers.TryGetValue(peerId, out var peer))
-                return false;
-            return peer.ShouldSkipNextGop();
+            if (_peers.TryGetValue(peerId, out var peer))
+                peer.SkipToLive = false;
         }
 
         public async IAsyncEnumerable<VideoQualityPreset> ObserveQualityDirectives(
@@ -473,7 +497,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 
                 var totalSlowCount = networkSlowCount + receiverSlowCount;
                 // Only count network-bound slow peers toward sender quality step-down.
-                // Receiver-bound peers are handled via GOP skipping — reducing sender quality
+                // Receiver-bound peers are handled via skip-to-live — reducing sender quality
                 // would hurt everyone without helping the slow receiver.
                 var networkSlowRatio = (float)networkSlowCount / peers.Count;
                 var effectiveOutlierRatio = peers.Count <= 3
@@ -517,24 +541,6 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                     log.LogDebug("EvaluateQuality: HOLD at {Level}, networkSlow={NetworkSlow}, receiverSlow={ReceiverSlow}, total={TotalCount}",
                         _currentQuality, networkSlowCount, receiverSlowCount, peers.Count);
                 }
-
-                // Per-peer GOP skipping for individual outliers
-                // Receiver-bound peers get more aggressive GOP skipping since their decode can't keep up
-                foreach (var (peerId, peer) in peers)
-                    if (peer.MedianLatencyMs > Constants.Video.GopSkipThresholdMs) {
-                        var targetRatio = peer.IsReceiverBound ? 2 : 1;
-                        if (peer.GopSkipRatio < targetRatio) {
-                            peer.GopSkipRatio = targetRatio;
-                            log.LogInformation("EvaluateQuality: Enable GOP skipping for PeerId={PeerId}, MedianMs={MedianMs:F0}, ratio={Ratio}, receiverBound={ReceiverBound}",
-                                peerId, peer.MedianLatencyMs, targetRatio, peer.IsReceiverBound);
-                        }
-                    }
-                    else if (peer.MedianLatencyMs < Constants.Video.GopSkipRecoveryMs)
-                        if (peer.GopSkipRatio > 0) {
-                            peer.GopSkipRatio = 0;
-                            log.LogInformation("EvaluateQuality: Disable GOP skipping for PeerId={PeerId}, MedianMs={MedianMs:F0}",
-                                peerId, peer.MedianLatencyMs);
-                        }
             }
         }
 
