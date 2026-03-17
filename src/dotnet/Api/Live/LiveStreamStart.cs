@@ -8,4 +8,6 @@ public sealed partial class LiveStreamStart : LiveStreamItem
 {
     [DataMember(Order = 1), MemoryPackOrder(1)]
     public LiveStreamInfo StreamInfo { get; init; } = null!;
+    [DataMember(Order = 2), MemoryPackOrder(2)]
+    public TimeSpan PlaysAt { get; init; }
 }

@@ -134,8 +134,8 @@ public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // Create demuxer
         var demuxer = new LiveStreamDemuxer(rpcStream, log);
-        demuxer.StreamStarted += (streamInfo, audioFrames) => {
-            log.LogInformation("StreamStarted event: StreamId={StreamId}", streamInfo.StreamId);
+        demuxer.StreamStarted += (streamInfo, playsAt, audioFrames) => {
+            log.LogInformation("StreamStarted event: StreamId={StreamId}, PlaysAt={PlaysAt}", streamInfo.StreamId, playsAt);
             streamStartedEvents.Add(1); // Using 1 as placeholder since we no longer have StreamIndex
 
             // Collect audio frames synchronously in the event handler

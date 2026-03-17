@@ -19,7 +19,7 @@ public sealed class LiveStreamProcessor : WorkerBase
     public ChatId ChatId { get; }
     public LiveStreamSettings Settings { get; }
 
-    public event Action<LiveStreamInfo, IAsyncEnumerable<byte[]>>? StreamStarted;
+    public event Action<LiveStreamInfo, TimeSpan, IAsyncEnumerable<byte[]>>? StreamStarted;
 
     public LiveStreamProcessor(IServiceProvider services,
         Session session,
@@ -49,7 +49,7 @@ public sealed class LiveStreamProcessor : WorkerBase
 
                 var demuxer = new LiveStreamDemuxer(stream, demuxerLog, cancellationToken.CreateLinkedTokenSource());
                 await using var _ = demuxer.ConfigureAwait(false);
-                demuxer.StreamStarted += (info, frames) => StreamStarted?.Invoke(info, frames);
+                demuxer.StreamStarted += (info, playsAt, frames) => StreamStarted?.Invoke(info, playsAt, frames);
 
                 DebugLog?.LogInformation("Demuxing live stream for {ChatId}...", ChatId);
                 await demuxer.Run().ConfigureAwait(false);

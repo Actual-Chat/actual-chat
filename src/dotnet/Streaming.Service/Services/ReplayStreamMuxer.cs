@@ -114,9 +114,12 @@ public sealed class ReplayStreamMuxer : WorkerBase
                 // Calculate skip for first entry
                 var skipTo = (resolvedStartAt.Value - entry.BeginsAt).Positive();
 
+                // PlaysAt = when this stream should start playing relative to the first stream
+                var playsAt = (entry.BeginsAt - resolvedStartAt.Value - gapAdjustment).Positive();
+
                 // Start streaming this entry (allows concurrent speakers)
                 var streamIndex = Interlocked.Increment(ref _nextStreamIndex);
-                var streamTask = ProcessEntry(entry, streamIndex, skipTo, cancellationToken);
+                var streamTask = ProcessEntry(entry, streamIndex, skipTo, playsAt, cancellationToken);
                 streamTasks.Add(streamTask);
 
                 // Clean up completed tasks
@@ -140,6 +143,7 @@ public sealed class ReplayStreamMuxer : WorkerBase
         ChatEntry entry,
         int streamIndex,
         TimeSpan skipTo,
+        TimeSpan playsAt,
         CancellationToken cancellationToken)
     {
         var frameCount = 0;
@@ -170,6 +174,7 @@ public sealed class ReplayStreamMuxer : WorkerBase
             var startItem = new LiveStreamStart {
                 StreamIndex = streamIndex,
                 StreamInfo = streamInfo,
+                PlaysAt = playsAt,
             };
             await _output.Writer.WriteAsync(startItem, cancellationToken).ConfigureAwait(false);
 
