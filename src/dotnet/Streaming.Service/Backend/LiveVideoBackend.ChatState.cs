@@ -6,10 +6,8 @@ public partial class LiveVideoBackend
 {
     public sealed class ChatState(LiveVideoBackend owner, ChatId chatId)
     {
-        private readonly ConcurrentDictionary<StreamId, VideoStreamInfo> _streams = new();
         private readonly AsyncObservable<VideoStreamInfo> _newStreams = new();
-        private readonly Dictionary<string, ApiArray<string>> _members = new();
-        private readonly Lock _membersLock = new();
+        private readonly Lock _codecLock = new();
 
         // Codec recommendation
         private readonly AsyncObservable<ApiArray<string>> _supportedDecoderCodecChanges = new();
@@ -19,30 +17,19 @@ public partial class LiveVideoBackend
         public LiveVideoBackend Owner { get; } = owner;
         public ChatId ChatId { get; } = chatId;
 
-        public ApiArray<VideoStreamInfo> ListActiveStreams()
-            => new(_streams.Values);
+        public void PublishNewStream(VideoStreamInfo streamInfo)
+            => _newStreams.Publish(streamInfo);
 
-        public ApiArray<AuthorId> GetStreamingAuthorIds()
+        public ApiArray<string> GetCurrentSupportedDecoderCodecs()
         {
-            if (_streams.IsEmpty)
-                return default;
-
-            return _streams.Values
-                .Select(s => s.AuthorId)
-                .Distinct()
-                .ToApiArray();
-        }
-
-        public int GetMemberCount()
-        {
-            lock (_membersLock)
-                return _members.Count;
-        }
-
-        public ApiArray<string> GetSupportedDecoderCodecs()
-        {
-            lock (_membersLock)
+            lock (_codecLock)
                 return _currentSupportedDecoderCodecs;
+        }
+
+        public void RecomputeAndPublishCodecs(Dictionary<string, ApiArray<string>> members)
+        {
+            lock (_codecLock)
+                RecomputeSupportedDecoderCodecsLocked(members);
         }
 
         public async IAsyncEnumerable<VideoStreamInfo> ObserveStreams(
@@ -51,7 +38,9 @@ public partial class LiveVideoBackend
             var subscription = _newStreams.Subscribe();
             await using var _ = subscription.ConfigureAwait(false);
 
-            var initialStreams = _streams.Values.ToList();
+            // Snapshot current streams from Redis
+            var redisStreams = await Owner.ListActiveStreams(ChatId, cancellationToken).ConfigureAwait(false);
+            var initialStreams = redisStreams.ToList();
             var dedupeEndsAt = CpuTimestamp.Now + TimeSpan.FromSeconds(5);
 
             foreach (var stream in initialStreams)
@@ -76,45 +65,12 @@ public partial class LiveVideoBackend
 
             // Yield current value first
             ApiArray<string> currentCodecs;
-            lock (_membersLock)
+            lock (_codecLock)
                 currentCodecs = _currentSupportedDecoderCodecs;
             yield return currentCodecs;
 
             await foreach (var codecs in subscription.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
                 yield return codecs;
-        }
-
-        public bool RegisterStream(VideoStreamInfo streamInfo)
-        {
-            if (!_streams.TryAdd(streamInfo.StreamId, streamInfo))
-                return false;
-
-            _newStreams.Publish(streamInfo);
-            return true;
-        }
-
-        public bool UnregisterStream(StreamId streamId)
-            => _streams.TryRemove(streamId, out _);
-
-        public bool RegisterMember(string sessionId, ApiArray<string> supportedDecoderCodecs)
-        {
-            lock (_membersLock) {
-                if (_members.TryGetValue(sessionId, out var existing) && existing.SequenceEqual(supportedDecoderCodecs))
-                    return false; // No change
-                _members[sessionId] = supportedDecoderCodecs;
-                RecomputeSupportedDecoderCodecsLocked();
-                return true;
-            }
-        }
-
-        public bool UnregisterMember(string sessionId)
-        {
-            lock (_membersLock) {
-                if (!_members.Remove(sessionId))
-                    return false;
-                RecomputeSupportedDecoderCodecsLocked();
-                return true;
-            }
         }
 
         public void Complete(Exception? error = null)
@@ -123,10 +79,12 @@ public partial class LiveVideoBackend
             _supportedDecoderCodecChanges.TryComplete(error);
         }
 
-        // Must be called under _membersLock
-        private void RecomputeSupportedDecoderCodecsLocked()
+        // Private methods
+
+        // Must be called under _codecLock
+        private void RecomputeSupportedDecoderCodecsLocked(Dictionary<string, ApiArray<string>> members)
         {
-            var newCodecs = ComputeSupportedDecoderCodecsLocked();
+            var newCodecs = ComputeSupportedDecoderCodecsLocked(members);
             if (_currentSupportedDecoderCodecs.SequenceEqual(newCodecs))
                 return;
 
@@ -149,31 +107,24 @@ public partial class LiveVideoBackend
             _supportedDecoderCodecChanges.Publish(newCodecs);
         }
 
-        // Must be called under _membersLock
-        private ApiArray<string> ComputeSupportedDecoderCodecsLocked()
+        private static ApiArray<string> ComputeSupportedDecoderCodecsLocked(Dictionary<string, ApiArray<string>> members)
         {
-            if (_members.Count == 0)
-                return new(["av1", "h264"]); // No viewers, all codecs available
+            if (members.Count == 0)
+                return new ApiArray<string>(["av1", "h264"]); // No viewers, all codecs available
 
             // Check if all members support AV1 decoding
             var allSupportAv1 = true;
-            foreach (var (_, codecs) in _members) {
-                var supportsAv1 = false;
-                foreach (var codec in codecs) {
-                    if (codec == "av1") {
-                        supportsAv1 = true;
-                        break;
-                    }
-                }
-                if (!supportsAv1) {
-                    allSupportAv1 = false;
-                    break;
-                }
+            foreach (var (_, codecs) in members) {
+                if (codecs.Any(codec => codec == "av1"))
+                    continue;
+
+                allSupportAv1 = false;
+                break;
             }
 
             return allSupportAv1
-                ? new(["av1", "h264"])  // All support AV1 — priority: av1 > h264
-                : new(["h264"]);         // Not all support AV1 — h264 only
+                ? new ApiArray<string>(["av1", "h264"])  // All support AV1 — priority: av1 > h264
+                : new ApiArray<string>(["h264"]);         // Not all support AV1 — h264 only
         }
     }
 }
