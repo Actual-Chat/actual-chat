@@ -37,7 +37,7 @@ public class ReplayStreams(IServiceProvider services) : IReplayStreams
         }
 
         var stream = ToAsyncEnumerable(muxer.Output, key, cancellationToken);
-        return RpcStream.New(stream, isReconnectable: false);
+        return RpcStream.New(stream, allowReconnect: false);
     }
 
     // Private methods
