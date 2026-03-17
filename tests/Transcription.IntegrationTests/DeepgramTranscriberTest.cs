@@ -1,4 +1,4 @@
-﻿using ActualChat.Audio;
+using ActualChat.Audio;
 using ActualChat.IO;
 using ActualChat.Streaming;
 using ActualChat.Streaming.Module;
@@ -42,7 +42,7 @@ public class DeepgramTranscriberTest(ITestOutputHelper @out, ILogger<DeepgramTra
         //     await outputStream.FlushAsync();
         // };
 
-        // using var writeBufferLease = MemoryPool<byte>.Shared.Rent(100 * 1024);
+        // using var writeBufferLease = ArrayPools.SharedBytePool.Lease(100 * 1024);
         // var writeBuffer = writeBufferLease.Memory;
 
         var transcripts = await transcriber.Transcribe("test", audio, options).ToListAsync();

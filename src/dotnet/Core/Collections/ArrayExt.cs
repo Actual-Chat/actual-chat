@@ -1,3 +1,5 @@
+using System.Buffers;
+
 namespace ActualChat.Collections;
 
 public static class ArrayExt
@@ -39,6 +41,16 @@ public static class ArrayExt
         }
         return length;
     }
+
+    // ToArrayOwner
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ArrayOwner<T> ToArrayOwner<T>(this T[] array, ArrayPool<T> pool)
+        => ArrayOwner.New(pool, array, array.Length, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ArrayOwner<T> ToArrayOwner<T>(this T[] array, int length, ArrayPool<T> pool)
+        => ArrayOwner.New(pool, array, length, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
 
     // Deconstruct
 

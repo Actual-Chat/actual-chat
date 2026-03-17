@@ -71,7 +71,7 @@ public partial class AudioStreamingBackend
         var mustStreamVoice = chatVoiceMode.VoiceMode.HasVoice();
 
         var recordedAt = default(Moment) + TimeSpan.FromSeconds(record.ClientStartOffset);
-        var audio = new AudioSource(
+        using var audio = new AudioSource(
             new Moment(recordedAt),
             AudioSource.DefaultFormat with { PreSkip = preSkip },
             frames,
@@ -223,7 +223,7 @@ public partial class AudioStreamingBackend
         else
             transcriptionEngine = await GetTranscriptionEngine(audioSegment.Record, cancellationToken).ConfigureAwait(false);
         var transcriber = TranscriberFactory.Get(transcriptionEngine);
-        var transcripts = transcriber
+        using var transcripts = transcriber
             .Transcribe(audioSegment.StreamId.Value, audioSegment.Source, transcriptionOptions, cancellationToken)
             .ThrottleTranscript(Constants.Transcription.ThrottlePeriod, Clocks.CpuClock, cancellationToken)
             .Memoize(CancellationToken.None);

@@ -127,7 +127,7 @@ public class ActualOpusStreamConverter(MomentClockSet clocks, ILogger log) : IAu
         AudioSource source,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        using var bufferLease = MemoryPool<byte>.Shared.Rent(4 * 1024);
+        using var bufferLease = ArrayPools.SharedBytePool.Lease(4 * 1024);
         var buffer = bufferLease.Memory;
         yield return (WriteHeader(source), null);
 

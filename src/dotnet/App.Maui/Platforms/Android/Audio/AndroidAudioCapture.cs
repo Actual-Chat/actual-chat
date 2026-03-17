@@ -27,7 +27,7 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
         AudioRecord? recorder = null;
         try {
             recorder = new AudioRecord(
-                /* audioSource: */ Android.Media.AudioSource.VoiceCommunication,
+                /* audioSource: */ AudioSource.VoiceCommunication,
                 /* sampleRateInHz: */ sampleRate,
                 /* channelConfig: */ channelConfig,
                 /* audioFormat: */ encoding,
@@ -49,10 +49,8 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
             return Task.FromResult<IAsyncEnumerable<IMemoryOwner<float>>?>(null);
         }
 
-        var ringBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
-
+        var buffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
         _ = BackgroundTask.Run(Producer, cancellationToken);
-
         // Return enumerator
         return Task.FromResult<IAsyncEnumerable<IMemoryOwner<float>>?>(Enumerate(cancellationToken));
 
@@ -83,9 +81,8 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
                         continue;
                     }
 
-                    // Push to ring buffer; backpressure if full
-                    while (!ringBuffer.TryPush(floatReadBuffer.Buffer.AsSpan(0, readCount)))
-                        await ringBuffer.WhenPulled.WaitAsync(cancellationToken).ConfigureAwait(false);
+                    // Push to ring buffer (fire-and-forget: drop if full)
+                    buffer.TryWrite(floatReadBuffer.Buffer.AsSpan(0, readCount));
                 }
             }
             catch (Exception ex) {
@@ -111,16 +108,19 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
         async IAsyncEnumerable<IMemoryOwner<float>> Enumerate([EnumeratorCancellation] CancellationToken ct)
         {
             try {
+                var frameSize = Constants.Audio.OpusFrameLength;
                 while (!ct.IsCancellationRequested) {
-                    if (!ringBuffer.TryPull(Constants.Audio.OpusFrameLength, out var block)) {
-                        await ringBuffer.WhenPushed.WaitAsync(ct).ConfigureAwait(false);
+                    if (!buffer.TryRead(frameSize, out var rd, out var whenReady)) {
+                        await whenReady.WaitAsync(ct).ConfigureAwait(false);
                         continue;
                     }
+                    var block = ArrayPools.SharedFloatPool.LeaseArrayOwner(frameSize);
+                    rd.Span[..frameSize].CopyTo(block.Span);
                     yield return block;
                 }
             }
             finally {
-                ringBuffer.DisposeSilently();
+                buffer.DisposeSilently();
             }
         }
     }

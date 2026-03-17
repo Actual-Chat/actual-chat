@@ -173,7 +173,7 @@ public sealed class GoogleCloudConsoleFormatter : ConsoleFormatter, IDisposable
         {
             Debug.Assert(initialCapacity > 0);
 
-            _rentedBuffer = ArrayPool<byte>.Shared.Rent(initialCapacity);
+            _rentedBuffer = ArrayPools.SharedBytePool.Rent(initialCapacity);
             _index = 0;
         }
 
@@ -226,7 +226,7 @@ public sealed class GoogleCloudConsoleFormatter : ConsoleFormatter, IDisposable
             ClearHelper();
             byte[] toReturn = _rentedBuffer;
             _rentedBuffer = null!;
-            ArrayPool<byte>.Shared.Return(toReturn);
+            ArrayPools.SharedBytePool.Return(toReturn);
         }
 
         public void Advance(int count)
@@ -281,7 +281,7 @@ public sealed class GoogleCloudConsoleFormatter : ConsoleFormatter, IDisposable
 
                 byte[] oldBuffer = _rentedBuffer;
 
-                _rentedBuffer = ArrayPool<byte>.Shared.Rent(newSize);
+                _rentedBuffer = ArrayPools.SharedBytePool.Rent(newSize);
 
                 Debug.Assert(oldBuffer.Length >= _index);
                 Debug.Assert(_rentedBuffer.Length >= _index);
@@ -289,7 +289,7 @@ public sealed class GoogleCloudConsoleFormatter : ConsoleFormatter, IDisposable
                 Span<byte> previousBuffer = oldBuffer.AsSpan(0, _index);
                 previousBuffer.CopyTo(_rentedBuffer);
                 previousBuffer.Clear();
-                ArrayPool<byte>.Shared.Return(oldBuffer);
+                ArrayPools.SharedBytePool.Return(oldBuffer);
             }
 
             Debug.Assert(_rentedBuffer.Length - _index > 0);

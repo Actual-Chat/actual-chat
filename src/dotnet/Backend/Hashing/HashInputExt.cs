@@ -14,7 +14,7 @@ public static class ServerHashInputExt
     public static async Task<HashOutput32> Blake3(this StreamHashInput input, CancellationToken cancellationToken = default)
     {
         var blake3Hasher = global::Blake3.Hasher.New();
-        var buffer = ArrayPool<byte>.Shared.Rent(16384);
+        var buffer = ArrayPools.SharedBytePool.Rent(16384);
         try {
             int readCount;
             while ((readCount = await input.Stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) > 0)
@@ -25,7 +25,7 @@ public static class ServerHashInputExt
             return hash;
         }
         finally {
-            ArrayPool<byte>.Shared.Return(buffer);
+            ArrayPools.SharedBytePool.Return(buffer);
             blake3Hasher.Dispose();
         }
     }

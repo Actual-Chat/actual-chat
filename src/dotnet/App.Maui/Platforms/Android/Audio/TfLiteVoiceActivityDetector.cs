@@ -17,8 +17,7 @@ public sealed class TfLiteVoiceActivityDetector(IServiceProvider services)
     private readonly float[] _context = new float[ContextSamples];
 
     // Pooled buffer for frame input to avoid allocations per call
-    private float[]? _framesArray; // rented from ArrayPool
-    private int _framesArraySize;  // current length in floats
+    private float[]? _frameBuffer; // rented from ArrayPool
 
     // Reusable ByteBuffers for inputs and outputs to avoid allocations
     private ByteBuffer? _framesInputBuffer;
@@ -82,7 +81,7 @@ public sealed class TfLiteVoiceActivityDetector(IServiceProvider services)
 
     protected override void Dispose(bool disposing)
     {
-        ReleaseFramesArray();
+        ReleaseFrameBuffer();
         _interpreter?.Close();
         _interpreter?.Dispose();
         _interpreter = null;
@@ -239,11 +238,11 @@ public sealed class TfLiteVoiceActivityDetector(IServiceProvider services)
     {
         // Frames input
         var monoPcmLength = monoPcm.Length;
-        EnsureFramesArray(monoPcmLength);
-        monoPcm.CopyTo(_framesArray!.AsSpan(0, monoPcmLength));
+        EnsureFrameBuffer(monoPcmLength);
+        monoPcm.CopyTo(_frameBuffer!.AsSpan(0, monoPcmLength));
         var framesFb = _framesInputBuffer!.AsFloatBuffer();
         framesFb.Position(0);
-        framesFb.Put(_framesArray, 0, monoPcmLength);
+        framesFb.Put(_frameBuffer, 0, monoPcmLength);
         _framesInputBuffer.Position(0);
 
         // State input
@@ -260,23 +259,22 @@ public sealed class TfLiteVoiceActivityDetector(IServiceProvider services)
     }
 
     // Rent/release frames array to avoid allocations
-    private void EnsureFramesArray(int length)
+    private void EnsureFrameBuffer(int length)
     {
-        if (_framesArray is not null && _framesArraySize >= length)
+        if (_frameBuffer is not null && _frameBuffer.Length >= length)
             return;
 
-        ReleaseFramesArray();
-        _framesArray = ArrayPool<float>.Shared.Rent(length);
-        _framesArraySize = length;
+        ReleaseFrameBuffer();
+        _frameBuffer = ArrayPools.SharedFloatPool.Rent(length);
     }
 
-    private void ReleaseFramesArray()
+    private void ReleaseFrameBuffer()
     {
-        if (_framesArray is null)
+        if (_frameBuffer is null)
             return;
-        ArrayPool<float>.Shared.Return(_framesArray);
-        _framesArray = null;
-        _framesArraySize = 0;
+
+        ArrayPools.SharedFloatPool.Return(_frameBuffer);
+        _frameBuffer = null;
     }
 
     // Helper: Create an empty direct ByteBuffer for a tensor (enforces float32)

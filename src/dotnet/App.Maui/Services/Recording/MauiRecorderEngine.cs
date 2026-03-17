@@ -394,7 +394,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             var samplesSinceLastReport = samplesPerRecordingInProgressCall;
             try {
                 await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-                    using var _ = frame;
+                    using var _1 = frame;
                     var memory = frame.Memory;
 
                     // Notify that microphone is captured
@@ -408,10 +408,10 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                     await ProcessAudioFrame(memory, cancellationToken).ConfigureAwait(false);
 
                     // Throttle microphone capture notifications by 32ms * 3 = 96ms
-                    gainBuffer.TryPush(memory.Span);
-                    if (gainBuffer.TryPull(Constants.Audio.VadFrameLength * 3, out var gainMemory)) {
-                        using var __ = gainMemory;
-                        var gain = AudioExt.ApproximateGain(gainMemory.Memory.Span);
+                    gainBuffer.TryWrite(memory.Span);
+                    var gainFrameLen = Constants.Audio.VadFrameLength * 3;
+                    if (gainBuffer.TryRead(gainFrameLen, out var gainData, out _)) {
+                        var gain = AudioExt.ApproximateGain(gainData.Span);
                         await engine.OnAudioPowerChange(gain).ConfigureAwait(false);
                     }
 
@@ -427,46 +427,43 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             }
         }
 
-        private async Task ProcessAudioFrame(ReadOnlyMemory<float> frame, CancellationToken cancellationToken)
+        private Task ProcessAudioFrame(ReadOnlyMemory<float> frame, CancellationToken cancellationToken)
         {
             // Push frame to buffers
-            var isVadPushed = _vadBuffer.TryPush(frame.Span);
-            bool isEncodingPushed;
+            var data = frame.Span;
             var isVoiceActive = _voiceActive;
 
+            // Push to VAD buffer (fire-and-forget: drop if full)
+            _vadBuffer.TryWrite(data);
+
+            // Push to encoding buffer
             if (isVoiceActive)
-                isEncodingPushed = _encodingBuffer.TryPush(frame.Span);
+                _encodingBuffer.TryWrite(data);
             else {
-                isEncodingPushed = _encodingBuffer.TryPush(frame.Span);
-                if (!isEncodingPushed) {
+                if (!_encodingBuffer.TryWrite(data)) {
                     // Trim oldest audio to maintain preroll
                     var retryCount = 0;
-                    while (!isEncodingPushed && retryCount++ < 32) {
-                        if (_encodingBuffer.TryPull(Constants.Audio.OpusFrameLength, out var dropped))
-                            using (dropped) {
-                                /* drop */
-                            }
-                        else
+                    var pushed = false;
+                    while (!pushed && retryCount++ < 32) {
+                        if (!_encodingBuffer.TryRead(Constants.Audio.OpusFrameLength, out _, out _))
                             break;
 
-                        isEncodingPushed = _encodingBuffer.TryPush(frame.Span);
+                        pushed = _encodingBuffer.TryWrite(data);
                     }
                 }
             }
-
-            // log.LogInformation("ProcessAudioFrame: {Vad}, Encoding: {Encoding}, VoiceActive: {VoiceActive}", isVadPushed, isEncodingPushed, isVoiceActive);
-            if (!isVadPushed || (isVoiceActive && !isEncodingPushed))
-                await Task.WhenAll(_vadBuffer.WhenPulled, _encodingBuffer.WhenPulled)
-                    .WaitAsync(cancellationToken)
-                    .ConfigureAwait(false);
+            return Task.CompletedTask;
         }
 
         private async Task ProcessVadEvents(CancellationToken cancellationToken)
         {
             // Process VAD events in batches to reduce CPU usage
-            while (_vadBuffer.TryPull(Constants.Audio.VadFrameLength * 5, out var vadFrame)) {
-                using var _ = vadFrame;
-                var vadResults = _vad.AppendChunk(vadFrame.Memory.Span);
+            var vadChunkSize = Constants.Audio.VadFrameLength * 5;
+            while (true) {
+                if (!_vadBuffer.TryRead(vadChunkSize, out var rd, out _) || rd.Length < vadChunkSize)
+                    break;
+
+                var vadResults = _vad.AppendChunk(rd.Span[..vadChunkSize]);
 
                 foreach (var vadResult in vadResults)
                     if (vadResult.HasEvent)
@@ -504,7 +501,12 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         private async Task EncodeAndSend(ChannelWriter<IMemoryOwner<byte>> stream, CancellationToken cancellationToken)
         {
             try {
-                var frames = _encodingBuffer.PullAll(Constants.Audio.OpusFrameLength, cancellationToken);
+                var rawFrames = _encodingBuffer.ReadAll(Constants.Audio.OpusFrameLength, cancellationToken);
+                var frames = rawFrames.Select(chunk => {
+                    var owner = ArrayPools.SharedFloatPool.LeaseArrayOwner(chunk.Length);
+                    chunk.Span.CopyTo(owner.Span);
+                    return (IMemoryOwner<float>)owner;
+                });
                 await foreach (var packet in _audioCodec.Encode(frames, cancellationToken).ConfigureAwait(false)) {
                     if (packet.Memory.Length == 0)
                         continue;

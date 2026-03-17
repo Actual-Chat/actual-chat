@@ -37,8 +37,11 @@ public abstract class TrackPlayer(TrackInfo trackInfo, IMediaSource source, ILog
     public Task WhenCompleted => _whenCompletedSource.Task;
     public event Action<PlayerStateChangedEventArgs>? StateChanged;
 
-    protected override Task DisposeAsyncCore()
-        => Stop();
+    protected override async Task DisposeAsyncCore()
+    {
+        await Stop().ConfigureAwait(false);
+        Source.Dispose();
+    }
 
     /// <summary>
     /// Starts playing the track which is represented by <see cref="IMediaSource"/> (from ctor).

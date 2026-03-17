@@ -1,4 +1,4 @@
-﻿using System.Buffers;
+using System.Buffers;
 using ActualChat.Audio.Ogg;
 using ActualChat.Spans;
 
@@ -22,7 +22,7 @@ public class OggOpusStreamConverter(OggOpusStreamConverter.Options? options = nu
         AudioSource source,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        using var bufferLease = MemoryPool<byte>.Shared.Rent(8 * 1024);
+        using var bufferLease = ArrayPools.SharedBytePool.Lease(8 * 1024);
         var buffer = bufferLease.Memory;
         var state = new OggOpusWriter.State {
             SerialNumber = options?.StreamSerialNumber == 0

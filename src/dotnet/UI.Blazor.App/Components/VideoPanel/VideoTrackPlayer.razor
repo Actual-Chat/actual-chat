@@ -90,23 +90,21 @@
     }
 
     [JSInvokable]
-    public Task OnPlaying(double offset, bool isBufferLow)
+    public void OnPlaying(double offset, bool isBufferLow)
     {
         DebugLog?.LogDebug(
             "[VideoTrackPlayer {StreamId}] OnPlaying: {Offset}, buffer: {IsBufferLow}",
             StreamInfo.StreamId, offset, isBufferLow ? "low" : "ok");
-        return Task.CompletedTask;
     }
 
     [JSInvokable]
-    public Task OnEnded(string? errorMessage)
+    public void OnEnded(string? errorMessage)
     {
         if (errorMessage != null)
             Log.LogError("[VideoTrackPlayer {StreamId}] Playback stopped with an error: {Error}", StreamInfo.StreamId, errorMessage);
 
         DebugLog?.LogDebug("[VideoTrackPlayer {StreamId}] OnEnded: {Message}", StreamInfo.StreamId, errorMessage);
         _whenCompletedSource.TrySetResult();
-        return Task.CompletedTask;
     }
 
     public async ValueTask DisposeAsync()

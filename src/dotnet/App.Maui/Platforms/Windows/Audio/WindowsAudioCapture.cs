@@ -55,9 +55,9 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
         WasapiCapture? loopbackCapture = null;
         MMDevice? micDevice = null;
 
-        var outputRingBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
-        var microphoneRingBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
-        var loopbackRingBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
+        var outputBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
+        var microphoneBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
+        var loopbackBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
 
         var apmFrameSize = Constants.Audio.RecordingSampleRate
             / 1000
@@ -122,34 +122,33 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
         var processingCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var processingToken = processingCts.Token;
         var processingTask = BackgroundTask.Run(async () => {
+            var emptyArray = ArrayPools.SharedFloatPool.Rent(apmFrameSize);
+            var emptyMemory = emptyArray.AsMemory(0, apmFrameSize);
+            emptyMemory.Span.Clear();
             try {
-                using var emptyBuffer = MemoryPool<float>.Shared.Rent(apmFrameSize);
-                emptyBuffer.Memory.Span.Clear();
-
                 while (!processingToken.IsCancellationRequested) {
                     // Check if we have enough microphone samples to enforce the delay
-                    if (microphoneRingBuffer.Count < apmFrameSize + MicDelaySamples) {
-                        await microphoneRingBuffer.WhenPushed.WaitAsync(processingToken).ConfigureAwait(false);
+                    if (microphoneBuffer.Count < apmFrameSize + MicDelaySamples) {
+                        if (!microphoneBuffer.TryRead(apmFrameSize, out _, out var whenMicReady))
+                            await whenMicReady.WaitAsync(processingToken).ConfigureAwait(false);
                         continue;
                     }
 
                     // Pull delayed microphone data
-                    if (!microphoneRingBuffer.TryPull(apmFrameSize, out var micBlock)) {
-                        await microphoneRingBuffer.WhenPushed.WaitAsync(processingToken).ConfigureAwait(false);
+                    if (!microphoneBuffer.TryRead(apmFrameSize, out var micData, out var micWhenReady)) {
+                        await micWhenReady.WaitAsync(processingToken).ConfigureAwait(false);
                         continue;
                     }
 
-                    using var _ = micBlock;
-                    var micIn = micBlock.Memory.Span;
-                    var outOwner = MemoryPool<float>.Shared.Rent(apmFrameSize);
-                    var outSpan = outOwner.Memory.Span[..apmFrameSize];
+                    var micIn = micData.Span;
+                    var outArray = ArrayPools.SharedFloatPool.Rent(apmFrameSize);
+                    var outSpan = outArray.AsSpan(0, apmFrameSize);
 
                     // Pull loopback data (use the most recent or zeros)
-                    loopbackRingBuffer.TryPull(apmFrameSize, out var loopBlock);
-                    using var __ = loopBlock;
-                    var loopIn = loopBlock is not null
-                        ? loopBlock.Memory.Span[..apmFrameSize]
-                        : emptyBuffer.Memory.Span[..apmFrameSize];
+                    var hasLoopback = loopbackBuffer.TryRead(apmFrameSize, out var loopData, out _);
+                    var loopIn = hasLoopback
+                        ? loopData.Span[..apmFrameSize]
+                        : emptyMemory.Span;
 
                     // Feed loopback data to APM
                     apm.AnalyzeReverseStream(loopIn);
@@ -169,16 +168,17 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
 
                     // Log.LogDebug("APM.ProcessStream gains for mic and loopback: {GainMic} {GainLoop}", AudioExt.ApproximateGain(micIn), AudioExt.ApproximateGain(loopIn));
 
-                    // Push processed output
-                    var outMem = outOwner.Memory;
-                    while (!outputRingBuffer.TryPush(outMem.Span[..apmFrameSize]))
-                        await outputRingBuffer.WhenPulled.WaitAsync(processingToken).ConfigureAwait(false);
-                    outOwner.Dispose();
+                    // Push processed output (fire-and-forget: drop if full)
+                    outputBuffer.TryWrite(outSpan);
+                    ArrayPools.SharedFloatPool.Return(outArray);
                 }
             }
             catch (OperationCanceledException) { /* expected */ }
             catch (Exception ex) {
                 Log.LogError(ex, "Mic processing loop failed");
+            }
+            finally {
+                ArrayPools.SharedFloatPool.Return(emptyArray);
             }
         }, processingCts.Token);
         // Start recording
@@ -204,11 +204,14 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
         async IAsyncEnumerable<IMemoryOwner<float>> Enumerate([EnumeratorCancellation] CancellationToken ct)
         {
             try {
+                var frameLen = Constants.Audio.OpusFrameLength;
                 while (!ct.IsCancellationRequested) {
-                    if (!outputRingBuffer.TryPull(Constants.Audio.OpusFrameLength, out var block)) {
-                        await outputRingBuffer.WhenPushed.WaitAsync(ct).ConfigureAwait(false);
+                    if (!outputBuffer.TryRead(frameLen, out var data, out var whenReady)) {
+                        await whenReady.WaitAsync(ct).ConfigureAwait(false);
                         continue;
                     }
+                    var block = ArrayPools.SharedFloatPool.LeaseArrayOwner(frameLen);
+                    data.Span.CopyTo(block.Span);
                     yield return block;
                 }
             }
@@ -262,7 +265,7 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
 
                     var floatCount = (int)capacity / sizeof(float);
                     var inSpan = new ReadOnlySpan<float>((void*)dataPtr, floatCount);
-                    microphoneRingBuffer.TryPush(inSpan);
+                    microphoneBuffer.TryWrite(inSpan);
                 }
             }
             catch (Exception e) {
@@ -279,7 +282,7 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
             if (args.BytesRecorded == 0)
                 return;
 
-            PushToBuffer(args, loopbackCapture.WaveFormat, loopbackRingBuffer);
+            PushToBuffer(args, loopbackCapture.WaveFormat, loopbackBuffer);
         }
 
         void OnVolumeChanged(AudioVolumeNotificationData data)
@@ -300,7 +303,7 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
             unsafe {
                 fixed (byte* b = buffer) {
                     var src = new ReadOnlySpan<float>(b, floatCount);
-                    _ = ringBuffer.TryPush(src);
+                    ringBuffer.TryWrite(src);
                 }
             }
         }
@@ -311,7 +314,7 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
                 short s = (short)(buffer[i] | (buffer[i + 1] << 8));
                 tmp[o] = s / 32768f;
             }
-            _ = ringBuffer.TryPush(tmp);
+            ringBuffer.TryWrite(tmp);
         }
         else {
             // Unsupported format: best effort - treat as bytes and skip

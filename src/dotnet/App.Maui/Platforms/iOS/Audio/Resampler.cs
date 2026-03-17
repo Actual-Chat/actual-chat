@@ -22,7 +22,7 @@ public class Resampler(AVAudioFormat sourceFormat, AVAudioFormat targetFormat, I
         if (status is not AVAudioConverterOutputStatus.HaveData and not AVAudioConverterOutputStatus.InputRanDry)
             throw StandardError.Internal($"AVAudioConverter returned status {status}.");
 
-        output.TryPush(_resampledBuffer.AsReadOnlySpan());
+        output.TryWrite(_resampledBuffer.AsReadOnlySpan());
         return;
 
         AVAudioBuffer HandleInput(uint numberOfPackets, out AVAudioConverterInputStatus outStatus)

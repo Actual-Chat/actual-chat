@@ -54,7 +54,7 @@ public class GoogleTranscriberTest(
         //     await outputStream.FlushAsync();
         // };
 
-        // using var writeBufferLease = MemoryPool<byte>.Shared.Rent(100 * 1024);
+        // using var writeBufferLease = ArrayPools.SharedBytePool.Lease(100 * 1024);
         // var writeBuffer = writeBufferLease.Memory;
 
         var transcripts = await transcriber.Transcribe("test", audio, options).ToListAsync();

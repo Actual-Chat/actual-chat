@@ -51,32 +51,37 @@ public static class ByteStreamExt
         int blockLength,
         CancellationToken cancellationToken)
     {
-        using var blockBufferLease = MemoryPool<byte>.Shared.Rent(blockLength);
-        var blockBuffer = blockBufferLease.Memory;
-        var position = 0;
-        IAsyncEnumerator<byte[]>? byteBlockEnumerator = null;
+        var blockArray = ArrayPools.SharedBytePool.Rent(blockLength);
         try {
-            byteBlockEnumerator = byteStream.GetAsyncEnumerator(cancellationToken);
-            while (position < blockLength) {
-                var hasNext = await byteBlockEnumerator.MoveNextAsync().ConfigureAwait(false);
-                if (!hasNext) {
-                    await byteBlockEnumerator.DisposeAsync().ConfigureAwait(false);
-                    return (blockBuffer[..position].ToArray(), byteBlockEnumerator);
+            var blockBuffer = blockArray.AsMemory(0, blockLength);
+            var position = 0;
+            IAsyncEnumerator<byte[]>? byteBlockEnumerator = null;
+            try {
+                byteBlockEnumerator = byteStream.GetAsyncEnumerator(cancellationToken);
+                while (position < blockLength) {
+                    var hasNext = await byteBlockEnumerator.MoveNextAsync().ConfigureAwait(false);
+                    if (!hasNext) {
+                        await byteBlockEnumerator.DisposeAsync().ConfigureAwait(false);
+                        return (blockBuffer[..position].ToArray(), byteBlockEnumerator);
+                    }
+
+                    var byteBlock = byteBlockEnumerator.Current;
+                    if (position == 0 && byteBlock.Length >= blockLength)
+                        return (byteBlock, byteBlockEnumerator);
+
+                    byteBlock.CopyTo(blockBuffer[position..]);
+                    position += byteBlock.Length;
                 }
-
-                var byteBlock = byteBlockEnumerator.Current;
-                if (position == 0 && byteBlock.Length >= blockLength)
-                    return (byteBlock, byteBlockEnumerator);
-
-                byteBlock.CopyTo(blockBuffer[position..]);
-                position += byteBlock.Length;
+                return (blockBuffer[..position].ToArray(), byteBlockEnumerator);
             }
-            return (blockBuffer[..position].ToArray(), byteBlockEnumerator);
+            catch {
+                if (byteBlockEnumerator != null)
+                    await byteBlockEnumerator.DisposeAsync().ConfigureAwait(false);
+                throw;
+            }
         }
-        catch {
-            if (byteBlockEnumerator != null)
-                await byteBlockEnumerator.DisposeAsync().ConfigureAwait(false);
-            throw;
+        finally {
+            ArrayPools.SharedBytePool.Return(blockArray);
         }
     }
 
@@ -114,7 +119,7 @@ public static class ByteStreamExt
             // the low-level stream reading method in WASM is implemented
             // only for arrays:
             // - https://github.com/zwcloud/MonoWasm/blob/master/WasmHttpMessageHandler.cs#L349
-            var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+            var buffer = ArrayPools.SharedBytePool.Rent(bufferSize);
             var memory = buffer.AsMemory(0, bufferSize);
             try {
                 var bytesRead = await source.ReadAsync(memory, cancellationToken).ConfigureAwait(false);
@@ -124,7 +129,7 @@ public static class ByteStreamExt
                 }
             }
             finally {
-                ArrayPool<byte>.Shared.Return(buffer);
+                ArrayPools.SharedBytePool.Return(buffer);
             }
         }
         finally {

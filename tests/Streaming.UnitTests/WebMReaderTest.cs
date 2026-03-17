@@ -13,7 +13,7 @@ public class WebMReaderTest(ITestOutputHelper @out) : TestBase(@out)
             Path.Combine(Environment.CurrentDirectory, "data", "file.webm"),
             FileMode.Open,
             FileAccess.Read);
-        using var bufferLease = MemoryPool<byte>.Shared.Rent(3 * 1024);
+        using var bufferLease = ArrayPools.SharedBytePool.LeaseArrayOwner(3 * 1024);
         var buffer = bufferLease.Memory;
         var bytesRead = await inputStream.ReadAsync(buffer);
         while (bytesRead < 3 * 1024)
@@ -38,7 +38,7 @@ public class WebMReaderTest(ITestOutputHelper @out) : TestBase(@out)
             Path.Combine(Environment.CurrentDirectory, "data", "file.webm"),
             FileMode.Open,
             FileAccess.Read);
-        using var bufferLease = MemoryPool<byte>.Shared.Rent(4 * 1024);
+        using var bufferLease = ArrayPools.SharedBytePool.LeaseArrayOwner(4 * 1024);
         var buffer = bufferLease.Memory;
         var bytesRead = await inputStream.ReadAsync(buffer);
         while (bytesRead < 4 * 1024)
@@ -63,7 +63,7 @@ public class WebMReaderTest(ITestOutputHelper @out) : TestBase(@out)
             Path.Combine(Environment.CurrentDirectory, "data", "file.webm"),
             FileMode.Open,
             FileAccess.Read);
-        using var bufferLease = MemoryPool<byte>.Shared.Rent(4 * 1024);
+        using var bufferLease = ArrayPools.SharedBytePool.LeaseArrayOwner(4 * 1024);
         var buffer = bufferLease.Memory;
         var bytesRead = await inputStream.ReadAsync(buffer);
         while (bytesRead < 4 * 1024)
@@ -91,7 +91,7 @@ public class WebMReaderTest(ITestOutputHelper @out) : TestBase(@out)
             Path.Combine(Environment.CurrentDirectory, "data", "file.webm"),
             FileMode.Open,
             FileAccess.Read);
-        using var bufferLease = MemoryPool<byte>.Shared.Rent(3 * 1024);
+        using var bufferLease = ArrayPools.SharedBytePool.LeaseArrayOwner(3 * 1024);
         var buffer = bufferLease.Memory;
         var bytesRead = await inputStream.ReadAsync(buffer[..0x287]);
         while (bytesRead < 0x287)
@@ -114,7 +114,7 @@ public class WebMReaderTest(ITestOutputHelper @out) : TestBase(@out)
             Path.Combine(Environment.CurrentDirectory, "data", "file.webm"),
             FileMode.Open,
             FileAccess.Read);
-        using var bufferLease = MemoryPool<byte>.Shared.Rent(3 * 1024);
+        using var bufferLease = ArrayPools.SharedBytePool.LeaseArrayOwner(3 * 1024);
         var buffer = bufferLease.Memory;
         var bytesRead = await inputStream.ReadAsync(buffer[..0xA1]);
         while (bytesRead < 0xA1)
@@ -135,7 +135,7 @@ public class WebMReaderTest(ITestOutputHelper @out) : TestBase(@out)
             Path.Combine(Environment.CurrentDirectory, "data", "0001.webm"),
             FileMode.Open,
             FileAccess.Read);
-        using var bufferLease = MemoryPool<byte>.Shared.Rent(50 * 1024);
+        using var bufferLease = ArrayPools.SharedBytePool.LeaseArrayOwner(50 * 1024);
         var buffer = bufferLease.Memory;
         var bytesRead = await inputStream.ReadAsync(buffer);
         while (bytesRead < 50 * 1024)
@@ -158,7 +158,7 @@ public class WebMReaderTest(ITestOutputHelper @out) : TestBase(@out)
             Path.Combine(Environment.CurrentDirectory, "data", "file.webm"),
             FileMode.Open,
             FileAccess.Read);
-        using var bufferLease = MemoryPool<byte>.Shared.Rent(3 * 1024);
+        using var bufferLease = ArrayPools.SharedBytePool.LeaseArrayOwner(3 * 1024);
         var buffer = bufferLease.Memory;
         var bytesRead = await inputStream.ReadAsync(buffer[..0x26]);
         while (bytesRead < 0x26)
@@ -177,8 +177,8 @@ public class WebMReaderTest(ITestOutputHelper @out) : TestBase(@out)
             Path.Combine(Environment.CurrentDirectory, "data", "file.webm"),
             FileMode.Open,
             FileAccess.Read);
-        using var bufferLease1 = MemoryPool<byte>.Shared.Rent(3 * 1024);
-        using var bufferLease2 = MemoryPool<byte>.Shared.Rent(3 * 1024);
+        using var bufferLease1 = ArrayPools.SharedBytePool.LeaseArrayOwner(3 * 1024);
+        using var bufferLease2 = ArrayPools.SharedBytePool.LeaseArrayOwner(3 * 1024);
         var buffer1 = bufferLease1.Memory;
         var buffer2 = bufferLease2.Memory;
         var bytesRead1 = await inputStream.ReadAsync(buffer1);
@@ -214,7 +214,7 @@ public class WebMReaderTest(ITestOutputHelper @out) : TestBase(@out)
     {
         var result = new List<BaseModel>();
         var state = new WebMReader.State();
-        var readBufferLease = MemoryPool<byte>.Shared.Rent(32 * 1024); // Disposed in the last "finally"
+        var readBufferLease = ArrayPools.SharedBytePool.LeaseArrayOwner(32 * 1024); // Disposed in the last "finally"
         var readBuffer = readBufferLease.Memory;
 
         foreach (var data in dataElements) {

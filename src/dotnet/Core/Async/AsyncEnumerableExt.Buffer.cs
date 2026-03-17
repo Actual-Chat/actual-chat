@@ -1,3 +1,5 @@
+using ActualLab.Rpc;
+
 namespace ActualChat;
 
 public static partial class AsyncEnumerableExt

@@ -50,10 +50,10 @@ public sealed class OpusAudioCodec : IAudioCodec
                         if (pcm.Length != Constants.Audio.OpusFrameLength)
                             throw StandardError.Internal($"Invalid frame length {pcm.Length}");
 
-                        var rented = MemoryPool<byte>.Shared.Rent(maxOpusPacketSize);
+                        var rented = ArrayPools.SharedBytePool.LeaseArrayOwner(maxOpusPacketSize);
                         int encodedSize;
                         try {
-                            var outSpan = rented.Memory.Span;
+                            var outSpan = rented.Span;
                             encodedSize = encoder.Encode(pcm, Constants.Audio.OpusFrameLength, outSpan, maxOpusPacketSize);
                         }
                         catch {
@@ -118,11 +118,11 @@ public sealed class OpusAudioCodec : IAudioCodec
                         using var _ = owner;
                         var packetMem = owner.Memory;
 
-                        var pcmOwner = MemoryPool<float>.Shared.Rent(Constants.Audio.PcmFrameLength);
+                        var pcmOwner = ArrayPools.SharedFloatPool.LeaseArrayOwner(Constants.Audio.PcmFrameLength);
                         int samples;
                         try {
                             var packetSpan = packetMem.Span;
-                            var pcmSpan = pcmOwner.Memory.Span;
+                            var pcmSpan = pcmOwner.Span;
                             samples = decoder.Decode(packetSpan,
                                 packetSpan.Length,
                                 pcmSpan,

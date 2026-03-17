@@ -106,7 +106,7 @@ public sealed class WebMStreamConverter : IAudioStreamConverter
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var random = new Random();
-        using var bufferLease = MemoryPool<byte>.Shared.Rent(4 * 1024);
+        using var bufferLease = ArrayPools.SharedBytePool.Lease(4 * 1024);
         var buffer = bufferLease.Memory;
         var position = 0;
         var header = new EBML {
@@ -228,7 +228,7 @@ public sealed class WebMStreamConverter : IAudioStreamConverter
         ref Segment? segment,
         ref int clusterOffsetMs)
     {
-        using var bufferLease = MemoryPool<byte>.Shared.Rent(16 * 1024);
+        using var bufferLease = ArrayPools.SharedBytePool.Lease(16 * 1024);
         while (webMReader.Read()) {
             var state = webMReader.GetState();
             switch (webMReader.ReadResultKind) {
@@ -250,8 +250,8 @@ public sealed class WebMStreamConverter : IAudioStreamConverter
                 if (!formatTaskSource.Task.IsCompleted) {
                     var formatBlocksLength = formatBlocks.Sum(b => b.Length);
                     var beforeFramesStart = webMReader.Span[..state.Position];
-                    using var formatBufferLease = MemoryPool<byte>.Shared.Rent(4 * 1024);
-                    var formatBuffer = formatBufferLease.Memory.Span[..(formatBlocksLength + beforeFramesStart.Length)];
+                    using var formatBufferLease = ArrayPools.SharedBytePool.Lease(4 * 1024);
+                    var formatBuffer = formatBufferLease.Span[..(formatBlocksLength + beforeFramesStart.Length)];
                     var writtenAt = 0;
                     foreach (var formatBlock in formatBlocks) {
                         formatBlock.CopyTo(formatBuffer[writtenAt..]);

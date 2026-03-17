@@ -1,3 +1,4 @@
+using System.Buffers;
 using ActualChat.Internal;
 using ActualLab.Diagnostics;
 
@@ -31,35 +32,6 @@ public static partial class AsyncEnumerableExt
             yield return item;
     }
 
-    // TakeWhile
-
-    public static async IAsyncEnumerable<T> TakeWhile<T>(
-        this IAsyncEnumerable<T> source,
-        Task whileTask,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        if (whileTask.IsCompleted)
-            yield break;
-
-        var enumerator = source.GetAsyncEnumerator(cancellationToken);
-        try {
-            var hasNextTask = enumerator.MoveNextAsync();
-            while (true) {
-                if (!hasNextTask.IsCompleted)
-                    await Task.WhenAny(whileTask, hasNextTask.AsTask()).ConfigureAwait(false);
-
-                if (whileTask.IsCompleted || !await hasNextTask.ConfigureAwait(false))
-                    yield break;
-
-                yield return enumerator.Current;
-                hasNextTask = enumerator.MoveNextAsync();
-            }
-        }
-        finally {
-            await enumerator.DisposeSilentlyAsync().ConfigureAwait(false);
-        }
-    }
-
     // AdjacentDistinct
 
     public static async IAsyncEnumerable<T> AdjacentDistinct<T>(
@@ -79,63 +51,6 @@ public static partial class AsyncEnumerableExt
 
             prev = item;
         }
-    }
-
-    // Throttle
-
-    public static IAsyncEnumerable<T> Throttle<T>(this IAsyncEnumerable<T> source,
-        TimeSpan minInterval,
-        CancellationToken cancellationToken = default)
-        => source.Throttle(minInterval, MomentClockSet.Default.CpuClock, cancellationToken);
-
-    public static async IAsyncEnumerable<T> Throttle<T>(this IAsyncEnumerable<T> source,
-        TimeSpan minInterval,
-        MomentClock clock,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        var c = Channel.CreateBounded<T>(new BoundedChannelOptions(1) {
-            SingleReader = true,
-            SingleWriter = true,
-            AllowSynchronousContinuations = true,
-            FullMode = BoundedChannelFullMode.DropOldest,
-        });
-        _ = source.CopyTo(c, ChannelCopyMode.CopyAllSilently, cancellationToken);
-        await foreach (var item in c.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false)) {
-            yield return item;
-            if (minInterval > TimeSpan.Zero)
-                await clock.Delay(minInterval, cancellationToken).ConfigureAwait(false);
-        }
-    }
-
-    // Memoize
-
-    public static AsyncMemoizer<T> Memoize<T>(
-        this IAsyncEnumerable<T> source,
-        CancellationToken cancellationToken = default)
-        => new(source, cancellationToken);
-
-    // SlidingMemoize
-
-    public static SlidingMemoizer<T> SlidingMemoize<T>(
-        this IAsyncEnumerable<T> source,
-        int capacity,
-        CancellationToken cancellationToken = default)
-        => new(source, capacity, cancellationToken);
-
-    public static SlidingMemoizer<T> SlidingMemoize<T>(
-        this IAsyncEnumerable<T> source,
-        int capacity,
-        int consumerCapacity,
-        CancellationToken cancellationToken = default)
-        => new(source, capacity, consumerCapacity, cancellationToken);
-
-    public static async ValueTask<Option<T>> TryReadAsync<T>(
-        this IAsyncEnumerable<T> source,
-        CancellationToken cancellationToken = default)
-    {
-        await foreach (var value in source.WithCancellation(cancellationToken).ConfigureAwait(false))
-            return value;
-        return Option<T>.None;
     }
 
     // IsNonEmpty
@@ -191,6 +106,15 @@ public static partial class AsyncEnumerableExt
         return await source.MoveNextAsync().ConfigureAwait(false)
             ? source.Current
             : Option<T>.None;
+    }
+
+    public static async ValueTask<Option<T>> TryReadAsync<T>(
+        this IAsyncEnumerable<T> source,
+        CancellationToken cancellationToken = default)
+    {
+        await foreach (var value in source.WithCancellation(cancellationToken).ConfigureAwait(false))
+            return value;
+        return Option<T>.None;
     }
 
     // ReadResultAsync

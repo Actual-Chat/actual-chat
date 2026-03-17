@@ -2,229 +2,192 @@ using System.Buffers;
 
 namespace ActualChat.Collections;
 
+#pragma warning disable MA0022, RCS1210
+
 /// <summary>
-/// A lock-free ring buffer optimized for single-producer single-consumer scenarios.
+/// A ring buffer with 2x physical capacity that guarantees contiguous reads and writes.
+/// Thread-safe for concurrent producer/consumer access.
 /// </summary>
-public class BlockRingBuffer<T> : IDisposable
+/// <remarks>
+/// The buffer internally allocates 2*capacity slots. Writes always start at a physical
+/// position below capacity, and may extend into [capacity, 2*capacity). When the write
+/// position reaches or exceeds capacity, it wraps to 0 and a "wrap mark" is set.
+/// The reader follows the same wrap mark, ensuring reads are always contiguous.
+/// </remarks>
+public sealed class BlockRingBuffer<T> : IDisposable
 {
-    private readonly IMemoryOwner<T> _bufferOwner;
-    private readonly int _mask;
-    private int _writeIndex; // Producer's write position
-    private int _readIndex;  // Consumer's read position
-    private int _pendingReadIndex; // Tracks pending consumption
-    private TaskCompletionSource _whenPulledTcs;
-    private TaskCompletionSource _whenPushedTcs;
+    private readonly Lock _lock = new();
+    private readonly ArrayPool<T> _pool;
+    private readonly T[] _buffer;
+    private readonly int _capacity;
 
-    public int Capacity => _mask;
+    private int _readPos;   // physical position in [0, 2*capacity)
+    private int _writePos;  // physical position in [0, 2*capacity)
+    private int _wrapPos;   // physical position where data ends before gap; -1 = no gap
+    private volatile int _count; // valid readable items
 
-    public int Count {
-        get {
-            var read = Volatile.Read(ref _readIndex);
-            var write = Volatile.Read(ref _writeIndex);
-            return (write - read) & _mask;
-        }
-    }
+    private Task<int>? _whenWrittenTask;
 
-    public bool IsEmpty => _writeIndex == _readIndex;
-    public bool IsFull => Count >= Capacity;
-    public int RemainingCapacity => Math.Max(0, Capacity - Count);
-    public bool HasRemainingCapacity => !IsFull;
+    public int Capacity => _capacity;
+    public int Count => _count;
 
-    public Task WhenPulled => _whenPulledTcs.Task;
-    public Task WhenPushed => _whenPushedTcs.Task;
-
-    public BlockRingBuffer(int minCapacity)
-        : this(MemoryPool<T>.Shared.Rent((int)Bits.GreaterOrEqualPowerOf2((ulong)Math.Max(2, minCapacity + 1))))
-    { }
-
-    private BlockRingBuffer(IMemoryOwner<T> bufferOwner)
+    public BlockRingBuffer(int minCapacity, ArrayPool<T>? pool = null)
     {
-        var buffer = bufferOwner.Memory;
-        if (!Bits.IsPowerOf2((ulong)buffer.Length))
-            throw new ArgumentOutOfRangeException(nameof(buffer));
-        if (buffer.Length < 2)
-            throw new ArgumentOutOfRangeException(nameof(buffer), "Buffer must have at least 2 elements");
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(minCapacity);
 
-        // Use one less than buffer length to distinguish empty from full
-        _mask = buffer.Length - 1;
-        _bufferOwner = bufferOwner;
-        _writeIndex = 0;
-        _readIndex = 0;
-        _pendingReadIndex = 0;
-        _whenPushedTcs = TaskCompletionSourceExt.New();
-        _whenPulledTcs = TaskCompletionSourceExt.New();
-        _whenPulledTcs.TrySetResult();
+        _pool = pool ?? ArrayPool<T>.Shared;
+        _buffer = _pool.Rent(minCapacity * 2);
+        _capacity = _buffer.Length / 2;
+        _wrapPos = -1;
     }
+
     public void Dispose()
     {
-        _whenPulledTcs.TrySetCanceled();
-        _whenPushedTcs.TrySetCanceled();
-        _bufferOwner.Dispose();
+        Task<int>? wwt;
+        lock (_lock) {
+            wwt = _whenWrittenTask;
+            _whenWrittenTask = null;
+        }
+        TrySetCanceled(wwt);
+        _pool.Return(_buffer, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
     }
 
-    public bool TryPush(ReadOnlySpan<T> data)
+    /// <summary>
+    /// Writes as much of <paramref name="data"/> as possible to the buffer.
+    /// Returns true if all data was written, false if buffer was full (partial write).
+    /// </summary>
+    public bool TryWrite(ReadOnlySpan<T> data)
+        => TryWrite(data, out _);
+
+    /// <summary>
+    /// Writes as much of <paramref name="data"/> as possible to the buffer.
+    /// Returns true if all data was written, false if buffer was full (partial write).
+    /// <paramref name="writtenCount"/> indicates how many items were actually written.
+    /// </summary>
+    public bool TryWrite(ReadOnlySpan<T> data, out int writtenCount)
     {
-        var length = data.Length;
-        if (length == 0)
+        if (data.IsEmpty) {
+            writtenCount = 0;
             return true;
-
-        // For SPSC, read consumer position once
-        var currentRead = Volatile.Read(ref _readIndex);
-        var currentWrite = Volatile.Read(ref _writeIndex);
-
-        // Calculate available space
-        var used = (currentWrite - currentRead) & _mask;
-        if (used + length > Capacity) {
-            _whenPulledTcs = TaskCompletionSourceExt.New();
-            return false; // Not enough space
         }
 
-        // Write data with wraparound support
-        var buffer = _bufferOwner.Memory;
-        var writePos = currentWrite & _mask;
-        if (writePos + length <= buffer.Length)
-            // No wraparound needed
-            data.CopyTo(buffer.Span.Slice(writePos, length));
-        else {
-            // Handle wraparound
-            var firstPart = buffer.Length - writePos;
-            data[..firstPart].CopyTo(buffer.Span.Slice(writePos, firstPart));
-            data[firstPart..].CopyTo(buffer.Span[..(length - firstPart)]);
+        Task<int>? completedTask;
+        lock (_lock) {
+            var free = _capacity - _count;
+            var toWrite = Math.Min(data.Length, free);
+
+            if (toWrite > 0) {
+                var remaining = data[..toWrite];
+                while (remaining.Length > 0) {
+                    Normalize();
+                    int contiguous;
+                    if (_wrapPos >= 0)
+                        contiguous = _readPos - _writePos;
+                    else
+                        contiguous = _capacity - _writePos;
+
+                    var n = Math.Min(remaining.Length, contiguous);
+                    remaining[..n].CopyTo(_buffer.AsSpan(_writePos, n));
+                    _writePos += n;
+                    Interlocked.Add(ref _count, n);
+
+                    if (_writePos >= _capacity && _wrapPos < 0) {
+                        _wrapPos = _writePos;
+                        _writePos = 0;
+                    }
+                    remaining = remaining[n..];
+                }
+
+                completedTask = _whenWrittenTask;
+                _whenWrittenTask = null;
+            }
+            else
+                completedTask = null;
+
+            writtenCount = toWrite;
+        }
+        TrySetResult(completedTask, writtenCount);
+        return writtenCount == data.Length;
+    }
+
+    /// <summary>
+    /// Reads up to <paramref name="maxLength"/> contiguous items from the buffer.
+    /// Returns true if data was read (<paramref name="data"/> is non-empty).
+    /// Returns false if buffer is empty; <paramref name="whenReadyToRead"/> is a task to await before retrying.
+    /// The read position is advanced immediately; the returned memory is valid
+    /// until the buffer wraps (safe in SPSC as long as the caller processes promptly).
+    /// </summary>
+    public bool TryRead(int maxLength, out ReadOnlyMemory<T> data, [NotNullWhen(false)] out Task? whenReadyToRead)
+    {
+        if (maxLength <= 0) {
+            data = default;
+            whenReadyToRead = null;
+            return true;
         }
 
-        // Update write index (single producer, so this is safe)
-        Volatile.Write(ref _writeIndex, currentWrite + length);
-        _whenPushedTcs?.TrySetResult();
+        lock (_lock) {
+            if (_count == 0) {
+                data = default;
+                _whenWrittenTask ??= AsyncTaskMethodBuilderExt.New<int>().Task;
+                whenReadyToRead = _whenWrittenTask;
+                return false;
+            }
 
+            Normalize();
+            int contiguous;
+            if (_wrapPos >= 0)
+                contiguous = _wrapPos - _readPos;
+            else
+                contiguous = _writePos - _readPos;
+
+            var n = Math.Min(Math.Min(maxLength, contiguous), _count);
+            data = new ReadOnlyMemory<T>(_buffer, _readPos, n);
+
+            _readPos += n;
+            if (_wrapPos >= 0 && _readPos >= _wrapPos) {
+                _readPos = 0;
+                _wrapPos = -1;
+            }
+
+            Interlocked.Add(ref _count, -n);
+        }
+        whenReadyToRead = null;
         return true;
     }
 
-    public bool TryPull(int length, [NotNullWhen(true)] out IMemoryOwner<T>? block)
-    {
-        if (length <= 0) {
-            block = null;
-            return false;
-        }
-
-        // Check if there's already a pending consumption
-        var currentRead = Volatile.Read(ref _pendingReadIndex);
-        var currentWrite = Volatile.Read(ref _writeIndex);
-        var available = (currentWrite - currentRead) & _mask;
-
-        if (available < length) {
-            block = null;
-            _whenPushedTcs = TaskCompletionSourceExt.New();
-            return false;
-        }
-
-        // Reserve this consumption by updating pending read index
-        if (Interlocked.CompareExchange(ref _pendingReadIndex, currentRead + length, currentRead) != currentRead) {
-            // Another thread updated pending read index, fail
-            // We should not get here as we use a single consumer, just in case
-            block = null;
-            _whenPushedTcs = TaskCompletionSourceExt.New();
-            return false;
-        }
-
-        var readPosition = currentRead & _mask;
-        var buffer = _bufferOwner.Memory;
-        if (readPosition + length <= buffer.Length) {
-            // No wraparound, can use zero-copy
-            block = new ConsumableBlock(buffer.Slice(readPosition, length), buffer: this);
-            return true;
-        }
-
-        // Wraparound required, need to copy to contiguous memory
-        var owner = MemoryPool<T>.Shared.Rent(length);
-        try {
-            var firstPart = buffer.Length - readPosition;
-            var span = owner.Memory.Span;
-            buffer.Span.Slice(readPosition, firstPart).CopyTo(span[..firstPart]);
-            buffer.Span[..(length - firstPart)].CopyTo(span.Slice(firstPart, length - firstPart));
-            block = new ConsumableBlock(owner.Memory[..length], owner, this);
-            return true;
-        }
-        catch {
-            owner.Dispose();
-            // Reset pending read index on failure
-            Volatile.Write(ref _pendingReadIndex, currentRead);
-            throw;
-        }
-    }
-
-    public IMemoryOwner<T> Pull(int length)
-        => TryPull(length, out var block)
-            ? block
-            : throw StandardError.Unavailable("Not enough data to pull");
-
     public void Clear()
     {
-        _readIndex = 0;
-        _writeIndex = 0;
-        _pendingReadIndex = 0;
-        _whenPulledTcs.TrySetResult();
-        // there is no need to reset _whenPushedTcs as we are trying to push into an empty buffer
-        // _whenPushedTcs.TrySetResult();
-    }
-
-    // Internal methods
-
-    internal ReadOnlySpan<T> GetAvailableContinuousData()
-    {
-        var readIndex = Volatile.Read(ref _readIndex);
-        var writeIndex = Volatile.Read(ref _writeIndex);
-
-        var available = (writeIndex - readIndex) & _mask;
-        if (available == 0)
-            return ReadOnlySpan<T>.Empty;
-
-        var buffer = _bufferOwner.Memory;
-        var readPos = readIndex & _mask;
-        var contiguous = Math.Min(available, buffer.Length - readPos);
-        return buffer.Span.Slice(readPos, contiguous);
+        lock (_lock) {
+            _readPos = 0;
+            _writePos = 0;
+            _wrapPos = -1;
+            Interlocked.Exchange(ref _count, 0);
+        }
     }
 
     // Private methods
 
-    private void CommitConsume(int length)
+    // Must be called under _lock
+    private void Normalize()
     {
-        if (length <= 0)
+        if (_wrapPos < 0 || _readPos < _wrapPos)
             return;
 
-        var currentRead = Volatile.Read(ref _readIndex);
-        var currentWrite = Volatile.Read(ref _writeIndex);
-
-        var available = (currentWrite - currentRead) & _mask;
-        if (available < length)
-            throw StandardError.Internal("Cannot commit more than available data");
-
-        Volatile.Write(ref _readIndex, currentRead + length);
-        _whenPulledTcs?.TrySetResult();
+        _readPos = 0;
+        _wrapPos = -1;
     }
 
-    // Nested types
-
-    private readonly struct ConsumableBlock : IMemoryOwner<T>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void TrySetResult(Task<int>? task, int result)
     {
-        private readonly IMemoryOwner<T>? _rented;
-        private readonly BlockRingBuffer<T>? _buffer;
+        if (task != null)
+            AsyncTaskMethodBuilderExt.FromTask(task).TrySetResult(result);
+    }
 
-        public Memory<T> Memory { get; }
-
-        internal ConsumableBlock(Memory<T> memory, IMemoryOwner<T>? rented = null, BlockRingBuffer<T>? buffer = null)
-        {
-            Memory = memory;
-            _rented = rented;
-            _buffer = buffer;
-        }
-
-        public void Dispose()
-        {
-            _rented?.Dispose();
-
-            // Auto-commit the consumed length when disposing
-            if (_buffer != null && !Memory.IsEmpty)
-                _buffer.CommitConsume(Memory.Length);
-        }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void TrySetCanceled(Task<int>? task)
+    {
+        if (task != null)
+            AsyncTaskMethodBuilderExt.FromTask(task).TrySetCanceled();
     }
 }

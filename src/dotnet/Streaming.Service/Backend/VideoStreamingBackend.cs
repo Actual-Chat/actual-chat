@@ -236,7 +236,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                 Log.LogDebug("PushVideoInternal: stream completed with {Count} frames", frameCount);
             }
 
-            var memoizer = LogFrames(videoFrames).SlidingMemoize(
+            var memoizer = LogFrames(videoFrames).Memoize(
                 Constants.Video.RetentionBufferSize,
                 cancellationToken);
             await _videoStreams.Publish(record.StreamId, memoizer).ConfigureAwait(false);
@@ -259,7 +259,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
     /// <summary>
     /// Skips to the latest keyframe in the memoizer's replay buffer.
     /// Buffered frames are detected by checking MoveNextAsync().IsCompleted —
-    /// SlidingMemoizer.Replay() pre-fills a channel synchronously, so buffered
+    /// AsyncMemoizer.Replay() pre-fills a channel synchronously, so buffered
     /// reads complete instantly while live reads are async.
     /// </summary>
     private static async IAsyncEnumerable<VideoFrame> SkipToLatestBufferedKeyFrame(

@@ -111,8 +111,10 @@ public class StreamStore<TItem> : ProcessorBase
                 var entry = ExpiringEntry
                     .New(self._streams, key, memoizerSource, disposeTokenSource)
                     .SetDisposer(e => {
-                        if (memoizerSource.Task.IsCompleted)
+                        if (memoizerSource.Task.IsCompleted) {
                             self.StreamCount?.Add(-1);
+                            (memoizerSource.Task.Result as IDisposable)?.Dispose();
+                        }
                         else
                             e.Value.TrySetResult(null);
                         var streamId = StreamId.Parse(key);

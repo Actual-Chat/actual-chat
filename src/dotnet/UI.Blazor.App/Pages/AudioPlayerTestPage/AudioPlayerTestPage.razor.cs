@@ -138,7 +138,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     }
 
     [JSInvokable]
-    public Task OnPlaying(double offset, bool isPaused, bool isBufferLow)
+    public void OnPlaying(double offset, bool isPaused, bool isBufferLow)
     {
         var playing = isPaused ? "paused" : "playing";
         var buffer = isBufferLow ? "low" : "ok";
@@ -147,16 +147,15 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
 
         _offset = offset;
         StateHasChanged();
-        return Task.CompletedTask;
     }
 
     [JSInvokable]
-    public async Task OnEnded(string? errorMessage)
+    public void OnEnded(string? errorMessage)
     {
         Log.LogInformation("OnEnded: {ErrorMessage}", errorMessage);
         _cts.CancelAndDisposeSilently();
         if (_registration != default)
-            await _registration.DisposeAsync();
+            _ = _registration.DisposeAsync();
     }
 
     public void Dispose()

@@ -13,7 +13,7 @@ public class WebMWriterTest(ITestOutputHelper @out) : TestBase(@out)
             Path.Combine(Environment.CurrentDirectory, "data", "file.webm"),
             FileMode.Open,
             FileAccess.Read);
-        using var bufferLease = MemoryPool<byte>.Shared.Rent(3 * 1024);
+        using var bufferLease = ArrayPools.SharedBytePool.LeaseArrayOwner(3 * 1024);
         var buffer = bufferLease.Memory;
         var bytesRead = await inputStream.ReadAsync(buffer);
         while (bytesRead < 3 * 1024)
@@ -25,7 +25,7 @@ public class WebMWriterTest(ITestOutputHelper @out) : TestBase(@out)
         var (entry3, _) = Parse(
             WebMReader.FromState(state2).WithNewSource(buffer.Span[(state2.Position + state1.Position)..bytesRead]));
 
-        using var writeBufferLease = MemoryPool<byte>.Shared.Rent(3 * 1024);
+        using var writeBufferLease = ArrayPools.SharedBytePool.LeaseArrayOwner(3 * 1024);
         var writeBuffer = writeBufferLease.Memory;
         var (ebmlWritten, position1) = Write(new WebMWriter(writeBuffer.Span), entry1);
         ebmlWritten.Should().BeTrue();
@@ -56,8 +56,8 @@ public class WebMWriterTest(ITestOutputHelper @out) : TestBase(@out)
             Path.Combine(Environment.CurrentDirectory, "data", "file.webm"),
             FileMode.Open,
             FileAccess.Read);
-        using var readBufferLease = MemoryPool<byte>.Shared.Rent(10 * 1024);
-        using var writeBufferLease = MemoryPool<byte>.Shared.Rent(10 * 1024);
+        using var readBufferLease = ArrayPools.SharedBytePool.LeaseArrayOwner(10 * 1024);
+        using var writeBufferLease = ArrayPools.SharedBytePool.LeaseArrayOwner(10 * 1024);
         var readBuffer = readBufferLease.Memory;
         var writeBuffer = writeBufferLease.Memory;
         WebMReader.State currentState = default;
@@ -125,8 +125,8 @@ public class WebMWriterTest(ITestOutputHelper @out) : TestBase(@out)
             Path.Combine(Environment.CurrentDirectory, "data", "file-out.webm"),
             FileMode.OpenOrCreate,
             FileAccess.ReadWrite);
-        using var readBufferLease = MemoryPool<byte>.Shared.Rent(10 * 1024);
-        using var writeBufferLease = MemoryPool<byte>.Shared.Rent(100 * 1024);
+        using var readBufferLease = ArrayPools.SharedBytePool.LeaseArrayOwner(10 * 1024);
+        using var writeBufferLease = ArrayPools.SharedBytePool.LeaseArrayOwner(100 * 1024);
         var readBuffer = readBufferLease.Memory;
         var writeBuffer = writeBufferLease.Memory;
         WebMReader.State currentState = default;

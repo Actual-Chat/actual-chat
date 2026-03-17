@@ -97,7 +97,7 @@ internal sealed class AndroidAudioPlaybackEngine(
         }
 
         audioTrack.Play();
-        _ = NotifyPlaying(0); // Initial report that we're ready to play
+        NotifyPlaying(0); // Initial report that we're ready to play
     }
 
     protected override async Task DisposeAsyncCore()
@@ -138,7 +138,7 @@ internal sealed class AndroidAudioPlaybackEngine(
         // Enter paused state: create a gate CTS that will be canceled on Resume()
         _pauseEndTokenSource?.CancelAndDisposeSilently();
         _pauseEndTokenSource = new CancellationTokenSource();
-        _ = NotifyPlaying(GetPlayedSampleCount());
+        NotifyPlaying(GetPlayedSampleCount());
         return Task.CompletedTask;
     }
 
@@ -150,7 +150,7 @@ internal sealed class AndroidAudioPlaybackEngine(
         _pauseEndTokenSource?.CancelAndDisposeSilently();
         _pauseEndTokenSource = null;
         _audioTrack.Play();
-        _ = NotifyPlaying(GetPlayedSampleCount());
+        NotifyPlaying(GetPlayedSampleCount());
         return Task.CompletedTask;
     }
 
@@ -258,24 +258,31 @@ internal sealed class AndroidAudioPlaybackEngine(
         }
     }
 
-    private Task NotifyPlaying(int playedSampleCount)
+    private void NotifyPlaying(int playedSampleCount)
     {
         var played = (double)playedSampleCount / Constants.Audio.PlaybackSampleRate;
         var buffered = TimeSpan.FromSeconds((double)(_fedSampleCount - playedSampleCount) / Constants.Audio.PlaybackSampleRate);
         var isBufferLow = buffered < Constants.Audio.LowPlaybackBufferDuration;
         var isPaused = !_audioTrack.IsValid() || _audioTrack.PlayState is PlayState.Paused or PlayState.Stopped;
         try {
-            return playerBackend.OnPlaying(played, isPaused, isBufferLow);
+            playerBackend.OnPlaying(played, isPaused, isBufferLow);
         }
         catch {
-            return Task.CompletedTask;
+            // Don't propagate reporting errors
         }
     }
 
     private void NotifyEnded(string? message)
     {
-        if (Interlocked.Exchange(ref _isEnded, 1) == 0)
-            _ = playerBackend.OnEnded(message);
+        if (Interlocked.Exchange(ref _isEnded, 1) != 0)
+            return;
+
+        try {
+            playerBackend.OnEnded(message);
+        }
+        catch {
+            // Ignore
+        }
     }
 
     private bool CanContinuePlaying([NotNullWhen(true)] out AudioTrack? audioTrack)
@@ -339,7 +346,7 @@ internal sealed class AndroidAudioPlaybackEngine(
                 if (!ReferenceEquals(audioTrack, _parent._audioTrack))
                     return; // Something is off, this should never happen
 
-                _ = _parent.NotifyPlaying(_parent._fedSampleCount);
+                _parent.NotifyPlaying(_parent._fedSampleCount);
                 _whenMarkerReachedSource.TrySetResult();
             }
             catch {
@@ -355,9 +362,9 @@ internal sealed class AndroidAudioPlaybackEngine(
                     return; // Something is off, this should never happen
 
                 if (audioTrack.IsValid())
-                    _ = _parent.NotifyPlaying(_parent.GetPlayedSampleCount());
+                    _parent.NotifyPlaying(_parent.GetPlayedSampleCount());
                 else {
-                    _ = _parent.NotifyPlaying(_parent._fedSampleCount);
+                    _parent.NotifyPlaying(_parent._fedSampleCount);
                     _whenMarkerReachedSource.TrySetResult();
                 }
             }

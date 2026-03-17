@@ -7,6 +7,7 @@ using ActualChat.Flows;
 using ActualChat.Queues;
 using ActualChat.Streaming;
 using ActualChat.Transcription;
+using ActualLab.Collections.Internal;
 using ActualLab.Diagnostics;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.Rpc;
@@ -202,7 +203,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         {
             var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
             var context = await GetTranslationContext1().ConfigureAwait(false);
-            var stream = Translator
+            using var stream = Translator
                 .Stream(translationSource.Content, id.Language, context, cancellationToken)
                 .ToTranscriptDiffs()
                 .Memoize(cancellationToken);
@@ -418,7 +419,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         var stopToken = stopTokenSource.Token;
         var transcriptStream = transcript
             .SuppressException<TranscriptDiff, RpcReconnectFailedException>(stopToken)
-            .Memoize(stopToken);
+            .Memoize(NonPoolingArrayPool<TranscriptDiff>.Instance, stopToken);
 
         var worker = _activePublishers.GetOrAdd(translatedStreamId,
             static (_, state) => {

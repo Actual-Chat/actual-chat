@@ -38,7 +38,7 @@ public readonly struct StreamHashInput(Stream stream)
     public async Task<HashOutput32> Blake2s(CancellationToken cancellationToken = default)
     {
         var hasher = Blake2Fast.Blake2s.CreateIncrementalHasher();
-        var buffer = ArrayPool<byte>.Shared.Rent(4096);
+        var buffer = ArrayPools.SharedBytePool.Rent(4096);
         try {
             int readCount;
             while ((readCount = await Stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) > 0)
@@ -49,7 +49,7 @@ public readonly struct StreamHashInput(Stream stream)
             return hash;
         }
         finally {
-            ArrayPool<byte>.Shared.Return(buffer);
+            ArrayPools.SharedBytePool.Return(buffer);
         }
     }
 
@@ -57,7 +57,7 @@ public readonly struct StreamHashInput(Stream stream)
     public async Task<HashOutput64> Blake2b(CancellationToken cancellationToken = default)
     {
         var hasher = Blake2Fast.Blake2b.CreateIncrementalHasher();
-        var buffer = ArrayPool<byte>.Shared.Rent(4096);
+        var buffer = ArrayPools.SharedBytePool.Rent(4096);
         try {
             int readCount;
             while ((readCount = await Stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) > 0)
@@ -68,7 +68,7 @@ public readonly struct StreamHashInput(Stream stream)
             return hash;
         }
         finally {
-            ArrayPool<byte>.Shared.Return(buffer);
+            ArrayPools.SharedBytePool.Return(buffer);
         }
     }
 }

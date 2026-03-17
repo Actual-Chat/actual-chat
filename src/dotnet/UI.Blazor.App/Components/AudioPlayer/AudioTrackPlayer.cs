@@ -36,7 +36,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     }
 
     [JSInvokable]
-    public Task OnPlaying(double offset, bool isPaused, bool isBufferLow)
+    public void OnPlaying(double offset, bool isPaused, bool isBufferLow)
     {
         DebugLog?.LogDebug(
             "[AudioTrackPlayer #{AudioTrackPlayerId}] OnPlayingAt: {Offset}, {IsPaused}, buffer: {IsBufferLow}",
@@ -50,11 +50,10 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                 CancellationToken.None,
                 _authorId, offset, _recordedAtMs, state);
         }
-        return Task.CompletedTask;
     }
 
     [JSInvokable]
-    public Task OnEnded(string? errorMessage)
+    public void OnEnded(string? errorMessage)
     {
         Exception? error = null;
         if (errorMessage != null) {
@@ -72,7 +71,6 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             _reportSyncToJs = false;
         }
         SetEndState(error);
-        return Task.CompletedTask;
     }
 
     protected override async ValueTask ProcessCommand(IPlayerCommand command, CancellationToken cancellationToken)
