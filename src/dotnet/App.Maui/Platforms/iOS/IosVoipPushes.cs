@@ -3,6 +3,7 @@ using ActualChat.Notification;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Diagnostics;
 using ActualLab.Generators;
+using ActualLab.Locking;
 using CoreFoundation;
 using Foundation;
 using PushKit;
@@ -12,8 +13,10 @@ namespace ActualChat.App.Maui;
 
 public class IosVoipPushes : PKPushRegistryDelegate
 {
-    private readonly PKPushRegistry _registry = new (DispatchQueue.MainQueue);
     public static readonly IosVoipPushes Instance = new ();
+
+    private readonly PKPushRegistry _registry = new (DispatchQueue.MainQueue);
+    private readonly AsyncLock _lock = new ();
     private ILogger Log => field ??= StaticLog.For(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.VoipPushes);
 
@@ -34,6 +37,7 @@ public class IosVoipPushes : PKPushRegistryDelegate
 
         Log.LogInformation("DidUpdatePushCredentials: token received, length={Length}", sToken.Length);
         _ = DispatchToBlazor(async c => {
+                using var _1 = await _lock.Lock(CancellationToken.None).ConfigureAwait(false);
                 DebugLog?.LogInformation("DidUpdatePushCredentials: waiting for sign-in");
                 var accountUI = c.GetRequiredService<AccountUI>();
                 await accountUI.WhenReady.ConfigureAwait(false);

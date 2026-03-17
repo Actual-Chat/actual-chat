@@ -15,7 +15,6 @@ public class IosCalls : CXProviderDelegate
     private readonly CXProvider _provider;
     private readonly CXCallController _callController = new();
 
-    [field: AllowNull]
     private ILogger Log => field ??= StaticLog.For<IosCalls>();
     private readonly LruCache<NSUuid, ChatId> _chatIdByCallId = new (10);
     private NSUuid? _activeCallId;
