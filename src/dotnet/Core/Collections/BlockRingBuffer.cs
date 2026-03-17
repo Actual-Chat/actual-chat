@@ -5,7 +5,7 @@ namespace ActualChat.Collections;
 /// <summary>
 /// A lock-free ring buffer optimized for single-producer single-consumer scenarios.
 /// </summary>
-public class BlockRingBuffer<T>: IDisposable
+public class BlockRingBuffer<T> : IDisposable
 {
     private readonly IMemoryOwner<T> _bufferOwner;
     private readonly int _mask;
@@ -226,7 +226,5 @@ public class BlockRingBuffer<T>: IDisposable
             if (_buffer != null && !Memory.IsEmpty)
                 _buffer.CommitConsume(Memory.Length);
         }
-
-        public static implicit operator ReadOnlyMemory<T>(ConsumableBlock block) => block.Memory;
     }
 }

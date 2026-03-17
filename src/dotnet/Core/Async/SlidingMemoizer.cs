@@ -40,7 +40,7 @@ public sealed class SlidingMemoizer<T> : IAsyncMemoizer<T>
         WriteTask = BackgroundTask.Run(() => ReadLoop(source, cancellationToken), cancellationToken);
     }
 
-    public IAsyncEnumerable<T> Replay(CancellationToken cancellationToken)
+    public IAsyncEnumerable<T> Replay(CancellationToken cancellationToken = default)
     {
         var channel = Channel.CreateBounded<T>(new BoundedChannelOptions(_consumerCapacity) {
             SingleReader = true,
@@ -60,6 +60,8 @@ public sealed class SlidingMemoizer<T> : IAsyncMemoizer<T>
         }
         return ReadChannel(channel, cancellationToken);
     }
+
+    // Private methods
 
     private async IAsyncEnumerable<T> ReadChannel(
         Channel<T> channel,

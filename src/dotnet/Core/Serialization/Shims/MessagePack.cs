@@ -1,6 +1,8 @@
 // ReSharper disable once CheckNamespace
 namespace MessagePack;
 
+#pragma warning disable CA1019
+
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
 public sealed class MessagePackObjectAttribute : Attribute
 {
