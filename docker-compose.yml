@@ -68,13 +68,26 @@ services:
     # will start normally.
     profiles:
       - ${DNS_FORWARDER}
-    image: janeczku/go-dnsmasq
-    network_mode: bridge
+    image: 4km3/dnsmasq
+    cap_add:
+      - NET_ADMIN
     ports:
-      - "53:53/udp"
-      - "53:53/tcp"
+#      - "127.0.0.1:53:53/udp"
+#      - "127.0.0.1:53:53/tcp"
+      - "${LOCAL_IP:-0.0.0.0}:53:53/udp"
+      - "${LOCAL_IP:-0.0.0.0}:53:53/tcp"
     expose:
       - 53
+    command:
+      - --address=/local.voxt.ai/${LOCAL_IP:-127.0.0.1}
+      - --address=/local.actual.chat/${LOCAL_IP:-127.0.0.1}
+      - --address=/cdn.local.voxt.ai/${LOCAL_IP:-127.0.0.1}
+      - --address=/cdn.local.actual.chat/${LOCAL_IP:-127.0.0.1}
+      - --address=/media.local.voxt.ai/${LOCAL_IP:-127.0.0.1}
+      - --address=/media.local.actual.chat/${LOCAL_IP:-127.0.0.1}
+      - --address=/embedded.voxt.ai/${LOCAL_IP:-127.0.0.1}
+      - --server=8.8.8.8
+      - --server=1.1.1.1
   smtp4dev:
     image: rnwood/smtp4dev:3.2.0-ci20221023104
     ports:
