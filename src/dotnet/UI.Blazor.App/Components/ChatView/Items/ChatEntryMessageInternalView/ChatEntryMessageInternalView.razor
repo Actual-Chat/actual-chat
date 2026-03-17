@@ -71,7 +71,8 @@
              && sm.ChangedText.IsNullOrEmpty()
              && sm.AnimatedText.IsNullOrEmpty()
              && IsFirstAuthorMessage
-             && !IsChatLanguageSelected) {
+             && !IsChatLanguageSelected
+             && !HasAuthorActiveTranscription()) {
             <StreamingEntryBadge ChatId="@ChatContext.ChatId" IsChatLanguageSelected="@false"/>
         }
         @if (!sm.RetainedText.IsNullOrEmpty()) {
@@ -137,6 +138,18 @@
     private ChatUI ChatUI => Hub.ChatUI;
     private TranslationUI TranslationUI => Hub.TranslationUI;
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
+
+    private bool HasAuthorActiveTranscription() {
+        var authorId = Message.Entry.AuthorId;
+        var current = Message.PreviousMessage;
+        for (var i = 0; i < 50 && current != null; i++, current = current.PreviousMessage) {
+            if (current is ChatEntryMessage em
+                && em.Entry.AuthorId == authorId
+                && em.Entry.IsContentStreaming)
+                return true;
+        }
+        return false;
+    }
 
     private ElementReference Ref { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
