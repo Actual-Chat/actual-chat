@@ -1,5 +1,6 @@
 using ActualChat.App.Maui.Services;
 using ActualChat.Notification;
+using ActualChat.UI.Blazor.Services;
 using ActualLab.Diagnostics;
 using ActualLab.Generators;
 using CoreFoundation;
@@ -32,11 +33,20 @@ public class IosVoipPushes : PKPushRegistryDelegate
         }
 
         Log.LogInformation("DidUpdatePushCredentials: token received, length={Length}", sToken.Length);
-        _ = DispatchToBlazor(c => {
-            DebugLog?.LogInformation("DidUpdatePushCredentials: refreshing token");
-            var mauiNotifications = c.GetRequiredService<MauiNotifications>();
-            return mauiNotifications.RefreshNotificationToken(sToken, DeviceType.iOSApp, NotificationChannel.Call);
-        }, "DidUpdatePushCredentials");
+        _ = DispatchToBlazor(async c => {
+                DebugLog?.LogInformation("DidUpdatePushCredentials: waiting for sign-in");
+                var accountUI = c.GetRequiredService<AccountUI>();
+                await accountUI.WhenReady.ConfigureAwait(false);
+                await accountUI.OwnAccount.Computed
+                    .When(x => !x.IsGuest, CancellationToken.None) // TODO: inherit from ProcessorBase and use StopToken
+                    .ConfigureAwait(false);
+
+                DebugLog?.LogInformation("DidUpdatePushCredentials: refreshing token");
+                var mauiNotifications = c.GetRequiredService<MauiNotifications>();
+                await mauiNotifications.RefreshNotificationToken(sToken, DeviceType.iOSApp, NotificationChannel.Call)
+                    .ConfigureAwait(false);
+            },
+            "DidUpdatePushCredentials");
     }
 
     public override void DidReceiveIncomingPush(
