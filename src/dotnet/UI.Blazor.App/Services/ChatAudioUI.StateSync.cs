@@ -426,11 +426,42 @@ public partial class ChatAudioUI
         }
 
         async Task WhenIdle(CancellationToken ct) {
-            SetStopListeningAt(chatId, cpuClock.Now + options.PreCountdownTimeout + options.IdleTimeout);
-            var idleBoundaries = ObserveStreamingIdleBoundaries(chatId, options, ct);
-            await foreach (var serverStopAt in idleBoundaries.ConfigureAwait(false))
-                if (serverStopAt.HasValue)
-                    SetStopListeningAt(chatId, serverStopAt.Value.Convert(serverClock, cpuClock));
+            var cActivity = await Computed
+                .Capture(() => LiveStreamUI.GetLastActivityServerTime(chatId, ct), ct)
+                .ConfigureAwait(false);
+
+            while (!ct.IsCancellationRequested) {
+                var lastActivityTime = cActivity.Value;
+                if (lastActivityTime == null) {
+                    // Activity ongoing — no timer
+                    SetStopListeningAt(chatId, null);
+                    cActivity = await cActivity
+                        .When(x => x != null, ct)
+                        .ConfigureAwait(false);
+                    continue;
+                }
+
+                // Idle — compute stop time
+                var stopAt = lastActivityTime.Value + options.IdleTimeout;
+                var remaining = (stopAt - serverClock.Now).Positive();
+                if (remaining <= Epsilon)
+                    return; // Must stop listening
+
+                SetStopListeningAt(chatId, stopAt.Convert(serverClock, cpuClock));
+
+                // Wait for either: activity resumes, or idle timeout expires
+                using var delayCts = ct.CreateLinkedTokenSource();
+                var whenActivityChanges = cActivity.WhenInvalidated(ct);
+                var whenTimeout = Task.Delay(remaining, delayCts.Token);
+                await Task.WhenAny(whenActivityChanges, whenTimeout).ConfigureAwait(false);
+                delayCts.CancelAndDisposeSilently();
+
+                if (whenTimeout.IsCompletedSuccessfully)
+                    return; // Idle timeout expired — stop listening
+
+                // Activity state changed — update and loop
+                cActivity = await cActivity.Update(ct).ConfigureAwait(false);
+            }
         }
     }
 
