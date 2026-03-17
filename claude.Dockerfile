@@ -2,7 +2,7 @@
 # Supports: ActualLab.Fusion, ActualLab.Fusion.Samples, ActualChat
 # Includes: .NET 10 SDK, .NET 9 SDK, Node.js 20, Claude Code CLI
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0.200
+FROM mcr.microsoft.com/dotnet/sdk:10.0.201
 
 # Timezone setup
 ARG TZ=Etc/UTC
