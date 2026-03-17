@@ -108,15 +108,15 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
         async IAsyncEnumerable<IMemoryOwner<float>> Enumerate([EnumeratorCancellation] CancellationToken ct)
         {
             try {
-                var frameSize = Constants.Audio.OpusFrameLength;
+                const int frameSize = Constants.Audio.OpusFrameLength;
                 while (!ct.IsCancellationRequested) {
-                    if (!buffer.TryRead(frameSize, out var rd, out var whenReady)) {
+                    var owner = ArrayPools.SharedFloatPool.LeaseArrayOwner(frameSize, true);
+                    if (!buffer.TryRead(owner.Span, out var whenReady)) {
+                        owner.Dispose();
                         await whenReady.WaitAsync(ct).ConfigureAwait(false);
                         continue;
                     }
-                    var block = ArrayPools.SharedFloatPool.LeaseArrayOwner(frameSize);
-                    rd.Span[..frameSize].CopyTo(block.Span);
-                    yield return block;
+                    yield return owner;
                 }
             }
             finally {

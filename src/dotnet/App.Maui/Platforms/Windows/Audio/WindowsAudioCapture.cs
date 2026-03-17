@@ -59,7 +59,7 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
         var microphoneBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
         var loopbackBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
 
-        var apmFrameSize = Constants.Audio.RecordingSampleRate
+        const int apmFrameSize = Constants.Audio.RecordingSampleRate
             / 1000
             * Constants.Audio.ApmFrameDurationMs
             * Constants.Audio.Channels;
@@ -129,25 +129,32 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
                 while (!processingToken.IsCancellationRequested) {
                     // Check if we have enough microphone samples to enforce the delay
                     if (microphoneBuffer.Count < apmFrameSize + MicDelaySamples) {
-                        if (!microphoneBuffer.TryRead(apmFrameSize, out _, out var whenMicReady))
-                            await whenMicReady.WaitAsync(processingToken).ConfigureAwait(false);
+                        var whenReady = microphoneBuffer.WhenReadyToRead();
+                        if (whenReady != null)
+                            await whenReady.WaitAsync(processingToken).ConfigureAwait(false);
+                        else
+                            await Task.Delay(1, processingToken).ConfigureAwait(false);
                         continue;
                     }
 
                     // Pull delayed microphone data
-                    if (!microphoneBuffer.TryRead(apmFrameSize, out var micData, out var micWhenReady)) {
+                    var micArray = ArrayPools.SharedFloatPool.Rent(apmFrameSize);
+                    var micIn = micArray.AsSpan(0, apmFrameSize);
+                    if (!microphoneBuffer.TryRead(micIn, out var micWhenReady)) {
+                        ArrayPools.SharedFloatPool.Return(micArray);
                         await micWhenReady.WaitAsync(processingToken).ConfigureAwait(false);
                         continue;
                     }
 
-                    var micIn = micData.Span;
                     var outArray = ArrayPools.SharedFloatPool.Rent(apmFrameSize);
                     var outSpan = outArray.AsSpan(0, apmFrameSize);
 
                     // Pull loopback data (use the most recent or zeros)
-                    var hasLoopback = loopbackBuffer.TryRead(apmFrameSize, out var loopData, out _);
+                    var loopArray = ArrayPools.SharedFloatPool.Rent(apmFrameSize);
+                    var loopSpan = loopArray.AsSpan(0, apmFrameSize);
+                    var hasLoopback = loopbackBuffer.TryRead(loopSpan, out _);
                     var loopIn = hasLoopback
-                        ? loopData.Span[..apmFrameSize]
+                        ? loopSpan
                         : emptyMemory.Span;
 
                     // Feed loopback data to APM
@@ -170,7 +177,9 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
 
                     // Push processed output (fire-and-forget: drop if full)
                     outputBuffer.TryWrite(outSpan);
+                    ArrayPools.SharedFloatPool.Return(micArray);
                     ArrayPools.SharedFloatPool.Return(outArray);
+                    ArrayPools.SharedFloatPool.Return(loopArray);
                 }
             }
             catch (OperationCanceledException) { /* expected */ }
@@ -204,15 +213,15 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
         async IAsyncEnumerable<IMemoryOwner<float>> Enumerate([EnumeratorCancellation] CancellationToken ct)
         {
             try {
-                var frameLen = Constants.Audio.OpusFrameLength;
+                const int frameLen = Constants.Audio.OpusFrameLength;
                 while (!ct.IsCancellationRequested) {
-                    if (!outputBuffer.TryRead(frameLen, out var data, out var whenReady)) {
+                    var owner = ArrayPools.SharedFloatPool.LeaseArrayOwner(frameLen, true);
+                    if (!outputBuffer.TryRead(owner.Span, out var whenReady)) {
+                        owner.Dispose();
                         await whenReady.WaitAsync(ct).ConfigureAwait(false);
                         continue;
                     }
-                    var block = ArrayPools.SharedFloatPool.LeaseArrayOwner(frameLen);
-                    data.Span.CopyTo(block.Span);
-                    yield return block;
+                    yield return owner;
                 }
             }
             finally {

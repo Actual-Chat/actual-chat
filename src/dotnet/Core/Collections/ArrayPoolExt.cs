@@ -10,9 +10,12 @@ public static class ArrayPoolExt
         return new ArrayLease<T>(pool, array, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
     }
 
-    public static ArrayOwner<T> LeaseArrayOwner<T>(this ArrayPool<T> pool, int minLength)
+    public static ArrayOwner<T> LeaseArrayOwner<T>(this ArrayPool<T> pool, int minLength, bool isExactSize = false)
     {
         var array = pool.Rent(minLength);
-        return ArrayOwner.New(pool, array, array.Length, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
+        return ArrayOwner.New(pool,
+            array,
+            isExactSize ? minLength : array.Length,
+            RuntimeHelpers.IsReferenceOrContainsReferences<T>());
     }
 }
