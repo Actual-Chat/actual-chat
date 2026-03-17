@@ -15,7 +15,6 @@
     }
 
     _rendered = m;
-    var isSimpleMarkup = markup is PlainTextMarkup or PlayableTextMarkup;
     var streamingCls = "";
     if (!oldStreaming && !m.IsStreaming) {
         streamingCls = "not-streaming";
@@ -108,14 +107,9 @@
             </div>
         }
         <CascadingValue Value="@entry" IsFixed="true">
-            @if (isSimpleMarkup) {
-                <CascadingValue Value="@statusFragment">
-                    <MarkupView Markup="@markup"/>
-                </CascadingValue>
-            } else {
+            <CascadingValue Value="@statusFragment">
                 <MarkupView Markup="@markup"/>
-                @statusFragment
-            }
+            </CascadingValue>
         </CascadingValue>
     }
 </div>
