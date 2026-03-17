@@ -17,7 +17,7 @@ public sealed class ReplayStreamProcessor : WorkerBase
     public Moment StartAt { get; }
     public TimeSpan Offset { get; }
 
-    public event Action<LiveStreamInfo, IAsyncEnumerable<byte[]>>? StreamStarted;
+    public event Action<LiveStreamInfo, TimeSpan, IAsyncEnumerable<byte[]>>? StreamStarted;
 
     public ReplayStreamProcessor(
         IServiceProvider services,
@@ -51,7 +51,7 @@ public sealed class ReplayStreamProcessor : WorkerBase
 
             var demuxer = new LiveStreamDemuxer(stream, demuxerLog, cancellationToken.CreateLinkedTokenSource());
             await using var _ = demuxer.ConfigureAwait(false);
-            demuxer.StreamStarted += (info, frames) => StreamStarted?.Invoke(info, frames);
+            demuxer.StreamStarted += (info, playsAt, frames) => StreamStarted?.Invoke(info, playsAt, frames);
 
             Log.LogInformation("Demuxing replay stream for {ChatId}...", ChatId);
             await demuxer.Run().ConfigureAwait(false);

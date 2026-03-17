@@ -35,10 +35,66 @@ public sealed class ChatReplayer : ChatPlayer
     {
         // Read offset from ReplayState (set by ChatAudioUI.StartReplay)
         var replayState = ChatAudioUI?.ReplayState.Value;
-        var offset = replayState is { ChatId: var rsChat } && rsChat == ChatId
+        var currentOffset = replayState is { ChatId: var rsChat } && rsChat == ChatId
             ? replayState.Offset
             : TimeSpan.Zero;
 
+        while (true) {
+            var sleepDurationAtStart = SleepDuration.Value;
+            var pauseDurationAtStart = Playback.TotalPauseDuration.Value;
+            var playbackStartedAt = CpuTimestamp.Now;
+
+            using var sleepCts = cancellationToken.CreateLinkedTokenSource();
+
+            // Watch for sleep duration change in background → abort playback
+            _ = BackgroundTask.Run(async () => {
+                try {
+                    await SleepDuration.Computed
+                        .When(x => x != sleepDurationAtStart, cancellationToken)
+                        .ConfigureAwait(false);
+                    Log.LogInformation("Sleep detected, aborting replay for restart");
+                    sleepCts.Cancel();
+                }
+                catch {
+                    // Expected on normal completion
+                }
+            }, CancellationToken.None);
+
+            try {
+                await PlayCore(entryPlayer, minPlayAt, currentOffset,
+                    playbackStartedAt, sleepDurationAtStart, pauseDurationAtStart,
+                    sleepCts.Token).ConfigureAwait(false);
+                return; // Normal completion
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
+                // Sleep triggered restart — compute how much audio time has elapsed
+                var wallElapsed = playbackStartedAt.Elapsed;
+                var sleepDelta = SleepDuration.Value - sleepDurationAtStart;
+                var pauseDelta = Playback.TotalPauseDuration.Value - pauseDurationAtStart;
+                var audioPlayed = (wallElapsed - sleepDelta - pauseDelta).Positive();
+
+                Log.LogInformation(
+                    "Restarting replay after sleep: audioPlayed={AudioPlayed}, sleepDelta={SleepDelta}",
+                    audioPlayed, sleepDelta);
+
+                // Abort current tracks
+                await Playback.Abort().WhenCompleted.SilentAwait(false);
+
+                // Advance offset by the amount of audio played
+                currentOffset += audioPlayed;
+            }
+        }
+    }
+
+    private async Task PlayCore(
+        ChatEntryPlayer entryPlayer,
+        Moment minPlayAt,
+        TimeSpan offset,
+        CpuTimestamp playbackStartedAt,
+        TimeSpan sleepDurationAtStart,
+        TimeSpan pauseDurationAtStart,
+        CancellationToken cancellationToken)
+    {
         Log.LogInformation("Starting server-streamed replay in chat {ChatId} from {MinPlayAt}, offset={Offset}",
             ChatId, minPlayAt, offset);
         var chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(false);
@@ -53,19 +109,38 @@ public sealed class ChatReplayer : ChatPlayer
             Hub.Services, Session, ChatId, minPlayAt, offset, cancellationToken.CreateLinkedTokenSource());
         await using var _ = processor.ConfigureAwait(false);
 
-        processor.StreamStarted += (info, frames) =>
-            OnStreamStarted(entryPlayer, info, frames, cancellationToken);
+        var trackTasks = new ConcurrentBag<Task>();
+        processor.StreamStarted += (info, playsAt, frames) => {
+            var task = OnStreamStarted(entryPlayer, info, playsAt, frames,
+                playbackStartedAt, sleepDurationAtStart, pauseDurationAtStart,
+                cancellationToken);
+            trackTasks.Add(task);
+        };
+
+        // Wait for server to finish streaming all entries
         await processor.Run().ConfigureAwait(false);
+
+        // Wait for all tracks to finish playing (but respect cancellation)
+        await Task.WhenAll(trackTasks).WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private void OnStreamStarted(
+    private Task OnStreamStarted(
         ChatEntryPlayer entryPlayer,
         LiveStreamInfo streamInfo,
+        TimeSpan playsAt,
         IAsyncEnumerable<byte[]> audioFrames,
+        CpuTimestamp playbackStartedAt,
+        TimeSpan sleepDurationAtStart,
+        TimeSpan pauseDurationAtStart,
         CancellationToken cancellationToken)
     {
-        _ = BackgroundTask.Run(async () => {
+        return BackgroundTask.Run(async () => {
             try {
+                // Pace: wait until the right playback time
+                await WaitUntilPlaybackTime(playsAt,
+                    playbackStartedAt, sleepDurationAtStart, pauseDurationAtStart,
+                    cancellationToken).ConfigureAwait(false);
+
                 if (!await CanContinuePlayback(cancellationToken).ConfigureAwait(false))
                     return;
 
@@ -104,7 +179,9 @@ public sealed class ChatReplayer : ChatPlayer
                 }
 
                 var playAt = Clocks.CpuClock.Now;
-                entryPlayer.Playback.Play(trackInfo, audioSource, playAt, cancellationToken);
+                var process = entryPlayer.Playback.Play(trackInfo, audioSource, playAt, cancellationToken);
+                // Wait for this track to finish playing
+                await process.WhenCompleted.ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                 // Expected
@@ -113,6 +190,37 @@ public sealed class ChatReplayer : ChatPlayer
                 Log.LogWarning(e, "Error processing replay stream {StreamId}", streamInfo.StreamId);
             }
         }, CancellationToken.None);
+    }
+
+    private async Task WaitUntilPlaybackTime(
+        TimeSpan playsAt,
+        CpuTimestamp playbackStartedAt,
+        TimeSpan sleepDurationAtStart,
+        TimeSpan pauseDurationAtStart,
+        CancellationToken cancellationToken)
+    {
+        while (true) {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Wait for unpause first
+            await Playback.IsPaused.Computed
+                .When(x => !x, cancellationToken)
+                .ConfigureAwait(false);
+
+            var wallElapsed = playbackStartedAt.Elapsed;
+            var sleepDelta = SleepDuration.Value - sleepDurationAtStart;
+            var pauseDelta = Playback.TotalPauseDuration.Value - pauseDurationAtStart;
+            var playbackTime = wallElapsed - sleepDelta - pauseDelta;
+
+            var delay = playsAt - playbackTime;
+            if (delay <= TimeSpan.Zero)
+                return;
+
+            // Wait with awareness of device sleep (re-checks on wake)
+            await Hub.DeviceAwakeUI
+                .SleepUntil(Clocks.CpuClock, Clocks.CpuClock.Now + delay, cancellationToken)
+                .ConfigureAwait(false);
+        }
     }
 
     private AudioSource CreateAudioSource(

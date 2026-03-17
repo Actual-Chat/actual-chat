@@ -56,7 +56,7 @@ public sealed class ChatListener : ChatPlayer
         await using var _ = processor.ConfigureAwait(false);
 
         processor.StreamStarted +=
-            (info, frames) => OnStreamStarted(entryPlayer, state, info, frames, cancellationToken);
+            (info, _, frames) => OnStreamStarted(entryPlayer, state, info, frames, cancellationToken);
         await processor.Run().ConfigureAwait(false);
     }
 

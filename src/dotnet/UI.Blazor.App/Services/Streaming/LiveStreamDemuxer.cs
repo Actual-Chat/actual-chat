@@ -20,7 +20,7 @@ public sealed class LiveStreamDemuxer(
     private ILogger? Log { get; } = log;
     private ILogger? DebugLog { get; } = DebugMode ? log : null;
 
-    public event Action<LiveStreamInfo, IAsyncEnumerable<byte[]>>? StreamStarted;
+    public event Action<LiveStreamInfo, TimeSpan, IAsyncEnumerable<byte[]>>? StreamStarted;
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
@@ -43,7 +43,7 @@ public sealed class LiveStreamDemuxer(
                     // readable until the channel is naturally completed (when StreamEnd is received).
                     // Using StopToken would cancel the enumeration when the demuxer stops.
                     var audioFrames = ToAsyncEnumerable(channel.Reader, CancellationToken.None);
-                    StreamStarted?.Invoke(start.StreamInfo, audioFrames);
+                    StreamStarted?.Invoke(start.StreamInfo, start.PlaysAt, audioFrames);
                     break;
                 case LiveAudioFrame frame:
                     if (channel is null)
