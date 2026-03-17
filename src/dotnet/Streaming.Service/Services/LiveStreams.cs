@@ -48,7 +48,7 @@ public class LiveStreams(IServiceProvider services) : ILiveStreams
         }
 
         var stream = ToAsyncEnumerable(muxer.Output, key, cancellationToken);
-        return RpcStream.New(stream, isReconnectable: false);
+        return RpcStream.New(stream, allowReconnect: false);
     }
 
     public async Task ChangeSettings(

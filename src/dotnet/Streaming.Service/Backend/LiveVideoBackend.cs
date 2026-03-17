@@ -60,7 +60,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
 
         var chatState = GetChatState(chatId);
         var observations = chatState.ObserveStreams(linkedCts.Token);
-        return RpcStream.New(observations, isReconnectable: false);
+        return RpcStream.New(observations, allowReconnect: false);
     }
 
     public virtual Task RegisterActiveStream(ChatId chatId, VideoStreamInfo streamInfo, CancellationToken cancellationToken)
@@ -107,7 +107,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
 
         var chatState = GetChatState(chatId);
         var observations = chatState.ObserveSupportedDecoderCodecs(linkedCts.Token);
-        return RpcStream.New(observations, isReconnectable: false);
+        return RpcStream.New(observations, allowReconnect: false);
     }
 
     public virtual Task RegisterVideoStreamMember(ChatId chatId, string sessionId, ApiArray<string> supportedDecoderCodecs, CancellationToken cancellationToken)

@@ -52,7 +52,7 @@ public partial class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
 
         var chatState = GetChatState(chatId);
         var observations = chatState.ObserveStreams(linkedCts.Token);
-        return RpcStream.New(observations, isReconnectable: false);
+        return RpcStream.New(observations, allowReconnect: false);
     }
 
     public virtual async Task RegisterActiveStream(ChatId chatId, LiveStreamInfo activeStream, CancellationToken cancellationToken)

@@ -102,7 +102,7 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         var remoteStream = await VideoStreamingBackend.GetVideo(streamId, skipTo, peerId, cancellationToken).ConfigureAwait(false);
         return remoteStream is null
             ? null
-            : RpcStream.New(remoteStream, isReconnectable: false);
+            : RpcStream.New(remoteStream, allowReconnect: false);
     }
 
     public async Task<RpcStream<VideoQualityPreset>> ObserveStreamQualityRequests(

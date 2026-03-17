@@ -131,7 +131,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         if (_latencyStates.TryGetValue(streamId, out var latencyState)) {
             Log.LogInformation("ObserveStreamQualityRequests: StreamId={StreamId} found", streamId);
             var directives = latencyState.ObserveQualityDirectives(cancellationToken);
-            return Task.FromResult(RpcStream.New(directives, isReconnectable: false));
+            return Task.FromResult(RpcStream.New(directives, allowReconnect: false));
         }
 
         // Stream not found — return a stream with just the default quality
@@ -141,7 +141,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             yield return VideoQualityPreset.High;
             await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, cancellationToken).ConfigureAwait(false);
         }
-        return Task.FromResult(RpcStream.New(DefaultStream(), isReconnectable: false));
+        return Task.FromResult(RpcStream.New(DefaultStream(), allowReconnect: false));
     }
 
     // Private methods
