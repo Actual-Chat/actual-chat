@@ -710,51 +710,43 @@ body.wide .error-container {
 }
 .list-view-layout:has(.header-activity-panel-wrapper) .bottom-sheet,
 .bottom-sheet.dragging {
-    @apply opacity-80 visible;
+    @apply opacity-100 visible;
+}
+.list-view-layout:has(.header-activity-panel-wrapper) .bottom-sheet::before,
+.bottom-sheet.dragging::before {
+    @apply opacity-80;
 }
 .bottom-sheet.dragging {
     transition: none;
 }
 /* When pinned, hide the bottom sheet */
 
-/* Pin/Unpin badges - inside header-activity-panel-wrapper, scale to cover panel */
-.header-activity-panel-wrapper .pin-badge,
-.header-activity-panel-wrapper .unpin-badge {
-    @apply absolute z-20 inset-0;
-    @apply flex items-center justify-center gap-x-2;
-    @apply text-sm font-medium whitespace-nowrap;
-    @apply opacity-0 invisible;
+/* Pin/Unpin badges - oval badges above bottom-sheet bar, scaled via JS */
+.bottom-sheet .pin-badge,
+.bottom-sheet .unpin-badge {
+    @apply absolute left-1/2 bottom-2 z-20;
     @apply pointer-events-none;
-    @apply bg-[var(--violet-50-70)];
-    @apply text-white;
-    backdrop-filter: blur(4px);
-    transform: scale(0);
-    transform-origin: center center;
-    transition: opacity 0.15s ease-out, visibility 0.15s ease-out, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    @apply opacity-0 invisible;
+    transform: translateX(-50%) scale(0);
+    transform-origin: center bottom;
 }
-.header-activity-panel-wrapper .pin-badge .c-badge-content,
-.header-activity-panel-wrapper .unpin-badge .c-badge-content {
+.bottom-sheet .pin-badge .c-badge-content,
+.bottom-sheet .unpin-badge .c-badge-content {
     @apply flex items-center justify-center gap-x-1;
-    @apply pl-2 pr-4;
+    @apply px-4 py-1.5;
     @apply rounded-full;
-    @apply overflow-hidden;
-    @apply bg-[var(--white-20)];
+    @apply text-sm font-medium whitespace-nowrap;
     @apply text-white;
+    @apply border border-separator;
+    @apply shadow-sm;
+    background: linear-gradient(to left, color-mix(in srgb, var(--indigo-60), black 20%), color-mix(in srgb, var(--magenta-60), black 20%));
 }
-.header-activity-panel-wrapper .pin-badge i,
-.header-activity-panel-wrapper .unpin-badge i {
+.bottom-sheet .pin-badge i,
+.bottom-sheet .unpin-badge i {
     @apply text-base;
-}
-.header-activity-panel-wrapper .pin-badge.show,
-.header-activity-panel-wrapper .unpin-badge.show {
-    @apply opacity-100 visible;
-    transform: scale(1);
 }
 
 /* Activity panel pinned state - show it's interactive */
 .list-view-layout:has(.layout-header.pinned) .header-activity-panel-wrapper .chat-activity-panel {
     @apply cursor-pointer;
-}
-.list-view-layout:has(.layout-header.pinned) .header-activity-panel-wrapper .chat-activity-panel.pressing {
-    @apply opacity-80;
 }

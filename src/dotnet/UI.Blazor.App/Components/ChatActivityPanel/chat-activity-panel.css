@@ -168,13 +168,13 @@ body.hoverable .chat-activity-panel .btn-h.listening:hover,
     @apply opacity-30;
     fill: none;
     stroke: var(--primary);
-    stroke-width: 1.5;
+    stroke-width: 0.75;
     stroke-linecap: round;
 }
 .chat-activity-panel .listening-timer .timer-ring-circle {
     fill: none;
     stroke: var(--primary);
-    stroke-width: 1.5;
+    stroke-width: 0.75;
     stroke-linecap: round;
     stroke-dasharray: 100.531;
     stroke-dashoffset: 0;
@@ -411,10 +411,4 @@ body.narrow .chat-activity-panel.listening:after {
 .header-activity-panel-wrapper.dragging .chat-activity-panel {
     @apply z-button;
     transition: none;
-}
-
-/* Visual feedback when unpin mode is active */
-.chat-activity-panel.unpin-active {
-    @apply scale-105;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }

@@ -71,13 +71,12 @@
             var remainingSeconds = m.StopListeningAt.HasValue
                 ? Math.Max(0, (m.StopListeningAt.Value - Hub.Clocks.CpuClock.Now).TotalSeconds)
                 : 0;
-            var hasRing = m.StopListeningAt.HasValue || IsListening;
             var isCountingDown = remainingSeconds > 0 && remainingSeconds <= countdownSeconds;
             var dashOffset = isCountingDown
                 ? (circumference * (1 - remainingSeconds / countdownSeconds)).ToString("F2", CultureInfo.InvariantCulture)
                 : "0";
             <div class="listening-timer">
-                @if (hasRing) {
+                @if (isCountingDown) {
                     <svg class="timer-ring" viewBox="0 0 36 36"
                          data-bubble="@(BubbleRef.New<ListeningTimerBubble>())"
                          data-bubble-priority="115"
