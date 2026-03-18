@@ -9,8 +9,8 @@
 }
 
 <div @ref="Ref" class="video-recorder @recordingCls">
-    <canvas class="call-video"></canvas>
-    @if (m.VideoState.IsRecording) {
+    <canvas class="call-video" @onclick="@(m.VideoState.IsRecording && RemoteStreamCount > 0 ? OnSettingsClick : null)"></canvas>
+    @if (m.VideoState.IsRecording && RemoteStreamCount == 0) {
         <HeaderButton Class="settings-btn" Click="@OnSettingsClick">
             <i class="icon-settings text-lg"></i>
         </HeaderButton>

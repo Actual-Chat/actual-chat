@@ -102,6 +102,7 @@ body.hoverable .btn-h.expand-btn:hover {
     @apply bottom-2 right-2;
     @apply z-10;
     @apply rounded-lg overflow-hidden;
+    @apply cursor-pointer;
     aspect-ratio: 16 / 9;
     border: 2px solid var(--white-40);
 }
