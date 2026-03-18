@@ -98,13 +98,18 @@ body.hoverable .btn-h.expand-btn:hover {
 }
 .video-panel.has-remote-streams .video-recorder {
     @apply absolute;
-    @apply h-1/4;
-    @apply bottom-2 right-2;
+    @apply bottom-0 right-2;
     @apply z-10;
     @apply rounded-lg overflow-hidden;
     @apply cursor-pointer;
-    aspect-ratio: 16 / 9;
+    width: 88px;
+    height: 88px;
+    transform: translateY(50%);
     border: 2px solid var(--white-40);
+}
+body.wide .video-panel.has-remote-streams .video-recorder {
+    width: 160px;
+    height: 160px;
 }
 .video-panel .remote-streams canvas.remote-video {
     @apply w-full h-full;

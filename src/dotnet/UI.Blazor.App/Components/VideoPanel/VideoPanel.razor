@@ -16,11 +16,6 @@
 @if (_rendered) {
     <div @ref="Ref" class="video-panel @firstOpenCls @cls @recordingCls @remoteStreamsCls">
         <div class="c-content">
-            <VideoRecorder
-                PendingCameraDeviceId="@PendingCameraDeviceId"
-                PendingBlurEnabled="@PendingBlurEnabled"
-                RemoteStreamCount="@m.RemoteStreams.Length"
-                AutoStart="@_autoStartPending" />
             <div class="remote-streams">
                 @foreach (var streamInfo in m.RemoteStreams) {
                     var name = m.AuthorNames.GetValueOrDefault(streamInfo.AuthorId, "");
@@ -34,6 +29,11 @@
                 <i class="icon-expand text-lg"></i>
             </HeaderButton>
         </div>
+        <VideoRecorder
+            PendingCameraDeviceId="@PendingCameraDeviceId"
+            PendingBlurEnabled="@PendingBlurEnabled"
+            RemoteStreamCount="@m.RemoteStreams.Length"
+            AutoStart="@_autoStartPending" />
     </div>
 }
 
