@@ -35,7 +35,7 @@ public class ChatVideoUIStateTest(ChatAppHostFixture fixture, ITestOutputHelper 
         authorIds.Should().BeEmpty();
 
         // Register Bob's video stream
-        var streamId = StreamId.New(new NodeRef(Generate.Option));
+        var streamId = StreamId.New(AppHost.Services.MeshWatcher().ThisNode.Ref);
         var streamInfo = new VideoStreamInfo(
             streamId,
             chatId,
@@ -78,7 +78,7 @@ public class ChatVideoUIStateTest(ChatAppHostFixture fixture, ITestOutputHelper 
         computed.IsConsistent().Should().BeTrue();
 
         // Register a video stream — computed should become inconsistent
-        var streamId = StreamId.New(new NodeRef(Generate.Option));
+        var streamId = StreamId.New(AppHost.Services.MeshWatcher().ThisNode.Ref);
         var streamInfo = new VideoStreamInfo(
             streamId,
             chatId,
@@ -140,7 +140,7 @@ public class ChatVideoUIStateTest(ChatAppHostFixture fixture, ITestOutputHelper 
         show.Should().BeTrue("recording is on → panel should show");
 
         // Bob also starts a video stream
-        var streamId = StreamId.New(new NodeRef(Generate.Option));
+        var streamId = StreamId.New(AppHost.Services.MeshWatcher().ThisNode.Ref);
         var streamInfo = new VideoStreamInfo(
             streamId,
             chatId,

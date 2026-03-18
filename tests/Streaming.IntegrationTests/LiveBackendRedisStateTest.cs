@@ -76,7 +76,7 @@ public class LiveBackendRedisStateTest(AppHostFixture fixture, ITestOutputHelper
     public async Task VideoBackend_ShouldPersistStreamToRedis()
     {
         var (chatId, liveBackend) = await CreateChatWithVideoBackend("VideoPersist");
-        var streamId = StreamId.New(new NodeRef(Generate.Option));
+        var streamId = StreamId.New(AppHost.Services.MeshWatcher().ThisNode.Ref);
         var authorId = AuthorId.New(chatId, 1);
         var streamInfo = new VideoStreamInfo(streamId, chatId, authorId,
             new VideoFormat { Codec = "avc1", Width = 640, Height = 480 },
@@ -97,7 +97,7 @@ public class LiveBackendRedisStateTest(AppHostFixture fixture, ITestOutputHelper
     public async Task VideoBackend_ShouldRemoveStreamFromRedisOnUnregister()
     {
         var (chatId, liveBackend) = await CreateChatWithVideoBackend("VideoRemove");
-        var streamId = StreamId.New(new NodeRef(Generate.Option));
+        var streamId = StreamId.New(AppHost.Services.MeshWatcher().ThisNode.Ref);
         var streamInfo = new VideoStreamInfo(streamId, chatId, AuthorId.New(chatId, 1),
             new VideoFormat { Codec = "avc1", Width = 640, Height = 480 },
             Clocks.SystemClock.Now);
@@ -143,7 +143,7 @@ public class LiveBackendRedisStateTest(AppHostFixture fixture, ITestOutputHelper
         var (chatId, liveBackend) = await CreateChatWithVideoBackend("VideoRecover");
 
         // Register a stream
-        var streamId = StreamId.New(new NodeRef(Generate.Option));
+        var streamId = StreamId.New(AppHost.Services.MeshWatcher().ThisNode.Ref);
         var authorId = AuthorId.New(chatId, 1);
         var streamInfo = new VideoStreamInfo(streamId, chatId, authorId,
             new VideoFormat { Codec = "avc1", Width = 640, Height = 480 },

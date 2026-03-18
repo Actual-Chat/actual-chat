@@ -25,7 +25,7 @@ public class VideoStreamActivityPanelTest(ChatAppHostFixture fixture, ITestOutpu
         bobAuthor.Should().NotBeNull();
 
         // Create a video stream for Bob
-        var streamId = StreamId.New(new NodeRef(Generate.Option));
+        var streamId = StreamId.New(AppHost.Services.MeshWatcher().ThisNode.Ref);
         var streamInfo = new VideoStreamInfo(
             streamId,
             chatId,
@@ -68,7 +68,7 @@ public class VideoStreamActivityPanelTest(ChatAppHostFixture fixture, ITestOutpu
         computed.IsConsistent().Should().BeTrue();
 
         // Register a video stream
-        var streamId = StreamId.New(new NodeRef(Generate.Option));
+        var streamId = StreamId.New(AppHost.Services.MeshWatcher().ThisNode.Ref);
         var streamInfo = new VideoStreamInfo(
             streamId,
             chatId,
@@ -120,7 +120,7 @@ public class VideoStreamActivityPanelTest(ChatAppHostFixture fixture, ITestOutpu
         authorIds.Should().BeEmpty();
 
         // Register Bob's video stream via backend
-        var streamId = StreamId.New(new NodeRef(Generate.Option));
+        var streamId = StreamId.New(AppHost.Services.MeshWatcher().ThisNode.Ref);
         var streamInfo = new VideoStreamInfo(
             streamId,
             chatId,
