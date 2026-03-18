@@ -3,7 +3,7 @@ import { DocumentEvents, EventHandlerSet } from 'event-handling';
 import { Log } from 'logging';
 import { Versioning } from 'versioning';
 
-const { debugLog, errorLog } = Log.get('OnDeviceAwake');
+const { debugLog, infoLog, errorLog } = Log.get('OnDeviceAwake');
 
 export class OnDeviceAwake {
     private static _totalSleepDurationMs = 0;
@@ -20,7 +20,7 @@ export class OnDeviceAwake {
         debugLog?.log(`init`);
         const onSleepDetected = (event: MessageEvent<number>) => {
             this._totalSleepDurationMs += event.data;
-            debugLog?.log(`onSleepDetected: +${event.data / 1000}s, total: ${this._totalSleepDurationMs / 1000}s`);
+            infoLog?.log(`onSleepDetected: +${event.data / 1000}s, total: ${this._totalSleepDurationMs / 1000}s`);
             OnDeviceAwake.events.triggerSilently(this._totalSleepDurationMs);
         };
 
@@ -39,9 +39,9 @@ export class OnDeviceAwake {
         });
     }
 
-    public static addFakeSleep(durationMs: number): void {
+    public static fakeSleep(durationMs: number): void {
         this._totalSleepDurationMs += durationMs;
-        debugLog?.log(`addFakeSleep: +${durationMs / 1000}s, total: ${this._totalSleepDurationMs / 1000}s`);
+        infoLog?.log(`fakeSleep: +${durationMs / 1000}s, total: ${this._totalSleepDurationMs / 1000}s`);
         this.events.triggerSilently(this._totalSleepDurationMs);
     }
 }

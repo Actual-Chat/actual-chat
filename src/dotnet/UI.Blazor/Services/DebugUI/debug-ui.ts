@@ -75,8 +75,7 @@ export class DebugUI {
     };
 
     public static fakeSleep(duration = 5): void {
-        OnDeviceAwake.addFakeSleep(duration * 1000);
-        infoLog?.log(`fakeSleep: simulated ${duration}s sleep, total: ${OnDeviceAwake.totalSleepDurationMs / 1000}s`);
+        OnDeviceAwake.fakeSleep(duration * 1000);
     }
 
     public static clearSvgCache(): void {
