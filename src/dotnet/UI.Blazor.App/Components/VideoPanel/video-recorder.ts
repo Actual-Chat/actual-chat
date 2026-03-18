@@ -9,6 +9,12 @@ export interface VideoDevice {
     label: string;
 }
 
+// Module-level singleton so the modal can find the active recorder
+let activeRecorderInstance: VideoRecorder | null = null;
+export function getActiveRecorder(): VideoRecorder | null {
+    return activeRecorderInstance;
+}
+
 export class VideoRecorder {
     private blazorRef: DotNet.DotNetObject;
     private readonly element: HTMLElement;
@@ -27,6 +33,7 @@ export class VideoRecorder {
     private lastStatus = '';
     private cameraWidth = 0;
     private cameraHeight = 0;
+    private previewPaused = false;
     // Cached encoder capabilities (detected at 1080p at recording start)
     private supportedEncoderCategories: string[] = [];
 
@@ -101,6 +108,42 @@ export class VideoRecorder {
                 .then(() => rs.toggleBlur(enabled))
                 .catch((e: unknown) => warnLog?.log('Failed to toggle blur:', e));
         }
+    }
+
+    /**
+     * Get the preview stream (wraps previewTrack) for sharing with the settings modal.
+     */
+    public getPreviewStream(): MediaStream | null {
+        if (this.previewTrack?.readyState !== 'live') return null;
+        return new MediaStream([this.previewTrack]);
+    }
+
+    /**
+     * Get the device ID of the currently selected camera.
+     */
+    public getPreviewDeviceId(): string | null {
+        return this.selectedCameraDeviceId;
+    }
+
+    /**
+     * Whether blur is currently active on this recorder.
+     */
+    public isBlurActive(): boolean {
+        return this.isBlurEnabled;
+    }
+
+    /**
+     * Pause the recorder's own preview rendering (so only the modal draws while it's open).
+     */
+    public pausePreviewRendering(): void {
+        this.previewPaused = true;
+    }
+
+    /**
+     * Resume the recorder's own preview rendering.
+     */
+    public resumePreviewRendering(): void {
+        this.previewPaused = false;
     }
 
     /**
@@ -216,6 +259,7 @@ export class VideoRecorder {
             // Set isRecording BEFORE starting the render loop — the render loop
             // checks this flag and exits permanently if it's false on the first frame.
             this.isRecording = true;
+            activeRecorderInstance = this; // eslint-disable-line @typescript-eslint/no-this-alias
 
             // Start rendering preview AFTER isRecording is set
             console.warn('[VideoRecorder] Starting preview rendering, canvas:', !!this.canvas, 'canvasCtx:', !!this.canvasCtx);
@@ -245,6 +289,7 @@ export class VideoRecorder {
             await this.recordingService.stop();
             this.stopRenderingStream();
             this.isRecording = false;
+            if (activeRecorderInstance === this) activeRecorderInstance = null;
 
             // Notify Blazor
             await this.blazorRef.invokeMethodAsync('OnRecordingStopped');
@@ -320,6 +365,12 @@ export class VideoRecorder {
             frameCount++;
             if (frameCount <= 3 || frameCount % 300 === 0)
                 console.warn(`[VideoRecorder] renderFrame #${frameCount}: videoWidth=${String(video.videoWidth)}, videoHeight=${String(video.videoHeight)}`);
+
+            // When preview is paused (modal is open), skip drawing but keep the loop alive.
+            if (this.previewPaused) {
+                this.animationFrameId = requestAnimationFrame(renderFrame);
+                return;
+            }
 
             // When blur is enabled, the preview callback renders blurred frames directly.
             // Only draw the raw camera feed when blur is off.
@@ -410,6 +461,7 @@ export class VideoRecorder {
         if (this.disposed)
             return;
         this.disposed = true;
+        if (activeRecorderInstance === this) activeRecorderInstance = null;
 
         // Stop rendering
         this.stopRenderingStream();

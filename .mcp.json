@@ -1,7 +1,8 @@
 {
   "mcpServers": {
     "chrome-devtools": {
-      "command": "tools/chrome-devtools-mcp-wrapper"
+      "command": "npx",
+      "args": ["chrome-devtools-mcp@0.20.0", "--autoConnect", "--browser-url", "http://localhost:9222"]
     },
     "github": {
       "type": "http",

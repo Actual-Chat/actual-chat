@@ -6,13 +6,14 @@ namespace ActualChat.Collections;
 
 /// <summary>
 /// A ring buffer with 2x physical capacity that guarantees contiguous reads and writes.
-/// Thread-safe for concurrent producer/consumer access.
+/// Thread-safe for concurrent single-producer/single-consumer access.
 /// </summary>
 /// <remarks>
 /// The buffer internally allocates 2*capacity slots. Writes always start at a physical
 /// position below capacity, and may extend into [capacity, 2*capacity). When the write
 /// position reaches or exceeds capacity, it wraps to 0 and a "wrap mark" is set.
-/// The reader follows the same wrap mark, ensuring reads are always contiguous.
+/// TryRead copies data into a caller-provided Span, reading across wrap boundaries.
+/// Bidirectional signaling: whenReadyToRead (for consumers) and whenReadyToWrite (for producers).
 /// </remarks>
 public sealed class BlockRingBuffer<T> : IDisposable
 {
@@ -27,9 +28,13 @@ public sealed class BlockRingBuffer<T> : IDisposable
     private volatile int _count; // valid readable items
 
     private Task<int>? _whenWrittenTask;
+    private Task<int>? _whenReadTask;
 
     public int Capacity => _capacity;
     public int Count => _count;
+    public int RemainingCapacity => _capacity - _count;
+    public bool IsEmpty => _count == 0;
+    public bool IsFull => _count >= _capacity;
 
     public BlockRingBuffer(int minCapacity, ArrayPool<T>? pool = null)
     {
@@ -43,12 +48,15 @@ public sealed class BlockRingBuffer<T> : IDisposable
 
     public void Dispose()
     {
-        Task<int>? wwt;
+        Task<int>? wwt, wrt;
         lock (_lock) {
             wwt = _whenWrittenTask;
             _whenWrittenTask = null;
+            wrt = _whenReadTask;
+            _whenReadTask = null;
         }
         TrySetCanceled(wwt);
+        TrySetCanceled(wrt);
         _pool.Return(_buffer, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
     }
 
@@ -57,7 +65,7 @@ public sealed class BlockRingBuffer<T> : IDisposable
     /// Returns true if all data was written, false if buffer was full (partial write).
     /// </summary>
     public bool TryWrite(ReadOnlySpan<T> data)
-        => TryWrite(data, out _);
+        => TryWrite(data, out _, out _);
 
     /// <summary>
     /// Writes as much of <paramref name="data"/> as possible to the buffer.
@@ -65,13 +73,23 @@ public sealed class BlockRingBuffer<T> : IDisposable
     /// <paramref name="writtenCount"/> indicates how many items were actually written.
     /// </summary>
     public bool TryWrite(ReadOnlySpan<T> data, out int writtenCount)
+        => TryWrite(data, out writtenCount, out _);
+
+    /// <summary>
+    /// Writes as much of <paramref name="data"/> as possible to the buffer.
+    /// Returns true if all data was written, false if buffer was full (partial write).
+    /// <paramref name="writtenCount"/> indicates how many items were actually written.
+    /// When false, <paramref name="whenReadyToWrite"/> is a task that completes when the consumer frees space.
+    /// </summary>
+    public bool TryWrite(ReadOnlySpan<T> data, out int writtenCount, [NotNullWhen(false)] out Task? whenReadyToWrite)
     {
         if (data.IsEmpty) {
             writtenCount = 0;
+            whenReadyToWrite = null;
             return true;
         }
 
-        Task<int>? completedTask;
+        Task<int>? completedWrittenTask;
         lock (_lock) {
             var free = _capacity - _count;
             var toWrite = Math.Min(data.Length, free);
@@ -98,71 +116,102 @@ public sealed class BlockRingBuffer<T> : IDisposable
                     remaining = remaining[n..];
                 }
 
-                completedTask = _whenWrittenTask;
+                completedWrittenTask = _whenWrittenTask;
                 _whenWrittenTask = null;
             }
             else
-                completedTask = null;
+                completedWrittenTask = null;
 
             writtenCount = toWrite;
+            if (writtenCount < data.Length) {
+                _whenReadTask ??= AsyncTaskMethodBuilderExt.New<int>().Task;
+                whenReadyToWrite = _whenReadTask;
+            }
+            else
+                whenReadyToWrite = null;
         }
-        TrySetResult(completedTask, writtenCount);
+        TrySetResult(completedWrittenTask, writtenCount);
         return writtenCount == data.Length;
     }
 
     /// <summary>
-    /// Reads up to <paramref name="maxLength"/> contiguous items from the buffer.
-    /// Returns true if data was read (<paramref name="data"/> is non-empty).
-    /// Returns false if buffer is empty; <paramref name="whenReadyToRead"/> is a task to await before retrying.
-    /// The read position is advanced immediately; the returned memory is valid
-    /// until the buffer wraps (safe in SPSC as long as the caller processes promptly).
+    /// Reads exactly <paramref name="destination"/>.Length items from the buffer.
+    /// Returns true only when the full destination is filled.
+    /// Returns false when buffer has fewer items than needed — data stays in buffer,
+    /// <paramref name="whenReadyToRead"/> signals next write.
     /// </summary>
-    public bool TryRead(int maxLength, out ReadOnlyMemory<T> data, [NotNullWhen(false)] out Task? whenReadyToRead)
+    public bool TryRead(Span<T> destination, [NotNullWhen(false)] out Task? whenReadyToRead)
     {
-        if (maxLength <= 0) {
-            data = default;
+        if (destination.IsEmpty) {
             whenReadyToRead = null;
             return true;
         }
 
+        Task<int>? completedReadTask;
         lock (_lock) {
-            if (_count == 0) {
-                data = default;
+            if (_count < destination.Length) {
                 _whenWrittenTask ??= AsyncTaskMethodBuilderExt.New<int>().Task;
                 whenReadyToRead = _whenWrittenTask;
                 return false;
             }
 
-            Normalize();
-            int contiguous;
-            if (_wrapPos >= 0)
-                contiguous = _wrapPos - _readPos;
-            else
-                contiguous = _writePos - _readPos;
+            var toRead = destination.Length;
+            var written = 0;
+            while (written < toRead) {
+                Normalize();
+                int contiguous;
+                if (_wrapPos >= 0)
+                    contiguous = _wrapPos - _readPos;
+                else
+                    contiguous = _writePos - _readPos;
 
-            var n = Math.Min(Math.Min(maxLength, contiguous), _count);
-            data = new ReadOnlyMemory<T>(_buffer, _readPos, n);
+                var n = Math.Min(toRead - written, contiguous);
+                _buffer.AsSpan(_readPos, n).CopyTo(destination.Slice(written, n));
+                _readPos += n;
+                written += n;
 
-            _readPos += n;
-            if (_wrapPos >= 0 && _readPos >= _wrapPos) {
-                _readPos = 0;
-                _wrapPos = -1;
+                if (_wrapPos >= 0 && _readPos >= _wrapPos) {
+                    _readPos = 0;
+                    _wrapPos = -1;
+                }
             }
 
-            Interlocked.Add(ref _count, -n);
+            Interlocked.Add(ref _count, -toRead);
+
+            completedReadTask = _whenReadTask;
+            _whenReadTask = null;
         }
+        TrySetResult(completedReadTask, destination.Length);
         whenReadyToRead = null;
         return true;
     }
 
+    /// <summary>
+    /// Returns a task that completes when new data is written to the buffer,
+    /// or null if the buffer already contains data. Does not consume any data.
+    /// </summary>
+    public Task? WhenReadyToRead()
+    {
+        lock (_lock) {
+            if (_count > 0)
+                return null;
+            _whenWrittenTask ??= AsyncTaskMethodBuilderExt.New<int>().Task;
+            return _whenWrittenTask;
+        }
+    }
+
     public void Clear()
     {
+        Task<int>? completedReadTask;
         lock (_lock) {
             _readPos = 0;
             _writePos = 0;
             _wrapPos = -1;
             Interlocked.Exchange(ref _count, 0);
+            completedReadTask = _whenReadTask;
+            _whenReadTask = null;
         }
+        TrySetResult(completedReadTask, 0);
     }
 
     // Private methods

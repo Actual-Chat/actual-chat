@@ -1,5 +1,19 @@
 @inherits MarkupViewBase<MarkupSeq>
+@{
+    var items = Markup.Items;
+}
 
-@foreach (var item in Markup.Items) {
-    <MarkupView Markup="item"/>
+@for (var i = 0; i < items.Length; i++) {
+    var item = items[i];
+    @if (i < items.Length - 1 && LastFragment != null) {
+        <CascadingValue TValue="RenderFragment" Value="@null">
+            <MarkupView Markup="@item"/>
+        </CascadingValue>
+    } else {
+        <MarkupView Markup="@item"/>
+    }
+}
+
+@code {
+    [CascadingParameter] public RenderFragment? LastFragment { get; set; }
 }

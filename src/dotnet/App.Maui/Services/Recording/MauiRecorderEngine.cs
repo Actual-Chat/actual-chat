@@ -388,7 +388,10 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             CancellationToken cancellationToken)
         {
             const int samplesPerRecordingInProgressCall = Constants.Audio.RecordingSampleRate / 1000 * 200; // 200ms
+            const int gainFrameLen = Constants.Audio.VadFrameLength * 3;
             using var gainBuffer = new BlockRingBuffer<float>(Constants.Audio.OpusFrameLength * 10); // 200ms
+            using var gainFrameOwner = ArrayPools.SharedFloatPool.LeaseArrayOwner(gainFrameLen, true);
+
             await _vad.EnsureInitialized(cancellationToken).ConfigureAwait(false);
             _vad.Reset();
             var samplesSinceLastReport = samplesPerRecordingInProgressCall;
@@ -409,9 +412,8 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 
                     // Throttle microphone capture notifications by 32ms * 3 = 96ms
                     gainBuffer.TryWrite(memory.Span);
-                    var gainFrameLen = Constants.Audio.VadFrameLength * 3;
-                    if (gainBuffer.TryRead(gainFrameLen, out var gainData, out _)) {
-                        var gain = AudioExt.ApproximateGain(gainData.Span);
+                    if (gainBuffer.TryRead(gainFrameOwner.Span, out _)) {
+                        var gain = AudioExt.ApproximateGain(gainFrameOwner.Span);
                         await engine.OnAudioPowerChange(gain).ConfigureAwait(false);
                     }
 
@@ -444,8 +446,9 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                     // Trim oldest audio to maintain preroll
                     var retryCount = 0;
                     var pushed = false;
+                    var skipBuf = new float[Constants.Audio.OpusFrameLength];
                     while (!pushed && retryCount++ < 32) {
-                        if (!_encodingBuffer.TryRead(Constants.Audio.OpusFrameLength, out _, out _))
+                        if (!_encodingBuffer.TryRead(skipBuf, out _))
                             break;
 
                         pushed = _encodingBuffer.TryWrite(data);
@@ -458,12 +461,14 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         private async Task ProcessVadEvents(CancellationToken cancellationToken)
         {
             // Process VAD events in batches to reduce CPU usage
-            var vadChunkSize = Constants.Audio.VadFrameLength * 5;
+            const int vadChunkSize = Constants.Audio.VadFrameLength * 5;
+            using var vadFrameOwner = ArrayPools.SharedFloatPool.LeaseArrayOwner(vadChunkSize, true);
             while (true) {
-                if (!_vadBuffer.TryRead(vadChunkSize, out var rd, out _) || rd.Length < vadChunkSize)
+                var vadFrame = vadFrameOwner.Span;
+                if (!_vadBuffer.TryRead(vadFrame, out _))
                     break;
 
-                var vadResults = _vad.AppendChunk(rd.Span[..vadChunkSize]);
+                var vadResults = _vad.AppendChunk(vadFrame);
 
                 foreach (var vadResult in vadResults)
                     if (vadResult.HasEvent)
@@ -498,15 +503,26 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                 ? BackgroundTask.Run(worker.Stop, log, "Failed to stop encode/send worker")
                 : Task.CompletedTask;
 
+        private async IAsyncEnumerable<IMemoryOwner<float>> ReadEncodingFrames(
+            [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            const int frameLen = Constants.Audio.OpusFrameLength;
+            while (!cancellationToken.IsCancellationRequested) {
+                // We need to return exactly frameLen samples
+                var owner = ArrayPools.SharedFloatPool.LeaseArrayOwner(frameLen, true);
+                if (!_encodingBuffer.TryRead(owner.Span, out var whenReady)) {
+                    owner.Dispose();
+                    await whenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
+                yield return owner;
+            }
+        }
+
         private async Task EncodeAndSend(ChannelWriter<IMemoryOwner<byte>> stream, CancellationToken cancellationToken)
         {
             try {
-                var rawFrames = _encodingBuffer.ReadAll(Constants.Audio.OpusFrameLength, cancellationToken);
-                var frames = rawFrames.Select(chunk => {
-                    var owner = ArrayPools.SharedFloatPool.LeaseArrayOwner(chunk.Length);
-                    chunk.Span.CopyTo(owner.Span);
-                    return (IMemoryOwner<float>)owner;
-                });
+                var frames = ReadEncodingFrames(cancellationToken);
                 await foreach (var packet in _audioCodec.Encode(frames, cancellationToken).ConfigureAwait(false)) {
                     if (packet.Memory.Length == 0)
                         continue;

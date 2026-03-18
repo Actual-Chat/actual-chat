@@ -1,7 +1,7 @@
 import { Log } from 'logging';
 import { rpcClientServer, rpcNoWait } from 'rpc';
 import type { Disposable } from 'disposable';
-import type { VideoDevice } from '../VideoPanel/video-recorder';
+import { getActiveRecorder, type VideoDevice } from '../VideoPanel/video-recorder';
 import type { SegmentationWorker, SegmentationWorkerCallbacks } from '../../Services/Video/workers/segmentation-worker-contract';
 import { createAdaptiveSegmentationConfig } from '../../Services/Video/workers/segmentation-worker-contract';
 import { detectGPUBackends } from '../../Services/Video/gpu-support';
@@ -19,6 +19,9 @@ export class JoinVideoCallModal {
     private stream: MediaStream | null = null;
     private selectedDeviceId: string | null = null;
     private isRendering = false;
+    private lastStreamStoppedAt = 0;
+    private attachedFromRecorder = false;
+    private clonedPreviewTrack: MediaStreamTrack | null = null;
 
     // Blur preview state
     private segmentationWorkerInstance: Worker | null = null;
@@ -89,6 +92,15 @@ export class JoinVideoCallModal {
     public async startPreview(deviceId?: string): Promise<boolean> {
         await this.stopPreview();
 
+        // Browser needs time to release camera hardware after track.stop().
+        // Wait if a stream was recently stopped (within the last 2 seconds).
+        const timeSinceStop = performance.now() - this.lastStreamStoppedAt;
+        if (this.lastStreamStoppedAt > 0 && timeSinceStop < 2000) {
+            const delay = Math.max(300 - timeSinceStop, 0);
+            if (delay > 0)
+                await new Promise(resolve => setTimeout(resolve, delay));
+        }
+
         try {
             const constraints: MediaStreamConstraints = {
                 video: deviceId
@@ -97,7 +109,7 @@ export class JoinVideoCallModal {
                 audio: false,
             };
 
-            this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+            this.stream = await this.getUserMediaWithRetry(constraints);
 
             // Capture the actual device ID the browser chose (important when no
             // explicit device was requested — ensures recording uses the same camera)
@@ -139,6 +151,7 @@ export class JoinVideoCallModal {
         if (this.stream) {
             this.stream.getTracks().forEach(t => t.stop());
             this.stream = null;
+            this.lastStreamStoppedAt = performance.now();
         }
 
         this.videoEl.srcObject = null;
@@ -181,6 +194,79 @@ export class JoinVideoCallModal {
     }
 
     /**
+     * Attach to the active recorder's preview stream instead of acquiring a new one.
+     * Returns true if successfully attached, false if no active recorder.
+     */
+    public attachFromRecorder(): boolean {
+        const recorder = getActiveRecorder();
+        if (!recorder) return false;
+
+        const previewStream = recorder.getPreviewStream();
+        if (!previewStream) return false;
+
+        // Clone the track so we can stop it independently
+        const originalTrack = previewStream.getVideoTracks()[0];
+
+        this.clonedPreviewTrack = originalTrack.clone();
+        // Stop the wrapper stream's original track reference (we use the clone)
+        originalTrack.stop();
+
+        this.stream = new MediaStream([this.clonedPreviewTrack]);
+        this.attachedFromRecorder = true;
+
+        // Pause the recorder's own preview rendering
+        recorder.pausePreviewRendering();
+
+        this.videoEl.srcObject = this.stream;
+        void this.videoEl.play();
+
+        // Insert canvas into the video-frame container
+        const frame = this.container.querySelector('.video-frame');
+        if (frame) {
+            frame.querySelector<HTMLElement>('.plug-text')!.style.display = 'none';
+            frame.appendChild(this.canvasEl);
+        }
+
+        this.startRenderLoop();
+        infoLog?.log('Attached to active recorder preview stream');
+        return true;
+    }
+
+    /**
+     * Detach from the recorder's stream without stopping the recorder.
+     */
+    public detachFromRecorder(): void {
+        if (!this.attachedFromRecorder) return;
+
+        // Stop blur preview first
+        void this.stopBlurPreview();
+        this.stopRenderLoop();
+
+        // Stop only our cloned track
+        if (this.clonedPreviewTrack) {
+            this.clonedPreviewTrack.stop();
+            this.clonedPreviewTrack = null;
+        }
+        this.stream = null;
+        this.videoEl.srcObject = null;
+
+        if (this.canvasEl.parentElement)
+            this.canvasEl.parentElement.removeChild(this.canvasEl);
+
+        // Restore placeholder text
+        const frame = this.container.querySelector('.video-frame');
+        if (frame)
+            frame.querySelector<HTMLElement>('.plug-text')!.style.display = '';
+
+        // Resume the recorder's own preview rendering
+        const recorder = getActiveRecorder();
+        if (recorder) recorder.resumePreviewRendering();
+
+        this.attachedFromRecorder = false;
+        infoLog?.log('Detached from recorder preview stream');
+    }
+
+    /**
      * Toggle blur preview on/off.
      * When enabled, starts a segmentation worker to process camera frames
      * and renders the blurred output to the same canvas.
@@ -190,6 +276,24 @@ export class JoinVideoCallModal {
             await this.startBlurPreview();
         } else if (!enabled && this.isBlurActive) {
             await this.stopBlurPreview();
+        }
+    }
+
+    private async getUserMediaWithRetry(
+        constraints: MediaStreamConstraints,
+        maxRetries = 3,
+    ): Promise<MediaStream> {
+        for (let attempt = 0; ; attempt++) {
+            try {
+                return await navigator.mediaDevices.getUserMedia(constraints);
+            } catch (error) {
+                const isDeviceBusy = error instanceof DOMException
+                    && (error.name === 'NotReadableError' || error.name === 'AbortError');
+                if (!isDeviceBusy || attempt >= maxRetries)
+                    throw error;
+                infoLog?.log(`Camera busy, retrying in ${300 * (attempt + 1)}ms (attempt ${attempt + 1}/${maxRetries})`);
+                await new Promise(resolve => setTimeout(resolve, 300 * (attempt + 1)));
+            }
         }
     }
 
@@ -319,7 +423,11 @@ export class JoinVideoCallModal {
     }
 
     public dispose(): void {
-        void this.stopBlurPreview();
-        void this.stopPreview();
+        if (this.attachedFromRecorder) {
+            this.detachFromRecorder();
+        } else {
+            void this.stopBlurPreview();
+            void this.stopPreview();
+        }
     }
 }

@@ -91,10 +91,12 @@
             @if (!isHoverable) {
                 // Touch capable and not hoverable
                 <div class="slot c-touch">
-                    <UnreadCount
-                        Value="@m.UnreadCount"
-                        NotificationMode="@m.NotificationMode"
-                        HasMentions="@m.HasUnreadMentions"/>
+                    @if (showEnding) {
+                        <UnreadCount
+                            Value="@m.UnreadCount"
+                            NotificationMode="@m.NotificationMode"
+                            HasMentions="@m.HasUnreadMentions"/>
+                    }
                     @if (hasButtons) {
                         @if (audioState?.IsRecording == true) {
                             <ChatListRecordingToggle Chat="@chat" IsRecording="@audioState.IsRecording" Class="ending-btn"/>

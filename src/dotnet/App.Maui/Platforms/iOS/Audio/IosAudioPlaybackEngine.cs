@@ -56,12 +56,12 @@ public class IosAudioPlaybackEngine(
         DebugLog?.LogInformation("#{PlayerId}.End({abort})", playerId, abort);
         if (abort) {
             _voicePlayer.Abort();
-            await backend.OnEnded(null).ConfigureAwait(false);
+            backend.OnEnded(null);
         }
         else
             _ = BackgroundTask.Run(async () => {
                     await _voicePlayer.Complete(cancellationToken).ConfigureAwait(false);
-                    await backend.OnEnded(null).ConfigureAwait(false);
+                    backend.OnEnded(null);
                 },
                 cancellationToken);
     }
@@ -75,11 +75,9 @@ public class IosAudioPlaybackEngine(
 
     private async Task MonitorPlayer(CancellationToken cancellationToken)
     {
-        await foreach (var cPosition in _voicePlayer.PlaybackState.Computed.Changes(cancellationToken)
-                           .ConfigureAwait(false))
-            await backend.OnPlaying(cPosition.Value.Position.TotalSeconds,
-                    !cPosition.Value.IsPlaying,
-                    cPosition.Value.IsBufferLow)
-                .ConfigureAwait(false);
+        await foreach (var cPosition in _voicePlayer.PlaybackState.Computed.Changes(cancellationToken).ConfigureAwait(false))
+            backend.OnPlaying(cPosition.Value.Position.TotalSeconds,
+                !cPosition.Value.IsPlaying,
+                cPosition.Value.IsBufferLow);
     }
 }

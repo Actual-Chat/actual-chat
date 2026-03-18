@@ -43,6 +43,8 @@
 
 @switch (message.Kind) {
     case ChatMessageKind.None:
+        if (entry.IsContentStreaming && entry.Content.IsNullOrEmpty() && HasAuthorActiveTranscription(message))
+            return;
         break;
     case ChatMessageKind.DateLine:
         <ChatMessageDateLine Date="@message.Date"/>
@@ -58,7 +60,7 @@
     case ChatMessageKind.SendingNewMessage:
         break;
     case ChatMessageKind.AudioRecordingMessage:
-        if (!m.IsVoiceActive)
+        if (!m.IsVoiceActive || HasAuthorActiveTranscription(message))
             return;
         break;
     default:
@@ -472,6 +474,18 @@
 
     private void OnForwardedAuthorClick(Author forwardedAuthor)
         => _ = AuthorUI.Show(forwardedAuthor.Id);
+
+    private static bool HasAuthorActiveTranscription(ChatEntryMessage message) {
+        var authorId = message.Entry.AuthorId;
+        var current = message.PreviousMessage;
+        for (var i = 0; i < 50 && current != null; i++, current = current.PreviousMessage) {
+            if (current is ChatEntryMessage em
+                && em.Entry.AuthorId == authorId
+                && em.Entry.IsContentStreaming)
+                return true;
+        }
+        return false;
+    }
 
     private bool HasAnyMentions(Markup markup)
         => MarkupValidator.ContainsAnyMention.IsValid(markup);

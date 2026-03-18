@@ -27,10 +27,14 @@ public class IosAudioCapture(AppUIHub hub) : IAudioCapture
         engine.EnsureRunning();
 
         try {
-            var chunks = outBuffer.ReadAll(Constants.Audio.OpusFrameLength, cancellationToken);
-            await foreach (var chunk in chunks.ConfigureAwait(false)) {
-                var owner = ArrayPools.SharedFloatPool.LeaseArrayOwner(chunk.Length);
-                chunk.Span.CopyTo(owner.Span);
+            var frameLen = Constants.Audio.OpusFrameLength;
+            while (!cancellationToken.IsCancellationRequested) {
+                var owner = ArrayPools.SharedFloatPool.LeaseArrayOwner(frameLen, true);
+                if (!outBuffer.TryRead(owner.Span, out var whenReady)) {
+                    owner.Dispose();
+                    await whenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
                 yield return owner;
             }
         }
@@ -44,7 +48,7 @@ public class IosAudioCapture(AppUIHub hub) : IAudioCapture
         {
             try {
                 var estimatedResampledLength = pcmBuffer.FrameLength / hwFormat.SampleRate * AudioEngine.VoiceRecordingFormat.SampleRate;
-                if (outBuffer.Capacity - outBuffer.Count < estimatedResampledLength) {
+                if (outBuffer.RemainingCapacity < estimatedResampledLength) {
                     Log.LogWarning("Buffer full, dropping samples");
                     return;
                 }

@@ -226,6 +226,9 @@ export class VideoPipeline implements IVideoPipeline {
                         width: this.config.encoderConfig.width,
                         height: this.config.encoderConfig.height,
                         codecSettings: settings,
+                        onReconnect: () => {
+                            this.firstEncodedTimestamp = null;
+                        },
                     };
                     const sessionToken = SessionTokens.current;
                     this.videoStream = VideoStreamer.addStream(

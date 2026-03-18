@@ -7,7 +7,6 @@
 
 <DialogFrame
     Class="join-video-call-modal modal-sm"
-    ButtonsClass="wide-dialog-buttons"
     Title="@ModalTitle">
     <Body>
     <FormBlock Class="">
@@ -20,7 +19,8 @@
                     IsListening="true"/>
             </div>
             <div class="c-rules">
-                <span class="c-rules-link">Chat Rules</span>
+                <div class="c-rules-header">Rules</div>
+                <div class="c-rules-text">No transcription, no anonymous</div>
             </div>
         }
         <div @ref="_containerRef" class="c-video">
@@ -30,40 +30,100 @@
                 </span>
             </div>
         </div>
-        <div class="c-toolbar">
-            @* Blur button *@
-            <ButtonRound Class="@BlurBtnClass()" Click="@OnBlurToggle">
-                <i class="icon-eye text-2xl"></i>
-            </ButtonRound>
-
-            @* Mic button *@
-            <ButtonRound Class="mic-btn">
-                <i class="icon-mic-2 text-2xl"></i>
-            </ButtonRound>
-
-            @* Camera button *@
-            <div class="@VideoWrapperClass() video-wrapper">
-                <ButtonRound Class="video-btn" Click="@OnVideoToggle">
-                    <i class="icon-video text-2xl"></i>
+        @if (ScreenSize.IsWide()) {
+            @* Desktop toolbar *@
+            <div class="c-toolbar">
+                @* Blur circle *@
+                <ButtonRound Class="@BlurBtnClass()" Click="@OnBlurToggle">
+                    <i class="icon-eye text-2xl"></i>
+                </ButtonRound>
+                @* Mic button *@
+                <ButtonRound Class="@MicBtnClass()" Click="@OnMicToggle">
+                    @if (_isRecording) {
+                        <narrow-recording-svg isRecording="true" class="rec-icon on" />
+                    } else {
+                        <div class="rec-icon off">
+                            <i class="icon-recorder-left-half left"></i>
+                            <i class="icon-recorder-right-half right"></i>
+                        </div>
+                    }
+                </ButtonRound>
+                @* Camera pill with chevron + dropdown *@
+                <div class="camera-pill-wrapper">
+                    <div class="toolbar-pill @(_isVideoOn ? "active" : "")">
+                        <button class="pill-action" type="button" @onclick="OnVideoToggle">
+                            <i class="icon-video text-2xl"></i>
+                        </button>
+                        <span class="pill-divider"></span>
+                        <button class="pill-chevron" type="button" @onclick="OnCameraDropdownToggle">
+                            <i class="icon-chevron-compact-down text-xl"></i>
+                        </button>
+                    </div>
+                    @if (_isCameraDropdownOpen) {
+                        <div class="camera-dropdown">
+                            <div class="camera-dropdown-header">Select a camera</div>
+                            @foreach (var device in _videoDevices) {
+                                var isSelected = device.DeviceId == _selectedDeviceId;
+                                var isDisabled = ModalModel.IsSettingsMode;
+                                <div class="camera-dropdown-item @(isDisabled ? "disabled" : "")"
+                                     @onclick="@(isDisabled ? (Func<Task>)(() => Task.CompletedTask) : () => OnCameraSelected(device))">
+                                    @if (isSelected) {
+                                        <i class="icon-checkmark-simple text-primary text-lg"></i>
+                                    } else {
+                                        <span class="w-[18px]"></span>
+                                    }
+                                    <span class="truncate">@device.Label</span>
+                                </div>
+                            }
+                            <div class="camera-dropdown-divider"></div>
+                            <div class="camera-dropdown-item" @onclick="@OnBlurToggle">
+                                @if (_isBlurEnabled) {
+                                    <i class="icon-checkmark-simple text-primary text-lg"></i>
+                                } else {
+                                    <span class="w-[18px]"></span>
+                                }
+                                <span>Blur my background</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+                @* Screen-share circle *@
+                <ButtonRound>
+                    <i class="icon-screen-share text-2xl"></i>
                 </ButtonRound>
             </div>
-        </div>
-        <div class="c-camera-select">
-            <select value="@_selectedDeviceId" @onchange="OnCameraChanged">
-                @if (_videoDevices.Count == 0) {
-                    <option value="">No cameras found</option>
-                } else {
-                    @foreach (var device in _videoDevices) {
-                        <option value="@device.DeviceId">@device.Label</option>
+        } else {
+            @* Mobile toolbar *@
+            <div class="c-toolbar">
+                <ButtonRound>
+                    <i class="icon-volume-up text-2xl"></i>
+                </ButtonRound>
+                <ButtonRound Class="@BlurBtnClass()" Click="@OnBlurToggle">
+                    <i class="icon-eye text-2xl"></i>
+                </ButtonRound>
+                <ButtonRound Class="@MicBtnClass()" Click="@OnMicToggle">
+                    @if (_isRecording) {
+                        <narrow-recording-svg isRecording="true" class="rec-icon on" />
+                    } else {
+                        <div class="rec-icon off">
+                            <i class="icon-recorder-left-half left"></i>
+                            <i class="icon-recorder-right-half right"></i>
+                        </div>
                     }
-                }
-            </select>
-        </div>
+                </ButtonRound>
+                <ButtonRound Class="@VideoWrapperBtnClass()" Click="@OnVideoToggle">
+                    <i class="icon-video text-2xl"></i>
+                </ButtonRound>
+                <ButtonRound Click="@OnSwitchCamera" IsDisabled="@ModalModel.IsSettingsMode">
+                    <i class="icon-sync text-2xl"></i>
+                </ButtonRound>
+            </div>
+        }
     </FormBlock>
     </Body>
     <Buttons>
-        <Button Class="btn-modal btn-primary" Click="@OnJoinClick">@ButtonText</Button>
         <Button Class="btn-modal" Click="@(_ => Modal.Close())">Cancel</Button>
+        <Button Class="btn-modal btn-primary" Click="@OnJoinClick">@ButtonText</Button>
     </Buttons>
 </DialogFrame>
 
@@ -80,18 +140,29 @@
     private bool _isVideoOn;
     private string _selectedDeviceId = "";
     private bool _isBlurEnabled;
+    private bool _isCameraDropdownOpen;
+    private bool _isRecording;
     private List<VideoDevice> _videoDevices = new();
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    private string ModalTitle => ModalModel.Mode == VideoCallMode.Start
-        ? "Start Video Call"
-        : "Join the video call";
+    private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private AudioRecorder AudioRecorder => Hub.AudioRecorder;
 
-    private string ButtonText => ModalModel.Mode == VideoCallMode.Start
-        ? "Start"
-        : "Join";
+    private string ModalTitle => ModalModel.IsSettingsMode
+        ? "Video Settings"
+        : ModalModel.Mode == VideoCallMode.Start
+            ? "Start Video Call"
+            : "Join the video call";
+
+    private string ButtonText => ModalModel.IsSettingsMode
+        ? "Apply"
+        : ModalModel.Mode == VideoCallMode.Start
+            ? "Start"
+            : "Join";
 
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
 
@@ -110,14 +181,26 @@
         if (_jsRef is null)
             return;
 
-        var deviceId = string.IsNullOrEmpty(_selectedDeviceId) ? null : _selectedDeviceId;
-        var success = await _jsRef.InvokeAsync<bool>("startPreview", deviceId);
-        if (success) {
-            _isVideoOn = true;
-            // Start blur preview if blur was previously enabled
-            if (_isBlurEnabled)
-                await _jsRef.InvokeVoidAsync("toggleBlur", true);
-            StateHasChanged();
+        if (ModalModel.IsSettingsMode) {
+            // Settings mode: attach to the active recorder's preview stream
+            var attached = await _jsRef.InvokeAsync<bool>("attachFromRecorder");
+            if (attached) {
+                _isVideoOn = true;
+                // Start blur preview if blur is currently active
+                if (_isBlurEnabled)
+                    await _jsRef.InvokeVoidAsync("toggleBlur", true);
+                StateHasChanged();
+            }
+        } else {
+            // Normal mode: acquire our own stream
+            var deviceId = string.IsNullOrEmpty(_selectedDeviceId) ? null : _selectedDeviceId;
+            var success = await _jsRef.InvokeAsync<bool>("startPreview", deviceId);
+            if (success) {
+                _isVideoOn = true;
+                if (_isBlurEnabled)
+                    await _jsRef.InvokeVoidAsync("toggleBlur", true);
+                StateHasChanged();
+            }
         }
     }
 
@@ -165,15 +248,27 @@
         }
     }
 
-    private async Task OnCameraChanged(ChangeEventArgs e) {
-        var deviceId = e.Value?.ToString() ?? "";
-        _selectedDeviceId = deviceId;
+    private void OnCameraDropdownToggle()
+        => _isCameraDropdownOpen = !_isCameraDropdownOpen;
+
+    private async Task OnCameraSelected(VideoDevice device) {
+        _selectedDeviceId = device.DeviceId;
+        _isCameraDropdownOpen = false;
         await Hub.LocalSettings.LocalAppSettings().Update(
-            s => s with { SelectedCameraDeviceId = deviceId });
+            s => s with { SelectedCameraDeviceId = device.DeviceId });
 
         // Switch camera if preview is active
         if (_isVideoOn && _jsRef is not null)
-            await _jsRef.InvokeAsync<bool>("switchCamera", deviceId);
+            await _jsRef.InvokeAsync<bool>("switchCamera", device.DeviceId);
+    }
+
+    private async Task OnSwitchCamera() {
+        if (_videoDevices.Count <= 1)
+            return;
+
+        var currentIndex = _videoDevices.FindIndex(d => d.DeviceId == _selectedDeviceId);
+        var nextIndex = (currentIndex + 1) % _videoDevices.Count;
+        await OnCameraSelected(_videoDevices[nextIndex]);
     }
 
     private async Task OnBlurToggle() {
@@ -188,6 +283,14 @@
     }
 
     private async Task OnJoinClick() {
+        if (ModalModel.IsSettingsMode) {
+            // Settings mode: apply blur setting and close — recording continues
+            ChatVideoUI.SetBackgroundBlur(_isBlurEnabled);
+            await DisposeAsync();
+            Modal.Close();
+            return;
+        }
+
         // Get actual device ID from JS before disposing — the browser may have
         // picked a different camera than what was originally requested (e.g.,
         // front camera when no device ID was specified).
@@ -203,8 +306,27 @@
         Modal.Close();
     }
 
-    private string VideoWrapperClass()
-        => _isVideoOn ? "video-on" : "video-off";
+    private async Task OnMicToggle() {
+        var chatId = (ChatId?)ModalModel.Chat.Id;
+        if (chatId is null)
+            return;
+
+        if (_isRecording) {
+            await ChatAudioUI.SetRecordingChatId(null);
+            _isRecording = false;
+        } else {
+            if (!await AudioRecorder.MicrophonePermission.CheckOrRequest(CancellationToken.None))
+                return;
+            await ChatAudioUI.SetRecordingChatId(chatId);
+            _isRecording = true;
+        }
+    }
+
+    private string MicBtnClass()
+        => _isRecording ? "mic-btn recording" : "mic-btn";
+
+    private string VideoWrapperBtnClass()
+        => _isVideoOn ? "video-btn-on" : "video-btn-off";
 
     private string BlurBtnClass()
         => _isBlurEnabled ? "blur-btn active" : "blur-btn";
@@ -213,5 +335,5 @@
 
     public enum VideoCallMode { Join, Start }
 
-    public sealed record Model(Chat Chat, VideoCallMode Mode = VideoCallMode.Join);
+    public sealed record Model(Chat Chat, VideoCallMode Mode = VideoCallMode.Join, bool IsSettingsMode = false);
 }

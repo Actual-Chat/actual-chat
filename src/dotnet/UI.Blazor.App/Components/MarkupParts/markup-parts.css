@@ -1,6 +1,7 @@
 .chat-entry-kind-marker {
     @apply top-0.5;
     @apply min-h-4;
+    @apply float-left;
 }
 .translation-marker {
     @apply top-1;

@@ -203,9 +203,12 @@ internal sealed class WindowsAudioPlaybackEngine(
                                 .ConfigureAwait(true);
                         }
                         else {
-                            // Buffer is empty; use TryRead to get a notification when data arrives
-                            if (!_decodeBuffer.TryRead(1, out _, out var whenReady))
+                            // Buffer is empty; wait for data without consuming
+                            var whenReady = _decodeBuffer.WhenReadyToRead();
+                            if (whenReady != null)
                                 await whenReady.WaitAsync(cancellationToken).ConfigureAwait(true);
+                            else
+                                await Task.Delay(1, cancellationToken).ConfigureAwait(true);
                         }
                     }
                     catch (OperationCanceledException) {
@@ -270,17 +273,9 @@ internal sealed class WindowsAudioPlaybackEngine(
     private void OnQuantumStarted(AudioFrameInputNode sender, FrameInputNodeQuantumStartedEventArgs args)
     {
         var playSampleCount = args.RequiredSamples;
-        var hasData = _decodeBuffer.TryRead(playSampleCount, out var rd, out _);
-        if (!hasData) {
-            var isCompleted = _packetChannel.Reader.Completion.IsCompleted;
-            if (isCompleted) {
-                _ = End(true, CancellationToken.None);
-                return;
-            }
-        }
-
         var bytes = playSampleCount * sizeof(float);
         using var audioFrame = new AudioFrame((uint)bytes);
+        bool hasData;
         unsafe {
             // Lock should be located within scope of the using block to allow AddFrame call to succeed
             using var buffer = audioFrame.LockBuffer(AudioBufferAccessMode.Write);
@@ -289,17 +284,24 @@ internal sealed class WindowsAudioPlaybackEngine(
             if (dataPtr == IntPtr.Zero || capacity < bytes)
                 return;
 
-            if (!hasData) {
-                // Starving - report playing state
-                ReportPlaying();
-                // Set frame to silence
-                var silence = new Span<float>((void*)dataPtr, playSampleCount);
-                silence.Clear();
+            var dst = new Span<float>((void*)dataPtr, playSampleCount);
+            var available = Math.Min(_decodeBuffer.Count, playSampleCount);
+            if (available > 0) {
+                _decodeBuffer.TryRead(dst[..available], out _); // always succeeds: Count >= available
+                if (available < playSampleCount)
+                    dst[available..].Clear();
+                hasData = true;
             }
             else {
-                var src = rd.Span[..playSampleCount];
-                var dst = new Span<float>((void*)dataPtr, playSampleCount);
-                src.CopyTo(dst);
+                hasData = false;
+                var isCompleted = _packetChannel.Reader.Completion.IsCompleted;
+                if (isCompleted) {
+                    _ = End(true, CancellationToken.None);
+                    return;
+                }
+                // Starving - report playing state
+                ReportPlaying();
+                dst.Clear();
             }
         }
         _frameInput?.AddFrame(audioFrame);

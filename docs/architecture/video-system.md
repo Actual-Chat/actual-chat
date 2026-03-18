@@ -6,7 +6,7 @@ Real-time video streaming in ActualChat using a custom SignalR-based pipeline (n
 
 - **Off-main-thread encoding & decoding** via Web Workers with typed RPC contracts
 - **Sharded backend** using ActualLab Mesh (`HostRole.VideoBackend`)
-- **Adaptive quality** — sender quality stepping, per-peer GOP skipping, codec negotiation
+- **Adaptive quality** — sender quality stepping, per-peer skip-to-live, codec negotiation
 - **VAD-based adaptive framerate** — reduces fps when speaker is silent in group calls
 - **Feature flag**: `Features_EnableVideoStreaming` (admin-only)
 
@@ -163,7 +163,7 @@ Owns the frame-level streaming infrastructure:
 
 - **`StreamStore<VideoFrame>`** — memoized frame buffer with 30s expiration and 150-frame retention
 - **`StreamLatencyState`** (per-stream) — evaluates quality every 5s; steps down if >50% peers are slow, steps up after 15s hysteresis if all peers are fast. Publishes `VideoQualityPreset` via `ObserveQualityDirectives()`.
-- **`PeerLatencyState`** (per-peer) — sliding window of latency samples; activates graduated GOP skip ratios (0=none, 1=skip every other GOP, 2=skip 2 of 3) when latency exceeds thresholds
+- **`PeerLatencyState`** (per-peer) — sliding window of latency samples; triggers one-shot skip-to-live when latency exceeds 5s, jumping to the latest buffered keyframe
 
 #### LiveVideoBackend (`src/dotnet/Streaming.Service/Backend/LiveVideoBackend.cs`)
 
@@ -183,7 +183,7 @@ Manages stream registry and membership:
 | Method | Description |
 |--------|-------------|
 | `PushVideo(sessionToken, chatId, codec, width, height, codecSettings, clientStartOffset, videoStream)` | Accepts `IAsyncEnumerable<byte[]>` of MessagePack-encoded VideoFrameDto, converts to `VideoFrame` stream |
-| `GetVideo(sessionToken, streamId, skipToMs)` | Returns `IAsyncEnumerable<byte[]>` with MessagePack-serialized frames, applies per-peer GOP skipping |
+| `GetVideo(sessionToken, streamId, skipToMs)` | Returns `IAsyncEnumerable<byte[]>` with MessagePack-serialized frames, applies per-peer skip-to-live |
 | `ReportVideoLatency(sessionToken, streamId, streamOffsetMs)` | Forwards peer latency to `VideoStreamingBackend.ReportPeerLatency()` |
 
 ### Permission Layer
@@ -305,17 +305,15 @@ When multiple receivers report high latency, the sender's encoding quality is ad
 5. New `VideoQualityPreset` published via `ObserveStreamQualityRequests()`
 6. `RecordingService` subscribes and calls `reconfigure(width, height, bitrate)` on the pipeline
 
-### Per-Peer GOP Skipping
+### Per-Peer Skip-to-Live
 
 For individual slow receivers without penalizing all viewers:
 
 1. `PeerLatencyState` tracks each peer's latency independently
-2. If median latency exceeds 1000ms (`GopSkipThresholdMs`), graduated GOP skipping activates:
-   - Ratio 0 = no skipping
-   - Ratio 1 = skip every other GOP
-   - Ratio 2 = skip 2 of 3 GOPs
-3. `StreamHub.GetVideo()` passes peerId to backend which applies skipping
-4. Recovery when latency drops below 500ms (`GopSkipRecoveryMs`)
+2. If raw latency exceeds 5000ms (`SkipToLiveThresholdMs`) and the peer is warmed up, the `SkipToLive` flag is set
+3. `ApplySkipToLive()` in the per-peer stream pipeline detects the flag, consumes all synchronously-available (buffered) frames, and resumes from the latest keyframe at the live edge
+4. One-shot operation: the flag is cleared after skip completes, full frame delivery resumes immediately
+5. If latency grows past 5s again, another skip fires automatically
 
 ### Codec Negotiation
 
@@ -337,7 +335,7 @@ Reduces bandwidth in group calls when the speaker is silent:
 
 ## Constants Reference
 
-**File:** `src/dotnet/Api/Constants.Video.cs` — 15 constants:
+**File:** `src/dotnet/Api/Constants.Video.cs` — 14 constants:
 
 | Constant | Value | Purpose |
 |----------|-------|---------|
@@ -348,8 +346,7 @@ Reduces bandwidth in group calls when the speaker is silent:
 | `LatencyReportInterval` | 5s | How often peers report latency |
 | `HighLatencyThresholdMs` | 500 | Latency above this triggers quality step-down |
 | `LowLatencyThresholdMs` | 200 | Latency below this allows quality step-up |
-| `GopSkipThresholdMs` | 1000 | Per-peer GOP skipping trigger |
-| `GopSkipRecoveryMs` | 500 | Per-peer GOP skipping recovery threshold |
+| `SkipToLiveThresholdMs` | 5000 | Per-peer skip-to-live trigger (one-shot jump to latest keyframe) |
 | `QualityDecisionInterval` | 5s | How often quality is re-evaluated |
 | `QualityHysteresisWindow` | 15s | Cooldown before stepping quality back up |
 | `LatencyHistorySize` | 6 | Sliding window samples (~30s at 5s intervals) |
@@ -430,7 +427,7 @@ All paths relative to `src/dotnet/`.
 | `Api/Video/VideoFormat.cs` | Stream format descriptor |
 | `Api/Video/VideoSource.cs` | Memoizing video source with keyframe seeking |
 | `Api/Video/VideoQualityPreset.cs` | Quality levels with resolution and bitrate |
-| `Api/Constants.Video.cs` | 15 video constants |
+| `Api/Constants.Video.cs` | 14 video constants |
 | `Api/Streaming/VideoStreamInfo.cs` | Stream metadata record |
 | `Streaming.Contracts/IVideoStreamingBackend.cs` | Frame streaming interface (4 methods) |
 | `Streaming.Contracts/ILiveVideoBackend.cs` | Discovery & membership interface (10 methods) |

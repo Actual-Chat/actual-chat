@@ -198,11 +198,8 @@
     }
 
     private async Task OnSettingsClick() {
-        // Stop current recording
-        if (JSRef is {} jsRef)
-            await jsRef.InvokeVoidAsync("stopRecording");
+        // DO NOT stop recording — the modal will share the recorder's preview stream
 
-        // Get chat for modal
         var chatId = Hub.ChatUI.SelectedChatId.Value;
         if (chatId is null)
             return;
@@ -211,11 +208,10 @@
         if (chat is null)
             return;
 
-        // Open JoinVideoCallModal for camera settings
         var mode = RemoteStreamCount > 0
             ? JoinVideoCallModal.VideoCallMode.Join
             : JoinVideoCallModal.VideoCallMode.Start;
-        _ = ModalUI.Show(new JoinVideoCallModal.Model(chat, mode));
+        _ = ModalUI.Show(new JoinVideoCallModal.Model(chat, mode, IsSettingsMode: true));
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()

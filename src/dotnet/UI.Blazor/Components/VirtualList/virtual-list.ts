@@ -25,7 +25,7 @@ const UpdateItemVisibilityInterval = 250;
 const VisibilityEpsilon = 4;
 const EdgeEpsilon = 4;
 const ScrollDebounce = 200;
-const ScrollRestoreGuard = 100;
+const ScrollRestoreGuard = DeviceInfo.isMobile ? 250 : 100;
 const SkeletonDetectionBoundary = 200;
 const MinViewPortSize = 400;
 const RequestDataTimeout = 800;
@@ -920,9 +920,18 @@ export class VirtualList {
     private turnOffIsEndAnchorVisibleDebounced = debounce(() => this.turnOffIsEndAnchorVisible(), ScrollDebounce);
 
     private turnOffIsEndAnchorVisible(): void {
+        // Double-check DOM — IntersectionObserver can give false negatives during resize
+        if (this.isItemPartiallyVisible(this.endAnchorRef)) {
+            this.turnOnIsEndAnchorVisibleDebounced();
+            return;
+        }
         this.updateState('endAnchor: off', this.state, { isEndAnchorVisible: false });
         if (this.state.stickyEdge?.edge === VirtualListEdge.End) {
-            this.setStickyEdge(null);
+            const timeSinceRestore = Date.now() - this.state.scrollPositionRestoredAt;
+            if (timeSinceRestore > ScrollDebounce)
+                this.setStickyEdge(null);
+            else
+                this.turnOffIsEndAnchorVisibleDebounced();
         }
 
         this.updateVisibleKeysThrottled();
@@ -1054,12 +1063,20 @@ export class VirtualList {
                     this.scrollToEdge(this.state.stickyEdge!.edge, shouldUseSmoothScroll, scrollType);
                 };
             } else {
-                if (this.state.stickyEdge.edge === VirtualListEdge.End) {
-                    const itemRef = this.getItemRef(this.state.stickyEdge.itemKey);
-                    if (itemRef)
-                        scrollFunc = () => this.scrollTo(itemRef, false);
+                const isEdgeGenuinelyGone = this.state.stickyEdge.edge === VirtualListEdge.End
+                    ? !rs.hasVeryLastItem
+                    : !rs.hasVeryFirstItem;
+                if (isEdgeGenuinelyGone) {
+                    this.setStickyEdge(null);
+                } else {
+                    // Transient: hasVeryLastItem but getLastItemKey() returned null during render.
+                    // Keep stickyEdge — scroll to old item if possible.
+                    if (this.state.stickyEdge.edge === VirtualListEdge.End) {
+                        const itemRef = this.getItemRef(this.state.stickyEdge.itemKey);
+                        if (itemRef)
+                            scrollFunc = () => this.scrollTo(itemRef, false);
+                    }
                 }
-                this.setStickyEdge(null);
             }
         } else {
             if (rs.query.isNone && rs.renderIndex === 0) {
@@ -1194,7 +1211,10 @@ export class VirtualList {
 
         // Clear sticky edge when user is scrolling via touch/pointer drag
         if (this.isPointerDown && this.state.stickyEdge != null && !this.state.isEndAnchorVisible) {
-            this.setStickyEdge(null);
+            // Require minimum displacement from edge before clearing — prevents
+            // keyboard resize and small touch movements from losing sticky edge
+            if (Math.abs(this.ref.scrollTop) > 50)
+                this.setStickyEdge(null);
         }
 
         // Detect user scroll direction on the first trusted scroll event
@@ -1229,10 +1249,19 @@ export class VirtualList {
         this.isPointerDown = false;
     };
 
-    private onWheel = (): void => {
+    private onWheel = (ev: WheelEvent): void => {
+        // Mobile inertial/momentum scrolling fires wheel events — ignore them
+        if (DeviceInfo.isMobile)
+            return;
+
         const { stickyEdge, isEndAnchorVisible } = this.state;
         if (stickyEdge != null && !isEndAnchorVisible) {
-            this.setStickyEdge(null);
+            // Only clear if wheel direction is away from the sticky edge
+            const isAwayFromEdge = stickyEdge.edge === VirtualListEdge.End
+                ? ev.deltaY < 0
+                : ev.deltaY > 0;
+            if (isAwayFromEdge)
+                this.setStickyEdge(null);
         }
     };
 
@@ -1595,6 +1624,7 @@ export class VirtualList {
         let endSpacerSize = 0;
         let totalSizeDiff = 0;
         const isInteractivePositioning = [...this.state.pivots].some(p => p.isInteractive)
+            && scrollMetadata?.scrollType !== 'sticky-edge'
             && scrollMetadata?.scrollType !== 'last-item'
             && scrollMetadata?.scrollType !== 'item';
 
@@ -1784,7 +1814,8 @@ export class VirtualList {
                     scrollMetadata?.scroll?.();
                     debugLog?.log(`restoreScrollPosition: scroll set synchronously`, scrollMetadata?.scrollType);
                 } else {
-                    if (this.state.stickyEdge)
+                    // Only clear sticky edge if user has actually scrolled away from the edge
+                    if (this.state.stickyEdge && Math.abs(this.ref.scrollTop) > 50)
                         this.setStickyEdge(null);
                     debugLog?.log(`restoreScrollPosition: scroll set interactive`, scrollMetadata?.scrollType);
                 }
