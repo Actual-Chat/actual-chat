@@ -16,7 +16,6 @@ public class DeviceAwakeUI : UIServiceBase<UIHub>, ISleepDurationProvider, IDevi
 
     public IState<TimeSpan> TotalSleepDuration => _totalSleepDuration;
 
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DeviceAwakeUI))]
     public DeviceAwakeUI(UIHub hub) : base(hub)
     {
         _totalSleepDuration = StateFactory.NewMutable(
@@ -29,19 +28,8 @@ public class DeviceAwakeUI : UIServiceBase<UIHub>, ISleepDurationProvider, IDevi
 
     private async Task Initialize()
     {
-        if (HostInfo.HostKind == HostKind.Server)
-            // We reload whole app for SSB on awake. See base-layout.ts
-            return;
-
         try {
             await JS.InvokeVoidAsync(JSInitMethod, _backendRef).ConfigureAwait(false);
-            // Debug logic
-            // _ = Task.Run(async () => {
-            //     while (true) {
-            //         await Task.Delay(TimeSpan.FromSeconds(10));
-            //         _totalSleepDuration.Set(r => r.Value + TimeSpan.FromSeconds(5));
-            //     }
-            // });
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to initialize DeviceAwakeUI");

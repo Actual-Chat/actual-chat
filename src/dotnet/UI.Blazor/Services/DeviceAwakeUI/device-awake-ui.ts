@@ -5,6 +5,7 @@ const { errorLog } = Log.get('DeviceAwakeUI');
 
 export class DeviceAwakeUI {
     private static backendRef: DotNet.DotNetObject;
+
     public static init(backendRef: DotNet.DotNetObject) {
         this.backendRef = backendRef;
         OnDeviceAwake.events.add(x => this.onDeviceAwake(x));
