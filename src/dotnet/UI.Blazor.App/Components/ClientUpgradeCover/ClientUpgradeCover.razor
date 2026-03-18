@@ -1,5 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Hosting
+@using ActualLab.Rpc
 @inherits ComputedStateComponent<ServerApiInfo>
 @if (State.LastNonErrorValue is not { CompatibilityLevel: CompatibilityLevel.Incompatible } serverApiInfo) {
     @ChildContent
@@ -68,6 +69,15 @@
                 Category = GetStateCategory(t),
             });
 
-    protected override Task<ServerApiInfo> ComputeState(CancellationToken cancellationToken)
-        => SystemProperties.GetServerApiInfo(cancellationToken);
+    protected override async Task<ServerApiInfo> ComputeState(CancellationToken cancellationToken) {
+        if (State.LastNonErrorValue is { CompatibilityLevel: CompatibilityLevel.Incompatible } last)
+            return last;
+
+        // Check if the RPC peer terminated due to unsupported serialization format
+        var peerState = await Hub.ReconnectUI.State.Use(cancellationToken).ConfigureAwait(false);
+        if (peerState.LastError is RpcSerializationFormatException)
+            return new ServerApiInfo(CompatibilityLevel.Incompatible);
+
+        return await SystemProperties.GetServerApiInfo(cancellationToken).ConfigureAwait(false);
+    }
 }
