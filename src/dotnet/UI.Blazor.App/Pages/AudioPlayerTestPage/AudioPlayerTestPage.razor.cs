@@ -15,7 +15,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     private CancellationTokenSource? _cts;
     private CancellationTokenRegistration _registration;
     private double _offset;
-    private string _uri = $"https://{Constants.Hosts.DevVoxt}/api/audio/download/audio-record/01FQEXRGK4DA5BACTDTAGMF0D7/0000.webm";
+    private string _uri = "";
     private AudioSource? _audioSource;
     private string _audioBlobStreamUri = "";
 
