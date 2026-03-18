@@ -27,8 +27,8 @@ public sealed class BlockRingBuffer<T> : IDisposable
     private int _wrapPos;   // physical position where data ends before gap; -1 = no gap
     private volatile int _count; // valid readable items
 
-    private Task<int>? _whenWrittenTask;
-    private Task<int>? _whenReadTask;
+    private Task<int>? _whenReadyToRead;
+    private Task<int>? _whenReadyToWrite;
 
     public int Capacity => _capacity;
     public int Count => _count;
@@ -48,15 +48,13 @@ public sealed class BlockRingBuffer<T> : IDisposable
 
     public void Dispose()
     {
-        Task<int>? wwt, wrt;
+        Task<int>? t1, t2;
         lock (_lock) {
-            wwt = _whenWrittenTask;
-            _whenWrittenTask = null;
-            wrt = _whenReadTask;
-            _whenReadTask = null;
+            (t1, t2) = (_whenReadyToRead, _whenReadyToWrite);
+            (_whenReadyToRead, _whenReadyToWrite) = (null, null);
         }
-        TrySetCanceled(wwt);
-        TrySetCanceled(wrt);
+        TrySetCanceled(t1);
+        TrySetCanceled(t2);
         _pool.Return(_buffer, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
     }
 
@@ -89,7 +87,7 @@ public sealed class BlockRingBuffer<T> : IDisposable
             return true;
         }
 
-        Task<int>? completedWrittenTask;
+        Task<int>? completedWhenReadyToWrite;
         lock (_lock) {
             var free = _capacity - _count;
             var toWrite = Math.Min(data.Length, free);
@@ -116,21 +114,19 @@ public sealed class BlockRingBuffer<T> : IDisposable
                     remaining = remaining[n..];
                 }
 
-                completedWrittenTask = _whenWrittenTask;
-                _whenWrittenTask = null;
+                completedWhenReadyToWrite = _whenReadyToRead;
+                _whenReadyToRead = null;
             }
             else
-                completedWrittenTask = null;
+                completedWhenReadyToWrite = null;
 
             writtenCount = toWrite;
-            if (writtenCount < data.Length) {
-                _whenReadTask ??= AsyncTaskMethodBuilderExt.New<int>().Task;
-                whenReadyToWrite = _whenReadTask;
-            }
+            if (writtenCount < data.Length)
+                whenReadyToWrite = _whenReadyToWrite ??= AsyncTaskMethodBuilderExt.New<int>().Task;
             else
                 whenReadyToWrite = null;
         }
-        TrySetResult(completedWrittenTask, writtenCount);
+        TrySetResult(completedWhenReadyToWrite, writtenCount);
         return writtenCount == data.Length;
     }
 
@@ -147,11 +143,11 @@ public sealed class BlockRingBuffer<T> : IDisposable
             return true;
         }
 
-        Task<int>? completedReadTask;
+        Task<int>? completedWhenReadyToWrite;
         lock (_lock) {
             if (_count < destination.Length) {
-                _whenWrittenTask ??= AsyncTaskMethodBuilderExt.New<int>().Task;
-                whenReadyToRead = _whenWrittenTask;
+                _whenReadyToRead ??= AsyncTaskMethodBuilderExt.New<int>().Task;
+                whenReadyToRead = _whenReadyToRead;
                 return false;
             }
 
@@ -178,10 +174,10 @@ public sealed class BlockRingBuffer<T> : IDisposable
 
             Interlocked.Add(ref _count, -toRead);
 
-            completedReadTask = _whenReadTask;
-            _whenReadTask = null;
+            completedWhenReadyToWrite = _whenReadyToWrite;
+            _whenReadyToWrite = null;
         }
-        TrySetResult(completedReadTask, destination.Length);
+        TrySetResult(completedWhenReadyToWrite, destination.Length);
         whenReadyToRead = null;
         return true;
     }
@@ -193,10 +189,9 @@ public sealed class BlockRingBuffer<T> : IDisposable
     public Task? WhenReadyToRead()
     {
         lock (_lock) {
-            if (_count > 0)
-                return null;
-            _whenWrittenTask ??= AsyncTaskMethodBuilderExt.New<int>().Task;
-            return _whenWrittenTask;
+            return _count > 0
+                ? null
+                : _whenReadyToRead ??= AsyncTaskMethodBuilderExt.New<int>().Task;
         }
     }
 
@@ -208,8 +203,8 @@ public sealed class BlockRingBuffer<T> : IDisposable
             _writePos = 0;
             _wrapPos = -1;
             Interlocked.Exchange(ref _count, 0);
-            completedReadTask = _whenReadTask;
-            _whenReadTask = null;
+            completedReadTask = _whenReadyToWrite;
+            _whenReadyToWrite = null;
         }
         TrySetResult(completedReadTask, 0);
     }
