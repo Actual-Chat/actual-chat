@@ -1,6 +1,7 @@
 import { Log } from 'logging';
+import { DeviceInfo } from 'device-info';
 import { RecordingService, type RecordingConfig, type RecordingState } from '../../Services/Video/services/recording-service';
-import { detectSupportedCodecs, getDefaultCodec, type CodecInfo } from '../../Services/Video/codec-support';
+import { detectSupportedCodecs, getDefaultCodec, getCodecCategory, type CodecInfo } from '../../Services/Video/codec-support';
 
 const { debugLog, infoLog, warnLog, errorLog } = Log.get('VideoRecorder');
 
@@ -160,10 +161,32 @@ export class VideoRecorder {
         infoLog?.log('Starting video recording...');
 
         try {
+            // Platform-adaptive encoding parameters to balance quality vs. energy/CPU
+            let targetWidth: number;
+            let targetHeight: number;
+            let targetBitrate: number;
+            let targetFramerate: number;
+            if (DeviceInfo.isIos) {
+                targetWidth = 640;
+                targetHeight = 480;
+                targetBitrate = 800_000;
+                targetFramerate = 20;
+            } else if (DeviceInfo.isMobile) {
+                targetWidth = 960;
+                targetHeight = 540;
+                targetBitrate = 1_500_000;
+                targetFramerate = 24;
+            } else {
+                targetWidth = 1280;
+                targetHeight = 720;
+                targetBitrate = 2_000_000;
+                targetFramerate = 30;
+            }
+
             // Detect supported encoder codecs at 1080p (avoids resolution-dependent false positives)
             const supportedCodecs = await detectSupportedCodecs();
-            const bestCodecString = getDefaultCodec(supportedCodecs);
-            const codecCategory = bestCodecString.startsWith('av01') ? 'av1' as const : 'h264' as const;
+            const bestCodecString = getDefaultCodec(supportedCodecs, targetWidth, targetHeight);
+            const codecCategory = getCodecCategory(bestCodecString);
             infoLog?.log(`Initial codec selection: ${codecCategory} (${bestCodecString})`);
 
             // Cache supported encoder categories for later codec negotiation
@@ -175,10 +198,10 @@ export class VideoRecorder {
                 mode: 'webcam',
                 codec: codecCategory,
                 codecString: bestCodecString,
-                width: 1280,
-                height: 720,
-                bitrate: 2_000_000,
-                framerate: 30,
+                width: targetWidth,
+                height: targetHeight,
+                bitrate: targetBitrate,
+                framerate: targetFramerate,
                 cameraDeviceId: this.selectedCameraDeviceId ?? undefined,
                 backgroundBlur: {
                     enabled: this.isBlurEnabled,
@@ -214,8 +237,8 @@ export class VideoRecorder {
             // produces a dead track in Chromium.
             const previewConstraints: MediaStreamConstraints = {
                 video: this.selectedCameraDeviceId
-                    ? { deviceId: { exact: this.selectedCameraDeviceId } }
-                    : true,
+                    ? { deviceId: { exact: this.selectedCameraDeviceId }, width: { ideal: targetWidth }, height: { ideal: targetHeight }, frameRate: { ideal: targetFramerate } }
+                    : { width: { ideal: targetWidth }, height: { ideal: targetHeight }, frameRate: { ideal: targetFramerate } },
                 audio: false,
             };
             const previewStream = await navigator.mediaDevices.getUserMedia(previewConstraints);
@@ -334,12 +357,25 @@ export class VideoRecorder {
         const cappedWidth = this.cameraWidth > 0 ? Math.min(width, this.cameraWidth) : width;
         const cappedHeight = this.cameraHeight > 0 ? Math.min(height, this.cameraHeight) : height;
 
-        if (cappedWidth !== width || cappedHeight !== height)
-            infoLog?.log(`reconfigure: ${width}x${height} @ ${bitrate / 1_000_000}Mbps → capped to ${cappedWidth}x${cappedHeight}`);
+        // Scale bitrate proportionally when resolution is capped
+        let cappedBitrate = bitrate;
+        if (cappedWidth !== width || cappedHeight !== height) {
+            const ratio = (cappedWidth * cappedHeight) / (width * height);
+            cappedBitrate = Math.round(bitrate * ratio);
+        }
+        // Platform-specific bitrate caps to prevent backpressure
+        if (DeviceInfo.isIos) {
+            cappedBitrate = Math.min(cappedBitrate, 1_200_000);
+        } else if (DeviceInfo.isMobile) {
+            cappedBitrate = Math.min(cappedBitrate, 2_000_000);
+        }
+
+        if (cappedWidth !== width || cappedHeight !== height || cappedBitrate !== bitrate)
+            infoLog?.log(`reconfigure: ${width}x${height} @ ${bitrate / 1_000_000}Mbps → capped to ${cappedWidth}x${cappedHeight} @ ${cappedBitrate / 1_000_000}Mbps`);
         else
             infoLog?.log(`reconfigure: ${width}x${height} @ ${bitrate / 1_000_000}Mbps`);
 
-        void this.recordingService.getPipeline()?.reconfigure({ bitrate, width: cappedWidth, height: cappedHeight });
+        void this.recordingService.getPipeline()?.reconfigure({ bitrate: cappedBitrate, width: cappedWidth, height: cappedHeight });
     }
 
     /**
@@ -450,9 +486,10 @@ export class VideoRecorder {
                 categories.add(c.category);
             }
         }
-        // Return in priority order: av1, h264
+        // Return in priority order: av1, hevc, h264
         const ordered: string[] = [];
         if (categories.has('av1')) ordered.push('av1');
+        if (categories.has('hevc')) ordered.push('hevc');
         if (categories.has('h264')) ordered.push('h264');
         return ordered;
     }

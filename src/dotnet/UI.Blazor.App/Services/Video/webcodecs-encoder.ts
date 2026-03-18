@@ -4,6 +4,7 @@
  */
 
 import { Log } from 'logging';
+import { DeviceInfo } from 'device-info';
 
 const { infoLog, errorLog } = Log.get('VideoEncoder');
 
@@ -119,6 +120,11 @@ export class WebCodecsEncoder {
                 hardwareAcceleration: this.config.hardwareAcceleration,
             };
 
+            // Constant bitrate on iOS prevents CPU spikes on complex frames
+            if (DeviceInfo.isIos) {
+                encoderConfig.bitrateMode = 'constant';
+            }
+
             // Add scalability mode if specified
             if (this.config.scalabilityMode) {
                 encoderConfig.scalabilityMode = this.config.scalabilityMode;
@@ -220,6 +226,10 @@ export class WebCodecsEncoder {
             latencyMode: this.config.latencyMode,
             hardwareAcceleration: this.config.hardwareAcceleration
         };
+
+        if (DeviceInfo.isIos) {
+            encoderConfig.bitrateMode = 'constant';
+        }
 
         // Add scalability mode if specified
         if (this.config.scalabilityMode) {

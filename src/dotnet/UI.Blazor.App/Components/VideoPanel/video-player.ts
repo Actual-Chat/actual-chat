@@ -16,6 +16,14 @@ import type { DecoderConfig } from '../../Services/Video/webcodecs-decoder';
 
 const { debugLog, warnLog, errorLog } = Log.get('VideoPlayer');
 
+interface PendingFrame {
+    drawable: VideoFrame | ImageBitmap;
+    timestamp: number;
+    displayWidth: number;
+    displayHeight: number;
+    close(): void;
+}
+
 function arrayBufferEqual(a: AllowSharedBufferSource, b: AllowSharedBufferSource): boolean {
     const viewA = ArrayBuffer.isView(a) ? new Uint8Array(a.buffer, a.byteOffset, a.byteLength) : new Uint8Array(a);
     const viewB = ArrayBuffer.isView(b) ? new Uint8Array(b.buffer, b.byteOffset, b.byteLength) : new Uint8Array(b);
@@ -37,7 +45,9 @@ export class VideoPlayer {
     private decoderWorkerInstance: Worker | null = null;
     private decoderWorker: (DecoderWorker & Disposable) | null = null;
     private decoderConfig: DecoderConfig | null = null;
-    private pendingFrames: VideoFrame[] = [];
+    private pendingFrames: PendingFrame[] = [];
+    private readonly isSafari: boolean;
+    private conversionQueue: Promise<void> = Promise.resolve();
     private isPlaying = false;
     private visibilitySubscription: Subscription | null = null;
 
@@ -123,6 +133,9 @@ export class VideoPlayer {
         this.canvas = canvas;
         this.canvasCtx = canvas.getContext('2d');
         this.renderKey = `vr-${streamId}`;
+        this.isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        if (this.isSafari)
+            warnLog?.log('Safari detected — will convert VideoFrame to ImageBitmap for canvas rendering');
 
         // Set canvas size
         canvas.width = width || 1280;
@@ -256,6 +269,69 @@ export class VideoPlayer {
         return true;
     }
 
+    private wrapFrame(frame: VideoFrame): PendingFrame {
+        return {
+            drawable: frame,
+            timestamp: frame.timestamp,
+            displayWidth: frame.displayWidth,
+            displayHeight: frame.displayHeight,
+            close() { frame.close(); },
+        };
+    }
+
+    private async convertToBitmap(frame: VideoFrame): Promise<PendingFrame> {
+        const ts = frame.timestamp;
+        const dw = frame.displayWidth;
+        const dh = frame.displayHeight;
+        try {
+            const bitmap = await createImageBitmap(frame);
+            frame.close();
+            return {
+                drawable: bitmap,
+                timestamp: ts,
+                displayWidth: dw,
+                displayHeight: dh,
+                close() { bitmap.close(); },
+            };
+        } catch (e) {
+            warnLog?.log('createImageBitmap(VideoFrame) failed, falling back to direct frame:', e);
+            return {
+                drawable: frame,
+                timestamp: ts,
+                displayWidth: dw,
+                displayHeight: dh,
+                close() { frame.close(); },
+            };
+        }
+    }
+
+    private enqueuePendingFrame(pf: PendingFrame): void {
+        this.pendingFrames.push(pf);
+        this.bufferSize++;
+
+        // Update pipeline latency estimate from this fresh frame
+        const frameOffsetMs = pf.timestamp / 1000; // μs → ms
+        const capturedAtMs = this.startedAtMs + frameOffsetMs;
+        const currentLatencyMs = ServerClock.now() - capturedAtMs;
+        // Safety cap at 10s to prevent absurd values from clock drift.
+        const cappedLatencyMs = Math.min(Math.max(currentLatencyMs, 0), 10000);
+        if (this.pipelineLatencyMs === 0) {
+            this.pipelineLatencyMs = cappedLatencyMs;
+        } else {
+            // Asymmetric EMA: fast response to increases (α=0.3), slow decay (α=0.05)
+            const alpha = cappedLatencyMs > this.pipelineLatencyMs ? 0.3 : 0.05;
+            this.pipelineLatencyMs = this.pipelineLatencyMs * (1 - alpha) + cappedLatencyMs * alpha;
+        }
+
+        // When audio-sync is active, use larger buffer to retain frames from bursty delivery.
+        while (this.pendingFrames.length > this.maxBufferSize) {
+            const dropped = this.pendingFrames.shift()!;
+            dropped.close();
+            this.bufferSize--;
+        }
+        this.scheduleRender();
+    }
+
     private onFrameDecoded(frame: VideoFrame): void {
         // After tab restore, skip old frames from decoder's internal backlog
         if (this.skipFramesBelowOffsetMs > 0) {
@@ -277,34 +353,17 @@ export class VideoPlayer {
             this.skipFramesBelowOffsetMs = 0;
         }
 
-        this.pendingFrames.push(frame);
-        this.bufferSize++;
-
-        // Update pipeline latency estimate from this fresh frame
-        const frameOffsetMs = frame.timestamp / 1000; // μs → ms
-        const capturedAtMs = this.startedAtMs + frameOffsetMs;
-        const currentLatencyMs = ServerClock.now() - capturedAtMs;
-        // Safety cap at 10s to prevent absurd values from clock drift.
-        // The actual value (~3-4s for SignalR delivery) is used for audio-sync compensation.
-        // This does NOT affect server-side latency reporting (which uses lastRenderedOffsetMs directly).
-        const cappedLatencyMs = Math.min(Math.max(currentLatencyMs, 0), 10000);
-        if (this.pipelineLatencyMs === 0) {
-            this.pipelineLatencyMs = cappedLatencyMs;
+        if (this.isSafari) {
+            this.conversionQueue = this.conversionQueue.then(async () => {
+                if (!this.isPlaying) { frame.close(); return; }
+                const pf = await this.convertToBitmap(frame);
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+                if (!this.isPlaying) { pf.close(); return; }
+                this.enqueuePendingFrame(pf);
+            });
         } else {
-            // Asymmetric EMA: fast response to increases (α=0.3), slow decay (α=0.05)
-            const alpha = cappedLatencyMs > this.pipelineLatencyMs ? 0.3 : 0.05;
-            this.pipelineLatencyMs = this.pipelineLatencyMs * (1 - alpha) + cappedLatencyMs * alpha;
+            this.enqueuePendingFrame(this.wrapFrame(frame));
         }
-
-        // When audio-sync is active, use larger buffer to retain frames from bursty delivery.
-        // Audio-sync target controls rendering pace, so larger buffer doesn't add latency.
-        // Without audio-sync (wall-clock path), keep small buffer for low latency.
-        while (this.pendingFrames.length > this.maxBufferSize) {
-            const dropped = this.pendingFrames.shift()!;
-            dropped.close();
-            this.bufferSize--;
-        }
-        this.scheduleRender();
     }
 
     private onDecoderError(error: Error): void {
@@ -344,6 +403,13 @@ export class VideoPlayer {
             const rawTargetVideoOffsetMs = (audioState.recordedAtMs - this.startedAtMs) + audioPlayingAtMs;
             const targetVideoOffsetMs = rawTargetVideoOffsetMs - this.pipelineLatencyMs;
             targetTimestamp = targetVideoOffsetMs * 1000;
+
+            // When audio sync targets a time before this video stream started
+            // (e.g., new stream created after codec switch), snap to live edge
+            // to avoid permanent render starvation.
+            if (rawTargetVideoOffsetMs < 0 && this.pendingFrames.length > 0) {
+                targetTimestamp = this.pendingFrames[this.pendingFrames.length - 1].timestamp;
+            }
 
             this.playbackStartTime = now;
             this.firstFrameTimestamp = targetTimestamp;
@@ -442,7 +508,7 @@ export class VideoPlayer {
         }
 
         // Find the latest frame due for presentation; drop earlier ones
-        let frameToRender: VideoFrame | null = null;
+        let frameToRender: PendingFrame | null = null;
         while (this.pendingFrames.length > 0 && this.pendingFrames[0].timestamp <= targetTimestamp) {
             if (frameToRender) {
                 frameToRender.close();
@@ -485,15 +551,15 @@ export class VideoPlayer {
             this.scheduleRender();
     }
 
-    private drawFrame(frame: VideoFrame): void {
+    private drawFrame(pf: PendingFrame): void {
         if (!this.canvasCtx) return;
         try {
-            if (this.canvas.width !== frame.displayWidth || this.canvas.height !== frame.displayHeight) {
-                this.canvas.width = frame.displayWidth;
-                this.canvas.height = frame.displayHeight;
-                debugLog?.log(`Canvas resized to ${frame.displayWidth}x${frame.displayHeight}`);
+            if (this.canvas.width !== pf.displayWidth || this.canvas.height !== pf.displayHeight) {
+                this.canvas.width = pf.displayWidth;
+                this.canvas.height = pf.displayHeight;
+                debugLog?.log(`Canvas resized to ${pf.displayWidth}x${pf.displayHeight}`);
             }
-            this.canvasCtx.drawImage(frame, 0, 0);
+            this.canvasCtx.drawImage(pf.drawable as CanvasImageSource, 0, 0);
         } catch (error) {
             errorLog?.log('Error rendering frame:', error);
         }
@@ -892,7 +958,8 @@ export class VideoPlayer {
                 }
 
                 warnLog?.log(
-                    `VIDEO_DECODE: median=${ds.medianDecodeTime.toFixed(1)}ms avg=${ds.averageDecodeTime.toFixed(1)}ms ` +
+                    `VIDEO_DECODE: codec=${this.decoderConfig?.codec ?? 'unknown'} ` +
+                    `median=${ds.medianDecodeTime.toFixed(1)}ms avg=${ds.averageDecodeTime.toFixed(1)}ms ` +
                     `e2e=${this.pipelineLatencyMs.toFixed(0)}ms buf=${this.pendingFrames.length} ` +
                     `bufSpanMs=${currentBufferSpanMs.toFixed(0)} ` +
                     `recv=${recvDelta} decoded=${decodedDelta} drop=${ds.droppedFrames} ` +

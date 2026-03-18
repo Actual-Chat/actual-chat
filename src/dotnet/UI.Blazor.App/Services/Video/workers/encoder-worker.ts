@@ -8,6 +8,7 @@
 
 import { rpcClientServer, rpcNoWait } from 'rpc';
 import { Log } from 'logging';
+import { DeviceInfo } from 'device-info';
 
 import { type EncoderConfig, type EncoderStats, WebCodecsEncoder } from '../webcodecs-encoder';
 import type { EncoderWorker, EncoderWorkerCallbacks } from './encoder-worker-contract';
@@ -341,12 +342,14 @@ const serverImpl: EncoderWorker = {
             return;
         }
 
-        // Backpressure: drop frame if encoder queue is building up
+        // Backpressure: drop frame if encoder queue is building up.
+        // iOS has stricter thread scheduling — use tighter threshold to avoid starving audio.
+        const backpressureMaxQueue = DeviceInfo.isIos ? 1 : 3;
         backpressureTotalFrames++;
-        if (encoder.getEncodeQueueSize() > 3) {
+        if (encoder.getEncodeQueueSize() > backpressureMaxQueue) {
             frame.close();
             backpressureDrops++;
-            debugLog?.log('Frame dropped due to encoder backpressure (queueSize > 3)');
+            debugLog?.log(`Frame dropped due to encoder backpressure (queueSize > ${backpressureMaxQueue})`);
 
             // Check if we should notify main thread about sustained backpressure
             const now = performance.now();

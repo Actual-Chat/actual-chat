@@ -11,7 +11,7 @@ public partial class LiveVideoBackend
 
         // Codec recommendation
         private readonly AsyncObservable<ApiArray<string>> _supportedDecoderCodecChanges = new();
-        private ApiArray<string> _currentSupportedDecoderCodecs = new(["av1", "h264"]);
+        private ApiArray<string> _currentSupportedDecoderCodecs = new(["av1", "hevc", "h264"]);
         private CpuTimestamp _lastCodecDowngradeAt;
 
         public LiveVideoBackend Owner { get; } = owner;
@@ -92,15 +92,19 @@ public partial class LiveVideoBackend
             var currentPrimary = _currentSupportedDecoderCodecs.Count > 0 ? _currentSupportedDecoderCodecs[0] : "h264";
             var newPrimary = newCodecs.Count > 0 ? newCodecs[0] : "h264";
 
-            // Delay switching UP to AV1 by CodecSwitchHysteresisWindow
-            if (newPrimary == "av1" && currentPrimary == "h264") {
+            // Delay switching UP (h264→hevc, h264→av1, hevc→av1)
+            var codecRank = new Dictionary<string, int> { ["h264"] = 0, ["hevc"] = 1, ["av1"] = 2 };
+            var currentRank = codecRank.GetValueOrDefault(currentPrimary, 0);
+            var newRank = codecRank.GetValueOrDefault(newPrimary, 0);
+
+            if (newRank > currentRank) {
                 var elapsed = _lastCodecDowngradeAt.Elapsed;
                 if (elapsed < Constants.Video.CodecSwitchHysteresisWindow)
                     return; // Not enough time since last downgrade
             }
 
             // Track downgrade timing
-            if (newPrimary == "h264" && currentPrimary == "av1")
+            if (newRank < currentRank)
                 _lastCodecDowngradeAt = CpuTimestamp.Now;
 
             _currentSupportedDecoderCodecs = newCodecs;
@@ -110,21 +114,24 @@ public partial class LiveVideoBackend
         private static ApiArray<string> ComputeSupportedDecoderCodecsLocked(Dictionary<string, ApiArray<string>> members)
         {
             if (members.Count == 0)
-                return new ApiArray<string>(["av1", "h264"]); // No viewers, all codecs available
+                return new ApiArray<string>(["av1", "hevc", "h264"]); // No viewers, all codecs available
 
-            // Check if all members support AV1 decoding
             var allSupportAv1 = true;
+            var allSupportHevc = true;
             foreach (var (_, codecs) in members) {
-                if (codecs.Any(codec => codec == "av1"))
-                    continue;
-
-                allSupportAv1 = false;
-                break;
+                if (codecs.All(codec => codec != "av1"))
+                    allSupportAv1 = false;
+                if (codecs.All(codec => codec != "hevc"))
+                    allSupportHevc = false;
+                if (!allSupportAv1 && !allSupportHevc)
+                    break;
             }
 
-            return allSupportAv1
-                ? new ApiArray<string>(["av1", "h264"])  // All support AV1 — priority: av1 > h264
-                : new ApiArray<string>(["h264"]);         // Not all support AV1 — h264 only
+            var result = new List<string>();
+            if (allSupportAv1) result.Add("av1");
+            if (allSupportHevc) result.Add("hevc");
+            result.Add("h264"); // always available
+            return new ApiArray<string>(result.ToArray());
         }
     }
 }

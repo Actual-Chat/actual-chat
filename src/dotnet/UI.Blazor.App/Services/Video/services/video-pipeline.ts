@@ -275,7 +275,9 @@ export class VideoPipeline implements IVideoPipeline {
 
     private onSegmentationError = (error: Error) => {
         errorLog?.log('Segmentation error:', error.message);
-    // Could implement fallback logic here (e.g., disable blur and continue without it)
+        if (this.config.backgroundBlur)
+            this.config.backgroundBlur.enabled = false;
+        warnLog?.log('Blur disabled due to segmentation error');
     };
 
     constructor(private config: PipelineConfig) {
@@ -389,8 +391,13 @@ export class VideoPipeline implements IVideoPipeline {
                     segConfig,
                     { timeoutMs: 10000 } // Longer timeout for model loading
                 ).catch((error: unknown) => {
-                    errorLog?.log('Failed to initialize segmentation worker:', error);
-                    throw error;
+                    warnLog?.log('Segmentation init failed, continuing without blur:', error);
+                    this.segmentationWorker?.dispose();
+                    this.segmentationWorker = null;
+                    this.segmentationWorkerInstance?.terminate();
+                    this.segmentationWorkerInstance = null;
+                    if (this.config.backgroundBlur) this.config.backgroundBlur.enabled = false;
+                    // Do NOT rethrow — let recording continue
                 })
             );
             infoLog?.log('Initializing segmentation worker for background blur');
@@ -1111,11 +1118,27 @@ export class VideoPipeline implements IVideoPipeline {
 
         try {
             while (this.processing) {
-                const { done, value: frame } = await this.frameReader!.read();
+                const { done, value: rawFrame } = await this.frameReader!.read();
 
                 if (done) {
                     infoLog?.log(`Frame stream ended after ${frameCount} frames`);
                     break;
+                }
+
+                // Normalize display dimensions to match coded dimensions.
+                // Some Android cameras produce MSTP frames where displayWidth/Height
+                // reflects the sensor's native resolution (e.g., 1280x720) while
+                // codedWidth/Height reflects the constrained resolution (e.g., 960x540).
+                // WebGPU importExternalTexture uses display dimensions as crop, which
+                // fails validation when crop > coded size.
+                let frame = rawFrame;
+                if (rawFrame.displayWidth !== rawFrame.codedWidth
+                    || rawFrame.displayHeight !== rawFrame.codedHeight) {
+                    frame = new VideoFrame(rawFrame, {
+                        displayWidth: rawFrame.codedWidth,
+                        displayHeight: rawFrame.codedHeight,
+                    });
+                    rawFrame.close();
                 }
 
                 frameCount++;

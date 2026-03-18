@@ -4,7 +4,7 @@
  */
 
 import { VideoPipeline, type PipelineConfig } from './video-pipeline';
-import { getBestScalabilityMode } from '../codec-support';
+import { getBestScalabilityMode, getCodecCategory, getCodecForCategory } from '../codec-support';
 import { detectGPUBackends } from '../gpu-support';
 import type { SegmentationConfig } from '../workers/segmentation-worker-contract';
 import { createDefaultSegmentationConfig, createAdaptiveSegmentationConfig } from '../workers/segmentation-worker-contract';
@@ -14,7 +14,7 @@ const { infoLog, warnLog, errorLog } = Log.get('VideoPipeline');
 
 export interface RecordingConfig {
   mode: 'webcam' | 'screen';
-  codec: 'h264' | 'av1';
+  codec: 'h264' | 'hevc' | 'av1';
   codecString?: string; // Specific codec profile string (e.g., 'avc1.640028', 'av01.0.08M.08')
   scalabilityModes?: string[]; // Supported scalability modes for the selected codec
   width: number;
@@ -164,18 +164,12 @@ export class RecordingService extends EventTarget {
             return;
         }
 
-        // Map category to codec string
-        let codecString: string;
-        if (codec === 'av1') {
-            codecString = 'av01.0.08M.08'; // AV1 Main, Level 4.0
-        } else {
-            codecString = 'avc1.640028'; // H.264 High profile level 4.0
-        }
+        const codecString = getCodecForCategory(codec as 'h264' | 'hevc' | 'av1', this.config.width, this.config.height);
 
-        // Skip if already using this codec category
-        const currentIsAV1 = this.config.codecString?.startsWith('av01') ?? false;
-        const targetIsAV1 = codecString.startsWith('av01');
-        if (currentIsAV1 === targetIsAV1)
+        // Skip if already using the same codec category
+        const currentCategory = getCodecCategory(this.config.codecString ?? '');
+        const targetCategory = getCodecCategory(codecString);
+        if (currentCategory === targetCategory)
             return;
 
         // No isConfigSupported check here — the sender already validated encoder
@@ -184,7 +178,7 @@ export class RecordingService extends EventTarget {
         // reports AV1 support at 720p but silently falls back to H.264).
 
         infoLog?.log(`Switching codec from ${this.config.codec} to ${codec} (${codecString})`);
-        this.config.codec = codec as 'h264' | 'av1';
+        this.config.codec = codec as 'h264' | 'hevc' | 'av1';
         this.config.codecString = codecString;
 
         await this.pipeline.switchCodec(codecString);
@@ -322,12 +316,7 @@ export class RecordingService extends EventTarget {
         if (this.config.codecString) {
             codecString = this.config.codecString;
         } else {
-            // Fallback to defaults based on codec category
-            if (this.config.codec === 'av1') {
-                codecString = 'av01.0.08M.08'; // AV1 Main, Level 4.0
-            } else {
-                codecString = 'avc1.640028'; // H.264 High profile level 4.0 (supports up to 1920x1088 @ 30fps, 2073600 coded area)
-            }
+            codecString = getCodecForCategory(this.config.codec, width, height);
         }
 
         // Determine best scalability mode if available
@@ -347,7 +336,7 @@ export class RecordingService extends EventTarget {
                 height: height,
                 bitrate: this.config.bitrate,
                 framerate: this.config.framerate,
-                keyframeInterval: 30, // 1 keyframe per second at 30fps
+                keyframeInterval: this.config.framerate, // 1 keyframe per second
                 latencyMode: 'realtime',
                 hardwareAcceleration: 'prefer-hardware',
                 scalabilityMode: scalabilityMode

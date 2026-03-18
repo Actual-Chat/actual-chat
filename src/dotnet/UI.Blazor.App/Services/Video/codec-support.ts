@@ -4,6 +4,7 @@
  */
 
 import { Log } from 'logging';
+import { DeviceInfo } from 'device-info';
 
 const { errorLog } = Log.get('VideoDecoder');
 
@@ -155,8 +156,33 @@ async function isCodecSupported(
     }
 }
 
-export function getDefaultCodec(supportedCodecs: CodecInfo[]): string {
-    // Priority: AV1 > H.264, with hardware acceleration preferred
+export function getCodecCategory(codecString: string): 'h264' | 'hevc' | 'av1' {
+    if (codecString.startsWith('av01')) return 'av1';
+    if (codecString.startsWith('hev1') || codecString.startsWith('hvc1')) return 'hevc';
+    return 'h264';
+}
+
+export function getCodecForCategory(category: 'h264' | 'hevc' | 'av1', width: number, height: number): string {
+    const isMobile = DeviceInfo.isMobile; // includes iOS
+    const isHighRes = height > 720;
+
+    if (category === 'av1') {
+        return isHighRes ? 'av01.0.08M.08' : 'av01.0.05M.08'; // Main L4.0 / Main L3.0
+    }
+    if (category === 'hevc') {
+        return isHighRes ? 'hev1.1.6.L120.B0' : 'hev1.1.6.L93.B0'; // Main L4.0 / Main L3.1
+    }
+    // H.264: Mobile uses Main profile (power efficient), Desktop uses High (better compression)
+    if (isMobile) {
+        return 'avc1.4D401F'; // Main 3.1 — mobile is capped at ≤720p
+    }
+    return isHighRes ? 'avc1.640028' : 'avc1.64001F'; // High 4.0 / High 3.1
+}
+
+export function getDefaultCodec(supportedCodecs: CodecInfo[], width = 1280, height = 720): string {
+    const isMobile = DeviceInfo.isMobile; // includes iOS
+
+    // Priority: AV1 HW > HEVC HW > H.264 HW (profile by platform) > H.264 SW (profile by platform)
 
     // 1. Try AV1 with hardware acceleration
     const av1HW = supportedCodecs.find(
@@ -164,32 +190,47 @@ export function getDefaultCodec(supportedCodecs: CodecInfo[]): string {
     );
     if (av1HW) return av1HW.codec;
 
-    // 2. Try H.264 with hardware acceleration (prefer High profile)
-    const h264HW = supportedCodecs.find(
-        c => c.category === 'h264' && c.supported && c.hardwareAccelerated && c.codec.includes('6400')
+    // 2. Try HEVC with hardware acceleration
+    const hevcHW = supportedCodecs.find(
+        c => c.category === 'hevc' && c.supported && c.hardwareAccelerated
     );
-    if (h264HW) return h264HW.codec;
+    if (hevcHW) return hevcHW.codec;
 
-    // 3. Try any H.264 with hardware acceleration
+    // H.264 profile preference depends on platform
+    // Mobile: Main > Baseline > High (power efficient)
+    // Desktop: High > Main > any (better compression)
+    const h264ProfileOrder = isMobile
+        ? ['4D40', '42E0', '6400']  // Main, Baseline, High
+        : ['6400', '4D40'];         // High, Main
+
+    // 3. Try H.264 HW in profile preference order
+    for (const profile of h264ProfileOrder) {
+        const match = supportedCodecs.find(
+            c => c.category === 'h264' && c.supported && c.hardwareAccelerated && c.codec.includes(profile)
+        );
+        if (match) return match.codec;
+    }
+    // 3b. Any H.264 HW
     const anyH264HW = supportedCodecs.find(
         c => c.category === 'h264' && c.supported && c.hardwareAccelerated
     );
     if (anyH264HW) return anyH264HW.codec;
 
-    // 4. Try H.264 High profile software
-    const h264High = supportedCodecs.find(
-        c => c.category === 'h264' && c.supported && c.codec.includes('6400')
-    );
-    if (h264High) return h264High.codec;
-
-    // 5. Try any H.264 software
+    // 4. Try H.264 SW in profile preference order
+    for (const profile of h264ProfileOrder) {
+        const match = supportedCodecs.find(
+            c => c.category === 'h264' && c.supported && c.codec.includes(profile)
+        );
+        if (match) return match.codec;
+    }
+    // 4b. Any H.264 SW
     const anyH264 = supportedCodecs.find(
         c => c.category === 'h264' && c.supported
     );
     if (anyH264) return anyH264.codec;
 
-    // Fallback to H.264 Baseline
-    return 'avc1.42E01E';
+    // Fallback: resolution-aware codec string
+    return getCodecForCategory('h264', width, height);
 }
 
 export async function getAV1CodecSupport(): Promise<CodecInfo[]> {
@@ -221,6 +262,19 @@ export async function detectSupportedDecoderCodecs(): Promise<string[]> {
         });
         if (av1.supported) codecs.push('av1');
     } catch { /* not supported */ }
+    // Try hev1 (Chrome/desktop) then hvc1 (iOS Safari) for HEVC decoder detection
+    let hevcSupported = false;
+    for (const hevcCodec of ['hev1.1.6.L120.B0', 'hvc1.1.6.L93.90']) {
+        try {
+            const hevc = await VideoDecoder.isConfigSupported({
+                codec: hevcCodec,
+                codedWidth: 1280,
+                codedHeight: 720,
+            });
+            if (hevc.supported) { hevcSupported = true; break; }
+        } catch { /* not supported */ }
+    }
+    if (hevcSupported) codecs.push('hevc');
     return codecs;
 }
 
