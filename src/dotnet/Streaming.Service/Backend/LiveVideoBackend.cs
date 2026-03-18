@@ -1,3 +1,4 @@
+using ActualChat.Mesh;
 using ActualChat.Video;
 using ActualLab.Redis;
 using ActualLab.Rpc;
@@ -13,6 +14,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
 
     private RedisLiveStateStore<VideoStreamInfo> StreamsStore { get; }
     private RedisLiveStateStore<ApiArray<string>> MembersStore { get; }
+    private MeshWatcher MeshWatcher => field ??= Services.MeshWatcher();
     private new ILogger Log => field ??= Services.LogFor(GetType());
 
     public LiveVideoBackend(IServiceProvider services)
@@ -41,7 +43,31 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     public virtual async Task<ApiArray<VideoStreamInfo>> ListActiveStreams(ChatId chatId, CancellationToken cancellationToken)
     {
         var streams = await SafeGetAll(StreamsStore, chatId).ConfigureAwait(false);
-        return new(streams.Values);
+        if (streams.Count == 0)
+            return default;
+
+        var meshState = MeshWatcher.State.Value;
+        List<string>? deadStreamIds = null;
+
+        var liveStreams = new List<VideoStreamInfo>(streams.Count);
+        foreach (var (key, info) in streams) {
+            var node = meshState[info.StreamId.NodeRef];
+            if (node is { State: MeshNodeState.Online })
+                liveStreams.Add(info);
+            else {
+                deadStreamIds ??= new();
+                deadStreamIds.Add(key);
+                Log.LogWarning(
+                    "ListActiveStreams({ChatId}): filtering stale stream {StreamId} (node {NodeRef} is dead/unknown)",
+                    chatId, info.StreamId, info.StreamId.NodeRef);
+            }
+        }
+
+        // Fire-and-forget cleanup of dead entries from Redis
+        if (deadStreamIds != null)
+            _ = CleanupDeadStreams(chatId, deadStreamIds);
+
+        return new(liveStreams);
     }
 
     // [ComputeMethod]
@@ -51,7 +77,9 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         if (streams.Count == 0)
             return default;
 
+        var meshState = MeshWatcher.State.Value;
         return streams.Values
+            .Where(s => meshState[s.StreamId.NodeRef] is { State: MeshNodeState.Online })
             .Select(s => s.AuthorId)
             .Distinct()
             .ToApiArray();
@@ -143,6 +171,19 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     }
 
     // Private methods
+
+    private async Task CleanupDeadStreams(ChatId chatId, List<string> deadStreamIds)
+    {
+        try {
+            foreach (var id in deadStreamIds) {
+                var streamId = StreamId.Parse(id);
+                await UnregisterActiveStream(chatId, streamId, CancellationToken.None).ConfigureAwait(false);
+            }
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "CleanupDeadStreams({ChatId}): failed to remove stale streams", chatId);
+        }
+    }
 
     private async Task<Dictionary<string, TValue>> SafeGetAll<TValue>(RedisLiveStateStore<TValue> store, ChatId chatId)
     {
