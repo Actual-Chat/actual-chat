@@ -31,7 +31,9 @@ public sealed class ChatReplayer : ChatPlayer
     }
 
     protected override async Task Play(
-        ChatEntryPlayer entryPlayer, Moment minPlayAt, CancellationToken cancellationToken)
+        ChatEntryPlayer entryPlayer,
+        Moment minPlayAt,
+        CancellationToken cancellationToken)
     {
         // Read offset from ReplayState (set by ChatAudioUI.StartReplay)
         var replayState = ChatAudioUI?.ReplayState.Value;
@@ -39,64 +41,13 @@ public sealed class ChatReplayer : ChatPlayer
             ? replayState.Offset
             : TimeSpan.Zero;
 
-        while (true) {
-            var sleepDurationAtStart = SleepDuration.Value;
-            var pauseDurationAtStart = Playback.TotalPauseDuration.Value;
-            var playbackStartedAt = CpuTimestamp.Now;
+        var sleepDurationAtStart = SleepDuration.Value;
+        var pauseDurationAtStart = Playback.TotalPauseDuration.Value;
+        var playbackStartedAt = CpuTimestamp.Now;
 
-            using var sleepCts = cancellationToken.CreateLinkedTokenSource();
-
-            // Watch for sleep duration change in background → abort playback
-            _ = BackgroundTask.Run(async () => {
-                try {
-                    await SleepDuration.Computed
-                        .When(x => x != sleepDurationAtStart, cancellationToken)
-                        .ConfigureAwait(false);
-                    Log.LogInformation("Sleep detected, aborting replay for restart");
-                    sleepCts.Cancel();
-                }
-                catch {
-                    // Expected on normal completion
-                }
-            }, CancellationToken.None);
-
-            try {
-                await PlayCore(entryPlayer, minPlayAt, currentOffset,
-                    playbackStartedAt, sleepDurationAtStart, pauseDurationAtStart,
-                    sleepCts.Token).ConfigureAwait(false);
-                return; // Normal completion
-            }
-            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
-                // Sleep triggered restart — compute how much audio time has elapsed
-                var wallElapsed = playbackStartedAt.Elapsed;
-                var sleepDelta = SleepDuration.Value - sleepDurationAtStart;
-                var pauseDelta = Playback.TotalPauseDuration.Value - pauseDurationAtStart;
-                var audioPlayed = (wallElapsed - sleepDelta - pauseDelta).Positive();
-
-                Log.LogInformation(
-                    "Restarting replay after sleep: audioPlayed={AudioPlayed}, sleepDelta={SleepDelta}",
-                    audioPlayed, sleepDelta);
-
-                // Abort current tracks
-                await Playback.Abort().WhenCompleted.SilentAwait(false);
-
-                // Advance offset by the amount of audio played
-                currentOffset += audioPlayed;
-            }
-        }
-    }
-
-    private async Task PlayCore(
-        ChatEntryPlayer entryPlayer,
-        Moment minPlayAt,
-        TimeSpan offset,
-        CpuTimestamp playbackStartedAt,
-        TimeSpan sleepDurationAtStart,
-        TimeSpan pauseDurationAtStart,
-        CancellationToken cancellationToken)
-    {
-        Log.LogInformation("Starting server-streamed replay in chat {ChatId} from {MinPlayAt}, offset={Offset}",
-            ChatId, minPlayAt, offset);
+        Log.LogInformation(
+            "Starting server-streamed replay in chat {ChatId} from {MinPlayAt}, offset={Offset}",
+            ChatId, minPlayAt, currentOffset);
         var chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(false);
         if (chat?.Rules.CanRead() != true) {
             Log.LogWarning("Cannot read chat {ChatId}", ChatId);
@@ -104,17 +55,18 @@ public sealed class ChatReplayer : ChatPlayer
         }
 
         Operation = $"replaying in \"{chat.Title}\"";
-
         var processor = new ReplayStreamProcessor(
-            Hub.Services, Session, ChatId, minPlayAt, offset, cancellationToken.CreateLinkedTokenSource());
+            Hub.Services, Session, ChatId, minPlayAt, currentOffset,
+            cancellationToken.CreateLinkedTokenSource());
         await using var _ = processor.ConfigureAwait(false);
 
         var trackTasks = new ConcurrentBag<Task>();
         processor.StreamStarted += (info, playsAt, frames) => {
-            var task = OnStreamStarted(entryPlayer, info, playsAt, frames,
+            var trackTask = OnStreamStarted(
+                entryPlayer, info, playsAt, frames,
                 playbackStartedAt, sleepDurationAtStart, pauseDurationAtStart,
                 cancellationToken);
-            trackTasks.Add(task);
+            trackTasks.Add(trackTask);
         };
 
         // Wait for server to finish streaming all entries
@@ -133,13 +85,13 @@ public sealed class ChatReplayer : ChatPlayer
         TimeSpan sleepDurationAtStart,
         TimeSpan pauseDurationAtStart,
         CancellationToken cancellationToken)
-    {
-        return BackgroundTask.Run(async () => {
+        => BackgroundTask.Run(async () => {
             try {
                 // Pace: wait until the right playback time
-                await WaitUntilPlaybackTime(playsAt,
-                    playbackStartedAt, sleepDurationAtStart, pauseDurationAtStart,
-                    cancellationToken).ConfigureAwait(false);
+                await WaitUntilReadyToPlay(
+                    playsAt, playbackStartedAt, sleepDurationAtStart, pauseDurationAtStart,
+                    cancellationToken
+                    ).ConfigureAwait(false);
 
                 if (!await CanContinuePlayback(cancellationToken).ConfigureAwait(false))
                     return;
@@ -150,11 +102,12 @@ public sealed class ChatReplayer : ChatPlayer
 
                 // Get chat and author info for track metadata
                 var chat = await Hub.Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(false);
-                var author = await Hub.Authors.Get(Session, ChatId, streamInfo.AuthorId, cancellationToken)
-                    .ConfigureAwait(false);
-
                 if (chat == null)
                     return;
+
+                var author = await Hub.Authors
+                    .Get(Session, ChatId, streamInfo.AuthorId, cancellationToken)
+                    .ConfigureAwait(false);
 
                 // Look up ChatEntry from EntryId if available
                 ChatEntry? audioEntry = null;
@@ -163,36 +116,28 @@ public sealed class ChatReplayer : ChatPlayer
                     audioEntry = await entryReader.Get(entryId.LocalId, cancellationToken).ConfigureAwait(false);
                 }
 
-                // Create track info
-                ChatAudioTrackInfo trackInfo;
-                if (audioEntry != null) {
-                    trackInfo = new ChatAudioTrackInfo(audioEntry, chat, author!) {
+                var trackInfo = audioEntry != null
+                    ? new ChatAudioTrackInfo(audioEntry, chat, author!) {
+                        RecordedAt = streamInfo.BeginsAt,
+                        ClientSideRecordedAt = streamInfo.BeginsAt,
+                    }
+                    : new ChatAudioTrackInfo(ChatId, streamInfo.EntryId, chat, author) {
                         RecordedAt = streamInfo.BeginsAt,
                         ClientSideRecordedAt = streamInfo.BeginsAt,
                     };
-                }
-                else {
-                    trackInfo = new ChatAudioTrackInfo(ChatId, streamInfo.EntryId, chat, author) {
-                        RecordedAt = streamInfo.BeginsAt,
-                        ClientSideRecordedAt = streamInfo.BeginsAt,
-                    };
-                }
-
                 var playAt = Clocks.CpuClock.Now;
                 var process = entryPlayer.Playback.Play(trackInfo, audioSource, playAt, cancellationToken);
-                // Wait for this track to finish playing
                 await process.WhenCompleted.ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                 // Expected
             }
             catch (Exception e) {
-                Log.LogWarning(e, "Error processing replay stream {StreamId}", streamInfo.StreamId);
+                Log.LogWarning(e, "Error processing replay stream #{StreamId}", streamInfo.StreamId);
             }
         }, CancellationToken.None);
-    }
 
-    private async Task WaitUntilPlaybackTime(
+    private async Task WaitUntilReadyToPlay(
         TimeSpan playsAt,
         CpuTimestamp playbackStartedAt,
         TimeSpan sleepDurationAtStart,
@@ -201,8 +146,6 @@ public sealed class ChatReplayer : ChatPlayer
     {
         while (true) {
             cancellationToken.ThrowIfCancellationRequested();
-
-            // Wait for unpause first
             await Playback.IsPaused.Computed
                 .When(x => !x, cancellationToken)
                 .ConfigureAwait(false);

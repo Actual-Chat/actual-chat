@@ -22,7 +22,7 @@ public partial class ChatAudioUI
             AsyncChain.From(ManageReplay),
             AsyncChain.From(StopReplayWhenRecordingStarts),
             AsyncChain.From(StopListeningWhenIdle),
-            AsyncChain.From(ResetMicrophonePermissionAndStopRecordingOnDeviceAwake),
+            AsyncChain.From(StopRecordingAndReplayOnDeviceAwake),
             AsyncChain.From(UpdateNextBeepAt),
             AsyncChain.From(PlayBeep),
             AsyncChain.From(RecordingTroubleshooter),
@@ -473,16 +473,14 @@ public partial class ChatAudioUI
             _stopListeningAtMap.Value = _stopListeningAtMap.Value.Remove(chatId);
     }
 
-    private async Task ResetMicrophonePermissionAndStopRecordingOnDeviceAwake(CancellationToken cancellationToken)
+    private async Task StopRecordingAndReplayOnDeviceAwake(CancellationToken cancellationToken)
     {
-        var totalSleepDuration = DeviceAwakeUI.TotalSleepDuration.Value;
-        await DeviceAwakeUI.TotalSleepDuration.Computed
-            .WhenUntyped(c => ((Computed<TimeSpan>)c).Value != totalSleepDuration, cancellationToken)
-            .ConfigureAwait(false);
-
+        await DeviceAwakeUI.WhenSleepDetected(cancellationToken).ConfigureAwait(false);
+        await SetRecordingChatId(null).ConfigureAwait(false);
+        if (ReplayState.Value is not null)
+            StopReplay();
         if (!HostInfo.AppKind.IsMaui())
             AudioRecorder.MicrophonePermission.ForgetCached();
-        await SetRecordingChatId(null).ConfigureAwait(false);
     }
 
     private async Task UpdateNextBeepAt(CancellationToken cancellationToken)

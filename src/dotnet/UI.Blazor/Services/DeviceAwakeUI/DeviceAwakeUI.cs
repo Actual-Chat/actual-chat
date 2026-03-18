@@ -48,6 +48,14 @@ public class DeviceAwakeUI : UIServiceBase<UIHub>, ISleepDurationProvider, IDevi
         }
     }
 
+    public Task WhenSleepDetected(CancellationToken cancellationToken)
+    {
+        var totalSleepDuration = TotalSleepDuration.Value;
+        return TotalSleepDuration.Computed.WhenUntyped(
+            c => ((Computed<TimeSpan>)c).Value != totalSleepDuration,
+            cancellationToken);
+    }
+
     public async Task SleepUntil(MomentClock clock, Moment until, CancellationToken cancellationToken = default)
     {
         while (true) {
