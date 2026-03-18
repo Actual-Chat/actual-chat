@@ -19,6 +19,7 @@ export class JoinVideoCallModal {
     private stream: MediaStream | null = null;
     private selectedDeviceId: string | null = null;
     private isRendering = false;
+    private lastStreamStoppedAt = 0;
 
     // Blur preview state
     private segmentationWorkerInstance: Worker | null = null;
@@ -89,6 +90,15 @@ export class JoinVideoCallModal {
     public async startPreview(deviceId?: string): Promise<boolean> {
         await this.stopPreview();
 
+        // Browser needs time to release camera hardware after track.stop().
+        // Wait if a stream was recently stopped (within the last 2 seconds).
+        const timeSinceStop = performance.now() - this.lastStreamStoppedAt;
+        if (this.lastStreamStoppedAt > 0 && timeSinceStop < 2000) {
+            const delay = Math.max(300 - timeSinceStop, 0);
+            if (delay > 0)
+                await new Promise(resolve => setTimeout(resolve, delay));
+        }
+
         try {
             const constraints: MediaStreamConstraints = {
                 video: deviceId
@@ -97,7 +107,7 @@ export class JoinVideoCallModal {
                 audio: false,
             };
 
-            this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+            this.stream = await this.getUserMediaWithRetry(constraints);
 
             // Capture the actual device ID the browser chose (important when no
             // explicit device was requested — ensures recording uses the same camera)
@@ -139,6 +149,7 @@ export class JoinVideoCallModal {
         if (this.stream) {
             this.stream.getTracks().forEach(t => t.stop());
             this.stream = null;
+            this.lastStreamStoppedAt = performance.now();
         }
 
         this.videoEl.srcObject = null;
@@ -190,6 +201,24 @@ export class JoinVideoCallModal {
             await this.startBlurPreview();
         } else if (!enabled && this.isBlurActive) {
             await this.stopBlurPreview();
+        }
+    }
+
+    private async getUserMediaWithRetry(
+        constraints: MediaStreamConstraints,
+        maxRetries = 3,
+    ): Promise<MediaStream> {
+        for (let attempt = 0; ; attempt++) {
+            try {
+                return await navigator.mediaDevices.getUserMedia(constraints);
+            } catch (error) {
+                const isDeviceBusy = error instanceof DOMException
+                    && (error.name === 'NotReadableError' || error.name === 'AbortError');
+                if (!isDeviceBusy || attempt >= maxRetries)
+                    throw error;
+                infoLog?.log(`Camera busy, retrying in ${300 * (attempt + 1)}ms (attempt ${attempt + 1}/${maxRetries})`);
+                await new Promise(resolve => setTimeout(resolve, 300 * (attempt + 1)));
+            }
         }
     }
 
