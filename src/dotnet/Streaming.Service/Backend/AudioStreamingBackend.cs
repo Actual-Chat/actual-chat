@@ -77,7 +77,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
 
     public virtual async Task<RpcStream<TranscriptDiff>?> GetTranscript(StreamId streamId, CancellationToken cancellationToken)
     {
-        DebugLog?.LogDebug("GetTranscript: {StreamId}", streamId);
+        DebugLog?.LogDebug("GetTranscript: #{StreamId}", streamId);
         var stream = await _transcriptStreams.Get(streamId, false, cancellationToken).ConfigureAwait(false);
         if (stream != null)
             return RpcStream.New(stream);
@@ -92,14 +92,14 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
             return RpcStream.New(stream!); // Already translating
         }
 
-        DebugLog?.LogDebug("GetTranscript: {StreamId} - Translate stream", streamId);
+        DebugLog?.LogDebug("GetTranscript: #{StreamId} - Translate stream", streamId);
 
         var cmd = new TranslationsBackend_TranslateStream(originalStreamId, language);
         // Use ApplicationStopping as GetTranscript might be canceled, but we still want to wait for the translated stream to be created.
         await Commander.Call(cmd, HostLifetime.StopToken()).ConfigureAwait(false);
         stream = await _transcriptStreams.Get(streamId, true, cancellationToken).ConfigureAwait(false);
 
-        DebugLog?.LogDebug("GetTranscript: {StreamId} - Return stream", streamId);
+        DebugLog?.LogDebug("GetTranscript: #{StreamId} - Return stream", streamId);
         return stream == null
             ? null
             : RpcStream.New(stream);

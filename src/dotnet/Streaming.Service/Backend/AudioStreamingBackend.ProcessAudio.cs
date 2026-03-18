@@ -32,11 +32,11 @@ public partial class AudioStreamingBackend
             await ProcessAudio(record, preSkip, augmentedFrames, delayedCancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogError(e, "Error processing audio stream {StreamId}", record.StreamId);
+            Log.LogError(e, "Error processing audio stream #{StreamId}", record.StreamId);
             throw;
         }
         catch (Exception e) {
-            Log.LogWarning(e, "Cancelled processing audio stream {StreamId}", record.StreamId);
+            Log.LogWarning(e, "Cancelled processing audio stream #{StreamId}", record.StreamId);
             throw;
         }
         finally {

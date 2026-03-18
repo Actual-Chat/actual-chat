@@ -30,7 +30,7 @@ public class StreamServer(IServiceProvider services) : IStreamServer
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
         catch (RpcReconnectFailedException) { }
         catch (Exception e) {
-            Log.LogError(e, "Error getting transcript for {StreamId}", streamId);
+            Log.LogError(e, "Error getting transcript for stream #{StreamId}", streamId);
         }
 
         if (diffs == null)

@@ -38,7 +38,7 @@ public sealed class StreamBackendClient : IStreamClient
 
     public async Task<AudioSource> GetAudio(string streamId, TimeSpan skipTo, CancellationToken cancellationToken)
     {
-        Log.LogDebug("GetAudio({StreamId}, SkipTo = {SkipTo})", streamId, skipTo.ToShortString());
+        Log.LogDebug("GetAudio(#{StreamId}, SkipTo = {SkipTo})", streamId, skipTo.ToShortString());
         var rpcStream = await Backend.GetAudio(StreamId.Parse(streamId), skipTo, cancellationToken).ConfigureAwait(false);
         var stream = (IAsyncEnumerable<byte[]>?)rpcStream ?? AsyncEnumerable.Empty<byte[]>();
         var (headerDataTask, dataStream) = stream
@@ -69,7 +69,7 @@ public sealed class StreamBackendClient : IStreamClient
     {
         RpcStream<TranscriptDiff>? diffs;
         try {
-            Log.LogDebug("GetTranscript({StreamId})", streamId);
+            Log.LogDebug("GetTranscript(#{StreamId})", streamId);
             diffs = await Backend.GetTranscript(StreamId.Parse(streamId), cancellationToken).ConfigureAwait(false);
             if (diffs == null)
                 yield break;
@@ -81,7 +81,7 @@ public sealed class StreamBackendClient : IStreamClient
             yield break;
         }
         catch (Exception e) {
-            Log.LogError(e, "Error getting transcript for {StreamId}", streamId);
+            Log.LogError(e, "Error getting transcript for #{StreamId}", streamId);
             yield break;
         }
 

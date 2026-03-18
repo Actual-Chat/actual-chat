@@ -76,7 +76,7 @@ public sealed class LiveStreamMuxer : WorkerBase
                     Log.LogInformation("OnRun: Connecting to ObserveNewStreams for {ChatId}", ChatId);
                     var streams = await LiveBackend.ObserveStreams(ChatId, cancellationToken).ConfigureAwait(false);
                     await foreach (var streamInfo in streams.ConfigureAwait(false)) {
-                        Log.LogDebug("OnRun: Got stream {StreamId}", streamInfo.StreamId);
+                        Log.LogDebug("OnRun: Got stream #{StreamId}", streamInfo.StreamId);
 
                         // Clean up completed (including failed) streams first - allows retry
                         CleanupCompletedStreams(streamTasks);
@@ -86,7 +86,7 @@ public sealed class LiveStreamMuxer : WorkerBase
 
                         // Start streaming
                         var streamIndex = Interlocked.Increment(ref _nextStreamIndex);
-                        Log.LogInformation("Starting stream #{StreamIndex} for stream {StreamId}", streamIndex, streamInfo.StreamId);
+                        Log.LogInformation("Starting stream #{StreamIndex} for stream #{StreamId}", streamIndex, streamInfo.StreamId);
                         var streamTask = ProcessStream(streamInfo, streamIndex, cancellationToken);
                         streamTasks[streamInfo.StreamId] = streamTask;
                     }
@@ -152,7 +152,7 @@ public sealed class LiveStreamMuxer : WorkerBase
             Log.LogDebug("Stream #{StreamIndex} cancelled after {FrameCount} frames", streamIndex, frameCount);
         }
         catch (Exception e) {
-            Log.LogWarning(e, "Error processing stream #{StreamIndex} for stream {StreamId}, {FrameCount} frames emitted",
+            Log.LogWarning(e, "Error processing stream #{StreamIndex} for stream #{StreamId}, {FrameCount} frames emitted",
                 streamIndex, streamInfo.StreamId, frameCount);
 
             // Still emit end marker on error

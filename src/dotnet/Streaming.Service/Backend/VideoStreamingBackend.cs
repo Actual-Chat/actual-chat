@@ -2,6 +2,7 @@ using ActualChat.Chat;
 using ActualChat.Diagnostics;
 using ActualChat.Streaming.Services;
 using ActualChat.Video;
+using ActualLab.Diagnostics;
 using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
@@ -11,12 +12,13 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
     private readonly StreamStore<VideoFrame> _videoStreams;
     private readonly ConcurrentDictionary<StreamId, StreamLatencyState> _latencyStates = new();
 
-    private ILogger Log => field ??= Services.LogFor(GetType());
     private MeshNode ThisNode => field ??= Services.MeshWatcher().ThisNode;
     private IChats Chats => field ??= Services.GetRequiredService<IChats>();
     private IAuthors Authors => field ??= Services.GetRequiredService<IAuthors>();
     private MomentClockSet Clocks => field ??= Services.Clocks();
     private ILiveVideoBackend LiveVideoBackend => field ??= Services.GetRequiredService<ILiveVideoBackend>();
+    private ILogger Log => field ??= Services.LogFor(GetType());
+    private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 
     private IServiceProvider Services { get; }
 
@@ -38,14 +40,14 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 
     public virtual async Task<RpcStream<VideoFrame>?> GetVideo(StreamId streamId, TimeSpan skipTo, string peerId, CancellationToken cancellationToken)
     {
-        Log.LogInformation("GetVideo: StreamId={StreamId}, SkipTo={SkipTo}, PeerId={PeerId}", streamId, skipTo, peerId);
+        Log.LogInformation("GetVideo: #{StreamId}, SkipTo={SkipTo}, PeerId={PeerId}", streamId, skipTo, peerId);
         var stream = await _videoStreams.Get(streamId, cancellationToken).ConfigureAwait(false);
         if (stream == null) {
-            Log.LogWarning("GetVideo: Stream {StreamId} not found in StreamStore", streamId);
+            Log.LogWarning("GetVideo: #{StreamId} not found in StreamStore", streamId);
             return null;
         }
 
-        Log.LogInformation("GetVideo: Stream {StreamId} found, wrapping with logging", streamId);
+        Log.LogInformation("GetVideo: #{StreamId} found, wrapping with logging", streamId);
 
         // Debug: wrap stream to count and log frames being sent to client
         var frameCount = 0;
@@ -54,11 +56,11 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                 frameCount++;
                 if (frameCount <= 3 || frameCount % 100 == 0)
-                    Log.LogDebug("GetVideo sending frame #{Count}: Offset={Offset}ms, Size={Size}, IsKey={IsKey}, PeerId={PeerId}",
+                    DebugLog?.LogDebug("GetVideo sending frame #{Count}: Offset={Offset}ms, Size={Size}, IsKey={IsKey}, PeerId={PeerId}",
                         frameCount, frame.Offset.TotalMilliseconds, frame.Data?.Length ?? 0, frame.IsKeyFrame, peerId);
                 yield return frame;
             }
-            Log.LogDebug("GetVideo stream ended after {Count} frames for PeerId={PeerId}", frameCount, peerId);
+            DebugLog?.LogDebug("GetVideo stream ended after {Count} frames for PeerId={PeerId}", frameCount, peerId);
         }
 
         // Always skip to the latest buffered keyframe to minimize stale frame delivery.
@@ -88,7 +90,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                 .ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogError(e, "Error pushing video stream {StreamId}", record.StreamId);
+            Log.LogError(e, "PushVideo failed for stream #{StreamId}", record.StreamId);
             throw;
         }
         finally {
@@ -109,18 +111,18 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             var latency = Clocks.ServerClock.Now - (latencyState.StartedAt + TimeSpan.FromMilliseconds(streamOffsetMs));
             if (latency > TimeSpan.Zero) {
                 AppMeters.VideoLatency.Record(latency.TotalMilliseconds);
-                Log.LogWarning("ReportPeerLatency: StreamId={StreamId}, PeerId={PeerId}, StreamOffsetMs={StreamOffsetMs:F0}, LatencyMs={LatencyMs:F0}, DecodeMs={DecodeMs:F1}, BufDepth={BufDepth}, BufSpanMs={BufSpanMs:F0}",
+                Log.LogWarning("ReportPeerLatency: #{StreamId}, PeerId={PeerId}, StreamOffsetMs={StreamOffsetMs:F0}, LatencyMs={LatencyMs:F0}, DecodeMs={DecodeMs:F1}, BufDepth={BufDepth}, BufSpanMs={BufSpanMs:F0}",
                     streamId, peerId, streamOffsetMs, latency.TotalMilliseconds, medianDecodeTimeMs, bufferDepth, bufferSpanMs);
                 latencyState.RecordPeerLatency(peerId, (float)latency.TotalMilliseconds,
                     (float)medianDecodeTimeMs, bufferDepth, (float)bufferSpanMs);
             }
             else {
-                Log.LogWarning("ReportPeerLatency: StreamId={StreamId}, PeerId={PeerId}, negative latency={LatencyMs:F0}ms (clock skew?), skipping",
+                Log.LogWarning("ReportPeerLatency: #{StreamId}, PeerId={PeerId}, negative latency={LatencyMs:F0}ms (clock skew?), skipping",
                     streamId, peerId, latency.TotalMilliseconds);
             }
             return Task.CompletedTask;
         }
-        Log.LogWarning("ReportPeerLatency: No latency state for StreamId={StreamId}", streamId);
+        Log.LogWarning("ReportPeerLatency: No latency state for stream #{StreamId}", streamId);
         return Task.CompletedTask;
     }
 
@@ -129,19 +131,21 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         CancellationToken cancellationToken)
     {
         if (_latencyStates.TryGetValue(streamId, out var latencyState)) {
-            Log.LogInformation("ObserveStreamQualityRequests: StreamId={StreamId} found", streamId);
+            Log.LogInformation("ObserveStreamQualityRequests: #{StreamId} found", streamId);
             var directives = latencyState.ObserveQualityDirectives(cancellationToken);
             return Task.FromResult(RpcStream.New(directives, allowReconnect: false));
         }
 
         // Stream not found — return a stream with just the default quality
-        Log.LogWarning("ObserveStreamQualityRequests: StreamId={StreamId} not found, returning default High quality", streamId);
-        async IAsyncEnumerable<VideoQualityPreset> DefaultStream()
-        {
+        Log.LogWarning(
+            "ObserveStreamQualityRequests: #{StreamId} not found, returning default (high quality) stream",
+            streamId);
+        return Task.FromResult(RpcStream.New(DefaultStream(), allowReconnect: false));
+
+        async IAsyncEnumerable<VideoQualityPreset> DefaultStream() {
             yield return VideoQualityPreset.High;
             await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, cancellationToken).ConfigureAwait(false);
         }
-        return Task.FromResult(RpcStream.New(DefaultStream(), allowReconnect: false));
     }
 
     // Private methods
@@ -177,7 +181,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         while (true) {
             // Check skip-to-live flag before awaiting next frame
             if (ShouldSkipToLive(streamId, peerId)) {
-                Log.LogInformation("ApplySkipToLive: START for PeerId={PeerId}, StreamId={StreamId}",
+                Log.LogInformation("ApplySkipToLive: stream #{StreamId}, START for PeerId={PeerId}",
                     peerId, streamId);
                 VideoFrame? lastKeyFrame = null;
                 var skippedCount = 0;
@@ -247,12 +251,12 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         await LiveVideoBackend.RegisterActiveStream(record.ChatId, streamInfo, cancellationToken)
             .ConfigureAwait(false);
 
-        _latencyStates[record.StreamId] = new StreamLatencyState(Log, beginsAt, record.Format);
+        _latencyStates[record.StreamId] = new StreamLatencyState(beginsAt, record.Format, Log);
 
         try {
             // Publish video stream for real-time viewing
             // No processing - just forward to StreamStore for memoization
-            Log.LogInformation("PushVideoInternal: Publishing stream {StreamId} to StreamStore", record.StreamId);
+            Log.LogInformation("PushVideoInternal: publishing #{StreamId} to StreamStore", record.StreamId);
 
             var frameCount = 0;
             async IAsyncEnumerable<VideoFrame> LogFrames(IAsyncEnumerable<VideoFrame> source)
@@ -260,11 +264,12 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                 await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                     frameCount++;
                     if (frameCount <= 3 || frameCount % 100 == 0)
-                        Log.LogDebug("PushVideoInternal frame #{Count}: Offset={Offset}ms, IsKey={IsKey}, DataLen={DataLen}, DescLen={DescLen}",
+                        DebugLog?.LogDebug(
+                            "PushVideoInternal frame #{Count}: Offset={Offset}ms, IsKey={IsKey}, DataLen={DataLen}, DescLen={DescLen}",
                             frameCount, frame.Offset.TotalMilliseconds, frame.IsKeyFrame, frame.Data?.Length ?? 0, frame.Description?.Length ?? 0);
                     yield return frame;
                 }
-                Log.LogDebug("PushVideoInternal: stream completed with {Count} frames", frameCount);
+                DebugLog?.LogDebug("PushVideoInternal: stream completed with {Count} frames", frameCount);
             }
 
             var memoizer = LogFrames(videoFrames).Memoize(
@@ -399,8 +404,11 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         }
     }
 
-    public sealed class StreamLatencyState(ILogger log, Moment startedAt, VideoFormat format)
+    public sealed class StreamLatencyState(Moment startedAt, VideoFormat format, ILogger log)
     {
+        private readonly ILogger Log = log;
+        private readonly ILogger? DebugLog = log.IfEnabled(LogLevel.Debug);
+
         public Moment StartedAt { get; } = startedAt;
 
         // Cap max quality to what the camera can actually provide — prevents wasteful upscaling
@@ -427,7 +435,8 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         {
             var peer = _peers.GetOrAdd(peerId, _ => new PeerLatencyState());
             peer.RecordLatency(latencyMs, medianDecodeTimeMs, bufferDepth, bufferSpanMs);
-            log.LogDebug("RecordPeerLatency: PeerId={PeerId}, LatencyMs={LatencyMs:F0}, MedianMs={MedianMs:F0}, ReceiverBound={ReceiverBound}",
+            DebugLog?.LogDebug(
+                "RecordPeerLatency: PeerId={PeerId}, LatencyMs={LatencyMs:F0}, MedianMs={MedianMs:F0}, ReceiverBound={ReceiverBound}",
                 peerId, latencyMs, peer.MedianLatencyMs, peer.IsReceiverBound);
 
             // Skip-to-live trigger: if raw latency exceeds threshold and peer is warmed up
@@ -435,7 +444,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                 && peer.IsWarmedUp
                 && !peer.SkipToLive) {
                 peer.SkipToLive = true;
-                log.LogInformation(
+                Log.LogInformation(
                     "RecordPeerLatency: SkipToLive triggered for PeerId={PeerId}, LatencyMs={LatencyMs:F0}",
                     peerId, latencyMs);
             }
@@ -487,12 +496,12 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 
                     if (peer.IsReceiverBound) {
                         receiverSlowCount++;
-                        log.LogDebug("EvaluateQuality: PeerId={PeerId} receiver-bound (decodeMs={DecodeMs:F1}, bufDepth={BufDepth})",
+                        DebugLog?.LogDebug(
+                            "EvaluateQuality: PeerId={PeerId} receiver-bound (decodeMs={DecodeMs:F1}, bufDepth={BufDepth})",
                             peerId, peer.MedianDecodeTimeMs, peer.BufferDepth);
                     }
-                    else {
+                    else
                         networkSlowCount++;
-                    }
                 }
 
                 var totalSlowCount = networkSlowCount + receiverSlowCount;
@@ -512,7 +521,8 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                         _currentQuality = stepped.Level;
                         _lastQualityChangeAt = CpuTimestamp.Now;
                         _qualityDirectives.Publish(stepped);
-                        log.LogInformation("EvaluateQuality: STEP DOWN {OldLevel} -> {NewLevel}, networkSlow={NetworkSlow}, receiverSlow={ReceiverSlow}, total={TotalCount} (threshold={Threshold:F2})",
+                        Log.LogInformation(
+                            "EvaluateQuality: STEP DOWN {OldLevel} -> {NewLevel}, networkSlow={NetworkSlow}, receiverSlow={ReceiverSlow}, total={TotalCount} (threshold={Threshold:F2})",
                             oldQuality, stepped.Level, networkSlowCount, receiverSlowCount, peers.Count, effectiveOutlierRatio);
                     }
                 }
@@ -523,7 +533,8 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                     if (allFast) {
                         var stepped = VideoQualityPreset.StepUp(_currentQuality);
                         if (stepped != null && stepped.Level < _maxQuality) {
-                            log.LogInformation("EvaluateQuality: SKIP step-up to {Level}, camera max is {MaxLevel}",
+                            Log.LogInformation(
+                                "EvaluateQuality: SKIP step-up to {Level}, camera max is {MaxLevel}",
                                 stepped.Level, _maxQuality);
                             stepped = null;
                         }
@@ -532,13 +543,15 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                             _currentQuality = stepped.Level;
                             _lastQualityChangeAt = CpuTimestamp.Now;
                             _qualityDirectives.Publish(stepped);
-                            log.LogInformation("EvaluateQuality: STEP UP {OldLevel} -> {NewLevel}, all peers fast ({TotalCount} peers)",
+                            Log.LogInformation(
+                                "EvaluateQuality: STEP UP {OldLevel} -> {NewLevel}, all peers fast ({TotalCount} peers)",
                                 oldQuality, stepped.Level, peers.Count);
                         }
                     }
                 }
                 else {
-                    log.LogDebug("EvaluateQuality: HOLD at {Level}, networkSlow={NetworkSlow}, receiverSlow={ReceiverSlow}, total={TotalCount}",
+                    DebugLog?.LogDebug(
+                        "EvaluateQuality: HOLD at {Level}, networkSlow={NetworkSlow}, receiverSlow={ReceiverSlow}, total={TotalCount}",
                         _currentQuality, networkSlowCount, receiverSlowCount, peers.Count);
                 }
             }

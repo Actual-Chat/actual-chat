@@ -285,7 +285,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             return null!; // It just spawns other commands, so nothing to do here
 
         var (streamId, targetLanguage) = command;
-        DebugLog?.LogDebug("OnTranslateStream: {StreamId} -> {Language}", streamId, targetLanguage);
+        DebugLog?.LogDebug("OnTranslateStream: #{StreamId} -> {Language}", streamId, targetLanguage);
 
         return await StartTranscriptStreamTranslation(streamId, targetLanguage, cancellationToken).ConfigureAwait(false);
     }
@@ -435,7 +435,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             },
             (self: this, transcriptStream, translatedStreamId, translationId, newTranslationVersion, stopTokenSource));
 
-        DebugLog?.LogDebug("StartTranscriptStreamTranslation: {StreamId} -> {Language}", streamId, targetLanguage);
+        DebugLog?.LogDebug("StartTranscriptStreamTranslation: #{StreamId} -> {Language}", streamId, targetLanguage);
         worker.Start();
         return translatedStreamId;
     }
@@ -448,7 +448,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         CancellationToken cancellationToken)
     {
         var language = translatedStreamId.Language!;
-        DebugLog?.LogDebug("TranslateTranscriptStream: {StreamId}", translatedStreamId);
+        DebugLog?.LogDebug("TranslateTranscriptStream: #{StreamId}", translatedStreamId);
 
         var channel = Channel.CreateUnbounded<TranscriptDiff>(new UnboundedChannelOptions {
             SingleReader = true,
@@ -477,7 +477,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                                 continue; // Skip empty batches
 
                             if (lastTranscript == Transcript.Empty)
-                                DebugLog?.LogDebug("TranslateTranscriptStream: {StreamId} - First Transcript",
+                                DebugLog?.LogDebug("TranslateTranscriptStream: #{StreamId} - First Transcript",
                                     translatedStreamId);
                             var transcriptBatch = transcriptDiffBatch.Scan((t, td) => t + td, lastTranscript).ToList();
                             var transcript = transcriptBatch[^1];
@@ -564,12 +564,12 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                             if (error == null)
                                 error = ex2; // Preserve the original error if it exists
                             else
-                                Log.LogError(ex2, "Error while finalizing translation {StreamId}", translatedStreamId);
+                                Log.LogError(ex2, "Error while finalizing translation #{StreamId}", translatedStreamId);
                         }
                         finally {
                             if (error != null)
                                 Log.LogError(error,
-                                    "Error while translating transcript {StreamId}",
+                                    "Error while translating transcript #{StreamId}",
                                     translatedStreamId);
                             writer.Complete(error);
                         }
@@ -577,7 +577,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                 },
                 cancellationToken);
 
-            DebugLog?.LogDebug("TranslateTranscriptStream: {StreamId} - Publishing stream", translatedStreamId);
+            DebugLog?.LogDebug("TranslateTranscriptStream: #{StreamId} - Publishing stream", translatedStreamId);
 
             var translatedStream = RpcStream.New(reader.ReadAllAsync(cancellationToken));
             await StreamingBackend
@@ -585,7 +585,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                 .ConfigureAwait(false);
 
             activity?.SetStatus(ActivityStatusCode.Ok);
-            DebugLog?.LogDebug("TranslateTranscriptStream: {StreamId} - Stream published", translatedStreamId);
+            DebugLog?.LogDebug("TranslateTranscriptStream: #{StreamId} - Stream published", translatedStreamId);
         }
         catch (Exception ex3) {
             activity?.Finalize(ex3, cancellationToken);

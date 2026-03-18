@@ -111,7 +111,7 @@ public sealed class ChatListener : ChatPlayer
                 var audioSource = CreateAudioSource(streamInfo, audioFrames, skipTo, cancellationToken);
 
                 // Enqueue for playback
-                DebugLog?.LogDebug("Play: enqueuing stream {StreamId} @ {SkipTo}",
+                DebugLog?.LogDebug("Play: enqueuing stream #{StreamId} @ {SkipTo}",
                     streamInfo.StreamId, skipTo.ToShortString());
 
                 await EnqueueAudioSource(entryPlayer, streamInfo, audioSource, playAt, cancellationToken)
@@ -121,7 +121,7 @@ public sealed class ChatListener : ChatPlayer
                 // Expected
             }
             catch (Exception e) {
-                Log.LogWarning(e, "Error processing stream {StreamId}", streamInfo.StreamId);
+                Log.LogWarning(e, "Error processing stream #{StreamId}", streamInfo.StreamId);
             }
         }, CancellationToken.None);
     }

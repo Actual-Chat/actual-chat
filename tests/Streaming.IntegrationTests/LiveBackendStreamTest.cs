@@ -51,7 +51,7 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
             try {
                 log.LogInformation("Starting to enumerate RPC stream...");
                 await foreach (var streamInfo in rpcStream.WithCancellation(cts.Token)) {
-                    log.LogInformation("Received stream: {StreamId}, ChatId={ChatId}, AuthorId={AuthorId}",
+                    log.LogInformation("Received stream: #{StreamId}, ChatId={ChatId}, AuthorId={AuthorId}",
                         streamInfo.StreamId, streamInfo.ChatId, streamInfo.AuthorId);
                     receivedStreams.Add(streamInfo);
                 }
@@ -78,7 +78,7 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
             Format = AudioSource.DefaultFormat,
         };
 
-        log.LogInformation("Registering active stream: {StreamId}", testStreamInfo.StreamId);
+        log.LogInformation("Registering active stream: #{StreamId}", testStreamInfo.StreamId);
 
         // Use the interface method (now part of ILiveAudioBackend)
         await liveBackend.RegisterActiveStream(chatId, testStreamInfo, cts.Token);
@@ -133,7 +133,7 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
             Format = AudioSource.DefaultFormat,
         };
 
-        log.LogInformation("Registering existing stream: {StreamId}", existingStreamInfo.StreamId);
+        log.LogInformation("Registering existing stream: #{StreamId}", existingStreamInfo.StreamId);
         await liveBackend.RegisterActiveStream(chatId, existingStreamInfo, CancellationToken.None);
 
         // Now call ObserveStreams - it should immediately yield the existing stream
@@ -151,7 +151,7 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
             hasFirst.Should().BeTrue("existing stream should be yielded immediately");
 
             var firstStream = enumerator.Current;
-            log.LogInformation("Got first stream: {StreamId}", firstStream.StreamId);
+            log.LogInformation("Got first stream: #{StreamId}", firstStream.StreamId);
             firstStream.StreamId.Should().Be(existingStreamInfo.StreamId);
         }
         finally {
@@ -222,7 +222,7 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
             Format = AudioSource.DefaultFormat,
         };
 
-        log.LogInformation("Registering stream: {StreamId}", testStreamInfo.StreamId);
+        log.LogInformation("Registering stream: #{StreamId}", testStreamInfo.StreamId);
         await liveBackend.RegisterActiveStream(chatId, testStreamInfo, cts.Token);
 
         // Wait for both consumers to receive

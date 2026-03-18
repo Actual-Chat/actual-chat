@@ -61,7 +61,7 @@ public class DeepgramOfflineTranscriber  : ITranscriber
         }
         catch (Exception e) {
             error = e;
-            Log.LogError(e, "Error transcribing {StreamId}", audioStreamId);
+            Log.LogError(e, "Error transcribing #{StreamId}", audioStreamId);
             throw;
         }
         finally {

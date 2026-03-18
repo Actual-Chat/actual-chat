@@ -20,7 +20,7 @@ public class StreamClient(IServiceProvider services) : IStreamClient
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
-        Log.LogDebug("GetAudio({StreamId}, SkipTo = {SkipTo})", streamId, skipTo.ToShortString());
+        Log.LogDebug("GetAudio(#{StreamId}, SkipTo = {SkipTo})", streamId, skipTo.ToShortString());
         var rpcStream = await StreamServer.GetAudio(streamId, skipTo, cancellationToken).ConfigureAwait(false);
         var stream = (IAsyncEnumerable<byte[]>?)rpcStream ?? AsyncEnumerable.Empty<byte[]>();
         var (headerDataTask, dataStream) = stream
@@ -52,7 +52,7 @@ public class StreamClient(IServiceProvider services) : IStreamClient
     {
         RpcStream<TranscriptDiff>? diffs;
         try {
-            Log.LogDebug("GetTranscript({StreamId})", streamId);
+            Log.LogDebug("GetTranscript(#{StreamId})", streamId);
             diffs = await StreamServer.GetTranscript(streamId, cancellationToken).ConfigureAwait(false);
             if (diffs == null)
                 yield break;

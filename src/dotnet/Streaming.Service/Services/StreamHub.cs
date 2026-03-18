@@ -148,7 +148,7 @@ public class StreamHub(IServiceProvider services) : Hub
         var skipTo = TimeSpan.FromMilliseconds(skipToMs);
         var peerId = Context.ConnectionId;
 
-        Log.LogInformation("GetVideo: StreamId={StreamId}, SkipTo={SkipTo}, PeerId={PeerId}", parsedStreamId, skipTo, peerId);
+        Log.LogInformation("GetVideo: #{StreamId}, SkipTo={SkipTo}, PeerId={PeerId}", parsedStreamId, skipTo, peerId);
 
         RpcStream<VideoFrame>? rpcStream;
         try {
@@ -157,12 +157,12 @@ public class StreamHub(IServiceProvider services) : Hub
                 .ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogError(e, "GetVideo: Error getting video for {StreamId}", streamId);
+            Log.LogError(e, "GetVideo: Error getting video for stream #{StreamId}", streamId);
             yield break;
         }
 
         if (rpcStream == null) {
-            Log.LogWarning("GetVideo: Stream {StreamId} not found", streamId);
+            Log.LogWarning("GetVideo: Stream #{StreamId} not found", streamId);
             yield break;
         }
 

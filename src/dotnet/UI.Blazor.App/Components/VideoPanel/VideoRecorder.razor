@@ -154,7 +154,7 @@
                 return;
             }
 
-            Log.LogInformation("SubscribeToQualityRequests: found own StreamId={StreamId}, subscribing", ownStreamId);
+            Log.LogInformation("SubscribeToQualityRequests: found own stream #{StreamId}, subscribing", ownStreamId);
 
             var liveVideoStreams = Hub.Services.GetRequiredService<ILiveVideoStreams>();
             var qualityStream = await liveVideoStreams

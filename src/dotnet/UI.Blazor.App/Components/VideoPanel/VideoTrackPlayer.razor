@@ -60,7 +60,7 @@
             var format = StreamInfo.Format;
             var startedAtMs = StreamInfo.StartedAt.EpochOffset.TotalMilliseconds;
             Log.LogDebug(
-                "[VideoTrackPlayer {StreamId}] Creating JS player: authorId={AuthorId}, startedAtMs={StartedAtMs}",
+                "[VideoTrackPlayer #{StreamId}] Creating JS player: authorId={AuthorId}, startedAtMs={StartedAtMs}",
                 StreamInfo.StreamId, StreamInfo.AuthorId, startedAtMs);
             _jsPlayerRef = await JS.InvokeAsync<IJSObjectReference>(
                 JSCreateMethod,
@@ -84,7 +84,7 @@
             _playTask = Task.Run(async () => await PlayAsync(_disposeCts.Token), CancellationToken.None);
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
-            Log.LogError(ex, "Failed to initialize VideoTrackPlayer for stream {StreamId}", StreamInfo.StreamId);
+            Log.LogError(ex, "Failed to initialize VideoTrackPlayer for stream #{StreamId}", StreamInfo.StreamId);
             _whenCompletedSource.TrySetResult();
         }
     }
@@ -93,7 +93,7 @@
     public void OnPlaying(double offset, bool isBufferLow)
     {
         DebugLog?.LogDebug(
-            "[VideoTrackPlayer {StreamId}] OnPlaying: {Offset}, buffer: {IsBufferLow}",
+            "[VideoTrackPlayer #{StreamId}] OnPlaying: {Offset}, buffer: {IsBufferLow}",
             StreamInfo.StreamId, offset, isBufferLow ? "low" : "ok");
     }
 
@@ -101,9 +101,9 @@
     public void OnEnded(string? errorMessage)
     {
         if (errorMessage != null)
-            Log.LogError("[VideoTrackPlayer {StreamId}] Playback stopped with an error: {Error}", StreamInfo.StreamId, errorMessage);
+            Log.LogError("[VideoTrackPlayer #{StreamId}] Playback stopped with an error: {Error}", StreamInfo.StreamId, errorMessage);
 
-        DebugLog?.LogDebug("[VideoTrackPlayer {StreamId}] OnEnded: {Message}", StreamInfo.StreamId, errorMessage);
+        DebugLog?.LogDebug("[VideoTrackPlayer #{StreamId}] OnEnded: {Message}", StreamInfo.StreamId, errorMessage);
         _whenCompletedSource.TrySetResult();
     }
 
@@ -149,7 +149,7 @@
                 skipTo = TimeSpan.Zero;
 
             DebugLog?.LogDebug(
-                "[VideoTrackPlayer {StreamId}] Starting SignalR pull, skipTo={SkipTo}",
+                "[VideoTrackPlayer #{StreamId}] Starting SignalR pull, skipTo={SkipTo}",
                 StreamInfo.StreamId, skipTo);
 
             // Initiate pull from JS — it connects via SignalR and feeds frames directly
@@ -166,7 +166,7 @@
             // Expected during disposal
         }
         catch (Exception ex) {
-            Log.LogError(ex, "[VideoTrackPlayer {StreamId}] Playback failed", StreamInfo.StreamId);
+            Log.LogError(ex, "[VideoTrackPlayer #{StreamId}] Playback failed", StreamInfo.StreamId);
         }
         finally {
             _whenCompletedSource.TrySetResult();
@@ -184,11 +184,11 @@
             await LiveVideoStreams.RegisterVideoStreamMember(
                 Session, StreamInfo.ChatId, new ApiArray<string>(decoderCodecs), CancellationToken.None);
             _isViewerRegistered = true;
-            DebugLog?.LogDebug("[VideoTrackPlayer {StreamId}] Registered as viewer with decoder codecs: {Codecs}",
+            DebugLog?.LogDebug("[VideoTrackPlayer #{StreamId}] Registered as viewer with decoder codecs: {Codecs}",
                 StreamInfo.StreamId, string.Join(", ", decoderCodecs));
         }
         catch (Exception ex) {
-            Log.LogError(ex, "[VideoTrackPlayer {StreamId}] Failed to register as viewer", StreamInfo.StreamId);
+            Log.LogError(ex, "[VideoTrackPlayer #{StreamId}] Failed to register as viewer", StreamInfo.StreamId);
         }
     }
 
@@ -200,10 +200,10 @@
         try {
             await LiveVideoStreams.UnregisterVideoStreamMember(Session, StreamInfo.ChatId, CancellationToken.None);
             _isViewerRegistered = false;
-            DebugLog?.LogDebug("[VideoTrackPlayer {StreamId}] Unregistered as viewer", StreamInfo.StreamId);
+            DebugLog?.LogDebug("[VideoTrackPlayer #{StreamId}] Unregistered as viewer", StreamInfo.StreamId);
         }
         catch (Exception ex) {
-            Log.LogError(ex, "[VideoTrackPlayer {StreamId}] Failed to unregister as viewer", StreamInfo.StreamId);
+            Log.LogError(ex, "[VideoTrackPlayer #{StreamId}] Failed to unregister as viewer", StreamInfo.StreamId);
         }
     }
 

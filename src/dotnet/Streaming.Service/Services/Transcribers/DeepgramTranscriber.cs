@@ -133,12 +133,12 @@ public partial class DeepgramTranscriber : ITranscriber
                 await deepgramClient.Stop(tokenSource).ConfigureAwait(false);
             }
             catch (Exception e) {
-                Log.LogWarning(e, "Error closing transcription channel {StreamId}", audioStreamId);
+                Log.LogWarning(e, "Error closing transcription stream #{StreamId}", audioStreamId);
             }
         }
         catch (Exception e) {
             error = e;
-            Log.LogError(e, "Error transcribing {StreamId}", audioStreamId);
+            Log.LogError(e, "Error transcribing #{StreamId}", audioStreamId);
             throw;
         }
         finally {

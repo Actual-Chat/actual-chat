@@ -32,10 +32,10 @@ public sealed class LiveStreamDemuxer(
                 switch (item) {
                 case LiveStreamStart start:
                     if (channel is not null) {
-                        Log?.LogWarning("StreamStart #{StreamIndex}: duplicate!", start.StreamIndex);
+                        Log?.LogWarning("StreamStart N{StreamIndex}: duplicate!", start.StreamIndex);
                         continue;
                     }
-                    DebugLog?.LogDebug("StreamStart #{StreamIndex}, StreamId={StreamId}", start.StreamIndex, start.StreamInfo.StreamId);
+                    DebugLog?.LogDebug("StreamStart N{StreamIndex}: stream #{StreamId}", start.StreamIndex, start.StreamInfo.StreamId);
                     channel = Channel.CreateUnbounded<byte[]>(ChannelExt.UnboundedPipeOptions);
                     _streams[start.StreamIndex] = channel;
 

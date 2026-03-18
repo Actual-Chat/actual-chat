@@ -105,7 +105,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
 
     public virtual async Task RegisterActiveStream(ChatId chatId, VideoStreamInfo streamInfo, CancellationToken cancellationToken)
     {
-        Log.LogWarning("RegisterActiveStream({ChatId}): StreamId={StreamId}, AuthorId={AuthorId}",
+        Log.LogWarning("RegisterActiveStream({ChatId}): #{StreamId}, AuthorId={AuthorId}",
             chatId, streamInfo.StreamId, streamInfo.AuthorId);
         var success = await StreamsStore.SetField(chatId, streamInfo.StreamId.Value, streamInfo).ConfigureAwait(false);
         if (success) {
@@ -118,7 +118,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
 
     public virtual async Task UnregisterActiveStream(ChatId chatId, StreamId streamId, CancellationToken cancellationToken)
     {
-        Log.LogWarning("UnregisterActiveStream({ChatId}): StreamId={StreamId}", chatId, streamId);
+        Log.LogWarning("UnregisterActiveStream({ChatId}): #{StreamId}", chatId, streamId);
         var removed = await StreamsStore.RemoveField(chatId, streamId.Value).ConfigureAwait(false);
         if (removed) {
             InvalidateListActiveStreams(chatId);
