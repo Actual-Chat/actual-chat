@@ -1,4 +1,5 @@
 import { Log } from 'logging';
+import { OnDeviceAwake } from 'on-device-awake';
 import { SvgCache } from '../../Components/Avatar/svg-cache';
 
 const { infoLog } = Log.get('DebugUI');
@@ -72,6 +73,11 @@ export class DebugUI {
     public static showIncomingShareModal(): void {
         void this.backendRef.invokeMethodAsync('ShowIncomingShareModal');
     };
+
+    public static fakeSleep(duration = 5): void {
+        OnDeviceAwake.addFakeSleep(duration * 1000);
+        infoLog?.log(`fakeSleep: simulated ${duration}s sleep, total: ${OnDeviceAwake.totalSleepDurationMs / 1000}s`);
+    }
 
     public static clearSvgCache(): void {
         SvgCache.clear();

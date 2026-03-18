@@ -19,9 +19,9 @@ export class OnDeviceAwake {
     public static init(): void {
         debugLog?.log(`init`);
         const onSleepDetected = (event: MessageEvent<number>) => {
-            this._totalSleepDurationMs = event.data;
-            debugLog?.log(`onSleepDetected: total sleep duration:`, this._totalSleepDurationMs / 1000, 'seconds');
-            OnDeviceAwake.events.triggerSilently(event.data);
+            this._totalSleepDurationMs += event.data;
+            debugLog?.log(`onSleepDetected: +${event.data / 1000}s, total: ${this._totalSleepDurationMs / 1000}s`);
+            OnDeviceAwake.events.triggerSilently(this._totalSleepDurationMs);
         };
 
         const onWorkerError = (error: ErrorEvent) => {
@@ -37,6 +37,12 @@ export class OnDeviceAwake {
             if (!document.hidden)
                 this._worker?.postMessage(null);
         });
+    }
+
+    public static addFakeSleep(durationMs: number): void {
+        this._totalSleepDurationMs += durationMs;
+        debugLog?.log(`addFakeSleep: +${durationMs / 1000}s, total: ${this._totalSleepDurationMs / 1000}s`);
+        this.events.triggerSilently(this._totalSleepDurationMs);
     }
 }
 
