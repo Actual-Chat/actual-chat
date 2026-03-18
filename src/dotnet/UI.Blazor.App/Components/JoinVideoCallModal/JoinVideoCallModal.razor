@@ -64,7 +64,9 @@
                             <div class="camera-dropdown-header">Select a camera</div>
                             @foreach (var device in _videoDevices) {
                                 var isSelected = device.DeviceId == _selectedDeviceId;
-                                <div class="camera-dropdown-item" @onclick="@(() => OnCameraSelected(device))">
+                                var isDisabled = ModalModel.IsSettingsMode;
+                                <div class="camera-dropdown-item @(isDisabled ? "disabled" : "")"
+                                     @onclick="@(isDisabled ? (Func<Task>)(() => Task.CompletedTask) : () => OnCameraSelected(device))">
                                     @if (isSelected) {
                                         <i class="icon-checkmark-simple text-primary text-lg"></i>
                                     } else {
@@ -112,7 +114,7 @@
                 <ButtonRound Class="@VideoWrapperBtnClass()" Click="@OnVideoToggle">
                     <i class="icon-video text-2xl"></i>
                 </ButtonRound>
-                <ButtonRound Click="@OnSwitchCamera">
+                <ButtonRound Click="@OnSwitchCamera" IsDisabled="@ModalModel.IsSettingsMode">
                     <i class="icon-sync text-2xl"></i>
                 </ButtonRound>
             </div>
@@ -150,13 +152,17 @@
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private AudioRecorder AudioRecorder => Hub.AudioRecorder;
 
-    private string ModalTitle => ModalModel.Mode == VideoCallMode.Start
-        ? "Start Video Call"
-        : "Join the video call";
+    private string ModalTitle => ModalModel.IsSettingsMode
+        ? "Video Settings"
+        : ModalModel.Mode == VideoCallMode.Start
+            ? "Start Video Call"
+            : "Join the video call";
 
-    private string ButtonText => ModalModel.Mode == VideoCallMode.Start
-        ? "Start"
-        : "Join";
+    private string ButtonText => ModalModel.IsSettingsMode
+        ? "Apply"
+        : ModalModel.Mode == VideoCallMode.Start
+            ? "Start"
+            : "Join";
 
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
 
@@ -175,14 +181,26 @@
         if (_jsRef is null)
             return;
 
-        var deviceId = string.IsNullOrEmpty(_selectedDeviceId) ? null : _selectedDeviceId;
-        var success = await _jsRef.InvokeAsync<bool>("startPreview", deviceId);
-        if (success) {
-            _isVideoOn = true;
-            // Start blur preview if blur was previously enabled
-            if (_isBlurEnabled)
-                await _jsRef.InvokeVoidAsync("toggleBlur", true);
-            StateHasChanged();
+        if (ModalModel.IsSettingsMode) {
+            // Settings mode: attach to the active recorder's preview stream
+            var attached = await _jsRef.InvokeAsync<bool>("attachFromRecorder");
+            if (attached) {
+                _isVideoOn = true;
+                // Start blur preview if blur is currently active
+                if (_isBlurEnabled)
+                    await _jsRef.InvokeVoidAsync("toggleBlur", true);
+                StateHasChanged();
+            }
+        } else {
+            // Normal mode: acquire our own stream
+            var deviceId = string.IsNullOrEmpty(_selectedDeviceId) ? null : _selectedDeviceId;
+            var success = await _jsRef.InvokeAsync<bool>("startPreview", deviceId);
+            if (success) {
+                _isVideoOn = true;
+                if (_isBlurEnabled)
+                    await _jsRef.InvokeVoidAsync("toggleBlur", true);
+                StateHasChanged();
+            }
         }
     }
 
@@ -265,6 +283,14 @@
     }
 
     private async Task OnJoinClick() {
+        if (ModalModel.IsSettingsMode) {
+            // Settings mode: apply blur setting and close — recording continues
+            ChatVideoUI.SetBackgroundBlur(_isBlurEnabled);
+            await DisposeAsync();
+            Modal.Close();
+            return;
+        }
+
         // Get actual device ID from JS before disposing — the browser may have
         // picked a different camera than what was originally requested (e.g.,
         // front camera when no device ID was specified).
@@ -309,5 +335,5 @@
 
     public enum VideoCallMode { Join, Start }
 
-    public sealed record Model(Chat Chat, VideoCallMode Mode = VideoCallMode.Join);
+    public sealed record Model(Chat Chat, VideoCallMode Mode = VideoCallMode.Join, bool IsSettingsMode = false);
 }

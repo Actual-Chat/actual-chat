@@ -100,6 +100,9 @@
 body.hoverable .join-video-call-modal .camera-dropdown-item:hover {
     @apply bg-hover;
 }
+.join-video-call-modal .camera-dropdown-item.disabled {
+    @apply opacity-50 cursor-default pointer-events-none;
+}
 .join-video-call-modal .camera-dropdown-divider {
     @apply h-px bg-separator mx-4;
 }
