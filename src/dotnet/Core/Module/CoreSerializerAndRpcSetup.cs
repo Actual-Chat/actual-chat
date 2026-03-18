@@ -16,6 +16,7 @@ public static class CoreSerializerAndRpcSetup
     {
         RpcSerializationFormat.All = ImmutableList.Create(
             RpcSerializationFormat.SystemJsonV5,
+            RpcSerializationFormat.SystemJsonV5NP, // Used by the TS RPC client (f=json5np)
             RpcSerializationFormat.MemoryPackV5,
             RpcSerializationFormat.MemoryPackV5C,
             RpcSerializationFormat.MemoryPackV6,
