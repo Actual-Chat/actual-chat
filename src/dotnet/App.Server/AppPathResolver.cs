@@ -1,4 +1,3 @@
-using ActualChat.IO;
 using ActualLab.IO;
 
 namespace ActualChat.App.Server;
@@ -19,12 +18,6 @@ internal static class AppPathResolver
 
     public static FilePath GetContentRootPath()
         => AppDomain.CurrentDomain.BaseDirectory!;
-
-    public static FilePath GetSolutionRootPath()
-        => SolutionPaths.GetSolutionRootPath();
-
-    public static FilePath GetDotEnvFilePath()
-        => SolutionPaths.GetDotEnvFilePath();
 
     // Private methods
 

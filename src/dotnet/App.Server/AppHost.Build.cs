@@ -61,9 +61,7 @@ public partial class AppHost
         }
         // Add a few default sources
         cfg.AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: false);
-        // Load .env file from solution root (for local dev with worktrees)
-        if (env.IsDevelopment())
-            cfg.AddDotNetEnv(AppPathResolver.GetDotEnvFilePath());
+        cfg.AddDotNetEnv();
         cfg.AddEnvironmentVariables();
         ConfigureHost?.Invoke(ctx, cfg);
 
