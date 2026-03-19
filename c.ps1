@@ -599,6 +599,8 @@ function Remove-HostsFileEntries {
 }
 
 # Update .env file with server configuration
+# Preserves existing file structure (comments, ordering, unrelated variables).
+# Only updates lines whose values changed and appends new variables at the end.
 function Update-EnvFile {
     param(
         [string]$ProjectPath,
@@ -607,34 +609,44 @@ function Update-EnvFile {
     )
 
     $envFilePath = Join-Path $ProjectPath ".env"
-    $envLines = @{}
+    $remaining  = [System.Collections.Generic.Dictionary[string,string]]::new()
+    foreach ($k in $Variables.Keys) { $remaining[$k] = $Variables[$k] }
+    $lines      = @()
+    $changed    = $false
 
-    # Read existing .env file if it exists
+    # Read existing file, updating matching lines in place
     if (Test-Path $envFilePath) {
-        Get-Content $envFilePath | ForEach-Object {
-            $line = $_.Trim()
-            # Skip empty lines and comments
-            if ($line -and -not $line.StartsWith('#')) {
+        $lines = @(Get-Content $envFilePath | ForEach-Object {
+            $line = $_
+            if ($line.Trim() -and -not $line.TrimStart().StartsWith('#')) {
                 $eqIndex = $line.IndexOf('=')
                 if ($eqIndex -gt 0) {
                     $key = $line.Substring(0, $eqIndex)
-                    $value = $line.Substring($eqIndex + 1)
-                    $envLines[$key] = $value
+                    if ($remaining.ContainsKey($key)) {
+                        $newValue = $remaining[$key]
+                        $null = $remaining.Remove($key)
+                        $newLine = "$key=$newValue"
+                        if ($newLine -ne $line) { $changed = $true }
+                        return $newLine
+                    }
                 }
             }
-        }
+            return $line
+        })
     }
 
-    # Update with new variables
-    foreach ($key in $Variables.Keys) {
-        $envLines[$key] = $Variables[$key]
+    # Append any variables that weren't already in the file
+    foreach ($entry in $remaining.GetEnumerator() | Sort-Object Key) {
+        $lines += "$($entry.Key)=$($entry.Value)"
+        $changed = $true
     }
 
-    # Write back to .env file
-    $content = $envLines.GetEnumerator() | Sort-Object Name | ForEach-Object { "$($_.Key)=$($_.Value)" }
-    Set-Content -Path $envFilePath -Value $content
-
-    if ($Debug) { Write-Host "[DEBUG] Updated .env file: $envFilePath" }
+    if ($changed) {
+        Set-Content -Path $envFilePath -Value $lines
+        if ($Debug) { Write-Host "[DEBUG] Updated .env file: $envFilePath" }
+    } elseif ($Debug) {
+        Write-Host "[DEBUG] .env file unchanged: $envFilePath"
+    }
 }
 
 # Server port allocation for multi-worktree support
