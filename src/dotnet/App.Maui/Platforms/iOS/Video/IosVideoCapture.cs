@@ -88,7 +88,7 @@ public sealed class IosVideoCapture : NSObject, INativeVideoCapture, IAVCaptureV
             connection.VideoMirrored = true;
 
         // Read actual camera capture dimensions
-        var dimensions = camera.ActiveFormat.FormatDescription.Dimensions;
+        var dimensions = ((CMVideoFormatDescription)camera.ActiveFormat.FormatDescription).Dimensions;
         CaptureWidth = (int)dimensions.Width;
         CaptureHeight = (int)dimensions.Height;
         _log.LogInformation("StartCapture: actual camera dimensions {W}x{H}", CaptureWidth, CaptureHeight);

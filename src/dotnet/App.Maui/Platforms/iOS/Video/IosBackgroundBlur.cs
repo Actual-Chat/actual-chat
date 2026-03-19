@@ -22,7 +22,7 @@ public sealed class IosBackgroundBlur : IDisposable
         _log = log;
         _segmentationRequest = new VNGeneratePersonSegmentationRequest {
             QualityLevel = VNGeneratePersonSegmentationRequestQualityLevel.Balanced,
-            OutputPixelFormat = CVPixelFormatType.CV32F, // single-channel float mask
+            OutputPixelFormat = CVPixelFormatType.OneComponent32Float, // single-channel float mask
         };
 
         var device = MTLDevice.SystemDefault;
@@ -111,9 +111,9 @@ public sealed class IosBackgroundBlur : IDisposable
             _poolHeight = height;
         }
 
-        var status = _pixelBufferPool.CreatePixelBuffer(out var buffer);
-        if (status != CVReturn.Success || buffer == null) {
-            _log.LogWarning("Failed to create pixel buffer from pool: {Status}", status);
+        var buffer = _pixelBufferPool.CreatePixelBuffer(null, out var error);
+        if (error != CVReturn.Success || buffer == null) {
+            _log.LogWarning("Failed to create pixel buffer from pool: {Error}", error);
             return null;
         }
         return buffer;
