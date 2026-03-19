@@ -658,7 +658,7 @@ function Get-ServerConfig {
     # Registry key: worktree suffix (empty string for main project)
     $registryKey = if ($WorktreeSuffix) { $WorktreeSuffix } else { "" }
     # Instance name: used in .env for app identity
-    $instanceName = if ($WorktreeSuffix) { "dev-$WorktreeSuffix" } else { "dev" }
+    $instanceName = if ($WorktreeSuffix) { $WorktreeSuffix } else { "dev" }
 
     $artifactsPath = Join-Path $ProjectPath "artifacts"
     $worktreePortsDir = Join-Path $artifactsPath "worktree-ports.d"
