@@ -11,6 +11,8 @@ public record VideoCaptureConfig(
 
 public interface INativeVideoCapture
 {
+    int CaptureWidth { get; }
+    int CaptureHeight { get; }
     Task<IAsyncEnumerable<VideoFrame>> StartCapture(VideoCaptureConfig config, CancellationToken ct);
     Task StopCapture();
     void Reconfigure(int width, int height, int bitrate);

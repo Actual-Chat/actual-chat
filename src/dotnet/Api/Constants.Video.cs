@@ -29,5 +29,8 @@ public static partial class Constants
 
         // Codec selection
         public static readonly TimeSpan CodecSwitchHysteresisWindow = TimeSpan.FromSeconds(10);
+
+        // Platform bitrate caps
+        public static readonly int NativeBitrateCap = 2_000_000; // 2 Mbps — native HEVC is more efficient than WebCodecs
     }
 }

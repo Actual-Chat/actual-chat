@@ -43,20 +43,20 @@ public class MauiVideoRecorderEngine : IVideoRecorderEngine
 
         try {
             // Start native capture
-            var config = new VideoCaptureConfig();
+            var config = new VideoCaptureConfig(Bitrate: Constants.Video.NativeBitrateCap);
             var frameStream = await VideoCapture.StartCapture(config, recordingCt).ConfigureAwait(false);
 
             // Show preview
             MainThread.BeginInvokeOnMainThread(() => VideoCapture.ShowPreview());
 
-            // Start sending frames via RPC
+            // Start sending frames via RPC — use actual capture dimensions
             var session = _hub.Session;
             var serverClock = _hub.Clocks.ServerClock;
             double clientStartOffset = serverClock.Now.EpochOffset.TotalSeconds;
             var format = new VideoFormat {
                 Codec = "hvc1",
-                Width = config.Width,
-                Height = config.Height,
+                Width = VideoCapture.CaptureWidth,
+                Height = VideoCapture.CaptureHeight,
             };
 
             _sendTask = BackgroundTask.Run(
@@ -158,10 +158,11 @@ public class MauiVideoRecorderEngine : IVideoRecorderEngine
                 .ConfigureAwait(false);
 
             await foreach (var preset in qualityStream.WithCancellation(ct).ConfigureAwait(false)) {
-                Log.LogInformation("SubscribeToQualityRequests: preset {Level} ({Width}x{Height} @ {Bitrate}bps)",
-                    preset.Level, preset.Width, preset.Height, preset.Bitrate);
+                var cappedBitrate = Math.Min(preset.Bitrate, Constants.Video.NativeBitrateCap);
+                Log.LogInformation("SubscribeToQualityRequests: preset {Level} ({Width}x{Height} @ {Bitrate}bps, capped={CappedBitrate}bps)",
+                    preset.Level, preset.Width, preset.Height, preset.Bitrate, cappedBitrate);
 
-                VideoCapture.Reconfigure(preset.Width, preset.Height, preset.Bitrate);
+                VideoCapture.Reconfigure(preset.Width, preset.Height, cappedBitrate);
             }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { }

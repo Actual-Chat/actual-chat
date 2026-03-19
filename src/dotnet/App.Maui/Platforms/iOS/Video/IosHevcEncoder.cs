@@ -14,6 +14,7 @@ public sealed class IosHevcEncoder : IDisposable
     private Channel<VideoFrame>? _outputChannel;
     private Moment _captureStartTime;
     private bool _captureStartTimeSet;
+    private bool _forceKeyFrame;
     private readonly Lock _sync = new();
     private readonly ILogger _log;
 
@@ -61,7 +62,13 @@ public sealed class IosHevcEncoder : IDisposable
             _captureStartTimeSet = true;
         }
 
-        var status = session.EncodeFrame(pixelBuffer, pts, duration, null, pixelBuffer, out _);
+        VTEncodeFrameOptions? options = null;
+        if (_forceKeyFrame) {
+            _forceKeyFrame = false;
+            options = new VTEncodeFrameOptions { ForceKeyFrame = true };
+        }
+
+        var status = session.EncodeFrame(pixelBuffer, pts, duration, options, pixelBuffer, out _);
         if (status != VTStatus.Ok)
             _log.LogWarning("EncodeFrame returned {Status}", status);
     }
@@ -75,11 +82,22 @@ public sealed class IosHevcEncoder : IDisposable
             _log.LogInformation("Reconfigure: {OldW}x{OldH}@{OldBr} -> {NewW}x{NewH}@{NewBr}",
                 Width, Height, Bitrate, width, height, bitrate);
 
-            InvalidateSession();
-            Width = width;
-            Height = height;
-            Bitrate = bitrate;
-            CreateSession(width, height, Fps, bitrate);
+            if (width == Width && height == Height) {
+                // Bitrate-only change: update live session without recreation
+                Bitrate = bitrate;
+                if (_session != null) {
+                    _session.AverageBitRate = bitrate;
+                    _forceKeyFrame = true;
+                }
+            }
+            else {
+                // Resolution change: full session recreation required
+                InvalidateSession();
+                Width = width;
+                Height = height;
+                Bitrate = bitrate;
+                CreateSession(width, height, Fps, bitrate);
+            }
         }
     }
 

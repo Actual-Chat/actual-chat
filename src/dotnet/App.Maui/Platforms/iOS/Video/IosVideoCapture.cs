@@ -17,6 +17,9 @@ public sealed class IosVideoCapture : NSObject, INativeVideoCapture, IAVCaptureV
     private AVCaptureVideoPreviewLayer? _previewLayer;
     private readonly ILogger _log;
 
+    public int CaptureWidth { get; private set; }
+    public int CaptureHeight { get; private set; }
+
     public IosVideoCapture(AppUIHub hub)
         => _log = hub.LogFor<IosVideoCapture>();
 
@@ -82,9 +85,25 @@ public sealed class IosVideoCapture : NSObject, INativeVideoCapture, IAVCaptureV
         if (connection != null && connection.SupportsVideoMirroring && config.UseFrontCamera)
             connection.VideoMirrored = true;
 
+        // Read actual camera capture dimensions
+        var dimensions = camera.ActiveFormat.FormatDescription.Dimensions;
+        CaptureWidth = (int)dimensions.Width;
+        CaptureHeight = (int)dimensions.Height;
+        _log.LogInformation("StartCapture: actual camera dimensions {W}x{H}", CaptureWidth, CaptureHeight);
+
+        // Cap encoder dimensions to actual camera capabilities
+        var encoderWidth = Math.Min(config.Width, CaptureWidth);
+        var encoderHeight = Math.Min(config.Height, CaptureHeight);
+        var encoderBitrate = config.Bitrate;
+        if (encoderWidth != config.Width || encoderHeight != config.Height) {
+            var ratio = (double)(encoderWidth * encoderHeight) / (config.Width * config.Height);
+            encoderBitrate = (int)(encoderBitrate * ratio);
+            _log.LogInformation("StartCapture: capped to {W}x{H} @ {Br}bps", encoderWidth, encoderHeight, encoderBitrate);
+        }
+
         // Create encoder
         _encoder = new IosHevcEncoder(_log);
-        var reader = _encoder.Initialize(config.Width, config.Height, config.Fps, config.Bitrate);
+        var reader = _encoder.Initialize(encoderWidth, encoderHeight, config.Fps, encoderBitrate);
 
         // Start session
         _session = session;
@@ -119,6 +138,16 @@ public sealed class IosVideoCapture : NSObject, INativeVideoCapture, IAVCaptureV
         var encoder = _encoder;
         if (session == null || encoder == null)
             return;
+
+        // Cap to actual camera capabilities
+        var cappedWidth = Math.Min(width, CaptureWidth);
+        var cappedHeight = Math.Min(height, CaptureHeight);
+        if (cappedWidth != width || cappedHeight != height) {
+            var ratio = (double)(cappedWidth * cappedHeight) / (width * height);
+            bitrate = (int)(bitrate * ratio);
+            width = cappedWidth;
+            height = cappedHeight;
+        }
 
         session.BeginConfiguration();
         try {
