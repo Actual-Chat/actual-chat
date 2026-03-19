@@ -12,6 +12,7 @@
 import { rpcClientServer, rpcNoWait } from 'rpc';
 import type { Disposable } from 'disposable';
 
+import { BrowserInit } from '../../../../UI.Blazor/Services/BrowserInit/browser-init';
 import type { EncoderWorker } from '../workers/encoder-worker-contract';
 import type { SegmentationWorker, SegmentationConfig, SegmentationStats, SegmentationWorkerCallbacks } from '../workers/segmentation-worker-contract';
 import type { EncoderConfig, EncoderStats } from '../webcodecs-encoder';
@@ -339,7 +340,7 @@ export class VideoPipeline implements IVideoPipeline {
             infoLog?.log('Initializing video streaming to server (will wait for first keyframe with codec description)');
 
             // Initialize VideoStreamer SignalR connection
-            const hubUrl = new URL('/api/hub/streams', window.location.origin).toString();
+            const hubUrl = BrowserInit.getUrl('/api/hub/streams');
             VideoStreamer.init(hubUrl);
 
             // VideoStream will be created when first keyframe with description arrives

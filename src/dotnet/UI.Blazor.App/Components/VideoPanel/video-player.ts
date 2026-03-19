@@ -9,6 +9,7 @@ import { VideoStreamer } from '../../Services/Video/video-streamer';
 import { SessionTokens } from '../../../UI.Blazor/Services/Security/session-tokens';
 import { AudioVideoSync } from 'audio-video-sync';
 import { DocumentEvents } from 'event-handling';
+import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
 import { Versioning } from 'versioning';
 import { type Subscription } from 'rxjs';
 import type { DecoderWorker } from '../../Services/Video/workers/decoder-worker-contract';
@@ -761,7 +762,7 @@ export class VideoPlayer {
             return;
         }
 
-        const hubUrl = new URL('/api/hub/streams', window.location.origin).toString();
+        const hubUrl = BrowserInit.getUrl('/api/hub/streams');
         VideoStreamer.init(hubUrl);
         await VideoStreamer.ensureConnected();
 
