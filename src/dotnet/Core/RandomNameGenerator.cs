@@ -1,5 +1,3 @@
-using ActualLab.Mathematics.Internal;
-
 namespace ActualChat;
 
 /// <summary>
@@ -84,8 +82,8 @@ public sealed record RandomNameGenerator
     public string Generate(string seed) => Generate(seed.GetXxHash3());
     public string Generate(int seed)
     {
-        var prefixIndex = IntArithmetics.Default.Mod(seed, Prefixes.Length);
-        var suffixIndex = IntArithmetics.Default.Mod(seed * 1019, Suffixes.Length);
+        var prefixIndex = seed.PositiveModulo(Prefixes.Length);
+        var suffixIndex = (seed * 1019).PositiveModulo(Suffixes.Length);
         var name = string.Concat(Prefixes[prefixIndex], WordDelimiter, Suffixes[suffixIndex]);
         return name;
     }

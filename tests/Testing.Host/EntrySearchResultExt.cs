@@ -1,7 +1,6 @@
 using ActualChat.Chat;
 using ActualChat.Search;
 using ActualChat.UI.Blazor.App.Services;
-using ActualLab.Mathematics;
 
 namespace ActualChat.Testing.Host;
 

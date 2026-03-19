@@ -73,8 +73,7 @@ public static partial class Constants
         public static readonly TileStack<long> ReaderIdTileStack = TileStacks.Long5To80;
         public static readonly TileStack<long> ViewIdTileStack = TileStacks.Long5To20;
         public static readonly TileStack<int> ChatTileStack = TileStacks.Int5To20;
-        public static readonly TileStack<Moment> TimeTileStack = TileStacks.Moment3MTo6Y;
-        public static readonly TimeSpan MaxEntryDuration = TimeTileStack.MinTileSize.EpochOffset; // 3 minutes, though it can be any
+        public static readonly TimeSpan MaxEntryDuration = TimeSpan.FromMinutes(3);
         public const int MaxSearchFilterLength = 100;
         public const int ReactionFirstAuthorIdsLimit = 10;
         public const int MinChatPageMapSize = 100;

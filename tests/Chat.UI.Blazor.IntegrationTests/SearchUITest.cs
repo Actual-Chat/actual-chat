@@ -3,7 +3,6 @@ using ActualChat.Testing.Host.Assertion;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Users;
-using ActualLab.Mathematics;
 using SearchUI = ActualChat.UI.Blazor.App.Services.SearchUI;
 
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;

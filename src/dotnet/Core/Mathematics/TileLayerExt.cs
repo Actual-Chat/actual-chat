@@ -1,4 +1,4 @@
-using ActualLab.Mathematics.Internal;
+using ActualChat.Mathematics.Internal;
 
 namespace ActualChat.Mathematics;
 

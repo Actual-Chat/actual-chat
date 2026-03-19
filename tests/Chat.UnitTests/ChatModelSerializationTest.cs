@@ -2,7 +2,6 @@ using ActualChat.Contacts;
 using ActualChat.Hashing;
 using ActualChat.Media;
 using ActualChat.Search;
-using ActualLab.Mathematics;
 using ChatModel = ActualChat.Chat.Chat;
 
 namespace ActualChat.Chat.UnitTests;

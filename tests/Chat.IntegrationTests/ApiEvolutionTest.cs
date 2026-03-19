@@ -1,6 +1,5 @@
 using ActualChat.Contacts;
 using ActualChat.UI.Blazor.App.Services;
-using ActualLab.Mathematics;
 using ChatModel = ActualChat.Chat.Chat;
 
 namespace ActualChat.Chat.IntegrationTests;

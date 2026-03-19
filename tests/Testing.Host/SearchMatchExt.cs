@@ -1,5 +1,4 @@
 using ActualChat.Search;
-using ActualLab.Mathematics;
 using Bunit.Extensions;
 
 namespace ActualChat.Testing.Host;

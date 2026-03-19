@@ -174,7 +174,7 @@ public abstract class VoiceActivityDetector(IServiceProvider services) : SafeDis
                 var maxPauseVariesFromSamples = (int)(SampleRate * PauseVariesFromS);
                 var maxPauseAlpha = (currentSpeechSamples - maxPauseVariesFromSamples)
                     / (double)((int)(SampleRate * MaxSpeechS) - maxPauseVariesFromSamples);
-                maxPauseAlpha = MathExt.Clamp(maxPauseAlpha, 0, 1);
+                maxPauseAlpha = maxPauseAlpha.Clamp(0, 1);
                 maxPauseAlpha = Math.Pow(maxPauseAlpha, PauseVaryPower);
                 var silenceThreshold = MathExt.Lerp(maxPause, MinPauseS, maxPauseAlpha);
                 _maxPauseSamples = (int)Math.Floor(SampleRate * silenceThreshold);

@@ -1,4 +1,3 @@
-using ActualLab.Mathematics;
 
 namespace ActualChat.Core.Server.UnitTests;
 

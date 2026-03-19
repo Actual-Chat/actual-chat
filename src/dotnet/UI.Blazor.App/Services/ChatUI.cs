@@ -3,7 +3,6 @@ using ActualChat.Kvas;
 using ActualChat.Pooling;
 using ActualChat.UI.Blazor.App.Events;
 using ActualChat.UI.Blazor.Services;
-using ActualChat.Users;
 using ActualLab.Interception;
 using MathExt = ActualLab.Mathematics.MathExt;
 

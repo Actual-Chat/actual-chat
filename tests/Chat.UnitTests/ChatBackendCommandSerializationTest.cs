@@ -1,6 +1,5 @@
 using ActualChat.Chat;
 using ActualChat.Hashing;
-using ActualLab.Mathematics;
 
 namespace ActualChat.Chat.UnitTests;
 

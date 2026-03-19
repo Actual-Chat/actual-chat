@@ -1,7 +1,6 @@
 using System.Globalization;
 using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 using ActualChat.Search;
-using ActualLab.Mathematics;
 
 namespace ActualChat.MLSearch.UnitTests;
 

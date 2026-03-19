@@ -4,7 +4,6 @@ using ActualChat.Security;
 using ActualChat.UI;
 using ActualLab.Fusion.Extensions;
 using ActualLab.Fusion.Internal;
-using ActualLab.Mathematics.Internal;
 using ActualLab.Rpc;
 
 namespace ActualChat.Module;
@@ -29,15 +28,6 @@ public sealed class CoreModule(IServiceProvider moduleServices)
         // TestServiceProviderTag
         if (HostInfo.IsTested)
             services.AddSingleton(new TestServiceProviderTag());
-
-        // IArithmetics
-        services.AddTypeMapper<IArithmetics>(map => map
-            .Add<double, DoubleArithmetics>()
-            .Add<int, IntArithmetics>()
-            .Add<long, LongArithmetics>()
-            .Add<Moment, MomentArithmetics>()
-            .Add<TimeSpan, TimeSpanArithmetics>()
-        );
 
         // IDiffHandlers
         services.AddTypeMapper<IDiffHandler>(DiffEngine.DefaultTypeMapBuilder);

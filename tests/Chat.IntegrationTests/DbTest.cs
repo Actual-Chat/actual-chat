@@ -3,7 +3,6 @@ using ActualChat.Chat.Db;
 using ActualChat.Testing.Host;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
-using ActualLab.Mathematics;
 
 namespace ActualChat.Chat.IntegrationTests;
 

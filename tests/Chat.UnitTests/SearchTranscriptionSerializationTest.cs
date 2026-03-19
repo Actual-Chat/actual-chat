@@ -1,6 +1,5 @@
 using ActualChat.Search;
 using ActualChat.Transcription;
-using ActualLab.Mathematics;
 
 namespace ActualChat.Chat.UnitTests;
 
