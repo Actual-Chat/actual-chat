@@ -52,7 +52,9 @@ Build artifacts are stored in `artifacts/claude-docker/` to avoid permission con
 
 **Infrastructure services**: When running in Docker, assume that all services defined in `docker-compose.yml` (PostgreSQL, Redis, NATS, nginx, etc.) are already running on the host. Do not attempt to start them yourself - they are managed externally and accessible from the container.
 
-**Host service connectivity**: The Docker container uses `--network host` mode, so `localhost` inside the container directly refers to the host. This means you can connect to host services (Redis, PostgreSQL, NATS, etc.) using `localhost:port` just like on the host.
+**Host service connectivity**: The Docker container uses `--network host` mode, so `localhost` inside the container directly refers to the host. This means you can connect to host services (Redis, PostgreSQL, NATS, etc.) using `localhost:port` just like on the host. On macOS, `--network host` requires Docker Desktop 4.34+ (Sept 2024).
+
+**macOS / Apple Silicon**: The Docker image supports both amd64 and arm64 architectures. `c.cmd` is a polyglot script that works on both Windows and macOS/Linux.
 
 **Running integration tests**: Tests detect Claude's Docker environment via `AC_OS="Linux in Docker"` and use regular localhost-based configuration (not `testsettings.docker.json`). This works because `--network host` makes localhost = host.
 
@@ -110,6 +112,7 @@ Then use the resulting IP (e.g., `http://192.168.65.254:9222`) instead of `local
 | Docker | `/proj` | `/proj/ActualLab.Fusion` |
 | WSL | `/mnt/d/Projects` | `/mnt/d/Projects/ActualLab.Fusion` |
 | Windows | `D:\Projects` | `D:\Projects\ActualLab.Fusion` |
+| macOS | `~/Projects` | `~/Projects/ActualLab.Fusion` |
 
 ## Worktree Support
 

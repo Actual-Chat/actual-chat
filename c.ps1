@@ -1158,6 +1158,20 @@ switch ($mode) {
     }
 
     "docker" {
+        # macOS: warn if Docker Desktop is too old for --network host support
+        if ($currentOS -eq "macOS") {
+            $dockerVersion = docker version --format '{{.Server.Version}}' 2>$null
+            if ($debugMode) { Write-Host "[DEBUG] Docker version: $dockerVersion" }
+            if ($dockerVersion -and $dockerVersion -match "^(\d+)\.(\d+)") {
+                $major = [int]$Matches[1]
+                $minor = [int]$Matches[2]
+                if ($major -lt 4 -or ($major -eq 4 -and $minor -lt 34)) {
+                    Write-Host "WARNING: Docker Desktop 4.34+ is required for --network host on macOS." -ForegroundColor Yellow
+                    Write-Host "         Current version: $dockerVersion. Host services may not be reachable." -ForegroundColor Yellow
+                }
+            }
+        }
+
         $homeDir = if ($currentOS -eq "Windows") { $env:USERPROFILE } else { $env:HOME }
         $volumeMounts = @()
 
