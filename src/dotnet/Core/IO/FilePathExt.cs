@@ -60,6 +60,7 @@ public static class FilePathExt
         public long FileSize => path.GetFileInfo().Length;
         public bool FileExists => File.Exists(path);
         public bool DirectoryExists => Directory.Exists(path);
+        public bool Exists => Path.Exists(path);
 
         public bool HasExtension(string ext)
             => string.Equals(path.Extension.EnsurePrefix("."), ext, StringComparison.OrdinalIgnoreCase);
