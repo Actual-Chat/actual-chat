@@ -759,16 +759,42 @@ if ($removeWorktreeSuffix) {
         if ($debugMode) { Write-Host "[DEBUG] Removed worktree .env file" }
     }
 
-    # Remove git worktree
+    # Remove git worktree and its branch
     if (Test-Path $worktreePath) {
         $originalLocation = Get-Location
         Set-Location $mainProjectPath
         try {
+            # Get branch name before removing worktree
+            $worktreeBranch = $null
+            $worktreeListOutput = git worktree list --porcelain 2>&1
+            $inTargetWorktree = $false
+            foreach ($line in $worktreeListOutput -split "`n") {
+                if ($line -match "^worktree (.+)$" -and $Matches[1] -eq $worktreePath) {
+                    $inTargetWorktree = $true
+                } elseif ($line -match "^worktree " -and $inTargetWorktree) {
+                    break
+                } elseif ($inTargetWorktree -and $line -match "^branch refs/heads/(.+)$") {
+                    $worktreeBranch = $Matches[1]
+                    break
+                }
+            }
+
+            # Remove worktree
             git worktree remove $worktreePath --force 2>&1
             if ($LASTEXITCODE -eq 0) {
                 Write-Host "Git worktree removed" -ForegroundColor Green
             } else {
                 Write-Host "Warning: git worktree remove failed, you may need to remove manually" -ForegroundColor Yellow
+            }
+
+            # Delete local branch if found
+            if ($worktreeBranch) {
+                git branch -D $worktreeBranch 2>&1
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Host "Local branch '$worktreeBranch' deleted" -ForegroundColor Green
+                } else {
+                    Write-Host "Warning: could not delete branch '$worktreeBranch'" -ForegroundColor Yellow
+                }
             }
         } finally {
             Set-Location $originalLocation
