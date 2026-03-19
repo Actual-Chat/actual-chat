@@ -5,5 +5,5 @@ namespace ActualChat.Kvas;
 /// </summary>
 public interface IHasOrigin
 {
-    public string Origin { get; }
+    string Origin { get; }
 }

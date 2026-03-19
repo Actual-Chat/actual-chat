@@ -1,20 +1,5 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
-public enum ChatListOrder
-{
-    ByLastEventTime = 0,
-    ByOwnUpdateTime,
-    ByUnreadCount,
-    ByAlphabet,
-}
-
-public enum ChatListPreOrder
-{
-    ChatList = 0,
-    None,
-    NotesFirst
-}
-
 public static class ChatListOrderExt
 {
     public static string GetIcon(this ChatListOrder order)

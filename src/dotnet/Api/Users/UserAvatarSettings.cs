@@ -6,7 +6,7 @@ namespace ActualChat.Users;
 /// User preferences for avatar management and defaults.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-public sealed partial record UserAvatarSettings : IHasKvasKey<UserAvatarSettings>
+public sealed partial record UserAvatarSettings : StoredSettings, IHasKvasKey<UserAvatarSettings>
 {
     [DataMember, MemoryPackOrder(0), MemoryPackInclude]
     private ApiArray<Symbol> LegacyAvatarIds {

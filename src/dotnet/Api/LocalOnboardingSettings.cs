@@ -1,7 +1,7 @@
-﻿namespace ActualChat.UI.Blazor.App.Services;
+namespace ActualChat;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-public sealed partial record LocalOnboardingSettings
+public sealed partial record LocalOnboardingSettings : StoredSettings
 {
     public const string KvasKey = nameof(LocalOnboardingSettings);
 

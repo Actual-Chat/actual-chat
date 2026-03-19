@@ -6,7 +6,7 @@ namespace ActualChat.Users;
 /// User preferences for which chats to always listen to.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-public sealed partial record UserListeningSettings : IHasOrigin, IHasKvasKey<UserListeningSettings>
+public sealed partial record UserListeningSettings : StoredSettings, IHasOrigin, IHasKvasKey<UserListeningSettings>
 {
     [DataMember, MemoryPackOrder(0)]
     public ChatId[] AlwaysListenedChatIds { get; init; } = [];

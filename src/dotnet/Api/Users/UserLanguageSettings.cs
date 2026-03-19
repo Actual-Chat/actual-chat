@@ -7,7 +7,7 @@ namespace ActualChat.Users;
 /// User preferences for spoken languages (primary, secondary, tertiary).
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-public sealed partial record UserLanguageSettings : IHasOrigin, IHasKvasKey<UserLanguageSettings>
+public sealed partial record UserLanguageSettings : StoredSettings, IHasOrigin, IHasKvasKey<UserLanguageSettings>
 {
     public static string KvasKey => nameof(UserLanguageSettings);
 

@@ -6,7 +6,7 @@ namespace ActualChat.Users;
 /// Tracks which help bubbles the user has read.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-public sealed partial record UserBubbleSettings : IHasOrigin
+public sealed partial record UserBubbleSettings : StoredSettings, IHasOrigin
 {
     public const string KvasKey = nameof(UserBubbleSettings);
 

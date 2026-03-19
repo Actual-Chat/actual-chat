@@ -72,7 +72,7 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
     [ComputeMethod]
     public virtual async Task<int> GetCount(PlaceId? placeId, ChatListSettings chatListSettings, CancellationToken cancellationToken)
     {
-        var chatById = await ListUnordered(placeId, chatListSettings.Filter, cancellationToken).ConfigureAwait(false);
+        var chatById = await ListUnordered(placeId, chatListSettings.GetFilter(), cancellationToken).ConfigureAwait(false);
         return chatById.Count;
     }
 
@@ -120,7 +120,7 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
         CancellationToken cancellationToken = default)
     {
         DebugLog?.LogDebug("-> List({PlaceId}, {Settings})", placeId, settings);
-        var chatById = await ListUnordered(placeId, settings.Filter, cancellationToken).ConfigureAwait(false);
+        var chatById = await ListUnordered(placeId, settings.GetFilter(), cancellationToken).ConfigureAwait(false);
         DebugLog?.LogDebug(
             "<- List({PlaceId}, {Settings}): {Count} items",
             placeId, settings, chatById.Count);

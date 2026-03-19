@@ -6,7 +6,7 @@ namespace ActualChat.Users;
 /// Stores the most recently detected language from a user's voice recording.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-public sealed partial record UserChatRecordingDetectedLanguage : IHasKvasKey<UserChatRecordingDetectedLanguage>
+public sealed partial record UserChatRecordingDetectedLanguage : StoredSettings, IHasKvasKey<UserChatRecordingDetectedLanguage>
 {
     [DataMember, MemoryPackOrder(0)]
     public Moment Timestamp { get; init; }

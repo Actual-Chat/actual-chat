@@ -8,7 +8,7 @@ namespace ActualChat.Users;
 /// Other emojis have rank 0.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-public sealed partial record UserReactionSettings : IHasKvasKey<UserReactionSettings>
+public sealed partial record UserReactionSettings : StoredSettings, IHasKvasKey<UserReactionSettings>
 {
     private const int TopCount = 6;
 

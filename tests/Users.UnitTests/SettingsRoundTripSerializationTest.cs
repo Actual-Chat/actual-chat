@@ -64,6 +64,8 @@ public class SettingsRoundTripSerializationTest
         return theoryData;
     }
 
+    // Private methods
+
     private static string GetFileName(object data, string name)
         => $"{data.GetType().Name}.{name}.bin";
 

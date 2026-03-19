@@ -6,7 +6,7 @@ namespace ActualChat.Users;
 /// Per-chat user preferences for notifications, language, and voice mode.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-public sealed partial record UserChatSettings
+public sealed partial record UserChatSettings : StoredSettings
 {
     public static readonly UserChatSettings Default = new();
 

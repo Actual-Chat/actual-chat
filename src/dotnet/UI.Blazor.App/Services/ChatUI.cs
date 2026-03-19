@@ -531,7 +531,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             // When a peer chat is "selected" via URL, we should retain the selected place
             // nav group if we're on the "People" tab (or no tab is selected) and the peer is a member of this place
             var chatListSettings = await placeChatListSettings.Get().ConfigureAwait(false);
-            if (chatListSettings.Filter == ChatListFilter.People || chatListSettings.Filter == ChatListFilter.None) {
+            if (chatListSettings.GetFilter() == ChatListFilter.People || chatListSettings.GetFilter() == ChatListFilter.None) {
                 var chats = await ChatListUI.ListMembersOnly(selectedPlaceId, default).ConfigureAwait(false);
                 if (chats.ContainsKey(chatId))
                     return; // Keep a selected group

@@ -6,7 +6,7 @@ namespace ActualChat.Users;
 /// Tracks user progress through onboarding steps.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-public sealed partial record UserOnboardingSettings : IHasOrigin
+public sealed partial record UserOnboardingSettings : StoredSettings, IHasOrigin
 {
     public const string KvasKey = nameof(UserOnboardingSettings);
 

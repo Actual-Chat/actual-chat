@@ -6,7 +6,7 @@ namespace ActualChat;
 /// Application settings stored locally on the device.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-public partial record LocalAppSettings : IHasKvasKey<LocalAppSettings>
+public partial record LocalAppSettings : StoredSettings, IHasKvasKey<LocalAppSettings>
 {
     [DataMember, MemoryPackOrder(0)] public bool? IsLogViewerEnabled { get; init; }
     [DataMember, MemoryPackOrder(1)] public string? SelectedCameraDeviceId { get; init; }

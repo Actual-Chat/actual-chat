@@ -23,3 +23,9 @@ public sealed record ChatListFilter(
     public override int GetHashCode()
         => Id.GetHashCode();
 }
+
+public static class ChatListSettingsFilterExt
+{
+    public static ChatListFilter GetFilter(this ChatListSettings settings)
+        => ChatListFilter.Parse(settings.FilterId);
+}
