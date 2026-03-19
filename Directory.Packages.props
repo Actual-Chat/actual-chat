@@ -155,6 +155,7 @@
     <!-- Used by OLTP exporter -->
     <PackageVersion Include="HtmlAgilityPack" Version="1.12.1" />
     <PackageVersion Include="libphonenumber-csharp" Version="9.0.5" />
+    <PackageVersion Include="MaxMind.GeoIP2" Version="5.4.1" />
     <PackageVersion Include="MailKit" Version="4.12.0" />
     <PackageVersion Include="MemoryPack" Version="$(MemoryPackVersion)" />
     <PackageVersion Include="MemoryPack.Core" Version="$(MemoryPackVersion)" />

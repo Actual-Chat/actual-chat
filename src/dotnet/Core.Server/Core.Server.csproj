@@ -15,6 +15,7 @@
     <PackageReference Include="Google.Cloud.Storage.V1" />
     <PackageReference Include="Google.Cloud.Video.Transcoder.V1" />
     <PackageReference Include="libphonenumber-csharp" />
+    <PackageReference Include="MaxMind.GeoIP2" />
     <PackageReference Include="Microsoft.AspNetCore.StaticFiles" />
     <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" />
     <PackageReference Include="NATS.Net" />
@@ -22,6 +23,10 @@
     <PackageReference Include="OpenTelemetry.Api" />
     <PackageReference Include="OpenTelemetry.Api.ProviderBuilderExtensions" />
     <PackageReference Include="ZString" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\..\lib\data\GeoLite2-Country.zip" Link="data\GeoLite2-Country.zip" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

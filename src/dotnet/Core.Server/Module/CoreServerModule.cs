@@ -1,4 +1,5 @@
 ﻿using ActualChat.Blobs.Internal;
+using ActualChat.Geo;
 using ActualChat.Hosting;
 using ActualChat.AspNetCore;
 using ActualChat.Diagnostics;
@@ -77,7 +78,6 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
             options.ModelMetadataDetailsProviders.Add(new MvcValidationMetadataProvider());
         });
         services.AddResponseCaching();
-
         // Health-related services
         services.AddSingleton(c => new HealthEventListener(c));
         services.AddAlias<IHealthState, HealthEventListener>();
