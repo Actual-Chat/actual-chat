@@ -510,27 +510,20 @@ function Remove-ServerConfig {
     $registry | ConvertTo-Json -Depth 10 | Set-Content $registryPath
     if ($Debug) { Write-Host "[DEBUG] Removed worktree '$registryKey' from server registry" }
 
-    # Regenerate nginx config
-    $nginxConfPath = Join-Path $artifactsPath "nginx-worktree-ports.conf"
-    $nginxConf = "# Auto-generated nginx worktree port mappings`n"
-    $nginxConf += "# Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')`n`n"
-    $nginxConf += "map `$worktree_name `$backend_port {`n"
-    $nginxConf += "    default 7080;`n"
-    foreach ($entry in $registry.GetEnumerator() | Sort-Object Value) {
-        # Skip main project (empty key) - it uses default port
-        if ($entry.Key -eq "") { continue }
-        $nginxConf += "    `"$($entry.Key)`" $($entry.Value);`n"
+    # Remove per-worktree nginx port mapping file
+    $worktreePortsDir = Join-Path $ProjectPath "artifacts" "worktree-ports.d"
+    $nginxConfPath = Join-Path $worktreePortsDir "$WorktreeSuffix.conf"
+    if (Test-Path $nginxConfPath) {
+        Remove-Item $nginxConfPath -Force
+        if ($Debug) { Write-Host "[DEBUG] Removed nginx port mapping: $nginxConfPath" }
     }
-    $nginxConf += "}`n"
-    Set-Content -Path $nginxConfPath -Value $nginxConf
-    if ($Debug) { Write-Host "[DEBUG] Regenerated nginx config" }
 
-    # Restart nginx
+    # Reload nginx to pick up the change
     $originalLocation = Get-Location
     Set-Location $ProjectPath
     try {
-        $null = docker compose up -d nginx 2>&1
-        if ($Debug) { Write-Host "[DEBUG] Restarted nginx" }
+        $null = docker compose exec -T nginx nginx -s reload 2>&1
+        if ($Debug) { Write-Host "[DEBUG] Reloaded nginx" }
     } finally {
         Set-Location $originalLocation
     }
@@ -668,8 +661,9 @@ function Get-ServerConfig {
     $instanceName = if ($WorktreeSuffix) { "dev-$WorktreeSuffix" } else { "dev" }
 
     $artifactsPath = Join-Path $ProjectPath "artifacts"
-    if (-not (Test-Path $artifactsPath)) {
-        New-Item -ItemType Directory -Path $artifactsPath -Force | Out-Null
+    $worktreePortsDir = Join-Path $artifactsPath "worktree-ports.d"
+    if (-not (Test-Path $worktreePortsDir)) {
+        New-Item -ItemType Directory -Path $worktreePortsDir -Force | Out-Null
     }
 
     $registryPath = Join-Path $artifactsPath "server-ports.json"
@@ -702,37 +696,22 @@ function Get-ServerConfig {
 
         if ($Debug) { Write-Host "[DEBUG] Allocated port $port for worktree '$registryKey'" }
 
-        # Regenerate nginx config
-        $nginxConfPath = Join-Path $artifactsPath "nginx-worktree-ports.conf"
-        $nginxConf = "# Auto-generated nginx worktree port mappings`n"
-        $nginxConf += "# Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')`n`n"
-        $nginxConf += "map `$worktree_name `$backend_port {`n"
-        $nginxConf += "    default 7080;`n"
-        foreach ($entry in $registry.GetEnumerator() | Sort-Object Value) {
-            # Skip main project (empty key) - it uses default port
-            if ($entry.Key -eq "") { continue }
-            $nginxConf += "    `"$($entry.Key)`" $($entry.Value);`n"
+        # Write per-worktree nginx port mapping file
+        if ($registryKey -ne "") {
+            $nginxConfPath = Join-Path $worktreePortsDir "$registryKey.conf"
+            Set-Content -Path $nginxConfPath -Value "`"$registryKey`" $port;"
+            if ($Debug) { Write-Host "[DEBUG] Wrote nginx port mapping: $nginxConfPath" }
         }
-        $nginxConf += "}`n"
-        Set-Content -Path $nginxConfPath -Value $nginxConf
 
-        if ($Debug) { Write-Host "[DEBUG] Generated nginx config: $nginxConfPath" }
-
-        # Update main project's .env with nginx config path for docker-compose
-        Update-EnvFile -ProjectPath $ProjectPath -Variables @{
-            "NGINX_WORKTREE_PORTS_CONF" = "./artifacts/nginx-worktree-ports.conf"
-        } -Debug:$Debug
-
-        # Restart nginx to pick up the new worktree port mappings
-        # (restart needed because the mount path changes, not just the file content)
+        # Reload nginx to pick up the new worktree port mapping
         $originalLocation = Get-Location
         Set-Location $ProjectPath
         try {
-            $null = docker compose up -d nginx 2>&1
+            $null = docker compose exec -T nginx nginx -s reload 2>&1
             if ($LASTEXITCODE -eq 0) {
-                if ($Debug) { Write-Host "[DEBUG] Restarted nginx with new config" }
+                if ($Debug) { Write-Host "[DEBUG] Reloaded nginx" }
             } else {
-                if ($Debug) { Write-Host "[DEBUG] nginx restart failed (docker-compose may not be running)" }
+                if ($Debug) { Write-Host "[DEBUG] nginx reload failed (docker-compose may not be running)" }
             }
         } finally {
             Set-Location $originalLocation
