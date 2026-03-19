@@ -12,12 +12,16 @@ namespace ActualChat.App.Server;
 internal static class AppPathResolver
 {
     private static string? _webRootPath;
+    private static string? _solutionRootPath;
 
     public static FilePath GetWebRootPath()
         => _webRootPath ??= FindWebRootPath();
 
     public static FilePath GetContentRootPath()
         => AppDomain.CurrentDomain.BaseDirectory!;
+
+    public static FilePath GetSolutionRootPath()
+        => _solutionRootPath ??= FindSolutionRootPath();
 
     // Private methods
 
@@ -46,11 +50,25 @@ internal static class AppPathResolver
     private static FilePath? GetDeveloperMachineWebRootProbeDirectory(string projectName)
     {
         try {
-            var solutionRoot = SolutionPaths.GetSolutionRootPath();
+            var solutionRoot = GetSolutionRootPath();
             return solutionRoot & "src" & "dotnet" & projectName;
         }
         catch (DirectoryNotFoundException) {
             return null;
         }
+    }
+
+    private static FilePath FindSolutionRootPath()
+    {
+        // Start from the runtime output directory and walk up to find .git
+        var baseDirectory = (FilePath)AppDomain.CurrentDomain.BaseDirectory!;
+        var result = baseDirectory.DirectoryPath
+            .SelfAndAncestors()
+            .FirstOrDefault(dir => (dir & ".git").Exists); // .git is a directory (repo) or file (worktree)
+
+        if (result.IsEmpty)
+            throw new DirectoryNotFoundException(
+                $"Couldn't find solution root (.git directory/file), started from: {baseDirectory}");
+        return result;
     }
 }
