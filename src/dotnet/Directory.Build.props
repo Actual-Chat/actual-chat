@@ -55,6 +55,9 @@
     <Using Include="ActualChat.Diff" />
     <Using Include="ActualChat.IO" />
     <Using Include="ActualChat.Mathematics" />
+    <Using Include="ActualChat.Chat" />
+    <Using Include="ActualChat.Users" />
+    <Using Include="ActualChat.Validation" />
 
     <Using Include="ActualChat.Performance" />
     <Using Include="ActualLab" />
@@ -71,8 +74,6 @@
     <Using Include="ActualLab.Time" />
     <Using Include="ActualLab.Fusion" />
     <Using Include="ActualLab.Fusion.Operations" />
-    <Using Include="ActualChat.Users" />
-    <Using Include="ActualChat.Validation" />
     <Using Include="ActualLab.CommandR" />
     <Using Include="ActualLab.CommandR.Configuration" />
     <Using Include="ActualLab.CommandR.Commands" />

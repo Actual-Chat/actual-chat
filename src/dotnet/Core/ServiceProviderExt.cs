@@ -39,10 +39,6 @@ public static class ServiceProviderExt
         => services.GetRequiredService<IServerSettings>();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static LocalSettings LocalSettings(this IServiceProvider services)
-        => services.GetRequiredService<LocalSettings>();
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ServerSettingsKvasClient ServerSettingsKvasClient(this IServiceProvider services, Session session)
         => new (services.ServerSettings(), session);
 
