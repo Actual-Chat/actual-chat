@@ -1,10 +1,12 @@
 @namespace ActualChat.UI.Blazor.Components
 @{
+    _renderedSelectedTab = null;
+    _renderedTabs = _tabRegistry.SortedTabs.ToList();
     var cls = _isRightSideVisible ? "hide-panel" : "hide-tabs";
     var attr = _isRightSideVisible ? "hide-panel" : "hide-tabs";
 
     RenderFragment RenderCommonButton(SettingsTab tab) {
-        var isActive = tab == ActiveTab;
+        var isActive = tab.Id == SelectedTabId;
         var tabCls = $"{tab.ButtonClass} unhovered";
         if (!tab.IsToggle) {
             return
@@ -52,8 +54,10 @@
                 <SettingsHeader Title="@Title" ArrowClick="CloseModalClick"/>
             </div>
             <div class="c-tab-items">
-                @foreach (var tab in Tabs) {
-                    var isActive = tab == ActiveTab;
+                @foreach (var tab in _renderedTabs) {
+                    var isActive = tab.Id == SelectedTabId && _renderedSelectedTab == null;
+                    if (isActive)
+                        _renderedSelectedTab = tab;
                     var activeCls = $"{(isActive ? "on" : "")}";
                     var tabCls = tab.Class;
                     var containerCls = tab.IsToggle ? "container-toggle" : "";
@@ -93,78 +97,66 @@
 </CascadingValue>
 
 @code {
+    private readonly TabRegistry<SettingsTab> _tabRegistry = new();
+    private IReadOnlyList<SettingsTab> _renderedTabs = [];
+    private SettingsTab? _renderedSelectedTab;
+    private string? _selectedTabId;
     private bool _isRightSideVisible;
-    private readonly List<SettingsTab> _tabs = new();
-
-    public IReadOnlyList<SettingsTab> Tabs => _tabs;
 
     [Inject] private UIHub Hub { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
-
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
-    [Parameter] public EventCallback<SettingsTab?> ActiveTabChanged { get; set; }
+    [Parameter] public EventCallback<string?> SelectedTabIdChanged { get; set; }
     [Parameter] public EventCallback CloseModalClick { get; set; }
-
-    [Parameter]
-    public SettingsTab? ActiveTab {
-        get;
-        set {
-            if (field == value)
-                return;
-            if (value != null && !_tabs.Contains(value))
-                throw StandardError.Constraint("This tab does not belong to the panel.");
-
-            field = value;
-            ActiveTabChanged.InvokeAsync(value);
-        }
-    }
-
     [Parameter] public string? DefaultTabId { get; set; }
 
-    internal void RegisterTab(SettingsTab tab) {
-        var indexToInsert = -1;
-        if (tab.TabIndex.HasValue && _tabs.Count > 0) {
-            for (var i = 0; i < _tabs.Count; i++) {
-                var c = _tabs[i];
-                if (!c.TabIndex.HasValue || c.TabIndex > tab.TabIndex) {
-                    indexToInsert = i;
-                    break;
-                }
-            }
-        }
-        if (indexToInsert >= 0)
-            _tabs.Insert(indexToInsert, tab);
-        else
-            _tabs.Add(tab);
-        if (DefaultTabId.IsNullOrEmpty() || tab.Id == DefaultTabId) {
-            ActiveTab ??= tab;
-            if (!DefaultTabId.IsNullOrEmpty())
-                _isRightSideVisible = true;
-        }
+    public string? SelectedTabId {
+        get => _selectedTabId;
+        set {
+            if (_selectedTabId == value)
+                return;
 
-        StateHasChanged();
+            _selectedTabId = value;
+            SelectedTabIdChanged.InvokeAsync(value);
+            StateHasChanged();
+        }
     }
 
-    public void UnregisterTab(SettingsTab tab) {
-        var tabIndex = _tabs.IndexOf(tab);
-        if (tabIndex < 0)
+    protected override void OnInitialized() {
+        _selectedTabId = DefaultTabId;
+        if (!DefaultTabId.IsNullOrEmpty())
+            _isRightSideVisible = true;
+    }
+
+    protected override void OnAfterRender(bool firstRender) {
+        var currentTabs = _tabRegistry.SortedTabs.ToList();
+        var selectedTabId = SelectedTabId;
+        SelectedTabId = _tabRegistry.ResolveSelectedTabId(currentTabs, _renderedTabs, _renderedSelectedTab);
+        var tabsHaveChanged = !_renderedTabs.SequenceEqual(currentTabs);
+
+        if (!tabsHaveChanged)
             return;
 
-        _tabs.RemoveAt(tabIndex);
-        if (tab == ActiveTab) {
-            tabIndex = tabIndex.Clamp(0, _tabs.Count - 1);
-            ActiveTab = tabIndex >= 0 ? _tabs[tabIndex] : null;
-        }
+        // If the selected tab has changed, we already triggered a re-render via the setter.
+        if (SelectedTabId != selectedTabId)
+            return;
+
+        // Tab list changed but selection didn't — re-render tab buttons.
         StateHasChanged();
     }
 
+    internal void RegisterTab(SettingsTab tab)
+        => _tabRegistry.Register(tab);
+
+    public void UnregisterTab(SettingsTab tab)
+        => _tabRegistry.Unregister(tab);
+
     private void OnTabTitleClick(SettingsTab tab) {
-        ActiveTab = tab;
+        SelectedTabId = tab.Id;
         _isRightSideVisible = true;
-        StateHasChanged();
     }
 
     public void OnTabArrowClick() {

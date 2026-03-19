@@ -1,7 +1,8 @@
 @namespace ActualChat.UI.Blazor.Components
 @implements IDisposable
+@implements ITab
 @{
-    if (Panel.ActiveTab != this)
+    if (Panel.SelectedTabId != Id)
         return;
 }
 
@@ -30,6 +31,8 @@
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? TitleContent { get; set; }
     [Parameter] public EventCallback TabArrowClick { get; set; }
+
+    double ITab.Order => TabIndex ?? double.MaxValue;
 
     protected override void OnInitialized() {
         if (Panel == null)

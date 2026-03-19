@@ -62,8 +62,7 @@
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.TabPanel.create";
 
-    private readonly List<Tab> _tabs = new();
-    private string? _selectedTabId;
+    private readonly TabRegistry<Tab> _tabRegistry = new();
     private IReadOnlyList<Tab> _renderedTabs = [];
     private Tab? _renderedSelectedTab;
 
@@ -80,19 +79,19 @@
     [Parameter] public EventCallback<string?> SelectedTabIdChanged { get; set; }
 
     public string? SelectedTabId {
-        get => _selectedTabId;
+        get;
         set {
-            if (_selectedTabId == value)
+            if (field == value)
                 return;
 
-            _selectedTabId = value;
-            SelectedTabIdChanged.InvokeAsync(_selectedTabId);
+            field = value;
+            SelectedTabIdChanged.InvokeAsync(field);
             StateHasChanged();
         }
     }
 
-    public IReadOnlyList<Tab> Tabs => _tabs;
-    public IEnumerable<Tab> SortedTabs => Tabs.OrderBy(x => x.Order).ThenBy(x => x.Id);
+    public IReadOnlyList<Tab> Tabs => _tabRegistry.Tabs;
+    public IEnumerable<Tab> SortedTabs => _tabRegistry.SortedTabs;
 
     public async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
@@ -100,19 +99,10 @@
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        var tabs = SortedTabs.ToList();
+        var currentTabs = SortedTabs.ToList();
         var selectedTabId = SelectedTabId;
-        if (_renderedSelectedTab == null) {
-            if (AutoSelectInitialTab)
-                SelectedTabId = tabs.Count == 0 ? null : tabs[0].Id;
-        } else {
-            var newSelectedTab = _renderedTabs
-                                     .SkipWhile(x => x != _renderedSelectedTab)
-                                     .FirstOrDefault(x => tabs.Contains(x))
-                                 ?? tabs.LastOrDefault();
-            SelectedTabId = newSelectedTab?.Id;
-        }
-        var tabsHaveChanged = !_renderedTabs.SequenceEqual(tabs);
+        SelectedTabId = _tabRegistry.ResolveSelectedTabId(currentTabs, _renderedTabs, _renderedSelectedTab, AutoSelectInitialTab);
+        var tabsHaveChanged = !_renderedTabs.SequenceEqual(currentTabs);
 
         if (firstRender && BottomHill) {
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
@@ -133,10 +123,10 @@
     }
 
     internal void RegisterTab(Tab tab)
-        => _tabs.Add(tab);
+        => _tabRegistry.Register(tab);
 
     internal void UnregisterTab(Tab tab)
-        => _tabs.Remove(tab);
+        => _tabRegistry.Unregister(tab);
 
     internal void TabContentChanged()
         => StateHasChanged();
