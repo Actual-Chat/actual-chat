@@ -13,6 +13,7 @@ public sealed partial class NotificationFlow : Flow<Unit>
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IAuthorsBackend AuthorsBackend => field ??= Services.GetRequiredService<IAuthorsBackend>();
     private IQueues Queues => field ??= Services.Queues();
+    private IUserPresences UserPresences => field ??= Services.GetRequiredService<IUserPresences>();
     private UrlMapper UrlMapper => field ??= Services.UrlMapper();
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory
         => field ??= Services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
@@ -37,6 +38,16 @@ public sealed partial class NotificationFlow : Flow<Unit>
         if (entry is null) {
             SetResult(default);
             return;
+        }
+
+        // Skip notification if the unread message is very fresh and the user is still online
+        var entryAge = Hub.Clocks.SystemClock.Now - entry.BeginsAt;
+        if (entryAge < Constants.Notification.ThrottleIntervals.Message) {
+            var presence = await UserPresences.Get(userId, cancellationToken).ConfigureAwait(false);
+            if (presence is Presence.Online or Presence.Recording) {
+                SetResult(default);
+                return;
+            }
         }
 
         // User has an unread message — reconstruct and send the notification

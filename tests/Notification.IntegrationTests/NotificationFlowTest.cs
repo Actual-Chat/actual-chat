@@ -20,8 +20,8 @@ public class NotificationFlowTest(AppHostFixture fixture, ITestOutputHelper @out
         var (chatId, _) = await Tester.CreateChat(false, "Test chat");
         await Tester.InviteToChat(chatId, alice);
 
-        // Make Alice online
-        await Commander.Call(new UserPresencesBackend_CheckIn(alice.Id, Clocks.SystemClock.Now, true));
+        // Ensure Alice is offline (in case a prior test checked her in)
+        await Commander.Call(new UserPresencesBackend_CheckIn(alice.Id, Clocks.SystemClock.Now - TimeSpan.FromMinutes(15), false));
 
         // Bob sends a message
         await Tester.SignIn(bob);
@@ -93,8 +93,8 @@ public class NotificationFlowTest(AppHostFixture fixture, ITestOutputHelper @out
         var (chatId, _) = await Tester.CreateChat(false, "Multi-msg chat");
         await Tester.InviteToChat(chatId, alice);
 
-        // Make Alice online
-        await Commander.Call(new UserPresencesBackend_CheckIn(alice.Id, Clocks.SystemClock.Now, true));
+        // Ensure Alice is offline (in case a prior test checked her in)
+        await Commander.Call(new UserPresencesBackend_CheckIn(alice.Id, Clocks.SystemClock.Now - TimeSpan.FromMinutes(15), false));
 
         // Bob sends 3 messages
         await Tester.SignIn(bob);
@@ -126,8 +126,8 @@ public class NotificationFlowTest(AppHostFixture fixture, ITestOutputHelper @out
         var (chatId, _) = await Tester.CreateChat(false, "Dedup chat");
         await Tester.InviteToChat(chatId, alice);
 
-        // Make Alice online
-        await Commander.Call(new UserPresencesBackend_CheckIn(alice.Id, Clocks.SystemClock.Now, true));
+        // Ensure Alice is offline (in case a prior test checked her in)
+        await Commander.Call(new UserPresencesBackend_CheckIn(alice.Id, Clocks.SystemClock.Now - TimeSpan.FromMinutes(15), false));
 
         // Bob sends a message
         await Tester.SignIn(bob);
@@ -161,6 +161,44 @@ public class NotificationFlowTest(AppHostFixture fixture, ITestOutputHelper @out
             .Where(x => x.EntryId == entry.Id)
             .ToList();
         matching.Should().HaveCount(1, "duplicate flow scheduling should not produce duplicate notifications");
+    }
+
+    [Fact]
+    public async Task ShouldSkipNotificationWhenEntryFreshAndUserOnline()
+    {
+        // arrange
+        var alice = await Tester.SignInAsAlice();
+        var bob = await Tester.SignInAsBob();
+        var (chatId, _) = await Tester.CreateChat(false, "Fresh skip chat");
+        await Tester.InviteToChat(chatId, alice);
+
+        // Make Alice online
+        await Commander.Call(new UserPresencesBackend_CheckIn(alice.Id, Clocks.SystemClock.Now, true));
+
+        // Bob sends a message
+        await Tester.SignIn(bob);
+        var entry = await Tester.CreateTextEntry(chatId, "Fresh message");
+
+        // act - schedule NotificationFlow with zero delay (entry is < 30s old)
+        var flowArgs = NotificationFlow.GetArguments(alice.Id, chatId);
+        await FlowHub.NewResumeEvent<NotificationFlow>(flowArgs)
+            .WithDelay(TimeSpan.Zero)
+            .WithDelayQuanta(TimeSpan.Zero)
+            .Schedule();
+
+        // assert - no notification because entry is fresh and Alice is online
+        await Task.Delay(TimeSpan.FromSeconds(3));
+        var since = Clocks.SystemClock.Now - TimeSpan.FromMinutes(1);
+        var ids = await Tester.NotificationsBackend.ListRecentNotificationIds(
+            alice.Id, since, CancellationToken.None);
+        var notifications = await ids
+            .Select(x => Tester.NotificationsBackend.Get(x, CancellationToken.None))
+            .Collect();
+        var matching = notifications
+            .SkipNullItems()
+            .Where(x => x.EntryId == entry.Id)
+            .ToList();
+        matching.Should().BeEmpty("entry is fresh and user is online, notification should be skipped");
     }
 
     private async Task<Notification> GetNotification(AccountFull user, ChatEntryId entryId)
