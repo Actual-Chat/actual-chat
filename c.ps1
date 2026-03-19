@@ -489,7 +489,7 @@ function Remove-ServerConfig {
 
     if (-not $WorktreeSuffix) { return }
 
-    $instanceName = $WorktreeSuffix
+    $registryKey = $WorktreeSuffix
     $artifactsPath = Join-Path $ProjectPath "artifacts"
     $registryPath = Join-Path $artifactsPath "server-ports.json"
 
@@ -500,15 +500,15 @@ function Remove-ServerConfig {
 
     $registry = Get-Content $registryPath -Raw | ConvertFrom-Json -AsHashtable
 
-    if (-not $registry.ContainsKey($instanceName)) {
-        if ($Debug) { Write-Host "[DEBUG] Instance $instanceName not found in registry" }
+    if (-not $registry.ContainsKey($registryKey)) {
+        if ($Debug) { Write-Host "[DEBUG] Worktree '$registryKey' not found in registry" }
         return
     }
 
     # Remove from registry
-    $registry.Remove($instanceName)
+    $registry.Remove($registryKey)
     $registry | ConvertTo-Json -Depth 10 | Set-Content $registryPath
-    if ($Debug) { Write-Host "[DEBUG] Removed $instanceName from server registry" }
+    if ($Debug) { Write-Host "[DEBUG] Removed worktree '$registryKey' from server registry" }
 
     # Regenerate nginx config
     $nginxConfPath = Join-Path $artifactsPath "nginx-worktree-ports.conf"
@@ -517,8 +517,8 @@ function Remove-ServerConfig {
     $nginxConf += "map `$worktree_name `$backend_port {`n"
     $nginxConf += "    default 7080;`n"
     foreach ($entry in $registry.GetEnumerator() | Sort-Object Value) {
-        if ($entry.Key -eq "dev") { continue }
-        # Worktree instance names are just the suffix (e.g., "wt1")
+        # Skip main project (empty key) - it uses default port
+        if ($entry.Key -eq "") { continue }
         $nginxConf += "    `"$($entry.Key)`" $($entry.Value);`n"
     }
     $nginxConf += "}`n"
@@ -646,12 +646,14 @@ function Get-ServerConfig {
         [switch]$Debug
     )
 
-    $baseName = "dev"
     $basePort = 7080
     $portIncrement = 10
     $maxPort = 7179
 
-    $instanceName = if ($WorktreeSuffix) { "$baseName-$WorktreeSuffix" } else { $baseName }
+    # Registry key: worktree suffix (empty string for main project)
+    $registryKey = if ($WorktreeSuffix) { $WorktreeSuffix } else { "" }
+    # Instance name: used in .env for app identity
+    $instanceName = if ($WorktreeSuffix) { "dev-$WorktreeSuffix" } else { "dev" }
 
     $artifactsPath = Join-Path $ProjectPath "artifacts"
     if (-not (Test-Path $artifactsPath)) {
@@ -664,13 +666,13 @@ function Get-ServerConfig {
     if (Test-Path $registryPath) {
         $registry = Get-Content $registryPath -Raw | ConvertFrom-Json -AsHashtable
     } else {
-        $registry = @{ "dev" = $basePort }
+        $registry = @{ "" = $basePort }
     }
 
     # Get or allocate port
     $port = $null
-    if ($registry.ContainsKey($instanceName)) {
-        $port = $registry[$instanceName]
+    if ($registry.ContainsKey($registryKey)) {
+        $port = $registry[$registryKey]
     } elseif ($AllocateIfMissing) {
         # Find first available port block (reuses freed ports)
         $usedPorts = [System.Collections.Generic.HashSet[int]]::new([int[]]@($registry.Values))
@@ -683,10 +685,10 @@ function Get-ServerConfig {
             throw "No more port blocks available. Maximum port $maxPort exceeded."
         }
 
-        $registry[$instanceName] = $port
+        $registry[$registryKey] = $port
         $registry | ConvertTo-Json -Depth 10 | Set-Content $registryPath
 
-        if ($Debug) { Write-Host "[DEBUG] Allocated port $port for $instanceName" }
+        if ($Debug) { Write-Host "[DEBUG] Allocated port $port for worktree '$registryKey'" }
 
         # Regenerate nginx config
         $nginxConfPath = Join-Path $artifactsPath "nginx-worktree-ports.conf"
@@ -695,8 +697,8 @@ function Get-ServerConfig {
         $nginxConf += "map `$worktree_name `$backend_port {`n"
         $nginxConf += "    default 7080;`n"
         foreach ($entry in $registry.GetEnumerator() | Sort-Object Value) {
-            if ($entry.Key -eq "dev") { continue }
-            # Worktree instance names are just the suffix (e.g., "wt1")
+            # Skip main project (empty key) - it uses default port
+            if ($entry.Key -eq "") { continue }
             $nginxConf += "    `"$($entry.Key)`" $($entry.Value);`n"
         }
         $nginxConf += "}`n"
