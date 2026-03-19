@@ -19,5 +19,5 @@ public static class SolutionPaths
     private static FilePath FindSolutionRootPath(FilePath callerPath)
         => callerPath.DirectoryPath
             .SelfAndAncestors()
-            .FirstOrDefault(dir => (dir & ".git").DirectoryExists);
+            .FirstOrDefault(dir => (dir & ".git").Exists); // .git is a directory (repo) or file (worktree)
 }
