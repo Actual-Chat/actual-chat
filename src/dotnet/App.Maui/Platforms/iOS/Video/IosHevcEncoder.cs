@@ -46,16 +46,18 @@ public sealed class IosHevcEncoder : IDisposable
 
     public void EncodeSampleBuffer(CMSampleBuffer sampleBuffer)
     {
-        var session = _session;
-        if (session == null)
-            return;
-
         var imageBuffer = sampleBuffer.GetImageBuffer();
         if (imageBuffer is not CVPixelBuffer pixelBuffer)
             return;
 
-        var pts = sampleBuffer.PresentationTimeStamp;
-        var duration = sampleBuffer.Duration;
+        EncodePixelBuffer(pixelBuffer, sampleBuffer.PresentationTimeStamp, sampleBuffer.Duration);
+    }
+
+    public void EncodePixelBuffer(CVPixelBuffer pixelBuffer, CMTime pts, CMTime duration)
+    {
+        var session = _session;
+        if (session == null)
+            return;
 
         if (!_captureStartTimeSet) {
             _captureStartTime = new Moment(DateTimeOffset.UtcNow);

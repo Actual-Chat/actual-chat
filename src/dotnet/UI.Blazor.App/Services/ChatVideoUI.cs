@@ -28,6 +28,8 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private ILiveVideoStreams LiveVideoStreams => Hub.Services.GetRequiredService<ILiveVideoStreams>();
     private IAuthors Authors => Hub.Authors;
 
+    public bool IsBackgroundBlurEnabled => _isBackgroundBlurEnabled.Value;
+
     public ChatVideoUI(AppUIHub hub) : base(hub)
     {
         _recordingChatId = StateFactory.NewMutable((ChatId?)null);

@@ -16,6 +16,7 @@ public interface INativeVideoCapture
     Task<IAsyncEnumerable<VideoFrame>> StartCapture(VideoCaptureConfig config, CancellationToken ct);
     Task StopCapture();
     void Reconfigure(int width, int height, int bitrate);
+    void SetBackgroundBlur(bool enabled);
     void ShowPreview();
     void HidePreview();
 }

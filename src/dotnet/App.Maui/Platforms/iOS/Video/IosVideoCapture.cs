@@ -15,6 +15,8 @@ public sealed class IosVideoCapture : NSObject, INativeVideoCapture, IAVCaptureV
     private AVCaptureSession? _session;
     private IosHevcEncoder? _encoder;
     private AVCaptureVideoPreviewLayer? _previewLayer;
+    private IosBackgroundBlur? _blur;
+    private volatile bool _isBlurEnabled;
     private readonly ILogger _log;
 
     public int CaptureWidth { get; private set; }
@@ -129,7 +131,19 @@ public sealed class IosVideoCapture : NSObject, INativeVideoCapture, IAVCaptureV
         var encoder = Interlocked.Exchange(ref _encoder, null);
         encoder?.Dispose();
 
+        var blur = Interlocked.Exchange(ref _blur, null);
+        blur?.Dispose();
+
         return Task.CompletedTask;
+    }
+
+    public void SetBackgroundBlur(bool enabled)
+    {
+        _isBlurEnabled = enabled;
+        if (enabled && _blur == null)
+            _blur = new IosBackgroundBlur(_log);
+        // Don't dispose on disable — keep warm for quick re-enable
+        // Dispose happens in StopCapture
     }
 
     public void Reconfigure(int width, int height, int bitrate)
@@ -204,7 +218,22 @@ public sealed class IosVideoCapture : NSObject, INativeVideoCapture, IAVCaptureV
     [Export("captureOutput:didOutputSampleBuffer:fromConnection:")]
     public void DidOutputSampleBuffer(AVCaptureOutput captureOutput, CMSampleBuffer sampleBuffer, AVCaptureConnection connection)
     {
-        _encoder?.EncodeSampleBuffer(sampleBuffer);
+        var encoder = _encoder;
+        if (encoder == null)
+            return;
+
+        if (_isBlurEnabled && _blur is { } blur) {
+            var imageBuffer = sampleBuffer.GetImageBuffer();
+            if (imageBuffer is CVPixelBuffer inputBuffer) {
+                var blurred = blur.Process(inputBuffer);
+                if (blurred != null) {
+                    encoder.EncodePixelBuffer(blurred, sampleBuffer.PresentationTimeStamp, sampleBuffer.Duration);
+                    return;
+                }
+            }
+            // Fallback: blur failed, encode original
+        }
+        encoder.EncodeSampleBuffer(sampleBuffer);
     }
 
     private static UIView? GetWebViewNativeView()

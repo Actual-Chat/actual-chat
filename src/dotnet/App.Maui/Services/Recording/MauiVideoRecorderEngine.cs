@@ -10,6 +10,7 @@ public class MauiVideoRecorderEngine : IVideoRecorderEngine
     private CancellationTokenSource? _recordingCts;
     private Task? _sendTask;
     private Task? _qualityTask;
+    private Task? _blurTask;
     private readonly AppUIHub _hub;
 
     private INativeVideoCapture VideoCapture => field ??= _hub.Services.GetRequiredService<INativeVideoCapture>();
@@ -69,6 +70,9 @@ public class MauiVideoRecorderEngine : IVideoRecorderEngine
                     recordingCt),
                 Log, "Failed to push video stream", recordingCt);
 
+            // Set initial blur state
+            VideoCapture.SetBackgroundBlur(ChatVideoUI.IsBackgroundBlurEnabled);
+
             // Notify UI
             ChatVideoUI.OnRecordingStarted(chatId);
 
@@ -76,6 +80,11 @@ public class MauiVideoRecorderEngine : IVideoRecorderEngine
             _qualityTask = BackgroundTask.Run(
                 () => SubscribeToQualityRequests(chatId, recordingCt),
                 Log, "Quality subscription failed", recordingCt);
+
+            // Subscribe to blur state changes
+            _blurTask = BackgroundTask.Run(
+                () => SubscribeToBlurState(chatId, recordingCt),
+                Log, "Blur subscription failed", recordingCt);
 
             return true;
         }
@@ -113,6 +122,17 @@ public class MauiVideoRecorderEngine : IVideoRecorderEngine
             catch (OperationCanceledException) { }
             catch (Exception e) {
                 Log.LogWarning(e, "Stop: Error awaiting quality task");
+            }
+
+        // Wait for blur task
+        var blurTask = Interlocked.Exchange(ref _blurTask, null);
+        if (blurTask != null)
+            try {
+                await blurTask.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception e) {
+                Log.LogWarning(e, "Stop: Error awaiting blur task");
             }
 
         // Stop capture (also hides preview)
@@ -168,6 +188,27 @@ public class MauiVideoRecorderEngine : IVideoRecorderEngine
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
         catch (Exception e) {
             Log.LogWarning(e, "SubscribeToQualityRequests failed");
+        }
+    }
+
+    private async Task SubscribeToBlurState(ChatId chatId, CancellationToken ct)
+    {
+        try {
+            var cState = await Computed
+                .Capture(() => ChatVideoUI.GetState(chatId, ct), ct)
+                .ConfigureAwait(false);
+            var prevBlur = cState.Value.IsBackgroundBlurEnabled;
+            await foreach (var (state, _) in cState.Changes(ct).ConfigureAwait(false)) {
+                if (state.IsBackgroundBlurEnabled == prevBlur)
+                    continue;
+                prevBlur = state.IsBackgroundBlurEnabled;
+                Log.LogInformation("Background blur: {Enabled}", prevBlur);
+                VideoCapture.SetBackgroundBlur(prevBlur);
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
+        catch (Exception e) {
+            Log.LogWarning(e, "SubscribeToBlurState failed");
         }
     }
 }
