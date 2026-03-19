@@ -58,6 +58,8 @@ public static class FilePathExt
     extension(FilePath path)
     {
         public long FileSize => path.GetFileInfo().Length;
+        public bool FileExists => File.Exists(path);
+        public bool DirectoryExists => Directory.Exists(path);
 
         public bool HasExtension(string ext)
             => string.Equals(path.Extension.EnsurePrefix("."), ext, StringComparison.OrdinalIgnoreCase);
@@ -70,6 +72,18 @@ public static class FilePathExt
             }
             catch {
                 // ignore
+            }
+        }
+
+        public IEnumerable<FilePath> SelfAndAncestors()
+        {
+            var current = path.FullPath;
+            while (!current.IsEmpty) {
+                yield return current;
+                var parent = current.DirectoryPath;
+                if (parent == current)
+                    break; // Reached root
+                current = parent;
             }
         }
     }

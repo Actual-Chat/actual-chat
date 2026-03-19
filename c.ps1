@@ -196,6 +196,7 @@ $mode                  = "docker"  # default mode
 $fromMode              = $null     # set when self-invoked (e.g., from-docker, from-wsl)
 $worktreeSuffix        = $null     # set when wt argument is used
 $featureWorktreeSuffix = $null     # set when fwt/bwt argument is used
+$removeWorktreeSuffix  = $null     # set when rwt argument is used
 $wtType                = $null     # worktree type: "feature" or "bugfix"
 $newContainer          = $false
 $renewContainer        = $false
@@ -216,6 +217,7 @@ function Show-Help {
     Write-Host "  wt <suffix>  Create/use worktree from current branch (e.g., wt experiment)"
     Write-Host "  fwt <suffix> Create/use feature worktree with feat/<suffix> branch (e.g., fwt feature1)"
     Write-Host "  bwt <suffix> Create/use bugfix worktree with bugfix/<suffix> branch (e.g., bwt issue123)"
+    Write-Host "  rwt <suffix> Remove worktree and clean up (ports, hosts, nginx config)"
     Write-Host "  chrome       Start Chrome with remote debugging enabled (for Playwright)"
     Write-Host "  build        Build Docker image for current project"
     Write-Host "  help         Show this help message"
@@ -231,10 +233,10 @@ function Show-Help {
     Write-Host "  AC_CLAUDE_ISOLATE Set to 'true' or '1' to isolate .claude.json per container instance"
     Write-Host ""
     Write-Host "Environment variables set for Claude:"
-    Write-Host "  AC_ProjectRoot    Project root path (/proj in Docker)"
-    Write-Host "  AC_ProjectPath    Full path to current project (or worktree)"
-    Write-Host "  AC_OS             OS/environment description"
-    Write-Host "  AC_Worktree       Worktree suffix (empty if not in a worktree)"
+    Write-Host "  AC_ProjectRoot      Project root path (/proj in Docker)"
+    Write-Host "  AC_ProjectPath      Full path to current project (or worktree)"
+    Write-Host "  AC_OS               OS/environment description"
+    Write-Host "  AC_Worktree         Worktree suffix (empty if not in a worktree)"
     Write-Host ""
     Write-Host "Docker:"
     Write-Host "  AC_ProjectRoot is mounted as /proj/ — all sibling projects are accessible"
@@ -255,6 +257,7 @@ function Show-Help {
     Write-Host "  c wt experiment    Run in worktree from current branch"
     Write-Host "  c fwt feature1     Run in worktree with feat/feature1 branch"
     Write-Host "  c bwt issue123     Run in worktree with bugfix/issue123 branch"
+    Write-Host "  c rwt feature1     Remove feature1 worktree and clean up"
     Write-Host "  c os fwt feature1  Run on host OS in feature worktree"
     Write-Host "  c os bwt issue1    Run on host OS in bugfix worktree"
     Write-Host "  c chrome           Start Chrome with remote debugging"
@@ -295,7 +298,7 @@ while ($argIndex -lt $args.Count) {
     if ($currentArg -eq "wt") {
         $argIndex++
         if ($argIndex -lt $args.Count) {
-            $worktreeSuffix = $args[$argIndex]
+            $worktreeSuffix = -join $args[$argIndex][0..19]
             $argIndex++
         } else {
             Write-Error "The wt command requires a worktree suffix argument"
@@ -309,12 +312,24 @@ while ($argIndex -lt $args.Count) {
         $wtType = if ($currentArg -eq "fwt") { "feature" } else { "bugfix" }
         $argIndex++
         if ($argIndex -lt $args.Count) {
-            $featureWorktreeSuffix = $args[$argIndex]
-            # Strip feat/ or bugfix/ prefix if provided (fwt/bwt already adds the prefix)
-            $featureWorktreeSuffix = $featureWorktreeSuffix -replace '^(feat|bugfix|hotfix|fix)/', ''
+            # Strip feat/ or bugfix/ prefix if provided (fwt/bwt already adds the prefix), then truncate to 20 chars
+            $featureWorktreeSuffix = -join ($args[$argIndex] -replace '^(feat|bugfix|hotfix|fix)/', '')[0..19]
             $argIndex++
         } else {
             Write-Error "The $currentArg command requires a worktree suffix argument"
+            exit 1
+        }
+        continue
+    }
+
+    # Check for rwt command (remove worktree)
+    if ($currentArg -eq "rwt") {
+        $argIndex++
+        if ($argIndex -lt $args.Count) {
+            $removeWorktreeSuffix = $args[$argIndex]
+            $argIndex++
+        } else {
+            Write-Error "The rwt command requires a worktree suffix argument"
             exit 1
         }
         continue
@@ -396,6 +411,374 @@ if ($fromMode -and $env:AC_ProjectPath) {
 # Save the original folder name (where c.ps1 was invoked from, before wt/fwt/bwt)
 $originalFolderName = $folderName
 
+# Add entries to hosts file for worktree subdomain
+function Update-HostsFile {
+    param(
+        [string]$WorktreeSuffix,
+        [switch]$Debug
+    )
+
+    if (-not $WorktreeSuffix) { return }
+
+    $hostsEntries = @(
+        "$WorktreeSuffix.local.voxt.ai",
+        "cdn.$WorktreeSuffix.local.voxt.ai",
+        "media.$WorktreeSuffix.local.voxt.ai"
+    )
+
+    $hostsFile = if ($IsWindows -or $env:OS -eq "Windows_NT") {
+        "$env:SystemRoot\System32\drivers\etc\hosts"
+    } else {
+        "/etc/hosts"
+    }
+
+    $hostsContent = Get-Content $hostsFile -ErrorAction SilentlyContinue
+    $entriesToAdd = @()
+
+    foreach ($entry in $hostsEntries) {
+        if ($hostsContent -notmatch [regex]::Escape($entry)) {
+            $entriesToAdd += "127.0.0.1 $entry"
+        }
+    }
+
+    if ($entriesToAdd.Count -eq 0) {
+        if ($Debug) { Write-Host "[DEBUG] Hosts entries already exist for $WorktreeSuffix" }
+        return
+    }
+
+    $newEntries = $entriesToAdd -join "`n"
+    if ($IsWindows -or $env:OS -eq "Windows_NT") {
+        # Windows - try direct write first, then elevate via UAC
+        try {
+            Add-Content -Path $hostsFile -Value "`n$newEntries" -ErrorAction Stop
+            if ($Debug) { Write-Host "[DEBUG] Added hosts entries: $($hostsEntries -join ', ')" }
+        } catch {
+            # Request elevation via UAC prompt
+            Write-Host "Adding hosts entries (UAC elevation required)..."
+            $escapedEntries = $newEntries -replace "'", "''"
+            $script = "Add-Content -Path '$hostsFile' -Value `"``n$escapedEntries`""
+            try {
+                Start-Process powershell -Verb RunAs -ArgumentList "-NoProfile -Command $script" -Wait -ErrorAction Stop
+                if ($Debug) { Write-Host "[DEBUG] Added hosts entries via UAC: $($hostsEntries -join ', ')" }
+            } catch {
+                Write-Host "Note: Could not update hosts file. Add manually:" -ForegroundColor Yellow
+                Write-Host $newEntries
+            }
+        }
+    } else {
+        # macOS/Linux - use sudo
+        $sudoCmd = "echo '$newEntries' | sudo tee -a '$hostsFile' > /dev/null"
+        Write-Host "Adding hosts entries (sudo required)..."
+        bash -c $sudoCmd
+        if ($LASTEXITCODE -eq 0) {
+            if ($Debug) { Write-Host "[DEBUG] Added hosts entries: $($hostsEntries -join ', ')" }
+        } else {
+            Write-Host "Failed to update hosts file. Add manually:" -ForegroundColor Yellow
+            Write-Host $newEntries
+        }
+    }
+}
+
+# Remove worktree from server config (ports registry, nginx config)
+function Remove-ServerConfig {
+    param(
+        [string]$ProjectPath,
+        [string]$WorktreeSuffix,
+        [switch]$Debug
+    )
+
+    if (-not $WorktreeSuffix) { return }
+
+    $instanceName = $WorktreeSuffix
+    $artifactsPath = Join-Path $ProjectPath "artifacts"
+    $registryPath = Join-Path $artifactsPath "server-ports.json"
+
+    if (-not (Test-Path $registryPath)) {
+        if ($Debug) { Write-Host "[DEBUG] No server registry found" }
+        return
+    }
+
+    $registry = Get-Content $registryPath -Raw | ConvertFrom-Json -AsHashtable
+
+    if (-not $registry.ContainsKey($instanceName)) {
+        if ($Debug) { Write-Host "[DEBUG] Instance $instanceName not found in registry" }
+        return
+    }
+
+    # Remove from registry
+    $registry.Remove($instanceName)
+    $registry | ConvertTo-Json -Depth 10 | Set-Content $registryPath
+    if ($Debug) { Write-Host "[DEBUG] Removed $instanceName from server registry" }
+
+    # Regenerate nginx config
+    $nginxConfPath = Join-Path $artifactsPath "nginx-worktree-ports.conf"
+    $nginxConf = "# Auto-generated nginx worktree port mappings`n"
+    $nginxConf += "# Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')`n`n"
+    $nginxConf += "map `$worktree_name `$backend_port {`n"
+    $nginxConf += "    default 7080;`n"
+    foreach ($entry in $registry.GetEnumerator() | Sort-Object Value) {
+        if ($entry.Key -eq "dev") { continue }
+        # Worktree instance names are just the suffix (e.g., "wt1")
+        $nginxConf += "    `"$($entry.Key)`" $($entry.Value);`n"
+    }
+    $nginxConf += "}`n"
+    Set-Content -Path $nginxConfPath -Value $nginxConf
+    if ($Debug) { Write-Host "[DEBUG] Regenerated nginx config" }
+
+    # Restart nginx
+    $originalLocation = Get-Location
+    Set-Location $ProjectPath
+    try {
+        $null = docker compose up -d nginx 2>&1
+        if ($Debug) { Write-Host "[DEBUG] Restarted nginx" }
+    } finally {
+        Set-Location $originalLocation
+    }
+}
+
+# Remove entries from hosts file for worktree subdomain
+function Remove-HostsFileEntries {
+    param(
+        [string]$WorktreeSuffix,
+        [switch]$Debug
+    )
+
+    if (-not $WorktreeSuffix) { return }
+
+    $hostsPatterns = @(
+        "$WorktreeSuffix.local.voxt.ai",
+        "cdn.$WorktreeSuffix.local.voxt.ai",
+        "media.$WorktreeSuffix.local.voxt.ai"
+    )
+
+    $hostsFile = if ($IsWindows -or $env:OS -eq "Windows_NT") {
+        "$env:SystemRoot\System32\drivers\etc\hosts"
+    } else {
+        "/etc/hosts"
+    }
+
+    $hostsContent = Get-Content $hostsFile -ErrorAction SilentlyContinue
+    $newContent = $hostsContent | Where-Object {
+        $line = $_
+        $shouldKeep = $true
+        foreach ($pattern in $hostsPatterns) {
+            if ($line -match [regex]::Escape($pattern)) {
+                $shouldKeep = $false
+                break
+            }
+        }
+        $shouldKeep
+    }
+
+    if ($newContent.Count -eq $hostsContent.Count) {
+        if ($Debug) { Write-Host "[DEBUG] No hosts entries found for $WorktreeSuffix" }
+        return
+    }
+
+    if ($IsWindows -or $env:OS -eq "Windows_NT") {
+        try {
+            Set-Content -Path $hostsFile -Value $newContent -ErrorAction Stop
+            if ($Debug) { Write-Host "[DEBUG] Removed hosts entries for $WorktreeSuffix" }
+        } catch {
+            Write-Host "Note: Run as Administrator to update hosts file" -ForegroundColor Yellow
+        }
+    } else {
+        # macOS/Linux - use sudo
+        $tempFile = [System.IO.Path]::GetTempFileName()
+        $newContent | Set-Content -Path $tempFile
+        $sudoCmd = "sudo cp '$tempFile' '$hostsFile' && rm '$tempFile'"
+        Write-Host "Removing hosts entries (sudo required)..."
+        bash -c $sudoCmd
+        if ($LASTEXITCODE -eq 0) {
+            if ($Debug) { Write-Host "[DEBUG] Removed hosts entries for $WorktreeSuffix" }
+        } else {
+            Write-Host "Failed to update hosts file" -ForegroundColor Yellow
+            Remove-Item $tempFile -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+# Update .env file with server configuration
+function Update-EnvFile {
+    param(
+        [string]$ProjectPath,
+        [hashtable]$Variables,
+        [switch]$Debug
+    )
+
+    $envFilePath = Join-Path $ProjectPath ".env"
+    $envLines = @{}
+
+    # Read existing .env file if it exists
+    if (Test-Path $envFilePath) {
+        Get-Content $envFilePath | ForEach-Object {
+            $line = $_.Trim()
+            # Skip empty lines and comments
+            if ($line -and -not $line.StartsWith('#')) {
+                $eqIndex = $line.IndexOf('=')
+                if ($eqIndex -gt 0) {
+                    $key = $line.Substring(0, $eqIndex)
+                    $value = $line.Substring($eqIndex + 1)
+                    $envLines[$key] = $value
+                }
+            }
+        }
+    }
+
+    # Update with new variables
+    foreach ($key in $Variables.Keys) {
+        $envLines[$key] = $Variables[$key]
+    }
+
+    # Write back to .env file
+    $content = $envLines.GetEnumerator() | Sort-Object Name | ForEach-Object { "$($_.Key)=$($_.Value)" }
+    Set-Content -Path $envFilePath -Value $content
+
+    if ($Debug) { Write-Host "[DEBUG] Updated .env file: $envFilePath" }
+}
+
+# Server port allocation for multi-worktree support
+function Get-ServerConfig {
+    param(
+        [string]$ProjectPath,
+        [string]$WorktreeSuffix,
+        [switch]$AllocateIfMissing,
+        [switch]$Debug
+    )
+
+    $baseName = "dev"
+    $basePort = 7080
+    $portIncrement = 10
+    $maxPort = 7179
+
+    $instanceName = if ($WorktreeSuffix) { "$baseName-$WorktreeSuffix" } else { $baseName }
+
+    $artifactsPath = Join-Path $ProjectPath "artifacts"
+    if (-not (Test-Path $artifactsPath)) {
+        New-Item -ItemType Directory -Path $artifactsPath -Force | Out-Null
+    }
+
+    $registryPath = Join-Path $artifactsPath "server-ports.json"
+
+    # Load or create registry
+    if (Test-Path $registryPath) {
+        $registry = Get-Content $registryPath -Raw | ConvertFrom-Json -AsHashtable
+    } else {
+        $registry = @{ "dev" = $basePort }
+    }
+
+    # Get or allocate port
+    $port = $null
+    if ($registry.ContainsKey($instanceName)) {
+        $port = $registry[$instanceName]
+    } elseif ($AllocateIfMissing) {
+        # Find first available port block (reuses freed ports)
+        $usedPorts = [System.Collections.Generic.HashSet[int]]::new([int[]]@($registry.Values))
+        $port = $basePort
+        while ($usedPorts.Contains($port) -and $port -le $maxPort) {
+            $port += $portIncrement
+        }
+
+        if ($port -gt $maxPort) {
+            throw "No more port blocks available. Maximum port $maxPort exceeded."
+        }
+
+        $registry[$instanceName] = $port
+        $registry | ConvertTo-Json -Depth 10 | Set-Content $registryPath
+
+        if ($Debug) { Write-Host "[DEBUG] Allocated port $port for $instanceName" }
+
+        # Regenerate nginx config
+        $nginxConfPath = Join-Path $artifactsPath "nginx-worktree-ports.conf"
+        $nginxConf = "# Auto-generated nginx worktree port mappings`n"
+        $nginxConf += "# Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')`n`n"
+        $nginxConf += "map `$worktree_name `$backend_port {`n"
+        $nginxConf += "    default 7080;`n"
+        foreach ($entry in $registry.GetEnumerator() | Sort-Object Value) {
+            if ($entry.Key -eq "dev") { continue }
+            # Worktree instance names are just the suffix (e.g., "wt1")
+            $nginxConf += "    `"$($entry.Key)`" $($entry.Value);`n"
+        }
+        $nginxConf += "}`n"
+        Set-Content -Path $nginxConfPath -Value $nginxConf
+
+        if ($Debug) { Write-Host "[DEBUG] Generated nginx config: $nginxConfPath" }
+
+        # Update main project's .env with nginx config path for docker-compose
+        Update-EnvFile -ProjectPath $ProjectPath -Variables @{
+            "NGINX_WORKTREE_PORTS_CONF" = "./artifacts/nginx-worktree-ports.conf"
+        } -Debug:$Debug
+
+        # Restart nginx to pick up the new worktree port mappings
+        # (restart needed because the mount path changes, not just the file content)
+        $originalLocation = Get-Location
+        Set-Location $ProjectPath
+        try {
+            $null = docker compose up -d nginx 2>&1
+            if ($LASTEXITCODE -eq 0) {
+                if ($Debug) { Write-Host "[DEBUG] Restarted nginx with new config" }
+            } else {
+                if ($Debug) { Write-Host "[DEBUG] nginx restart failed (docker-compose may not be running)" }
+            }
+        } finally {
+            Set-Location $originalLocation
+        }
+
+        # Add hosts file entries for the worktree subdomain
+        Update-HostsFile -WorktreeSuffix $WorktreeSuffix -Debug:$Debug
+    } else {
+        # No allocation requested, return null port
+        return @{ InstanceName = $instanceName; Port = $null }
+    }
+
+    return @{
+        InstanceName = $instanceName
+        Port = $port
+    }
+}
+
+# Handle rwt command: remove worktree and its configuration
+if ($removeWorktreeSuffix) {
+    $mainProjectPath = Join-Path $env:AC_ProjectRoot $projectName
+    $worktreePath = Join-Path $env:AC_ProjectRoot "$projectName-$removeWorktreeSuffix"
+    $worktreeEnvFile = Join-Path $worktreePath ".env"
+
+    Write-Host "Removing worktree: $projectName-$removeWorktreeSuffix" -ForegroundColor Cyan
+
+    # Remove server config (ports registry, nginx config)
+    Remove-ServerConfig -ProjectPath $mainProjectPath -WorktreeSuffix $removeWorktreeSuffix -Debug:$debugMode
+
+    # Remove hosts file entries
+    Remove-HostsFileEntries -WorktreeSuffix $removeWorktreeSuffix -Debug:$debugMode
+
+    # Remove worktree .env file (created by c.ps1)
+    if (Test-Path $worktreeEnvFile) {
+        Remove-Item $worktreeEnvFile -Force
+        if ($debugMode) { Write-Host "[DEBUG] Removed worktree .env file" }
+    }
+
+    # Remove git worktree
+    if (Test-Path $worktreePath) {
+        $originalLocation = Get-Location
+        Set-Location $mainProjectPath
+        try {
+            git worktree remove $worktreePath --force 2>&1
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "Git worktree removed" -ForegroundColor Green
+            } else {
+                Write-Host "Warning: git worktree remove failed, you may need to remove manually" -ForegroundColor Yellow
+            }
+        } finally {
+            Set-Location $originalLocation
+        }
+    } else {
+        Write-Host "Worktree directory not found: $worktreePath" -ForegroundColor Yellow
+    }
+
+    Write-Host "Done" -ForegroundColor Green
+    exit 0
+}
+
 # Handle wt argument: create regular worktree from current branch and switch to it
 if ($worktreeSuffix) {
     # Always use the main project path (not another worktree)
@@ -459,7 +842,8 @@ if ($featureWorktreeSuffix) {
 
             # Auto-detect base branch: prefer dev if it exists on remote, else master
             $null = git rev-parse --verify "refs/remotes/origin/dev" 2>$null
-            $baseBranch = if ($LASTEXITCODE -eq 0) { "dev" } else { "master" }
+            $baseBranch = git rev-parse --abbrev-ref HEAD  # TODO: Revert before PR !!!!!
+            # $baseBranch = if ($LASTEXITCODE -eq 0) { "dev" } else { "master" }
 
             # Check if the feature branch already exists (locally or remotely)
             $null = git rev-parse --verify "refs/heads/$featureBranch" 2>$null
@@ -509,6 +893,36 @@ if ($featureWorktreeSuffix) {
     $relativePath = ""
     Set-Location $worktreePath
 }
+
+# Allocate server port for this worktree (only when entering a worktree, not for main project unless wt/fwt/bwt was used)
+$serverConfig = $null
+if ($worktree -or $worktreeSuffix -or $featureWorktreeSuffix) {
+    # Use main project path for registry (shared across all worktrees)
+    $mainProjectPath = Join-Path $env:AC_ProjectRoot $projectName
+    $serverConfig = Get-ServerConfig -ProjectPath $mainProjectPath -WorktreeSuffix $worktree -AllocateIfMissing -Debug:$debugMode
+} else {
+    # Main project - get config without allocating (uses default port 7080)
+    $mainProjectPath = $projectRoot
+    $serverConfig = Get-ServerConfig -ProjectPath $mainProjectPath -WorktreeSuffix "" -Debug:$debugMode
+    if (-not $serverConfig.Port) {
+        $serverConfig.Port = 7080
+        $serverConfig.InstanceName = "dev"
+    }
+}
+
+# Write server configuration to .env file in the project/worktree directory
+# Uses .NET configuration names so they're automatically picked up by the server
+$baseUri = if ($worktree) { "https://$worktree.local.voxt.ai" } else { "https://local.voxt.ai" }
+$urlsValue = "http://0.0.0.0:$($serverConfig.Port)"
+$envVarsToSave = @{
+    "CoreSettings__Instance" = $serverConfig.InstanceName
+    # Use 0.0.0.0 to allow connections from nginx container
+    # "urls" is for .NET config loading, "ASPNETCORE_URLS" is for env var loading
+    "urls" = $urlsValue
+    "ASPNETCORE_URLS" = $urlsValue
+    "HostSettings__BaseUri" = $baseUri
+}
+Update-EnvFile -ProjectPath $projectRoot -Variables $envVarsToSave -Debug:$debugMode
 
 # Suppress output when launching docker (inner instance will output)
 if ($mode -ne "docker" -or $dryRun) {
@@ -689,14 +1103,14 @@ switch ($mode) {
         Write-Host "Running Claude on: $($env:AC_OS)"
         Write-Host "Working Directory: $(Get-Location) @ $env:AC_ProjectRoot"
         if ($worktree) {
-            Write-Host "Worktree: $worktree"
+            Write-Host "Worktree: $worktree (port: $($serverConfig.Port))"
         }
 
         $envVars = @{
-            "AC_ProjectRoot" = $env:AC_ProjectRoot
-            "AC_ProjectPath" = $env:AC_ProjectPath
-            "AC_OS"          = $env:AC_OS
-            "AC_Worktree"    = $env:AC_Worktree
+            "AC_ProjectRoot"    = $env:AC_ProjectRoot
+            "AC_ProjectPath"    = $env:AC_ProjectPath
+            "AC_OS"             = $env:AC_OS
+            "AC_Worktree"       = $env:AC_Worktree
         }
 
         if ($dryRun) {
@@ -872,7 +1286,10 @@ switch ($mode) {
 
         # Build project path env vars for Docker
         $dockerProjectPath = "/proj/$currentFolderName"
-        $projectEnvVars = @("-e", "AC_ProjectPath=$dockerProjectPath", "-e", "AC_Worktree=$worktree")
+        $projectEnvVars = @(
+            "-e", "AC_ProjectPath=$dockerProjectPath",
+            "-e", "AC_Worktree=$worktree"
+        )
 
         # Collect environment variables to propagate:
         # - Variables with __ in their names (e.g., ChatSettings__OpenAIApiKey)
@@ -930,10 +1347,10 @@ switch ($mode) {
         if ($dryRun) {
             # Build env vars hashtable for display
             $dockerEnvVars = @{
-                "AC_ProjectRoot" = "/proj"
-                "AC_ProjectPath" = $dockerProjectPath
-                "AC_OS"          = "Linux in Docker"
-                "AC_Worktree"    = $worktree
+                "AC_ProjectRoot"    = "/proj"
+                "AC_ProjectPath"    = $dockerProjectPath
+                "AC_OS"             = "Linux in Docker"
+                "AC_Worktree"       = $worktree
             }
 
             Write-Host ""

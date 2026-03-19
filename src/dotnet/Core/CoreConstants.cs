@@ -13,6 +13,8 @@ public static partial class CoreConstants
         public const string Prod = "voxt.ai"; // NOTE: keep lowercase
         public const string Dev = $"dev.{Prod}";
         public const string Local = $"local.{Prod}";
+        // Suffix for wildcard matching (used for worktree subdomains like wt1.local.voxt.ai)
+        public const string LocalSuffix = $".{Local}";
     }
 
     public static class AsyncMemoizer

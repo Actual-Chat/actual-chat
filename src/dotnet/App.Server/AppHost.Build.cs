@@ -1,4 +1,5 @@
 using ActualChat.App.Server.Logging;
+using DotNetEnv.Configuration;
 using ActualChat.App.Server.Module;
 using ActualChat.Chat.Module;
 using ActualChat.Contacts.Module;
@@ -15,7 +16,6 @@ using ActualChat.Notification.Module;
 using ActualChat.Redis.Module;
 using ActualChat.Streaming.Module;
 using ActualChat.UI;
-using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Module;
 using ActualChat.UI.Module;
@@ -61,6 +61,9 @@ public partial class AppHost
         }
         // Add a few default sources
         cfg.AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: false);
+        // Load .env file from solution root (for local dev with worktrees)
+        if (env.IsDevelopment())
+            cfg.AddDotNetEnv(AppPathResolver.GetDotEnvFilePath());
         cfg.AddEnvironmentVariables();
         ConfigureHost?.Invoke(ctx, cfg);
 
@@ -71,7 +74,7 @@ public partial class AppHost
         var hostSettings = cfg.Settings<HostSettings>();
         var appKind = hostSettings.AppKind ?? HostKind.Server;
         var isTested = hostSettings.IsTested ?? false;
-        var isLocalDev = hostSettings.BaseUri.StartsWith($"https://{Constants.Hosts.LocalVoxt}");
+        var isLocalDev = Constants.Hosts.IsLocalDev(new Uri(hostSettings.BaseUri).Host);
         var services = ctx.Services;
         var serverRole = HostRoles.Server.Parse(hostSettings.ServerRole);
         var roles = HostRoles.Server.GetAllRoles(serverRole, isTested);

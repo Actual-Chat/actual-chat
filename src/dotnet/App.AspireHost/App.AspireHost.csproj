@@ -10,10 +10,12 @@
 
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" />
+    <PackageReference Include="DotNetEnv" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" IsAspireProjectResource="false" />
+    <ProjectReference Include="..\Core.Server\Core.Server.csproj" IsAspireProjectResource="false" />
     <ProjectReference Include="..\App.Server\App.Server.csproj" />
   </ItemGroup>
 
