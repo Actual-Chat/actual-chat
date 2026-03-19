@@ -4,7 +4,7 @@ namespace ActualChat.IO;
 
 /// <summary>
 /// Provides paths relative to the solution root.
-/// Used by App.Server and App.AspireHost for loading .env files.
+/// Used by App.Server for locating wwwroot in development.
 /// </summary>
 public static class SolutionPaths
 {
@@ -12,9 +12,6 @@ public static class SolutionPaths
 
     public static FilePath GetSolutionRootPath([CallerFilePath] string? callerPath = null)
         => _solutionRootPath ??= FindSolutionRootPath(callerPath);
-
-    public static FilePath GetDotEnvFilePath()
-        => GetSolutionRootPath() | ".env";
 
     private static FilePath FindSolutionRootPath(FilePath callerPath)
         => callerPath.DirectoryPath

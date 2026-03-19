@@ -24,4 +24,9 @@
     <Using Remove="*" />
   </ItemGroup>
 
+  <!-- Copy .env file from solution root to output folder (optional, for local dev) -->
+  <ItemGroup Condition="Exists('$(RepoRoot).env')">
+    <None Include="$(RepoRoot).env" CopyToOutputDirectory="PreserveNewest" Link=".env" />
+  </ItemGroup>
+
 </Project>

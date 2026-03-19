@@ -1,14 +1,16 @@
 using System;
+using System.IO;
 using ActualChat;
 using Microsoft.Extensions.Configuration;
-using ActualChat.IO;
 using ActualLab;
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using DotNetEnv.Configuration;
 
 var builder = DistributedApplication.CreateBuilder(args);
-builder.Configuration.AddDotNetEnv(SolutionPaths.GetDotEnvFilePath());
+var dotEnvPath = Path.Combine(AppContext.BaseDirectory, ".env");
+if (File.Exists(dotEnvPath))
+    builder.Configuration.AddDotNetEnv(dotEnvPath);
 var basePort = GetBasePort(builder.Configuration); // 7080, 7090, etc.
 var meshLockSubspace = Alphabet.AlphaNumeric.Generator8.Next();
 var meshLockOptionsPreset = "Default"; // Change it to "DebugFriendly" for debugging purposes
