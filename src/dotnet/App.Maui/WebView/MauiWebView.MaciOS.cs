@@ -137,10 +137,23 @@ public partial class MauiWebView
 
             _ = DispatchToBlazor(
                 async c => {
-                    var permissionHandler = c.GetRequiredService<MicrophonePermissionHandler>();
                     var result = WKPermissionDecision.Prompt;
                     try {
-                        if (await permissionHandler.CheckOrRequest().ConfigureAwait(true))
+                        var granted = type switch {
+                            WKMediaCaptureType.Camera =>
+                                await c.GetRequiredService<CameraPermissionHandler>()
+                                    .CheckOrRequest().ConfigureAwait(true),
+                            WKMediaCaptureType.Microphone =>
+                                await c.GetRequiredService<MicrophonePermissionHandler>()
+                                    .CheckOrRequest().ConfigureAwait(true),
+                            WKMediaCaptureType.CameraAndMicrophone =>
+                                await c.GetRequiredService<CameraPermissionHandler>()
+                                    .CheckOrRequest().ConfigureAwait(true)
+                                && await c.GetRequiredService<MicrophonePermissionHandler>()
+                                    .CheckOrRequest().ConfigureAwait(true),
+                            _ => false,
+                        };
+                        if (granted)
                             result = WKPermissionDecision.Grant;
                     }
                     catch {
