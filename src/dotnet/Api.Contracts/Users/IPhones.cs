@@ -5,10 +5,9 @@ namespace ActualChat.Users;
 /// </summary>
 public interface IPhones : IComputeService
 {
-    // NOTE(AY): Should it really be a compute method? Let's discuss this.
+    // NOTE(AY): Should it really be a compute method?
     [ComputeMethod]
     Task<Phone?> Parse(string phone, CancellationToken cancellationToken);
-
     [ComputeMethod]
     Task<Phone?> GetExampleCountryPhone(Session session, CancellationToken cancellationToken);
 }
