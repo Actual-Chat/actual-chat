@@ -38,6 +38,8 @@
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoRecorder.create";
 
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private IVideoRecorderEngine VideoRecorderEngine => field ??= Hub.Services.GetRequiredService<IVideoRecorderEngine>();
+    private bool IsNativeCapture => VideoRecorderEngine.IsNativeCapture;
     private ILogger Log => field ??= Hub.LogFor(GetType());
     private ElementReference Ref { get; set; }
     private DotNetObjectReference<VideoRecorder> BlazorRef { get; set; } = null!;
@@ -70,10 +72,17 @@
                 _autoStartPending = false;
                 var chatId = Hub.ChatUI.SelectedChatId.Value;
                 if (chatId is not null) {
-                    if (!string.IsNullOrEmpty(PendingCameraDeviceId))
-                        await JSRef.InvokeVoidAsync("setSelectedCamera", PendingCameraDeviceId);
-                    await JSRef.InvokeVoidAsync("setBlurEnabled", PendingBlurEnabled);
-                    await JSRef.InvokeVoidAsync("startRecording", chatId.Value);
+                    if (IsNativeCapture) {
+                        // Native path: start via engine, skip JS recording setup
+                        _ = VideoRecorderEngine.Start(chatId);
+                    }
+                    else {
+                        // JS path: configure and start via JS
+                        if (!string.IsNullOrEmpty(PendingCameraDeviceId))
+                            await JSRef.InvokeVoidAsync("setSelectedCamera", PendingCameraDeviceId);
+                        await JSRef.InvokeVoidAsync("setBlurEnabled", PendingBlurEnabled);
+                        await JSRef.InvokeVoidAsync("startRecording", chatId.Value);
+                    }
                 }
             }
         }
@@ -96,8 +105,11 @@
         var chatId = Hub.ChatUI.SelectedChatId.Value;
         if (chatId != null) {
             ChatVideoUI.OnRecordingStarted(chatId);
-            _ = SubscribeToQualityRequests(chatId);
-            _ = SubscribeToSupportedDecoderCodecs(chatId);
+            // Native capture handles quality adaptation internally; skip JS-side subscriptions
+            if (!IsNativeCapture) {
+                _ = SubscribeToQualityRequests(chatId);
+                _ = SubscribeToSupportedDecoderCodecs(chatId);
+            }
         }
         if (JSRef is {} jsRef)
             _ = jsRef.InvokeVoidAsync("setRemoteStreamCount", RemoteStreamCount);
@@ -235,20 +247,29 @@
 
         // Check if recording was stopped externally
         var wasRecording = State.Value.VideoState.IsRecording;
-        if (wasRecording && !videoState.IsRecording)
-            _ = jsRef.InvokeVoidAsync("stopRecording");
+        if (wasRecording && !videoState.IsRecording) {
+            if (IsNativeCapture)
+                _ = VideoRecorderEngine.Stop();
+            else
+                _ = jsRef.InvokeVoidAsync("stopRecording");
+        }
 
-        // Detect blur state change during active recording
+        // Detect blur state change during active recording (JS path only)
         var wasBlurEnabled = State.Value.VideoState.IsBackgroundBlurEnabled;
-        if (videoState.IsRecording && wasBlurEnabled != videoState.IsBackgroundBlurEnabled)
+        if (!IsNativeCapture && videoState.IsRecording && wasBlurEnabled != videoState.IsBackgroundBlurEnabled)
             _ = jsRef.InvokeVoidAsync("toggleBlur", videoState.IsBackgroundBlurEnabled);
 
         // Detect recording started while panel is already open
         if (!wasRecording && videoState.IsRecording) {
-            if (!string.IsNullOrEmpty(videoState.SelectedCameraDeviceId))
-                _ = jsRef.InvokeVoidAsync("setSelectedCamera", videoState.SelectedCameraDeviceId);
-            _ = jsRef.InvokeVoidAsync("setBlurEnabled", videoState.IsBackgroundBlurEnabled);
-            _ = jsRef.InvokeVoidAsync("startRecording", chatId.Value);
+            if (IsNativeCapture) {
+                _ = VideoRecorderEngine.Start(chatId);
+            }
+            else {
+                if (!string.IsNullOrEmpty(videoState.SelectedCameraDeviceId))
+                    _ = jsRef.InvokeVoidAsync("setSelectedCamera", videoState.SelectedCameraDeviceId);
+                _ = jsRef.InvokeVoidAsync("setBlurEnabled", videoState.IsBackgroundBlurEnabled);
+                _ = jsRef.InvokeVoidAsync("startRecording", chatId.Value);
+            }
         }
 
         return new (videoState);

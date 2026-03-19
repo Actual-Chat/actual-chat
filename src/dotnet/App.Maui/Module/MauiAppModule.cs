@@ -15,6 +15,9 @@ using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+#if IOS || MACCATALYST
+using ActualChat.App.Maui.Video;
+#endif
 
 namespace ActualChat.App.Maui.Module;
 
@@ -94,6 +97,8 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<Haptics>(c => new Haptics(c.AppUIHub()));
         services.AddScoped<AudioSession>(c => new AudioSession(c.AppUIHub()));
         services.AddScoped<IAudioCapture>(c => new IosAudioCapture(c.AppUIHub()));
+        services.AddScoped<INativeVideoCapture>(c => new IosVideoCapture(c.AppUIHub()));
+        services.AddScoped<IVideoRecorderEngine>(c => new MauiVideoRecorderEngine(c.AppUIHub()));
 #endif
         services.AddScoped<IAudioInitializer>(c => new MauiAudioInitializer());
         services.AddScoped<IAudioPlaybackEngineFactory>(c => new MauiAudioPlaybackEngineFactory(c.AppUIHub()));

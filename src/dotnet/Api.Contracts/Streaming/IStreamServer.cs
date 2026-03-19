@@ -1,5 +1,6 @@
 using ActualChat.Audio;
 using ActualChat.Transcription;
+using ActualChat.Video;
 using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
@@ -20,5 +21,13 @@ public interface IStreamServer : IRpcService
         double clientStartOffset,
         int preSkip,
         RpcStream<AudioFrame> frameStream,
+        CancellationToken cancellationToken);
+
+    Task PushVideo(
+        Session session,
+        string chatId,
+        double clientStartOffset,
+        VideoFormat format,
+        RpcStream<VideoFrame> frameStream,
         CancellationToken cancellationToken);
 }

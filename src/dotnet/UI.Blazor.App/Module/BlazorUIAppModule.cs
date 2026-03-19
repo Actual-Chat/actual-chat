@@ -221,6 +221,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         fusion.AddService<ChatSendingMessagesTriggers>(ServiceLifetime.Scoped);
         services.AddScoped(c => new SendingMessages(c.AppUIHub()));
         services.AddScoped<VideoTranscoder>();
+        services.TryAddScoped<IVideoRecorderEngine>(_ => new JsVideoRecorderEngine());
         services.AddScoped<IUploadSessionRepo>(c => new UploadSessionRepo(c));
         services.AddScoped<UploadSessions>(c => new UploadSessions(c.AppUIHub()));
         services.AddScoped(c => new AttachmentsController(c.AppUIHub()));

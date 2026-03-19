@@ -1,5 +1,6 @@
 using ActualChat.Audio;
 using ActualChat.Transcription;
+using ActualChat.Video;
 
 namespace ActualChat.Streaming;
 
@@ -19,5 +20,13 @@ public interface IStreamClient
         double clientStartOffset,
         int preSkip,
         IAsyncEnumerable<AudioFrame> frameStream,
+        CancellationToken cancellationToken);
+
+    Task PushVideo(
+        Session session,
+        string chatId,
+        double clientStartOffset,
+        VideoFormat format,
+        IAsyncEnumerable<VideoFrame> frameStream,
         CancellationToken cancellationToken);
 }
