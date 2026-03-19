@@ -36,16 +36,18 @@ public class LibPhoneNumbersExtTest
         => PhoneExt.ParseNullable(source, null).Should().Be(expected.IsNullOrEmpty() ? null: Phone.Parse(expected));
 
     [Theory]
-    [InlineData(1, 1)]     // US
-    [InlineData(44, 44)]   // GB
-    [InlineData(7, 7)]     // RU
-    [InlineData(49, 49)]   // DE
-    [InlineData(0, 0)]     // Invalid
-    [InlineData(-1, 0)]    // Negative
-    [InlineData(9999, 0)]  // Non-existent
-    public void GetExampleTest(int prefix, int expectedPrefix)
+    [InlineData(1, 1)]       // US
+    [InlineData(44, 44)]     // GB
+    [InlineData(44, 44, 1)]  // GB w/ default prefix
+    [InlineData(7, 7)]       // RU
+    [InlineData(49, 49)]     // DE
+    [InlineData(0, 0)]       // Invalid
+    [InlineData(-1, 0)]      // Negative
+    [InlineData(9999, 0)]    // Non-existent
+    [InlineData(9999, 1, 1)] // Non-existent w/ default prefix
+    public void GetExampleCountryPhoneTest(int prefix, int expectedPrefix, int defaultPrefix = 0)
     {
-        var phone = PhoneExt.GetExample(prefix);
+        var phone = PhoneExt.GetExampleCountryPhone(prefix, defaultPrefix);
         if (expectedPrefix == 0) {
             phone.Should().BeNull();
             return;
@@ -56,5 +58,20 @@ public class LibPhoneNumbersExtTest
         phone.Number.Should().NotBeNullOrEmpty();
         // Verify the result is parsable
         PhoneExt.TryParse($"+{phone}", null, out _).Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(1)]     // US → +1(201)555-0123 or similar
+    [InlineData(44)]    // GB
+    [InlineData(49)]    // DE
+    public void GetExampleCountryPhoneWithToReadableTest(int prefix)
+    {
+        var phone = PhoneExt.GetExampleCountryPhone(prefix);
+        phone.Should().NotBeNull();
+        var readable = phone.ToReadable(withSpaces: false);
+        readable.Should().StartWith("+");
+        readable.Should().Contain("(");
+        // Must be parsable back
+        PhoneExt.TryParse(readable, null, out _).Should().BeTrue();
     }
 }

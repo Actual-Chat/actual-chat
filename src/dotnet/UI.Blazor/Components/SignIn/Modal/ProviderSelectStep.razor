@@ -47,7 +47,7 @@
                 ValueExpression="@(() => _formModel.PhoneOrEmail)"
                 Autocomplete="tel email username"
                 ValueChanged="@((string? v) => OnPhoneOrEmailChanged(v))"
-                Placeholder="+1(555)555-5555 or email@gmail.com"
+                Placeholder="@_placeholder"
                 disabled="@codeHasBeenSent"
                 type="text"
                 inputmode="text"
@@ -97,6 +97,7 @@
     private AsyncDataAnnotationsValidator _formValidator = null!;
     private bool _showFieldErrors;
     private string _serverError = "";
+    private volatile string _placeholder = "+1(555)555-5555 or email@gmail.com";
 
     private IPhones Phones => Hub.Phones;
     private ICaptcha Captcha => Hub.Captcha;
@@ -124,6 +125,16 @@
             .ToList();
         _formModel = new StepModel(ComponentIdGenerator).CopyToBase();
         await CaptchaUI.WhenReady.ConfigureAwait(false);
+        _ = UpdatePlaceholder();
+        return;
+
+        async Task UpdatePlaceholder() {
+            var example = await Phones.GetExampleCountryPhone(Hub.Session, CancellationToken.None);
+            if (example != null) {
+                _placeholder = $"{example.ToReadable(withSpaces: false)} or email@gmail.com";
+                this.NotifyStateHasChanged();
+            }
+        }
     }
 
     protected override ComputedState<Model>.Options GetStateOptions() {

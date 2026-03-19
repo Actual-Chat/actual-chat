@@ -67,21 +67,6 @@ public static class PhoneFormatterExt
 
 public static class PhoneExt
 {
-    public static Phone? GetExample(int prefix, int defaultPrefix = 0)
-    {
-        var util = PhoneNumberUtil.GetInstance();
-        if (prefix <= 0 || util.GetRegionCodeForCountryCode(prefix) == "ZZ") {
-            if (defaultPrefix == 0)
-                return null;
-
-            prefix = defaultPrefix;
-        }
-
-        var region = util.GetRegionCodeForCountryCode(prefix);
-        var example = util.GetExampleNumber(region);
-        return example.ToPhone();
-    }
-
     public static Phone? ParseNullable(string source, string? region)
         => TryParse(source, region, out var phone) ? phone : null;
 
@@ -94,5 +79,20 @@ public static class PhoneExt
 
         phone = null;
         return false;
+    }
+
+    public static Phone? GetExampleCountryPhone(int prefix, int defaultPrefix = 0)
+    {
+        var util = PhoneNumberUtil.GetInstance();
+        if (prefix <= 0 || util.GetRegionCodeForCountryCode(prefix) == "ZZ") {
+            if (defaultPrefix == 0)
+                return null;
+
+            prefix = defaultPrefix;
+        }
+
+        var region = util.GetRegionCodeForCountryCode(prefix);
+        var example = util.GetExampleNumber(region);
+        return example.ToPhone();
     }
 }
