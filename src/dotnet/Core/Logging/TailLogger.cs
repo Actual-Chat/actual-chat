@@ -5,7 +5,7 @@ namespace ActualChat.Logging;
 /// </summary>
 public class TailLogger(IServiceProvider services, string categoryName) : ILogger
 {
-    private TailLoggerSinkSet Sinks => field ??= services.GetRequiredService<TailLoggerSinkSet>();
+    private TailLoggerSinkSet? _sinks;
 
     public void Log<TState>(
         LogLevel logLevel,
@@ -14,8 +14,14 @@ public class TailLogger(IServiceProvider services, string categoryName) : ILogge
         Exception? exception,
         Func<TState, Exception?, string> formatter)
     {
-        var message = formatter(state, exception);
-        Sinks.Log(categoryName, logLevel, eventId, message, exception);
+        try {
+            _sinks ??= services.GetRequiredService<TailLoggerSinkSet>();
+            var message = formatter(state, exception);
+            _sinks.Log(categoryName, logLevel, eventId, message, exception);
+        }
+        catch (ObjectDisposedException) {
+            // Ignore: DI container is disposed during shutdown
+        }
     }
 
     public bool IsEnabled(LogLevel logLevel) => true;
