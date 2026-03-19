@@ -350,14 +350,16 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
             source.Writer.TryWrite(i);
         await SpinWaitForBuffered(memoizer, 5);
 
-        var consumer = Task.Run(async () => await memoizer.Replay(0).ToListAsync());
-        await Task.Yield();
+        // Register replay target directly to avoid race between Task.Run startup and item writes
+        var replayChannel = Channel.CreateUnbounded<int>(new UnboundedChannelOptions { SingleReader = true });
+        await memoizer.AddReplayTarget(replayChannel.Writer, 0);
 
         source.Writer.TryWrite(6);
         source.Writer.TryWrite(7);
         source.Writer.Complete();
 
-        var items = await consumer.WaitAsync(TimeSpan.FromSeconds(5));
+        var items = await replayChannel.Reader.ReadAllAsync().ToListAsync()
+            .AsTask().WaitAsync(TimeSpan.FromSeconds(5));
         items.Should().Equal(6, 7);
     }
 

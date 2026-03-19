@@ -1,4 +1,3 @@
-using System.Net;
 using PhoneNumbers;
 
 namespace ActualChat.Geo;
@@ -7,7 +6,7 @@ public static class GeoIP
 {
     private static readonly PhoneNumberUtil PhoneNumberUtil = PhoneNumberUtil.GetInstance();
 
-    public static async Task<string?> ToCountryCode(IPAddress ipAddress)
+    public static async Task<string?> ToCountryCode(string ipAddress)
     {
         await GeoLiteDb.WhenReady.ConfigureAwait(false);
         try {
@@ -19,7 +18,7 @@ public static class GeoIP
         }
     }
 
-    public static async Task<int> ToPhonePrefix(IPAddress ipAddress)
+    public static async Task<int> ToPhonePrefix(string ipAddress)
     {
         var countryCode = await ToCountryCode(ipAddress).ConfigureAwait(false);
         if (countryCode.IsNullOrEmpty())
