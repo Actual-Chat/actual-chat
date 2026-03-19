@@ -1,9 +1,4 @@
-namespace ActualChat.UI.Blazor.Services;
-
-public sealed record PhoneCode(string Country, string DisplayCode)
-{
-    public string Code => Phone.NormalizePart(DisplayCode);
-}
+namespace ActualChat;
 
 public static class PhoneCodes
 {

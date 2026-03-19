@@ -12,7 +12,7 @@ public class PhoneParser
     public string? Region { get; }
 
     public Phone? ParseNullable(string source)
-        => PhoneNumberExt.TryParse(PhoneNumberUtil, source, Region, out var phoneNumber)
+        => PhoneFormatterExt.TryParse(PhoneNumberUtil, source, Region, out var phoneNumber)
             ? phoneNumber.ToPhone()
             : null;
 
@@ -22,7 +22,7 @@ public class PhoneParser
     public static PhoneParser ForOwnPhone(string ownPhoneNumber, PhoneNumberUtil? phoneNumberUtil = null)
     {
         string? defaultRegion = null;
-        if (!ownPhoneNumber.IsNullOrEmpty() && PhoneNumberExt.TryParse(ownPhoneNumber, null, out var phoneNumber))
+        if (!ownPhoneNumber.IsNullOrEmpty() && PhoneFormatterExt.TryParse(ownPhoneNumber, null, out var phoneNumber))
             defaultRegion = PhoneNumberUtil.GetInstance().GetRegionCodeForNumber(phoneNumber);
         return new PhoneParser(defaultRegion, phoneNumberUtil);
     }
@@ -34,9 +34,10 @@ public class PhoneParser
     }
 }
 
-public static class PhoneNumberExt
+public static class PhoneFormatterExt
 {
     private static readonly HashSet<char> AllowedStartChars = ['+', '(', '-'];
+
     public static Phone ToPhone(this PhoneNumber phoneNumber)
         => Phone.New(
             phoneNumber.CountryCode.Format(),
@@ -66,12 +67,27 @@ public static class PhoneNumberExt
 
 public static class PhoneExt
 {
+    public static Phone? GetExample(int prefix, int defaultPrefix = 0)
+    {
+        var util = PhoneNumberUtil.GetInstance();
+        if (prefix <= 0 || util.GetRegionCodeForCountryCode(prefix) == "ZZ") {
+            if (defaultPrefix == 0)
+                return null;
+
+            prefix = defaultPrefix;
+        }
+
+        var region = util.GetRegionCodeForCountryCode(prefix);
+        var example = util.GetExampleNumber(region);
+        return example.ToPhone();
+    }
+
     public static Phone? ParseNullable(string source, string? region)
         => TryParse(source, region, out var phone) ? phone : null;
 
     public static bool TryParse(string source, string? region, [NotNullWhen(true)] out Phone? phone)
     {
-        if (PhoneNumberExt.TryParse(source, region, out var phoneNumber)) {
+        if (PhoneFormatterExt.TryParse(source, region, out var phoneNumber)) {
             phone = phoneNumber.ToPhone();
             return true;
         }

@@ -92,7 +92,7 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
         }.WithHash(ExternalContactHasher);
 
     private static string? GetPhoneHash(ContactPhone contactPhone, PhoneParser phoneParser)
-        => phoneParser.TryParse(contactPhone.PhoneNumber)?.Hash;
+        => phoneParser.ParseNullable(contactPhone.PhoneNumber)?.Hash;
 
     private static string? GetEmailHash(ContactEmail contactEmail)
     {

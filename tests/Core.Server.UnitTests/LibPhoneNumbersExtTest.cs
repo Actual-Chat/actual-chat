@@ -34,4 +34,27 @@ public class LibPhoneNumbersExtTest
     // [InlineData("65((!111)123456", "65-111123456")]
     public void ParseTest(string source, string expected)
         => PhoneExt.ParseNullable(source, null).Should().Be(expected.IsNullOrEmpty() ? null: Phone.Parse(expected));
+
+    [Theory]
+    [InlineData(1, 1)]     // US
+    [InlineData(44, 44)]   // GB
+    [InlineData(7, 7)]     // RU
+    [InlineData(49, 49)]   // DE
+    [InlineData(0, 0)]     // Invalid
+    [InlineData(-1, 0)]    // Negative
+    [InlineData(9999, 0)]  // Non-existent
+    public void GetExampleTest(int prefix, int expectedPrefix)
+    {
+        var phone = PhoneExt.GetExample(prefix);
+        if (expectedPrefix == 0) {
+            phone.Should().BeNull();
+            return;
+        }
+
+        var parsedPrefix = int.Parse(phone!.Code);
+        parsedPrefix.Should().Be(expectedPrefix);
+        phone.Number.Should().NotBeNullOrEmpty();
+        // Verify the result is parsable
+        PhoneExt.TryParse($"+{phone}", null, out _).Should().BeTrue();
+    }
 }

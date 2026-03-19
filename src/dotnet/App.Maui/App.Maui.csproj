@@ -100,6 +100,11 @@
     <DefineConstants>$(DefineConstants);IS_PRODUCTION_ENV</DefineConstants>
   </PropertyGroup>
 
+  <!-- Shared source files -->
+  <ItemGroup>
+    <Compile Include="..\Core.Server\LibPhoneNumbersExt.cs" Link="Phone\LibPhoneNumbersExt.cs" />
+  </ItemGroup>
+
   <!-- Project references -->
   <ItemGroup>
     <ProjectReference Include="..\App.Maui.IosShareExt\App.Maui.IosShareExt.csproj" Condition="$(TargetFramework.Contains('-ios')) AND $([MSBuild]::IsOSPlatform('osx'))">

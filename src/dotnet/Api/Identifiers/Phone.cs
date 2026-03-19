@@ -141,4 +141,44 @@ public sealed partial class Phone : StringIdentifier, IStringIdentifier<Phone>
                 sb.Append(c);
         return sb.ToStringAndRelease();
     }
+
+    // Formatting
+
+    public string ToReadable(bool withSpaces = true)
+    {
+        var space = withSpaces ? " " : "";
+        var phoneCode = PhoneCodes.GetByCode(Code);
+        if (phoneCode is null)
+            return $"+{Code}{space}{Number}";
+
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
+        const int areaCodeLength = 3;
+        const int defaultGroupSize = 3;
+        sb.Append(phoneCode.DisplayCode);
+        if (Number.Length < areaCodeLength)
+            return sb.Append(Number).ToStringAndRelease();
+
+        sb.Append(space).Append('(')
+            .Append(Number.AsSpan(0, areaCodeLength))
+            .Append(')').Append(space);
+
+        var tailLength = ((Number.Length - areaCodeLength) % defaultGroupSize) switch {
+            1 => 4, // tail: ...-11-11
+            2 => 2, // tail: -11
+            _ => 0, // no tail, all groups by three
+        };
+
+        Append(areaCodeLength, defaultGroupSize, tailLength);
+        Append(Number.Length - tailLength, 2, 0);
+        return sb.ToStringAndRelease();
+
+        void Append(int startIdx, int groupSize, int skipTailLength)
+        {
+            for (int i = startIdx; i < Number.Length - skipTailLength; i += groupSize) {
+                if (i != areaCodeLength)
+                    sb.Append('-');
+                sb.Append(Number.AsSpan(i, groupSize));
+            }
+        }
+    }
 }

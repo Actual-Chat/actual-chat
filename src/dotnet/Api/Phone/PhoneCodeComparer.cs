@@ -1,4 +1,4 @@
-namespace ActualChat.UI.Blazor.Services;
+namespace ActualChat;
 
 public class PhoneCodeComparer : IEqualityComparer<string>, IEqualityComparer<PhoneCode>
 {
