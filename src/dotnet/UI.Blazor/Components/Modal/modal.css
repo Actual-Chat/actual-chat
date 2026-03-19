@@ -143,7 +143,6 @@ body.narrow .modal-frame.modal-sm {
 }
 body.device-ios .modal-chrome,
 body.device-android .modal-chrome {
-    @apply has-viewport-height;
 }
 .modal-frame {
     @apply flex-y items-stretch gap-y-2 overflow-hidden;
