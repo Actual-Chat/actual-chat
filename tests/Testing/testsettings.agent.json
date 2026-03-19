@@ -1,4 +1,8 @@
 {
+  "HostSettings": {
+    "IsTested": true,
+    "BaseUri": "https://local.voxt.ai"
+  },
   // Claude mode settings - enables detailed logging for debugging
   // These override AddTestLogging filters where applicable
   "Logging": {
