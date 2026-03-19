@@ -870,8 +870,7 @@ if ($featureWorktreeSuffix) {
 
             # Auto-detect base branch: prefer dev if it exists on remote, else master
             $null = git rev-parse --verify "refs/remotes/origin/dev" 2>$null
-            $baseBranch = git rev-parse --abbrev-ref HEAD  # TODO: Revert before PR !!!!!
-            # $baseBranch = if ($LASTEXITCODE -eq 0) { "dev" } else { "master" }
+            $baseBranch = if ($LASTEXITCODE -eq 0) { "dev" } else { "master" }
 
             # Check if the feature branch already exists (locally or remotely)
             $null = git rev-parse --verify "refs/heads/$featureBranch" 2>$null
