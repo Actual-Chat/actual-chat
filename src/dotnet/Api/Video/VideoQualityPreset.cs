@@ -1,10 +1,8 @@
-using MemoryPack;
-
 namespace ActualChat.Video;
 
 public enum VideoQualityLevel { Full = 0, High = 1, Medium = 2, Low = 3 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record VideoQualityPreset(
     [property: DataMember, MemoryPackOrder(0)] VideoQualityLevel Level,
     [property: DataMember, MemoryPackOrder(1)] int Width,

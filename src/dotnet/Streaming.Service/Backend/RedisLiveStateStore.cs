@@ -1,5 +1,4 @@
 using ActualLab.Redis;
-using MemoryPack;
 using StackExchange.Redis;
 using StreamingContext = ActualChat.Streaming.Db.StreamingContext;
 

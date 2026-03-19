@@ -9,5 +9,10 @@ public class SerializationCodeGenTest(ITestOutputHelper @out) : TestBase(@out)
     {
         SerializationCodeGen.ValidateType<Change<string>>();
         SerializationCodeGen.ValidateType<LinkPreviewsBackend_Change>();
+        SerializationCodeGen.ValidateType<MediaProgress>();
+        SerializationCodeGen.ValidateType<Media_ReserveMedia>();
+        SerializationCodeGen.ValidateType<Media_RemoveMedia>();
+        SerializationCodeGen.ValidateType<Media_UpdateProgress>();
+        SerializationCodeGen.ValidateType<Media_ProcessUpload>();
     }
 }

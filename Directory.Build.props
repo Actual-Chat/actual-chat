@@ -269,6 +269,94 @@
     <WarningsAsErrors>$(WarningsAsErrors);RZ10012</WarningsAsErrors>
   </PropertyGroup>
 
+  <!-- Global usings -->
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
+    <!-- ActualChat.* -->
+    <Using Include="ActualChat" />
+    <Using Include="ActualChat.Collections" />
+    <Using Include="ActualChat.Compliance" />
+    <Using Include="ActualChat.DependencyInjection" />
+    <!-- <Using Include="ActualChat.Diagnostics" /> -->
+    <Using Include="ActualChat.Diff" />
+    <Using Include="ActualChat.IO" />
+    <Using Include="ActualChat.Mathematics" />
+    <Using Include="ActualChat.Chat" />
+    <Using Include="ActualChat.Media" />
+    <Using Include="ActualChat.Users" />
+    <Using Include="ActualChat.Performance" />
+    <Using Include="ActualChat.Validation" />
+    <!-- ActualLab.* -->
+    <Using Include="ActualLab" />
+    <Using Include="ActualLab.Api" />
+    <Using Include="ActualLab.Async" />
+    <Using Include="ActualLab.Channels" />
+    <Using Include="ActualLab.Collections" />
+    <Using Include="ActualLab.DependencyInjection" />
+    <Using Include="ActualLab.Mathematics" />
+    <Using Include="ActualLab.Serialization" />
+    <Using Include="ActualLab.OS" />
+    <Using Include="ActualLab.Reflection" />
+    <Using Include="ActualLab.Text" />
+    <Using Include="ActualLab.Time" />
+    <Using Include="ActualLab.Trimming" />
+    <Using Include="ActualLab.Fusion" />
+    <Using Include="ActualLab.Fusion.Operations" />
+    <Using Include="ActualLab.CommandR" />
+    <Using Include="ActualLab.CommandR.Configuration" />
+    <Using Include="ActualLab.CommandR.Commands" />
+    <!-- System.* -->
+    <Using Include="System.Collections" />
+    <Using Include="System.Collections.Concurrent" />
+    <Using Include="System.Collections.Immutable" />
+    <Using Include="System.Diagnostics" />
+    <Using Include="System.Diagnostics.CodeAnalysis" />
+    <Using Include="System.Globalization" />
+    <Using Include="System.FormattableString" Static="True" />
+    <Using Include="System.Linq" />
+    <Using Include="System.Reflection" />
+    <Using Include="System.Reactive" /> <!-- Mainly for Unit type -->
+    <Using Include="System.Runtime.CompilerServices" />
+    <Using Include="System.Runtime.InteropServices" />
+    <Using Include="System.Runtime.Serialization" />
+    <Using Include="System.Text.Json" />
+    <Using Include="System.Text.Json.Serialization" />
+    <Using Include="System.Threading" />
+    <Using Include="System.Threading.Channels" />
+    <!-- Microsoft.* -->
+    <Using Include="Microsoft.Extensions.Logging" />
+    <Using Include="Microsoft.Extensions.Logging.Abstractions" />
+    <Using Include="Microsoft.Extensions.DependencyInjection" />
+    <!-- Everything else -->
+    <Using Include="MemoryPack" />
+    <Using Include="MessagePack" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' and $(IsServerSideProject)">
+    <Using Include="ActualChat.Blobs" />
+    <Using Include="ActualChat.Mesh" />
+    <Using Include="ActualChat.Sharding" />
+    <!-- Resolve ambiguity: server projects use DataAnnotations.Key for EF, not MessagePack.Key -->
+    <Using Include="System.ComponentModel.DataAnnotations.KeyAttribute" Alias="KeyAttribute" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' and $(MSBuildProjectFile.Contains('UI.Blazor'))">
+    <!-- Global usings for UI.Blazor projects -->
+    <Using Include="ActualChat.UI" />
+    <Using Include="ActualChat.UI.Blazor" />
+    <Using Include="ActualChat.UI.Blazor.Components" />
+    <Using Include="ActualChat.UI.Blazor.Layouts" />
+    <Using Include="ActualLab.Fusion.Blazor" />
+    <Using Include="ActualLab.Fusion.Extensions" />
+    <Using Include="ActualLab.Fusion.UI" />
+    <Using Include="Microsoft.AspNetCore.Components" />
+    <Using Include="Microsoft.AspNetCore.Components.Forms" />
+    <Using Include="Microsoft.AspNetCore.Components.Routing" />
+    <Using Include="Microsoft.AspNetCore.Components.Web" />
+    <Using Include="Microsoft.AspNetCore.Components.WebAssembly.Http" />
+    <Using Include="Microsoft.JSInterop" />
+    <Using Include="System.Net.Http" />
+  </ItemGroup>
+
   <ItemGroup Condition="'$(DeterministicSourcePaths)' =='true'">
     <SourceRoot Include="$(RepoRoot)" RepositoryUrl="$(RepositoryUrl)" SourceControl="git" RevisionId="$(GitCommitId)"/>
   </ItemGroup>

@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 using ActualChat.Hosting;
 using ActualChat.Module;
 using Microsoft.Extensions.Configuration;

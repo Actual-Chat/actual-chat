@@ -1,5 +1,4 @@
 using ActualChat.App.Maui.Services;
-using ActualChat.Media;
 using ActualChat.UI.Blazor.App.Components;
 using Photos;
 using PhotosUI;

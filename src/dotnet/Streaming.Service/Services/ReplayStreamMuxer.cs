@@ -1,6 +1,5 @@
 using ActualChat.Audio;
 using ActualChat.Blobs;
-using ActualChat.Chat;
 using ActualChat.Live;
 
 namespace ActualChat.Streaming.Services;

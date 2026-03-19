@@ -450,7 +450,7 @@ public class BlockRingBufferTest(ITestOutputHelper @out) : TestBase(@out)
             if (available == 0) {
                 var probe = new int[1];
                 if (!rb.TryRead(probe, out var whenReady)) {
-                    await whenReady.WaitAsync(ct).ConfigureAwait(false);
+                    await whenReady.WaitAsync(ct);
                     continue;
                 }
                 buf[totalRead] = probe[0];

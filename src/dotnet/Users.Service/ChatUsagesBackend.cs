@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;

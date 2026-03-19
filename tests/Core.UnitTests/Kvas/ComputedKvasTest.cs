@@ -2,7 +2,6 @@ using ActualChat.Core.UnitTests.Kvas.Services;
 using ActualChat.Kvas;
 using ActualLab.Generators;
 using CommunityToolkit.HighPerformance.Buffers;
-using MemoryPack;
 
 namespace ActualChat.Core.UnitTests.Kvas;
 

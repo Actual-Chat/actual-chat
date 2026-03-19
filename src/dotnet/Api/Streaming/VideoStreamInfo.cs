@@ -1,9 +1,8 @@
 using ActualChat.Video;
-using MemoryPack;
 
 namespace ActualChat.Streaming;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record VideoStreamInfo(
     [property: DataMember, MemoryPackOrder(0)] StreamId StreamId,
     [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,

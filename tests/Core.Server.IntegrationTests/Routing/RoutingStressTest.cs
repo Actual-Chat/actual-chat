@@ -3,7 +3,6 @@ using ActualChat.Attributes;
 using ActualChat.Hosting;
 using ActualChat.Testing.Host;
 using ActualLab.Rpc;
-using MemoryPack;
 
 namespace ActualChat.Core.Server.IntegrationTests.Routing;
 

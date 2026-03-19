@@ -1,4 +1,3 @@
-using ActualChat.Media;
 using ActualLab.IO;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats;

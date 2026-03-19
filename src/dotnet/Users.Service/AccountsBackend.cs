@@ -1,6 +1,5 @@
 using System.Net.Mail;
 using System.Security.Claims;
-using ActualChat.Chat;
 using ActualChat.Db;
 using ActualChat.Flows;
 using ActualChat.Users.Db;

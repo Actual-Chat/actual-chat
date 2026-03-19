@@ -2,7 +2,6 @@ using ActualChat.Audio;
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.Contacts;
 using ActualChat.Invite;
-using ActualChat.Media;
 using ActualChat.MediaPlayback;
 using ActualChat.Notification;
 using ActualChat.Live;

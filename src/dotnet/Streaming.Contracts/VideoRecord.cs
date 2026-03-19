@@ -1,9 +1,8 @@
 using ActualChat.Video;
-using MemoryPack;
 
 namespace ActualChat.Streaming;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record VideoRecord(
     [property: DataMember, MemoryPackOrder(0)] StreamId StreamId, // Ignored on upload
     [property: DataMember, MemoryPackOrder(1)] Session Session,

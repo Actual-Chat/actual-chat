@@ -1,5 +1,4 @@
 using ActualChat.Kvas;
-using MemoryPack;
 
 namespace ActualChat.Users.UnitTests;
 

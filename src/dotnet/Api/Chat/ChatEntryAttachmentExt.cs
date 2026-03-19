@@ -1,5 +1,3 @@
-using ActualChat.Media;
-
 namespace ActualChat.Chat;
 
 public static class ChatEntryAttachmentExt

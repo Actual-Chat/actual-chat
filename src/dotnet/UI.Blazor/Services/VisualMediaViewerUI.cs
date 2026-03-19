@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 namespace ActualChat.UI.Blazor.Services;
 
 public class VisualMediaViewerUI(UIHub hub)

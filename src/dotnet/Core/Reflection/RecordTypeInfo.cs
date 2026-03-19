@@ -1,6 +1,5 @@
 using System.Linq.Expressions;
 using ActualLab.Caching;
-using ActualLab.Trimming;
 
 namespace ActualChat.Reflection;
 

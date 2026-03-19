@@ -57,81 +57,26 @@
     <PackageReference Include="xunit.analyzers" PrivateAssets="all" />
     <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
     <PackageReference Include="GitHubActionsTestLogger" />
+  </ItemGroup>
 
-    <!-- Global usings -->
-    <Using Include="ActualChat" />
-    <Using Include="ActualChat.Collections" />
-    <Using Include="ActualChat.Compliance" />
-    <Using Include="ActualChat.DependencyInjection" />
-    <Using Include="ActualChat.Mathematics" />
-
+  <!-- Testing-specific global usings (base usings inherited from root Directory.Build.props) -->
+  <ItemGroup>
     <Using Include="ActualChat.Testing" />
-    <Using Include="System.Collections" />
-    <Using Include="System.Collections.Immutable" />
-    <Using Include="System.Diagnostics" />
-    <Using Include="System.Diagnostics.CodeAnalysis" />
-    <Using Include="System.Linq" />
-    <Using Include="System.Reflection" />
-    <Using Include="System.Reactive" /> <!-- Mainly for Unit type -->
-    <Using Include="System.Runtime.CompilerServices" />
-    <Using Include="System.Runtime.InteropServices" />
-    <Using Include="System.Runtime.Serialization" />
-    <Using Include="System.Text.Json" />
-    <Using Include="System.Text.Json.Serialization" />
-    <Using Include="System.Threading.Channels" />
-    <Using Include="ActualLab" />
-    <Using Include="ActualLab.Api" />
-    <Using Include="ActualLab.Async" />
-    <Using Include="ActualLab.Channels" />
-    <Using Include="ActualLab.Collections" />
-    <Using Include="ActualLab.DependencyInjection" />
-    <Using Include="ActualLab.Serialization" />
-    <Using Include="ActualLab.OS" />
-    <Using Include="ActualLab.Reflection" />
-    <Using Include="ActualLab.Text" />
-    <Using Include="ActualLab.Time" />
-    <Using Include="ActualLab.Fusion" />
-    <Using Include="ActualChat.Users" />
-    <Using Include="ActualLab.Fusion.Operations" />
+    <Using Include="ActualLab.Testing" />
     <Using Include="ActualLab.Fusion.Testing" />
-    <Using Include="ActualLab.CommandR" />
-    <Using Include="ActualLab.CommandR.Configuration" />
-    <Using Include="ActualLab.CommandR.Commands" />
-    <Using Include="Microsoft.Extensions.Logging" />
-    <Using Include="Microsoft.Extensions.DependencyInjection" />
-
-    <!-- Core.Server usings -->
+    <Using Include="AwesomeAssertions" />
+    <Using Include="FlakyTest.XUnit.Attributes" />
+    <Using Include="Moq" />
+    <Using Include="Xunit" />
+    <Using Include="Xunit.Abstractions" />
+    <!-- Server-side usings for all test projects (some test projects like Testing.Host
+         don't match IsServerSideProject but still need these) -->
     <Using Include="ActualChat.Blobs" />
     <Using Include="ActualChat.Mesh" />
     <Using Include="ActualChat.Sharding" />
+  </ItemGroup>
 
-    <!-- Testing-related global usings -->
-    <Using Include="AwesomeAssertions" />
-    <Using Include="Moq" />
-    <Using Include="ActualLab.Testing" />
-    <Using Include="Xunit" />
-    <Using Include="Xunit.Abstractions" />
-    <Using Include="FlakyTest.XUnit.Attributes" />
-
+  <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)template.xunit.runner.json" CopyToOutputDirectory="PreserveNewest" Link="$(AssemblyName).xunit.runner.json"/>
   </ItemGroup>
-
-  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' and $(MSBuildProjectFile.Contains('UI.Blazor'))">
-    <!-- Global usings for UI.Blazor projects -->
-    <Using Include="ActualChat.UI" />
-    <Using Include="ActualChat.UI.Blazor" />
-    <Using Include="ActualChat.UI.Blazor.Components" />
-    <Using Include="ActualChat.UI.Blazor.Layouts" />
-    <Using Include="Microsoft.AspNetCore.Components" />
-    <Using Include="Microsoft.AspNetCore.Components.Forms" />
-    <Using Include="Microsoft.AspNetCore.Components.Routing" />
-    <Using Include="Microsoft.AspNetCore.Components.Web" />
-    <Using Include="Microsoft.AspNetCore.Components.WebAssembly.Http" />
-    <Using Include="Microsoft.JSInterop" />
-    <Using Include="ActualLab.Fusion.Blazor" />
-    <Using Include="ActualLab.Fusion.Extensions" />
-    <Using Include="ActualLab.Fusion.UI" />
-    <Using Include="System.Net.Http" />
-  </ItemGroup>
-
 </Project>

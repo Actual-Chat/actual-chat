@@ -1,5 +1,4 @@
 using ActualChat.Chat.ML;
-using MemoryPack;
 
 namespace ActualChat.Chat.UnitTests;
 

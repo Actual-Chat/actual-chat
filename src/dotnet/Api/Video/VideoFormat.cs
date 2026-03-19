@@ -1,9 +1,6 @@
-using ActualChat.Media;
-using MemoryPack;
-
 namespace ActualChat.Video;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record VideoFormat : MediaFormat
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember]

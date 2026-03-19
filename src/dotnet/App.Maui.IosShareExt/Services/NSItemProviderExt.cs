@@ -1,5 +1,4 @@
 using ActualChat.Maui;
-using ActualChat.Media;
 using ActualChat.UI.Services;
 using UniformTypeIdentifiers;
 

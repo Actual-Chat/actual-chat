@@ -4,7 +4,6 @@ using ActualChat.Live;
 using ActualChat.Testing.Host;
 using ActualChat.Video;
 using ActualLab.Redis;
-using MemoryPack;
 using StreamingContext = ActualChat.Streaming.Db.StreamingContext;
 
 namespace ActualChat.Streaming.IntegrationTests;

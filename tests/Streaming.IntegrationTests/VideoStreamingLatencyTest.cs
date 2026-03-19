@@ -5,7 +5,6 @@ using ActualChat.Chat;
 using ActualChat.Security;
 using ActualChat.Testing.Host;
 using ActualChat.Video;
-using MessagePack;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
 

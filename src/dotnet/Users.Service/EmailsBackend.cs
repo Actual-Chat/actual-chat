@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 using ActualChat.Chat.ML;
 using ActualChat.Contacts;
 using ActualChat.Users.Email;

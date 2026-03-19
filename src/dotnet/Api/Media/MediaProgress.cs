@@ -4,7 +4,7 @@ using ActualLab.Versioning;
 namespace ActualChat.Media;
 
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record MediaProgress(
     [property: DataMember, MemoryPackOrder(0)] MediaId Id,
     [property: DataMember, MemoryPackOrder(1)] long Version,

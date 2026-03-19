@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 using ActualChat.Contacts;
 using ActualChat.Notification;
 using ActualChat.Users.Db;

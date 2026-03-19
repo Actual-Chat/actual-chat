@@ -8,7 +8,6 @@ using ActualChat.Flows;
 using ActualChat.Hosting;
 using ActualChat.Invite;
 using ActualChat.Kvas;
-using ActualChat.Media;
 using ActualChat.Transcription;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;

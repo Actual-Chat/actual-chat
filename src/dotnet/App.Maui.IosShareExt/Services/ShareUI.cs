@@ -1,8 +1,6 @@
 using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
-using ActualChat.Chat;
 using ActualChat.Contacts;
 using ActualChat.Maui;
-using ActualChat.Media;
 using ActualChat.Search;
 using ActualChat.UI.App.Services;
 using ActualChat.UI.Services;

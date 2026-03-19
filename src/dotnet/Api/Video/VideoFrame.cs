@@ -1,7 +1,3 @@
-using ActualChat.Media;
-using MemoryPack;
-using MessagePack;
-
 namespace ActualChat.Video;
 
 [DataContract, MemoryPackable, MessagePackObject]
@@ -12,7 +8,8 @@ public partial class VideoFrame : MediaFrame
     public VideoFrame() { }
 
     // Constructor for creating frames programmatically
-    public VideoFrame(bool isKeyFrame) => IsKeyFrame = isKeyFrame;
+    public VideoFrame(bool isKeyFrame)
+        => IsKeyFrame = isKeyFrame;
 
     [DataMember(Order = 1), MemoryPackOrder(1), Key("offset")]
     public override TimeSpan Offset { get; init; }

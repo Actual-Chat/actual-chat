@@ -1,5 +1,3 @@
-using ActualChat.Media;
-
 namespace ActualChat.UI.Blazor.App.Services;
 
 public class UploadProgressTracker : IProgress<double>

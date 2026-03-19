@@ -1,5 +1,3 @@
-using ActualChat.Chat;
-
 namespace ActualChat.Notification;
 
 public static class NotificationHelper

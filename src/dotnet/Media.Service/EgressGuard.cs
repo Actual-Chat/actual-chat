@@ -8,6 +8,7 @@ namespace ActualChat.Media;
 
 public class EgressGuard(HostInfo hostInfo, MediaSettings settings, ILogger<EgressGuard> log)
 {
+    private static readonly string[] DomainDenyListPrefix = [".local"];
     private ILogger? DebugLog => log.IfEnabled(LogLevel.Debug, Constants.DebugMode.TranscriptionTranslation);
 
     private HostWildcard[] AllowedHostWildcards => field ??= [..settings.CrawlingHostAllowList.Select(x => new HostWildcard(x))];
@@ -15,7 +16,7 @@ public class EgressGuard(HostInfo hostInfo, MediaSettings settings, ILogger<Egre
     private IPNetwork[] SpecialSubnets => field ??= [..SpecialAddresses.Subnets.Union(settings.CrawlingCidrDenylist).Select(IPNetwork.Parse)];
 
     private string[] DomainDenyList => field ??= [
-        ..new[] { ".local" }.Union(settings.CrawlingCidrDenylist, StringComparer.OrdinalIgnoreCase),
+        ..DomainDenyListPrefix.Union(settings.CrawlingCidrDenylist, StringComparer.OrdinalIgnoreCase),
     ];
 
     public async Task<bool> IsAllowed(string host, CancellationToken cancellationToken = default)

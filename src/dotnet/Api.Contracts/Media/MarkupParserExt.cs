@@ -1,5 +1,3 @@
-using ActualChat.Chat;
-
 namespace ActualChat.Media;
 
 public static class MarkupParserExt

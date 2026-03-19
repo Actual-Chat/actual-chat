@@ -1,5 +1,3 @@
-using ActualChat.Media;
-
 namespace ActualChat.MediaPlayback;
 
 public interface IAudioPlaybackEngine : IAsyncDisposable

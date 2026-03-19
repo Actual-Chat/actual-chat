@@ -1,6 +1,3 @@
-using ActualChat.Chat;
-using ActualChat.Media;
-
 namespace ActualChat;
 
 // TODO: probably can be merged with IconQueryExt from Maui.csproj

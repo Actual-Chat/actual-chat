@@ -1,4 +1,3 @@
-using ActualChat.Media;
 using Uri = Android.Net.Uri;
 
 namespace ActualChat.App.Maui;

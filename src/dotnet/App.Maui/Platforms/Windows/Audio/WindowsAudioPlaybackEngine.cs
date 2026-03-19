@@ -6,7 +6,6 @@ using Windows.Media.Audio;
 using Windows.Media.MediaProperties;
 using ActualChat.Audio;
 using ActualChat.MediaPlayback;
-using ActualChat.Media;
 using ActualChat.UI.Blazor.App.Components;
 using AudioFrame = Windows.Media.AudioFrame;
 

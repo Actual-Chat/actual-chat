@@ -1,5 +1,4 @@
 using ActualChat.Chat.Db;
-using ActualChat.Media;
 using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Chat;

@@ -4,7 +4,6 @@ using ActualChat.Video;
 using ActualChat.Hosting;
 using ActualChat.Security;
 using ActualLab.Rpc;
-using MessagePack;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Hosting;

@@ -1,8 +1,6 @@
-using MemoryPack;
-
 namespace ActualChat.Streaming;
 
-[DataContract, MemoryPackable]
+[DataContract, MemoryPackable, MessagePackObject(true)]
 public partial class VideoStreamHeader(
     Moment beginsAt,
     string codec,

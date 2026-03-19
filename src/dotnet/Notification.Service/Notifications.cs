@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 using ActualChat.Users;
 
 namespace ActualChat.Notification;

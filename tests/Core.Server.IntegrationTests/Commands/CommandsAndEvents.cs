@@ -1,6 +1,5 @@
 using ActualChat.Attributes;
 using ActualChat.Queues;
-using MemoryPack;
 
 namespace ActualChat.Core.Server.IntegrationTests.Commands;
 

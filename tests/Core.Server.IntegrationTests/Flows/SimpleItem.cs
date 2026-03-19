@@ -1,5 +1,4 @@
 using ActualLab.Versioning;
-using MemoryPack;
 
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
 

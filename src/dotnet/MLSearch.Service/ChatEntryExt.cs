@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 using IndexedEntry = ActualChat.MLSearch.Documents.IndexedEntry;
 
 namespace ActualChat.MLSearch;

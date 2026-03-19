@@ -1,5 +1,3 @@
-using ActualChat.Media;
-
 namespace ActualChat.Maui;
 
 public static class NSItemProviderExt

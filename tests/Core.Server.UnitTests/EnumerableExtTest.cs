@@ -473,7 +473,7 @@ public class EnumerableExtTest
     public void EnsureMonotonic_Ranges_NullInput_ThrowsArgumentNullException()
     {
         IEnumerable<Range<long>>? nullSequence = null;
-        Action act = () => nullSequence!.EnsureMonotonic().ToList();
+        Action act = () => _ = nullSequence!.EnsureMonotonic().ToList();
         act.Should().Throw<ArgumentNullException>();
     }
 

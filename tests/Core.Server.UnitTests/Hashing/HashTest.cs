@@ -1,7 +1,6 @@
 using System.Text;
 using ActualChat.Hashing;
 using CommunityToolkit.HighPerformance;
-using MemoryPack;
 
 namespace ActualChat.Core.Server.UnitTests.Hashing;
 

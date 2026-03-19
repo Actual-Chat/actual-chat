@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 using ActualChat.Flows;
 using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 using ActualChat.MLSearch.Module;

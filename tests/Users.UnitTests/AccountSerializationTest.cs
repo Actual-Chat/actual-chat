@@ -1,5 +1,3 @@
-using MemoryPack;
-
 namespace ActualChat.Users.UnitTests;
 
 public class AccountSerializationTest(ITestOutputHelper @out) : TestBase(@out)

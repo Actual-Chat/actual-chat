@@ -1,7 +1,6 @@
 using ActualChat.App.Maui.IosShareExt.Services;
 using ActualChat.App.Maui.IosShareExt.UI;
 using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
-using ActualChat.Chat;
 using ActualChat.Contacts;
 using NSPlace = ActualChat.App.Maui.IosShareExt.UI.NSHasId<ActualChat.Chat.Place?, ActualChat.PlaceId>;
 

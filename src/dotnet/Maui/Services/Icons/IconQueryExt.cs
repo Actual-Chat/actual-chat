@@ -1,6 +1,4 @@
-using ActualChat.Chat;
 using ActualChat.Contacts;
-using ActualChat.Media;
 
 namespace ActualChat.Maui.Services;
 

@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 using ActualLab.Rpc;
 
 namespace ActualChat;

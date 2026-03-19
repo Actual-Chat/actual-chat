@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using ActualChat.Chat;
 using ActualChat.MLSearch.Documents;
 using ActualChat.Search;
 using OpenSearch.Client;

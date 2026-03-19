@@ -1,7 +1,6 @@
 using System.Globalization;
 using ActualChat.Flows;
 using ActualLab.Rpc;
-using MemoryPack;
 
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
 

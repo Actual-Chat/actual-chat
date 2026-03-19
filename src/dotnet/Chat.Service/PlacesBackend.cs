@@ -1,5 +1,4 @@
 using ActualChat.Chat.Db;
-using ActualChat.Media;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
 

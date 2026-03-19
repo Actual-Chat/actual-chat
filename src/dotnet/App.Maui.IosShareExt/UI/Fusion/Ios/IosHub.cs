@@ -1,5 +1,4 @@
 using ActualChat.App.Maui.IosShareExt.Services;
-using ActualChat.Chat;
 using ActualChat.Contacts;
 using ActualChat.Maui.Services;
 using ActualChat.UI.App.Services;

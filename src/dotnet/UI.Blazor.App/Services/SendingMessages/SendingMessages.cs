@@ -1,4 +1,3 @@
-using ActualChat.Media;
 using ActualChat.Messaging;
 using ActualChat.UI.App;
 using ActualChat.UI.App.Services;

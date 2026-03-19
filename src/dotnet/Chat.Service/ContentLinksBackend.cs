@@ -1,4 +1,3 @@
-using ActualChat.Media;
 using ActualChat.Users;
 
 namespace ActualChat.Chat;

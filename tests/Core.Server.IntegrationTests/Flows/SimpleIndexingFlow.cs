@@ -1,5 +1,4 @@
 using ActualChat.Flows;
-using MemoryPack;
 
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
 

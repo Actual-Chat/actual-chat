@@ -27,7 +27,6 @@ using ActualLab.Interception.Trimming;
 using ActualLab.Internal;
 using ActualLab.Rpc.Clients;
 using ActualLab.Rpc;
-using ActualLab.Trimming;
 using MemoryPack.Formatters;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;

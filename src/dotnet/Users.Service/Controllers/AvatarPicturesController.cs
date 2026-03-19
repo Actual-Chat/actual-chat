@@ -1,6 +1,5 @@
 using ActualChat.AspNetCore;
 using ActualChat.Controllers;
-using ActualChat.Media;
 using ActualChat.Security;
 using ActualChat.Uploads;
 using Microsoft.AspNetCore.Mvc;

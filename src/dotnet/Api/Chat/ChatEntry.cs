@@ -1,6 +1,5 @@
 using ActualChat.Comparison;
 using ActualChat.Hashing;
-using ActualChat.Media;
 using ActualLab.Fusion.Blazor;
 using ActualLab.Versioning;
 
