@@ -31,6 +31,9 @@ public partial class ChatVideoUI
             .ConfigureAwait(false);
 
         await foreach (var (state, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
+            if (state is null)
+                continue;
+
             var (chatId, speakingWithVideo) = state;
 
             if (chatId != prevChatId) {
