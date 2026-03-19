@@ -74,7 +74,7 @@ public sealed class IosVideoCapture : NSObject, INativeVideoCapture, IAVCaptureV
             new NSNumber((uint)CVPixelFormatType.CV420YpCbCr8BiPlanarFullRange));
 
         var queue = new CoreFoundation.DispatchQueue("ios-video-capture", false);
-        output.SetSampleBufferDelegateQueue(this, queue);
+        output.SetSampleBufferDelegate(this, queue);
 
         if (!session.CanAddOutput(output)) {
             _log.LogError("Cannot add video output to session");

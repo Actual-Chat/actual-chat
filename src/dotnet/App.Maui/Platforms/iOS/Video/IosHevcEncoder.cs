@@ -1,7 +1,5 @@
-using System.Runtime.InteropServices;
 using System.Threading.Channels;
 using ActualChat.Video;
-using AVFoundation;
 using CoreMedia;
 using CoreVideo;
 using VideoToolbox;
@@ -70,7 +68,7 @@ public sealed class IosHevcEncoder : IDisposable
             options = new VTEncodeFrameOptions { ForceKeyFrame = true };
         }
 
-        var status = session.EncodeFrame(pixelBuffer, pts, duration, options, pixelBuffer, out _);
+        var status = session.EncodeFrame(pixelBuffer, pts, duration, options?.Dictionary, IntPtr.Zero, out _);
         if (status != VTStatus.Ok)
             _log.LogWarning("EncodeFrame returned {Status}", status);
     }
@@ -88,7 +86,9 @@ public sealed class IosHevcEncoder : IDisposable
                 // Bitrate-only change: update live session without recreation
                 Bitrate = bitrate;
                 if (_session != null) {
-                    _session.AverageBitRate = bitrate;
+                    _session.SetCompressionProperties(new VTCompressionProperties {
+                        AverageBitRate = bitrate,
+                    });
                     _forceKeyFrame = true;
                 }
             }
@@ -111,23 +111,24 @@ public sealed class IosHevcEncoder : IDisposable
 
     private void CreateSession(int width, int height, int fps, int bitrate)
     {
-        var status = VTCompressionSession.Create(
+        var session = VTCompressionSession.Create(
             width, height,
             CMVideoCodecType.Hevc,
             OnEncodedFrame,
-            null,
-            out var session);
+            null);
 
-        if (status != VTStatus.Ok || session == null) {
-            _log.LogError("Failed to create VTCompressionSession: {Status}", status);
+        if (session == null) {
+            _log.LogError("Failed to create VTCompressionSession");
             return;
         }
 
-        session.RealTime = true;
-        session.AllowFrameReordering = false;
-        session.AverageBitRate = bitrate;
-        session.MaxKeyFrameInterval = fps; // 1 keyframe per second
-        session.ProfileLevel = VTProfileLevel.Hevc_Main_AutoLevel;
+        session.SetCompressionProperties(new VTCompressionProperties {
+            RealTime = true,
+            AllowFrameReordering = false,
+            AverageBitRate = bitrate,
+            MaxKeyFrameInterval = fps, // 1 keyframe per second
+            ProfileLevel = VTProfileLevel.HevcMainAutoLevel,
+        });
 
         session.PrepareToEncodeFrames();
         _session = session;
@@ -145,7 +146,6 @@ public sealed class IosHevcEncoder : IDisposable
         catch (Exception e) {
             _log.LogWarning(e, "CompleteFrames failed during invalidation");
         }
-        session.InvalidateAndClose();
         session.Dispose();
     }
 
@@ -159,8 +159,10 @@ public sealed class IosHevcEncoder : IDisposable
             return;
 
         try {
-            var isKeyFrame = !sampleBuffer.SampleAttachments[0].Dictionary
-                .ContainsKey(CMSampleAttachmentKey.NotSync);
+            var attachments = sampleBuffer.GetSampleAttachments(false);
+            var isKeyFrame = attachments == null
+                || attachments.Length == 0
+                || attachments[0]?.NotSync != true;
 
             var pts = sampleBuffer.PresentationTimeStamp;
             var duration = sampleBuffer.Duration;
@@ -184,7 +186,7 @@ public sealed class IosHevcEncoder : IDisposable
             var frame = new VideoFrame(isKeyFrame) {
                 Data = data,
                 Offset = offset,
-                Duration = duration.IsValid ? TimeSpan.FromSeconds(duration.Seconds) : TimeSpan.FromSeconds(1.0 / Fps),
+                Duration = !duration.IsInvalid ? TimeSpan.FromSeconds(duration.Seconds) : TimeSpan.FromSeconds(1.0 / Fps),
                 Width = width,
                 Height = height,
                 Description = description,
@@ -198,10 +200,10 @@ public sealed class IosHevcEncoder : IDisposable
         }
     }
 
-    private byte[]? ExtractParameterSets(CMSampleBuffer sampleBuffer)
+    private static byte[]? ExtractParameterSets(CMSampleBuffer sampleBuffer)
     {
         try {
-            var formatDescription = sampleBuffer.FormatDescription;
+            var formatDescription = sampleBuffer.GetVideoFormatDescription();
             if (formatDescription == null)
                 return null;
 
@@ -209,23 +211,19 @@ public sealed class IosHevcEncoder : IDisposable
             ReadOnlySpan<byte> startCode = [0x00, 0x00, 0x00, 0x01];
 
             // Extract VPS, SPS, PPS (indices 0, 1, 2 for HEVC)
-            for (var i = 0; i < 3; i++) {
-                var paramStatus = CMFormatDescription.GetHevcParameterSet(
-                    formatDescription.Handle, i,
-                    out var ptr, out var size, out _, out _);
-                if (paramStatus != 0 || ptr == IntPtr.Zero)
+            for (nuint i = 0; i < 3; i++) {
+                var paramData = formatDescription.GetHevcParameterSet(i, out _, out _, out var error);
+                if (error != CMFormatDescriptionError.None || paramData == null)
                     continue;
 
                 ms.Write(startCode);
-                var paramData = new byte[size];
-                Marshal.Copy(ptr, paramData, 0, (int)size);
                 ms.Write(paramData);
             }
 
             return ms.Length > 0 ? ms.ToArray() : null;
         }
         catch (Exception e) {
-            _log.LogWarning(e, "Failed to extract HEVC parameter sets");
+            System.Diagnostics.Debug.WriteLine($"Failed to extract HEVC parameter sets: {e}");
             return null;
         }
     }
@@ -236,9 +234,8 @@ public sealed class IosHevcEncoder : IDisposable
         if (blockBuffer == null)
             return null;
 
-        var length = (int)blockBuffer.DataLength;
-        var data = new byte[length];
-        blockBuffer.CopyDataBytes(0, (uint)length, data);
-        return data;
+        var length = (nuint)blockBuffer.DataLength;
+        var error = blockBuffer.CopyDataBytes((nuint)0, length, out var data);
+        return error == CMBlockBufferError.None ? data : null;
     }
 }
