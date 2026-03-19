@@ -11,6 +11,10 @@ public static partial class Constants
         public const string DevVoxt = CoreConstants.Hosts.Dev;
         public const string LocalVoxt = CoreConstants.Hosts.Local;
 
+        // Suffixes for wildcard matching (used for worktree subdomains like wt1.local.voxt.ai)
+        public const string LocalVoxtSuffix = ".local.voxt.ai";
+        public const string AltLocalSuffix = ".local.actual.chat";
+
         public static readonly IReadOnlySet<string> AltProd = new HashSet<string>(["actual.chat"], StringComparer.OrdinalIgnoreCase);
         public static readonly IReadOnlySet<string> AltDev = new HashSet<string>(["dev.actual.chat"], StringComparer.OrdinalIgnoreCase);
         public static readonly IReadOnlySet<string> AltLocal = new HashSet<string>(["local.actual.chat"], StringComparer.OrdinalIgnoreCase);
@@ -18,6 +22,15 @@ public static partial class Constants
         public static readonly IReadOnlySet<string> AllProd = new HashSet<string>([Voxt, ..AltProd], StringComparer.OrdinalIgnoreCase);
         public static readonly IReadOnlySet<string> AllDev = new HashSet<string>([DevVoxt, ..AltDev], StringComparer.OrdinalIgnoreCase);
         public static readonly IReadOnlySet<string> AllLocal = new HashSet<string>([LocalVoxt, ..AltLocal], StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Checks if a host is a local development host (including worktree subdomains).
+        /// Matches: local.voxt.ai, local.actual.chat, wt1.local.voxt.ai, cdn.wt1.local.voxt.ai, etc.
+        /// </summary>
+        public static bool IsLocalDev(string host)
+            => AllLocal.Contains(host)
+            || host.EndsWith(LocalVoxtSuffix, StringComparison.OrdinalIgnoreCase)
+            || host.EndsWith(AltLocalSuffix, StringComparison.OrdinalIgnoreCase);
     }
 
     public static class Rpc

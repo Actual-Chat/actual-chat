@@ -48,13 +48,15 @@ public sealed partial class UrlMapper
         BaseUri = baseUrl.ToUri();
         IsVoxt = string.Equals(BaseUri.Host, Constants.Hosts.Voxt, StringComparison.OrdinalIgnoreCase);
         IsDevVoxt = string.Equals(BaseUri.Host, Constants.Hosts.DevVoxt, StringComparison.OrdinalIgnoreCase);
-        IsLocalVoxt = string.Equals(BaseUri.Host, Constants.Hosts.LocalVoxt, StringComparison.OrdinalIgnoreCase);
+        // Support worktree subdomains: wt1.local.voxt.ai, etc.
+        IsLocalVoxt = Constants.Hosts.IsLocalDev(BaseUri.Host);
 
         ApiBaseUrl = $"{BaseUrl}api/";
         ContentBaseUrl = $"{ApiBaseUrl}content/";
         ImageProxyBaseUrl = "";
         HasImageProxy = false;
         if (IsVoxt || IsDevVoxt || IsLocalVoxt) {
+            // For worktree subdomains (wt1.local.voxt.ai), CDN is cdn.wt1.local.voxt.ai
             ContentBaseUrl = $"{BaseUri.Scheme}://cdn.{BaseUri.Host}/";
             ImageProxyBaseUrl = $"{BaseUri.Scheme}://media.{BaseUri.Host}/";
             HasImageProxy = true;

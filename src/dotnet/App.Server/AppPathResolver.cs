@@ -1,3 +1,4 @@
+using ActualChat.IO;
 using ActualLab.IO;
 
 namespace ActualChat.App.Server;
@@ -18,6 +19,12 @@ internal static class AppPathResolver
 
     public static FilePath GetContentRootPath()
         => AppDomain.CurrentDomain.BaseDirectory!;
+
+    public static FilePath GetSolutionRootPath()
+        => SolutionPaths.GetSolutionRootPath();
+
+    public static FilePath GetDotEnvFilePath()
+        => SolutionPaths.GetDotEnvFilePath();
 
     // Private methods
 
@@ -43,21 +50,14 @@ internal static class AppPathResolver
         return result;
     }
 
-    private static FilePath? GetDeveloperMachineWebRootProbeDirectory(
-        string projectName, [CallerFilePath] string? path = null)
+    private static FilePath? GetDeveloperMachineWebRootProbeDirectory(string projectName)
     {
-        var dirName = Path.GetDirectoryName(path);
-
-        var projectRoot = Path.GetFullPath(!string.IsNullOrWhiteSpace(dirName) && Directory.Exists(dirName)
-            ? Path.GetDirectoryName(path)!
-            : Directory.GetCurrentDirectory());
-
-        while (!projectRoot.IsNullOrEmpty() && Directory.Exists(projectRoot)) {
-            var gitPath = Path.Combine(projectRoot, ".git");
-            if (Directory.Exists(gitPath) || File.Exists(gitPath))
-                return Path.Combine(projectRoot, "src", "dotnet", projectName);
-            projectRoot = Path.GetDirectoryName(projectRoot);
+        try {
+            var solutionRoot = SolutionPaths.GetSolutionRootPath();
+            return solutionRoot & "src" & "dotnet" & projectName;
         }
-        return null;
+        catch (DirectoryNotFoundException) {
+            return null;
+        }
     }
 }

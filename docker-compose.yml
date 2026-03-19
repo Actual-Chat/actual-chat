@@ -48,6 +48,9 @@ services:
       - ./.config/local.voxt.ai/nginx/nginx.proxy-headers.conf:/etc/nginx/nginx.proxy-headers.conf
       - ./.config/local.voxt.ai/nginx/snippets:/etc/nginx/snippets
       - ./.config/local.voxt.ai/nginx/dhparam.pem:/etc/nginx/dhparam.pem
+      # Worktree port mappings - default supports main project only (port 7080)
+      # When using `c wt`, NGINX_WORKTREE_PORTS_CONF is set to ./artifacts/nginx-worktree-ports.conf
+      - ${NGINX_WORKTREE_PORTS_CONF:-./.config/local.voxt.ai/nginx/nginx-worktree-ports.conf}:/etc/nginx/nginx-worktree-ports.conf
     # To have logging, uncomment line below and adjust path to log file and ensure it exists
     #  - ./.config/local.voxt.ai/log/nginx/access.log:/var/log/nginx/access.log
     extra_hosts:
@@ -79,12 +82,10 @@ services:
     expose:
       - 53
     command:
-      - --address=/local.voxt.ai/${LOCAL_IP:-127.0.0.1}
-      - --address=/local.actual.chat/${LOCAL_IP:-127.0.0.1}
-      - --address=/cdn.local.voxt.ai/${LOCAL_IP:-127.0.0.1}
-      - --address=/cdn.local.actual.chat/${LOCAL_IP:-127.0.0.1}
-      - --address=/media.local.voxt.ai/${LOCAL_IP:-127.0.0.1}
-      - --address=/media.local.actual.chat/${LOCAL_IP:-127.0.0.1}
+      # Wildcard DNS entries for multi-worktree support
+      # Matches: local.voxt.ai, wt1.local.voxt.ai, cdn.wt1.local.voxt.ai, etc.
+      - --address=/.local.voxt.ai/${LOCAL_IP:-127.0.0.1}
+      - --address=/.local.actual.chat/${LOCAL_IP:-127.0.0.1}
       - --address=/embedded.voxt.ai/${LOCAL_IP:-127.0.0.1}
       - --server=8.8.8.8
       - --server=1.1.1.1

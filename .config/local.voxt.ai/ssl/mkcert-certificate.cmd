@@ -3,18 +3,21 @@
     echo Details: https://chocolatey.org/packages/mkcert
 
     mkcert -install
-    mkcert local.voxt.ai cdn.local.voxt.ai media.local.voxt.ai local.actual.chat cdn.local.actual.chat media.local.actual.chat
-    move /Y local.voxt.ai+5.pem local.voxt.ai.crt
-    move /Y local.voxt.ai+5-key.pem local.voxt.ai.key
+    mkcert local.voxt.ai "*.local.voxt.ai" local.actual.chat "*.local.actual.chat"
+    move /Y local.voxt.ai+3.pem local.voxt.ai.crt
+    move /Y local.voxt.ai+3-key.pem local.voxt.ai.key
 
     exit /b
 BATCH
 
 #!/bin/sh
 
-echo To install mkcert: https://chocolatey.org/packages/mkcert
+# To install mkcert:
+#   macOS: brew install mkcert
+#   Windows: choco install mkcert
+#   Linux: https://github.com/FiloSottile/mkcert#installation
 
 mkcert -install
-mkcert local.voxt.ai cdn.local.voxt.ai media.local.voxt.ai local.actual.chat cdn.local.actual.chat media.local.actual.chat
-mv -f local.voxt.ai+5.pem local.voxt.ai.crt
-mv -f local.voxt.ai+5-key.pem local.voxt.ai.key
+mkcert local.voxt.ai "*.local.voxt.ai" local.actual.chat "*.local.actual.chat"
+mv -f local.voxt.ai+3.pem local.voxt.ai.crt
+mv -f local.voxt.ai+3-key.pem local.voxt.ai.key
