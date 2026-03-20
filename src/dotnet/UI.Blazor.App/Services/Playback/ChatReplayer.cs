@@ -43,7 +43,6 @@ public sealed class ChatReplayer : ChatPlayer
 
         var sleepDurationAtStart = SleepDuration.Value;
         var pauseDurationAtStart = Playback.TotalPauseDuration.Value;
-        var playbackStartedAt = CpuTimestamp.Now;
 
         Log.LogInformation(
             "Starting server-streamed replay in chat {ChatId} from {MinPlayAt}, offset={Offset}",
@@ -60,8 +59,13 @@ public sealed class ChatReplayer : ChatPlayer
             cancellationToken.CreateLinkedTokenSource());
         await using var _ = processor.ConfigureAwait(false);
 
+        // Capture playbackStartedAt on first StreamStarted event, not before the RPC call,
+        // to avoid wall-clock drift that would cause all tracks to play immediately.
+        CpuTimestamp playbackStartedAt = default;
         var trackTasks = new ConcurrentBag<Task>();
         processor.StreamStarted += (info, playsAt, frames) => {
+            if (playbackStartedAt == default)
+                playbackStartedAt = CpuTimestamp.Now;
             var trackTask = OnStreamStarted(
                 entryPlayer, info, playsAt, frames,
                 playbackStartedAt, sleepDurationAtStart, pauseDurationAtStart,
