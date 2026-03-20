@@ -9,7 +9,8 @@ namespace ActualChat.Streaming.Services;
 public class LiveStreams(IServiceProvider services) : ILiveStreams
 {
     private readonly Lock _lock = new ();
-    private readonly ConcurrentDictionary<(Session, ChatId), LiveStreamMuxer> _muxers = new();
+    private readonly ConcurrentDictionary<(Session, ChatId), LiveStreamMuxer> _liveMuxers = new();
+    private readonly ConcurrentDictionary<(Session, ChatId), ReplayStreamMuxer> _replayMuxers = new();
 
     private IServiceProvider Services { get; } = services;
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
@@ -39,18 +40,18 @@ public class LiveStreams(IServiceProvider services) : ILiveStreams
         LiveStreamMuxer muxer;
         var key = (session, chatId);
         lock (_lock) { // TODO(AY): Make it more efficient later?
-            if (_muxers.TryRemove(key, out var oldMuxer))
+            if (_liveMuxers.TryRemove(key, out var oldMuxer))
                 _ = oldMuxer.DisposeSilentlyAsync(); // No need to await for this here
 
             muxer = new LiveStreamMuxer(Services, session, chatId, settings);
-            _muxers[key] = muxer;
+            _liveMuxers[key] = muxer;
         }
 
-        var stream = ToAsyncEnumerable(muxer.Output, key, cancellationToken);
+        var stream = ToLiveAsyncEnumerable(key, muxer.Output, cancellationToken);
         return RpcStream.New(stream, allowReconnect: false);
     }
 
-    public async Task ChangeSettings(
+    public async Task ChangeLiveStreamSettings(
         Session session,
         ChatId chatId,
         LiveStreamSettings settings,
@@ -59,15 +60,39 @@ public class LiveStreams(IServiceProvider services) : ILiveStreams
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
 
-        if (_muxers.TryGetValue((session, chatId), out var muxer))
+        if (_liveMuxers.TryGetValue((session, chatId), out var muxer))
             muxer.UpdateConfig(settings);
+    }
+
+    public async Task<RpcStream<LiveStreamItem>> GetReplayStream(
+        Session session,
+        ChatId chatId,
+        Moment startAt,
+        TimeSpan offset,
+        CancellationToken cancellationToken)
+    {
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        chat.Require();
+
+        ReplayStreamMuxer muxer;
+        var key = (session, chatId);
+        lock (_lock) {
+            if (_replayMuxers.TryRemove(key, out var oldMuxer))
+                _ = oldMuxer.DisposeSilentlyAsync();
+
+            muxer = new ReplayStreamMuxer(Services, session, chatId, startAt, offset);
+            _replayMuxers[key] = muxer;
+        }
+
+        var stream = ToReplayAsyncEnumerable(key, muxer.Output, cancellationToken);
+        return RpcStream.New(stream, allowReconnect: false);
     }
 
     // Private methods
 
-    private async IAsyncEnumerable<LiveStreamItem> ToAsyncEnumerable(
-        ChannelReader<LiveStreamItem> reader,
+    private async IAsyncEnumerable<LiveStreamItem> ToLiveAsyncEnumerable(
         (Session, ChatId) key,
+        ChannelReader<LiveStreamItem> reader,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         try {
@@ -75,8 +100,23 @@ public class LiveStreams(IServiceProvider services) : ILiveStreams
                 yield return item;
         }
         finally {
-            // Clean up muxer when stream ends
-            if (_muxers.TryRemove(key, out var muxer))
+            if (_liveMuxers.TryRemove(key, out var muxer))
+                await muxer.DisposeAsync().ConfigureAwait(false);
+        }
+    }
+
+    private async IAsyncEnumerable<LiveStreamItem> ToReplayAsyncEnumerable(
+        (Session, ChatId) key,
+        ChannelReader<LiveStreamItem> reader,
+        [EnumeratorCancellation]
+        CancellationToken cancellationToken)
+    {
+        try {
+            await foreach (var item in reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+                yield return item;
+        }
+        finally {
+            if (_replayMuxers.TryRemove(key, out var muxer))
                 await muxer.DisposeAsync().ConfigureAwait(false);
         }
     }

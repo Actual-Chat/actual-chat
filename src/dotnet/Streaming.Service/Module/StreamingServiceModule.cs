@@ -46,14 +46,12 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
 
         rpcHost.AddApi<IStreamServer, StreamServer>();
         rpcHost.AddApi<ILiveStreams, LiveStreams>();
-        rpcHost.AddApi<IReplayStreams, ReplayStreams>();
         rpcHost.AddApi<ILiveVideoStreams, LiveVideoStreams>();
         rpcHost.AddBackend<IAudioStreamingBackend, AudioStreamingBackend>();
         rpcHost.AddBackend<IVideoStreamingBackend, VideoStreamingBackend>();
 		rpcHost.AddBackend<ILiveAudioBackend, LiveAudioBackend>();
         rpcHost.AddBackend<ILiveVideoBackend, LiveVideoBackend>();
         services.AddSingleton<IStreamClient, StreamBackendClient>(); // Client for IAudioStreamingBackend
-        services.AddSingleton<AudioDownloader, BlobStorageAudioDownloader>(); // Server-side AudioDownloader
         services.TryAddSingleton<AudioSettings>(); // AudioSettings are not configured now
         services.AddHostedService<VideoBackendWarmup>();
         if (isBackendClient)

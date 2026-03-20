@@ -91,7 +91,7 @@ public class LiveStreamsTest(AppHostFixture fixture, ITestOutputHelper @out)
         var liveStreams = services.GetRequiredService<ILiveStreams>();
         var settings = new LiveStreamSettings { StreamKindFilter = LiveStreamKind.None };
 
-        await liveStreams.ChangeSettings(session, chat.Id, settings, CancellationToken.None);
+        await liveStreams.ChangeLiveStreamSettings(session, chat.Id, settings, CancellationToken.None);
         // Should not throw
     }
 }

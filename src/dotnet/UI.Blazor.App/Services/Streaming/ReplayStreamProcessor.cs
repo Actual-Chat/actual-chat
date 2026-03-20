@@ -38,16 +38,16 @@ public sealed class ReplayStreamProcessor : WorkerBase
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        var replayStreams = Services.GetRequiredService<IReplayStreams>();
+        var liveStreams = Services.GetRequiredService<ILiveStreams>();
         var demuxerLog = Services.LogFor<LiveStreamDemuxer>();
 
         try {
-            Log.LogInformation("-> ReplayStreams.GetReplayStream({ChatId}, {StartAt}, {Offset})",
+            Log.LogInformation("-> LiveStreams.GetReplayStream({ChatId}, {StartAt}, {Offset})",
                 ChatId, StartAt, Offset);
-            var stream = await replayStreams
+            var stream = await liveStreams
                 .GetReplayStream(Session, ChatId, StartAt, Offset, cancellationToken)
                 .ConfigureAwait(false);
-            Log.LogInformation("<- ReplayStreams.GetReplayStream({ChatId})", ChatId);
+            Log.LogInformation("<- LiveStreams.GetReplayStream({ChatId})", ChatId);
 
             var demuxer = new LiveStreamDemuxer(stream, demuxerLog, cancellationToken.CreateLinkedTokenSource());
             await using var _ = demuxer.ConfigureAwait(false);

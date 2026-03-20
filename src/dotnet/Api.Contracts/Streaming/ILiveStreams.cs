@@ -4,8 +4,7 @@ using ActualLab.Rpc;
 namespace ActualChat.Streaming;
 
 /// <summary>
-/// RPC service for multiplexed real-time audio streaming.
-/// Replaces multiple GetAudio calls with a single multiplexed stream.
+/// RPC service for multiplexed real-time and historical audio streaming.
 /// </summary>
 public interface ILiveStreams : IComputeService
 {
@@ -15,6 +14,9 @@ public interface ILiveStreams : IComputeService
 
     Task<RpcStream<LiveStreamItem>> GetLiveStream(
         Session session, ChatId chatId, LiveStreamSettings settings, CancellationToken cancellationToken);
-    Task ChangeSettings(
+    Task ChangeLiveStreamSettings(
         Session session, ChatId chatId, LiveStreamSettings settings, CancellationToken cancellationToken);
+
+    Task<RpcStream<LiveStreamItem>> GetReplayStream(
+        Session session, ChatId chatId, Moment startAt, TimeSpan offset, CancellationToken cancellationToken);
 }

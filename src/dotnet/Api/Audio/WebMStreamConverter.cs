@@ -1,4 +1,3 @@
-using System.Buffers;
 using ActualChat.Audio.WebM;
 using ActualChat.Audio.WebM.Models;
 
@@ -7,20 +6,14 @@ namespace ActualChat.Audio;
 /// <summary>
 /// Converts between WebM container format and <see cref="AudioSource"/>.
 /// </summary>
-public sealed class WebMStreamConverter : IAudioStreamConverter
+public sealed class WebMStreamConverter(MomentClockSet clocks, ILogger log) : IAudioStreamConverter
 {
-    private MomentClockSet Clocks { get; }
-    private ILogger Log { get; }
+    private MomentClockSet Clocks { get; } = clocks;
+    private ILogger Log { get; } = log;
 
     public string WritingApp { get; init; } = "actual-chat";
     public ulong? TrackUid { get; init; }
     public int FramesPerChunk { get; init; } = 5;
-
-    public WebMStreamConverter(MomentClockSet clocks, ILogger log)
-    {
-        Clocks = clocks;
-        Log = log;
-    }
 
     public async Task<AudioSource> FromByteStream(
         IAsyncEnumerable<byte[]> byteStream,

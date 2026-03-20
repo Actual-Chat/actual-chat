@@ -28,17 +28,19 @@ public class AudioSource(
     // A_OPUS_S + version = 3
     private static readonly byte[] OpusStreamFormat = [ 0x41, 0x5F, 0x4F, 0x50, 0x55, 0x53, 0x5F, 0x53, 0x03 ];
 
-    protected static bool DebugMode => Constants.DebugMode.AudioSource;
-    protected ILogger? DebugLog => DebugMode ? Log : null;
+    private static bool DebugMode => Constants.DebugMode.AudioSource;
 
     public static readonly AudioFormat DefaultFormat = new () {
         CodecSettings = Convert.ToBase64String(OpusStreamFormat),
     };
 
+    protected ILogger? DebugLog => DebugMode ? base.Log : null;
+    public new ILogger Log => base.Log;
+
     public static async Task<AudioSource> ReadFromByteStream(
+        IAsyncEnumerable<byte[]> byteStream,
         MomentClockSet clocks,
         ILogger audioSourceLog,
-        IAsyncEnumerable<byte[]> byteStream,
         CancellationToken cancellationToken)
     {
         var (head, tail) = await byteStream.ReadAtLeast(8, cancellationToken).ConfigureAwait(false);
@@ -56,8 +58,6 @@ public class AudioSource(
         var restoredByteStream = tail.PrependOne(head, cancellationToken);
         return await streamConverter.FromByteStream(restoredByteStream, cancellationToken).ConfigureAwait(false);
     }
-
-    public new ILogger Log => base.Log;
 
     public AudioSource SkipTo(TimeSpan skipTo, CancellationToken cancellationToken)
     {

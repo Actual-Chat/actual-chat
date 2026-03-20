@@ -1,4 +1,5 @@
 using ActualChat.Audio;
+using ActualChat.IO;
 using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor.App.Module;
 
@@ -20,7 +21,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     private string _audioBlobStreamUri = "";
 
     [Inject] private IServiceProvider Services { get; init; } = null!;
-    [Inject] private AudioDownloader AudioDownloader { get; init; } = null!;
+    [Inject] private IHttpClientFactory HttpClientFactory { get; init; } = null!;
     [Inject] private ITrackPlayerFactory TrackPlayerFactory { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private ILogger<AudioPlayerTestPage> Log { get; init; } = null!;
@@ -130,10 +131,14 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
 
     private async Task<AudioSource> CreateAudioSource(string audioBlobUrl, CancellationToken cancellationToken)
     {
-        if (_audioSource == null || _audioBlobStreamUri != audioBlobUrl) {
-            _audioSource = await AudioDownloader.Download(audioBlobUrl, TimeSpan.Zero, cancellationToken);
-            _audioBlobStreamUri = audioBlobUrl;
-        }
+        if (_audioSource != null && _audioBlobStreamUri == audioBlobUrl)
+            return _audioSource;
+
+        var clocks = Services.Clocks();
+        var audioSourceLog = Services.LogFor<AudioSource>();
+        var byteStream = HttpClientFactory.DownloadByteStream(audioBlobUrl.ToUri(), Log, cancellationToken);
+        _audioSource = await AudioSource.ReadFromByteStream(byteStream, clocks, audioSourceLog, cancellationToken);
+        _audioBlobStreamUri = audioBlobUrl;
         return _audioSource;
     }
 

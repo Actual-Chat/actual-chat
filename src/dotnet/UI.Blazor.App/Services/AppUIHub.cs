@@ -62,8 +62,7 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public LiveStreamUI LiveStreamUI => field ??= Services.GetRequiredService<LiveStreamUI>();
     public AudioSettings AudioSettings => field ??= Services.GetRequiredService<AudioSettings>();
     public AudioRecorder AudioRecorder => field ??= Services.GetRequiredService<AudioRecorder>();
-    public AudioDownloader AudioDownloader => field ??= Services.GetRequiredService<AudioDownloader>();
-    public IAudioInitializer AudioInitializer => field ??= Services.GetRequiredService<IAudioInitializer>();
+public IAudioInitializer AudioInitializer => field ??= Services.GetRequiredService<IAudioInitializer>();
     public IPlaybackFactory PlaybackFactory => field ??= Services.GetRequiredService<IPlaybackFactory>();
     public ActivePlaybackInfo ActivePlaybackInfo => field ??= Services.GetRequiredService<ActivePlaybackInfo>();
     public AudioWidget AudioWidget => field ??= Services.GetRequiredService<AudioWidget>();

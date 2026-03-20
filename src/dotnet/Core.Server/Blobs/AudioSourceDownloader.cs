@@ -2,13 +2,13 @@ using ActualChat.Audio;
 
 namespace ActualChat.Blobs;
 
-public class AudioSourceDownloader(IServiceProvider services)
+public sealed class AudioSourceDownloader(IServiceProvider services)
 {
-    protected IServiceProvider Services { get; } = services;
+    private IServiceProvider Services { get; } = services;
     private IBlobStorages Blobs => field ??= Services.GetRequiredService<IBlobStorages>();
-    protected MomentClockSet Clocks => field ??= Services.Clocks();
-    protected ILogger AudioSourceLog => field ??= Services.LogFor<AudioSource>();
-    protected ILogger Log => field ??= Services.LogFor(GetType());
+    private MomentClockSet Clocks => field ??= Services.Clocks();
+    private ILogger AudioSourceLog => field ??= Services.LogFor<AudioSource>();
+    private ILogger Log => field ??= Services.LogFor(GetType());
 
     public async Task<AudioSource> Download(
         string blobId,
@@ -30,7 +30,7 @@ public class AudioSourceDownloader(IServiceProvider services)
                 cancellationToken);
         }
         var byteStream = stream.ReadByteStream(true, cancellationToken);
-        var audio = await AudioSource.ReadFromByteStream(Clocks, AudioSourceLog, byteStream, cancellationToken).ConfigureAwait(false);
+        var audio = await AudioSource.ReadFromByteStream(byteStream, Clocks, AudioSourceLog, cancellationToken).ConfigureAwait(false);
         var skipped = audio.SkipTo(skipTo, cancellationToken);
         return skipped;
     }

@@ -36,15 +36,15 @@ public class ChatReplayerTest(ChatAppHostFixture fixture, ITestOutputHelper @out
             await dbContext.SaveChangesAsync();
         }
 
-        // Test rewind via server-side IReplayStreams
+        // Test rewind via server-side ILiveStreams.GetReplayStream
         // The rewind logic is now in ReplayStreamMuxer on the server.
         // We test it indirectly through the RPC contract.
-        var replayStreams = services.GetRequiredService<IReplayStreams>();
+        var liveStreams = services.GetRequiredService<ILiveStreams>();
         var session = tester.Session;
 
         // Rewind back along the same audio entry:
         // Starting at entry2 + 30s, offset -15s should land at entry2 + 15s
-        var stream = await replayStreams.GetReplayStream(
+        var stream = await liveStreams.GetReplayStream(
             session, chatId, entry2BeginsAt.AddSeconds(30).ToMoment(), TimeSpan.FromSeconds(-15), default);
         // The stream should start, which means position was resolved.
         // We just verify the stream is not null (position resolution worked).
