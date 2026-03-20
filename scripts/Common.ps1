@@ -91,29 +91,34 @@ function Get-HostsFilePath {
     }
 }
 
-function Add-HostEntries {
+function Update-HostEntries {
     <#
     .SYNOPSIS
         Adds or updates entries in the hosts file.
-    .PARAMETER IP
-        The IP address for the hosts entries.
     .PARAMETER Hostnames
         Array of hostnames to add/update.
-    .PARAMETER Replace
-        If true, replaces existing entries for these hostnames. Otherwise only adds if missing.
+    .PARAMETER IP
+        The IP address. If not provided, detects LAN IP automatically.
     #>
     param(
-        [Parameter(Mandatory)][string]$IP,
         [Parameter(Mandatory)][string[]]$Hostnames,
-        [switch]$Replace
+        [string]$IP
     )
+
+    if (-not $IP) {
+        $IP = Get-LocalIP
+        if (-not $IP) {
+            Write-Error "Could not detect local IP address"
+            return $null
+        }
+    }
 
     $hostsFile = Get-HostsFilePath
     $hostsContent = Get-Content $hostsFile -ErrorAction SilentlyContinue
     if (-not $hostsContent) { $hostsContent = @() }
 
     $entriesToAdd = @()
-    $linesToRemove = @()
+    $needsUpdate = $false
 
     foreach ($hostname in $Hostnames) {
         $escapedHostname = [regex]::Escape($hostname)
@@ -121,8 +126,8 @@ function Add-HostEntries {
         $newLine = "$IP  $hostname"
 
         if ($existingLine) {
-            if ($Replace -and $existingLine -notmatch "^\s*$([regex]::Escape($IP))\s+") {
-                $linesToRemove += $existingLine
+            if ($existingLine -notmatch "^\s*$([regex]::Escape($IP))\s+") {
+                $needsUpdate = $true
                 $entriesToAdd += $newLine
             }
         } else {
@@ -130,22 +135,20 @@ function Add-HostEntries {
         }
     }
 
-    if ($entriesToAdd.Count -eq 0 -and $linesToRemove.Count -eq 0) {
+    if ($entriesToAdd.Count -eq 0) {
         Write-Host "Hosts entries already up-to-date"
-        return
+        return $IP
     }
 
     # Build the PowerShell command to run with elevation
     $script = ""
-    if ($linesToRemove.Count -gt 0) {
+    if ($needsUpdate) {
         $patterns = ($Hostnames | ForEach-Object { [regex]::Escape($_) }) -join '|'
         $script += "`$content = Get-Content '$hostsFile' | Where-Object { `$_ -notmatch '^\s*[\d\.]+\s+.*($patterns)' }; "
         $script += "Set-Content '$hostsFile' `$content -Force; "
     }
-    if ($entriesToAdd.Count -gt 0) {
-        $newEntries = $entriesToAdd -join "`n"
-        $script += "Add-Content '$hostsFile' `"``n$newEntries`""
-    }
+    $newEntries = $entriesToAdd -join "`n"
+    $script += "Add-Content '$hostsFile' `"``n$newEntries`""
 
     if ($IsWindows -or $env:OS -eq "Windows_NT") {
         try {
@@ -172,29 +175,8 @@ function Add-HostEntries {
             $entriesToAdd | ForEach-Object { Write-Host $_ }
         }
     }
-}
 
-function Update-HostEntries {
-    <#
-    .SYNOPSIS
-        Detects local IP and adds/updates hosts file entries.
-    .PARAMETER Hostnames
-        Array of hostnames to add/update.
-    .OUTPUTS
-        The detected local IP address.
-    #>
-    param(
-        [Parameter(Mandatory)][string[]]$Hostnames
-    )
-
-    $localIp = Get-LocalIP
-    if (-not $localIp) {
-        Write-Error "Could not detect local IP address"
-        return $null
-    }
-
-    Add-HostEntries -IP $localIp -Hostnames $Hostnames -Replace
-    return $localIp
+    return $IP
 }
 
 function Remove-HostEntries {
