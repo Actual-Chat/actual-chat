@@ -3,10 +3,13 @@
 
 # Auto-detect AC_ProjectRoot from the folder containing this script
 # e.g., if c.ps1 is at D:\Projects\ActualChat\c.ps1, AC_ProjectRoot = D:\Projects
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 if (-not $env:AC_ProjectRoot) {
-    $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
     $env:AC_ProjectRoot = Split-Path -Parent $scriptDir
 }
+
+# Load common utilities
+. (Join-Path $scriptDir "scripts/Common.ps1")
 
 # Detect current OS
 function Get-CurrentOS {
@@ -420,63 +423,14 @@ function Update-HostsFile {
 
     if (-not $WorktreeSuffix) { return }
 
-    $hostsEntries = @(
+    $hostnames = @(
         "$WorktreeSuffix.local.voxt.ai",
         "cdn.$WorktreeSuffix.local.voxt.ai",
         "media.$WorktreeSuffix.local.voxt.ai"
     )
 
-    $hostsFile = if ($IsWindows -or $env:OS -eq "Windows_NT") {
-        "$env:SystemRoot\System32\drivers\etc\hosts"
-    } else {
-        "/etc/hosts"
-    }
-
-    $hostsContent = Get-Content $hostsFile -ErrorAction SilentlyContinue
-    $entriesToAdd = @()
-
-    foreach ($entry in $hostsEntries) {
-        if ($hostsContent -notmatch [regex]::Escape($entry)) {
-            $entriesToAdd += "127.0.0.1 $entry"
-        }
-    }
-
-    if ($entriesToAdd.Count -eq 0) {
-        if ($Debug) { Write-Host "[DEBUG] Hosts entries already exist for $WorktreeSuffix" }
-        return
-    }
-
-    $newEntries = $entriesToAdd -join "`n"
-    if ($IsWindows -or $env:OS -eq "Windows_NT") {
-        # Windows - try direct write first, then elevate via UAC
-        try {
-            Add-Content -Path $hostsFile -Value "`n$newEntries" -ErrorAction Stop
-            if ($Debug) { Write-Host "[DEBUG] Added hosts entries: $($hostsEntries -join ', ')" }
-        } catch {
-            # Request elevation via UAC prompt
-            Write-Host "Adding hosts entries (UAC elevation required)..."
-            $escapedEntries = $newEntries -replace "'", "''"
-            $script = "Add-Content -Path '$hostsFile' -Value `"``n$escapedEntries`""
-            try {
-                Start-Process powershell -Verb RunAs -ArgumentList "-NoProfile -Command $script" -Wait -ErrorAction Stop
-                if ($Debug) { Write-Host "[DEBUG] Added hosts entries via UAC: $($hostsEntries -join ', ')" }
-            } catch {
-                Write-Host "Note: Could not update hosts file. Add manually:" -ForegroundColor Yellow
-                Write-Host $newEntries
-            }
-        }
-    } else {
-        # macOS/Linux - use sudo
-        $sudoCmd = "echo '$newEntries' | sudo tee -a '$hostsFile' > /dev/null"
-        Write-Host "Adding hosts entries (sudo required)..."
-        bash -c $sudoCmd
-        if ($LASTEXITCODE -eq 0) {
-            if ($Debug) { Write-Host "[DEBUG] Added hosts entries: $($hostsEntries -join ', ')" }
-        } else {
-            Write-Host "Failed to update hosts file. Add manually:" -ForegroundColor Yellow
-            Write-Host $newEntries
-        }
-    }
+    if ($Debug) { Write-Host "[DEBUG] Adding hosts entries for: $($hostnames -join ', ')" }
+    Add-HostEntries -IP "127.0.0.1" -Hostnames $hostnames
 }
 
 # Remove worktree from server config (ports registry, nginx config)
@@ -538,57 +492,14 @@ function Remove-HostsFileEntries {
 
     if (-not $WorktreeSuffix) { return }
 
-    $hostsPatterns = @(
+    $hostnames = @(
         "$WorktreeSuffix.local.voxt.ai",
         "cdn.$WorktreeSuffix.local.voxt.ai",
         "media.$WorktreeSuffix.local.voxt.ai"
     )
 
-    $hostsFile = if ($IsWindows -or $env:OS -eq "Windows_NT") {
-        "$env:SystemRoot\System32\drivers\etc\hosts"
-    } else {
-        "/etc/hosts"
-    }
-
-    $hostsContent = Get-Content $hostsFile -ErrorAction SilentlyContinue
-    $newContent = $hostsContent | Where-Object {
-        $line = $_
-        $shouldKeep = $true
-        foreach ($pattern in $hostsPatterns) {
-            if ($line -match [regex]::Escape($pattern)) {
-                $shouldKeep = $false
-                break
-            }
-        }
-        $shouldKeep
-    }
-
-    if ($newContent.Count -eq $hostsContent.Count) {
-        if ($Debug) { Write-Host "[DEBUG] No hosts entries found for $WorktreeSuffix" }
-        return
-    }
-
-    if ($IsWindows -or $env:OS -eq "Windows_NT") {
-        try {
-            Set-Content -Path $hostsFile -Value $newContent -ErrorAction Stop
-            if ($Debug) { Write-Host "[DEBUG] Removed hosts entries for $WorktreeSuffix" }
-        } catch {
-            Write-Host "Note: Run as Administrator to update hosts file" -ForegroundColor Yellow
-        }
-    } else {
-        # macOS/Linux - use sudo
-        $tempFile = [System.IO.Path]::GetTempFileName()
-        $newContent | Set-Content -Path $tempFile
-        $sudoCmd = "sudo cp '$tempFile' '$hostsFile' && rm '$tempFile'"
-        Write-Host "Removing hosts entries (sudo required)..."
-        bash -c $sudoCmd
-        if ($LASTEXITCODE -eq 0) {
-            if ($Debug) { Write-Host "[DEBUG] Removed hosts entries for $WorktreeSuffix" }
-        } else {
-            Write-Host "Failed to update hosts file" -ForegroundColor Yellow
-            Remove-Item $tempFile -ErrorAction SilentlyContinue
-        }
-    }
+    if ($Debug) { Write-Host "[DEBUG] Removing hosts entries for: $($hostnames -join ', ')" }
+    Remove-HostEntries -Hostnames $hostnames
 }
 
 # Update .env file with server configuration

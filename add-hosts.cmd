@@ -10,32 +10,8 @@
         exit /b 1
     )
 
-    echo determining ip address...
-    for /f %%i in ('pwsh -NoProfile -c ". ./scripts/Common.ps1; Get-LocalIP"') do set localIp=%%i
-    if "%localIp%"=="" (
-        echo Failed to detect local IP address
-        exit /b 1
-    )
-    echo local ip: %localIp%
-
-    echo patching hosts file...
-    set hostsFile=%WINDIR%\system32\drivers\etc\hosts
-    set hosts=local.voxt.ai media.local.voxt.ai cdn.local.voxt.ai
-    set altHosts=local.actual.chat media.local.actual.chat cdn.local.actual.chat
-    set hostsLine=%localIp%  %hosts%
-    set altHostsLine=%localIp%  %altHosts%
-
-    set "removeHostEntriesScript=@(Get-Content '%hostsFile%' | where-object { $_ -notmatch '[0-9\.]+\s+%hosts%.*' } | where-object { $_ -notmatch '[0-9\.]+\s+%altHosts%.*' }) + '' | Set-Content '%hostsFile%' -Force"
-    powershell -Command "%removeHostEntriesScript%";
-
-    set addHostEntryScript="Add-Content -Path '%hostsFile%' -Value '%hostsLine%'"
-    set addAltHostEntryScript="Add-Content -Path '%hostsFile%' -Value '%altHostsLine%'"
-    powershell -Command %addHostEntryScript%;
-    powershell -Command %addAltHostEntryScript%;
-    echo hosts file patched
-
-    echo updating .env file...
-    pwsh -NoProfile -c ". ./scripts/Common.ps1; Update-LocalIP | Out-Null"
+    echo updating hosts and .env...
+    pwsh -NoProfile -c ". ./scripts/Common.ps1; $ip = Get-LocalIP; Add-HostEntries -IP $ip -Hostnames 'local.voxt.ai','media.local.voxt.ai','cdn.local.voxt.ai' -Replace; Add-HostEntries -IP $ip -Hostnames 'local.actual.chat','media.local.actual.chat','cdn.local.actual.chat' -Replace; Update-LocalIP | Out-Null"
 
     set wd=%~dp0
     set certFilePath=%wd%.config\local.voxt.ai\ssl\local.voxt.ai.crt
@@ -51,26 +27,6 @@
 BATCH
 
 #!/bin/sh
-
-updateHostsFile() {
-  IP=$1
-  HOST=$2
-  FILE=$3
-
-  sudo touch $FILE
-  line="$IP  $HOST"
-
-  if sudo grep -qF -- "$line" "$FILE"; then
-    echo "hosts is up-to-date, skipped"
-    return 1;
-  fi
-
-  if sudo grep -qF -- "$HOST" "$FILE"; then
-    sudo sed -i.bak "/$HOST/ s/.*/$line/g" "$FILE";
-  else
-    echo "$line" | sudo tee -a "$FILE";
-  fi
-}
 
 trustCertificate() {
     certPath=.config/local.voxt.ai/ssl/local.voxt.ai.crt
@@ -89,17 +45,8 @@ trustCertificate() {
     esac
 }
 
-echo determining ip address...
-localIp=$(pwsh -NoProfile -c ". ./scripts/Common.ps1; Get-LocalIP")
-[ -z "$localIp" ] && echo "Failed to detect local IP address" && exit 1
-echo "local ip: $localIp"
-
-echo patching hosts...
-updateHostsFile "$localIp" "local.voxt.ai media.local.voxt.ai cdn.local.voxt.ai" "/etc/hosts"
-updateHostsFile "$localIp" "local.actual.chat media.local.actual.chat cdn.local.actual.chat" "/etc/hosts"
-
-echo updating .env file...
-pwsh -NoProfile -c ". ./scripts/Common.ps1; Update-LocalIP | Out-Null"
+echo updating hosts and .env...
+pwsh -NoProfile -c ". ./scripts/Common.ps1; \$ip = Get-LocalIP; Add-HostEntries -IP \$ip -Hostnames 'local.voxt.ai','media.local.voxt.ai','cdn.local.voxt.ai' -Replace; Add-HostEntries -IP \$ip -Hostnames 'local.actual.chat','media.local.actual.chat','cdn.local.actual.chat' -Replace; Update-LocalIP | Out-Null"
 
 echo trusting voxt.ai certificate...
 trustCertificate
