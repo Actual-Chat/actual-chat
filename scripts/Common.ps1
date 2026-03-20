@@ -1,25 +1,58 @@
 # Common PowerShell utilities for ActualChat scripts
 
+function Get-CurrentOS {
+    <#
+    .SYNOPSIS
+        Detects the current operating system/environment.
+    .OUTPUTS
+        One of: Windows, Docker, WSL, Linux, macOS, Unknown
+    #>
+    if ($IsWindows -or $env:OS -eq "Windows_NT") {
+        return "Windows"
+    } elseif ($IsLinux) {
+        # Check if running in Docker
+        if ((Test-Path "/.dockerenv") -or ((Test-Path "/proc/1/cgroup") -and (Get-Content "/proc/1/cgroup" | Select-String -Pattern "docker|kubepods" -Quiet))) {
+            return "Docker"
+        }
+        # Check if running in WSL
+        if (Test-Path "/proc/version") {
+            $version = Get-Content "/proc/version"
+            if ($version -match "microsoft|WSL") {
+                return "WSL"
+            }
+        }
+        return "Linux"
+    } elseif ($IsMacOS) {
+        return "macOS"
+    }
+    return "Unknown"
+}
+
 function Get-LocalIP {
     <#
     .SYNOPSIS
         Detects the local LAN IP address (first non-localhost IPv4).
     #>
+    $os = Get-CurrentOS
     $localIp = $null
-    if ($IsMacOS) {
-        $localIp = (ifconfig | Select-String 'inet (\d+\.\d+\.\d+\.\d+)' -AllMatches).Matches |
-            ForEach-Object { $_.Groups[1].Value } |
-            Where-Object { $_ -ne '127.0.0.1' } |
-            Select-Object -First 1
-    } elseif ($IsWindows) {
-        $localIp = (Get-NetIPAddress -AddressFamily IPv4 |
-            Where-Object { $_.IPAddress -ne '127.0.0.1' -and $_.PrefixOrigin -ne 'WellKnown' } |
-            Select-Object -First 1).IPAddress
-    } else {
-        # Linux
-        $localIp = (hostname -I 2>$null) -split ' ' | Where-Object { $_ } | Select-Object -First 1
-        if (-not $localIp) {
-            $localIp = (ip route get 1.1.1.1 2>$null | Select-String 'src (\d+\.\d+\.\d+\.\d+)').Matches.Groups[1].Value
+    switch ($os) {
+        "macOS" {
+            $localIp = (ifconfig | Select-String 'inet (\d+\.\d+\.\d+\.\d+)' -AllMatches).Matches |
+                ForEach-Object { $_.Groups[1].Value } |
+                Where-Object { $_ -ne '127.0.0.1' } |
+                Select-Object -First 1
+        }
+        "Windows" {
+            $localIp = (Get-NetIPAddress -AddressFamily IPv4 |
+                Where-Object { $_.IPAddress -ne '127.0.0.1' -and $_.PrefixOrigin -ne 'WellKnown' } |
+                Select-Object -First 1).IPAddress
+        }
+        default {
+            # Linux, Docker, WSL
+            $localIp = (hostname -I 2>$null) -split ' ' | Where-Object { $_ } | Select-Object -First 1
+            if (-not $localIp) {
+                $localIp = (ip route get 1.1.1.1 2>$null | Select-String 'src (\d+\.\d+\.\d+\.\d+)').Matches.Groups[1].Value
+            }
         }
     }
     return $localIp
@@ -84,7 +117,7 @@ function Get-HostsFilePath {
     .SYNOPSIS
         Returns the platform-specific hosts file path.
     #>
-    if ($IsWindows -or $env:OS -eq "Windows_NT") {
+    if ((Get-CurrentOS) -eq "Windows") {
         return "$env:SystemRoot\System32\drivers\etc\hosts"
     } else {
         return "/etc/hosts"
@@ -155,7 +188,7 @@ function Update-HostEntries {
     $newEntries = $entriesToAdd -join "`n"
     $script += "Add-Content '$hostsFile' `"``n$newEntries`""
 
-    if ($IsWindows -or $env:OS -eq "Windows_NT") {
+    if ((Get-CurrentOS) -eq "Windows") {
         try {
             Invoke-Expression $script
             Write-Host "Updated hosts file"
@@ -216,7 +249,7 @@ function Remove-HostEntries {
         return
     }
 
-    if ($IsWindows -or $env:OS -eq "Windows_NT") {
+    if ((Get-CurrentOS) -eq "Windows") {
         try {
             Set-Content -Path $hostsFile -Value $newContent -ErrorAction Stop
             Write-Host "Removed hosts entries"

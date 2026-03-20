@@ -11,29 +11,6 @@ if (-not $env:AC_ProjectRoot) {
 # Load common utilities
 . (Join-Path $scriptDir "scripts/Common.ps1")
 
-# Detect current OS
-function Get-CurrentOS {
-    if ($IsWindows -or $env:OS -eq "Windows_NT") {
-        return "Windows"
-    } elseif ($IsLinux) {
-        # Check if running in Docker
-        if ((Test-Path "/.dockerenv") -or ((Test-Path "/proc/1/cgroup") -and (Get-Content "/proc/1/cgroup" | Select-String -Pattern "docker|kubepods" -Quiet))) {
-            return "Docker"
-        }
-        # Check if running in WSL
-        if (Test-Path "/proc/version") {
-            $version = Get-Content "/proc/version"
-            if ($version -match "microsoft|WSL") {
-                return "WSL"
-            }
-        }
-        return "Linux"
-    } elseif ($IsMacOS) {
-        return "macOS"
-    }
-    return "Unknown"
-}
-
 # Convert Windows path to WSL path
 function ConvertTo-WSLPath {
     param([string]$WindowsPath)
