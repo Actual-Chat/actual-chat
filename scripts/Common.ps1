@@ -79,6 +79,163 @@ function Update-LocalIP {
     return $localIp
 }
 
+function Get-HostsFilePath {
+    <#
+    .SYNOPSIS
+        Returns the platform-specific hosts file path.
+    #>
+    if ($IsWindows -or $env:OS -eq "Windows_NT") {
+        return "$env:SystemRoot\System32\drivers\etc\hosts"
+    } else {
+        return "/etc/hosts"
+    }
+}
+
+function Add-HostEntries {
+    <#
+    .SYNOPSIS
+        Adds or updates entries in the hosts file.
+    .PARAMETER IP
+        The IP address for the hosts entries.
+    .PARAMETER Hostnames
+        Array of hostnames to add/update.
+    .PARAMETER Replace
+        If true, replaces existing entries for these hostnames. Otherwise only adds if missing.
+    #>
+    param(
+        [Parameter(Mandatory)][string]$IP,
+        [Parameter(Mandatory)][string[]]$Hostnames,
+        [switch]$Replace
+    )
+
+    $hostsFile = Get-HostsFilePath
+    $hostsContent = Get-Content $hostsFile -ErrorAction SilentlyContinue
+    if (-not $hostsContent) { $hostsContent = @() }
+
+    $entriesToAdd = @()
+    $linesToRemove = @()
+
+    foreach ($hostname in $Hostnames) {
+        $escapedHostname = [regex]::Escape($hostname)
+        $existingLine = $hostsContent | Where-Object { $_ -match "^\s*[\d\.]+\s+.*$escapedHostname" }
+        $newLine = "$IP  $hostname"
+
+        if ($existingLine) {
+            if ($Replace -and $existingLine -notmatch "^\s*$([regex]::Escape($IP))\s+") {
+                $linesToRemove += $existingLine
+                $entriesToAdd += $newLine
+            }
+        } else {
+            $entriesToAdd += $newLine
+        }
+    }
+
+    if ($entriesToAdd.Count -eq 0 -and $linesToRemove.Count -eq 0) {
+        Write-Host "Hosts entries already up-to-date"
+        return
+    }
+
+    # Build the PowerShell command to run with elevation
+    $script = ""
+    if ($linesToRemove.Count -gt 0) {
+        $patterns = ($Hostnames | ForEach-Object { [regex]::Escape($_) }) -join '|'
+        $script += "`$content = Get-Content '$hostsFile' | Where-Object { `$_ -notmatch '^\s*[\d\.]+\s+.*($patterns)' }; "
+        $script += "Set-Content '$hostsFile' `$content -Force; "
+    }
+    if ($entriesToAdd.Count -gt 0) {
+        $newEntries = $entriesToAdd -join "`n"
+        $script += "Add-Content '$hostsFile' `"``n$newEntries`""
+    }
+
+    if ($IsWindows -or $env:OS -eq "Windows_NT") {
+        try {
+            Invoke-Expression $script
+            Write-Host "Updated hosts file"
+        } catch {
+            Write-Host "Requesting elevation to update hosts file..."
+            try {
+                Start-Process powershell -Verb RunAs -ArgumentList "-NoProfile -Command $script" -Wait -ErrorAction Stop
+                Write-Host "Updated hosts file (via UAC)"
+            } catch {
+                Write-Host "Could not update hosts file. Add manually:" -ForegroundColor Yellow
+                $entriesToAdd | ForEach-Object { Write-Host $_ }
+            }
+        }
+    } else {
+        Write-Host "Updating hosts file (sudo required)..."
+        $sudoScript = $script -replace "'", "'\\''"
+        bash -c "sudo pwsh -NoProfile -c '$sudoScript'"
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "Updated hosts file"
+        } else {
+            Write-Host "Could not update hosts file. Add manually:" -ForegroundColor Yellow
+            $entriesToAdd | ForEach-Object { Write-Host $_ }
+        }
+    }
+}
+
+function Remove-HostEntries {
+    <#
+    .SYNOPSIS
+        Removes entries from the hosts file by hostname.
+    .PARAMETER Hostnames
+        Array of hostnames to remove.
+    #>
+    param(
+        [Parameter(Mandatory)][string[]]$Hostnames
+    )
+
+    $hostsFile = Get-HostsFilePath
+    $hostsContent = Get-Content $hostsFile -ErrorAction SilentlyContinue
+    if (-not $hostsContent) { return }
+
+    $newContent = $hostsContent | Where-Object {
+        $line = $_
+        $shouldKeep = $true
+        foreach ($hostname in $Hostnames) {
+            if ($line -match [regex]::Escape($hostname)) {
+                $shouldKeep = $false
+                break
+            }
+        }
+        $shouldKeep
+    }
+
+    if ($newContent.Count -eq $hostsContent.Count) {
+        Write-Host "No matching hosts entries found"
+        return
+    }
+
+    if ($IsWindows -or $env:OS -eq "Windows_NT") {
+        try {
+            Set-Content -Path $hostsFile -Value $newContent -ErrorAction Stop
+            Write-Host "Removed hosts entries"
+        } catch {
+            Write-Host "Requesting elevation to update hosts file..."
+            try {
+                $tempFile = [System.IO.Path]::GetTempFileName()
+                $newContent | Set-Content -Path $tempFile
+                $script = "Copy-Item '$tempFile' '$hostsFile' -Force; Remove-Item '$tempFile'"
+                Start-Process powershell -Verb RunAs -ArgumentList "-NoProfile -Command $script" -Wait -ErrorAction Stop
+                Write-Host "Removed hosts entries (via UAC)"
+            } catch {
+                Write-Host "Could not update hosts file" -ForegroundColor Yellow
+            }
+        }
+    } else {
+        Write-Host "Removing hosts entries (sudo required)..."
+        $tempFile = [System.IO.Path]::GetTempFileName()
+        $newContent | Set-Content -Path $tempFile
+        bash -c "sudo cp '$tempFile' '$hostsFile' && rm '$tempFile'"
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "Removed hosts entries"
+        } else {
+            Write-Host "Could not update hosts file" -ForegroundColor Yellow
+            Remove-Item $tempFile -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 function Get-ScriptDirectory {
     <#
     .SYNOPSIS
