@@ -8,9 +8,7 @@ using Aspire.Hosting.ApplicationModel;
 using DotNetEnv.Configuration;
 
 var builder = DistributedApplication.CreateBuilder(args);
-var dotEnvPath = Path.Combine(AppContext.BaseDirectory, ".env");
-if (File.Exists(dotEnvPath))
-    builder.Configuration.AddDotNetEnv(dotEnvPath);
+builder.Configuration.AddDotNetEnv(Path.Combine(AppContext.BaseDirectory, ".env"));
 var basePort = GetBasePort(builder.Configuration); // 7080, 7090, etc.
 var meshLockSubspace = Alphabet.AlphaNumeric.Generator8.Next();
 var meshLockOptionsPreset = "Default"; // Change it to "DebugFriendly" for debugging purposes

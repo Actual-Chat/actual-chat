@@ -74,8 +74,8 @@ services:
     cap_add:
       - NET_ADMIN
     ports:
-      - "53:53/udp"
-      - "53:53/tcp"
+      - "${LOCAL_IP:?Set LOCAL_IP in .env or run docker-start.cmd}:53:53/udp"
+      - "${LOCAL_IP}:53:53/tcp"
     expose:
       - 53
     command:
