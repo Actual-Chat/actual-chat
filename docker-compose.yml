@@ -74,10 +74,8 @@ services:
     cap_add:
       - NET_ADMIN
     ports:
-#      - "127.0.0.1:53:53/udp"
-#      - "127.0.0.1:53:53/tcp"
-      - "${LOCAL_IP:-0.0.0.0}:53:53/udp"
-      - "${LOCAL_IP:-0.0.0.0}:53:53/tcp"
+      - "53:53/udp"
+      - "53:53/tcp"
     expose:
       - 53
     command:
