@@ -98,19 +98,24 @@ function Update-HostEntries {
     .PARAMETER Hostnames
         Array of hostnames to add/update.
     .PARAMETER IP
-        The IP address. If not provided, detects LAN IP automatically.
+        The IP address for the hosts entries.
+    .PARAMETER DetectIP
+        If set, detects LAN IP automatically instead of using -IP.
     #>
     param(
         [Parameter(Mandatory)][string[]]$Hostnames,
-        [string]$IP
+        [string]$IP,
+        [switch]$DetectIP
     )
 
-    if (-not $IP) {
+    if ($DetectIP) {
         $IP = Get-LocalIP
         if (-not $IP) {
             Write-Error "Could not detect local IP address"
             return $null
         }
+    } elseif (-not $IP) {
+        $IP = "127.0.0.1"
     }
 
     $hostsFile = Get-HostsFilePath
