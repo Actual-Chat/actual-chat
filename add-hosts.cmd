@@ -10,14 +10,16 @@
         exit /b 1
     )
 
+    echo determining ip address...
+    for /f %%i in ('pwsh -NoProfile -c ". ./scripts/Common.ps1; Get-LocalIP"') do set localIp=%%i
+    if "%localIp%"=="" (
+        echo Failed to detect local IP address
+        exit /b 1
+    )
+    echo local ip: %localIp%
+
     echo patching hosts file...
     set hostsFile=%WINDIR%\system32\drivers\etc\hosts
-    echo determining ip address...
-    FOR /F "tokens=4 delims= " %%i in ('route print ^| find " 0.0.0.0" ^| find " 192.168."') do set localIp=%%i
-    if "%localIp%"=="" (
-        FOR /F "tokens=4 delims= " %%i in ('route print ^| find " 0.0.0.0"') do set localIp=%%i
-    )
-    echo "local ip: %localIp%"
     set hosts=local.voxt.ai media.local.voxt.ai cdn.local.voxt.ai
     set altHosts=local.actual.chat media.local.actual.chat cdn.local.actual.chat
     set hostsLine=%localIp%  %hosts%
@@ -33,14 +35,7 @@
     echo hosts file patched
 
     echo updating .env file...
-    set envFile=%~dp0.env
-    if exist "%envFile%" (
-        powershell -Command "(Get-Content '%envFile%') -replace '^LOCAL_IP=.*', 'LOCAL_IP=%localIp%' | Set-Content '%envFile%'"
-        findstr /C:"LOCAL_IP=" "%envFile%" >nul || echo LOCAL_IP=%localIp%>> "%envFile%"
-    ) else (
-        echo LOCAL_IP=%localIp%> "%envFile%"
-    )
-    echo .env updated with LOCAL_IP=%localIp%
+    pwsh -NoProfile -c ". ./scripts/Common.ps1; Update-LocalIP | Out-Null"
 
     set wd=%~dp0
     set certFilePath=%wd%.config\local.voxt.ai\ssl\local.voxt.ai.crt
@@ -84,37 +79,27 @@ trustCertificate() {
         sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain $certPath
       ;;
       Linux)
-        # commands for Linux go here
         sudo cp $certPath /usr/local/share/ca-certificates/
         sudo update-ca-certificates
       ;;
       *)
-        # commands for FreeBSD go here
         echo "Not supported OS!" 1>&2
         exit 1
       ;;
     esac
 }
 
+echo determining ip address...
+localIp=$(pwsh -NoProfile -c ". ./scripts/Common.ps1; Get-LocalIP")
+[ -z "$localIp" ] && echo "Failed to detect local IP address" && exit 1
+echo "local ip: $localIp"
+
 echo patching hosts...
-localIp=$(ifconfig | grep "inet " | grep -Fv 127.0.0.1 | awk '{print $2}' | head -1)
-[ -z "$localIp" ] && echo "Failed to detect local ip address" && exit 1
 updateHostsFile "$localIp" "local.voxt.ai media.local.voxt.ai cdn.local.voxt.ai" "/etc/hosts"
 updateHostsFile "$localIp" "local.actual.chat media.local.actual.chat cdn.local.actual.chat" "/etc/hosts"
 
 echo updating .env file...
-scriptDir="$(cd "$(dirname "$0")" && pwd)"
-envFile="$scriptDir/.env"
-if [ -f "$envFile" ]; then
-    if grep -q "^LOCAL_IP=" "$envFile"; then
-        sed -i.bak "s/^LOCAL_IP=.*/LOCAL_IP=$localIp/" "$envFile" && rm -f "$envFile.bak"
-    else
-        echo "LOCAL_IP=$localIp" >> "$envFile"
-    fi
-else
-    echo "LOCAL_IP=$localIp" > "$envFile"
-fi
-echo ".env updated with LOCAL_IP=$localIp"
+pwsh -NoProfile -c ". ./scripts/Common.ps1; Update-LocalIP | Out-Null"
 
 echo trusting voxt.ai certificate...
 trustCertificate
