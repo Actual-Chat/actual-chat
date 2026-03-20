@@ -2,6 +2,7 @@ using System.Buffers;
 using ActualChat.Audio;
 using ActualChat.Diagnostics;
 using ActualChat.Transcription;
+using ActualChat.Video;
 using ActualLab.Rpc;
 
 namespace ActualChat.Streaming.Services;
@@ -9,6 +10,7 @@ namespace ActualChat.Streaming.Services;
 public sealed class StreamBackendClient : IStreamClient
 {
     private IAudioStreamingBackend Backend { get; }
+    private IVideoStreamingBackend VideoBackend { get; }
     private MeshWatcher MeshWatcher { get; }
     private ILogger Log { get; }
     private ILogger AudioSourceLog { get; }
@@ -18,6 +20,7 @@ public sealed class StreamBackendClient : IStreamClient
         Log = services.LogFor(GetType());
         AudioSourceLog = services.LogFor<AudioSource>();
         Backend = services.GetRequiredService<IAudioStreamingBackend>();
+        VideoBackend = services.GetRequiredService<IVideoStreamingBackend>();
         MeshWatcher = services.MeshWatcher();
     }
 
@@ -97,5 +100,19 @@ public sealed class StreamBackendClient : IStreamClient
     {
         AppMeters.AudioLatency.Record(latency.TotalMilliseconds);
         return Task.CompletedTask;
+    }
+
+    public Task PushVideo(
+        Session session, string chatId,
+        double clientStartOffset,
+        VideoFormat format,
+        IAsyncEnumerable<VideoFrame> frameStream,
+        CancellationToken cancellationToken)
+    {
+        var chatIdTyped = ChatId.Parse(chatId);
+        var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
+        var record = new VideoRecord(streamId, session, chatIdTyped, clientStartOffset, format);
+        var rpcStream = RpcStream.New(frameStream);
+        return VideoBackend.PushVideo(record, rpcStream, cancellationToken);
     }
 }

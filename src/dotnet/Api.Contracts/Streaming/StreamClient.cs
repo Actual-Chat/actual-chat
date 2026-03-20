@@ -1,6 +1,7 @@
 using System.Buffers;
 using ActualChat.Audio;
 using ActualChat.Transcription;
+using ActualChat.Video;
 using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
@@ -85,6 +86,24 @@ public class StreamClient(IServiceProvider services) : IStreamClient
             repliedChatEntryId,
             clientStartOffset,
             preSkip,
+            rpcStream,
+            cancellationToken);
+    }
+
+    public Task PushVideo(
+        Session session,
+        string chatId,
+        double clientStartOffset,
+        VideoFormat format,
+        IAsyncEnumerable<VideoFrame> frameStream,
+        CancellationToken cancellationToken)
+    {
+        var rpcStream = RpcStream.New(frameStream);
+        return StreamServer.PushVideo(
+            session,
+            chatId,
+            clientStartOffset,
+            format,
             rpcStream,
             cancellationToken);
     }

@@ -2,6 +2,7 @@ using ActualChat.Audio;
 using ActualChat.Diagnostics;
 using ActualChat.Hosting;
 using ActualChat.Transcription;
+using ActualChat.Video;
 using ActualLab.Rpc;
 
 namespace ActualChat.Streaming.Services;
@@ -12,6 +13,7 @@ public class StreamServer(IServiceProvider services) : IStreamServer
 
     private MeshWatcher MeshWatcher { get; } = services.MeshWatcher();
     private IAudioStreamingBackend Backend { get; } = services.GetRequiredService<IAudioStreamingBackend>();
+    private IVideoStreamingBackend VideoBackend { get; } = services.GetRequiredService<IVideoStreamingBackend>();
     private ILogger Log { get; } = services.LogFor<StreamServer>();
 
     public async Task<RpcStream<byte[]>?> GetAudio(string streamId, TimeSpan skipTo, CancellationToken cancellationToken)
@@ -71,5 +73,30 @@ public class StreamServer(IServiceProvider services) : IStreamServer
 
         using var stopCts = new CancellationTokenSource(Constants.Chat.MaxEntryDuration + TimeSpan.FromSeconds(5));
         await Backend.ProcessAudio(audioRecord, preSkip, newFrameStream, stopCts.Token).ConfigureAwait(false);
+    }
+
+    public async Task PushVideo(
+        Session session, string chatId,
+        double clientStartOffset,
+        VideoFormat format,
+        RpcStream<VideoFrame> frameStream,
+        CancellationToken cancellationToken)
+    {
+        var chatIdTyped = ChatId.Parse(chatId);
+
+        var nodes = MeshWatcher.State.Value.LiveNodesByRole[HostRole.VideoBackend];
+        if (nodes.Length == 0) {
+            Log.LogError("No nodes serving {Role} role!", HostRole.VideoBackend);
+            return;
+        }
+
+        var nodeRef = _preferThisNode ? MeshWatcher.ThisNode.Ref : nodes.GetRandom().Ref;
+        var streamId = StreamId.New(nodeRef);
+        var videoRecord = new VideoRecord(streamId, session, chatIdTyped, clientStartOffset, format);
+        var newFrameStream = RpcStream.New(frameStream);
+        Log.LogInformation("PushVideo: {VideoRecord}", videoRecord);
+
+        using var stopCts = new CancellationTokenSource(Constants.Chat.MaxEntryDuration + TimeSpan.FromSeconds(5));
+        await VideoBackend.PushVideo(videoRecord, newFrameStream, stopCts.Token).ConfigureAwait(false);
     }
 }
