@@ -70,14 +70,21 @@ public class AccountSettings : IAccountSettings
         return guestId is null ? null : ServerKvasBackendExt.GetUserPrefix(guestId);
     }
 
-    private static StoredSettings? Deserialize(byte[]? data, string key)
+    private StoredSettings? Deserialize(byte[]? data, string key)
     {
         if (data is null)
             return null;
 
-        // Use concrete type for deserialization to stay compatible with IServerKvas/IKvas data format
-        var type = ResolveType(key);
-        return (StoredSettings?)Serializer.Read(data, type, out _);
+        try {
+            // Use concrete type for deserialization to stay compatible with IServerKvas/IKvas data format
+            var type = ResolveType(key);
+            return (StoredSettings?)Serializer.Read(data, type, out _);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to deserialize settings for key '{Key}' ({Length} bytes), treating as missing",
+                key, data.Length);
+            return null;
+        }
     }
 
     private static byte[]? Serialize(StoredSettings? value)
