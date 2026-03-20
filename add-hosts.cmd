@@ -11,7 +11,7 @@
     )
 
     echo updating hosts and .env...
-    pwsh -NoProfile -c ". ./scripts/Common.ps1; $ip = Get-LocalIP; Add-HostEntries -IP $ip -Hostnames 'local.voxt.ai','media.local.voxt.ai','cdn.local.voxt.ai' -Replace; Add-HostEntries -IP $ip -Hostnames 'local.actual.chat','media.local.actual.chat','cdn.local.actual.chat' -Replace; Update-LocalIP | Out-Null"
+    pwsh -NoProfile -c ". ./scripts/Common.ps1; Update-HostEntries -Hostnames 'local.voxt.ai','media.local.voxt.ai','cdn.local.voxt.ai' | Out-Null; Update-HostEntries -Hostnames 'local.actual.chat','media.local.actual.chat','cdn.local.actual.chat' | Out-Null; Update-LocalIP | Out-Null"
 
     set wd=%~dp0
     set certFilePath=%wd%.config\local.voxt.ai\ssl\local.voxt.ai.crt
@@ -46,7 +46,7 @@ trustCertificate() {
 }
 
 echo updating hosts and .env...
-pwsh -NoProfile -c ". ./scripts/Common.ps1; \$ip = Get-LocalIP; Add-HostEntries -IP \$ip -Hostnames 'local.voxt.ai','media.local.voxt.ai','cdn.local.voxt.ai' -Replace; Add-HostEntries -IP \$ip -Hostnames 'local.actual.chat','media.local.actual.chat','cdn.local.actual.chat' -Replace; Update-LocalIP | Out-Null"
+pwsh -NoProfile -c ". ./scripts/Common.ps1; Update-HostEntries -Hostnames 'local.voxt.ai','media.local.voxt.ai','cdn.local.voxt.ai' | Out-Null; Update-HostEntries -Hostnames 'local.actual.chat','media.local.actual.chat','cdn.local.actual.chat' | Out-Null; Update-LocalIP | Out-Null"
 
 echo trusting voxt.ai certificate...
 trustCertificate
