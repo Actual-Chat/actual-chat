@@ -61,8 +61,7 @@ public partial class AppHost
         }
         // Add a few default sources
         cfg.AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: false);
-        var dotEnvPath = Path.Combine(AppContext.BaseDirectory, ".env");
-        cfg.AddDotNetEnv(dotEnvPath);
+        cfg.AddDotNetEnv(Path.Combine(AppContext.BaseDirectory, ".env"), new(setEnvVars: false));
         cfg.AddEnvironmentVariables();
         ConfigureHost?.Invoke(ctx, cfg);
 

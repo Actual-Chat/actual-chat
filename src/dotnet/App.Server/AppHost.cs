@@ -10,12 +10,13 @@ public partial class AppHost : SafeAsyncDisposableBase
 {
     public static readonly string DefaultServerUrls = "http://localhost:7080";
 
-    public string ServerUrls { get; set; } = DefaultServerUrls;
-    public WebApplicationOptions HostOptions { get; set; } = new();
-    public Action<IConfigureHostContext, IConfigurationManager>? ConfigureHost { get; set; }
-    public Action<IConfigureModuleServicesContext, IServiceCollection>? ConfigureModuleServices { get; set; }
-    public Action<IConfigureServicesContext, IServiceCollection>? ConfigureServices { get; set; }
-    public Action<IConfigureAppContext, WebApplication>? ConfigureApp { get; set; }
+    public string ServerUrls { get; init; } = DefaultServerUrls;
+    public WebApplicationOptions HostOptions { get; init; } = new();
+    public Action<IConfigureHostContext, IConfigurationManager>? ConfigureHost { get; init; }
+    public Action<IConfigureModuleServicesContext, IServiceCollection>? ConfigureModuleServices { get; init; }
+    public Action<IConfigureServicesContext, IServiceCollection>? ConfigureServices { get; init; }
+    public Action<IConfigureAppContext, WebApplication>? ConfigureApp { get; init; }
+    public bool IsTestHost { get; init; }
 
     public WebApplication App { get; protected set; } = null!;
     public IServiceProvider Services => App.Services;

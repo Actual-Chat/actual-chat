@@ -58,7 +58,13 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
 
     [HttpGet("{kind}/{key}")]
     [CacheControlImmutable(Duration = 2592000, VaryByQueryKeys = ["*"])] // 30 days
-    public async Task<ActionResult> GetAvatar(AvatarKind kind, string key, AvatarFormat format, int? size = null, string? title = null, CancellationToken cancellationToken = default)
+    public async Task<ActionResult> GetAvatar(
+        AvatarKind kind,
+        string key,
+        AvatarFormat format,
+        int? size = null,
+        string? title = null,
+        CancellationToken cancellationToken = default)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);

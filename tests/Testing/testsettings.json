@@ -1,7 +1,6 @@
 {
   "HostSettings": {
-    "IsTested": true,
-    "BaseUri": "https://local.voxt.ai"
+    "IsTested": true
   },
   "CoreSettings": {
     "Instance": "dev",

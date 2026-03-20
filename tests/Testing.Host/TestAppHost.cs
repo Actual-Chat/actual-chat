@@ -21,6 +21,7 @@ public class TestAppHost : AppHost
         Options = options;
         OutputAccessor = outputAccessor;
         Id = Interlocked.Increment(ref _lastId);
+        IsTestHost = true;
 
         WriteLine("created");
         _heartbeatTimer = new Timer(1000);

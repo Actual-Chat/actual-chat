@@ -3,9 +3,9 @@ using ActualChat.App.Server.Module;
 using ActualChat.Blobs.Internal;
 using ActualChat.MLSearch.Engine;
 using ActualChat.Module;
-using ActualChat.Redis.Module;
 using ActualLab.IO;
 using ActualLab.Testing.Web;
+using DotNetEnv.Configuration;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
@@ -27,18 +27,21 @@ public static class TestAppHostFactory
         log.LogInformation("-> NewAppHost, instance '{InstanceName}'", instanceName);
         var manifestPath = GetManifestPath();
 
+        var serverUrls = options.ServerUrls ?? WebTestHelpers.GetUnusedLocalUri().ToString();
         var appHost = new TestAppHost(options, outputAccessor) {
-            ServerUrls = options.ServerUrls ?? WebTestHelpers.GetUnusedLocalUri().ToString(),
+            ServerUrls = serverUrls,
             HostOptions = new() {
                 EnvironmentName = Environments.Development,
             },
             ConfigureHost = (ctx, cfg) => {
-                // Removing default appsettings.*
+                // Removing default appsettings.* and DotNetEnv
                 var toDelete = cfg.Sources
-                    .Where(s => (s is JsonConfigurationSource source
-                        && (source.Path ?? "").StartsWith("appsettings", StringComparison.OrdinalIgnoreCase))
-                        || s is EnvironmentVariablesConfigurationSource)
-                    .ToList();
+                    .Where(s =>
+                        (s is JsonConfigurationSource source
+                            && (source.Path ?? "").StartsWith("appsettings", StringComparison.OrdinalIgnoreCase))
+                        || s is EnvConfigurationSource
+                        || s is EnvironmentVariablesConfigurationSource
+                    ).ToList();
                 foreach (var source in toDelete)
                     cfg.Sources.Remove(source);
 
@@ -62,6 +65,7 @@ public static class TestAppHostFactory
                         ($"{nameof(CoreSettings)}:{nameof(CoreServerSettings.UseNatsQueues)}", $"{useNatsQueues}"))
                     .AddInMemory<CoreSettings>((x => x.Instance, instanceName))
                     .AddInMemory<HostSettings>(
+                        (x => x.BaseUri, serverUrls),
                         (x => x.MeshLockSubspace, options.MeshLockSubspace),
                         (x => x.MeshLockOptionsPreset, options.MeshLockOptionsPreset));
 
