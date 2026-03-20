@@ -47,10 +47,10 @@ public class UIHub : CircuitHub, IDispatcherResolver
     public ISystemProperties SystemProperties => field ??= Services.GetRequiredService<ISystemProperties>();
     public IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
     public IAvatars Avatars => field ??= Services.GetRequiredService<IAvatars>();
-    public Media.IMediaLinkPreviews MediaLinkPreviews => field ??= Services.GetRequiredService<Media.IMediaLinkPreviews>();
+    public IMediaLinkPreviews MediaLinkPreviews => field ??= Services.GetRequiredService<IMediaLinkPreviews>();
     public ISearch Search => field ??= Services.GetRequiredService<ISearch>();
     public Temporals Temporals => field ??= Services.GetRequiredService<Temporals>();
-    public AccountSettings AccountSettings => field ??= Services.GetRequiredService<AccountSettings>();
+    public ScopedAccountSettings AccountSettings => field ??= Services.AccountSettings(Session);
     public LocalSettings LocalSettings => field ??= Services.GetRequiredService<LocalSettings>();
     public IUserPresences UserPresences => field ??= Services.GetRequiredService<IUserPresences>();
     public ModuleHost ModuleHost => field ??= Services.GetRequiredService<ModuleHost>();

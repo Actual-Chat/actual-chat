@@ -1,5 +1,6 @@
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Components;
+using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.Services;
 
@@ -17,12 +18,12 @@ public sealed class BubbleUI : UIServiceBase<UIHub>
 
     public BubbleUI(UIHub hub) : base(hub)
     {
-        _settings = StateFactory.NewKvasSynced<UserBubbleSettings>(
-            new (AccountSettings, UserBubbleSettings.KvasKey) {
-                InitialValue = new UserBubbleSettings(),
-                UpdateDelayer = FixedDelayer.NextTick,
-                Category = StateCategories.Get(GetType(), nameof(Settings)),
-            });
+        _settings = StateFactory.NewAccountSettingsSynced<UserBubbleSettings>(
+            AccountSettings,
+            UserBubbleSettings.KvasKey,
+            new UserBubbleSettings(),
+            updateDelayer: FixedDelayer.NextTick,
+            category: StateCategories.Get(GetType(), nameof(Settings)));
         Hub.RegisterDisposable(_settings);
     }
 

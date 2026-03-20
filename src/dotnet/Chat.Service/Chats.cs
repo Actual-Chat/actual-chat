@@ -759,16 +759,16 @@ public partial class Chats(IServiceProvider services) : IChats
             var updateUserChatSettingCount = 0;
             var updateChatPositionCount = 0;
             foreach (var userId in userIds) {
-                var updateUserChatSettingsTask = UpdateUserChatSettings(userId);
+                var updateChatUserSettingsTask = UpdateChatUserSettings(userId);
                 var updateChatPositionsTask = UpdateChatPosition(userId, maxEntryId);
-                await Task.WhenAll(updateUserChatSettingsTask, updateUserChatSettingsTask).ConfigureAwait(false);
-                if (await updateUserChatSettingsTask.ConfigureAwait(false))
+                await Task.WhenAll(updateChatUserSettingsTask, updateChatUserSettingsTask).ConfigureAwait(false);
+                if (await updateChatUserSettingsTask.ConfigureAwait(false))
                     updateUserChatSettingCount++;
                 if (await updateChatPositionsTask.ConfigureAwait(false))
                     updateChatPositionCount++;
             }
 
-            Log.LogInformation("OnCopyChat({CorrelationId}): Updated {Count} UserChatSettings kvas records",
+            Log.LogInformation("OnCopyChat({CorrelationId}): Updated {Count} ChatUserSettings records",
                 correlationId, updateUserChatSettingCount);
             Log.LogInformation("OnCopyChat({CorrelationId}): Updated {Count} ChatPositions records",
                 correlationId, updateChatPositionCount);
@@ -780,14 +780,14 @@ public partial class Chats(IServiceProvider services) : IChats
         Log.LogInformation("<- OnCopyChat({CorrelationId})", correlationId);
         return new Chat_CopyChatResult(hasChanges, hasErrors);
 
-        async Task<bool> UpdateUserChatSettings(UserId userId)
+        async Task<bool> UpdateChatUserSettings(UserId userId)
         {
             var userKvas = ServerKvasBackend.GetUserClient(userId);
-            var userChatSettings = await userKvas.UserChatSettings(sourceChatId).Get(cancellationToken).ConfigureAwait(false);
-            if (userChatSettings == UserChatSettings.Default)
+            var chatUserSettings = await userKvas.ChatUserSettings(sourceChatId).Get(cancellationToken).ConfigureAwait(false);
+            if (chatUserSettings == ChatUserSettings.Default)
                 return false;
 
-            await userKvas.UserChatSettings(newChatId).Set(userChatSettings, cancellationToken).ConfigureAwait(false);
+            await userKvas.ChatUserSettings(newChatId).Set(chatUserSettings, cancellationToken).ConfigureAwait(false);
             return true;
         }
 

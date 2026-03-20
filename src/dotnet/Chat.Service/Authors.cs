@@ -1,7 +1,6 @@
 using ActualChat.Chat.Db;
 using ActualChat.Contacts;
 using ActualChat.Invite;
-using ActualChat.Kvas;
 using ActualChat.Users;
 using ActualLab.Fusion.EntityFramework;
 
@@ -13,25 +12,16 @@ namespace ActualChat.Chat;
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IAuthors
 {
-    private IAuthorsBackend? _backend;
-    private IAvatars? _avatars;
-    private IChats? _chats;
-    private IChatsBackend? _chatsBackend;
-    private IContactsBackend? _contactsBackend;
-    private IRoles? _roles;
-    private IRolesBackend? _rolesBackend;
-
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
-    private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
-    private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
+    private IAvatars Avatars => field ??= Services.GetRequiredService<IAvatars>();
+    private IChats Chats => field ??= Services.GetRequiredService<IChats>();
+    private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IUserPresences UserPresences { get; } = services.GetRequiredService<IUserPresences>();
-    private IServerKvas ServerKvas { get; } = services.ServerKvas();
-    private IAuthorsBackend Backend => _backend ??= Services.GetRequiredService<IAuthorsBackend>();
-    private IAvatars Avatars => _avatars ??= Services.GetRequiredService<IAvatars>();
-    private IContactsBackend ContactsBackend => _contactsBackend ??= Services.GetRequiredService<IContactsBackend>();
-    private IRoles Roles => _roles ??= Services.GetRequiredService<IRoles>();
-    private IRolesBackend RolesBackend => _rolesBackend ??= Services.GetRequiredService<IRolesBackend>();
+    private IContactsBackend ContactsBackend => field ??= Services.GetRequiredService<IContactsBackend>();
+    private IRoles Roles => field ??= Services.GetRequiredService<IRoles>();
+    private IRolesBackend RolesBackend => field ??= Services.GetRequiredService<IRolesBackend>();
+    private IAuthorsBackend Backend => field ??= Services.GetRequiredService<IAuthorsBackend>();
 
     // [ComputeMethod]
     public virtual async Task<Author?> Get(
@@ -227,15 +217,14 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
             });
         author = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
 
-        var client = ServerKvas
-            .GetClient(session);
-        var invite = await client
-            .Get<string>(ServerKvasInviteKey.ForChat(chatId), cancellationToken)
+        var accountSettings = Services.AccountSettings(session);
+        var inviteSettings = (ChatInviteSettings?)await accountSettings
+            .Get(ChatInviteSettings.GetKey(chatId), cancellationToken)
             .ConfigureAwait(false);
-        if (invite is not null) {
+        if (inviteSettings?.ActivationKey is not null) {
             // Remove the invite
-            var removeInviteCommand = new ServerKvas_Set(session, ServerKvasInviteKey.ForChat(chatId), null);
-            await Commander.Call(removeInviteCommand, true, cancellationToken).ConfigureAwait(false);
+            var removeCommand = new AccountSettings_Set(session, ChatInviteSettings.GetKey(chatId), null);
+            await Commander.Call(removeCommand, true, cancellationToken).ConfigureAwait(false);
         }
 
         return author;

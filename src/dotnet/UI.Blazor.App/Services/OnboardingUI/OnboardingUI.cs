@@ -1,5 +1,6 @@
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
+using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -23,15 +24,14 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
     public OnboardingUI(AppUIHub hub) : base(hub)
     {
         var stateFactory = hub.StateFactory;
-        var accountSettings = hub.AccountSettings;
         var localSettings = hub.LocalSettings;
         var type = GetType();
-        _userSettings = stateFactory.NewKvasSynced<UserOnboardingSettings>(
-            new (accountSettings, UserOnboardingSettings.KvasKey) {
-                InitialValue = new UserOnboardingSettings(),
-                UpdateDelayer = FixedDelayer.NextTick,
-                Category = StateCategories.Get(type, nameof(UserSettings)),
-            });
+        _userSettings = stateFactory.NewAccountSettingsSynced<UserOnboardingSettings>(
+            AccountSettings,
+            UserOnboardingSettings.KvasKey,
+            new UserOnboardingSettings(),
+            updateDelayer: FixedDelayer.NextTick,
+            category: StateCategories.Get(type, nameof(UserSettings)));
         _localSettings = stateFactory.NewKvasStored<LocalOnboardingSettings>(
             new (localSettings, LocalOnboardingSettings.KvasKey) {
                 InitialValue = new LocalOnboardingSettings(),

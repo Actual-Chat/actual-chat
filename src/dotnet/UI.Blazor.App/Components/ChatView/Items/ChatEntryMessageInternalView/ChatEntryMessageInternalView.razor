@@ -56,9 +56,6 @@
         @if (status != ChatMessageSendingStatus.MessageStatus.Default) {
             <ChatMessageSendingStatus Status="@status" IsDotOnly="@(!showTextStatus)" />
         }
-        @if (message.ShowIndexDocId) {
-            <span>[DocId=@message.IndexDocId]</span>
-        }
     };
 }
 <div @ref="Ref" class="chat-message-markup @translationCls @streamingCls">

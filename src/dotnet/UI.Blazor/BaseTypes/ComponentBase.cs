@@ -26,7 +26,7 @@ public abstract class ComponentBase<THub> : ComponentBase, IHasCircuitHub
     protected MomentClockSet Clocks => Hub.Clocks;
     protected DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
     protected Temporals Temporals => Hub.Temporals;
-    protected AccountSettings AccountSettings => Hub.AccountSettings;
+    protected ScopedAccountSettings AccountSettings => Hub.AccountSettings;
     protected LocalSettings LocalSettings => Hub.LocalSettings;
     protected ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
     protected DiffEngine DiffEngine => Hub.DiffEngine;

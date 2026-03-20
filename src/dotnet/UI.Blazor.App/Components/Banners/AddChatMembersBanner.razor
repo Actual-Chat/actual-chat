@@ -1,5 +1,6 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Kvas
+@using ActualChat.Users
 @inherits ComputedStateComponent<AppUIHub, bool>
 
 <Banner
@@ -23,7 +24,7 @@
 @code {
     private static readonly TimeSpan DismissDuration = TimeSpan.FromDays(7);
 
-    private SyncedState<Box<Moment>> _dismissedAt = null!;
+    private SyncedState<AddChatMembersBannerSettings> _dismissedAt = null!;
 
     private IAuthors Authors => Hub.Authors;
     private IRoles Roles => Hub.Roles;
@@ -32,11 +33,11 @@
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override void OnInitialized() {
-        var chatId = Chat.Id;
-        var key = $"AddChatMembersBanner[{chatId.RootChatId.Value}].DismissedAt";
-        _dismissedAt = StateFactory.NewKvasSynced<Box<Moment>>(new(AccountSettings, key) {
-            InitialValue = Box.New(default(Moment)),
-        });
+        var key = AddChatMembersBannerSettings.GetKey(Chat.Id);
+        _dismissedAt = StateFactory.NewAccountSettingsSynced<AddChatMembersBannerSettings>(
+            AccountSettings,
+            key,
+            new AddChatMembersBannerSettings());
     }
 
     public override async ValueTask DisposeAsync() {
@@ -62,7 +63,7 @@
             return false;
 
         var dismissedAt = await _dismissedAt.Use(cancellationToken).ConfigureAwait(false);
-        if (dismissedAt.Value + DismissDuration > Clocks.ServerClock.Now)
+        if (dismissedAt.DismissedAt + DismissDuration > Clocks.ServerClock.Now)
             return false;
 
         var allAuthorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(false);
@@ -80,7 +81,7 @@
     // Event handlers
 
     private void OnDismiss()
-        => _dismissedAt.Value = Box.New(Clocks.ServerClock.Now);
+        => _dismissedAt.Value = new AddChatMembersBannerSettings { DismissedAt = Clocks.ServerClock.Now };
 
     private void OnInviteClick()
         => ModalUI.Show(new AddMemberModal.Model(Chat.Id));

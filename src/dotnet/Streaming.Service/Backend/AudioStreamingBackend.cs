@@ -30,7 +30,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     private ITranscriberFactory TranscriberFactory => field ??= Services.GetRequiredService<ITranscriberFactory>();
     private IChats Chats => field ??= Services.GetRequiredService<IChats>();
     private IAuthors Authors => field ??= Services.GetRequiredService<IAuthors>();
-    private IServerKvas ServerKvas => field ??= Services.GetRequiredService<IServerKvas>();
+    private IAccountSettings AccountSettings => field ??= Services.GetRequiredService<IAccountSettings>();
     private ICommander Commander => field ??= Services.Commander();
     private MomentClockSet Clocks => field ??= Services.Clocks();
     private IHostApplicationLifetime HostLifetime => field ??= Services.HostLifetime();

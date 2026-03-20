@@ -8,6 +8,7 @@ using ActualChat.Flows;
 using ActualChat.Hosting;
 using ActualChat.Invite;
 using ActualChat.Kvas;
+using ActualChat.Users;
 using ActualChat.Transcription;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
@@ -2423,11 +2424,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     private async Task<bool> HasActivatedInvite(UserId userId, ChatId chatId, CancellationToken cancellationToken)
     {
-        var activationKey = await ServerKvasBackend
+        var settings = await ServerKvasBackend
             .GetUserClient(userId)
-            .Get<string>(ServerKvasInviteKey.ForChat(chatId), cancellationToken)
+            .Get<ChatInviteSettings>(ChatInviteSettings.GetKey(chatId), cancellationToken)
             .ConfigureAwait(false);
-        if (activationKey is null)
+        if (settings is not { ActivationKey: { Length: > 0 } activationKey })
             return false;
 
         return await InvitesBackend.IsValid(activationKey, cancellationToken).ConfigureAwait(false);

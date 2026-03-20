@@ -1,6 +1,5 @@
 using ActualChat.Kvas;
 using CommunityToolkit.HighPerformance;
-using RangeExt = ActualChat.Mathematics.RangeExt;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -11,7 +10,6 @@ public record ChatItems(IReadOnlyList<ChatMessage> Items, bool HasBefore, bool H
 
 public partial class ChatUI
 {
-    public const string ShowIndexDocIdChatIdsSettingsKey = "ShowIndexDocIdChatIds";
     private static readonly TimeSpan BlockStartTimeGap = TimeSpan.FromSeconds(120);
 
     public static readonly TileStack<long> IdTileStack = Constants.Chat.ViewIdTileStack;
@@ -456,12 +454,7 @@ public partial class ChatUI
         if (entries.Count == 0 && conversations.Length == 0)
             return new VirtualListTile<ChatMessage>(idRange);
 
-        var showIndexDocId = await GetShowIndexDocId(chatId, cancellationToken).ConfigureAwait(false);
-        IReadOnlyDictionary<ChatEntryId, string> indexDocIds;
-        if (showIndexDocId)
-            indexDocIds = await GetIndexDocIds(entries, cancellationToken).ConfigureAwait(false);
-        else
-            indexDocIds = ImmutableDictionary<ChatEntryId, string>.Empty;
+        IReadOnlyDictionary<ChatEntryId, string> indexDocIds = ImmutableDictionary<ChatEntryId, string>.Empty;
 
         var prevEntry = (ChatEntry?)null;
         var prevDate = prevMessage?.Date ?? DateOnly.MinValue;
@@ -511,7 +504,7 @@ public partial class ChatUI
                 var isAudio = entry.HasAudio;
                 var shouldAddToResult = idRange.Contains(entry.LocalId) || entry.IsSending; // add sending entries
                 var flags = default(ChatMessageFlags);
-                var indexDocId = showIndexDocId ? indexDocIds.GetValueOrDefault(entry.Id, "") : "";
+                var indexDocId = "";
                 if (isBlockStart)
                     flags |= ChatMessageFlags.BlockStart;
                 if ((isBlockStart && isAudio) || isPrevAudio ^ isAudio)
@@ -598,8 +591,6 @@ public partial class ChatUI
                         ShouldSkipKey = isClientMsg,
                         Kind = messageKind,
                         PreviousMessage = prevMessage,
-                        ShowIndexDocId = showIndexDocId,
-                        IndexDocId = indexDocId,
                         Conversation = expandedConversation,
                     };
                     if (prevMessage != null)
@@ -784,20 +775,6 @@ public partial class ChatUI
             CancellationToken.None);
 
     // Private methods
-
-    private async Task<bool> GetShowIndexDocId(ChatId chatId, CancellationToken cancellationToken)
-    {
-        var account = AccountUI.OwnAccount.Value;
-        if (!account.IsAdmin)
-            return false;
-
-        var chatIdListToShowIndexDocId = await Hub.AccountSettings
-            .Get<string>(ShowIndexDocIdChatIdsSettingsKey, cancellationToken)
-            .ConfigureAwait(false);
-        var chatSidsShowIndexDocId = chatIdListToShowIndexDocId?.Split(';') ?? [];
-        var showIndexDocId = chatSidsShowIndexDocId.Contains(chatId.Value);
-        return showIndexDocId;
-    }
 
     private Task<IReadOnlyDictionary<ChatEntryId, string>> GetIndexDocIds(
         List<ChatEntry> entries,

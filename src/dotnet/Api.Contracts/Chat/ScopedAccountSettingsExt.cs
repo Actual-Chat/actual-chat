@@ -1,12 +1,9 @@
-﻿using ActualChat.Kvas;
-using ActualChat.Users;
-
 namespace ActualChat.Chat;
 
-public static class AccountSettingsExt
+public static class ChatAccountSettingsExt
 {
     public static async Task<ChatVoiceMode> GetChatVoiceMode(
-        this AccountSettings accountSettings,
+        this ScopedAccountSettings accountSettings,
         ChatId chatId,
         CancellationToken cancellationToken = default)
     {
@@ -24,13 +21,13 @@ public static class AccountSettingsExt
             return new ChatVoiceMode(chatId, VoiceMode.JustText, false);
 
         var voiceMode = await accountSettings
-            .UserChatSettings(chatId).Get(x => x.VoiceMode, cancellationToken)
+            .ChatUserSettings(chatId).Get(x => x.VoiceMode, cancellationToken)
             .ConfigureAwait(false);
         return new ChatVoiceMode(chatId, voiceMode, true);
     }
 
     public static async Task SetChatVoiceMode(
-        this AccountSettings accountSettings,
+        this ScopedAccountSettings accountSettings,
         ChatId chatId,
         VoiceMode voiceMode,
         CancellationToken cancellationToken = default)
@@ -43,20 +40,20 @@ public static class AccountSettingsExt
             throw StandardError.Constraint("Voice streaming mode cannot be changed in this chat.");
 
         await accountSettings
-            .UserChatSettings(chatId).Update(x => x with { VoiceMode = voiceMode }, cancellationToken)
+            .ChatUserSettings(chatId).Update(x => x with { VoiceMode = voiceMode }, cancellationToken)
             .ConfigureAwait(false);
     }
 
     public static Task<ListeningMode> GetListeningMode(
-        this AccountSettings accountSettings,
+        this ScopedAccountSettings accountSettings,
         ChatId chatId,
         CancellationToken cancellationToken = default)
-        => accountSettings.UserChatSettings(chatId).Get(x => x.ListeningMode, cancellationToken);
+        => accountSettings.ChatUserSettings(chatId).Get(x => x.ListeningMode, cancellationToken);
 
     public static Task SetListeningMode(
-        this AccountSettings accountSettings,
+        this ScopedAccountSettings accountSettings,
         ChatId chatId,
         ListeningMode listeningMode,
         CancellationToken cancellationToken = default)
-        => accountSettings.UserChatSettings(chatId).Update(x => x with { ListeningMode = listeningMode }, cancellationToken);
+        => accountSettings.ChatUserSettings(chatId).Update(x => x with { ListeningMode = listeningMode }, cancellationToken);
 }

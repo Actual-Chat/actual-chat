@@ -31,16 +31,14 @@ public static class ServiceProviderExt
         => services.GetRequiredService<Features>();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static IServerKvas ServerKvas(this IServiceProvider services)
-        => services.GetRequiredService<IServerKvas>();
+    public static Temporals Temporals(this IServiceProvider services)
+        => services.IsScoped()
+            ? services.GetService<Temporals>() ?? FakeTemporals.Instance
+            : FakeTemporals.Instance;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static IServerSettings ServerSettings(this IServiceProvider services)
         => services.GetRequiredService<IServerSettings>();
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ServerSettingsKvasClient ServerSettingsKvasClient(this IServiceProvider services, Session session)
-        => new (services.ServerSettings(), session);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static KeyedFactory<TService, TKey> KeyedFactory<

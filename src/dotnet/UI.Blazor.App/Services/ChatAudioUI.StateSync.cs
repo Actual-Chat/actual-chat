@@ -357,14 +357,14 @@ public partial class ChatAudioUI
             await stopTasks.Collect(ApiConstants.Concurrency.Unlimited, cancellationToken).ConfigureAwait(false);
 
             foreach (var chatId in toStart) {
-                var userChatSettings = await AccountSettings.UserChatSettings(chatId)
+                var chatUserSettings = await AccountSettings.ChatUserSettings(chatId)
                     .Get(cancellationToken)
                     .ConfigureAwait(false);
-                if (userChatSettings.ListeningMode == ListeningMode.Forever)
+                if (chatUserSettings.ListeningMode == ListeningMode.Forever)
                     continue; // do not start listening idle watcher
 
                 var chatOptions = options with {
-                    IdleTimeout = userChatSettings.ListeningMode.GetInfo().Duration,
+                    IdleTimeout = chatUserSettings.ListeningMode.GetInfo().Duration,
                 };
                 var watcher = FuncWorker.Start(ct => StopListeningWhenIdle(chatId, chatOptions, ct), cancellationToken);
                 monitors.Add(chatId, watcher);
@@ -407,7 +407,7 @@ public partial class ChatAudioUI
         finally {
             SetStopListeningAt(chatId, null);
             if (mustStop) {
-                var listeningMode = await AccountSettings.UserChatSettings(chatId)
+                var listeningMode = await AccountSettings.ChatUserSettings(chatId)
                     .Get(x => x.ListeningMode, cancellationToken)
                     .ConfigureAwait(false);
                 if (listeningMode != ListeningMode.Forever)

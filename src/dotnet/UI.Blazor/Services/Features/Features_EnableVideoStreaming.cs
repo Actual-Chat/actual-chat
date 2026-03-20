@@ -13,7 +13,7 @@ public class Features_EnableVideoStreaming : FeatureDef<bool>, IClientFeatureDef
         if (!account.IsAdmin)
             return false;
 
-        return await services.AccountSettings()
+        return await services.AccountSettings(session)
             .UserAppSettings()
             .Get(x => x.IsVideoStreamingEnabled ?? false, cancellationToken)
             .ConfigureAwait(false);

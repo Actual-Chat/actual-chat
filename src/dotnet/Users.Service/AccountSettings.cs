@@ -1,0 +1,129 @@
+using ActualChat.Invite;
+using ActualChat.Kvas;
+using CommunityToolkit.HighPerformance.Buffers;
+
+namespace ActualChat.Users;
+
+/// <summary>
+/// Server-side implementation of <see cref="IAccountSettings"/>.
+/// Translates between <see cref="StoredSettings"/> and raw bytes stored in <see cref="IServerKvasBackend"/>.
+/// </summary>
+public class AccountSettings : IAccountSettings
+{
+    private static KvasSerializer Serializer => Kvas.KvasExt.Serializer;
+
+    private IAccounts Accounts { get; }
+    private IServerKvasBackend KvasBackend { get; }
+    private ICommander Commander { get; }
+    private ILogger Log { get; }
+
+    public AccountSettings(IServiceProvider services)
+    {
+        Log = services.LogFor(GetType());
+        Accounts = services.GetRequiredService<IAccounts>();
+        KvasBackend = services.GetRequiredService<IServerKvasBackend>();
+        Commander = services.Commander();
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<StoredSettings?> Get(Session session, string key, CancellationToken cancellationToken = default)
+    {
+        var prefix = await GetPrefix(session, cancellationToken).ConfigureAwait(false);
+        var data = await KvasBackend.Get(prefix, key, cancellationToken).ConfigureAwait(false);
+        return Deserialize(data, key);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnSet(AccountSettings_Set command, CancellationToken cancellationToken = default)
+    {
+        if (Invalidation.IsActive)
+            return;
+
+        var (session, key, value) = command;
+        value?.ValidateKey(key);
+
+        var prefix = await GetPrefix(session, cancellationToken).ConfigureAwait(false);
+        var data = Serialize(value);
+        var setManyCommand = new ServerKvasBackend_SetMany(prefix, (key, data));
+        await Commander.Call(setManyCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    // Private methods
+
+    private async ValueTask<string> GetPrefix(Session session, CancellationToken cancellationToken)
+        => await GetUserPrefix(session, cancellationToken).ConfigureAwait(false)
+            ?? await GetGuestPrefix(session, cancellationToken).ConfigureAwait(false)
+            ?? "";
+
+    private async ValueTask<string?> GetUserPrefix(Session session, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        return !account.IsGuest
+            ? ServerKvasBackendExt.GetUserPrefix(account.Id)
+            : null;
+    }
+
+    private async ValueTask<string?> GetGuestPrefix(Session session, CancellationToken cancellationToken)
+    {
+        var sessionInfo = await Accounts.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
+        var guestId = sessionInfo.GetGuestId();
+        return guestId is null ? null : ServerKvasBackendExt.GetUserPrefix(guestId);
+    }
+
+    private static StoredSettings? Deserialize(byte[]? data, string key)
+    {
+        if (data is null)
+            return null;
+
+        // Use concrete type for deserialization to stay compatible with IServerKvas/IKvas data format
+        var type = ResolveType(key);
+        return (StoredSettings?)Serializer.Read(data, type, out _);
+    }
+
+    private static byte[]? Serialize(StoredSettings? value)
+    {
+        if (value is null)
+            return null;
+
+        // Serialize using the concrete type to stay compatible with IServerKvas/IKvas readers
+        using var buffer = new ArrayPoolBufferWriter<byte>(ArrayPools.SharedBytePool, 1024);
+        Serializer.Write(buffer, value, value.GetType());
+        return buffer.WrittenMemory.ToArray();
+    }
+
+    private static Type ResolveType(string key)
+    {
+        if (key.Length == 0)
+            return typeof(StoredSettings);
+
+        // Parameterized keys start with @
+        if (key[0] == '@') {
+            if (key.StartsWith(ChatUserSettings.KeyPrefix))
+                return typeof(ChatUserSettings);
+            if (key.StartsWith(ChatInviteSettings.KeyPrefix))
+                return typeof(ChatInviteSettings);
+            if (key.StartsWith(AddChatMembersBannerSettings.KeyPrefix))
+                return typeof(AddChatMembersBannerSettings);
+            return typeof(StoredSettings);
+        }
+
+        // Simple keys: the key is the type name
+        return KeyToType.GetValueOrDefault(key) ?? typeof(StoredSettings);
+    }
+
+    private static readonly Dictionary<string, Type> KeyToType = new(StringComparer.Ordinal) {
+        [nameof(UserAppSettings)] = typeof(UserAppSettings),
+        [nameof(UserEmailsSettings)] = typeof(UserEmailsSettings),
+        [nameof(UserLanguageSettings)] = typeof(UserLanguageSettings),
+        [nameof(UserListeningSettings)] = typeof(UserListeningSettings),
+        [nameof(UserNavbarSettings)] = typeof(UserNavbarSettings),
+        [nameof(UserReactionSettings)] = typeof(UserReactionSettings),
+        [nameof(UserAvatarSettings)] = typeof(UserAvatarSettings),
+        [nameof(UserTranscriptionEngineSettings)] = typeof(UserTranscriptionEngineSettings),
+        [nameof(UserOnboardingSettings)] = typeof(UserOnboardingSettings),
+        [nameof(UserBubbleSettings)] = typeof(UserBubbleSettings),
+        [nameof(UserChatRecordingDetectedLanguage)] = typeof(UserChatRecordingDetectedLanguage),
+        [nameof(UserTranscodingTestSettings)] = typeof(UserTranscodingTestSettings),
+        [nameof(FakeDeviceContactOptions)] = typeof(FakeDeviceContactOptions),
+    };
+}

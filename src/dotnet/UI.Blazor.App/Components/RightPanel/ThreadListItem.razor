@@ -84,7 +84,7 @@
         var lastEntry = chatState.Info.LastTextEntry;
         return new() {
             Chat = chatState.Chat,
-            NotificationMode = chatState.Info.UserSettings.NotificationMode,
+            NotificationMode = chatState.Info.ChatUserSettings.NotificationMode,
             UnreadCount = chatState.Info.UnreadCount,
             HasUnreadMentions = chatState.Info.HasUnreadMentions,
             LastTextEntry = lastEntry,

@@ -1,5 +1,3 @@
-using ActualChat.Users;
-
 namespace ActualChat.Chat;
 
 public sealed record ChatVoiceMode(

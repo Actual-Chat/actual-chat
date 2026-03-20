@@ -118,9 +118,9 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
-    public void UserChatSettings_Basic()
+    public void ChatUserSettings_Basic()
     {
-        var settings = new UserChatSettings {
+        var settings = new Chat.ChatUserSettings {
             Language = Languages.English,
             NotificationMode = ChatNotificationMode.ImportantOnly,
             VoiceMode = VoiceMode.TextAndVoice,

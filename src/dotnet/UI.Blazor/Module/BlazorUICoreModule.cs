@@ -66,8 +66,8 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
             BackendFactory = c => new WebKvasBackend($"{ImportName}.localSettings", c),
         });
         services.AddScoped(c => new LocalSettings(c.GetRequiredService<LocalSettings.Options>(), c));
-        services.AddScoped(c => c.AccountSettings(c.Session()));
-        services.AddScoped(c => c.ServerSettingsKvasClient(c.Session()));
+        services.AddScoped(c => new ScopedAccountSettings(c, c.Session()));
+        services.AddScoped(c => new ServerSettingsKvasClient(c.ServerSettings(), c.Session()));
         if (isServer) {
             services.AddScoped<DateTimeConverter>(c => new ServerSideDateTimeConverter(c));
             MomentClockSet.Default.ServerClock.Offset = TimeSpan.Zero;
@@ -125,7 +125,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
 
         // Fusion-based UI services
         if (hostKind == HostKind.Server)
-            fusion.AddService<Temporals, FakeTemporals>(ServiceLifetime.Scoped); // No temporals on the server-side
+            services.AddScoped(_ => FakeTemporals.Instance);
         else
             fusion.AddService<Temporals, RealTemporals>(ServiceLifetime.Scoped);
         fusion.AddService<LiveTime>(ServiceLifetime.Scoped);

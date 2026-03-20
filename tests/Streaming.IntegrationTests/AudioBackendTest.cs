@@ -59,7 +59,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var client = services.GetRequiredService<IStreamClient>();
         var log = services.LogFor<StreamingBackendTest>();
         var accountSettings = services.AccountSettings(session);
-        await accountSettings.Set(UserLanguageSettings.KvasKey,
+        await accountSettings.UserLanguageSettings().Set(
             new UserLanguageSettings {
                 Primary = Languages.Russian,
             });
@@ -74,8 +74,8 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
 
         using var cts = new CancellationTokenSource();
 
-        var userChatSettings = new UserChatSettings { Language = Languages.Russian };
-        await accountSettings.UserChatSettings(chat.Id).Set(userChatSettings, CancellationToken.None);
+        var chatUserSettings = new ChatUserSettings { Language = Languages.Russian };
+        await accountSettings.ChatUserSettings(chat.Id).Set(chatUserSettings, CancellationToken.None);
 
         var streamId = StreamId.New(services.MeshWatcher().ThisNode.Ref);
         var audioRecord = new AudioRecord(
@@ -109,7 +109,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var chats = services.GetRequiredService<IChatsBackend>();
         var log = services.LogFor<StreamingBackendTest>();
         var accountSettings = services.AccountSettings(session);
-        await accountSettings.Set(UserLanguageSettings.KvasKey,
+        await accountSettings.UserLanguageSettings().Set(
             new UserLanguageSettings {
                 Primary = Languages.Russian,
             });
@@ -124,8 +124,8 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
 
         using var cts = new CancellationTokenSource();
 
-        var userChatSettings = new UserChatSettings { Language = Languages.Russian };
-        await accountSettings.UserChatSettings(chat.Id).Set(userChatSettings, CancellationToken.None);
+        var chatUserSettings = new ChatUserSettings { Language = Languages.Russian };
+        await accountSettings.ChatUserSettings(chat.Id).Set(chatUserSettings, CancellationToken.None);
 
         var streamId = StreamId.New(services.MeshWatcher().ThisNode.Ref);
         var audioRecord = new AudioRecord(
@@ -176,7 +176,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var chats = services.GetRequiredService<IChatsBackend>();
         var log = services.LogFor<StreamingBackendTest>();
         var accountSettings = services.AccountSettings(session);
-        await accountSettings.Set(UserLanguageSettings.KvasKey,
+        await accountSettings.UserLanguageSettings().Set(
             new UserLanguageSettings {
                 Primary = Languages.Russian,
             });
@@ -191,8 +191,8 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
 
         using var cts = new CancellationTokenSource();
 
-        var userChatSettings = new UserChatSettings { Language = Languages.Russian };
-        await accountSettings.UserChatSettings(chat.Id).Set(userChatSettings, CancellationToken.None);
+        var chatUserSettings = new ChatUserSettings { Language = Languages.Russian };
+        await accountSettings.ChatUserSettings(chat.Id).Set(chatUserSettings, CancellationToken.None);
 
         var streamId = StreamId.New(services.MeshWatcher().ThisNode.Ref);
         var audioRecord = new AudioRecord(
@@ -244,7 +244,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var client = services.GetRequiredService<IStreamClient>();
         var log = services.LogFor<StreamingBackendTest>();
         var accountSettings = services.AccountSettings(session);
-        await accountSettings.Set(UserLanguageSettings.KvasKey,
+        await accountSettings.UserLanguageSettings().Set(
             new UserLanguageSettings {
                 Primary = Languages.Russian,
             });
@@ -286,7 +286,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var client = services.GetRequiredService<IStreamClient>();
         var log = services.LogFor<StreamingBackendTest>();
         var accountSettings = services.AccountSettings(session);
-        await accountSettings.Set(UserLanguageSettings.KvasKey,
+        await accountSettings.UserLanguageSettings().Set(
             new UserLanguageSettings {
                 Primary = Languages.Russian,
             });

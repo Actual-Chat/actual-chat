@@ -62,7 +62,7 @@ public partial class AudioStreamingBackend
             .EnsureJoined(session, chatId, cancellationToken)
             .ConfigureAwait(false);
 
-        var accountSettings = new AccountSettings(ServerKvas, session);
+        var accountSettings = Services.AccountSettings(session);
         var chatVoiceMode = await accountSettings
             .GetChatVoiceMode(chatId, cancellationToken)
             .ConfigureAwait(false);
@@ -150,21 +150,20 @@ public partial class AudioStreamingBackend
             // Launch re-transcribe after text and audio entries have been finalized.
             await RetranscribeTextEntry(transcribeResult.Value.Item1, transcribeResult.Value.Item2).SilentAwait();
         }
-
     }
 
     private async Task<AudioSegmentLanguage> GetTranscriptionLanguage(AudioRecord record, CancellationToken cancellationToken)
     {
-        var kvas = ServerKvas.GetClient(record.Session);
-        var settings = await kvas.UserChatSettings(record.ChatId).Get(cancellationToken).ConfigureAwait(false);
-        var languageSettings = await kvas.UserLanguageSettings().Get(cancellationToken).ConfigureAwait(false);
+        var accountSettings = Services.AccountSettings(record.Session);
+        var settings = await accountSettings.ChatUserSettings(record.ChatId).Get(cancellationToken).ConfigureAwait(false);
+        var languageSettings = await accountSettings.UserLanguageSettings().Get(cancellationToken).ConfigureAwait(false);
         return new AudioSegmentLanguage(settings.Language, languageSettings);
     }
 
     private async Task<TranscriptionEngine> GetTranscriptionEngine(AudioRecord record, CancellationToken cancellationToken)
     {
-        var kvas = ServerKvas.GetClient(record.Session);
-        var settings = await kvas.UserTranscriptionEngineSettings().Get(cancellationToken).ConfigureAwait(false);
+        var accountSettings = Services.AccountSettings(record.Session);
+        var settings = await accountSettings.UserTranscriptionEngineSettings().Get(cancellationToken).ConfigureAwait(false);
         return settings.TranscriptionEngine;
     }
 
@@ -362,12 +361,14 @@ public partial class AudioStreamingBackend
         CancellationToken cancellationToken)
         => _ = BackgroundTask.Run(async () => {
             var chatId = audioSegmentRecord.ChatId;
-            var kvas = ServerKvas.GetClient(audioSegmentRecord.Session);
+            var accountSettings = Services.AccountSettings(audioSegmentRecord.Session);
             var userChatRecordingDetectedLanguage = new UserChatRecordingDetectedLanguage {
                 Language = detectedLanguage,
                 ChatId = chatId,
                 Timestamp = Clocks.SystemClock.Now,
             };
-            await kvas.UserChatRecordingDetectedLanguage().Set(userChatRecordingDetectedLanguage, cancellationToken).ConfigureAwait(false);
+            await accountSettings.UserChatRecordingDetectedLanguage()
+                .Set(userChatRecordingDetectedLanguage, cancellationToken)
+                .ConfigureAwait(false);
         }, Log, "Failed to apply transcription detected language", cancellationToken);
 }

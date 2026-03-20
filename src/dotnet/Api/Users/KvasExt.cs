@@ -7,8 +7,8 @@ namespace ActualChat.Users;
 /// </summary>
 public static class KvasExt
 {
-    public static KvasAccessor<UserChatSettings> UserChatSettings(this IKvas<Account> kvas, ChatId chatId)
-        => new (kvas, Users.UserChatSettings.GetKvasKey(chatId));
+    public static KvasAccessor<ChatUserSettings> ChatUserSettings(this IKvas<Account> kvas, ChatId chatId)
+        => new (kvas, Chat.ChatUserSettings.GetKey(chatId));
 
     public static KvasAccessor<UserEmailsSettings> UserEmailsSettings(this IKvas<Account> kvas)
         => kvas.For<UserEmailsSettings>();

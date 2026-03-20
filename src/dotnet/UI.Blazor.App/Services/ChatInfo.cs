@@ -9,7 +9,7 @@ public sealed record ChatInfo(Contact Contact) : IHasId<ChatId>
     public const int MaxUnreadCount = 1000;
     public const int MaxLastTextEntryContentLength = 100;
 
-    public UserChatSettings UserSettings { get; init; } = UserChatSettings.Default;
+    public ChatUserSettings ChatUserSettings { get; init; } = ChatUserSettings.Default;
     public ChatNews? News { get; init; }
     public Mention? LastMention { get; init; }
     public Chat.Chat? LastThread { get; init; }
@@ -27,7 +27,7 @@ public sealed record ChatInfo(Contact Contact) : IHasId<ChatId>
     public bool IsThreadStartEntry => LastTextEntry?.IsThreadStart == true;
 
     // Computed
-    public Trimmed<int> UnmutedUnreadCount => UserSettings.NotificationMode switch {
+    public Trimmed<int> UnmutedUnreadCount => ChatUserSettings.NotificationMode switch {
         ChatNotificationMode.ImportantOnly => (HasUnreadMentions ? 1 : 0, MaxUnreadCount),
         ChatNotificationMode.Muted => (0, MaxUnreadCount),
         _ => UnreadCount != 0 ? UnreadCount : (HasUnreadMentions ? 1 : 0, MaxUnreadCount),

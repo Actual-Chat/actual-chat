@@ -1,5 +1,3 @@
-using ActualChat.Users;
-
 namespace ActualChat.UI.Blazor.Services;
 
 public abstract class ExperimentalFeature : FeatureDef<bool>, IClientFeatureDef
@@ -17,7 +15,7 @@ public abstract class ExperimentalFeature : FeatureDef<bool>, IClientFeatureDef
         if (!IsTargetUser(account))
             return false;
 
-        var accountSettings = services.AccountSettings();
+        var accountSettings = services.AccountSettings(session);
         var appSettings = await accountSettings.UserAppSettings().Get(cancellationToken).ConfigureAwait(false);
         return appSettings.AreExperimentalFeaturesEnabled ?? true;
     }

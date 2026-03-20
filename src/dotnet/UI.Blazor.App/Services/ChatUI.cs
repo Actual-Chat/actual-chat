@@ -1,6 +1,7 @@
 using ActualChat.Contacts;
 using ActualChat.Kvas;
 using ActualChat.Pooling;
+using ActualChat.Users;
 using ActualChat.UI.Blazor.App.Events;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
@@ -89,12 +90,12 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         _expandedConversations = StateFactory.NewMutable(
             (IImmutableSet<ConversationId>)ImmutableHashSet<ConversationId>.Empty,
             StateCategories.Get(type, nameof(ExpandedConversations)));
-        _navbarSettings = StateFactory.NewKvasSynced<UserNavbarSettings>(
-            new (AccountSettings, UserNavbarSettings.KvasKey) {
-                InitialValue = new UserNavbarSettings(),
-                UpdateDelayer = FixedDelayer.NextTick,
-                Category = StateCategories.Get(GetType(), nameof(NavbarSettings)),
-            });
+        _navbarSettings = StateFactory.NewAccountSettingsSynced<UserNavbarSettings>(
+            AccountSettings,
+            UserNavbarSettings.KvasKey,
+            new UserNavbarSettings(),
+            updateDelayer: FixedDelayer.NextTick,
+            category: StateCategories.Get(GetType(), nameof(NavbarSettings)));
         Hub.RegisterDisposable(_navbarSettings);
         _itemVisibility = StateFactory.NewMutable(ChatViewItemVisibility.Empty, StateCategories.Get(type, nameof(ItemVisibility)));
 
@@ -119,16 +120,16 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             var chatNewsTask = Chats.GetNews(Session, chatId, cancellationToken);
             var lastMentionTask = Mentions.GetLastOwn(Session, chatId, cancellationToken);
             var readEntryLidTask = GetReadEntryLid(chatId, cancellationToken);
-            var userSettingsTask = AccountSettings.UserChatSettings(chatId).Get(cancellationToken);
+            var chatUserSettingsTask = AccountSettings.ChatUserSettings(chatId).Get(cancellationToken);
 
             var news = await chatNewsTask.WaitAsync(TimeSpan.FromSeconds(20), cancellationToken).ConfigureAwait(false);
-            var userSettings = await userSettingsTask.ConfigureAwait(false);
+            var chatUserSettings = await chatUserSettingsTask.ConfigureAwait(false);
             var lastMention = await lastMentionTask.ConfigureAwait(false);
             var readEntryLid = await readEntryLidTask.ConfigureAwait(false);
             var unreadCount = ComputeUnreadCount(chatId, news, readEntryLid);
 
             var hasUnreadMentions = false;
-            if (userSettings.NotificationMode is not ChatNotificationMode.Muted) {
+            if (chatUserSettings.NotificationMode is not ChatNotificationMode.Muted) {
                 var lastMentionEntryId = lastMention?.EntryId.LocalId ?? 0;
                 hasUnreadMentions = lastMentionEntryId > readEntryLid;
             }
@@ -163,7 +164,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
             var result = new ChatInfo(contact) {
                 News = news,
-                UserSettings = userSettings,
+                ChatUserSettings = chatUserSettings,
                 LastMention = lastMention,
                 LastThread = lastThreadChat,
                 LastThreadCreator = lastThreadCreator,

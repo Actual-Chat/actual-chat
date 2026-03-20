@@ -94,7 +94,7 @@
     private IMedia Media => Hub.Media;
     private ICommander Commander => Hub.Commander;
     private FileUploader FileUploader => field ??= Hub.Services.GetRequiredService<FileUploader>();
-    private KvasAccessor<UserTranscodingTestSettings> UserTranscodingTestSettings()
+    private AccountSettingsAccessor<UserTranscodingTestSettings> UserTranscodingTestSettings()
         => AccountSettings.UserTranscodingTestSettings();
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {

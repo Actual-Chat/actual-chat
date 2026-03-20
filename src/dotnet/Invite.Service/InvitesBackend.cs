@@ -1,5 +1,4 @@
 using ActualChat.Invite.Db;
-using ActualChat.Kvas;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
@@ -15,7 +14,6 @@ public class InvitesBackend(IServiceProvider services)
     private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IPlacesBackend PlacesBackend => field ??= Services.GetRequiredService<IPlacesBackend>();
-    private IServerKvas ServerKvas => field ??= Services.ServerKvas();
     private IDbEntityResolver<string, DbInvite> DbInviteResolver { get; }
         = services.GetRequiredService<IDbEntityResolver<string, DbInvite>>();
     private IDbEntityResolver<string, DbActivationKey> DbActivationKeyResolver { get; }
@@ -216,10 +214,11 @@ public class InvitesBackend(IServiceProvider services)
             dbContext.Add(dbActivationKey);
             context.Operation.Items.KeylessSet(dbActivationKey.Id);
 
-            var accountSettings = new AccountSettings(ServerKvas, session);
-            await accountSettings
-                .Set(ServerKvasInviteKey.ForChat(chatId), dbActivationKey.Id, cancellationToken)
-                .ConfigureAwait(false);
+            var accountSettings = Services.AccountSettings(session);
+            await accountSettings.Set(
+                ChatInviteSettings.GetKey(chatId),
+                new ChatInviteSettings { ActivationKey = dbActivationKey.Id },
+                cancellationToken).ConfigureAwait(false);
         }
     }
 

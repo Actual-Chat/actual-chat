@@ -1,10 +1,13 @@
-namespace ActualChat.UI.Blazor.Services.Internal;
+namespace ActualChat;
 
-public class RealTemporals(UIHub hub) : Temporals(hub)
+public class RealTemporals : Temporals
 {
+    public RealTemporals()
+        => IsReal = true;
+
     [ComputeMethod]
     protected override ValueTask<Entry?> GetEntry(string key)
-        => new (Entries.GetValueOrDefault(key));
+        => new(Entries.GetValueOrDefault(key));
 
     protected override void SetEntry<T>(string key, T value, TimeSpan expiresIn)
     {

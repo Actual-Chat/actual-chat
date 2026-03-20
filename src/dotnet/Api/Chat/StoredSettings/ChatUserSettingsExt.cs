@@ -1,16 +1,16 @@
 using ActualChat.Kvas;
 
-namespace ActualChat.Users;
+namespace ActualChat.Chat;
 
 /// <summary>
-/// Extension methods for <see cref="UserChatSettings"/>.
+/// Extension methods for <see cref="ChatUserSettings"/>.
 /// </summary>
-public static class UserChatSettingsExt
+public static class ChatUserSettingsExt
 {
     public static Task<Language> LanguageOrPrimary(
-        this UserChatSettings userChatSettings, IKvas<Account> kvas,
+        this ChatUserSettings chatUserSettings, IKvas<Account> kvas,
         CancellationToken cancellationToken = default)
-        => userChatSettings.Language is { } language
+        => chatUserSettings.Language is { } language
             ? Task.FromResult(language)
             : kvas.UserLanguageSettings().Get(x => x.Primary, cancellationToken);
 }

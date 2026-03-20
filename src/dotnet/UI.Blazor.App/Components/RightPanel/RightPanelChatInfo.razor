@@ -48,9 +48,9 @@
             return new() { HideNotificationsToggle = true };
 
         var isOwner = chat.Rules.IsOwner() || chat.Kind == ChatKind.Peer;
-        var userChatSettings = await Temporals.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
+        var chatUserSettings = await AccountSettings.ChatUserSettings(chatId).Get(cancellationToken).ConfigureAwait(false);
         return new() {
-            NotificationMode = userChatSettings.NotificationMode,
+            NotificationMode = chatUserSettings.NotificationMode,
             ShowSummarizationToggle = isOwner,
             IsSummarized = Chat.IsSummarized ?? false,
         };
@@ -58,9 +58,8 @@
 
     private Task OnNotificationToggleChanged(bool isMuted)
         => UICommander.RunLocal(ct
-            => Temporals.UpdateUserChatSettings(Chat.Id,
-                x => x with { NotificationMode = isMuted ? ChatNotificationMode.Muted : ChatNotificationMode.Default, },
-                ct));
+            => AccountSettings.ChatUserSettings(Chat.Id)
+                .Update(x => x with { NotificationMode = isMuted ? ChatNotificationMode.Muted : ChatNotificationMode.Default, }, ct));
 
     private Task OnSummarizeToggleChanged(bool isSummarized) {
         if (State.Value.IsSummarized == isSummarized)

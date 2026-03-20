@@ -56,10 +56,10 @@ public class ActiveChatsUI : UIServiceBase<AppUIHub>
                 if (chat.IsRecording)
                     chat = chat with { IsRecording = false };
 
-                var userChatSettings = await AccountSettings
-                    .UserChatSettings(chat.ChatId).Get(cancellationToken)
+                var chatUserSettings = await AccountSettings
+                    .ChatUserSettings(chat.ChatId).Get(cancellationToken)
                     .ConfigureAwait(false);
-                var listeningMode = userChatSettings.ListeningMode;
+                var listeningMode = chatUserSettings.ListeningMode;
                 var listeningDuration = listeningMode.GetInfo().Duration;
                 var listeningRecency = Moment.Max(chat.Recency, chat.ListeningRecency);
                 if (chat.IsListening && CpuNow - listeningRecency > listeningDuration)

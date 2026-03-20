@@ -1,17 +1,27 @@
 using ActualChat.Serialization;
 
-namespace ActualChat.Users;
+namespace ActualChat.Chat;
 
 /// <summary>
 /// Per-chat user preferences for notifications, language, and voice mode.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-public sealed partial record UserChatSettings : StoredSettings
+public sealed partial record ChatUserSettings : StoredSettings
 {
-    public static readonly UserChatSettings Default = new();
+    public static readonly string KeyPrefix = "@UserChatSettings(";
+    public static readonly string KeySuffix = ")";
+    public static readonly ChatUserSettings Default = new();
 
-    public static string GetKvasKey(ChatId chatId) => $"@UserChatSettings({chatId.Value})";
-    public static string GetKvasKey(string chatId) => $"@UserChatSettings({chatId})";
+    public static string GetKey(ChatId chatId) => $"{KeyPrefix}{chatId.Value}{KeySuffix}";
+    public static string GetKey(string chatId) => $"{KeyPrefix}{chatId}{KeySuffix}";
+
+    public override void ValidateKey(string key)
+    {
+        if (!key.StartsWith(KeyPrefix) || !key.EndsWith(KeySuffix))
+            throw StandardError.Constraint("Invalid key.");
+        var chatIdValue = key[KeyPrefix.Length..^KeySuffix.Length];
+        ChatId.Parse(chatIdValue);
+    }
 
     // `isNullable = false` is intentional to keep backward compatibility with v1.26 format when Language was non-nullable
     [DataMember, MemoryPackOrder(0), LegacyLanguageFormatter(false)]

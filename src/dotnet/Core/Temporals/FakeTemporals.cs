@@ -1,7 +1,12 @@
-namespace ActualChat.UI.Blazor.Services.Internal;
+namespace ActualChat;
 
-public class FakeTemporals(UIHub hub) : Temporals(hub)
+public class FakeTemporals : Temporals
 {
+    public static readonly Temporals Instance = new FakeTemporals();
+
+    private FakeTemporals()
+        => IsReal = false;
+
     protected sealed override ValueTask<Entry?> GetEntry(string key)
         => default;
 

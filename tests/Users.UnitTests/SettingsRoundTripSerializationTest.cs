@@ -57,7 +57,7 @@ public class SettingsRoundTripSerializationTest
     public static TheoryData<string, object> GetCases()
     {
         var theoryData = new TheoryData<string, object>();
-        foreach (var (name, data) in GetUserChatSettingsCases())
+        foreach (var (name, data) in GetChatUserSettingsCases())
             theoryData.Add(name, data);
         foreach (var (name, data) in GetUserLanguageSettingsCases())
             theoryData.Add(name, data);
@@ -69,9 +69,9 @@ public class SettingsRoundTripSerializationTest
     private static string GetFileName(object data, string name)
         => $"{data.GetType().Name}.{name}.bin";
 
-    private static IEnumerable<(string Name, UserChatSettings Data)> GetUserChatSettingsCases()
+    private static IEnumerable<(string Name, ChatUserSettings Data)> GetChatUserSettingsCases()
     {
-        yield return ("DefaultInstance", UserChatSettings.Default);
+        yield return ("DefaultInstance", ChatUserSettings.Default);
         yield return ("Empty", new ());
         yield return ("OnlyLanguageEnglish", new () {
             Language = Languages.English,

@@ -7,9 +7,9 @@ namespace ActualChat.Users;
 /// </summary>
 public class Avatars(IServiceProvider services) : IAvatars
 {
+    private IServiceProvider Services { get; } = services;
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IAvatarsBackend Backend { get; } = services.GetRequiredService<IAvatarsBackend>();
-    private IServerKvas ServerKvas { get; } = services.ServerKvas();
     private ICommander Commander { get; } = services.Commander();
 
     // [ComputeMethod]
@@ -35,8 +35,8 @@ public class Avatars(IServiceProvider services) : IAvatars
     // [ComputeMethod]
     public virtual async Task<IReadOnlyList<Symbol>> ListOwnAvatarIds(Session session, CancellationToken cancellationToken)
     {
-        var kvasClient = ServerKvas.GetClient(session);
-        var settings = await kvasClient.UserAvatarSettings().Get(cancellationToken).ConfigureAwait(false);
+        var accountSettings = Services.AccountSettings(session);
+        var settings = await accountSettings.UserAvatarSettings().Get(cancellationToken).ConfigureAwait(false);
         return settings.AvatarIds.ToArray();
     }
 
@@ -67,8 +67,8 @@ public class Avatars(IServiceProvider services) : IAvatars
         if (avatar.IsAnonymous)
             return avatar; // We don't account anonymous avatars in the list
 
-        var kvas = ServerKvas.GetClient(session);
-        await UpdateAvatarList(kvas, change, change.Remove ? avatarId : avatar.Id).ConfigureAwait(false);
+        var accountSettings = Services.AccountSettings(session);
+        await UpdateAvatarList(accountSettings, change.Remove ? avatarId : avatar.Id, change).ConfigureAwait(false);
 
         return avatar;
     }
@@ -80,27 +80,30 @@ public class Avatars(IServiceProvider services) : IAvatars
             return; // It just spawns other commands, so nothing to do here
 
         var (session, avatarId) = command;
+        var accountSettings = Services.AccountSettings(session);
         var avatar = await GetOwn(session, avatarId, cancellationToken).Require().ConfigureAwait(false);
-        var kvas = ServerKvas.GetClient(session);
-        var settings = await kvas.UserAvatarSettings().Get(cancellationToken).ConfigureAwait(false);
+        var settings = await accountSettings.UserAvatarSettings().Get(cancellationToken).ConfigureAwait(false);
         if (settings.DefaultAvatarId == avatar.Id)
             return;
 
         settings = settings with { DefaultAvatarId = avatarId };
-        await kvas.UserAvatarSettings().Set(settings, cancellationToken).ConfigureAwait(false);
+        await accountSettings.UserAvatarSettings().Set(settings, cancellationToken).ConfigureAwait(false);
     }
 
-    internal static async Task UpdateAvatarList(IKvas<Account> kvas, Change<AvatarFull> change, Symbol avatarId)
+    internal static async Task UpdateAvatarList(
+        ScopedAccountSettings accountSettings,
+        Symbol avatarId,
+        Change<AvatarFull> change)
     {
         // We don't cancel anything from here
         CancellationToken cancellationToken = default;
-        var oldSettings = await kvas.UserAvatarSettings().Get(cancellationToken).ConfigureAwait(false);
+        var oldSettings = await accountSettings.UserAvatarSettings().Get(cancellationToken).ConfigureAwait(false);
         var settings = oldSettings;
         if (change.Create.HasValue)
             settings = settings.WithAvatarId(avatarId);
         else if (change.Remove)
             settings = settings.WithoutAvatarId(avatarId);
         if (!ReferenceEquals(settings, oldSettings))
-            await kvas.UserAvatarSettings().Set(settings, cancellationToken).ConfigureAwait(false);
+            await accountSettings.UserAvatarSettings().Set(settings, cancellationToken).ConfigureAwait(false);
     }
 }

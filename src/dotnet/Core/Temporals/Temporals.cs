@@ -1,10 +1,31 @@
-namespace ActualChat.UI.Blazor.Services;
+namespace ActualChat;
 
-public abstract class Temporals(UIHub hub) : UIServiceBase<UIHub>(hub), IComputeService
+/// <summary>
+/// Provides short-lived in-memory overrides for values.
+/// When a value is set, it's immediately available locally and expires after a timeout.
+/// Server side uses <see cref="FakeTemporals"/> (no-op), client side uses <see cref="RealTemporals"/>.
+/// </summary>
+public abstract class Temporals : IComputeService, IDisposable, IHasDisposeStatus
 {
-    public readonly TimeSpan DefaultExpiresIn = TimeSpan.FromSeconds(3);
+    public static readonly TimeSpan DefaultExpiresIn = TimeSpan.FromSeconds(3);
+
+    private volatile int _isDisposed;
 
     protected readonly ConcurrentDictionary<string, Entry> Entries = new();
+
+    public bool IsReal { get; protected init; }
+    public bool IsDisposed => _isDisposed != 0;
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref _isDisposed, 1) != 0)
+            return;
+
+        Dispose(true);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    { }
 
     public async ValueTask<T?> Get<T>(string key)
         where T : notnull
