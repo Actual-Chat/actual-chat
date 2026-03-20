@@ -430,7 +430,7 @@ function Update-HostsFile {
     )
 
     if ($Debug) { Write-Host "[DEBUG] Adding hosts entries for: $($hostnames -join ', ')" }
-    Add-HostEntries -IP "127.0.0.1" -Hostnames $hostnames
+    Update-HostEntries -Hostnames $hostnames | Out-Null
 }
 
 # Remove worktree from server config (ports registry, nginx config)

@@ -174,6 +174,29 @@ function Add-HostEntries {
     }
 }
 
+function Update-HostEntries {
+    <#
+    .SYNOPSIS
+        Detects local IP and adds/updates hosts file entries.
+    .PARAMETER Hostnames
+        Array of hostnames to add/update.
+    .OUTPUTS
+        The detected local IP address.
+    #>
+    param(
+        [Parameter(Mandatory)][string[]]$Hostnames
+    )
+
+    $localIp = Get-LocalIP
+    if (-not $localIp) {
+        Write-Error "Could not detect local IP address"
+        return $null
+    }
+
+    Add-HostEntries -IP $localIp -Hostnames $Hostnames -Replace
+    return $localIp
+}
+
 function Remove-HostEntries {
     <#
     .SYNOPSIS
