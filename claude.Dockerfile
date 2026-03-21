@@ -106,7 +106,7 @@ RUN npm install -g chrome-devtools-mcp
 
 # Install Claude Code CLI (native installer, auto-update disabled at runtime)
 ENV DISABLE_AUTOUPDATER=1
-RUN curl -fsSL https://claude.ai/install.sh | bash -s -- 2.1.76
+RUN curl -fsSL https://claude.ai/install.sh | bash -s -- 2.1.81
 
 
 # Default working directory (overridden by -w flag in docker run)
