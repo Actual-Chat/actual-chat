@@ -297,11 +297,12 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         ChatId chatId,
         ChatEntryId? repliedChatEntryId,
         int preSkip,
+        TimeSpan preRollDuration,
         IAsyncEnumerable<IMemoryOwner<byte>> packetStream,
         CancellationToken cancellationToken)
     {
         var serverClock = Clocks.ServerClock;
-        double clientStartOffset = serverClock.Now.EpochOffset.TotalSeconds;
+        double clientStartOffset = serverClock.Now.EpochOffset.TotalSeconds - preRollDuration.TotalSeconds;
         var session = _hub.Session;
 
         var frameStream = packetStream
@@ -325,7 +326,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<ChannelWriter<IMemoryOwner<byte>>?> CreateAudioStream(CancellationToken cancellationToken)
+    private async Task<ChannelWriter<IMemoryOwner<byte>>?> CreateAudioStream(TimeSpan preRollDuration, CancellationToken cancellationToken)
     {
         string? sessionToken;
         ChatId? chatId;
@@ -352,7 +353,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             });
 
         // TODO(AK): Specify PreSkip
-        _sendTask = SendAudio(chatId, repliedChatEntryId, 0, stream.Reader.ReadAllAsync(cancellationToken), cancellationToken);
+        _sendTask = SendAudio(chatId, repliedChatEntryId, 0, preRollDuration, stream.Reader.ReadAllAsync(cancellationToken), cancellationToken);
         lock (_sync) {
             _currentStream = stream;
             _repliedChatEntryId = null; // Clear so it's only used once
@@ -378,7 +379,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         private readonly IAudioCodec _audioCodec = engine.AudioCodec;
 
         private readonly BlockRingBuffer<float> _vadBuffer = new (Constants.Audio.RecordingSampleRate * 2); // 2s
-        private readonly BlockRingBuffer<float> _encodingBuffer = new (Constants.Audio.RecordingSampleRate * 2); // 2s
+        private readonly BlockRingBuffer<float> _encodingBuffer = new (Constants.Audio.RecordingSampleRate / 2); // 500ms
 
         private FuncWorker? _encodeSendWorker;
         private bool _voiceActive;
@@ -461,7 +462,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         private async Task ProcessVadEvents(CancellationToken cancellationToken)
         {
             // Process VAD events in batches to reduce CPU usage
-            const int vadChunkSize = Constants.Audio.VadFrameLength * 5;
+            const int vadChunkSize = Constants.Audio.VadFrameLength * 3;
             using var vadFrameOwner = ArrayPools.SharedFloatPool.LeaseArrayOwner(vadChunkSize, true);
             while (true) {
                 var vadFrame = vadFrameOwner.Span;
@@ -481,7 +482,10 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             if (change.Kind == VoiceActivityKind.Start) {
                 if (_voiceActive) return;
 
-                var stream = await engine.CreateAudioStream(cancellationToken).ConfigureAwait(false);
+                // Trim pre-roll: read all buffered audio, find speech onset, keep only from there
+                var preRollDuration = TrimPreRollBuffer();
+
+                var stream = await engine.CreateAudioStream(preRollDuration, cancellationToken).ConfigureAwait(false);
                 if (stream == null) return;
 
                 _encodeSendWorker = FuncWorker.Start(ct => EncodeAndSend(stream, ct), cancellationToken);
@@ -496,6 +500,65 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                 await engine.SetVoiceActive(false).ConfigureAwait(false);
                 await StopEncodeSendWorker().ConfigureAwait(false);
             }
+        }
+
+        /// <summary>
+        /// Trims the encoding buffer pre-roll by discarding silent frames before speech onset.
+        /// Mirrors the Web's opus-encoder-worker processQueue('in') trimming logic.
+        /// Returns the duration of audio remaining in the buffer after trimming.
+        /// </summary>
+        private TimeSpan TrimPreRollBuffer()
+        {
+            const int frameLen = Constants.Audio.OpusFrameLength; // 320 samples = 20ms
+            const int minKeepFrames = 5; // Keep at least 100ms before speech
+
+            var bufferedSamples = _encodingBuffer.Count;
+            if (bufferedSamples < frameLen)
+                return TimeSpan.FromSeconds((double)bufferedSamples / Constants.Audio.RecordingSampleRate);
+
+            // Read all buffered audio into a temporary array
+            var frameCount = bufferedSamples / frameLen;
+            var totalSamples = frameCount * frameLen;
+            var tempBuffer = new float[totalSamples];
+            var gains = new double[frameCount];
+
+            // Read frame by frame and compute gains
+            for (int i = 0; i < frameCount; i++) {
+                var frameSpan = tempBuffer.AsSpan(i * frameLen, frameLen);
+                if (!_encodingBuffer.TryRead(frameSpan, out _))
+                    break;
+                gains[i] = AudioExt.ApproximateGain(frameSpan);
+            }
+
+            // Calculate average speech gain from last 5 frames (the speech onset region)
+            var speechFrames = Math.Min(5, frameCount);
+            double speechGain = 0;
+            for (int i = frameCount - speechFrames; i < frameCount; i++)
+                speechGain += gains[i];
+            speechGain /= speechFrames;
+
+            // Scan backward from end to find where gain drops below speechGain/20
+            var threshold = speechGain / 20;
+            var startIndex = frameCount - 2;
+            while (startIndex > 0) {
+                if (gains[startIndex] < threshold)
+                    break;
+                startIndex--;
+            }
+
+            // Discard frames before startIndex, but keep at least minKeepFrames
+            var framesToDiscard = Math.Max(0, startIndex - 1);
+            var framesToKeep = frameCount - framesToDiscard;
+            framesToKeep = Math.Max(framesToKeep, Math.Min(minKeepFrames, frameCount));
+            framesToDiscard = frameCount - framesToKeep;
+
+            // Write remaining frames back to encoding buffer
+            _encodingBuffer.Clear();
+            var keepStart = framesToDiscard * frameLen;
+            var keepLength = framesToKeep * frameLen;
+            _encodingBuffer.TryWrite(tempBuffer.AsSpan(keepStart, keepLength));
+
+            return TimeSpan.FromSeconds((double)keepLength / Constants.Audio.RecordingSampleRate);
         }
 
         private Task StopEncodeSendWorker()
