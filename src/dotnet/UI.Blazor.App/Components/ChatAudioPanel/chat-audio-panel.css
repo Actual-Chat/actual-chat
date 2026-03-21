@@ -707,14 +707,10 @@ body.narrow .narrow-panel .narrow-recorder-tooltip {
 }
 body.narrow .audio-panel-wrapper {
     @apply items-end gap-x-1;
-    @apply pl-9;
     @apply pointer-events-none;
 }
 body.narrow .audio-panel-wrapper > * {
     @apply pointer-events-auto;
-}
-body.narrow .narrow-panel .audio-panel-wrapper {
-    @apply pl-10;
 }
 body.narrow .chat-message-editor:has(.related-chat-entry-panel) .audio-panel-wrapper,
 body.narrow .chat-message-editor.text-mode .audio-panel-wrapper,
