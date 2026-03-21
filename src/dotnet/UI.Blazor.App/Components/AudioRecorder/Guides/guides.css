@@ -1,7 +1,7 @@
 .guide-modal .modal-header-interactive {
     @apply bg-bubble;
     @apply max-h-none;
-    padding-top: calc(1rem + var(--safe-area-top));
+    padding-top: calc(1rem + var(--safe-area-top-narrow));
     @apply pb-4 text-06;
 }
 .guide-modal .form-block {
