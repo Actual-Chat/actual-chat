@@ -3,4 +3,4 @@
 HOST_IP=$(getent ahosts host.docker.internal 2>/dev/null | grep -oP '^\d+\.\d+\.\d+\.\d+' | head -1)
 PORT=${AC_CHROME_DEBUG_PORT:-9222}
 URL="http://${HOST_IP:-127.0.0.1}:${PORT}"
-exec chrome-devtools-mcp --browserUrl "$URL"
+exec npx chrome-devtools-mcp@0.20.0 --autoConnect --browserUrl "$URL"
