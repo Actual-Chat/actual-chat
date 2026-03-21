@@ -74,6 +74,27 @@ body.no-select {
     --safe-area-left: env(safe-area-inset-left, 0px);
     --safe-area-right: env(safe-area-inset-right, 0px);
 }
+/* Mode-specific safe area insets: resolve to 0px when the current mode doesn't match */
+body.wide {
+    --safe-area-top-wide: var(--safe-area-top);
+    --safe-area-bottom-wide: var(--safe-area-bottom);
+    --safe-area-left-wide: var(--safe-area-left);
+    --safe-area-right-wide: var(--safe-area-right);
+    --safe-area-top-narrow: 0px;
+    --safe-area-bottom-narrow: 0px;
+    --safe-area-left-narrow: 0px;
+    --safe-area-right-narrow: 0px;
+}
+body.narrow {
+    --safe-area-top-narrow: var(--safe-area-top);
+    --safe-area-bottom-narrow: var(--safe-area-bottom);
+    --safe-area-left-narrow: var(--safe-area-left);
+    --safe-area-right-narrow: var(--safe-area-right);
+    --safe-area-top-wide: 0px;
+    --safe-area-bottom-wide: 0px;
+    --safe-area-left-wide: 0px;
+    --safe-area-right-wide: 0px;
+}
 
 .safe-area-top {
     height: var(--safe-area-top);
