@@ -5,15 +5,6 @@
     var dataCollectionStatus = m.IsDataCollectionEnabled
         ? "Telemetry data collection is allowed."
         : "Disallowed";
-    var experimentalFeatureStatus = m.AreExperimentalFeaturesEnabled
-        ? "Early access features are enabled."
-        : "Disabled";
-    var incompleteUIStatus = m.IsIncompleteUIEnabled
-        ? "Early access UI is enabled."
-        : "Disabled";
-    var videoStreamingStatus = m.IsVideoStreamingEnabled
-        ? "Video streaming is enabled."
-        : "Disabled";
 }
 
 @if (NativeAppSettings != null) {
@@ -39,35 +30,6 @@
     </p>
 </Tile>
 
-@if (m.IsAdmin) {
-    <TileTopic Topic="Early Access Features"/>
-    <Tile Class="early-access-features">
-        <TileItem Click="@OnExperimentalFeatureEnabledClick">
-            <Icon><i class="icon-info text-2xl"></i></Icon>
-            <Content>Enable early access features</Content>
-            <Caption>@experimentalFeatureStatus</Caption>
-            <Right>
-                <Toggle IsChecked="@m.AreExperimentalFeaturesEnabled"/>
-            </Right>
-        </TileItem>
-        <TileItem Click="@OnIncompleteUIEnabledClick">
-            <Icon><i class="icon-info text-2xl"></i></Icon>
-            <Content>Enable early access UI features</Content>
-            <Caption>@incompleteUIStatus</Caption>
-            <Right>
-                <Toggle IsChecked="@m.IsIncompleteUIEnabled"/>
-            </Right>
-        </TileItem>
-        <TileItem Click="@OnVideoStreamingEnabledClick">
-            <Icon><i class="icon-info text-2xl"></i></Icon>
-            <Content>Enable video streaming</Content>
-            <Caption>@videoStreamingStatus</Caption>
-            <Right>
-                <Toggle IsChecked="@m.IsVideoStreamingEnabled"/>
-            </Right>
-        </TileItem>
-    </Tile>
-}
 <TileTopic Topic="Troubleshooting"/>
 <Tile>
     <TileItem Click="@OnLogUIEnabledClick">
@@ -116,9 +78,6 @@
         var appSettings = await LocalSettings.LocalAppSettings().Get(cancellationToken).ConfigureAwait(false);
         return new(
             settings.IsDataCollectionEnabled ?? false,
-            settings.AreExperimentalFeaturesEnabled ?? false,
-            settings.IsIncompleteUIEnabled ?? false,
-            settings.IsVideoStreamingEnabled ?? false,
             account.IsAdmin,
             appSettings.IsLogViewerEnabledOrDefault);
     }
@@ -140,21 +99,6 @@
         await DataCollectionSettingsUI.UpdateState(settings.IsDataCollectionEnabled is true, CancellationToken.None);
     }
 
-    private Task OnExperimentalFeatureEnabledClick()
-        => AccountSettings.UserAppSettings().Update(x => x with {
-            AreExperimentalFeaturesEnabled = !(x.AreExperimentalFeaturesEnabled ?? false),
-        });
-
-    private Task OnIncompleteUIEnabledClick()
-        => AccountSettings.UserAppSettings().Update(x => x with {
-            IsIncompleteUIEnabled = !(x.IsIncompleteUIEnabled ?? false),
-        });
-
-    private Task OnVideoStreamingEnabledClick()
-        => AccountSettings.UserAppSettings().Update(x => x with {
-            IsVideoStreamingEnabled = !(x.IsVideoStreamingEnabled ?? false),
-        });
-
     private async Task OnLogUIEnabledClick() {
         await LocalSettings.LocalAppSettings().Update(x => x with {
             IsLogViewerEnabled = !x.IsLogViewerEnabledOrDefault,
@@ -166,12 +110,9 @@
 
     public record Model(
         bool IsDataCollectionEnabled,
-        bool AreExperimentalFeaturesEnabled,
-        bool IsIncompleteUIEnabled,
-        bool IsVideoStreamingEnabled,
         bool IsAdmin,
         bool IsLogUIEnabled)
     {
-        public static readonly Model None = new(false, false, false, false, false, false);
+        public static readonly Model None = new(false, false, false);
     }
 }
