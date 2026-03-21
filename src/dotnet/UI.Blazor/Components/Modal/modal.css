@@ -70,7 +70,10 @@ body.device-android .modal-overlay {
 .modal .modal-content {
     /* h-[90vh] adds top+bottom gap between the modal frame & screen edge on smaller screens */
     /* Note that modal-overlay-fullscreen selector below cancels it */
-    @apply h-full md:h-[90vh] w-full;
+    @apply h-full w-full;
+}
+body.wide .modal .modal-content {
+    height: calc(90vh - var(--safe-area-top) - var(--safe-area-bottom));
 }
 
 body.narrow .modal-frame.modal-md {
