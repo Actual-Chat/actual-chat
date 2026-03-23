@@ -18,6 +18,7 @@ public sealed class ReplayStreamMuxer : WorkerBase
     private ChatId ChatId { get; }
     private Moment StartAt { get; }
     private TimeSpan Offset { get; }
+    private double Speed { get; }
     private IChats Chats => field ??= Services.GetRequiredService<IChats>();
     private AudioSourceDownloader AudioDownloader => field ??= Services.GetRequiredService<AudioSourceDownloader>();
     private MomentClockSet Clocks => field ??= Services.Clocks();
@@ -30,13 +31,15 @@ public sealed class ReplayStreamMuxer : WorkerBase
         Session session,
         ChatId chatId,
         Moment startAt,
-        TimeSpan offset)
+        TimeSpan offset,
+        double speed = 1.0)
     {
         Services = services;
         Session = session;
         ChatId = chatId;
         StartAt = startAt;
         Offset = offset;
+        Speed = Math.Clamp(speed, 1.0, 2.0);
         _output = ChannelExt.Create<LiveStreamItem>(ChannelExt.UnboundedFanInOptions);
         _ = Run(); // Start immediately
     }
@@ -101,8 +104,8 @@ public sealed class ReplayStreamMuxer : WorkerBase
                     gapAdjustment += entry.BeginsAt - lastEntryEnd;
 
                 // Pacing: check how far ahead we are of expected client playback
-                var expectedPosition = resolvedStartAt.Value + gapAdjustment + (serverClock.Now - streamStartedAt);
-                var aheadBy = (entry.BeginsAt - expectedPosition) / 2; // /2 for potential 2x playback
+                var expectedPosition = resolvedStartAt.Value + gapAdjustment + (serverClock.Now - streamStartedAt) * Speed;
+                var aheadBy = (entry.BeginsAt - expectedPosition) / 2; // /2 for safety margin
 
                 if (aheadBy > TimeSpan.FromMinutes(1)) {
                     var waitFor = aheadBy - TimeSpan.FromSeconds(10);
@@ -114,7 +117,8 @@ public sealed class ReplayStreamMuxer : WorkerBase
                 var skipTo = (resolvedStartAt.Value - entry.BeginsAt).Positive();
 
                 // PlaysAt = when this stream should start playing relative to the first stream
-                var playsAt = (entry.BeginsAt - resolvedStartAt.Value - gapAdjustment).Positive();
+                // Divide by speed so entries start proportionally sooner at higher speeds
+                var playsAt = (entry.BeginsAt - resolvedStartAt.Value - gapAdjustment).Positive() / Speed;
 
                 // Start streaming this entry (allows concurrent speakers)
                 var streamIndex = Interlocked.Increment(ref _nextStreamIndex);
@@ -177,8 +181,17 @@ public sealed class ReplayStreamMuxer : WorkerBase
             };
             await _output.Writer.WriteAsync(startItem, cancellationToken).ConfigureAwait(false);
 
-            // Emit audio frames
+            // Emit audio frames, skipping some for speedup
+            // For speed S, we keep 1/S fraction of frames.
+            // E.g. 1.5x → skip every 3rd frame (keep 2 of 3),
+            //      2.0x → skip every 2nd frame (keep 1 of 2).
+            var skipInterval = Speed > 1.0 ? (int)Math.Round(Speed / (Speed - 1.0)) : 0;
+            var rawFrameIndex = 0;
             await foreach (var frame in audioSource.GetFrames(cancellationToken).ConfigureAwait(false)) {
+                rawFrameIndex++;
+                if (skipInterval > 0 && rawFrameIndex % skipInterval == 0)
+                    continue; // Skip this frame for speedup
+
                 var audioFrame = new LiveAudioFrame {
                     StreamIndex = streamIndex,
                     Data = frame.Data,

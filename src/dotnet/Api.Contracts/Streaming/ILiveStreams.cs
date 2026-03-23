@@ -18,5 +18,5 @@ public interface ILiveStreams : IComputeService
         Session session, ChatId chatId, LiveStreamSettings settings, CancellationToken cancellationToken);
 
     Task<RpcStream<LiveStreamItem>> GetReplayStream(
-        Session session, ChatId chatId, Moment startAt, TimeSpan offset, CancellationToken cancellationToken);
+        Session session, ChatId chatId, Moment startAt, TimeSpan offset, double speed, CancellationToken cancellationToken);
 }

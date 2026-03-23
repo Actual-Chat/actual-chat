@@ -44,12 +44,13 @@ public partial class ChatAudioUI
 
     // Actions
 
-    public void StartReplay(ChatId chatId, Moment startAt, TimeSpan offset = default)
+    public void StartReplay(ChatId chatId, Moment startAt, TimeSpan offset = default, double speed = 1.0)
     {
-        DebugLog?.LogInformation("StartReplay: chatId={ChatId}, startAt={StartAt}, offset={Offset}", chatId, startAt, offset);
+        DebugLog?.LogInformation("StartReplay: chatId={ChatId}, startAt={StartAt}, offset={Offset}, speed={Speed}",
+            chatId, startAt, offset, speed);
 
         StopReplay();
-        _replayState.Value = new ReplayState(chatId, startAt, offset);
+        _replayState.Value = new ReplayState(chatId, startAt, offset, speed);
     }
 
     public void StopReplay()

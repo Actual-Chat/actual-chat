@@ -35,18 +35,21 @@ public sealed class ChatReplayer : ChatPlayer
         Moment minPlayAt,
         CancellationToken cancellationToken)
     {
-        // Read offset from ReplayState (set by ChatAudioUI.StartReplay)
+        // Read offset and speed from ReplayState (set by ChatAudioUI.StartReplay)
         var replayState = ChatAudioUI?.ReplayState.Value;
         var currentOffset = replayState is { ChatId: var rsChat } && rsChat == ChatId
             ? replayState.Offset
             : TimeSpan.Zero;
+        var speed = replayState is { ChatId: var rsChat2 } && rsChat2 == ChatId
+            ? replayState.Speed
+            : 1.0;
 
         var sleepDurationAtStart = SleepDuration.Value;
         var pauseDurationAtStart = Playback.TotalPauseDuration.Value;
 
         Log.LogInformation(
-            "Starting server-streamed replay in chat {ChatId} from {MinPlayAt}, offset={Offset}",
-            ChatId, minPlayAt, currentOffset);
+            "Starting server-streamed replay in chat {ChatId} from {MinPlayAt}, offset={Offset}, speed={Speed}",
+            ChatId, minPlayAt, currentOffset, speed);
         var chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(false);
         if (chat?.Rules.CanRead() != true) {
             Log.LogWarning("Cannot read chat {ChatId}", ChatId);
@@ -55,7 +58,7 @@ public sealed class ChatReplayer : ChatPlayer
 
         Operation = $"replaying in \"{chat.Title}\"";
         var processor = new ReplayStreamProcessor(
-            Hub.Services, Session, ChatId, minPlayAt, currentOffset,
+            Hub.Services, Session, ChatId, minPlayAt, currentOffset, speed,
             cancellationToken.CreateLinkedTokenSource());
         await using var _ = processor.ConfigureAwait(false);
 

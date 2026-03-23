@@ -1,0 +1,64 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.MediaPlayback
+@inherits Menu<AppUIHub>
+
+@{
+    var currentSpeed = ChatAudioUI.ReplayState.Value?.Speed ?? 1.0;
+}
+
+<div class="replay-speed-menu">
+    <div>Replay speed:</div>
+    <Divider/>
+    @foreach (var speed in Speeds) {
+        var isSelected = Math.Abs(currentSpeed - speed) < 0.01;
+        <MenuEntry
+            Text="@FormatSpeed(speed)"
+            Class="@(isSelected ? "selected" : "")"
+            Click="@(() => OnSpeedSelected(speed))">
+        </MenuEntry>
+    }
+</div>
+
+@code {
+    private static readonly double[] Speeds = [1.0, 1.25, 1.33, 1.5, 1.75, 2.0];
+
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private ActivePlaybackInfo ActivePlaybackInfo => Hub.ActivePlaybackInfo;
+
+    private static string FormatSpeed(double speed)
+        => Math.Abs(speed - 1.0) < 0.01 ? "1x" : $"{speed:0.##}x";
+
+    private async Task OnSpeedSelected(double speed) {
+        var replayState = ChatAudioUI.ReplayState.Value;
+        if (replayState is null)
+            return;
+
+        if (Math.Abs(replayState.Speed - speed) < 0.01)
+            return; // Same speed, no change
+
+        // Get current playback position
+        var playingAt = await GetCurrentPlayingAt(replayState).ConfigureAwait(false);
+
+        // Restart replay from current position with new speed
+        ChatAudioUI.StartReplay(replayState.ChatId, playingAt, speed: speed);
+    }
+
+    private async Task<Moment> GetCurrentPlayingAt(ReplayState replayState) {
+        var player = ChatAudioUI.GetReplayerNonComputed(replayState.ChatId);
+        if (player is null)
+            return replayState.StartAt;
+
+        var playingTracks = player.Playback.PlayingTracks.Value;
+        foreach (var playingTrack in playingTracks) {
+            var trackInfo = playingTrack.TrackInfo;
+            if (trackInfo is ChatAudioTrackInfo) {
+                var trackState = await ActivePlaybackInfo
+                    .GetTrackPlaybackState(trackInfo.TrackId, default)
+                    .ConfigureAwait(false);
+                if (trackState != null)
+                    return trackInfo.RecordedAt + trackState.PlayingAt;
+            }
+        }
+        return replayState.StartAt;
+    }
+}

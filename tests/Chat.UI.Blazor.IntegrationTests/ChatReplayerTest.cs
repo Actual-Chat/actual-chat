@@ -45,7 +45,7 @@ public class ChatReplayerTest(ChatAppHostFixture fixture, ITestOutputHelper @out
         // Rewind back along the same audio entry:
         // Starting at entry2 + 30s, offset -15s should land at entry2 + 15s
         var stream = await liveStreams.GetReplayStream(
-            session, chatId, entry2BeginsAt.AddSeconds(30).ToMoment(), TimeSpan.FromSeconds(-15), default);
+            session, chatId, entry2BeginsAt.AddSeconds(30).ToMoment(), TimeSpan.FromSeconds(-15), 1.0, default);
         // The stream should start, which means position was resolved.
         // We just verify the stream is not null (position resolution worked).
         stream.Should().NotBeNull();

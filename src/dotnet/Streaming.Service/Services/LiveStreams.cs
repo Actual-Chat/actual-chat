@@ -69,6 +69,7 @@ public class LiveStreams(IServiceProvider services) : ILiveStreams
         ChatId chatId,
         Moment startAt,
         TimeSpan offset,
+        double speed,
         CancellationToken cancellationToken)
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
@@ -80,7 +81,7 @@ public class LiveStreams(IServiceProvider services) : ILiveStreams
             if (_replayMuxers.TryRemove(key, out var oldMuxer))
                 _ = oldMuxer.DisposeSilentlyAsync();
 
-            muxer = new ReplayStreamMuxer(Services, session, chatId, startAt, offset);
+            muxer = new ReplayStreamMuxer(Services, session, chatId, startAt, offset, speed);
             _replayMuxers[key] = muxer;
         }
 

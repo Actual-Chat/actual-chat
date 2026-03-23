@@ -5,6 +5,8 @@
 @{
     var m = State.Value;
     var size = ScreenSize.IsNarrow() ? SquareSize.Size8 : SquareSize.Size6;
+    var speed = m?.Speed ?? 1.0;
+    var speedLabel = speed == 1.0 ? "1x" : $"{speed:0.##}x";
 }
 
 <SubHeader Class="replay-subheader" IsVisible="@(m is not null)">
@@ -24,6 +26,14 @@
                     <i class="icon-pause-fill text-2xl"></i>
                 </ButtonRound>
             }
+            <ButtonRound
+                Title="Replay speed"
+                Class="c-speed-btn btn-xs btn-transparent hover-primary-icon"
+                data-menu="@(MenuRef.New<ReplaySpeedMenu>())"
+                data-menu-trigger="@MenuTrigger.Primary"
+                data-menu-placement="@(FloatingPosition.TopEnd.ToPositionString())">
+                <span class="c-speed-label">@speedLabel</span>
+            </ButtonRound>
             <ButtonRound Title="Stop" Click="@OnStop" Class="btn-xs btn-transparent btn-primary">
                 <i class="icon-stop-fill text-2xl"></i>
             </ButtonRound>
@@ -61,8 +71,6 @@
             Size="@size"
             AuthorIds="@m?.AuthorIds"
             IsListening="true"/>
-
-        @* Speed Selector *@
         <HeaderButton Click="@OnStop">
             <i class="icon-close-fill text-2xl"></i>
         </HeaderButton>
@@ -125,6 +133,7 @@
                 PlayingAt = playingAt,
                 Player = player,
                 IsPaused = isPaused,
+                Speed = replayState.Speed,
                 ChatTitle = chatTitle,
                 ShowChatTitle = chatId != selectedChatId,
                 AuthorIds = authorIds.ToList(),
@@ -175,7 +184,7 @@
         _ = InvokeAsync(() => {
             var m = State.Value;
             if (m?.Player != null && m.Player.ChatId == chatId)
-                ChatAudioUI.StartReplay(chatId, origin, offset);
+                ChatAudioUI.StartReplay(chatId, origin, offset, m.Speed);
         });
     }
 
@@ -185,6 +194,7 @@
     {
         public Moment? PlayingAt { get; init; }
         public bool IsPaused { get; init; }
+        public double Speed { get; init; } = 1.0;
         public ChatReplayer? Player { get; init; }
         public string ChatTitle { get; init; } = "";
         public required ChatId ChatId { get; init; }

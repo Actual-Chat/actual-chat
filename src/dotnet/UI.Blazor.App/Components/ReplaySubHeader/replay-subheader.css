@@ -37,3 +37,24 @@
 .replay-subheader .author-circle-group > .c-container {
     @apply left-auto;
 }
+
+.replay-subheader .c-speed-btn {
+    @apply flex-none;
+}
+.replay-subheader .c-speed-btn .c-speed-label {
+    @apply font-semibold text-sm whitespace-nowrap;
+}
+
+.replay-speed-menu {
+    @apply min-w-32;
+}
+.replay-speed-menu > div:first-child {
+    @apply p-2;
+    @apply text-02 font-semibold;
+}
+.replay-speed-menu > .divider {
+    @apply mb-1;
+}
+.replay-speed-menu .ac-menu-item.selected .ac-menu-text {
+    @apply text-primary font-semibold;
+}
