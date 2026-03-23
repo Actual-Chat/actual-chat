@@ -17,6 +17,12 @@ partial class SendingMessages
                 return chatEntry;
             }
             catch (Exception e) when (!cancellationToken.IsCancellationRequested) {
+                if (!IsTransientError(e)) {
+                    Log.LogError(e,
+                        "ProcessQueueItem permanently failed for '{Text}'",
+                        command.Request.Text.ToPrivate());
+                    throw;
+                }
                 Log.LogWarning(e,
                     "ProcessQueueItem failed for '{Text}', retrying in {Delay}s",
                     command.Request.Text.ToPrivate(), ProcessCommandRetryDelay.TotalSeconds);
@@ -106,6 +112,12 @@ partial class SendingMessages
             mediaIds.Add(uploadMediaId);
         }
         return mediaIds.ToArray();
+    }
+
+    private static bool IsTransientError(Exception e)
+    {
+        var inner = e.GetBaseException();
+        return inner is not (NotFoundException or UnauthorizedAccessException or System.Security.SecurityException);
     }
 
     // Nested types

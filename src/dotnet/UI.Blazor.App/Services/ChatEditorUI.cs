@@ -92,7 +92,7 @@ public partial class ChatEditorUI : UIWorkerBase<AppUIHub>, IComputeService, INo
         if (author == null)
             return;
 
-        ChatEntry? lastEditableEntry ;
+        ChatEntry? lastEditableEntry = null;
         using (ComputedSynchronizer.Default.Activate()) {
             var chatIdRange = await Chats
                 .GetIdRange(Session, chatId, CancellationToken.None)
@@ -100,9 +100,14 @@ public partial class ChatEditorUI : UIWorkerBase<AppUIHub>, IComputeService, INo
 
             var chatSendingMessages = Hub.SendingMessages.GetSendingMessages(chatId);
             var newMessages = await chatSendingMessages.GetNewMessages(author.Id, chatIdRange.End).ConfigureAwait(false);
-            if (newMessages.Length > 0)
+            if (newMessages.Length > 0) {
                 lastEditableEntry = newMessages[^1];
-            else {
+                var sendingMessage = lastEditableEntry.GetSendingMessage();
+                // Skip messages already confirmed within the server
+                if (sendingMessage is not null && sendingMessage.PostedChatEntry is not null)
+                    lastEditableEntry = null;
+            }
+            if (lastEditableEntry is null) {
                 var chatEntryReader = Hub.NewEntryReader(chatId);
                 lastEditableEntry = await chatEntryReader.GetLast(
                         chatIdRange,
