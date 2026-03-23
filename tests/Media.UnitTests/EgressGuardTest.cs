@@ -1,7 +1,6 @@
 using ActualChat.Hosting;
 using ActualChat.Media.Module;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ActualChat.Media.UnitTests;
 
@@ -21,9 +20,6 @@ public class EgressGuardTest
     [InlineData("actual.chat")]
     [InlineData("cdn.actual.chat")]
     [InlineData("media.actual.chat")]
-    [InlineData("8.8.8.8")] // Public IP (Google DNS)
-    [InlineData("104.16.124.96")] // Public IP (Cloudflare)
-    [InlineData("2001:4860:4860::8888")] // Public IPv6 (Google DNS)
     public async Task ShouldAllow(string host)
     {
         var result = await _sut.IsAllowed(host);
@@ -44,6 +40,9 @@ public class EgressGuardTest
     [InlineData("169.254.0.1")] // Link-local
     [InlineData("fc00::")] // Unique local IPv6
     [InlineData("::1")] // Localhost IPv6
+    [InlineData("8.8.8.8")] // Public IP (Google DNS) - raw IPs don't produce useful previews
+    [InlineData("104.16.124.96")] // Public IP (Cloudflare)
+    [InlineData("2001:4860:4860::8888")] // Public IPv6 (Google DNS)
     public async Task ShouldNotAllow(string host)
     {
         var result = await _sut.IsAllowed(host);
