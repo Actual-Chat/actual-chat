@@ -405,6 +405,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Asr", "src\dotnet\Asr\Asr.c
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Asr.Demo", "src\dotnet\Asr.Demo\Asr.Demo.csproj", "{CA4C2E1C-0F62-4754-A20C-3BF00D93D327}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{BA67ECF6-53CD-493A-AD54-D6997F879A2D}"
+	ProjectSection(SolutionItems) = preProject
+		scripts\Common.ps1 = scripts\Common.ps1
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -1530,6 +1535,7 @@ Global
 		{4BC0B0E4-84E6-4808-A510-E81CD86AADE8} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
 		{990F0BBE-96B3-48AB-920E-B6B68A1445F0} = {4BC0B0E4-84E6-4808-A510-E81CD86AADE8}
 		{CA4C2E1C-0F62-4754-A20C-3BF00D93D327} = {4BC0B0E4-84E6-4808-A510-E81CD86AADE8}
+		{BA67ECF6-53CD-493A-AD54-D6997F879A2D} = {9E3D1D2A-7BF6-4560-B32B-91CF7A62F918}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CB00270-3EF6-42B5-A4D4-3894AFA5E25C}
