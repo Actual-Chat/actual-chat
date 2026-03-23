@@ -80,9 +80,9 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
     }
 
     private static bool IsExternalPort(NSString portType)
-        => portType == AVAudioSession.PortBluetoothA2dp
+        => portType == AVAudioSession.PortBluetoothA2DP
         || portType == AVAudioSession.PortBluetoothHfp
-        || portType == AVAudioSession.PortBluetoothLe
+        || portType == AVAudioSession.PortBluetoothLE
         || portType == AVAudioSession.PortHeadphones
         || portType == AVAudioSession.PortUsbAudio
         || portType == AVAudioSession.PortCarAudio
@@ -95,7 +95,7 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
             session.SetCategory(AVAudioSessionCategory.PlayAndRecord,
                     AVAudioSessionCategoryOptions.DefaultToSpeaker
                     | AVAudioSessionCategoryOptions.AllowBluetooth
-                    | AVAudioSessionCategoryOptions.AllowBluetoothA2dp)
+                    | AVAudioSessionCategoryOptions.AllowBluetoothA2DP)
                 .Assert($"{mode}: failed to set category");
             session.SetPreferredIOBufferDuration(Constants.Audio.OpusFrameDuration.TotalSeconds, out var error);
             error.Assert("Failed to set preferred IO buffer duration");
