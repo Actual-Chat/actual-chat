@@ -121,6 +121,9 @@ export class VideoPipeline implements IVideoPipeline {
     private readonly reducedFrameIntervalMs: number;
     private savedBitrate: number;
 
+    // First-frame dimension reconciliation (Android codedWidth may differ from getSettings)
+    private dimensionsReconciled = false;
+
     // Encoder backpressure state
     private backpressureStepDownCount = 0;
     private lastBackpressureStepDown = 0;
@@ -237,6 +240,9 @@ export class VideoPipeline implements IVideoPipeline {
                         this.config.streaming.chatId,
                         streamConfig
                     );
+                    warnLog?.log(
+                        `TIMING_ANCHOR: firstEncodedTimestamp=${(this.firstEncodedTimestamp! / 1000).toFixed(0)}ms (perf), ` +
+                        `pendingFrames=${this.pendingStreamFrames.length}`);
                     infoLog?.log(`VideoStream created, sending ${this.pendingStreamFrames.length} buffered frames`);
 
                     // Send all buffered frames
@@ -1140,6 +1146,26 @@ export class VideoPipeline implements IVideoPipeline {
                         displayHeight: rawFrame.codedHeight,
                     });
                     rawFrame.close();
+                }
+
+                // On Android, getSettings() may report sensor display dimensions while
+                // actual frames have different codedWidth/Height.  Reconcile once on the
+                // first frame so the encoder and blur output match the real frame size.
+                if (!this.dimensionsReconciled) {
+                    this.dimensionsReconciled = true;
+                    const frameW = frame.codedWidth;
+                    const frameH = frame.codedHeight;
+                    const cfgW = this.config.encoderConfig.width;
+                    const cfgH = this.config.encoderConfig.height;
+                    if (frameW !== cfgW || frameH !== cfgH) {
+                        warnLog?.log(`Frame dimensions ${frameW}x${frameH} differ from encoder config ${cfgW}x${cfgH}, reconfiguring`);
+                        this.config.encoderConfig.width = frameW;
+                        this.config.encoderConfig.height = frameH;
+                        await this.encoder.reconfigure({ width: frameW, height: frameH, bitrate: this.config.encoderConfig.bitrate });
+                        if (this.segmentationWorker && this.config.backgroundBlur?.enabled) {
+                            void this.segmentationWorker.updateConfig({ outputWidth: frameW, outputHeight: frameH });
+                        }
+                    }
                 }
 
                 frameCount++;

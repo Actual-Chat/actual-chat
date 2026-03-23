@@ -135,6 +135,10 @@ export class VideoStream {
                         ServerClock.now() / 1000,
                         subject
                     );
+                    const clientStartOffsetMs = ServerClock.now();
+                    warnLog?.log(
+                        `TIMING_ANCHOR: clientStartOffset=${(clientStartOffsetMs / 1000).toFixed(3)}s, ` +
+                        `ServerClock.now()=${clientStartOffsetMs.toFixed(0)}ms`);
                     infoLog?.log('PushVideo called successfully');
                 }
 

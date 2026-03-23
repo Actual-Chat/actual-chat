@@ -12,6 +12,7 @@ public class ServerTimeSync : WorkerBase
     private HostInfo HostInfo { get; }
     private ISystemProperties SystemProperties { get; set; }
     private IJSRuntime JS { get; }
+    private BackgroundStateTracker BackgroundStateTracker { get; }
 
     public TimeSpan LastOffset { get; private set; }
     public TimeSpan LastPrecision { get; private set; } = TimeSpan.FromHours(1);
@@ -28,6 +29,7 @@ public class ServerTimeSync : WorkerBase
         HostInfo = services.HostInfo();
         SystemProperties = services.GetRequiredService<ISystemProperties>();
         JS = services.JSRuntime();
+        BackgroundStateTracker = services.GetRequiredService<BackgroundStateTracker>();
         LastUpdatedAt = Clocks.CpuClock.Now - TimeSpan.FromDays(1);
     }
 
@@ -38,13 +40,38 @@ public class ServerTimeSync : WorkerBase
             return Task.CompletedTask;
         }
 
-        return AsyncChain.From(Sync)
-            .RetryForever(RetryDelaySeq.Exp(0.5, 60))
-            .AppendDelay(GetNextSyncDelay)
-            .CycleForever()
-            .Log(LogLevel.Debug, Log)
-            .PrependDelay(TimeSpan.FromSeconds(3))
+        var retryDelays = RetryDelaySeq.Exp(0.5, 60);
+        var baseChains = new[] {
+            AsyncChain.From(Sync)
+                .RetryForever(retryDelays)
+                .AppendDelay(GetNextSyncDelay)
+                .CycleForever()
+                .PrependDelay(TimeSpan.FromSeconds(3)),
+            AsyncChain.From(WatchForegroundTransitions)
+                .RetryForever(retryDelays),
+        };
+        return baseChains
+            .Select(chain => chain.Log(LogLevel.Debug, Log))
             .RunIsolated(cancellationToken);
+    }
+
+    private async Task WatchForegroundTransitions(CancellationToken cancellationToken)
+    {
+        var wasBackground = false;
+        var changes = BackgroundStateTracker.IsBackground.Computed.Changes(cancellationToken);
+        await foreach (var (isBackground, _) in changes.ConfigureAwait(false)) {
+            if (wasBackground && !isBackground) {
+                Log.LogInformation("Returned to foreground, forcing clock re-sync");
+                LastPrecision = TimeSpan.FromHours(1);
+                try {
+                    await Sync(cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception e) {
+                    Log.LogWarning(e, "Foreground re-sync failed");
+                }
+            }
+            wasBackground = isBackground;
+        }
     }
 
     private TimeSpan GetNextSyncDelay()
