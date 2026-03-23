@@ -212,8 +212,25 @@ export class VideoPlayer {
     }
 
     private mapCodecToWebCodecs(codec: string, description?: ArrayBuffer): string {
-        // Defense-in-depth: detect avcC format from description bytes regardless of declared codec
+        // Defense-in-depth: detect description format and derive codec string
         if (description && description.byteLength >= 5) {
+            // Check HVCC (HEVC) first — it can false-positive as avcC since both start with 0x01
+            if (VideoPlayer.isHvccDescription(description)) {
+                const bytes = new Uint8Array(description);
+                // Extract HEVC profile/tier/level from HVCC structure
+                const generalProfileIdc = bytes[1] & 0x1F;
+                const generalLevelIdc = bytes[12];
+                const tier = (bytes[1] >> 5) & 0x01;
+                const tierStr = tier ? 'H' : 'L';
+                const codecString = `hev1.${generalProfileIdc}.6.${tierStr}${generalLevelIdc}.B0`;
+                const declaredLower = codec.toLowerCase();
+                if (!declaredLower.startsWith('hev1') && !declaredLower.startsWith('hvc1')
+                    && declaredLower !== 'hevc' && declaredLower !== 'h265') {
+                    warnLog?.log(`Codec mismatch: declared=${codec} but description is HVCC, overriding to ${codecString}`);
+                }
+                return codecString;
+            }
+
             if (VideoPlayer.isAvcCDescription(description)) {
                 const bytes = new Uint8Array(description);
                 const profileIndication = bytes[1];
@@ -260,13 +277,50 @@ export class VideoPlayer {
         return 'avc1.640028';
     }
 
-    private static isAvcCDescription(description: ArrayBuffer): boolean {
-        if (description.byteLength < 5) return false;
+    /**
+     * Detect HEVC HVCC (HEVCDecoderConfigurationRecord) format.
+     * HVCC structure (ISO 14496-15):
+     *   byte[0]  = configurationVersion (must be 1)
+     *   byte[1]  = general_profile_space(2) | general_tier_flag(1) | general_profile_idc(5)
+     *   byte[2..5]  = general_profile_compatibility_flags (4 bytes)
+     *   byte[6..11] = general_constraint_indicator_flags (6 bytes)
+     *   byte[12] = general_level_idc
+     *   ...minimum 23 bytes total before nalu arrays
+     */
+    private static isHvccDescription(description: ArrayBuffer): boolean {
+        // HVCC minimum size is 23 bytes (header before nalu arrays)
+        if (description.byteLength < 23) return false;
         const bytes = new Uint8Array(description);
+        // configurationVersion must be 1
         if (bytes[0] !== 0x01) return false;
+        // general_profile_idc: valid HEVC profiles are 1 (Main), 2 (Main10), 3 (MainStillPicture), 4 (Range Extensions), 5 (High Throughput)
+        const generalProfileIdc = bytes[1] & 0x1F;
+        if (generalProfileIdc === 0 || generalProfileIdc > 11) return false;
+        // Discriminator vs avcC: in avcC byte[5] = (0xE0 | numSPS) where top 3 bits are always 1
+        // In HVCC byte[5] is part of general_profile_compatibility_flags — no such constraint
+        // Also in avcC byte[4] = (0xFC | lengthSizeMinusOne) where top 6 bits are always 1
+        // In HVCC byte[4] is part of general_profile_compatibility_flags — no such constraint
+        // Use the avcC byte[5] marker as negative discriminator:
+        // If byte[4] has top 6 bits set AND byte[5] has top 3 bits set, this looks like avcC, not HVCC
+        if ((bytes[4] & 0xFC) === 0xFC && (bytes[5] & 0xE0) === 0xE0) return false;
+        // general_level_idc at byte[12] should be reasonable (30-186 for common HEVC levels)
+        const generalLevelIdc = bytes[12];
+        if (generalLevelIdc === 0) return false;
+        return true;
+    }
+
+    private static isAvcCDescription(description: ArrayBuffer): boolean {
+        if (description.byteLength < 7) return false;
+        const bytes = new Uint8Array(description);
+        // avcC configurationVersion must be 1
+        if (bytes[0] !== 0x01) return false;
+        // byte[1] = AVCProfileIndication — valid H.264 profiles
         const validProfiles = [66, 77, 88, 100, 110, 122, 244];
         if (!validProfiles.includes(bytes[1])) return false;
+        // byte[4] = 0xFC | (lengthSizeMinusOne & 0x03) — top 6 bits must be set
         if ((bytes[4] & 0xFC) !== 0xFC) return false;
+        // byte[5] = 0xE0 | (numOfSequenceParameterSets & 0x1F) — top 3 bits must be set
+        if ((bytes[5] & 0xE0) !== 0xE0) return false;
         return true;
     }
 

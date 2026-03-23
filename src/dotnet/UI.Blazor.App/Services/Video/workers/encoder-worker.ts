@@ -34,6 +34,12 @@ const backpressureWindowMs = 5000;       // evaluation window
 const backpressureDropThreshold = 0.20;  // 20% drop rate triggers notification
 let backpressureNotified = false;        // avoid repeated notifications
 
+// Encoder recovery state
+let encoderRecoveryAttempts = 0;
+const MAX_ENCODER_RECOVERY = 3;
+let lastEncoderRecoveryTime = 0;
+const ENCODER_RECOVERY_COOLDOWN_MS = 2000;
+
 /**
  * Detect if description bytes are in avcC (H.264 decoder configuration record) format.
  * Used to detect when encoder silently falls back to H.264 despite being configured for AV1.
@@ -210,6 +216,73 @@ function cpuRgbaToI420(frame: VideoFrame): VideoFrame {
     return i420Frame;
 }
 
+/**
+ * Create a WebCodecsEncoder with standard chunk serialization and error callbacks.
+ * Extracted to allow reuse during recovery.
+ */
+function createEncoder(config: EncoderConfig): WebCodecsEncoder {
+    return new WebCodecsEncoder(
+        config,
+        (chunkData) => {
+            // Reset recovery counter on successful encode
+            encoderRecoveryAttempts = 0;
+
+            // Serialize chunk in worker: copyTo + description extraction
+            // This keeps the main thread free from sync ArrayBuffer operations
+
+            // 1. Copy encoded chunk bytes
+            const chunkBuffer = new ArrayBuffer(chunkData.byteLength);
+            chunkData.chunk.copyTo(new Uint8Array(chunkBuffer));
+
+            // 2. Validate actual codec output: if configured for AV1 but output is avcC, correct it
+            let actualCodec = encoderConfig!.codec;
+            let descBuffer: ArrayBuffer | undefined;
+
+            if (chunkData.type === 'key' && chunkData.metadata?.decoderConfig?.description) {
+                const desc = chunkData.metadata.decoderConfig.description;
+                let sourceArray: Uint8Array;
+                if (desc instanceof ArrayBuffer) {
+                    sourceArray = new Uint8Array(desc);
+                } else if (desc instanceof SharedArrayBuffer) {
+                    sourceArray = new Uint8Array(desc);
+                } else if (ArrayBuffer.isView(desc)) {
+                    sourceArray = new Uint8Array(desc.buffer, desc.byteOffset, desc.byteLength);
+                } else {
+                    sourceArray = new Uint8Array(desc as ArrayBuffer);
+                }
+
+                descBuffer = new ArrayBuffer(sourceArray.byteLength);
+                new Uint8Array(descBuffer).set(sourceArray);
+
+                debugLog?.log('Keyframe metadata serialized, description size:', descBuffer.byteLength);
+
+                // Check for codec mismatch
+                if (isAvcCDescription(descBuffer) && !encoderConfig!.codec.startsWith('avc1')) {
+                    const derivedCodec = deriveAvcCodecFromDescription(descBuffer);
+                    warnLog?.log(`Encoder output mismatch: configured=${encoderConfig!.codec} but output is avcC, correcting to ${derivedCodec}`);
+                    actualCodec = derivedCodec;
+                    encoderConfig!.codec = derivedCodec;
+                }
+            }
+
+            // 3. Send serialized data to main thread via RPC (zero-copy transfer of ArrayBuffers)
+            void callbacks.onSerializedChunk(
+                chunkBuffer,
+                chunkData.chunk.timestamp,
+                chunkData.chunk.duration ?? 0,
+                chunkData.type === 'key',
+                actualCodec,
+                chunkData.sequenceNumber,
+                descBuffer,
+                rpcNoWait
+            );
+        },
+        (error) => {
+            errorLog?.log('Encoder error:', error);
+        }
+    );
+}
+
 // RPC Server Implementation
 const serverImpl: EncoderWorker = {
     /**
@@ -223,69 +296,13 @@ const serverImpl: EncoderWorker = {
             // Store encoder config for frame resizing
             encoderConfig = config;
 
-            encoder = new WebCodecsEncoder(
-                config,
-                (chunkData) => {
-                    // Serialize chunk in worker: copyTo + description extraction
-                    // This keeps the main thread free from sync ArrayBuffer operations
-
-                    // 1. Copy encoded chunk bytes
-                    const chunkBuffer = new ArrayBuffer(chunkData.byteLength);
-                    chunkData.chunk.copyTo(new Uint8Array(chunkBuffer));
-
-                    // 2. Validate actual codec output: if configured for AV1 but output is avcC, correct it
-                    let actualCodec = encoderConfig!.codec;
-                    let descBuffer: ArrayBuffer | undefined;
-
-                    if (chunkData.type === 'key' && chunkData.metadata?.decoderConfig?.description) {
-                        const desc = chunkData.metadata.decoderConfig.description;
-                        let sourceArray: Uint8Array;
-                        if (desc instanceof ArrayBuffer) {
-                            sourceArray = new Uint8Array(desc);
-                        } else if (desc instanceof SharedArrayBuffer) {
-                            sourceArray = new Uint8Array(desc);
-                        } else if (ArrayBuffer.isView(desc)) {
-                            sourceArray = new Uint8Array(desc.buffer, desc.byteOffset, desc.byteLength);
-                        } else {
-                            sourceArray = new Uint8Array(desc as ArrayBuffer);
-                        }
-
-                        descBuffer = new ArrayBuffer(sourceArray.byteLength);
-                        new Uint8Array(descBuffer).set(sourceArray);
-
-                        debugLog?.log('Keyframe metadata serialized, description size:', descBuffer.byteLength);
-
-                        // Check for codec mismatch
-                        if (isAvcCDescription(descBuffer) && !encoderConfig!.codec.startsWith('avc1')) {
-                            const derivedCodec = deriveAvcCodecFromDescription(descBuffer);
-                            warnLog?.log(`Encoder output mismatch: configured=${encoderConfig!.codec} but output is avcC, correcting to ${derivedCodec}`);
-                            actualCodec = derivedCodec;
-                            encoderConfig!.codec = derivedCodec;
-                        }
-                    }
-
-                    // 3. Send serialized data to main thread via RPC (zero-copy transfer of ArrayBuffers)
-                    void callbacks.onSerializedChunk(
-                        chunkBuffer,
-                        chunkData.chunk.timestamp,
-                        chunkData.chunk.duration ?? 0,
-                        chunkData.type === 'key',
-                        actualCodec,
-                        chunkData.sequenceNumber,
-                        descBuffer,
-                        rpcNoWait
-                    );
-                },
-                (error) => {
-                    errorLog?.log('Encoder error:', error);
-                }
-            );
-
+            encoder = createEncoder(config);
             encoder.initialize();
 
             // Mark as ready to process frames
             processing = true;
             frameCount = 0;
+            encoderRecoveryAttempts = 0;
 
             infoLog?.log('Ready to encode frames');
         } catch (error) {
@@ -327,6 +344,7 @@ const serverImpl: EncoderWorker = {
             backpressureTotalFrames = 0;
             lastBackpressureCheckTime = 0;
             backpressureNotified = false;
+            encoderRecoveryAttempts = 0;
         } catch (error) {
             errorLog?.log('Failed to stop encoder:', error);
             throw error; // RPC automatically propagates errors
@@ -337,9 +355,37 @@ const serverImpl: EncoderWorker = {
    * Encode a single frame
    */
     encodeFrame: async (frame): Promise<void> => {
-        if (!encoder || !processing || !encoderConfig) {
+        if (!processing || !encoderConfig) {
             frame.close();
             return;
+        }
+
+        // Recovery: if encoder is null or closed, attempt re-initialization
+        if (!encoder || encoder.getState() === 'closed') {
+            const now = performance.now();
+            if (encoderRecoveryAttempts >= MAX_ENCODER_RECOVERY) {
+                frame.close();
+                return;
+            }
+            if ((now - lastEncoderRecoveryTime) < ENCODER_RECOVERY_COOLDOWN_MS) {
+                frame.close();
+                return;
+            }
+            encoderRecoveryAttempts++;
+            lastEncoderRecoveryTime = now;
+            warnLog?.log(`Encoder closed, attempting recovery (attempt ${encoderRecoveryAttempts}/${MAX_ENCODER_RECOVERY})`);
+            try {
+                encoder = createEncoder(encoderConfig);
+                encoder.initialize();
+                frameCount = 0;
+                startTimestamp = undefined;
+                warnLog?.log('Encoder recovered successfully');
+            } catch (error) {
+                errorLog?.log('Encoder recovery failed:', error);
+                encoder = null;
+                frame.close();
+                return;
+            }
         }
 
         // Backpressure: drop frame if encoder queue is building up.

@@ -25,6 +25,12 @@ let currentDecoderConfig: DecoderConfig | null = null;
 let frameCount = 0;
 let lastRawDescription: ArrayBuffer | null = null;
 
+// Decoder recovery state for decodeRawChunk path
+let rawRecoveryAttempts = 0;
+const MAX_RAW_RECOVERY = 3;
+let lastRawRecoveryTime = 0;
+const RAW_RECOVERY_COOLDOWN_MS = 1000;
+
 function bufferEqual(a: ArrayBuffer, b: ArrayBuffer): boolean {
     if (a.byteLength !== b.byteLength) return false;
     const viewA = new Uint8Array(a);
@@ -452,7 +458,55 @@ const serverImpl: DecoderWorker = {
         data: ArrayBuffer,
         description?: ArrayBuffer
     ): Promise<void> => {
-        if (!decoder || !processing) {
+        if (!processing) {
+            return;
+        }
+
+        // Recovery: if decoder is closed and we have a keyframe, attempt to recreate
+        if (decoder && decoder.getState() === 'closed' && isKeyFrame && currentDecoderConfig) {
+            const now = performance.now();
+            if (rawRecoveryAttempts < MAX_RAW_RECOVERY && (now - lastRawRecoveryTime) > RAW_RECOVERY_COOLDOWN_MS) {
+                rawRecoveryAttempts++;
+                lastRawRecoveryTime = now;
+                infoLog?.log(`Decoder closed, attempting recovery with keyframe seq=${sequenceNumber} ` +
+                    `(attempt ${rawRecoveryAttempts}/${MAX_RAW_RECOVERY})`);
+                try {
+                    // Build config WITH description to avoid configure-then-decode race
+                    const recoveryDesc = (description && description.byteLength > 0)
+                        ? description
+                        : lastRawDescription ?? undefined;
+                    const recoveryConfig: DecoderConfig = {
+                        ...currentDecoderConfig,
+                        description: recoveryDesc,
+                    };
+                    decoder = new WebCodecsDecoder(
+                        recoveryConfig,
+                        (frame: VideoFrame) => {
+                            frameCount++;
+                            rawRecoveryAttempts = 0; // Reset on successful decode
+                            void callbacks.onDecodedFrame(frame, rpcNoWait);
+                        },
+                        (error) => {
+                            errorLog?.log('Decoder error:', error);
+                        }
+                    );
+                    decoder.initialize();
+                    decoderConfigured = false; // Let keyframe handling below re-configure
+                    infoLog?.log('Decoder recovered, ready for keyframe');
+                } catch (error) {
+                    errorLog?.log('Decoder recovery failed:', error);
+                    return;
+                }
+            } else if (rawRecoveryAttempts >= MAX_RAW_RECOVERY) {
+                // Exhausted retries — drop silently to avoid log flood
+                return;
+            } else {
+                // In cooldown — drop
+                return;
+            }
+        }
+
+        if (!decoder) {
             return;
         }
 
