@@ -5,6 +5,10 @@
 
 import { RpcNoWait, RpcTimeout } from 'rpc';
 import type { EncoderConfig, EncoderStats } from '../webcodecs-encoder';
+import type { SerializedChunkMessage } from './stream-channel';
+
+// Re-export for backward compatibility
+export type { SerializedChunkMessage };
 
 /**
  * Serialized chunk data sent from encoder worker to main thread.
@@ -27,11 +31,38 @@ export interface SerializedChunkData {
  */
 export interface EncoderWorker {
     /**
-     * Initialize the encoder with configuration
+     * Initialize the encoder with configuration (RPC fallback path).
+     * Use encodeFrame() to send frames one by one.
      * @param config Encoder configuration (codec, bitrate, resolution, etc.)
      * @param timeout Optional RPC timeout configuration
      */
     initialize(config: EncoderConfig, timeout?: RpcTimeout): Promise<void>;
+
+    /**
+     * Initialize and start stream-based encoding.
+     * Frames are read from the transferred ReadableStream; encoded chunks
+     * are written to the transferred WritableStream.
+     * The worker handles dimension reconciliation, VAD-based frame dropping,
+     * resize, YUV conversion, and timestamp normalization internally.
+     * @param config Encoder configuration
+     * @param frameInputStream Transferred ReadableStream of VideoFrames
+     * @param chunkOutputStream Transferred WritableStream for encoded chunks
+     * @param timeout Optional RPC timeout
+     */
+    startWithStream(
+        config: EncoderConfig,
+        frameInputStream: ReadableStream<VideoFrame>,
+        chunkOutputStream: WritableStream<SerializedChunkMessage>,
+        timeout?: RpcTimeout,
+    ): Promise<void>;
+
+    /**
+     * Update VAD state for adaptive framerate in stream mode.
+     * Called from main thread when voice activity changes.
+     * @param speaking Whether the local user is currently speaking
+     * @param remoteStreamCount Number of remote video streams (VAD dropping only in group calls)
+     */
+    setVadState(speaking: boolean, remoteStreamCount: number): Promise<void>;
 
     /**
      * Stop the encoder and clean up resources
@@ -39,7 +70,7 @@ export interface EncoderWorker {
     stop(): Promise<void>;
 
     /**
-     * Encode a single video frame
+     * Encode a single video frame (RPC fallback path)
      * @param frame VideoFrame to encode (will be transferred)
      * @param noWait Fire-and-forget flag (don't wait for response)
      */
@@ -82,14 +113,7 @@ export interface EncoderWorkerCallbacks {
     /**
      * Called when a frame has been encoded and serialized in the worker.
      * All ArrayBuffer args are transferred (zero-copy) via postMessage.
-     * @param chunkBytes Raw encoded chunk bytes
-     * @param timestamp Chunk timestamp in microseconds
-     * @param duration Chunk duration in microseconds
-     * @param isKeyFrame Whether this is a keyframe
-     * @param codec Actual codec string from encoder output
-     * @param sequenceNumber Chunk sequence number for ordering
-     * @param descriptionBytes Optional codec description bytes (SPS/PPS for H.264)
-     * @param noWait Fire-and-forget flag (don't wait for response)
+     * Only used in RPC fallback path; stream mode writes to WritableStream directly.
      */
     onSerializedChunk(
         chunkBytes: ArrayBuffer,
@@ -109,4 +133,11 @@ export interface EncoderWorkerCallbacks {
      * @param noWait Fire-and-forget
      */
     onBackpressure(dropRate: number, noWait?: RpcNoWait): Promise<void>;
+
+    /**
+     * Called when the encoder worker detects a dimension mismatch on the first frame
+     * and auto-reconfigures. Main thread should update local config.
+     * Only used in stream mode (in RPC mode, main thread handles this itself).
+     */
+    onDimensionReconciled(width: number, height: number, noWait?: RpcNoWait): Promise<void>;
 }

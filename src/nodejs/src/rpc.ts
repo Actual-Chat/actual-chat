@@ -132,13 +132,12 @@ export function isTransferable(x: unknown): x is Transferable {
         return true;
     if (typeof AudioData !== 'undefined' && x instanceof AudioData)
         return true;
-    // we don' use those objects yet
-    // if (x instanceof ReadableStream)
-    //     return true;
-    // if (x instanceof WritableStream)
-    //     return true;
-    // if (x instanceof TransformStream)
-    //     return true;
+    if (x instanceof ReadableStream)
+        return true;
+    if (x instanceof WritableStream)
+        return true;
+    if (x instanceof TransformStream)
+        return true;
     return false;
 }
 

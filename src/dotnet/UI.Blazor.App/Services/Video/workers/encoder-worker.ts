@@ -12,6 +12,7 @@ import { DeviceInfo } from 'device-info';
 
 import { type EncoderConfig, type EncoderStats, WebCodecsEncoder } from '../webcodecs-encoder';
 import type { EncoderWorker, EncoderWorkerCallbacks } from './encoder-worker-contract';
+import type { SerializedChunkMessage } from './stream-channel';
 
 const { debugLog, infoLog, warnLog, errorLog } = Log.get('VideoEncoder');
 
@@ -34,11 +35,19 @@ const backpressureWindowMs = 5000;       // evaluation window
 const backpressureDropThreshold = 0.20;  // 20% drop rate triggers notification
 let backpressureNotified = false;        // avoid repeated notifications
 
-// Encoder recovery state
-let encoderRecoveryAttempts = 0;
-const MAX_ENCODER_RECOVERY = 3;
-let lastEncoderRecoveryTime = 0;
-const ENCODER_RECOVERY_COOLDOWN_MS = 2000;
+// Stream-based output: when set, encoded chunks are written here instead of RPC callback
+let streamOutputWriter: WritableStreamDefaultWriter<SerializedChunkMessage> | null = null;
+// Stream-based input reader loop promise (for cleanup)
+let streamReadLoopPromise: Promise<void> | null = null;
+
+// VAD state for stream mode (communicated via RPC from main thread)
+let vadSpeaking = true;
+let vadRemoteStreamCount = 0;
+let vadReducedFrameIntervalMs = 1000 / 5; // default 5fps when silent
+let vadLastPassedFrameTime = 0;
+
+// Dimension reconciliation state for stream mode
+let dimensionsReconciled = false;
 
 /**
  * Detect if description bytes are in avcC (H.264 decoder configuration record) format.
@@ -217,98 +226,219 @@ function cpuRgbaToI420(frame: VideoFrame): VideoFrame {
 }
 
 /**
- * Create a WebCodecsEncoder with standard chunk serialization and error callbacks.
- * Extracted to allow reuse during recovery.
+ * Serialize an encoded chunk and emit it to the appropriate output (stream or RPC).
+ * Extracted from initialize() to be shared between RPC and stream modes.
  */
-function createEncoder(config: EncoderConfig): WebCodecsEncoder {
-    return new WebCodecsEncoder(
+function onEncodedChunk(chunkData: import('../webcodecs-encoder').EncodedChunkData): void {
+    // 1. Copy encoded chunk bytes
+    const chunkBuffer = new ArrayBuffer(chunkData.byteLength);
+    chunkData.chunk.copyTo(new Uint8Array(chunkBuffer));
+
+    // 2. Validate actual codec output: if configured for AV1 but output is avcC, correct it
+    let actualCodec = encoderConfig!.codec;
+    let descBuffer: ArrayBuffer | undefined;
+
+    if (chunkData.type === 'key' && chunkData.metadata?.decoderConfig?.description) {
+        const desc = chunkData.metadata.decoderConfig.description;
+        let sourceArray: Uint8Array;
+        if (desc instanceof ArrayBuffer) {
+            sourceArray = new Uint8Array(desc);
+        } else if (desc instanceof SharedArrayBuffer) {
+            sourceArray = new Uint8Array(desc);
+        } else if (ArrayBuffer.isView(desc)) {
+            sourceArray = new Uint8Array(desc.buffer, desc.byteOffset, desc.byteLength);
+        } else {
+            sourceArray = new Uint8Array(desc as ArrayBuffer);
+        }
+
+        descBuffer = new ArrayBuffer(sourceArray.byteLength);
+        new Uint8Array(descBuffer).set(sourceArray);
+
+        debugLog?.log('Keyframe metadata serialized, description size:', descBuffer.byteLength);
+
+        // Check for codec mismatch
+        if (isAvcCDescription(descBuffer) && !encoderConfig!.codec.startsWith('avc1')) {
+            const derivedCodec = deriveAvcCodecFromDescription(descBuffer);
+            warnLog?.log(`Encoder output mismatch: configured=${encoderConfig!.codec} but output is avcC, correcting to ${derivedCodec}`);
+            actualCodec = derivedCodec;
+            encoderConfig!.codec = derivedCodec;
+        }
+    }
+
+    // 3. Emit serialized data
+    if (streamOutputWriter) {
+        // Stream mode: write to output stream
+        void streamOutputWriter.write({
+            chunkBytes: chunkBuffer,
+            timestamp: chunkData.chunk.timestamp,
+            duration: chunkData.chunk.duration ?? 0,
+            isKeyFrame: chunkData.type === 'key',
+            codec: actualCodec,
+            sequenceNumber: chunkData.sequenceNumber,
+            descriptionBytes: descBuffer,
+        });
+    } else {
+        // RPC fallback: send via RPC callback
+        void callbacks.onSerializedChunk(
+            chunkBuffer,
+            chunkData.chunk.timestamp,
+            chunkData.chunk.duration ?? 0,
+            chunkData.type === 'key',
+            actualCodec,
+            chunkData.sequenceNumber,
+            descBuffer,
+            rpcNoWait
+        );
+    }
+}
+
+/**
+ * Create and configure the WebCodecsEncoder with the shared onEncodedChunk handler.
+ */
+function createEncoder(config: EncoderConfig): void {
+    encoderConfig = config;
+    encoder = new WebCodecsEncoder(
         config,
-        (chunkData) => {
-            // Reset recovery counter on successful encode
-            encoderRecoveryAttempts = 0;
-
-            // Serialize chunk in worker: copyTo + description extraction
-            // This keeps the main thread free from sync ArrayBuffer operations
-
-            // 1. Copy encoded chunk bytes
-            const chunkBuffer = new ArrayBuffer(chunkData.byteLength);
-            chunkData.chunk.copyTo(new Uint8Array(chunkBuffer));
-
-            // 2. Validate actual codec output: if configured for AV1 but output is avcC, correct it
-            let actualCodec = encoderConfig!.codec;
-            let descBuffer: ArrayBuffer | undefined;
-
-            if (chunkData.type === 'key' && chunkData.metadata?.decoderConfig?.description) {
-                const desc = chunkData.metadata.decoderConfig.description;
-                let sourceArray: Uint8Array;
-                if (desc instanceof ArrayBuffer) {
-                    sourceArray = new Uint8Array(desc);
-                } else if (desc instanceof SharedArrayBuffer) {
-                    sourceArray = new Uint8Array(desc);
-                } else if (ArrayBuffer.isView(desc)) {
-                    sourceArray = new Uint8Array(desc.buffer, desc.byteOffset, desc.byteLength);
-                } else {
-                    sourceArray = new Uint8Array(desc as ArrayBuffer);
-                }
-
-                descBuffer = new ArrayBuffer(sourceArray.byteLength);
-                new Uint8Array(descBuffer).set(sourceArray);
-
-                debugLog?.log('Keyframe metadata serialized, description size:', descBuffer.byteLength);
-
-                // Check for codec mismatch
-                if (isAvcCDescription(descBuffer) && !encoderConfig!.codec.startsWith('avc1')) {
-                    const derivedCodec = deriveAvcCodecFromDescription(descBuffer);
-                    warnLog?.log(`Encoder output mismatch: configured=${encoderConfig!.codec} but output is avcC, correcting to ${derivedCodec}`);
-                    actualCodec = derivedCodec;
-                    encoderConfig!.codec = derivedCodec;
-                }
-            }
-
-            // 3. Send serialized data to main thread via RPC (zero-copy transfer of ArrayBuffers)
-            void callbacks.onSerializedChunk(
-                chunkBuffer,
-                chunkData.chunk.timestamp,
-                chunkData.chunk.duration ?? 0,
-                chunkData.type === 'key',
-                actualCodec,
-                chunkData.sequenceNumber,
-                descBuffer,
-                rpcNoWait
-            );
-        },
+        onEncodedChunk,
         (error) => {
             errorLog?.log('Encoder error:', error);
         }
     );
+    encoder.initialize();
+}
+
+/**
+ * Stream read loop: reads VideoFrames from transferred ReadableStream,
+ * handles dimension reconciliation, VAD-based dropping, then encodes.
+ */
+async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFrame>): Promise<void> {
+    try {
+        while (processing) {
+            const { done, value: rawFrame } = await inputReader.read();
+            if (done) {
+                infoLog?.log('Stream input ended');
+                break;
+            }
+
+            if (!encoder || !processing || !encoderConfig) {
+                rawFrame.close();
+                continue;
+            }
+
+            // Dimension reconciliation on first frame (stream mode)
+            if (!dimensionsReconciled) {
+                dimensionsReconciled = true;
+                const frameW = rawFrame.codedWidth;
+                const frameH = rawFrame.codedHeight;
+                if (frameW !== encoderConfig.width || frameH !== encoderConfig.height) {
+                    warnLog?.log(`Frame dimensions ${frameW}x${frameH} differ from encoder config ${encoderConfig.width}x${encoderConfig.height}, reconfiguring`);
+                    encoderConfig.width = frameW;
+                    encoderConfig.height = frameH;
+                    await encoder.reconfigure({ width: frameW, height: frameH, bitrate: encoderConfig.bitrate });
+                    // Notify main thread
+                    void callbacks.onDimensionReconciled(frameW, frameH, rpcNoWait);
+                }
+            }
+
+            // Normalize display dimensions (Android MSTP issue)
+            let frame = rawFrame;
+            if (rawFrame.displayWidth !== rawFrame.codedWidth
+                || rawFrame.displayHeight !== rawFrame.codedHeight) {
+                frame = new VideoFrame(rawFrame, {
+                    displayWidth: rawFrame.codedWidth,
+                    displayHeight: rawFrame.codedHeight,
+                });
+                rawFrame.close();
+            }
+
+            // VAD-based adaptive framerate: drop frames when not speaking (group calls)
+            if (!vadSpeaking && vadRemoteStreamCount >= 2) {
+                const now = performance.now();
+                if (now - vadLastPassedFrameTime < vadReducedFrameIntervalMs) {
+                    frame.close();
+                    continue;
+                }
+                vadLastPassedFrameTime = now;
+            }
+
+            // Delegate to the existing encodeFrame logic (handles backpressure, resize, YUV, encode)
+            await serverImpl.encodeFrame(frame);
+        }
+    } catch (error) {
+        if (processing) {
+            errorLog?.log('Stream read error:', error);
+        }
+    } finally {
+        try { inputReader.releaseLock(); } catch { /* ignore */ }
+    }
 }
 
 // RPC Server Implementation
 const serverImpl: EncoderWorker = {
     /**
-   * Initialize the encoder
+   * Initialize the encoder (RPC fallback path)
    */
     // eslint-disable-next-line
     initialize: async (config): Promise<void> => {
         try {
-            infoLog?.log('Initializing encoder...');
+            infoLog?.log('Initializing encoder (RPC mode)...');
 
-            // Store encoder config for frame resizing
-            encoderConfig = config;
-
-            encoder = createEncoder(config);
-            encoder.initialize();
+            createEncoder(config);
 
             // Mark as ready to process frames
             processing = true;
             frameCount = 0;
-            encoderRecoveryAttempts = 0;
 
-            infoLog?.log('Ready to encode frames');
+            infoLog?.log('Ready to encode frames (RPC mode)');
         } catch (error) {
             errorLog?.log('Failed to initialize encoder:', error);
-            throw error; // RPC automatically propagates errors
+            throw error;
         }
+    },
+
+    /**
+   * Initialize and start stream-based encoding.
+   */
+    startWithStream: async (
+        config: EncoderConfig,
+        frameInputStream: ReadableStream<VideoFrame>,
+        chunkOutputStream: WritableStream<SerializedChunkMessage>,
+    ): Promise<void> => {
+        try {
+            infoLog?.log('Initializing encoder (stream mode)...');
+
+            // Set stream output writer — onEncodedChunk will write to stream instead of RPC
+            streamOutputWriter = chunkOutputStream.getWriter();
+
+            createEncoder(config);
+
+            // Mark as ready to process frames
+            processing = true;
+            frameCount = 0;
+            dimensionsReconciled = false;
+
+            // Start reading from input stream (async, runs in background)
+            const inputReader = frameInputStream.getReader();
+            streamReadLoopPromise = streamReadLoop(inputReader);
+
+            infoLog?.log('Ready to encode frames (stream mode)');
+        } catch (error) {
+            errorLog?.log('Failed to initialize encoder stream mode:', error);
+            throw error;
+        }
+    },
+
+    /**
+   * Update VAD state for adaptive framerate in stream mode.
+   */
+    // eslint-disable-next-line
+    setVadState: async (speaking: boolean, remoteStreamCount: number): Promise<void> => {
+        vadSpeaking = speaking;
+        vadRemoteStreamCount = remoteStreamCount;
+        if (speaking) {
+            vadLastPassedFrameTime = 0; // allow next frame through immediately
+        }
+        debugLog?.log(`VAD state: speaking=${speaking}, remoteStreamCount=${remoteStreamCount}`);
     },
 
     /**
@@ -320,6 +450,12 @@ const serverImpl: EncoderWorker = {
 
             processing = false;
 
+            // Wait for stream read loop to finish
+            if (streamReadLoopPromise) {
+                try { await streamReadLoopPromise; } catch { /* ignore */ }
+                streamReadLoopPromise = null;
+            }
+
             // Flush and close encoder
             if (encoder) {
                 try {
@@ -329,6 +465,12 @@ const serverImpl: EncoderWorker = {
                 } catch (error) {
                     warnLog?.log('Encoder close error:', error);
                 }
+            }
+
+            // Close stream output writer
+            if (streamOutputWriter) {
+                try { await streamOutputWriter.close(); } catch { /* ignore */ }
+                streamOutputWriter = null;
             }
 
             infoLog?.log('Encoder stopped');
@@ -344,10 +486,13 @@ const serverImpl: EncoderWorker = {
             backpressureTotalFrames = 0;
             lastBackpressureCheckTime = 0;
             backpressureNotified = false;
-            encoderRecoveryAttempts = 0;
+            dimensionsReconciled = false;
+            vadSpeaking = true;
+            vadRemoteStreamCount = 0;
+            vadLastPassedFrameTime = 0;
         } catch (error) {
             errorLog?.log('Failed to stop encoder:', error);
-            throw error; // RPC automatically propagates errors
+            throw error;
         }
     },
 
@@ -355,37 +500,9 @@ const serverImpl: EncoderWorker = {
    * Encode a single frame
    */
     encodeFrame: async (frame): Promise<void> => {
-        if (!processing || !encoderConfig) {
+        if (!encoder || !processing || !encoderConfig) {
             frame.close();
             return;
-        }
-
-        // Recovery: if encoder is null or closed, attempt re-initialization
-        if (!encoder || encoder.getState() === 'closed') {
-            const now = performance.now();
-            if (encoderRecoveryAttempts >= MAX_ENCODER_RECOVERY) {
-                frame.close();
-                return;
-            }
-            if ((now - lastEncoderRecoveryTime) < ENCODER_RECOVERY_COOLDOWN_MS) {
-                frame.close();
-                return;
-            }
-            encoderRecoveryAttempts++;
-            lastEncoderRecoveryTime = now;
-            warnLog?.log(`Encoder closed, attempting recovery (attempt ${encoderRecoveryAttempts}/${MAX_ENCODER_RECOVERY})`);
-            try {
-                encoder = createEncoder(encoderConfig);
-                encoder.initialize();
-                frameCount = 0;
-                startTimestamp = undefined;
-                warnLog?.log('Encoder recovered successfully');
-            } catch (error) {
-                errorLog?.log('Encoder recovery failed:', error);
-                encoder = null;
-                frame.close();
-                return;
-            }
         }
 
         // Backpressure: drop frame if encoder queue is building up.

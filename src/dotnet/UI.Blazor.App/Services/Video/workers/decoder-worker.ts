@@ -7,7 +7,7 @@
  */
 
 import { rpcClientServer, rpcNoWait } from 'rpc';
-import type { DecoderWorker, DecoderWorkerCallbacks } from './decoder-worker-contract';
+import type { DecoderWorker, DecoderWorkerCallbacks, RawChunkMessage } from './decoder-worker-contract';
 import { type DecoderConfig, type DecoderStats, WebCodecsDecoder } from '../webcodecs-decoder';
 import type { EncodedChunkData } from '../webcodecs-encoder';
 import { extractHVCC } from '../hevc-parser';
@@ -25,11 +25,8 @@ let currentDecoderConfig: DecoderConfig | null = null;
 let frameCount = 0;
 let lastRawDescription: ArrayBuffer | null = null;
 
-// Decoder recovery state for decodeRawChunk path
-let rawRecoveryAttempts = 0;
-const MAX_RAW_RECOVERY = 3;
-let lastRawRecoveryTime = 0;
-const RAW_RECOVERY_COOLDOWN_MS = 1000;
+// Stream-based input reader loop promise (for cleanup)
+let streamReadLoopPromise: Promise<void> | null = null;
 
 function bufferEqual(a: ArrayBuffer, b: ArrayBuffer): boolean {
     if (a.byteLength !== b.byteLength) return false;
@@ -87,10 +84,7 @@ function handleCodecChange(chunkData: EncodedChunkData): void {
     // 3. Create new decoder
     decoder = new WebCodecsDecoder(
         { ...currentDecoderConfig, description: undefined },
-        (frame: VideoFrame) => {
-            frameCount++;
-            void callbacks.onDecodedFrame(frame, rpcNoWait);
-        },
+        emitDecodedFrame,
         (error) => {
             errorLog?.log('Decoder error:', error);
         }
@@ -136,10 +130,7 @@ function decodeChunk(chunkData: EncodedChunkData): void {
                 // Reinitialize decoder
                 decoder = new WebCodecsDecoder(
                     { ...currentDecoderConfig!, description: undefined },
-                    (frame: VideoFrame) => {
-                        frameCount++;
-                        void callbacks.onDecodedFrame(frame, rpcNoWait);
-                    },
+                    emitDecodedFrame,
                     (error) => {
                         errorLog?.log('Decoder error:', error);
                     }
@@ -252,15 +243,20 @@ function decodeChunk(chunkData: EncodedChunkData): void {
 }
 
 /**
+ * Emit a decoded frame to the appropriate output (stream or RPC callback).
+ */
+function emitDecodedFrame(frame: VideoFrame): void {
+    frameCount++;
+    void callbacks.onDecodedFrame(frame, rpcNoWait);
+}
+
+/**
  * Helper: create WebCodecsDecoder instance with standard frame callback
  */
 function createDecoder(config: DecoderConfig): WebCodecsDecoder {
     return new WebCodecsDecoder(
         { ...config, description: undefined },
-        (frame: VideoFrame) => {
-            frameCount++;
-            void callbacks.onDecodedFrame(frame, rpcNoWait);
-        },
+        emitDecodedFrame,
         (error) => {
             errorLog?.log('Decoder error:', error);
         }
@@ -288,10 +284,7 @@ const serverImpl: DecoderWorker = {
                 // double-configure (Annex B → AVCC) that breaks Chrome's VideoDecoder.
                 decoder = new WebCodecsDecoder(
                     config,
-                    (frame: VideoFrame) => {
-                        frameCount++;
-                        void callbacks.onDecodedFrame(frame, rpcNoWait);
-                    },
+                    emitDecodedFrame,
                     (error) => {
                         errorLog?.log('Decoder error:', error);
                     }
@@ -314,6 +307,75 @@ const serverImpl: DecoderWorker = {
     },
 
     /**
+   * Initialize and start stream-based decoding.
+   */
+    initializeWithStreams: async (
+        config: DecoderConfig,
+        chunkInputStream: ReadableStream<RawChunkMessage>,
+    ): Promise<void> => {
+        try {
+            infoLog?.log('Initializing decoder (stream input, RPC output) for codec:', config.codec);
+
+            currentDecoderConfig = config;
+
+            // Output goes via RPC callback (onDecodedFrame) — no stream output writer.
+            // Cross-worker VideoFrame transfer via postMessage+transfer works correctly,
+            // unlike WritableStream which uses structured clone.
+
+            if (config.description) {
+                decoder = new WebCodecsDecoder(
+                    config,
+                    emitDecodedFrame,
+                    (error) => { errorLog?.log('Decoder error:', error); }
+                );
+                decoder.initialize();
+                decoderConfigured = true;
+                infoLog?.log('Decoder initialized in AVCC mode (stream, single configure)');
+            } else {
+                decoder = createDecoder(config);
+                decoder.initialize();
+                infoLog?.log('Decoder initialized without description (stream)');
+            }
+
+            processing = true;
+
+            // Start reading from input stream (async, runs in background)
+            const inputReader = chunkInputStream.getReader();
+            streamReadLoopPromise = (async () => {
+                try {
+                    while (processing) {
+                        const { done, value } = await inputReader.read();
+                        if (done) {
+                            infoLog?.log('Decoder stream input ended');
+                            break;
+                        }
+                        // Reuse the existing decodeRawChunk logic
+                        await serverImpl.decodeRawChunk(
+                            value.timestamp,
+                            value.duration,
+                            value.isKeyFrame,
+                            value.sequenceNumber,
+                            value.data,
+                            value.description
+                        );
+                    }
+                } catch (error) {
+                    if (processing) {
+                        errorLog?.log('Decoder stream read error:', error);
+                    }
+                } finally {
+                    try { inputReader.releaseLock(); } catch { /* ignore */ }
+                }
+            })();
+
+            infoLog?.log('Ready to decode chunks (stream mode)');
+        } catch (error) {
+            errorLog?.log('Failed to initialize decoder stream mode:', error);
+            throw error;
+        }
+    },
+
+    /**
    * Stop the decoder
    */
     stop: async (): Promise<void> => {
@@ -322,6 +384,12 @@ const serverImpl: DecoderWorker = {
 
             processing = false;
             decoderConfigured = false;
+
+            // Wait for stream read loop to finish
+            if (streamReadLoopPromise) {
+                try { await streamReadLoopPromise; } catch { /* ignore */ }
+                streamReadLoopPromise = null;
+            }
 
             // Wait for in-flight chunks
             await new Promise(resolve => setTimeout(resolve, 200));
@@ -458,55 +526,7 @@ const serverImpl: DecoderWorker = {
         data: ArrayBuffer,
         description?: ArrayBuffer
     ): Promise<void> => {
-        if (!processing) {
-            return;
-        }
-
-        // Recovery: if decoder is closed and we have a keyframe, attempt to recreate
-        if (decoder && decoder.getState() === 'closed' && isKeyFrame && currentDecoderConfig) {
-            const now = performance.now();
-            if (rawRecoveryAttempts < MAX_RAW_RECOVERY && (now - lastRawRecoveryTime) > RAW_RECOVERY_COOLDOWN_MS) {
-                rawRecoveryAttempts++;
-                lastRawRecoveryTime = now;
-                infoLog?.log(`Decoder closed, attempting recovery with keyframe seq=${sequenceNumber} ` +
-                    `(attempt ${rawRecoveryAttempts}/${MAX_RAW_RECOVERY})`);
-                try {
-                    // Build config WITH description to avoid configure-then-decode race
-                    const recoveryDesc = (description && description.byteLength > 0)
-                        ? description
-                        : lastRawDescription ?? undefined;
-                    const recoveryConfig: DecoderConfig = {
-                        ...currentDecoderConfig,
-                        description: recoveryDesc,
-                    };
-                    decoder = new WebCodecsDecoder(
-                        recoveryConfig,
-                        (frame: VideoFrame) => {
-                            frameCount++;
-                            rawRecoveryAttempts = 0; // Reset on successful decode
-                            void callbacks.onDecodedFrame(frame, rpcNoWait);
-                        },
-                        (error) => {
-                            errorLog?.log('Decoder error:', error);
-                        }
-                    );
-                    decoder.initialize();
-                    decoderConfigured = false; // Let keyframe handling below re-configure
-                    infoLog?.log('Decoder recovered, ready for keyframe');
-                } catch (error) {
-                    errorLog?.log('Decoder recovery failed:', error);
-                    return;
-                }
-            } else if (rawRecoveryAttempts >= MAX_RAW_RECOVERY) {
-                // Exhausted retries — drop silently to avoid log flood
-                return;
-            } else {
-                // In cooldown — drop
-                return;
-            }
-        }
-
-        if (!decoder) {
+        if (!decoder || !processing) {
             return;
         }
 
@@ -528,10 +548,7 @@ const serverImpl: DecoderWorker = {
                 }
                 decoder = new WebCodecsDecoder(
                     currentDecoderConfig,
-                    (frame: VideoFrame) => {
-                        frameCount++;
-                        void callbacks.onDecodedFrame(frame, rpcNoWait);
-                    },
+                    emitDecodedFrame,
                     (error) => {
                         errorLog?.log('Decoder error:', error);
                     }
@@ -623,10 +640,7 @@ const serverImpl: DecoderWorker = {
                 // double-configure (Annex B → AVCC) that breaks Chrome's VideoDecoder.
                 decoder = new WebCodecsDecoder(
                     config,
-                    (frame: VideoFrame) => {
-                        frameCount++;
-                        void callbacks.onDecodedFrame(frame, rpcNoWait);
-                    },
+                    emitDecodedFrame,
                     (error) => {
                         errorLog?.log('Decoder error:', error);
                     }

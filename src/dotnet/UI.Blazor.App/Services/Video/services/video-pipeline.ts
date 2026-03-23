@@ -1,76 +1,56 @@
 /**
  * Video Pipeline
- * Encode-only architecture: captures frames, encodes in worker, streams to server.
- * Decoding happens on the receiver side (video-player.ts uses its own decoder worker).
- *
- * Architecture:
- * - Encoder Worker (universal, RPC-based)
- * - Optional Segmentation Worker for background blur
- * - Canvas fallbacks for browsers without MSTP support
+ * Thin orchestrator that creates a unified Video Processing Worker and transfers
+ * the camera ReadableStream to it. All encoding, segmentation, and SignalR streaming
+ * happen inside the worker — the main thread only handles:
+ *   - MSTP/canvas frame extraction
+ *   - VAD state forwarding
+ *   - Preview frame rendering
+ *   - Recording UI lifecycle
  */
 
-import { rpcClientServer, rpcNoWait } from 'rpc';
+import { rpcClientServer } from 'rpc';
 import type { Disposable } from 'disposable';
+import { supportsTransferableStreams } from '../workers/stream-channel';
 
 import { BrowserInit } from '../../../../UI.Blazor/Services/BrowserInit/browser-init';
-import type { EncoderWorker } from '../workers/encoder-worker-contract';
-import type { SegmentationWorker, SegmentationConfig, SegmentationStats, SegmentationWorkerCallbacks } from '../workers/segmentation-worker-contract';
+import type { SegmentationConfig, SegmentationStats } from '../workers/segmentation-worker-contract';
 import type { EncoderConfig, EncoderStats } from '../webcodecs-encoder';
-import {
-    VideoStreamer,
-    type VideoStreamConfig,
-    type VideoStreamFrame,
-    microsecondsToTicks,
-    VideoStream,
-} from '../video-streamer';
+import type {
+    VideoProcessingWorker,
+    VideoProcessingWorkerCallbacks,
+    VideoProcessingConfig,
+    VideoProcessingStats,
+} from '../workers/video-processing-worker-contract';
 import { Versioning } from 'versioning';
 import { Log } from 'logging';
 import { SessionTokens } from '../../../../UI.Blazor/Services/Security/session-tokens';
+import { ServerClock } from 'server-clock';
 import type { Subscription } from 'rxjs';
 import { RecorderStateHub } from '../../../Components/AudioRecorder/recorder-state-hub';
 
 const { debugLog, infoLog, warnLog, errorLog } = Log.get('VideoPipeline');
 
 export interface PipelineConfig {
-  encoderConfig: EncoderConfig;
-  /**
-   * Background blur configuration (optional)
-   * When enabled, frames are processed through segmentation before encoding
-   */
-  backgroundBlur?: {
-    enabled: boolean;
-    segmentationConfig: SegmentationConfig;
-  };
-  /**
-   * Frame dropping configuration (optional)
-   * When enabled, randomly drops frames during processing for testing
-   * Default: false (no frames dropped)
-   */
-  frameDropping?: {
-    enabled: boolean;
-    dropProbability?: number; // Probability between 0 and 1 (default: 0.1 = 10% drop rate)
-  };
-  /**
-   * Streaming configuration (optional)
-   * When enabled, streams encoded chunks to server for real-time viewing
-   */
-  streaming?: {
-    enabled: boolean;
-    chatId: string;
-  };
-  /**
-   * VAD-based adaptive framerate (optional)
-   * When enabled, reduces framerate and bitrate when the sender is not speaking
-   */
-  adaptiveFramerate?: {
-    enabled: boolean;
-    /** Framerate when silent. Default: 5 */
-    reducedFps?: number;
-    /** Bitrate multiplier when silent (0-1). Default: 0.25 */
-    reducedBitrateRatio?: number;
-    /** Delay before reducing framerate after speech stops (ms). Default: 500 */
-    silenceDelayMs?: number;
-  };
+    encoderConfig: EncoderConfig;
+    backgroundBlur?: {
+        enabled: boolean;
+        segmentationConfig: SegmentationConfig;
+    };
+    frameDropping?: {
+        enabled: boolean;
+        dropProbability?: number;
+    };
+    streaming?: {
+        enabled: boolean;
+        chatId: string;
+    };
+    adaptiveFramerate?: {
+        enabled: boolean;
+        reducedFps?: number;
+        reducedBitrateRatio?: number;
+        silenceDelayMs?: number;
+    };
 }
 
 // Type declarations for Insertable Streams API
@@ -80,356 +60,153 @@ declare class MediaStreamTrackProcessor<T = VideoFrame> {
 }
 
 export interface IVideoPipeline {
-  start(inputStream: MediaStream): Promise<void>;
-  stop(): Promise<void>;
-  reconfigure(params: { bitrate: number; width: number; height: number }): Promise<void>;
-  switchCodec(newCodecString: string): Promise<void>;
-  toggleBlur(enabled: boolean, segmentationConfig?: SegmentationConfig): Promise<void>;
-  switchSegmentationBackend(backend: 'webgpu' | 'wasm'): Promise<void>;
-  setPreviewCallback(callback: ((frame: VideoFrame) => void) | null): void;
-  getEncoderStats(): EncoderStats;
-  getSegmentationStats(): SegmentationStats | null;
+    start(inputStream: MediaStream): Promise<void>;
+    stop(): Promise<void>;
+    reconfigure(params: { bitrate: number; width: number; height: number }): Promise<void>;
+    switchCodec(newCodecString: string): Promise<void>;
+    toggleBlur(enabled: boolean, segmentationConfig?: SegmentationConfig): Promise<void>;
+    switchSegmentationBackend(backend: 'webgpu' | 'wasm'): Promise<void>;
+    setPreviewCallback(callback: ((frame: VideoFrame) => void) | null): void;
+    getEncoderStats(): EncoderStats;
+    getSegmentationStats(): SegmentationStats | null;
 }
 
 export class VideoPipeline implements IVideoPipeline {
-    private readonly encoderWorkerInstance: Worker;
-    private readonly encoder: (EncoderWorker & Disposable);
-    private segmentationWorkerInstance: Worker | null = null;
-    private segmentationWorker: (SegmentationWorker & Disposable) | null = null;
+    private readonly workerInstance: Worker;
+    private readonly worker: (VideoProcessingWorker & Disposable);
+    private readonly useStreams: boolean;
     private processor: MediaStreamTrackProcessor | null = null;
     private frameReader: ReadableStreamDefaultReader<VideoFrame> | null = null;
 
-    // Video streaming
-    private videoStream: VideoStream | null = null; // VideoStream instance
-    private pendingStreamFrames: VideoStreamFrame[] = []; // Buffer frames until we get codec description
-    private codecSettings: string | null = null; // Base64 encoded codec description (SPS/PPS for H.264)
-    private storedDescriptionBytes: Uint8Array | null = null; // Raw description bytes for attaching to every keyframe
-    private firstEncodedTimestamp: number | null = null; // First encoded chunk timestamp (microseconds) for 0-based normalization
-
-    // Preview callback for rendering segmented frames before encoding
+    // Preview callback for rendering blurred frames on main thread
     private previewCallback: ((frame: VideoFrame) => void) | null = null;
 
     // Common
     private processing = false;
 
-    // VAD-based adaptive framerate
+    // VAD-based adaptive framerate (main thread tracks state, forwards to worker)
     private remoteStreamCount = 0;
     private isSpeaking = true;
     private vadSubscription: Subscription | null = null;
     private vadSilenceTimer: ReturnType<typeof setTimeout> | null = null;
-    private lastPassedFrameTime = 0;
-    private readonly reducedFrameIntervalMs: number;
     private savedBitrate: number;
-
-    // First-frame dimension reconciliation (Android codedWidth may differ from getSettings)
-    private dimensionsReconciled = false;
 
     // Encoder backpressure state
     private backpressureStepDownCount = 0;
     private lastBackpressureStepDown = 0;
 
-    private currentStats: {
-    encoder: EncoderStats;
-    segmentation: SegmentationStats | null;
-  } = {
-            encoder: {
-                encodedFrames: 0,
-                droppedFrames: 0,
-                keyFrames: 0,
-                totalBytes: 0,
-                averageEncodeTime: 0,
-                medianEncodeTime: 0,
-                pureMedianEncodeTime: -1,
-                configuredWidth: 0,
-                configuredHeight: 0,
-                configuredBitrate: 0,
-                hardwareAcceleration: 'unknown'
-            },
-            segmentation: null
-        };
+    // Server clock sync
+    private clockUnsubscribe: (() => void) | null = null;
+
+    // Stats (polled from worker)
+    private currentStats: VideoProcessingStats = {
+        encoder: {
+            encodedFrames: 0, droppedFrames: 0, keyFrames: 0, totalBytes: 0,
+            averageEncodeTime: 0, medianEncodeTime: 0, pureMedianEncodeTime: -1,
+            configuredWidth: 0, configuredHeight: 0, configuredBitrate: 0,
+            hardwareAcceleration: 'unknown',
+        },
+        segmentation: null,
+    };
     private statsInterval: number | null = null;
     private diagnosticsInterval: number | null = null;
     private lastDiagTotalBytes = 0;
     private lastDiagEncodedFrames = 0;
 
-    private onSerializedChunk = (
-        chunkBytes: ArrayBuffer,
-        timestamp: number,
-        duration: number,
-        isKeyFrame: boolean,
-        codec: string,
-        sequenceNumber: number,
-        descriptionBytes?: ArrayBuffer
-    ) => {
-        // Stream to server if enabled
-        if (this.config.streaming?.enabled) {
-            const chunkData = new Uint8Array(chunkBytes);
-            // Normalize to 0-based offset so startedAtMs + offset gives correct epoch time
-            this.firstEncodedTimestamp ??= timestamp; // microseconds
-            const normalizedTimestamp = timestamp - this.firstEncodedTimestamp;
-
-            const actualCodec = codec || this.config.encoderConfig.codec;
-            if (isKeyFrame && codec && codec !== this.config.encoderConfig.codec) {
-                warnLog?.log(`Encoder output codec (${codec}) differs from configured (${this.config.encoderConfig.codec}), updating config`);
-                this.config.encoderConfig.codec = codec;
-            }
-
-            const frame: VideoStreamFrame = {
-                offset: microsecondsToTicks(normalizedTimestamp),
-                duration: microsecondsToTicks(duration),
-                isKeyFrame,
-                width: this.config.encoderConfig.width,
-                height: this.config.encoderConfig.height,
-                data: chunkData,
-                codec: isKeyFrame ? actualCodec : undefined,
-            };
-
-            if (isKeyFrame) {
-                const offsetMs = normalizedTimestamp / 1000;
-                debugLog?.log(`Streaming keyframe: seq=${sequenceNumber}, offsetMs=${offsetMs.toFixed(0)}, ${(chunkData.length / 1024).toFixed(2)} KB`);
-            }
-
-            // Extract codec description from keyframes (required for H.264 decoder)
-            if (isKeyFrame && descriptionBytes && descriptionBytes.byteLength > 0) {
-                const descBytes = new Uint8Array(descriptionBytes);
-                frame.description = descBytes;
-
-                // If we don't have codecSettings yet, capture it from this keyframe
-                if (!this.codecSettings) {
-                    // Convert to base64 for transmission
-                    let binary = '';
-                    for (const byte of descBytes) {
-                        binary += String.fromCharCode(byte);
-                    }
-                    this.codecSettings = btoa(binary);
-                    debugLog?.log('Captured codec description:', descBytes.length, 'bytes,', this.codecSettings.length, 'base64 chars');
-                }
-                this.storedDescriptionBytes = descBytes;
-            }
-
-            // Attach stored description to ALL keyframes (even if encoder didn't provide it this time).
-            // Chrome's WebCodecs only provides description on the first keyframe; subsequent keyframes lack it.
-            // Without this, remote viewers joining via skipTo get DescLen=0 keyframes.
-            if (isKeyFrame && !frame.description && this.storedDescriptionBytes) {
-                frame.description = this.storedDescriptionBytes;
-            }
-
-            // If videoStream doesn't exist yet, check if we can create it now
-            if (!this.videoStream) {
-                // AV1 doesn't produce a separate codec description (SPS/PPS) like H.264,
-                // so we can create the stream on the first keyframe without codecSettings.
-                const isAV1 = this.config.encoderConfig.codec.startsWith('av01');
-                const canCreateStream = this.codecSettings ?? (isAV1 && isKeyFrame);
-
-                if (canCreateStream) {
-                    // We have what we need — create the stream now
-                    const settings = this.codecSettings ?? '';
-                    infoLog?.log(`Creating VideoStream with codecSettings (${settings.length} chars), isAV1=${isAV1}`);
-                    const streamConfig: VideoStreamConfig = {
-                        codec: this.config.encoderConfig.codec,
-                        width: this.config.encoderConfig.width,
-                        height: this.config.encoderConfig.height,
-                        codecSettings: settings,
-                        onReconnect: () => {
-                            this.firstEncodedTimestamp = null;
-                        },
-                    };
-                    const sessionToken = SessionTokens.current;
-                    this.videoStream = VideoStreamer.addStream(
-                        sessionToken,
-                        this.config.streaming.chatId,
-                        streamConfig
-                    );
-                    warnLog?.log(
-                        `TIMING_ANCHOR: firstEncodedTimestamp=${(this.firstEncodedTimestamp / 1000).toFixed(0)}ms (perf), ` +
-                        `pendingFrames=${this.pendingStreamFrames.length}`);
-                    infoLog?.log(`VideoStream created, sending ${this.pendingStreamFrames.length} buffered frames`);
-
-                    // Send all buffered frames
-                    for (const bufferedFrame of this.pendingStreamFrames) {
-                        this.videoStream.addFrame(bufferedFrame);
-                    }
-                    this.pendingStreamFrames = [];
-
-                    // Send the current frame
-                    this.videoStream.addFrame(frame);
-                } else {
-                    // Buffer the frame until we get the codec description (H.264)
-                    this.pendingStreamFrames.push(frame);
-                }
-            } else {
-                // Stream exists, send the frame directly
-                this.videoStream.addFrame(frame);
-            }
-        }
-    };
-
-    private onSegmentationFrameProcessed = async (frame: VideoFrame, _sequenceNumber: number, _processingTime: number) => {
-        if (this.previewCallback) {
-            try {
-                this.previewCallback(frame);
-            } catch (error) {
-                errorLog?.log('Preview callback error:', error);
-            }
-        }
-
-        try {
-            await this.encoder.encodeFrame(frame, rpcNoWait);
-        } catch {
-            try { frame.close(); } catch { /* already transferred/closed */ }
-        }
-    };
-
-    private onSegmentationError = (error: Error) => {
-        errorLog?.log('Segmentation error:', error.message);
-        if (this.config.backgroundBlur)
-            this.config.backgroundBlur.enabled = false;
-        warnLog?.log('Blur disabled due to segmentation error');
-    };
-
     constructor(private config: PipelineConfig) {
-    // Compute adaptive framerate settings
-        const af = config.adaptiveFramerate;
-        this.reducedFrameIntervalMs = 1000 / (af?.reducedFps ?? 5);
         this.savedBitrate = config.encoderConfig.bitrate;
 
-        // Create encoder worker instance
-        const encoderWorkerPath = Versioning.mapPath('/dist/videoEncoderWorker.js');
-        infoLog?.log('Creating encoder worker from:', encoderWorkerPath);
-        this.encoderWorkerInstance = new Worker(
-            encoderWorkerPath,
-            { type: 'module' }
-        );
-        this.encoderWorkerInstance.onerror = (e) => errorLog?.log('Encoder worker error:', e);
+        // Detect transferable stream support
+        this.useStreams = supportsTransferableStreams();
+        infoLog?.log(`Transferable streams: ${this.useStreams ? 'supported' : 'not supported (RPC fallback)'}`);
 
-        // Create RPC proxy
-        this.encoder = rpcClientServer<EncoderWorker>(
-            'VideoPipeline.encoder',
-            this.encoderWorkerInstance,
+        // Create unified video processing worker
+        const workerPath = Versioning.mapPath('/dist/videoProcessingWorker.js');
+        infoLog?.log('Creating video processing worker from:', workerPath);
+        this.workerInstance = new Worker(workerPath, { type: 'module' });
+        this.workerInstance.onerror = (e) => errorLog?.log('Video processing worker error:', e);
+
+        // Create RPC proxy with callbacks
+        this.worker = rpcClientServer<VideoProcessingWorker>(
+            'VideoPipeline.worker',
+            this.workerInstance,
             {
-                onSerializedChunk: this.onSerializedChunk,
+                onSerializedChunk: () => {
+                    // RPC fallback only — not used in stream mode
+                    return Promise.resolve();
+                },
                 onBackpressure: (dropRate: number) => {
                     this.handleEncoderBackpressure(dropRate);
                     return Promise.resolve();
                 },
-            }
+                onDimensionReconciled: (width: number, height: number) => {
+                    infoLog?.log(`Dimension reconciled by worker: ${width}x${height}`);
+                    this.config.encoderConfig.width = width;
+                    this.config.encoderConfig.height = height;
+                    return Promise.resolve();
+                },
+                onPreviewFrame: (frame: VideoFrame) => {
+                    if (this.previewCallback) {
+                        try {
+                            this.previewCallback(frame);
+                        } catch (error) {
+                            errorLog?.log('Preview callback error:', error);
+                        }
+                    }
+                    // Frame will be GC'd if not used by preview
+                    return Promise.resolve();
+                },
+                onStreamCreated: (codecSettings: string) => {
+                    infoLog?.log(`Worker created SignalR stream, codecSettings: ${codecSettings.length} chars`);
+                    return Promise.resolve();
+                },
+            } as VideoProcessingWorkerCallbacks,
         );
-
-        // Initialize segmentation worker if background blur is enabled
-        if (this.config.backgroundBlur?.enabled) {
-            infoLog?.log('Creating segmentation worker for background blur with config:', this.config.backgroundBlur);
-            const segmentationWorkerPath = Versioning.mapPath('/dist/videoSegmentationWorker.js');
-            this.segmentationWorkerInstance = new Worker(
-                segmentationWorkerPath,
-                { type: 'module' }
-            );
-
-            this.segmentationWorker = rpcClientServer<SegmentationWorker>(
-                'VideoPipeline.segmentation',
-                this.segmentationWorkerInstance,
-        {
-            onFrameProcessed: (frame: VideoFrame, seq: number, time: number) => { void this.onSegmentationFrameProcessed(frame, seq, time); },
-            onError: this.onSegmentationError
-        } as SegmentationWorkerCallbacks
-            );
-            infoLog?.log('Segmentation worker created and RPC proxy initialized');
-        } else {
-            infoLog?.log('Background blur not enabled in config:', this.config.backgroundBlur);
-        }
     }
 
     public async start(inputStream: MediaStream): Promise<void> {
         infoLog?.log('Starting video pipeline...');
 
-        // Initialize video streaming if enabled (stream will be created when first keyframe with description arrives)
-        if (this.config.streaming?.enabled) {
-            infoLog?.log('Initializing video streaming to server (will wait for first keyframe with codec description)');
-
-            // Initialize VideoStreamer SignalR connection
-            const hubUrl = BrowserInit.getUrl('/api/hub/streams');
-            VideoStreamer.init(hubUrl);
-
-            // VideoStream will be created when first keyframe with description arrives
-            // This ensures we can pass codecSettings to the server
-            infoLog?.log('Video streaming SignalR initialized, waiting for first keyframe');
-        }
-
-        // Get input video track
         const videoTrack = inputStream.getVideoTracks()[0];
-
-        // IMPORTANT: Set processing to true BEFORE creating frame extractor
-        // This fixes a race condition in Safari where the canvas fallback's pump()
-        // function closes the stream immediately if processing is false
         this.processing = true;
 
-        // Create processor to extract frames (with canvas fallback for older Safari)
-        const hasMSTP = this.hasMSTPInWindow();
-        infoLog?.log(`MSTP available: ${hasMSTP}`);
+        // Build worker config
+        const hubUrl = BrowserInit.getUrl('/api/hub/streams');
+        const workerConfig: VideoProcessingConfig = {
+            encoder: this.config.encoderConfig,
+            streaming: {
+                hubUrl,
+                sessionToken: SessionTokens.current,
+                chatId: this.config.streaming?.chatId ?? '',
+                serverClockOffsetMs: ServerClock.offsetMs,
+            },
+        };
 
-        if (hasMSTP) {
-            try {
-                this.processor = new MediaStreamTrackProcessor({ track: videoTrack });
-                this.frameReader = this.processor.readable.getReader();
-                debugLog?.log('Using MSTP for frame extraction');
-            } catch (error) {
-                errorLog?.log('MSTP creation failed, falling back to canvas:', error);
-                this.frameReader = this.createCanvasFrameExtractor(videoTrack);
-            }
-        } else {
-            // Canvas-based fallback for older browsers
-            infoLog?.log('MSTP not available - using canvas-based frame extraction fallback');
-            this.frameReader = this.createCanvasFrameExtractor(videoTrack);
+        if (this.config.backgroundBlur?.enabled) {
+            workerConfig.segmentation = this.config.backgroundBlur.segmentationConfig;
         }
 
-        // Initialize encoder worker and wait for it to be ready
-        const initPromises: Promise<void>[] = [
-            this.encoder.initialize(this.config.encoderConfig, { type: 'rpc-timeout', timeoutMs: 5000 }),
-        ];
-
-        // Initialize segmentation worker if background blur is enabled
-        if (this.segmentationWorker && this.config.backgroundBlur?.enabled) {
-            const segConfig = {
-                ...this.config.backgroundBlur.segmentationConfig,
-                outputWidth: this.config.encoderConfig.width,
-                outputHeight: this.config.encoderConfig.height,
+        if (this.config.adaptiveFramerate?.enabled) {
+            workerConfig.adaptiveFramerate = {
+                reducedFps: this.config.adaptiveFramerate.reducedFps ?? 5,
             };
-            initPromises.push(
-                this.segmentationWorker.initialize(
-                    segConfig,
-                    { timeoutMs: 10000 } // Longer timeout for model loading
-                ).catch((error: unknown) => {
-                    warnLog?.log('Segmentation init failed, continuing without blur:', error);
-                    this.segmentationWorker?.dispose();
-                    this.segmentationWorker = null;
-                    this.segmentationWorkerInstance?.terminate();
-                    this.segmentationWorkerInstance = null;
-                    if (this.config.backgroundBlur) this.config.backgroundBlur.enabled = false;
-                    // Do NOT rethrow — let recording continue
-                })
-            );
-            infoLog?.log('Initializing segmentation worker for background blur');
         }
 
-        await Promise.all(initPromises);
-        infoLog?.log('Encoder worker ready via RPC');
+        if (this.useStreams) {
+            await this.startStreamMode(videoTrack, workerConfig);
+        } else {
+            await this.startRpcFallbackMode(videoTrack, workerConfig);
+        }
 
-        // Start pumping frames to encoder worker
-        // Note: this.processing was already set to true earlier (before frame extractor creation)
-        void this.pumpFrames();
+        // Subscribe to server clock offset changes
+        this.clockUnsubscribe = ServerClock.onOffsetChanged((offsetMs) => {
+            void this.worker.updateServerClockOffset(offsetMs);
+        });
 
-        // Start stats polling via RPC
+        // Start stats polling
         this.statsInterval = window.setInterval(() => {
             void (async () => {
-                const encoderStats = await this.encoder.getStats();
-                this.currentStats.encoder = encoderStats;
-                if (this.segmentationWorker) {
-                    try {
-                        const segStats = await this.segmentationWorker.getStats();
-                        this.currentStats.segmentation = segStats;
-                    } catch (error) {
-                        warnLog?.log('Failed to get segmentation stats:', error);
-                    }
-                }
+                this.currentStats = await this.worker.getStats();
             })();
         }, 1000);
 
@@ -446,10 +223,10 @@ export class VideoPipeline implements IVideoPipeline {
             const actualMbps = (bytesDelta * 8 / 10_000_000).toFixed(2);
             const cfgMbps = (s.configuredBitrate / 1_000_000).toFixed(1);
             const codec = this.config.encoderConfig.codec;
-            const msg = `VIDEO_ENCODE: codec=${codec} median=${s.medianEncodeTime.toFixed(1)}ms avg=${s.averageEncodeTime.toFixed(1)}ms ` +
+            warnLog?.log(
+                `VIDEO_ENCODE: codec=${codec} median=${s.medianEncodeTime.toFixed(1)}ms avg=${s.averageEncodeTime.toFixed(1)}ms ` +
                 `cfg=${s.configuredWidth}x${s.configuredHeight}@${cfgMbps}Mbps actual=${actualMbps}Mbps ` +
-                `enc=${framesDelta} drop=${s.droppedFrames} kf=${s.keyFrames} hw=${s.hardwareAcceleration}`;
-            warnLog?.log(msg);
+                `enc=${framesDelta} drop=${s.droppedFrames} kf=${s.keyFrames} hw=${s.hardwareAcceleration}`);
 
             const seg = this.currentStats.segmentation;
             if (seg) {
@@ -459,7 +236,54 @@ export class VideoPipeline implements IVideoPipeline {
             }
         }, 10_000);
 
-        infoLog?.log('Pipeline started: Encoder Worker → Server streaming');
+        infoLog?.log('Pipeline started');
+    }
+
+    /**
+     * Stream mode: transfer MSTP ReadableStream to worker. Worker handles everything.
+     */
+    private async startStreamMode(videoTrack: MediaStreamTrack, config: VideoProcessingConfig): Promise<void> {
+        infoLog?.log('Starting stream mode...');
+
+        let frameReadable: ReadableStream<VideoFrame>;
+        if (this.hasMSTPInWindow()) {
+            try {
+                this.processor = new MediaStreamTrackProcessor({ track: videoTrack });
+                frameReadable = this.processor.readable;
+                debugLog?.log('Using MSTP ReadableStream');
+            } catch (error) {
+                errorLog?.log('MSTP creation failed, falling back to canvas:', error);
+                frameReadable = this.createCanvasReadableStream(videoTrack);
+            }
+        } else {
+            frameReadable = this.createCanvasReadableStream(videoTrack);
+        }
+
+        await this.worker.startWithStream(config, frameReadable, { type: 'rpc-timeout', timeoutMs: 15000 });
+        infoLog?.log('Stream mode started');
+    }
+
+    /**
+     * RPC fallback: pump frames via per-frame RPC calls.
+     */
+    private async startRpcFallbackMode(videoTrack: MediaStreamTrack, config: VideoProcessingConfig): Promise<void> {
+        infoLog?.log('Starting RPC fallback mode...');
+
+        if (this.hasMSTPInWindow()) {
+            try {
+                this.processor = new MediaStreamTrackProcessor({ track: videoTrack });
+                this.frameReader = this.processor.readable.getReader();
+            } catch (error) {
+                errorLog?.log('MSTP creation failed, falling back to canvas:', error);
+                this.frameReader = this.createCanvasFrameExtractor(videoTrack);
+            }
+        } else {
+            this.frameReader = this.createCanvasFrameExtractor(videoTrack);
+        }
+
+        await this.worker.initialize(config, { type: 'rpc-timeout', timeoutMs: 15000 });
+        void this.pumpFrames();
+        infoLog?.log('RPC fallback mode started');
     }
 
     public async stop(): Promise<void> {
@@ -476,124 +300,224 @@ export class VideoPipeline implements IVideoPipeline {
         }
         this.isSpeaking = true;
 
+        // Unsubscribe from clock
+        if (this.clockUnsubscribe) {
+            this.clockUnsubscribe();
+            this.clockUnsubscribe = null;
+        }
+
         // Stop stats polling
-        if (this.statsInterval) {
-            clearInterval(this.statsInterval);
-            this.statsInterval = null;
-        }
-        if (this.diagnosticsInterval) {
-            clearInterval(this.diagnosticsInterval);
-            this.diagnosticsInterval = null;
-        }
+        if (this.statsInterval) { clearInterval(this.statsInterval); this.statsInterval = null; }
+        if (this.diagnosticsInterval) { clearInterval(this.diagnosticsInterval); this.diagnosticsInterval = null; }
 
-        // Stop pumping frames
+        // Stop frame pump (RPC fallback)
         this.processing = false;
-
-        // Cancel frame reader
         if (this.frameReader) {
-            try {
-                await this.frameReader.cancel();
-            } catch (e: unknown) {
-                warnLog?.log('Frame reader cancel error:', e);
-            }
+            try { await this.frameReader.cancel(); } catch { /* ignore */ }
             this.frameReader = null;
         }
 
-        // Stop encoder worker via RPC
-        await this.encoder.stop();
-        infoLog?.log('Encoder stopped via RPC');
+        // Stop worker (handles encoder, segmentation, SignalR cleanup internally)
+        await this.worker.stop();
+        infoLog?.log('Worker stopped');
 
-        // Stop segmentation worker if it exists
-        if (this.segmentationWorker) {
-            try {
-                await this.segmentationWorker.stop();
-                infoLog?.log('Segmentation worker stopped via RPC');
-            } catch (error) {
-                warnLog?.log('Error stopping segmentation worker:', error);
-            }
-        }
+        // Cleanup
+        this.worker.dispose();
+        this.workerInstance.terminate();
 
-        // Complete video stream if active
-        if (this.videoStream) {
-            this.videoStream.complete();
-            infoLog?.log('Video stream completed');
-            this.videoStream = null;
-        }
-
-        // Reset timestamp normalization
-        this.firstEncodedTimestamp = null;
-
-        // Cleanup RPC clients and worker instances
-        this.encoder.dispose();
-        this.encoderWorkerInstance.terminate();
-
-        if (this.segmentationWorker) {
-            this.segmentationWorker.dispose();
-            this.segmentationWorker = null;
-        }
-        if (this.segmentationWorkerInstance) {
-            this.segmentationWorkerInstance.terminate();
-            this.segmentationWorkerInstance = null;
-        }
-
-        infoLog?.log('Pipeline stopped with RPC cleanup');
+        infoLog?.log('Pipeline stopped');
     }
 
-
-    /**
-   * Dynamically reconfigure encoder with new bitrate and/or resolution
-   */
     async reconfigure(params: { bitrate: number; width: number; height: number }): Promise<void> {
-        infoLog?.log(`Reconfiguring via RPC: ${params.bitrate / 1_000_000}Mbps, ${params.width}x${params.height}`);
+        infoLog?.log(`Reconfiguring: ${params.bitrate / 1_000_000}Mbps, ${params.width}x${params.height}`);
 
-        // Update config
         this.config.encoderConfig.bitrate = params.bitrate;
         this.config.encoderConfig.width = params.width;
         this.config.encoderConfig.height = params.height;
-
-        // Track base bitrate for VAD-based reduction
         this.savedBitrate = params.bitrate;
 
-        // Update blur output dimensions to match encoder target (avoids resize in encoder worker)
-        if (this.segmentationWorker && this.config.backgroundBlur?.enabled) {
-            void this.segmentationWorker.updateConfig({
-                outputWidth: params.width,
-                outputHeight: params.height,
-            });
-        }
-
-        // If currently in VAD silence, apply reduced ratio to new base bitrate
+        // If currently in VAD silence, apply reduced ratio
         if (!this.isSpeaking && this.config.adaptiveFramerate?.enabled) {
             const ratio = this.config.adaptiveFramerate.reducedBitrateRatio ?? 0.25;
             const reducedBitrate = Math.round(params.bitrate * ratio);
             debugLog?.log(`reconfigure during silence: applying reduced bitrate ${reducedBitrate}`);
-            await this.encoder.reconfigure({ ...params, bitrate: reducedBitrate });
+            await this.worker.reconfigure({ ...params, bitrate: reducedBitrate });
             return;
         }
 
-        await this.encoder.reconfigure(params);
+        await this.worker.reconfigure(params);
     }
+
+    async switchCodec(newCodecString: string): Promise<void> {
+        if (newCodecString === this.config.encoderConfig.codec) {
+            infoLog?.log(`switchCodec: already using ${newCodecString}, skipping`);
+            return;
+        }
+
+        infoLog?.log(`Switching codec from ${this.config.encoderConfig.codec} to ${newCodecString}`);
+
+        const newEncoderConfig: EncoderConfig = { ...this.config.encoderConfig, codec: newCodecString };
+        this.config.encoderConfig = newEncoderConfig;
+
+        // Worker handles VideoStream completion + encoder switch internally
+        await this.worker.switchCodec(newEncoderConfig);
+
+        infoLog?.log(`Codec switched to ${newCodecString}`);
+    }
+
+    async toggleBlur(enabled: boolean, segmentationConfig?: SegmentationConfig): Promise<void> {
+        infoLog?.log(`Toggling background blur: ${enabled ? 'ON' : 'OFF'}`);
+
+        if (enabled && !this.config.backgroundBlur && !segmentationConfig) {
+            throw new Error('Cannot enable blur: no segmentation config');
+        }
+
+        if (!this.config.backgroundBlur && segmentationConfig) {
+            this.config.backgroundBlur = { enabled: true, segmentationConfig };
+        }
+
+        if (this.config.backgroundBlur) {
+            this.config.backgroundBlur.enabled = enabled;
+        }
+
+        // Worker handles lazy ONNX loading and blur toggle internally
+        await this.worker.toggleBlur(enabled, segmentationConfig);
+
+        infoLog?.log(`Background blur ${enabled ? 'enabled' : 'disabled'}`);
+    }
+
+    async switchSegmentationBackend(newBackend: 'webgpu' | 'wasm'): Promise<void> {
+        infoLog?.log(`Switching segmentation backend to: ${newBackend}`);
+        if (this.config.backgroundBlur?.segmentationConfig) {
+            this.config.backgroundBlur.segmentationConfig.backend = newBackend;
+        }
+        // Worker would need a restart for backend change — for now, toggle blur off/on
+        await this.worker.toggleBlur(false);
+        await this.worker.toggleBlur(true, this.config.backgroundBlur?.segmentationConfig);
+    }
+
+    getEncoderStats(): EncoderStats {
+        return { ...this.currentStats.encoder };
+    }
+
+    getSegmentationStats(): SegmentationStats | null {
+        return this.currentStats.segmentation ? { ...this.currentStats.segmentation } : null;
+    }
+
+    setPreviewCallback(callback: ((frame: VideoFrame) => void) | null): void {
+        this.previewCallback = callback;
+    }
+
+    updateSavedBitrate(bitrate: number): void {
+        this.savedBitrate = bitrate;
+        if (!this.isSpeaking) {
+            const ratio = this.config.adaptiveFramerate?.reducedBitrateRatio ?? 0.25;
+            const reducedBitrate = Math.round(this.savedBitrate * ratio);
+            void this.worker.reconfigure({
+                bitrate: reducedBitrate,
+                width: this.config.encoderConfig.width,
+                height: this.config.encoderConfig.height,
+            });
+        }
+    }
+
+    // ─── VAD ────────────────────────────────────────────────────────────────
+
+    subscribeToVad(): void {
+        if (this.vadSubscription) return;
+
+        this.vadSubscription = RecorderStateHub.recorderStateChanged$.subscribe(state => {
+            const active = !state.isRecording || state.isVoiceActive;
+            this.setVadActive(active);
+        });
+
+        const current = RecorderStateHub.getState();
+        this.setVadActive(!current.isRecording || current.isVoiceActive);
+        debugLog?.log('Subscribed to VAD for adaptive framerate');
+    }
+
+    setRemoteStreamCount(count: number): void {
+        const wasGroup = this.remoteStreamCount >= 2;
+        this.remoteStreamCount = count;
+        const isGroup = count >= 2;
+        debugLog?.log('setRemoteStreamCount:', count);
+
+        // Forward to worker
+        void this.worker.setVadState(this.isSpeaking, count);
+
+        // Transitioning from group → non-group: restore
+        if (wasGroup && !isGroup) {
+            if (this.vadSilenceTimer !== null) {
+                clearTimeout(this.vadSilenceTimer);
+                this.vadSilenceTimer = null;
+            }
+            if (!this.isSpeaking) {
+                this.isSpeaking = true;
+                void this.worker.reconfigure({
+                    bitrate: this.savedBitrate,
+                    width: this.config.encoderConfig.width,
+                    height: this.config.encoderConfig.height,
+                });
+                void this.worker.forceKeyFrame();
+            }
+        }
+    }
+
+    private setVadActive(isActive: boolean): void {
+        if (isActive) {
+            if (this.vadSilenceTimer !== null) {
+                clearTimeout(this.vadSilenceTimer);
+                this.vadSilenceTimer = null;
+            }
+
+            if (!this.isSpeaking) {
+                this.isSpeaking = true;
+                debugLog?.log('VAD: speech resumed');
+
+                void this.worker.reconfigure({
+                    bitrate: this.savedBitrate,
+                    width: this.config.encoderConfig.width,
+                    height: this.config.encoderConfig.height,
+                });
+                void this.worker.forceKeyFrame();
+                void this.worker.setVadState(true, this.remoteStreamCount);
+            }
+        } else {
+            if (this.isSpeaking && this.vadSilenceTimer === null && this.remoteStreamCount >= 2) {
+                const delay = this.config.adaptiveFramerate?.silenceDelayMs ?? 60_000;
+                this.vadSilenceTimer = setTimeout(() => {
+                    this.vadSilenceTimer = null;
+                    this.isSpeaking = false;
+
+                    const ratio = this.config.adaptiveFramerate?.reducedBitrateRatio ?? 0.25;
+                    const reducedBitrate = Math.round(this.savedBitrate * ratio);
+                    debugLog?.log(`VAD: silence, reducing bitrate to ${reducedBitrate}`);
+
+                    void this.worker.reconfigure({
+                        bitrate: reducedBitrate,
+                        width: this.config.encoderConfig.width,
+                        height: this.config.encoderConfig.height,
+                    });
+                    void this.worker.setVadState(false, this.remoteStreamCount);
+                }, delay);
+            }
+        }
+    }
+
+    // ─── Backpressure ───────────────────────────────────────────────────────
 
     private handleEncoderBackpressure(dropRate: number): void {
         const now = performance.now();
-
-        // Throttle: don't step down more than once per 5s
         if (now - this.lastBackpressureStepDown < 5000) return;
 
         const currentBitrate = this.config.encoderConfig.bitrate;
         const currentWidth = this.config.encoderConfig.width;
         const currentHeight = this.config.encoderConfig.height;
 
-        // Find current approximate quality level and step down
         let target: { width: number; height: number; bitrate: number } | null = null;
-        if (currentWidth > 1280) {
-            target = { width: 1280, height: 720, bitrate: 4_000_000 };
-        } else if (currentWidth > 960) {
-            target = { width: 960, height: 540, bitrate: 2_500_000 };
-        } else if (currentWidth > 640) {
-            target = { width: 640, height: 360, bitrate: 1_000_000 };
-        }
-        // Already at lowest resolution — can only reduce bitrate further
+        if (currentWidth > 1280) target = { width: 1280, height: 720, bitrate: 4_000_000 };
+        else if (currentWidth > 960) target = { width: 960, height: 540, bitrate: 2_500_000 };
+        else if (currentWidth > 640) target = { width: 640, height: 360, bitrate: 1_000_000 };
         if (!target && currentBitrate > 500_000) {
             target = { width: currentWidth, height: currentHeight, bitrate: Math.round(currentBitrate * 0.5) };
         }
@@ -606,349 +530,18 @@ export class VideoPipeline implements IVideoPipeline {
         this.backpressureStepDownCount++;
         this.lastBackpressureStepDown = now;
         warnLog?.log(`Backpressure step-down #${this.backpressureStepDownCount}: ` +
-            `${currentWidth}x${currentHeight}@${(currentBitrate/1e6).toFixed(1)}Mbps → ` +
-            `${target.width}x${target.height}@${(target.bitrate/1e6).toFixed(1)}Mbps, dropRate=${(dropRate*100).toFixed(0)}%`);
+            `${currentWidth}x${currentHeight}@${(currentBitrate / 1e6).toFixed(1)}Mbps → ` +
+            `${target.width}x${target.height}@${(target.bitrate / 1e6).toFixed(1)}Mbps, dropRate=${(dropRate * 100).toFixed(0)}%`);
 
         void this.reconfigure(target);
     }
 
-    /**
-   * Switch codec mid-stream: complete current VideoStream, reset encoder, start new stream
-   */
-    async switchCodec(newCodecString: string): Promise<void> {
-        if (newCodecString === this.config.encoderConfig.codec) {
-            infoLog?.log(`switchCodec: already using ${newCodecString}, skipping`);
-            return;
-        }
+    // ─── Canvas fallback ────────────────────────────────────────────────────
 
-        infoLog?.log(`Switching codec from ${this.config.encoderConfig.codec} to ${newCodecString}`);
-
-        // 1. Complete current video stream so the server-side stream ends
-        if (this.videoStream) {
-            this.videoStream.complete();
-            infoLog?.log('Current video stream completed');
-            this.videoStream = null;
-        }
-
-        // 2. Reset streaming state so new encoded frames trigger a new VideoStream
-        this.codecSettings = null;
-        this.firstEncodedTimestamp = null;
-        this.pendingStreamFrames = [];
-
-        // 3. Build new encoder config with the new codec
-        const newEncoderConfig: EncoderConfig = {
-            ...this.config.encoderConfig,
-            codec: newCodecString,
-        };
-
-        // Add codec-specific format (avc needs { format: 'avc' })
-        // This is handled inside the encoder's initialize(), but we update our local config
-        this.config.encoderConfig = newEncoderConfig;
-
-        // 4. Switch encoder in worker (flush + close old, create + configure new)
-        await this.encoder.switchCodec(newEncoderConfig);
-
-        infoLog?.log(`Codec switched to ${newCodecString}`);
-    }
-
-    /**
-   * Dynamically toggle background blur on/off during recording
-   */
-    async toggleBlur(enabled: boolean, segmentationConfig?: SegmentationConfig): Promise<void> {
-        infoLog?.log(`Toggling background blur: ${enabled ? 'ON' : 'OFF'}`);
-
-        if (enabled && !this.segmentationWorker) {
-            // Initialize segmentation worker if enabling blur and it doesn't exist
-            if (!this.config.backgroundBlur && !segmentationConfig) {
-                throw new Error('Cannot enable blur: background blur not configured and no segmentation config provided');
-            }
-
-            // Set the config if provided
-            if (!this.config.backgroundBlur && segmentationConfig) {
-                this.config.backgroundBlur = {
-                    enabled: true,
-                    segmentationConfig
-                };
-            }
-
-            if (!this.config.backgroundBlur) {
-                throw new Error('Cannot enable blur: background blur not configured');
-            }
-
-            infoLog?.log('Initializing segmentation worker for dynamic blur enable...');
-
-            const segmentationWorkerPath = Versioning.mapPath('/dist/videoSegmentationWorker.js');
-            this.segmentationWorkerInstance = new Worker(
-                segmentationWorkerPath,
-                { type: 'module' }
-            );
-
-            this.segmentationWorker = rpcClientServer<SegmentationWorker>(
-                'VideoPipeline.segmentation',
-                this.segmentationWorkerInstance,
-                {
-                    onFrameProcessed: this.onSegmentationFrameProcessed,
-                    onError: this.onSegmentationError
-                }
-            );
-
-            // Initialize the worker with encoder output dimensions
-            await this.segmentationWorker.initialize(
-                {
-                    ...this.config.backgroundBlur.segmentationConfig,
-                    outputWidth: this.config.encoderConfig.width,
-                    outputHeight: this.config.encoderConfig.height,
-                },
-                { timeoutMs: 10000 }
-            );
-
-            infoLog?.log('Segmentation worker initialized for dynamic blur toggle');
-        }
-
-        if (this.config.backgroundBlur) {
-            this.config.backgroundBlur.enabled = enabled;
-        }
-
-        // Update segmentation worker config to enable/disable blur
-        if (this.segmentationWorker) {
-            await this.segmentationWorker.updateConfig({ blurEnabled: enabled });
-            infoLog?.log(`Updated segmentation worker blurEnabled to ${enabled}`);
-        }
-
-        infoLog?.log(`Background blur ${enabled ? 'enabled' : 'disabled'}`);
-    }
-
-    getEncoderStats(): EncoderStats {
-        return { ...this.currentStats.encoder };
-    }
-
-    getSegmentationStats(): SegmentationStats | null {
-        return this.currentStats.segmentation ? { ...this.currentStats.segmentation } : null;
-    }
-
-    /**
-   * Set a callback to receive processed (blurred) frames for local preview.
-   * The callback is invoked before the frame is transferred to the encoder,
-   * so drawImage/canvas operations are safe.
-   */
-    setPreviewCallback(callback: ((frame: VideoFrame) => void) | null): void {
-        this.previewCallback = callback;
-    }
-
-    /**
-   * Update segmentation configuration dynamically during recording
-   */
-    async updateSegmentationConfig(config: Partial<SegmentationConfig>): Promise<void> {
-        infoLog?.log('Updating segmentation config:', config);
-
-        if (this.segmentationWorker) {
-            // Update worker config via RPC
-            await this.segmentationWorker.updateConfig(config);
-        }
-
-        // Update local config if it exists
-        if (this.config.backgroundBlur?.segmentationConfig) {
-            this.config.backgroundBlur.segmentationConfig = {
-                ...this.config.backgroundBlur.segmentationConfig,
-                ...config
-            };
-        }
-    }
-
-    /**
-   * Switch the segmentation backend dynamically during recording
-   * Recreates the segmentation worker with the new backend configuration
-   */
-    async switchSegmentationBackend(newBackend: 'webgpu' | 'wasm'): Promise<void> {
-        infoLog?.log(`Switching segmentation backend to: ${newBackend}`);
-
-        if (!this.segmentationWorker || !this.config.backgroundBlur) {
-            throw new Error('Segmentation worker not available or background blur not enabled');
-        }
-
-        // Stop and dispose current segmentation worker
-        try {
-            await this.segmentationWorker.stop();
-            this.segmentationWorker.dispose();
-            if (this.segmentationWorkerInstance) {
-                this.segmentationWorkerInstance.terminate();
-            }
-        } catch (error) {
-            warnLog?.log('Error stopping current segmentation worker:', error);
-        }
-
-        // Update config with new backend
-        const currentConfig = this.config.backgroundBlur.segmentationConfig;
-        const updatedConfig: SegmentationConfig = {
-            ...currentConfig,
-            backend: newBackend,
-        };
-
-        // Recreate worker instance
-        const segmentationWorkerPath = Versioning.mapPath('/dist/videoSegmentationWorker.js');
-        this.segmentationWorkerInstance = new Worker(
-            segmentationWorkerPath,
-            { type: 'module' }
-        );
-
-        // Recreate RPC proxy
-        this.segmentationWorker = rpcClientServer<SegmentationWorker>(
-            'VideoPipeline.segmentation',
-            this.segmentationWorkerInstance,
-      {
-          onFrameProcessed: (frame: VideoFrame, seq: number, time: number) => { void this.onSegmentationFrameProcessed(frame, seq, time); },
-          onError: this.onSegmentationError
-      } as SegmentationWorkerCallbacks
-        );
-
-        // Reinitialize with updated config
-        await this.segmentationWorker.initialize(updatedConfig, { timeoutMs: 10000 });
-
-        // Update local config
-        this.config.backgroundBlur.segmentationConfig = updatedConfig;
-
-        infoLog?.log(`Successfully switched segmentation backend to ${newBackend}`);
-    }
-
-    /**
-   * Update frame dropping configuration dynamically during recording
-   */
-    updateFrameDroppingConfig(enabled: boolean, dropProbability = 0.1): void {
-        infoLog?.log(`Updating frame dropping config: enabled=${enabled}, probability=${dropProbability}`);
-
-        // Create or update local config
-        this.config.frameDropping = {
-            enabled,
-            dropProbability
-        };
-
-        infoLog?.log('Frame dropping config now:', this.config.frameDropping);
-    }
-
-    /**
-     * Subscribe to audio VAD state to drive adaptive framerate.
-     * Call after pipeline is started.
-     */
-    subscribeToVad(): void {
-        if (this.vadSubscription) return;
-
-        this.vadSubscription = RecorderStateHub.recorderStateChanged$.subscribe(state => {
-            // When audio is not recording, treat as speaking (don't reduce framerate)
-            const active = !state.isRecording || state.isVoiceActive;
-            this.setVadActive(active);
-        });
-
-        // Sync with current state
-        const current = RecorderStateHub.getState();
-        this.setVadActive(!current.isRecording || current.isVoiceActive);
-
-        debugLog?.log('Subscribed to VAD for adaptive framerate');
-    }
-
-    /**
-     * Update the remote stream count for slowdown decisions.
-     * Slowdown only applies in group calls (3+ total streams = 2+ remote).
-     */
-    setRemoteStreamCount(count: number): void {
-        const wasGroup = this.remoteStreamCount >= 2;
-        this.remoteStreamCount = count;
-        const isGroup = count >= 2;
-        debugLog?.log('setRemoteStreamCount:', count);
-
-        // Transitioning from group → non-group: cancel pending slowdown & restore
-        if (wasGroup && !isGroup) {
-            if (this.vadSilenceTimer !== null) {
-                clearTimeout(this.vadSilenceTimer);
-                this.vadSilenceTimer = null;
-            }
-            if (!this.isSpeaking) {
-                this.isSpeaking = true;
-                void this.encoder.reconfigure({
-                    bitrate: this.savedBitrate,
-                    width: this.config.encoderConfig.width,
-                    height: this.config.encoderConfig.height,
-                });
-                void this.encoder.forceKeyFrame();
-            }
-        }
-    }
-
-    /**
-     * Update the base bitrate used for VAD-based reduction.
-     * Call when server-driven quality changes arrive.
-     */
-    updateSavedBitrate(bitrate: number): void {
-        this.savedBitrate = bitrate;
-        // If currently silent, reapply the reduced ratio to the new base
-        if (!this.isSpeaking) {
-            const ratio = this.config.adaptiveFramerate?.reducedBitrateRatio ?? 0.25;
-            const reducedBitrate = Math.round(this.savedBitrate * ratio);
-            debugLog?.log(`updateSavedBitrate: silent, applying reduced bitrate ${reducedBitrate}`);
-            void this.encoder.reconfigure({
-                bitrate: reducedBitrate,
-                width: this.config.encoderConfig.width,
-                height: this.config.encoderConfig.height,
-            });
-        }
-    }
-
-    private setVadActive(isActive: boolean): void {
-        if (isActive) {
-            // Cancel pending silence timer
-            if (this.vadSilenceTimer !== null) {
-                clearTimeout(this.vadSilenceTimer);
-                this.vadSilenceTimer = null;
-            }
-
-            // Restore from silence
-            if (!this.isSpeaking) {
-                this.isSpeaking = true;
-                debugLog?.log('VAD: speech resumed, restoring full framerate and bitrate');
-
-                // Restore bitrate
-                void this.encoder.reconfigure({
-                    bitrate: this.savedBitrate,
-                    width: this.config.encoderConfig.width,
-                    height: this.config.encoderConfig.height,
-                });
-
-                // Force keyframe for clean decode after gap
-                void this.encoder.forceKeyFrame();
-            }
-        } else {
-            // Start silence timer (debounce before reducing) — only in group calls (3+ streams)
-            if (this.isSpeaking && this.vadSilenceTimer === null && this.remoteStreamCount >= 2) {
-                const delay = this.config.adaptiveFramerate?.silenceDelayMs ?? 60_000;
-                this.vadSilenceTimer = setTimeout(() => {
-                    this.vadSilenceTimer = null;
-                    this.isSpeaking = false;
-                    this.lastPassedFrameTime = 0; // allow next frame through immediately
-
-                    // Reduce bitrate
-                    const ratio = this.config.adaptiveFramerate?.reducedBitrateRatio ?? 0.25;
-                    const reducedBitrate = Math.round(this.savedBitrate * ratio);
-                    debugLog?.log(`VAD: silence detected, reducing to ${this.config.adaptiveFramerate?.reducedFps ?? 5}fps, bitrate ${reducedBitrate}`);
-                    void this.encoder.reconfigure({
-                        bitrate: reducedBitrate,
-                        width: this.config.encoderConfig.width,
-                        height: this.config.encoderConfig.height,
-                    });
-                }, delay);
-            }
-        }
-    }
-
-    /**
-   * Create canvas-based frame extractor (fallback for browsers without MSTP)
-   * Enhanced for Safari compatibility with proper video element handling
-   */
-    private createCanvasFrameExtractor(videoTrack: MediaStreamTrack): ReadableStreamDefaultReader<VideoFrame> {
-        infoLog?.log('Creating canvas-based frame extractor (Safari fallback)');
-
+    private createCanvasReadableStream(videoTrack: MediaStreamTrack): ReadableStream<VideoFrame> {
+        infoLog?.log('Creating canvas-based ReadableStream (Safari fallback)');
         const canvas = document.createElement('canvas');
         const video = document.createElement('video');
-
-        // Safari-specific: Set attributes for autoplay and muted to allow playback
         video.autoplay = true;
         video.muted = true;
         video.playsInline = true;
@@ -956,269 +549,73 @@ export class VideoPipeline implements IVideoPipeline {
 
         const framerate = this.config.encoderConfig.framerate;
         const interval = 1000 / framerate;
-
-        // Track frames that have been enqueued but not yet consumed
-        const pendingFrames: VideoFrame[] = [];
         let pumpInterval: number | null = null;
         let videoReady = false;
-        let metadataLoaded = false;
-        let playPromise: Promise<void> | null = null;
 
-        const stream = new ReadableStream<VideoFrame>({
+        return new ReadableStream<VideoFrame>({
             start: (controller) => {
                 const pump = () => {
-                    if (!this.processing) {
-                        controller.close();
-                        return;
-                    }
-
-                    // Check if video is actually ready to capture frames
+                    if (!this.processing) { controller.close(); return; }
                     if (!videoReady || video.paused || video.ended) {
-                        // Video not ready yet, retry soon
                         pumpInterval = window.setTimeout(pump, 100);
                         return;
                     }
-
-                    // Update canvas size if needed
                     if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
                         canvas.width = video.videoWidth;
                         canvas.height = video.videoHeight;
                     }
-
                     const ctx = canvas.getContext('2d', { willReadFrequently: true });
                     if (ctx && video.videoWidth > 0 && video.videoHeight > 0) {
                         try {
                             ctx.drawImage(video, 0, 0);
-                            const frame = new VideoFrame(canvas, {
-                                timestamp: performance.now() * 1000 // microseconds
-                            });
-
-                            // Track the frame for cleanup
-                            pendingFrames.push(frame);
-                            controller.enqueue(frame);
+                            controller.enqueue(new VideoFrame(canvas, { timestamp: performance.now() * 1000 }));
                         } catch (error) {
                             errorLog?.log('Canvas frame extraction error:', error);
                         }
                     }
-
                     pumpInterval = window.setTimeout(pump, interval);
                 };
 
-                // Handle video events properly for Safari
                 video.onloadedmetadata = () => {
-                    infoLog?.log('Canvas extractor: video metadata loaded', video.videoWidth, 'x', video.videoHeight);
-                    metadataLoaded = true;
-
-                    // Try to play the video (Safari requires explicit play())
-                    if (video.paused) {
-                        playPromise = video.play().catch((error: unknown) => {
-                            warnLog?.log('Canvas extractor: Video play() failed, trying to extract anyway:', error);
-                            videoReady = true;
-                            pump();
-                        });
-
-                        void playPromise.then(() => {
-                            infoLog?.log('Canvas extractor: Video playback started');
-                            videoReady = true;
-                            pump();
-                        }).catch(() => {
-                            // Already handled above
-                        });
-                    } else {
-                        videoReady = true;
-                        pump(); // Start pumping frames
-                    }
+                    const playPromise = video.play().catch(() => { videoReady = true; pump(); });
+                    void playPromise.then(() => { videoReady = true; pump(); }).catch(() => {});
                 };
-
-                video.onerror = (e) => errorLog?.log('Canvas extractor video error:', e, video.error);
-
-                // Fallback: if metadata never loads, start after timeout
-                const fallbackTimeout = window.setTimeout(() => {
-                    if (!metadataLoaded) {
-                        warnLog?.log('Video metadata not loaded after timeout, attempting to extract frames anyway');
-                        videoReady = true;
-                        pump();
-                    }
-                }, 2000);
-
-                // Cleanup timeout on cancellation
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                const originalError: (e?: unknown) => void = controller.error.bind(controller);
-                controller.error = (reason?: unknown) => {
-                    clearTimeout(fallbackTimeout);
-                    originalError(reason);
-                };
+                video.onerror = (e) => errorLog?.log('Canvas extractor video error:', e);
             },
-
             cancel: () => {
-                // Clean up any pending frames when stream is cancelled
-                infoLog?.log(`Canvas frame extractor cancelled, closing ${pendingFrames.length} pending frames`);
-                for (const frame of pendingFrames) {
-                    try {
-                        frame.close();
-                    } catch (e: unknown) {
-                        warnLog?.log('Error closing pending frame during cancellation:', e);
-                    }
-                }
-                pendingFrames.length = 0;
-
-                // Clear the pump interval
-                if (pumpInterval) {
-                    clearTimeout(pumpInterval);
-                    pumpInterval = null;
-                }
-            }
+                if (pumpInterval) { clearTimeout(pumpInterval); pumpInterval = null; }
+            },
         });
-
-        // Create reader with cleanup tracking
-        const reader = stream.getReader();
-
-        // Override the reader's cancel method to ensure cleanup
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const originalCancel: (reason?: unknown) => Promise<void> = reader.cancel.bind(reader);
-        reader.cancel = async (reason?: unknown) => {
-            // Clean up any pending frames
-            infoLog?.log(`Reader cancelled, closing ${pendingFrames.length} pending frames`);
-            for (const frame of pendingFrames) {
-                try {
-                    frame.close();
-                } catch (e: unknown) {
-                    warnLog?.log('Error closing pending frame during reader cancellation:', e);
-                }
-            }
-            pendingFrames.length = 0;
-
-            // Clear the pump interval
-            if (pumpInterval) {
-                clearTimeout(pumpInterval);
-                pumpInterval = null;
-            }
-
-            return originalCancel(reason);
-        };
-
-        // Track when frames are consumed to remove them from pending list
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const originalRead: () => Promise<ReadableStreamReadResult<VideoFrame>> = reader.read.bind(reader);
-        reader.read = async () => {
-            const result = await originalRead();
-
-            // If we got a frame, remove it from pending (it will be closed by consumer)
-            if (!result.done) {
-                const frameIndex = pendingFrames.indexOf(result.value);
-                if (frameIndex !== -1) {
-                    pendingFrames.splice(frameIndex, 1);
-                }
-            }
-
-            return result;
-        };
-
-        return reader;
     }
 
+    private createCanvasFrameExtractor(videoTrack: MediaStreamTrack): ReadableStreamDefaultReader<VideoFrame> {
+        return this.createCanvasReadableStream(videoTrack).getReader();
+    }
 
+    /**
+     * RPC fallback: pump frames from reader to worker via per-frame RPC.
+     */
     private async pumpFrames(): Promise<void> {
-        infoLog?.log('Starting frame pump...');
+        infoLog?.log('Starting frame pump (RPC fallback)...');
         let frameCount = 0;
-        let droppedFrames = 0;
 
         try {
             while (this.processing) {
-                const { done, value: rawFrame } = await this.frameReader!.read();
-
-                if (done) {
-                    infoLog?.log(`Frame stream ended after ${frameCount} frames`);
-                    break;
-                }
-
-                // Normalize display dimensions to match coded dimensions.
-                // Some Android cameras produce MSTP frames where displayWidth/Height
-                // reflects the sensor's native resolution (e.g., 1280x720) while
-                // codedWidth/Height reflects the constrained resolution (e.g., 960x540).
-                // WebGPU importExternalTexture uses display dimensions as crop, which
-                // fails validation when crop > coded size.
-                let frame = rawFrame;
-                if (rawFrame.displayWidth !== rawFrame.codedWidth
-                    || rawFrame.displayHeight !== rawFrame.codedHeight) {
-                    frame = new VideoFrame(rawFrame, {
-                        displayWidth: rawFrame.codedWidth,
-                        displayHeight: rawFrame.codedHeight,
-                    });
-                    rawFrame.close();
-                }
-
-                // On Android, getSettings() may report sensor display dimensions while
-                // actual frames have different codedWidth/Height.  Reconcile once on the
-                // first frame so the encoder and blur output match the real frame size.
-                if (!this.dimensionsReconciled) {
-                    this.dimensionsReconciled = true;
-                    const frameW = frame.codedWidth;
-                    const frameH = frame.codedHeight;
-                    const cfgW = this.config.encoderConfig.width;
-                    const cfgH = this.config.encoderConfig.height;
-                    if (frameW !== cfgW || frameH !== cfgH) {
-                        warnLog?.log(`Frame dimensions ${frameW}x${frameH} differ from encoder config ${cfgW}x${cfgH}, reconfiguring`);
-                        this.config.encoderConfig.width = frameW;
-                        this.config.encoderConfig.height = frameH;
-                        await this.encoder.reconfigure({ width: frameW, height: frameH, bitrate: this.config.encoderConfig.bitrate });
-                        if (this.segmentationWorker && this.config.backgroundBlur?.enabled) {
-                            void this.segmentationWorker.updateConfig({ outputWidth: frameW, outputHeight: frameH });
-                        }
-                    }
-                }
-
+                const { done, value: frame } = await this.frameReader!.read();
+                if (done) break;
                 frameCount++;
 
-                // Check if frame should be randomly dropped
-                if (this.config.frameDropping?.enabled) {
-                    const dropProbability = this.config.frameDropping.dropProbability ?? 0.1; // Default 10% drop rate
-                    const randomValue = Math.random();
-                    if (randomValue < dropProbability) {
-                        frame.close();
-                        droppedFrames++;
-                        continue; // Skip processing this frame
-                    }
-                }
-
-                // VAD-based adaptive framerate: drop frames when not speaking (group calls only)
-                if (!this.isSpeaking && this.config.adaptiveFramerate?.enabled && this.remoteStreamCount >= 2) {
-                    const now = performance.now();
-                    if (now - this.lastPassedFrameTime < this.reducedFrameIntervalMs) {
-                        frame.close();
-                        droppedFrames++;
-                        continue;
-                    }
-                    this.lastPassedFrameTime = now;
-                }
-
-                // Route frame through segmentation worker if background blur is enabled
                 try {
-                    if (this.segmentationWorker && this.config.backgroundBlur?.enabled) {
-                        try {
-                            await this.segmentationWorker.processFrame(frame, rpcNoWait);
-                        } catch (error) {
-                            errorLog?.log(`Segmentation worker error on frame #${frameCount}:`, error);
-                            await this.encoder.encodeFrame(frame);
-                        }
-                    } else {
-                        // Send frame directly to encoder via RPC (frame is auto-transferred)
-                        await this.encoder.encodeFrame(frame, rpcNoWait);
-                    }
+                    await this.worker.encodeFrame(frame);
                 } catch {
-                    // Close frame if RPC transfer failed (e.g., worker shutting down)
-                    try { frame.close(); } catch { /* already transferred/closed */ }
+                    try { frame.close(); } catch { /* already transferred */ }
                 }
             }
         } catch (error) {
-            if (this.processing) {
-                errorLog?.log(`Error pumping frames after ${frameCount} frames:`, error);
-            }
+            if (this.processing) errorLog?.log('Frame pump error:', error);
         }
-        infoLog?.log(`Frame pump stopped. Total frames pumped: ${frameCount}, dropped: ${droppedFrames}`);
+        infoLog?.log(`Frame pump stopped after ${frameCount} frames`);
     }
-
-
 
     private hasMSTPInWindow(): boolean {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any

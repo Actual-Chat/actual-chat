@@ -44,6 +44,7 @@ const options = {
         { out: 'videoDecoderWorker', in: './src/dotnet/UI.Blazor.App/Services/Video/workers/decoder-worker.ts' },
         { out: 'videoEncoderWorker', in: './src/dotnet/UI.Blazor.App/Services/Video/workers/encoder-worker.ts' },
         { out: 'videoSegmentationWorker', in: './src/dotnet/UI.Blazor.App/Services/Video/workers/segmentation-worker.ts' },
+        { out: 'videoProcessingWorker', in: './src/dotnet/UI.Blazor.App/Services/Video/workers/video-processing-worker.ts' },
     ],
     bundle: true,
     platform: 'browser',

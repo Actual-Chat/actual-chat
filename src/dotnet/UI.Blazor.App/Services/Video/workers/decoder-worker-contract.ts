@@ -6,6 +6,10 @@
 import { RpcNoWait, RpcTimeout } from 'rpc';
 import type { DecoderConfig, DecoderStats } from '../webcodecs-decoder';
 import type { EncodedChunkData } from '../webcodecs-encoder';
+import type { RawChunkMessage } from './stream-channel';
+
+// Re-export for convenience
+export type { RawChunkMessage };
 
 /**
  * Decoder Worker API
@@ -14,11 +18,26 @@ import type { EncodedChunkData } from '../webcodecs-encoder';
  */
 export interface DecoderWorker {
     /**
-     * Initialize the decoder with configuration
+     * Initialize the decoder with configuration (RPC fallback path).
+     * Use decodeRawChunk() to send chunks one by one.
      * @param config Decoder configuration (codec, description, etc.)
      * @param timeout Optional RPC timeout configuration
      */
     initialize(config: DecoderConfig, timeout?: RpcTimeout): Promise<void>;
+
+    /**
+     * Initialize and start stream-based decoding (input only).
+     * Encoded chunks are read from the transferred ReadableStream.
+     * Decoded frames are returned via onDecodedFrame RPC callback (postMessage with transfer).
+     * @param config Decoder configuration
+     * @param chunkInputStream Transferred ReadableStream of encoded chunk messages
+     * @param timeout Optional RPC timeout
+     */
+    initializeWithStreams(
+        config: DecoderConfig,
+        chunkInputStream: ReadableStream<RawChunkMessage>,
+        timeout?: RpcTimeout,
+    ): Promise<void>;
 
     /**
      * Stop the decoder and clean up resources

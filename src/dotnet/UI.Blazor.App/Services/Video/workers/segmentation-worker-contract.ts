@@ -3,7 +3,7 @@
  * Type-safe interface for background blur segmentation processing
  */
 
-import { RpcNoWait } from 'rpc';
+import { RpcNoWait, RpcTimeout } from 'rpc';
 import type { Disposable } from 'disposable';
 import { Log } from 'logging';
 
@@ -323,7 +323,8 @@ export interface SegmentationWorkerCallbacks {
 
 export interface SegmentationWorker extends Disposable {
   /**
-   * Initialize the segmentation worker with ONNX Runtime and load the model
+   * Initialize the segmentation worker with ONNX Runtime and load the model.
+   * Uses RPC-based processFrame() for frame input/output (fallback path).
    * @param config Configuration for segmentation processing
    * @param timeoutMs Optional timeout for initialization
    */
@@ -333,7 +334,23 @@ export interface SegmentationWorker extends Disposable {
   ): Promise<void>;
 
   /**
-   * Process a single VideoFrame with segmentation and background blur
+   * Initialize and start stream-based processing.
+   * Frames are read from the transferred ReadableStream and blurred frames are
+   * written to the transferred WritableStream. No per-frame RPC overhead.
+   * @param config Configuration for segmentation processing
+   * @param frameInputStream Transferred ReadableStream of VideoFrames from MSTP/canvas
+   * @param frameOutputStream Transferred WritableStream to write blurred VideoFrames to
+   * @param timeout Optional RPC timeout for initialization
+   */
+  startWithStream(
+    config: SegmentationConfig,
+    frameInputStream: ReadableStream<VideoFrame>,
+    frameOutputStream: WritableStream<VideoFrame>,
+    timeout?: RpcTimeout,
+  ): Promise<void>;
+
+  /**
+   * Process a single VideoFrame with segmentation and background blur (RPC fallback path)
    * @param frame Input VideoFrame from camera/screen capture
    * @returns Processed VideoFrame with background blur applied
    */

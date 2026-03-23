@@ -14,6 +14,12 @@ import { Versioning } from 'versioning';
 import { type Subscription } from 'rxjs';
 import type { DecoderWorker } from '../../Services/Video/workers/decoder-worker-contract';
 import type { DecoderConfig } from '../../Services/Video/webcodecs-decoder';
+import {
+    supportsTransferableStreams,
+    createInputChannel,
+    type RawChunkMessage,
+    type StreamEndpoints,
+} from '../../Services/Video/workers/stream-channel';
 
 const { debugLog, warnLog, errorLog } = Log.get('VideoPlayer');
 
@@ -101,6 +107,10 @@ export class VideoPlayer {
     // Audio sync
     private startedAtMs: number;
 
+    // Stream mode state
+    private readonly useStreams: boolean;
+    private chunkInputChannel: StreamEndpoints<RawChunkMessage> | null = null;
+
     /** Creates a new VideoPlayer instance for Blazor interop */
     static create(
         canvas: HTMLCanvasElement,
@@ -135,6 +145,7 @@ export class VideoPlayer {
         this.canvasCtx = canvas.getContext('2d');
         this.renderKey = `vr-${streamId}`;
         this.isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        this.useStreams = supportsTransferableStreams();
         if (this.isSafari)
             warnLog?.log('Safari detected — will convert VideoFrame to ImageBitmap for canvas rendering');
 
@@ -185,16 +196,29 @@ export class VideoPlayer {
             this.decoderWorkerInstance = new Worker(decoderWorkerPath, { type: 'module' });
             this.decoderWorkerInstance.onerror = (e) => errorLog?.log('Decoder worker error:', e);
 
-            // Create RPC proxy — decoded frames are transferred back from worker
+            // Create RPC proxy (used for control messages in both modes + data path in fallback)
             this.decoderWorker = rpcClientServer<DecoderWorker>(
                 'VideoPlayer.decoder',
                 this.decoderWorkerInstance,
                 { onDecodedFrame: (frame: VideoFrame) => { this.onFrameDecoded(frame); return Promise.resolve(); } }
             );
 
-            // Initialize the worker
-            await this.decoderWorker.initialize(this.decoderConfig, { type: 'rpc-timeout', timeoutMs: 5000 });
-            debugLog?.log('Decoder worker initialized');
+            if (this.useStreams) {
+                // Stream mode: transfer input stream to worker, output via RPC callback
+                this.chunkInputChannel = createInputChannel<RawChunkMessage>(4);
+
+                await this.decoderWorker.initializeWithStreams(
+                    this.decoderConfig,
+                    this.chunkInputChannel.readable,
+                    { type: 'rpc-timeout', timeoutMs: 5000 },
+                );
+                // Decoded frames arrive via onDecodedFrame RPC callback (postMessage+transfer)
+                debugLog?.log('Decoder worker initialized (stream input, RPC output)');
+            } else {
+                // RPC fallback
+                await this.decoderWorker.initialize(this.decoderConfig, { type: 'rpc-timeout', timeoutMs: 5000 });
+                debugLog?.log('Decoder worker initialized (RPC mode)');
+            }
 
             // If we have codec settings or this is AV1, we don't need to wait for keyframe with description
             const isAV1 = codecString.startsWith('av01');
@@ -744,18 +768,30 @@ export class VideoPlayer {
             new Uint8Array(descBuffer).set(description);
         }
 
-        // Send raw bytes to worker — worker creates EncodedVideoChunk internally
-        // ArrayBuffer args are last (before rpcNoWait) so RPC transfers them zero-copy
-        void this.decoderWorker.decodeRawChunk(
-            timestampMs * 1000, // ms → μs
-            durationMs * 1000,  // ms → μs
-            isKeyFrame,
-            this.sequenceNumber++,
-            dataBuffer,
-            descBuffer,
-            rpcNoWait
-        );
+        if (this.useStreams && this.chunkInputChannel) {
+            // Stream mode: write to input stream
+            void this.chunkInputChannel.writer.write({
+                timestamp: timestampMs * 1000, // ms → μs
+                duration: durationMs * 1000,   // ms → μs
+                isKeyFrame,
+                sequenceNumber: this.sequenceNumber++,
+                data: dataBuffer,
+                description: descBuffer,
+            });
+        } else {
+            // RPC fallback: send raw bytes to worker
+            void this.decoderWorker.decodeRawChunk(
+                timestampMs * 1000, // ms → μs
+                durationMs * 1000,  // ms → μs
+                isKeyFrame,
+                this.sequenceNumber++,
+                dataBuffer,
+                descBuffer,
+                rpcNoWait
+            );
+        }
     }
+
 
     public start(): void {
         if (this.isPlaying) return;
@@ -967,6 +1003,12 @@ export class VideoPlayer {
         }
         this.pendingFrames = [];
         this.bufferSize = 0;
+
+        // Close stream input channel
+        if (this.chunkInputChannel) {
+            try { this.chunkInputChannel.writer.close(); } catch { /* ignore */ }
+            this.chunkInputChannel = null;
+        }
 
         // Stop decoder worker
         if (this.decoderWorker) {

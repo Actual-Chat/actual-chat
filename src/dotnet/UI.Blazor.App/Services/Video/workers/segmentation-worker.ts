@@ -65,6 +65,22 @@ let frameQueue: Denque<QueuedFrame> | null = null;
 let processingFrame = false; // Whether we're currently processing a frame
 let frameSequence = 0;
 
+// Stream-based output: when set, processed frames are written here instead of RPC callback
+let streamOutputWriter: WritableStreamDefaultWriter<VideoFrame> | null = null;
+// Stream-based input reader loop promise (for cleanup)
+let streamReadLoopPromise: Promise<void> | null = null;
+
+
+/**
+ * Emit a processed frame to the appropriate output (stream or RPC callback).
+ */
+function emitFrame(frame: VideoFrame, sequenceNumber: number, processingTime: number): void {
+    if (streamOutputWriter) {
+        void streamOutputWriter.write(frame);
+    } else {
+        pipeline.onFrameProcessed(frame, sequenceNumber, processingTime);
+    }
+}
 
 /**
  * Initialize frame queue for async non-blocking processing
@@ -81,7 +97,7 @@ function initializeQueue(cfg: SegmentationConfig) {
 function enqueueFrame(frame: VideoFrame): void {
     if (!frameQueue || !config) {
     // Fallback: return original frame if queue not initialized
-        pipeline.onFrameProcessed(frame, frameSequence++, 0);
+        emitFrame(frame, frameSequence++, 0);
         return;
     }
 
@@ -160,7 +176,7 @@ async function processQueue(): Promise<void> {
                                     warnLog?.log(`I420 path: GPU compute shader, frame format: ${result.frame.format}`);
                                 }
                                 processedFrames++;
-                                pipeline.onFrameProcessed(result.frame, seqNum, 0);
+                                emitFrame(result.frame, seqNum, 0);
                             }
                         );
                     } catch {
@@ -182,11 +198,11 @@ async function processQueue(): Promise<void> {
                             warnLog?.log(`I420 path: RGBA fallback (GPU compute failed), frame format: ${finalFrame.format}`);
                         }
                         processedFrames++;
-                        pipeline.onFrameProcessed(finalFrame, qf.sequenceNumber, performance.now() - skipBlurStart);
+                        emitFrame(finalFrame, qf.sequenceNumber, performance.now() - skipBlurStart);
                     }
                 } else {
                     processedFrames++;
-                    pipeline.onFrameProcessed(qf.frame, qf.sequenceNumber, 0);
+                    emitFrame(qf.frame, qf.sequenceNumber, 0);
                 }
 
                 const skipBlurTime = performance.now() - skipBlurStart;
@@ -277,7 +293,7 @@ async function processQueue(): Promise<void> {
                                 warnLog?.log(`I420 path: GPU compute shader, frame format: ${result.frame.format}`);
                             }
                             processedFrames++;
-                            pipeline.onFrameProcessed(result.frame, seqNum, 0);
+                            emitFrame(result.frame, seqNum, 0);
                         }
                     );
                 } catch {
@@ -300,7 +316,7 @@ async function processQueue(): Promise<void> {
                         warnLog?.log(`I420 path: RGBA fallback (GPU compute failed), frame format: ${finalFrame.format}`);
                     }
                     processedFrames++;
-                    pipeline.onFrameProcessed(finalFrame, seqNum, performance.now() - qf.timestamp);
+                    emitFrame(finalFrame, seqNum, performance.now() - qf.timestamp);
                 }
             } else {
                 // No blur — still need temporal smoothing as standalone
@@ -308,7 +324,7 @@ async function processQueue(): Promise<void> {
                 const maskSize = config.inputWidth * config.inputHeight;
                 applyTemporalSmoothing(gpuBuffer, smoothedMaskBuffer, maskSize, smoothingAlpha);
                 processedFrames++;
-                pipeline.onFrameProcessed(qf.frame, qf.sequenceNumber, performance.now() - qf.timestamp);
+                emitFrame(qf.frame, qf.sequenceNumber, performance.now() - qf.timestamp);
             }
 
             const blurEndTime = performance.now();
@@ -326,101 +342,165 @@ async function processQueue(): Promise<void> {
 }
 
 
+/**
+ * Core initialization: load ONNX model, set up WebGPU, allocate GPU buffers.
+ * Shared by both RPC-based initialize() and stream-based startWithStream().
+ */
+async function initializeCore(segmentationConfig: SegmentationConfig): Promise<void> {
+    config = segmentationConfig;
+
+    // Specify WASM paths for ONNX Runtime to allow loading WASM backend
+    ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/';
+    ort.env.wasm.numThreads = 1; // Use single thread for WASM backend
+
+    // Use the bundled model URL (resolved by esbuild import)
+    const modelUrl = SegmentationModelUrl;
+
+    try {
+        // Configure session options for WebGPU (only supported backend)
+        const sessionOptions: ort.InferenceSession.SessionOptions = {
+            executionProviders: [{
+                name: 'webgpu',
+                preferredLayout: 'NCHW',
+            }],
+            graphOptimizationLevel: 'all',
+            executionMode: 'parallel',
+            enableCpuMemArena: true,
+            enableMemPattern: true,
+            preferredOutputLocation: 'gpu-buffer',
+            enableGraphCapture: true
+        };
+
+        infoLog?.log('Loading model from:', modelUrl);
+
+        session = await ort.InferenceSession.create(modelUrl, sessionOptions);
+
+        infoLog?.log('Model loaded with WebGPU backend');
+
+        // Get ORT's WebGPU device for shared usage
+        const blurDevice = await ort.env.webgpu.device;
+        infoLog?.log('Using shared WebGPU device');
+        // Initialize shared WebGPU manager with the blur device
+        await WebGPUManager.init(blurDevice);
+
+        // Initialize tensor utils
+        await initTensorWebGPU(blurDevice);
+
+        // Initialize blur module with WebGPU device
+        await initBlurWebGPU(blurDevice);
+        infoLog?.log('WebGPU resources initialized');
+
+        // Pre-allocate output GPU buffer to enable reuse
+        const maskSize = config.inputWidth * config.inputHeight;
+        const outputBufferSize = maskSize * 4; // float32 size
+        const gpuDevice = WebGPUManager.get();
+        outputGpuBuffer = gpuDevice.createBuffer({
+            size: outputBufferSize,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
+        });
+        smoothedMaskBuffer = gpuDevice.createBuffer({
+            size: outputBufferSize,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
+        });
+        infoLog?.log(`Pre-allocated output GPU buffer (${outputBufferSize} bytes)`);
+
+        // Create reusable output tensor with pre-allocated GPU buffer
+        outputTensor = ort.Tensor.fromGpuBuffer(outputGpuBuffer, {
+            dataType: 'float32',
+            dims: [1, 1, config.inputHeight, config.inputWidth],
+            dispose: () => {
+                // Don't actually dispose the buffer, just mark for potential reuse
+                // The buffer is managed by the segmentation worker
+            }
+        });
+
+    } catch (error) {
+        errorLog?.log('WebGPU backend failed:', error);
+        throw new Error(`WebGPU backend failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+
+    infoLog?.log('ONNX model loaded successfully');
+    infoLog?.log('Model inputs:', session.inputNames);
+    infoLog?.log('Model outputs:', session.outputNames);
+
+    // Resolve and cache model config for tensor conversion
+    resolvedModelConfig = segmentationConfig.modelConfig ?? getModelConfig(modelUrl);
+    infoLog?.log(`Model config: format=${resolvedModelConfig.tensorFormat}, output=${resolvedModelConfig.outputFormat ?? DEFAULT_MODEL_CONFIG.outputFormat}, layout=${resolvedModelConfig.outputLayout ?? DEFAULT_MODEL_CONFIG.outputLayout}`);
+
+    processing = true;
+}
+
+/**
+ * Stream read loop: reads VideoFrames from transferred ReadableStream
+ * and feeds them into the existing frame queue for processing.
+ */
+async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFrame>): Promise<void> {
+    try {
+        while (processing) {
+            const { done, value: frame } = await inputReader.read();
+            if (done) {
+                infoLog?.log('Stream input ended');
+                break;
+            }
+            enqueueFrame(frame);
+        }
+    } catch (error) {
+        if (processing) {
+            errorLog?.log('Stream read error:', error);
+        }
+    } finally {
+        try { inputReader.releaseLock(); } catch { /* ignore */ }
+    }
+}
+
 const serverImpl: SegmentationWorker = {
     /**
-   * Initialize the segmentation worker with WebGPU support
+   * Initialize the segmentation worker with WebGPU support (RPC fallback path)
    */
     initialize: async (segmentationConfig: SegmentationConfig): Promise<void> => {
         try {
-            infoLog?.log('Initializing segmentation worker...');
+            infoLog?.log('Initializing segmentation worker (RPC mode)...');
 
-            config = segmentationConfig;
+            await initializeCore(segmentationConfig);
 
-            // Specify WASM paths for ONNX Runtime to allow loading WASM backend
-            ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/';
-            ort.env.wasm.numThreads = 1; // Use single thread for WASM backend
-
-            // Use the bundled model URL (resolved by esbuild import)
-            const modelUrl = SegmentationModelUrl;
-
-            try {
-                // Configure session options for WebGPU (only supported backend)
-                const sessionOptions: ort.InferenceSession.SessionOptions = {
-                    executionProviders: [{
-                        name: 'webgpu',
-                        preferredLayout: 'NCHW',
-                    }],
-                    graphOptimizationLevel: 'all',
-                    executionMode: 'parallel',
-                    enableCpuMemArena: true,
-                    enableMemPattern: true,
-                    preferredOutputLocation: 'gpu-buffer',
-                    enableGraphCapture: true
-                };
-
-                infoLog?.log('Loading model from:', modelUrl);
-
-                session = await ort.InferenceSession.create(modelUrl, sessionOptions);
-
-                infoLog?.log('Model loaded with WebGPU backend');
-
-                // Get ORT's WebGPU device for shared usage
-                const blurDevice = await ort.env.webgpu.device;
-                infoLog?.log('Using shared WebGPU device');
-                // Initialize shared WebGPU manager with the blur device
-                await WebGPUManager.init(blurDevice);
-
-                // Initialize tensor utils
-                await initTensorWebGPU(blurDevice);
-
-                // Initialize blur module with WebGPU device
-                await initBlurWebGPU(blurDevice);
-                infoLog?.log('WebGPU resources initialized');
-
-                // Pre-allocate output GPU buffer to enable reuse
-                const maskSize = config.inputWidth * config.inputHeight;
-                const outputBufferSize = maskSize * 4; // float32 size
-                const gpuDevice = WebGPUManager.get();
-                outputGpuBuffer = gpuDevice.createBuffer({
-                    size: outputBufferSize,
-                    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
-                });
-                smoothedMaskBuffer = gpuDevice.createBuffer({
-                    size: outputBufferSize,
-                    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
-                });
-                infoLog?.log(`Pre-allocated output GPU buffer (${outputBufferSize} bytes)`);
-
-                // Create reusable output tensor with pre-allocated GPU buffer
-                outputTensor = ort.Tensor.fromGpuBuffer(outputGpuBuffer, {
-                    dataType: 'float32',
-                    dims: [1, 1, config.inputHeight, config.inputWidth],
-                    dispose: () => {
-                        // Don't actually dispose the buffer, just mark for potential reuse
-                        // The buffer is managed by the segmentation worker
-                    }
-                });
-
-            } catch (error) {
-                errorLog?.log('WebGPU backend failed:', error);
-                throw new Error(`WebGPU backend failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-            }
-
-            infoLog?.log('ONNX model loaded successfully');
-            infoLog?.log('Model inputs:', session.inputNames);
-            infoLog?.log('Model outputs:', session.outputNames);
-
-            // Resolve and cache model config for tensor conversion
-            resolvedModelConfig = segmentationConfig.modelConfig ?? getModelConfig(modelUrl);
-            infoLog?.log(`Model config: format=${resolvedModelConfig.tensorFormat}, output=${resolvedModelConfig.outputFormat ?? DEFAULT_MODEL_CONFIG.outputFormat}, layout=${resolvedModelConfig.outputLayout ?? DEFAULT_MODEL_CONFIG.outputLayout}`);
-
-            // Initialize frame queue for async processing
+            // Initialize frame queue for async processing (RPC mode only)
             initializeQueue(segmentationConfig);
 
-            processing = true;
-
+            infoLog?.log('Segmentation worker ready (RPC mode)');
         } catch (error) {
             errorLog?.log('Failed to initialize:', error);
+            throw error;
+        }
+    },
+
+    /**
+   * Initialize and start stream-based processing.
+   * Frames are read from the transferred ReadableStream; processed frames
+   * are written to the transferred WritableStream.
+   */
+    startWithStream: async (
+        segmentationConfig: SegmentationConfig,
+        frameInputStream: ReadableStream<VideoFrame>,
+        frameOutputStream: WritableStream<VideoFrame>,
+    ): Promise<void> => {
+        try {
+            infoLog?.log('Initializing segmentation worker (stream mode)...');
+
+            await initializeCore(segmentationConfig);
+
+            // Initialize frame queue (still used for internal GPU backpressure management)
+            initializeQueue(segmentationConfig);
+
+            // Set stream output writer — emitFrame() will write to stream instead of RPC
+            streamOutputWriter = frameOutputStream.getWriter();
+
+            // Start reading from input stream (async, runs in background)
+            const inputReader = frameInputStream.getReader();
+            streamReadLoopPromise = streamReadLoop(inputReader);
+
+            infoLog?.log('Segmentation worker ready (stream mode)');
+        } catch (error) {
+            errorLog?.log('Failed to initialize stream mode:', error);
             throw error;
         }
     },
@@ -481,6 +561,18 @@ const serverImpl: SegmentationWorker = {
         infoLog?.log('Stopping segmentation worker...');
 
         processing = false;
+
+        // Wait for stream read loop to finish
+        if (streamReadLoopPromise) {
+            try { await streamReadLoopPromise; } catch { /* ignore */ }
+            streamReadLoopPromise = null;
+        }
+
+        // Close stream output writer
+        if (streamOutputWriter) {
+            try { await streamOutputWriter.close(); } catch { /* ignore */ }
+            streamOutputWriter = null;
+        }
 
         // Await all in-flight async readbacks
         try { await awaitAllPendingReadbacks(); } catch { /* Ignore */ }
