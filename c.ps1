@@ -392,6 +392,80 @@ if ($fromMode -and $env:AC_ProjectPath) {
 # Save the original folder name (where c.ps1 was invoked from, before wt/fwt/bwt)
 $originalFolderName = $folderName
 
+# Port registry for worktree server ports
+class PortRegistry {
+    [string]$ProjectPath
+    [string]$RegistryPath
+    [int]$BasePort = 7080
+    [int]$PortIncrement = 10
+    [int]$MaxPort = 7179
+
+    PortRegistry([string]$projectPath) {
+        $this.ProjectPath = $projectPath
+        $this.RegistryPath = Join-Path $projectPath "artifacts" "server-ports.json"
+    }
+
+    hidden [hashtable] Load() {
+        if (Test-Path $this.RegistryPath) {
+            return Get-Content $this.RegistryPath -Raw | ConvertFrom-Json -AsHashtable
+        }
+        return @{ "dev" = $this.BasePort }
+    }
+
+    hidden [void] Save([hashtable]$registry) {
+        $registry | ConvertTo-Json -Depth 10 | Set-Content $this.RegistryPath
+    }
+
+    [object] Get([string]$instanceName) {
+        $registry = $this.Load()
+        if ($registry.ContainsKey($instanceName)) {
+            return $registry[$instanceName]
+        }
+        return $null
+    }
+
+    [int] Allocate([string]$instanceName) {
+        $registry = $this.Load()
+
+        # Return existing port if already allocated
+        if ($registry.ContainsKey($instanceName)) {
+            return $registry[$instanceName]
+        }
+
+        # Allocate new port
+        $usedPorts = [System.Collections.Generic.HashSet[int]]::new([int[]]@($registry.Values))
+        $port = $this.BasePort
+        while ($usedPorts.Contains($port) -and $port -le $this.MaxPort) {
+            $port += $this.PortIncrement
+        }
+
+        if ($port -gt $this.MaxPort) {
+            throw "No more port blocks available. Maximum port $($this.MaxPort) exceeded."
+        }
+
+        $registry[$instanceName] = $port
+        $this.Save($registry)
+
+        return $port
+    }
+
+    [bool] Deallocate([string]$instanceName) {
+        if (-not (Test-Path $this.RegistryPath)) {
+            return $false
+        }
+
+        $registry = $this.Load()
+        if (-not $registry.ContainsKey($instanceName)) {
+            return $false
+        }
+
+        $registry.Remove($instanceName)
+        $this.Save($registry)
+
+        return $true
+    }
+}
+
 # Worktree server configuration and registration
 class WorktreeServer {
     [string]$ProjectPath
@@ -572,80 +646,6 @@ function Update-EnvFile {
         if ($Debug) { Write-Host "[DEBUG] Updated .env file: $envFilePath" }
     } elseif ($Debug) {
         Write-Host "[DEBUG] .env file unchanged: $envFilePath"
-    }
-}
-
-# Port registry for worktree server ports
-class PortRegistry {
-    [string]$ProjectPath
-    [string]$RegistryPath
-    [int]$BasePort = 7080
-    [int]$PortIncrement = 10
-    [int]$MaxPort = 7179
-
-    PortRegistry([string]$projectPath) {
-        $this.ProjectPath = $projectPath
-        $this.RegistryPath = Join-Path $projectPath "artifacts" "server-ports.json"
-    }
-
-    hidden [hashtable] Load() {
-        if (Test-Path $this.RegistryPath) {
-            return Get-Content $this.RegistryPath -Raw | ConvertFrom-Json -AsHashtable
-        }
-        return @{ "dev" = $this.BasePort }
-    }
-
-    hidden [void] Save([hashtable]$registry) {
-        $registry | ConvertTo-Json -Depth 10 | Set-Content $this.RegistryPath
-    }
-
-    [object] Get([string]$instanceName) {
-        $registry = $this.Load()
-        if ($registry.ContainsKey($instanceName)) {
-            return $registry[$instanceName]
-        }
-        return $null
-    }
-
-    [int] Allocate([string]$instanceName) {
-        $registry = $this.Load()
-
-        # Return existing port if already allocated
-        if ($registry.ContainsKey($instanceName)) {
-            return $registry[$instanceName]
-        }
-
-        # Allocate new port
-        $usedPorts = [System.Collections.Generic.HashSet[int]]::new([int[]]@($registry.Values))
-        $port = $this.BasePort
-        while ($usedPorts.Contains($port) -and $port -le $this.MaxPort) {
-            $port += $this.PortIncrement
-        }
-
-        if ($port -gt $this.MaxPort) {
-            throw "No more port blocks available. Maximum port $($this.MaxPort) exceeded."
-        }
-
-        $registry[$instanceName] = $port
-        $this.Save($registry)
-
-        return $port
-    }
-
-    [bool] Deallocate([string]$instanceName) {
-        if (-not (Test-Path $this.RegistryPath)) {
-            return $false
-        }
-
-        $registry = $this.Load()
-        if (-not $registry.ContainsKey($instanceName)) {
-            return $false
-        }
-
-        $registry.Remove($instanceName)
-        $this.Save($registry)
-
-        return $true
     }
 }
 
