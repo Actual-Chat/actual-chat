@@ -1,6 +1,7 @@
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 using AVFoundation;
+using Foundation;
 
 namespace ActualChat.App.Maui.Audio;
 
@@ -24,6 +25,9 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
     public Task Reactivate(AudioFocusMode mode)
         => DispatchToMainThread(() => ReactivateUnsafe(mode));
 
+    public Task EnsureCorrectOutputRoute()
+        => DispatchToMainThread(() => EnsureCorrectOutputRouteUnsafe());
+
     private void ReactivateUnsafe(AudioFocusMode mode)
     {
         var session = AVAudioSession.SharedInstance();
@@ -46,11 +50,52 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
         session.SetActive(true).Assert("Failed to activate session");
     }
 
+    private void EnsureCorrectOutputRouteUnsafe()
+    {
+        var session = AVAudioSession.SharedInstance();
+        var outputs = session.CurrentRoute?.Outputs;
+        if (outputs == null || outputs.Length == 0) {
+            Log.LogWarning("EnsureCorrectOutputRoute: no output ports found");
+            return;
+        }
+
+        // If any output is an external device, don't override — let iOS route to it
+        foreach (var output in outputs) {
+            if (IsExternalPort(output.PortType)) {
+                Log.LogInformation("EnsureCorrectOutputRoute: external device ({PortType}), skipping", output.PortType);
+                return;
+            }
+        }
+
+        // If output is the receiver (earpiece), override to speaker
+        foreach (var output in outputs) {
+            if (output.PortType == AVAudioSession.PortBuiltInReceiver) {
+                Log.LogInformation("EnsureCorrectOutputRoute: receiver detected, overriding to speaker");
+                session.OverrideOutputAudioPort(AVAudioSessionPortOverride.Speaker, out var error);
+                if (error != null)
+                    Log.LogWarning("EnsureCorrectOutputRoute: override failed: {Error}", error.LocalizedDescription);
+                return;
+            }
+        }
+    }
+
+    private static bool IsExternalPort(NSString portType)
+        => portType == AVAudioSession.PortBluetoothA2dp
+        || portType == AVAudioSession.PortBluetoothHfp
+        || portType == AVAudioSession.PortBluetoothLe
+        || portType == AVAudioSession.PortHeadphones
+        || portType == AVAudioSession.PortUsbAudio
+        || portType == AVAudioSession.PortCarAudio
+        || portType == AVAudioSession.PortHdmi
+        || portType == AVAudioSession.PortAirPlay;
+
     private void ConfigureUnsafe(AVAudioSession session, AudioFocusMode mode)
     {
         if (mode is AudioFocusMode.Recording) {
             session.SetCategory(AVAudioSessionCategory.PlayAndRecord,
-                    AVAudioSessionCategoryOptions.DefaultToSpeaker | AVAudioSessionCategoryOptions.AllowBluetooth)
+                    AVAudioSessionCategoryOptions.DefaultToSpeaker
+                    | AVAudioSessionCategoryOptions.AllowBluetooth
+                    | AVAudioSessionCategoryOptions.AllowBluetoothA2dp)
                 .Assert($"{mode}: failed to set category");
             session.SetPreferredIOBufferDuration(Constants.Audio.OpusFrameDuration.TotalSeconds, out var error);
             error.Assert("Failed to set preferred IO buffer duration");

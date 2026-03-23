@@ -10,6 +10,7 @@ public class IosAudioCapture(AppUIHub hub) : IAudioCapture
     public ResamplerFactory ResamplerFactory => field ??= hub.Services.GetRequiredService<ResamplerFactory>();
 
     private AudioEngines AudioEngines => field ??= hub.Services.GetRequiredService<AudioEngines>();
+    private AudioSession AudioSession => field ??= hub.Services.GetRequiredService<AudioSession>();
     private ILogger Log => field ??= hub.Services.LogFor(GetType());
 
     public Task<IAsyncEnumerable<IMemoryOwner<float>>?> Capture(CancellationToken cancellationToken)
@@ -25,6 +26,8 @@ public class IosAudioCapture(AppUIHub hub) : IAudioCapture
         engine.Input.SetVoiceProcessingEnabled(true);
         using var _2 = engine.Input.Tap(HandleSamples);
         engine.EnsureRunning();
+        // Voice processing activation can route audio to the earpiece — fix it
+        await AudioSession.EnsureCorrectOutputRoute().ConfigureAwait(false);
 
         try {
             var frameLen = Constants.Audio.OpusFrameLength;
