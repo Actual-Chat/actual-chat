@@ -398,7 +398,7 @@ class PortRegistry {
     [string]$RegistryPath
     [int]$BasePort = 7080
     [int]$PortIncrement = 10
-    [int]$MaxPort = 7179
+    [int]$MaxPort = 7370
 
     PortRegistry([string]$projectPath) {
         $this.ProjectPath = $projectPath
