@@ -847,6 +847,17 @@ export class VideoPlayer {
                     `durationMs=${durationMs.toFixed(1)}, dataLen=${data.length}`);
             }
 
+            // Diagnostic: log implied latency for first 5 frames and every 300th
+            if (this.receivedFrameCount <= 5 || this.receivedFrameCount % 300 === 0) {
+                const nowMs = ServerClock.now();
+                const impliedCaptureAt = this.startedAtMs + offsetMs;
+                const impliedLatency = nowMs - impliedCaptureAt;
+                warnLog?.log(
+                    `FRAME_RECV: #${this.receivedFrameCount} offsetMs=${offsetMs.toFixed(0)}, ` +
+                    `startedAt=${this.startedAtMs.toFixed(0)}, impliedCaptureAt=${impliedCaptureAt.toFixed(0)}, ` +
+                    `serverNow=${nowMs.toFixed(0)}, impliedLatency=${impliedLatency.toFixed(0)}ms, isKey=${isKeyFrame}`);
+            }
+
             this.pushFrame(data, offsetMs, durationMs, isKeyFrame, description);
         } catch (error) {
             errorLog?.log('Error deserializing received frame:', error);

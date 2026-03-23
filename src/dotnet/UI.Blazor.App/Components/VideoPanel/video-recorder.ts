@@ -161,27 +161,12 @@ export class VideoRecorder {
         infoLog?.log('Starting video recording...');
 
         try {
-            // Platform-adaptive encoding parameters to balance quality vs. energy/CPU
-            let targetWidth: number;
-            let targetHeight: number;
-            let targetBitrate: number;
-            let targetFramerate: number;
-            if (DeviceInfo.isIos) {
-                targetWidth = 640;
-                targetHeight = 480;
-                targetBitrate = 800_000;
-                targetFramerate = 20;
-            } else if (DeviceInfo.isMobile) {
-                targetWidth = 960;
-                targetHeight = 540;
-                targetBitrate = 1_500_000;
-                targetFramerate = 24;
-            } else {
-                targetWidth = 1280;
-                targetHeight = 720;
-                targetBitrate = 2_000_000;
-                targetFramerate = 30;
-            }
+            // Capture at 720p on all platforms — lower resolutions may select the wrong
+            // camera on Android and produce aspect-ratio mismatches.
+            const targetWidth = 1280;
+            const targetHeight = 720;
+            const targetBitrate = 2_000_000;
+            const targetFramerate = 30;
 
             // Detect supported encoder codecs at 1080p (avoids resolution-dependent false positives)
             const supportedCodecs = await detectSupportedCodecs();

@@ -50,13 +50,13 @@
     private void OnVideoClick() {
         var m = State.Value;
         if (m.IsLocalVideoRecording) {
-            // Stop own video recording (keep panel open for remote streams)
+            // Recording → stop
             ChatVideoUI.SetRecordingChatId(null);
         } else if (ChatVideoUI.HasJoinedVideoCall(Chat.Id)) {
-            // Already joined this call — resume without modal
+            // Previously recorded this session → resume without modal
             ChatVideoUI.ResumeRecording(Chat.Id);
         } else {
-            // Open join/start modal
+            // First time → open modal to confirm
             var mode = m.AreOthersVideoStreaming
                 ? JoinVideoCallModal.VideoCallMode.Join
                 : JoinVideoCallModal.VideoCallMode.Start;

@@ -278,7 +278,7 @@ while ($argIndex -lt $args.Count) {
     if ($currentArg -eq "wt") {
         $argIndex++
         if ($argIndex -lt $args.Count) {
-            $worktreeSuffix = -join $args[$argIndex][0..19]
+            $worktreeSuffix = $args[$argIndex]
             $argIndex++
         } else {
             Write-Error "The wt command requires a worktree suffix argument"
@@ -292,8 +292,8 @@ while ($argIndex -lt $args.Count) {
         $wtType = if ($currentArg -eq "fwt") { "feature" } else { "bugfix" }
         $argIndex++
         if ($argIndex -lt $args.Count) {
-            # Strip feat/ or bugfix/ prefix if provided (fwt/bwt already adds the prefix), then truncate to 20 chars
-            $featureWorktreeSuffix = -join ($args[$argIndex] -replace '^(feat|bugfix|hotfix|fix)/', '')[0..19]
+            # Strip feat/ or bugfix/ prefix if provided (fwt/bwt already adds the prefix)
+            $featureWorktreeSuffix = $args[$argIndex] -replace '^(feat|bugfix|hotfix|fix)/', ''
             $argIndex++
         } else {
             Write-Error "The $currentArg command requires a worktree suffix argument"
@@ -306,7 +306,8 @@ while ($argIndex -lt $args.Count) {
     if ($currentArg -eq "rwt") {
         $argIndex++
         if ($argIndex -lt $args.Count) {
-            $removeWorktreeSuffix = $args[$argIndex]
+            # Strip feat/ or bugfix/ prefix if provided (to match how fwt/bwt creates folders)
+            $removeWorktreeSuffix = $args[$argIndex] -replace '^(feat|bugfix|hotfix|fix)/', ''
             $argIndex++
         } else {
             Write-Error "The rwt command requires a worktree suffix argument"
@@ -391,92 +392,210 @@ if ($fromMode -and $env:AC_ProjectPath) {
 # Save the original folder name (where c.ps1 was invoked from, before wt/fwt/bwt)
 $originalFolderName = $folderName
 
-# Add entries to hosts file for worktree subdomain
-function Update-HostsFile {
-    param(
-        [string]$WorktreeSuffix,
-        [switch]$Debug
-    )
+# Port registry for worktree server ports
+class PortRegistry {
+    [string]$ProjectPath
+    [string]$RegistryPath
+    [int]$BasePort = 7080
+    [int]$PortIncrement = 10
+    [int]$MaxPort = 7370
 
-    if (-not $WorktreeSuffix) { return }
+    PortRegistry([string]$projectPath) {
+        $this.ProjectPath = $projectPath
+        $this.RegistryPath = Join-Path $projectPath "artifacts" "server-ports.json"
+    }
 
-    $hostnames = @(
-        "$WorktreeSuffix.local.voxt.ai",
-        "cdn.$WorktreeSuffix.local.voxt.ai",
-        "media.$WorktreeSuffix.local.voxt.ai"
-    )
+    hidden [hashtable] Load() {
+        if (Test-Path $this.RegistryPath) {
+            return Get-Content $this.RegistryPath -Raw | ConvertFrom-Json -AsHashtable
+        }
+        return @{ "dev" = $this.BasePort }
+    }
 
-    if ($Debug) { Write-Host "[DEBUG] Adding hosts entries for: $($hostnames -join ', ')" }
-    Update-HostEntries -Hostnames $hostnames -DetectIP | Out-Null
+    hidden [void] Save([hashtable]$registry) {
+        $registry | ConvertTo-Json -Depth 10 | Set-Content $this.RegistryPath
+    }
+
+    [object] Get([string]$instanceName) {
+        $registry = $this.Load()
+        if ($registry.ContainsKey($instanceName)) {
+            return $registry[$instanceName]
+        }
+        return $null
+    }
+
+    [int] Allocate([string]$instanceName) {
+        $registry = $this.Load()
+
+        # Return existing port if already allocated
+        if ($registry.ContainsKey($instanceName)) {
+            return $registry[$instanceName]
+        }
+
+        # Allocate new port
+        $usedPorts = [System.Collections.Generic.HashSet[int]]::new([int[]]@($registry.Values))
+        $port = $this.BasePort
+        while ($usedPorts.Contains($port) -and $port -le $this.MaxPort) {
+            $port += $this.PortIncrement
+        }
+
+        if ($port -gt $this.MaxPort) {
+            throw "No more port blocks available. Maximum port $($this.MaxPort) exceeded."
+        }
+
+        $registry[$instanceName] = $port
+        $this.Save($registry)
+
+        return $port
+    }
+
+    [bool] Deallocate([string]$instanceName) {
+        if (-not (Test-Path $this.RegistryPath)) {
+            return $false
+        }
+
+        $registry = $this.Load()
+        if (-not $registry.ContainsKey($instanceName)) {
+            return $false
+        }
+
+        $registry.Remove($instanceName)
+        $this.Save($registry)
+
+        return $true
+    }
 }
 
-# Remove worktree from server config (ports registry, nginx config)
-function Remove-ServerConfig {
-    param(
-        [string]$ProjectPath,
-        [string]$WorktreeSuffix,
-        [switch]$Debug
-    )
+# Worktree server configuration and registration
+class WorktreeServer {
+    [string]$ProjectPath
+    [string]$WorktreeSuffix
+    [string]$InstanceName
+    [int]$Port
+    [string[]]$Hostnames
+    [PortRegistry]$PortRegistry
+    [bool]$IsMainProject
 
-    if (-not $WorktreeSuffix) { return }
+    WorktreeServer([string]$projectPath, [string]$worktreeSuffix) {
+        $this.ProjectPath = $projectPath
+        $this.WorktreeSuffix = $worktreeSuffix
+        $this.IsMainProject = -not $worktreeSuffix
 
-    $registryKey = $WorktreeSuffix
-    $artifactsPath = Join-Path $ProjectPath "artifacts"
-    $registryPath = Join-Path $artifactsPath "server-ports.json"
+        # Truncate suffix for domain/instance names (max 20 chars), default to "dev" for main project
+        $this.InstanceName = if ($worktreeSuffix) {
+            -join $worktreeSuffix[0..([Math]::Min(19, $worktreeSuffix.Length - 1))]
+        } else { "dev" }
 
-    if (-not (Test-Path $registryPath)) {
-        if ($Debug) { Write-Host "[DEBUG] No server registry found" }
-        return
+        # Build hostnames for this worktree (main project doesn't need custom hostnames)
+        $this.Hostnames = if (-not $this.IsMainProject) {
+            @(
+                "$($this.InstanceName).local.voxt.ai",
+                "cdn.$($this.InstanceName).local.voxt.ai",
+                "media.$($this.InstanceName).local.voxt.ai"
+            )
+        } else { @() }
+
+        $this.PortRegistry = [PortRegistry]::new($projectPath)
+        $this.Port = $this.PortRegistry.Get($this.InstanceName)
     }
 
-    $registry = Get-Content $registryPath -Raw | ConvertFrom-Json -AsHashtable
-
-    if (-not $registry.ContainsKey($registryKey)) {
-        if ($Debug) { Write-Host "[DEBUG] Worktree '$registryKey' not found in registry" }
-        return
+    [hashtable] GetConfig() {
+        return @{
+            InstanceName = $this.InstanceName
+            Port         = $this.Port
+        }
     }
 
-    # Remove from registry
-    $registry.Remove($registryKey)
-    $registry | ConvertTo-Json -Depth 10 | Set-Content $registryPath
-    if ($Debug) { Write-Host "[DEBUG] Removed worktree '$registryKey' from server registry" }
+    [hashtable] Register([bool]$debug) {
+        # Return existing config if already registered
+        if ($this.Port) {
+            return $this.GetConfig()
+        }
 
-    # Remove per-worktree nginx port mapping file
-    $worktreePortsDir = Join-Path $ProjectPath "artifacts" "worktree-ports.d"
-    $nginxConfPath = Join-Path $worktreePortsDir "$WorktreeSuffix.conf"
-    if (Test-Path $nginxConfPath) {
-        Remove-Item $nginxConfPath -Force
-        if ($Debug) { Write-Host "[DEBUG] Removed nginx port mapping: $nginxConfPath" }
+        # Allocate new port
+        $this.Port = $this.PortRegistry.Allocate($this.InstanceName)
+        if ($debug) { Write-Host "[DEBUG] Allocated port $($this.Port) for instance '$($this.InstanceName)'" }
+
+        # Write nginx config and update hosts (only for worktrees, not main project)
+        if (-not $this.IsMainProject) {
+            $this.WriteNginxConfig($debug)
+            $this.ReloadNginx($debug)
+            $this.AddHostsEntries($debug)
+        }
+
+        return $this.GetConfig()
     }
 
-    # Reload nginx to pick up the change
-    $originalLocation = Get-Location
-    Set-Location $ProjectPath
-    try {
-        $null = docker compose exec -T nginx nginx -s reload 2>&1
-        if ($Debug) { Write-Host "[DEBUG] Reloaded nginx" }
-    } finally {
-        Set-Location $originalLocation
+    [void] Unregister([bool]$debug) {
+        if ($this.IsMainProject) { return }
+
+        # Remove from port registry
+        $removed = $this.PortRegistry.Deallocate($this.InstanceName)
+        if (-not $removed) {
+            if ($debug) { Write-Host "[DEBUG] Instance '$($this.InstanceName)' not found in registry" }
+            return
+        }
+        if ($debug) { Write-Host "[DEBUG] Removed instance '$($this.InstanceName)' from server registry" }
+
+        $this.RemoveNginxConfig($debug)
+        $this.ReloadNginx($debug)
+        $this.RemoveHostsEntries($debug)
+
+        $this.Port = 0
     }
-}
 
-# Remove entries from hosts file for worktree subdomain
-function Remove-HostsFileEntries {
-    param(
-        [string]$WorktreeSuffix,
-        [switch]$Debug
-    )
+    hidden [string] GetNginxConfigPath() {
+        $worktreePortsDir = Join-Path $this.ProjectPath "artifacts" "worktree-ports.d"
+        return Join-Path $worktreePortsDir "$($this.InstanceName).conf"
+    }
 
-    if (-not $WorktreeSuffix) { return }
+    hidden [void] WriteNginxConfig([bool]$debug) {
+        if ($this.IsMainProject) { return }
 
-    $hostnames = @(
-        "$WorktreeSuffix.local.voxt.ai",
-        "cdn.$WorktreeSuffix.local.voxt.ai",
-        "media.$WorktreeSuffix.local.voxt.ai"
-    )
+        $worktreePortsDir = Join-Path $this.ProjectPath "artifacts" "worktree-ports.d"
+        if (-not (Test-Path $worktreePortsDir)) {
+            New-Item -ItemType Directory -Path $worktreePortsDir -Force | Out-Null
+        }
 
-    if ($Debug) { Write-Host "[DEBUG] Removing hosts entries for: $($hostnames -join ', ')" }
-    Remove-HostEntries -Hostnames $hostnames
+        $nginxConfPath = $this.GetNginxConfigPath()
+        Set-Content -Path $nginxConfPath -Value "`"$($this.InstanceName)`" $($this.Port);"
+        if ($debug) { Write-Host "[DEBUG] Wrote nginx port mapping: $nginxConfPath" }
+    }
+
+    hidden [void] RemoveNginxConfig([bool]$debug) {
+        $nginxConfPath = $this.GetNginxConfigPath()
+        if (Test-Path $nginxConfPath) {
+            Remove-Item $nginxConfPath -Force
+            if ($debug) { Write-Host "[DEBUG] Removed nginx port mapping: $nginxConfPath" }
+        }
+    }
+
+    hidden [void] ReloadNginx([bool]$debug) {
+        $originalLocation = Get-Location
+        Set-Location $this.ProjectPath
+        try {
+            $null = docker compose exec -T nginx nginx -s reload 2>&1
+            if ($LASTEXITCODE -eq 0) {
+                if ($debug) { Write-Host "[DEBUG] Reloaded nginx" }
+            } else {
+                if ($debug) { Write-Host "[DEBUG] nginx reload failed (docker-compose may not be running)" }
+            }
+        } finally {
+            Set-Location $originalLocation
+        }
+    }
+
+    hidden [void] AddHostsEntries([bool]$debug) {
+        if (-not $this.Hostnames) { return }
+        if ($debug) { Write-Host "[DEBUG] Adding hosts entries for: $($this.Hostnames -join ', ')" }
+        Update-HostEntries -Hostnames $this.Hostnames -DetectIP | Out-Null
+    }
+
+    hidden [void] RemoveHostsEntries([bool]$debug) {
+        if (-not $this.Hostnames) { return }
+        if ($debug) { Write-Host "[DEBUG] Removing hosts entries for: $($this.Hostnames -join ', ')" }
+        Remove-HostEntries -Hostnames $this.Hostnames
+    }
 }
 
 # Update .env file with server configuration
@@ -530,94 +649,6 @@ function Update-EnvFile {
     }
 }
 
-# Server port allocation for multi-worktree support
-function Get-ServerConfig {
-    param(
-        [string]$ProjectPath,
-        [string]$WorktreeSuffix,
-        [switch]$AllocateIfMissing,
-        [switch]$Debug
-    )
-
-    $basePort = 7080
-    $portIncrement = 10
-    $maxPort = 7179
-
-    # Registry key: worktree suffix (empty string for main project)
-    $registryKey = if ($WorktreeSuffix) { $WorktreeSuffix } else { "" }
-    # Instance name: used in .env for app identity
-    $instanceName = if ($WorktreeSuffix) { $WorktreeSuffix } else { "dev" }
-
-    $artifactsPath = Join-Path $ProjectPath "artifacts"
-    $worktreePortsDir = Join-Path $artifactsPath "worktree-ports.d"
-    if (-not (Test-Path $worktreePortsDir)) {
-        New-Item -ItemType Directory -Path $worktreePortsDir -Force | Out-Null
-    }
-
-    $registryPath = Join-Path $artifactsPath "server-ports.json"
-
-    # Load or create registry
-    if (Test-Path $registryPath) {
-        $registry = Get-Content $registryPath -Raw | ConvertFrom-Json -AsHashtable
-    } else {
-        $registry = @{ "" = $basePort }
-    }
-
-    # Get or allocate port
-    $port = $null
-    if ($registry.ContainsKey($registryKey)) {
-        $port = $registry[$registryKey]
-    } elseif ($AllocateIfMissing) {
-        # Find first available port block (reuses freed ports)
-        $usedPorts = [System.Collections.Generic.HashSet[int]]::new([int[]]@($registry.Values))
-        $port = $basePort
-        while ($usedPorts.Contains($port) -and $port -le $maxPort) {
-            $port += $portIncrement
-        }
-
-        if ($port -gt $maxPort) {
-            throw "No more port blocks available. Maximum port $maxPort exceeded."
-        }
-
-        $registry[$registryKey] = $port
-        $registry | ConvertTo-Json -Depth 10 | Set-Content $registryPath
-
-        if ($Debug) { Write-Host "[DEBUG] Allocated port $port for worktree '$registryKey'" }
-
-        # Write per-worktree nginx port mapping file
-        if ($registryKey -ne "") {
-            $nginxConfPath = Join-Path $worktreePortsDir "$registryKey.conf"
-            Set-Content -Path $nginxConfPath -Value "`"$registryKey`" $port;"
-            if ($Debug) { Write-Host "[DEBUG] Wrote nginx port mapping: $nginxConfPath" }
-        }
-
-        # Reload nginx to pick up the new worktree port mapping
-        $originalLocation = Get-Location
-        Set-Location $ProjectPath
-        try {
-            $null = docker compose exec -T nginx nginx -s reload 2>&1
-            if ($LASTEXITCODE -eq 0) {
-                if ($Debug) { Write-Host "[DEBUG] Reloaded nginx" }
-            } else {
-                if ($Debug) { Write-Host "[DEBUG] nginx reload failed (docker-compose may not be running)" }
-            }
-        } finally {
-            Set-Location $originalLocation
-        }
-
-        # Add hosts file entries for the worktree subdomain
-        Update-HostsFile -WorktreeSuffix $WorktreeSuffix -Debug:$Debug
-    } else {
-        # No allocation requested, return null port
-        return @{ InstanceName = $instanceName; Port = $null }
-    }
-
-    return @{
-        InstanceName = $instanceName
-        Port = $port
-    }
-}
-
 # Handle rwt command: remove worktree and its configuration
 if ($removeWorktreeSuffix) {
     $mainProjectPath = Join-Path $env:AC_ProjectRoot $projectName
@@ -626,11 +657,9 @@ if ($removeWorktreeSuffix) {
 
     Write-Host "Removing worktree: $projectName-$removeWorktreeSuffix" -ForegroundColor Cyan
 
-    # Remove server config (ports registry, nginx config)
-    Remove-ServerConfig -ProjectPath $mainProjectPath -WorktreeSuffix $removeWorktreeSuffix -Debug:$debugMode
-
-    # Remove hosts file entries
-    Remove-HostsFileEntries -WorktreeSuffix $removeWorktreeSuffix -Debug:$debugMode
+    # Remove server config (ports registry, nginx config, hosts entries)
+    $server = [WorktreeServer]::new($mainProjectPath, $removeWorktreeSuffix)
+    $server.Unregister($debugMode)
 
     # Remove worktree .env file (created by c.ps1)
     if (Test-Path $worktreeEnvFile) {
@@ -800,25 +829,18 @@ if ($featureWorktreeSuffix) {
     Set-Location $worktreePath
 }
 
-# Allocate server port for this worktree (only when entering a worktree, not for main project unless wt/fwt/bwt was used)
-$serverConfig = $null
-if ($worktree -or $worktreeSuffix -or $featureWorktreeSuffix) {
-    # Use main project path for registry (shared across all worktrees)
-    $mainProjectPath = Join-Path $env:AC_ProjectRoot $projectName
-    $serverConfig = Get-ServerConfig -ProjectPath $mainProjectPath -WorktreeSuffix $worktree -AllocateIfMissing -Debug:$debugMode
+# Register or get server config for this worktree
+$mainProjectPath = if ($worktree -or $worktreeSuffix -or $featureWorktreeSuffix) {
+    Join-Path $env:AC_ProjectRoot $projectName
 } else {
-    # Main project - get config without allocating (uses default port 7080)
-    $mainProjectPath = $projectRoot
-    $serverConfig = Get-ServerConfig -ProjectPath $mainProjectPath -WorktreeSuffix "" -Debug:$debugMode
-    if (-not $serverConfig.Port) {
-        $serverConfig.Port = 7080
-        $serverConfig.InstanceName = "dev"
-    }
+    $projectRoot
 }
+$server = [WorktreeServer]::new($mainProjectPath, $worktree)
+$serverConfig = $server.Register($debugMode)
 
 # Write server configuration to .env file in the project/worktree directory
 # Uses .NET configuration names so they're automatically picked up by the server
-$baseUri = if ($worktree) { "https://$worktree.local.voxt.ai" } else { "https://local.voxt.ai" }
+$baseUri = if ($serverConfig.InstanceName -ne "dev") { "https://$($serverConfig.InstanceName).local.voxt.ai" } else { "https://local.voxt.ai" }
 $urlsValue = "http://0.0.0.0:$($serverConfig.Port)"
 $envVarsToSave = @{
     "CoreSettings__Instance" = $serverConfig.InstanceName

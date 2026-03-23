@@ -238,6 +238,19 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             .EnsureJoined(record.Session, record.ChatId, cancellationToken)
             .ConfigureAwait(false);
 
+        // Guard against client clock skew: if clientStartOffset is too far from server time,
+        // override with server time to prevent false latency reports and quality step-downs.
+        var serverNow = Clocks.ServerClock.Now;
+        var clockDelta = serverNow - beginsAt;
+        if (Math.Abs(clockDelta.TotalSeconds) > 5) {
+            Log.LogWarning("TIMING_ANCHOR: StreamId={StreamId}, client clock skew={ClockDeltaMs:F0}ms, overriding clientStartOffset with server time",
+                record.StreamId, clockDelta.TotalMilliseconds);
+            beginsAt = serverNow;
+        }
+        else
+            Log.LogInformation("TIMING_ANCHOR: StreamId={StreamId}, ClockDelta={ClockDeltaMs:F0}ms (OK)",
+                record.StreamId, clockDelta.TotalMilliseconds);
+
         // Register stream for real-time signaling
         var streamInfo = new VideoStreamInfo(
             record.StreamId,

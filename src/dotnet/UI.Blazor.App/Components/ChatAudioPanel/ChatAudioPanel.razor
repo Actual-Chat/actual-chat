@@ -7,14 +7,13 @@
     var isOwnVideoStreaming = m.IsOwnVideoStreaming;
     var isAnyoneVideoStreaming = m.IsAnyoneVideoStreaming;
     var isHeaderVisible = audioState != null && IsNarrow
-        && audioState.IsListening
+        && (audioState.IsListening || isOwnVideoStreaming)
         && (audioState.IsRecording || isOwnVideoStreaming || isAnyoneVideoStreaming);
-    var enableIncompleteUI = m.EnableIncompleteUI;
     var allowVideo = m.IsVideoFeatureEnabled;
 }
 
 <div class="chat-audio-panel">
-    @if (enableIncompleteUI && isHeaderVisible) {
+    @if (allowVideo && isHeaderVisible) {
         <div class="audio-panel-header">
             <div class="c-left">
                 <ButtonRound>
@@ -65,24 +64,22 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<Model>.Options {
-                InitialValue = new Model(null, false, false, false, false),
+                InitialValue = new Model(null, false, false, false),
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
-        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         var isVideoFeatureEnabled = await Features.IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
         if (chat?.Id is null)
-            return new(null, enableIncompleteUI, false, false, isVideoFeatureEnabled);
+            return new(null, false, false, isVideoFeatureEnabled);
 
         var audioState = await ChatAudioUI.GetState(chat.Id).ConfigureAwait(false);
         var isOwnVideoStreaming = await ChatVideoUI.GetRecordingChatId(cancellationToken).ConfigureAwait(false) == chat.Id;
         var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chat.Id, cancellationToken).ConfigureAwait(false);
         return new(
             audioState,
-            enableIncompleteUI,
             isOwnVideoStreaming,
             isAnyoneVideoStreaming,
             isVideoFeatureEnabled);
@@ -90,5 +87,5 @@
 
     // Nested classes
 
-    public sealed record Model(ChatAudioState? AudioState, bool EnableIncompleteUI, bool IsOwnVideoStreaming, bool IsAnyoneVideoStreaming, bool IsVideoFeatureEnabled);
+    public sealed record Model(ChatAudioState? AudioState, bool IsOwnVideoStreaming, bool IsAnyoneVideoStreaming, bool IsVideoFeatureEnabled);
 }

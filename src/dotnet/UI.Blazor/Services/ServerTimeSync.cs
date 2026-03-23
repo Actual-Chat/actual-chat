@@ -12,7 +12,6 @@ public class ServerTimeSync : WorkerBase
     private HostInfo HostInfo { get; }
     private ISystemProperties SystemProperties { get; set; }
     private IJSRuntime JS { get; }
-
     public TimeSpan LastOffset { get; private set; }
     public TimeSpan LastPrecision { get; private set; } = TimeSpan.FromHours(1);
     public Moment LastUpdatedAt { get; private set; }
