@@ -265,10 +265,12 @@
         return "";
     }
 
-    public override ValueTask DisposeAsync() {
+    public override async ValueTask DisposeAsync() {
         var m = State.Value;
         m.ColorLease?.Release();
-        return base.DisposeAsync();
+        await JSRef.DisposeSilentlyAsync("dispose");
+        BlazorRef.DisposeSilently();
+        await base.DisposeAsync();
     }
 
     private static string InsertBreaks(string lastWord, int interval) {
