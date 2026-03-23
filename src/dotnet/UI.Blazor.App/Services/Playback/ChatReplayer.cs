@@ -70,7 +70,7 @@ public sealed class ChatReplayer : ChatPlayer
             if (playbackStartedAt == default)
                 playbackStartedAt = CpuTimestamp.Now;
             var trackTask = OnStreamStarted(
-                entryPlayer, info, playsAt, frames,
+                entryPlayer, info, playsAt, frames, speed,
                 playbackStartedAt, sleepDurationAtStart, pauseDurationAtStart,
                 cancellationToken);
             trackTasks.Add(trackTask);
@@ -88,6 +88,7 @@ public sealed class ChatReplayer : ChatPlayer
         LiveStreamInfo streamInfo,
         TimeSpan playsAt,
         IAsyncEnumerable<byte[]> audioFrames,
+        double speed,
         CpuTimestamp playbackStartedAt,
         TimeSpan sleepDurationAtStart,
         TimeSpan pauseDurationAtStart,
@@ -127,10 +128,12 @@ public sealed class ChatReplayer : ChatPlayer
                     ? new ChatAudioTrackInfo(audioEntry, chat, author!) {
                         RecordedAt = streamInfo.BeginsAt,
                         ClientSideRecordedAt = streamInfo.BeginsAt,
+                        Speed = speed,
                     }
                     : new ChatAudioTrackInfo(ChatId, streamInfo.EntryId, chat, author) {
                         RecordedAt = streamInfo.BeginsAt,
                         ClientSideRecordedAt = streamInfo.BeginsAt,
+                        Speed = speed,
                     };
                 var playAt = Clocks.CpuClock.Now;
                 var process = entryPlayer.Playback.Play(trackInfo, audioSource, playAt, cancellationToken);
