@@ -41,7 +41,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             "[AudioTrackPlayer #{AudioTrackPlayerId}] OnPlayingAt: {Offset}, {IsPaused}, buffer: {IsBufferLow}",
             _id, offset, isPaused ? "paused" : "playing", isBufferLow ? "low" : "ok");
         UpdateBufferState(isBufferLow);
-        SetPlaybackState(TimeSpan.FromSeconds(offset), isPaused);
+        SetPlaybackState(TimeSpan.FromSeconds(offset * TrackInfo.Speed), isPaused);
         if (_reportSyncToJs) {
             var state = isPaused ? "paused" : "playing";
             _ = Services.JSRuntime().InvokeVoidAsync(
