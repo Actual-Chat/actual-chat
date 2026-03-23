@@ -47,4 +47,7 @@ public static partial class ScopedAccountSettingsExt
     public static AccountSettingsAccessor<UserTranscodingTestSettings> UserTranscodingTestSettings(
         this ScopedAccountSettings settings)
         => new(settings, nameof(UserTranscodingTestSettings));
+
+    public static AccountSettingsAccessor<UserReplaySettings> UserReplaySettings(this ScopedAccountSettings settings)
+        => new(settings, nameof(UserReplaySettings));
 }

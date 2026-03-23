@@ -179,7 +179,7 @@
 
         var startAt = entry.BeginsAt + TimeSpan.FromSeconds(startTime - 0.25);
         var chatAudioUI = Services.GetRequiredService<ChatAudioUI>();
-        chatAudioUI.StartReplay(chatId, startAt);
+        await chatAudioUI.StartReplayWithStoredSpeed(chatId, startAt).ConfigureAwait(false);
     }
 
     private static WordPlayback[] EnrichMapWithPlayedStatus(WordPlayback[]? map, WordPlayback[] lastMap)

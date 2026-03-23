@@ -132,5 +132,6 @@ public class AccountSettings : IAccountSettings
         [nameof(UserChatRecordingDetectedLanguage)] = typeof(UserChatRecordingDetectedLanguage),
         [nameof(UserTranscodingTestSettings)] = typeof(UserTranscodingTestSettings),
         [nameof(FakeDeviceContactOptions)] = typeof(FakeDeviceContactOptions),
+        [nameof(UserReplaySettings)] = typeof(UserReplaySettings),
     };
 }

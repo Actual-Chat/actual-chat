@@ -44,13 +44,19 @@ public partial class ChatAudioUI
 
     // Actions
 
-    public void StartReplay(ChatId chatId, Moment startAt, TimeSpan offset = default, double speed = 1.0)
+    public void StartReplay(ChatId chatId, Moment startAt, double speed = 1.0, TimeSpan offset = default)
     {
         DebugLog?.LogInformation("StartReplay: chatId={ChatId}, startAt={StartAt}, offset={Offset}, speed={Speed}",
             chatId, startAt, offset, speed);
 
         StopReplay();
         _replayState.Value = new ReplayState(chatId, startAt, offset, speed);
+    }
+
+    public async Task StartReplayWithStoredSpeed(ChatId chatId, Moment startAt, TimeSpan offset = default)
+    {
+        var settings = await AccountSettings.UserReplaySettings().Get().ConfigureAwait(false);
+        StartReplay(chatId, startAt, settings.Speed, offset);
     }
 
     public void PauseReplay(Moment pausedAt)

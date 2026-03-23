@@ -206,7 +206,7 @@
         _ = InvokeAsync(() => {
             var m = State.Value;
             if (m?.Player != null && m.Player.ChatId == chatId)
-                ChatAudioUI.StartReplay(chatId, origin, offset, m.Speed);
+                ChatAudioUI.StartReplay(chatId, origin, m.Speed, offset);
         });
     }
 
