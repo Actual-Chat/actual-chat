@@ -278,7 +278,7 @@ while ($argIndex -lt $args.Count) {
     if ($currentArg -eq "wt") {
         $argIndex++
         if ($argIndex -lt $args.Count) {
-            $worktreeSuffix = -join $args[$argIndex][0..19]
+            $worktreeSuffix = $args[$argIndex]
             $argIndex++
         } else {
             Write-Error "The wt command requires a worktree suffix argument"
@@ -292,8 +292,8 @@ while ($argIndex -lt $args.Count) {
         $wtType = if ($currentArg -eq "fwt") { "feature" } else { "bugfix" }
         $argIndex++
         if ($argIndex -lt $args.Count) {
-            # Strip feat/ or bugfix/ prefix if provided (fwt/bwt already adds the prefix), then truncate to 20 chars
-            $featureWorktreeSuffix = -join ($args[$argIndex] -replace '^(feat|bugfix|hotfix|fix)/', '')[0..19]
+            # Strip feat/ or bugfix/ prefix if provided (fwt/bwt already adds the prefix)
+            $featureWorktreeSuffix = $args[$argIndex] -replace '^(feat|bugfix|hotfix|fix)/', ''
             $argIndex++
         } else {
             Write-Error "The $currentArg command requires a worktree suffix argument"
@@ -420,7 +420,9 @@ function Remove-ServerConfig {
 
     if (-not $WorktreeSuffix) { return }
 
-    $registryKey = $WorktreeSuffix
+    # Truncate suffix to match what was used during creation (max 20 chars)
+    $shortSuffix = -join $WorktreeSuffix[0..([Math]::Min(19, $WorktreeSuffix.Length - 1))]
+    $registryKey = $shortSuffix
     $artifactsPath = Join-Path $ProjectPath "artifacts"
     $registryPath = Join-Path $artifactsPath "server-ports.json"
 
@@ -443,7 +445,7 @@ function Remove-ServerConfig {
 
     # Remove per-worktree nginx port mapping file
     $worktreePortsDir = Join-Path $ProjectPath "artifacts" "worktree-ports.d"
-    $nginxConfPath = Join-Path $worktreePortsDir "$WorktreeSuffix.conf"
+    $nginxConfPath = Join-Path $worktreePortsDir "$shortSuffix.conf"
     if (Test-Path $nginxConfPath) {
         Remove-Item $nginxConfPath -Force
         if ($Debug) { Write-Host "[DEBUG] Removed nginx port mapping: $nginxConfPath" }
@@ -469,10 +471,13 @@ function Remove-HostsFileEntries {
 
     if (-not $WorktreeSuffix) { return }
 
+    # Truncate suffix to match what was used during creation (max 20 chars)
+    $shortSuffix = -join $WorktreeSuffix[0..([Math]::Min(19, $WorktreeSuffix.Length - 1))]
+
     $hostnames = @(
-        "$WorktreeSuffix.local.voxt.ai",
-        "cdn.$WorktreeSuffix.local.voxt.ai",
-        "media.$WorktreeSuffix.local.voxt.ai"
+        "$shortSuffix.local.voxt.ai",
+        "cdn.$shortSuffix.local.voxt.ai",
+        "media.$shortSuffix.local.voxt.ai"
     )
 
     if ($Debug) { Write-Host "[DEBUG] Removing hosts entries for: $($hostnames -join ', ')" }
@@ -543,10 +548,15 @@ function Get-ServerConfig {
     $portIncrement = 10
     $maxPort = 7179
 
-    # Registry key: worktree suffix (empty string for main project)
-    $registryKey = if ($WorktreeSuffix) { $WorktreeSuffix } else { "" }
+    # Truncate suffix for domain/instance names (max 20 chars)
+    $shortSuffix = if ($WorktreeSuffix) {
+        -join $WorktreeSuffix[0..([Math]::Min(19, $WorktreeSuffix.Length - 1))]
+    } else { "" }
+
+    # Registry key: truncated worktree suffix (empty string for main project)
+    $registryKey = $shortSuffix
     # Instance name: used in .env for app identity
-    $instanceName = if ($WorktreeSuffix) { $WorktreeSuffix } else { "dev" }
+    $instanceName = if ($shortSuffix) { $shortSuffix } else { "dev" }
 
     $artifactsPath = Join-Path $ProjectPath "artifacts"
     $worktreePortsDir = Join-Path $artifactsPath "worktree-ports.d"
@@ -605,8 +615,8 @@ function Get-ServerConfig {
             Set-Location $originalLocation
         }
 
-        # Add hosts file entries for the worktree subdomain
-        Update-HostsFile -WorktreeSuffix $WorktreeSuffix -Debug:$Debug
+        # Add hosts file entries for the worktree subdomain (uses truncated name)
+        Update-HostsFile -WorktreeSuffix $shortSuffix -Debug:$Debug
     } else {
         # No allocation requested, return null port
         return @{ InstanceName = $instanceName; Port = $null }
@@ -614,7 +624,7 @@ function Get-ServerConfig {
 
     return @{
         InstanceName = $instanceName
-        Port = $port
+        Port         = $port
     }
 }
 
@@ -818,7 +828,7 @@ if ($worktree -or $worktreeSuffix -or $featureWorktreeSuffix) {
 
 # Write server configuration to .env file in the project/worktree directory
 # Uses .NET configuration names so they're automatically picked up by the server
-$baseUri = if ($worktree) { "https://$worktree.local.voxt.ai" } else { "https://local.voxt.ai" }
+$baseUri = if ($serverConfig.InstanceName -ne "dev") { "https://$($serverConfig.InstanceName).local.voxt.ai" } else { "https://local.voxt.ai" }
 $urlsValue = "http://0.0.0.0:$($serverConfig.Port)"
 $envVarsToSave = @{
     "CoreSettings__Instance" = $serverConfig.InstanceName
