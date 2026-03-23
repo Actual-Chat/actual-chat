@@ -241,7 +241,7 @@ export class VideoPipeline implements IVideoPipeline {
                         streamConfig
                     );
                     warnLog?.log(
-                        `TIMING_ANCHOR: firstEncodedTimestamp=${(this.firstEncodedTimestamp! / 1000).toFixed(0)}ms (perf), ` +
+                        `TIMING_ANCHOR: firstEncodedTimestamp=${(this.firstEncodedTimestamp / 1000).toFixed(0)}ms (perf), ` +
                         `pendingFrames=${this.pendingStreamFrames.length}`);
                     infoLog?.log(`VideoStream created, sending ${this.pendingStreamFrames.length} buffered frames`);
 
