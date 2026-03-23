@@ -1,6 +1,12 @@
 ﻿.settings-modal.modal-frame {
     @apply min-h-full;
 }
+/* Override modal-level top/bottom safe area: push to children so each extends its own background.
+   Selector must beat body.wide .modal-overlay-fullscreen .modal-frame.modal-chrome (0,4,1). */
+body.wide .modal-overlay-fullscreen .settings-modal.modal-frame {
+    padding-top: 0;
+    padding-bottom: 0;
+}
 .settings-tab .app-settings .tile-item {
     @apply h-auto;
 }
