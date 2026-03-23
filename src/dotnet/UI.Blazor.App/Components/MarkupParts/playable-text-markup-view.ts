@@ -165,8 +165,9 @@ export class PlayableTextMarkupView {
 
         setTimeout(() => {
             floatSpan.remove();
-            void this.blazorRef.invokeMethodAsync('OnMarkupClick', word.textRange);
         }, 400);
+
+        void this.blazorRef.invokeMethodAsync('OnMarkupClick', word.textRange);
     }
 }
 
