@@ -27,8 +27,8 @@ public class EgressGuard(HostInfo hostInfo, MediaSettings settings, ILogger<Egre
         if (AllowedHostWildcards.Any(x => x.IsMatch(host)))
             return true;
 
-        if (IPAddress.TryParse(host, out var ipAddress))
-            return IsAllowedIpAddress(ipAddress);
+        if (IPAddress.TryParse(host, out _))
+            return false; // Don't crawl raw IP addresses - they rarely produce useful link previews
 
         if (!IsAllowedDomain(host))
             return false;
