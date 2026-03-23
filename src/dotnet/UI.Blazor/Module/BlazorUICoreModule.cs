@@ -74,7 +74,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         }
         else {
             services.AddScoped<DateTimeConverter>(c => new ClientSizeDateTimeConverter(c)); // WASM
-            services.AddScoped<IHostedService>(c => new ServerTimeSync(c));
+            services.AddHostedService(c => new ServerTimeSync(c));
         }
         services.AddScoped(c => new FontSizeUI(c.UIHub()));
 
