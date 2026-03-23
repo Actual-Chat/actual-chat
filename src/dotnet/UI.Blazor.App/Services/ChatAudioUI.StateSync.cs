@@ -295,17 +295,21 @@ public partial class ChatAudioUI
                     continue;
                 }
 
+                if (lastState is not null) // Stop previous replay player
+                    await StopPlayer(lastState.ChatId, ChatPlayerKind.Replaying).ConfigureAwait(false);
+
+                // Paused state: stop the player/stream but keep the state (banner stays visible)
+                if (newState.PausedAt.HasValue) {
+                    lastState = newState;
+                    continue;
+                }
+
                 // Start or switch replay
                 var audioFocusScope = await TryAcquireAudioFocus("Replay").ConfigureAwait(false);
                 if (audioFocusScope is null) {
                     Log.LogWarning("ManageReplay: failed to gain audio focus, stopping");
                     _replayState.Value = null;
                     continue;
-                }
-
-                if (lastState is not null) {
-                    // Stop previous replay player
-                    await StopPlayer(lastState.ChatId, ChatPlayerKind.Replaying).ConfigureAwait(false);
                 }
 
                 _ = TuneUI.Play(Tune.StartReplay);
@@ -315,7 +319,9 @@ public partial class ChatAudioUI
                     var endPlaybackTask = await startTask.ConfigureAwait(false);
                     await endPlaybackTask.ConfigureAwait(false);
                     await Clocks.CpuClock.Delay(RestorePreviousPlaybackStateDelay, cancellationToken).ConfigureAwait(false);
-                    if (_replayState.Value == newState)
+                    // Don't clear state if it was paused or changed since we started
+                    var currentState = _replayState.Value;
+                    if (currentState == newState)
                         _replayState.Value = null;
                 }, cancellationToken);
                 await startTask.ConfigureAwait(false);

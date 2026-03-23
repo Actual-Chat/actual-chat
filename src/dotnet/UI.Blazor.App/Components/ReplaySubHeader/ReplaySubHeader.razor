@@ -104,6 +104,20 @@
 
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         var chatTitle = chat?.Title ?? "";
+
+        // Paused state: player is stopped, but we still show the banner
+        if (replayState.PausedAt is { } pausedAt)
+            return new() {
+                ChatId = chatId,
+                PlayingAt = pausedAt,
+                Player = null,
+                IsPaused = true,
+                Speed = replayState.Speed,
+                ChatTitle = chatTitle,
+                ShowChatTitle = chatId != selectedChatId,
+                AuthorIds = lastState?.AuthorIds ?? [],
+            };
+
         var player = await ChatAudioUI.GetReplayer(chatId, cancellationToken).ConfigureAwait(false);
         if (player is null) {
             // This happens when player is being disposed, which means this method
@@ -151,18 +165,26 @@
 
     private void OnResume() {
         var m = State.Value;
-        if (m?.Player == null)
+        if (m is null)
             return;
 
-        _ = m.Player.Resume();
+        var replayState = ChatAudioUI.ReplayState.Value;
+        if (replayState is null || replayState.ChatId != m.ChatId)
+            return;
+
+        // Restart replay from paused position
+        var resumeAt = replayState.PausedAt ?? m.PlayingAt ?? replayState.StartAt;
+        ChatAudioUI.StartReplay(m.ChatId, resumeAt, speed: replayState.Speed);
     }
 
     private void OnPause() {
         var m = State.Value;
-        if (m?.Player == null)
+        if (m is null)
             return;
 
-        m.Player.Pause();
+        // Stop the stream and remember current position
+        var pausedAt = m.PlayingAt ?? ChatAudioUI.ReplayState.Value?.StartAt ?? default;
+        ChatAudioUI.PauseReplay(pausedAt);
     }
 
     private void OnForward()

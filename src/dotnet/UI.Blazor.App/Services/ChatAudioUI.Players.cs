@@ -53,6 +53,16 @@ public partial class ChatAudioUI
         _replayState.Value = new ReplayState(chatId, startAt, offset, speed);
     }
 
+    public void PauseReplay(Moment pausedAt)
+    {
+        var state = _replayState.Value;
+        if (state is null)
+            return;
+
+        DebugLog?.LogInformation("PauseReplay: chatId={ChatId}, pausedAt={PausedAt}", state.ChatId, pausedAt);
+        _replayState.Value = state with { PausedAt = pausedAt };
+    }
+
     public void StopReplay()
         => _replayState.Value = null;
 
@@ -171,34 +181,34 @@ public partial class ChatAudioUI
             _audioFocusScope = null;
 
         _ = ClearListeningChats();
-        if (_replayState.Value?.ChatId is not { } replayChatId)
+        var replayState = _replayState.Value;
+        if (replayState is null || replayState.PausedAt.HasValue)
             return null;
 
-        // Pause replay
+        // Pause replay by stopping the stream and remembering position
+        // Use StartAt as fallback if we can't determine the current position
+        var pausedAt = replayState.StartAt;
         lock (Lock) {
             var chatReplayer = _players.Values
                 .OfType<ChatReplayer>()
-                .FirstOrDefault(c => c.ChatId == replayChatId && !c.Playback.IsPaused.Value);
+                .FirstOrDefault(c => c.ChatId == replayState.ChatId);
             if (chatReplayer is null)
-                return null; // Nothing to pause -> nothing to restore
-
-            chatReplayer.Playback.Pause(CancellationToken.None);
-            Log.LogInformation("OnAudioFocusRestore: paused replayer for #{ChatId}", replayChatId);
+                return null;
         }
+        PauseReplay(pausedAt);
+        Log.LogInformation("OnAudioFocusLost: paused replayer for #{ChatId}", replayState.ChatId);
+
         if (!mayRecover)
             return null;
 
         // Return the handler that restores replay on audio focus restore
         return () => {
             Log.LogInformation("OnAudioFocusRestore: restored audio focus");
-            lock (Lock) {
-                var chatReplayer = _players.Values
-                    .OfType<ChatReplayer>()
-                    .FirstOrDefault(c => c.ChatId == replayChatId && c.Playback.IsPaused.Value);
-                if (chatReplayer is not null) {
-                    chatReplayer.Playback.Resume(CancellationToken.None);
-                    Log.LogInformation("OnAudioFocusRestore: resumed replayer for #{ChatId}", replayChatId);
-                }
+            var currentState = _replayState.Value;
+            if (currentState is { PausedAt: not null }) {
+                var resumeAt = currentState.PausedAt.Value;
+                StartReplay(currentState.ChatId, resumeAt, speed: currentState.Speed);
+                Log.LogInformation("OnAudioFocusRestore: resumed replayer for #{ChatId}", currentState.ChatId);
             }
         };
     }
