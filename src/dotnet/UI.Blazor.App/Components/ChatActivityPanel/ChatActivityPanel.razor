@@ -43,7 +43,7 @@
     }
     <div class="flex-1"></div>
     <div class="c-buttons">
-        @if (!IsListening && !IsRecordingHere) {
+        @if (!IsListening && !IsRecordingHere && !IsVideoRecordingHere) {
             <Button
                 Class="btn-sm btn-transparent unhovered not-listening"
                 StopPropagation="true"
@@ -54,7 +54,7 @@
                 MustKeepAwake="@(!IsListening)">
                 @joinButtonText
             </Button>
-        } else if (IsRecordingHere) {
+        } else if (IsRecordingHere || IsVideoRecordingHere) {
             <HeaderButton
                 Class="talking"
                 StopPropagation="true"
@@ -135,6 +135,7 @@
     }
 
     private bool IsRecordingHere => Chat?.Id is not null && RecordingChatId == Chat.Id;
+    private bool IsVideoRecordingHere => Chat?.Id is not null && State.Value?.IsOwnVideoRecording == true;
     private bool IsUpdating => Chat?.Id is not null && State.Value?.Chat.Id != Chat.Id;
     private bool IsListening => !IsUpdating && State is { Value.AudioState.IsListening: true };
 
@@ -183,23 +184,33 @@
             }
         }
 
-        return new (chat, audioState, isAnyoneTalking, isAnyoneVideoStreaming, videoStreamMemberCount, stopListeningAt);
+        var isOwnVideoRecording = await ChatVideoUI.GetRecordingChatId(cancellationToken).ConfigureAwait(false) == chatId;
+
+        return new (chat, audioState, isAnyoneTalking, isAnyoneVideoStreaming, videoStreamMemberCount, isOwnVideoRecording, stopListeningAt);
     }
 
     private void OnClick() {
         if (IsUpdating || Chat?.Id is not { } chatId)
             return;
 
-        if (IsListening && IsRecordingHere)
-            StopRecording();
+        if (IsListening || IsRecordingHere || IsVideoRecordingHere) {
+            // User is already participating — stop everything
+            if (IsRecordingHere)
+                StopRecording();
+            // Stop video recording if active
+            ChatVideoUI.SetRecordingChatId(null);
+            // Stop listening
+            _ = ChatAudioUI.SetListeningState(chatId, false);
+            return;
+        }
 
+        // User is not participating — join
         var isVideoStreaming = State.Value?.IsAnyoneVideoStreaming == true;
         if (isVideoStreaming) {
-            // When joining a video call: open modal AND start listening
+            // Join video call: open modal AND start listening
             _ = ModalUI.Show(new JoinVideoCallModal.Model(Chat!));
         }
-        // Normal audio join/leave behavior
-        _ = ChatAudioUI.SetListeningState(chatId, !IsListening);
+        _ = ChatAudioUI.SetListeningState(chatId, true);
     }
 
     private void StopRecording() {
@@ -229,5 +240,6 @@
         bool IsAnyoneTalking,
         bool IsAnyoneVideoStreaming,
         int VideoStreamMemberCount,
+        bool IsOwnVideoRecording = false,
         Moment? StopListeningAt = null);
 }

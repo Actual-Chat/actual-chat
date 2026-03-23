@@ -12,7 +12,8 @@ public class ServerTimeSync : WorkerBase
     private HostInfo HostInfo { get; }
     private ISystemProperties SystemProperties { get; set; }
     private IJSRuntime JS { get; }
-    private BackgroundStateTracker BackgroundStateTracker { get; }
+    private IServiceProvider Services { get; }
+    private BackgroundStateTracker BackgroundStateTracker => field ??= Services.GetRequiredService<BackgroundStateTracker>();
 
     public TimeSpan LastOffset { get; private set; }
     public TimeSpan LastPrecision { get; private set; } = TimeSpan.FromHours(1);
@@ -24,12 +25,12 @@ public class ServerTimeSync : WorkerBase
 
     public ServerTimeSync(IServiceProvider services)
     {
+        Services = services;
         Log = services.LogFor(GetType());
         Clocks = services.Clocks();
         HostInfo = services.HostInfo();
         SystemProperties = services.GetRequiredService<ISystemProperties>();
         JS = services.JSRuntime();
-        BackgroundStateTracker = services.GetRequiredService<BackgroundStateTracker>();
         LastUpdatedAt = Clocks.CpuClock.Now - TimeSpan.FromDays(1);
     }
 

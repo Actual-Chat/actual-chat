@@ -86,7 +86,7 @@
         if (Show && !_rendered) {
             _rendered = true;
             _isFirstOpen = true;
-            _autoStartPending = true;
+            _autoStartPending = PendingCameraDeviceId != null;
         } else if (!Show && _rendered && JSRef is not null) {
             await JSRef.InvokeVoidAsync("startClosing");
         }
