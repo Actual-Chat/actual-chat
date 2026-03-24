@@ -15,10 +15,10 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private static readonly TimeSpan PacingDuration = TimeSpan.FromMilliseconds(350);
 
     private readonly string _id;
+    private IAudioPlaybackEngine? _playbackEngine;
+    private volatile TaskCompletionSource _whenBufferLowSource = TaskCompletionSourceExt.New();
     private CpuTimestamp _playStartedAt;
     private TimeSpan _playDuration;
-    private volatile TaskCompletionSource _whenBufferLowSource = TaskCompletionSourceExt.New();
-    private IAudioPlaybackEngine? _playbackEngine;
     private string? _authorId;
     private double _recordedAtMs;
     private bool _reportSyncToJs;
