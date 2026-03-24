@@ -241,6 +241,7 @@ function Show-Help {
     Write-Host "  c os fwt feature1  Run on host OS in feature worktree"
     Write-Host "  c os bwt issue1    Run on host OS in bugfix worktree"
     Write-Host "  c chrome           Start Chrome with remote debugging"
+    Write-Host "  c audio            Setup/start PulseAudio for voice mode (macOS only)"
     Write-Host "  c build            Build Docker image"
     Write-Host "  c --resume abc     Pass --resume abc to Claude"
     Write-Host ""
@@ -255,7 +256,7 @@ while ($argIndex -lt $args.Count) {
     $currentArg = $args[$argIndex]
 
     # Check for mode commands
-    if ($currentArg -in "wsl", "os", "build", "chrome" -and $mode -eq "docker") {
+    if ($currentArg -in "wsl", "os", "build", "chrome", "audio" -and $mode -eq "docker") {
         $mode = $currentArg
         $argIndex++
         continue
@@ -1272,7 +1273,15 @@ switch ($mode) {
         # Docker Desktop on Windows uses a VM, so localhost/127.0.0.1 won't reach the host.
         # Chrome rejects non-IP Host headers, so the wrapper resolves host.docker.internal to an IPv4 IP.
 
-        $dockerArgs += $volumeMounts + $propagatedEnvVars + @(
+        # PulseAudio for voice mode: use TCP connection to host
+        # On macOS, --network host doesn't work like Linux (Docker runs in VM), so use host.docker.internal
+        # On Linux/Windows, localhost works with --network host
+        $pulseServer = if ($currentOS -eq "macOS") { "tcp:host.docker.internal:4713" } else { "tcp:localhost:4713" }
+        $audioEnvVars = @(
+            "-e", "PULSE_SERVER=$pulseServer"
+        )
+
+        $dockerArgs += $volumeMounts + $propagatedEnvVars + $audioEnvVars + @(
             "-e", "ANTHROPIC_API_KEY=$env:ANTHROPIC_API_KEY"
             "-e", "DISABLE_AUTOUPDATER=1"
             "-e", "DOTNET_SYSTEM_NET_DISABLEIPV6=1"
@@ -1312,6 +1321,87 @@ switch ($mode) {
         } else {
             # On Windows, we're already in wt (handled at script start)
             & docker @dockerArgs
+        }
+    }
+
+    "audio" {
+        # Setup and start PulseAudio for voice mode (macOS only)
+        if ($currentOS -ne "macOS") {
+            Write-Host "The 'audio' command is only needed on macOS." -ForegroundColor Yellow
+            Write-Host "On Linux, PulseAudio/PipeWire should already be available." -ForegroundColor Yellow
+            exit 0
+        }
+
+        $pulseAudioPort = 4713
+
+        # Check if PulseAudio is installed
+        $pulseAudioInstalled = Get-Command "pulseaudio" -ErrorAction SilentlyContinue
+        if (-not $pulseAudioInstalled) {
+            Write-Host "PulseAudio is not installed. Installing via Homebrew..." -ForegroundColor Cyan
+            & brew install pulseaudio
+            if ($LASTEXITCODE -ne 0) {
+                Write-Error "Failed to install PulseAudio. Please install Homebrew first: https://brew.sh"
+                exit 1
+            }
+        }
+
+        # Helper to check if PulseAudio is running
+        function Test-PulseAudioRunning {
+            $listening = bash -c "lsof -i :$pulseAudioPort -sTCP:LISTEN 2>/dev/null"
+            return $LASTEXITCODE -eq 0 -and $listening
+        }
+
+        # Check if PulseAudio is already running
+        if (Test-PulseAudioRunning) {
+            Write-Host "PulseAudio is already running on port $pulseAudioPort" -ForegroundColor Green
+            exit 0
+        }
+
+        # Create PulseAudio config directory if it doesn't exist
+        $pulseConfigDir = "$env:HOME/.pulse"
+        if (-not (Test-Path $pulseConfigDir)) {
+            New-Item -ItemType Directory -Path $pulseConfigDir -Force | Out-Null
+        }
+
+        # Create default.pa config to enable TCP connections from Docker
+        $pulseConfigFile = "$pulseConfigDir/default.pa"
+        $homebrewPrefix = if (Test-Path "/opt/homebrew") { "/opt/homebrew" } else { "/usr/local" }
+        $defaultPaPath = "$homebrewPrefix/etc/pulse/default.pa"
+
+        if (-not (Test-Path $pulseConfigFile) -or -not (Select-String -Path $pulseConfigFile -Pattern "module-native-protocol-tcp" -Quiet)) {
+            Write-Host "Configuring PulseAudio for Docker connections..." -ForegroundColor Cyan
+
+            $configContent = @"
+# Include default Homebrew PulseAudio config
+.include $defaultPaPath
+
+# Enable TCP connections for Docker (localhost + Docker Desktop network, no auth required)
+load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1;192.168.65.0/24 auth-anonymous=1
+"@
+            Set-Content -Path $pulseConfigFile -Value $configContent
+            Write-Host "Created config: $pulseConfigFile" -ForegroundColor Green
+        }
+
+        Write-Host "Starting PulseAudio daemon..." -ForegroundColor Cyan
+        & pulseaudio --load=module-native-protocol-tcp --exit-idle-time=-1 --daemon 2>&1 | Out-Null
+
+        # Wait for PulseAudio to start
+        $maxWait = 10
+        $waited = 0
+        while (-not (Test-PulseAudioRunning) -and $waited -lt $maxWait) {
+            Start-Sleep -Milliseconds 500
+            $waited++
+        }
+
+        if (Test-PulseAudioRunning) {
+            Write-Host "PulseAudio started successfully on port $pulseAudioPort" -ForegroundColor Green
+            Write-Host ""
+            Write-Host "Voice mode should now work in Docker. Run 'c' to start Claude." -ForegroundColor Cyan
+            Write-Host ""
+            Write-Host "To stop PulseAudio: pulseaudio --kill" -ForegroundColor DarkGray
+        } else {
+            Write-Host "Failed to start PulseAudio. Try manually:" -ForegroundColor Yellow
+            Write-Host "  pulseaudio --load=module-native-protocol-tcp --exit-idle-time=-1 --daemon" -ForegroundColor White
         }
     }
 
