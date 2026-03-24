@@ -1,5 +1,6 @@
 using ActualChat.Audio;
 using ActualChat.Live;
+using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -31,7 +32,7 @@ public sealed class ChatListener : ChatPlayer
     }
 
     protected override async Task Play(
-        ChatEntryPlayer entryPlayer, Moment minPlayAt, CancellationToken cancellationToken)
+        Playback playback, Moment minPlayAt, CancellationToken cancellationToken)
     {
         var chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(false);
         if (chat == null || !chat.Rules.CanRead())
@@ -56,12 +57,12 @@ public sealed class ChatListener : ChatPlayer
         await using var _ = processor.ConfigureAwait(false);
 
         processor.StreamStarted +=
-            (info, _, frames) => OnStreamStarted(entryPlayer, state, info, frames, cancellationToken);
+            (info, _, frames) => OnStreamStarted(playback, state, info, frames, cancellationToken);
         await processor.Run().ConfigureAwait(false);
     }
 
     private void OnStreamStarted(
-        ChatEntryPlayer entryPlayer,
+        Playback playback,
         PlayState state,
         LiveStreamInfo streamInfo,
         IAsyncEnumerable<byte[]> audioFrames,
@@ -114,7 +115,7 @@ public sealed class ChatListener : ChatPlayer
                 DebugLog?.LogDebug("Play: enqueuing stream #{StreamId} @ {SkipTo}",
                     streamInfo.StreamId, skipTo.ToShortString());
 
-                await EnqueueAudioSource(entryPlayer, streamInfo, audioSource, playAt, cancellationToken)
+                await EnqueueAudioSource(playback, streamInfo, audioSource, playAt, cancellationToken)
                     .ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
@@ -156,7 +157,7 @@ public sealed class ChatListener : ChatPlayer
     }
 
     private async Task EnqueueAudioSource(
-        ChatEntryPlayer entryPlayer,
+        Playback playback,
         LiveStreamInfo streamInfo,
         AudioSource audioSource,
         Moment playAt,
@@ -175,7 +176,7 @@ public sealed class ChatListener : ChatPlayer
             ClientSideRecordedAt = streamInfo.BeginsAt,
         };
 
-        entryPlayer.Playback.Play(trackInfo, audioSource, playAt, cancellationToken);
+        playback.Play(trackInfo, audioSource, playAt, cancellationToken);
     }
 
     // Nested types

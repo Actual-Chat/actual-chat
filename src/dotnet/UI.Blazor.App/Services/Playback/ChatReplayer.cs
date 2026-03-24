@@ -1,5 +1,6 @@
 using ActualChat.Audio;
 using ActualChat.Live;
+using ActualChat.MediaPlayback;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -31,19 +32,18 @@ public sealed class ChatReplayer : ChatPlayer
     }
 
     protected override async Task Play(
-        ChatEntryPlayer entryPlayer,
+        Playback playback,
         Moment minPlayAt,
         CancellationToken cancellationToken)
     {
+        var currentOffset = TimeSpan.Zero;
+        var speed = 1.0d;
         // Read offset and speed from ReplayState (set by ChatAudioUI.StartReplay)
         var replayState = ChatAudioUI?.ReplayState.Value;
-        var currentOffset = replayState is { ChatId: var rsChat } && rsChat == ChatId
-            ? replayState.Offset
-            : TimeSpan.Zero;
-        var speed = replayState is { ChatId: var rsChat2 } && rsChat2 == ChatId
-            ? replayState.Speed
-            : 1.0;
-
+        if (replayState is { ChatId: var rsChatId } && rsChatId == ChatId) {
+            speed = replayState.Speed;
+            currentOffset = replayState.Offset;
+        }
         var sleepDurationAtStart = SleepDuration.Value;
         var pauseDurationAtStart = Playback.TotalPauseDuration.Value;
 
@@ -70,7 +70,7 @@ public sealed class ChatReplayer : ChatPlayer
             if (playbackStartedAt == default)
                 playbackStartedAt = CpuTimestamp.Now;
             var trackTask = OnStreamStarted(
-                entryPlayer, info, playsAt, frames, speed,
+                playback, info, playsAt, frames, speed,
                 playbackStartedAt, sleepDurationAtStart, pauseDurationAtStart,
                 cancellationToken);
             trackTasks.Add(trackTask);
@@ -84,7 +84,7 @@ public sealed class ChatReplayer : ChatPlayer
     }
 
     private Task OnStreamStarted(
-        ChatEntryPlayer entryPlayer,
+        Playback playback,
         LiveStreamInfo streamInfo,
         TimeSpan playsAt,
         IAsyncEnumerable<byte[]> audioFrames,
@@ -136,7 +136,7 @@ public sealed class ChatReplayer : ChatPlayer
                         Speed = speed,
                     };
                 var playAt = Clocks.CpuClock.Now;
-                var process = entryPlayer.Playback.Play(trackInfo, audioSource, playAt, cancellationToken);
+                var process = playback.Play(trackInfo, audioSource, playAt, cancellationToken);
                 await process.WhenCompleted.ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {

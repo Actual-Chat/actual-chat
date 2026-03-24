@@ -92,9 +92,8 @@ public abstract class ChatPlayer : ProcessorBase
         DebugLog?.LogInformation("ChatPlayer.Start: starting background task for {PlayerKind} {ChatId}", PlayerKind, ChatId);
 
         _ = BackgroundTask.Run(async () => {
-            var chatEntryPlayer = new ChatEntryPlayer(Hub, ChatId, Playback, playToken);
             try {
-                await Play(chatEntryPlayer, startAt, playToken).ConfigureAwait(false);
+                await Play(Playback, startAt, playToken).ConfigureAwait(false);
                 await TaskExt.NeverEnding(playToken).ConfigureAwait(false);
             }
             catch (Exception e) {
@@ -103,7 +102,13 @@ public abstract class ChatPlayer : ProcessorBase
             }
             finally {
                 // We should wait for playback completion first
-                await chatEntryPlayer.DisposeAsync().ConfigureAwait(false);
+                try {
+                    await Playback.Abort().WhenCompleted.ConfigureAwait(false);
+                }
+                catch (Exception e) {
+                    if (e is not (OperationCanceledException or ObjectDisposedException))
+                        Log.LogError(e, "Failed to abort playback in chat #{ChatId}", ChatId);
+                }
                 playTokenSource.CancelAndDisposeSilently();
                 whenPlayingSource.TrySetResult(default);
                 lock (Lock)
@@ -148,5 +153,5 @@ public abstract class ChatPlayer : ProcessorBase
     // Protected methods
 
     protected abstract Task Play(
-        ChatEntryPlayer entryPlayer, Moment minPlayAt, CancellationToken cancellationToken);
+        Playback playback, Moment minPlayAt, CancellationToken cancellationToken);
 }
