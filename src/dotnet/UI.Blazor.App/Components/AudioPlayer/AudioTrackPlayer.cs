@@ -9,7 +9,14 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private static bool DebugMode => Constants.DebugMode.AudioTrackPlayer;
     private ILogger? DebugLog => DebugMode ? Log : null;
 
+    // Pacing: during the initial PacingDuration, push frames at real-time pace
+    // so the JS audio pipeline has time to initialize (attachTrait + resume).
+    // After PacingDuration, switch to buffer-based flow control.
+    private static readonly TimeSpan PacingDuration = TimeSpan.FromMilliseconds(350);
+
     private readonly string _id;
+    private CpuTimestamp _playStartedAt;
+    private TimeSpan _playDuration;
     private volatile TaskCompletionSource _whenBufferLowSource = TaskCompletionSourceExt.New();
     private IAudioPlaybackEngine? _playbackEngine;
     private string? _authorId;
@@ -117,6 +124,24 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             throw StandardError.AudioPlayer.PlayingStateExpected(GetType());
 
         try {
+            // During PacingDuration, push frames at real-time pace so the JS audio
+            // pipeline has time to initialize (attachTrait RPC + resume).
+            // In WASM (single-threaded), without pacing all frames + end command are
+            // pushed before the JS run action fires, causing the feeder to end
+            // without ever playing. After PacingDuration, switch to buffer-based
+            // flow control (the JS side is initialized and reports isBufferLow).
+            if (_playStartedAt == default)
+                _playStartedAt = CpuTimestamp.Now;
+
+            if (_playDuration < PacingDuration) {
+                // Wait until this frame's expected play time (minus one frame duration)
+                var framePushMoment = (_playDuration - frame.Duration).Positive();
+                var delay = framePushMoment - _playStartedAt.Elapsed;
+                if (delay > TimeSpan.Zero)
+                    await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+            }
+
+            _playDuration += frame.Duration;
             await _playbackEngine.PushFrame(frame, cancellationToken).ConfigureAwait(false);
             await _whenBufferLowSource.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
         }
