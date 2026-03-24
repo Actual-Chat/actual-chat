@@ -5,6 +5,7 @@
 
 import { Log } from 'logging';
 import { DeviceInfo } from 'device-info';
+import Denque from 'denque';
 
 const { infoLog, errorLog } = Log.get('VideoEncoder');
 
@@ -18,6 +19,8 @@ export interface EncoderConfig {
   latencyMode: 'realtime' | 'quality';
   hardwareAcceleration: 'prefer-hardware' | 'prefer-software' | 'no-preference';
   scalabilityMode?: string; // Scalability mode like 'L1T1', 'L1T2', 'L1T3'
+  /** Pre-convert frames to YUV before encoding. Disabled by default — HW encoders accept RGBA natively. */
+  preConvertYuv?: boolean;
 }
 
 export interface EncodedChunkData {
@@ -52,10 +55,10 @@ export class WebCodecsEncoder {
     private keyFrameCount = 0;
     private lastKeyFrame = 0;
     private totalBytes = 0;
-    private encodeTimeHistory: number[] = [];
-    private encodeStartTimes: number[] = [];
-    private encodeQueueAtStart: number[] = []; // Queue size when encode was called (parallel to encodeStartTimes)
-    private pureEncodeTimeHistory: number[] = []; // Times when queue was 0 at start (actual codec cost)
+    private encodeTimeHistory = new Denque<number>();
+    private encodeStartTimes = new Denque<number>();
+    private encodeQueueAtStart = new Denque<number>(); // Queue size when encode was called (parallel to encodeStartTimes)
+    private pureEncodeTimeHistory = new Denque<number>(); // Times when queue was 0 at start (actual codec cost)
     private chunkSequence = 0; // Track chunk sequence for proper ordering
 
     constructor(
@@ -63,86 +66,13 @@ export class WebCodecsEncoder {
     private onChunk: (chunk: EncodedChunkData) => void,
     private onError: (error: Error) => void
     ) {
-        this.encoder = new VideoEncoder({
-            output: (chunk: EncodedVideoChunk, metadata?: EncodedVideoChunkMetadata) => {
-                // Track encode time - pop the start time and queue size from queues
-                const startTime = this.encodeStartTimes.shift();
-                const queueAtStart = this.encodeQueueAtStart.shift();
-                if (startTime !== undefined) {
-                    const encodeTime = performance.now() - startTime;
-                    this.encodeTimeHistory.push(encodeTime);
-                    if (this.encodeTimeHistory.length > 100) {
-                        this.encodeTimeHistory.shift();
-                    }
-                    // Pure encode time: only when queue was empty at encode start (no wait component)
-                    if (queueAtStart === 0) {
-                        this.pureEncodeTimeHistory.push(encodeTime);
-                        if (this.pureEncodeTimeHistory.length > 100) {
-                            this.pureEncodeTimeHistory.shift();
-                        }
-                    }
-                }
-
-                const chunkData: EncodedChunkData = {
-                    chunk,
-                    metadata,
-                    timestamp: chunk.timestamp,
-                    type: chunk.type,
-                    byteLength: chunk.byteLength,
-                    sequenceNumber: this.chunkSequence++
-                };
-
-                this.totalBytes += chunk.byteLength;
-                if (chunk.type === 'key') {
-                    this.keyFrameCount++;
-                }
-
-                this.onChunk(chunkData);
-            },
-            error: (e: DOMException) => {
-                errorLog?.log('Encoder error:', e);
-                this.onError(e as unknown as Error);
-            }
-        });
+        this.encoder = this.createEncoder();
     }
 
     initialize(): void {
         try {
             infoLog?.log(`Initializing: ${this.config.width}x${this.config.height} @ ${(this.config.bitrate / 1_000_000).toFixed(1)}Mbps`);
-
-            const encoderConfig: VideoEncoderConfig = {
-                codec: this.config.codec,
-                width: this.config.width,
-                height: this.config.height,
-                bitrate: this.config.bitrate,
-                framerate: this.config.framerate,
-                latencyMode: this.config.latencyMode,
-                hardwareAcceleration: this.config.hardwareAcceleration,
-            };
-
-            // Constant bitrate on iOS prevents CPU spikes on complex frames
-            if (DeviceInfo.isIos) {
-                encoderConfig.bitrateMode = 'constant';
-            }
-
-            // Add scalability mode if specified
-            if (this.config.scalabilityMode) {
-                encoderConfig.scalabilityMode = this.config.scalabilityMode;
-            }
-
-            // Add codec-specific config based on codec type
-            if (this.config.codec.startsWith('avc1')) {
-                // Firefox produces Annex B even with 'avc' config (decode errors on other browsers).
-                // iOS Safari's AVCC serialization adds ~150ms overhead per frame.
-                // Use Annex B on both — SPS/PPS embedded in bitstream, no metadata overhead.
-                const useAnnexB = DeviceInfo.isFirefox || DeviceInfo.isIos;
-                encoderConfig.avc = { format: useAnnexB ? 'annexb' : 'avc' };
-            } else if (this.config.codec.startsWith('hev1') || this.config.codec.startsWith('hvc1')) {
-                (encoderConfig as VideoEncoderConfig & { hevc?: { format: string } }).hevc = { format: 'hevc' };
-            } else if (this.config.codec.startsWith('av01')) {
-                // AV1 doesn't need additional format configuration
-            }
-
+            const encoderConfig = this.buildEncoderConfig();
             if (this.config.scalabilityMode) {
                 infoLog?.log('Using scalability mode:', this.config.scalabilityMode);
             }
@@ -220,37 +150,7 @@ export class WebCodecsEncoder {
         }
 
         infoLog?.log(`Reconfigure: ${oldBitrate / 1_000_000}Mbps ${oldWidth}x${oldHeight} -> ${this.config.bitrate / 1_000_000}Mbps ${this.config.width}x${this.config.height}`);
-
-        const encoderConfig: VideoEncoderConfig = {
-            codec: this.config.codec,
-            width: this.config.width,
-            height: this.config.height,
-            bitrate: this.config.bitrate,
-            framerate: this.config.framerate,
-            latencyMode: this.config.latencyMode,
-            hardwareAcceleration: this.config.hardwareAcceleration
-        };
-
-        if (DeviceInfo.isIos) {
-            encoderConfig.bitrateMode = 'constant';
-        }
-
-        // Add scalability mode if specified
-        if (this.config.scalabilityMode) {
-            encoderConfig.scalabilityMode = this.config.scalabilityMode;
-        }
-
-        // Add codec-specific config based on codec type
-        if (this.config.codec.startsWith('avc1')) {
-            encoderConfig.avc = { format: 'avc' };
-        } else if (this.config.codec.startsWith('hev1') || this.config.codec.startsWith('hvc1')) {
-            (encoderConfig as VideoEncoderConfig & { hevc?: { format: string } }).hevc = { format: 'hevc' };
-        } else if (this.config.codec.startsWith('av01')) {
-            // AV1 doesn't need additional format configuration
-        }
-
-        // Reconfigure the encoder
-        this.encoder.configure(encoderConfig);
+        this.encoder.configure(this.buildEncoderConfig());
 
         // FIX: Force immediate keyframe on next frame by setting lastKeyFrame far enough in the past
         // This ensures the condition (frameCount - lastKeyFrame >= keyframeInterval) will be true on next encode
@@ -275,7 +175,15 @@ export class WebCodecsEncoder {
         this.reset();
 
         // Create new encoder with same callbacks
-        this.encoder = new VideoEncoder({
+        this.encoder = this.createEncoder();
+
+        // Configure with new codec
+        this.initialize();
+        infoLog?.log(`Codec switched to ${newConfig.codec}`);
+    }
+
+    private createEncoder(): VideoEncoder {
+        return new VideoEncoder({
             output: (chunk: EncodedVideoChunk, metadata?: EncodedVideoChunkMetadata) => {
                 const startTime = this.encodeStartTimes.shift();
                 const queueAtStart = this.encodeQueueAtStart.shift();
@@ -314,10 +222,40 @@ export class WebCodecsEncoder {
                 this.onError(e as unknown as Error);
             }
         });
+    }
 
-        // Configure with new codec
-        this.initialize();
-        infoLog?.log(`Codec switched to ${newConfig.codec}`);
+    private buildEncoderConfig(): VideoEncoderConfig {
+        const encoderConfig: VideoEncoderConfig = {
+            codec: this.config.codec,
+            width: this.config.width,
+            height: this.config.height,
+            bitrate: this.config.bitrate,
+            framerate: this.config.framerate,
+            latencyMode: this.config.latencyMode,
+            hardwareAcceleration: this.config.hardwareAcceleration,
+        };
+
+        // Constant bitrate on iOS prevents CPU spikes on complex frames
+        if (DeviceInfo.isIos) {
+            encoderConfig.bitrateMode = 'constant';
+        }
+
+        if (this.config.scalabilityMode) {
+            encoderConfig.scalabilityMode = this.config.scalabilityMode;
+        }
+
+        // Codec-specific config
+        if (this.config.codec.startsWith('avc1')) {
+            // Firefox produces Annex B even with 'avc' config (decode errors on other browsers).
+            // iOS Safari's AVCC serialization adds ~150ms overhead per frame.
+            // Use Annex B on both — SPS/PPS embedded in bitstream, no metadata overhead.
+            const useAnnexB = DeviceInfo.isFirefox || DeviceInfo.isIos;
+            encoderConfig.avc = { format: useAnnexB ? 'annexb' : 'avc' };
+        } else if (this.config.codec.startsWith('hev1') || this.config.codec.startsWith('hvc1')) {
+            (encoderConfig as VideoEncoderConfig & { hevc?: { format: string } }).hevc = { format: 'hevc' };
+        }
+
+        return encoderConfig;
     }
 
     close(): void {
@@ -335,14 +273,15 @@ export class WebCodecsEncoder {
     }
 
     getStats(): EncoderStats {
-        const averageEncodeTime = this.encodeTimeHistory.length > 0
-            ? this.encodeTimeHistory.reduce((a, b) => a + b, 0) / this.encodeTimeHistory.length
+        const encodeHistory = this.encodeTimeHistory.toArray();
+        const averageEncodeTime = encodeHistory.length > 0
+            ? encodeHistory.reduce((a, b) => a + b, 0) / encodeHistory.length
             : 0;
 
         // Compute median encode time
         let medianEncodeTime = 0;
-        if (this.encodeTimeHistory.length > 0) {
-            const sorted = [...this.encodeTimeHistory].sort((a, b) => a - b);
+        if (encodeHistory.length > 0) {
+            const sorted = encodeHistory.sort((a, b) => a - b);
             const mid = Math.floor(sorted.length / 2);
             medianEncodeTime = sorted.length % 2 !== 0
                 ? sorted[mid]
@@ -351,8 +290,9 @@ export class WebCodecsEncoder {
 
         // Compute pure median encode time (queue was empty at start — no wait component)
         let pureMedianEncodeTime = -1;
-        if (this.pureEncodeTimeHistory.length > 0) {
-            const sorted = [...this.pureEncodeTimeHistory].sort((a, b) => a - b);
+        const pureHistory = this.pureEncodeTimeHistory.toArray();
+        if (pureHistory.length > 0) {
+            const sorted = pureHistory.sort((a, b) => a - b);
             const mid = Math.floor(sorted.length / 2);
             pureMedianEncodeTime = sorted.length % 2 !== 0
                 ? sorted[mid]
@@ -395,10 +335,10 @@ export class WebCodecsEncoder {
         this.keyFrameCount = 0;
         this.lastKeyFrame = 0;
         this.totalBytes = 0;
-        this.encodeTimeHistory = [];
-        this.encodeStartTimes = [];
-        this.encodeQueueAtStart = [];
-        this.pureEncodeTimeHistory = [];
+        this.encodeTimeHistory = new Denque<number>();
+        this.encodeStartTimes = new Denque<number>();
+        this.encodeQueueAtStart = new Denque<number>();
+        this.pureEncodeTimeHistory = new Denque<number>();
         this.chunkSequence = 0;
     }
 }

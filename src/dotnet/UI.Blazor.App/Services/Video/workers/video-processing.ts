@@ -376,38 +376,41 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
         resizeCanvas = resized.canvas;
         resizeCtx = resized.ctx;
 
-        // YUV conversion
-        const format = processedFrame.format as string | null;
-        const isAlreadyYuv = format === 'NV12' || format === 'I420'
-            || format === 'I420A' || format === 'I422' || format === 'I444' || format === 'NV12A';
+        // Optional YUV pre-conversion — disabled by default since HW encoders accept RGBA natively.
+        // Enable via EncoderConfig.preConvertYuv for devices where pre-conversion helps encoding perf.
+        if (encoderConfig.preConvertYuv) {
+            const format = processedFrame.format as string | null;
+            const isAlreadyYuv = format === 'NV12' || format === 'I420'
+                || format === 'I420A' || format === 'I422' || format === 'I444' || format === 'NV12A';
 
-        if (!isAlreadyYuv) {
-            let converted = false;
-            for (const fmt of ['I420', 'NV12', 'I420A', 'I422'] as const) {
-                try {
-                    const size = processedFrame.allocationSize({ format: fmt });
-                    const buf = new ArrayBuffer(size);
-                    const layout = await processedFrame.copyTo(buf, { format: fmt });
-                    const yuvFrame = new VideoFrame(buf, {
-                        format: fmt, codedWidth: processedFrame.codedWidth, codedHeight: processedFrame.codedHeight,
-                        timestamp: processedFrame.timestamp, duration: processedFrame.duration ?? undefined,
-                        layout, colorSpace: processedFrame.colorSpace,
-                    });
-                    processedFrame.close();
-                    processedFrame = yuvFrame;
-                    converted = true;
-                    break;
-                } catch { continue; }
-            }
+            if (!isAlreadyYuv) {
+                let converted = false;
+                for (const fmt of ['I420', 'NV12', 'I420A', 'I422'] as const) {
+                    try {
+                        const size = processedFrame.allocationSize({ format: fmt });
+                        const buf = new ArrayBuffer(size);
+                        const layout = await processedFrame.copyTo(buf, { format: fmt });
+                        const yuvFrame = new VideoFrame(buf, {
+                            format: fmt, codedWidth: processedFrame.codedWidth, codedHeight: processedFrame.codedHeight,
+                            timestamp: processedFrame.timestamp, duration: processedFrame.duration ?? undefined,
+                            layout, colorSpace: processedFrame.colorSpace,
+                        });
+                        processedFrame.close();
+                        processedFrame = yuvFrame;
+                        converted = true;
+                        break;
+                    } catch { continue; }
+                }
 
-            if (!converted) {
-                try {
-                    const result = cpuRgbaToI420(processedFrame, resizeCanvas, resizeCtx);
-                    processedFrame = result.frame;
-                    resizeCanvas = result.canvas;
-                    resizeCtx = result.ctx;
-                } catch (e) {
-                    if (!loggedI420Error) { loggedI420Error = true; warnLog?.log('All YUV conversion methods failed:', String(e)); }
+                if (!converted) {
+                    try {
+                        const result = cpuRgbaToI420(processedFrame, resizeCanvas, resizeCtx);
+                        processedFrame = result.frame;
+                        resizeCanvas = result.canvas;
+                        resizeCtx = result.ctx;
+                    } catch (e) {
+                        if (!loggedI420Error) { loggedI420Error = true; warnLog?.log('All YUV conversion methods failed:', String(e)); }
+                    }
                 }
             }
         }
