@@ -33,13 +33,13 @@
         if (replayState is null)
             return;
 
-        if (Math.Abs((replayState.Speed) - speed) < 0.01)
+        if (Math.Abs(replayState.Speed - speed) < 0.01)
             return; // Same speed, no change
 
         ChatAudioUI.ReplaySettings.Set(x => x.Value with { Speed = speed });
 
         var playingAt = await GetCurrentPlayingAt(replayState).ConfigureAwait(false);
-        ChatAudioUI.StartReplay(replayState.ChatId, playingAt);
+        await ChatAudioUI.StartReplay(replayState.ChatId, playingAt);
     }
 
     private async Task<Moment> GetCurrentPlayingAt(ReplayState replayState) {

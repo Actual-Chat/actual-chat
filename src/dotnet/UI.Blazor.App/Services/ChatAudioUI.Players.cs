@@ -44,8 +44,26 @@ public partial class ChatAudioUI
 
     // Actions
 
-    public void StartReplay(ChatId chatId, Moment startAt, TimeSpan rewindOffset = default)
+    public async Task StartReplay(ChatId chatId, Moment startAt, TimeSpan rewindOffset = default)
     {
+        // If listening is active, ask user to confirm stopping it
+        var listeningChatIds = await GetListeningChatIds().ConfigureAwait(false);
+        if (!listeningChatIds.IsEmpty) {
+            var confirmed = false;
+            var model = new ConfirmModal.Model(false,
+                "Replay will stop listening. Continue?",
+                () => { confirmed = true; }) {
+                Title = "Start replay?",
+                ConfirmButtonText = "Yes",
+            };
+            var modalRef = await ModalUI.Show(model).ConfigureAwait(false);
+            await modalRef.WhenClosed.ConfigureAwait(false);
+            if (!confirmed)
+                return;
+
+            await ClearListeningChats().ConfigureAwait(false);
+        }
+
         var speed = ReplaySettings.Value.Speed;
         DebugLog?.LogInformation("StartReplay: chatId={ChatId}, startAt={StartAt}, rewindOffset={RewindOffset}, speed={Speed}",
             chatId, startAt, rewindOffset, speed);
@@ -208,7 +226,7 @@ public partial class ChatAudioUI
             var currentState = _replayState.Value;
             if (currentState is { PausedAt: not null }) {
                 var resumeAt = currentState.PausedAt.Value;
-                StartReplay(currentState.ChatId, resumeAt);
+                _ = StartReplay(currentState.ChatId, resumeAt);
                 Log.LogInformation("OnAudioFocusRestore: resumed replayer for #{ChatId}", currentState.ChatId);
             }
         };

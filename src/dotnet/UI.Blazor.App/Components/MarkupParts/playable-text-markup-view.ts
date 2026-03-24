@@ -1,65 +1,41 @@
-// TODO: remove eslint-disables and fix errors
-/* eslint-disable @typescript-eslint/no-unused-vars,@typescript-eslint/no-unnecessary-condition,@typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-member-access */
 import { fromEvent, Subject, takeUntil } from 'rxjs';
 import { setTimeout } from 'timerQueue';
 
-class NumberRange {
+const DEBUG_HIGHLIGHT = false;
+
+interface NumberRange {
     start: number;
     end: number;
-
-    constructor(
-        start: number,
-        end: number) {
-        this.start = start;
-        this.end = end;
-    }
 }
 
-class Word {
+interface Word {
     value: string;
     textRange: NumberRange;
     timeRange: NumberRange;
-
-    constructor(
-        value: string,
-        textRange: NumberRange,
-        timeRange: NumberRange) {
-        this.value = value;
-        this.textRange = textRange;
-        this.timeRange = timeRange;
-    }
 }
 
 export class PlayableTextMarkupView {
     private blazorRef: DotNet.DotNetObject;
-    private readonly playableText: HTMLElement;
+    private readonly element: HTMLElement;
     private words: Word[] = [];
     private disposed$: Subject<void> = new Subject<void>();
 
-    static create(blazorRef: DotNet.DotNetObject, playableText: HTMLElement, words: Word[]): PlayableTextMarkupView {
-        return new PlayableTextMarkupView(blazorRef, playableText, words);
+    static create(blazorRef: DotNet.DotNetObject, element: HTMLElement, words: Word[]): PlayableTextMarkupView {
+        return new PlayableTextMarkupView(blazorRef, element, words);
     }
 
-    constructor(blazorRef: DotNet.DotNetObject,
-        playableText: HTMLElement,
-        words: Word[]) {
+    constructor(blazorRef: DotNet.DotNetObject, element: HTMLElement, words: Word[]) {
         this.blazorRef = blazorRef;
-        this.playableText = playableText;
+        this.element = element;
+        this.words = words.map(w => ({
+            value: w.value,
+            textRange: { start: w.textRange.start, end: w.textRange.end },
+            timeRange: { start: w.timeRange.start, end: w.timeRange.end },
+        }));
 
-        words.forEach(word => {
-            const wordValue = word.value;
-            const wordTextRange = new NumberRange(word.textRange.start, word.textRange.end);
-            const wordTimeRange = new NumberRange(word.timeRange.start, word.timeRange.end);
-            const wordItem = new Word(wordValue, wordTextRange, wordTimeRange);
-            this.words.push(wordItem);
-        });
-
-        if (this.playableText == null)
-            return;
-
-        fromEvent(this.playableText, 'click')
+        fromEvent(this.element, 'click')
             .pipe(takeUntil(this.disposed$))
-            .subscribe((event: Event) => this.onClickHandler(event));
+            .subscribe((e: Event) => this.onClick(e));
     }
 
     public dispose() {
@@ -70,89 +46,55 @@ export class PlayableTextMarkupView {
         this.disposed$.complete();
     }
 
-    private onClickHandler = (e: Event) => {
-        const isPlayDisabled = this.playableText.classList.contains('play-disabled');
-        if (isPlayDisabled)
+    private onClick = (e: Event) => {
+        if (this.element.classList.contains('play-disabled'))
             return;
 
-        const childNodes = this.playableText.childNodes;
-        const selection = getSelection();
-        if (!selection || !childNodes)
-            return;
-
-        if (childNodes.length > 2) {
-            if (selection.rangeCount) {
-                const targetedNode = selection.focusNode;
-                if (!targetedNode)
-                    return;
-
-                let targetNodeParent: HTMLElement | null = targetedNode.parentNode! as HTMLElement;
-                if (!targetNodeParent.classList.contains('playable-word'))
-                    targetNodeParent = targetNodeParent.closest('.playable-word');
-                if (!targetNodeParent)
-                    return;
-
-                const wordIndex = Array.prototype.indexOf.call(this.playableText.childNodes, targetNodeParent);
-                const word = this.words[wordIndex];
-                if (word) {
-                    this.highlightClickedWord(selection, word, true);
-                }
-            }
-        } else if (childNodes.length < 2) {
-            if (selection.rangeCount) {
-                const word = this.words.find(w =>
-                    w.textRange.start <= selection.focusOffset && w.textRange.end >= selection.focusOffset);
-                if (word) {
-                    this.highlightClickedWord(selection, word, false);
-                }
-            }
-        } else {
-            const textNode = Array.from(childNodes).find(n => n.nodeType === Node.TEXT_NODE);
-            const spanNode = Array.from(childNodes).find(n =>
-                n.nodeType === Node.ELEMENT_NODE &&
-                (n as Element).classList.contains('last-word')
-            );
-
-            const focusNode = selection.focusNode;
-            if (focusNode === textNode) {
-                const word = this.words.find(w =>
-                    w.textRange.start <= selection.focusOffset &&
-                    w.textRange.end >= selection.focusOffset
-                );
-                if (word) {
-                    this.highlightClickedWord(selection, word, false);
-                }
-            } else if (focusNode === spanNode || (focusNode?.parentNode === spanNode)) {
-                const word = this.words[this.words.length - 1];
-                if (word) {
-                    this.highlightClickedWord(selection, word, true);
-                }
-            }
-        }
+        const target = e.target as HTMLElement;
+        const word = this.findWord(target);
+        this.onWordClick(word);
     }
 
-    private highlightClickedWord(selection: Selection, word: Word, isOneWord: boolean) {
-        if (!this.playableText)
-            return;
+    private onWordClick(word: Word | null) {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (DEBUG_HIGHLIGHT && word)
+            this.highlightWord(word);
 
-        const textNode = isOneWord ? selection.focusNode : this.playableText.firstChild;
-        if (!textNode || textNode.nodeType !== Node.TEXT_NODE)
-            return;
+        const textRange: NumberRange = word?.textRange ?? { start: 0, end: 0 };
+        void this.blazorRef.invokeMethodAsync('OnMarkupClick', textRange);
+    }
 
-        const range = document.createRange();
-        if (!isOneWord) {
-            range.setStart(textNode, word.textRange.start);
-            range.setEnd(textNode, word.textRange.end);
-        } else {
-            range.setStart(textNode, 0);
-            range.setEnd(textNode, textNode.textContent!.length - 1);
+    private findWord(target: HTMLElement): Word | null {
+        // When words are rendered as individual .playable-word spans
+        const wordSpan = target.closest('.playable-word')
+            ?? (target.classList.contains('playable-word') ? target : null);
+        if (wordSpan) {
+            const index = Array.prototype.indexOf.call(this.element.childNodes, wordSpan) as number;
+            if (index >= 0 && index < this.words.length)
+                return this.words[index];
         }
 
-        const rect = range.getBoundingClientRect();
+        // Fallback: use selection offset for plain text nodes
+        const selection = getSelection();
+        if (selection?.rangeCount && selection.focusNode?.nodeType === Node.TEXT_NODE) {
+            const offset = selection.focusOffset;
+            return this.words.find(w => w.textRange.start <= offset && w.textRange.end >= offset) ?? null;
+        }
+
+        return null;
+    }
+
+    private highlightWord(word: Word) {
+        const wordSpans = this.element.querySelectorAll('.playable-word');
+        const index = this.words.indexOf(word);
+        const node = index >= 0 ? wordSpans[index] : null;
+        const rect = node?.getBoundingClientRect();
+        if (!rect)
+            return;
+
         const floatSpan = document.createElement('span');
         floatSpan.textContent = word.value;
         floatSpan.className = 'selected-word-float';
-
         Object.assign(floatSpan.style, {
             position: 'absolute',
             top: `${rect.top + window.scrollY + 4}px`,
@@ -160,14 +102,7 @@ export class PlayableTextMarkupView {
             width: `${rect.width}px`,
             height: `${rect.height - 8}px`,
         });
-
         document.body.appendChild(floatSpan);
-
-        setTimeout(() => {
-            floatSpan.remove();
-        }, 400);
-
-        void this.blazorRef.invokeMethodAsync('OnMarkupClick', word.textRange);
+        setTimeout(() => floatSpan.remove(), 400);
     }
 }
-

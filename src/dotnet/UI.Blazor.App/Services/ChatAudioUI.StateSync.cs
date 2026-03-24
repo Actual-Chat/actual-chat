@@ -304,9 +304,6 @@ public partial class ChatAudioUI
                     continue;
                 }
 
-                // Stop listening when replay starts
-                await ClearListeningChats().ConfigureAwait(false);
-
                 // Start or switch replay
                 var audioFocusScope = await TryAcquireAudioFocus("Replay").ConfigureAwait(false);
                 if (audioFocusScope is null) {

@@ -163,7 +163,7 @@
     private void OnStop()
         => ChatAudioUI.StopReplay();
 
-    private void OnResume() {
+    private async Task OnResume() {
         var m = State.Value;
         if (m is null)
             return;
@@ -174,7 +174,7 @@
 
         // Restart replay from paused position
         var resumeAt = replayState.PausedAt ?? m.PlayingAt ?? replayState.StartAt;
-        ChatAudioUI.StartReplay(m.ChatId, resumeAt);
+        await ChatAudioUI.StartReplay(m.ChatId, resumeAt);
     }
 
     private void OnPause() {
@@ -203,10 +203,10 @@
     }
 
     private void OnRewindRequested(ChatId chatId, Moment origin, TimeSpan offset) {
-        _ = InvokeAsync(() => {
+        _ = InvokeAsync(async () => {
             var m = State.Value;
             if (m?.Player != null && m.Player.ChatId == chatId)
-                ChatAudioUI.StartReplay(chatId, origin, offset);
+                await ChatAudioUI.StartReplay(chatId, origin, offset);
         });
     }
 
