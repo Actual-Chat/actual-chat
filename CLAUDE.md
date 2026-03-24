@@ -104,29 +104,6 @@ getent ahosts host.docker.internal | awk 'NR==1{print $1}'
 
 Then use the resulting IP (e.g., `http://192.168.65.254:9222`) instead of `localhost`.
 
-## Voice Mode and Audio Support
-
-Voice mode (`/voice`) requires microphone access via PulseAudio. On macOS, the host must run PulseAudio to stream audio to the Docker container.
-
-**macOS setup** (one-time):
-```bash
-c audio    # Installs PulseAudio via Homebrew and starts the daemon
-```
-
-This configures PulseAudio to accept TCP connections from the Docker container. The daemon runs on port 4713 and the `PULSE_SERVER` environment variable is automatically set in Docker.
-
-**Verifying audio works**:
-```bash
-# Inside Docker, test PulseAudio connection
-pactl info    # Should show "Server Name: PulseAudio..."
-```
-
-**Stopping PulseAudio**: `pulseaudio --kill`
-
-**Linux hosts**: PulseAudio/PipeWire should already be available; no setup needed.
-
-**Windows/WSL**: Voice mode requires WSLg for audio access. Run Claude in WSL mode (`c wsl`) for native audio support.
-
 ## Accessing Sibling Projects
 
 `AC_ProjectRoot` points to the directory that contains all projects. In Docker it is `/proj`, so sibling projects are accessible at `/proj/ActualLab.Fusion`, `/proj/ActualLab.Fusion.Samples`, etc.
