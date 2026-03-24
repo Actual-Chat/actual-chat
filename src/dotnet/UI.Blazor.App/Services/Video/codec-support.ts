@@ -6,7 +6,7 @@
 import { Log } from 'logging';
 import { DeviceInfo } from 'device-info';
 
-const { errorLog } = Log.get('VideoDecoder');
+const { debugLog, warnLog, errorLog } = Log.get('VideoPipeline');
 
 export interface CodecInfo {
     name: string;
@@ -88,6 +88,11 @@ export async function detectSupportedCodecs(width = 1920, height = 1080): Promis
         });
     }
 
+    // Diagnostic summary
+    const supported = results.filter(c => c.supported);
+    warnLog?.log(`ENCODER_CODECS: ${supported.map(c =>
+        `${c.codec}(${c.hardwareAccelerated ? 'hw' : 'sw'})`).join(', ') || 'none'}`);
+
     return results;
 }
 
@@ -149,6 +154,7 @@ async function isCodecSupported(
             }
         }
 
+        debugLog?.log(`Encoder ${codec}: ${supported ? `supported, hw=${hardwareAccelerated}` : 'not supported'}`);
         return { supported, hardwareAccelerated, scalabilityModes };
     } catch (error) {
         errorLog?.log(`Error checking codec support for ${codec}:`, error);
@@ -259,27 +265,43 @@ export async function getAV1CodecSupport(): Promise<CodecInfo[]> {
 
 export async function detectSupportedDecoderCodecs(): Promise<string[]> {
     const codecs: string[] = ['h264']; // H.264 always assumed supported
+
+    // AV1
     try {
         const av1 = await VideoDecoder.isConfigSupported({
             codec: 'av01.0.08M.08',
             codedWidth: 1280,
             codedHeight: 720,
         });
+        warnLog?.log(`Decoder AV1 (av01.0.08M.08): supported=${av1.supported}`);
         if (av1.supported) codecs.push('av1');
-    } catch { /* not supported */ }
-    // Try hev1 (Chrome/desktop) then hvc1 (iOS Safari) for HEVC decoder detection
+    } catch (e) {
+        warnLog?.log(`Decoder AV1 (av01.0.08M.08): error=${e}`);
+    }
+
+    // HEVC — try multiple codec strings
     let hevcSupported = false;
-    for (const hevcCodec of ['hev1.1.6.L120.B0', 'hvc1.1.6.L93.90']) {
+    for (const hevcCodec of [
+        'hev1.1.6.L120.B0',    // hev1 Main L4.0
+        'hev1.1.6.L93.B0',     // hev1 Main L3.1
+        'hvc1.1.6.L120.B0',    // hvc1 Main L4.0 (iOS Safari)
+        'hvc1.1.6.L93.90',     // hvc1 Main L3.1 (iOS Safari variant)
+    ]) {
         try {
             const hevc = await VideoDecoder.isConfigSupported({
                 codec: hevcCodec,
                 codedWidth: 1280,
                 codedHeight: 720,
             });
+            warnLog?.log(`Decoder HEVC (${hevcCodec}): supported=${hevc.supported}`);
             if (hevc.supported) { hevcSupported = true; break; }
-        } catch { /* not supported */ }
+        } catch (e) {
+            warnLog?.log(`Decoder HEVC (${hevcCodec}): error=${e}`);
+        }
     }
     if (hevcSupported) codecs.push('hevc');
+
+    warnLog?.log(`DECODER_CODECS: [${codecs.join(', ')}]`);
     return codecs;
 }
 

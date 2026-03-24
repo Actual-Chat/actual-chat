@@ -27,6 +27,7 @@
 
     private IJSObjectReference? _jsPlayerRef;
     private Task? _playTask;
+    private Timer? _viewerHeartbeatTimer;
     private bool _isDisposed;
     private bool _isViewerRegistered;
 
@@ -77,8 +78,13 @@
 
             await _jsPlayerRef.InvokeVoidAsync("start", _disposeCts.Token);
 
-            // Register as viewer
+            // Register as viewer and start heartbeat
             await RegisterViewer();
+            _viewerHeartbeatTimer = new Timer(
+                _ => _ = RegisterViewerHeartbeat(),
+                null,
+                TimeSpan.FromSeconds(30),
+                TimeSpan.FromSeconds(30));
 
             // Start playback in background
             _playTask = Task.Run(async () => await PlayAsync(_disposeCts.Token), CancellationToken.None);
@@ -116,6 +122,9 @@
 
         try {
             await _disposeCts.CancelAsync().ConfigureAwait(false);
+
+            if (_viewerHeartbeatTimer != null)
+                await _viewerHeartbeatTimer.DisposeAsync().ConfigureAwait(false);
 
             if (_playTask != null)
                 await _playTask.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
@@ -189,6 +198,22 @@
         }
         catch (Exception ex) {
             Log.LogError(ex, "[VideoTrackPlayer #{StreamId}] Failed to register as viewer", StreamInfo.StreamId);
+        }
+    }
+
+    private async Task RegisterViewerHeartbeat()
+    {
+        if (_isDisposed)
+            return;
+
+        try {
+            var decoderCodecs = await JS.InvokeAsync<string[]>(
+                $"{BlazorUIAppModule.ImportName}.detectSupportedDecoderCodecs");
+            await LiveVideoStreams.RegisterVideoStreamMember(
+                Session, StreamInfo.ChatId, new ApiArray<string>(decoderCodecs), CancellationToken.None);
+        }
+        catch {
+            // Ignore heartbeat failures — next heartbeat will retry
         }
     }
 

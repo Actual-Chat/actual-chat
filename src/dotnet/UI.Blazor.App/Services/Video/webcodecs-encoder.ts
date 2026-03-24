@@ -132,9 +132,11 @@ export class WebCodecsEncoder {
 
             // Add codec-specific config based on codec type
             if (this.config.codec.startsWith('avc1')) {
-                // Firefox's WebCodecs produces Annex B even with 'avc' config,
-                // causing decode errors on other browsers. Use 'annexb' on Firefox.
-                encoderConfig.avc = { format: DeviceInfo.isFirefox ? 'annexb' : 'avc' };
+                // Firefox produces Annex B even with 'avc' config (decode errors on other browsers).
+                // iOS Safari's AVCC serialization adds ~150ms overhead per frame.
+                // Use Annex B on both — SPS/PPS embedded in bitstream, no metadata overhead.
+                const useAnnexB = DeviceInfo.isFirefox || DeviceInfo.isIos;
+                encoderConfig.avc = { format: useAnnexB ? 'annexb' : 'avc' };
             } else if (this.config.codec.startsWith('hev1') || this.config.codec.startsWith('hvc1')) {
                 (encoderConfig as VideoEncoderConfig & { hevc?: { format: string } }).hevc = { format: 'hevc' };
             } else if (this.config.codec.startsWith('av01')) {

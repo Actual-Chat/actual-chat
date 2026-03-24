@@ -13,7 +13,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     private readonly ConcurrentDictionary<ChatId, ChatState> _chatStates = new();
 
     private RedisLiveStateStore<VideoStreamInfo> StreamsStore { get; }
-    private RedisLiveStateStore<ApiArray<string>> MembersStore { get; }
+    private RedisLiveStateStore<VideoStreamMemberInfo> MembersStore { get; }
     private MeshWatcher MeshWatcher => field ??= Services.MeshWatcher();
     private new ILogger Log => field ??= Services.LogFor(GetType());
 
@@ -23,7 +23,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         var redisDb = services.GetRequiredService<RedisDb<StreamingContext>>();
         var log = services.LogFor(GetType());
         StreamsStore = new RedisLiveStateStore<VideoStreamInfo>(redisDb, "live-video:streams", RedisTtl, log);
-        MembersStore = new RedisLiveStateStore<ApiArray<string>>(redisDb, "live-video:members", RedisTtl, log);
+        MembersStore = new RedisLiveStateStore<VideoStreamMemberInfo>(redisDb, "live-video:members", RedisTtl, log);
 
         var stopToken = ShardOwner.StopToken;
         foreach (var shardIndex in ShardScheme.ShardIndexes) {
@@ -88,8 +88,9 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     // [ComputeMethod]
     public virtual async Task<int> GetVideoStreamMemberCount(ChatId chatId, CancellationToken cancellationToken)
     {
-        var members = await SafeGetAll(MembersStore, chatId).ConfigureAwait(false);
-        return members.Count;
+        var allMembers = await SafeGetAll(MembersStore, chatId).ConfigureAwait(false);
+        var (activeMembers, _) = FilterStaleMembers(chatId, allMembers);
+        return activeMembers.Count;
     }
 
     public virtual async Task<RpcStream<VideoStreamInfo>> ObserveStreams(ChatId chatId, CancellationToken cancellationToken)
@@ -129,9 +130,10 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     // [ComputeMethod]
     public virtual async Task<ApiArray<string>> GetSupportedDecoderCodecs(ChatId chatId, CancellationToken cancellationToken)
     {
-        var members = await SafeGetAll(MembersStore, chatId).ConfigureAwait(false);
+        var allMembers = await SafeGetAll(MembersStore, chatId).ConfigureAwait(false);
+        var (activeMembers, _) = FilterStaleMembers(chatId, allMembers);
         var chatState = GetChatState(chatId);
-        chatState.RecomputeAndPublishCodecs(members);
+        chatState.RecomputeAndPublishCodecs(activeMembers);
         return chatState.GetCurrentSupportedDecoderCodecs();
     }
 
@@ -148,11 +150,17 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
 
     public virtual async Task RegisterVideoStreamMember(ChatId chatId, string sessionId, ApiArray<string> supportedDecoderCodecs, CancellationToken cancellationToken)
     {
-        var success = await MembersStore.SetField(chatId, sessionId, supportedDecoderCodecs).ConfigureAwait(false);
+        var memberInfo = new VideoStreamMemberInfo(supportedDecoderCodecs, DateTime.UtcNow.Ticks);
+        var success = await MembersStore.SetField(chatId, sessionId, memberInfo).ConfigureAwait(false);
         if (success) {
-            var members = await SafeGetAll(MembersStore, chatId).ConfigureAwait(false);
+            var allMembers = await SafeGetAll(MembersStore, chatId).ConfigureAwait(false);
+            var (activeMembers, staleKeys) = FilterStaleMembers(chatId, allMembers);
+
+            Log.LogDebug("RegisterVideoStreamMember({ChatId}): session={SessionId}, codecs=[{Codecs}], active={Active}, stale={Stale}",
+                chatId, sessionId, string.Join(", ", supportedDecoderCodecs), activeMembers.Count, staleKeys?.Count ?? 0);
+
             var chatState = GetChatState(chatId);
-            chatState.RecomputeAndPublishCodecs(members);
+            chatState.RecomputeAndPublishCodecs(activeMembers);
             InvalidateGetVideoStreamMemberCount(chatId);
             InvalidateGetSupportedDecoderCodecs(chatId);
         }
@@ -162,15 +170,56 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     {
         var removed = await MembersStore.RemoveField(chatId, sessionId).ConfigureAwait(false);
         if (removed) {
-            var members = await SafeGetAll(MembersStore, chatId).ConfigureAwait(false);
+            var allMembers = await SafeGetAll(MembersStore, chatId).ConfigureAwait(false);
+            var (activeMembers, _) = FilterStaleMembers(chatId, allMembers);
             var chatState = GetChatState(chatId);
-            chatState.RecomputeAndPublishCodecs(members);
+            chatState.RecomputeAndPublishCodecs(activeMembers);
             InvalidateGetVideoStreamMemberCount(chatId);
             InvalidateGetSupportedDecoderCodecs(chatId);
         }
     }
 
     // Private methods
+
+    private static readonly TimeSpan MemberStalenessThreshold = TimeSpan.FromSeconds(90);
+
+    private (Dictionary<string, ApiArray<string>> Active, List<string>? StaleKeys) FilterStaleMembers(
+        ChatId chatId,
+        Dictionary<string, VideoStreamMemberInfo> allMembers)
+    {
+        var cutoff = DateTime.UtcNow.Add(-MemberStalenessThreshold).Ticks;
+        var active = new Dictionary<string, ApiArray<string>>(allMembers.Count, StringComparer.Ordinal);
+        List<string>? staleKeys = null;
+
+        foreach (var (sessionId, info) in allMembers) {
+            if (info.RegisteredAtTicks >= cutoff) {
+                active[sessionId] = info.SupportedDecoderCodecs;
+            }
+            else {
+                staleKeys ??= new();
+                staleKeys.Add(sessionId);
+            }
+        }
+
+        // Fire-and-forget cleanup of stale entries from Redis
+        if (staleKeys != null)
+            _ = CleanupStaleMembers(chatId, staleKeys);
+
+        return (active, staleKeys);
+    }
+
+    private async Task CleanupStaleMembers(ChatId chatId, List<string> staleSessionIds)
+    {
+        try {
+            foreach (var sessionId in staleSessionIds)
+                await MembersStore.RemoveField(chatId, sessionId).ConfigureAwait(false);
+
+            Log.LogDebug("CleanupStaleMembers({ChatId}): removed {Count} stale member(s)", chatId, staleSessionIds.Count);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "CleanupStaleMembers({ChatId}): failed to remove stale members", chatId);
+        }
+    }
 
     private async Task CleanupDeadStreams(ChatId chatId, List<string> deadStreamIds)
     {

@@ -318,6 +318,13 @@ export class RecordingService extends EventTarget {
             height = 720;
         }
 
+        // iOS: cap H.264 to 540p (AVCC overhead makes 720p too slow at ~160ms/frame)
+        // HEVC at 720p is fine (HW accelerated)
+        if (DeviceInfo.isIos && this.config.codec === 'h264' && height > 540) {
+            width = Math.round(width * (540 / height));
+            height = 540;
+        }
+
         // Use the specific codec string if provided, otherwise use defaults
         let codecString: string;
 
