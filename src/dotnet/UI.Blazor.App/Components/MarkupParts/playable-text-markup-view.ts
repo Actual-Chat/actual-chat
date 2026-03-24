@@ -1,7 +1,7 @@
 import { fromEvent, Subject, takeUntil } from 'rxjs';
 import { setTimeout } from 'timerQueue';
 
-const DEBUG_HIGHLIGHT = false;
+const HIGHLIGHT_CLICKED_WORD = true;
 
 interface NumberRange {
     start: number;
@@ -57,7 +57,7 @@ export class PlayableTextMarkupView {
 
     private onWordClick(word: Word | null) {
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        if (DEBUG_HIGHLIGHT && word)
+        if (HIGHLIGHT_CLICKED_WORD && word)
             this.highlightWord(word);
 
         const textRange: NumberRange = word?.textRange ?? { start: 0, end: 0 };
