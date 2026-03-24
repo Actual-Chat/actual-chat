@@ -623,14 +623,14 @@ class PulseAudioSetup {
     }
 
     [bool] IsInstalled() {
-        switch (Get-CurrentOS) {
-            "macOS"   { return $null -ne (Get-Command "pulseaudio" -ErrorAction SilentlyContinue) }
-            "Windows" {
-                return (Test-Path "$env:LOCALAPPDATA\PulseAudio\bin\pulseaudio.exe") -or
-                       (Test-Path "$env:ProgramFiles\PulseAudio\bin\pulseaudio.exe")
-            }
-            default   { return $false }
+        $os = Get-CurrentOS
+        if ($os -eq "macOS") {
+            return $null -ne (Get-Command "pulseaudio" -ErrorAction SilentlyContinue)
+        } elseif ($os -eq "Windows") {
+            return (Test-Path "$env:LOCALAPPDATA\PulseAudio\bin\pulseaudio.exe") -or
+                   (Test-Path "$env:ProgramFiles\PulseAudio\bin\pulseaudio.exe")
         }
+        return $false
     }
 
     [void] EnsureRunning() {

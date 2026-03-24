@@ -21,7 +21,7 @@ Describe "PulseAudioSetup on $currentOS" {
     AfterAll {
         if ($IsWindows -or $env:OS -eq "Windows_NT") {
             taskkill /IM pulseaudio.exe /F 2>$null
-        } else {
+        } elseif (Get-Command "pulseaudio" -ErrorAction SilentlyContinue) {
             pulseaudio --kill 2>$null
         }
     }
