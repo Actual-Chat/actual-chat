@@ -4,7 +4,7 @@ namespace ActualChat;
 
 public abstract class ResilientStream
 {
-    public static ChannelOptions DefaultChannelOptions = new BoundedChannelOptions(64) {
+    public static ChannelOptions DefaultChannelOptions { get; set; } = new BoundedChannelOptions(64) {
         SingleReader = true,
         SingleWriter = true,
         FullMode = BoundedChannelFullMode.Wait,
