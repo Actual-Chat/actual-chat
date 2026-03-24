@@ -1274,9 +1274,7 @@ switch ($mode) {
         # Chrome rejects non-IP Host headers, so the wrapper resolves host.docker.internal to an IPv4 IP.
 
         # PulseAudio for voice mode: use TCP connection to host
-        # On macOS, --network host doesn't work like Linux (Docker runs in VM), so use host.docker.internal
-        # On Linux/Windows, localhost works with --network host
-        $pulseServer = if ($currentOS -eq "macOS") { "tcp:host.docker.internal:4713" } else { "tcp:localhost:4713" }
+        $pulseServer = if ($currentOS -in "macOS", "Windows") { "tcp:host.docker.internal:4713" } else { "tcp:localhost:4713" }
         $audioEnvVars = @(
             "-e", "PULSE_SERVER=$pulseServer"
         )
@@ -1325,83 +1323,179 @@ switch ($mode) {
     }
 
     "audio" {
-        # Setup and start PulseAudio for voice mode (macOS only)
-        if ($currentOS -ne "macOS") {
-            Write-Host "The 'audio' command is only needed on macOS." -ForegroundColor Yellow
-            Write-Host "On Linux, PulseAudio/PipeWire should already be available." -ForegroundColor Yellow
-            exit 0
-        }
-
+        # Setup and start PulseAudio for voice mode
         $pulseAudioPort = 4713
 
-        # Check if PulseAudio is installed
-        $pulseAudioInstalled = Get-Command "pulseaudio" -ErrorAction SilentlyContinue
-        if (-not $pulseAudioInstalled) {
-            Write-Host "PulseAudio is not installed. Installing via Homebrew..." -ForegroundColor Cyan
-            & brew install pulseaudio
-            if ($LASTEXITCODE -ne 0) {
-                Write-Error "Failed to install PulseAudio. Please install Homebrew first: https://brew.sh"
-                exit 1
+        # Helper to check if PulseAudio TCP is listening
+        function Test-PulseAudioRunning {
+            if ($currentOS -eq "Windows") {
+                $listening = netstat -an | Select-String ":$pulseAudioPort\s+.*LISTENING"
+                return $null -ne $listening
+            } else {
+                $listening = bash -c "lsof -i :$pulseAudioPort -sTCP:LISTEN 2>/dev/null || ss -tln 2>/dev/null | grep -q ':$pulseAudioPort '"
+                return $LASTEXITCODE -eq 0 -and $listening
             }
         }
 
-        # Helper to check if PulseAudio is running
-        function Test-PulseAudioRunning {
-            $listening = bash -c "lsof -i :$pulseAudioPort -sTCP:LISTEN 2>/dev/null"
-            return $LASTEXITCODE -eq 0 -and $listening
-        }
+        switch ($currentOS) {
+            "macOS" {
+                # Check if PulseAudio is installed
+                $pulseAudioInstalled = Get-Command "pulseaudio" -ErrorAction SilentlyContinue
+                if (-not $pulseAudioInstalled) {
+                    Write-Host "PulseAudio is not installed. Installing via Homebrew..." -ForegroundColor Cyan
+                    & brew install pulseaudio
+                    if ($LASTEXITCODE -ne 0) {
+                        Write-Error "Failed to install PulseAudio. Please install Homebrew first: https://brew.sh"
+                        exit 1
+                    }
+                }
 
-        # Check if PulseAudio is already running
-        if (Test-PulseAudioRunning) {
-            Write-Host "PulseAudio is already running on port $pulseAudioPort" -ForegroundColor Green
-            exit 0
-        }
+                # Check if already running
+                if (Test-PulseAudioRunning) {
+                    Write-Host "PulseAudio is already running on port $pulseAudioPort" -ForegroundColor Green
+                    exit 0
+                }
 
-        # Create PulseAudio config directory if it doesn't exist
-        $pulseConfigDir = "$env:HOME/.pulse"
-        if (-not (Test-Path $pulseConfigDir)) {
-            New-Item -ItemType Directory -Path $pulseConfigDir -Force | Out-Null
-        }
+                # Create PulseAudio config directory if it doesn't exist
+                $pulseConfigDir = "$env:HOME/.pulse"
+                if (-not (Test-Path $pulseConfigDir)) {
+                    New-Item -ItemType Directory -Path $pulseConfigDir -Force | Out-Null
+                }
 
-        # Create default.pa config to enable TCP connections from Docker
-        $pulseConfigFile = "$pulseConfigDir/default.pa"
-        $homebrewPrefix = if (Test-Path "/opt/homebrew") { "/opt/homebrew" } else { "/usr/local" }
-        $defaultPaPath = "$homebrewPrefix/etc/pulse/default.pa"
+                # Create default.pa config to enable TCP connections from Docker
+                $pulseConfigFile = "$pulseConfigDir/default.pa"
+                $homebrewPrefix = if (Test-Path "/opt/homebrew") { "/opt/homebrew" } else { "/usr/local" }
+                $defaultPaPath = "$homebrewPrefix/etc/pulse/default.pa"
 
-        if (-not (Test-Path $pulseConfigFile) -or -not (Select-String -Path $pulseConfigFile -Pattern "module-native-protocol-tcp" -Quiet)) {
-            Write-Host "Configuring PulseAudio for Docker connections..." -ForegroundColor Cyan
+                if (-not (Test-Path $pulseConfigFile) -or -not (Select-String -Path $pulseConfigFile -Pattern "module-native-protocol-tcp" -Quiet)) {
+                    Write-Host "Configuring PulseAudio for Docker connections..." -ForegroundColor Cyan
 
-            $configContent = @"
+                    $configContent = @"
 # Include default Homebrew PulseAudio config
 .include $defaultPaPath
 
 # Enable TCP connections for Docker (localhost + Docker Desktop network, no auth required)
 load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1;192.168.65.0/24 auth-anonymous=1
 "@
-            Set-Content -Path $pulseConfigFile -Value $configContent
-            Write-Host "Created config: $pulseConfigFile" -ForegroundColor Green
-        }
+                    Set-Content -Path $pulseConfigFile -Value $configContent
+                    Write-Host "Created config: $pulseConfigFile" -ForegroundColor Green
+                }
 
-        Write-Host "Starting PulseAudio daemon..." -ForegroundColor Cyan
-        & pulseaudio --load=module-native-protocol-tcp --exit-idle-time=-1 --daemon 2>&1 | Out-Null
+                Write-Host "Starting PulseAudio daemon..." -ForegroundColor Cyan
+                & pulseaudio --load=module-native-protocol-tcp --exit-idle-time=-1 --daemon 2>&1 | Out-Null
 
-        # Wait for PulseAudio to start
-        $maxWait = 10
-        $waited = 0
-        while (-not (Test-PulseAudioRunning) -and $waited -lt $maxWait) {
-            Start-Sleep -Milliseconds 500
-            $waited++
-        }
+                # Wait for PulseAudio to start
+                $maxWait = 10
+                $waited = 0
+                while (-not (Test-PulseAudioRunning) -and $waited -lt $maxWait) {
+                    Start-Sleep -Milliseconds 500
+                    $waited++
+                }
 
-        if (Test-PulseAudioRunning) {
-            Write-Host "PulseAudio started successfully on port $pulseAudioPort" -ForegroundColor Green
-            Write-Host ""
-            Write-Host "Voice mode should now work in Docker. Run 'c' to start Claude." -ForegroundColor Cyan
-            Write-Host ""
-            Write-Host "To stop PulseAudio: pulseaudio --kill" -ForegroundColor DarkGray
-        } else {
-            Write-Host "Failed to start PulseAudio. Try manually:" -ForegroundColor Yellow
-            Write-Host "  pulseaudio --load=module-native-protocol-tcp --exit-idle-time=-1 --daemon" -ForegroundColor White
+                if (Test-PulseAudioRunning) {
+                    Write-Host "PulseAudio started successfully on port $pulseAudioPort" -ForegroundColor Green
+                    Write-Host ""
+                    Write-Host "Voice mode should now work in Docker. Run 'c' to start Claude." -ForegroundColor Cyan
+                    Write-Host ""
+                    Write-Host "To stop PulseAudio: pulseaudio --kill" -ForegroundColor DarkGray
+                } else {
+                    Write-Host "Failed to start PulseAudio. Try manually:" -ForegroundColor Yellow
+                    Write-Host "  pulseaudio --load=module-native-protocol-tcp --exit-idle-time=-1 --daemon" -ForegroundColor White
+                }
+            }
+
+            "Linux" {
+                Write-Host "On Linux, PulseAudio/PipeWire should already be available." -ForegroundColor Yellow
+                Write-Host "If voice mode doesn't work, ensure the TCP module is loaded:" -ForegroundColor Yellow
+                Write-Host "  pactl load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" -ForegroundColor White
+                exit 0
+            }
+
+            "Windows" {
+                $pulseInstallDir = "$env:ProgramFiles\PulseAudio"
+                $pulseExe = "$pulseInstallDir\bin\pulseaudio.exe"
+                $pactlExe = "$pulseInstallDir\bin\pactl.exe"
+                $pulseConfigDir = "$env:APPDATA\PulseAudio"
+                $pulseConfigFile = "$pulseConfigDir\default.pa"
+
+                # Check if PulseAudio is installed
+                if (-not (Test-Path $pulseExe)) {
+                    Write-Host "PulseAudio is not installed. Downloading installer..." -ForegroundColor Cyan
+                    $installerUrl = "https://github.com/pgaskin/pulseaudio-win32/releases/download/v5/pasetup.exe"
+                    $installerPath = "$env:TEMP\pasetup.exe"
+
+                    try {
+                        Invoke-WebRequest -Uri $installerUrl -OutFile $installerPath -UseBasicParsing
+                    } catch {
+                        Write-Error "Failed to download PulseAudio installer from $installerUrl"
+                        exit 1
+                    }
+
+                    Write-Host "Running installer (follow the prompts)..." -ForegroundColor Cyan
+                    Start-Process -FilePath $installerPath -Wait
+                    Remove-Item $installerPath -ErrorAction SilentlyContinue
+
+                    if (-not (Test-Path $pulseExe)) {
+                        Write-Error "PulseAudio installation failed or was cancelled."
+                        exit 1
+                    }
+                    Write-Host "PulseAudio installed successfully." -ForegroundColor Green
+                }
+
+                # Check if already running with TCP
+                if (Test-PulseAudioRunning) {
+                    Write-Host "PulseAudio is already running on port $pulseAudioPort" -ForegroundColor Green
+                    exit 0
+                }
+
+                # Create config directory if needed
+                if (-not (Test-Path $pulseConfigDir)) {
+                    New-Item -ItemType Directory -Path $pulseConfigDir -Force | Out-Null
+                }
+
+                # Create/update config to enable TCP connections
+                if (-not (Test-Path $pulseConfigFile) -or -not (Select-String -Path $pulseConfigFile -Pattern "module-native-protocol-tcp" -Quiet)) {
+                    Write-Host "Configuring PulseAudio for Docker connections..." -ForegroundColor Cyan
+
+                    $configContent = @"
+# Default PulseAudio config with TCP enabled for Docker
+.include $pulseInstallDir/etc/pulse/default.pa
+
+# Enable TCP connections for Docker (localhost + Docker Desktop network)
+load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1;192.168.65.0/24 auth-anonymous=1
+"@
+                    Set-Content -Path $pulseConfigFile -Value $configContent
+                    Write-Host "Created config: $pulseConfigFile" -ForegroundColor Green
+                }
+
+                # Start PulseAudio
+                Write-Host "Starting PulseAudio..." -ForegroundColor Cyan
+                Start-Process -FilePath $pulseExe -ArgumentList "--exit-idle-time=-1", "-F", $pulseConfigFile -WindowStyle Hidden
+
+                # Wait for it to start
+                $maxWait = 10
+                $waited = 0
+                while (-not (Test-PulseAudioRunning) -and $waited -lt $maxWait) {
+                    Start-Sleep -Milliseconds 500
+                    $waited++
+                }
+
+                if (Test-PulseAudioRunning) {
+                    Write-Host "PulseAudio started successfully on port $pulseAudioPort" -ForegroundColor Green
+                    Write-Host ""
+                    Write-Host "Voice mode should now work in Docker. Run 'c' to start Claude." -ForegroundColor Cyan
+                    Write-Host ""
+                    Write-Host "To stop PulseAudio: taskkill /IM pulseaudio.exe" -ForegroundColor DarkGray
+                } else {
+                    Write-Host "Failed to start PulseAudio. Try running manually:" -ForegroundColor Yellow
+                    Write-Host "  `"$pulseExe`" --exit-idle-time=-1 -F `"$pulseConfigFile`"" -ForegroundColor White
+                }
+            }
+
+            default {
+                Write-Host "Unsupported OS: $currentOS" -ForegroundColor Red
+                exit 1
+            }
         }
     }
 
