@@ -722,7 +722,8 @@ load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1;192.168.65.0/24 aut
                 Write-Error "Failed to download PulseAudio from $zipUrl"
                 exit 1
             }
-            Expand-Archive -Path $zipPath -DestinationPath $installDir -Force
+            # Zip contains a "pulseaudio/" root folder, so extract to parent directory
+            Expand-Archive -Path $zipPath -DestinationPath (Split-Path $installDir) -Force
             Remove-Item $zipPath -ErrorAction SilentlyContinue
 
             if (-not (Test-Path $exePath)) {
