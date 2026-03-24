@@ -686,9 +686,19 @@ export const serverImpl: VideoProcessingWorker = {
     switchCodec: async (config: EncoderConfig): Promise<void> => {
         if (!encoder) { warnLog?.log('Cannot switch codec: not active'); return; }
         infoLog?.log(`Switching codec to ${config.codec}`);
+
+        // Suppress frame output during codec switch — encoder.switchCodec() flushes
+        // old-codec frames that must NOT leak into the new stream
+        const wasStreaming = streamingEnabled;
+        streamingEnabled = false;
+
         if (videoStream) { videoStream.complete(); videoStream = null; }
         codecSettings = null; firstEncodedTimestamp = null; pendingStreamFrames = []; storedDescriptionBytes = null;
         await encoder.switchCodec(config);
+
+        // Re-enable streaming and clear any frames that leaked during flush
+        streamingEnabled = wasStreaming;
+        pendingStreamFrames = [];
         encoderConfig = config; resizeCanvas = null; resizeCtx = null;
         frameCount = 0; startTimestamp = undefined;
         backpressureDrops = 0; backpressureTotalFrames = 0; lastBackpressureCheckTime = 0; backpressureNotified = false;
