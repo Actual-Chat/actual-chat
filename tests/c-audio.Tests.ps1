@@ -40,7 +40,9 @@ Describe "PulseAudioSetup on $currentOS" {
         }
 
         It "installs PulseAudio executable" -Skip:($currentOS -ne "Windows") {
-            "$env:ProgramFiles\PulseAudio\bin\pulseaudio.exe" | Should -Exist
+            $found = (Test-Path "$env:LOCALAPPDATA\PulseAudio\bin\pulseaudio.exe") -or
+                     (Test-Path "$env:ProgramFiles\PulseAudio\bin\pulseaudio.exe")
+            $found | Should -BeTrue
         }
 
         It "installs PulseAudio via Homebrew" -Skip:($currentOS -ne "macOS") {

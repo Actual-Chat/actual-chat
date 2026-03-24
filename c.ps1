@@ -684,46 +684,35 @@ load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1;192.168.65.0/24 aut
     }
 
     hidden [void] SetupWindows() {
-        $installDir = "$env:ProgramFiles\PulseAudio"
+        $portableDir = "$env:LOCALAPPDATA\PulseAudio"
+        $legacyDir = "$env:ProgramFiles\PulseAudio"
+        # Prefer portable location, fall back to legacy (exe installer) location
+        $installDir = if (Test-Path "$portableDir\bin\pulseaudio.exe") { $portableDir }
+            elseif (Test-Path "$legacyDir\bin\pulseaudio.exe") { $legacyDir }
+            else { $portableDir }
         $exePath = "$installDir\bin\pulseaudio.exe"
         $configDir = "$env:APPDATA\PulseAudio"
         $configFile = "$configDir\default.pa"
 
         # Install if needed
         if (-not (Test-Path $exePath)) {
-            if ($env:CI) {
-                # In CI, download the zip archive (the .exe installer hangs in silent mode)
-                Write-Host "PulseAudio is not installed. Downloading zip archive (CI mode)..." -ForegroundColor Cyan
-                $zipUrl = "https://github.com/pgaskin/pulseaudio-win32/releases/download/v5/pulseaudio.zip"
-                $zipPath = "$env:TEMP\pulseaudio.zip"
-                try {
-                    Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing
-                } catch {
-                    Write-Error "Failed to download PulseAudio from $zipUrl"
-                    exit 1
-                }
-                Expand-Archive -Path $zipPath -DestinationPath $installDir -Force
-                Remove-Item $zipPath -ErrorAction SilentlyContinue
-            } else {
-                Write-Host "PulseAudio is not installed. Downloading installer..." -ForegroundColor Cyan
-                $installerUrl = "https://github.com/pgaskin/pulseaudio-win32/releases/download/v5/pasetup.exe"
-                $installerPath = "$env:TEMP\pasetup.exe"
-                try {
-                    Invoke-WebRequest -Uri $installerUrl -OutFile $installerPath -UseBasicParsing
-                } catch {
-                    Write-Error "Failed to download PulseAudio installer from $installerUrl"
-                    exit 1
-                }
-                Write-Host "Running installer (follow the prompts)..." -ForegroundColor Cyan
-                Start-Process -FilePath $installerPath -Wait
-                Remove-Item $installerPath -ErrorAction SilentlyContinue
-            }
-
-            if (-not (Test-Path $exePath)) {
-                Write-Error "PulseAudio installation failed or was cancelled."
+            Write-Host "PulseAudio is not installed. Downloading..." -ForegroundColor Cyan
+            $zipUrl = "https://github.com/pgaskin/pulseaudio-win32/releases/download/v5/pulseaudio.zip"
+            $zipPath = "$env:TEMP\pulseaudio.zip"
+            try {
+                Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing
+            } catch {
+                Write-Error "Failed to download PulseAudio from $zipUrl"
                 exit 1
             }
-            Write-Host "PulseAudio installed successfully." -ForegroundColor Green
+            Expand-Archive -Path $zipPath -DestinationPath $installDir -Force
+            Remove-Item $zipPath -ErrorAction SilentlyContinue
+
+            if (-not (Test-Path $exePath)) {
+                Write-Error "PulseAudio installation failed."
+                exit 1
+            }
+            Write-Host "PulseAudio installed to $installDir" -ForegroundColor Green
         }
 
         # Check if already running
