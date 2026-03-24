@@ -12,13 +12,14 @@ ENV TZ="$TZ"
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get install -y nodejs
 
-# Install dev tools, CLI utilities, Python 3, image tools
+# Install dev tools, CLI utilities, Python 3, image tools, audio support
 RUN apt-get update && apt-get install -y \
     git git-lfs procps sudo fzf zsh man-db unzip gnupg2 \
     gh jq wget curl less ca-certificates \
     python3 python3-pip python3-venv \
     imagemagick \
     ripgrep fd-find vim nano \
+    pulseaudio-utils libpulse0 alsa-utils libasound2-plugins sox \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # PowerShell is pre-installed in .NET SDK image (both amd64 and arm64)
@@ -50,6 +51,9 @@ RUN dotnet workload install wasm-tools
 # Install Playwright npm package globally and browser dependencies
 RUN npm install -g playwright && \
     playwright install-deps
+
+# Configure ALSA to use PulseAudio (redirects ALSA apps to PulseAudio)
+RUN echo "pcm.!default { type pulse }\nctl.!default { type pulse }" > /etc/asound.conf
 
 # Create non-root user
 ARG USERNAME=claude

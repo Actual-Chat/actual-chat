@@ -46,6 +46,7 @@ When running in Docker (`AC_OS` = `Linux in Docker`), the following tools are av
 | **Python** | Python 3, matplotlib, seaborn, plotly, pandas, numpy, pillow |
 | **Cloud** | gcloud CLI (Google Cloud), with host's gcloud config mounted read-only |
 | **Testing** | Playwright with Chromium pre-installed |
+| **Audio** | PulseAudio client, ALSA utils, SoX (for voice mode) |
 | **Other** | jq, curl, wget, imagemagick, sudo |
 
 Build artifacts are stored in `artifacts/claude-docker/` to avoid permission conflicts with the host.
@@ -102,6 +103,29 @@ getent ahosts host.docker.internal | awk 'NR==1{print $1}'
 ```
 
 Then use the resulting IP (e.g., `http://192.168.65.254:9222`) instead of `localhost`.
+
+## Voice Mode and Audio Support
+
+Voice mode (`/voice`) requires microphone access via PulseAudio. On macOS, the host must run PulseAudio to stream audio to the Docker container.
+
+**macOS setup** (one-time):
+```bash
+c audio    # Installs PulseAudio via Homebrew and starts the daemon
+```
+
+This configures PulseAudio to accept TCP connections from the Docker container. The daemon runs on port 4713 and the `PULSE_SERVER` environment variable is automatically set in Docker.
+
+**Verifying audio works**:
+```bash
+# Inside Docker, test PulseAudio connection
+pactl info    # Should show "Server Name: PulseAudio..."
+```
+
+**Stopping PulseAudio**: `pulseaudio --kill`
+
+**Linux hosts**: PulseAudio/PipeWire should already be available; no setup needed.
+
+**Windows/WSL**: Voice mode requires WSLg for audio access. Run Claude in WSL mode (`c wsl`) for native audio support.
 
 ## Accessing Sibling Projects
 
