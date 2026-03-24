@@ -622,6 +622,23 @@ class PulseAudioSetup {
         return $this.IsRunning()
     }
 
+    [bool] IsInstalled() {
+        switch (Get-CurrentOS) {
+            "macOS"   { return $null -ne (Get-Command "pulseaudio" -ErrorAction SilentlyContinue) }
+            "Windows" {
+                return (Test-Path "$env:LOCALAPPDATA\PulseAudio\bin\pulseaudio.exe") -or
+                       (Test-Path "$env:ProgramFiles\PulseAudio\bin\pulseaudio.exe")
+            }
+            default   { return $false }
+        }
+    }
+
+    [void] EnsureRunning() {
+        if ($this.IsRunning() -or -not $this.IsInstalled()) { return }
+        Write-Host "Starting PulseAudio for voice mode..." -ForegroundColor Cyan
+        $this.Setup()
+    }
+
     [void] Setup() {
         switch (Get-CurrentOS) {
             "macOS"   { $this.SetupMacOS() }
@@ -1432,7 +1449,8 @@ switch ($mode) {
         # Docker Desktop on Windows uses a VM, so localhost/127.0.0.1 won't reach the host.
         # Chrome rejects non-IP Host headers, so the wrapper resolves host.docker.internal to an IPv4 IP.
 
-        # PulseAudio for voice mode: use TCP connection to host
+        # PulseAudio for voice mode: auto-start if installed but stopped
+        [PulseAudioSetup]::new().EnsureRunning()
         $pulseServer = if ($currentOS -in "macOS", "Windows") { "tcp:host.docker.internal:4713" } else { "tcp:localhost:4713" }
         $audioEnvVars = @(
             "-e", "PULSE_SERVER=$pulseServer"
