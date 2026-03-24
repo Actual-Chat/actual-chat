@@ -15,31 +15,31 @@ public partial class ChatAudioUI
     // Compute methods
 
     [ComputeMethod]
-    public virtual Task<ChatReplayer?> GetReplayer(ChatId chatId, CancellationToken cancellationToken)
-    {
-        var player = GetReplayerNonComputed(chatId);
-        return Task.FromResult(player);
-    }
-
-    [ComputeMethod]
     public virtual Task<ChatListener?> GetListener(ChatId chatId, CancellationToken cancellationToken)
     {
         var player = GetListenerNonComputed(chatId);
         return Task.FromResult(player);
     }
 
-    // GetXxxNonComputed
-
-    public ChatReplayer? GetReplayerNonComputed(ChatId chatId)
+    [ComputeMethod]
+    public virtual Task<ChatReplayer?> GetReplayer(ChatId chatId, CancellationToken cancellationToken)
     {
-        lock (Lock)
-            return _players.GetValueOrDefault((chatId, ChatPlayerKind.Replaying)) as ChatReplayer;
+        var player = GetReplayerNonComputed(chatId);
+        return Task.FromResult(player);
     }
+
+    // GetXxxNonComputed
 
     public ChatListener? GetListenerNonComputed(ChatId chatId)
     {
         lock (Lock)
             return _players.GetValueOrDefault((chatId, ChatPlayerKind.Listening)) as ChatListener;
+    }
+
+    public ChatReplayer? GetReplayerNonComputed(ChatId chatId)
+    {
+        lock (Lock)
+            return _players.GetValueOrDefault((chatId, ChatPlayerKind.Replaying)) as ChatReplayer;
     }
 
     // Actions
@@ -55,7 +55,10 @@ public partial class ChatAudioUI
 
     public async Task StartReplayWithStoredSpeed(ChatId chatId, Moment startAt, TimeSpan offset = default)
     {
-        var settings = await UserSettingsUI.UserReplaySettings().Get().ConfigureAwait(false);
+        if (!_replaySettings.WhenFirstTimeRead.IsCompleted)
+            await _replaySettings.WhenFirstTimeRead.ConfigureAwait(false);
+
+        var settings = _replaySettings.Value;
         StartReplay(chatId, startAt, settings.Speed, offset);
     }
 

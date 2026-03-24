@@ -309,10 +309,10 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     }
 
     public void SetNavbarPinnedChats(IReadOnlyCollection<ChatId> pinnedChats)
-        => _navbarSettings.Value = _navbarSettings.Value with { PinnedChats = pinnedChats.ToArray() };
+        => _navbarSettings.Set(x => x.Value with { PinnedChats = pinnedChats.ToArray() });
 
     public void SetNavbarPlacesOrder(IReadOnlyCollection<PlaceId> places)
-        => _navbarSettings.Value = _navbarSettings.Value with { PlacesOrder = places.ToArray() };
+        => _navbarSettings.Set(x => x.Value with { PlacesOrder = places.ToArray() });
 
     public void LeaveChat(Chat.Chat chat)
         => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(false, "chat",

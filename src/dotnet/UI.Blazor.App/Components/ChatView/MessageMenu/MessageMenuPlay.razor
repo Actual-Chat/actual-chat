@@ -103,12 +103,11 @@
         return Task.CompletedTask;
     }
 
-    private async Task OnPlay() {
+    private Task OnPlay() {
         var entry = Entry;
         var chatId = entry.ChatId;
         var startAt = entry.BeginsAt;
-        var chatAudioUI = Services.GetRequiredService<ChatAudioUI>();
-        await chatAudioUI.StartReplayWithStoredSpeed(chatId, startAt).ConfigureAwait(false);
+        return Hub.ChatAudioUI.StartReplayWithStoredSpeed(chatId, startAt);
     }
 
     // Nested types

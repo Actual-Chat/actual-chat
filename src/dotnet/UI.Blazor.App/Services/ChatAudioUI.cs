@@ -1,4 +1,5 @@
 using ActualChat.Audio;
+using ActualChat.Kvas;
 using ActualChat.UI.App.Services;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
@@ -19,6 +20,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 {
     private static bool DebugMode => Constants.DebugMode.ChatAudioUI;
 
+    private readonly SyncedState<UserReplaySettings> _replaySettings;
     private readonly MutableState<Moment?> _stopRecordingAt;
     private readonly MutableState<ImmutableDictionary<ChatId, Moment>> _stopListeningAtMap;
     private readonly MutableState<NextBeepState?> _nextBeep;
@@ -41,6 +43,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private Moment ServerNow => Clocks.ServerClock.Now;
     private new ILogger? DebugLog => DebugMode ? Log : null;
 
+    public SyncedState<UserReplaySettings> ReplaySettings => _replaySettings;
     public IState<ReplayState?> ReplayState => _replayState;
     public IState<Moment?> StopRecordingAt => _stopRecordingAt; // CPU time
     public IState<NextBeepState?> NextBeep => _nextBeep;
@@ -49,8 +52,17 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public ChatAudioUI(AppUIHub hub) : base(hub)
     {
         IncomingShareSuggestions = hub.Services.GetService<IncomingShareSuggestions>();
+
         var type = GetType();
         var stateFactory = StateFactory;
+        _replaySettings = stateFactory.NewUserSettingsSynced(
+            UserSettingsUI,
+            UserReplaySettings.KvasKey,
+            new UserReplaySettings(),
+            updateDelayer: FixedDelayer.NextTick,
+            category: StateCategories.Get(type, nameof(ReplaySettings)));
+        Hub.RegisterDisposable(_replaySettings);
+
         _stopRecordingAt = stateFactory.NewMutable((Moment?)null, StateCategories.Get(type, nameof(StopRecordingAt)));
         _stopListeningAtMap = stateFactory.NewMutable(
             ImmutableDictionary<ChatId, Moment>.Empty,

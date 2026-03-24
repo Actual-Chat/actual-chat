@@ -166,7 +166,7 @@
     }
 
     [JSInvokable]
-    public async Task OnMarkupClick(Range<int> textRange) {
+    public Task OnMarkupClick(Range<int> textRange) {
         // Let's store everything locally to make sure we can safely "leave" Blazor dispatcher's "thread"
         var markup = Markup;
         var entry = Entry;
@@ -175,11 +175,10 @@
         var startIndex = textRange.Start;
         var startTimeOpt = markup.TimeMap.TryMap(startIndex);
         if (startTimeOpt is not { } startTime)
-            return;
+            return Task.CompletedTask;
 
         var startAt = entry.BeginsAt + TimeSpan.FromSeconds(startTime - 0.25);
-        var chatAudioUI = Services.GetRequiredService<ChatAudioUI>();
-        await chatAudioUI.StartReplayWithStoredSpeed(chatId, startAt).ConfigureAwait(false);
+        return Hub.ChatAudioUI.StartReplayWithStoredSpeed(chatId, startAt);
     }
 
     private static WordPlayback[] EnrichMapWithPlayedStatus(WordPlayback[]? map, WordPlayback[] lastMap)

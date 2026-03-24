@@ -8,9 +8,10 @@ namespace ActualChat.Users;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record UserReplaySettings : StoredSettings, IHasOrigin, IHasKvasKey<UserReplaySettings>
 {
+    public static string KvasKey => nameof(UserReplaySettings);
+
     [DataMember, MemoryPackOrder(0)]
     public double Speed { get; init; } = 1.0;
-
     [DataMember, MemoryPackOrder(1)]
     public string Origin { get; init; } = "";
 }

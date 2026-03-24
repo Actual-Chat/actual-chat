@@ -36,15 +36,10 @@
         if (Math.Abs(replayState.Speed - speed) < 0.01)
             return; // Same speed, no change
 
-        // Get current playback position
+        ChatAudioUI.ReplaySettings.Set(x => x.Value with { Speed = speed });
+
         var playingAt = await GetCurrentPlayingAt(replayState).ConfigureAwait(false);
-
-        // Restart replay from current position with new speed
         ChatAudioUI.StartReplay(replayState.ChatId, playingAt, speed: speed);
-
-        // Persist the speed preference
-        _ = Hub.UserSettingsUI.UserReplaySettings()
-            .Set(new UserReplaySettings { Speed = speed });
     }
 
     private async Task<Moment> GetCurrentPlayingAt(ReplayState replayState) {
