@@ -43,7 +43,7 @@ let streamReadLoopPromise: Promise<void> | null = null;
 // VAD state for stream mode (communicated via RPC from main thread)
 let vadSpeaking = true;
 let vadRemoteStreamCount = 0;
-let vadReducedFrameIntervalMs = 1000 / 5; // default 5fps when silent
+const vadReducedFrameIntervalMs = 1000 / 5; // default 5fps when silent
 let vadLastPassedFrameTime = 0;
 
 // Dimension reconciliation state for stream mode
@@ -320,7 +320,7 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
                 break;
             }
 
-            if (!encoder || !processing || !encoderConfig) {
+            if (!encoder || !processing || !encoderConfig) { // eslint-disable-line @typescript-eslint/no-unnecessary-condition
                 rawFrame.close();
                 continue;
             }
@@ -399,6 +399,7 @@ const serverImpl: EncoderWorker = {
     /**
    * Initialize and start stream-based encoding.
    */
+    // eslint-disable-next-line @typescript-eslint/require-await
     startWithStream: async (
         config: EncoderConfig,
         frameInputStream: ReadableStream<VideoFrame>,

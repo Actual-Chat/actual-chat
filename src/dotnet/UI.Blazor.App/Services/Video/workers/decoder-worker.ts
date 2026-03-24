@@ -309,6 +309,7 @@ const serverImpl: DecoderWorker = {
     /**
    * Initialize and start stream-based decoding.
    */
+    // eslint-disable-next-line @typescript-eslint/require-await
     initializeWithStreams: async (
         config: DecoderConfig,
         chunkInputStream: ReadableStream<RawChunkMessage>,
@@ -343,7 +344,7 @@ const serverImpl: DecoderWorker = {
             const inputReader = chunkInputStream.getReader();
             streamReadLoopPromise = (async () => {
                 try {
-                    while (processing) {
+                    while (processing) { // eslint-disable-line @typescript-eslint/no-unnecessary-condition
                         const { done, value } = await inputReader.read();
                         if (done) {
                             infoLog?.log('Decoder stream input ended');
@@ -360,7 +361,7 @@ const serverImpl: DecoderWorker = {
                         );
                     }
                 } catch (error) {
-                    if (processing) {
+                    if (processing) { // eslint-disable-line @typescript-eslint/no-unnecessary-condition
                         errorLog?.log('Decoder stream read error:', error);
                     }
                 } finally {

@@ -578,7 +578,7 @@ export class VideoPipeline implements IVideoPipeline {
 
                 video.onloadedmetadata = () => {
                     const playPromise = video.play().catch(() => { videoReady = true; pump(); });
-                    void playPromise.then(() => { videoReady = true; pump(); }).catch(() => {});
+                    void playPromise.then(() => { videoReady = true; pump(); }).catch(() => { /* ignore */ });
                 };
                 video.onerror = (e) => errorLog?.log('Canvas extractor video error:', e);
             },

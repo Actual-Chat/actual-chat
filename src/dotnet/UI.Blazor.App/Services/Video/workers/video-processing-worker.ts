@@ -24,10 +24,10 @@ import { HubConnectionState } from '@microsoft/signalr';
 import { encode } from '@msgpack/msgpack';
 import { EventHandlerSet } from 'event-handling';
 
-import { type EncoderConfig, type EncoderStats, type EncodedChunkData, WebCodecsEncoder } from '../webcodecs-encoder';
+import { type EncoderConfig, type EncodedChunkData, WebCodecsEncoder } from '../webcodecs-encoder';
 import type { SegmentationConfig, SegmentationStats, ModelConfig } from './segmentation-worker-contract';
-import { DEFAULT_MODEL_CONFIG, getModelConfig } from './segmentation-worker-contract';
-import type { VideoProcessingWorker, VideoProcessingWorkerCallbacks, VideoProcessingConfig, VideoProcessingStats } from './video-processing-worker-contract';
+import { getModelConfig } from './segmentation-worker-contract';
+import type { VideoProcessingWorker, VideoProcessingWorkerCallbacks, VideoProcessingStats } from './video-processing-worker-contract';
 import {
     initTensorWebGPU,
     processDeferredCleanups,
@@ -296,8 +296,21 @@ function enqueueFrame(frame: VideoFrame): void {
 }
 
 /**
+ * Send a preview frame to main thread (for own video display) and then encode.
+ * Clones the frame every Nth time so the original can still go to the encoder.
+ * Only called from blur processing paths — raw preview uses the RAF loop on main thread.
+ */
+function emitPreviewAndEncode(frame: VideoFrame): void {
+    try {
+        const previewFrame = new VideoFrame(frame, { timestamp: frame.timestamp });
+        void callbacks.onPreviewFrame(previewFrame, rpcNoWait);
+    } catch { /* clone failed, skip preview */ }
+    void encodeProcessedFrame(frame);
+}
+
+/**
  * Process segmentation queue one frame at a time.
- * After blur processing, calls encodeProcessedFrame() directly (same worker).
+ * After blur processing, calls emitPreviewAndEncode() to send preview + encode.
  */
 async function processQueue(): Promise<void> {
     if (!frameQueue || !segConfig || processingFrame) return;
@@ -319,7 +332,6 @@ async function processQueue(): Promise<void> {
                 const skipBlurStart = performance.now();
                 if (segConfig.blurEnabled) {
                     try {
-                        const seqNum = qf.sequenceNumber;
                         await submitBlurI420(
                             qf.frame, smoothedMaskBuffer,
                             segConfig.inputWidth, segConfig.inputHeight,
@@ -335,7 +347,7 @@ async function processQueue(): Promise<void> {
                                     warnLog?.log(`I420 path: GPU compute shader, frame format: ${result.frame.format}`);
                                 }
                                 segProcessedFrames++;
-                                encodeProcessedFrame(result.frame);
+                                emitPreviewAndEncode(result.frame);
                             }
                         );
                     } catch {
@@ -350,11 +362,11 @@ async function processQueue(): Promise<void> {
                             }
                         );
                         segProcessedFrames++;
-                        encodeProcessedFrame(finalFrame);
+                        emitPreviewAndEncode(finalFrame);
                     }
                 } else {
                     segProcessedFrames++;
-                    encodeProcessedFrame(qf.frame);
+                    void encodeProcessedFrame(qf.frame);
                 }
                 const skipBlurTime = performance.now() - skipBlurStart;
                 segTotalBlurTime += skipBlurTime;
@@ -391,7 +403,6 @@ async function processQueue(): Promise<void> {
 
             if (segConfig.blurEnabled) {
                 const smoothingAlpha = segConfig.temporalSmoothingFactor ?? 0.3;
-                const seqNum = qf.sequenceNumber;
                 try {
                     await submitBlurI420(
                         qf.frame, smoothedMaskBuffer,
@@ -409,7 +420,7 @@ async function processQueue(): Promise<void> {
                                 warnLog?.log(`I420 path: GPU compute shader, frame format: ${result.frame.format}`);
                             }
                             segProcessedFrames++;
-                            encodeProcessedFrame(result.frame);
+                            emitPreviewAndEncode(result.frame);
                         }
                     );
                 } catch {
@@ -425,14 +436,14 @@ async function processQueue(): Promise<void> {
                         }
                     );
                     segProcessedFrames++;
-                    encodeProcessedFrame(finalFrame);
+                    emitPreviewAndEncode(finalFrame);
                 }
             } else {
                 const smoothingAlpha = segConfig.temporalSmoothingFactor ?? 0.3;
                 const maskSize = segConfig.inputWidth * segConfig.inputHeight;
                 applyTemporalSmoothing(gpuBuffer, smoothedMaskBuffer, maskSize, smoothingAlpha);
                 segProcessedFrames++;
-                encodeProcessedFrame(qf.frame);
+                void encodeProcessedFrame(qf.frame);
             }
 
             const blurEndTime = performance.now();
@@ -561,7 +572,7 @@ class InternalVideoStream {
 
     addFrame(frame: VideoStreamFrame): void {
         if (this.isCompleted) return;
-        if (!frame.data || frame.data.byteLength === 0) return;
+        if (frame.data.byteLength === 0) return;
 
         this.frames.push(frame);
         this.addedFrameCount++;
@@ -904,7 +915,7 @@ function deliverChunkToStream(
             );
             lastVideoStream = videoStream;
 
-            warnLog?.log(`TIMING_ANCHOR: firstEncodedTimestamp=${(firstEncodedTimestamp! / 1000).toFixed(0)}ms`);
+            warnLog?.log(`TIMING_ANCHOR: firstEncodedTimestamp=${(firstEncodedTimestamp / 1000).toFixed(0)}ms`);
 
             for (const buffered of pendingStreamFrames) videoStream.addFrame(buffered);
             pendingStreamFrames = [];
@@ -938,7 +949,7 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
                 break;
             }
 
-            if (!encoder || !processing || !encoderConfig) {
+            if (!encoder || !processing || !encoderConfig) { // eslint-disable-line @typescript-eslint/no-unnecessary-condition
                 rawFrame.close();
                 continue;
             }
@@ -993,7 +1004,7 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
 // ─── Section G: serverImpl ──────────────────────────────────────────────────
 
 const serverImpl: VideoProcessingWorker = {
-    // eslint-disable-next-line
+     
     startWithStream: async (config, frameInputStream): Promise<void> => {
         try {
             infoLog?.log('Starting video processing worker (stream mode)...');
@@ -1024,7 +1035,7 @@ const serverImpl: VideoProcessingWorker = {
 
             // VAD
             if (config.adaptiveFramerate) {
-                vadReducedFrameIntervalMs = 1000 / (config.adaptiveFramerate.reducedFps ?? 5);
+                vadReducedFrameIntervalMs = 1000 / config.adaptiveFramerate.reducedFps;
             }
 
             processing = true;
@@ -1042,7 +1053,7 @@ const serverImpl: VideoProcessingWorker = {
         }
     },
 
-    // eslint-disable-next-line
+     
     initialize: async (config): Promise<void> => {
         try {
             infoLog?.log('Starting video processing worker (RPC mode)...');
@@ -1067,7 +1078,7 @@ const serverImpl: VideoProcessingWorker = {
             createEncoder(config.encoder);
 
             if (config.adaptiveFramerate) {
-                vadReducedFrameIntervalMs = 1000 / (config.adaptiveFramerate.reducedFps ?? 5);
+                vadReducedFrameIntervalMs = 1000 / config.adaptiveFramerate.reducedFps;
             }
 
             processing = true;
@@ -1093,7 +1104,7 @@ const serverImpl: VideoProcessingWorker = {
         debugLog?.log(`VAD state: speaking=${speaking}, remoteStreamCount=${remoteStreamCount}`);
     },
 
-    // eslint-disable-next-line
+     
     reconfigure: async (params): Promise<void> => {
         if (!encoder || !processing || !encoderConfig) {
             warnLog?.log('Cannot reconfigure: not active');
@@ -1150,7 +1161,7 @@ const serverImpl: VideoProcessingWorker = {
         infoLog?.log('Codec switched successfully');
     },
 
-    // eslint-disable-next-line
+     
     toggleBlur: async (enabled, segCfg?): Promise<void> => {
         infoLog?.log(`Toggling blur: ${enabled ? 'ON' : 'OFF'}`);
 
@@ -1237,8 +1248,8 @@ const serverImpl: VideoProcessingWorker = {
 
         // Destroy GPU buffers
         if (segInitialized) {
-            try { outputGpuBuffer?.destroy(); } catch { /* ignore */ }
-            try { smoothedMaskBuffer?.destroy(); } catch { /* ignore */ }
+            try { outputGpuBuffer.destroy(); } catch { /* ignore */ }
+            try { smoothedMaskBuffer.destroy(); } catch { /* ignore */ }
         }
 
         // Reset state

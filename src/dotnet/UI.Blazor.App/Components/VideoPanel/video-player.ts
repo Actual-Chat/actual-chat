@@ -1006,7 +1006,7 @@ export class VideoPlayer {
 
         // Close stream input channel
         if (this.chunkInputChannel) {
-            try { this.chunkInputChannel.writer.close(); } catch { /* ignore */ }
+            try { void this.chunkInputChannel.writer.close(); } catch { /* ignore */ }
             this.chunkInputChannel = null;
         }
 
