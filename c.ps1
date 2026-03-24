@@ -704,7 +704,12 @@ load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1;192.168.65.0/24 aut
 
             if ($env:CI) {
                 Write-Host "Running installer silently (CI mode)..." -ForegroundColor Cyan
-                Start-Process -FilePath $installerPath -ArgumentList "/S" -Wait
+                $proc = Start-Process -FilePath $installerPath -ArgumentList "/S", "/D=$installDir" -PassThru
+                if (-not $proc.WaitForExit(120000)) {
+                    $proc.Kill()
+                    Write-Error "PulseAudio installer timed out after 120s"
+                    exit 1
+                }
             } else {
                 Write-Host "Running installer (follow the prompts)..." -ForegroundColor Cyan
                 Start-Process -FilePath $installerPath -Wait
