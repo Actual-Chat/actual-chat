@@ -98,43 +98,47 @@ async function isCodecSupported(
     height: number
 ): Promise<{ supported: boolean; hardwareAccelerated: boolean; scalabilityModes: string[] }> {
     try {
-        const config: VideoEncoderConfig = {
+        const baseConfig: VideoEncoderConfig = {
             codec,
             width,
             height,
             bitrate: 5_000_000,
             framerate: 30,
             latencyMode: 'realtime',
-            hardwareAcceleration: 'prefer-hardware',
         };
 
         // Add codec-specific config
         if (category === 'h264') {
-            config.avc = { format: 'avc' };
+            baseConfig.avc = { format: 'avc' };
         }
-        // HEVC and AV1 don't need additional config properties
 
-        const support = await VideoEncoder.isConfigSupported(config);
+        // Try hardware-accelerated first, then software fallback
+        // Firefox often returns supported: false for 'prefer-hardware' but works with 'no-preference'
+        let supported = false;
+        let hardwareAccelerated = false;
 
-        // Check if hardware acceleration is actually being used
-        // The config in the support response will have 'no-preference' if hardware isn't available
-        const hardwareAccelerated =
-            support.supported &&
-            (support.config?.hardwareAcceleration === 'prefer-hardware' || false);
+        for (const accel of ['prefer-hardware', 'no-preference'] as const) {
+            const config = { ...baseConfig, hardwareAcceleration: accel };
+            const support = await VideoEncoder.isConfigSupported(config);
+            if (support.supported) {
+                supported = true;
+                hardwareAccelerated = accel === 'prefer-hardware'
+                    && (support.config?.hardwareAcceleration === 'prefer-hardware');
+                break;
+            }
+        }
 
         // Detect supported scalability modes
         const scalabilityModes: string[] = [];
-        if (support.supported) {
-            // Common scalability modes to test
+        if (supported) {
             const modesToTest = ['L1T1', 'L1T2', 'L1T3'];
-
             for (const mode of modesToTest) {
                 try {
                     const testConfig: VideoEncoderConfig = {
-                        ...config,
+                        ...baseConfig,
+                        hardwareAcceleration: hardwareAccelerated ? 'prefer-hardware' : 'no-preference',
                         scalabilityMode: mode,
                     };
-
                     const modeSupport = await VideoEncoder.isConfigSupported(testConfig);
                     if (modeSupport.supported) {
                         scalabilityModes.push(mode);
@@ -145,11 +149,7 @@ async function isCodecSupported(
             }
         }
 
-        return {
-            supported: support.supported ?? false,
-            hardwareAccelerated: hardwareAccelerated ?? false,
-            scalabilityModes,
-        };
+        return { supported, hardwareAccelerated, scalabilityModes };
     } catch (error) {
         errorLog?.log(`Error checking codec support for ${codec}:`, error);
         return { supported: false, hardwareAccelerated: false, scalabilityModes: [] };
@@ -172,14 +172,19 @@ export function getCodecForCategory(category: 'h264' | 'hevc' | 'av1', width: nu
     if (category === 'hevc') {
         return isHighRes ? 'hev1.1.6.L120.B0' : 'hev1.1.6.L93.B0'; // Main L4.0 / Main L3.1
     }
-    // H.264: Mobile uses Main profile (power efficient), Desktop uses High (better compression)
-    if (isMobile) {
-        return 'avc1.4D401F'; // Main 3.1 — mobile is capped at ≤720p
+    // H.264: Firefox and mobile use Main profile, desktop uses High (better compression)
+    if (isMobile || DeviceInfo.isFirefox) {
+        return 'avc1.4D401F'; // Main 3.1
     }
     return isHighRes ? 'avc1.640028' : 'avc1.64001F'; // High 4.0 / High 3.1
 }
 
 export function getDefaultCodec(supportedCodecs: CodecInfo[], width = 1280, height = 720): string {
+    // Firefox: force H.264 Main 3.1 — only reliable encoder profile
+    if (DeviceInfo.isFirefox) {
+        return 'avc1.4D401F';
+    }
+
     const isMobile = DeviceInfo.isMobile; // includes iOS
 
     // Priority: AV1 HW > HEVC HW > H.264 HW (profile by platform) > H.264 SW (profile by platform)

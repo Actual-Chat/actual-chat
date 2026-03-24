@@ -9,6 +9,7 @@ import { detectGPUBackends } from '../gpu-support';
 import type { SegmentationConfig } from '../workers/video-processing-worker-contract';
 import { createDefaultSegmentationConfig, createAdaptiveSegmentationConfig } from '../workers/video-processing-worker-contract';
 import { Log } from 'logging';
+import { DeviceInfo } from 'device-info';
 
 const { infoLog, warnLog, errorLog } = Log.get('VideoPipeline');
 
@@ -16,6 +17,7 @@ export interface RecordingConfig {
   mode: 'webcam' | 'screen';
   codec: 'h264' | 'hevc' | 'av1';
   codecString?: string; // Specific codec profile string (e.g., 'avc1.640028', 'av01.0.08M.08')
+  hardwareAccelerated?: boolean; // Whether the selected codec is hardware accelerated
   scalabilityModes?: string[]; // Supported scalability modes for the selected codec
   width: number;
   height: number;
@@ -310,7 +312,13 @@ export class RecordingService extends EventTarget {
     }
 
     private async buildPipelineConfig(width: number, height: number): Promise<PipelineConfig> {
-    // Use the specific codec string if provided, otherwise use defaults
+    // Firefox: cap to 720p — higher resolutions cause encoder failures
+        if (DeviceInfo.isFirefox && height > 720) {
+            width = Math.round(width * (720 / height));
+            height = 720;
+        }
+
+        // Use the specific codec string if provided, otherwise use defaults
         let codecString: string;
 
         if (this.config.codecString) {
@@ -338,7 +346,7 @@ export class RecordingService extends EventTarget {
                 framerate: this.config.framerate,
                 keyframeInterval: this.config.framerate, // 1 keyframe per second
                 latencyMode: 'realtime',
-                hardwareAcceleration: 'prefer-hardware',
+                hardwareAcceleration: this.config.hardwareAccelerated ? 'prefer-hardware' : 'no-preference',
                 scalabilityMode: scalabilityMode
             },
         };

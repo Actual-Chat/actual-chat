@@ -16,7 +16,7 @@ export interface EncoderConfig {
   framerate: number;
   keyframeInterval: number;
   latencyMode: 'realtime' | 'quality';
-  hardwareAcceleration: 'prefer-hardware' | 'prefer-software';
+  hardwareAcceleration: 'prefer-hardware' | 'prefer-software' | 'no-preference';
   scalabilityMode?: string; // Scalability mode like 'L1T1', 'L1T2', 'L1T3'
 }
 
@@ -132,7 +132,9 @@ export class WebCodecsEncoder {
 
             // Add codec-specific config based on codec type
             if (this.config.codec.startsWith('avc1')) {
-                encoderConfig.avc = { format: 'avc' }; // AVCC format provides description in metadata
+                // Firefox's WebCodecs produces Annex B even with 'avc' config,
+                // causing decode errors on other browsers. Use 'annexb' on Firefox.
+                encoderConfig.avc = { format: DeviceInfo.isFirefox ? 'annexb' : 'avc' };
             } else if (this.config.codec.startsWith('hev1') || this.config.codec.startsWith('hvc1')) {
                 (encoderConfig as VideoEncoderConfig & { hevc?: { format: string } }).hevc = { format: 'hevc' };
             } else if (this.config.codec.startsWith('av01')) {

@@ -574,10 +574,22 @@ const serverImpl: DecoderWorker = {
                 data,
             });
 
-            // Check decoder state
+            // Check decoder state — recover from closed/error state on keyframe
             if (decoder.getState() !== 'configured') {
-                warnLog?.log(`Decoder not configured (state: ${decoder.getState()}), dropping chunk`);
-                return;
+                if (isKeyFrame && currentDecoderConfig) {
+                    warnLog?.log(`Decoder in state '${decoder.getState()}', recovering on keyframe`);
+                    try {
+                        decoder = createDecoder(currentDecoderConfig);
+                        decoder.initialize();
+                        decoderConfigured = true;
+                    } catch (recoveryError) {
+                        errorLog?.log('Decoder recovery failed:', recoveryError);
+                        return;
+                    }
+                } else {
+                    // Can't recover on delta frame — need keyframe
+                    return;
+                }
             }
 
             if (isKeyFrame) {

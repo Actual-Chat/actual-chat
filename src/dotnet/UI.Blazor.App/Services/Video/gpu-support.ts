@@ -37,8 +37,16 @@ export async function detectGPUBackends(): Promise<GPUBackendSupport> {
         if ('gpu' in navigator) {
             const adapter = await navigator.gpu.requestAdapter();
             if (adapter) {
-                support.webgpu = true;
-                support.details.webgpu = 'Browser WebGPU available';
+                // Check if the device supports importExternalTexture (required for blur pipeline).
+                // Firefox has WebGPU but lacks this API, causing runtime shader errors.
+                const device = await adapter.requestDevice();
+                if (typeof device.importExternalTexture === 'function') {
+                    support.webgpu = true;
+                    support.details.webgpu = 'Browser WebGPU available (importExternalTexture supported)';
+                } else {
+                    support.details.webgpu = 'WebGPU adapter available but importExternalTexture not supported';
+                }
+                device.destroy();
             } else {
                 support.details.webgpu = 'No WebGPU adapter available';
             }

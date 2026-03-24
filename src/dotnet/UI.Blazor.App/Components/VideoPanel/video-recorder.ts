@@ -171,8 +171,9 @@ export class VideoRecorder {
             // Detect supported encoder codecs at 1080p (avoids resolution-dependent false positives)
             const supportedCodecs = await detectSupportedCodecs();
             const bestCodecString = getDefaultCodec(supportedCodecs, targetWidth, targetHeight);
+            const bestCodecInfo = supportedCodecs.find(c => c.codec === bestCodecString);
             const codecCategory = getCodecCategory(bestCodecString);
-            infoLog?.log(`Initial codec selection: ${codecCategory} (${bestCodecString})`);
+            infoLog?.log(`Initial codec selection: ${codecCategory} (${bestCodecString}), hw=${bestCodecInfo?.hardwareAccelerated ?? false}`);
 
             // Cache supported encoder categories for later codec negotiation
             this.supportedEncoderCategories = this.extractEncoderCategories(supportedCodecs);
@@ -183,6 +184,8 @@ export class VideoRecorder {
                 mode: 'webcam',
                 codec: codecCategory,
                 codecString: bestCodecString,
+                hardwareAccelerated: bestCodecInfo?.hardwareAccelerated ?? false,
+                scalabilityModes: bestCodecInfo?.scalabilityModes,
                 width: targetWidth,
                 height: targetHeight,
                 bitrate: targetBitrate,
@@ -468,6 +471,8 @@ export class VideoRecorder {
         const categories = new Set<string>();
         for (const c of codecs) {
             if (c.supported) {
+                // AV1 software encoding is too expensive for real-time — require HW
+                if (c.category === 'av1' && !c.hardwareAccelerated) continue;
                 categories.add(c.category);
             }
         }
