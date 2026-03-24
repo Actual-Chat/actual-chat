@@ -38,7 +38,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped(c => new AppUIHub(c));
         services.AddAlias<UIHub, AppUIHub>(ServiceLifetime.Scoped);
         services.AddScoped(_ => new AnalyticEvents());
-        services.AddScoped(c => new NavbarUI(c));
+        services.AddScoped(c => new NavbarUI(c.UIHub()));
         services.AddScoped(c => new PanelsUI(c.UIHub()));
         services.AddScoped(c => new RightPanelStoredState(c.UIHub()));
         services.AddScoped(c => new AuthorUI(c.AppUIHub()));

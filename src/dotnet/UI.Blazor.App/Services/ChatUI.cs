@@ -24,7 +24,6 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private readonly StoredState<IImmutableDictionary<string, ChatId>> _selectedChatIds;
     private readonly MutableState<ChatEntryId?> _highlightedEntryId;
     private readonly MutableState<IImmutableSet<ConversationId>> _expandedConversations;
-    private readonly SyncedState<UserNavbarSettings> _navbarSettings;
     private ChatId? _searchEnabledChatId;
     private List<ChatId>? _pendingSelectedChatIds = new();
 
@@ -56,7 +55,6 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     public IState<IImmutableDictionary<string, ChatId>> SelectedChatIds => _selectedChatIds;
     public IState<ChatEntryId?> HighlightedEntryId => _highlightedEntryId;
     public IState<IImmutableSet<ConversationId>> ExpandedConversations => _expandedConversations;
-    public IState<UserNavbarSettings> NavbarSettings => _navbarSettings;
     public Task WhenReady => _selectedChatId.WhenRead;
     public MutableState<ChatViewItemVisibility> ItemVisibility => _itemVisibility;
 
@@ -89,14 +87,6 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         _expandedConversations = StateFactory.NewMutable(
             (IImmutableSet<ConversationId>)ImmutableHashSet<ConversationId>.Empty,
             StateCategories.Get(type, nameof(ExpandedConversations)));
-        _navbarSettings = StateFactory.NewUserSettingsSynced(
-            UserSettingsUI,
-            UserNavbarSettings.KvasKey,
-            new UserNavbarSettings(),
-            updateDelayer: FixedDelayer.NextTick,
-            category: StateCategories.Get(GetType(), nameof(NavbarSettings)));
-        Hub.RegisterDisposable(_navbarSettings);
-
         _itemVisibility = StateFactory.NewMutable(
             ChatViewItemVisibility.Empty,
             StateCategories.Get(type, nameof(ItemVisibility)));
@@ -135,7 +125,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                 hasUnreadMentions = lastMentionEntryId > readEntryLid;
             }
 
-            var navbarSettings = await NavbarSettings.Use(cancellationToken).ConfigureAwait(false);
+            var navbarSettings = await NavbarUI.Settings.Use(cancellationToken).ConfigureAwait(false);
 
             var lastTextEntryText = "";
             Chat.Chat? lastThreadChat = null;
@@ -294,25 +284,6 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     }
 
     // SetXxx & Add/RemoveXxx
-    public void SetNavbarPinState(ChatId chatId, bool mustPin)
-    {
-        var pinnedChats = NavbarSettings.Value.PinnedChats;
-        var isPinned = pinnedChats.Contains(chatId);
-        if (isPinned == mustPin)
-            return;
-
-        var newPinnedChats = mustPin
-            ? pinnedChats.With(chatId, true)
-            : pinnedChats.Without(chatId);
-        SetNavbarPinnedChats(newPinnedChats);
-    }
-
-    public void SetNavbarPinnedChats(IReadOnlyCollection<ChatId> pinnedChats)
-        => _navbarSettings.Set(x => x.Value with { PinnedChats = pinnedChats.ToArray() });
-
-    public void SetNavbarPlacesOrder(IReadOnlyCollection<PlaceId> places)
-        => _navbarSettings.Set(x => x.Value with { PlacesOrder = places.ToArray() });
-
     public void LeaveChat(Chat.Chat chat)
         => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(false, "chat",
             m => _ = DeleteOrLeaveChatInternal(chat, false, m)));
@@ -455,7 +426,6 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     {
         await _readPositionStates.DisposeAsync().ConfigureAwait(false);
         await _viewPositionStates.DisposeAsync().ConfigureAwait(false);
-        _navbarSettings.Dispose();
     }
 
     // Private methods
@@ -510,7 +480,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             && isPlaceSelected
             && Equals(navbarSelectedPlaceId, placeId);
         if (!isChatsSelected && !(isPeerChat && isPlaceSelected) && !isChatPlaceSelected) {
-            var navbarSettings = await NavbarSettings.Use().ConfigureAwait(false);
+            var navbarSettings = await NavbarUI.Settings.Use().ConfigureAwait(false);
             if (navbarSettings.PinnedChats.Contains(chatId)) {
                 Hub.NavbarUI.SelectGroup(chatId.GetNavbarGroupId(), false);
                 return;

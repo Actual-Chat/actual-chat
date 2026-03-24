@@ -68,7 +68,7 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var navbarSettings = await Hub.ChatUI.NavbarSettings.Use(cancellationToken).ConfigureAwait(false);
+        var navbarSettings = await Hub.NavbarUI.Settings.Use(cancellationToken).ConfigureAwait(false);
         var maybeChats = await navbarSettings.PinnedChats
             .Select(id => Hub.ChatUI.Get(id, cancellationToken))
             .Collect(ApiConstants.Concurrency.High, cancellationToken)
@@ -79,7 +79,7 @@
 
     [JSInvokable]
     public void OnOrderChanged(string[] ids)
-        => Hub.ChatUI.SetNavbarPinnedChats(ids.Select(ChatId.Parse).ToArray());
+        => Hub.NavbarUI.SetNavbarPinnedChats(ids.Select(ChatId.Parse).ToArray());
 
     // Nested types
 

@@ -1,7 +1,6 @@
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
-using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -11,14 +10,13 @@ namespace ActualChat.UI.Blazor.App.Services;
 public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
 {
     private static readonly string JSGetLanguagesMethod = $"{BlazorUIAppModule.ImportName}.LanguageUI.getLanguages";
-    private readonly SyncedState<UserLanguageSettings> _settings;
 
-    public IState<UserLanguageSettings> Settings => _settings;
-    public Task WhenReady => _settings.WhenFirstTimeRead;
+    public SyncedState<UserLanguageSettings> Settings { get; init; }
+    public Task WhenReady => Settings.WhenFirstTimeRead;
 
     public LanguageUI(AppUIHub hub) : base(hub)
     {
-        _settings = StateFactory.NewUserSettingsSynced(
+        Settings = StateFactory.NewUserSettingsSynced(
             UserSettingsUI,
             UserLanguageSettings.KvasKey,
             new UserLanguageSettings(),
@@ -39,7 +37,7 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
     }
 
     public void Dispose()
-        => _settings.Dispose();
+        => Settings.Dispose();
 
     [ComputeMethod]
     public virtual async Task<IReadOnlyList<Language>> ListSpoken(CancellationToken cancellationToken)
@@ -91,8 +89,7 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
     public async Task UpdateSettings(Func<UserLanguageSettings, UserLanguageSettings> updater)
     {
         await WhenReady.ConfigureAwait(false);
-        var settings = updater.Invoke(_settings.Value);
-        _settings.Value = settings;
+        Settings.Set(updater.Invoke(Settings.Value));
     }
 
     // Private methods

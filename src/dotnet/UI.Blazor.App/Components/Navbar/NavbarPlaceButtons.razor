@@ -86,7 +86,7 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var navbarSettings = await Hub.ChatUI.NavbarSettings.Use(cancellationToken).ConfigureAwait(false);
+        var navbarSettings = await Hub.NavbarUI.Settings.Use(cancellationToken).ConfigureAwait(false);
         var placeIds = await Hub.Contacts.ListPlaceIds(Session, cancellationToken).ConfigureAwait(false);
 
         var selectedChatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
@@ -118,7 +118,7 @@
 
     [JSInvokable]
     public void OnOrderChanged(string[] ids)
-        => Hub.ChatUI.SetNavbarPlacesOrder(ids.Select(PlaceId.Parse).ToArray());
+        => Hub.NavbarUI.SetNavbarPlacesOrder(ids.Select(PlaceId.Parse).ToArray());
 
     // Nested types
 

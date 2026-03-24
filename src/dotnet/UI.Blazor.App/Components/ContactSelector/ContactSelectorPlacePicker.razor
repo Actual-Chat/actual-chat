@@ -37,12 +37,12 @@
 
 @code {
     private IContacts Contacts => Hub.Contacts;
-    private ChatUI ChatUI => Hub.ChatUI;
+    private NavbarUI NavbarUI => Hub.NavbarUI;
 
     [CascadingParameter] public ContactSelector Selector { get; set; } = null!;
 
     protected override async Task<List<Place>> ComputeState(CancellationToken cancellationToken) {
-        var navbarSettings = await ChatUI.NavbarSettings.Use(cancellationToken).ConfigureAwait(false);
+        var navbarSettings = await NavbarUI.Settings.Use(cancellationToken).ConfigureAwait(false);
         var placeIds = await Contacts.ListPlaceIds(Session, cancellationToken).ConfigureAwait(false);
         var maybePlaces = await placeIds
             .OrderBy(x => navbarSettings.PlacesOrder.IndexOf(x))

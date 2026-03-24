@@ -1,6 +1,5 @@
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
-using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -10,36 +9,34 @@ namespace ActualChat.UI.Blazor.App.Services;
 public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
 {
     private static readonly SemaphoreSlim Lock = new (1);
-    private readonly SyncedState<UserOnboardingSettings> _userSettings;
-    private readonly StoredState<LocalOnboardingSettings> _localSettings;
     private CancellationTokenSource? _lastTryShowCts;
     private ModalRef? _lastModalRef;
 
     private LoadingUI LoadingUI => Hub.LoadingUI;
 
-    public IState<UserOnboardingSettings> UserSettings => _userSettings;
-    public new IState<LocalOnboardingSettings> LocalSettings => _localSettings;
-    public Task WhenLocalSettingsRead => _localSettings.WhenRead;
+    public SyncedState<UserOnboardingSettings> UserSettings { get; init; }
+    public new StoredState<LocalOnboardingSettings> LocalSettings { get; init; }
+    public Task WhenLocalSettingsRead => LocalSettings.WhenRead;
 
     public OnboardingUI(AppUIHub hub) : base(hub)
     {
         var stateFactory = hub.StateFactory;
         var localSettings = hub.LocalSettings;
         var type = GetType();
-        _userSettings = stateFactory.NewUserSettingsSynced(
+        UserSettings = stateFactory.NewUserSettingsSynced(
             UserSettingsUI,
             UserOnboardingSettings.KvasKey,
             new UserOnboardingSettings(),
             updateDelayer: FixedDelayer.NextTick,
             category: StateCategories.Get(type, nameof(UserSettings)));
-        _localSettings = stateFactory.NewKvasStored<LocalOnboardingSettings>(
+        LocalSettings = stateFactory.NewKvasStored<LocalOnboardingSettings>(
             new (localSettings, LocalOnboardingSettings.KvasKey) {
                 InitialValue = new LocalOnboardingSettings(),
                 Category = StateCategories.Get(type, nameof(LocalSettings)),
             });
         Hub.RegisterDisposable(() => {
             _lastTryShowCts.CancelAndDisposeSilently();
-            _userSettings.Dispose();
+            UserSettings.Dispose();
         });
     }
 
@@ -81,10 +78,10 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
     }
 
     public void UpdateUserSettings(UserOnboardingSettings value)
-        => _userSettings.Value = value;
+        => UserSettings.Set(value);
 
     public void UpdateLocalSettings(LocalOnboardingSettings value)
-        => _localSettings.Value = value;
+        => LocalSettings.Set(value);
 
     // Private methods
 
@@ -99,16 +96,16 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
         await Task.Delay(AccountUI.GetPostChangeInvalidationDelay(), cancellationToken).ConfigureAwait(false);
 
         // Wait when settings are read & synchronized
-        await _userSettings.WhenSynchronized(ComputedSynchronizer.Current, cancellationToken).ConfigureAwait(false);
-        await _localSettings.WhenSynchronized(ComputedSynchronizer.Current, cancellationToken).ConfigureAwait(false);
+        await UserSettings.WhenSynchronized(ComputedSynchronizer.Current, cancellationToken).ConfigureAwait(false);
+        await LocalSettings.WhenSynchronized(ComputedSynchronizer.Current, cancellationToken).ConfigureAwait(false);
 
         // Finally, wait for the possibility to render onboarding modal
         await LoadingUI.WhenRendered.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-        if (_userSettings.Value.HasUncompletedSteps())
+        if (UserSettings.Value.HasUncompletedSteps())
             return true;
 
-        if (!_localSettings.Value.IsPermissionsStepCompleted) {
+        if (!LocalSettings.Value.IsPermissionsStepCompleted) {
             // Fix IsPermissionsStepCompleted based on actual permissions:
             // we don't want to show the "Required permissions" screen if they're already granted
             var permissionsStepModel = await PermissionStepModel.New(Services, cancellationToken).ConfigureAwait(false);
@@ -117,25 +114,25 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
                 await Task.Yield(); // Just in case
             }
         }
-        return _localSettings.Value.HasUncompletedSteps();
+        return LocalSettings.Value.HasUncompletedSteps();
     }
 
     public void ResetSettings()
     {
-        _userSettings.Value = new UserOnboardingSettings();
-        _localSettings.Value = new LocalOnboardingSettings();
+        UserSettings.Set(new UserOnboardingSettings());
+        LocalSettings.Set(new LocalOnboardingSettings());
     }
 
     public void ResetOnboarding(bool enable)
     {
         if (enable) {
             // Reset all steps to uncompleted (re-enable onboarding)
-            _userSettings.Value = new UserOnboardingSettings();
-            _localSettings.Value = new LocalOnboardingSettings();
+            UserSettings.Set(new UserOnboardingSettings());
+            LocalSettings.Set(new LocalOnboardingSettings());
         }
         else {
             // Mark all steps as completed (skip onboarding)
-            _userSettings.Value = new UserOnboardingSettings {
+            UserSettings.Set(new UserOnboardingSettings {
                 IsAvatarStepCompleted = true,
                 // IsCreateChatsStepCompleted = true, // Disabled
                 IsVerifyPhoneStepCompleted = true,
@@ -147,11 +144,11 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
                 IsPlacesTutorialStepCompleted = true,
                 IsLanguagesStepCompleted = true,
                 IsSummarizationTutorialStepCompleted = true,
-            };
-            _localSettings.Value = new LocalOnboardingSettings {
+            });
+            LocalSettings.Set(new LocalOnboardingSettings {
                 IsPermissionsStepCompleted = true,
                 AreCookiesAccepted = true,
-            };
+            });
             // Close the onboarding modal if it's open
             _lastModalRef?.Close(true);
         }

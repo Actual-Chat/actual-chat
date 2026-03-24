@@ -1,6 +1,4 @@
 using ActualChat.Kvas;
-using ActualChat.UI.Blazor.Components;
-using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.Services;
 
@@ -9,22 +7,20 @@ namespace ActualChat.UI.Blazor.Services;
 /// </summary>
 public sealed class BubbleUI : UIServiceBase<UIHub>
 {
-    private readonly SyncedState<UserBubbleSettings> _settings;
-
-    public IState<UserBubbleSettings> Settings => _settings;
+    public SyncedState<UserBubbleSettings> Settings { get; init; }
     public TaskCompletionSource<BubbleHost> HostAcceptor { get; } = TaskCompletionSourceExt.New<BubbleHost>();
     public Task WhenReady => HostAcceptor.Task;
     public BubbleHost Host => field ??= HostAcceptor.Task.RequireResult();
 
     public BubbleUI(UIHub hub) : base(hub)
     {
-        _settings = StateFactory.NewUserSettingsSynced(
+        Settings = StateFactory.NewUserSettingsSynced(
             UserSettingsUI,
             UserBubbleSettings.KvasKey,
             new UserBubbleSettings(),
             updateDelayer: FixedDelayer.NextTick,
             category: StateCategories.Get(GetType(), nameof(Settings)));
-        Hub.RegisterDisposable(_settings);
+        Hub.RegisterDisposable(Settings);
     }
 
     public async Task WhenReadyToShowBubbles()
@@ -38,14 +34,14 @@ public sealed class BubbleUI : UIServiceBase<UIHub>
         await Task.Delay(AccountUI.GetPostChangeInvalidationDelay()).ConfigureAwait(false);
 
         // Re-synchronize after the invalidation delay to pick up user-specific data
-        await _settings.WhenSynchronized().ConfigureAwait(false);
+        await Settings.WhenSynchronized().ConfigureAwait(false);
 
         // Delay first display to not interfere with permissions
         await Task.Delay(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
     }
 
     public void UpdateSettings(UserBubbleSettings value)
-        => _settings.Value = value;
+        => Settings.Set(value);
 
     public async Task UnreadBubble<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TBubble>()

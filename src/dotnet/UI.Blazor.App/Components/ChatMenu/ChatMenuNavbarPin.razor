@@ -8,10 +8,10 @@
 </MenuEntry>
 
 @code {
-    private ChatUI ChatUI => Hub.ChatUI;
+    private NavbarUI NavbarUI => Hub.NavbarUI;
 
     [CascadingParameter] public ChatState ChatState { get; set; } = null!;
 
     private void OnClick()
-        => ChatUI.SetNavbarPinState(ChatState.Id, !ChatState.Info.IsPinnedToNavbar);
+        => NavbarUI.SetNavbarPinState(ChatState.Id, !ChatState.Info.IsPinnedToNavbar);
 }

@@ -1,20 +1,31 @@
+using ActualChat.Kvas;
+
 namespace ActualChat.UI.Blazor.Services;
 
 /// <summary>
-/// Manages navigation bar group selection and title display.
+/// Manages navigation bar group selection, title display, and navbar settings.
 /// </summary>
-public class NavbarUI(IServiceProvider services)
+public class NavbarUI : UIServiceBase<UIHub>
 {
     private readonly List<Group> _groups = new ();
 
-    private IServiceProvider Services { get; } = services;
-
-    private ILogger Log => field ??= Services.LogFor(GetType());
-
+    public SyncedState<UserNavbarSettings> Settings { get; }
     public string SelectedGroupId { get; private set; } = "";
     public string SelectedGroupTitle { get; private set; } = "";
     public event EventHandler<NavbarGroupChangedEventArgs>? SelectedGroupChanged;
     public event EventHandler? SelectedGroupTitleUpdated;
+    public Task WhenReady => Settings.WhenFirstTimeRead;
+
+    public NavbarUI(UIHub hub) : base(hub)
+    {
+        Settings = StateFactory.NewUserSettingsSynced(
+            UserSettingsUI,
+            UserNavbarSettings.KvasKey,
+            new UserNavbarSettings(),
+            updateDelayer: FixedDelayer.NextTick,
+            category: StateCategories.Get(GetType(), nameof(Settings)));
+        Hub.RegisterDisposable(Settings);
+    }
 
     // NOTE(AY): Any public member of this type can be used only from Blazor Dispatcher's thread
 
@@ -49,6 +60,25 @@ public class NavbarUI(IServiceProvider services)
 
     public void UnregisterGroup(string id)
         => _groups.RemoveAll(c => c.Id == id);
+
+    public void SetNavbarPinState(ChatId chatId, bool mustPin)
+    {
+        var pinnedChats = Settings.Value.PinnedChats;
+        var isPinned = pinnedChats.Contains(chatId);
+        if (isPinned == mustPin)
+            return;
+
+        var newPinnedChats = mustPin
+            ? pinnedChats.With(chatId, true)
+            : pinnedChats.Without(chatId);
+        SetNavbarPinnedChats(newPinnedChats);
+    }
+
+    public void SetNavbarPinnedChats(IReadOnlyCollection<ChatId> pinnedChats)
+        => Settings.Set(x => x.Value with { PinnedChats = pinnedChats.ToArray() });
+
+    public void SetNavbarPlacesOrder(IReadOnlyCollection<PlaceId> places)
+        => Settings.Set(x => x.Value with { PlacesOrder = places.ToArray() });
 
     private void UpdateTitle(string id, string title)
     {

@@ -46,7 +46,7 @@ public partial class ChatAudioUI
 
     public void StartReplay(ChatId chatId, Moment startAt, TimeSpan offset = default)
     {
-        var speed = _replaySettings.Value.Speed;
+        var speed = ReplaySettings.Value.Speed;
         DebugLog?.LogInformation("StartReplay: chatId={ChatId}, startAt={StartAt}, offset={Offset}, speed={Speed}",
             chatId, startAt, offset, speed);
 
