@@ -601,15 +601,10 @@ class WorktreeServer {
 
 # PulseAudio setup for voice mode in Docker
 class PulseAudioSetup {
-    [string]$OS
     [int]$Port = 4713
 
-    PulseAudioSetup([string]$os) {
-        $this.OS = $os
-    }
-
     [bool] IsRunning() {
-        if ($this.OS -eq "Windows") {
+        if ((Get-CurrentOS) -eq "Windows") {
             $listening = netstat -an | Select-String ":$($this.Port)\s+.*LISTENING"
             return $null -ne $listening
         } else {
@@ -628,11 +623,11 @@ class PulseAudioSetup {
     }
 
     [void] Setup() {
-        switch ($this.OS) {
+        switch (Get-CurrentOS) {
             "macOS"   { $this.SetupMacOS() }
             "Windows" { $this.SetupWindows() }
             "Linux"   { $this.SetupLinux() }
-            default   { Write-Host "Unsupported OS: $($this.OS)" -ForegroundColor Red; exit 1 }
+            default   { Write-Host "Unsupported OS for audio setup" -ForegroundColor Red; exit 1 }
         }
     }
 
@@ -1485,8 +1480,7 @@ switch ($mode) {
     }
 
     "audio" {
-        $pulseAudio = [PulseAudioSetup]::new($currentOS)
-        $pulseAudio.Setup()
+        [PulseAudioSetup]::new().Setup()
     }
 
     "chrome" {
