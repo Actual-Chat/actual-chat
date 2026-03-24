@@ -44,7 +44,8 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
     {
         chatId = GetTranslationSettingsTargetChatId(chatId);
         var settings = await UserSettingsUI.ChatUserSettings(chatId).Get(cancellationToken).ConfigureAwait(false);
-        return settings.TranslationTargetLanguage ?? await LanguageUI.GetChatLanguage(chatId, cancellationToken).ConfigureAwait(false);
+        return settings.TranslationTargetLanguage
+            ?? await LanguageUI.GetChatLanguage(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     [ComputeMethod]

@@ -79,8 +79,11 @@ public static class TranscriptStreamExt
                 timerTask = null; // Reset timer task
             }
             if (hasNextTask.IsCompleted) {
-                if (!await hasNextTask.ConfigureAwait(false))
+                if (!await hasNextTask.ConfigureAwait(false)) {
+                    if (pendingTranscript != null)
+                        yield return pendingTranscript;
                     yield break;
+                }
 
                 var transcript = enumerator.Current;
                 if (transcript.IsStable || isFirstTranscript) {

@@ -4,43 +4,47 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public class TranscriptStreamer(ChatEntryId id, AppUIHub hub) : WorkerBase
+public class TranscriptStreamReader(ChatEntryId id, AppUIHub hub) : WorkerBase
 {
-    private static readonly TimeSpan TranscriptThrottleInterval = TimeSpan.FromMilliseconds(320); // LLM usually responds within this threshold
-    private static readonly RetryDelaySeq StreamRetryDelays = RetryDelaySeq.Exp(0.1, 2);
-    private readonly MutableState<TranscriptStreamerState> _state = hub.StateFactory.NewMutable(TranscriptStreamerState.None);
+    private static readonly RetryDelaySeq RetryDelays = RetryDelaySeq.Exp(0.1, 2);
+
     private TranscriptUI TranscriptUI => hub.TranscriptUI;
     private IStreamClient StreamClient => hub.StreamClient;
     private MomentClockSet Clocks => hub.Clocks;
     private ILogger Log => field ??= hub.LogFor(GetType());
 
-    public IState<TranscriptStreamerState> State => _state;
+    private readonly MutableState<TranscriptStreamReaderState> _state
+        = hub.StateFactory.NewMutable(TranscriptStreamReaderState.None);
+
+    public IState<TranscriptStreamReaderState> State => _state;
 
     protected override Task OnRun(CancellationToken cancellationToken)
-        => AsyncChain.From(SyncStreamingState)
+        => AsyncChain.From(ProcessStreamingState)
             .LogError(Log)
             .RetryForever(RetryDelaySeq.Exp(3, 60))
             .CycleForever()
             .RunIsolated(cancellationToken);
 
-    private async Task SyncStreamingState(CancellationToken cancellationToken)
+    private async Task ProcessStreamingState(CancellationToken cancellationToken)
     {
-        // Log.LogInformation("SyncStreamingState: {Id}", id);
-        var cGetState = await Computed.Capture(() => TranscriptUI.GetStreamingState(id, cancellationToken), cancellationToken).ConfigureAwait(false);
+        // Log.LogInformation("ProcessStreamingState: {Id}", id);
+        var cStreamingState0 = await Computed
+            .Capture(() => TranscriptUI.GetStreamingState(id, cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
         TranscriptUI.StreamingState? last = null;
         CancellationTokenSource? lastCts = null;
         try {
-            while (!cancellationToken.IsCancellationRequested) {
-                var last1 = last;
-                var cState = await cGetState.When(s => s != last1, cancellationToken).ConfigureAwait(false);
-                if (cState.ValueOrDefault == last1)
-                    continue; // Double-check
+            await foreach (var (state, _) in cStreamingState0.Changes(cancellationToken).ConfigureAwait(false)) {
+                if (state == last)
+                    continue;
 
                 lastCts?.CancelAndDisposeSilently();
-                var streamCts = cancellationToken.CreateLinkedTokenSource();
-                if (cState.Value != null) {
-                    var (_, content, isTranslation) = cState.Value;
-                    // Log.LogWarning("Reset state for {MessageId}, State = {State}, OldState = {OldState}, {Hash}, {OldHash}", id, cState.Value, last1, cState.Value.GetHashCode(), last1?.GetHashCode() ?? 0);
+                var linkedCts = cancellationToken.CreateLinkedTokenSource();
+                if (state != null) {
+                    var (_, content, isTranslation) = state;
+                    // Log.LogWarning(
+                    //     "ProcessStreamingState: Reset state for {MessageId}, State = {State}, OldState = {OldState}, {Hash}, {OldHash}",
+                    //     id, cState.Value, last1, cState.Value.GetHashCode(), last1?.GetHashCode() ?? 0);
                     _state.Value = new (
                         RetainedText: "",
                         ChangedText: "",
@@ -49,16 +53,16 @@ public class TranscriptStreamer(ChatEntryId id, AppUIHub hub) : WorkerBase
                         true,
                         isTranslation);
                     _ = BackgroundTask.Run(
-                        () => StreamTranscriptWithRetry(cState.Value, streamCts.Token),
+                        () => ProcessTranscriptWithRetry(state, linkedCts.Token),
                         Log,
-                        $"{nameof(StreamTranscript)} failed",
-                        streamCts.Token);
+                        $"{nameof(ProcessTranscript)} failed",
+                        linkedCts.Token);
                 }
                 else
                     // No streaming
-                    _state.Value = TranscriptStreamerState.None;
-                last = cState.Value;
-                lastCts = streamCts;
+                    _state.Value = TranscriptStreamReaderState.None;
+                last = state;
+                lastCts = linkedCts;
             }
         }
         finally {
@@ -66,33 +70,31 @@ public class TranscriptStreamer(ChatEntryId id, AppUIHub hub) : WorkerBase
         }
     }
 
-    private async Task StreamTranscriptWithRetry(TranscriptUI.StreamingState streamingState, CancellationToken cancellationToken)
+    private async Task ProcessTranscriptWithRetry(TranscriptUI.StreamingState streamingState, CancellationToken cancellationToken)
     {
         var retryIndex = 0;
         while (!cancellationToken.IsCancellationRequested)
             try {
-                await StreamTranscript(streamingState, cancellationToken).ConfigureAwait(false);
+                await ProcessTranscript(streamingState, cancellationToken).ConfigureAwait(false);
                 return; // Completed normally
             }
             catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
-                var delay = StreamRetryDelays[retryIndex++];
+                var delay = RetryDelays[retryIndex++];
                 Log.LogWarning(e, "StreamTranscript failed for {Id}, retrying in {Delay}s", id, delay);
                 await Clocks.SystemClock.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
     }
 
-    private async Task StreamTranscript(TranscriptUI.StreamingState streamingState, CancellationToken cancellationToken) {
+    private async Task ProcessTranscript(TranscriptUI.StreamingState streamingState, CancellationToken cancellationToken) {
+        var (streamId, content, isTranslation) = streamingState;
+        var lastText = "";
         try {
-            var (streamId, content, isTranslation) = streamingState;
             var diffs = StreamClient.GetTranscript(streamId.Value, cancellationToken);
-            var transcripts = diffs
-                .ToTranscripts()
-                .ThrottleTranscript(TranscriptThrottleInterval, Clocks.SystemClock, cancellationToken);
+            var transcripts = diffs.ToTranscripts();
 
             // Optimization state:
             // - stablePrefixLength: length of text that is known to be immutable (based on IsStable snapshots)
             var stablePrefixLength = 0;
-            var lastText = "";
             // Precompute once for translation tail splitting
             var lastWordIndex = isTranslation
                 ? content.LastIndexOf(' ') + 1
@@ -131,22 +133,18 @@ public class TranscriptStreamer(ChatEntryId id, AppUIHub hub) : WorkerBase
 
                 lastText = text;
             }
-
-            _state.Value = new (
-                    RetainedText: lastText,
-                    ChangedText: "",
-                    AnimatedText: "",
-                    Tail: "",
-                    false,
-                    isTranslation);
         }
-        catch (Exception e) {
-            if (e.GetType().FullName == "Microsoft.AspNetCore.SignalR.HubException"
-                || !e.Message.Contains(nameof(OperationCanceledException)))
-                throw;
-            // Not fully sure if it's the case, but it seems that sometimes SignalR
-            // wraps OperationCanceledException into HubException, so here we suppress it.
+        catch (Exception e) when (e.IsCancellationOf(cancellationToken)) {
+            // Intended: suppress cancellation
         }
+        // Reached on normal completion or suppressed exception — mark streaming as done
+        _state.Value = new (
+            RetainedText: lastText,
+            ChangedText: "",
+            AnimatedText: "",
+            Tail: "",
+            false,
+            isTranslation);
     }
 
     // Uses knowledge of an immutable prefix (stablePrefixLength) to avoid re-comparing it.
@@ -183,14 +181,4 @@ public class TranscriptStreamer(ChatEntryId id, AppUIHub hub) : WorkerBase
             i++;
         return baseLen + i;
     }
-}
-
-public sealed record TranscriptStreamerState(
-    string RetainedText,
-    string ChangedText,
-    string AnimatedText,
-    string Tail,
-    bool IsStreaming,
-    bool IsTranslating) {
-    public static readonly TranscriptStreamerState None = new("", "", "", "", false, false);
 }

@@ -14,7 +14,7 @@ public class TranscriptUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompute
         if (entry is null)
             return null;
 
-        var mustTranslate = await TranslationUI.MustTranslate(entry, true, cancellationToken).ConfigureAwait(false);
+        var mustTranslate = await TranslationUI.MustTranslate(entry, isForStreaming: true, cancellationToken).ConfigureAwait(false);
         if (!mustTranslate)
             return entry.ContentStreamId.IsNullOrEmpty()
                 ? null
@@ -22,7 +22,7 @@ public class TranscriptUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompute
 
         var translation = await TranslationUI.GetExisting(id, cancellationToken).ConfigureAwait(false);
         if (translation?.StreamId is not null)
-            return new StreamingState(translation.StreamId, entry.Content, true); // Already streaming translated transcript.
+            return new StreamingState(translation.StreamId, entry.Content, IsTranslation: true); // Already streaming translated transcript.
 
         if (entry.ContentStreamId is not {} contentStreamId)
             return null; // No source stream. We can't start a translation stream.
@@ -32,9 +32,11 @@ public class TranscriptUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompute
 
         var sourceStreamId = StreamId.Parse(contentStreamId);
         var language = await TranslationUI.GetTargetLanguage(id.ChatId, cancellationToken).ConfigureAwait(false);
-        var streamId = StreamId.New(sourceStreamId, language ?? Languages.English);
-        return new StreamingState(streamId, entry.Content, true); // We can start ad-hoc translation stream.
+        var streamId = StreamId.New(sourceStreamId, language);
+        return new StreamingState(streamId, entry.Content, IsTranslation: true); // We can start ad-hoc translation stream.
     }
+
+    // Nested types
 
     public sealed record StreamingState(StreamId StreamId, string Content, bool IsTranslation);
 }
