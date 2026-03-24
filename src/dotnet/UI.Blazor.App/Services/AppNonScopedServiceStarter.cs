@@ -77,7 +77,7 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
         var chatPositions = Services.GetRequiredService<IChatPositions>();
         var chatThreads = Services.GetRequiredService<IChatThreads>();
         var localSettings = Services.LocalSettings();
-        var accountSettings = Services.AccountSettings(session);
+        var accountSettingsUI = Services.AccountSettingsUI(session);
 
         var selectedChatId = await localSettings.Get<ChatId>(nameof(ChatUI.SelectedChatId), cancellationToken).ConfigureAwait(false);
         var selectedPlaceId = (PlaceId?)null;
@@ -100,7 +100,7 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
             var chatNewsTask = chats.GetNews(session, chatId, cancellationToken);
             var lastMentionTask = mentions.GetLastOwn(session, chatId, cancellationToken);
             var chatPositionTask = chatPositions.GetOwn(session, chatId, ChatPositionKind.Read, cancellationToken);
-            var chatUserSettingsTask = accountSettings.ChatUserSettings(chatId).Get(cancellationToken);
+            var chatUserSettingsTask = accountSettingsUI.ChatUserSettings(chatId).Get(cancellationToken);
 
             var contact = contactTask.ConfigureAwait(false);
             var news = await chatNewsTask.ConfigureAwait(false);

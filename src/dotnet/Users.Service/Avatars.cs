@@ -35,9 +35,10 @@ public class Avatars(IServiceProvider services) : IAvatars
     // [ComputeMethod]
     public virtual async Task<IReadOnlyList<Symbol>> ListOwnAvatarIds(Session session, CancellationToken cancellationToken)
     {
-        var accountSettings = Services.AccountSettings(session);
-        var settings = await accountSettings.UserAvatarSettings().Get(cancellationToken).ConfigureAwait(false);
-        return settings.AvatarIds.ToArray();
+        var userAvatarSettings = await Services.AccountSettingsUI(session)
+            .UserAvatarSettings().Get(cancellationToken)
+            .ConfigureAwait(false);
+        return userAvatarSettings.AvatarIds.ToArray();
     }
 
     // [CommandHandler]
@@ -67,9 +68,10 @@ public class Avatars(IServiceProvider services) : IAvatars
         if (avatar.IsAnonymous)
             return avatar; // We don't account anonymous avatars in the list
 
-        var accountSettings = Services.AccountSettings(session);
-        await UpdateAvatarList(accountSettings, change.Remove ? avatarId : avatar.Id, change).ConfigureAwait(false);
-
+        await UpdateAvatarList(
+            Services.AccountSettingsUI(session),
+            change.Remove ? avatarId : avatar.Id, change
+            ).ConfigureAwait(false);
         return avatar;
     }
 
@@ -80,30 +82,33 @@ public class Avatars(IServiceProvider services) : IAvatars
             return; // It just spawns other commands, so nothing to do here
 
         var (session, avatarId) = command;
-        var accountSettings = Services.AccountSettings(session);
+        var accountSettingsUI = Services.AccountSettingsUI(session);
+
         var avatar = await GetOwn(session, avatarId, cancellationToken).Require().ConfigureAwait(false);
-        var settings = await accountSettings.UserAvatarSettings().Get(cancellationToken).ConfigureAwait(false);
-        if (settings.DefaultAvatarId == avatar.Id)
+        var userAvatarSettings = await accountSettingsUI
+            .UserAvatarSettings().Get(cancellationToken)
+            .ConfigureAwait(false);
+        if (userAvatarSettings.DefaultAvatarId == avatar.Id)
             return;
 
-        settings = settings with { DefaultAvatarId = avatarId };
-        await accountSettings.UserAvatarSettings().Set(settings, cancellationToken).ConfigureAwait(false);
+        userAvatarSettings = userAvatarSettings with { DefaultAvatarId = avatarId };
+        await accountSettingsUI.UserAvatarSettings().Set(userAvatarSettings, cancellationToken).ConfigureAwait(false);
     }
 
     internal static async Task UpdateAvatarList(
-        ScopedAccountSettings accountSettings,
+        AccountSettingsUI accountSettingsUI,
         Symbol avatarId,
         Change<AvatarFull> change)
     {
         // We don't cancel anything from here
         CancellationToken cancellationToken = default;
-        var oldSettings = await accountSettings.UserAvatarSettings().Get(cancellationToken).ConfigureAwait(false);
+        var oldSettings = await accountSettingsUI.UserAvatarSettings().Get(cancellationToken).ConfigureAwait(false);
         var settings = oldSettings;
         if (change.Create.HasValue)
             settings = settings.WithAvatarId(avatarId);
         else if (change.Remove)
             settings = settings.WithoutAvatarId(avatarId);
         if (!ReferenceEquals(settings, oldSettings))
-            await accountSettings.UserAvatarSettings().Set(settings, cancellationToken).ConfigureAwait(false);
+            await accountSettingsUI.UserAvatarSettings().Set(settings, cancellationToken).ConfigureAwait(false);
     }
 }

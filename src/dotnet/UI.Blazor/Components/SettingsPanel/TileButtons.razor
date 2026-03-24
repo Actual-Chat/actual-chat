@@ -49,10 +49,12 @@
             });
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
-        var accountSettings = await AccountSettings.UserAvatarSettings().Get(cancellationToken).ConfigureAwait(false);
-        var defaultAvatarId = accountSettings.DefaultAvatarId;
+        var userAvatarSettings = await AccountSettingsUI
+            .UserAvatarSettings().Get(cancellationToken)
+            .ConfigureAwait(false);
+        var defaultAvatarId = userAvatarSettings.DefaultAvatarId;
         if (defaultAvatarId.IsEmpty)
-            defaultAvatarId = accountSettings.AvatarIds.FirstOrDefault();
+            defaultAvatarId = userAvatarSettings.AvatarIds.FirstOrDefault();
         return Avatar?.Id == defaultAvatarId;
     }
 }

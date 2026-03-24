@@ -50,7 +50,7 @@ public class UIHub : CircuitHub, IDispatcherResolver
     public IMediaLinkPreviews MediaLinkPreviews => field ??= Services.GetRequiredService<IMediaLinkPreviews>();
     public ISearch Search => field ??= Services.GetRequiredService<ISearch>();
     public Temporals Temporals => field ??= Services.GetRequiredService<Temporals>();
-    public ScopedAccountSettings AccountSettings => field ??= Services.AccountSettings(Session);
+    public AccountSettingsUI AccountSettingsUI => field ??= Services.AccountSettingsUI(Session);
     public LocalSettings LocalSettings => field ??= Services.GetRequiredService<LocalSettings>();
     public IUserPresences UserPresences => field ??= Services.GetRequiredService<IUserPresences>();
     public ModuleHost ModuleHost => field ??= Services.GetRequiredService<ModuleHost>();

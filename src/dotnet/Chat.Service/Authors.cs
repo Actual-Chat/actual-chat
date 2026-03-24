@@ -217,8 +217,8 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
             });
         author = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
 
-        var accountSettings = Services.AccountSettings(session);
-        var inviteSettings = (ChatInviteSettings?)await accountSettings
+        var accountSettingsUI = Services.AccountSettingsUI(session);
+        var inviteSettings = (ChatInviteSettings?)await accountSettingsUI
             .Get(ChatInviteSettings.GetKey(chatId), cancellationToken)
             .ConfigureAwait(false);
         if (inviteSettings?.ActivationKey is not null) {

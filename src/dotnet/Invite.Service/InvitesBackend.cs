@@ -214,8 +214,8 @@ public class InvitesBackend(IServiceProvider services)
             dbContext.Add(dbActivationKey);
             context.Operation.Items.KeylessSet(dbActivationKey.Id);
 
-            var accountSettings = Services.AccountSettings(session);
-            await accountSettings.Set(
+            var accountSettingsUI = Services.AccountSettingsUI(session);
+            await accountSettingsUI.Set(
                 ChatInviteSettings.GetKey(chatId),
                 new ChatInviteSettings { ActivationKey = dbActivationKey.Id },
                 cancellationToken).ConfigureAwait(false);

@@ -1,14 +1,14 @@
 namespace ActualChat.Users;
 
 /// <summary>
-/// Provides typed access to a single key in a <see cref="ScopedAccountSettings"/> store.
+/// Provides typed access to a single key in a <see cref="AccountSettingsUI"/> store.
 /// </summary>
-public class AccountSettingsAccessor<T>(ScopedAccountSettings accountSettings, string key)
+public class AccountSettingsAccessor<T>(AccountSettingsUI accountSettingsUI, string key)
     where T : StoredSettings, new()
 {
     public async Task<T> Get(CancellationToken cancellationToken = default)
     {
-        var result = await accountSettings.Get(key, cancellationToken).ConfigureAwait(false);
+        var result = await accountSettingsUI.Get(key, cancellationToken).ConfigureAwait(false);
         return (T?)result ?? new T();
     }
 
@@ -16,7 +16,7 @@ public class AccountSettingsAccessor<T>(ScopedAccountSettings accountSettings, s
         => selector.Invoke(await Get(cancellationToken).ConfigureAwait(false));
 
     public Task Set(T value, CancellationToken cancellationToken = default)
-        => accountSettings.Set(key, value, cancellationToken);
+        => accountSettingsUI.Set(key, value, cancellationToken);
 
     public async Task<T> Update(Func<T, T> updater, CancellationToken cancellationToken = default)
     {

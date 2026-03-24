@@ -56,8 +56,8 @@
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
-        var settings = await AccountSettings.GetChatVoiceMode(chatId, cancellationToken).ConfigureAwait(false);
-        var listeningMode = await AccountSettings.GetListeningMode(chatId, cancellationToken).ConfigureAwait(false);
+        var settings = await AccountSettingsUI.GetChatVoiceMode(chatId, cancellationToken).ConfigureAwait(false);
+        var listeningMode = await AccountSettingsUI.GetListeningMode(chatId, cancellationToken).ConfigureAwait(false);
         var mustStreamVoice = settings.VoiceMode.HasVoice();
         return new (mustStreamVoice, settings.CanChange, listeningMode);
     }
@@ -66,7 +66,7 @@
         var voiceMode = mustStreamVoice
             ? VoiceMode.TextAndVoice
             : VoiceMode.JustText;
-        await AccountSettings.SetChatVoiceMode(ChatId, voiceMode);
+        await AccountSettingsUI.SetChatVoiceMode(ChatId, voiceMode);
     }
 
     private Task OnVoiceStreamingClick()

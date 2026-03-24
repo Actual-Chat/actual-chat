@@ -6,7 +6,7 @@ namespace ActualChat.Users;
 /// When <see cref="Temporals"/> is available, Get checks for temporary overrides first,
 /// and Set applies a temporary override alongside the server write.
 /// </summary>
-public sealed class ScopedAccountSettings(IServiceProvider services, Session session)
+public sealed class AccountSettingsUI(IServiceProvider services, Session session)
 {
     public IServiceProvider Services { get; } = services;
     public IAccountSettings AccountSettings { get; } = services.GetRequiredService<IAccountSettings>();
@@ -16,9 +16,9 @@ public sealed class ScopedAccountSettings(IServiceProvider services, Session ses
     public async Task<StoredSettings?> Get(string key, CancellationToken cancellationToken = default)
     {
         if (Temporals.IsReal) {
-            var overrideValue = await Temporals.Get<StoredSettings>(key).ConfigureAwait(false);
-            if (overrideValue is not null)
-                return overrideValue;
+            var value = await Temporals.Get<StoredSettings>(key).ConfigureAwait(false);
+            if (value is not null)
+                return value;
         }
         return await AccountSettings.Get(Session, key, cancellationToken).ConfigureAwait(false);
     }

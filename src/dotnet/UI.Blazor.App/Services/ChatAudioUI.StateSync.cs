@@ -363,7 +363,7 @@ public partial class ChatAudioUI
             await stopTasks.Collect(ApiConstants.Concurrency.Unlimited, cancellationToken).ConfigureAwait(false);
 
             foreach (var chatId in toStart) {
-                var chatUserSettings = await AccountSettings.ChatUserSettings(chatId)
+                var chatUserSettings = await AccountSettingsUI.ChatUserSettings(chatId)
                     .Get(cancellationToken)
                     .ConfigureAwait(false);
                 if (chatUserSettings.ListeningMode == ListeningMode.Forever)
@@ -413,7 +413,7 @@ public partial class ChatAudioUI
         finally {
             SetStopListeningAt(chatId, null);
             if (mustStop) {
-                var listeningMode = await AccountSettings.ChatUserSettings(chatId)
+                var listeningMode = await AccountSettingsUI.ChatUserSettings(chatId)
                     .Get(x => x.ListeningMode, cancellationToken)
                     .ConfigureAwait(false);
                 if (listeningMode != ListeningMode.Forever)

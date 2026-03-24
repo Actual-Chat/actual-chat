@@ -56,7 +56,7 @@ public class ActiveChatsUI : UIServiceBase<AppUIHub>
                 if (chat.IsRecording)
                     chat = chat with { IsRecording = false };
 
-                var chatUserSettings = await AccountSettings
+                var chatUserSettings = await AccountSettingsUI
                     .ChatUserSettings(chat.ChatId).Get(cancellationToken)
                     .ConfigureAwait(false);
                 var listeningMode = chatUserSettings.ListeningMode;

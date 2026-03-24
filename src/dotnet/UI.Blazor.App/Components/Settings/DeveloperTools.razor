@@ -82,7 +82,7 @@
         => new() { InitialValue = Model.None };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var settings = await AccountSettings.UserAppSettings().Get(cancellationToken).ConfigureAwait(false);
+        var settings = await AccountSettingsUI.UserAppSettings().Get(cancellationToken).ConfigureAwait(false);
         var account = await Hub.AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
         var appSettings = await LocalSettings.LocalAppSettings().Get(cancellationToken).ConfigureAwait(false);
         return new(
@@ -94,17 +94,17 @@
     }
 
     private Task OnExperimentalFeatureEnabledClick()
-        => AccountSettings.UserAppSettings().Update(x => x with {
+        => AccountSettingsUI.UserAppSettings().Update(x => x with {
             AreExperimentalFeaturesEnabled = !(x.AreExperimentalFeaturesEnabled ?? false),
         });
 
     private Task OnIncompleteUIEnabledClick()
-        => AccountSettings.UserAppSettings().Update(x => x with {
+        => AccountSettingsUI.UserAppSettings().Update(x => x with {
             IsIncompleteUIEnabled = !(x.IsIncompleteUIEnabled ?? false),
         });
 
     private Task OnVideoStreamingEnabledClick()
-        => AccountSettings.UserAppSettings().Update(x => x with {
+        => AccountSettingsUI.UserAppSettings().Update(x => x with {
             IsVideoStreamingEnabled = !(x.IsVideoStreamingEnabled ?? false),
         });
 

@@ -11,7 +11,7 @@ public sealed class Features_EnableIncompleteUI : FeatureDef<bool>, IClientFeatu
         if (!account.IsAdmin)
             return false;
 
-        return await services.AccountSettings(session)
+        return await services.AccountSettingsUI(session)
             .UserAppSettings()
             .Get(x => x.IsIncompleteUIEnabled ?? false, cancellationToken)
             .ConfigureAwait(false);

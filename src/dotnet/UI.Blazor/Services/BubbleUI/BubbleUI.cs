@@ -19,7 +19,7 @@ public sealed class BubbleUI : UIServiceBase<UIHub>
     public BubbleUI(UIHub hub) : base(hub)
     {
         _settings = StateFactory.NewAccountSettingsSynced<UserBubbleSettings>(
-            AccountSettings,
+            AccountSettingsUI,
             UserBubbleSettings.KvasKey,
             new UserBubbleSettings(),
             updateDelayer: FixedDelayer.NextTick,

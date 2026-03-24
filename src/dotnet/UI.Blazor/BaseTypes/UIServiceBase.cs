@@ -25,7 +25,7 @@ public abstract class UIServiceBase<THub>(THub hub) : IHasDisposeStatus
     protected MomentClockSet Clocks => field ??= Hub.Clocks;
     protected DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
     protected Temporals Temporals => Hub.Temporals;
-    protected ScopedAccountSettings AccountSettings => Hub.AccountSettings;
+    protected AccountSettingsUI AccountSettingsUI => Hub.AccountSettingsUI;
     protected LocalSettings LocalSettings => Hub.LocalSettings;
     protected ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
     protected DiffEngine DiffEngine => Hub.DiffEngine;

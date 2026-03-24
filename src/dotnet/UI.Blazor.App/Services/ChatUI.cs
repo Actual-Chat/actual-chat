@@ -91,7 +91,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             (IImmutableSet<ConversationId>)ImmutableHashSet<ConversationId>.Empty,
             StateCategories.Get(type, nameof(ExpandedConversations)));
         _navbarSettings = StateFactory.NewAccountSettingsSynced<UserNavbarSettings>(
-            AccountSettings,
+            AccountSettingsUI,
             UserNavbarSettings.KvasKey,
             new UserNavbarSettings(),
             updateDelayer: FixedDelayer.NextTick,
@@ -120,7 +120,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             var chatNewsTask = Chats.GetNews(Session, chatId, cancellationToken);
             var lastMentionTask = Mentions.GetLastOwn(Session, chatId, cancellationToken);
             var readEntryLidTask = GetReadEntryLid(chatId, cancellationToken);
-            var chatUserSettingsTask = AccountSettings.ChatUserSettings(chatId).Get(cancellationToken);
+            var chatUserSettingsTask = AccountSettingsUI.ChatUserSettings(chatId).Get(cancellationToken);
 
             var news = await chatNewsTask.WaitAsync(TimeSpan.FromSeconds(20), cancellationToken).ConfigureAwait(false);
             var chatUserSettings = await chatUserSettingsTask.ConfigureAwait(false);

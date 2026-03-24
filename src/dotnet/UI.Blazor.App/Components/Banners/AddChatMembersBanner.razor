@@ -35,7 +35,7 @@
     protected override void OnInitialized() {
         var key = AddChatMembersBannerSettings.GetKey(Chat.Id);
         _dismissedAt = StateFactory.NewAccountSettingsSynced<AddChatMembersBannerSettings>(
-            AccountSettings,
+            AccountSettingsUI,
             key,
             new AddChatMembersBannerSettings());
     }

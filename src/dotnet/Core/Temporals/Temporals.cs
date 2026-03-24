@@ -53,20 +53,13 @@ public abstract class Temporals : IComputeService, IDisposable, IHasDisposeStatu
 
     // Nested types
 
-    protected abstract class Entry
+    protected abstract class Entry(Temporals host, string key, TimeSpan expiresIn)
     {
-        public Temporals Host { get; }
-        public string Key { get; set; }
+        public Temporals Host { get; } = host;
+        public string Key { get; init; } = key;
         public abstract object? UntypedValue { get; }
-        public TimeSpan ExpiresIn { get; }
+        public TimeSpan ExpiresIn { get; } = expiresIn;
         public Task? ExpireTask { get; private set; }
-
-        protected Entry(Temporals host, string key, TimeSpan expiresIn)
-        {
-            Host = host;
-            Key = key;
-            ExpiresIn = expiresIn;
-        }
 
         public void StartExpiration()
         {
@@ -86,7 +79,7 @@ public abstract class Temporals : IComputeService, IDisposable, IHasDisposeStatu
 
         public void EndExpiration()
         {
-            if (!Host.Entries.TryRemove(KeyValuePair.Create(Key, this)))
+            if (!Host.Entries.TryRemove(Key, this))
                 return;
 
             using (Invalidation.Begin())
@@ -97,7 +90,7 @@ public abstract class Temporals : IComputeService, IDisposable, IHasDisposeStatu
     protected sealed class Entry<T>(Temporals host, string key, T value, TimeSpan expiresIn)
         : Entry(host, key, expiresIn)
     {
-        public T Value { get; set; } = value;
+        public T Value { get; } = value;
         public override object? UntypedValue => Value;
     }
 }

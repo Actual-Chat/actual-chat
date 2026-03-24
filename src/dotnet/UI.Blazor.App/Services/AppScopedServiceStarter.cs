@@ -157,8 +157,7 @@ public sealed class AppScopedServiceStarter
         if (await dataCollectionSettingsUI.IsConfigured(cancellationToken).ConfigureAwait(false))
             return;
 
-        var accountSettings = Hub.AccountSettings;
-        var settings = await accountSettings.UserAppSettings().Get(cancellationToken).ConfigureAwait(false);
+        var settings = await Hub.AccountSettingsUI.UserAppSettings().Get(cancellationToken).ConfigureAwait(false);
         var isDataCollectionEnabled = settings.IsDataCollectionEnabled;
         if (!isDataCollectionEnabled.HasValue)
             return;

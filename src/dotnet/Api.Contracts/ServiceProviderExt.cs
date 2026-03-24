@@ -9,10 +9,10 @@ public static class ServiceProviderExt
         => services.GetRequiredService<LocalSettings>();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ScopedAccountSettings AccountSettings(this IServiceProvider services, Session session)
-        => new(services, session);
+    public static IAccountSettings AccountSettings(this IServiceProvider services)
+        => services.GetRequiredService<IAccountSettings>();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ScopedAccountSettings AccountSettings(this IServiceProvider services)
-        => services.GetRequiredService<ScopedAccountSettings>();
+    public static AccountSettingsUI AccountSettingsUI(this IServiceProvider services, Session session)
+        => new(services, session);
 }

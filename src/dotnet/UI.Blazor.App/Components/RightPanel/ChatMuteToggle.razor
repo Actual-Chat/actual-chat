@@ -25,13 +25,13 @@
 
     protected override async Task<ChatNotificationMode> ComputeState(CancellationToken cancellationToken) {
         var chatId = Chat.Id;
-        var settings = await AccountSettings.ChatUserSettings(chatId).Get(cancellationToken).ConfigureAwait(false);
+        var settings = await AccountSettingsUI.ChatUserSettings(chatId).Get(cancellationToken).ConfigureAwait(false);
         return settings.NotificationMode;
     }
 
     private Task OnValueChanged(bool isMuted)
         => UICommander.RunLocal(cancellationToken
-            => AccountSettings.ChatUserSettings(Chat.Id).Update(
+            => AccountSettingsUI.ChatUserSettings(Chat.Id).Update(
                 x => x with {
                     NotificationMode = isMuted ? ChatNotificationMode.Muted : ChatNotificationMode.Default,
                 },

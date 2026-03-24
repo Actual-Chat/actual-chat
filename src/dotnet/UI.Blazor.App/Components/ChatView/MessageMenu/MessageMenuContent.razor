@@ -191,7 +191,7 @@
             EntryId = ChatEntry.Id,
             Emoji = emoji,
         };
-        _ = Hub.AccountSettings.UserReactionSettings().Update(s => s.WithBubbleUp(emoji.Id.Value));
+        _ = Hub.AccountSettingsUI.UserReactionSettings().Update(s => s.WithBubbleUp(emoji.Id.Value));
         await UICommander.Run(new Reactions_React(Session, reaction));
     }
 }

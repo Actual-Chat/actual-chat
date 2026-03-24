@@ -95,7 +95,7 @@
     private ICommander Commander => Hub.Commander;
     private FileUploader FileUploader => field ??= Hub.Services.GetRequiredService<FileUploader>();
     private AccountSettingsAccessor<UserTranscodingTestSettings> UserTranscodingTestSettings()
-        => AccountSettings.UserTranscodingTestSettings();
+        => AccountSettingsUI.UserTranscodingTestSettings();
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var settings = await UserTranscodingTestSettings().Get(cancellationToken).ConfigureAwait(false);

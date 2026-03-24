@@ -19,7 +19,7 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
     public LanguageUI(AppUIHub hub) : base(hub)
     {
         _settings = StateFactory.NewAccountSettingsSynced<UserLanguageSettings>(
-            AccountSettings,
+            AccountSettingsUI,
             UserLanguageSettings.KvasKey,
             new UserLanguageSettings(),
             updateDelayer: FixedDelayer.NextTick,
@@ -31,11 +31,11 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
     private async Task EnsureUserLanguageSettingsPersisted(CancellationToken cancellationToken = default)
     {
         await WhenReady.ConfigureAwait(false);
-        var serverValue = await AccountSettings.Get(UserLanguageSettings.KvasKey, cancellationToken).ConfigureAwait(false);
+        var serverValue = await AccountSettingsUI.Get(UserLanguageSettings.KvasKey, cancellationToken).ConfigureAwait(false);
         if (serverValue is not null)
             return;
 
-        await AccountSettings.Set(UserLanguageSettings.KvasKey, Settings.Value, cancellationToken).ConfigureAwait(false);
+        await AccountSettingsUI.Set(UserLanguageSettings.KvasKey, Settings.Value, cancellationToken).ConfigureAwait(false);
     }
 
     public void Dispose()
@@ -67,7 +67,7 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
     {
         chatId = chatId?.GetThreadOutermostParentOrSelf();
         var chatUserSettings = chatId is not null
-            ? await AccountSettings.ChatUserSettings(chatId).Get(cancellationToken).ConfigureAwait(false)
+            ? await AccountSettingsUI.ChatUserSettings(chatId).Get(cancellationToken).ConfigureAwait(false)
             : ChatUserSettings.Default;
         var language = chatUserSettings.Language;
         var userSettings = await Settings.Use(WhenReady, cancellationToken).ConfigureAwait(false);
@@ -78,13 +78,13 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
     {
         chatId = chatId.GetThreadOutermostParentOrSelf();
         await WhenReady.ConfigureAwait(false);
-        var chatUserSettings = await AccountSettings.ChatUserSettings(chatId).Get(cancellationToken).ConfigureAwait(false);
+        var chatUserSettings = await AccountSettingsUI.ChatUserSettings(chatId).Get(cancellationToken).ConfigureAwait(false);
         if (language == chatUserSettings.Language)
             return language;
 
         _ = TuneUI.Play(Tune.ChangeLanguage);
         chatUserSettings = chatUserSettings with { Language = language };
-        await AccountSettings.ChatUserSettings(chatId).Set(chatUserSettings, cancellationToken).ConfigureAwait(false);
+        await AccountSettingsUI.ChatUserSettings(chatId).Set(chatUserSettings, cancellationToken).ConfigureAwait(false);
         return language;
     }
 
