@@ -1,5 +1,3 @@
-using ActualChat.Testing;
-
 namespace ActualChat.Media.UnitTests;
 
 public class SerializationCodeGenTest(ITestOutputHelper @out) : TestBase(@out)
@@ -14,5 +12,11 @@ public class SerializationCodeGenTest(ITestOutputHelper @out) : TestBase(@out)
         SerializationCodeGen.ValidateType<Media_RemoveMedia>();
         SerializationCodeGen.ValidateType<Media_UpdateProgress>();
         SerializationCodeGen.ValidateType<Media_ProcessUpload>();
+        SerializationCodeGen.ValidateType<GrabStatus>();
+        SerializationCodeGen.ValidateType<LinkPreview>();
+        SerializationCodeGen.ValidateType<Media>();
+        SerializationCodeGen.ValidateType<MediaRef>();
+        SerializationCodeGen.ValidateType<Upload>();
+        SerializationCodeGen.ValidateType<Picture>();
     }
 }

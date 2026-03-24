@@ -1,4 +1,5 @@
-using ActualChat.Testing;
+using ActualChat.Audio;
+using ActualChat.Live;
 using ActualChat.Video;
 
 namespace ActualChat.Streaming.UnitTests;
@@ -15,5 +16,11 @@ public class SerializationCodeGenTest(ITestOutputHelper @out) : TestBase(@out)
         SerializationCodeGen.ValidateType<VideoStreamInfo>();
         SerializationCodeGen.ValidateType<VideoFormat>();
         SerializationCodeGen.ValidateType<VideoQualityPreset>();
+        SerializationCodeGen.ValidateType<VideoStreamMemberInfo>();
+        SerializationCodeGen.ValidateType<AudioFormat>();
+        SerializationCodeGen.ValidateType<LiveStreamInfo>();
+        SerializationCodeGen.ValidateType<LiveStreamStart>();
+        SerializationCodeGen.ValidateType<LiveStreamEnd>();
+        SerializationCodeGen.ValidateType<LiveStreamSettings>();
     }
 }

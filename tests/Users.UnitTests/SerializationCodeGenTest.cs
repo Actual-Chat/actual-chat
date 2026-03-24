@@ -1,5 +1,3 @@
-using ActualChat.Testing;
-
 namespace ActualChat.Users.UnitTests;
 
 public class SerializationCodeGenTest(ITestOutputHelper @out) : TestBase(@out)
@@ -9,5 +7,13 @@ public class SerializationCodeGenTest(ITestOutputHelper @out) : TestBase(@out)
     {
         SerializationCodeGen.ValidateType<Change<string>>();
         SerializationCodeGen.ValidateType<ServerKvasBackend_SetMany>();
+        SerializationCodeGen.ValidateType<Account>();
+        SerializationCodeGen.ValidateType<AccountFull>();
+        SerializationCodeGen.ValidateType<Avatar>();
+        SerializationCodeGen.ValidateType<AvatarFull>();
+        SerializationCodeGen.ValidateType<ChatPosition>();
+        SerializationCodeGen.ValidateType<UserLanguageSettings>();
+        SerializationCodeGen.ValidateType<UserAppSettings>();
+        SerializationCodeGen.ValidateType<UserOnboardingSettings>();
     }
 }

@@ -9,5 +9,9 @@ public class SerializationCodeGenTest(ITestOutputHelper @out) : TestBase(@out)
     {
         SerializationCodeGen.ValidateType<Change<string>>();
         SerializationCodeGen.ValidateType<ChatListSettings>();
+        SerializationCodeGen.ValidateType<ActiveChat>();
+        SerializationCodeGen.ValidateType<FileMetadata>();
+        SerializationCodeGen.ValidateType<UploadSessionSnapshot>();
+        SerializationCodeGen.ValidateType<RelatedEntryRef>();
     }
 }
