@@ -607,7 +607,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var readPosition = ReadPosition;
         readEntryLid = Math.Max(readPosition.Value.EntryLid, readEntryLid);
         if (readPosition.Value.EntryLid < readEntryLid)
-            ((IMutableState<ReadPosition>)readPosition).Value = new ReadPosition(ChatId, readEntryLid);
+            ((MutableState<ReadPosition>)readPosition).Value = new ReadPosition(ChatId, readEntryLid);
         return readEntryLid;
     }
 

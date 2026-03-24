@@ -4,7 +4,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public sealed class PlaceChatListSettings
 {
-    private readonly IMutableState<ChatListSettings> _state;
+    private readonly MutableState<ChatListSettings> _state;
 
     public PlaceId? PlaceId { get; }
     public Task WhenReady { get; }

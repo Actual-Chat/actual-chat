@@ -5,7 +5,7 @@ namespace ActualChat.UI.Blazor.Services;
 /// </summary>
 public class TotpUI(UIHub hub): UIServiceBase<UIHub>(hub), IComputeService
 {
-    private readonly IMutableState<Moment> _totpNextSendAt = hub.StateFactory.NewMutable<Moment>();
+    private readonly MutableState<Moment> _totpNextSendAt = hub.StateFactory.NewMutable<Moment>();
 
     private IPhoneAuth PhoneAuth => field ??= Services.GetRequiredService<IPhoneAuth>();
     private IEmailAuth EmailAuth => field ??= Services.GetRequiredService<IEmailAuth>();

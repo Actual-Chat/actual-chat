@@ -14,7 +14,7 @@ public class ActiveChatsUI : UIServiceBase<AppUIHub>
     private IChats Chats => Hub.Chats;
     private Moment CpuNow => Clocks.CpuClock.Now;
 
-    public IMutableState<ActiveChat[]> ActiveChats => _activeChats;
+    public MutableState<ActiveChat[]> ActiveChats => _activeChats;
     public Task WhenReady => _activeChats.WhenRead;
 
     public ActiveChatsUI(AppUIHub hub) : base(hub)

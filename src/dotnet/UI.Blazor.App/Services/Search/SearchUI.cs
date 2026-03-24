@@ -20,14 +20,14 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
     private readonly ComputedState<FoundItem?> _selectedItem;
     private Cached _cached = Cached.None;
 
-    public IMutableState<string> Text => _text;
-    public IMutableState<PlaceId?> PlaceId => _placeId;
+    public MutableState<string> Text => _text;
+    public MutableState<PlaceId?> PlaceId => _placeId;
     public IState<bool> IsSearchModeOn => _isSearchModeOn;
     public IState<bool> IsShowRecentOn => _isShowRecentOn;
     public IState<bool> IsResultsNavigationOn => _isResultsNavigationOn;
     public IState<FoundItem?> SelectedItem => _selectedItem;
 
-    private IMutableState<ImmutableHashSet<SearchScope>> ExtendedLimits { get; }
+    private MutableState<ImmutableHashSet<SearchScope>> ExtendedLimits { get; }
 
     private ISearch Search => Hub.Search;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;

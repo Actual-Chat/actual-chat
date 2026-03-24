@@ -178,7 +178,8 @@
             return Task.CompletedTask;
 
         var startAt = entry.BeginsAt + TimeSpan.FromSeconds(startTime - 0.25);
-        return Hub.ChatAudioUI.StartReplayWithStoredSpeed(chatId, startAt);
+        Hub.ChatAudioUI.StartReplay(chatId, startAt);
+        return Task.CompletedTask;
     }
 
     private static WordPlayback[] EnrichMapWithPlayedStatus(WordPlayback[]? map, WordPlayback[] lastMap)

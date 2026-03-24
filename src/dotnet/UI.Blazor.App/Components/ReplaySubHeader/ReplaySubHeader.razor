@@ -5,8 +5,8 @@
 @{
     var m = State.Value;
     var size = ScreenSize.IsNarrow() ? SquareSize.Size8 : SquareSize.Size6;
-    var speed = m?.Speed ?? 1.0;
-    var speedLabel = speed == 1.0 ? "1x" : $"{speed:0.##}x";
+    var speed = m?.Speed ?? ChatAudioUI.ReplaySettings.Value.Speed;
+    var speedLabel = Math.Abs(speed - 1.0) < 0.01 ? "1x" : $"{speed:0.##}x";
 }
 
 <SubHeader Class="replay-subheader" IsVisible="@(m is not null)">
@@ -174,7 +174,7 @@
 
         // Restart replay from paused position
         var resumeAt = replayState.PausedAt ?? m.PlayingAt ?? replayState.StartAt;
-        ChatAudioUI.StartReplay(m.ChatId, resumeAt, speed: replayState.Speed);
+        ChatAudioUI.StartReplay(m.ChatId, resumeAt);
     }
 
     private void OnPause() {
@@ -206,7 +206,7 @@
         _ = InvokeAsync(() => {
             var m = State.Value;
             if (m?.Player != null && m.Player.ChatId == chatId)
-                ChatAudioUI.StartReplay(chatId, origin, m.Speed, offset);
+                ChatAudioUI.StartReplay(chatId, origin, offset);
         });
     }
 

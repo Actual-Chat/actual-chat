@@ -8,7 +8,7 @@ public class TranscriptStreamer(ChatEntryId id, AppUIHub hub) : WorkerBase
 {
     private static readonly TimeSpan TranscriptThrottleInterval = TimeSpan.FromMilliseconds(320); // LLM usually responds within this threshold
     private static readonly RetryDelaySeq StreamRetryDelays = RetryDelaySeq.Exp(0.1, 2);
-    private readonly IMutableState<TranscriptStreamerState> _state = hub.StateFactory.NewMutable(TranscriptStreamerState.None);
+    private readonly MutableState<TranscriptStreamerState> _state = hub.StateFactory.NewMutable(TranscriptStreamerState.None);
     private TranscriptUI TranscriptUI => hub.TranscriptUI;
     private IStreamClient StreamClient => hub.StreamClient;
     private MomentClockSet Clocks => hub.Clocks;

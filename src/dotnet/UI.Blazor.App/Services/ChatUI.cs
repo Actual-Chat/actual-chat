@@ -1,7 +1,6 @@
 using ActualChat.Contacts;
 using ActualChat.Kvas;
 using ActualChat.Pooling;
-using ActualChat.Users;
 using ActualChat.UI.Blazor.App.Events;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
@@ -59,7 +58,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     public IState<IImmutableSet<ConversationId>> ExpandedConversations => _expandedConversations;
     public IState<UserNavbarSettings> NavbarSettings => _navbarSettings;
     public Task WhenReady => _selectedChatId.WhenRead;
-    public IMutableState<ChatViewItemVisibility> ItemVisibility => _itemVisibility;
+    public MutableState<ChatViewItemVisibility> ItemVisibility => _itemVisibility;
 
     public static event Action<(ChatId, long)> OnReadPositionUpdated = _ => { };
 

@@ -44,22 +44,14 @@ public partial class ChatAudioUI
 
     // Actions
 
-    public void StartReplay(ChatId chatId, Moment startAt, double speed = 1.0, TimeSpan offset = default)
+    public void StartReplay(ChatId chatId, Moment startAt, TimeSpan offset = default)
     {
+        var speed = _replaySettings.Value.Speed;
         DebugLog?.LogInformation("StartReplay: chatId={ChatId}, startAt={StartAt}, offset={Offset}, speed={Speed}",
             chatId, startAt, offset, speed);
 
         StopReplay();
         _replayState.Value = new ReplayState(chatId, startAt, offset, speed);
-    }
-
-    public async Task StartReplayWithStoredSpeed(ChatId chatId, Moment startAt, TimeSpan offset = default)
-    {
-        if (!_replaySettings.WhenFirstTimeRead.IsCompleted)
-            await _replaySettings.WhenFirstTimeRead.ConfigureAwait(false);
-
-        var settings = _replaySettings.Value;
-        StartReplay(chatId, startAt, settings.Speed, offset);
     }
 
     public void PauseReplay(Moment pausedAt)
@@ -216,7 +208,7 @@ public partial class ChatAudioUI
             var currentState = _replayState.Value;
             if (currentState is { PausedAt: not null }) {
                 var resumeAt = currentState.PausedAt.Value;
-                StartReplay(currentState.ChatId, resumeAt, speed: currentState.Speed);
+                StartReplay(currentState.ChatId, resumeAt);
                 Log.LogInformation("OnAudioFocusRestore: resumed replayer for #{ChatId}", currentState.ChatId);
             }
         };

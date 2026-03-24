@@ -11,17 +11,17 @@ namespace ActualChat.UI.Blazor.App.Services;
 public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized
 {
     // Centralized video state
-    private readonly IMutableState<ChatId?> _recordingChatId;
-    private readonly IMutableState<string?> _selectedCameraDeviceId;
-    private readonly IMutableState<bool> _isBackgroundBlurEnabled;
-    private readonly IMutableState<string?> _errorMessage;
+    private readonly MutableState<ChatId?> _recordingChatId;
+    private readonly MutableState<string?> _selectedCameraDeviceId;
+    private readonly MutableState<bool> _isBackgroundBlurEnabled;
+    private readonly MutableState<string?> _errorMessage;
 
     // Tracks the last chat where the user started video recording (in-memory, resets on reload)
     private ChatId? _joinedVideoChatId;
 
     // Active speaker focus state
-    private readonly IMutableState<AuthorId?> _focusedSpeakerId;
-    private readonly IMutableState<AuthorId?> _previousFocusedSpeakerId;
+    private readonly MutableState<AuthorId?> _focusedSpeakerId;
+    private readonly MutableState<AuthorId?> _previousFocusedSpeakerId;
     private CancellationTokenSource? _focusDebounceCts;
     private AuthorId? _pendingFocusCandidate;
 

@@ -103,11 +103,11 @@
         return Task.CompletedTask;
     }
 
-    private Task OnPlay() {
+    private void OnPlay() {
         var entry = Entry;
         var chatId = entry.ChatId;
         var startAt = entry.BeginsAt;
-        return Hub.ChatAudioUI.StartReplayWithStoredSpeed(chatId, startAt);
+        Hub.ChatAudioUI.StartReplay(chatId, startAt);
     }
 
     // Nested types

@@ -6,7 +6,7 @@ public class KeepWebViewAliveUI(UIHub hub) : WorkerBase
 {
     private static readonly TimeSpan Interval = TimeSpan.FromMinutes(1);
 
-    public IMutableState<bool> IsEnabled => field ??= hub.StateFactory.NewMutable<bool>();
+    public MutableState<bool> IsEnabled => field ??= hub.StateFactory.NewMutable<bool>();
     private ILogger Log => field ??= hub.LogFor(GetType());
 
     protected override Task OnRun(CancellationToken cancellationToken)

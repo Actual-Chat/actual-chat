@@ -466,7 +466,7 @@ UI services manage client-side state and coordinate UI updates.
 public class RouletteUI
 {
     private readonly AppUIHub _hub;
-    private readonly IMutableState<RouletteState> _state;
+    private readonly MutableState<RouletteState> _state;
 
     public IState<RouletteState> State => _state;
 
