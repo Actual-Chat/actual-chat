@@ -17,7 +17,7 @@ interface Word {
 export class PlayableTextMarkupView {
     private blazorRef: DotNet.DotNetObject;
     private readonly element: HTMLElement;
-    private words: Word[] = [];
+    private readonly words: Word[] = [];
     private disposed$: Subject<void> = new Subject<void>();
 
     static create(blazorRef: DotNet.DotNetObject, element: HTMLElement, words: Word[]): PlayableTextMarkupView {
