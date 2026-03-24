@@ -26,9 +26,6 @@ public sealed class ChatEntryPlayer : ProcessorBase
     protected override Task DisposeAsyncCore()
         => Abort(); // Never throws
 
-    public Task WhenDonePlaying()
-        => Task.CompletedTask;
-
     public async Task Abort()
     {
         try {
