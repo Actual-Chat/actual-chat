@@ -17,7 +17,7 @@ public sealed class ReplayStreamMuxer : WorkerBase
     private Session Session { get; }
     private ChatId ChatId { get; }
     private Moment StartAt { get; }
-    private TimeSpan Offset { get; }
+    private TimeSpan RewindOffset { get; }
     private double Speed { get; }
     private IChats Chats => field ??= Services.GetRequiredService<IChats>();
     private AudioSourceDownloader AudioDownloader => field ??= Services.GetRequiredService<AudioSourceDownloader>();
@@ -31,14 +31,14 @@ public sealed class ReplayStreamMuxer : WorkerBase
         Session session,
         ChatId chatId,
         Moment startAt,
-        TimeSpan offset,
+        TimeSpan rewindOffset,
         double speed = 1.0)
     {
         Services = services;
         Session = session;
         ChatId = chatId;
         StartAt = startAt;
-        Offset = offset;
+        RewindOffset = rewindOffset;
         Speed = Math.Clamp(speed, 1.0, 2.0);
         _output = ChannelExt.Create<LiveStreamItem>(ChannelExt.UnboundedFanInOptions);
         _ = Run(); // Start immediately
@@ -53,8 +53,8 @@ public sealed class ReplayStreamMuxer : WorkerBase
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         try {
-            Log.LogInformation("OnRun: Starting for chat {ChatId}, startAt={StartAt}, offset={Offset}",
-                ChatId, StartAt, Offset);
+            Log.LogInformation("OnRun: Starting for chat {ChatId}, startAt={StartAt}, rewindOffset={RewindOffset}",
+                ChatId, StartAt, RewindOffset);
 
             var chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(false);
             if (chat?.Rules.CanRead() != true) {
@@ -227,12 +227,12 @@ public sealed class ReplayStreamMuxer : WorkerBase
 
     private async Task<Moment?> ResolveStartPosition(CancellationToken cancellationToken)
     {
-        if (Offset == TimeSpan.Zero)
+        if (RewindOffset == TimeSpan.Zero)
             return await FindNearestAudioPosition(StartAt, cancellationToken).ConfigureAwait(false);
 
-        return Offset < TimeSpan.Zero
-            ? await ResolvePositionInPast(StartAt, Offset.Negate(), cancellationToken).ConfigureAwait(false)
-            : await ResolvePositionInFuture(StartAt, Offset, cancellationToken).ConfigureAwait(false);
+        return RewindOffset < TimeSpan.Zero
+            ? await ResolvePositionInPast(StartAt, RewindOffset.Negate(), cancellationToken).ConfigureAwait(false)
+            : await ResolvePositionInFuture(StartAt, RewindOffset, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<Moment?> FindNearestAudioPosition(Moment startAt, CancellationToken cancellationToken)

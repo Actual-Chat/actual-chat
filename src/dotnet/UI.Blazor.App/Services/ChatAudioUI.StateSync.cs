@@ -304,6 +304,9 @@ public partial class ChatAudioUI
                     continue;
                 }
 
+                // Stop listening when replay starts
+                await ClearListeningChats().ConfigureAwait(false);
+
                 // Start or switch replay
                 var audioFocusScope = await TryAcquireAudioFocus("Replay").ConfigureAwait(false);
                 if (audioFocusScope is null) {
@@ -313,7 +316,7 @@ public partial class ChatAudioUI
                 }
 
                 _ = TuneUI.Play(Tune.StartReplay);
-                var startTask = StartReplayPlayer(newState.ChatId, newState.StartAt, newState.Offset, cancellationToken);
+                var startTask = StartReplayPlayer(newState.ChatId, newState.StartAt, newState.RewindOffset, cancellationToken);
                 // Set up "resume listening after done" background task
                 _ = BackgroundTask.Run(async () => {
                     var endPlaybackTask = await startTask.ConfigureAwait(false);

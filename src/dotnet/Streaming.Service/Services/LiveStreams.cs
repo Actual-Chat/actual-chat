@@ -68,7 +68,7 @@ public class LiveStreams(IServiceProvider services) : ILiveStreams
         Session session,
         ChatId chatId,
         Moment startAt,
-        TimeSpan offset,
+        TimeSpan rewindOffset,
         double speed,
         CancellationToken cancellationToken)
     {
@@ -81,7 +81,7 @@ public class LiveStreams(IServiceProvider services) : ILiveStreams
             if (_replayMuxers.TryRemove(key, out var oldMuxer))
                 _ = oldMuxer.DisposeSilentlyAsync();
 
-            muxer = new ReplayStreamMuxer(Services, session, chatId, startAt, offset, speed);
+            muxer = new ReplayStreamMuxer(Services, session, chatId, startAt, rewindOffset, speed);
             _replayMuxers[key] = muxer;
         }
 

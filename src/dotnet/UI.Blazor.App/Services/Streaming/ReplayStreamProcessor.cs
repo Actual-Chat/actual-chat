@@ -15,7 +15,7 @@ public sealed class ReplayStreamProcessor : WorkerBase
     public Session Session { get; }
     public ChatId ChatId { get; }
     public Moment StartAt { get; }
-    public TimeSpan Offset { get; }
+    public TimeSpan RewindOffset { get; }
     public double Speed { get; }
 
     public event Action<LiveStreamInfo, TimeSpan, IAsyncEnumerable<byte[]>>? StreamStarted;
@@ -25,7 +25,7 @@ public sealed class ReplayStreamProcessor : WorkerBase
         Session session,
         ChatId chatId,
         Moment startAt,
-        TimeSpan offset,
+        TimeSpan rewindOffset,
         double speed = 1.0,
         CancellationTokenSource? stopTokenSource = null)
         : base(stopTokenSource)
@@ -35,7 +35,7 @@ public sealed class ReplayStreamProcessor : WorkerBase
         Session = session;
         ChatId = chatId;
         StartAt = startAt;
-        Offset = offset;
+        RewindOffset = rewindOffset;
         Speed = speed;
     }
 
@@ -45,10 +45,10 @@ public sealed class ReplayStreamProcessor : WorkerBase
         var demuxerLog = Services.LogFor<LiveStreamDemuxer>();
 
         try {
-            Log.LogInformation("-> LiveStreams.GetReplayStream({ChatId}, {StartAt}, {Offset}, speed={Speed})",
-                ChatId, StartAt, Offset, Speed);
+            Log.LogInformation("-> LiveStreams.GetReplayStream({ChatId}, {StartAt}, {RewindOffset}, speed={Speed})",
+                ChatId, StartAt, RewindOffset, Speed);
             var stream = await liveStreams
-                .GetReplayStream(Session, ChatId, StartAt, Offset, Speed, cancellationToken)
+                .GetReplayStream(Session, ChatId, StartAt, RewindOffset, Speed, cancellationToken)
                 .ConfigureAwait(false);
             Log.LogInformation("<- LiveStreams.GetReplayStream({ChatId})", ChatId);
 
