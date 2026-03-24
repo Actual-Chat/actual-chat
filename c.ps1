@@ -702,8 +702,13 @@ load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1;192.168.65.0/24 aut
                 exit 1
             }
 
-            Write-Host "Running installer (follow the prompts)..." -ForegroundColor Cyan
-            Start-Process -FilePath $installerPath -Wait
+            if ($env:CI) {
+                Write-Host "Running installer silently (CI mode)..." -ForegroundColor Cyan
+                Start-Process -FilePath $installerPath -ArgumentList "/S" -Wait
+            } else {
+                Write-Host "Running installer (follow the prompts)..." -ForegroundColor Cyan
+                Start-Process -FilePath $installerPath -Wait
+            }
             Remove-Item $installerPath -ErrorAction SilentlyContinue
 
             if (-not (Test-Path $exePath)) {

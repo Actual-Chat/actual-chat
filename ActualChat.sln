@@ -35,6 +35,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{89CA819A
 	ProjectSection(SolutionItems) = preProject
 		tests\Directory.Build.props = tests\Directory.Build.props
 		tests\Directory.Build.targets = tests\Directory.Build.targets
+		tests\c-audio.Tests.ps1 = tests\c-audio.Tests.ps1
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Testing", "tests\Testing\Testing.csproj", "{9326C2D8-265B-4911-AFE9-E76206F6E943}"
@@ -268,6 +269,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{
 		.github\workflows\build-test-deploy-dev.yml = .github\workflows\build-test-deploy-dev.yml
 		.github\workflows\create-release-branch.yml = .github\workflows\create-release-branch.yml
 		.github\workflows\test-nightly.yml = .github\workflows\test-nightly.yml
+		.github\workflows\test-claude.yml = .github\workflows\test-claude.yml
 		.github\workflows\test-slow.yml = .github\workflows\test-slow.yml
 		.github\workflows\_run-tests.yml = .github\workflows\_run-tests.yml
 	EndProjectSection
