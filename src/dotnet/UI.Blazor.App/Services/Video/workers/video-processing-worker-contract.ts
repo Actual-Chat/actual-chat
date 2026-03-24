@@ -151,6 +151,7 @@ export interface VideoProcessingStats {
 
 export interface VideoProcessingWorker {
     startWithStream(config: VideoProcessingConfig, frameInputStream: ReadableStream<VideoFrame>, timeout?: RpcTimeout): Promise<void>;
+    startWithTrack(config: VideoProcessingConfig, track: MediaStreamTrack, timeout?: RpcTimeout): Promise<void>;
     initialize(config: VideoProcessingConfig, timeout?: RpcTimeout): Promise<void>;
     encodeFrame(frame: VideoFrame, noWait?: RpcNoWait): Promise<void>;
 

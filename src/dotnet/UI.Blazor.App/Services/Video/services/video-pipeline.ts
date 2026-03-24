@@ -75,6 +75,7 @@ export class VideoPipeline implements IVideoPipeline {
     private readonly workerInstance: Worker;
     private readonly worker: (VideoProcessingWorker & Disposable);
     private readonly useStreams: boolean;
+    private readonly useTrackTransfer: boolean;
     private processor: MediaStreamTrackProcessor | null = null;
     private frameReader: ReadableStreamDefaultReader<VideoFrame> | null = null;
 
@@ -116,9 +117,14 @@ export class VideoPipeline implements IVideoPipeline {
     constructor(private config: PipelineConfig) {
         this.savedBitrate = config.encoderConfig.bitrate;
 
-        // Detect transferable stream support
+        // Detect best frame delivery mode:
+        // 1. Transferable streams (Chrome) — transfer ReadableStream<VideoFrame> to worker
+        // 2. Track transfer (Safari 18+) — transfer MediaStreamTrack, worker creates MSTP
+        // 3. RPC fallback — per-frame postMessage with VideoFrame transfer
         this.useStreams = supportsTransferableStreams();
-        infoLog?.log(`Transferable streams: ${this.useStreams ? 'supported' : 'not supported (RPC fallback)'}`);
+        this.useTrackTransfer = !this.useStreams && this.supportsTrackTransfer();
+        const mode = this.useStreams ? 'stream' : this.useTrackTransfer ? 'track transfer' : 'RPC fallback';
+        infoLog?.log(`Frame delivery mode: ${mode}`);
 
         // Create unified video processing worker
         const workerPath = Versioning.mapPath('/dist/videoProcessingWorker.js');
@@ -153,7 +159,7 @@ export class VideoPipeline implements IVideoPipeline {
                             errorLog?.log('Preview callback error:', error);
                         }
                     }
-                    // Frame will be GC'd if not used by preview
+                    frame.close();
                     return Promise.resolve();
                 },
                 onStreamCreated: (codecSettings: string) => {
@@ -194,6 +200,8 @@ export class VideoPipeline implements IVideoPipeline {
 
         if (this.useStreams) {
             await this.startStreamMode(videoTrack, workerConfig);
+        } else if (this.useTrackTransfer) {
+            await this.startTrackTransferMode(videoTrack, workerConfig);
         } else {
             await this.startRpcFallbackMode(videoTrack, workerConfig);
         }
@@ -261,6 +269,21 @@ export class VideoPipeline implements IVideoPipeline {
 
         await this.worker.startWithStream(config, frameReadable, { type: 'rpc-timeout', timeoutMs: 15000 });
         infoLog?.log('Stream mode started');
+    }
+
+    /**
+     * Track transfer mode: transfer MediaStreamTrack to worker, worker creates MSTP.
+     * Used on Safari 18+ where ReadableStream isn't transferable but MediaStreamTrack is.
+     */
+    private async startTrackTransferMode(videoTrack: MediaStreamTrack, config: VideoProcessingConfig): Promise<void> {
+        infoLog?.log('Starting track transfer mode...');
+        try {
+            await this.worker.startWithTrack(config, videoTrack, { type: 'rpc-timeout', timeoutMs: 15000 });
+            infoLog?.log('Track transfer mode started');
+        } catch (error) {
+            warnLog?.log('Track transfer mode failed, falling back to RPC:', error);
+            await this.startRpcFallbackMode(videoTrack, config);
+        }
     }
 
     /**
@@ -620,5 +643,24 @@ export class VideoPipeline implements IVideoPipeline {
     private hasMSTPInWindow(): boolean {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
         return typeof (globalThis as any).MediaStreamTrackProcessor === 'function';
+    }
+
+    private supportsTrackTransfer(): boolean {
+        // Safari 18+ supports transferring MediaStreamTrack to workers.
+        // Test by trying to transfer a track through a MessageChannel.
+        try {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1;
+            canvas.height = 1;
+            const stream = canvas.captureStream(0);
+            const track = stream.getVideoTracks()[0];
+            const mc = new MessageChannel();
+            mc.port1.postMessage(track, [track as unknown as Transferable]);
+            mc.port1.close();
+            mc.port2.close();
+            return true;
+        } catch {
+            return false;
+        }
     }
 }

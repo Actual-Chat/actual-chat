@@ -28,8 +28,12 @@ export function deriveAvcCodecFromDescription(desc: ArrayBuffer): string {
 }
 
 /**
- * Resize and return refs to the (potentially new) canvas/ctx.
+ * Resize (and optionally rotate 90° CW) a frame to target dimensions.
  * Returns { frame, canvas, ctx } so caller can cache the canvas.
+ *
+ * @param rotate90 When true, applies 90° clockwise rotation before drawing.
+ *   Used for iOS portrait where the camera sensor gives landscape frames (1280x720)
+ *   but the encoder expects portrait (720x1280).
  */
 export function resizeFrame(
     frame: VideoFrame,
@@ -37,17 +41,18 @@ export function resizeFrame(
     targetHeight: number,
     canvas: OffscreenCanvas | null,
     ctx: OffscreenCanvasRenderingContext2D | null,
+    rotate90?: boolean,
 ): { frame: VideoFrame; canvas: OffscreenCanvas | null; ctx: OffscreenCanvasRenderingContext2D | null } {
     const frameWidth = frame.displayWidth;
     const frameHeight = frame.displayHeight;
 
-    if (frameWidth === targetWidth && frameHeight === targetHeight)
+    if (!rotate90 && frameWidth === targetWidth && frameHeight === targetHeight)
         return { frame, canvas, ctx };
 
     if (canvas?.width !== targetWidth || canvas.height !== targetHeight) {
-        infoLog?.log(`Creating resize canvas: ${targetWidth}x${targetHeight}`);
+        infoLog?.log(`Creating resize canvas: ${targetWidth}x${targetHeight}${rotate90 ? ' (with rotation)' : ''}`);
         canvas = new OffscreenCanvas(targetWidth, targetHeight);
-        ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx = canvas.getContext('2d');
     }
 
     if (!ctx) {
@@ -58,23 +63,35 @@ export function resizeFrame(
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, targetWidth, targetHeight);
 
-    const frameAspect = frameWidth / frameHeight;
-    const targetAspect = targetWidth / targetHeight;
-    let drawWidth: number, drawHeight: number, offsetX: number, offsetY: number;
-
-    if (frameAspect > targetAspect) {
-        drawWidth = targetWidth;
-        drawHeight = targetWidth / frameAspect;
-        offsetX = 0;
-        offsetY = (targetHeight - drawHeight) / 2;
+    if (rotate90) {
+        // Rotate 90° clockwise: translate to top-right corner, rotate, then draw
+        // The frame is landscape (e.g. 1280x720) and canvas is portrait (e.g. 720x1280)
+        ctx.save();
+        ctx.translate(targetWidth, 0);
+        ctx.rotate(Math.PI / 2);
+        // After rotation, drawing space is targetHeight x targetWidth (landscape)
+        ctx.drawImage(frame, 0, 0, targetHeight, targetWidth);
+        ctx.restore();
     } else {
-        drawHeight = targetHeight;
-        drawWidth = targetHeight * frameAspect;
-        offsetX = (targetWidth - drawWidth) / 2;
-        offsetY = 0;
-    }
+        // Standard letterboxed resize
+        const frameAspect = frameWidth / frameHeight;
+        const targetAspect = targetWidth / targetHeight;
+        let drawWidth: number, drawHeight: number, offsetX: number, offsetY: number;
 
-    ctx.drawImage(frame, offsetX, offsetY, drawWidth, drawHeight);
+        if (frameAspect > targetAspect) {
+            drawWidth = targetWidth;
+            drawHeight = targetWidth / frameAspect;
+            offsetX = 0;
+            offsetY = (targetHeight - drawHeight) / 2;
+        } else {
+            drawHeight = targetHeight;
+            drawWidth = targetHeight * frameAspect;
+            offsetX = (targetWidth - drawWidth) / 2;
+            offsetY = 0;
+        }
+
+        ctx.drawImage(frame, offsetX, offsetY, drawWidth, drawHeight);
+    }
 
     const newFrame = new VideoFrame(canvas, {
         timestamp: frame.timestamp,

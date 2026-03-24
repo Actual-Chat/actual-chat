@@ -38,6 +38,12 @@ import {
 // Import the ONNX model so esbuild copies it to dist/assets/onnx/
 import SegmentationModelUrl from './selfie_segmentation_olive_webgpu.onnx';
 
+// Type declaration for Insertable Streams API (may be available in worker scope on Safari 18+)
+declare class MediaStreamTrackProcessor<T = VideoFrame> {
+    constructor(options: { track: MediaStreamTrack });
+    readable: ReadableStream<T>;
+}
+
 const { debugLog, infoLog, warnLog, errorLog } = Log.get('VideoPipeline');
 
 // ─── Callbacks (set by worker entry after RPC init) ─────────────────────────
@@ -105,6 +111,7 @@ let lastVideoStream: InternalVideoStream | null = null;
 let pendingStreamFrames: VideoStreamFrame[] = [];
 let codecSettings: string | null = null;
 let storedDescriptionBytes: Uint8Array | null = null;
+let initialHEVCDescription: Uint8Array<ArrayBuffer> | null = null;
 let firstEncodedTimestamp: number | null = null;
 let streamingEnabled = false;
 
@@ -370,8 +377,13 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
             infoLog?.log(`Start timestamp set to ${startTimestamp}μs`);
         }
 
-        // Resize
-        const resized = resizeFrame(frame, encoderConfig.width, encoderConfig.height, resizeCanvas, resizeCtx);
+        // Detect rotation: frame dimensions are transposed vs encoder config (e.g. iOS portrait:
+        // sensor gives 1280x720 but encoder expects 720x1280). Check per-frame to handle
+        // mid-call device rotation.
+        const frameRotated = frame.displayWidth === encoderConfig.height
+            && frame.displayHeight === encoderConfig.width
+            && frame.displayWidth !== encoderConfig.width;
+        const resized = resizeFrame(frame, encoderConfig.width, encoderConfig.height, resizeCanvas, resizeCtx, frameRotated);
         let processedFrame = resized.frame;
         resizeCanvas = resized.canvas;
         resizeCtx = resized.ctx;
@@ -495,7 +507,20 @@ function deliverChunkToStream(
     }
 
     if (isKeyFrame && descriptionBytes && descriptionBytes.byteLength > 0) {
-        const descBytes = new Uint8Array(descriptionBytes);
+        let descBytes = new Uint8Array(descriptionBytes);
+
+        // Preserve initial HEVC description — it contains VUI rotation metadata
+        // from the iOS camera that subsequent encoder instances lose after codec switch
+        if (codec.startsWith('hev1')) {
+            if (!initialHEVCDescription) {
+                initialHEVCDescription = descBytes;
+                debugLog?.log('Stored initial HEVC description:', descBytes.length, 'bytes');
+            } else {
+                warnLog?.log(`Substituting HEVC description (${descBytes.length}B) with initial (${initialHEVCDescription.length}B) to preserve VUI rotation`);
+                descBytes = initialHEVCDescription;
+            }
+        }
+
         frame.description = descBytes;
         if (!codecSettings) {
             let binary = '';
@@ -556,10 +581,16 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
 
             if (!dimensionsReconciled) {
                 dimensionsReconciled = true;
-                const frameW = rawFrame.codedWidth;
-                const frameH = rawFrame.codedHeight;
-                if (frameW !== encoderConfig.width || frameH !== encoderConfig.height) {
-                    warnLog?.log(`Frame dimensions ${frameW}x${frameH} differ from config, reconfiguring`);
+                const frameW = rawFrame.displayWidth;
+                const frameH = rawFrame.displayHeight;
+                // Detect rotation: frame is transposed relative to encoder config (e.g. iOS portrait
+                // camera gives 1280x720 frames but encoder expects 720x1280)
+                const isRotated = frameW === encoderConfig.height && frameH === encoderConfig.width
+                    && frameW !== encoderConfig.width;
+                if (isRotated) {
+                    warnLog?.log(`Frame ${frameW}x${frameH} is rotated vs config ${encoderConfig.width}x${encoderConfig.height}, will rotate during encode`);
+                } else if (frameW !== encoderConfig.width || frameH !== encoderConfig.height) {
+                    warnLog?.log(`Display dimensions ${frameW}x${frameH} differ from config (coded: ${rawFrame.codedWidth}x${rawFrame.codedHeight}), reconfiguring`);
                     encoderConfig.width = frameW; encoderConfig.height = frameH;
                     await encoder.reconfigure({ width: frameW, height: frameH, bitrate: encoderConfig.bitrate });
                     if (segConfig) { segConfig.outputWidth = frameW; segConfig.outputHeight = frameH; }
@@ -567,11 +598,7 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
                 }
             }
 
-            let frame = rawFrame;
-            if (rawFrame.displayWidth !== rawFrame.codedWidth || rawFrame.displayHeight !== rawFrame.codedHeight) {
-                frame = new VideoFrame(rawFrame, { displayWidth: rawFrame.codedWidth, displayHeight: rawFrame.codedHeight });
-                rawFrame.close();
-            }
+            const frame = rawFrame;
 
             if (!vadSpeaking && vadRemoteStreamCount >= 2) {
                 const now = performance.now();
@@ -625,6 +652,50 @@ export const serverImpl: VideoProcessingWorker = {
             infoLog?.log('Video processing worker started (stream mode)');
         } catch (error) {
             errorLog?.log('Failed to start stream mode:', error);
+            throw error;
+        }
+    },
+
+    startWithTrack: async (config, track): Promise<void> => {
+        try {
+            infoLog?.log('Starting video processing worker (track transfer mode)...');
+
+            // Check if MSTP is available in worker scope
+            if (typeof MediaStreamTrackProcessor === 'undefined') {
+                throw new Error('MediaStreamTrackProcessor not available in worker scope');
+            }
+
+            streamCtx.sessionToken = config.streaming.sessionToken;
+            streamCtx.chatId = config.streaming.chatId;
+            streamCtx.serverClockOffsetMs = config.streaming.serverClockOffsetMs;
+            streamingEnabled = true;
+
+            streamCtx.signalrConnection = initSignalR(config.streaming.hubUrl);
+
+            if (config.segmentation) {
+                await initializeSegmentation({ ...config.segmentation, outputWidth: config.encoder.width, outputHeight: config.encoder.height });
+                blurEnabled = true;
+                infoLog?.log('Segmentation initialized (blur enabled)');
+            }
+
+            createEncoder(config.encoder);
+
+            if (config.adaptiveFramerate) {
+                vadReducedFrameIntervalMs = 1000 / config.adaptiveFramerate.reducedFps;
+            }
+
+            processing = true;
+            streamCtx.processing = true;
+            frameCount = 0;
+            dimensionsReconciled = false;
+
+            const processor = new MediaStreamTrackProcessor({ track });
+            const inputReader = processor.readable.getReader();
+            streamReadLoopPromise = streamReadLoop(inputReader);
+
+            infoLog?.log('Video processing worker started (track transfer mode)');
+        } catch (error) {
+            errorLog?.log('Failed to start track transfer mode:', error);
             throw error;
         }
     },
@@ -752,7 +823,7 @@ export const serverImpl: VideoProcessingWorker = {
         segFrameCounter = 0; hasValidMask = false; loggedBlurFormat = false; processingFrame = false; frameSequence = 0;
         segProcessedFrames = 0; segTotalInferenceTime = 0; segTotalBlurTime = 0; segTotalProcessingTime = 0; segDroppedFrames = 0;
         videoStream = null; lastVideoStream = null; pendingStreamFrames = [];
-        codecSettings = null; storedDescriptionBytes = null; firstEncodedTimestamp = null; streamingEnabled = false;
+        codecSettings = null; storedDescriptionBytes = null; initialHEVCDescription = null; firstEncodedTimestamp = null; streamingEnabled = false;
 
         infoLog?.log('Video processing worker stopped');
     },

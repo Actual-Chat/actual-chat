@@ -132,6 +132,9 @@ export function isTransferable(x: unknown): x is Transferable {
         return true;
     if (typeof AudioData !== 'undefined' && x instanceof AudioData)
         return true;
+    // MediaStreamTrack can be transferred (Safari 18+)
+    if (typeof MediaStreamTrack !== 'undefined' && x instanceof MediaStreamTrack)
+        return true;
     if (x instanceof ReadableStream)
         return true;
     if (x instanceof WritableStream)
