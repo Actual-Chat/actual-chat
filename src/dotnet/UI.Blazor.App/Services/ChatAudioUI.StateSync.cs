@@ -321,7 +321,7 @@ public partial class ChatAudioUI
                     await Clocks.CpuClock.Delay(RestorePreviousPlaybackStateDelay, cancellationToken).ConfigureAwait(false);
                     // Don't clear state if it was paused or changed since we started
                     var currentState = _replayState.Value;
-                    if (currentState == newState)
+                    if (ReferenceEquals(currentState, newState))
                         _replayState.Value = null;
                 }, cancellationToken);
                 await startTask.ConfigureAwait(false);
