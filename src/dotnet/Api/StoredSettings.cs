@@ -1,5 +1,4 @@
 using ActualLab.Rpc;
-using AddChatMembersBannerSettings = ActualChat.Chat.AddChatMembersBannerSettings;
 using ChatInviteSettings = ActualChat.Invite.ChatInviteSettings;
 
 namespace ActualChat;
@@ -28,7 +27,7 @@ namespace ActualChat;
 // Chat-User settings
 [MemoryPackUnion(50, typeof(ChatUserSettings))]
 [MemoryPackUnion(51, typeof(ChatInviteSettings))]
-[MemoryPackUnion(52, typeof(AddChatMembersBannerSettings))]
+[MemoryPackUnion(52, typeof(AddChatMembersBannerUserSettings))]
 // Local settings
 [MemoryPackUnion(100, typeof(LocalAppSettings))]
 [MemoryPackUnion(101, typeof(LocalOnboardingSettings))]
@@ -51,7 +50,7 @@ namespace ActualChat;
 // Chat-User settings
 [Union(50, typeof(ChatUserSettings))]
 [Union(51, typeof(ChatInviteSettings))]
-[Union(52, typeof(AddChatMembersBannerSettings))]
+[Union(52, typeof(AddChatMembersBannerUserSettings))]
 // Local settings
 [Union(100, typeof(LocalAppSettings))]
 [Union(101, typeof(LocalOnboardingSettings))]

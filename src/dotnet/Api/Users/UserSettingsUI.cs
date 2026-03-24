@@ -1,15 +1,15 @@
 namespace ActualChat.Users;
 
 /// <summary>
-/// Session-bound wrapper around <see cref="IAccountSettings"/>.
+/// Session-bound wrapper around <see cref="IUserSettings"/>.
 /// Works with <see cref="StoredSettings"/> instead of raw bytes.
 /// When <see cref="Temporals"/> is available, Get checks for temporary overrides first,
 /// and Set applies a temporary override alongside the server write.
 /// </summary>
-public sealed class AccountSettingsUI(IServiceProvider services, Session session)
+public sealed class UserSettingsUI(IServiceProvider services, Session session)
 {
     public IServiceProvider Services { get; } = services;
-    public IAccountSettings AccountSettings { get; } = services.GetRequiredService<IAccountSettings>();
+    public IUserSettings UserSettings { get; } = services.GetRequiredService<IUserSettings>();
     public Temporals Temporals { get; } = services.Temporals();
     public Session Session { get; } = session;
 
@@ -20,7 +20,7 @@ public sealed class AccountSettingsUI(IServiceProvider services, Session session
             if (value is not null)
                 return value;
         }
-        return await AccountSettings.Get(Session, key, cancellationToken).ConfigureAwait(false);
+        return await UserSettings.Get(Session, key, cancellationToken).ConfigureAwait(false);
     }
 
     public Task Set(string key, StoredSettings? value, CancellationToken cancellationToken = default)
@@ -28,7 +28,7 @@ public sealed class AccountSettingsUI(IServiceProvider services, Session session
         if (Temporals.IsReal && value is not null)
             Temporals.Set(key, value);
 
-        var command = new AccountSettings_Set(Session, key, value);
-        return AccountSettings.GetCommander().Call(command, true, cancellationToken);
+        var command = new UserSettings_Set(Session, key, value);
+        return UserSettings.GetCommander().Call(command, true, cancellationToken);
     }
 }

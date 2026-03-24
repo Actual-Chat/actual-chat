@@ -22,14 +22,14 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var appHost = AppHost;
         var services = appHost.Services;
         var session = Session.New();
-        var accountSettingsUI = services.AccountSettingsUI(session);
+        var userSettingsUI = services.UserSettingsUI(session);
 
         _ = await appHost.SignIn(session, new AccountFull("Bobby"));
         var backend = services.GetRequiredService<IAudioStreamingBackend>();
         var client = services.GetRequiredService<IStreamClient>();
         if (mustSetUserLanguageSettings) {
             var userLanguageSettings = new UserLanguageSettings() { Primary = Languages.Main };
-            await accountSettingsUI.UserLanguageSettings().Set(userLanguageSettings, CancellationToken.None);
+            await userSettingsUI.UserLanguageSettings().Set(userLanguageSettings, CancellationToken.None);
         }
 
         var thisNode = services.MeshWatcher().ThisNode;
@@ -55,13 +55,13 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var services = appHost.Services;
         var commander = services.Commander();
         var session = Session.New();
-        var accountSettingsUI = services.AccountSettingsUI(session);
+        var userSettingsUI = services.UserSettingsUI(session);
 
         _ = await appHost.SignIn(session, new AccountFull("Bobby"));
         var backend = services.GetRequiredService<IAudioStreamingBackend>();
         var client = services.GetRequiredService<IStreamClient>();
         var log = services.LogFor<StreamingBackendTest>();
-        await accountSettingsUI.UserLanguageSettings().Set(
+        await userSettingsUI.UserLanguageSettings().Set(
             new UserLanguageSettings {
                 Primary = Languages.Russian,
             });
@@ -77,7 +77,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         using var cts = new CancellationTokenSource();
 
         var chatUserSettings = new ChatUserSettings { Language = Languages.Russian };
-        await accountSettingsUI.ChatUserSettings(chat.Id).Set(chatUserSettings, CancellationToken.None);
+        await userSettingsUI.ChatUserSettings(chat.Id).Set(chatUserSettings, CancellationToken.None);
 
         var streamId = StreamId.New(services.MeshWatcher().ThisNode.Ref);
         var audioRecord = new AudioRecord(
@@ -111,9 +111,9 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var client = services.GetRequiredService<IStreamClient>();
         var chats = services.GetRequiredService<IChatsBackend>();
         var log = services.LogFor<StreamingBackendTest>();
-        var accountSettingsUI = services.AccountSettingsUI(session);
+        var userSettingsUI = services.UserSettingsUI(session);
 
-        await accountSettingsUI.UserLanguageSettings().Set(
+        await userSettingsUI.UserLanguageSettings().Set(
             new UserLanguageSettings {
                 Primary = Languages.Russian,
             });
@@ -129,7 +129,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         using var cts = new CancellationTokenSource();
 
         var chatUserSettings = new ChatUserSettings { Language = Languages.Russian };
-        await accountSettingsUI.ChatUserSettings(chat.Id).Set(chatUserSettings, CancellationToken.None);
+        await userSettingsUI.ChatUserSettings(chat.Id).Set(chatUserSettings, CancellationToken.None);
 
         var streamId = StreamId.New(services.MeshWatcher().ThisNode.Ref);
         var audioRecord = new AudioRecord(
@@ -180,9 +180,9 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var client = services.GetRequiredService<IStreamClient>();
         var chats = services.GetRequiredService<IChatsBackend>();
         var log = services.LogFor<StreamingBackendTest>();
-        var accountSettingsUI = services.AccountSettingsUI(session);
+        var userSettingsUI = services.UserSettingsUI(session);
 
-        await accountSettingsUI.UserLanguageSettings().Set(
+        await userSettingsUI.UserLanguageSettings().Set(
             new UserLanguageSettings {
                 Primary = Languages.Russian,
             });
@@ -198,7 +198,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         using var cts = new CancellationTokenSource();
 
         var chatUserSettings = new ChatUserSettings { Language = Languages.Russian };
-        await accountSettingsUI.ChatUserSettings(chat.Id).Set(chatUserSettings, CancellationToken.None);
+        await userSettingsUI.ChatUserSettings(chat.Id).Set(chatUserSettings, CancellationToken.None);
 
         var streamId = StreamId.New(services.MeshWatcher().ThisNode.Ref);
         var audioRecord = new AudioRecord(
@@ -250,9 +250,9 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var backend = services.GetRequiredService<IAudioStreamingBackend>();
         var client = services.GetRequiredService<IStreamClient>();
         var log = services.LogFor<StreamingBackendTest>();
-        var accountSettingsUI = services.AccountSettingsUI(session);
+        var userSettingsUI = services.UserSettingsUI(session);
 
-        await accountSettingsUI.UserLanguageSettings().Set(
+        await userSettingsUI.UserLanguageSettings().Set(
             new UserLanguageSettings {
                 Primary = Languages.Russian,
             });
@@ -294,9 +294,9 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var backend = services.GetRequiredService<IAudioStreamingBackend>();
         var client = services.GetRequiredService<IStreamClient>();
         var log = services.LogFor<StreamingBackendTest>();
-        var accountSettingsUI = services.AccountSettingsUI(session);
+        var userSettingsUI = services.UserSettingsUI(session);
 
-        await accountSettingsUI.UserLanguageSettings().Set(
+        await userSettingsUI.UserLanguageSettings().Set(
             new UserLanguageSettings {
                 Primary = Languages.Russian,
             });

@@ -157,8 +157,8 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApi<IChatUsages, ChatUsages>();
         rpcHost.AddBackend<IChatUsagesBackend, ChatUsagesBackend>();
 
-        // AccountSettings, ServerSettings and ServerKvas
-        rpcHost.AddLocalApi<IAccountSettings, AccountSettings>();
+        // UserSettings, ServerSettings and ServerKvas
+        rpcHost.AddLocalApi<IUserSettings, UserSettings>();
         rpcHost.AddLocalApi<IServerSettings, ServerSettings>();
         rpcHost.AddLocalApi<IServerKvas, ServerKvas>(); // Used by Authors, Avatars -> Chats, etc.
         rpcHost.AddBackend<IServerKvasBackend, ServerKvasBackend>();

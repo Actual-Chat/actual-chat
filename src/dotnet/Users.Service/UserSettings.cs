@@ -5,10 +5,10 @@ using CommunityToolkit.HighPerformance.Buffers;
 namespace ActualChat.Users;
 
 /// <summary>
-/// Server-side implementation of <see cref="IAccountSettings"/>.
+/// Server-side implementation of <see cref="IUserSettings"/>.
 /// Translates between <see cref="StoredSettings"/> and raw bytes stored in <see cref="IServerKvasBackend"/>.
 /// </summary>
-public class AccountSettings : IAccountSettings
+public class UserSettings : IUserSettings
 {
     private static KvasSerializer Serializer => Kvas.KvasExt.Serializer;
 
@@ -17,7 +17,7 @@ public class AccountSettings : IAccountSettings
     private ICommander Commander { get; }
     private ILogger Log { get; }
 
-    public AccountSettings(IServiceProvider services)
+    public UserSettings(IServiceProvider services)
     {
         Log = services.LogFor(GetType());
         Accounts = services.GetRequiredService<IAccounts>();
@@ -34,7 +34,7 @@ public class AccountSettings : IAccountSettings
     }
 
     // [CommandHandler]
-    public virtual async Task OnSet(AccountSettings_Set command, CancellationToken cancellationToken = default)
+    public virtual async Task OnSet(UserSettings_Set command, CancellationToken cancellationToken = default)
     {
         if (Invalidation.IsActive)
             return;
@@ -109,8 +109,8 @@ public class AccountSettings : IAccountSettings
                 return typeof(ChatUserSettings);
             if (key.StartsWith(ChatInviteSettings.KeyPrefix))
                 return typeof(ChatInviteSettings);
-            if (key.StartsWith(AddChatMembersBannerSettings.KeyPrefix))
-                return typeof(AddChatMembersBannerSettings);
+            if (key.StartsWith(AddChatMembersBannerUserSettings.KeyPrefix))
+                return typeof(AddChatMembersBannerUserSettings);
             return typeof(StoredSettings);
         }
 

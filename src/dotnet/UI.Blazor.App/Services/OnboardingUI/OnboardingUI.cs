@@ -26,8 +26,8 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
         var stateFactory = hub.StateFactory;
         var localSettings = hub.LocalSettings;
         var type = GetType();
-        _userSettings = stateFactory.NewAccountSettingsSynced<UserOnboardingSettings>(
-            AccountSettingsUI,
+        _userSettings = stateFactory.NewUserSettingsSynced(
+            UserSettingsUI,
             UserOnboardingSettings.KvasKey,
             new UserOnboardingSettings(),
             updateDelayer: FixedDelayer.NextTick,

@@ -86,7 +86,7 @@ public partial class ChatUI
 
     [ComputeMethod]
     protected virtual async Task<UserChatRecordingDetectedLanguage> GetDetectedLanguage(CancellationToken cancellationToken)
-        => await AccountSettingsUI.UserChatRecordingDetectedLanguage().Get(cancellationToken).ConfigureAwait(false);
+        => await UserSettingsUI.UserChatRecordingDetectedLanguage().Get(cancellationToken).ConfigureAwait(false);
 
     private async Task PushKeepAwakeState(CancellationToken cancellationToken)
     {

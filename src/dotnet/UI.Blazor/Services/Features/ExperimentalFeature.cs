@@ -15,7 +15,7 @@ public abstract class ExperimentalFeature : FeatureDef<bool>, IClientFeatureDef
         if (!IsTargetUser(account))
             return false;
 
-        var userAppSettings = await services.AccountSettingsUI(session)
+        var userAppSettings = await services.UserSettingsUI(session)
             .UserAppSettings().Get(cancellationToken)
             .ConfigureAwait(false);
         return userAppSettings.AreExperimentalFeaturesEnabled ?? true;

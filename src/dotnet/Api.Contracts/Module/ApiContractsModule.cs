@@ -81,7 +81,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         fusion.AddClient<IMobileSessions>();
         if (HostInfo.HostKind.IsMauiApp())
             services.AddRestEase(restEase => restEase.AddClient<INativeAuthClient>());
-        fusion.AddClient<IAccountSettings>();
+        fusion.AddClient<IUserSettings>();
         fusion.AddClient<IServerSettings>();
         fusion.AddClient<IServerKvas>();
         fusion.AddClient<IAccounts>();

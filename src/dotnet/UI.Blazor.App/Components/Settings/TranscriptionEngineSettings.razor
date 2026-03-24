@@ -57,13 +57,13 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var settings = await AccountSettingsUI.UserTranscriptionEngineSettings().Get(cancellationToken).ConfigureAwait(false);
+        var settings = await UserSettingsUI.UserTranscriptionEngineSettings().Get(cancellationToken).ConfigureAwait(false);
         return new(settings.TranscriptionEngine);
     }
 
     private async Task OnEngineChanged(TranscriptionEngine engine) {
         var settings = new UserTranscriptionEngineSettings { TranscriptionEngine = engine };
-        await AccountSettingsUI.UserTranscriptionEngineSettings().Set(settings, CancellationToken.None);
+        await UserSettingsUI.UserTranscriptionEngineSettings().Set(settings, CancellationToken.None);
         await State.Recompute(); // Necessary, coz otherwise zero-effect changes won't be reflected
     }
 

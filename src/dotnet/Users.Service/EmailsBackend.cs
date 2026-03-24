@@ -71,7 +71,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
         const int takeChats = 5;
         var totalUnreadCount = 0;
         var unreadChats = new List<DigestParameters.DigestChat>();
-        var accountSettings = ServerKvasBackend.GetUserClient(account.Id);
+        var userSettings = ServerKvasBackend.GetUserClient(account.Id);
         var contactIds = await ContactsBackend
             .ListIdsForSearch(account.Id, ContactSubset.All(), true, cancellationToken)
             .ConfigureAwait(false);
@@ -94,7 +94,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
 
         async Task<DigestParameters.DigestChat?> GetDigestChat(ContactId contactId)
         {
-            var chatUserSettings = await accountSettings.ChatUserSettings(contactId.ChatId)
+            var chatUserSettings = await userSettings.ChatUserSettings(contactId.ChatId)
                 .Get(cancellationToken)
                 .ConfigureAwait(false);
             if (chatUserSettings.NotificationMode == ChatNotificationMode.Muted)

@@ -4,7 +4,7 @@ namespace ActualChat.Chat;
 /// Stores the dismissed-at timestamp for the "Add Chat Members" banner.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-public sealed partial record AddChatMembersBannerSettings : StoredSettings
+public sealed partial record AddChatMembersBannerUserSettings : StoredSettings
 {
     public static readonly string KeyPrefix = "@AddChatMembersBanner(";
     public static readonly string KeySuffix = ")";

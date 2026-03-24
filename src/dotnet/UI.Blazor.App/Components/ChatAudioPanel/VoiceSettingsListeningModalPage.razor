@@ -44,7 +44,7 @@
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
-        var listeningMode = await AccountSettingsUI.GetListeningMode(chatId, cancellationToken).ConfigureAwait(false);
+        var listeningMode = await UserSettingsUI.GetListeningMode(chatId, cancellationToken).ConfigureAwait(false);
         return new (listeningMode);
     }
 
@@ -52,12 +52,12 @@
         var chatId = ChatId;
 
         // Save new settings
-        await AccountSettingsUI.SetListeningMode(chatId, listeningMode, CancellationToken.None);
+        await UserSettingsUI.SetListeningMode(chatId, listeningMode, CancellationToken.None);
         if (listeningMode == ListeningMode.Forever) {
             await Hub.ChatAudioUI.SetListeningState(chatId, true);
-            await AccountSettingsUI.UserListeningSettings().Update(x => x.WithAlwaysListeningChat(chatId), CancellationToken.None);
+            await UserSettingsUI.UserListeningSettings().Update(x => x.WithAlwaysListeningChat(chatId), CancellationToken.None);
         } else {
-            await AccountSettingsUI.UserListeningSettings().Update(x => x.WithoutAlwaysListeningChat(chatId), CancellationToken.None);
+            await UserSettingsUI.UserListeningSettings().Update(x => x.WithoutAlwaysListeningChat(chatId), CancellationToken.None);
         }
         Context.Close();
     }

@@ -195,7 +195,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         // arrange
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60).Debuggable());
         var cancellationToken = cts.Token;
-        // await BobTester.AccountSettings.UpdateUserAppSettings(x => x with { IsIncompleteUIEnabled = true }, cancellationToken);
+        // await BobTester.UserSettings.UpdateUserAppSettings(x => x with { IsIncompleteUIEnabled = true }, cancellationToken);
         var chatId = await CreateChat(cancellationToken);
         await TranslationUI.SetIsOn(chatId, true, cancellationToken);
         await TranslationUI.SetTargetLanguage(chatId, Languages.English, cancellationToken);

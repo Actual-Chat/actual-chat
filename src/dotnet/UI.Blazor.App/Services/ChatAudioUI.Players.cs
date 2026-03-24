@@ -55,7 +55,7 @@ public partial class ChatAudioUI
 
     public async Task StartReplayWithStoredSpeed(ChatId chatId, Moment startAt, TimeSpan offset = default)
     {
-        var settings = await AccountSettingsUI.UserReplaySettings().Get().ConfigureAwait(false);
+        var settings = await UserSettingsUI.UserReplaySettings().Get().ConfigureAwait(false);
         StartReplay(chatId, startAt, settings.Speed, offset);
     }
 

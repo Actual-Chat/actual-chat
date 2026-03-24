@@ -4,13 +4,13 @@ namespace ActualChat.Users;
 /// Session-scoped account settings store that transmits <see cref="StoredSettings"/>
 /// instead of raw bytes.
 /// </summary>
-public interface IAccountSettings : IComputeService
+public interface IUserSettings : IComputeService
 {
     [ComputeMethod, RemoteComputeMethod(MinCacheDuration = 600)]
     Task<StoredSettings?> Get(Session session, string key, CancellationToken cancellationToken = default);
 
     [CommandHandler]
-    Task OnSet(AccountSettings_Set command, CancellationToken cancellationToken = default);
+    Task OnSet(UserSettings_Set command, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -18,7 +18,7 @@ public interface IAccountSettings : IComputeService
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
-public partial record AccountSettings_Set(
+public partial record UserSettings_Set(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] Session Session,
     [property: DataMember(Order = 1), MemoryPackOrder(1)] string Key,
     [property: DataMember(Order = 2), MemoryPackOrder(2)] StoredSettings? Value

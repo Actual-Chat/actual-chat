@@ -73,7 +73,7 @@
         => new() { InitialValue = Model.None };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var settings = await AccountSettingsUI.UserAppSettings().Get(cancellationToken).ConfigureAwait(false);
+        var settings = await UserSettingsUI.UserAppSettings().Get(cancellationToken).ConfigureAwait(false);
         var account = await Hub.AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
         var appSettings = await LocalSettings.LocalAppSettings().Get(cancellationToken).ConfigureAwait(false);
         return new(
@@ -93,7 +93,7 @@
     }
 
     private async Task OnEnableTelemetryClick() {
-        var settings = await AccountSettingsUI.UserAppSettings().Update(x => x with {
+        var settings = await UserSettingsUI.UserAppSettings().Update(x => x with {
             IsDataCollectionEnabled = !(x.IsDataCollectionEnabled ?? false),
         });
         await DataCollectionSettingsUI.UpdateState(settings.IsDataCollectionEnabled is true, CancellationToken.None);

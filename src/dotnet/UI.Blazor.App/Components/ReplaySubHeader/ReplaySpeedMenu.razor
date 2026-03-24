@@ -43,7 +43,7 @@
         ChatAudioUI.StartReplay(replayState.ChatId, playingAt, speed: speed);
 
         // Persist the speed preference
-        _ = Hub.AccountSettingsUI.UserReplaySettings()
+        _ = Hub.UserSettingsUI.UserReplaySettings()
             .Set(new UserReplaySettings { Speed = speed });
     }
 

@@ -24,7 +24,7 @@
 @code {
     private static readonly TimeSpan DismissDuration = TimeSpan.FromDays(7);
 
-    private SyncedState<AddChatMembersBannerSettings> _dismissedAt = null!;
+    private SyncedState<AddChatMembersBannerUserSettings> _settings = null!;
 
     private IAuthors Authors => Hub.Authors;
     private IRoles Roles => Hub.Roles;
@@ -33,16 +33,13 @@
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override void OnInitialized() {
-        var key = AddChatMembersBannerSettings.GetKey(Chat.Id);
-        _dismissedAt = StateFactory.NewAccountSettingsSynced<AddChatMembersBannerSettings>(
-            AccountSettingsUI,
-            key,
-            new AddChatMembersBannerSettings());
+        var key = AddChatMembersBannerUserSettings.GetKey(Chat.Id);
+        _settings = StateFactory.NewUserSettingsSynced(UserSettingsUI, key, new AddChatMembersBannerUserSettings());
     }
 
     public override async ValueTask DisposeAsync() {
         await base.DisposeAsync();
-        _dismissedAt.Dispose();
+        _settings.Dispose();
     }
 
     protected override ComputedState<bool>.Options GetStateOptions()
@@ -56,13 +53,13 @@
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
         var chatId = chat.Id;
-        if (!_dismissedAt.WhenFirstTimeRead.IsCompleted)
-            await _dismissedAt.WhenFirstTimeRead.ConfigureAwait(false);
+        if (!_settings.WhenFirstTimeRead.IsCompleted)
+            await _settings.WhenFirstTimeRead.ConfigureAwait(false);
 
         if (!EditMembersUI.CanAddMembers(chat))
             return false;
 
-        var dismissedAt = await _dismissedAt.Use(cancellationToken).ConfigureAwait(false);
+        var dismissedAt = await _settings.Use(cancellationToken).ConfigureAwait(false);
         if (dismissedAt.DismissedAt + DismissDuration > Clocks.ServerClock.Now)
             return false;
 
@@ -81,7 +78,7 @@
     // Event handlers
 
     private void OnDismiss()
-        => _dismissedAt.Value = new AddChatMembersBannerSettings { DismissedAt = Clocks.ServerClock.Now };
+        => _settings.Value = new AddChatMembersBannerUserSettings { DismissedAt = Clocks.ServerClock.Now };
 
     private void OnInviteClick()
         => ModalUI.Show(new AddMemberModal.Model(Chat.Id));

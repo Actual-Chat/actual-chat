@@ -22,9 +22,9 @@ public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         _ = await appHost.SignIn(session, new AccountFull("Bobby"));
         var log = services.LogFor<LivePlaybackTest>();
-        var accountSettingsUI = services.AccountSettingsUI(session);
+        var userSettingsUI = services.UserSettingsUI(session);
 
-        await accountSettingsUI.UserLanguageSettings().Set(
+        await userSettingsUI.UserLanguageSettings().Set(
             new UserLanguageSettings { Primary = Languages.Main });
 
         // Create a chat

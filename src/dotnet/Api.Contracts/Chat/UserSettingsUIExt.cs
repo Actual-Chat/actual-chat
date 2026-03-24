@@ -1,15 +1,15 @@
 namespace ActualChat.Chat;
 
-public static class ChatAccountSettingsExt
+public static class UserSettingsUIExt
 {
     public static async Task<ChatVoiceMode> GetChatVoiceMode(
-        this AccountSettingsUI accountSettingsUI,
+        this UserSettingsUI userSettingsUI,
         ChatId chatId,
         CancellationToken cancellationToken = default)
     {
         chatId = chatId.GetThreadOutermostParentOrSelf();
-        var session = accountSettingsUI.Session;
-        var services = accountSettingsUI.Services;
+        var session = userSettingsUI.Session;
+        var services = userSettingsUI.Services;
         var chats = services.GetRequiredService<IChats>();
         var chat = await chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
@@ -20,40 +20,40 @@ public static class ChatAccountSettingsExt
         if (author == null || author.IsAnonymous)
             return new ChatVoiceMode(chatId, VoiceMode.JustText, false);
 
-        var voiceMode = await accountSettingsUI
+        var voiceMode = await userSettingsUI
             .ChatUserSettings(chatId).Get(x => x.VoiceMode, cancellationToken)
             .ConfigureAwait(false);
         return new ChatVoiceMode(chatId, voiceMode, true);
     }
 
     public static async Task SetChatVoiceMode(
-        this AccountSettingsUI accountSettingsUI,
+        this UserSettingsUI userSettingsUI,
         ChatId chatId,
         VoiceMode voiceMode,
         CancellationToken cancellationToken = default)
     {
         chatId = chatId.GetThreadOutermostParentOrSelf();
-        var chatVoiceMode = await accountSettingsUI
+        var chatVoiceMode = await userSettingsUI
             .GetChatVoiceMode(chatId, cancellationToken)
             .ConfigureAwait(false);
         if (!chatVoiceMode.CanChange)
             throw StandardError.Constraint("Voice streaming mode cannot be changed in this chat.");
 
-        await accountSettingsUI
+        await userSettingsUI
             .ChatUserSettings(chatId).Update(x => x with { VoiceMode = voiceMode }, cancellationToken)
             .ConfigureAwait(false);
     }
 
     public static Task<ListeningMode> GetListeningMode(
-        this AccountSettingsUI accountSettingsUI,
+        this UserSettingsUI userSettingsUI,
         ChatId chatId,
         CancellationToken cancellationToken = default)
-        => accountSettingsUI.ChatUserSettings(chatId).Get(x => x.ListeningMode, cancellationToken);
+        => userSettingsUI.ChatUserSettings(chatId).Get(x => x.ListeningMode, cancellationToken);
 
     public static Task SetListeningMode(
-        this AccountSettingsUI accountSettingsUI,
+        this UserSettingsUI userSettingsUI,
         ChatId chatId,
         ListeningMode listeningMode,
         CancellationToken cancellationToken = default)
-        => accountSettingsUI.ChatUserSettings(chatId).Update(x => x with { ListeningMode = listeningMode }, cancellationToken);
+        => userSettingsUI.ChatUserSettings(chatId).Update(x => x with { ListeningMode = listeningMode }, cancellationToken);
 }

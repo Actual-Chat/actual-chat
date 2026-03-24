@@ -27,7 +27,7 @@ public class BlazorTester : TestContext, IWebTester
     public ISearch Search => field ??= AppServices.GetRequiredService<ISearch>();
     public ISessionsBackend SessionsBackend => field ??= AppServices.GetRequiredService<ISessionsBackend>();
     public INotificationsBackend NotificationsBackend  => field ??= AppServices.GetRequiredService<INotificationsBackend>();
-    public AccountSettingsUI AccountSettingsUI => field ??= ScopedAppServices.AccountSettingsUI(Session);
+    public UserSettingsUI UserSettingsUI => field ??= ScopedAppServices.UserSettingsUI(Session);
     public Session Session { get; }
     public UrlMapper UrlMapper => field ??= AppServices.UrlMapper();
     public VersionGenerator<long> VersionGenerator => field ??= AppServices.VersionGenerator<long>();

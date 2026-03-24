@@ -3,14 +3,14 @@ using ActualChat.Kvas;
 namespace ActualChat.Users;
 
 /// <summary>
-/// Extension methods for creating <see cref="SyncedState{T}"/> backed by <see cref="AccountSettingsUI"/>.
+/// Extension methods for creating <see cref="SyncedState{T}"/> backed by <see cref="UserSettingsUI"/>.
 /// </summary>
 public static class StateFactoryExt
 {
-    public static SyncedState<T> NewAccountSettingsSynced<
+    public static SyncedState<T> NewUserSettingsSynced<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>(
         this StateFactory stateFactory,
-        AccountSettingsUI accountSettingsUI,
+        UserSettingsUI userSettingsUI,
         string key,
         T initialValue,
         IUpdateDelayer? updateDelayer = null,
@@ -20,14 +20,14 @@ public static class StateFactoryExt
     {
         var options = new SyncedState<T>.CustomOptions(
             Reader: async ct => {
-                var result = await accountSettingsUI.Get(key, ct).ConfigureAwait(false);
+                var result = await userSettingsUI.Get(key, ct).ConfigureAwait(false);
                 if (result is null)
                     return missingValueFactory != null
                         ? await missingValueFactory.Invoke(ct).ConfigureAwait(false)
                         : initialValue;
                 return (T?)result ?? initialValue;
             },
-            Writer: (value, ct) => accountSettingsUI.Set(key, value, ct)
+            Writer: (value, ct) => userSettingsUI.Set(key, value, ct)
         ) {
             InitialValue = initialValue,
             UpdateDelayer = updateDelayer,

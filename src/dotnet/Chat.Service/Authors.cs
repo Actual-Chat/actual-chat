@@ -217,13 +217,13 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
             });
         author = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
 
-        var accountSettingsUI = Services.AccountSettingsUI(session);
-        var inviteSettings = (ChatInviteSettings?)await accountSettingsUI
+        var userSettingsUI = Services.UserSettingsUI(session);
+        var inviteSettings = (ChatInviteSettings?)await userSettingsUI
             .Get(ChatInviteSettings.GetKey(chatId), cancellationToken)
             .ConfigureAwait(false);
         if (inviteSettings?.ActivationKey is not null) {
             // Remove the invite
-            var removeCommand = new AccountSettings_Set(session, ChatInviteSettings.GetKey(chatId), null);
+            var removeCommand = new UserSettings_Set(session, ChatInviteSettings.GetKey(chatId), null);
             await Commander.Call(removeCommand, true, cancellationToken).ConfigureAwait(false);
         }
 

@@ -33,7 +33,7 @@
     [Parameter] public EventCallback OnExpandClick { get; set; }
 
     protected override async Task OnParametersSetAsync() {
-        _reactionSettings = await Hub.AccountSettingsUI.UserReactionSettings().Get();
+        _reactionSettings = await Hub.UserSettingsUI.UserReactionSettings().Get();
         UpdateEmojis();
     }
 
@@ -56,7 +56,7 @@
             Emoji = emoji,
         };
 
-        _reactionSettings = await Hub.AccountSettingsUI.UserReactionSettings().Update(s => s.WithBubbleUp(emoji.Id.Value));
+        _reactionSettings = await Hub.UserSettingsUI.UserReactionSettings().Update(s => s.WithBubbleUp(emoji.Id.Value));
         UpdateEmojis();
         await UICommander.Run(new Reactions_React(Session, reaction));
     }

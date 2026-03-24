@@ -62,8 +62,8 @@ public partial class AudioStreamingBackend
             .EnsureJoined(session, chatId, cancellationToken)
             .ConfigureAwait(false);
 
-        var accountSettingsUI = Services.AccountSettingsUI(session);
-        var chatVoiceMode = await accountSettingsUI
+        var userSettingsUI = Services.UserSettingsUI(session);
+        var chatVoiceMode = await userSettingsUI
             .GetChatVoiceMode(chatId, cancellationToken)
             .ConfigureAwait(false);
         var mustStreamVoice = chatVoiceMode.VoiceMode.HasVoice();
@@ -154,16 +154,16 @@ public partial class AudioStreamingBackend
 
     private async Task<AudioSegmentLanguage> GetTranscriptionLanguage(AudioRecord record, CancellationToken cancellationToken)
     {
-        var accountSettingsUI = Services.AccountSettingsUI(record.Session);
-        var settings = await accountSettingsUI.ChatUserSettings(record.ChatId).Get(cancellationToken).ConfigureAwait(false);
-        var languageSettings = await accountSettingsUI.UserLanguageSettings().Get(cancellationToken).ConfigureAwait(false);
+        var userSettingsUI = Services.UserSettingsUI(record.Session);
+        var settings = await userSettingsUI.ChatUserSettings(record.ChatId).Get(cancellationToken).ConfigureAwait(false);
+        var languageSettings = await userSettingsUI.UserLanguageSettings().Get(cancellationToken).ConfigureAwait(false);
         return new AudioSegmentLanguage(settings.Language, languageSettings);
     }
 
     private async Task<TranscriptionEngine> GetTranscriptionEngine(AudioRecord record, CancellationToken cancellationToken)
     {
-        var accountSettingsUI = Services.AccountSettingsUI(record.Session);
-        var settings = await accountSettingsUI.UserTranscriptionEngineSettings().Get(cancellationToken).ConfigureAwait(false);
+        var userSettingsUI = Services.UserSettingsUI(record.Session);
+        var settings = await userSettingsUI.UserTranscriptionEngineSettings().Get(cancellationToken).ConfigureAwait(false);
         return settings.TranscriptionEngine;
     }
 
@@ -361,13 +361,13 @@ public partial class AudioStreamingBackend
         CancellationToken cancellationToken)
         => _ = BackgroundTask.Run(async () => {
             var chatId = audioSegmentRecord.ChatId;
-            var accountSettingsUI = Services.AccountSettingsUI(audioSegmentRecord.Session);
+            var userSettingsUI = Services.UserSettingsUI(audioSegmentRecord.Session);
             var userChatRecordingDetectedLanguage = new UserChatRecordingDetectedLanguage {
                 Language = detectedLanguage,
                 ChatId = chatId,
                 Timestamp = Clocks.SystemClock.Now,
             };
-            await accountSettingsUI.UserChatRecordingDetectedLanguage()
+            await userSettingsUI.UserChatRecordingDetectedLanguage()
                 .Set(userChatRecordingDetectedLanguage, cancellationToken)
                 .ConfigureAwait(false);
         }, Log, "Failed to apply transcription detected language", cancellationToken);

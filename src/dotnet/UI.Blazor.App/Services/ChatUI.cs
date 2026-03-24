@@ -90,15 +90,17 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         _expandedConversations = StateFactory.NewMutable(
             (IImmutableSet<ConversationId>)ImmutableHashSet<ConversationId>.Empty,
             StateCategories.Get(type, nameof(ExpandedConversations)));
-        _navbarSettings = StateFactory.NewAccountSettingsSynced<UserNavbarSettings>(
-            AccountSettingsUI,
+        _navbarSettings = StateFactory.NewUserSettingsSynced(
+            UserSettingsUI,
             UserNavbarSettings.KvasKey,
             new UserNavbarSettings(),
             updateDelayer: FixedDelayer.NextTick,
             category: StateCategories.Get(GetType(), nameof(NavbarSettings)));
         Hub.RegisterDisposable(_navbarSettings);
-        _itemVisibility = StateFactory.NewMutable(ChatViewItemVisibility.Empty, StateCategories.Get(type, nameof(ItemVisibility)));
 
+        _itemVisibility = StateFactory.NewMutable(
+            ChatViewItemVisibility.Empty,
+            StateCategories.Get(type, nameof(ItemVisibility)));
         // Read entry states from other windows / devices are delayed by 1s
         _readStateUpdateDelayer = FixedDelayer.Get(1);
         _readPositionStates = new SharedResourcePool<ChatId, SyncedState<ReadPosition>>(CreateReadPositionState);
@@ -120,7 +122,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             var chatNewsTask = Chats.GetNews(Session, chatId, cancellationToken);
             var lastMentionTask = Mentions.GetLastOwn(Session, chatId, cancellationToken);
             var readEntryLidTask = GetReadEntryLid(chatId, cancellationToken);
-            var chatUserSettingsTask = AccountSettingsUI.ChatUserSettings(chatId).Get(cancellationToken);
+            var chatUserSettingsTask = UserSettingsUI.ChatUserSettings(chatId).Get(cancellationToken);
 
             var news = await chatNewsTask.WaitAsync(TimeSpan.FromSeconds(20), cancellationToken).ConfigureAwait(false);
             var chatUserSettings = await chatUserSettingsTask.ConfigureAwait(false);
