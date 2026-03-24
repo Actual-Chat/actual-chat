@@ -831,18 +831,19 @@ function Update-EnvFile {
 if ($removeWorktreeSuffix) {
     $mainProjectPath = Join-Path $env:AC_ProjectRoot $projectName
     $worktreePath = Join-Path $env:AC_ProjectRoot "$projectName-$removeWorktreeSuffix"
-    $worktreeEnvFile = Join-Path $worktreePath ".env"
 
     Write-Host "Removing worktree: $projectName-$removeWorktreeSuffix" -ForegroundColor Cyan
 
-    # Remove server config (ports registry, nginx config, hosts entries)
-    $server = [WorktreeServer]::new($mainProjectPath, $removeWorktreeSuffix)
-    $server.Unregister($debugMode)
+    # Remove server config and .env file (ActualChat projects only)
+    if (Test-Path (Join-Path $mainProjectPath "ActualChat.sln")) {
+        $server = [WorktreeServer]::new($mainProjectPath, $removeWorktreeSuffix)
+        $server.Unregister($debugMode)
 
-    # Remove worktree .env file (created by c.ps1)
-    if (Test-Path $worktreeEnvFile) {
-        Remove-Item $worktreeEnvFile -Force
-        if ($debugMode) { Write-Host "[DEBUG] Removed worktree .env file" }
+        $worktreeEnvFile = Join-Path $worktreePath ".env"
+        if (Test-Path $worktreeEnvFile) {
+            Remove-Item $worktreeEnvFile -Force
+            if ($debugMode) { Write-Host "[DEBUG] Removed worktree .env file" }
+        }
     }
 
     # Remove git worktree and its branch
@@ -1007,28 +1008,32 @@ if ($featureWorktreeSuffix) {
     Set-Location $worktreePath
 }
 
-# Register or get server config for this worktree
-$mainProjectPath = if ($worktree -or $worktreeSuffix -or $featureWorktreeSuffix) {
-    Join-Path $env:AC_ProjectRoot $projectName
-} else {
-    $projectRoot
-}
-$server = [WorktreeServer]::new($mainProjectPath, $worktree)
-$serverConfig = $server.Register($debugMode)
+# Register server config and write .env file (ActualChat projects only)
+$isActualChatProject = Test-Path (Join-Path $projectRoot "ActualChat.sln")
+$serverConfig = $null
+if ($isActualChatProject) {
+    $mainProjectPath = if ($worktree -or $worktreeSuffix -or $featureWorktreeSuffix) {
+        Join-Path $env:AC_ProjectRoot $projectName
+    } else {
+        $projectRoot
+    }
+    $server = [WorktreeServer]::new($mainProjectPath, $worktree)
+    $serverConfig = $server.Register($debugMode)
 
-# Write server configuration to .env file in the project/worktree directory
-# Uses .NET configuration names so they're automatically picked up by the server
-$baseUri = if ($serverConfig.InstanceName -ne "dev") { "https://$($serverConfig.InstanceName).local.voxt.ai" } else { "https://local.voxt.ai" }
-$urlsValue = "http://0.0.0.0:$($serverConfig.Port)"
-$envVarsToSave = @{
-    "CoreSettings__Instance" = $serverConfig.InstanceName
-    # Use 0.0.0.0 to allow connections from nginx container
-    # "urls" is for .NET config loading, "ASPNETCORE_URLS" is for env var loading
-    "urls" = $urlsValue
-    "ASPNETCORE_URLS" = $urlsValue
-    "HostSettings__BaseUri" = $baseUri
+    # Write server configuration to .env file in the project/worktree directory
+    # Uses .NET configuration names so they're automatically picked up by the server
+    $baseUri = if ($serverConfig.InstanceName -ne "dev") { "https://$($serverConfig.InstanceName).local.voxt.ai" } else { "https://local.voxt.ai" }
+    $urlsValue = "http://0.0.0.0:$($serverConfig.Port)"
+    $envVarsToSave = @{
+        "CoreSettings__Instance" = $serverConfig.InstanceName
+        # Use 0.0.0.0 to allow connections from nginx container
+        # "urls" is for .NET config loading, "ASPNETCORE_URLS" is for env var loading
+        "urls" = $urlsValue
+        "ASPNETCORE_URLS" = $urlsValue
+        "HostSettings__BaseUri" = $baseUri
+    }
+    Update-EnvFile -ProjectPath $projectRoot -Variables $envVarsToSave -Debug:$debugMode
 }
-Update-EnvFile -ProjectPath $projectRoot -Variables $envVarsToSave -Debug:$debugMode
 
 # Suppress output when launching docker (inner instance will output)
 if ($mode -ne "docker" -or $dryRun) {
@@ -1209,7 +1214,9 @@ switch ($mode) {
         Write-Host "Running Claude on: $($env:AC_OS)"
         Write-Host "Working Directory: $(Get-Location) @ $env:AC_ProjectRoot"
         if ($worktree) {
-            Write-Host "Worktree: $worktree (port: $($serverConfig.Port))"
+            $worktreeInfo = "Worktree: $worktree"
+            if ($serverConfig) { $worktreeInfo += " (port: $($serverConfig.Port))" }
+            Write-Host $worktreeInfo
         }
 
         $envVars = @{
