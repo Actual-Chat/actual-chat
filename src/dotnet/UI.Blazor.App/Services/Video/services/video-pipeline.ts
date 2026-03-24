@@ -14,8 +14,8 @@ import type { Disposable } from 'disposable';
 import { supportsTransferableStreams } from '../workers/stream-channel';
 
 import { BrowserInit } from '../../../../UI.Blazor/Services/BrowserInit/browser-init';
-import type { SegmentationConfig, SegmentationStats } from '../workers/segmentation-worker-contract';
 import type { EncoderConfig, EncoderStats } from '../webcodecs-encoder';
+import type { SegmentationConfig, SegmentationStats } from '../workers/video-processing-worker-contract';
 import type {
     VideoProcessingWorker,
     VideoProcessingWorkerCallbacks,

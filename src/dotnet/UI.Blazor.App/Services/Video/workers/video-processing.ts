@@ -1,0 +1,769 @@
+/**
+ * Video processing implementation.
+ * Core logic for segmentation, encoding, and streaming — used by video-processing-worker.ts.
+ */
+
+import { rpcNoWait } from 'rpc';
+import { Log } from 'logging';
+import { DeviceInfo } from 'device-info';
+import Denque from 'denque';
+import * as ort from 'onnxruntime-web';
+
+import { type EncoderConfig, type EncodedChunkData, WebCodecsEncoder } from '../webcodecs-encoder';
+import type { SegmentationConfig, SegmentationStats, ModelConfig, VideoProcessingWorker, VideoProcessingWorkerCallbacks, VideoProcessingStats } from './video-processing-worker-contract';
+import { getModelConfig } from './video-processing-worker-contract';
+import {
+    initTensorWebGPU,
+    processDeferredCleanups,
+    returnPooledBuffer,
+    videoFrameToTensorFloat32,
+    videoFrameToTensorUint8,
+} from '../tensor-utils';
+import {
+    applyBackgroundBlur,
+    submitBlurI420,
+    awaitAllPendingReadbacks,
+    applyTemporalSmoothing,
+    initBlurWebGPU,
+    processBlurDeferredCleanups,
+} from '../webgpu-blur';
+import { WebGPUManager } from '../webgpu-manager';
+
+import { isAvcCDescription, deriveAvcCodecFromDescription, resizeFrame, cpuRgbaToI420 } from './video-encoding-helpers';
+import {
+    type VideoStreamFrame, type StreamingContext,
+    microsecondsToTicks, InternalVideoStream, initSignalR,
+} from './video-streaming';
+
+// Import the ONNX model so esbuild copies it to dist/assets/onnx/
+import SegmentationModelUrl from './selfie_segmentation_olive_webgpu.onnx';
+
+const { debugLog, infoLog, warnLog, errorLog } = Log.get('VideoPipeline');
+
+// ─── Callbacks (set by worker entry after RPC init) ─────────────────────────
+
+let callbacks: VideoProcessingWorkerCallbacks;
+
+export function setCallbacks(cb: VideoProcessingWorkerCallbacks): void {
+    callbacks = cb;
+}
+
+// ─── State ──────────────────────────────────────────────────────────────────
+
+// Encoder
+let encoder: WebCodecsEncoder | null = null;
+let encoderConfig: EncoderConfig | null = null;
+let frameCount = 0;
+let resizeCanvas: OffscreenCanvas | null = null;
+let resizeCtx: OffscreenCanvasRenderingContext2D | null = null;
+let startTimestamp: number | undefined = undefined;
+let lastLoggedFormat: string | null = '(unset)';
+let loggedI420Error = false;
+
+// Backpressure
+let backpressureDrops = 0;
+let backpressureTotalFrames = 0;
+let lastBackpressureCheckTime = 0;
+const backpressureWindowMs = 5000;
+const backpressureDropThreshold = 0.20;
+let backpressureNotified = false;
+
+// Segmentation
+let onnxSession: ort.InferenceSession | null = null;
+let segConfig: SegmentationConfig | null = null;
+let resolvedModelConfig: ModelConfig | null = null;
+let outputGpuBuffer: GPUBuffer = null!;
+let outputTensor: ort.Tensor = null!;
+let smoothedMaskBuffer: GPUBuffer = null!;
+let blurEnabled = false;
+let segInitialized = false;
+
+let segProcessedFrames = 0;
+let segTotalInferenceTime = 0;
+let segTotalBlurTime = 0;
+let segTotalProcessingTime = 0;
+let segDroppedFrames = 0;
+let segFrameCounter = 0;
+let hasValidMask = false;
+let loggedBlurFormat = false;
+
+interface QueuedFrame { frame: VideoFrame; sequenceNumber: number; timestamp: number }
+let frameQueue: Denque<QueuedFrame> | null = null;
+let processingFrame = false;
+let frameSequence = 0;
+
+// Streaming
+const streamCtx: StreamingContext = {
+    signalrConnection: null,
+    sessionToken: '',
+    chatId: '',
+    serverClockOffsetMs: 0,
+    processing: false,
+};
+let videoStream: InternalVideoStream | null = null;
+let lastVideoStream: InternalVideoStream | null = null;
+let pendingStreamFrames: VideoStreamFrame[] = [];
+let codecSettings: string | null = null;
+let storedDescriptionBytes: Uint8Array | null = null;
+let firstEncodedTimestamp: number | null = null;
+let streamingEnabled = false;
+
+// Pipeline
+let processing = false;
+let dimensionsReconciled = false;
+let vadSpeaking = true;
+let vadRemoteStreamCount = 0;
+let vadReducedFrameIntervalMs = 1000 / 5;
+let vadLastPassedFrameTime = 0;
+let streamReadLoopPromise: Promise<void> | null = null;
+
+// ─── Segmentation ───────────────────────────────────────────────────────────
+
+function initializeQueue(cfg: SegmentationConfig): void {
+    frameQueue = new Denque<QueuedFrame>();
+    infoLog?.log(`Segmentation frame queue initialized, maxSize=${cfg.maxQueueSize}`);
+}
+
+function enqueueFrame(frame: VideoFrame): void {
+    if (!frameQueue || !segConfig) {
+        void encodeProcessedFrame(frame);
+        return;
+    }
+
+    const queuedFrame: QueuedFrame = {
+        frame,
+        sequenceNumber: frameSequence++,
+        timestamp: performance.now(),
+    };
+
+    while (frameQueue.length >= segConfig.maxQueueSize) {
+        const dropped = frameQueue.shift();
+        if (dropped) {
+            debugLog?.log(`Dropping frame #${dropped.sequenceNumber} (queue full)`);
+            dropped.frame.close();
+            segDroppedFrames++;
+        }
+    }
+
+    frameQueue.push(queuedFrame);
+    if (!processingFrame) void processQueue();
+}
+
+function emitPreviewAndEncode(frame: VideoFrame): void {
+    if (encoder) {
+        // Streaming mode: clone for preview, original goes to encoder
+        try {
+            const previewFrame = new VideoFrame(frame, { timestamp: frame.timestamp });
+            void callbacks.onPreviewFrame(previewFrame, rpcNoWait);
+        } catch { /* clone failed, skip preview */ }
+        void encodeProcessedFrame(frame);
+    } else {
+        // Preview-only mode: send frame directly as preview, no encoding
+        void callbacks.onPreviewFrame(frame, rpcNoWait);
+    }
+}
+
+async function processQueue(): Promise<void> {
+    if (!frameQueue || !segConfig || processingFrame) return;
+    processingFrame = true;
+
+    try {
+        while (!frameQueue.isEmpty() && processing) {
+            const qf = frameQueue.shift();
+            if (!qf) break;
+            segFrameCounter++;
+
+            processDeferredCleanups();
+            processBlurDeferredCleanups();
+
+            const frameSkipInterval = segConfig.frameSkipInterval ?? 1;
+            if (frameSkipInterval > 1 && segFrameCounter % frameSkipInterval !== 0 && hasValidMask) {
+                const skipBlurStart = performance.now();
+                if (segConfig.blurEnabled) {
+                    try {
+                        await submitBlurI420(
+                            qf.frame, smoothedMaskBuffer,
+                            segConfig.inputWidth, segConfig.inputHeight,
+                            { blurStrength: segConfig.blurRadius, maskDirty: false,
+                                outputWidth: segConfig.outputWidth, outputHeight: segConfig.outputHeight },
+                            (result) => {
+                                if (!loggedBlurFormat) { loggedBlurFormat = true; warnLog?.log(`I420 path: GPU compute shader, frame format: ${result.frame.format}`); }
+                                segProcessedFrames++;
+                                emitPreviewAndEncode(result.frame);
+                            }
+                        );
+                    } catch {
+                        const finalFrame = applyBackgroundBlur(
+                            qf.frame, smoothedMaskBuffer, segConfig.inputWidth, segConfig.inputHeight,
+                            { blurStrength: segConfig.blurRadius, maskDirty: false,
+                                outputWidth: segConfig.outputWidth, outputHeight: segConfig.outputHeight }
+                        );
+                        segProcessedFrames++;
+                        emitPreviewAndEncode(finalFrame);
+                    }
+                } else {
+                    segProcessedFrames++;
+                    void encodeProcessedFrame(qf.frame);
+                }
+                segTotalBlurTime += performance.now() - skipBlurStart;
+                segTotalProcessingTime += performance.now() - qf.timestamp;
+                continue;
+            }
+
+            // Full inference
+            const inferenceStartTime = performance.now();
+
+            let inputTensor: ort.Tensor;
+            if (resolvedModelConfig!.tensorFormat === 'nchw_float32') {
+                inputTensor = await videoFrameToTensorFloat32(qf.frame, segConfig.inputWidth, segConfig.inputHeight);
+            } else {
+                inputTensor = await videoFrameToTensorUint8(qf.frame, segConfig.inputWidth, segConfig.inputHeight);
+            }
+
+            const outputName = onnxSession!.outputNames[0];
+            await onnxSession!.run({ [onnxSession!.inputNames[0]]: inputTensor }, { [outputName]: outputTensor });
+
+            const gpuBuffer = outputTensor.gpuBuffer;
+            hasValidMask = true;
+            returnPooledBuffer(inputTensor.gpuBuffer);
+
+            const inferenceTime = performance.now() - inferenceStartTime;
+            const blurStartTime = performance.now();
+
+            if (segConfig.blurEnabled) {
+                const smoothingAlpha = segConfig.temporalSmoothingFactor ?? 0.3;
+                try {
+                    await submitBlurI420(
+                        qf.frame, smoothedMaskBuffer, segConfig.inputWidth, segConfig.inputHeight,
+                        { blurStrength: segConfig.blurRadius, smoothingSource: gpuBuffer, smoothingAlpha,
+                            outputWidth: segConfig.outputWidth, outputHeight: segConfig.outputHeight },
+                        (result) => {
+                            if (!loggedBlurFormat) { loggedBlurFormat = true; warnLog?.log(`I420 path: GPU compute shader, frame format: ${result.frame.format}`); }
+                            segProcessedFrames++;
+                            emitPreviewAndEncode(result.frame);
+                        }
+                    );
+                } catch {
+                    const finalFrame = applyBackgroundBlur(
+                        qf.frame, smoothedMaskBuffer, segConfig.inputWidth, segConfig.inputHeight,
+                        { blurStrength: segConfig.blurRadius, smoothingSource: gpuBuffer, smoothingAlpha,
+                            outputWidth: segConfig.outputWidth, outputHeight: segConfig.outputHeight }
+                    );
+                    segProcessedFrames++;
+                    emitPreviewAndEncode(finalFrame);
+                }
+            } else {
+                const smoothingAlpha = segConfig.temporalSmoothingFactor ?? 0.3;
+                const maskSize = segConfig.inputWidth * segConfig.inputHeight;
+                applyTemporalSmoothing(gpuBuffer, smoothedMaskBuffer, maskSize, smoothingAlpha);
+                segProcessedFrames++;
+                void encodeProcessedFrame(qf.frame);
+            }
+
+            segTotalInferenceTime += inferenceTime;
+            segTotalBlurTime += performance.now() - blurStartTime;
+            segTotalProcessingTime += performance.now() - qf.timestamp;
+        }
+    } finally {
+        processingFrame = false;
+    }
+}
+
+async function initializeSegmentation(config: SegmentationConfig): Promise<void> {
+    segConfig = config;
+    ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/';
+    ort.env.wasm.numThreads = 1;
+
+    const modelUrl = SegmentationModelUrl;
+    const sessionOptions: ort.InferenceSession.SessionOptions = {
+        executionProviders: [{ name: 'webgpu', preferredLayout: 'NCHW' }],
+        graphOptimizationLevel: 'all', executionMode: 'parallel',
+        enableCpuMemArena: true, enableMemPattern: true,
+        preferredOutputLocation: 'gpu-buffer', enableGraphCapture: true,
+    };
+
+    infoLog?.log('Loading segmentation model from:', modelUrl);
+    onnxSession = await ort.InferenceSession.create(modelUrl, sessionOptions);
+    infoLog?.log('Segmentation model loaded with WebGPU backend');
+
+    const blurDevice = await ort.env.webgpu.device;
+    await WebGPUManager.init(blurDevice);
+    await initTensorWebGPU(blurDevice);
+    await initBlurWebGPU(blurDevice);
+    infoLog?.log('WebGPU resources initialized');
+
+    const maskSize = config.inputWidth * config.inputHeight;
+    const gpuDevice = WebGPUManager.get();
+    const usage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST;
+    outputGpuBuffer = gpuDevice.createBuffer({ size: maskSize * 4, usage });
+    smoothedMaskBuffer = gpuDevice.createBuffer({ size: maskSize * 4, usage });
+
+    outputTensor = ort.Tensor.fromGpuBuffer(outputGpuBuffer, {
+        dataType: 'float32', dims: [1, 1, config.inputHeight, config.inputWidth],
+        dispose: () => { /* managed by worker */ },
+    });
+
+    resolvedModelConfig = config.modelConfig ?? getModelConfig(modelUrl);
+    infoLog?.log(`Model config: format=${resolvedModelConfig.tensorFormat}`);
+
+    initializeQueue(config);
+    segInitialized = true;
+}
+
+// ─── Encoding pipeline ──────────────────────────────────────────────────────
+
+function processOneFrame(frame: VideoFrame): void {
+    if (!processing) { frame.close(); return; }
+
+    // Preview-only mode (no encoder): route through segmentation only
+    if (!encoder) {
+        if (blurEnabled && segInitialized) {
+            enqueueFrame(frame);
+        } else {
+            // No blur, no encoder — just send as preview and close
+            void callbacks.onPreviewFrame(frame, rpcNoWait);
+        }
+        return;
+    }
+
+    if (!encoderConfig) { frame.close(); return; }
+
+    const backpressureMaxQueue = DeviceInfo.isIos ? 1 : 3;
+    backpressureTotalFrames++;
+    if (encoder.getEncodeQueueSize() > backpressureMaxQueue) {
+        frame.close();
+        backpressureDrops++;
+        const now = performance.now();
+        if (now - lastBackpressureCheckTime > backpressureWindowMs) {
+            const dropRate = backpressureDrops / backpressureTotalFrames;
+            if (dropRate > backpressureDropThreshold && !backpressureNotified) {
+                backpressureNotified = true;
+                warnLog?.log(`Sustained backpressure: dropRate=${(dropRate * 100).toFixed(1)}%`);
+                void callbacks.onBackpressure(dropRate, rpcNoWait);
+            }
+            backpressureDrops = 0; backpressureTotalFrames = 0; lastBackpressureCheckTime = now;
+        }
+        return;
+    }
+
+    if (backpressureNotified && backpressureTotalFrames > 30) {
+        const now = performance.now();
+        if (now - lastBackpressureCheckTime > backpressureWindowMs) {
+            if (backpressureDrops / backpressureTotalFrames < 0.05) backpressureNotified = false;
+            backpressureDrops = 0; backpressureTotalFrames = 0; lastBackpressureCheckTime = now;
+        }
+    }
+
+    if (blurEnabled && segInitialized) {
+        enqueueFrame(frame);
+    } else {
+        void encodeProcessedFrame(frame);
+    }
+}
+
+async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
+    if (!encoder || !processing || !encoderConfig) { frame.close(); return; }
+
+    try {
+        if (startTimestamp === undefined) {
+            startTimestamp = frame.timestamp;
+            infoLog?.log(`Start timestamp set to ${startTimestamp}μs`);
+        }
+
+        // Resize
+        const resized = resizeFrame(frame, encoderConfig.width, encoderConfig.height, resizeCanvas, resizeCtx);
+        let processedFrame = resized.frame;
+        resizeCanvas = resized.canvas;
+        resizeCtx = resized.ctx;
+
+        // YUV conversion
+        const format = processedFrame.format as string | null;
+        const isAlreadyYuv = format === 'NV12' || format === 'I420'
+            || format === 'I420A' || format === 'I422' || format === 'I444' || format === 'NV12A';
+
+        if (!isAlreadyYuv) {
+            let converted = false;
+            for (const fmt of ['I420', 'NV12', 'I420A', 'I422'] as const) {
+                try {
+                    const size = processedFrame.allocationSize({ format: fmt });
+                    const buf = new ArrayBuffer(size);
+                    const layout = await processedFrame.copyTo(buf, { format: fmt });
+                    const yuvFrame = new VideoFrame(buf, {
+                        format: fmt, codedWidth: processedFrame.codedWidth, codedHeight: processedFrame.codedHeight,
+                        timestamp: processedFrame.timestamp, duration: processedFrame.duration ?? undefined,
+                        layout, colorSpace: processedFrame.colorSpace,
+                    });
+                    processedFrame.close();
+                    processedFrame = yuvFrame;
+                    converted = true;
+                    break;
+                } catch { continue; }
+            }
+
+            if (!converted) {
+                try {
+                    const result = cpuRgbaToI420(processedFrame, resizeCanvas, resizeCtx);
+                    processedFrame = result.frame;
+                    resizeCanvas = result.canvas;
+                    resizeCtx = result.ctx;
+                } catch (e) {
+                    if (!loggedI420Error) { loggedI420Error = true; warnLog?.log('All YUV conversion methods failed:', String(e)); }
+                }
+            }
+        }
+
+        if (processedFrame.format !== lastLoggedFormat) {
+            lastLoggedFormat = processedFrame.format;
+            warnLog?.log(`Frame format: ${processedFrame.format}, ${processedFrame.codedWidth}x${processedFrame.codedHeight}`);
+        }
+
+        // Timestamp normalization
+        const normalizedTs = processedFrame.timestamp - startTimestamp;
+        if (normalizedTs !== processedFrame.timestamp) {
+            const normalized = new VideoFrame(processedFrame, { timestamp: normalizedTs, duration: processedFrame.duration ?? undefined });
+            processedFrame.close();
+            processedFrame = normalized;
+        }
+
+        const isKeyFrame = frameCount % 30 === 0;
+        encoder.encode(processedFrame, isKeyFrame);
+        frameCount++;
+    } catch (error) {
+        errorLog?.log('Error encoding frame:', error);
+        try { frame.close(); } catch { /* already closed */ }
+    }
+}
+
+function onEncoderOutput(chunkData: EncodedChunkData): void {
+    const chunkBuffer = new ArrayBuffer(chunkData.byteLength);
+    chunkData.chunk.copyTo(new Uint8Array(chunkBuffer));
+
+    let actualCodec = encoderConfig!.codec;
+    let descBuffer: ArrayBuffer | undefined;
+
+    if (chunkData.type === 'key' && chunkData.metadata?.decoderConfig?.description) {
+        const desc = chunkData.metadata.decoderConfig.description;
+        let sourceArray: Uint8Array;
+        if (desc instanceof ArrayBuffer) sourceArray = new Uint8Array(desc);
+        else if (desc instanceof SharedArrayBuffer) sourceArray = new Uint8Array(desc);
+        else if (ArrayBuffer.isView(desc)) sourceArray = new Uint8Array(desc.buffer, desc.byteOffset, desc.byteLength);
+        else sourceArray = new Uint8Array(desc as ArrayBuffer);
+
+        descBuffer = new ArrayBuffer(sourceArray.byteLength);
+        new Uint8Array(descBuffer).set(sourceArray);
+
+        if (isAvcCDescription(descBuffer) && !encoderConfig!.codec.startsWith('avc1')) {
+            const derivedCodec = deriveAvcCodecFromDescription(descBuffer);
+            warnLog?.log(`Encoder output mismatch: configured=${encoderConfig!.codec} but output is avcC, correcting to ${derivedCodec}`);
+            actualCodec = derivedCodec;
+            encoderConfig!.codec = derivedCodec;
+        }
+    }
+
+    if (streamingEnabled) {
+        deliverChunkToStream(chunkBuffer, chunkData.chunk.timestamp, chunkData.chunk.duration ?? 0,
+            chunkData.type === 'key', actualCodec, chunkData.sequenceNumber, descBuffer);
+    } else {
+        void callbacks.onSerializedChunk(
+            chunkBuffer, chunkData.chunk.timestamp, chunkData.chunk.duration ?? 0,
+            chunkData.type === 'key', actualCodec, chunkData.sequenceNumber, descBuffer, rpcNoWait);
+    }
+}
+
+function deliverChunkToStream(
+    chunkBytes: ArrayBuffer, timestamp: number, duration: number,
+    isKeyFrame: boolean, codec: string, sequenceNumber: number,
+    descriptionBytes?: ArrayBuffer
+): void {
+    const chunkData = new Uint8Array(chunkBytes);
+    firstEncodedTimestamp ??= timestamp;
+    const normalizedTimestamp = timestamp - firstEncodedTimestamp;
+
+    const frame: VideoStreamFrame = {
+        offset: microsecondsToTicks(normalizedTimestamp),
+        duration: microsecondsToTicks(duration),
+        isKeyFrame,
+        width: encoderConfig!.width, height: encoderConfig!.height,
+        data: chunkData, codec: isKeyFrame ? codec : undefined,
+    };
+
+    if (isKeyFrame) {
+        debugLog?.log(`Streaming keyframe: seq=${sequenceNumber}, offsetMs=${(normalizedTimestamp / 1000).toFixed(0)}, ${(chunkData.length / 1024).toFixed(2)} KB`);
+    }
+
+    if (isKeyFrame && descriptionBytes && descriptionBytes.byteLength > 0) {
+        const descBytes = new Uint8Array(descriptionBytes);
+        frame.description = descBytes;
+        if (!codecSettings) {
+            let binary = '';
+            for (const byte of descBytes) binary += String.fromCharCode(byte);
+            codecSettings = btoa(binary);
+            debugLog?.log('Captured codec description:', descBytes.length, 'bytes');
+        }
+        storedDescriptionBytes = descBytes;
+    }
+
+    if (isKeyFrame && !frame.description && storedDescriptionBytes) {
+        frame.description = storedDescriptionBytes;
+    }
+
+    if (!videoStream) {
+        const isAV1 = encoderConfig!.codec.startsWith('av01');
+        const canCreateStream = codecSettings ?? (isAV1 && isKeyFrame);
+        if (canCreateStream) {
+            const settings = codecSettings ?? '';
+            infoLog?.log(`Creating VideoStream with codecSettings (${settings.length} chars)`);
+            videoStream = new InternalVideoStream(
+                { codec: encoderConfig!.codec, width: encoderConfig!.width, height: encoderConfig!.height, codecSettings: settings },
+                streamCtx,
+                () => { firstEncodedTimestamp = null; },
+                lastVideoStream?.whenDisposed,
+            );
+            lastVideoStream = videoStream;
+            warnLog?.log(`TIMING_ANCHOR: firstEncodedTimestamp=${(firstEncodedTimestamp / 1000).toFixed(0)}ms`);
+            for (const buffered of pendingStreamFrames) videoStream.addFrame(buffered);
+            pendingStreamFrames = [];
+            videoStream.addFrame(frame);
+            void callbacks.onStreamCreated(settings, rpcNoWait);
+        } else {
+            pendingStreamFrames.push(frame);
+        }
+    } else {
+        videoStream.addFrame(frame);
+    }
+}
+
+function createEncoder(config: EncoderConfig): void {
+    encoderConfig = config;
+    encoder = new WebCodecsEncoder(config, onEncoderOutput, (error) => { errorLog?.log('Encoder error:', error); });
+    encoder.initialize();
+}
+
+// ─── Stream read loop ───────────────────────────────────────────────────────
+
+async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFrame>): Promise<void> {
+    try {
+        while (processing) {
+            const { done, value: rawFrame } = await inputReader.read();
+            if (done) { infoLog?.log('Stream input ended'); break; }
+
+            if (!encoder || !processing || !encoderConfig) { // eslint-disable-line @typescript-eslint/no-unnecessary-condition
+                rawFrame.close(); continue;
+            }
+
+            if (!dimensionsReconciled) {
+                dimensionsReconciled = true;
+                const frameW = rawFrame.codedWidth;
+                const frameH = rawFrame.codedHeight;
+                if (frameW !== encoderConfig.width || frameH !== encoderConfig.height) {
+                    warnLog?.log(`Frame dimensions ${frameW}x${frameH} differ from config, reconfiguring`);
+                    encoderConfig.width = frameW; encoderConfig.height = frameH;
+                    await encoder.reconfigure({ width: frameW, height: frameH, bitrate: encoderConfig.bitrate });
+                    if (segConfig) { segConfig.outputWidth = frameW; segConfig.outputHeight = frameH; }
+                    void callbacks.onDimensionReconciled(frameW, frameH, rpcNoWait);
+                }
+            }
+
+            let frame = rawFrame;
+            if (rawFrame.displayWidth !== rawFrame.codedWidth || rawFrame.displayHeight !== rawFrame.codedHeight) {
+                frame = new VideoFrame(rawFrame, { displayWidth: rawFrame.codedWidth, displayHeight: rawFrame.codedHeight });
+                rawFrame.close();
+            }
+
+            if (!vadSpeaking && vadRemoteStreamCount >= 2) {
+                const now = performance.now();
+                if (now - vadLastPassedFrameTime < vadReducedFrameIntervalMs) { frame.close(); continue; }
+                vadLastPassedFrameTime = now;
+            }
+
+            processOneFrame(frame);
+        }
+    } catch (error) {
+        if (processing) errorLog?.log('Stream read error:', error);
+    } finally {
+        try { inputReader.releaseLock(); } catch { /* ignore */ }
+    }
+}
+
+// ─── Server implementation ──────────────────────────────────────────────────
+
+export const serverImpl: VideoProcessingWorker = {
+
+    startWithStream: async (config, frameInputStream): Promise<void> => {
+        try {
+            infoLog?.log('Starting video processing worker (stream mode)...');
+            streamCtx.sessionToken = config.streaming.sessionToken;
+            streamCtx.chatId = config.streaming.chatId;
+            streamCtx.serverClockOffsetMs = config.streaming.serverClockOffsetMs;
+            streamingEnabled = true;
+
+            streamCtx.signalrConnection = initSignalR(config.streaming.hubUrl);
+
+            if (config.segmentation) {
+                await initializeSegmentation({ ...config.segmentation, outputWidth: config.encoder.width, outputHeight: config.encoder.height });
+                blurEnabled = true;
+                infoLog?.log('Segmentation initialized (blur enabled)');
+            }
+
+            createEncoder(config.encoder);
+
+            if (config.adaptiveFramerate) {
+                vadReducedFrameIntervalMs = 1000 / config.adaptiveFramerate.reducedFps;
+            }
+
+            processing = true;
+            streamCtx.processing = true;
+            frameCount = 0;
+            dimensionsReconciled = false;
+
+            const inputReader = frameInputStream.getReader();
+            streamReadLoopPromise = streamReadLoop(inputReader);
+
+            infoLog?.log('Video processing worker started (stream mode)');
+        } catch (error) {
+            errorLog?.log('Failed to start stream mode:', error);
+            throw error;
+        }
+    },
+
+    initialize: async (config): Promise<void> => {
+        try {
+            const isPreviewOnly = config.previewOnly === true;
+            infoLog?.log(`Starting video processing worker (${isPreviewOnly ? 'preview-only' : 'RPC'} mode)...`);
+
+            if (!isPreviewOnly) {
+                streamCtx.sessionToken = config.streaming.sessionToken;
+                streamCtx.chatId = config.streaming.chatId;
+                streamCtx.serverClockOffsetMs = config.streaming.serverClockOffsetMs;
+                streamingEnabled = true;
+                streamCtx.signalrConnection = initSignalR(config.streaming.hubUrl);
+            }
+
+            if (config.segmentation) {
+                await initializeSegmentation({ ...config.segmentation, outputWidth: config.encoder.width, outputHeight: config.encoder.height });
+                blurEnabled = true;
+            }
+
+            if (!isPreviewOnly) {
+                createEncoder(config.encoder);
+            }
+
+            if (config.adaptiveFramerate) {
+                vadReducedFrameIntervalMs = 1000 / config.adaptiveFramerate.reducedFps;
+            }
+
+            processing = true;
+            streamCtx.processing = true;
+            frameCount = 0;
+
+            infoLog?.log(`Video processing worker started (${isPreviewOnly ? 'preview-only' : 'RPC'} mode)`);
+        } catch (error) {
+            errorLog?.log('Failed to initialize:', error);
+            throw error;
+        }
+    },
+
+    // eslint-disable-next-line @typescript-eslint/require-await
+    encodeFrame: async (frame): Promise<void> => { processOneFrame(frame); },
+
+    // eslint-disable-next-line @typescript-eslint/require-await
+    setVadState: async (speaking, remoteStreamCount): Promise<void> => {
+        vadSpeaking = speaking;
+        vadRemoteStreamCount = remoteStreamCount;
+        if (speaking) vadLastPassedFrameTime = 0;
+        debugLog?.log(`VAD state: speaking=${speaking}, remoteStreamCount=${remoteStreamCount}`);
+    },
+
+    reconfigure: async (params): Promise<void> => {
+        if (!encoder || !processing || !encoderConfig) { warnLog?.log('Cannot reconfigure: not active'); return; }
+        infoLog?.log(`Reconfigure: ${params.bitrate / 1_000_000}Mbps, ${params.width}x${params.height}`);
+        encoderConfig.bitrate = params.bitrate; encoderConfig.width = params.width; encoderConfig.height = params.height;
+        await encoder.reconfigure(params);
+        resizeCanvas = null; resizeCtx = null;
+        if (segConfig && blurEnabled) { segConfig.outputWidth = params.width; segConfig.outputHeight = params.height; }
+    },
+
+    switchCodec: async (config: EncoderConfig): Promise<void> => {
+        if (!encoder) { warnLog?.log('Cannot switch codec: not active'); return; }
+        infoLog?.log(`Switching codec to ${config.codec}`);
+        if (videoStream) { videoStream.complete(); videoStream = null; }
+        codecSettings = null; firstEncodedTimestamp = null; pendingStreamFrames = []; storedDescriptionBytes = null;
+        await encoder.switchCodec(config);
+        encoderConfig = config; resizeCanvas = null; resizeCtx = null;
+        frameCount = 0; startTimestamp = undefined;
+        backpressureDrops = 0; backpressureTotalFrames = 0; lastBackpressureCheckTime = 0; backpressureNotified = false;
+        infoLog?.log('Codec switched successfully');
+    },
+
+    toggleBlur: async (enabled, segCfg?): Promise<void> => {
+        infoLog?.log(`Toggling blur: ${enabled ? 'ON' : 'OFF'}`);
+        if (enabled && !segInitialized) {
+            if (!segCfg && !segConfig) throw new Error('Cannot enable blur: no segmentation config');
+            const cfg = segCfg ?? segConfig!;
+            await initializeSegmentation({
+                ...cfg,
+                outputWidth: encoderConfig?.width ?? cfg.outputWidth,
+                outputHeight: encoderConfig?.height ?? cfg.outputHeight,
+            });
+        }
+        if (segConfig) segConfig.blurEnabled = enabled;
+        blurEnabled = enabled;
+    },
+
+    // eslint-disable-next-line @typescript-eslint/require-await
+    forceKeyFrame: async (): Promise<void> => { frameCount = 0; infoLog?.log('Forced next frame to be keyframe'); },
+
+    flush: async (): Promise<void> => {
+        if (encoder) { try { await encoder.flush(); infoLog?.log('Encoder flushed'); } catch (e) { warnLog?.log('Encoder flush error:', e); } }
+    },
+
+    stop: async (): Promise<void> => {
+        infoLog?.log('Stopping video processing worker...');
+        processing = false;
+        streamCtx.processing = false;
+
+        if (streamReadLoopPromise) { try { await streamReadLoopPromise; } catch { /* ignore */ } streamReadLoopPromise = null; }
+        try { await awaitAllPendingReadbacks(); } catch { /* ignore */ }
+        if (frameQueue) { while (!frameQueue.isEmpty()) { const qf = frameQueue.shift(); if (qf) qf.frame.close(); } frameQueue = null; }
+        if (encoder) { try { await encoder.flush(); encoder.close(); } catch (e) { warnLog?.log('Encoder close error:', e); } }
+        if (videoStream) { videoStream.complete(); videoStream = null; }
+        if (streamCtx.signalrConnection) { try { await streamCtx.signalrConnection.stop(); } catch { /* ignore */ } streamCtx.signalrConnection = null; }
+        if (segInitialized) { try { outputGpuBuffer.destroy(); } catch { /* ignore */ } try { smoothedMaskBuffer.destroy(); } catch { /* ignore */ } }
+
+        // Reset all state
+        encoder = null; encoderConfig = null; onnxSession = null; segConfig = null; resolvedModelConfig = null;
+        segInitialized = false; blurEnabled = false; resizeCanvas = null; resizeCtx = null;
+        frameCount = 0; startTimestamp = undefined; lastLoggedFormat = '(unset)'; loggedI420Error = false;
+        backpressureDrops = 0; backpressureTotalFrames = 0; lastBackpressureCheckTime = 0; backpressureNotified = false;
+        dimensionsReconciled = false; vadSpeaking = true; vadRemoteStreamCount = 0; vadLastPassedFrameTime = 0;
+        segFrameCounter = 0; hasValidMask = false; loggedBlurFormat = false; processingFrame = false; frameSequence = 0;
+        segProcessedFrames = 0; segTotalInferenceTime = 0; segTotalBlurTime = 0; segTotalProcessingTime = 0; segDroppedFrames = 0;
+        videoStream = null; lastVideoStream = null; pendingStreamFrames = [];
+        codecSettings = null; storedDescriptionBytes = null; firstEncodedTimestamp = null; streamingEnabled = false;
+
+        infoLog?.log('Video processing worker stopped');
+    },
+
+    // eslint-disable-next-line @typescript-eslint/require-await
+    getStats: async (): Promise<VideoProcessingStats> => {
+        const encoderStats = encoder?.getStats() ?? {
+            encodedFrames: 0, droppedFrames: 0, keyFrames: 0, totalBytes: 0,
+            averageEncodeTime: 0, medianEncodeTime: 0, pureMedianEncodeTime: -1,
+            configuredWidth: 0, configuredHeight: 0, configuredBitrate: 0, hardwareAcceleration: 'unknown',
+        };
+        const segStats: SegmentationStats | null = segInitialized ? {
+            processedFrames: segProcessedFrames,
+            averageInferenceTime: segProcessedFrames > 0 ? segTotalInferenceTime / segProcessedFrames : 0,
+            averageBlurTime: segProcessedFrames > 0 ? segTotalBlurTime / segProcessedFrames : 0,
+            averageTotalTime: segProcessedFrames > 0 ? segTotalProcessingTime / segProcessedFrames : 0,
+            droppedFrames: segDroppedFrames, backend: segConfig?.backend ?? 'unknown',
+        } : null;
+        return { encoder: encoderStats, segmentation: segStats };
+    },
+
+    // eslint-disable-next-line @typescript-eslint/require-await
+    updateSessionToken: async (token): Promise<void> => { streamCtx.sessionToken = token; },
+
+    // eslint-disable-next-line @typescript-eslint/require-await
+    updateServerClockOffset: async (offsetMs): Promise<void> => { streamCtx.serverClockOffsetMs = offsetMs; },
+};

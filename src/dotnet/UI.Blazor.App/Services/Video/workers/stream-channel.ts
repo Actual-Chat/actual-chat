@@ -86,21 +86,3 @@ export function createInputChannel<T>(highWaterMark = 1): StreamEndpoints<T> {
     };
 }
 
-/**
- * Create a unidirectional output channel: the writable end goes to the worker,
- * the caller gets a reader.
- */
-export interface OutputEndpoints<T> {
-    /** Reader for the consumer side (main thread) */
-    reader: ReadableStreamDefaultReader<T>;
-    /** Writable stream to transfer to the producer (worker) */
-    writable: WritableStream<T>;
-}
-
-export function createOutputChannel<T>(highWaterMark = 4): OutputEndpoints<T> {
-    const ts = new TransformStream<T, T>(undefined, { highWaterMark });
-    return {
-        reader: ts.readable.getReader(),
-        writable: ts.writable,
-    };
-}

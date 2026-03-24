@@ -2,8 +2,8 @@ import { Log } from 'logging';
 import { rpcClientServer, rpcNoWait } from 'rpc';
 import type { Disposable } from 'disposable';
 import { getActiveRecorder, type VideoDevice } from '../VideoPanel/video-recorder';
-import type { SegmentationWorker, SegmentationWorkerCallbacks } from '../../Services/Video/workers/segmentation-worker-contract';
-import { createAdaptiveSegmentationConfig } from '../../Services/Video/workers/segmentation-worker-contract';
+import type { VideoProcessingWorker, VideoProcessingWorkerCallbacks } from '../../Services/Video/workers/video-processing-worker-contract';
+import { createAdaptiveSegmentationConfig } from '../../Services/Video/workers/video-processing-worker-contract';
 import { detectGPUBackends } from '../../Services/Video/gpu-support';
 import { Versioning } from 'versioning';
 import { fastRaf } from 'fast-raf';
@@ -24,8 +24,8 @@ export class JoinVideoCallModal {
     private clonedPreviewTrack: MediaStreamTrack | null = null;
 
     // Blur preview state
-    private segmentationWorkerInstance: Worker | null = null;
-    private segmentationWorker: (SegmentationWorker & Disposable) | null = null;
+    private previewWorkerInstance: Worker | null = null;
+    private previewWorker: (VideoProcessingWorker & Disposable) | null = null;
     private isBlurActive = false;
     private blurFrameTimer: number | null = null;
     private captureCanvas: HTMLCanvasElement;
@@ -331,20 +331,18 @@ export class JoinVideoCallModal {
         try {
             infoLog?.log('Starting blur preview...');
 
-            // Detect GPU backend
             const gpuSupport = await detectGPUBackends();
             const segConfig = createAdaptiveSegmentationConfig(gpuSupport.recommended);
 
-            // Create segmentation worker
-            const workerPath = Versioning.mapPath('/dist/videoSegmentationWorker.js');
-            this.segmentationWorkerInstance = new Worker(workerPath, { type: 'module' });
+            // Use unified video processing worker in preview-only mode
+            const workerPath = Versioning.mapPath('/dist/videoProcessingWorker.js');
+            this.previewWorkerInstance = new Worker(workerPath, { type: 'module' });
 
-            this.segmentationWorker = rpcClientServer<SegmentationWorker>(
+            this.previewWorker = rpcClientServer<VideoProcessingWorker>(
                 'PreviewBlur',
-                this.segmentationWorkerInstance,
+                this.previewWorkerInstance,
                 {
-                    onFrameProcessed: (frame: VideoFrame) => {
-                        // Draw blurred frame to the same canvas
+                    onPreviewFrame: (frame: VideoFrame) => {
                         if (this.canvasCtx && this.isBlurActive) {
                             if (this.canvasEl.width !== frame.displayWidth ||
                                 this.canvasEl.height !== frame.displayHeight) {
@@ -353,21 +351,24 @@ export class JoinVideoCallModal {
                             }
                             this.canvasCtx.drawImage(frame as CanvasImageSource, 0, 0);
                         }
-                        // Close frame since no encoder takes ownership
                         frame.close();
+                        return Promise.resolve();
                     },
-                    onError: (error: Error) => {
-                        errorLog?.log('Blur preview error:', error);
-                    }
-                } as SegmentationWorkerCallbacks
+                    onSerializedChunk: () => Promise.resolve(),
+                    onBackpressure: () => Promise.resolve(),
+                    onDimensionReconciled: () => Promise.resolve(),
+                    onStreamCreated: () => Promise.resolve(),
+                } as VideoProcessingWorkerCallbacks
             );
 
-            // Initialize worker (loads ONNX model + WebGPU)
-            await this.segmentationWorker.initialize(segConfig, { timeoutMs: 15000 });
+            await this.previewWorker.initialize({
+                encoder: { codec: 'av01.0.01M.08', width: 640, height: 360, bitrate: 500_000, framerate: 15, keyframeInterval: 30, latencyMode: 'realtime', hardwareAcceleration: 'prefer-software' },
+                segmentation: segConfig,
+                streaming: { hubUrl: '', sessionToken: '', chatId: '', serverClockOffsetMs: 0 },
+                previewOnly: true,
+            }, { type: 'rpc-timeout', timeoutMs: 15000 });
 
             this.isBlurActive = true;
-
-            // Start frame pump
             this.pumpBlurFrames();
 
             infoLog?.log('Blur preview started');
@@ -378,7 +379,7 @@ export class JoinVideoCallModal {
     }
 
     private pumpBlurFrames(): void {
-        if (!this.isBlurActive || !this.stream || !this.segmentationWorker) return;
+        if (!this.isBlurActive || !this.stream || !this.previewWorker) return;
 
         if (this.videoEl.videoWidth > 0 && this.videoEl.videoHeight > 0) {
             this.captureCanvas.width = this.videoEl.videoWidth;
@@ -389,7 +390,7 @@ export class JoinVideoCallModal {
                 timestamp: performance.now() * 1000
             });
 
-            void this.segmentationWorker.processFrame(frame, rpcNoWait);
+            void this.previewWorker.encodeFrame(frame, rpcNoWait);
         }
 
         // ~15fps for preview (sufficient for blur effect)
@@ -404,19 +405,19 @@ export class JoinVideoCallModal {
             this.blurFrameTimer = null;
         }
 
-        if (this.segmentationWorker) {
+        if (this.previewWorker) {
             try {
-                await this.segmentationWorker.stop();
-                this.segmentationWorker.dispose();
+                await this.previewWorker.stop();
+                this.previewWorker.dispose();
             } catch {
                 // ignore cleanup errors
             }
-            this.segmentationWorker = null;
+            this.previewWorker = null;
         }
 
-        if (this.segmentationWorkerInstance) {
-            this.segmentationWorkerInstance.terminate();
-            this.segmentationWorkerInstance = null;
+        if (this.previewWorkerInstance) {
+            this.previewWorkerInstance.terminate();
+            this.previewWorkerInstance = null;
         }
 
         infoLog?.log('Blur preview stopped');

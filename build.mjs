@@ -42,8 +42,6 @@ const options = {
         { out: 'opusEncoderWorklet', in: './src/dotnet/UI.Blazor.App/Components/AudioRecorder/worklets/opus-encoder-worklet-processor.ts' },
         { out: 'vadWorklet', in: './src/dotnet/UI.Blazor.App/Components/AudioRecorder/worklets/audio-vad-worklet-processor.ts' },
         { out: 'videoDecoderWorker', in: './src/dotnet/UI.Blazor.App/Services/Video/workers/decoder-worker.ts' },
-        { out: 'videoEncoderWorker', in: './src/dotnet/UI.Blazor.App/Services/Video/workers/encoder-worker.ts' },
-        { out: 'videoSegmentationWorker', in: './src/dotnet/UI.Blazor.App/Services/Video/workers/segmentation-worker.ts' },
         { out: 'videoProcessingWorker', in: './src/dotnet/UI.Blazor.App/Services/Video/workers/video-processing-worker.ts' },
     ],
     bundle: true,

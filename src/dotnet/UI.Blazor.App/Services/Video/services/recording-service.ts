@@ -6,8 +6,8 @@
 import { VideoPipeline, type PipelineConfig } from './video-pipeline';
 import { getBestScalabilityMode, getCodecCategory, getCodecForCategory } from '../codec-support';
 import { detectGPUBackends } from '../gpu-support';
-import type { SegmentationConfig } from '../workers/segmentation-worker-contract';
-import { createDefaultSegmentationConfig, createAdaptiveSegmentationConfig } from '../workers/segmentation-worker-contract';
+import type { SegmentationConfig } from '../workers/video-processing-worker-contract';
+import { createDefaultSegmentationConfig, createAdaptiveSegmentationConfig } from '../workers/video-processing-worker-contract';
 import { Log } from 'logging';
 
 const { infoLog, warnLog, errorLog } = Log.get('VideoPipeline');
