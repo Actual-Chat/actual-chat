@@ -41,7 +41,7 @@ internal sealed class WindowsAudioPlaybackEngine(
 
     // Playback reporting state
     private long _playedSamples;
-    private volatile bool _isPaused = true;
+    private volatile bool _isPaused;
     private DateTime _lastReportAt = DateTime.MinValue;
     private int _endedReported;
 
@@ -89,9 +89,6 @@ internal sealed class WindowsAudioPlaybackEngine(
         // Start background decode loop
         var ct = _decodeCts.Token;
         _decodeTask = BackgroundTask.Run(() => DecodeAndFeed(ct), ct);
-        _isPaused = true;
-        // Initial report that we're ready to play
-        ReportPlaying();
 
         // Wait until we have enough decoded samples buffered before starting playback
         _pauseCts = new CancellationTokenSource();
@@ -141,7 +138,6 @@ internal sealed class WindowsAudioPlaybackEngine(
         _decodeBuffer.Clear();
         _decodeCts.CancelAndDisposeSilently();
         _pauseCts?.CancelAndDisposeSilently();
-        _isPaused = true;
         // Report end (no error message). If an error already reported, this will no-op.
         TryReportEnded(null);
         return Task.CompletedTask;
