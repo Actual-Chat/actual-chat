@@ -49,9 +49,15 @@ internal sealed class RedisLiveStateStore<TValue>(
         var result = new Dictionary<string, TValue>(entries.Length, StringComparer.Ordinal);
         foreach (var entry in entries) {
             var field = entry.Name.ToString();
-            var value = MemoryPackSerializer.Deserialize<TValue>((byte[])entry.Value!);
-            if (value != null)
-                result[field] = value;
+            try {
+                var value = MemoryPackSerializer.Deserialize<TValue>((byte[])entry.Value!);
+                if (value != null)
+                    result[field] = value;
+            }
+            catch (Exception e) when (e is not OperationCanceledException) {
+                log.LogWarning(e, "Redis deserialization failed for {KeyPrefix}:{ChatId}/{Field}, skipping stale entry",
+                    keyPrefix, chatId, field);
+            }
         }
         return result;
     }

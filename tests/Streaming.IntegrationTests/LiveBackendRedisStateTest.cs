@@ -117,9 +117,9 @@ public class LiveBackendRedisStateTest(AppHostFixture fixture, ITestOutputHelper
 
         await liveBackend.RegisterVideoStreamMember(chatId, sessionId, codecs, CancellationToken.None);
 
-        var redisEntries = await ReadRedisHash<ApiArray<string>>("live-video:members", chatId);
+        var redisEntries = await ReadRedisHash<VideoStreamMemberInfo>("live-video:members", chatId);
         redisEntries.Should().ContainKey(sessionId);
-        redisEntries[sessionId].Should().BeEquivalentTo(codecs);
+        redisEntries[sessionId].SupportedDecoderCodecs.Should().BeEquivalentTo(codecs);
     }
 
     [Fact]
@@ -132,7 +132,7 @@ public class LiveBackendRedisStateTest(AppHostFixture fixture, ITestOutputHelper
             new ApiArray<string>(["av1", "h264"]), CancellationToken.None);
         await liveBackend.UnregisterVideoStreamMember(chatId, sessionId, CancellationToken.None);
 
-        var redisEntries = await ReadRedisHash<ApiArray<string>>("live-video:members", chatId);
+        var redisEntries = await ReadRedisHash<VideoStreamMemberInfo>("live-video:members", chatId);
         redisEntries.Should().BeEmpty();
     }
 
@@ -156,7 +156,7 @@ public class LiveBackendRedisStateTest(AppHostFixture fixture, ITestOutputHelper
 
         // Verify Redis has the data
         (await ReadRedisHash<VideoStreamInfo>("live-video:streams", chatId)).Should().NotBeEmpty();
-        (await ReadRedisHash<ApiArray<string>>("live-video:members", chatId)).Should().NotBeEmpty();
+        (await ReadRedisHash<VideoStreamMemberInfo>("live-video:members", chatId)).Should().NotBeEmpty();
 
         // Invalidate Fusion cache to force re-read from Redis
         using (Invalidation.Begin()) {
