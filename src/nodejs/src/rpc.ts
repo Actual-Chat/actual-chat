@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-type-parameters */
 // TODO(AY): review eslint suppressions
-import { delayAsync, PromiseSourceWithTimeout, ResolvedPromise } from 'promises';
+import { PromiseSourceWithTimeout } from 'promises';
 import { Disposable } from 'disposable';
 import { Log } from 'logging';
 

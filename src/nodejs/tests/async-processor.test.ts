@@ -4,9 +4,9 @@ import { AsyncProcessor } from 'async-processor';
 describe('AsyncProcessor', () => {
     it('should process enqueued items in order', async () => {
         const processed: number[] = [];
-        const processor = new AsyncProcessor<number>('test', async (item) => {
+        const processor = new AsyncProcessor<number>('test', (item) => {
             processed.push(item);
-            return true;
+            return Promise.resolve(true);
         });
 
         processor.enqueue(1);
@@ -22,9 +22,9 @@ describe('AsyncProcessor', () => {
 
     it('should stop when process returns false', async () => {
         const processed: number[] = [];
-        const processor = new AsyncProcessor<number>('test-stop', async (item) => {
+        const processor = new AsyncProcessor<number>('test-stop', (item) => {
             processed.push(item);
-            return item !== 2; // stop at item 2
+            return Promise.resolve(item !== 2); // stop at item 2
         });
 
         processor.enqueue(1);
@@ -38,7 +38,7 @@ describe('AsyncProcessor', () => {
     });
 
     it('should throw when enqueuing after stop', async () => {
-        const processor = new AsyncProcessor<number>('test-throw', async () => false);
+        const processor = new AsyncProcessor<number>('test-throw', () => Promise.resolve(false));
         processor.enqueue(1);
         await processor.whenRunning;
 
@@ -46,7 +46,7 @@ describe('AsyncProcessor', () => {
     });
 
     it('should silently ignore enqueue after stop with mustFailIfAlreadyStopped=false', async () => {
-        const processor = new AsyncProcessor<number>('test-silent', async () => false);
+        const processor = new AsyncProcessor<number>('test-silent', () => Promise.resolve(false));
         processor.enqueue(1);
         await processor.whenRunning;
 
@@ -72,9 +72,9 @@ describe('AsyncProcessor', () => {
 
     it('should wait for items when queue is empty', async () => {
         const processed: number[] = [];
-        const processor = new AsyncProcessor<number>('test-wait', async (item) => {
+        const processor = new AsyncProcessor<number>('test-wait', (item) => {
             processed.push(item);
-            return true;
+            return Promise.resolve(true);
         });
 
         // Wait, then enqueue

@@ -11,7 +11,6 @@ import {
     type RpcNoWait,
     type RpcTimeout,
 } from 'rpc';
-import { PromiseSourceWithTimeout } from 'promises';
 
 // --- RpcCall ---
 
@@ -101,21 +100,6 @@ describe('RpcPromise', () => {
 
 // --- rpcServer & rpcClient over MessageChannel ---
 
-async function whenNextMessage<T>(
-    port: MessagePort,
-    timeoutMs = 2000,
-): Promise<MessageEvent<T>> {
-    const result = new PromiseSourceWithTimeout<MessageEvent<T>>();
-    result.setTimeout(timeoutMs);
-    const oldOnMessage = port.onmessage;
-    port.onmessage = (event: MessageEvent<T>) => result.resolve(event);
-    try {
-        return await result;
-    } finally {
-        port.onmessage = oldOnMessage;
-    }
-}
-
 interface TestService {
     mul(x: number, y: number): Promise<number>;
     concat(a: string, b: string): Promise<string>;
@@ -133,7 +117,6 @@ class TestServer implements TestService {
     fail(): Promise<void> {
         throw new Error('intentional');
     }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async ping(_reply: string, _noWait?: RpcNoWait): Promise<void> {
         // No-op for fire-and-forget test
     }
@@ -175,7 +158,7 @@ describe('rpcServer + rpcClient', () => {
         server.dispose();
     });
 
-    it('should throw on call after dispose', async () => {
+    it('should throw on call after dispose', () => {
         const { port1, port2 } = new MessageChannel();
         const client = rpcClient<TestService>('test-client', port1);
         const server = rpcServer('test-server', port2, new TestServer());

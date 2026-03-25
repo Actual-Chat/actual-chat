@@ -9,15 +9,19 @@ async function collect<T>(iterable: AsyncIterable<T>): Promise<T[]> {
     return result;
 }
 
-async function* fromArray<T>(items: T[]): AsyncIterable<T> {
-    for (const item of items)
-        yield item;
+function fromArray<T>(items: T[]): AsyncIterable<T> {
+    return (async function* () {
+        for (const item of items)
+            yield await Promise.resolve(item);
+    })();
 }
 
-async function* failAfter<T>(items: T[], error: Error): AsyncIterable<T> {
-    for (const item of items)
-        yield item;
-    throw error;
+function failAfter<T>(items: T[], error: Error): AsyncIterable<T> {
+    return (async function* () {
+        for (const item of items)
+            yield await Promise.resolve(item);
+        throw error;
+    })();
 }
 
 describe('resilientStream', () => {

@@ -58,7 +58,7 @@ describe('ObjectPool', () => {
 describe('AsyncObjectPool', () => {
     it('should create objects via async factory', async () => {
         let counter = 0;
-        const pool = new AsyncObjectPool(async () => ++counter);
+        const pool = new AsyncObjectPool(() => Promise.resolve(++counter));
 
         expect(await pool.get()).toBe(1);
         expect(await pool.get()).toBe(2);
@@ -66,7 +66,7 @@ describe('AsyncObjectPool', () => {
 
     it('should reuse released objects', async () => {
         let counter = 0;
-        const pool = new AsyncObjectPool(async () => ({ id: ++counter }));
+        const pool = new AsyncObjectPool(() => Promise.resolve({ id: ++counter }));
 
         const obj1 = await pool.get();
         await pool.release(obj1);
@@ -76,7 +76,7 @@ describe('AsyncObjectPool', () => {
 
     it('should expandTo pre-populate', async () => {
         let counter = 0;
-        const pool = await new AsyncObjectPool(async () => ++counter).expandTo(2);
+        const pool = await new AsyncObjectPool(() => Promise.resolve(++counter)).expandTo(2);
 
         const a = await pool.get();
         const b = await pool.get();
@@ -85,7 +85,7 @@ describe('AsyncObjectPool', () => {
 
     it('should call reset on Resettable objects', async () => {
         let resetCount = 0;
-        const pool = new AsyncObjectPool(async () => ({
+        const pool = new AsyncObjectPool(() => Promise.resolve({
             reset() { resetCount++; },
         }));
 
