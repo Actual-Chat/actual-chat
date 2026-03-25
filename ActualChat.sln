@@ -416,6 +416,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{45EC0FB9
 	ProjectSection(SolutionItems) = preProject
 		src\nodejs\tests\promises.test.ts = src\nodejs\tests\promises.test.ts
 		src\nodejs\tests\resilient-stream.test.ts = src\nodejs\tests\resilient-stream.test.ts
+		src\nodejs\tests\async-processor.test.ts = src\nodejs\tests\async-processor.test.ts
+		src\nodejs\tests\math.test.ts = src\nodejs\tests\math.test.ts
+		src\nodejs\tests\object-pool.test.ts = src\nodejs\tests\object-pool.test.ts
+		src\nodejs\tests\rpc.test.ts = src\nodejs\tests\rpc.test.ts
+		src\nodejs\tests\server-clock.test.ts = src\nodejs\tests\server-clock.test.ts
 	EndProjectSection
 EndProject
 Global

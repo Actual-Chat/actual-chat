@@ -1,17 +1,25 @@
 import { defineConfig } from 'vitest/config';
 import path from 'path';
 
+const src = (name: string) => path.resolve(__dirname, `src/nodejs/src/${name}.ts`);
+
 export default defineConfig({
     resolve: {
         alias: {
             // Mirror tsconfig.json paths: bare imports resolve to src/nodejs/src/*
-            'logging-init': path.resolve(__dirname, 'src/nodejs/src/logging-init.ts'),
-            'logging': path.resolve(__dirname, 'src/nodejs/src/logging.ts'),
-            'promises': path.resolve(__dirname, 'src/nodejs/src/promises.ts'),
-            'timeout': path.resolve(__dirname, 'src/nodejs/src/timeout.ts'),
-            'timerQueue': path.resolve(__dirname, 'src/nodejs/src/timerQueue.ts'),
-            'disposable': path.resolve(__dirname, 'src/nodejs/src/disposable.ts'),
-            'resilient-stream': path.resolve(__dirname, 'src/nodejs/src/resilient-stream.ts'),
+            'logging-init': src('logging-init'),
+            'logging': src('logging'),
+            'promises': src('promises'),
+            'timeout': src('timeout'),
+            'timerQueue': src('timerQueue'),
+            'disposable': src('disposable'),
+            'resettable': src('resettable'),
+            'resilient-stream': src('resilient-stream'),
+            'rpc': src('rpc'),
+            'math': src('math'),
+            'object-pool': src('object-pool'),
+            'server-clock': src('server-clock'),
+            'async-processor': src('async-processor'),
         },
     },
     test: {
