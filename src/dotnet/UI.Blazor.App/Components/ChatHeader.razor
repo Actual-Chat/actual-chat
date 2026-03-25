@@ -11,9 +11,11 @@
     var isAnyoneVideoStreaming = isVideoStreamingEnabled && m.IsAnyoneVideoStreaming;
     var isPanelVisible = IsRecordingHere || IsListeningHere || isAnyoneVideoStreaming || (m.IsAnyoneTalking && m.AudioState?.ChatId == chat?.Id);
 
-    // Show video panel when recording or remote streams exist
-    if (isVideoStreamingEnabled && m.VideoState?.IsRecording == true && !_showVideoPanel) {
+    // Show video panel when own recording starts or remote streams exist
+    if (isVideoStreamingEnabled && !_showVideoPanel
+        && (m.VideoState?.IsRecording == true || isAnyoneVideoStreaming)) {
         _showVideoPanel = true;
+        _autoStartRecording = m.VideoState?.IsRecording == true;
         _pendingCameraDeviceId = m.VideoState?.SelectedCameraDeviceId;
         _pendingBlurEnabled = m.VideoState?.IsBackgroundBlurEnabled ?? false;
     }
@@ -28,6 +30,7 @@
         || (m.VideoState?.IsRecording != true && !m.IsAnyoneVideoStreaming)
         || (m.VideoState?.IsRecording != true && !IsListeningHere && m.IsAnyoneVideoStreaming))) {
         _showVideoPanel = false;
+        _autoStartRecording = false;
         _pendingCameraDeviceId = null;
         _pendingBlurEnabled = false;
     }
@@ -99,11 +102,12 @@
 }
 
 @if (m.IsVideoStreamingEnabled) {
-    <VideoPanel Show="@_showVideoPanel" PendingCameraDeviceId="@_pendingCameraDeviceId" PendingBlurEnabled="@_pendingBlurEnabled"/>
+    <VideoPanel Show="@_showVideoPanel" AutoStart="@_autoStartRecording" PendingCameraDeviceId="@_pendingCameraDeviceId" PendingBlurEnabled="@_pendingBlurEnabled"/>
 }
 
 @code {
     private bool _showVideoPanel;
+    private bool _autoStartRecording;
     private string? _pendingCameraDeviceId;
     private bool _pendingBlurEnabled;
 

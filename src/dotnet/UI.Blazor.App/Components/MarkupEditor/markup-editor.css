@@ -38,6 +38,7 @@ body.narrow .markup-editor .editor-content .editor-mention {
 .markup-editor > .c-placeholder {
     @apply absolute;
     @apply w-full h-5 md:h-6;
+    @apply pr-4;
     @apply truncate;
     @apply text-03;
 }

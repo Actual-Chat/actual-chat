@@ -38,26 +38,31 @@
 
 /* Toolbar — centered */
 .join-video-call-modal .c-toolbar {
-    @apply flex-x gap-x-3 items-center justify-center;
+    @apply grid gap-x-3 items-center justify-center;
     @apply py-2;
+    grid-template-columns: 1fr auto 1fr;
 }
 
 /* Pill-shaped toolbar buttons (desktop mic/camera) */
 .join-video-call-modal .toolbar-pill {
-    @apply h-12 rounded-full bg-03;
-    @apply flex items-center justify-center gap-x-2;
-    @apply cursor-pointer border-none outline-none;
+    @apply flex items-center justify-center;
+    @apply h-12 w-22;
+    @apply rounded-full border-none outline-none;
+    @apply bg-03;
     @apply text-01;
-    width: 88px;
-}
-.join-video-call-modal .toolbar-pill.active {
-    @apply outline outline-2 outline-primary outline-offset-[-1px];
+    @apply cursor-pointer;
 }
 .join-video-call-modal .pill-action,
 .join-video-call-modal .pill-chevron {
     @apply flex items-center justify-center;
-    @apply bg-transparent border-none outline-none cursor-pointer;
-    @apply text-01;
+    @apply min-w-8;
+    @apply border-none outline-none;
+    @apply bg-transparent;
+    @apply text-round-title;
+    @apply cursor-pointer;
+}
+.join-video-call-modal .toolbar-pill.active .pill-action {
+    @apply text-primary;
 }
 .join-video-call-modal .pill-action {
     @apply flex-1;
@@ -66,8 +71,8 @@
     @apply px-1.5;
 }
 .join-video-call-modal .pill-divider {
-    @apply h-8 bg-separator;
-    width: 1px;
+    @apply h-8 w-px;
+    @apply bg-separator;
 }
 
 /* Allow dropdown to escape modal overflow clipping */
@@ -84,18 +89,27 @@
 /* Camera pill wrapper + dropdown */
 .join-video-call-modal .camera-pill-wrapper {
     @apply relative;
+    @apply justify-self-end;
 }
 .join-video-call-modal .camera-dropdown {
-    @apply absolute top-full mt-2 left-1/2 -translate-x-1/2;
-    @apply bg-01 rounded-lg border border-separator shadow-context;
-    @apply py-2 z-50;
-    width: 327px;
+    @apply absolute top-full left-1/2 z-50;
+    @apply flex-y gap-0.5;
+    @apply mt-2 p-2;
+    @apply rounded-lg border border-separator;
+    @apply bg-01;
+    @apply shadow-context;
+    @apply -translate-x-1/2;
 }
 .join-video-call-modal .camera-dropdown-header {
     @apply text-caption-1 text-02 px-4 h-6 flex items-center;
 }
 .join-video-call-modal .camera-dropdown-item {
-    @apply flex items-center gap-x-4 h-12 px-4 text-01 cursor-pointer;
+    @apply flex items-center gap-x-4;
+    @apply h-12;
+    @apply px-4;
+    @apply rounded-lg;
+    @apply text-01;
+    @apply cursor-pointer;
 }
 body.hoverable .join-video-call-modal .camera-dropdown-item:hover {
     @apply bg-hover;
@@ -127,10 +141,12 @@ body.hoverable .join-video-call-modal .camera-dropdown-item:hover {
 
 /* Mobile video button — outline when on */
 .join-video-call-modal .btn-round.video-btn-on {
-    @apply outline outline-2 outline-primary outline-offset-[-1px];
+    @apply justify-self-end;
+    @apply text-primary;
 }
 .join-video-call-modal .btn-round.video-btn-off {
-    @apply text-02;
+    @apply justify-self-end;
+    @apply text-round-title;
 }
 
 /* Blur button — active state */
@@ -140,5 +156,5 @@ body.hoverable .join-video-call-modal .camera-dropdown-item:hover {
 
 /* Mobile: stack buttons vertically with Join on top */
 body.narrow .join-video-call-modal .dialog-buttons {
-    flex-direction: column-reverse;
+    @apply -flex-y;
 }

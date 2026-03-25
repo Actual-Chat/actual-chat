@@ -743,12 +743,18 @@ body.narrow .audio-panel-wrapper .recorder-wrapper {
 .chat-message-editor.text-mode .audio-panel-header {
     @apply hidden;
 }
+.audio-panel-header .c-incut {
+    @apply w-12;
+}
 .audio-panel-header .c-left,
 .audio-panel-header .c-right {
-    @apply flex-x items-center gap-x-2;
+    @apply flex-x items-center gap-x-4;
 }
 .audio-panel-header .btn-round {
     @apply bg-[var(--round-right-panel)];
+}
+.audio-panel-header .language-wrapper {
+    @apply relative;
 }
 
 /* === 11.5. Video Start Button === */

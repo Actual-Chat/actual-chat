@@ -33,31 +33,21 @@
         @if (ScreenSize.IsWide()) {
             @* Desktop toolbar *@
             <div class="c-toolbar">
-                @* Blur circle *@
-                <ButtonRound Class="@BlurBtnClass()" Click="@OnBlurToggle">
-                    <i class="icon-eye text-2xl"></i>
-                </ButtonRound>
-                @* Mic button *@
-                <ButtonRound Class="@MicBtnClass()" Click="@OnMicToggle">
-                    @if (_isRecording) {
-                        <narrow-recording-svg isRecording="true" class="rec-icon on" />
-                    } else {
-                        <div class="rec-icon off">
-                            <i class="icon-recorder-left-half left"></i>
-                            <i class="icon-recorder-right-half right"></i>
-                        </div>
-                    }
-                </ButtonRound>
+            @*     $1$ Blur circle #1# *@
+            @*     <ButtonRound Class="@BlurBtnClass()" Click="@OnBlurToggle"> *@
+            @*         <i class="icon-blur-person text-2xl"></i> *@
+            @*     </ButtonRound> *@
+
                 @* Camera pill with chevron + dropdown *@
                 <div class="camera-pill-wrapper">
                     <div class="toolbar-pill @(_isVideoOn ? "active" : "")">
-                        <button class="pill-action" type="button" @onclick="OnVideoToggle">
+                        <HeaderButton Class="pill-action" Click="OnVideoToggle">
                             <i class="icon-video text-2xl"></i>
-                        </button>
+                        </HeaderButton>
                         <span class="pill-divider"></span>
-                        <button class="pill-chevron" type="button" @onclick="OnCameraDropdownToggle">
+                        <HeaderButton Class="pill-chevron" Click="OnCameraDropdownToggle">
                             <i class="icon-chevron-compact-down text-xl"></i>
-                        </button>
+                        </HeaderButton>
                     </div>
                     @if (_isCameraDropdownOpen) {
                         <div class="camera-dropdown">
@@ -75,47 +65,52 @@
                                     <span class="truncate">@device.Label</span>
                                 </div>
                             }
-                            <div class="camera-dropdown-divider"></div>
-                            <div class="camera-dropdown-item" @onclick="@OnBlurToggle">
-                                @if (_isBlurEnabled) {
-                                    <i class="icon-checkmark-simple text-primary text-lg"></i>
-                                } else {
-                                    <span class="w-[18px]"></span>
-                                }
-                                <span>Blur my background</span>
-                            </div>
+                            @* <div class="camera-dropdown-divider"></div> *@
+                            @* <div class="camera-dropdown-item" @onclick="@OnBlurToggle"> *@
+                            @*     @if (_isBlurEnabled) { *@
+                            @*         <i class="icon-checkmark-simple text-primary text-lg"></i> *@
+                            @*     } else { *@
+                            @*         <span class="w-[18px]"></span> *@
+                            @*     } *@
+                            @*     <span>Blur my background</span> *@
+                            @* </div> *@
                         </div>
                     }
                 </div>
-                @* Screen-share circle *@
-                <ButtonRound>
-                    <i class="icon-screen-share text-2xl"></i>
+
+                @* Mic button *@
+                <ButtonRound Class="@MicBtnClass()" Click="@OnMicToggle">
+                    @if (_isRecording) {
+                        <i class="icon-mic-2 text-2xl"></i>
+                    } else {
+                        <i class="icon-mic-off text-2xl"></i>
+                    }
                 </ButtonRound>
             </div>
         } else {
             @* Mobile toolbar *@
             <div class="c-toolbar">
-                <ButtonRound>
-                    <i class="icon-volume-up text-2xl"></i>
-                </ButtonRound>
-                <ButtonRound Class="@BlurBtnClass()" Click="@OnBlurToggle">
-                    <i class="icon-eye text-2xl"></i>
-                </ButtonRound>
-                <ButtonRound Class="@MicBtnClass()" Click="@OnMicToggle">
-                    @if (_isRecording) {
-                        <narrow-recording-svg isRecording="true" class="rec-icon on" />
-                    } else {
-                        <div class="rec-icon off">
-                            <i class="icon-recorder-left-half left"></i>
-                            <i class="icon-recorder-right-half right"></i>
-                        </div>
-                    }
-                </ButtonRound>
+                @* @if (_enableIncompleteUI) { *@
+                @*     <ButtonRound Class="@BlurBtnClass()" Click="@OnBlurToggle"> *@
+                @*         <i class="icon-blur-person text-2xl"></i> *@
+                @*     </ButtonRound> *@
+                @* } *@
+
                 <ButtonRound Class="@VideoWrapperBtnClass()" Click="@OnVideoToggle">
                     <i class="icon-video text-2xl"></i>
                 </ButtonRound>
+
+                @* Mic button *@
+                <ButtonRound Class="@MicBtnClass()" Click="@OnMicToggle">
+                    @if (_isRecording) {
+                        <i class="icon-mic-2 text-2xl"></i>
+                    } else {
+                        <i class="icon-mic-off text-2xl"></i>
+                    }
+                </ButtonRound>
+
                 <ButtonRound Click="@OnSwitchCamera" IsDisabled="@ModalModel.IsSettingsMode">
-                    <i class="icon-sync text-2xl"></i>
+                    <i class="icon-camera-switch text-2xl"></i>
                 </ButtonRound>
             </div>
         }
@@ -155,8 +150,8 @@
     private string ModalTitle => ModalModel.IsSettingsMode
         ? "Video Settings"
         : ModalModel.Mode == VideoCallMode.Start
-            ? "Start Video Call"
-            : "Join the video call";
+            ? "Enable Video"
+            : "Join the video";
 
     private string ButtonText => ModalModel.IsSettingsMode
         ? "Apply"
@@ -169,7 +164,6 @@
     protected override async Task OnInitializedAsync() {
         var settings = await Hub.LocalSettings.LocalAppSettings().Get();
         _selectedDeviceId = settings.SelectedCameraDeviceId ?? "";
-        _isBlurEnabled = settings.GetIsBackgroundBlurEnabled(Hub.BrowserInfo.IsMobile);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
