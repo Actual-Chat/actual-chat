@@ -111,7 +111,6 @@ let lastVideoStream: InternalVideoStream | null = null;
 let pendingStreamFrames: VideoStreamFrame[] = [];
 let codecSettings: string | null = null;
 let storedDescriptionBytes: Uint8Array | null = null;
-let initialHEVCDescription: Uint8Array<ArrayBuffer> | null = null;
 let firstEncodedTimestamp: number | null = null;
 let streamingEnabled = false;
 
@@ -377,13 +376,7 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
             infoLog?.log(`Start timestamp set to ${startTimestamp}μs`);
         }
 
-        // Detect rotation: frame dimensions are transposed vs encoder config (e.g. iOS portrait:
-        // sensor gives 1280x720 but encoder expects 720x1280). Check per-frame to handle
-        // mid-call device rotation.
-        const frameRotated = frame.displayWidth === encoderConfig.height
-            && frame.displayHeight === encoderConfig.width
-            && frame.displayWidth !== encoderConfig.width;
-        const resized = resizeFrame(frame, encoderConfig.width, encoderConfig.height, resizeCanvas, resizeCtx, frameRotated);
+        const resized = resizeFrame(frame, encoderConfig.width, encoderConfig.height, resizeCanvas, resizeCtx, false);
         let processedFrame = resized.frame;
         resizeCanvas = resized.canvas;
         resizeCtx = resized.ctx;
@@ -507,19 +500,7 @@ function deliverChunkToStream(
     }
 
     if (isKeyFrame && descriptionBytes && descriptionBytes.byteLength > 0) {
-        let descBytes = new Uint8Array(descriptionBytes);
-
-        // Preserve initial HEVC description — it contains VUI rotation metadata
-        // from the iOS camera that subsequent encoder instances lose after codec switch
-        if (codec.startsWith('hev1')) {
-            if (!initialHEVCDescription) {
-                initialHEVCDescription = descBytes;
-                debugLog?.log('Stored initial HEVC description:', descBytes.length, 'bytes');
-            } else {
-                warnLog?.log(`Substituting HEVC description (${descBytes.length}B) with initial (${initialHEVCDescription.length}B) to preserve VUI rotation`);
-                descBytes = initialHEVCDescription;
-            }
-        }
+        const descBytes = new Uint8Array(descriptionBytes);
 
         frame.description = descBytes;
         if (!codecSettings) {
@@ -588,7 +569,11 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
                 const isRotated = frameW === encoderConfig.height && frameH === encoderConfig.width
                     && frameW !== encoderConfig.width;
                 if (isRotated) {
-                    warnLog?.log(`Frame ${frameW}x${frameH} is rotated vs config ${encoderConfig.width}x${encoderConfig.height}, will rotate during encode`);
+                    warnLog?.log(`Frame ${frameW}x${frameH} is transposed vs config ${encoderConfig.width}x${encoderConfig.height}, reconfiguring encoder to match`);
+                    encoderConfig.width = frameW; encoderConfig.height = frameH;
+                    await encoder.reconfigure({ width: frameW, height: frameH, bitrate: encoderConfig.bitrate });
+                    if (segConfig) { segConfig.outputWidth = frameW; segConfig.outputHeight = frameH; }
+                    void callbacks.onDimensionReconciled(frameW, frameH, rpcNoWait);
                 } else if (frameW !== encoderConfig.width || frameH !== encoderConfig.height) {
                     warnLog?.log(`Display dimensions ${frameW}x${frameH} differ from config (coded: ${rawFrame.codedWidth}x${rawFrame.codedHeight}), reconfiguring`);
                     encoderConfig.width = frameW; encoderConfig.height = frameH;
@@ -823,7 +808,7 @@ export const serverImpl: VideoProcessingWorker = {
         segFrameCounter = 0; hasValidMask = false; loggedBlurFormat = false; processingFrame = false; frameSequence = 0;
         segProcessedFrames = 0; segTotalInferenceTime = 0; segTotalBlurTime = 0; segTotalProcessingTime = 0; segDroppedFrames = 0;
         videoStream = null; lastVideoStream = null; pendingStreamFrames = [];
-        codecSettings = null; storedDescriptionBytes = null; initialHEVCDescription = null; firstEncodedTimestamp = null; streamingEnabled = false;
+        codecSettings = null; storedDescriptionBytes = null; firstEncodedTimestamp = null; streamingEnabled = false;
 
         infoLog?.log('Video processing worker stopped');
     },

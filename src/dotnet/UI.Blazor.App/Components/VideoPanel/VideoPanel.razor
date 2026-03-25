@@ -8,6 +8,15 @@
     var cls = m.IsRightPanelVisible ? "rp-visible" : "";
     var recordingCls = m.IsRecording ? "recording" : "";
     var hasRemoteStreams = m.RemoteStreams.Length > 0;
+
+    // Track when remote streams disappear — show "Connecting..." stub during codec negotiation
+    if (hasRemoteStreams) {
+        _showConnecting = false;
+    } else if (_hadRemoteStreams) {
+        _showConnecting = true;
+    }
+    _hadRemoteStreams = hasRemoteStreams;
+
     var remoteStreamsCls = hasRemoteStreams ? "has-remote-streams" : "";
     var firstOpenCls = _isFirstOpen ? "first-time-open" : "";
     var audioRecordingCls = m.IsAudioRecording ? "recording" : "";
@@ -62,6 +71,13 @@
         </div>
         <div class="c-content">
             <div class="remote-streams">
+                @if (_showConnecting) {
+                    <UITimer Period="TimeSpan.FromSeconds(5)" IsRecurring="false" Tick="OnConnectingTimeout" />
+                    <div class="connecting-overlay">
+                        <div class="connecting-spinner"></div>
+                        <span>Connecting...</span>
+                    </div>
+                }
                 @foreach (var streamInfo in m.RemoteStreams) {
                     var name = m.AuthorNames.GetValueOrDefault(streamInfo.AuthorId, "");
                     var isFocused = streamInfo.AuthorId == m.FocusedAuthorId;
@@ -105,11 +121,14 @@
     private bool _isFirstOpen = true;
     private bool _isExpanded;
     private bool _autoStartPending;
+    private bool _hadRemoteStreams;
+    private bool _showConnecting;
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoPanel.create";
     private static readonly string JSEnumerateMethod = $"{BlazorUIAppModule.ImportName}.JoinVideoCallModal.enumerateDevices";
 
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private ILogger Log => field ??= Hub.LogFor(GetType());
     private ElementReference Ref { get; set; }
     private DotNetObjectReference<VideoPanel> BlazorRef { get; set; } = null!;
     private IJSObjectReference? JSRef { get; set; }
@@ -145,6 +164,11 @@
         } else if (!Show && _rendered && JSRef is not null) {
             await JSRef.InvokeVoidAsync("startClosing");
         }
+    }
+
+    private void OnConnectingTimeout() {
+        _showConnecting = false;
+        StateHasChanged();
     }
 
     [JSInvokable]
@@ -288,6 +312,8 @@
         var remoteStreams = activeStreams
             .Where(s => ownAuthor?.Id != s.AuthorId)
             .ToArray();
+
+
         // Resolve author names for remote streams
         var authorNames = new Dictionary<AuthorId, string>();
         foreach (var stream in remoteStreams) {
@@ -312,6 +338,10 @@
             && (!videoAuthorIds.Contains(previousFocusedAuthorId)
                 || previousFocusedAuthorId == focusedAuthorId))
             previousFocusedAuthorId = null;
+
+        Log.LogWarning("[VideoPanel] ComputeState: remoteStreams=[{Streams}], isRecording={IsRecording}",
+            string.Join(", ", remoteStreams.Select(s => $"{s.StreamId}({s.Format.Codec})")),
+            videoState.IsRecording);
 
         return new Model(isRightPanelVisible, remoteStreams, videoState.IsRecording, audioState.IsRecording, audioState.IsListening, videoStreamMemberCount, chatId, authorNames, focusedAuthorId, previousFocusedAuthorId);
     }

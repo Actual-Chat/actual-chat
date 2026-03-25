@@ -76,7 +76,8 @@
                     if (!string.IsNullOrEmpty(PendingCameraDeviceId))
                         await JSRef.InvokeVoidAsync("setSelectedCamera", PendingCameraDeviceId);
                     await JSRef.InvokeVoidAsync("setBlurEnabled", PendingBlurEnabled);
-                    await JSRef.InvokeVoidAsync("startRecording", chatId.Value);
+                    var audienceCodecs = await GetInitialAudienceCodecs(chatId);
+                    await JSRef.InvokeVoidAsync("startRecording", chatId.Value, audienceCodecs);
                 }
             }
         }
@@ -202,6 +203,27 @@
         catch (Exception e) {
             Log.LogWarning(e, "SubscribeToSupportedDecoderCodecs failed");
         }
+    }
+
+    private async Task<string[]> GetInitialAudienceCodecs(ChatId chatId) {
+        try {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            var liveVideoStreams = Hub.Services.GetRequiredService<ILiveVideoStreams>();
+            var codecStream = await liveVideoStreams
+                .ObserveSupportedDecoderCodecs(Session, chatId, cts.Token)
+                .ConfigureAwait(false);
+            await foreach (var codecs in codecStream.WithCancellation(cts.Token).ConfigureAwait(false)) {
+                Log.LogInformation("GetInitialAudienceCodecs: codecs=[{Codecs}]", string.Join(", ", codecs));
+                return codecs.ToArray();
+            }
+        }
+        catch (OperationCanceledException) {
+            Log.LogInformation("GetInitialAudienceCodecs: timed out, no audience codecs available");
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "GetInitialAudienceCodecs failed");
+        }
+        return [];
     }
 
     private async Task OnSettingsClick() {

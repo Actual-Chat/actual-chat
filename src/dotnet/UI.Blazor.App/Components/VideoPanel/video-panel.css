@@ -190,6 +190,23 @@ body.narrow .video-panel.expanded .remote-video-container.previous-speaker {
 .video-panel .remote-streams:empty {
     @apply hidden;
 }
+.video-panel .connecting-overlay {
+    @apply absolute inset-0;
+    @apply flex flex-col items-center justify-center gap-2;
+    @apply bg-gray-900 rounded-lg;
+    @apply text-white text-sm;
+    z-index: 1;
+}
+.video-panel .connecting-spinner {
+    @apply w-8 h-8;
+    border: 2px solid var(--white-40);
+    border-top-color: var(--white);
+    @apply rounded-full;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
 .video-panel.has-remote-streams .video-recorder {
     @apply absolute bottom-1 right-2 md:right-3 z-10;
     @apply w-20 h-20;

@@ -58,6 +58,16 @@
         try {
             BlazorRef = DotNetObjectReference.Create(this);
 
+            // Register decoder codecs early — before creating JS player.
+            // This ensures the server knows our capabilities ASAP, triggering
+            // the sender to switch codecs if the current stream is unsupported.
+            await RegisterViewer();
+            _viewerHeartbeatTimer = new Timer(
+                _ => _ = RegisterViewerHeartbeat(),
+                null,
+                TimeSpan.FromSeconds(30),
+                TimeSpan.FromSeconds(30));
+
             var format = StreamInfo.Format;
             var startedAtMs = StreamInfo.StartedAt.EpochOffset.TotalMilliseconds;
             Log.LogDebug(
@@ -77,14 +87,6 @@
                 startedAtMs);
 
             await _jsPlayerRef.InvokeVoidAsync("start", _disposeCts.Token);
-
-            // Register as viewer and start heartbeat
-            await RegisterViewer();
-            _viewerHeartbeatTimer = new Timer(
-                _ => _ = RegisterViewerHeartbeat(),
-                null,
-                TimeSpan.FromSeconds(30),
-                TimeSpan.FromSeconds(30));
 
             // Start playback in background
             _playTask = Task.Run(async () => await PlayAsync(_disposeCts.Token), CancellationToken.None);
@@ -106,10 +108,7 @@
     [JSInvokable]
     public void OnEnded(string? errorMessage)
     {
-        if (errorMessage != null)
-            Log.LogError("[VideoTrackPlayer #{StreamId}] Playback stopped with an error: {Error}", StreamInfo.StreamId, errorMessage);
-
-        DebugLog?.LogDebug("[VideoTrackPlayer #{StreamId}] OnEnded: {Message}", StreamInfo.StreamId, errorMessage);
+        Log.LogWarning("[VideoTrackPlayer #{StreamId}] OnEnded: {Error}", StreamInfo.StreamId, errorMessage ?? "(no error)");
         _whenCompletedSource.TrySetResult();
     }
 
@@ -117,6 +116,8 @@
     {
         if (_isDisposed)
             return;
+
+        Log.LogWarning("[VideoTrackPlayer #{StreamId}] DisposeAsync called", StreamInfo.StreamId);
 
         _isDisposed = true;
 
@@ -129,7 +130,9 @@
             if (_playTask != null)
                 await _playTask.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
 
-            await UnregisterViewer();
+            // Don't unregister viewer on dispose — the server has 90s stale member cleanup.
+            // Unregistering here causes codec oscillation when ComputeState re-renders
+            // rapidly (e.g., isRecording changes), which cycles AV1↔HEVC endlessly.
 
             if (_jsPlayerRef is {} jsRef) {
                 try {

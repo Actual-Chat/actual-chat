@@ -184,6 +184,25 @@ export class VideoPlayer {
             const codecString = this.mapCodecToWebCodecs(codec, description);
             debugLog?.log(`Initializing decoder worker with codec: ${codecString}`);
 
+            // Check if codec is supported before creating decoder
+            try {
+                const { supported } = await VideoDecoder.isConfigSupported({
+                    codec: codecString,
+                    hardwareAcceleration: 'prefer-hardware',
+                });
+                if (!supported) {
+                    warnLog?.log(`Codec ${codecString} is not supported on this device, skipping decoder init`);
+                    this.isPlaying = false;
+                    void this.reportEnded(`Codec ${codecString} not supported`);
+                    return;
+                }
+            } catch (e) {
+                warnLog?.log(`Codec support check failed for ${codecString}:`, e);
+                this.isPlaying = false;
+                void this.reportEnded(`Codec support check failed for ${codecString}`);
+                return;
+            }
+
             this.decoderConfig = {
                 codec: codecString,
                 optimizeForLatency: true,
@@ -243,10 +262,11 @@ export class VideoPlayer {
                 const bytes = new Uint8Array(description);
                 // Extract HEVC profile/tier/level from HVCC structure
                 const generalProfileIdc = bytes[1] & 0x1F;
-                const generalLevelIdc = bytes[12];
                 const tier = (bytes[1] >> 5) & 0x01;
                 const tierStr = tier ? 'H' : 'L';
-                const codecString = `hev1.${generalProfileIdc}.6.${tierStr}${generalLevelIdc}.B0`;
+                // Always use Level 4.0 (120) for decoder — sender HW encoders may write
+                // incorrect levels (e.g., L90 for 720p) causing Chrome SW decode fallback
+                const codecString = `hev1.${generalProfileIdc}.6.${tierStr}120.B0`;
                 const declaredLower = codec.toLowerCase();
                 if (!declaredLower.startsWith('hev1') && !declaredLower.startsWith('hvc1')
                     && declaredLower !== 'hevc' && declaredLower !== 'h265') {
@@ -967,6 +987,8 @@ export class VideoPlayer {
 
     public async stop(): Promise<void> {
         if (!this.isPlaying) return;
+
+        warnLog?.log(`VideoPlayer stop() called for stream ${this.streamId}, rendered=${this.renderFrameCount} frames, received=${this.receivedFrameCount}`);
 
         this.isPlaying = false;
         this.playbackStartTime = 0;

@@ -177,7 +177,7 @@ export class VideoRecorder {
     /**
      * Initialize and start video recording
      */
-    public async startRecording(chatId: string): Promise<void> {
+    public async startRecording(chatId: string, audienceCodecs?: string[]): Promise<void> {
         this.chatId = chatId;
         console.warn('[VideoRecorder] startRecording called, isRecording:', this.isRecording, 'chatId:', this.chatId);
         if (this.isRecording) {
@@ -197,14 +197,34 @@ export class VideoRecorder {
 
             // Detect supported encoder codecs at 1080p (avoids resolution-dependent false positives)
             const supportedCodecs = await detectSupportedCodecs();
-            const bestCodecString = getDefaultCodec(supportedCodecs, targetWidth, targetHeight);
-            const bestCodecInfo = supportedCodecs.find(c => c.codec === bestCodecString);
-            const codecCategory = getCodecCategory(bestCodecString);
-            infoLog?.log(`Initial codec selection: ${codecCategory} (${bestCodecString}), hw=${bestCodecInfo?.hardwareAccelerated ?? false}`);
 
             // Cache supported encoder categories for later codec negotiation
             this.supportedEncoderCategories = this.extractEncoderCategories(supportedCodecs);
             infoLog?.log(`Supported encoder categories: [${this.supportedEncoderCategories.join(', ')}]`);
+
+            // Pick initial codec: if audience codecs are known, pick the best encoder
+            // codec that the audience can decode — avoids mid-stream codec switches
+            let bestCodecString: string;
+            if (audienceCodecs && audienceCodecs.length > 0) {
+                infoLog?.log(`Audience decoder codecs: [${audienceCodecs.join(', ')}]`);
+                const matchingCategories = audienceCodecs.filter(c => this.supportedEncoderCategories.includes(c));
+                if (matchingCategories.length > 0) {
+                    // Filter supported codecs to only those in audience-compatible categories
+                    const audienceFilteredCodecs = supportedCodecs.filter(c =>
+                        c.supported && matchingCategories.includes(c.category)
+                    );
+                    bestCodecString = audienceFilteredCodecs.length > 0
+                        ? getDefaultCodec(audienceFilteredCodecs, targetWidth, targetHeight)
+                        : getDefaultCodec(supportedCodecs, targetWidth, targetHeight);
+                } else {
+                    bestCodecString = getDefaultCodec(supportedCodecs, targetWidth, targetHeight);
+                }
+            } else {
+                bestCodecString = getDefaultCodec(supportedCodecs, targetWidth, targetHeight);
+            }
+            const bestCodecInfo = supportedCodecs.find(c => c.codec === bestCodecString);
+            const codecCategory = getCodecCategory(bestCodecString);
+            infoLog?.log(`Initial codec selection: ${codecCategory} (${bestCodecString}), hw=${bestCodecInfo?.hardwareAccelerated ?? false}`);
 
             // Create recording service with streaming config (uses video-pipeline internally)
             const config: RecordingConfig = {
