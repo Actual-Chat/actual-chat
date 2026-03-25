@@ -20,6 +20,42 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
     private ILogger Log { get; } = services.LogFor<EmailsBackend>();
 
+    public virtual async Task<DigestPreview> GetDigestPreview(
+        UserId userId, ChatId[] chatIds, DateTime? asOf, CancellationToken cancellationToken)
+    {
+        DigestParameters digestParameters;
+        if (chatIds.Length > 0) {
+            var now = asOf ?? Clocks.SystemClock.Now;
+            digestParameters = await BuildSpecificChatsDigest(chatIds, now, cancellationToken).ConfigureAwait(false);
+        }
+        else {
+            var account = await AccountsBackend
+                .Get(userId, cancellationToken)
+                .Require()
+                .ConfigureAwait(false);
+            digestParameters = await BuildUnreadChatsDigest(account, cancellationToken).ConfigureAwait(false);
+        }
+
+        var html = "";
+        if (digestParameters.UnreadChats.Count > 0)
+            html = await RenderDigest(digestParameters, cancellationToken).ConfigureAwait(false);
+        var digestPreviewChats = digestParameters.UnreadChats
+            .Select(c => new DigestPreviewChat {
+                ChatId = c.Link, // link contains chat ID info
+                Name = c.Name,
+                Link = c.Link,
+                UnreadCount = c.UnreadCount,
+                BulletPoints = c.BulletPoints.ToArray(),
+            })
+            .ToArray();
+
+        return new DigestPreview {
+            Chats = digestPreviewChats,
+            OtherUnreadCount = digestParameters.OtherUnreadCount,
+            RenderedHtml = html,
+        };
+    }
+
     // [CommandHandler]
     public virtual async Task<Unit> OnSendDigest(EmailsBackend_SendDigest command, CancellationToken cancellationToken)
     {
@@ -38,50 +74,38 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
             return default;
         }
 
-        var digestParameters = await FindUnreadChats(account, cancellationToken).ConfigureAwait(false);
+        var digestParameters = await BuildUnreadChatsDigest(account, cancellationToken).ConfigureAwait(false);
         if (digestParameters.UnreadChats.Count == 0) {
             diagLog?.LogInformation("<- OnSendDigest. No unread chats");
             return default;
         }
 
-        var parameters = new Dictionary<string, object?>() {
-            { nameof(Digest.Parameters), digestParameters },
-        };
-        var renderer = new BlazorRenderer();
-        await using var _ = renderer.ConfigureAwait(false);
-        var mjml = await renderer.RenderComponent<Digest>(parameters).ConfigureAwait(false);
-        var mjmlRenderer = new MjmlRenderer();
-        var mjmlOptions = new MjmlOptions { Beautify = false };
-        var renderResult = await mjmlRenderer
-            .RenderAsync(mjml, mjmlOptions, cancellationToken)
-            .ConfigureAwait(false);
-
+        var html = await RenderDigest(digestParameters, cancellationToken).ConfigureAwait(false);
         await EmailSender
-            .Send("", account.Email, $"{CoreConstants.AppName}: digest", renderResult.Html, cancellationToken)
+            .Send("", account.Email, $"{CoreConstants.AppName}: digest", html, cancellationToken)
             .ConfigureAwait(false);
 
         diagLog?.LogInformation("<- OnSendDigest. Completed");
         return default;
     }
 
-    private async Task<DigestParameters> FindUnreadChats(
-        AccountFull account,
-        CancellationToken cancellationToken)
+    private async Task<DigestParameters> BuildUnreadChatsDigest(AccountFull account, CancellationToken cancellationToken)
     {
         const int takeChats = 5;
         var totalUnreadCount = 0;
         var unreadChats = new List<DigestParameters.DigestChat>();
         var userSettings = ServerKvasBackend.GetUserClient(account.Id);
+        var now = Clocks.SystemClock.Now;
         var contactIds = await ContactsBackend
             .ListIdsForSearch(account.Id, ContactSubset.All(), true, cancellationToken)
             .ConfigureAwait(false);
+
         foreach (var contactId in contactIds) {
-            var digestChat = await GetDigestChat(contactId).ConfigureAwait(false);
+            var digestChat = await BuildUnreadDigestChat(contactId).ConfigureAwait(false);
             if (digestChat is null)
                 continue;
 
             totalUnreadCount++;
-
             if (unreadChats.Count <= takeChats)
                 unreadChats.Add(digestChat);
         }
@@ -92,22 +116,33 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
             OtherUnreadLink = UrlMapper.BaseUrl,
         };
 
-        async Task<DigestParameters.DigestChat?> GetDigestChat(ContactId contactId)
+        async Task<DigestParameters.DigestChat?> BuildUnreadDigestChat(ContactId contactId)
         {
-            var chatUserSettings = await userSettings.ChatUserSettings(contactId.ChatId)
+            var chatId = contactId.ChatId;
+            var chat = await ChatsBackend
+                .Get(chatId, cancellationToken)
+                .ConfigureAwait(false);
+            if (chat is null)
+                return null;
+
+            // Notes chat should never appear as having unread messages
+            if (chat.HasSingleAuthor)
+                return default;
+
+            var chatUserSettings = await userSettings.ChatUserSettings(chatId)
                 .Get(cancellationToken)
                 .ConfigureAwait(false);
             if (chatUserSettings.NotificationMode == ChatNotificationMode.Muted)
                 return default;
 
             var chatPosition = await ChatPositionsBackend
-                .Get(account.Id, contactId.ChatId, ChatPositionKind.Read, cancellationToken)
+                .Get(account.Id, chatId, ChatPositionKind.Read, cancellationToken)
                 .ConfigureAwait(false);
             if (chatPosition.EntryLid <= 0)
                 return default;
 
             var textEntryRange = await ChatsBackend
-                .GetIdRange(contactId.ChatId, false, cancellationToken)
+                .GetIdRange(chatId, false, cancellationToken)
                 .ConfigureAwait(false);
             var maxEntryId = textEntryRange.End > 0 ? textEntryRange.End - 1 : 0;
             if (maxEntryId <= 0)
@@ -115,40 +150,76 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
             if (maxEntryId <= chatPosition.EntryLid)
                 return default;
 
-            var chat = await ChatsBackend
-                .Get(contactId.ChatId, cancellationToken)
-                .ConfigureAwait(false);
-            if (chat is null)
-                return default;
-
-            if (chat.Id is PlaceChatId { IsRoot: true })
-                return default;
-
-            // Notes chat should never appear as having unread messages
-            if (chat.HasSingleAuthor)
-                return default;
-
-            var messages = await ChatsBackend
-                .ListEntries(contactId.ChatId, Clocks.SystemClock.Now + TimeSpan.FromDays(-1), cancellationToken)
-                .ConfigureAwait(false);
-            if (messages.Length == 0)
-                return default;
-
-            var nonSystemMessages = messages.Where(x => !x.IsSystemEntry).ToList();
-            if (nonSystemMessages.Count == 0)
-                return default;
-
-            var bulletPoints = await ChatDigestSummarizer.Summarize(nonSystemMessages, cancellationToken).ConfigureAwait(false);
-            if (bulletPoints.Count == 0)
-                return default;
-
-            var digestChat = new DigestParameters.DigestChat {
-                Name = chat.Title,
-                Link = UrlMapper.ToAbsolute(Links.Chat(chat.Id)),
-                UnreadCount = maxEntryId - chatPosition.EntryLid,
-                BulletPoints = bulletPoints,
-            };
-            return digestChat;
+            var unreadCount = maxEntryId - chatPosition.EntryLid;
+            return await BuildDigestChat(chatId, now, unreadCount, cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    private async Task<DigestParameters> BuildSpecificChatsDigest(
+        IEnumerable<ChatId> chatIds,
+        DateTime asOf,
+        CancellationToken cancellationToken)
+    {
+        var unreadChats = new List<DigestParameters.DigestChat>();
+        foreach (var chatId in chatIds) {
+            var digestChat = await BuildDigestChat(chatId, asOf, 0, cancellationToken).ConfigureAwait(false);
+            if (digestChat is not null)
+                unreadChats.Add(digestChat);
+        }
+        return new DigestParameters {
+            UnreadChats = unreadChats,
+            OtherUnreadCount = 0,
+            OtherUnreadLink = UrlMapper.BaseUrl,
+        };
+    }
+
+    private async Task<DigestParameters.DigestChat?> BuildDigestChat(ChatId chatId, DateTime now, long unreadCount, CancellationToken cancellationToken)
+    {
+        var from = now + TimeSpan.FromDays(-1);
+        var chat = await ChatsBackend
+            .Get(chatId, cancellationToken)
+            .ConfigureAwait(false);
+        if (chat is null)
+            return default;
+
+        if (chat.Id is PlaceChatId { IsRoot: true })
+            return default;
+
+        var messages = await ChatsBackend
+            .ListEntries(chatId, from, cancellationToken)
+            .ConfigureAwait(false);
+        if (messages.Length == 0)
+            return default;
+
+        var nonSystemMessages = messages.Where(x => !x.IsSystemEntry).ToList();
+        if (nonSystemMessages.Count == 0)
+            return default;
+
+        var bulletPoints = await ChatDigestSummarizer.Summarize(nonSystemMessages, cancellationToken).ConfigureAwait(false);
+        if (bulletPoints.Count == 0)
+            return default;
+
+        return new DigestParameters.DigestChat {
+            Name = chat.Title,
+            Link = UrlMapper.ToAbsolute(Links.Chat(chat.Id)),
+            UnreadCount = unreadCount,
+            BulletPoints = bulletPoints,
+        };
+    }
+
+    private static async Task<string> RenderDigest(DigestParameters digestParameters, CancellationToken cancellationToken)
+    {
+        var parameters = new Dictionary<string, object?> {
+            { nameof(Digest.Parameters), digestParameters },
+        };
+        var renderer = new BlazorRenderer();
+        await using var _ = renderer.ConfigureAwait(false);
+        var mjml = await renderer.RenderComponent<Digest>(parameters).ConfigureAwait(false);
+        var mjmlRenderer = new MjmlRenderer();
+        var mjmlOptions = new MjmlOptions { Beautify = false };
+        var renderResult = await mjmlRenderer
+            .RenderAsync(mjml, mjmlOptions, cancellationToken)
+            .ConfigureAwait(false);
+        return renderResult.Html;
     }
 }
