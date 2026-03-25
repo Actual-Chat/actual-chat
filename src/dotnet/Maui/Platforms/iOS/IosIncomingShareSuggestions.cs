@@ -1,12 +1,18 @@
 using ActualChat.Maui.Services;
 using ActualChat.UI.App.Services;
 using ActualLab.Diagnostics;
+using CoreSpotlight;
 using Intents;
 
 namespace ActualChat.Maui;
 
 public class IosIncomingShareSuggestions(IServiceProvider services) : IncomingShareSuggestions(services)
 {
+    // ReSharper disable once HeuristicUnreachableCode
+    private const string ViewChatActivityType = MauiSettings.IsDevApp ? "ai.voxt.dev.viewChat" : "ai.voxt.viewChat";
+
+    private NSUserActivity? _currentActivity;
+
     private MomentClockSet Clocks => field ??= Services.Clocks();
     private IconUI IconUI => field ??= Services.GetRequiredService<IconUI>();
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.ShareSuggestions);
@@ -21,6 +27,7 @@ public class IosIncomingShareSuggestions(IServiceProvider services) : IncomingSh
             ? INImage.FromData(NSData.FromFile(loadedImage.FilePath))
             : null;
         await DonateIntent(contact.Chat, inImage, cancellationToken).ConfigureAwait(false);
+        DonateUserActivity(contact.Chat);
     }
 
     private async Task DonateIntent(Chat.Chat chat, INImage? image, CancellationToken cancellationToken = default)
@@ -74,6 +81,32 @@ public class IosIncomingShareSuggestions(IServiceProvider services) : IncomingSh
             intent.SetImage(image, "speakableGroupName");
 
         return intent;
+    }
+
+    private void DonateUserActivity(Chat.Chat chat)
+    {
+        try {
+            _currentActivity?.ResignCurrent();
+
+            var chatUrl = $"https://{MauiSettings.Host}/chat/{chat.Id}";
+            var activity = new NSUserActivity(ViewChatActivityType) {
+                Title = $"Chat with {FormatTitle(chat.Title)}",
+                EligibleForSearch = true,
+                EligibleForPrediction = true,
+                WebPageUrl = NSUrl.FromString(chatUrl),
+                UserInfo = new NSDictionary("link", chatUrl),
+                ContentAttributeSet = new CSSearchableItemAttributeSet {
+                    DisplayName = FormatTitle(chat.Title),
+                },
+            };
+            activity.BecomeCurrent();
+            _currentActivity = activity;
+
+            DebugLog?.LogInformation("Donated NSUserActivity for chat {ChatId}", chat.Id);
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to donate NSUserActivity for chat {ChatId}", chat.Id);
+        }
     }
 
     private static string FormatTitle(string title)

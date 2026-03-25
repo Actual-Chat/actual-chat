@@ -23,6 +23,12 @@ public static class IncomingShareHandler
             return;
 
         Log.LogInformation("-> IncomingShare, send intent is detected. Action: {Action}", action);
+
+        // Extract shortcut ID when the share was triggered via a dynamic shortcut
+        var shortcutChatId = intent.GetStringExtra(Intent.ExtraShortcutId);
+        if (!shortcutChatId.IsNullOrEmpty())
+            Log.LogInformation("Share triggered via shortcut for chat: {ChatId}", shortcutChatId);
+
         var mimeType = intent.Type ?? "";
         var hasExtraStream = intent.Extras?.ContainsKey(Intent.ExtraStream) ?? false;
         if (action == Intent.ActionSend) {
