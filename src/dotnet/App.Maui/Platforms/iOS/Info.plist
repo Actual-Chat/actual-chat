@@ -88,6 +88,7 @@
 	<key>NSUserActivityTypes</key>
 	<array>
 		<string>INSendMessageIntent</string>
+		<string>ai.voxt.viewChat</string>
 	</array>
 </dict>
 </plist>
