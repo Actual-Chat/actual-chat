@@ -478,22 +478,3 @@ ResolvedPromise.Void.resolve(undefined);
 ResolvedPromise.True.resolve(true);
 ResolvedPromise.False.resolve(false);
 
-// Self-test - we don't want to run it in workers & worklets
-const mustRunSelfTest = debugLog != null && globalThis.focus;
-if (mustRunSelfTest) {
-    if (!errorLog)
-        throw new Error('testLog == null');
-    void (async () => {
-        const c = new PromiseSource<Cancelled>();
-        const p = waitAsync(delayAsync(1000), c);
-        c.resolve(cancelled);
-        try {
-            await p;
-            throw new Error('Failed!');
-        }
-        catch (e) {
-            if (!(e instanceof OperationCancelledError))
-                throw e;
-        }
-    })();
-}

@@ -412,6 +412,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{BA67
 		scripts\Common.ps1 = scripts\Common.ps1
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{45EC0FB9-8037-4996-9927-443EC52ABCAD}"
+	ProjectSection(SolutionItems) = preProject
+		src\nodejs\tests\promises.test.ts = src\nodejs\tests\promises.test.ts
+		src\nodejs\tests\resilient-stream.test.ts = src\nodejs\tests\resilient-stream.test.ts
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -1538,6 +1544,7 @@ Global
 		{990F0BBE-96B3-48AB-920E-B6B68A1445F0} = {4BC0B0E4-84E6-4808-A510-E81CD86AADE8}
 		{CA4C2E1C-0F62-4754-A20C-3BF00D93D327} = {4BC0B0E4-84E6-4808-A510-E81CD86AADE8}
 		{BA67ECF6-53CD-493A-AD54-D6997F879A2D} = {9E3D1D2A-7BF6-4560-B32B-91CF7A62F918}
+		{45EC0FB9-8037-4996-9927-443EC52ABCAD} = {609C47B5-30E6-4B2A-A8DB-1B1FD644948F}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CB00270-3EF6-42B5-A4D4-3894AFA5E25C}

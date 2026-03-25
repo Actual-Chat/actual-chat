@@ -32,6 +32,7 @@ export type LogScope =
     | 'ModalHost'
     | 'OnDeviceAwake'
     | 'promises'
+    | 'ResilientStream'
     | 'Rpc'
     | 'RecaptchaHandler'
     | 'ScreenSize'
