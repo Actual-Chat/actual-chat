@@ -38,9 +38,6 @@
             MaxCount="@MaxCount"
             IsListening="@IsListening"/>
     }
-    @if (m.IsAnyoneVideoStreaming && m.VideoStreamMemberCount > 0) {
-        <div class="c-member-count">@m.VideoStreamMemberCount watching</div>
-    }
     <div class="flex-1"></div>
     <div class="c-buttons">
         @if (!IsListening && !IsRecordingHere && !IsVideoRecordingHere) {

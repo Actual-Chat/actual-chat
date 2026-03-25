@@ -6,11 +6,10 @@
     @apply w-full h-full;
     @apply object-cover;
     @apply bg-black;
-    @apply rounded-lg;
     transform: scaleX(-1);
 }
 .video-recorder .btn-h.settings-btn {
-    @apply absolute top-2 left-2;
+    @apply absolute top-0.5 right-0.5;
     @apply text-white text-lg;
 }
 body.hoverable .video-recorder .btn-h.settings-btn:hover {
@@ -20,12 +19,7 @@ body.hoverable .video-recorder .btn-h.settings-btn:hover {
 
 /* Participant labels */
 .video-recorder .video-participant-label {
-    @apply absolute bottom-2 left-2;
-    @apply flex items-center gap-1;
-    @apply bg-[var(--black-60)] text-white;
-    @apply px-2 py-1 rounded-lg;
-    @apply text-xs;
-    pointer-events: none;
+    @apply hidden;
 }
 .video-recorder .video-participant-label i {
     @apply text-xs;

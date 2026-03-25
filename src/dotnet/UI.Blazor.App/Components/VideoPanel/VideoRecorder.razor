@@ -245,6 +245,13 @@
         if (wasRecording && !videoState.IsRecording)
             _ = jsRef.InvokeVoidAsync("stopRecording");
 
+        // Detect camera switch during active recording
+        var prevCameraDeviceId = State.Value.VideoState.SelectedCameraDeviceId;
+        if (videoState.IsRecording && wasRecording
+            && !string.IsNullOrEmpty(videoState.SelectedCameraDeviceId)
+            && videoState.SelectedCameraDeviceId != prevCameraDeviceId)
+            _ = jsRef.InvokeVoidAsync("switchCamera", videoState.SelectedCameraDeviceId);
+
         // Detect blur state change during active recording
         var wasBlurEnabled = State.Value.VideoState.IsBackgroundBlurEnabled;
         if (videoState.IsRecording && wasBlurEnabled != videoState.IsBackgroundBlurEnabled)

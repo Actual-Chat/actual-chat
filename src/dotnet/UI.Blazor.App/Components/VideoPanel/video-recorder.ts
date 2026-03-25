@@ -84,6 +84,33 @@ export class VideoRecorder {
     }
 
     /**
+     * Switch camera during active recording by stopping and restarting with the new device.
+     */
+    public async switchCamera(deviceId: string): Promise<void> {
+        this.selectedCameraDeviceId = deviceId;
+        infoLog?.log('Switching camera to:', deviceId);
+
+        if (!this.isRecording || !this.recordingService) {
+            infoLog?.log('Not recording — camera will be used on next start');
+            return;
+        }
+
+        try {
+            // Tear down current recording silently (no Blazor notification)
+            this.stopRenderingStream();
+            await this.recordingService.stop();
+            this.recordingService = null;
+            this.isRecording = false;
+
+            // Restart with the new camera
+            await this.startRecording(this.chatId);
+        } catch (error) {
+            errorLog?.log('Failed to switch camera:', error);
+            await this.blazorRef.invokeMethodAsync('OnRecordingError', String(error));
+        }
+    }
+
+    /**
      * Set whether background blur should be enabled when recording starts
      */
     public setBlurEnabled(enabled: boolean): void {

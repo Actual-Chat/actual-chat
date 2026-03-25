@@ -100,7 +100,7 @@ body.narrow .chat-activity-panel:after {
 
 .chat-activity-panel > .c-buttons {
     @apply flex-none flex-x items-center gap-x-4 md:gap-x-2;
-    @apply pl-1 pr-2;
+    @apply pl-1 pr-2 md:pr-1;
 }
 .chat-activity-panel > .c-buttons > .btn {
     @apply px-0;
