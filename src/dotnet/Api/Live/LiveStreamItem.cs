@@ -11,9 +11,11 @@ namespace ActualChat.Live;
 [MemoryPackUnion(0, typeof(LiveStreamStart))]
 [MemoryPackUnion(1, typeof(LiveStreamEnd))]
 [MemoryPackUnion(2, typeof(LiveAudioFrame))]
+[MemoryPackUnion(3, typeof(LiveStreamReset))]
 [Union(0, typeof(LiveStreamStart))]
 [Union(1, typeof(LiveStreamEnd))]
 [Union(2, typeof(LiveAudioFrame))]
+[Union(3, typeof(LiveStreamReset))]
 public abstract partial class LiveStreamItem : IMuxable
 {
     [DataMember(Order = 0), MemoryPackOrder(0)]

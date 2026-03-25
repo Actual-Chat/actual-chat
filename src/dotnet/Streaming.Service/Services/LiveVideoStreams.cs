@@ -88,7 +88,7 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Read);
         var remoteStream = await Backend.ObserveSupportedDecoderCodecs(chatId, cancellationToken).ConfigureAwait(false);
-        return RpcStream.New(remoteStream); // Wrap Remote → Local for re-serialization
+        return RpcStream.New(remoteStream, allowReconnect: false);
     }
 
     public async Task<RpcStream<VideoFrame>?> GetVideo(
@@ -110,6 +110,6 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         CancellationToken cancellationToken)
     {
         var remoteStream = await VideoStreamingBackend.ObserveStreamQualityRequests(streamId, cancellationToken).ConfigureAwait(false);
-        return RpcStream.New(remoteStream);
+        return RpcStream.New(remoteStream, allowReconnect: false);
     }
 }

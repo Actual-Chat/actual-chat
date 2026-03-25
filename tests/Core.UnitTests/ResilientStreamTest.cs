@@ -158,6 +158,24 @@ public class ResilientStreamTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
+    public async Task CancellationTokenProperty()
+    {
+        using var cts = new CancellationTokenSource();
+        var stream = new ResilientStream<int> {
+            Provider = _ => Task.FromResult(SlowStream(cts)),
+            CancellationToken = cts.Token,
+        };
+
+        var result = new List<int>();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => {
+            // No WithCancellation here — the property-based token should work
+            await foreach (var item in stream)
+                result.Add(item);
+        });
+        result.Should().Contain(1);
+    }
+
+    [Fact]
     public async Task EmptySourceCompletes()
     {
         var stream = new ResilientStream<int> {

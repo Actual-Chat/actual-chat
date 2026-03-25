@@ -1,7 +1,8 @@
 @namespace ActualChat.UI.Blazor.App.Components.VideoPanel
 @using ActualChat.Streaming
+@using ActualChat.Video
 @using ActualChat.UI.Blazor.App.Module
-@using ActualChat.UI.Blazor.App.Services
+@using ActualLab.Resilience
 @inherits ComputedStateComponent<AppUIHub, VideoRecorder.Model>
 @{
     var m = State.Value;
@@ -9,7 +10,9 @@
 }
 
 <div @ref="Ref" class="video-recorder @recordingCls">
-    <canvas class="call-video" @onclick="@(m.VideoState.IsRecording && RemoteStreamCount > 0 ? OnSettingsClick : null)"></canvas>
+    <canvas
+        class="call-video"
+        @onclick="@(m.VideoState.IsRecording && RemoteStreamCount > 0 ? OnSettingsClick : null!)"></canvas>
     @if (m.VideoState.IsRecording && RemoteStreamCount == 0) {
         <HeaderButton Class="settings-btn" Click="@OnSettingsClick">
             <i class="icon-settings text-lg"></i>
@@ -31,8 +34,8 @@
         public static readonly Model None = new(ChatVideoState.None);
     }
 
-    private CancellationTokenSource? _qualityCts;
-    private CancellationTokenSource? _codecCts;
+    private CancellationTokenSource? _qualityStreamCts;
+    private CancellationTokenSource? _codecStreamCts;
     private bool _autoStartPending;
     private int _lastRemoteStreamCount = -1;
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoRecorder.create";
@@ -49,10 +52,10 @@
     [Parameter] public bool AutoStart { get; set; }
 
     public override async ValueTask DisposeAsync() {
-        _qualityCts.CancelAndDisposeSilently();
-        _qualityCts = null;
-        _codecCts.CancelAndDisposeSilently();
-        _codecCts = null;
+        _qualityStreamCts.CancelAndDisposeSilently();
+        _qualityStreamCts = null;
+        _codecStreamCts.CancelAndDisposeSilently();
+        _codecStreamCts = null;
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
         BlazorRef.DisposeSilently();
@@ -106,10 +109,10 @@
 
     [JSInvokable]
     public async Task OnRecordingStopped() {
-        _qualityCts.CancelAndDisposeSilently();
-        _qualityCts = null;
-        _codecCts.CancelAndDisposeSilently();
-        _codecCts = null;
+        _qualityStreamCts.CancelAndDisposeSilently();
+        _qualityStreamCts = null;
+        _codecStreamCts.CancelAndDisposeSilently();
+        _codecStreamCts = null;
         ChatVideoUI.OnRecordingStopped();
         await InvokeAsync(StateHasChanged);
     }
@@ -126,27 +129,26 @@
     }
 
     private async Task SubscribeToQualityRequests(ChatId chatId) {
-        _qualityCts.CancelAndDisposeSilently();
-        var cts = _qualityCts = new CancellationTokenSource();
-        var ct = cts.Token;
-
+        _qualityStreamCts.CancelAndDisposeSilently();
+        var cancellationTokenSource = _qualityStreamCts = new CancellationTokenSource();
+        var cancellationToken = cancellationTokenSource.Token;
         try {
             Log.LogInformation("SubscribeToQualityRequests: starting for ChatId={ChatId}", chatId);
 
             // Wait for our own stream to appear (registration is async)
             StreamId? ownStreamId = null;
-            var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, ct).ConfigureAwait(false);
+            var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
             if (ownAuthor == null)
                 return;
 
             for (var i = 0; i < 30; i++) { // poll up to 15s
-                var streams = await ChatVideoUI.GetActiveVideoStreams(chatId, ct).ConfigureAwait(false);
+                var streams = await ChatVideoUI.GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(false);
                 var ownStream = streams.FirstOrDefault(s => s.AuthorId == ownAuthor.Id);
                 if (ownStream != default) {
                     ownStreamId = ownStream.StreamId;
                     break;
                 }
-                await Task.Delay(500, ct).ConfigureAwait(false);
+                await Task.Delay(500, cancellationToken).ConfigureAwait(false);
             }
 
             if (ownStreamId == null) {
@@ -157,41 +159,46 @@
             Log.LogInformation("SubscribeToQualityRequests: found own stream #{StreamId}, subscribing", ownStreamId);
 
             var liveVideoStreams = Hub.Services.GetRequiredService<ILiveVideoStreams>();
-            var qualityStream = await liveVideoStreams
-                .ObserveStreamQualityRequests(Session, ownStreamId, ct)
-                .ConfigureAwait(false);
-            await foreach (var preset in qualityStream.ConfigureAwait(false)) {
+            var presetStream = new ResilientStream<VideoQualityPreset> {
+                Provider = async ct => await liveVideoStreams
+                    .ObserveStreamQualityRequests(Session, ownStreamId, ct)
+                    .ConfigureAwait(false),
+                CancellationToken = cancellationToken,
+            };
+            await foreach (var preset in presetStream.ConfigureAwait(false)) {
                 Log.LogInformation("SubscribeToQualityRequests: received preset {Level} ({Width}x{Height} @ {Bitrate}bps)",
                     preset.Level, preset.Width, preset.Height, preset.Bitrate);
                 if (JSRef is {} jsRef)
-                    await jsRef.InvokeVoidAsync("reconfigure", ct, preset.Width, preset.Height, preset.Bitrate);
+                    await jsRef.InvokeVoidAsync("reconfigure", cancellationToken, preset.Width, preset.Height, preset.Bitrate);
             }
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
         catch (Exception e) {
             Log.LogWarning(e, "SubscribeToQualityRequests failed");
         }
     }
 
     private async Task SubscribeToSupportedDecoderCodecs(ChatId chatId) {
-        _codecCts.CancelAndDisposeSilently();
-        var cts = _codecCts = new CancellationTokenSource();
-        var ct = cts.Token;
-
+        _codecStreamCts.CancelAndDisposeSilently();
+        var cancellationTokenSource = _codecStreamCts = new CancellationTokenSource();
+        var cancellationToken = cancellationTokenSource.Token;
         try {
             Log.LogInformation("SubscribeToSupportedDecoderCodecs: starting for ChatId={ChatId}", chatId);
 
             var liveVideoStreams = Hub.Services.GetRequiredService<ILiveVideoStreams>();
-            var codecStream = await liveVideoStreams
-                .ObserveSupportedDecoderCodecs(Session, chatId, ct)
-                .ConfigureAwait(false);
+            var codecStream = new ResilientStream<ApiArray<string>> {
+                Provider = async ct => await liveVideoStreams
+                    .ObserveSupportedDecoderCodecs(Session, chatId, ct)
+                    .ConfigureAwait(false),
+                CancellationToken = cancellationToken,
+            };
             await foreach (var codecs in codecStream.ConfigureAwait(false)) {
                 Log.LogInformation("SubscribeToSupportedDecoderCodecs: received codecs=[{Codecs}]", string.Join(", ", codecs));
                 if (JSRef is {} jsRef)
-                    await jsRef.InvokeVoidAsync("updateSupportedDecoderCodecs", ct, (object)codecs.ToArray());
+                    await jsRef.InvokeVoidAsync("updateSupportedDecoderCodecs", cancellationToken, (object)codecs.ToArray());
             }
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
         catch (Exception e) {
             Log.LogWarning(e, "SubscribeToSupportedDecoderCodecs failed");
         }
