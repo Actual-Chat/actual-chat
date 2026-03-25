@@ -3,13 +3,13 @@
 
 @using ActualChat.Search
 @{
-    var canSend = SelectedChatIds.Count != 0;
-    _viewSettings.CanSubmit = canSend;
+    var canSubmit = SelectedChatIds.Count != 0;
+    _viewSettings.CanSubmit = canSubmit;
 }
 
 <DialogFrame
     Class="forward-message-modal fixed-height"
-    Title="Forward message"
+    Title="@ModalModel.Title"
     HasCloseButton="true"
     NarrowViewSettings="_viewSettings">
     <Body>
@@ -21,7 +21,7 @@
             SearchPhrase="@_searchPhrase"
             Changed="@StateHasChanged">
             <SearchBox
-                Placeholder="Who would you like to share with"
+                Placeholder="@ModalModel.SearchPlaceholder"
                 MaxLength="@Constants.Chat.MaxSearchFilterLength"
                 TextChanged="@OnFilter"/>
             <ContactSelectorPlacePicker/>
@@ -39,9 +39,9 @@
         <Button
             Type="@ButtonType.Submit"
             Class="btn-modal btn-primary"
-            IsDisabled="@(!canSend)"
+            IsDisabled="@(!canSubmit)"
             Click="OnSend">
-            Send
+            @ModalModel.SubmitTitle
         </Button>
     </Buttons>
 </DialogFrame>
@@ -58,7 +58,7 @@
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override void OnInitialized()
-        => _viewSettings = DialogFrameNarrowViewSettings.ForSubmitButton(OnSend, "Send");
+        => _viewSettings = DialogFrameNarrowViewSettings.ForSubmitButton(OnSend, ModalModel.SubmitTitle);
 
     private void OnSend() {
         ModalModel.SelectedChatIds = SelectedChatIds;
@@ -76,6 +76,9 @@
 
         public IReadOnlySet<ChatId> ExcludedChatIds { get; } = excludedChatIds;
         public ImmutableHashSet<ChatId> SelectedChatIds { get; set; } = ImmutableHashSet<ChatId>.Empty;
+        public string Title { get; init; } = "Forward message";
+        public string SubmitTitle { get; init; } = "Send";
+        public string SearchPlaceholder { get; init; } = "Who would you like to share with";
 
         public Model(ChatId chatId) : this(ImmutableHashSet.Create(chatId)) { }
     };

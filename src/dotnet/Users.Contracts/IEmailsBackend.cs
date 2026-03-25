@@ -8,6 +8,8 @@ namespace ActualChat.Users;
 /// </summary>
 public interface IEmailsBackend : IComputeService, IBackendService
 {
+    Task<DigestPreview> GetDigestPreview(UserId userId, ChatId[] chatIds, DateTime? asOf, CancellationToken cancellationToken);
+
     [CommandHandler]
     Task<Unit> OnSendDigest(EmailsBackend_SendDigest command, CancellationToken cancellationToken);
 }

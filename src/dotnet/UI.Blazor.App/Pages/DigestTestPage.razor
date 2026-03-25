@@ -1,0 +1,169 @@
+@page "/test/digest"
+@namespace ActualChat.UI.Blazor.App.Pages
+@inherits ComponentBase<AppUIHub>
+
+<RequireAccount MustBeAdmin="true"/>
+<MainHeader>Digest Test</MainHeader>
+
+<Form Model="@_form">
+    <FormBlock>
+        <FormSection
+            For="() => _mode"
+            InputId="mode"
+            IsLabelInsideInput="true"
+            HideValidationMessage="true"
+            Label="Mode">
+            <InputSelect
+                @bind-Value="_mode">
+                <option value="@TestMode.RealData">Unread chats (real data)</option>
+                <option value="@TestMode.Custom">Selected chats</option>
+            </InputSelect>
+        </FormSection>
+    </FormBlock>
+
+    @if (_mode == TestMode.Custom) {
+        <FormBlock>
+            <div>
+                <label class="block font-bold mb-1">Chat ids</label>
+                <div class="flex gap-2 items-center">
+                    <input type="text" @bind="_chatIdsInput" class="border rounded p-1 flex-1" placeholder="chatId1, chatId2, ..."/>
+                    <Button Click="PickChats">Pick chats</Button>
+                </div>
+            </div>
+            <div>
+                <label class="block font-bold mb-1">As of (local time)</label>
+                <input type="datetime-local" @bind="_asOfInput" class="border rounded p-1"/>
+            </div>
+        </FormBlock>
+    }
+
+    <FormBlock>
+        <Button Click="GeneratePreview" IsDisabled="@(_isGenerating || (_mode == TestMode.Custom && _chatIdsInput.IsNullOrEmpty()))">
+            @(_isGenerating ? "Generating..." : "Generate Preview")
+        </Button>
+    </FormBlock>
+
+    <FormBlock>
+        @if (_result is not null) {
+            <TabPanel BottomHill="true">
+                <Tab Id="email-preview" Title="Email Preview" Order="0">
+                    @if (_result.RenderedHtml.IsNullOrEmpty()) {
+                        <p class="p-4 text-gray-500">No email content to preview.</p>
+                    } else {
+                        <iframe
+                            srcdoc="@_result.RenderedHtml"
+                            style="width: 100%; height: 800px; border: 1px solid #ccc;">
+                        </iframe>
+                    }
+                </Tab>
+                <Tab Id="diagnostics" Title="Diagnostics" Order="1">
+                    @if (_result.Chats.Length == 0) {
+                        <p class="p-4 text-gray-500">No chats found for digest.</p>
+                    } else {
+                        <table class="w-full border-collapse" style="text-align: left;">
+                            <thead>
+                            <tr class="border-b">
+                                <th class="text-left p-2">Chat</th>
+                                <th class="text-left p-2">Unread</th>
+                                <th class="text-left p-2">Bullet Points</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            @foreach (var chat in _result.Chats) {
+                                <tr class="border-b">
+                                    <td class="p-2">
+                                        <a href="@chat.Link" target="_blank">@chat.Name</a>
+                                    </td>
+                                    <td class="p-2">@chat.UnreadCount</td>
+                                    <td class="p-2">
+                                        <ul class="list-disc pl-4">
+                                            @foreach (var bp in chat.BulletPoints) {
+                                                <li>@bp</li>
+                                            }
+                                        </ul>
+                                    </td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+
+                        @if (_result.OtherUnreadCount > 0) {
+                            <p class="mt-2 p-2 text-gray-600">
+                                + @_result.OtherUnreadCount other unread chats not shown
+                            </p>
+                        }
+                    }
+                </Tab>
+            </TabPanel>
+        }
+        else if (_error is not null) {
+            <div class="mb-4 p-3 bg-red-100 text-red-800 rounded">
+                @_error
+            </div>
+        }
+    </FormBlock>
+</Form>
+
+@code {
+    private FormModel _form = null!;
+    private TestMode _mode = TestMode.RealData;
+    private string _chatIdsInput = "";
+    private DateTime _asOfInput = DateTime.Now;
+    private DigestPreview? _result;
+    private bool _isGenerating;
+    private string? _error;
+
+    protected override void OnInitialized()
+        => _form = new(ComponentIdGenerator);
+
+    private async Task PickChats() {
+        var modalModel = new ForwardMessageModal.Model(ImmutableHashSet<ChatId>.Empty) {
+            Title = "Select chats for digest",
+            SubmitTitle = "Select",
+            SearchPlaceholder = "Search chats",
+        };
+        var modalRef = await Hub.ModalUI.Show(modalModel);
+        await modalRef.WhenClosed;
+        if (modalModel.SelectedChatIds.Count == 0)
+            return;
+
+        _chatIdsInput = string.Join(", ", modalModel.SelectedChatIds.Select(x => x.Value));
+        StateHasChanged();
+    }
+
+    private async Task GeneratePreview() {
+        _isGenerating = true;
+        _error = null;
+        _result = null;
+        StateHasChanged();
+
+        try {
+            var chatIds = _mode == TestMode.Custom
+                ? _chatIdsInput.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                : [];
+            var asOf = _mode == TestMode.Custom
+                ? (DateTime?)_asOfInput.ToUniversalTime()
+                : null;
+
+            _result = await Hub.Services.GetRequiredService<IEmails>()
+                .GetDigestPreview(Session, chatIds.Select(ChatId.Parse).ToArray(), asOf, default);
+        }
+        catch (Exception e) {
+            _error = e.Message;
+        }
+        finally {
+            _isGenerating = false;
+            StateHasChanged();
+        }
+    }
+
+    // Nested types
+
+    public enum TestMode { RealData, Custom }
+
+    public sealed class FormModel : FormModel<FormModel> {
+        public FormModel(ComponentIdGenerator? componentIdGenerator)
+            : base("digest-test", componentIdGenerator)
+        { }
+    }
+}

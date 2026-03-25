@@ -5,6 +5,8 @@
 /// </summary>
 public interface IEmails : IComputeService
 {
+    Task<DigestPreview> GetDigestPreview(Session session, ChatId[] chatIds, DateTime? asOf, CancellationToken cancellationToken);
+
     [CommandHandler]
     Task OnSendDigest(Emails_SendDigest command, CancellationToken cancellationToken);
 }
