@@ -1152,7 +1152,7 @@ switch ($mode) {
             $name  = $_.Name
             $value = $_.Value
             if ($name -match '__' -or
-                $name -eq 'GITHUB_TOKEN' -or
+                $name -eq 'AC_GITHUB_TOKEN' -or
                 $name -eq 'NPM_READ_TOKEN' -or
                 $name -eq 'GOOGLE_CLOUD_PROJECT' -or
                 $name -like 'ActualChat_*' -or
@@ -1420,14 +1420,14 @@ switch ($mode) {
 
         # Collect environment variables to propagate:
         # - Variables with __ in their names (e.g., ChatSettings__OpenAIApiKey)
-        # - GITHUB_TOKEN, NPM_READ_TOKEN, GOOGLE_CLOUD_PROJECT
+        # - AC_GITHUB_TOKEN, NPM_READ_TOKEN, GOOGLE_CLOUD_PROJECT
         # - ActualChat_*, ActualLab_*, Claude_* variables
         $propagatedEnvVars = @()
         Get-ChildItem env: | ForEach-Object {
             $name  = $_.Name
             $value = $_.Value
             if ($name -match '__' -or
-                $name -eq 'GITHUB_TOKEN' -or
+                $name -eq 'AC_GITHUB_TOKEN' -or
                 $name -eq 'NPM_READ_TOKEN' -or
                 $name -eq 'GOOGLE_CLOUD_PROJECT' -or
                 $name -like 'ActualChat_*' -or

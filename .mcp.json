@@ -7,7 +7,7 @@
       "type": "http",
       "url": "https://api.githubcopilot.com/mcp/",
       "headers": {
-        "Authorization": "Bearer ${GITHUB_TOKEN}"
+        "Authorization": "Bearer ${AC_GITHUB_TOKEN}"
       }
     },
     "figma": {

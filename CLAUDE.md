@@ -63,7 +63,7 @@ Build artifacts are stored in `artifacts/claude-docker/` to avoid permission con
 
 **Propagated environment variables**: The following environment variables are automatically propagated from the host to the Docker container:
 - Variables containing `__` in their names (e.g., `ChatSettings__OpenAIApiKey` for .NET configuration)
-- `GITHUB_TOKEN` - GitHub authentication token
+- `AC_GITHUB_TOKEN` - GitHub authentication token (AC_ prefix to avoid conflicts with gh CLI)
 - `NPM_READ_TOKEN` - NPM registry read token
 - `GOOGLE_CLOUD_PROJECT` - Google Cloud project ID
 - `ActualChat_*` - Any variables prefixed with `ActualChat_`
