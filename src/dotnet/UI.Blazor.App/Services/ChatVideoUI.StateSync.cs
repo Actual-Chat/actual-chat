@@ -57,12 +57,13 @@ public partial class ChatVideoUI
 
         var audioStreamingAuthorIds = await Hub.LiveStreamUI
             .GetStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
-        var videoStreamingAuthorIds = await GetVideoStreamingAuthorIds(chatId, cancellationToken)
+        var videoStreams = await GetActiveVideoStreams(chatId, cancellationToken)
             .ConfigureAwait(false);
 
         // Filter out own author
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var remoteVideoAuthorIds = videoStreamingAuthorIds
+        var remoteVideoAuthorIds = videoStreams
+            .Select(s => s.AuthorId)
             .Where(a => ownAuthor?.Id != a)
             .ToHashSet();
 

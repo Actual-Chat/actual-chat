@@ -51,6 +51,7 @@ internal sealed class RedisLiveStateStore<TValue>(
         foreach (var entry in entries) {
             var field = entry.Name.ToString();
             try {
+                // TODO(AK): Replace with MessagePack
                 var value = MemoryPackSerializer.Deserialize<TValue>((byte[])entry.Value!);
                 if (value != null)
                     result[field] = value;

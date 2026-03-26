@@ -15,10 +15,6 @@ public interface ILiveAudioBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<ApiArray<LiveStreamInfo>> List(ChatId chatId, CancellationToken cancellationToken);
 
-    // NOTE(AY): Do you handle shard set change in this method or its caller? If no, there must be no such method.
-    [RpcMethod(LocalExecutionMode = RpcLocalExecutionMode.Unconstrained)] // Handled internally by that method
-    Task<RpcStream<LiveStreamInfo>> Observe(ChatId chatId, CancellationToken cancellationToken);
-
     Task Register(ChatId chatId, LiveStreamInfo streamInfo, CancellationToken cancellationToken);
     Task Unregister(ChatId chatId, string streamId, CancellationToken cancellationToken);
 }

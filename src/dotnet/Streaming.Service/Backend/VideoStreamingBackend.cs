@@ -125,35 +125,19 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         return Task.CompletedTask;
     }
 
-    public virtual Task<RpcStream<VideoQualityPreset>> ObserveStreamQualityRequests(
-        StreamId streamId,
-        CancellationToken cancellationToken)
+    // [ComputeMethod]
+    public virtual async Task<VideoQualityPreset> GetQualityPreset(StreamId streamId, CancellationToken cancellationToken)
     {
-        if (_latencyStates.TryGetValue(streamId, out var latencyState)) {
-            Log.LogInformation("ObserveStreamQualityRequests: #{StreamId} found", streamId);
-            var directives = latencyState.ObserveQualityDirectives(cancellationToken);
-            return Task.FromResult(RpcStream.New(directives, allowReconnect: false));
-        }
+        if (_latencyStates.TryGetValue(streamId, out var latencyState))
+            return await latencyState.QualityPreset.Use(cancellationToken).ConfigureAwait(false);
 
-        // Stream not found — return a stream with just the default quality
-        Log.LogWarning(
-            "ObserveStreamQualityRequests: #{StreamId} not found, returning default (high quality) stream",
-            streamId);
-        return Task.FromResult(RpcStream.New(DefaultStream(), allowReconnect: false));
-
-        async IAsyncEnumerable<VideoQualityPreset> DefaultStream() {
-            yield return VideoQualityPreset.High;
-            await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, cancellationToken).ConfigureAwait(false);
-        }
+        return VideoQualityPreset.High;
     }
 
     // Private methods
 
     private void OnVideoStreamExpire(StreamId streamId)
-    {
-        if (_latencyStates.TryRemove(streamId, out var ls))
-            ls.Complete();
-    }
+        => _latencyStates.TryRemove(streamId, out _);
 
     private bool ShouldSkipToLive(StreamId streamId, string peerId)
     {
@@ -263,13 +247,14 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         await LiveVideoBackend.Register(record.ChatId, streamInfo, cancellationToken)
             .ConfigureAwait(false);
 
-        _latencyStates[record.StreamId] = new StreamLatencyState(beginsAt, record.Format, Log);
+        _latencyStates[record.StreamId] = new StreamLatencyState(beginsAt, record.Format, Services.StateFactory(), Log);
 
         try {
             // Publish video stream for real-time viewing
             // No processing - just forward to StreamStore for memoization
             Log.LogInformation("PushVideoInternal: publishing #{StreamId} to StreamStore", record.StreamId);
 
+            // TODO(AK): Call LiveVideoBackend.Register again to maintain (bump) expiring state once per Half of LiveVideoBackend.ChatStateTtl
             var frameCount = 0;
             async IAsyncEnumerable<VideoFrame> LogFrames(IAsyncEnumerable<VideoFrame> source)
             {
@@ -416,31 +401,29 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         }
     }
 
-    public sealed class StreamLatencyState(Moment startedAt, VideoFormat format, ILogger log)
+    public sealed class StreamLatencyState(Moment startedAt, VideoFormat format, StateFactory stateFactory, ILogger log)
     {
         private readonly ILogger Log = log;
         private readonly ILogger? DebugLog = log.IfEnabled(LogLevel.Debug);
 
         public Moment StartedAt { get; } = startedAt;
+        public MutableState<VideoQualityPreset> QualityPreset { get; } = stateFactory.NewMutable(VideoQualityPreset.High);
 
         // Cap max quality to what the camera can actually provide — prevents wasteful upscaling
-        private readonly VideoQualityLevel _maxQuality = format.Width >= 1920 && format.Height >= 1080
-            ? VideoQualityLevel.Full
-            : format is { Width: >= 1280, Height: >= 720 }
-                ? VideoQualityLevel.High
-                : format is { Width: >= 960, Height: >= 540 }
-                    ? VideoQualityLevel.Medium
-                    : VideoQualityLevel.Low;
+        private readonly VideoQualityLevel _maxQuality = format switch
+        {
+            { Width: >= 1920, Height: >= 1080 } => VideoQualityLevel.Full,
+            { Width: >= 1280, Height: >= 720 } => VideoQualityLevel.High,
+            { Width: >= 960, Height: >= 540 } => VideoQualityLevel.Medium,
+            _ => VideoQualityLevel.Low,
+        };
 
         private readonly ConcurrentDictionary<string, PeerLatencyState> _peers = new();
-        private readonly AsyncObservable<VideoQualityPreset> _qualityDirectives = new();
         private readonly Lock _evaluationLock = new();
 
-        private VideoQualityLevel _currentQuality = VideoQualityLevel.High;
         private CpuTimestamp _lastQualityChangeAt = CpuTimestamp.Now;
         private CpuTimestamp _lastEvaluationAt;
 
-        public VideoQualityLevel CurrentQuality => _currentQuality;
 
         public void RecordPeerLatency(string peerId, float latencyMs,
             float medianDecodeTimeMs = -1, int bufferDepth = -1, float bufferSpanMs = -1)
@@ -453,8 +436,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 
             // Skip-to-live trigger: if raw latency exceeds threshold and peer is warmed up
             if (latencyMs > Constants.Video.SkipToLiveThresholdMs
-                && peer.IsWarmedUp
-                && !peer.SkipToLive) {
+                && peer is { IsWarmedUp: true, SkipToLive: false }) {
                 peer.SkipToLive = true;
                 Log.LogInformation(
                     "RecordPeerLatency: SkipToLive triggered for PeerId={PeerId}, LatencyMs={LatencyMs:F0}",
@@ -473,19 +455,6 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         {
             if (_peers.TryGetValue(peerId, out var peer))
                 peer.SkipToLive = false;
-        }
-
-        public async IAsyncEnumerable<VideoQualityPreset> ObserveQualityDirectives(
-            [EnumeratorCancellation] CancellationToken cancellationToken)
-        {
-            var subscription = _qualityDirectives.Subscribe();
-            await using var _ = subscription.ConfigureAwait(false);
-
-            // Emit current quality as the first directive
-            yield return VideoQualityPreset.ForLevel(_currentQuality);
-
-            await foreach (var preset in subscription.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
-                yield return preset;
         }
 
         private void EvaluateQuality()
@@ -526,50 +495,43 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                     : Constants.Video.PeerOutlierRatio;
 
                 // Step down sender quality only if enough NETWORK-bound peers are slow
+                var currentQuality = QualityPreset.Value.Level;
                 if (networkSlowRatio > effectiveOutlierRatio) {
-                    var stepped = VideoQualityPreset.StepDown(_currentQuality);
+                    var stepped = VideoQualityPreset.StepDown(currentQuality);
                     if (stepped != null) {
-                        var oldQuality = _currentQuality;
-                        _currentQuality = stepped.Level;
                         _lastQualityChangeAt = CpuTimestamp.Now;
-                        _qualityDirectives.Publish(stepped);
+                        QualityPreset.Value = stepped;
                         Log.LogInformation(
                             "EvaluateQuality: STEP DOWN {OldLevel} -> {NewLevel}, networkSlow={NetworkSlow}, receiverSlow={ReceiverSlow}, total={TotalCount} (threshold={Threshold:F2})",
-                            oldQuality, stepped.Level, networkSlowCount, receiverSlowCount, peers.Count, effectiveOutlierRatio);
+                            currentQuality, stepped.Level, networkSlowCount, receiverSlowCount, peers.Count, effectiveOutlierRatio);
                     }
                 }
                 // Step up quality if all peers are fast and hysteresis window has elapsed
-                else if (totalSlowCount == 0
-                    && _lastQualityChangeAt.Elapsed >= Constants.Video.QualityHysteresisWindow) {
+                else if (totalSlowCount == 0 && _lastQualityChangeAt.Elapsed >= Constants.Video.QualityHysteresisWindow) {
                     var allFast = peers.All(p => p.Value.MedianLatencyMs < Constants.Video.LowLatencyThresholdMs);
-                    if (allFast) {
-                        var stepped = VideoQualityPreset.StepUp(_currentQuality);
-                        if (stepped != null && stepped.Level < _maxQuality) {
-                            Log.LogInformation(
-                                "EvaluateQuality: SKIP step-up to {Level}, camera max is {MaxLevel}",
-                                stepped.Level, _maxQuality);
-                            stepped = null;
-                        }
-                        if (stepped != null) {
-                            var oldQuality = _currentQuality;
-                            _currentQuality = stepped.Level;
-                            _lastQualityChangeAt = CpuTimestamp.Now;
-                            _qualityDirectives.Publish(stepped);
-                            Log.LogInformation(
-                                "EvaluateQuality: STEP UP {OldLevel} -> {NewLevel}, all peers fast ({TotalCount} peers)",
-                                oldQuality, stepped.Level, peers.Count);
-                        }
+                    if (!allFast)
+                        return;
+
+                    var stepped = VideoQualityPreset.StepUp(currentQuality);
+                    if (stepped != null && stepped.Level < _maxQuality) {
+                        Log.LogInformation(
+                            "EvaluateQuality: SKIP step-up to {Level}, camera max is {MaxLevel}",
+                            stepped.Level, _maxQuality);
+                        stepped = null;
+                    }
+                    if (stepped != null) {
+                        _lastQualityChangeAt = CpuTimestamp.Now;
+                        QualityPreset.Value = stepped;
+                        Log.LogInformation(
+                            "EvaluateQuality: STEP UP {OldLevel} -> {NewLevel}, all peers fast ({TotalCount} peers)",
+                            currentQuality, stepped.Level, peers.Count);
                     }
                 }
-                else {
+                else
                     DebugLog?.LogDebug(
                         "EvaluateQuality: HOLD at {Level}, networkSlow={NetworkSlow}, receiverSlow={ReceiverSlow}, total={TotalCount}",
-                        _currentQuality, networkSlowCount, receiverSlowCount, peers.Count);
-                }
+                        currentQuality, networkSlowCount, receiverSlowCount, peers.Count);
             }
         }
-
-        public void Complete(Exception? error = null)
-            => _qualityDirectives.TryComplete(error);
     }
 }

@@ -162,7 +162,7 @@ public class LiveBackendRedisStateTest(AppHostFixture fixture, ITestOutputHelper
         using (Invalidation.Begin()) {
             _ = liveBackend.List(chatId, default);
             _ = liveBackend.GetVideoStreamMemberCount(chatId, default);
-            _ = liveBackend.GetSupportedDecoderCodecs(chatId, default);
+            _ = liveBackend.GetSupportedCodecs(chatId, default);
         }
 
         // Recovery: ListActiveStreams should re-read from Redis
@@ -173,8 +173,106 @@ public class LiveBackendRedisStateTest(AppHostFixture fixture, ITestOutputHelper
         var memberCount = await liveBackend.GetVideoStreamMemberCount(chatId, CancellationToken.None);
         memberCount.Should().Be(1);
 
-        var decoderCodecs = await liveBackend.GetSupportedDecoderCodecs(chatId, CancellationToken.None);
+        var decoderCodecs = await liveBackend.GetSupportedCodecs(chatId, CancellationToken.None);
         decoderCodecs.Should().Contain("h264");
+    }
+
+    // --- Codec invalidation ---
+
+    [Fact]
+    public async Task VideoBackend_ShouldInvalidateCodecsOnMemberChange()
+    {
+        var (chatId, liveBackend) = await CreateChatWithVideoBackend("CodecInvalidate");
+
+        // Capture initial codec computed value (no members → all codecs available)
+        var computed = await Computed.Capture(
+            () => liveBackend.GetSupportedCodecs(chatId, CancellationToken.None));
+        computed.Value.Should().Contain("av1");
+        computed.Value.Should().Contain("h264");
+        computed.IsConsistent().Should().BeTrue();
+
+        // Register a member that only supports h264
+        var sessionId = $"session-{Guid.NewGuid():N}";
+        await liveBackend.RegisterMember(chatId, sessionId,
+            new ApiArray<string>(["h264"]), CancellationToken.None);
+
+        // Computed should be invalidated
+        computed.IsConsistent().Should().BeFalse("registering member should invalidate codec computed");
+
+        // Updated value should reflect limited codecs
+        computed = await computed.Update(CancellationToken.None);
+        computed.Value.Should().Contain("h264");
+        // av1 should NOT be in the list since the only member doesn't support it
+        computed.Value.Should().NotContain("av1",
+            "av1 should be removed when a member doesn't support it");
+    }
+
+    // --- Redis data survives shard-switch simulation ---
+
+    [Fact]
+    public async Task AudioBackend_RedisDataSurvivesCacheInvalidation()
+    {
+        var (chatId, liveBackend) = await CreateChatWithAudioBackend("AudioSurvives");
+        var streamInfo = NewAudioStreamInfo(chatId);
+
+        await liveBackend.Register(chatId, streamInfo, CancellationToken.None);
+
+        // Simulate shard switch: invalidate all compute methods
+        using (Invalidation.Begin())
+            _ = liveBackend.List(chatId, default);
+
+        // Redis should still have the data
+        var redisEntries = await ReadRedisHash<LiveStreamInfo>("live-audio:streams", chatId);
+        redisEntries.Should().ContainKey(streamInfo.StreamId,
+            "Redis data should NOT be purged on shard switch");
+
+        // List() should recover from Redis
+        var streams = await liveBackend.List(chatId, CancellationToken.None);
+        streams.Should().ContainSingle().Which.StreamId.Should().Be(streamInfo.StreamId);
+    }
+
+    [Fact]
+    public async Task VideoBackend_RedisDataSurvivesCacheInvalidation()
+    {
+        var (chatId, liveBackend) = await CreateChatWithVideoBackend("VideoSurvives");
+
+        // Register a stream
+        var streamId = StreamId.New(AppHost.Services.MeshWatcher().ThisNode.Ref);
+        var streamInfo = new VideoStreamInfo(streamId, chatId, AuthorId.New(chatId, 1),
+            new VideoFormat { Codec = "avc1", Width = 640, Height = 480 },
+            Clocks.SystemClock.Now);
+        await liveBackend.Register(chatId, streamInfo, CancellationToken.None);
+
+        // Register a member
+        var sessionId = $"session-{Guid.NewGuid():N}";
+        await liveBackend.RegisterMember(chatId, sessionId,
+            new ApiArray<string>(["h264", "av1"]), CancellationToken.None);
+
+        // Simulate shard switch: invalidate ALL compute methods
+        using (Invalidation.Begin()) {
+            _ = liveBackend.List(chatId, default);
+            _ = liveBackend.GetVideoStreamMemberCount(chatId, default);
+            _ = liveBackend.GetSupportedCodecs(chatId, default);
+        }
+
+        // Redis should still have both streams and members
+        var redisStreams = await ReadRedisHash<VideoStreamInfo>("live-video:streams", chatId);
+        redisStreams.Should().ContainKey(streamId.Value,
+            "stream data should survive shard switch");
+
+        var redisMembers = await ReadRedisHash<VideoStreamMemberInfo>("live-video:members", chatId);
+        redisMembers.Should().ContainKey(sessionId,
+            "member data should survive shard switch");
+
+        // All computed methods should recover from Redis
+        var streams = await liveBackend.List(chatId, CancellationToken.None);
+        streams.Should().ContainSingle();
+
+        var memberCount = await liveBackend.GetVideoStreamMemberCount(chatId, CancellationToken.None);
+        memberCount.Should().Be(1);
+
+        var codecs = await liveBackend.GetSupportedCodecs(chatId, CancellationToken.None);
+        codecs.Should().Contain("h264");
     }
 
     // --- Helpers ---

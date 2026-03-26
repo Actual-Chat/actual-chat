@@ -31,8 +31,8 @@ public class ChatVideoUIStateTest(ChatAppHostFixture fixture, ITestOutputHelper 
         bobAuthor.Should().NotBeNull();
 
         // Initially no one is streaming
-        var authorIds = await backend.GetVideoStreamingAuthorIds(chatId, CancellationToken.None);
-        authorIds.Should().BeEmpty();
+        var streams = await backend.List(chatId, CancellationToken.None);
+        streams.Should().BeEmpty();
 
         // Register Bob's video stream
         var streamId = StreamId.New(AppHost.Services.MeshWatcher().ThisNode.Ref);
@@ -45,17 +45,17 @@ public class ChatVideoUIStateTest(ChatAppHostFixture fixture, ITestOutputHelper 
 
         await backend.Register(chatId, streamInfo, CancellationToken.None);
 
-        // IsAnyoneVideoStreaming equivalent: check via frontend
-        authorIds = await frontend.GetAuthorIds(alice.Session, chatId, CancellationToken.None);
-        authorIds.Should().HaveCount(1);
-        authorIds.Should().Contain(bobAuthor.Id);
+        // Check via frontend List
+        var frontendStreams = await frontend.List(alice.Session, chatId, CancellationToken.None);
+        frontendStreams.Should().HaveCount(1);
+        frontendStreams[0].AuthorId.Should().Be(bobAuthor.Id);
 
         // Unregister the stream
         await backend.Unregister(chatId, streamId, CancellationToken.None);
 
         // Now no one should be streaming
-        authorIds = await frontend.GetAuthorIds(alice.Session, chatId, CancellationToken.None);
-        authorIds.Should().BeEmpty();
+        frontendStreams = await frontend.List(alice.Session, chatId, CancellationToken.None);
+        frontendStreams.Should().BeEmpty();
     }
 
     [Fact]
@@ -73,7 +73,7 @@ public class ChatVideoUIStateTest(ChatAppHostFixture fixture, ITestOutputHelper 
 
         // Capture initial computed value
         var computed = await Computed.Capture(
-            () => backend.GetVideoStreamingAuthorIds(chatId, CancellationToken.None));
+            () => backend.List(chatId, CancellationToken.None));
         computed.Value.Should().BeEmpty();
         computed.IsConsistent().Should().BeTrue();
 
@@ -126,8 +126,8 @@ public class ChatVideoUIStateTest(ChatAppHostFixture fixture, ITestOutputHelper 
         // Helper: simulate ChatHeader's panel visibility check
         // Panel shows when isRecording OR isAnyoneVideoStreaming
         async Task<bool> ShouldShowPanel(bool isRecording) {
-            var authorIds = await frontend.GetAuthorIds(alice.Session, chatId, CancellationToken.None);
-            var isAnyoneVideoStreaming = authorIds.Count > 0;
+            var streams = await frontend.List(alice.Session, chatId, CancellationToken.None);
+            var isAnyoneVideoStreaming = streams.Count > 0;
             return isRecording || isAnyoneVideoStreaming;
         }
 

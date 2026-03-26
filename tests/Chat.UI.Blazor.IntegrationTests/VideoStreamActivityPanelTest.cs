@@ -36,12 +36,7 @@ public class VideoStreamActivityPanelTest(ChatAppHostFixture fixture, ITestOutpu
         // Act: register the video stream
         await backend.Register(chatId, streamInfo, CancellationToken.None);
 
-        // Assert: GetVideoStreamingAuthorIds should return Bob's AuthorId
-        var authorIds = await backend.GetVideoStreamingAuthorIds(chatId, CancellationToken.None);
-        authorIds.Should().HaveCount(1);
-        authorIds.Should().Contain(bobAuthor.Id);
-
-        // Assert: ListActiveStreams should include the stream
+        // Assert: List should include the stream with Bob's AuthorId
         var activeStreams = await backend.List(chatId, CancellationToken.None);
         activeStreams.Should().HaveCount(1);
         activeStreams[0].StreamId.Should().Be(streamId);
@@ -49,7 +44,7 @@ public class VideoStreamActivityPanelTest(ChatAppHostFixture fixture, ITestOutpu
     }
 
     [Fact]
-    public async Task ShouldInvalidateStreamingAuthorIdsOnChange()
+    public async Task ShouldInvalidateListOnStreamChange()
     {
         // Arrange
         await using var bob = AppHost.NewWebClientTester(Out);
@@ -63,7 +58,7 @@ public class VideoStreamActivityPanelTest(ChatAppHostFixture fixture, ITestOutpu
 
         // Capture initial computed value — should be empty
         var computed = await Computed.Capture(
-            () => backend.GetVideoStreamingAuthorIds(chatId, CancellationToken.None));
+            () => backend.List(chatId, CancellationToken.None));
         computed.Value.Should().BeEmpty();
         computed.IsConsistent().Should().BeTrue();
 
@@ -81,10 +76,10 @@ public class VideoStreamActivityPanelTest(ChatAppHostFixture fixture, ITestOutpu
         // Computed should be invalidated
         computed.IsConsistent().Should().BeFalse();
 
-        // Re-capture — should now return the streaming author
+        // Re-capture — should now return the stream
         computed = await computed.Update(CancellationToken.None);
         computed.Value.Should().HaveCount(1);
-        computed.Value.Should().Contain(bobAuthor.Id);
+        computed.Value[0].AuthorId.Should().Be(bobAuthor.Id);
 
         // Unregister the stream
         await backend.Unregister(chatId, streamId, CancellationToken.None);
@@ -116,8 +111,8 @@ public class VideoStreamActivityPanelTest(ChatAppHostFixture fixture, ITestOutpu
         bobAuthor.Should().NotBeNull();
 
         // Initially no one is streaming
-        var authorIds = await frontend.GetAuthorIds(alice.Session, chatId, CancellationToken.None);
-        authorIds.Should().BeEmpty();
+        var streams = await frontend.List(alice.Session, chatId, CancellationToken.None);
+        streams.Should().BeEmpty();
 
         // Register Bob's video stream via backend
         var streamId = StreamId.New(AppHost.Services.MeshWatcher().ThisNode.Ref);
@@ -131,8 +126,8 @@ public class VideoStreamActivityPanelTest(ChatAppHostFixture fixture, ITestOutpu
         await backend.Register(chatId, streamInfo, CancellationToken.None);
 
         // Alice should see Bob's stream via frontend service
-        authorIds = await frontend.GetAuthorIds(alice.Session, chatId, CancellationToken.None);
-        authorIds.Should().HaveCount(1);
-        authorIds.Should().Contain(bobAuthor.Id);
+        streams = await frontend.List(alice.Session, chatId, CancellationToken.None);
+        streams.Should().HaveCount(1);
+        streams[0].AuthorId.Should().Be(bobAuthor.Id);
     }
 }

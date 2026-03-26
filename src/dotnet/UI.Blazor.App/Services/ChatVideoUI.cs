@@ -171,24 +171,18 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     [ComputeMethod]
     public virtual async Task<ApiArray<AuthorId>> GetVideoStreamingAuthorIds(ChatId? chatId, CancellationToken cancellationToken = default)
     {
-        if (chatId is null)
+        var streams = await GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(false);
+        if (streams.Count == 0)
             return default;
 
-        return await LiveVideoStreams
-            .GetAuthorIds(Session, chatId, cancellationToken)
-            .ConfigureAwait(false);
+        return streams.Select(s => s.AuthorId).Distinct().ToApiArray();
     }
 
     [ComputeMethod]
     public virtual async Task<bool> IsAnyoneVideoStreaming(ChatId? chatId, CancellationToken cancellationToken = default)
     {
-        if (chatId is null)
-            return false;
-
-        var authorIds = await LiveVideoStreams
-            .GetAuthorIds(Session, chatId, cancellationToken)
-            .ConfigureAwait(false);
-        return authorIds.Count > 0;
+        var streams = await GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(false);
+        return streams.Count > 0;
     }
 
     [ComputeMethod]
@@ -205,14 +199,11 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     [ComputeMethod]
     public virtual async Task<bool> IsOwnVideoStreaming(ChatId? chatId, CancellationToken cancellationToken = default)
     {
-        if (chatId is null)
-            return false;
-
-        var authorIds = await GetVideoStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
-        if (authorIds.Count == 0)
+        var streams = await GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(false);
+        if (streams.Count == 0)
             return false;
 
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        return ownAuthor != null && authorIds.Contains(ownAuthor.Id);
+        return ownAuthor != null && streams.Any(s => s.AuthorId == ownAuthor.Id);
     }
 }

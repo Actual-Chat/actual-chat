@@ -28,7 +28,7 @@ public class SkipToLiveTest(ILogger log)
     public void StreamLatencyState_ShouldSkipToLive_FalseForUnknownPeer()
     {
         var format = new VideoFormat { Width = 1280, Height = 720 };
-        var state = new StreamLatencyState(CpuClock.Instance.Now, format, Log);
+        var state = new StreamLatencyState(CpuClock.Instance.Now, format, StateFactory.Default, Log);
         state.ShouldSkipToLive("unknown").Should().BeFalse();
     }
 
@@ -36,7 +36,7 @@ public class SkipToLiveTest(ILogger log)
     public void StreamLatencyState_RecordPeerLatency_NoTriggerDuringWarmup()
     {
         var format = new VideoFormat { Width = 1280, Height = 720 };
-        var state = new StreamLatencyState(CpuClock.Instance.Now, format, Log);
+        var state = new StreamLatencyState(CpuClock.Instance.Now, format, StateFactory.Default, Log);
 
         state.RecordPeerLatency("peer1", 5000f);
         state.ShouldSkipToLive("peer1").Should().BeFalse(
@@ -47,7 +47,7 @@ public class SkipToLiveTest(ILogger log)
     public async Task StreamLatencyState_SkipToLive_FullLifecycle()
     {
         var format = new VideoFormat { Width = 1280, Height = 720 };
-        var state = new StreamLatencyState(CpuClock.Instance.Now, format, Log);
+        var state = new StreamLatencyState(CpuClock.Instance.Now, format, StateFactory.Default, Log);
 
         // Register peer with low latency during warmup
         state.RecordPeerLatency("peer1", 100f);
@@ -80,7 +80,7 @@ public class SkipToLiveTest(ILogger log)
     public async Task StreamLatencyState_SkipToLive_MultiPeerIndependence()
     {
         var format = new VideoFormat { Width = 1280, Height = 720 };
-        var state = new StreamLatencyState(CpuClock.Instance.Now, format, Log);
+        var state = new StreamLatencyState(CpuClock.Instance.Now, format, StateFactory.Default, Log);
 
         // Register both peers during warmup
         state.RecordPeerLatency("peer1", 100f);

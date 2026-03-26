@@ -1,6 +1,5 @@
 using ActualChat.Live;
 using ActualLab.Redis;
-using ActualLab.Rpc;
 using StreamingContext = ActualChat.Streaming.Db.StreamingContext;
 
 namespace ActualChat.Streaming;
@@ -8,9 +7,11 @@ namespace ActualChat.Streaming;
 /// <summary>
 /// Backend service implementation for managing active live audio streams in chats.
 /// </summary>
-public partial class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
+public class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
 {
-    private readonly ConcurrentDictionary<ChatId, ChatState> _chatStates = new();
+    private static readonly TimeSpan ChatEntryTtl = Constants.Audio.MaxStreamDuration * 2;
+
+    private readonly ConcurrentDictionary<ChatId, ExpiringEntry<ChatId, ChatId>> _activeChatEntries = new();
 
     private IChatsBackend ChatsBackend { get; }
     private MomentClock ServerClock { get; }
@@ -23,60 +24,51 @@ public partial class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
         ServerClock = services.Clocks().ServerClock;
         var redisDb = services.GetRequiredService<RedisDb<StreamingContext>>();
         StreamsStore = new RedisLiveStateStore<LiveStreamInfo>(redisDb, "live-audio:streams", Constants.Audio.MaxStreamDuration*2, Log);
-
-        var stopToken = ShardOwner.StopToken;
-        foreach (var shardIndex in ShardScheme.ShardIndexes) {
-            var shardIndexCopy = shardIndex; // Capture for closure
-            var shardState = ShardOwner.States[shardIndex].Value;
-            // Clear streams only when THIS shard loses ownership
-            _ = Task.Run(async () => {
-                while (true) {
-                    shardState = await shardState.WhenNext(stopToken).ConfigureAwait(false);
-                    // Only clear when we lose ownership (not when gaining or during startup)
-                    if (shardState.OwnershipStatus == ShardOwnershipStatus.MappedToOtherNode)
-                        PurgeShard(shardIndexCopy);
-                }
-            }, CancellationToken.None);
-        }
     }
 
     // [ComputeMethod]
     public virtual async Task<ApiArray<LiveStreamInfo>> List(ChatId chatId, CancellationToken cancellationToken)
     {
+        BumpChatEntry(chatId);
         var streams = await ReadStreamsFromRedis(chatId).ConfigureAwait(false);
         return new(streams.Values);
     }
 
-    public virtual async Task<RpcStream<LiveStreamInfo>> Observe(ChatId chatId, CancellationToken cancellationToken)
-    {
-        var shardState = ShardOwner.States[ShardScheme.GetShardIndex(chatId)].Value;
-        var shardOwnership = await shardState.RequireShardOwnership(cancellationToken).ConfigureAwait(false);
-        // linkedCts will be either cancelled (most likely) or GC collected - that's why we don't dispose it explicitly
-        var linkedCts = shardOwnership.LockToken.LinkWith(cancellationToken);
-
-        var chatState = GetChatState(chatId);
-        var observations = chatState.ObserveStreams(linkedCts.Token);
-        return RpcStream.New(observations, allowReconnect: false);
-    }
-
     public virtual async Task Register(ChatId chatId, LiveStreamInfo streamInfo, CancellationToken cancellationToken)
     {
+        BumpChatEntry(chatId);
         var success = await StreamsStore.SetField(chatId, streamInfo.StreamId, streamInfo).ConfigureAwait(false);
-        if (success) {
-            var chatState = GetChatState(chatId);
-            chatState.PublishNewStream(streamInfo);
+        if (success)
             InvalidateListStreams(chatId);
-        }
     }
 
     public virtual async Task Unregister(ChatId chatId, string streamId, CancellationToken cancellationToken)
     {
+        BumpChatEntry(chatId);
         var removed = await StreamsStore.RemoveField(chatId, streamId).ConfigureAwait(false);
         if (removed)
             InvalidateListStreams(chatId);
     }
 
     // Private methods
+
+    private void BumpChatEntry(ChatId chatId)
+    {
+        var entry = _activeChatEntries.GetOrAdd(chatId, static (id, self) => {
+            var e = ExpiringEntry.New(self._activeChatEntries, id, id);
+            e.SetDisposer(self.OnChatEntryExpired);
+            e.BumpExpiresAt(ChatEntryTtl);
+            e.BeginExpire();
+            return e;
+        }, this);
+        entry.BumpExpiresAt(ChatEntryTtl);
+    }
+
+    private async ValueTask OnChatEntryExpired(ExpiringEntry<ChatId, ChatId> entry)
+    {
+        Log.LogDebug("OnChatEntryExpired({ChatId}): cleaning up Redis", entry.Key);
+        await StreamsStore.DeleteKey(entry.Key).ConfigureAwait(false);
+    }
 
     private async Task<Dictionary<string, LiveStreamInfo>> ReadStreamsFromRedis(ChatId chatId)
     {
@@ -109,29 +101,6 @@ public partial class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
             await StreamsStore.SetField(chatId, streamId, info).ConfigureAwait(false);
 
         return result;
-    }
-
-    private ChatState GetChatState(ChatId chatId)
-        => _chatStates.GetOrAdd(chatId, static (id, self) => new ChatState(self, id), this);
-
-    private void PurgeShard(int shardIndex)
-    {
-        // Only clear streams for chats that belong to this shard
-        var chatIdsToRemove = _chatStates.Keys
-            .Where(chatId => ShardScheme.GetShardIndex(chatId) == shardIndex)
-            .ToList();
-
-        foreach (var chatId in chatIdsToRemove) {
-            if (!_chatStates.TryRemove(chatId, out var chatState))
-                continue;
-
-            _ = Task.Run(async () => {
-                await StreamsStore.DeleteKey(chatId).ConfigureAwait(false);
-            });
-
-            InvalidateListStreams(chatId);
-            chatState.Complete(RpcRerouteException.MustReroute());
-        }
     }
 
     private void InvalidateListStreams(ChatId chatId)

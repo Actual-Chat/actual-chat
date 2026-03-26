@@ -2,7 +2,6 @@
 @using ActualChat.Streaming
 @using ActualChat.Video
 @using ActualChat.UI.Blazor.App.Module
-@using ActualLab.Resilience
 @inherits ComputedStateComponent<AppUIHub, VideoRecorder.Model>
 @{
     var m = State.Value;
@@ -165,17 +164,16 @@
             Log.LogInformation("SubscribeToQualityRequests: found own stream #{StreamId}, subscribing", ownStreamId);
 
             var liveVideoStreams = Hub.Services.GetRequiredService<ILiveVideoStreams>();
-            var presetStream = new ResilientStream<VideoQualityPreset> {
-                Provider = async ct => await liveVideoStreams
-                    .ObserveQualityRequests(Session, ownStreamId, ct)
-                    .ConfigureAwait(false),
-                CancellationToken = cancellationToken,
-            };
-            await foreach (var preset in presetStream.ConfigureAwait(false)) {
+            while (true) {
+                var computed = await Computed.Capture(
+                    () => liveVideoStreams.GetQualityPreset(Session, ownStreamId, cancellationToken),
+                    cancellationToken).ConfigureAwait(false);
+                var preset = computed.Value;
                 Log.LogInformation("SubscribeToQualityRequests: received preset {Level} ({Width}x{Height} @ {Bitrate}bps)",
                     preset.Level, preset.Width, preset.Height, preset.Bitrate);
                 if (JSRef is {} jsRef)
                     await jsRef.InvokeVoidAsync("reconfigure", cancellationToken, preset.Width, preset.Height, preset.Bitrate);
+                await computed.WhenInvalidated(cancellationToken).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
@@ -186,22 +184,21 @@
 
     private async Task SubscribeToSupportedDecoderCodecs(ChatId chatId) {
         _codecStreamCts.CancelAndDisposeSilently();
-        var cancellationTokenSource = _codecStreamCts = new CancellationTokenSource();
+        var cancellationTokenSource = _codecStreamCts = new();
         var cancellationToken = cancellationTokenSource.Token;
         try {
             Log.LogInformation("SubscribeToSupportedDecoderCodecs: starting for ChatId={ChatId}", chatId);
 
             var liveVideoStreams = Hub.Services.GetRequiredService<ILiveVideoStreams>();
-            var codecStream = new ResilientStream<ApiArray<string>> {
-                Provider = async ct => await liveVideoStreams
-                    .ObserveSupportedDecoderCodecs(Session, chatId, ct)
-                    .ConfigureAwait(false),
-                CancellationToken = cancellationToken,
-            };
-            await foreach (var codecs in codecStream.ConfigureAwait(false)) {
+            while (true) {
+                var computed = await Computed.Capture(
+                    () => liveVideoStreams.GetSupportedCodecs(Session, chatId, cancellationToken),
+                    cancellationToken).ConfigureAwait(false);
+                var codecs = computed.Value;
                 Log.LogInformation("SubscribeToSupportedDecoderCodecs: received codecs=[{Codecs}]", string.Join(", ", codecs));
                 if (JSRef is {} jsRef)
                     await jsRef.InvokeVoidAsync("updateSupportedDecoderCodecs", cancellationToken, (object)codecs.ToArray());
+                await computed.WhenInvalidated(cancellationToken).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
@@ -214,13 +211,11 @@
         try {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
             var liveVideoStreams = Hub.Services.GetRequiredService<ILiveVideoStreams>();
-            var codecStream = await liveVideoStreams
-                .ObserveSupportedDecoderCodecs(Session, chatId, cts.Token)
+            var codecs = await liveVideoStreams
+                .GetSupportedCodecs(Session, chatId, cts.Token)
                 .ConfigureAwait(false);
-            await foreach (var codecs in codecStream.WithCancellation(cts.Token).ConfigureAwait(false)) {
-                Log.LogInformation("GetInitialAudienceCodecs: codecs=[{Codecs}]", string.Join(", ", codecs));
-                return codecs.ToArray();
-            }
+            Log.LogInformation("GetInitialAudienceCodecs: codecs=[{Codecs}]", string.Join(", ", codecs));
+            return codecs.ToArray();
         }
         catch (OperationCanceledException) {
             Log.LogInformation("GetInitialAudienceCodecs: timed out, no audience codecs available");

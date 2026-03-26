@@ -3,7 +3,7 @@ using ActualChat.Live;
 namespace ActualChat.Streaming.Services;
 
 /// <summary>
-/// Watches for active streams via ILiveAudioBackend and multiplexes audio into a single output channel.
+/// Watches for active streams via ILiveAudioBackend computed List and multiplexes audio into a single output channel.
 /// </summary>
 public sealed class LiveStreamMuxer : WorkerBase
 {
@@ -69,32 +69,39 @@ public sealed class LiveStreamMuxer : WorkerBase
 
             var streamTasks = new Dictionary<string, Task>();
 
-            // Watch for streams via LiveBackend with auto-reconnect
+            // Watch for streams via computed List with auto-reconnect
             while (true) {
                 try {
-                    Log.LogInformation("OnRun: Connecting to ObserveNewStreams for {ChatId}", ChatId);
-                    var streams = await LiveBackend.Observe(ChatId, cancellationToken).ConfigureAwait(false);
-                    await foreach (var streamInfo in streams.ConfigureAwait(false)) {
-                        Log.LogDebug("OnRun: Got stream #{StreamId}", streamInfo.StreamId);
+                    Log.LogInformation("OnRun: Watching computed List for {ChatId}", ChatId);
+
+                    while (true) {
+                        var computed = await Computed.Capture(
+                            () => LiveBackend.List(ChatId, cancellationToken),
+                            cancellationToken).ConfigureAwait(false);
+                        var currentStreams = computed.Value;
 
                         // Clean up completed (including failed) streams first - allows retry
                         CleanupCompletedStreams(streamTasks);
 
-                        if (streamTasks.ContainsKey(streamInfo.StreamId))
-                            continue; // Already processing this stream
+                        // Start processing any new streams
+                        foreach (var streamInfo in currentStreams) {
+                            if (streamTasks.ContainsKey(streamInfo.StreamId))
+                                continue; // Already processing this stream
 
-                        // Start streaming
-                        var streamIndex = Interlocked.Increment(ref _nextStreamIndex);
-                        Log.LogInformation("Starting stream #{StreamIndex} for stream #{StreamId}", streamIndex, streamInfo.StreamId);
-                        var streamTask = ProcessStream(streamInfo, streamIndex, cancellationToken);
-                        streamTasks[streamInfo.StreamId] = streamTask;
+                            var streamIndex = Interlocked.Increment(ref _nextStreamIndex);
+                            Log.LogInformation("Starting stream #{StreamIndex} for stream #{StreamId}", streamIndex, streamInfo.StreamId);
+                            var streamTask = ProcessStream(streamInfo, streamIndex, cancellationToken);
+                            streamTasks[streamInfo.StreamId] = streamTask;
+                        }
+
+                        // Wait for invalidation (stream registered/unregistered)
+                        await computed.WhenInvalidated(cancellationToken).ConfigureAwait(false);
                     }
-                    Log.LogWarning("OnRun: ObserveNewStreams completed for {ChatId}", ChatId);
                 }
                 catch (Exception e) {
                     if (e.IsCancellationOf(cancellationToken))
                         throw;
-                    Log.LogWarning(e, "OnRun: ObserveStreams failed for {ChatId}, reconnecting in {Delay}...",
+                    Log.LogWarning(e, "OnRun: List watching failed for {ChatId}, reconnecting in {Delay}...",
                         ChatId, ReconnectDelay);
                 }
 
@@ -146,6 +153,8 @@ public sealed class LiveStreamMuxer : WorkerBase
             var endItem = new LiveStreamEnd { StreamIndex = streamIndex };
             await _output.Writer.WriteAsync(endItem, cancellationToken).ConfigureAwait(false);
             Log.LogInformation("Stream #{StreamIndex} completed, {FrameCount} frames emitted", streamIndex, frameCount);
+
+            // TODO(AK): delay stream task until it consumed by all readers - 3-5s
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
             Log.LogDebug("Stream #{StreamIndex} cancelled after {FrameCount} frames", streamIndex, frameCount);

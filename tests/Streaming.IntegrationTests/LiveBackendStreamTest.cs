@@ -10,11 +10,10 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     /// <summary>
-    /// Tests that ILiveAudioBackend.ObserveStreams works in loopback mode (same host produces and consumes).
-    /// This is the simplest possible test for the RPC stream functionality.
+    /// Tests that ILiveAudioBackend.List works - registers a stream and verifies it appears in List.
     /// </summary>
     [Fact]
-    public async Task ObserveStreams_ShouldWorkInLoopback()
+    public async Task List_ShouldReturnRegisteredStreams()
     {
         var services = AppHost.Services;
         var log = services.LogFor<LiveBackendStreamTest>();
@@ -38,38 +37,11 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
         // Get the backend service
         var liveBackend = services.GetRequiredService<ILiveAudioBackend>();
 
-        // Start observing streams
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        var receivedStreams = new List<LiveStreamInfo>();
+        // Verify no streams initially
+        var initialStreams = await liveBackend.List(chatId, CancellationToken.None);
+        initialStreams.Count.Should().Be(0, "no streams should exist initially");
 
-        log.LogInformation("Calling ObserveStreams for chat {ChatId}...", chatId);
-        var rpcStream = await liveBackend.Observe(chatId, cts.Token);
-        log.LogInformation("Got RpcStream, starting enumeration...");
-
-        // Start collecting in background
-        var collectTask = Task.Run(async () => {
-            try {
-                log.LogInformation("Starting to enumerate RPC stream...");
-                await foreach (var streamInfo in rpcStream.WithCancellation(cts.Token)) {
-                    log.LogInformation("Received stream: #{StreamId}, ChatId={ChatId}, AuthorId={AuthorId}",
-                        streamInfo.StreamId, streamInfo.ChatId, streamInfo.AuthorId);
-                    receivedStreams.Add(streamInfo);
-                }
-                log.LogInformation("RPC stream enumeration completed normally");
-            }
-            catch (OperationCanceledException) {
-                log.LogInformation("RPC stream enumeration cancelled after receiving {Count} streams", receivedStreams.Count);
-            }
-            catch (Exception ex) {
-                log.LogError(ex, "Error during RPC stream enumeration");
-                throw;
-            }
-        }, cts.Token);
-
-        // Wait a bit for the observer to start
-        await Task.Delay(500, cts.Token);
-
-        // Now register a stream (simulating what StreamingBackend does)
+        // Register a stream
         var testStreamInfo = new LiveStreamInfo {
             ChatId = chatId,
             AuthorId = AuthorId.New(chatId, 1),
@@ -79,31 +51,21 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
         };
 
         log.LogInformation("Registering active stream: #{StreamId}", testStreamInfo.StreamId);
+        await liveBackend.Register(chatId, testStreamInfo, CancellationToken.None);
 
-        // Use the interface method (now part of ILiveAudioBackend)
-        await liveBackend.Register(chatId, testStreamInfo, cts.Token);
-
-        log.LogInformation("Stream registered, waiting for it to be received...");
-
-        // Wait for the stream to be received
-        await Task.Delay(2000, cts.Token);
-
-        // Cancel and verify
-        await cts.CancelAsync();
-        await collectTask.SilentAwait(false);
-
-        // Verify
-        log.LogInformation("Total streams received: {Count}", receivedStreams.Count);
-        receivedStreams.Should().ContainSingle("should receive exactly one registered stream");
-        receivedStreams[0].StreamId.Should().Be(testStreamInfo.StreamId);
-        receivedStreams[0].ChatId.Should().Be(chatId);
+        // Verify stream appears in List
+        var streams = await liveBackend.List(chatId, CancellationToken.None);
+        log.LogInformation("Total streams: {Count}", streams.Count);
+        streams.Should().ContainSingle("should have exactly one registered stream");
+        streams[0].StreamId.Should().Be(testStreamInfo.StreamId);
+        streams[0].ChatId.Should().Be(chatId);
     }
 
     /// <summary>
-    /// Tests that ObserveStreams yields existing streams first before waiting for new ones.
+    /// Tests that computed List invalidation works - watches for changes using Computed.Capture.
     /// </summary>
     [Fact]
-    public async Task ObserveStreams_ShouldYieldExistingStreamsFirst()
+    public async Task List_ShouldInvalidateOnRegister()
     {
         var services = AppHost.Services;
         var log = services.LogFor<LiveBackendStreamTest>();
@@ -124,8 +86,14 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
 
         var liveBackend = services.GetRequiredService<ILiveAudioBackend>();
 
-        // First, register a stream BEFORE calling ObserveStreams
-        var existingStreamInfo = new LiveStreamInfo {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+
+        // Capture computed state
+        var computed = await Computed.Capture(() => liveBackend.List(chatId, cts.Token));
+        computed.Value.Count.Should().Be(0, "no streams initially");
+
+        // Register a stream
+        var testStreamInfo = new LiveStreamInfo {
             ChatId = chatId,
             AuthorId = AuthorId.New(chatId, 1),
             StreamId = $"existing-stream-{Guid.NewGuid():N}",
@@ -133,39 +101,24 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
             Format = AudioSource.DefaultFormat,
         };
 
-        log.LogInformation("Registering existing stream: #{StreamId}", existingStreamInfo.StreamId);
-        await liveBackend.Register(chatId, existingStreamInfo, CancellationToken.None);
+        log.LogInformation("Registering stream: #{StreamId}", testStreamInfo.StreamId);
+        await liveBackend.Register(chatId, testStreamInfo, CancellationToken.None);
 
-        // Now call ObserveStreams - it should immediately yield the existing stream
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        var receivedStreams = new List<LiveStreamInfo>();
+        // Wait for invalidation
+        log.LogInformation("Waiting for invalidation...");
+        await computed.WhenInvalidated(cts.Token);
 
-        log.LogInformation("Calling ObserveStreams...");
-        var rpcStream = await liveBackend.Observe(chatId, cts.Token);
-
-        // Try to get the first item with a short timeout
-        var enumerator = rpcStream.GetAsyncEnumerator(cts.Token);
-        try {
-            log.LogInformation("Moving to first item...");
-            var hasFirst = await enumerator.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2));
-            hasFirst.Should().BeTrue("existing stream should be yielded immediately");
-
-            var firstStream = enumerator.Current;
-            log.LogInformation("Got first stream: #{StreamId}", firstStream.StreamId);
-            firstStream.StreamId.Should().Be(existingStreamInfo.StreamId);
-        }
-        finally {
-            await enumerator.DisposeAsync();
-        }
+        // Re-fetch and verify
+        var updated = await Computed.Capture(() => liveBackend.List(chatId, cts.Token));
+        updated.Value.Should().ContainSingle("registered stream should appear after invalidation");
+        updated.Value[0].StreamId.Should().Be(testStreamInfo.StreamId);
     }
 
     /// <summary>
-    /// Tests multiple concurrent ObserveStreams calls.
-    /// Note: Currently, new stream notifications go to only one consumer due to
-    /// single channel design in ChatStreamSet. This test documents current behavior.
+    /// Tests that multiple concurrent List consumers see the same data.
     /// </summary>
-    [Fact(Skip = "Multiple concurrent consumers receive only one notification due to single channel design")]
-    public async Task ObserveStreams_MultipleConcurrentConsumers()
+    [Fact]
+    public async Task List_MultipleConcurrentConsumers()
     {
         var services = AppHost.Services;
         var log = services.LogFor<LiveBackendStreamTest>();
@@ -186,33 +139,6 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
 
         var liveBackend = services.GetRequiredService<ILiveAudioBackend>();
 
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-
-        // Start two concurrent consumers
-        var consumer1Streams = new List<LiveStreamInfo>();
-        var consumer2Streams = new List<LiveStreamInfo>();
-
-        var stream1 = await liveBackend.Observe(chatId, cts.Token);
-        var stream2 = await liveBackend.Observe(chatId, cts.Token);
-
-        var consumer1Task = Task.Run(async () => {
-            try {
-                await foreach (var s in stream1.WithCancellation(cts.Token))
-                    consumer1Streams.Add(s);
-            }
-            catch (OperationCanceledException) { }
-        }, cts.Token);
-
-        var consumer2Task = Task.Run(async () => {
-            try {
-                await foreach (var s in stream2.WithCancellation(cts.Token))
-                    consumer2Streams.Add(s);
-            }
-            catch (OperationCanceledException) { }
-        }, cts.Token);
-
-        await Task.Delay(500, cts.Token);
-
         // Register a stream
         var testStreamInfo = new LiveStreamInfo {
             ChatId = chatId,
@@ -223,21 +149,64 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
         };
 
         log.LogInformation("Registering stream: #{StreamId}", testStreamInfo.StreamId);
-        await liveBackend.Register(chatId, testStreamInfo, cts.Token);
+        await liveBackend.Register(chatId, testStreamInfo, CancellationToken.None);
 
-        // Wait for both consumers to receive
-        await Task.Delay(2000, cts.Token);
+        // Both calls should see the same data
+        var list1 = await liveBackend.List(chatId, CancellationToken.None);
+        var list2 = await liveBackend.List(chatId, CancellationToken.None);
 
-        await cts.CancelAsync();
-        await Task.WhenAll(consumer1Task, consumer2Task).SilentAwait(false);
+        list1.Should().ContainSingle();
+        list2.Should().ContainSingle();
+        list1[0].StreamId.Should().Be(testStreamInfo.StreamId);
+        list2[0].StreamId.Should().Be(testStreamInfo.StreamId);
+    }
 
-        // Both consumers should receive the stream
-        log.LogInformation("Consumer1 received: {Count}, Consumer2 received: {Count}",
-            consumer1Streams.Count, consumer2Streams.Count);
+    /// <summary>
+    /// Tests that computed List invalidates on unregister, proving the
+    /// Computed.Capture + WhenInvalidated pattern works for stream removal.
+    /// </summary>
+    [Fact]
+    public async Task List_ShouldInvalidateOnUnregister()
+    {
+        var services = AppHost.Services;
+        var commander = services.Commander();
+        var session = Session.New();
+        _ = await AppHost.SignIn(session, new AccountFull("StreamTester4"));
 
-        consumer1Streams.Should().ContainSingle();
-        consumer2Streams.Should().ContainSingle();
-        consumer1Streams[0].StreamId.Should().Be(testStreamInfo.StreamId);
-        consumer2Streams[0].StreamId.Should().Be(testStreamInfo.StreamId);
+        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
+            Create = new ChatDiff {
+                Title = "LiveBackendStreamTest4",
+                Kind = ChatKind.Group,
+            },
+        }));
+        chat.Require();
+        var chatId = chat.Id;
+
+        var liveBackend = services.GetRequiredService<ILiveAudioBackend>();
+
+        // Register a stream
+        var streamInfo = new LiveStreamInfo {
+            ChatId = chatId,
+            AuthorId = AuthorId.New(chatId, 1),
+            StreamId = $"unregister-test-{Guid.NewGuid():N}",
+            BeginsAt = SystemClock.Instance.Now,
+            Format = AudioSource.DefaultFormat,
+        };
+        await liveBackend.Register(chatId, streamInfo, CancellationToken.None);
+
+        // Capture computed with the stream present
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var computed = await Computed.Capture(() => liveBackend.List(chatId, cts.Token));
+        computed.Value.Should().ContainSingle();
+
+        // Unregister the stream
+        await liveBackend.Unregister(chatId, streamInfo.StreamId, CancellationToken.None);
+
+        // Computed should be invalidated
+        computed.IsConsistent().Should().BeFalse("unregister should invalidate List computed");
+
+        // Updated value should be empty
+        var updated = await computed.Update(CancellationToken.None);
+        updated.Value.Should().BeEmpty("stream should be gone after unregister");
     }
 }
