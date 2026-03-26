@@ -90,6 +90,9 @@ public class FirebaseMessagingClient(
                     MutableContent = true,
                     ThreadId = tag,
                 },
+                FcmOptions = new ApnsFcmOptions {
+                    ImageUrl = absoluteIconUrl,
+                },
             },
             Webpush = new WebpushConfig {
                 Notification = new WebpushNotification {
