@@ -62,13 +62,9 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             DebugLog?.LogDebug("GetVideo stream ended after {Count} frames for PeerId={PeerId}", frameCount, peerId);
         }
 
-        // Always skip to the latest buffered keyframe to minimize stale frame delivery.
-        // skipTo is typically ~0ms (viewer discovers stream nearly simultaneously with registration),
-        // so SkipToKeyFrame would replay the entire buffer. SkipToLatestBufferedKeyFrame jumps to
-        // the most recent keyframe in the memoizer's replay buffer for efficient near-live start.
-        stream = SkipToLatestBufferedKeyFrame(LogFrames(stream), Log, cancellationToken);
-
-        stream = ApplySkipToLive(stream, streamId, peerId, cancellationToken);
+        // Always start from the next live keyframe — skip all buffered frames
+        // and wait for a fresh keyframe at the live edge for near-zero latency.
+        stream = SkipToNextKeyFrame(LogFrames(stream), Log, cancellationToken);
 
         return RpcStream.New(stream);
     }
@@ -139,77 +135,61 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
     private void OnVideoStreamExpire(StreamId streamId)
         => _latencyStates.TryRemove(streamId, out _);
 
-    private bool ShouldSkipToLive(StreamId streamId, string peerId)
-    {
-        if (!_latencyStates.TryGetValue(streamId, out var latencyState))
-            return false;
-        return latencyState.ShouldSkipToLive(peerId);
-    }
-
-    private void ClearSkipToLive(StreamId streamId, string peerId)
-    {
-        if (_latencyStates.TryGetValue(streamId, out var latencyState))
-            latencyState.ClearSkipToLive(peerId);
-    }
-
-    private async IAsyncEnumerable<VideoFrame> ApplySkipToLive(
-        IAsyncEnumerable<VideoFrame> source,
-        StreamId streamId,
-        string peerId,
+    /// <summary>
+    /// Skip-to-live: discard all buffered frames, then wait for the next live keyframe.
+    /// Used when the client re-requests the stream after detecting high latency.
+    /// Waiting for the next keyframe naturally eliminates latency — the keyframe is produced
+    /// at the live edge, so the consumer starts with near-zero delay.
+    /// </summary>
+    private static async IAsyncEnumerable<VideoFrame> SkipToNextKeyFrame(
+        IAsyncEnumerable<VideoFrame> stream,
+        ILogger log,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var enumerator = source.GetAsyncEnumerator(cancellationToken);
+        var enumerator = stream.GetAsyncEnumerator(cancellationToken);
         await using var _ = enumerator.ConfigureAwait(false);
+        var skipped = 0;
 
+        // Phase 1: Skip all synchronously-available (buffered) frames
         while (true) {
-            // Check skip-to-live flag before awaiting next frame
-            if (ShouldSkipToLive(streamId, peerId)) {
-                Log.LogInformation("ApplySkipToLive: stream #{StreamId}, START for PeerId={PeerId}",
-                    streamId, peerId);
-
-                // Determine the live edge using wall clock time
-                var startedAt = _latencyStates.TryGetValue(streamId, out var ls) ? ls.StartedAt : default;
-                var liveOffset = Clocks.ServerClock.Now - startedAt;
-                var threshold = TimeSpan.FromSeconds(1); // within 1 GOP of live
-
-                VideoFrame? lastKeyFrame = null;
-                var skippedCount = 0;
-
-                // Consume frames until we're close to the live edge
-                while (true) {
-                    if (!await enumerator.MoveNextAsync().ConfigureAwait(false))
-                        yield break;
-
-                    var frame = enumerator.Current;
-                    if (frame.IsKeyFrame)
-                        lastKeyFrame = frame;
-                    skippedCount++;
-
-                    if (frame.Offset >= liveOffset - threshold)
-                        break;
-                }
-
-                ClearSkipToLive(streamId, peerId);
-                if (lastKeyFrame != null) {
-                    Log.LogInformation(
-                        "ApplySkipToLive: DONE for PeerId={PeerId}, skipped {Skipped} frames, resuming from keyframe at {Offset}ms",
-                        peerId, skippedCount, lastKeyFrame.Offset.TotalMilliseconds);
-                    yield return lastKeyFrame;
-                }
-                else {
-                    Log.LogInformation(
-                        "ApplySkipToLive: DONE for PeerId={PeerId}, skipped {Skipped} frames but no keyframe found, yielding last frame",
-                        peerId, skippedCount);
-                    yield return enumerator.Current;
-                }
-            }
-            else {
-                // Normal pass-through
-                if (!await enumerator.MoveNextAsync().ConfigureAwait(false))
+            var moveNext = enumerator.MoveNextAsync();
+            if (!moveNext.IsCompleted) {
+                // Reached live edge — await this frame
+                if (!await moveNext.ConfigureAwait(false))
                     yield break;
-                yield return enumerator.Current;
+                break;
+            }
+            if (!moveNext.Result)
+                yield break; // stream ended
+            skipped++;
+        }
+
+        // Phase 2: At the live edge — skip delta frames until next keyframe
+        // The current frame (from Phase 1 break) might be a keyframe
+        if (enumerator.Current.IsKeyFrame) {
+            log.LogInformation(
+                "SkipToNextKeyFrame: found keyframe at offset {Offset}ms after skipping {Skipped} buffered frames",
+                enumerator.Current.Offset.TotalMilliseconds, skipped);
+            yield return enumerator.Current;
+        }
+        else {
+            skipped++;
+            // Wait for the next keyframe (at most ~1s at 30fps/GOP=30)
+            while (await enumerator.MoveNextAsync().ConfigureAwait(false)) {
+                if (enumerator.Current.IsKeyFrame) {
+                    log.LogInformation(
+                        "SkipToNextKeyFrame: found keyframe at offset {Offset}ms after skipping {Skipped} frames",
+                        enumerator.Current.Offset.TotalMilliseconds, skipped);
+                    yield return enumerator.Current;
+                    break;
+                }
+                skipped++;
             }
         }
+
+        // Phase 3: Pass-through remaining frames
+        while (await enumerator.MoveNextAsync().ConfigureAwait(false))
+            yield return enumerator.Current;
     }
 
     private async Task PushVideoInternal(
@@ -293,65 +273,6 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                 $"Wrong mesh node: expected {ThisNode.Ref}, but got {streamId.NodeRef}.");
     }
 
-    /// <summary>
-    /// Skips to the latest keyframe in the memoizer's replay buffer.
-    /// Buffered frames are detected by checking MoveNextAsync().IsCompleted —
-    /// AsyncMemoizer.Replay() pre-fills a channel synchronously, so buffered
-    /// reads complete instantly while live reads are async.
-    /// </summary>
-    private static async IAsyncEnumerable<VideoFrame> SkipToLatestBufferedKeyFrame(
-        IAsyncEnumerable<VideoFrame> stream,
-        ILogger log,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        var buffer = new List<VideoFrame>();
-        var lastKeyFrameIdx = -1;
-
-        var enumerator = stream.GetAsyncEnumerator(cancellationToken);
-        await using var _ = enumerator.ConfigureAwait(false);
-
-        // Phase 1: Read all synchronously-available (buffered) frames
-        while (true) {
-            var moveNext = enumerator.MoveNextAsync();
-
-            if (!moveNext.IsCompleted) {
-                // Buffer exhausted — moveNext is the first live frame (still pending)
-                var startIdx = lastKeyFrameIdx >= 0 ? lastKeyFrameIdx : 0;
-                if (startIdx > 0)
-                    log.LogInformation(
-                        "SkipToLatestBufferedKeyFrame: skipped {Skipped} frames, emitting {Emitted} from buffer (total={Total}, lastKeyFrame at #{Idx})",
-                        startIdx, buffer.Count - startIdx, buffer.Count, lastKeyFrameIdx);
-
-                for (var i = startIdx; i < buffer.Count; i++)
-                    yield return buffer[i];
-                buffer.Clear();
-
-                // Await the pending live frame
-                if (!await moveNext.ConfigureAwait(false))
-                    yield break;
-                yield return enumerator.Current;
-                break;
-            }
-
-            if (!moveNext.Result) {
-                // Stream ended during buffer read
-                var startIdx = lastKeyFrameIdx >= 0 ? lastKeyFrameIdx : 0;
-                for (var i = startIdx; i < buffer.Count; i++)
-                    yield return buffer[i];
-                yield break;
-            }
-
-            var frame = enumerator.Current;
-            buffer.Add(frame);
-            if (frame.IsKeyFrame)
-                lastKeyFrameIdx = buffer.Count - 1;
-        }
-
-        // Phase 2: Pass-through for remaining live frames
-        while (await enumerator.MoveNextAsync().ConfigureAwait(false))
-            yield return enumerator.Current;
-    }
-
     // Latency state classes
 
     public sealed class PeerLatencyState
@@ -364,8 +285,6 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         public float MedianDecodeTimeMs { get; private set; } = -1;
         public int BufferDepth { get; private set; } = -1;
         public float BufferSpanMs { get; private set; } = -1;
-        public volatile bool SkipToLive;
-
         public bool IsWarmedUp => _createdAt.Elapsed >= Constants.Video.PeerWarmupDuration;
 
         /// <summary>
@@ -438,27 +357,9 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                 "RecordPeerLatency: PeerId={PeerId}, LatencyMs={LatencyMs:F0}, MedianMs={MedianMs:F0}, ReceiverBound={ReceiverBound}",
                 peerId, latencyMs, peer.MedianLatencyMs, peer.IsReceiverBound);
 
-            // Skip-to-live trigger: if raw latency exceeds threshold and peer is warmed up
-            if (latencyMs > Constants.Video.SkipToLiveThresholdMs
-                && peer is { IsWarmedUp: true, SkipToLive: false }) {
-                peer.SkipToLive = true;
-                Log.LogInformation(
-                    "RecordPeerLatency: SkipToLive triggered for PeerId={PeerId}, LatencyMs={LatencyMs:F0}",
-                    peerId, latencyMs);
-            }
-
             // Throttle evaluation to QualityDecisionInterval
             if (_lastEvaluationAt.Elapsed >= Constants.Video.QualityDecisionInterval)
                 EvaluateQuality();
-        }
-
-        public bool ShouldSkipToLive(string peerId)
-            => _peers.TryGetValue(peerId, out var peer) && peer.SkipToLive;
-
-        public void ClearSkipToLive(string peerId)
-        {
-            if (_peers.TryGetValue(peerId, out var peer))
-                peer.SkipToLive = false;
         }
 
         private void EvaluateQuality()

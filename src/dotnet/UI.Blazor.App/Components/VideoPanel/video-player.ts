@@ -23,6 +23,9 @@ import {
 
 const { debugLog, warnLog, errorLog } = Log.get('VideoPlayer');
 
+// Skip-to-live: client detects high latency and re-requests stream from next keyframe
+const SKIP_TO_LIVE_THRESHOLD_MS = 3000; // Matches Constants.Video.SkipToLiveThresholdMs
+
 interface PendingFrame {
     drawable: VideoFrame | ImageBitmap;
     timestamp: number;
@@ -1068,6 +1071,18 @@ export class VideoPlayer {
             `now=${nowMs.toFixed(0)}, recorded=${recordedAtMs.toFixed(0)} ` +
             `(startedAt=${this.startedAtMs.toFixed(0)}+offset=${this.lastRenderedOffsetMs.toFixed(0)}), ` +
             `latency=${latencyMs.toFixed(0)}ms`);
+
+        // Skip-to-live: if latency exceeds threshold, re-request the stream from the next keyframe
+        if (latencyMs > SKIP_TO_LIVE_THRESHOLD_MS) {
+            warnLog?.log(
+                `SKIP_TO_LIVE: latency ${latencyMs.toFixed(0)}ms > ${SKIP_TO_LIVE_THRESHOLD_MS}ms, re-requesting stream`);
+            this.pullSubscription?.dispose();
+            this.pullSubscription = null;
+            // Flush pending frames to avoid rendering stale data after re-request
+            this.pendingFrames.length = 0;
+            void this.startPull(this.streamId, 0);
+            return;
+        }
 
         // Collect decoder diagnostics and send enriched latency report
         const connection = VideoStreamer.connection;

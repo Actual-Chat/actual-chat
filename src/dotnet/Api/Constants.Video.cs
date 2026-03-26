@@ -13,7 +13,7 @@ public static partial class Constants
         public static readonly TimeSpan LatencyReportInterval = TimeSpan.FromSeconds(5);
         public static readonly float HighLatencyThresholdMs = 900f;
         public static readonly float LowLatencyThresholdMs = 300f;
-        public static readonly float SkipToLiveThresholdMs = 3000f;
+        public static readonly float SkipToLiveThresholdMs = 3000f; // Client-side threshold for re-requesting stream
         public static readonly TimeSpan QualityDecisionInterval = TimeSpan.FromSeconds(5);
         public static readonly TimeSpan QualityHysteresisWindow = TimeSpan.FromSeconds(15);
         public static readonly int LatencyHistorySize = 6; // ~30s at 5s intervals
