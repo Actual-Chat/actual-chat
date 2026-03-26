@@ -8,7 +8,7 @@ on:
     paths:
       - "c.ps1"
       - "scripts/Common.ps1"
-      - "tests/c-audio.Tests.ps1"
+      - "tests/ps/**"
       - ".github/workflows/test-claude.yml"
 
 permissions:
@@ -16,13 +16,13 @@ permissions:
   checks: write
 
 jobs:
-  test-audio:
-    name: Test 'c audio' (${{ matrix.os }})
+  test:
+    name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest]
+        os: [windows-latest, macos-latest, ubuntu-latest]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,7 +31,7 @@ jobs:
         shell: pwsh
         run: |
           $config = New-PesterConfiguration
-          $config.Run.Path = "tests/c-audio.Tests.ps1"
+          $config.Run.Path = "tests/ps"
           $config.Output.Verbosity = "Detailed"
           $config.Output.CIFormat = "GithubActions"
           $config.TestResult.Enabled = $true

@@ -160,7 +160,7 @@ function Update-HostEntries {
 
     foreach ($hostname in $Hostnames) {
         $escapedHostname = [regex]::Escape($hostname)
-        $existingLine = $hostsContent | Where-Object { $_ -match "^\s*[\d\.]+\s+.*$escapedHostname" }
+        $existingLine = $hostsContent | Where-Object { $_ -match "(?<=\s)$escapedHostname(?=\s|$)" }
         $newLine = "$IP  $hostname"
 
         if ($existingLine) {
@@ -178,11 +178,11 @@ function Update-HostEntries {
         return $IP
     }
 
-    # Build the PowerShell command to run with elevation
+    # Build the update script
     $script = ""
     if ($needsUpdate) {
         $patterns = ($Hostnames | ForEach-Object { [regex]::Escape($_) }) -join '|'
-        $script += "`$content = Get-Content '$hostsFile' | Where-Object { `$_ -notmatch '^\s*[\d\.]+\s+.*($patterns)' }; "
+        $script += "`$content = Get-Content '$hostsFile' | Where-Object { `$_ -notmatch '(?<=\s)($patterns)(?=\s|$)' }; "
         $script += "Set-Content '$hostsFile' `$content -Force; "
     }
     $newEntries = $entriesToAdd -join "`n"
@@ -204,13 +204,18 @@ function Update-HostEntries {
         }
     } else {
         Write-Host "Updating hosts file (sudo required)..."
-        $sudoScript = $script -replace "'", "'\\''"
-        bash -c "sudo pwsh -NoProfile -c '$sudoScript'"
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "Updated hosts file"
-        } else {
-            Write-Host "Could not update hosts file. Add manually:" -ForegroundColor Yellow
-            $entriesToAdd | ForEach-Object { Write-Host $_ }
+        $tempFile = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "update-hosts-$(Get-Random).ps1")
+        try {
+            Set-Content $tempFile $script -NoNewline
+            sudo pwsh -NoProfile -File $tempFile
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "Updated hosts file"
+            } else {
+                Write-Host "Could not update hosts file. Add manually:" -ForegroundColor Yellow
+                $entriesToAdd | ForEach-Object { Write-Host $_ }
+            }
+        } finally {
+            Remove-Item $tempFile -ErrorAction SilentlyContinue
         }
     }
 
@@ -236,7 +241,7 @@ function Remove-HostEntries {
         $line = $_
         $shouldKeep = $true
         foreach ($hostname in $Hostnames) {
-            if ($line -match [regex]::Escape($hostname)) {
+            if ($line -match "(?<=\s)$([regex]::Escape($hostname))(?=\s|$)") {
                 $shouldKeep = $false
                 break
             }
