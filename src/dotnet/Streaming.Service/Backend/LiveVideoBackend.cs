@@ -191,7 +191,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         }
     }
 
-    private void BumpChatEntry(ChatId chatId)
+    private ExpiringEntry<ChatId, ChatState> BumpChatEntry(ChatId chatId)
     {
         var entry = _chatStates.GetOrAdd(chatId, static (id, self) => {
             var state = new ChatState(self, id);
@@ -202,21 +202,11 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
             return e;
         }, this);
         entry.BumpExpiresAt(ChatStateTtl);
+        return entry;
     }
 
     private ChatState GetChatState(ChatId chatId)
-    {
-        var entry = _chatStates.GetOrAdd(chatId, static (id, self) => {
-            var state = new ChatState(self, id);
-            var e = ExpiringEntry.New(self._chatStates, id, state);
-            e.SetDisposer(self.OnChatStateExpired);
-            e.BumpExpiresAt(ChatStateTtl);
-            e.BeginExpire();
-            return e;
-        }, this);
-        entry.BumpExpiresAt(ChatStateTtl);
-        return entry.Value;
-    }
+        => BumpChatEntry(chatId).Value;
 
     private async ValueTask OnChatStateExpired(ExpiringEntry<ChatId, ChatState> entry)
     {

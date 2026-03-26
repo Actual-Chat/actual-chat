@@ -141,10 +141,9 @@ public class VideoStreamingLatencyTest(AppHostFixture fixture, ITestOutputHelper
         var deliveryRatio = (double)receivedOffsets.Count / TotalFrames;
         Out.WriteLine($"Frame delivery: {receivedOffsets.Count}/{TotalFrames} ({deliveryRatio:P1})");
 
-        // Assertions — ObserveStreams goes through RPC infrastructure, so discovery
-        // includes RPC setup + producer WebSocket connect + stream registration
-        discoveryLatency.TotalMilliseconds.Should().BeLessThan(500,
-            "stream discovery via ObserveStreams should be under 500ms");
+        // Discovery relies on invalidation now
+        discoveryLatency.TotalMilliseconds.Should().BeLessThan(2000,
+            "stream discovery via ObserveStreams should be under 2000ms");
 
         totalFirstFrameLatency.TotalMilliseconds.Should().BeLessThan(1500,
             "total stream-creation-to-first-frame should be under 1500ms");

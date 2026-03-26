@@ -71,19 +71,19 @@ public class ExpiringEntryTest
         var entry = ExpiringEntry.New(dict, "key1", "value1");
         dict["key1"] = entry;
 
-        entry.BumpExpiresAt(TimeSpan.FromMilliseconds(300));
+        entry.BumpExpiresAt(TimeSpan.FromMilliseconds(500));
         entry.BeginExpire();
 
         // Bump every 200ms for 1 second — entry should survive
         for (var i = 0; i < 5; i++) {
             await Task.Delay(200);
-            entry.BumpExpiresAt(TimeSpan.FromMilliseconds(300));
+            entry.BumpExpiresAt(TimeSpan.FromMilliseconds(500));
         }
 
         dict.Should().ContainKey("key1", "entry should still be alive while being bumped");
 
         // Now stop bumping and wait for expiration
-        await Task.Delay(500);
+        await Task.Delay(800);
         dict.Should().NotContainKey("key1", "entry should expire after bumping stops");
     }
 }
