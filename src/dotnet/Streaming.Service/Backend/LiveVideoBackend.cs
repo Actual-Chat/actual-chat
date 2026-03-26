@@ -12,8 +12,8 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
 
     private readonly ConcurrentDictionary<ChatId, ExpiringEntry<ChatId, ChatState>> _chatStates = new();
 
-    private RedisLiveStateStore<VideoStreamInfo> StreamsStore { get; }
-    private RedisLiveStateStore<VideoStreamMemberInfo> MembersStore { get; }
+    private RedisHashStore<VideoStreamInfo> StreamsStore { get; }
+    private RedisHashStore<VideoStreamMemberInfo> MembersStore { get; }
     private MeshWatcher MeshWatcher => field ??= Services.MeshWatcher();
     private new ILogger Log => field ??= Services.LogFor(GetType());
 
@@ -22,14 +22,13 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     {
         var redisDb = services.GetRequiredService<RedisDb<StreamingContext>>();
         var log = services.LogFor(GetType());
-        StreamsStore = new RedisLiveStateStore<VideoStreamInfo>(redisDb, "live-video:streams", RedisTtl, log);
-        MembersStore = new RedisLiveStateStore<VideoStreamMemberInfo>(redisDb, "live-video:members", RedisTtl, log);
+        StreamsStore = new RedisHashStore<VideoStreamInfo>(redisDb, "live-video:streams", RedisTtl, log);
+        MembersStore = new RedisHashStore<VideoStreamMemberInfo>(redisDb, "live-video:members", RedisTtl, log);
     }
 
     // [ComputeMethod]
     public virtual async Task<ApiArray<VideoStreamInfo>> List(ChatId chatId, CancellationToken cancellationToken)
     {
-        BumpChatEntry(chatId);
         var streams = await SafeGetAll(StreamsStore, chatId).ConfigureAwait(false);
         if (streams.Count == 0)
             return default;
@@ -181,7 +180,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         }
     }
 
-    private async Task<Dictionary<string, TValue>> SafeGetAll<TValue>(RedisLiveStateStore<TValue> store, ChatId chatId)
+    private async Task<Dictionary<string, TValue>> SafeGetAll<TValue>(RedisHashStore<TValue> store, ChatId chatId)
     {
         try {
             return await store.GetAll(chatId).ConfigureAwait(false);
@@ -194,8 +193,15 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
 
     private void BumpChatEntry(ChatId chatId)
     {
-        if (_chatStates.TryGetValue(chatId, out var entry))
-            entry.BumpExpiresAt(ChatStateTtl);
+        var entry = _chatStates.GetOrAdd(chatId, static (id, self) => {
+            var state = new ChatState(self, id);
+            var e = ExpiringEntry.New(self._chatStates, id, state);
+            e.SetDisposer(self.OnChatStateExpired);
+            e.BumpExpiresAt(ChatStateTtl);
+            e.BeginExpire();
+            return e;
+        }, this);
+        entry.BumpExpiresAt(ChatStateTtl);
     }
 
     private ChatState GetChatState(ChatId chatId)
@@ -217,6 +223,9 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         Log.LogDebug("OnChatStateExpired({ChatId}): cleaning up Redis", entry.Key);
         await StreamsStore.DeleteKey(entry.Key).ConfigureAwait(false);
         await MembersStore.DeleteKey(entry.Key).ConfigureAwait(false);
+        InvalidateListActiveStreams(entry.Key);
+        InvalidateGetVideoStreamMemberCount(entry.Key);
+        InvalidateGetSupportedDecoderCodecs(entry.Key);
     }
 
     private void InvalidateListActiveStreams(ChatId chatId)

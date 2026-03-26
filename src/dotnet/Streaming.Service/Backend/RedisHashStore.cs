@@ -3,14 +3,18 @@ using StreamingContext = ActualChat.Streaming.Db.StreamingContext;
 
 namespace ActualChat.Streaming;
 
-// Абстракция, которая нафиг не нужна, т.к. используется ровно в одном месте,
-// и с таким АПИ ее крайне сложно использовать где-либо еще. AI slop?
-internal sealed class RedisLiveStateStore<TValue>(
+/// <summary>
+/// A thin wrapper around a Redis Hash that stores MemoryPack-serialized values
+/// keyed by <c>{prefix}:{chatId}</c>.
+/// Each mutation refreshes the key's TTL so the hash self-expires when the chat becomes inactive.
+/// </summary>
+internal sealed class RedisHashStore<TValue>(
     RedisDb<StreamingContext> redisDb,
     string keyPrefix,
     TimeSpan ttl,
     ILogger log)
 {
+    /// <summary>Sets or overwrites a field in the hash and refreshes the TTL.</summary>
     public async Task<bool> SetField(ChatId chatId, string field, TValue value)
     {
         try {
@@ -27,6 +31,7 @@ internal sealed class RedisLiveStateStore<TValue>(
         }
     }
 
+    /// <summary>Removes a single field from the hash and refreshes the TTL.</summary>
     public async Task<bool> RemoveField(ChatId chatId, string field)
     {
         try {
@@ -42,6 +47,7 @@ internal sealed class RedisLiveStateStore<TValue>(
         }
     }
 
+    /// <summary>Returns all fields and their deserialized values. Skips entries that fail to deserialize.</summary>
     public async Task<Dictionary<string, TValue>> GetAll(ChatId chatId)
     {
         var db = await redisDb.Database.Get().ConfigureAwait(false);
@@ -51,7 +57,6 @@ internal sealed class RedisLiveStateStore<TValue>(
         foreach (var entry in entries) {
             var field = entry.Name.ToString();
             try {
-                // TODO(AK): Replace with MessagePack
                 var value = MemoryPackSerializer.Deserialize<TValue>((byte[])entry.Value!);
                 if (value != null)
                     result[field] = value;
@@ -64,6 +69,7 @@ internal sealed class RedisLiveStateStore<TValue>(
         return result;
     }
 
+    /// <summary>Deletes the entire hash key for a chat.</summary>
     public async Task DeleteKey(ChatId chatId)
     {
         try {
@@ -74,8 +80,6 @@ internal sealed class RedisLiveStateStore<TValue>(
             log.LogWarning(e, "Redis DeleteKey failed for {KeyPrefix}:{ChatId}", keyPrefix, chatId);
         }
     }
-
-    // Private methods
 
     private string GetKey(ChatId chatId) => $"{keyPrefix}:{chatId}";
 }

@@ -238,8 +238,9 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             // No processing - just forward to StreamStore for memoization
             Log.LogInformation("PushVideoInternal: publishing #{StreamId} to StreamStore", record.StreamId);
 
-            // TODO(AK): Call LiveVideoBackend.Register again to maintain (bump) expiring state once per Half of LiveVideoBackend.ChatStateTtl
             var frameCount = 0;
+            var lastHeartbeat = CpuTimestamp.Now;
+            var heartbeatInterval = TimeSpan.FromMinutes(2.5); // Half of LiveVideoBackend.ChatStateTtl
             async IAsyncEnumerable<VideoFrame> LogFrames(IAsyncEnumerable<VideoFrame> source)
             {
                 await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
@@ -248,6 +249,14 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                         DebugLog?.LogDebug(
                             "PushVideoInternal frame #{Count}: Offset={Offset}ms, IsKey={IsKey}, DataLen={DataLen}, DescLen={DescLen}",
                             frameCount, frame.Offset.TotalMilliseconds, frame.IsKeyFrame, frame.Data?.Length ?? 0, frame.Description?.Length ?? 0);
+
+                    if (lastHeartbeat.Elapsed >= heartbeatInterval) {
+                        lastHeartbeat = CpuTimestamp.Now;
+                        // This call is idempotent and just bumps expiration
+                        await LiveVideoBackend.Register(record.ChatId, streamInfo, CancellationToken.None)
+                            .ConfigureAwait(false);
+                    }
+
                     yield return frame;
                 }
                 DebugLog?.LogDebug("PushVideoInternal: stream completed with {Count} frames", frameCount);
