@@ -21,5 +21,6 @@ pwsh -NoProfile -c "
     Write-Host \"Port:     \$(\$r.port)\"
     Write-Host \"Status:   \$(\$r.status)\"
     if (\$r.pid) { Write-Host \"PID:      \$(\$r.pid)\" }
+    Write-Host \"Browser:  \$(\$r.baseUri)\"
 "
 ```

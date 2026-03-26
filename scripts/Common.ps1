@@ -311,6 +311,7 @@ class AppServer {
 class LocalAppServer : AppServer {
     [string]$ProjectPath
     [string]$Instance
+    [string]$BaseUri
     [int]$Port
     [string]$LogFile
     [string]$ErrFile
@@ -321,6 +322,7 @@ class LocalAppServer : AppServer {
     LocalAppServer([string]$projectPath) {
         $this.ProjectPath = $projectPath
         $this.Instance = "dev"
+        $this.BaseUri = "https://local.voxt.ai"
         $this.Port = 7080
 
         $envFile = Join-Path $projectPath ".env"
@@ -328,6 +330,7 @@ class LocalAppServer : AppServer {
             Get-Content $envFile | ForEach-Object {
                 if ($_ -match "^urls=.*?(\d+)$") { $this.Port = [int]$Matches[1] }
                 if ($_ -match "^CoreSettings__Instance=(.+)$") { $this.Instance = $Matches[1] }
+                if ($_ -match "^HostSettings__BaseUri=(.+)$") { $this.BaseUri = $Matches[1] }
             }
         }
 
@@ -381,6 +384,7 @@ class LocalAppServer : AppServer {
         return @{
             status   = if ($this.IsRunning()) { "running" } else { "stopped" }
             instance = $this.Instance
+            baseUri  = $this.BaseUri
             port     = $this.Port
             pid      = if ($this.IsRunning()) { $this.Process.Id } else { $null }
         }

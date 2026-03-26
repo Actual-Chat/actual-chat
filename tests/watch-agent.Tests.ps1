@@ -12,7 +12,7 @@ Describe "LocalAppServer" {
         $srcDir = Join-Path $script:isoDir "src" "dotnet" "App.Server"
         New-Item -ItemType Directory -Path $srcDir -Force | Out-Null
         Set-Content (Join-Path $srcDir "App.Server.csproj") "<Project/>"
-        Set-Content (Join-Path $script:isoDir ".env") "urls=http://localhost:19877`nCoreSettings__Instance=test-iso"
+        Set-Content (Join-Path $script:isoDir ".env") "urls=http://localhost:19877`nCoreSettings__Instance=test-iso`nHostSettings__BaseUri=https://test-iso.local.voxt.ai"
         $script:server = [LocalAppServer]::new($script:isoDir)
     }
 
@@ -51,6 +51,10 @@ Describe "LocalAppServer" {
 
         It "returns correct instance" {
             $status.instance | Should -Be $server.Instance
+        }
+
+        It "returns correct baseUri" {
+            $status.baseUri | Should -Be $server.BaseUri
         }
 
         It "returns correct port" {

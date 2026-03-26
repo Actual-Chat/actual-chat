@@ -41,7 +41,6 @@ pwsh -NoProfile -c "
         Write-Host \$r.message
     }
     \$s = \$server.GetStatus()
-    \$host_ = if (\$s.instance -eq 'dev') { 'local.voxt.ai' } else { \"\$(\$s.instance).local.voxt.ai\" }
-    Write-Host \"Browser: https://\$host_\"
+    Write-Host \"Browser: \$(\$s.baseUri)\"
 "
 ```
