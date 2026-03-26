@@ -1464,7 +1464,17 @@ switch ($mode) {
             "-e", "PULSE_SERVER=$pulseServer"
         )
 
-        $dockerArgs += $volumeMounts + $propagatedEnvVars + $audioEnvVars + @(
+        # Watch agent for server management: on macOS/Windows, --network host doesn't truly
+        # share ports, so the .NET server must run on the host. The watch-agent provides an
+        # HTTP API that Claude in Docker calls to start/stop/restart the server.
+        # Port = serverPort + 9 (last in the 10-port block), e.g., 7080→7089, 7100→7109
+        $watchAgentPort = if ($serverConfig) { $serverConfig.Port + 9 } else { 7089 }
+        $watchAgentEnvVars = @()
+        if ($currentOS -in "macOS", "Windows") {
+            $watchAgentEnvVars = @("-e", "AC_WATCH_AGENT_PORT=$watchAgentPort")
+        }
+
+        $dockerArgs += $volumeMounts + $propagatedEnvVars + $audioEnvVars + $watchAgentEnvVars + @(
             "-e", "ANTHROPIC_API_KEY=$env:ANTHROPIC_API_KEY"
             "-e", "DISABLE_AUTOUPDATER=1"
             "-e", "DOTNET_SYSTEM_NET_DISABLEIPV6=1"
@@ -1502,8 +1512,19 @@ switch ($mode) {
             Write-Host "  docker $($dockerArgs -join ' ')"
             Write-Host ""
         } else {
-            # On Windows, we're already in wt (handled at script start)
-            & docker @dockerArgs
+            # Start watch agent (macOS/Windows only) — runs AppServer over HTTP
+            # so Claude in Docker can start/stop the .NET server on the host
+            if ($currentOS -in "macOS", "Windows") {
+                $watchAgent = [WatchAgent]::new($projectRoot, $watchAgentPort)
+                $watchAgent.Start()
+            }
+
+            try {
+                # On Windows, we're already in wt (handled at script start)
+                & docker @dockerArgs
+            } finally {
+                if ($watchAgent) { $watchAgent.Stop() }
+            }
         }
     }
 
