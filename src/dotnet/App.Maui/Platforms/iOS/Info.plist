@@ -69,8 +69,6 @@
 	<false/>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
-	<key>FirebaseAppDelegateProxyEnabled</key>
-	<false/>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
