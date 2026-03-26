@@ -165,38 +165,42 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             // Check skip-to-live flag before awaiting next frame
             if (ShouldSkipToLive(streamId, peerId)) {
                 Log.LogInformation("ApplySkipToLive: stream #{StreamId}, START for PeerId={PeerId}",
-                    peerId, streamId);
+                    streamId, peerId);
+
+                // Determine the live edge using wall clock time
+                var startedAt = _latencyStates.TryGetValue(streamId, out var ls) ? ls.StartedAt : default;
+                var liveOffset = Clocks.ServerClock.Now - startedAt;
+                var threshold = TimeSpan.FromSeconds(1); // within 1 GOP of live
+
                 VideoFrame? lastKeyFrame = null;
                 var skippedCount = 0;
 
-                // Consume all synchronously-available (buffered) frames
+                // Consume frames until we're close to the live edge
                 while (true) {
-                    var moveNext = enumerator.MoveNextAsync();
-                    if (!moveNext.IsCompleted) {
-                        // Reached live edge
-                        ClearSkipToLive(streamId, peerId);
-                        if (lastKeyFrame != null) {
-                            Log.LogInformation(
-                                "ApplySkipToLive: DONE for PeerId={PeerId}, skipped {Skipped} frames, resuming from keyframe at {Offset}ms",
-                                peerId, skippedCount, lastKeyFrame.Offset.TotalMilliseconds);
-                            yield return lastKeyFrame;
-                        } else
-                            Log.LogInformation(
-                                "ApplySkipToLive: DONE for PeerId={PeerId}, no keyframe found in {Skipped} buffered frames, continuing",
-                                peerId, skippedCount);
-                        // Await the pending live frame
-                        if (!await moveNext.ConfigureAwait(false))
-                            yield break;
-                        yield return enumerator.Current;
-                        break; // back to outer while(true) loop
-                    }
-                    if (!moveNext.Result)
-                        yield break; // stream ended
+                    if (!await enumerator.MoveNextAsync().ConfigureAwait(false))
+                        yield break;
 
                     var frame = enumerator.Current;
                     if (frame.IsKeyFrame)
                         lastKeyFrame = frame;
                     skippedCount++;
+
+                    if (frame.Offset >= liveOffset - threshold)
+                        break;
+                }
+
+                ClearSkipToLive(streamId, peerId);
+                if (lastKeyFrame != null) {
+                    Log.LogInformation(
+                        "ApplySkipToLive: DONE for PeerId={PeerId}, skipped {Skipped} frames, resuming from keyframe at {Offset}ms",
+                        peerId, skippedCount, lastKeyFrame.Offset.TotalMilliseconds);
+                    yield return lastKeyFrame;
+                }
+                else {
+                    Log.LogInformation(
+                        "ApplySkipToLive: DONE for PeerId={PeerId}, skipped {Skipped} frames but no keyframe found, yielding last frame",
+                        peerId, skippedCount);
+                    yield return enumerator.Current;
                 }
             }
             else {
