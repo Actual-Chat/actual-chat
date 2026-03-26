@@ -19,8 +19,6 @@ public interface ISessionsBackend : IComputeService, IBackendService
     // Commands
     [CommandHandler]
     Task<SessionInfo> OnUpsert(SessionsBackend_Upsert command, CancellationToken cancellationToken = default);
-    [CommandHandler]
-    Task OnSignOut(SessionsBackend_SignOut command, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -45,16 +43,3 @@ public partial record SessionsBackend_Upsert(
         : this(session, ipAddress, userAgent, default) { }
 }
 
-/// <summary>
-/// Command to sign out a session.
-/// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-// ReSharper disable once InconsistentNaming
-public partial record SessionsBackend_SignOut(
-    [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] bool Force = false
-) : ISessionCommand<Unit>, IBackendCommand, IHasShardKey<Session>
-{
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public Session ShardKey => Session;
-}

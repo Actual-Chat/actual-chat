@@ -14,6 +14,9 @@ public interface IAccountsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<UserId?> GetIdByAlias(AliasId aliasId, CancellationToken cancellationToken);
 
+    [ComputeMethod]
+    Task<ApiList<string>> GetSessionIds(UserId userId, CancellationToken cancellationToken);
+
     // Non-compute methods
 
     Task<Account[]> ListChanged(
@@ -29,6 +32,8 @@ public interface IAccountsBackend : IComputeService, IBackendService
 
     [CommandHandler]
     Task OnSignIn(AccountsBackend_SignIn command, CancellationToken cancellationToken = default);
+    [CommandHandler]
+    Task OnSignOut(AccountsBackend_SignOut command, CancellationToken cancellationToken = default);
     [CommandHandler]
     Task OnUpdate(AccountsBackend_Update command, CancellationToken cancellationToken);
     [CommandHandler]
@@ -53,6 +58,20 @@ public sealed partial record AccountsBackend_SignIn(
     [property: DataMember, MemoryPackOrder(3)] ApiMap<string, string> Claims,
     [property: DataMember, MemoryPackOrder(4)] bool MustExist = false
 ) : ISessionCommand<Unit>, IBackendCommand;
+
+/// <summary>
+/// Command to sign out a session.
+/// </summary>
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record AccountsBackend_SignOut(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] bool Force = false
+) : ISessionCommand<Unit>, IBackendCommand, IHasShardKey<Session>
+{
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public Session ShardKey => Session;
+}
 
 /// <summary>
 /// Command to update a user account.

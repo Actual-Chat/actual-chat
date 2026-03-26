@@ -35,9 +35,16 @@ public static class HttpSessionExt
     public static Session GetSessionFromCookie(this HttpContext httpContext)
         => httpContext.TryGetSessionFromCookie().RequireValid();
     public static Session? TryGetSessionFromCookie(this HttpContext httpContext)
-        => httpContext.Request.Cookies.TryGetValue(Constants.Session.CookieName, out var sessionId)
-            ? SessionExt.NewValidOrNull(sessionId)
-            : null;
+    {
+        if (!httpContext.Request.Cookies.TryGetValue(Constants.Session.CookieName, out var sessionId) || sessionId.IsNullOrEmpty())
+            return null;
+
+        // Reject API keys from cookie-based auth
+        if (sessionId.StartsWith(CoreConstants.Session.ApiKeyPrefix, StringComparison.Ordinal))
+            return null;
+
+        return SessionExt.NewValidOrNull(sessionId);
+    }
 
     public static Session AddSessionCookie(this HttpContext httpContext, Session session)
     {

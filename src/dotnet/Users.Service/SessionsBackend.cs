@@ -26,48 +26,6 @@ public class SessionsBackend(
     // Commands
 
     // [CommandHandler]
-    public virtual async Task OnSignOut(
-        SessionsBackend_SignOut command, CancellationToken cancellationToken = default)
-    {
-        var session = command.Session.RequireValid();
-        var force = command.Force;
-
-        var context = CommandContext.GetCurrent();
-        if (Invalidation.IsActive) {
-            _ = Get(session, default);
-            if (force)
-                _ = IsSignOutForced(session, default);
-            return;
-        }
-
-        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _1 = dbContext.ConfigureAwait(false);
-
-        // Acquire advisory lock first to prevent deadlocks
-        await dbContext.Sessions.Lock(session.Id, cancellationToken).ConfigureAwait(false);
-
-        var dbSessionInfo = await GetOrCreateDbSessionInfo(dbContext, session.Id, cancellationToken).ConfigureAwait(false);
-        var sessionInfo = dbSessionInfo.ToModel(Log);
-        if (sessionInfo.IsSignOutForced)
-            return;
-
-        // Capture user ID before sign-out for event emission
-        var userId = UserId.ParseNullable(sessionInfo.UserId);
-
-        sessionInfo = sessionInfo with {
-            LastSeenAt = Clocks.SystemClock.Now,
-            AuthenticatedIdentity = "",
-            UserId = "",
-            IsSignOutForced = force,
-        };
-        await UpsertDbSessionInfo(dbContext, session.Id, sessionInfo, cancellationToken).ConfigureAwait(false);
-
-        // Emit UserSignedOutEvent if user was authenticated
-        if (userId is not null)
-            context.Operation.AddEvent(new UserSignedOutEvent(session.Id, force, userId));
-    }
-
-    // [CommandHandler]
     public virtual async Task<SessionInfo> OnUpsert(
         SessionsBackend_Upsert command, CancellationToken cancellationToken = default)
     {

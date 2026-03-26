@@ -17,6 +17,12 @@ public static partial class CoreConstants
         public const string LocalSuffix = $".{Local}";
     }
 
+    public static class Session
+    {
+        public const string ApiKeyPrefix = "k-";
+        public const int IdPrefixLength = 10;
+    }
+
     public static class AsyncMemoizer
     {
         public static readonly int TargetQueueSize = 16;

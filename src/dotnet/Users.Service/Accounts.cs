@@ -2,6 +2,7 @@ using ActualChat.Contacts;
 using ActualChat.Notification;
 using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;
+using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Users;
 
@@ -19,7 +20,7 @@ public class Accounts(IServiceProvider services) : DbServiceBase<UsersDbContext>
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var backendCommand = new SessionsBackend_SignOut(command.Session, command.Force);
+        var backendCommand = new AccountsBackend_SignOut(command.Session, command.Force);
         await Commander.Call(backendCommand, cancellationToken).ConfigureAwait(false);
     }
 
@@ -57,7 +58,7 @@ public class Accounts(IServiceProvider services) : DbServiceBase<UsersDbContext>
         // NOTE(AY): This should go through the events / queues, let's discuss this.
 
         // Sign out to prevent unexpected UI invalidations
-        var signOutCommand = new SessionsBackend_SignOut(command.Session);
+        var signOutCommand = new AccountsBackend_SignOut(command.Session);
         await Commander.Call(signOutCommand, true, cancellationToken).ConfigureAwait(false);
 
         var deleteOwnChatsCommand = new ChatsBackend_RemoveOwnChats(ownAccount.Id);
@@ -78,8 +79,112 @@ public class Accounts(IServiceProvider services) : DbServiceBase<UsersDbContext>
         var deleteExternalContactHashesCommand = new ExternalContactHashesBackend_RemoveAccount(ownAccount.Id);
         await Commander.Call(deleteExternalContactHashesCommand, true, cancellationToken).ConfigureAwait(false);
 
+        // Remove all user_sessions entries
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _2 = dbContext.ConfigureAwait(false);
+        await dbContext.UserSessions
+            .Where(x => x.UserId == ownAccount.Id.Value)
+            .ExecuteDeleteAsync(cancellationToken)
+            .ConfigureAwait(false);
+
         var deleteOwnAccountCommand = new AccountsBackend_Delete(ownAccount.Id);
         await Commander.Call(deleteOwnAccountCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task<string> OnCreateApiKey(Accounts_CreateApiKey command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return ""; // It just spawns other commands, so nothing to do here
+
+        var ownAccount = await GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
+        ownAccount.Require(AccountFull.MustBeActive);
+
+        var userId = ownAccount.Id;
+        // Generate API key session ID with "api-" prefix
+        var apiKeySessionId = CoreConstants.Session.ApiKeyPrefix + Session.New().Id;
+        var apiKeySession = new Session(apiKeySessionId);
+
+        // Create session via upsert with user info
+        var upsertCommand = new SessionsBackend_Upsert(
+            apiKeySession, "", "", default,
+            userId.Value, ownAccount.Identities.FirstOrDefault().Key.Id ?? "");
+        var sessionInfo = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+
+        // Set Name and ExpiresAt on the DbSessionInfo directly
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var dbSessionInfo = await dbContext.Sessions
+            .FirstOrDefaultAsync(s => s.Id == apiKeySessionId, cancellationToken)
+            .ConfigureAwait(false);
+        if (dbSessionInfo is not null) {
+            dbSessionInfo.Name = command.Name;
+            dbSessionInfo.ExpiresAt = command.ExpiresAt?.ToDateTime();
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        // Insert DbUserSession mapping
+        dbContext.UserSessions.Add(new DbUserSession {
+            UserId = userId.Value,
+            SessionId = apiKeySessionId,
+            IsApiKey = true,
+        });
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return apiKeySessionId;
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnDeactivateSession(Accounts_DeactivateSession command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
+        var ownAccount = await GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
+        ownAccount.Require(AccountFull.MustBeActive);
+
+        var userId = ownAccount.Id;
+        var backend = Services.GetRequiredService<IAccountsBackend>();
+        var sessionIds = await backend.GetSessionIds(userId, cancellationToken).ConfigureAwait(false);
+
+        var targetSessionId = sessionIds.FirstOrDefault(sid =>
+            sid.Length >= CoreConstants.Session.IdPrefixLength
+            && sid[..CoreConstants.Session.IdPrefixLength] == command.IdPrefix);
+
+        if (targetSessionId is null)
+            throw StandardError.NotFound<SessionInfo>("Session not found.");
+
+        var signOutCommand = new AccountsBackend_SignOut(new Session(targetSessionId), true);
+        await Commander.Call(signOutCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnDeactivateAllSessions(Accounts_DeactivateAllSessions command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
+        var ownAccount = await GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
+        ownAccount.Require(AccountFull.MustBeActive);
+
+        var userId = ownAccount.Id;
+        var backend = Services.GetRequiredService<IAccountsBackend>();
+        var sessionIds = await backend.GetSessionIds(userId, cancellationToken).ConfigureAwait(false);
+        var currentSessionId = command.Session.Id;
+
+        foreach (var sessionId in sessionIds) {
+            // Skip current session unless ApiKeysOnly (in which case we only deactivate API keys)
+            if (command.ApiKeysOnly) {
+                if (!sessionId.StartsWith(CoreConstants.Session.ApiKeyPrefix, StringComparison.Ordinal))
+                    continue;
+            }
+            else if (sessionId == currentSessionId)
+                continue;
+
+            var signOutCommand = new AccountsBackend_SignOut(new Session(sessionId), true);
+            await Commander.Call(signOutCommand, true, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     public virtual Task UpdatePresence(Session session, CancellationToken cancellationToken)
@@ -94,6 +199,50 @@ public class Accounts(IServiceProvider services) : DbServiceBase<UsersDbContext>
     // [ComputeMethod]
     public virtual Task<SessionInfo?> GetSessionInfo(Session session, CancellationToken cancellationToken)
         => SessionsBackend.Get(session, cancellationToken);
+
+    // [ComputeMethod]
+    public virtual async Task<ApiList<UserSessionInfo>> GetOwnSessions(Session session, bool isApiKey, CancellationToken cancellationToken)
+    {
+        var ownAccount = await GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (ownAccount.IsGuest)
+            return new ApiList<UserSessionInfo>();
+
+        var userId = ownAccount.Id;
+        var backend = Services.GetRequiredService<IAccountsBackend>();
+        var sessionIds = await backend.GetSessionIds(userId, cancellationToken).ConfigureAwait(false);
+
+        var result = new List<UserSessionInfo>();
+        foreach (var sessionId in sessionIds) {
+            var isSessionApiKey = sessionId.StartsWith(CoreConstants.Session.ApiKeyPrefix, StringComparison.Ordinal);
+            if (isSessionApiKey != isApiKey)
+                continue;
+
+            var s = new Session(sessionId);
+            var sessionInfo = await SessionsBackend.Get(s, cancellationToken).ConfigureAwait(false);
+            if (sessionInfo is null)
+                continue;
+
+            // Read DbSessionInfo for Name and ExpiresAt
+            var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+            await using var _ = dbContext.ConfigureAwait(false);
+            var dbSessionInfo = await dbContext.Sessions
+                .FirstOrDefaultAsync(si => si.Id == sessionId, cancellationToken)
+                .ConfigureAwait(false);
+
+            var userSessionInfo = new UserSessionInfo(s.GetPrefix()) {
+                IsApiKey = isSessionApiKey,
+                IsActive = !sessionInfo.IsSignOutForced,
+                Name = dbSessionInfo?.Name ?? "",
+                UserAgent = sessionInfo.UserAgent,
+                CreatedAt = sessionInfo.CreatedAt,
+                LastSeenAt = sessionInfo.LastSeenAt,
+                ExpiresAt = dbSessionInfo?.ExpiresAt is { } expiresAt ? new Moment(expiresAt) : null,
+            };
+            result.Add(userSessionInfo);
+        }
+
+        return result.ToApiList();
+    }
 
     // [ComputeMethod]
     public virtual async Task<AccountFull> GetOwn(Session session, CancellationToken cancellationToken)

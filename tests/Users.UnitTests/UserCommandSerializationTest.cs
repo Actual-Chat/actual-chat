@@ -37,6 +37,55 @@ public class UserCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     }
 
     [Fact]
+    public void Accounts_CreateApiKey_Basic()
+    {
+        var cmd = new Accounts_CreateApiKey(TestSession, "My API Key", Moment.Now + TimeSpan.FromDays(30));
+        cmd.AssertPassesThroughAllSerializers(
+            (deserialized, original) => {
+                deserialized.Session.Should().Be(original.Session);
+                deserialized.Name.Should().Be(original.Name);
+                deserialized.ExpiresAt.Should().Be(original.ExpiresAt);
+            }, Out);
+    }
+
+    [Fact]
+    public void Accounts_CreateApiKey_NoExpiration()
+    {
+        var cmd = new Accounts_CreateApiKey(TestSession, "No Expiry Key");
+        cmd.AssertPassesThroughAllSerializers(
+            (deserialized, original) => {
+                deserialized.ExpiresAt.Should().BeNull();
+            }, Out);
+    }
+
+    [Fact]
+    public void Accounts_DeactivateSession_Basic()
+    {
+        var cmd = new Accounts_DeactivateSession(TestSession, "abc123def456");
+        cmd.AssertPassesThroughAllSerializers(
+            (deserialized, original) => {
+                deserialized.IdPrefix.Should().Be(original.IdPrefix);
+            }, Out);
+    }
+
+    [Fact]
+    public void Accounts_DeactivateAllSessions_Basic()
+    {
+        var cmd = new Accounts_DeactivateAllSessions(TestSession, true);
+        cmd.AssertPassesThroughAllSerializers(
+            (deserialized, original) => {
+                deserialized.ApiKeysOnly.Should().Be(original.ApiKeysOnly);
+            }, Out);
+    }
+
+    [Fact]
+    public void AccountsBackend_SignOut_Basic()
+    {
+        var cmd = new AccountsBackend_SignOut(TestSession, true);
+        cmd.AssertPassesThroughAllSerializers();
+    }
+
+    [Fact]
     public void Avatars_Change_Create()
     {
         var avatar = new AvatarFull(TestUserId, Symbol.Empty) { Name = "New Avatar" };

@@ -110,6 +110,10 @@ public sealed class ServerAuth
         Session session, HttpContext httpContext, bool assumeAllowed, bool mustExist,
         CancellationToken cancellationToken)
     {
+        // API key sessions are pre-authenticated — skip ServerAuth processing
+        if (session.IsApiKey())
+            return;
+
         var httpUser = httpContext.User;
         var httpAuthenticationSchema = httpUser.Identity?.AuthenticationType ?? "";
         var httpIsSignedIn = !httpAuthenticationSchema.IsNullOrEmpty();
@@ -169,7 +173,7 @@ public sealed class ServerAuth
 
     private Task SignOut(Session session, CancellationToken cancellationToken)
     {
-        var signOutCommand = new SessionsBackend_SignOut(session);
+        var signOutCommand = new AccountsBackend_SignOut(session);
         return Commander.Call(signOutCommand, true, cancellationToken);
     }
 

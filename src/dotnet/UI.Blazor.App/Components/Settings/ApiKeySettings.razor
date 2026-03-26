@@ -1,0 +1,111 @@
+@inherits ComputedStateComponent<AppUIHub, ApiKeySettings.ComputedModel>
+@{
+    var m = State.Value;
+}
+
+<TileTopic Topic="API Keys"/>
+
+<Tile>
+    @foreach (var key in m.ApiKeys) {
+        <TileItem IsHoverable="false">
+            <Content>
+                <div class="flex flex-col">
+                    <span class="font-medium">@(key.Name.IsNullOrEmpty() ? "Unnamed key" : key.Name)</span>
+                    <span class="text-xs text-secondary">@key.IdPrefix...</span>
+                </div>
+            </Content>
+            <Caption>
+                Created: @key.CreatedAt.ToDateTime().ToString("g")
+                @if (key.ExpiresAt is { } expiresAt) {
+                    <span> | Expires: @expiresAt.ToDateTime().ToString("g")</span>
+                }
+                @if (!key.IsActive) {
+                    <span class="text-danger"> | Deactivated</span>
+                }
+            </Caption>
+        </TileItem>
+        @if (key.IsActive) {
+            <div class="flex justify-end px-4 pb-2">
+                <Button Class="btn-sm btn-danger" Click="@(() => OnDeactivateClick(key.IdPrefix))">
+                    Deactivate
+                </Button>
+            </div>
+        }
+    }
+
+    @if (m.ApiKeys.Count == 0) {
+        <TileItem IsHoverable="false">
+            <Content>No API keys created yet.</Content>
+        </TileItem>
+    }
+</Tile>
+
+<TileTopic Topic="Create API Key"/>
+
+<Tile>
+    <TileItem IsHoverable="false">
+        <Content>
+            <div class="flex flex-col gap-2">
+                <FormBlock Label="Name">
+                    <input type="text" class="form-control" @bind="_newKeyName" placeholder="My API key" />
+                </FormBlock>
+                <FormBlock Label="Expires (optional)">
+                    <input type="datetime-local" class="form-control" @bind="_newKeyExpires" />
+                </FormBlock>
+                <Button Class="btn-primary mt-2" Click="@OnCreateClick">
+                    Create API Key
+                </Button>
+            </div>
+        </Content>
+    </TileItem>
+</Tile>
+
+@if (!_createdKey.IsNullOrEmpty()) {
+    <div class="mt-4 p-4 bg-warning-bg rounded">
+        <p class="font-bold">Your new API key (copy it now, it won't be shown again):</p>
+        <code class="break-all select-all">@_createdKey</code>
+    </div>
+}
+
+@code {
+    private string _newKeyName = "";
+    private DateTime? _newKeyExpires;
+    private string _createdKey = "";
+
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
+        => new() {
+            InitialValue = new ComputedModel(),
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken)
+    {
+        var apiKeys = await Hub.Accounts.GetOwnSessions(Session, true, cancellationToken).ConfigureAwait(false);
+        return new ComputedModel { ApiKeys = apiKeys };
+    }
+
+    private async Task OnCreateClick()
+    {
+        Moment? expiresAt = _newKeyExpires.HasValue ? new Moment(_newKeyExpires.Value.ToUniversalTime()) : null;
+        var command = new Accounts_CreateApiKey(Session, _newKeyName, expiresAt);
+        var result = await UICommander.Run(command).ConfigureAwait(false);
+        if (result.HasError)
+            return;
+
+        _createdKey = result.Value;
+        _newKeyName = "";
+        _newKeyExpires = null;
+    }
+
+    private async Task OnDeactivateClick(string idPrefix)
+    {
+        var command = new Accounts_DeactivateSession(Session, idPrefix);
+        await UICommander.Run(command).ConfigureAwait(false);
+        _createdKey = "";
+    }
+
+    public sealed record ComputedModel
+    {
+        public ApiList<UserSessionInfo> ApiKeys { get; init; } = new();
+    }
+}

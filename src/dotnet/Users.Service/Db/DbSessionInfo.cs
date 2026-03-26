@@ -38,6 +38,14 @@ public class DbSessionInfo : IHasId<string>, IHasVersion<long>, IRequirementTarg
     public string? UserId { get; set; }
     public bool IsSignOutForced { get; set; }
 
+    // Session metadata
+    [StringLength(256)]
+    public string Name { get; set; } = "";
+    public DateTime? ExpiresAt {
+        get => field?.DefaultKind(DateTimeKind.Utc);
+        set => field = value?.DefaultKind(DateTimeKind.Utc);
+    }
+
     // Options
     public string OptionsJson {
         get => _options.Data;
