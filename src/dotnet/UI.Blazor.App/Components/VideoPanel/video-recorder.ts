@@ -428,6 +428,7 @@ export class VideoRecorder {
         void video.play();
 
         let frameCount = 0;
+        let hasVideo = false;
         const renderFrame = () => {
             if (!this.isRecording || !this.canvas || !this.canvasCtx) {
                 console.warn('[VideoRecorder] renderFrame: exiting loop, isRecording:', this.isRecording);
@@ -436,6 +437,12 @@ export class VideoRecorder {
             frameCount++;
             if (frameCount <= 3 || frameCount % 300 === 0)
                 console.warn(`[VideoRecorder] renderFrame #${frameCount}: videoWidth=${String(video.videoWidth)}, videoHeight=${String(video.videoHeight)}`);
+
+            // Mark first frame received — hides loading spinner
+            if (!hasVideo && video.videoWidth > 0 && video.videoHeight > 0) {
+                hasVideo = true;
+                this.element.classList.add('has-video');
+            }
 
             // When preview is paused (modal is open), skip drawing but keep the loop alive.
             if (this.previewPaused) {
@@ -478,6 +485,7 @@ export class VideoRecorder {
             this.previewTrack.stop();
             this.previewTrack = null;
         }
+        this.element.classList.remove('has-video');
     }
 
     /**

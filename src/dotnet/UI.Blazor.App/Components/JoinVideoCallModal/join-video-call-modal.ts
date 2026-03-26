@@ -30,6 +30,7 @@ export class JoinVideoCallModal {
     private blurFrameTimer: number | null = null;
     private captureCanvas: HTMLCanvasElement;
     private captureCtx: CanvasRenderingContext2D;
+    private firstFrameNotified = false;
 
     static create(container: HTMLElement, blazorRef: DotNet.DotNetObject): JoinVideoCallModal {
         return new JoinVideoCallModal(container, blazorRef);
@@ -147,6 +148,7 @@ export class JoinVideoCallModal {
         await this.stopBlurPreview();
 
         this.stopRenderLoop();
+        this.firstFrameNotified = false;
 
         if (this.stream) {
             this.stream.getTracks().forEach(t => t.stop());
@@ -319,6 +321,12 @@ export class JoinVideoCallModal {
                     this.canvasEl.height = this.videoEl.videoHeight;
                 }
                 this.canvasCtx.drawImage(this.videoEl, 0, 0);
+
+                // Notify Blazor on first frame
+                if (!this.firstFrameNotified) {
+                    this.firstFrameNotified = true;
+                    void this.blazorRef.invokeMethodAsync('OnFirstFrameRendered');
+                }
             }
         }
 

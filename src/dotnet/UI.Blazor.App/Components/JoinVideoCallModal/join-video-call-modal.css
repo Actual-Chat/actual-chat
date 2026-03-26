@@ -12,6 +12,17 @@
 .join-video-call-modal .video-frame .plug-text {
     @apply text-title-1 text-02;
 }
+.join-video-call-modal .video-frame .video-loading {
+    @apply absolute inset-0;
+    @apply flex items-center justify-center;
+    @apply hidden;
+}
+.join-video-call-modal .camera-starting .video-frame .plug-text {
+    @apply hidden;
+}
+.join-video-call-modal .camera-starting .video-frame .video-loading {
+    @apply flex;
+}
 .join-video-call-modal .video-frame .camera-preview {
     @apply absolute inset-0;
     @apply w-full h-full;
