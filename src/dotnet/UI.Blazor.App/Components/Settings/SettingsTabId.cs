@@ -11,6 +11,8 @@ public static class SettingsTabId
     public static readonly string LogViewer = nameof(LogViewer).Decapitalize();
     public static readonly string Documents = nameof(Documents).Decapitalize();
     public static readonly string DevTools = nameof(DevTools).Decapitalize();
+    public static readonly string Security = nameof(Security).Decapitalize();
+    public static readonly string ApiKeys = nameof(ApiKeys).Decapitalize();
     public static readonly string SignOut = nameof(SignOut).Decapitalize();
     public static readonly string Quit = nameof(Quit).Decapitalize();
 }

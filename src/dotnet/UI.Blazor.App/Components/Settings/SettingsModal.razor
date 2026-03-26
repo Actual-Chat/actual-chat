@@ -41,6 +41,16 @@
             <AppSettings/>
         </SettingsTab>
 
+        @if (showMyAccount) {
+            <SettingsTab @key="5" TabIndex="5" Title="Security" Id="@SettingsTabId.Security" IconClass="icon-lock">
+                <SecuritySettings/>
+            </SettingsTab>
+
+            <SettingsTab @key="6" TabIndex="6" Title="API Keys" Id="@SettingsTabId.ApiKeys" IconClass="icon-key">
+                <ApiKeySettings/>
+            </SettingsTab>
+        }
+
         <SettingsTab @key="90" TabIndex="90" Title="Documents" Id="@SettingsTabId.Documents" Class="docs-tab" IconClass="icon-file-text" HasSeparatorBefore="true">
             <DocumentsPage/>
         </SettingsTab>

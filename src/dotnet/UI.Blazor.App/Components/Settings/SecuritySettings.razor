@@ -1,0 +1,87 @@
+@inherits ComputedStateComponent<AppUIHub, SecuritySettings.ComputedModel>
+@{
+    var m = State.Value;
+    var ownPrefix = Session.GetPrefix();
+}
+
+<TileTopic Topic="Active Sessions"/>
+
+<Tile>
+    @foreach (var session in m.Sessions) {
+        var isCurrent = session.IdPrefix == ownPrefix;
+        <TileItem IsHoverable="false">
+            <Content>
+                <div class="flex items-center gap-2">
+                    <span>@ParseUserAgent(session.UserAgent)</span>
+                    @if (isCurrent) {
+                        <span class="badge badge-primary text-xs">Current</span>
+                    }
+                </div>
+            </Content>
+            <Caption>
+                Last active: @session.LastSeenAt.ToDateTime().ToString("g")
+            </Caption>
+        </TileItem>
+        @if (!isCurrent) {
+            <div class="flex justify-end px-4 pb-2">
+                <Button Class="btn-sm btn-danger" Click="@(() => OnSignOutClick(session.IdPrefix))">
+                    Sign out
+                </Button>
+            </div>
+        }
+    }
+
+    @if (m.Sessions.Count == 0) {
+        <TileItem IsHoverable="false">
+            <Content>No active sessions found.</Content>
+        </TileItem>
+    }
+</Tile>
+
+@if (m.Sessions.Count > 1) {
+    <div class="mt-4 px-4">
+        <Button Class="btn-danger" Click="@OnSignOutAllClick">
+            Sign out all other sessions
+        </Button>
+    </div>
+}
+
+@code {
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
+        => new() {
+            InitialValue = new ComputedModel(),
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken)
+    {
+        var sessions = await Hub.Accounts.GetOwnSessions(Session, false, cancellationToken).ConfigureAwait(false);
+        return new ComputedModel { Sessions = sessions };
+    }
+
+    private async Task OnSignOutClick(string idPrefix)
+    {
+        var command = new Accounts_DeactivateSession(Session, idPrefix);
+        await UICommander.Run(command).ConfigureAwait(false);
+    }
+
+    private async Task OnSignOutAllClick()
+    {
+        var command = new Accounts_DeactivateAllSessions(Session);
+        await UICommander.Run(command).ConfigureAwait(false);
+    }
+
+    private static string ParseUserAgent(string userAgent)
+    {
+        if (userAgent.IsNullOrEmpty())
+            return "Unknown device";
+        if (userAgent.Length > 60)
+            return userAgent[..60] + "...";
+        return userAgent;
+    }
+
+    public sealed record ComputedModel
+    {
+        public ApiList<UserSessionInfo> Sessions { get; init; } = new();
+    }
+}

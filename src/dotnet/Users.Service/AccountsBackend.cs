@@ -155,6 +155,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             var invAccount = context.Operation.Items.KeylessGet<AccountFull>();
             if (invAccount is not null) {
                 _ = Get(invAccount.Id, default);
+                _ = GetSessionIds(invAccount.Id, default);
                 foreach (var (invIdentity, _) in invAccount.Identities)
                     _ = GetIdByUserIdentity(invIdentity, default);
             }
@@ -211,6 +212,23 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         var upsertCommand = new SessionsBackend_Upsert(session, "", "", default, userId.Value, authenticatedIdentity);
         await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
 
+        // Insert DbUserSession mapping
+        var isApiKey = session.IsApiKey();
+        var existingUserSession = await dbContext.UserSessions
+            .FirstOrDefaultAsync(x => x.UserId == userId.Value && x.SessionId == session.Id, cancellationToken)
+            .ConfigureAwait(false);
+        if (existingUserSession is null) {
+            dbContext.UserSessions.Add(new DbUserSession {
+                UserId = userId.Value,
+                SessionId = session.Id,
+                IsApiKey = isApiKey,
+            });
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        // Emit UserSignedInEvent
+        context.Operation.AddEvent(new UserSignedInEvent(session.Id, userId));
+
         // Emit NewUserEvent if this is a new user
         if (isNew) {
             context.Operation.AddEvent(new NewAccountEvent(userId));
@@ -259,6 +277,86 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
                 originalName = $"{originalName} {surname}";
             return AccountNameValidator.Normalize(originalName);
         }
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnSignOut(AccountsBackend_SignOut command, CancellationToken cancellationToken = default)
+    {
+        var session = command.Session.RequireValid();
+        var force = command.Force;
+
+        var context = CommandContext.GetCurrent();
+        if (Invalidation.IsActive) {
+            _ = SessionsBackend.Get(session, default);
+            if (force)
+                _ = SessionsBackend.IsSignOutForced(session, default);
+            return;
+        }
+
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _1 = dbContext.ConfigureAwait(false);
+
+        // Acquire advisory lock first to prevent deadlocks
+        await dbContext.Sessions.Lock(session.Id, cancellationToken).ConfigureAwait(false);
+
+        var dbSessionInfo = await dbContext.Sessions.ForNoKeyUpdate()
+            .FirstOrDefaultAsync(s => s.Id == session.Id, cancellationToken)
+            .ConfigureAwait(false);
+        if (dbSessionInfo is null) {
+            var now = Clocks.SystemClock.Now;
+            dbSessionInfo = new DbSessionInfo {
+                Id = session.Id,
+                CreatedAt = now.ToDateTime(),
+            };
+            var sessionInfo0 = new SessionInfo(session, now);
+            dbSessionInfo.UpdateFrom(sessionInfo0, VersionGenerator);
+            dbContext.Add(dbSessionInfo);
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        var sessionInfo = dbSessionInfo.ToModel(Log);
+        if (sessionInfo.IsSignOutForced)
+            return;
+
+        // Capture user ID before sign-out for event emission
+        var userId = UserId.ParseNullable(sessionInfo.UserId);
+
+        sessionInfo = sessionInfo with {
+            LastSeenAt = Clocks.SystemClock.Now,
+            AuthenticatedIdentity = "",
+            UserId = "",
+            IsSignOutForced = force,
+        };
+        dbSessionInfo.UpdateFrom(sessionInfo, VersionGenerator);
+        dbContext.Update(dbSessionInfo);
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        // Remove from user_sessions
+        if (userId is not null) {
+            await dbContext.UserSessions
+                .Where(x => x.UserId == userId.Value && x.SessionId == session.Id)
+                .ExecuteDeleteAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        // Emit UserSignedOutEvent if user was authenticated
+        if (userId is not null)
+            context.Operation.AddEvent(new UserSignedOutEvent(session.Id, force, userId));
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ApiList<string>> GetSessionIds(UserId userId, CancellationToken cancellationToken)
+    {
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var sessionIds = await dbContext.UserSessions
+            .Where(x => x.UserId == userId.Value)
+            .Select(x => x.SessionId)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return sessionIds.ToApiList();
     }
 
     // [CommandHandler]

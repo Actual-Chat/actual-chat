@@ -15,6 +15,7 @@ public class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContex
     public DbSet<DbUserPresence> UserPresences { get; protected set; } = null!;
     public DbSet<DbChatPosition> ChatPositions { get; protected set; } = null!;
     public DbSet<DbChatUsage> ChatUsages { get; protected set; } = null!;
+    public DbSet<DbUserSession> UserSessions { get; protected set; } = null!;
 
     // ActualLab.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
@@ -55,6 +56,11 @@ public class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContex
         chatUsage.Property(e => e.Id).UseCollation("C");
         chatUsage.Property(e => e.ChatId).UseCollation("C");
         chatUsage.Property(e => e.UserId).UseCollation("C");
+
+        var userSession = model.Entity<DbUserSession>();
+        userSession.HasKey(e => new { e.UserId, e.SessionId });
+        userSession.Property(e => e.UserId).UseCollation("C");
+        userSession.Property(e => e.SessionId).UseCollation("C");
 
         var sessionInfo = model.Entity<DbSessionInfo>();
         sessionInfo.Property(e => e.Id).UseCollation("C");
