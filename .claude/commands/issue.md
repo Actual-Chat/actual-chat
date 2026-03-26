@@ -1,0 +1,126 @@
+---
+allowed-tools: Bash, Read, mcp__github__issue_write, mcp__github__get_me, mcp__github__list_issues, mcp__github__search_issues
+description: Create a GitHub issue, assign to current user, and set status to In Progress
+argument-hint: <title> [-- <body>]
+---
+
+# Create GitHub Issue
+
+Create a GitHub issue in `Actual-Chat/actual-chat`, assign it to the current user, and add it to the org's GitHub Project board with **In Progress** status.
+
+## Arguments
+
+The argument is the issue title. Optionally, use `--` to separate title from body:
+- `/issue Fix login redirect loop` — title only
+- `/issue Fix login redirect loop -- The redirect happens when...` — title + body
+
+If no arguments are provided, ask the user for at least a title.
+
+## Steps
+
+### 1. Parse arguments and craft title
+
+Split the argument on ` -- ` (space-dash-dash-space):
+- Everything before `--` is the **title input**
+- Everything after `--` is the **body** (optional)
+
+**Title must be laconic** — short, punchy, lowercase (except proper nouns). Strip filler words. Examples:
+- "There is an issue where the login page redirects in a loop" → `fix login redirect loop`
+- "We need to add the ability to upload avatars" → `avatar upload`
+- "The chat message list is very slow when there are many messages" → `fix chat list perf with many messages`
+
+Use standard prefixes when intent is clear: `fix:`, `feat:`, `refactor:`, `chore:`. If the user already provided a short title, keep it as-is.
+
+### 2. Check for similar issues
+
+Before creating, search for existing issues that might be duplicates or related. Use `mcp__github__search_issues` with key words from the title:
+
+- `owner`: `"Actual-Chat"`, `repo`: `"actual-chat"`
+- `query`: 2-3 most distinctive keywords from the title
+
+If similar **open** issues are found, list them to the user with number, title, and URL. Ask whether to:
+- **Skip** — the issue already exists
+- **Continue** — create anyway (not a duplicate)
+- **Link** — create and reference the related issue in the body
+
+If no similar issues are found, proceed silently.
+
+### 3. Get current user
+
+Use `mcp__github__get_me` to get the authenticated user's login.
+
+### 4. Create the issue
+
+Use `mcp__github__issue_write` with:
+- `method`: `"create"`
+- `owner`: `"Actual-Chat"`
+- `repo`: `"actual-chat"`
+- `title`: from arguments
+- `body`: from arguments (if provided)
+- `assignees`: `[current_user_login]`
+
+Record the created issue number from the response.
+
+### 5. Add to project board with "In Progress" status
+
+Run the following bash commands using `GH_TOKEN="$AC_GITHUB_TOKEN"` prefix for all `gh` calls.
+
+#### 4a. Find the org project
+
+```bash
+GH_TOKEN="$AC_GITHUB_TOKEN" gh project list --owner Actual-Chat --format json --limit 10
+```
+
+Pick the first open project. Note the project **number**.
+
+#### 4b. Add issue to project
+
+```bash
+GH_TOKEN="$AC_GITHUB_TOKEN" gh project item-add <PROJECT_NUMBER> --owner Actual-Chat --url https://github.com/Actual-Chat/actual-chat/issues/<ISSUE_NUMBER> --format json
+```
+
+Record the item **id** from the response.
+
+#### 4c. Get the Status field ID and "In Progress" option ID
+
+```bash
+GH_TOKEN="$AC_GITHUB_TOKEN" gh project field-list <PROJECT_NUMBER> --owner Actual-Chat --format json
+```
+
+Find the field named "Status" and get its **id**. Then get the option ID for "In Progress":
+
+```bash
+GH_TOKEN="$AC_GITHUB_TOKEN" gh api graphql -f query='
+query($projectId: ID!) {
+  node(id: $projectId) {
+    ... on ProjectV2 {
+      field(name: "Status") {
+        ... on ProjectV2SingleSelectField {
+          id
+          options { id name }
+        }
+      }
+    }
+  }
+}' -f projectId="<PROJECT_NODE_ID>"
+```
+
+Note: The project node ID can be obtained from `gh project view <NUMBER> --owner Actual-Chat --format json`.
+
+#### 4d. Set status to "In Progress"
+
+```bash
+GH_TOKEN="$AC_GITHUB_TOKEN" gh project item-edit --project-id <PROJECT_NODE_ID> --id <ITEM_ID> --field-id <STATUS_FIELD_ID> --single-select-option-id <IN_PROGRESS_OPTION_ID>
+```
+
+### 6. Error handling
+
+- If project board operations fail (e.g., token lacks `project` scope), still report the created issue as success and warn that the project board update failed. Suggest the user regenerate their PAT with Organization > Projects: Read and write permission (see `docs-internal/set-local-env.ps1`).
+- Never fail silently — always show what happened.
+
+### 7. Output
+
+Report:
+- Issue URL: `https://github.com/Actual-Chat/actual-chat/issues/<NUMBER>`
+- Assignee
+- Project board status (or warning if it failed)
