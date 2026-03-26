@@ -39,7 +39,7 @@ public partial class LiveVideoBackend
             await using var _ = subscription.ConfigureAwait(false);
 
             // Snapshot current streams from Redis
-            var redisStreams = await Owner.ListActiveStreams(ChatId, cancellationToken).ConfigureAwait(false);
+            var redisStreams = await Owner.List(ChatId, cancellationToken).ConfigureAwait(false);
             var initialStreams = redisStreams.ToList();
             var dedupeEndsAt = CpuTimestamp.Now + TimeSpan.FromSeconds(5);
 

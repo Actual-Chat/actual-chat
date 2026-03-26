@@ -5,7 +5,7 @@ using ActualChat.Testing.Host;
 namespace ActualChat.Streaming.IntegrationTests;
 
 [Collection(nameof(StreamingCollection))]
-public class LiveStreamsTest(AppHostFixture fixture, ITestOutputHelper @out)
+public class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     [Fact]
@@ -25,10 +25,10 @@ public class LiveStreamsTest(AppHostFixture fixture, ITestOutputHelper @out)
         }));
         chat.Require();
 
-        var liveStreams = services.GetRequiredService<ILiveStreams>();
+        var liveStreams = services.GetRequiredService<ILiveAudioStreams>();
         var config = LiveStreamSettings.Default;
 
-        var stream = await liveStreams.GetLiveStream(session, chat.Id, config, CancellationToken.None);
+        var stream = await liveStreams.GetStream(session, chat.Id, config, CancellationToken.None);
 
         stream.Should().NotBeNull();
     }
@@ -51,11 +51,11 @@ public class LiveStreamsTest(AppHostFixture fixture, ITestOutputHelper @out)
         }));
         chat.Require();
 
-        var liveStreams = services.GetRequiredService<ILiveStreams>();
+        var liveStreams = services.GetRequiredService<ILiveAudioStreams>();
         var config = LiveStreamSettings.Default;
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        var stream = await liveStreams.GetLiveStream(session, chat.Id, config, cts.Token);
+        var stream = await liveStreams.GetStream(session, chat.Id, config, cts.Token);
 
         // Stream should not throw when enumerated (even if empty)
         var items = new List<LiveStreamItem>();
@@ -88,10 +88,10 @@ public class LiveStreamsTest(AppHostFixture fixture, ITestOutputHelper @out)
         }));
         chat.Require();
 
-        var liveStreams = services.GetRequiredService<ILiveStreams>();
+        var liveStreams = services.GetRequiredService<ILiveAudioStreams>();
         var settings = new LiveStreamSettings { StreamKindFilter = LiveStreamKind.None };
 
-        await liveStreams.ChangeLiveStreamSettings(session, chat.Id, settings, CancellationToken.None);
+        await liveStreams.ChangeSettings(session, chat.Id, settings, CancellationToken.None);
         // Should not throw
     }
 }

@@ -11,13 +11,13 @@ public class LiveStreamUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompute
 {
     private readonly ConcurrentDictionary<ChatId, Moment> _lastActivityTimes = new();
 
-    private ILiveStreams LiveStreams => Hub.LiveStreams;
+    private ILiveAudioStreams LiveAudioStreams => Hub.LiveAudioStreams;
     private MomentClock ServerClock => Clocks.ServerClock;
 
     [ComputeMethod]
     public virtual async Task<AuthorId[]> GetStreamingAuthorIds(ChatId chatId, CancellationToken cancellationToken)
     {
-        var streams = await LiveStreams.ListActiveStreams(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var streams = await LiveAudioStreams.List(Session, chatId, cancellationToken).ConfigureAwait(false);
         return streams.Select(s => s.AuthorId).Distinct().ToArray();
     }
 

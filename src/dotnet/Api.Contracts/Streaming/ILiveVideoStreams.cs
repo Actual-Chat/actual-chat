@@ -6,23 +6,22 @@ namespace ActualChat.Streaming;
 public interface ILiveVideoStreams : IComputeService
 {
     [ComputeMethod]
-    Task<ApiArray<VideoStreamInfo>> ListActiveStreams(Session session, ChatId chatId, CancellationToken cancellationToken);
-
+    Task<ApiArray<VideoStreamInfo>> List(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ApiArray<AuthorId>> GetVideoStreamingAuthorIds(Session session, ChatId chatId, CancellationToken cancellationToken);
-
+    Task<ApiArray<AuthorId>> GetAuthorIds(Session session, ChatId chatId, CancellationToken cancellationToken);
+    // NOTE(AY): Why/how can it differ from what GetAuthorIds returns?
     [ComputeMethod]
-    Task<int> GetVideoStreamMemberCount(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<int> GetMemberCount(Session session, ChatId chatId, CancellationToken cancellationToken);
 
-    Task RegisterVideoStreamMember(Session session, ChatId chatId, ApiArray<string> supportedDecoderCodecs, CancellationToken cancellationToken);
-    Task UnregisterVideoStreamMember(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task RegisterMember(Session session, ChatId chatId, ApiArray<string> supportedDecoderCodecs, CancellationToken cancellationToken);
+    Task UnregisterMember(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<ApiArray<string>> GetSupportedDecoderCodecs(Session session, ChatId chatId, CancellationToken cancellationToken);
-
     [RpcMethod(LocalExecutionMode = RpcLocalExecutionMode.Unconstrained)]
     Task<RpcStream<ApiArray<string>>> ObserveSupportedDecoderCodecs(Session session, ChatId chatId, CancellationToken cancellationToken);
 
-    Task<RpcStream<VideoFrame>?> GetVideo(Session session, StreamId streamId, TimeSpan skipTo, CancellationToken cancellationToken);
-    Task<RpcStream<VideoQualityPreset>> ObserveStreamQualityRequests(Session session, StreamId streamId, CancellationToken cancellationToken);
+    Task<RpcStream<VideoFrame>?> GetStream(Session session, StreamId streamId, TimeSpan skipTo, CancellationToken cancellationToken);
+    // NOTE(AY): [RpcMethod(LocalExecutionMode = RpcLocalExecutionMode.Unconstrained)]?
+    Task<RpcStream<VideoQualityPreset>> ObserveQualityRequests(Session session, StreamId streamId, CancellationToken cancellationToken);
 }

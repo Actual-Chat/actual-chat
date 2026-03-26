@@ -39,7 +39,7 @@ public class ChatActivityTest(ChatActivityCollection.AppHostFixture fixture, ITe
                 StreamId = "test-stream-1",
                 BeginsAt = MomentClockSet.Default.SystemClock.Now,
             };
-            await liveBackend.RegisterActiveStream(TestChatId, streamInfo, ct);
+            await liveBackend.Register(TestChatId, streamInfo, ct);
 
             // Verify stream is visible
             await cStreamingAuthorIds.When(x => x.Length == 1, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
@@ -50,7 +50,7 @@ public class ChatActivityTest(ChatActivityCollection.AppHostFixture fixture, ITe
             await cIsAuthorStreaming.When(x => x, ct).WaitAsync(TimeSpan.FromSeconds(1), ct);
 
             // Unregister the stream
-            await liveBackend.UnregisterActiveStream(TestChatId, streamInfo.StreamId, ct);
+            await liveBackend.Unregister(TestChatId, streamInfo.StreamId, ct);
 
             // Verify stream is gone
             await cStreamingAuthorIds.When(x => x.Length == 0, ct).WaitAsync(TimeSpan.FromSeconds(3), ct);

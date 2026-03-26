@@ -84,16 +84,16 @@ public partial class AudioStreamingBackend
             OpenAudioSegmentLog);
         openSegment.SetRecordedAt(recordedAt);
 
-        // Register active stream as early as possible (before creating ChatEntry)
+        // Register stream as early as possible (before creating ChatEntry)
         if (mustStreamVoice) {
-            var activeStream = new LiveStreamInfo {
+            var streamInfo = new LiveStreamInfo {
                 ChatId = chatId,
                 AuthorId = author.Id,
                 StreamId = openSegment.StreamId.Value,
                 BeginsAt = beginsAt,
                 Format = audio.Format,
             };
-            await LiveBackend.RegisterActiveStream(chatId, activeStream, cancellationToken).ConfigureAwait(false);
+            await LiveBackend.Register(chatId, streamInfo, cancellationToken).ConfigureAwait(false);
         }
 
         var audioStream = openSegment.Source
@@ -136,7 +136,7 @@ public partial class AudioStreamingBackend
         MediaId? audioMediaId = null;
         if (mustStreamVoice) {
             // Unregister active stream from LiveBackend (use CancellationToken.None to ensure cleanup happens)
-            await LiveBackend.UnregisterActiveStream(chatId, openSegment.StreamId.Value, CancellationToken.None).ConfigureAwait(false);
+            await LiveBackend.Unregister(chatId, openSegment.StreamId.Value, CancellationToken.None).ConfigureAwait(false);
             // Save audio blob and create Media record - use CancellationToken.None to ensure cleanup
             audioMediaId = await AudioSegmentSaver
                 .SaveAndCreateMedia(closedSegment, chatId, beginsAt, recordedAt, CancellationToken.None)

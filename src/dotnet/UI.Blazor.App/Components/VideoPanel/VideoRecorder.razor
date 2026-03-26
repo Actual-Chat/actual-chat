@@ -161,7 +161,7 @@
             var liveVideoStreams = Hub.Services.GetRequiredService<ILiveVideoStreams>();
             var presetStream = new ResilientStream<VideoQualityPreset> {
                 Provider = async ct => await liveVideoStreams
-                    .ObserveStreamQualityRequests(Session, ownStreamId, ct)
+                    .ObserveQualityRequests(Session, ownStreamId, ct)
                     .ConfigureAwait(false),
                 CancellationToken = cancellationToken,
             };

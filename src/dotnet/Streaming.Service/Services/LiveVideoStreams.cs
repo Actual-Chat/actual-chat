@@ -2,7 +2,7 @@ using ActualChat.Video;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Infrastructure;
 
-namespace ActualChat.Streaming;
+namespace ActualChat.Streaming.Services;
 
 public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
 {
@@ -12,20 +12,20 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
     private ILogger Log => field ??= services.LogFor(GetType());
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<VideoStreamInfo>> ListActiveStreams(
+    public virtual async Task<ApiArray<VideoStreamInfo>> List(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken)
     {
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Read);
-        var result = await Backend.ListActiveStreams(chatId, cancellationToken).ConfigureAwait(false);
+        var result = await Backend.List(chatId, cancellationToken).ConfigureAwait(false);
         Log.LogWarning("ListActiveStreams(session, {ChatId}): returning {Count} streams", chatId, result.Count);
         return result;
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<AuthorId>> GetVideoStreamingAuthorIds(
+    public virtual async Task<ApiArray<AuthorId>> GetAuthorIds(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken)
@@ -38,7 +38,7 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
     }
 
     // [ComputeMethod]
-    public virtual async Task<int> GetVideoStreamMemberCount(
+    public virtual async Task<int> GetMemberCount(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken)
@@ -48,7 +48,7 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         return await Backend.GetVideoStreamMemberCount(chatId, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task RegisterVideoStreamMember(
+    public async Task RegisterMember(
         Session session,
         ChatId chatId,
         ApiArray<string> supportedDecoderCodecs,
@@ -56,17 +56,17 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
     {
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Read);
-        await Backend.RegisterVideoStreamMember(chatId, session.Id, supportedDecoderCodecs, cancellationToken).ConfigureAwait(false);
+        await Backend.RegisterMember(chatId, session.Id, supportedDecoderCodecs, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task UnregisterVideoStreamMember(
+    public async Task UnregisterMember(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken)
     {
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Read);
-        await Backend.UnregisterVideoStreamMember(chatId, session.Id, cancellationToken).ConfigureAwait(false);
+        await Backend.UnregisterMember(chatId, session.Id, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -87,11 +87,13 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
     {
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Read);
+
+        // NOTE(AY): It clearly doesn't support shard relocation
         var remoteStream = await Backend.ObserveSupportedDecoderCodecs(chatId, cancellationToken).ConfigureAwait(false);
         return RpcStream.New(remoteStream, allowReconnect: false);
     }
 
-    public async Task<RpcStream<VideoFrame>?> GetVideo(
+    public async Task<RpcStream<VideoFrame>?> GetStream(
         Session session,
         StreamId streamId,
         TimeSpan skipTo,
@@ -104,7 +106,7 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
             : RpcStream.New(remoteStream, allowReconnect: false);
     }
 
-    public async Task<RpcStream<VideoQualityPreset>> ObserveStreamQualityRequests(
+    public async Task<RpcStream<VideoQualityPreset>> ObserveQualityRequests(
         Session session,
         StreamId streamId,
         CancellationToken cancellationToken)

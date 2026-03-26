@@ -260,7 +260,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             beginsAt);
 
         // Cross-service RPC call — properly shard-routed via ILiveVideoBackend
-        await LiveVideoBackend.RegisterActiveStream(record.ChatId, streamInfo, cancellationToken)
+        await LiveVideoBackend.Register(record.ChatId, streamInfo, cancellationToken)
             .ConfigureAwait(false);
 
         _latencyStates[record.StreamId] = new StreamLatencyState(beginsAt, record.Format, Log);
@@ -291,7 +291,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         }
         finally {
             // Unregister stream when it ends — cross-service RPC call
-            await LiveVideoBackend.UnregisterActiveStream(record.ChatId, record.StreamId, CancellationToken.None)
+            await LiveVideoBackend.Unregister(record.ChatId, record.StreamId, CancellationToken.None)
                 .ConfigureAwait(false);
             // Latency state cleanup deferred to OnVideoStreamExpire — peers may still read buffered frames
         }

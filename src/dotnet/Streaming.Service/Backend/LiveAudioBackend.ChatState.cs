@@ -22,7 +22,7 @@ public partial class LiveAudioBackend
             await using var _ = subscription.ConfigureAwait(false);
 
             // Snapshot current streams from Redis
-            var currentStreams = await Owner.ListActiveStreams(ChatId, cancellationToken).ConfigureAwait(false);
+            var currentStreams = await Owner.List(ChatId, cancellationToken).ConfigureAwait(false);
             var initialStreams = currentStreams.ToList();
             var dedupeEndsAt = CpuTimestamp.Now + TimeSpan.FromSeconds(5);
 

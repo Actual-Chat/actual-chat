@@ -41,13 +41,13 @@ public partial class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<LiveStreamInfo>> ListActiveStreams(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<LiveStreamInfo>> List(ChatId chatId, CancellationToken cancellationToken)
     {
         var streams = await ReadStreamsFromRedis(chatId).ConfigureAwait(false);
         return new(streams.Values);
     }
 
-    public virtual async Task<RpcStream<LiveStreamInfo>> ObserveStreams(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<RpcStream<LiveStreamInfo>> Observe(ChatId chatId, CancellationToken cancellationToken)
     {
         var shardState = ShardOwner.States[ShardScheme.GetShardIndex(chatId)].Value;
         var shardOwnership = await shardState.RequireShardOwnership(cancellationToken).ConfigureAwait(false);
@@ -59,21 +59,21 @@ public partial class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
         return RpcStream.New(observations, allowReconnect: false);
     }
 
-    public virtual async Task RegisterActiveStream(ChatId chatId, LiveStreamInfo activeStream, CancellationToken cancellationToken)
+    public virtual async Task Register(ChatId chatId, LiveStreamInfo streamInfo, CancellationToken cancellationToken)
     {
-        var success = await StreamsStore.SetField(chatId, activeStream.StreamId, activeStream).ConfigureAwait(false);
+        var success = await StreamsStore.SetField(chatId, streamInfo.StreamId, streamInfo).ConfigureAwait(false);
         if (success) {
             var chatState = GetChatState(chatId);
-            chatState.PublishNewStream(activeStream);
-            InvalidateListActiveStreams(chatId);
+            chatState.PublishNewStream(streamInfo);
+            InvalidateListStreams(chatId);
         }
     }
 
-    public virtual async Task UnregisterActiveStream(ChatId chatId, string streamId, CancellationToken cancellationToken)
+    public virtual async Task Unregister(ChatId chatId, string streamId, CancellationToken cancellationToken)
     {
         var removed = await StreamsStore.RemoveField(chatId, streamId).ConfigureAwait(false);
         if (removed)
-            InvalidateListActiveStreams(chatId);
+            InvalidateListStreams(chatId);
     }
 
     // Private methods
@@ -129,14 +129,14 @@ public partial class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
                 await StreamsStore.DeleteKey(chatId).ConfigureAwait(false);
             });
 
-            InvalidateListActiveStreams(chatId);
+            InvalidateListStreams(chatId);
             chatState.Complete(RpcRerouteException.MustReroute());
         }
     }
 
-    private void InvalidateListActiveStreams(ChatId chatId)
+    private void InvalidateListStreams(ChatId chatId)
     {
         using (Invalidation.Begin())
-            _ = ListActiveStreams(chatId, default);
+            _ = List(chatId, default);
     }
 }

@@ -41,7 +41,7 @@ public sealed class ReplayStreamProcessor : WorkerBase
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        var liveStreams = Services.GetRequiredService<ILiveStreams>();
+        var liveStreams = Services.GetRequiredService<ILiveAudioStreams>();
         var demuxerLog = Services.LogFor<LiveStreamDemuxer>();
 
         try {

@@ -73,7 +73,7 @@ public sealed class LiveStreamMuxer : WorkerBase
             while (true) {
                 try {
                     Log.LogInformation("OnRun: Connecting to ObserveNewStreams for {ChatId}", ChatId);
-                    var streams = await LiveBackend.ObserveStreams(ChatId, cancellationToken).ConfigureAwait(false);
+                    var streams = await LiveBackend.Observe(ChatId, cancellationToken).ConfigureAwait(false);
                     await foreach (var streamInfo in streams.ConfigureAwait(false)) {
                         Log.LogDebug("OnRun: Got stream #{StreamId}", streamInfo.StreamId);
 

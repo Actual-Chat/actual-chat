@@ -407,7 +407,7 @@ public class VideoStreamingLatencyTest(AppHostFixture fixture, ITestOutputHelper
     private async Task<VideoStreamInfo> ObserveNewStream(ChatId chatId, CancellationToken ct)
     {
         var liveVideoBackend = AppHost.Services.GetRequiredService<ILiveVideoBackend>();
-        var rpcStream = await liveVideoBackend.ObserveStreams(chatId, ct);
+        var rpcStream = await liveVideoBackend.Observe(chatId, ct);
         await foreach (var streamInfo in rpcStream.WithCancellation(ct))
             return streamInfo; // first stream observed
         throw new OperationCanceledException("ObserveStreams completed without yielding a stream");

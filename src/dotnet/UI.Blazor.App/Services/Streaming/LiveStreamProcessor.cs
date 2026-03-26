@@ -40,13 +40,13 @@ public sealed class LiveStreamProcessor : WorkerBase
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        var liveStreams = Services.GetRequiredService<ILiveStreams>();
+        var liveStreams = Services.GetRequiredService<ILiveAudioStreams>();
         var demuxerLog = Services.LogFor<LiveStreamDemuxer>();
 
         var itemStream = new ResilientStream<LiveStreamItem> {
             Provider = async ct => {
                 DebugLog?.LogInformation("-> LiveStreams.GetLiveStream({ChatId})", ChatId);
-                var stream = await liveStreams.GetLiveStream(Session, ChatId, Settings, ct).ConfigureAwait(false);
+                var stream = await liveStreams.GetStream(Session, ChatId, Settings, ct).ConfigureAwait(false);
                 DebugLog?.LogInformation("<- LiveStreams.GetLiveStream({ChatId})", ChatId);
                 return stream;
             },

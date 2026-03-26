@@ -36,7 +36,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         // Audio & Video Streaming
         rpc.AddClient<IStreamServer>();
         services.AddSingleton<IStreamClient>(c => new StreamClient(c));
-        fusion.AddClient<ILiveStreams>();
+        fusion.AddClient<ILiveAudioStreams>();
         fusion.AddClient<ILiveVideoStreams>();
 
         // Chat

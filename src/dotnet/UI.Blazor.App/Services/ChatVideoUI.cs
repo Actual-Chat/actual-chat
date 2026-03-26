@@ -143,7 +143,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             return default;
 
         return await LiveVideoStreams
-            .ListActiveStreams(Session, chatId, cancellationToken)
+            .List(Session, chatId, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -154,7 +154,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             return default;
 
         return await LiveVideoStreams
-            .GetVideoStreamingAuthorIds(Session, chatId, cancellationToken)
+            .GetAuthorIds(Session, chatId, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -165,7 +165,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             return false;
 
         var authorIds = await LiveVideoStreams
-            .GetVideoStreamingAuthorIds(Session, chatId, cancellationToken)
+            .GetAuthorIds(Session, chatId, cancellationToken)
             .ConfigureAwait(false);
         return authorIds.Count > 0;
     }
@@ -177,7 +177,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             return 0;
 
         return await LiveVideoStreams
-            .GetVideoStreamMemberCount(Session, chatId, cancellationToken)
+            .GetMemberCount(Session, chatId, cancellationToken)
             .ConfigureAwait(false);
     }
 

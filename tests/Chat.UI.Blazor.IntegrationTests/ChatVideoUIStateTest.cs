@@ -43,18 +43,18 @@ public class ChatVideoUIStateTest(ChatAppHostFixture fixture, ITestOutputHelper 
             new VideoFormat { Codec = "avc1", Width = 640, Height = 480 },
             Clocks.SystemClock.Now);
 
-        await backend.RegisterActiveStream(chatId, streamInfo, CancellationToken.None);
+        await backend.Register(chatId, streamInfo, CancellationToken.None);
 
         // IsAnyoneVideoStreaming equivalent: check via frontend
-        authorIds = await frontend.GetVideoStreamingAuthorIds(alice.Session, chatId, CancellationToken.None);
+        authorIds = await frontend.GetAuthorIds(alice.Session, chatId, CancellationToken.None);
         authorIds.Should().HaveCount(1);
         authorIds.Should().Contain(bobAuthor.Id);
 
         // Unregister the stream
-        await backend.UnregisterActiveStream(chatId, streamId, CancellationToken.None);
+        await backend.Unregister(chatId, streamId, CancellationToken.None);
 
         // Now no one should be streaming
-        authorIds = await frontend.GetVideoStreamingAuthorIds(alice.Session, chatId, CancellationToken.None);
+        authorIds = await frontend.GetAuthorIds(alice.Session, chatId, CancellationToken.None);
         authorIds.Should().BeEmpty();
     }
 
@@ -86,7 +86,7 @@ public class ChatVideoUIStateTest(ChatAppHostFixture fixture, ITestOutputHelper 
             new VideoFormat { Codec = "avc1", Width = 640, Height = 480 },
             Clocks.SystemClock.Now);
 
-        await backend.RegisterActiveStream(chatId, streamInfo, CancellationToken.None);
+        await backend.Register(chatId, streamInfo, CancellationToken.None);
         computed.IsConsistent().Should().BeFalse();
 
         // Update — should reflect new state
@@ -94,7 +94,7 @@ public class ChatVideoUIStateTest(ChatAppHostFixture fixture, ITestOutputHelper 
         computed.Value.Should().HaveCount(1);
 
         // Unregister — should invalidate again
-        await backend.UnregisterActiveStream(chatId, streamId, CancellationToken.None);
+        await backend.Unregister(chatId, streamId, CancellationToken.None);
         computed.IsConsistent().Should().BeFalse();
 
         computed = await computed.Update(CancellationToken.None);
@@ -126,7 +126,7 @@ public class ChatVideoUIStateTest(ChatAppHostFixture fixture, ITestOutputHelper 
         // Helper: simulate ChatHeader's panel visibility check
         // Panel shows when isRecording OR isAnyoneVideoStreaming
         async Task<bool> ShouldShowPanel(bool isRecording) {
-            var authorIds = await frontend.GetVideoStreamingAuthorIds(alice.Session, chatId, CancellationToken.None);
+            var authorIds = await frontend.GetAuthorIds(alice.Session, chatId, CancellationToken.None);
             var isAnyoneVideoStreaming = authorIds.Count > 0;
             return isRecording || isAnyoneVideoStreaming;
         }
@@ -147,7 +147,7 @@ public class ChatVideoUIStateTest(ChatAppHostFixture fixture, ITestOutputHelper 
             bobAuthor!.Id,
             new VideoFormat { Codec = "avc1", Width = 640, Height = 480 },
             Clocks.SystemClock.Now);
-        await backend.RegisterActiveStream(chatId, streamInfo, CancellationToken.None);
+        await backend.Register(chatId, streamInfo, CancellationToken.None);
 
         // Recording + streams → panel shown
         show = await ShouldShowPanel(isRecording: true);
@@ -158,7 +158,7 @@ public class ChatVideoUIStateTest(ChatAppHostFixture fixture, ITestOutputHelper 
         show.Should().BeTrue("streams still active → panel should stay visible");
 
         // Stream ends → panel hidden
-        await backend.UnregisterActiveStream(chatId, streamId, CancellationToken.None);
+        await backend.Unregister(chatId, streamId, CancellationToken.None);
         show = await ShouldShowPanel(isRecording: false);
         show.Should().BeFalse("no recording and no streams → panel should hide");
     }

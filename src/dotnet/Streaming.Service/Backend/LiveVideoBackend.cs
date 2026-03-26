@@ -40,7 +40,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<VideoStreamInfo>> ListActiveStreams(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<VideoStreamInfo>> List(ChatId chatId, CancellationToken cancellationToken)
     {
         var streams = await SafeGetAll(StreamsStore, chatId).ConfigureAwait(false);
         if (streams.Count == 0)
@@ -93,7 +93,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         return activeMembers.Count;
     }
 
-    public virtual async Task<RpcStream<VideoStreamInfo>> ObserveStreams(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<RpcStream<VideoStreamInfo>> Observe(ChatId chatId, CancellationToken cancellationToken)
     {
         var shardState = ShardOwner.States[ShardScheme.GetShardIndex(chatId)].Value;
         var shardOwnership = await shardState.RequireShardOwnership(cancellationToken).ConfigureAwait(false);
@@ -104,7 +104,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         return RpcStream.New(observations, allowReconnect: false);
     }
 
-    public virtual async Task RegisterActiveStream(ChatId chatId, VideoStreamInfo streamInfo, CancellationToken cancellationToken)
+    public virtual async Task Register(ChatId chatId, VideoStreamInfo streamInfo, CancellationToken cancellationToken)
     {
         Log.LogWarning("RegisterActiveStream({ChatId}): #{StreamId}, AuthorId={AuthorId}",
             chatId, streamInfo.StreamId, streamInfo.AuthorId);
@@ -117,7 +117,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         }
     }
 
-    public virtual async Task UnregisterActiveStream(ChatId chatId, StreamId streamId, CancellationToken cancellationToken)
+    public virtual async Task Unregister(ChatId chatId, StreamId streamId, CancellationToken cancellationToken)
     {
         Log.LogWarning("UnregisterActiveStream({ChatId}): #{StreamId}", chatId, streamId);
         var removed = await StreamsStore.RemoveField(chatId, streamId.Value).ConfigureAwait(false);
@@ -139,6 +139,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
 
     public virtual async Task<RpcStream<ApiArray<string>>> ObserveSupportedDecoderCodecs(ChatId chatId, CancellationToken cancellationToken)
     {
+        // NOTE(AY): It clearly doesn't support shard relocation
         var shardState = ShardOwner.States[ShardScheme.GetShardIndex(chatId)].Value;
         var shardOwnership = await shardState.RequireShardOwnership(cancellationToken).ConfigureAwait(false);
         var linkedCts = shardOwnership.LockToken.LinkWith(cancellationToken);
@@ -148,7 +149,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         return RpcStream.New(observations, allowReconnect: false);
     }
 
-    public virtual async Task RegisterVideoStreamMember(ChatId chatId, string sessionId, ApiArray<string> supportedDecoderCodecs, CancellationToken cancellationToken)
+    public virtual async Task RegisterMember(ChatId chatId, string sessionId, ApiArray<string> supportedDecoderCodecs, CancellationToken cancellationToken)
     {
         var memberInfo = new VideoStreamMemberInfo(supportedDecoderCodecs, DateTime.UtcNow.Ticks);
         var success = await MembersStore.SetField(chatId, sessionId, memberInfo).ConfigureAwait(false);
@@ -166,7 +167,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         }
     }
 
-    public virtual async Task UnregisterVideoStreamMember(ChatId chatId, string sessionId, CancellationToken cancellationToken)
+    public virtual async Task UnregisterMember(ChatId chatId, string sessionId, CancellationToken cancellationToken)
     {
         var removed = await MembersStore.RemoveField(chatId, sessionId).ConfigureAwait(false);
         if (removed) {
@@ -226,7 +227,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         try {
             foreach (var id in deadStreamIds) {
                 var streamId = StreamId.Parse(id);
-                await UnregisterActiveStream(chatId, streamId, CancellationToken.None).ConfigureAwait(false);
+                await Unregister(chatId, streamId, CancellationToken.None).ConfigureAwait(false);
             }
         }
         catch (Exception e) when (e is not OperationCanceledException) {
@@ -274,7 +275,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     private void InvalidateListActiveStreams(ChatId chatId)
     {
         using (Invalidation.Begin())
-            _ = ListActiveStreams(chatId, default);
+            _ = List(chatId, default);
     }
 
     private void InvalidateGetVideoStreamingAuthorIds(ChatId chatId)

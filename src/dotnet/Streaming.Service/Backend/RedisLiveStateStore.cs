@@ -1,9 +1,10 @@
 using ActualLab.Redis;
-using StackExchange.Redis;
 using StreamingContext = ActualChat.Streaming.Db.StreamingContext;
 
 namespace ActualChat.Streaming;
 
+// Абстракция, которая нафиг не нужна, т.к. используется ровно в одном месте,
+// и с таким АПИ ее крайне сложно использовать где-либо еще. AI slop?
 internal sealed class RedisLiveStateStore<TValue>(
     RedisDb<StreamingContext> redisDb,
     string keyPrefix,
@@ -72,6 +73,8 @@ internal sealed class RedisLiveStateStore<TValue>(
             log.LogWarning(e, "Redis DeleteKey failed for {KeyPrefix}:{ChatId}", keyPrefix, chatId);
         }
     }
+
+    // Private methods
 
     private string GetKey(ChatId chatId) => $"{keyPrefix}:{chatId}";
 }

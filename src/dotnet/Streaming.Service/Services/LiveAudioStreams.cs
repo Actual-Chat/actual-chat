@@ -6,7 +6,7 @@ namespace ActualChat.Streaming.Services;
 /// <summary>
 /// RPC service providing multiplexed real-time audio streams.
 /// </summary>
-public class LiveStreams(IServiceProvider services) : ILiveStreams
+public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
 {
     private readonly Lock _lock = new ();
     private readonly ConcurrentDictionary<(Session, ChatId), LiveStreamMuxer> _liveMuxers = new();
@@ -15,20 +15,20 @@ public class LiveStreams(IServiceProvider services) : ILiveStreams
     private IServiceProvider Services { get; } = services;
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
     private ILiveAudioBackend LiveBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
-    private ILogger Log => field ??= Services.LogFor<LiveStreams>();
+    private ILogger Log => field ??= Services.LogFor<LiveAudioStreams>();
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<LiveStreamInfo>> ListActiveStreams(
+    public virtual async Task<ApiArray<LiveStreamInfo>> List(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken)
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
-        return await LiveBackend.ListActiveStreams(chatId, cancellationToken).ConfigureAwait(false);
+        return await LiveBackend.List(chatId, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<RpcStream<LiveStreamItem>> GetLiveStream(
+    public async Task<RpcStream<LiveStreamItem>> GetStream(
         Session session,
         ChatId chatId,
         LiveStreamSettings settings,
@@ -51,7 +51,7 @@ public class LiveStreams(IServiceProvider services) : ILiveStreams
         return RpcStream.New(stream, allowReconnect: false);
     }
 
-    public async Task ChangeLiveStreamSettings(
+    public async Task ChangeSettings(
         Session session,
         ChatId chatId,
         LiveStreamSettings settings,

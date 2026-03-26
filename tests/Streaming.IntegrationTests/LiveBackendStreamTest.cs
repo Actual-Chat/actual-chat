@@ -43,7 +43,7 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
         var receivedStreams = new List<LiveStreamInfo>();
 
         log.LogInformation("Calling ObserveStreams for chat {ChatId}...", chatId);
-        var rpcStream = await liveBackend.ObserveStreams(chatId, cts.Token);
+        var rpcStream = await liveBackend.Observe(chatId, cts.Token);
         log.LogInformation("Got RpcStream, starting enumeration...");
 
         // Start collecting in background
@@ -81,7 +81,7 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
         log.LogInformation("Registering active stream: #{StreamId}", testStreamInfo.StreamId);
 
         // Use the interface method (now part of ILiveAudioBackend)
-        await liveBackend.RegisterActiveStream(chatId, testStreamInfo, cts.Token);
+        await liveBackend.Register(chatId, testStreamInfo, cts.Token);
 
         log.LogInformation("Stream registered, waiting for it to be received...");
 
@@ -134,14 +134,14 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
         };
 
         log.LogInformation("Registering existing stream: #{StreamId}", existingStreamInfo.StreamId);
-        await liveBackend.RegisterActiveStream(chatId, existingStreamInfo, CancellationToken.None);
+        await liveBackend.Register(chatId, existingStreamInfo, CancellationToken.None);
 
         // Now call ObserveStreams - it should immediately yield the existing stream
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         var receivedStreams = new List<LiveStreamInfo>();
 
         log.LogInformation("Calling ObserveStreams...");
-        var rpcStream = await liveBackend.ObserveStreams(chatId, cts.Token);
+        var rpcStream = await liveBackend.Observe(chatId, cts.Token);
 
         // Try to get the first item with a short timeout
         var enumerator = rpcStream.GetAsyncEnumerator(cts.Token);
@@ -192,8 +192,8 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
         var consumer1Streams = new List<LiveStreamInfo>();
         var consumer2Streams = new List<LiveStreamInfo>();
 
-        var stream1 = await liveBackend.ObserveStreams(chatId, cts.Token);
-        var stream2 = await liveBackend.ObserveStreams(chatId, cts.Token);
+        var stream1 = await liveBackend.Observe(chatId, cts.Token);
+        var stream2 = await liveBackend.Observe(chatId, cts.Token);
 
         var consumer1Task = Task.Run(async () => {
             try {
@@ -223,7 +223,7 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
         };
 
         log.LogInformation("Registering stream: #{StreamId}", testStreamInfo.StreamId);
-        await liveBackend.RegisterActiveStream(chatId, testStreamInfo, cts.Token);
+        await liveBackend.Register(chatId, testStreamInfo, cts.Token);
 
         // Wait for both consumers to receive
         await Task.Delay(2000, cts.Token);
