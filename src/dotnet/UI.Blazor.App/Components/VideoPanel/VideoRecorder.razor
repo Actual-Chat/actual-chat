@@ -13,6 +13,11 @@
     <canvas
         class="call-video"
         @onclick="@(m.VideoState.IsRecording && RemoteStreamCount > 0 ? OnSettingsClick : null!)"></canvas>
+    <div class="video-loading">
+        <span class="spinner-icon-wrapper">
+            <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
+        </span>
+    </div>
     @if (m.VideoState.IsRecording && RemoteStreamCount == 0) {
         <HeaderButton Class="settings-btn" Click="@OnSettingsClick">
             <i class="icon-settings text-lg"></i>

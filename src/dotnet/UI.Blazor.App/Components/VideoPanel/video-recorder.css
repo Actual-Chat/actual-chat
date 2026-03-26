@@ -9,12 +9,15 @@
     transform: scaleX(-1);
 }
 .video-recorder .btn-h.settings-btn {
-    @apply absolute top-0.5 right-0.5;
+    @apply absolute top-2 right-2;
     @apply text-white text-lg;
 }
 body.hoverable .video-recorder .btn-h.settings-btn:hover {
     @apply text-white;
     @apply opacity-80;
+}
+.video-panel.expanded .video-recorder .btn-h.settings-btn {
+    @apply hidden;
 }
 
 /* Participant labels */
@@ -23,6 +26,17 @@ body.hoverable .video-recorder .btn-h.settings-btn:hover {
 }
 .video-recorder .video-participant-label i {
     @apply text-xs;
+}
+
+/* Loading spinner — shown while camera is starting */
+.video-recorder .video-loading {
+    @apply absolute inset-0;
+    @apply flex items-center justify-center;
+    @apply bg-black;
+}
+.video-recorder:not(.recording) .video-loading,
+.video-recorder.has-video .video-loading {
+    @apply hidden;
 }
 
 /* Error display */

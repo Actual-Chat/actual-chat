@@ -2,8 +2,13 @@
     @apply relative z-10;
     @apply flex items-center justify-center;
     @apply w-full h-full;
-    @apply px-1 md:px-2 py-0;
+    @apply py-0;
+    @apply rounded-b-lg;
+    @apply overflow-hidden;
     @apply bg-transparent;
+}
+.video-panel:not(.expanded) {
+    @apply max-w-192;
 }
 .video-panel.first-time-open {
     animation: smoothShowVideoPanel 0.3s ease-in-out forwards;
@@ -19,6 +24,7 @@ body.narrow .video-panel.expanded {
     @apply fixed z-button inset-0;
     @apply max-w-none max-h-none;
     @apply p-0;
+    @apply rounded-none;
     padding: var(--safe-area-top) var(--safe-area-right) var(--safe-area-bottom) var(--safe-area-left);
 }
 .video-panel.expanded > .c-content {
@@ -37,7 +43,6 @@ body.wide .video-panel.rp-visible {
     @apply relative;
     @apply flex items-center justify-center;
     @apply w-full h-full;
-    @apply rounded-lg overflow-hidden;
     @apply bg-black;
 }
 .video-panel.first-time-open > .c-content {
@@ -208,7 +213,7 @@ body.narrow .video-panel.expanded .remote-video-container.previous-speaker {
     to { transform: rotate(360deg); }
 }
 .video-panel.has-remote-streams .video-recorder {
-    @apply absolute bottom-1 right-2 md:right-3 z-10;
+    @apply absolute bottom-1 right-1 z-10;
     @apply w-20 h-20;
     @apply rounded-lg border-2 border-white;
     @apply overflow-hidden;

@@ -65,8 +65,8 @@
             <HeaderButton Click="OnSettingsClick">
                 <i class="icon-options-2 text-lg"></i>
             </HeaderButton>
-            <HeaderButton Class="invisible">
-                <i class="icon-screen-share text-lg"></i>
+            <HeaderButton Class="settings-btn" Click="@OnVideoSettingsClick">
+                <i class="icon-settings text-lg"></i>
             </HeaderButton>
         </div>
         <div class="c-content">
@@ -242,6 +242,20 @@
         var m = State.Value;
         if (m.ChatId is { } chatId)
             _ = Hub.ModalUI.Show(new VoiceSettingsModal.Model(chatId));
+    }
+
+    private async Task OnVideoSettingsClick() {
+        // DO NOT stop recording — the modal will share the recorder's preview stream
+
+        var chatId = Hub.ChatUI.SelectedChatId.Value;
+        if (chatId is null)
+            return;
+
+        var chat = await Hub.Chats.Get(Session, chatId, default).ConfigureAwait(false);
+        if (chat is null)
+            return;
+
+        _ = ModalUI.Show(new JoinVideoCallModal.Model(chat, IsSettingsMode: true));
     }
 
     private async Task OnSwitchCamera() {
