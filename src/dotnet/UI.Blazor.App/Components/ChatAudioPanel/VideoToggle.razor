@@ -4,8 +4,9 @@
     var m = State.Value;
     var isVideoOn = m.IsLocalVideoRecording;
     var stateCls = isVideoOn ? "video-on" : "video-off";
-    var narrowCls = IsNarrow ? "narrow" : "";
-    var wrapperCls = $"{stateCls} {narrowCls}";
+    var wrapperCls = $"{stateCls}";
+    if (IsNarrow)
+        wrapperCls += " narrow";
     var tooltip = isVideoOn ? "Stop video" : "Start video";
 }
 
