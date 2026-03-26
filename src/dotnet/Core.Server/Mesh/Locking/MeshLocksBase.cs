@@ -1,5 +1,7 @@
+using ActualChat.Logging;
 using ActualLab.Diagnostics;
 using ActualLab.Resilience;
+using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Mesh;
 
@@ -13,9 +15,10 @@ public abstract class MeshLocksBase : IMeshLocksBackend
     protected readonly string HolderKeyPrefix = Alphabet.AlphaNumeric.Generator8.Next() + "-";
     protected long LastHolderId;
 
-    protected ILogger Log => field ??= Services.LogFor(GetType());
+    protected ILogger? Log => (field ??= Services.LogFor(GetType())).UnlessStopping(HostLifetime);
     protected ILogger? DebugLog => _debugLog?.Value;
     protected ChaosMaker ChaosMaker => field ??= Services.GetRequiredService<ChaosMaker>();
+    protected IHostApplicationLifetime? HostLifetime => field ??= Services.GetService<IHostApplicationLifetime>();
 
     public MeshLockOptions LockOptions { get; init; } = MeshLockOptions.Default;
     public RetryDelaySeq RetryDelays => field ??= RetryDelaySeq.Exp(0.1, LockOptions.ExpirationPeriod.TotalSeconds / 2);
@@ -28,11 +31,12 @@ public abstract class MeshLocksBase : IMeshLocksBackend
     ILogger IMeshLocksBackend.Log => Log;
     ILogger? IMeshLocksBackend.DebugLog => DebugLog;
     ChaosMaker IMeshLocksBackend.ChaosMaker => ChaosMaker;
+    IHostApplicationLifetime? IMeshLocksBackend.HostLifetime => HostLifetime;
 
     protected MeshLocksBase(IServiceProvider services)
     {
         Services = services;
-        _debugLog = DebugMode ? new LazySlim<ILogger?>(Log.IfEnabled(LogLevel.Debug)) : null;
+        _debugLog = DebugMode ? new LazySlim<ILogger?>(Services.LogFor(GetType()).IfEnabled(LogLevel.Debug)) : null;
     }
 
     public virtual async Task<MeshLockHolder?> TryLock(
@@ -86,7 +90,7 @@ public abstract class MeshLocksBase : IMeshLocksBackend
                         var completedTask = await Task.WhenAny(tryLockTask, warningDelayTask).ConfigureAwait(false);
                         if (completedTask == warningDelayTask) {
                             if (warningDelayTask.IsCompletedSuccessfully)
-                                Log.LogWarning("Lock takes too long: {Key} = {Id}", key, holder.Id);
+                                Log?.LogWarning("Lock takes too long: {Key} = {Id}", key, holder.Id);
                             warningDelayTask = null; // We report it just once per Lock call
                         }
                     }
@@ -121,7 +125,7 @@ public abstract class MeshLocksBase : IMeshLocksBackend
             if (e.IsCancellationOf(cancellationToken))
                 DebugLog?.LogDebug("Lock cancelled: {Key} = {Id}", key, holder.Id);
             else
-                Log.LogError(e, "Lock failed: {Key} = {Id}", key, holder.Id);
+                Log?.LogError(e, "Lock failed: {Key} = {Id}", key, holder.Id);
             throw;
         }
         finally {
