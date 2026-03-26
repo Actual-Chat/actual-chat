@@ -19,6 +19,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     private static HashSet<string> AdminEmails { get; } = new() {
         "alex.yakunin@gmail.com",
         "ustinovas@gmail.com",
+        "crui3er@gmail.com",
     };
 
     private ISessionsBackend SessionsBackend => field ??= Services.GetRequiredService<ISessionsBackend>();
