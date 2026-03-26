@@ -33,12 +33,11 @@ public class Haptics(AppUIHub hub) : IDisposable
             if (HapticEngine.IsMutedForHaptics)
                 return;
 
-            HapticEngine.Start(out var error);
-            error.Assert();
+            await HapticEngine.StartAsync().ConfigureAwait(false);
             var player = GetPlayer(tune, vibration);
-            player.Start(0, out error);
+            player.Start(0, out var error);
             error.Assert();
-            await Task.Delay(vibration.Sum());
+            await Task.Delay(vibration.Sum(), hub.StopToken).ConfigureAwait(false);
             player.Cancel(out error);
             error.Assert();
     }
