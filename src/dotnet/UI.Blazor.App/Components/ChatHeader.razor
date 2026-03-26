@@ -10,29 +10,22 @@
     var isVideoStreamingEnabled = m.IsVideoStreamingEnabled;
     var isAnyoneVideoStreaming = isVideoStreamingEnabled && m.IsAnyoneVideoStreaming;
     var isPanelVisible = IsRecordingHere || IsListeningHere || isAnyoneVideoStreaming || (m.IsAnyoneTalking && m.AudioState?.ChatId == chat?.Id);
+    var isWatchingHere = m.VideoState?.IsWatching == true;
 
-    // Show video panel when own recording starts or remote streams exist
-    if (isVideoStreamingEnabled && !_showVideoPanel
-        && (m.VideoState?.IsRecording == true || isAnyoneVideoStreaming)) {
+    // Clear watching when navigating to a different chat
+    if (_lastWatchingChatId is not null && _lastWatchingChatId != chat?.Id)
+        ChatVideoUI.SetWatching(null);
+    _lastWatchingChatId = isWatchingHere ? chat?.Id : null;
+
+    // Show video panel when IsWatching becomes true
+    if (isVideoStreamingEnabled && !_showVideoPanel && isWatchingHere) {
         _showVideoPanel = true;
         _autoStartRecording = m.VideoState?.IsRecording == true;
-        _showVideoPanelAt = CpuTimestamp.Now;
         _pendingCameraDeviceId = m.VideoState?.SelectedCameraDeviceId;
         _pendingBlurEnabled = m.VideoState?.IsBackgroundBlurEnabled ?? false;
     }
-    // Also show when listening and others are video streaming
-    else if (isVideoStreamingEnabled && !_showVideoPanel && m.IsAnyoneVideoStreaming && IsListeningHere) {
-        _showVideoPanel = true;
-        _showVideoPanelAt = CpuTimestamp.Now;
-    }
-    // Hide video panel when recording stopped AND no remote video streams,
-    // or when user stopped listening (but not recording own video).
-    // Grace period: don't hide within 10s of showing to survive codec switches.
-    else if (_showVideoPanel
-        && _showVideoPanelAt.Elapsed > TimeSpan.FromSeconds(5)
-        && (!isVideoStreamingEnabled
-            || (m.VideoState?.IsRecording != true && !m.IsAnyoneVideoStreaming)
-            || (m.VideoState?.IsRecording != true && !IsListeningHere && m.IsAnyoneVideoStreaming))) {
+    // Hide when no longer watching or feature disabled
+    else if (_showVideoPanel && (!isVideoStreamingEnabled || !isWatchingHere)) {
         _showVideoPanel = false;
         _autoStartRecording = false;
         _pendingCameraDeviceId = null;
@@ -112,9 +105,9 @@
 @code {
     private bool _showVideoPanel;
     private bool _autoStartRecording;
-    private CpuTimestamp _showVideoPanelAt;
     private string? _pendingCameraDeviceId;
     private bool _pendingBlurEnabled;
+    private ChatId? _lastWatchingChatId;
 
     private IChats Chats => Hub.Chats;
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;

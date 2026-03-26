@@ -108,10 +108,13 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public virtual Task<ImmutableHashSet<ChatId>> GetListeningChatIds()
         => Task.FromResult(ActiveChatsUI.ActiveChats.Value.Where(c => c.IsListening).Select(c => c.ChatId).ToImmutableHashSet());
 
-    public ValueTask SetListeningState(ChatId chatId, bool mustListen)
+    public async ValueTask SetListeningState(ChatId chatId, bool mustListen)
     {
+        // Don't stop listening while watching video in this chat
+        if (!mustListen && await Hub.ChatVideoUI.GetWatchingChatId().ConfigureAwait(false) == chatId)
+            return;
         var now = CpuNow;
-        return ActiveChatsUI.UpdateActiveChats(activeChats => {
+        await ActiveChatsUI.UpdateActiveChats(activeChats => {
             if (activeChats.TryGetValue(chatId, out var chat)) {
                 if (chat.IsListening == mustListen)
                     return activeChats;
@@ -129,12 +132,15 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         });
     }
 
-    public ValueTask ClearListeningChats()
-        => ActiveChatsUI.UpdateActiveChats(activeChats => {
+    public async ValueTask ClearListeningChats()
+    {
+        var videoWatchingChatId = await Hub.ChatVideoUI.GetWatchingChatId().ConfigureAwait(false);
+        await ActiveChatsUI.UpdateActiveChats(activeChats => {
             var newActiveChats = new List<ActiveChat>(activeChats.Length);
             var isUpdated = false;
             foreach (var chat in activeChats) {
-                if (chat.IsListening) {
+                // Don't stop listening in chats with active video watching
+                if (chat.IsListening && chat.ChatId != videoWatchingChatId) {
                     newActiveChats.Add(chat with { IsListening = false });
                     isUpdated = true;
                 }
@@ -143,6 +149,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             }
             return isUpdated ? newActiveChats.ToArray() : activeChats;
         });
+    }
 
     [ComputeMethod] // Synced
     public virtual Task<ChatId?> GetRecordingChatId()
