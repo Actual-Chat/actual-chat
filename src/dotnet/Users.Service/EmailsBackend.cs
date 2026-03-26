@@ -124,6 +124,10 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
             if (chat.Id is PlaceChatId { IsRoot: true })
                 return default;
 
+            // Notes chat should never appear as having unread messages
+            if (chat.HasSingleAuthor)
+                return default;
+
             var messages = await ChatsBackend
                 .ListEntries(contactId.ChatId, Clocks.SystemClock.Now + TimeSpan.FromDays(-1), cancellationToken)
                 .ConfigureAwait(false);
