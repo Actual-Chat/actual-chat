@@ -69,7 +69,7 @@
              && IsFirstAuthorMessage
              && !IsChatLanguageSelected
              && !HasAuthorActiveTranscription()) {
-            <StreamingEntryBadge ChatId="@ChatContext.ChatId" IsChatLanguageSelected="@false"/>
+            <StreamingEntryBadge ChatId="@ChatContext.ChatId" IsChatLanguageSelected="@false" IsVoiceActive="@true"/>
         }
         @if (!sm.RetainedText.IsNullOrEmpty()) {
             <span class="retained">@sm.RetainedText</span>
