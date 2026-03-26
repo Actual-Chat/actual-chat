@@ -104,7 +104,7 @@ Describe "WatchAgent + RemoteAppServer" {
         $srcDir = Join-Path $script:waIsoDir "src" "dotnet" "App.Server"
         New-Item -ItemType Directory -Path $srcDir -Force | Out-Null
         Set-Content (Join-Path $srcDir "App.Server.csproj") "<Project/>"
-        Set-Content (Join-Path $script:waIsoDir ".env") "urls=http://localhost:19878`nCoreSettings__Instance=test-wa"
+        Set-Content (Join-Path $script:waIsoDir ".env") "urls=http://localhost:19878`nCoreSettings__Instance=test-wa`nHostSettings__BaseUri=https://test-wa.local.voxt.ai"
         # Copy Common.ps1 so the child process can source it
         $scriptsDir = Join-Path $script:waIsoDir "scripts"
         New-Item -ItemType Directory -Path $scriptsDir -Force | Out-Null
