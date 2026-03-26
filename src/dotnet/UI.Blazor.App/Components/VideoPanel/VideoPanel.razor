@@ -9,13 +9,14 @@
     var recordingCls = m.IsRecording ? "recording" : "";
     var hasRemoteStreams = m.RemoteStreams.Length > 0;
 
-    // Track when remote streams disappear — show "Connecting..." stub during codec negotiation
+    // Show "Connecting..." overlay when no remote streams and not recording;
+    // after 5s timeout, auto-close the panel if streams haven't appeared
     if (hasRemoteStreams) {
         _showConnecting = false;
-    } else if (_hadRemoteStreams) {
+        _noStreamsTimedOut = false;
+    } else if (!m.IsRecording && !_noStreamsTimedOut) {
         _showConnecting = true;
     }
-    _hadRemoteStreams = hasRemoteStreams;
 
     var remoteStreamsCls = hasRemoteStreams ? "has-remote-streams" : "";
     var firstOpenCls = _isFirstOpen ? "first-time-open" : "";
@@ -121,7 +122,7 @@
     private bool _isFirstOpen = true;
     private bool _isExpanded;
     private bool _autoStartPending;
-    private bool _hadRemoteStreams;
+    private bool _noStreamsTimedOut;
     private bool _showConnecting;
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoPanel.create";
     private static readonly string JSEnumerateMethod = $"{BlazorUIAppModule.ImportName}.JoinVideoCallModal.enumerateDevices";
@@ -161,6 +162,7 @@
             _rendered = true;
             _isFirstOpen = true;
             _autoStartPending = AutoStart;
+            _noStreamsTimedOut = false;
         } else if (!Show && _rendered && JSRef is not null) {
             await JSRef.InvokeVoidAsync("startClosing");
         }
@@ -168,6 +170,11 @@
 
     private void OnConnectingTimeout() {
         _showConnecting = false;
+        _noStreamsTimedOut = true;
+        var m = State.Value;
+        if (m.RemoteStreams.Length == 0 && !m.IsRecording) {
+            ChatVideoUI.SetWatching(null);
+        }
         StateHasChanged();
     }
 
