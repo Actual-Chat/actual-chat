@@ -102,4 +102,24 @@ public class ApiKeyTest(AppHostFixture fixture, ITestOutputHelper @out, ILogger<
             keys.Count.Should().Be(1);
         });
     }
+
+    [Fact]
+    public async Task ApiKey_ShouldAuthenticateAsOwner()
+    {
+        // Arrange — sign in and create an API key
+        await _tester.SignInAsNew("Dave");
+        var session = _tester.Session;
+        var ownAccount = await _accounts.GetOwn(session, default);
+
+        var createCommand = new Accounts_CreateApiKey(session, "Auth Test Key", 30);
+        var apiKeyId = await Commander.Call(createCommand, default);
+
+        // Act — use the API key session to get own account
+        var apiKeySession = new Session(apiKeyId);
+        var accountViaApiKey = await _accounts.GetOwn(apiKeySession, default);
+
+        // Assert — should return the same account
+        accountViaApiKey.Id.Should().Be(ownAccount.Id);
+        accountViaApiKey.Name.Should().Be(ownAccount.Name);
+    }
 }
