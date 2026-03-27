@@ -36,6 +36,12 @@ public class VideoStreamingLatencyTest(AppHostFixture fixture, ITestOutputHelper
         var sessionToken = await CreateSessionToken(session);
         var hubUrl = services.UrlMapper().ToAbsolute("/api/hub/streams");
 
+        // Warm up shard ownership — first call to a sharded service blocks until
+        // ShardOwner acquires the distributed lock + LockToUseDelay (1s).
+        // This is a one-time startup cost, not operational latency.
+        var liveVideoBackend = AppHost.Services.GetRequiredService<ILiveVideoBackend>();
+        await liveVideoBackend.List(chatId, CancellationToken.None);
+
         var sentTimestamps = new ConcurrentDictionary<long, long>();
 
         // Pre-create consumer connection in parallel with ObserveStreams to reduce first-frame latency
@@ -142,8 +148,8 @@ public class VideoStreamingLatencyTest(AppHostFixture fixture, ITestOutputHelper
         Out.WriteLine($"Frame delivery: {receivedOffsets.Count}/{TotalFrames} ({deliveryRatio:P1})");
 
         // Discovery relies on invalidation now
-        discoveryLatency.TotalMilliseconds.Should().BeLessThan(2000,
-            "stream discovery via ObserveStreams should be under 2000ms");
+        discoveryLatency.TotalMilliseconds.Should().BeLessThan(500,
+            "stream discovery via ObserveStreams should be under 500ms");
 
         totalFirstFrameLatency.TotalMilliseconds.Should().BeLessThan(1500,
             "total stream-creation-to-first-frame should be under 1500ms");
