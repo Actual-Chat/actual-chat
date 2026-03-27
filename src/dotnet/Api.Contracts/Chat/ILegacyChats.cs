@@ -22,4 +22,9 @@ public interface ILegacyChats : IComputeService
     [LegacyName("GetTile", "2.6.9999")]
     Task<LegacyChatTile> GetLegacyTile(
         Session session, ChatId chatId, int entryKind, Range<long> idTileRange, CancellationToken cancellationToken);
+
+    // Old clients call IChats.OnUpsertTextEntry:2 → returns ChatEntry (incompatible)
+    [CommandHandler, RpcMethod(ConnectTimeout = double.PositiveInfinity)]
+    [LegacyName("OnUpsertTextEntry", "2.6.9999")]
+    Task<LegacyChatEntry> OnLegacyUpsertTextEntry(Chats_UpsertTextEntry command, CancellationToken cancellationToken);
 }

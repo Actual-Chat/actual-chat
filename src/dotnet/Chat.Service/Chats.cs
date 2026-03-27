@@ -997,27 +997,4 @@ public partial class Chats(IServiceProvider services) : IChats
         }
     }
 
-    // Legacy compat: old clients send Chats_UpsertTextEntry
-    [Obsolete("2025.03: Use OnUpsertEntry with Chats_UpsertEntry")]
-    public virtual Task<ChatEntry> OnUpsertTextEntry(Chats_UpsertTextEntry command, CancellationToken cancellationToken)
-    {
-        ChatEntryForwarded? forwarded = null;
-        if (command.ForwardedChatEntryId != null || command.ForwardedAuthorId != null)
-            forwarded = new ChatEntryForwarded {
-                ChatEntryId = command.ForwardedChatEntryId,
-                AuthorId = command.ForwardedAuthorId ?? null!,
-                ChatTitle = command.ForwardedChatTitle ?? "",
-                AuthorName = command.ForwardedAuthorName ?? "",
-                BeginsAt = command.ForwardedChatEntryBeginsAt ?? default,
-            };
-        var newCommand = new Chats_UpsertEntry(command.Session, command.ChatId, command.LocalId) {
-            Text = command.Text,
-            RepliedEntryLid = command.RepliedEntryLid,
-            Attachments = command.EntryAttachments,
-            HasUploadingAttachments = command.HasAttachmentUploads,
-            ClientId = command.ClientId,
-            Forwarded = forwarded,
-        };
-        return Commander.Call(newCommand, true, cancellationToken);
-    }
 }

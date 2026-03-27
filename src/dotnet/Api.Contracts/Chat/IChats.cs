@@ -85,10 +85,6 @@ public interface IChats : IComputeService
     [CommandHandler, RpcMethod(ConnectTimeout = double.PositiveInfinity)]
     Task<ChatEntry> OnUpsertEntry(Chats_UpsertEntry command, CancellationToken cancellationToken);
 
-    [CommandHandler, RpcMethod(ConnectTimeout = double.PositiveInfinity)]
-    [Obsolete("2025.03: Use OnUpsertEntry with Chats_UpsertEntry")]
-    Task<ChatEntry> OnUpsertTextEntry(Chats_UpsertTextEntry command, CancellationToken cancellationToken);
-
     [CommandHandler, RpcMethod(ConnectTimeout = double.PositiveInfinity), LegacyName("OnRemoveTextEntry")]
     Task OnRemoveEntry(Chats_RemoveEntry command, CancellationToken cancellationToken);
 
