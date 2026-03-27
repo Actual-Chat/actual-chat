@@ -14,8 +14,8 @@ public class SessionsBackend(IServiceProvider services)
     private static readonly TimeSpan MinLastSeenAtUpdatePeriod
         = (Constants.Session.LastSeenAtUpdatePeriod - TimeSpan.FromMinutes(1)).Positive();
 
-    private AccountsBackend AccountsBackend
-        => field ??= Services.GetRequiredService<AccountsBackend>();
+    private IAccountsBackend AccountsBackend
+        => field ??= Services.GetRequiredService<IAccountsBackend>();
     private IDbEntityResolver<string, DbSession> SessionResolver
         => field ??= Services.DbEntityResolver<string, DbSession>();
 
