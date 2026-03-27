@@ -11,7 +11,7 @@ public class ExampleTest(AppHostFixture fixture, ITestOutputHelper @out)
     {
         var session = Session.New();
         Assert.NotNull(session);
-        session.ToString().Length.Should().Be(20);
+        session.ToString().Length.Should().BeOneOf(20, 24); // Recently we switched to 24-char IDs
         return Task.CompletedTask;
     }
 }
