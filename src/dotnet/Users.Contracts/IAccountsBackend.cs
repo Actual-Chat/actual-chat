@@ -13,9 +13,8 @@ public interface IAccountsBackend : IComputeService, IBackendService
     Task<UserId?> GetIdByUserIdentity(UserIdentity identity, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<UserId?> GetIdByAlias(AliasId aliasId, CancellationToken cancellationToken);
-
     [ComputeMethod]
-    Task<ApiList<string>> GetSessionIds(UserId userId, CancellationToken cancellationToken);
+    Task<ApiList<Session>> ListSessions(UserId userId, CancellationToken cancellationToken);
 
     // Non-compute methods
 
@@ -66,7 +65,7 @@ public sealed partial record AccountsBackend_SignIn(
 // ReSharper disable once InconsistentNaming
 public sealed partial record AccountsBackend_SignOut(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] bool Force = false
+    [property: DataMember, MemoryPackOrder(1)] bool Deactivate = false
 ) : ISessionCommand<Unit>, IBackendCommand, IHasShardKey<Session>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]

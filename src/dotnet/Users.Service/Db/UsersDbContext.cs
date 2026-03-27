@@ -8,14 +8,14 @@ namespace ActualChat.Users.Db;
 public class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContextBase(options)
 {
     public DbSet<DbKvasEntry> KvasEntries { get; protected set; } = null!;
-    public DbSet<DbSessionInfo> Sessions { get; protected set; } = null!;
     public DbSet<DbAccount> Accounts { get; protected set; } = null!;
     public DbSet<DbAccountIdentity> AccountIdentities { get; protected set; } = null!;
+    public DbSet<DbSession> Sessions { get; protected set; } = null!;
+    public DbSet<DbUserSession> UserSessions { get; protected set; } = null!;
     public DbSet<DbAvatar> Avatars { get; protected set; } = null!;
     public DbSet<DbUserPresence> UserPresences { get; protected set; } = null!;
     public DbSet<DbChatPosition> ChatPositions { get; protected set; } = null!;
     public DbSet<DbChatUsage> ChatUsages { get; protected set; } = null!;
-    public DbSet<DbUserSession> UserSessions { get; protected set; } = null!;
 
     // ActualLab.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
@@ -37,6 +37,19 @@ public class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContex
         var account = model.Entity<DbAccount>();
         account.Property(e => e.Id).UseCollation("C");
 
+        var accountIdentity = model.Entity<DbAccountIdentity>();
+        accountIdentity.Property(e => e.Id).UseCollation("C");
+        accountIdentity.Property(e => e.DbAccountId).UseCollation("C");
+
+        var sessionInfo = model.Entity<DbSession>();
+        sessionInfo.Property(e => e.Id).UseCollation("C");
+        sessionInfo.Property(e => e.UserId).UseCollation("C");
+
+        var userSession = model.Entity<DbUserSession>();
+        userSession.HasKey(e => new { e.UserId, e.SessionId });
+        userSession.Property(e => e.UserId).UseCollation("C");
+        userSession.Property(e => e.SessionId).UseCollation("C");
+
         var avatar = model.Entity<DbAvatar>();
         avatar.Property(e => e.Id).UseCollation("C");
         avatar.Property(e => e.UserId).UseCollation("C");
@@ -48,23 +61,10 @@ public class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContex
         var chatPosition = model.Entity<DbChatPosition>();
         chatPosition.Property(e => e.Id).UseCollation("C");
 
-        var accountIdentity = model.Entity<DbAccountIdentity>();
-        accountIdentity.Property(e => e.Id).UseCollation("C");
-        accountIdentity.Property(e => e.DbAccountId).UseCollation("C");
-
         var chatUsage = model.Entity<DbChatUsage>();
         chatUsage.Property(e => e.Id).UseCollation("C");
         chatUsage.Property(e => e.ChatId).UseCollation("C");
         chatUsage.Property(e => e.UserId).UseCollation("C");
-
-        var userSession = model.Entity<DbUserSession>();
-        userSession.HasKey(e => new { e.UserId, e.SessionId });
-        userSession.Property(e => e.UserId).UseCollation("C");
-        userSession.Property(e => e.SessionId).UseCollation("C");
-
-        var sessionInfo = model.Entity<DbSessionInfo>();
-        sessionInfo.Property(e => e.Id).UseCollation("C");
-        sessionInfo.Property(e => e.UserId).UseCollation("C");
 
         var operation = model.Entity<DbOperation>();
         operation.Property(e => e.Uuid).UseCollation("C");

@@ -2,7 +2,7 @@ using ActualChat.Geo;
 
 namespace ActualChat.Core.Server.UnitTests.Geo;
 
-public class GeoIPTest
+public class GeoIPTest(ITestOutputHelper @out) : TestBase(@out)
 {
     [Theory]
     [InlineData("98.184.227.207", "US")]   // Cox Communications, California
@@ -21,6 +21,31 @@ public class GeoIPTest
     {
         var country = await GeoIP.ToCountryCode(ipAddress);
         country.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("98.184.227.207", "United States")]
+    [InlineData("81.2.69.142", "United Kingdom")]
+    [InlineData("77.88.55.242", "Russia")]
+    [InlineData("192.168.1.1", null)]
+    [InlineData("NotAnIP", null)]
+    public async Task ToCountryNameTest(string ipAddress, string? expected)
+    {
+        var name = await GeoIP.ToCountryName(ipAddress);
+        name.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("81.2.69.142", "Kettering, United Kingdom")]    // London, UK — city DB should resolve
+    [InlineData("98.184.227.207", "Laguna Niguel, United States")] // Laguna Niguel, United States
+    [InlineData("192.168.1.1")]
+    [InlineData("77.88.55.242")] // Russia, but no City
+    [InlineData("NotAnIP")]
+    public async Task ToCityAndCountryNameTest(string ipAddress, string? expected = null)
+    {
+        var result = await GeoIP.ToCityAndCountryName(ipAddress);
+        WriteLine($"{ipAddress} -> {result}");
+        result.Should().Be(expected);
     }
 
     [Theory]

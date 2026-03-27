@@ -40,7 +40,7 @@ public static class HttpSessionExt
             return null;
 
         // Reject API keys from cookie-based auth
-        if (sessionId.StartsWith(CoreConstants.Session.ApiKeyPrefix, StringComparison.Ordinal))
+        if (sessionId.Length > 0 && sessionId[0] == CoreConstants.Session.ApiKeyPrefix)
             return null;
 
         return SessionExt.NewValidOrNull(sessionId);

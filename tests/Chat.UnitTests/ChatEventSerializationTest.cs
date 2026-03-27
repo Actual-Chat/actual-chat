@@ -186,7 +186,7 @@ public class ChatEventSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void UserSignedOutEvent_Basic()
     {
-        var evt = new UserSignedOutEvent("session-1", false, TestUserId);
+        var evt = new UserSignedOutEvent(TestUserId, Session.New());
         evt.AssertPassesThroughAllSerializers();
     }
 }

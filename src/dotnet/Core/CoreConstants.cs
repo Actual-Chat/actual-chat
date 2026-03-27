@@ -19,8 +19,11 @@ public static partial class CoreConstants
 
     public static class Session
     {
-        public const string ApiKeyPrefix = "k-";
-        public const int IdPrefixLength = 10;
+        public const char ApiKeyPrefix = '!';
+        public const int IdPrefixLength = 8;
+        public static readonly TimeSpan SessionExpirationTime = TimeSpan.FromDays(90);
+        public static readonly TimeSpan ApiKeyExpirationTime = TimeSpan.FromDays(365);
+        public static readonly TimeSpan MaxApiKeyExpirationTime = TimeSpan.FromDays(365 * 3);
     }
 
     public static class AsyncMemoizer

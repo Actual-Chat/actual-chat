@@ -5,14 +5,11 @@ using Microsoft.EntityFrameworkCore;
 namespace ActualChat.Users.Db;
 
 [Table("user_sessions")]
-[Index(nameof(UserId))]
+[Index(nameof(SessionId))]
 public class DbUserSession
 {
-    [StringLength(256)]
+    [StringLength(128)]
     public string UserId { get; set; } = "";
-
-    [StringLength(256)]
+    [StringLength(128)]
     public string SessionId { get; set; } = "";
-
-    public bool IsApiKey { get; set; }
 }

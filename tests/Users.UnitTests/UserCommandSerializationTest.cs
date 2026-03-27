@@ -32,29 +32,29 @@ public class UserCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     [Fact]
     public void Accounts_SignOut_Basic()
     {
-        var cmd = new Accounts_SignOut(TestSession, true);
+        var cmd = new Accounts_SignOut(TestSession);
         cmd.AssertPassesThroughAllSerializers();
     }
 
     [Fact]
     public void Accounts_CreateApiKey_Basic()
     {
-        var cmd = new Accounts_CreateApiKey(TestSession, "My API Key", Moment.Now + TimeSpan.FromDays(30));
+        var cmd = new Accounts_CreateApiKey(TestSession, "My API Key", 30);
         cmd.AssertPassesThroughAllSerializers(
             (deserialized, original) => {
                 deserialized.Session.Should().Be(original.Session);
                 deserialized.Name.Should().Be(original.Name);
-                deserialized.ExpiresAt.Should().Be(original.ExpiresAt);
+                deserialized.ExpiresInDays.Should().Be(30);
             }, Out);
     }
 
     [Fact]
-    public void Accounts_CreateApiKey_NoExpiration()
+    public void Accounts_CreateApiKey_DefaultExpiration()
     {
-        var cmd = new Accounts_CreateApiKey(TestSession, "No Expiry Key");
+        var cmd = new Accounts_CreateApiKey(TestSession, "Default Expiry Key");
         cmd.AssertPassesThroughAllSerializers(
             (deserialized, original) => {
-                deserialized.ExpiresAt.Should().BeNull();
+                deserialized.ExpiresInDays.Should().Be(365);
             }, Out);
     }
 
@@ -71,17 +71,17 @@ public class UserCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     [Fact]
     public void Accounts_DeactivateAllSessions_Basic()
     {
-        var cmd = new Accounts_DeactivateAllSessions(TestSession, true);
+        var cmd = new Accounts_DeactivateAllSessions(TestSession, [SessionKind.Session]);
         cmd.AssertPassesThroughAllSerializers(
             (deserialized, original) => {
-                deserialized.ApiKeysOnly.Should().Be(original.ApiKeysOnly);
+                deserialized.Kinds.Should().BeEquivalentTo(original.Kinds);
             }, Out);
     }
 
     [Fact]
     public void AccountsBackend_SignOut_Basic()
     {
-        var cmd = new AccountsBackend_SignOut(TestSession, true);
+        var cmd = new AccountsBackend_SignOut(TestSession);
         cmd.AssertPassesThroughAllSerializers();
     }
 

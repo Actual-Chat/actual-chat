@@ -94,7 +94,7 @@
     // Nested types
 
     public sealed record Model {
-        public SessionInfo? SessionInfo { get; init; }
+        public SessionInfoFull? SessionInfo { get; init; }
         public AccountFull Account { get; init; } = null!;
 
         // This record relies on referential equality
