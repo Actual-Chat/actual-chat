@@ -11,7 +11,6 @@ public class MobileSessions(IServiceProvider services) : IMobileSessions
     private const string UnknownAppUserAgent = "UnknownApp/1.0";
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private ISessionsBackend SessionsBackend { get; } = services.GetRequiredService<ISessionsBackend>();
-    private ISessionValidator SessionValidator { get; } = services.GetRequiredService<ISessionValidator>();
     private ICommander Commander { get; } = services.Commander();
 
     // Not a [ComputeMethod]!
