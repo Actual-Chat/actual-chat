@@ -11,7 +11,7 @@ public sealed class ServerAuth
     public string[] NameClaimKeys { get; init; } = [];
     public string CloseFlowRequestPath { get; init; } = "/fusion/close";
     public string AppCloseFlowRequestPath { get; init; } = "/fusion/close-app";
-    public TimeSpan SessionInfoUpdatePeriod { get; init; } = Constants.Session.SessionInfoUpdatePeriod;
+    public TimeSpan SessionInfoUpdatePeriod { get; init; } = Constants.Session.LastSeenAtUpdatePeriod;
     public Func<ServerAuth, HttpContext, bool> AllowSignIn = AllowOnCloseFlow;
     public Func<ServerAuth, HttpContext, bool> AllowChange = AllowOnCloseFlow;
     public Func<ServerAuth, HttpContext, bool> AllowSignOut = AllowOnCloseFlow;
@@ -19,6 +19,7 @@ public sealed class ServerAuth
     public HostInfo HostInfo { get; }
     public IAccounts Accounts { get; }
     public IAccountsBackend AccountsBackend { get; }
+    public ISessionsBackend SessionsBackend { get; }
     public ICommander Commander { get; }
     public MomentClockSet Clocks { get; }
 
@@ -33,6 +34,7 @@ public sealed class ServerAuth
         HostInfo = services.HostInfo();
         Accounts = services.GetRequiredService<IAccounts>();
         AccountsBackend = services.GetRequiredService<IAccountsBackend>();
+        SessionsBackend = services.GetRequiredService<ISessionsBackend>();
         ClaimMapper = services.GetRequiredService<ClaimMapper>();
         Commander = services.Commander();
 
@@ -74,8 +76,11 @@ public sealed class ServerAuth
         HttpContext httpContext, bool assumeAllowed, bool mustExist,
         CancellationToken cancellationToken = default)
     {
-        var originalSession = httpContext.TryGetSessionFromCookie();
-        var session = originalSession ?? Session.New();
+        var cookieSession = httpContext.TryGetSessionFromCookie();
+        if (!await Accounts.IsValidSession(cookieSession, cancellationToken).ConfigureAwait(false))
+            cookieSession = null;
+
+        var session = cookieSession ?? Session.New();
         for (var tryIndex = 0;; tryIndex++) {
             try {
 #if false
@@ -88,7 +93,7 @@ public sealed class ServerAuth
                 await UpdateAuthState(session, httpContext, assumeAllowed, mustExist, cancellationToken)
                     .WaitAsync(TimeSpan.FromSeconds(1), cancellationToken)
                     .ConfigureAwait(false);
-                var isNew = originalSession != session;
+                var isNew = cookieSession != session;
                 if (isNew)
                     httpContext.AddSessionCookie(session);
                 return (session, isNew);
@@ -110,16 +115,15 @@ public sealed class ServerAuth
         Session session, HttpContext httpContext, bool assumeAllowed, bool mustExist,
         CancellationToken cancellationToken)
     {
-        // API key sessions are pre-authenticated — skip ServerAuth processing
-        if (session.IsApiKey())
-            return;
+        if (session.Kind is SessionKind.ApiKey)
+            throw StandardError.Unavailable("Cannot use API key session here.");
 
         var httpUser = httpContext.User;
         var httpAuthenticationSchema = httpUser.Identity?.AuthenticationType ?? "";
         var httpIsSignedIn = !httpAuthenticationSchema.IsNullOrEmpty();
 
         var ipAddress = httpContext.GetRemoteIPAddress()?.ToString() ?? "";
-        var userAgent = httpContext.Request.Headers.TryGetValue("User-Agent", out var userAgentValues)
+        var description = httpContext.Request.Headers.TryGetValue("User-Agent", out var userAgentValues)
             ? userAgentValues.FirstOrDefault() ?? ""
             : "";
 
@@ -127,10 +131,13 @@ public sealed class ServerAuth
         var mustSetupSession =
             sessionInfo == null
             || sessionInfo.IPAddress != ipAddress
-            || sessionInfo.UserAgent != userAgent
+            || sessionInfo.Description != description
             || sessionInfo.LastSeenAt + SessionInfoUpdatePeriod < Clocks.SystemClock.Now;
         if (mustSetupSession || sessionInfo == null) {
-            var upsertSessionCmd = new SessionsBackend_Upsert(session, ipAddress, userAgent);
+            var upsertSessionCmd = new SessionsBackend_Upsert(session) {
+                IPAddress = ipAddress,
+                Description = description,
+            };
             await Commander.Call(upsertSessionCmd, true, cancellationToken).ConfigureAwait(false);
         }
 
@@ -139,26 +146,20 @@ public sealed class ServerAuth
         if (!isSignedIn)
             existingAccount = null;
 
-        try {
-            if (httpIsSignedIn) {
-                if (isSignedIn && IsSameAccount(existingAccount, httpUser, httpAuthenticationSchema))
-                    return; // Nothing to change
+        if (httpIsSignedIn) {
+            if (isSignedIn && IsSameAccount(existingAccount, httpUser, httpAuthenticationSchema))
+                return; // Nothing to change
 
-                var isSignInAllowed = !isSignedIn
-                    ? assumeAllowed || AllowSignIn(this, httpContext)
-                    : assumeAllowed || AllowChange(this, httpContext);
-                if (!isSignInAllowed)
-                    return; // Sign-in or user change is not allowed for the current location
+            var isSignInAllowed = !isSignedIn
+                ? assumeAllowed || AllowSignIn(this, httpContext)
+                : assumeAllowed || AllowChange(this, httpContext);
+            if (!isSignInAllowed)
+                return; // Sign-in or user change is not allowed for the current location
 
-                await SignIn(session, existingAccount, httpUser, httpAuthenticationSchema, mustExist, cancellationToken).ConfigureAwait(false);
-            }
-            else if (isSignedIn && (assumeAllowed || AllowSignOut(this, httpContext)))
-                await SignOut(session, cancellationToken).ConfigureAwait(false);
+            await SignIn(session, existingAccount, httpUser, httpAuthenticationSchema, mustExist, cancellationToken).ConfigureAwait(false);
         }
-        finally {
-            // This should be done once important things are completed
-            _ = Accounts.UpdatePresence(session, CancellationToken.None);
-        }
+        else if (isSignedIn && (assumeAllowed || AllowSignOut(this, httpContext)))
+            await SignOut(session, cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods

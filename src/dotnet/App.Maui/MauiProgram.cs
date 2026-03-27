@@ -102,7 +102,9 @@ public static partial class MauiProgram
 
             AppNonScopedServiceStarter.WarmupStaticServices(HostInfo);
 
+#pragma warning disable CA2025
             BlazorWebViewApp.Initialize(() => BuildBlazorViewAppInternal(app));
+#pragma warning restore CA2025
 
             SetupBlazorViewAppPostBuildRoutine();
 

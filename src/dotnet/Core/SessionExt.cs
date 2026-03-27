@@ -8,21 +8,27 @@ public static class SessionExt
             return null;
 
         try {
-            return new Session(sessionId).NullIfInvalid();
+            var session = new Session(sessionId);
+            return session.IsValid() ? session : null;
         }
         catch {
             return null;
         }
     }
 
-    public static Session? NullIfInvalid(this Session? session)
-        => session.IsValid() ? session : null;
+    extension(Session session)
+    {
+        public SessionKind Kind
+            => session.Id.StartsWith(CoreConstants.Session.ApiKeyPrefix)
+                ? SessionKind.ApiKey
+                : SessionKind.Session;
 
-    public static string GetPrefix(this Session session)
-        => session.Id.Length >= CoreConstants.Session.IdPrefixLength
-            ? session.Id[..CoreConstants.Session.IdPrefixLength]
-            : session.Id;
+        public string IdPrefix
+            => session.Id.Length >= CoreConstants.Session.IdPrefixLength
+                ? session.Id[..CoreConstants.Session.IdPrefixLength]
+                : session.Id;
 
-    public static bool IsApiKey(this Session session)
-        => session.Id.StartsWith(CoreConstants.Session.ApiKeyPrefix, StringComparison.Ordinal);
+        public bool HasIdPrefix(string idPrefix)
+            => session.Id.StartsWith(idPrefix, StringComparison.Ordinal);
+    }
 }

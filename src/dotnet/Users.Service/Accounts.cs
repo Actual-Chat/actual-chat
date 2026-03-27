@@ -1,18 +1,103 @@
 using ActualChat.Contacts;
+using ActualChat.Geo;
 using ActualChat.Notification;
-using ActualChat.Users.Db;
-using ActualLab.Fusion.EntityFramework;
-using Microsoft.EntityFrameworkCore;
+using UAParser;
 
 namespace ActualChat.Users;
 
 /// <summary>
 /// Frontend service for user account operations with session-based access control.
 /// </summary>
-public class Accounts(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IAccounts
+public class Accounts(IServiceProvider services) : IAccounts
 {
+    // ReSharper disable once InconsistentNaming
+    private static readonly Parser UAParser = Parser.GetDefault();
+
     private ISessionsBackend SessionsBackend { get; } = services.GetRequiredService<ISessionsBackend>();
     private IAccountsBackend Backend { get; } = services.GetRequiredService<IAccountsBackend>();
+    private ICommander Commander { get; } = services.Commander();
+    private MomentClockSet Clocks { get; } = services.Clocks();
+
+    // Compute methods
+
+    // [ComputeMethod]
+    public virtual async Task<AccountFull> GetOwn(Session session, CancellationToken cancellationToken)
+    {
+        var sessionInfo = await SessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
+        UserId userId;
+        if (sessionInfo is { IsActive: true, UserId: { } vUserId })
+            userId = vUserId;
+        else {
+            if (sessionInfo?.GetGuestId() is not { } guestId)
+                throw StandardError.Constraint("Inactive session or GuestId is not set.");
+
+            userId = guestId;
+        }
+
+        var account = await Backend.Get(userId, cancellationToken).Require().ConfigureAwait(false);
+        return account;
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<Account?> Get(Session session, UserId userId, CancellationToken cancellationToken)
+    {
+        var account = await Backend.Get(userId, cancellationToken).ConfigureAwait(false);
+        return account.ToAccount();
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<AccountFull?> GetFull(Session session, UserId userId, CancellationToken cancellationToken)
+    {
+        var account = await Backend.Get(userId, cancellationToken).ConfigureAwait(false);
+        await this.AssertCanRead(session, account, cancellationToken).ConfigureAwait(false);
+        return account;
+    }
+
+    // [ComputeMethod]
+    public virtual Task<SessionInfoFull?> GetSessionInfo(Session session, CancellationToken cancellationToken)
+        => SessionsBackend.Get(session, cancellationToken);
+
+    // [ComputeMethod]
+#pragma warning disable CS0809
+    [Obsolete("2025.03: Use GetOwnSessionInfo instead.")]
+    public virtual async Task<LegacySessionInfo?> GetLegacySessionInfo(Session session, CancellationToken cancellationToken)
+#pragma warning restore CS0809
+    {
+        var sessionInfo = await SessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
+        return sessionInfo is null ? null : LegacySessionInfo.From(sessionInfo);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ApiList<SessionInfo>> ListOwnSessions(
+        Session session, SessionKind kind, CancellationToken cancellationToken)
+    {
+        var ownAccount = await GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (ownAccount.IsGuest)
+            return [];
+
+        var userId = ownAccount.Id;
+        var sessions = await Backend.ListSessions(userId, cancellationToken).ConfigureAwait(false);
+        var result = new List<SessionInfo>();
+        foreach (var s in sessions) {
+            if (s.Kind != kind)
+                continue;
+
+            var sessionInfo = await SessionsBackend.Get(s, cancellationToken).ConfigureAwait(false);
+            if (sessionInfo is null || !sessionInfo.IsActive)
+                continue;
+
+            var info = sessionInfo.ToSessionInfo()!;
+            if (s.Kind is SessionKind.Session) {
+                var userAgent = FormatUserAgent(info.Description);
+                var location = await FormatLocation(info.IPAddress).ConfigureAwait(false);
+                info = info with { Description = $"{userAgent} at {location}" };
+            }
+            result.Add(info);
+        }
+        return result.ToApiList();
+    }
+
+    // Command handlers
 
     // [CommandHandler]
     public virtual async Task OnSignOut(Accounts_SignOut command, CancellationToken cancellationToken)
@@ -20,7 +105,7 @@ public class Accounts(IServiceProvider services) : DbServiceBase<UsersDbContext>
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var backendCommand = new AccountsBackend_SignOut(command.Session, command.Force);
+        var backendCommand = new AccountsBackend_SignOut(command.Session);
         await Commander.Call(backendCommand, cancellationToken).ConfigureAwait(false);
     }
 
@@ -55,8 +140,6 @@ public class Accounts(IServiceProvider services) : DbServiceBase<UsersDbContext>
         var ownAccount = await GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         ownAccount.Require(AccountFull.MustBeActive);
 
-        // NOTE(AY): This should go through the events / queues, let's discuss this.
-
         // Sign out to prevent unexpected UI invalidations
         var signOutCommand = new AccountsBackend_SignOut(command.Session);
         await Commander.Call(signOutCommand, true, cancellationToken).ConfigureAwait(false);
@@ -79,14 +162,7 @@ public class Accounts(IServiceProvider services) : DbServiceBase<UsersDbContext>
         var deleteExternalContactHashesCommand = new ExternalContactHashesBackend_RemoveAccount(ownAccount.Id);
         await Commander.Call(deleteExternalContactHashesCommand, true, cancellationToken).ConfigureAwait(false);
 
-        // Remove all user_sessions entries
-        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _2 = dbContext.ConfigureAwait(false);
-        await dbContext.UserSessions
-            .Where(x => x.UserId == ownAccount.Id.Value)
-            .ExecuteDeleteAsync(cancellationToken)
-            .ConfigureAwait(false);
-
+        // AccountsBackend.OnDelete handles user_sessions cleanup
         var deleteOwnAccountCommand = new AccountsBackend_Delete(ownAccount.Id);
         await Commander.Call(deleteOwnAccountCommand, true, cancellationToken).ConfigureAwait(false);
     }
@@ -97,42 +173,22 @@ public class Accounts(IServiceProvider services) : DbServiceBase<UsersDbContext>
         if (Invalidation.IsActive)
             return ""; // It just spawns other commands, so nothing to do here
 
+        var maxDays = (int)CoreConstants.Session.MaxApiKeyExpirationTime.TotalDays;
+        if (command.ExpiresInDays < 1 || command.ExpiresInDays > maxDays)
+            throw StandardError.Constraint($"API key expiration must be between 1 and {maxDays} days.");
+
         var ownAccount = await GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
+        ownAccount.Require(AccountFull.MustNotBeGuest);
         ownAccount.Require(AccountFull.MustBeActive);
 
-        var userId = ownAccount.Id;
-        // Generate API key session ID with "api-" prefix
-        var apiKeySessionId = CoreConstants.Session.ApiKeyPrefix + Session.New().Id;
-        var apiKeySession = new Session(apiKeySessionId);
-
-        // Create session via upsert with user info
-        var upsertCommand = new SessionsBackend_Upsert(
-            apiKeySession, "", "", default,
-            userId.Value, ownAccount.Identities.FirstOrDefault().Key.Id ?? "");
-        var sessionInfo = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
-
-        // Set Name and ExpiresAt on the DbSessionInfo directly
-        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _ = dbContext.ConfigureAwait(false);
-
-        var dbSessionInfo = await dbContext.Sessions
-            .FirstOrDefaultAsync(s => s.Id == apiKeySessionId, cancellationToken)
-            .ConfigureAwait(false);
-        if (dbSessionInfo is not null) {
-            dbSessionInfo.Name = command.Name;
-            dbSessionInfo.ExpiresAt = command.ExpiresAt?.ToDateTime();
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        }
-
-        // Insert DbUserSession mapping
-        dbContext.UserSessions.Add(new DbUserSession {
-            UserId = userId.Value,
-            SessionId = apiKeySessionId,
-            IsApiKey = true,
-        });
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-        return apiKeySessionId;
+        var apiKey = new Session(CoreConstants.Session.ApiKeyPrefix + Session.New().Id);
+        var upsertCommand = new SessionsBackend_Upsert(apiKey) {
+            ExpiresAt = Clocks.SystemClock.Now + TimeSpan.FromDays(command.ExpiresInDays),
+            Description = command.Name,
+            UserId = ownAccount.Id,
+        };
+        await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+        return apiKey.Id;
     }
 
     // [CommandHandler]
@@ -142,20 +198,17 @@ public class Accounts(IServiceProvider services) : DbServiceBase<UsersDbContext>
             return; // It just spawns other commands, so nothing to do here
 
         var ownAccount = await GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
-        ownAccount.Require(AccountFull.MustBeActive);
+        ownAccount.Require(AccountFull.MustNotBeGuest);
 
         var userId = ownAccount.Id;
-        var backend = Services.GetRequiredService<IAccountsBackend>();
-        var sessionIds = await backend.GetSessionIds(userId, cancellationToken).ConfigureAwait(false);
+        var sessions = await Backend.ListSessions(userId, cancellationToken).ConfigureAwait(false);
+        var targetSession = sessions.FirstOrDefault(x => x.HasIdPrefix(command.IdPrefix));
+        if (targetSession is null)
+            throw StandardError.NotFound<Session>();
+        if (targetSession == command.Session)
+            throw StandardError.NotSupported("Cannot deactivate the current session.");
 
-        var targetSessionId = sessionIds.FirstOrDefault(sid =>
-            sid.Length >= CoreConstants.Session.IdPrefixLength
-            && sid[..CoreConstants.Session.IdPrefixLength] == command.IdPrefix);
-
-        if (targetSessionId is null)
-            throw StandardError.NotFound<SessionInfo>("Session not found.");
-
-        var signOutCommand = new AccountsBackend_SignOut(new Session(targetSessionId), true);
+        var signOutCommand = new AccountsBackend_SignOut(targetSession, Deactivate: true);
         await Commander.Call(signOutCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
@@ -169,111 +222,80 @@ public class Accounts(IServiceProvider services) : DbServiceBase<UsersDbContext>
         ownAccount.Require(AccountFull.MustBeActive);
 
         var userId = ownAccount.Id;
-        var backend = Services.GetRequiredService<IAccountsBackend>();
-        var sessionIds = await backend.GetSessionIds(userId, cancellationToken).ConfigureAwait(false);
-        var currentSessionId = command.Session.Id;
+        var sessions = await Backend.ListSessions(userId, cancellationToken).ConfigureAwait(false);
 
-        foreach (var sessionId in sessionIds) {
-            // Skip current session unless ApiKeysOnly (in which case we only deactivate API keys)
-            if (command.ApiKeysOnly) {
-                if (!sessionId.StartsWith(CoreConstants.Session.ApiKeyPrefix, StringComparison.Ordinal))
-                    continue;
-            }
-            else if (sessionId == currentSessionId)
+        var kinds = command.Kinds.ToHashSet();
+        foreach (var session in sessions) {
+            if (session == command.Session || !kinds.Contains(session.Kind))
                 continue;
 
-            var signOutCommand = new AccountsBackend_SignOut(new Session(sessionId), true);
+            var signOutCommand = new AccountsBackend_SignOut(session, Deactivate: true);
             await Commander.Call(signOutCommand, true, cancellationToken).ConfigureAwait(false);
         }
     }
 
-    public virtual Task UpdatePresence(Session session, CancellationToken cancellationToken)
-        => SessionsBackend.UpdatePresence(session, cancellationToken);
+    // Private methods
 
-    // Compute methods
-
-    // [ComputeMethod]
-    public virtual Task<bool> IsSignOutForced(Session session, CancellationToken cancellationToken)
-        => SessionsBackend.IsSignOutForced(session, cancellationToken);
-
-    // [ComputeMethod]
-    public virtual Task<SessionInfo?> GetSessionInfo(Session session, CancellationToken cancellationToken)
-        => SessionsBackend.Get(session, cancellationToken);
-
-    // [ComputeMethod]
-    public virtual async Task<ApiList<UserSessionInfo>> GetOwnSessions(Session session, bool isApiKey, CancellationToken cancellationToken)
+    private static string FormatUserAgent(string description)
     {
-        var ownAccount = await GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (ownAccount.IsGuest)
-            return new ApiList<UserSessionInfo>();
+        if (description.IsNullOrEmpty())
+            return "Unknown";
 
-        var userId = ownAccount.Id;
-        var backend = Services.GetRequiredService<IAccountsBackend>();
-        var sessionIds = await backend.GetSessionIds(userId, cancellationToken).ConfigureAwait(false);
+        // Mobile app user agents: "Android/2.6.123 ...", "Ios/2.6.123 ...", etc.
+        var app = TryParseApp(description);
+        if (app is not null)
+            return $"{CoreConstants.AppName} {app}";
 
-        var result = new List<UserSessionInfo>();
-        foreach (var sessionId in sessionIds) {
-            var isSessionApiKey = sessionId.StartsWith(CoreConstants.Session.ApiKeyPrefix, StringComparison.Ordinal);
-            if (isSessionApiKey != isApiKey)
-                continue;
-
-            var s = new Session(sessionId);
-            var sessionInfo = await SessionsBackend.Get(s, cancellationToken).ConfigureAwait(false);
-            if (sessionInfo is null)
-                continue;
-
-            // Read DbSessionInfo for Name and ExpiresAt
-            var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-            await using var _ = dbContext.ConfigureAwait(false);
-            var dbSessionInfo = await dbContext.Sessions
-                .FirstOrDefaultAsync(si => si.Id == sessionId, cancellationToken)
-                .ConfigureAwait(false);
-
-            var userSessionInfo = new UserSessionInfo(s.GetPrefix()) {
-                IsApiKey = isSessionApiKey,
-                IsActive = !sessionInfo.IsSignOutForced,
-                Name = dbSessionInfo?.Name ?? "",
-                UserAgent = sessionInfo.UserAgent,
-                CreatedAt = sessionInfo.CreatedAt,
-                LastSeenAt = sessionInfo.LastSeenAt,
-                ExpiresAt = dbSessionInfo?.ExpiresAt is { } expiresAt ? new Moment(expiresAt) : null,
-            };
-            result.Add(userSessionInfo);
+        // Browser user agents: parse with UAParser
+        try {
+            var client = UAParser.Parse(description);
+            var browser = client.UA.Family;
+            var version = client.UA.Major;
+            if (!browser.IsNullOrEmpty() && browser != "Other") {
+                var result = browser;
+                if (!version.IsNullOrEmpty())
+                    result += $" v{version}";
+                return result;
+            }
         }
-
-        return result.ToApiList();
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<AccountFull> GetOwn(Session session, CancellationToken cancellationToken)
-    {
-        var sessionInfo = await SessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
-        UserId userId;
-        if (sessionInfo?.IsAuthenticated() ?? false)
-            userId = UserId.Parse(sessionInfo.UserId);
-        else {
-            if (sessionInfo?.GetGuestId() is not { } guestId)
-                throw StandardError.Internal("Invalid session or GuestId is not set.");
-
-            userId = guestId;
+        catch {
+            // Parsing failed, return as-is
         }
-
-        var account = await Backend.Get(userId, cancellationToken).Require().ConfigureAwait(false);
-        return account;
+        return description;
     }
 
-    // [ComputeMethod]
-    public virtual async Task<Account?> Get(Session session, UserId userId, CancellationToken cancellationToken)
+    private static async ValueTask<string> FormatLocation(string ipAddress)
     {
-        var account = await Backend.Get(userId, cancellationToken).ConfigureAwait(false);
-        return account.ToAccount();
+        if (ipAddress.IsNullOrEmpty())
+            return "Unknown location";
+
+        var location = await GeoIP.ToCityAndCountryName(ipAddress).ConfigureAwait(false);
+        if (!location.IsNullOrEmpty())
+            return location;
+
+        location = await GeoIP.ToCountryName(ipAddress).ConfigureAwait(false);
+        if (!location.IsNullOrEmpty())
+            return location;
+
+        return $"{ipAddress}, Unknown location";
     }
 
-    // [ComputeMethod]
-    public virtual async Task<AccountFull?> GetFull(Session session, UserId userId, CancellationToken cancellationToken)
+    private static string? TryParseApp(string description)
     {
-        var account = await Backend.Get(userId, cancellationToken).ConfigureAwait(false);
-        await this.AssertCanRead(session, account, cancellationToken).ConfigureAwait(false);
-        return account;
+        // Format: "{AppKind}/{version} {optional HTTP UserAgent}"
+        var slashIndex = description.IndexOf('/');
+        if (slashIndex <= 0)
+            return null;
+
+        var prefix = description[..slashIndex];
+        return prefix switch {
+            "AndroidApp" => "Android App",
+            "IosApp" => "iOS App",
+            "WindowsApp" => "Windows App",
+            "MacOSApp" => "macOS App",
+            "WasmApp" => "Web App",
+            "UnknownApp" => "App",
+            _ => null,
+        };
     }
 }

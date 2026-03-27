@@ -7,11 +7,12 @@ using ActualLab.Versioning;
 namespace ActualChat.Users.Db;
 
 [Table("_Sessions")]
-[Index(nameof(CreatedAt), nameof(IsSignOutForced))]
-[Index(nameof(LastSeenAt), nameof(IsSignOutForced))]
-[Index(nameof(UserId), nameof(IsSignOutForced))]
-[Index(nameof(IPAddress), nameof(IsSignOutForced))]
-public class DbSessionInfo : IHasId<string>, IHasVersion<long>, IRequirementTarget
+[Index(nameof(CreatedAt))]
+[Index(nameof(LastSeenAt))]
+[Index(nameof(ExpiresAt))]
+[Index(nameof(UserId))]
+[Index(nameof(IPAddress))]
+public class DbSession : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private NewtonsoftJsonSerialized<ImmutableOptionSet> _options = ImmutableOptionSet.Empty;
 
@@ -29,24 +30,17 @@ public class DbSessionInfo : IHasId<string>, IHasVersion<long>, IRequirementTarg
         get => field.DefaultKind(DateTimeKind.Utc);
         set => field = value.DefaultKind(DateTimeKind.Utc);
     }
-
-    public string IPAddress { get; set; } = "";
-    public string UserAgent { get; set; } = "";
-
-    // Authentication
-    public string AuthenticatedIdentity { get; set; } = "";
-    public string? UserId { get; set; }
-    public bool IsSignOutForced { get; set; }
-
-    // Session metadata
-    [StringLength(256)]
-    public string Name { get; set; } = "";
-    public DateTime? ExpiresAt {
-        get => field?.DefaultKind(DateTimeKind.Utc);
-        set => field = value?.DefaultKind(DateTimeKind.Utc);
+    public DateTime ExpiresAt {
+        get => field.DefaultKind(DateTimeKind.Utc);
+        set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
-    // Options
+    public string IPAddress { get; set; } = "";
+    public string Description { get; set; } = "";
+
+    public string AuthenticatedIdentity { get; set; } = "";
+    public string? UserId { get; set; }
+
     public string OptionsJson {
         get => _options.Data;
         set => _options = value;
@@ -58,61 +52,37 @@ public class DbSessionInfo : IHasId<string>, IHasVersion<long>, IRequirementTarg
         set => _options = value;
     }
 
-    public SessionInfo ToModel(ILogger? log = null)
+    [NotMapped]
+    public bool IsActive => ExpiresAt >= DateTime.UtcNow;
+
+    public SessionInfoFull ToModel(ILogger? log = null)
     {
         try {
             return ToModelCore();
         }
         catch (JsonSerializationException e) {
-            log?.LogError(e, "SessionInfo.Options are incompatible with the current codebase, resetting them");
+            log?.LogError(e, "SessionInfoFull.Options are incompatible with the current codebase, resetting them");
             Options = ImmutableOptionSet.Empty;
             return ToModelCore();
         }
     }
 
-    private SessionInfo ToModelCore()
+    public void UpdateFrom(SessionInfoFull source, VersionGenerator<long> versionGenerator)
     {
-        var session = new Session(Id);
-        var now = CoarseSystemClock.Instance.Now;
-        var result = IsSignOutForced
-            ? new SessionInfo(session, now) {
-                SessionHash = session.Hash,
-                IsSignOutForced = true,
-            }
-            : new SessionInfo(now) {
-                SessionHash = session.Hash,
-                Version = Version,
-                CreatedAt = CreatedAt,
-                LastSeenAt = LastSeenAt,
-                IPAddress = IPAddress,
-                UserAgent = UserAgent,
-                Options = Options,
-
-                // Authentication
-                AuthenticatedIdentity = AuthenticatedIdentity,
-                UserId = UserId ?? "",
-                IsSignOutForced = IsSignOutForced,
-            };
-        return result;
-    }
-
-    public void UpdateFrom(SessionInfo source, VersionGenerator<long> versionGenerator)
-    {
-        var session = new Session(Id);
-        if (!Equals(session.Hash, source.SessionHash))
+        if (new Session(Id) != source.Session)
             throw new ArgumentOutOfRangeException(nameof(source));
-        if (IsSignOutForced)
-            throw StandardError.Unauthorized("Session unavailable.");
+        if (!IsActive)
+            throw StandardError.Unavailable($"This {source.Session.Kind.ToReadable()} is expired.");
 
         Version = versionGenerator.NextVersion(Version);
         LastSeenAt = source.LastSeenAt;
+        ExpiresAt = source.ExpiresAt;
         IPAddress = source.IPAddress;
-        UserAgent = source.UserAgent;
+        Description = source.Description;
         Options = source.Options;
 
         AuthenticatedIdentity = source.AuthenticatedIdentity;
-        UserId = source.UserId.IsNullOrEmpty() ? null : source.UserId;
-        IsSignOutForced = source.IsSignOutForced;
+        UserId = source.UserId?.Value;
 
         // Ensure guestId is set
         GuestIdOption? guestIdOption = null;
@@ -129,5 +99,26 @@ public class DbSessionInfo : IHasId<string>, IHasVersion<long>, IRequirementTarg
             guestIdOption = new GuestIdOption(guestId);
             Options = Options.Set(guestIdOption);
         }
+    }
+
+    // Private methods
+
+    private SessionInfoFull ToModelCore()
+    {
+        var isActive = IsActive;
+        return new SessionInfoFull(new Session(Id)) {
+            Version = Version,
+            IsActive = isActive,
+            CreatedAt = CreatedAt,
+            LastSeenAt = LastSeenAt,
+            ExpiresAt = ExpiresAt,
+            IPAddress = IPAddress,
+            Description = Description,
+            Options = Options,
+
+            // Authentication
+            AuthenticatedIdentity = isActive ? AuthenticatedIdentity : "",
+            UserId = isActive ? ActualChat.UserId.ParseNullable(UserId) : null,
+        };
     }
 }

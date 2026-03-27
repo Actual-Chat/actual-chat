@@ -41,11 +41,10 @@
             <AppSettings/>
         </SettingsTab>
 
-        @if (showMyAccount) {
-            <SettingsTab @key="5" TabIndex="5" Title="Security" Id="@SettingsTabId.Security" IconClass="icon-lock">
-                <SecuritySettings/>
+        @if (showMyAccount && m.ShowIncompleteUI) {
+            <SettingsTab @key="5" TabIndex="5" Title="Sessions" Id="@SettingsTabId.Sessions" IconClass="icon-lock">
+                <SessionSettings/>
             </SettingsTab>
-
             <SettingsTab @key="6" TabIndex="6" Title="API Keys" Id="@SettingsTabId.ApiKeys" IconClass="icon-key">
                 <ApiKeySettings/>
             </SettingsTab>
@@ -94,8 +93,10 @@
         var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
         var tabId = ModalModel.TabId;
         var showLogViewer = await Hub.LogUI.IsEnabled.Use(cancellationToken).ConfigureAwait(false);
+        var showIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         return new ComputedModel(account, tabId) {
             ShowLogViewer = showLogViewer,
+            ShowIncompleteUI = showIncompleteUI,
         };
     }
 
@@ -106,6 +107,7 @@
 
     public sealed record ComputedModel(AccountFull AccountFull, string? TabId) {
         public bool ShowLogViewer { get; init; }
+        public bool ShowIncompleteUI { get; init; }
     }
 
     public sealed record Model(string? TabId = null) {

@@ -33,7 +33,7 @@ public class SerializationCodeGenTest(ITestOutputHelper @out) : TestBase(@out)
         SerializationCodeGen.ValidateType<SearchPhrase>();
 
         // Users
-        SerializationCodeGen.ValidateType<SessionInfo>();
+        SerializationCodeGen.ValidateType<SessionInfoFull>();
         SerializationCodeGen.ValidateType<UserIdentity>();
 
         // Hosting

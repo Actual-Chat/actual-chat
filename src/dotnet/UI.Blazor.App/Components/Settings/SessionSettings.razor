@@ -1,0 +1,86 @@
+@inherits ComputedStateComponent<AppUIHub, SessionSettings.Model>
+@{
+    var m = State.Value;
+    var ownPrefix = Session.IdPrefix;
+    var now = ServerClock.Now;
+}
+
+<TileTopic Topic="Sessions"/>
+
+<Tile>
+    @foreach (var session in m.Sessions) {
+        var isCurrent = session.IdPrefix == ownPrefix;
+        var activeDaysAgo = (int)(now - session.LastSeenAt).Positive().TotalDays;
+        var sActiveDaysAgo = activeDaysAgo == 0 ? "today" : $"{activeDaysAgo} {"day".Pluralize(activeDaysAgo)} ago";
+
+        <TileItem IsHoverable="false">
+            <Content>
+                <div class="flex items-center gap-2">
+                    <span>@session.Description</span>
+                    @if (isCurrent) {
+                        <span class="badge badge-primary text-xs">Current</span>
+                    }
+                </div>
+            </Content>
+            <Caption>
+                Last active: @sActiveDaysAgo
+            </Caption>
+        </TileItem>
+        @if (!isCurrent) {
+            <div class="flex justify-end px-4 pb-2">
+                <Button Class="btn-sm btn-danger" Click="@(() => OnSignOutClick(session.IdPrefix))">
+                    Sign out
+                </Button>
+            </div>
+        }
+    }
+
+    @if (m.Sessions.Count == 0) {
+        <TileItem IsHoverable="false">
+            <Content>No sessions found.</Content>
+        </TileItem>
+    }
+</Tile>
+
+@if (m.Sessions.Count > 1) {
+    <div class="mt-4 px-4">
+        <Button Class="btn-danger" Click="@OnSignOutAllClick">
+            Sign out all other sessions
+        </Button>
+    </div>
+}
+
+@code {
+    private MomentClock ServerClock => Hub.Clocks.ServerClock;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = new Model(),
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
+    {
+        var sessions = await Hub.Accounts.ListOwnSessions(Session, SessionKind.Session, cancellationToken).ConfigureAwait(false);
+        return new Model { Sessions = sessions };
+    }
+
+    private Task OnSignOutClick(string idPrefix)
+    {
+        var command = new Accounts_DeactivateSession(Session, idPrefix);
+        return UICommander.Run(command);
+    }
+
+    private Task OnSignOutAllClick()
+    {
+        var command = new Accounts_DeactivateAllSessions(Session, [SessionKind.Session]);
+        return UICommander.Run(command);
+    }
+
+    // Nested types
+
+    public sealed record Model
+    {
+        public ApiList<SessionInfo> Sessions { get; init; } = new();
+    }
+}

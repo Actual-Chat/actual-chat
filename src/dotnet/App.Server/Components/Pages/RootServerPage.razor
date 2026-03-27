@@ -383,6 +383,7 @@
 
     [Inject] private IServiceProvider Services { get; init; } = null!;
     [Inject] private ISessionResolver SessionResolver { get; init; } = null!;
+    [Inject] private ISessionValidator SessionValidator { get; init; } = null!;
     [Inject] private ISecureTokens SecureTokens { get; init; } = null!;
     [Inject] private ServerAuth ServerAuth { get; init; } = null!;
     [Inject] private UsersSettings UserSettings { get; init; } = null!;
@@ -423,11 +424,11 @@
         catch (Exception e) when (e is { } ex && ex.Message.Contains("Account not found", StringComparison.Ordinal)) {
             // Sign-in mode but account doesn't exist - fall through with error
             _signInError = "account_not_found";
-            var originalSession = HttpContext.TryGetSessionFromCookie();
-            _session = originalSession ?? Session.New();
-            if (originalSession is null)
+            var cookieSession = HttpContext.TryGetSessionFromCookie();
+            _session = cookieSession ?? Session.New();
+            _isNewSession = cookieSession is null;
+            if (_isNewSession)
                 HttpContext.AddSessionCookie(_session);
-            _isNewSession = originalSession is null;
         }
         SessionResolver.Session = _session;
         Task<AccountFull?> accountTask;

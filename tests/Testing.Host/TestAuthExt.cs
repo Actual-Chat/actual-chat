@@ -94,7 +94,7 @@ public static class TestAuthExt
         var services = appHost.Services;
         var commander = services.Commander();
 
-        var command = new Accounts_SignOut(session, force);
+        var command = new Accounts_SignOut(session);
         await commander.Call(command, cancellationToken).ConfigureAwait(false);
 
         // Let's wait a bit to ensure all invalidations go through

@@ -1,19 +1,15 @@
-using System.Security;
 using ActualLab.Versioning;
 
 namespace ActualChat.Users;
 
 /// <summary>
-/// Contains information about a user session including authentication state and metadata.
+/// Legacy session info format for backward compatibility with older clients.
 /// </summary>
+[Obsolete("Use SessionInfo instead.")]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
-public partial record SessionInfo() : IRequirementTarget, IHasVersion<long>
+public partial record LegacySessionInfo() : IRequirementTarget, IHasVersion<long>
 {
-    public static Requirement<SessionInfo> MustBeAuthenticated { get; set; } = Requirement.New(
-        (SessionInfo? i) => i?.IsAuthenticated() ?? false,
-        new("Session is not authenticated.", m => new SecurityException(m)));
-
     // From SessionAuthInfo
     [DataMember(Order = 0), MemoryPackOrder(0)] public string SessionHash { get => field ?? ""; init; } = "";
     [DataMember(Order = 1), MemoryPackOrder(1)] public UserIdentity AuthenticatedIdentity { get; init; }
@@ -28,15 +24,17 @@ public partial record SessionInfo() : IRequirementTarget, IHasVersion<long>
     [DataMember(Order = 14), MemoryPackOrder(14)] public string UserAgent { get => field ?? ""; init; } = "";
     [DataMember(Order = 15), MemoryPackOrder(15)] public ImmutableOptionSet Options { get; init; }
 
-    public SessionInfo(Moment createdAt) : this(null, createdAt) { }
-
-    public SessionInfo(Session? session, Moment createdAt = default) : this()
-    {
-        SessionHash = session?.Hash ?? "";
-        CreatedAt = createdAt;
-        LastSeenAt = createdAt;
-    }
-
-    public bool IsAuthenticated()
-        => !(IsSignOutForced || UserId.IsNullOrEmpty());
+    public static LegacySessionInfo From(SessionInfoFull sessionInfo)
+        => new() {
+            SessionHash = sessionInfo.Session.Hash,
+            AuthenticatedIdentity = sessionInfo.AuthenticatedIdentity,
+            UserId = sessionInfo.UserId?.Value ?? "",
+            IsSignOutForced = !sessionInfo.IsActive,
+            Version = sessionInfo.Version,
+            CreatedAt = sessionInfo.CreatedAt,
+            LastSeenAt = sessionInfo.LastSeenAt,
+            IPAddress = sessionInfo.IPAddress,
+            UserAgent = sessionInfo.Description,
+            Options = sessionInfo.Options,
+        };
 }
