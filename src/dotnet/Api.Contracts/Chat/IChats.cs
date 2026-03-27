@@ -216,7 +216,7 @@ public sealed partial record Chats_UpsertTextEntry(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(2)] long? LocalId
-) : ISessionCommand<ChatEntry>, IApiCommand
+) : ISessionCommand<LegacyChatEntry>, IApiCommand
 {
     [DataMember, MemoryPackOrder(3)] public string Text { get; init; } = "";
     [DataMember, MemoryPackOrder(4)] public Option<long?> RepliedEntryLid { get; init; }
