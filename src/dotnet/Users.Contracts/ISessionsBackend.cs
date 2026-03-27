@@ -37,7 +37,7 @@ public partial record SessionsBackend_Upsert(
     [DataMember, MemoryPackOrder(1)] public string? IPAddress { get; init; }
     [DataMember, MemoryPackOrder(2)] public string? Description { get; init; }
     [DataMember, MemoryPackOrder(3)] public ImmutableOptionSet Options { get; init; }
-    [DataMember, MemoryPackOrder(4)] public UserId? UserId { get; init; }
+    [DataMember, MemoryPackOrder(4)] public Option<UserId?> UserId { get; init; }
     [DataMember, MemoryPackOrder(5)] public UserIdentity? AuthenticatedIdentity { get; init; }
     [DataMember, MemoryPackOrder(6)] public Moment? ExpiresAt { get; init; }
 }
