@@ -46,11 +46,10 @@ public static class HttpSessionExt
         return SessionExt.NewValidOrNull(sessionId);
     }
 
-    public static Session AddSessionCookie(this HttpContext httpContext, Session session)
+    public static void AddSessionCookie(this HttpContext httpContext, Session session)
     {
         session.RequireValid();
         var cookie = Cookie.Build(httpContext);
         httpContext.Response.Cookies.Append(Constants.Session.CookieName, session.Id, cookie);
-        return session;
     }
 }

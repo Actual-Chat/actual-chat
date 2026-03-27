@@ -1,7 +1,12 @@
+using ActualLab.Generators;
+
 namespace ActualChat;
 
 public static class SessionExt
 {
+    private static readonly Generator<string> ApiKeyGenerator
+        = new RandomStringGenerator(32, Alphabet.AlphaNumericDash.Symbols);
+
     public static Session? NewValidOrNull(string? sessionId)
     {
         if (sessionId.IsNullOrEmpty())
@@ -15,6 +20,9 @@ public static class SessionExt
             return null;
         }
     }
+
+    public static Session NewApiKey()
+        => new (CoreConstants.Session.ApiKeyPrefix + ApiKeyGenerator.Next());
 
     extension(Session session)
     {
