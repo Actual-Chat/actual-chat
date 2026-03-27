@@ -30,11 +30,28 @@ public interface IChats : IComputeService
         ChatId chatId,
         CancellationToken cancellationToken);
 
+    [ComputeMethod(MinCacheDuration = 60), RemoteComputeMethod(MinCacheDuration = 600)]
+    [Obsolete("2025.03: Use GetIdRange without entryKind")]
+    Task<Range<long>> GetIdRange(
+        Session session,
+        ChatId chatId,
+        int entryKind,
+        CancellationToken cancellationToken);
+
     // Client-side methods always skips entries with IsRemoved flag
     [ComputeMethod(MinCacheDuration = 10), RemoteComputeMethod(MinCacheDuration = 300)]
     Task<ChatTile> GetTile(
         Session session,
         ChatId chatId,
+        Range<long> idTileRange,
+        CancellationToken cancellationToken);
+
+    [ComputeMethod(MinCacheDuration = 10), RemoteComputeMethod(MinCacheDuration = 300)]
+    [Obsolete("2025.03: Use GetTile without entryKind")]
+    Task<ChatTile> GetTile(
+        Session session,
+        ChatId chatId,
+        int entryKind,
         Range<long> idTileRange,
         CancellationToken cancellationToken);
 
@@ -69,21 +86,25 @@ public interface IChats : IComputeService
     Task<ChatEntry> OnUpsertEntry(Chats_UpsertEntry command, CancellationToken cancellationToken);
 
     [CommandHandler, RpcMethod(ConnectTimeout = double.PositiveInfinity)]
+    [Obsolete("2025.03: Use OnUpsertEntry with Chats_UpsertEntry")]
+    Task<ChatEntry> OnUpsertTextEntry(Chats_UpsertTextEntry command, CancellationToken cancellationToken);
+
+    [CommandHandler, RpcMethod(ConnectTimeout = double.PositiveInfinity), LegacyName("OnRemoveTextEntry")]
     Task OnRemoveEntry(Chats_RemoveEntry command, CancellationToken cancellationToken);
 
-    [CommandHandler]
+    [CommandHandler, LegacyName("OnRestoreTextEntry")]
     Task OnRestoreEntry(Chats_RestoreEntry command, CancellationToken cancellationToken);
 
-    [CommandHandler]
+    [CommandHandler, LegacyName("OnRemoveTextEntries")]
     Task OnRemoveEntries(Chats_RemoveEntries command, CancellationToken cancellationToken);
 
-    [CommandHandler]
+    [CommandHandler, LegacyName("OnRestoreTextEntries")]
     Task OnRestoreEntries(Chats_RestoreEntries command, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<Chat> OnGetOrCreateFromTemplate(Chats_GetOrCreateFromTemplate command, CancellationToken cancellationToken);
 
-    [CommandHandler]
+    [CommandHandler, LegacyName("OnForwardTextEntries")]
     Task<Unit> OnForwardEntries(Chats_ForwardEntries command, CancellationToken cancellationToken);
 
     [CommandHandler]
@@ -189,3 +210,26 @@ public sealed partial record Chat_PublishCopiedChat(
     [property: DataMember, MemoryPackOrder(1)] PlaceChatId NewChatId,
     [property: DataMember, MemoryPackOrder(2)] ChatId SourceChatId
 ) : ISessionCommand<Unit>, IApiCommand;
+
+// Legacy command records
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[Obsolete("2025.03: Use Chats_UpsertEntry")]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Chats_UpsertTextEntry(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(2)] long? LocalId
+) : ISessionCommand<ChatEntry>, IApiCommand
+{
+    [DataMember, MemoryPackOrder(3)] public string Text { get; init; } = "";
+    [DataMember, MemoryPackOrder(4)] public Option<long?> RepliedEntryLid { get; init; }
+    [DataMember, MemoryPackOrder(6)] public ChatEntryId? ForwardedChatEntryId { get; init; }
+    [DataMember, MemoryPackOrder(7)] public AuthorId? ForwardedAuthorId { get; init; }
+    [DataMember, MemoryPackOrder(8)] public string? ForwardedChatTitle { get; init; }
+    [DataMember, MemoryPackOrder(9)] public string? ForwardedAuthorName { get; init; }
+    [DataMember, MemoryPackOrder(10)] public Moment? ForwardedChatEntryBeginsAt { get; init; }
+    [DataMember, MemoryPackOrder(11)] public ChatEntryAttachment[] EntryAttachments { get; init; } = [];
+    [DataMember, MemoryPackOrder(12)] public bool HasAttachmentUploads { get; init; }
+    [DataMember, MemoryPackOrder(13)] public string ClientId { get; init; } = "";
+}
