@@ -235,7 +235,7 @@
             _ = ChatAudioUI.SetRecordingChatId(chatId);
     }
 
-    private async Task OnVideoClick() {
+    private void OnVideoClick() {
         var m = State.Value;
         if (m.ChatId is not { } chatId)
             return;
@@ -248,13 +248,7 @@
             ChatVideoUI.ResumeRecording(chatId);
         } else {
             // Open join/start modal
-            var chat = await Hub.Chats.Get(Session, chatId, default).ConfigureAwait(false);
-            if (chat == null)
-                return;
-            var mode = m.RemoteStreams.Length > 0
-                ? JoinVideoCallModal.VideoCallMode.Join
-                : JoinVideoCallModal.VideoCallMode.Start;
-            _ = Hub.ModalUI.Show(new JoinVideoCallModal.Model(chat, mode));
+            ChatVideoUI.JoinVideoSession(chatId);
         }
     }
 
@@ -278,18 +272,13 @@
             _ = Hub.ModalUI.Show(new VoiceSettingsModal.Model(chatId));
     }
 
-    private async Task OnVideoSettingsClick() {
+    private void OnVideoSettingsClick() {
         // DO NOT stop recording — the modal will share the recorder's preview stream
-
         var chatId = Hub.ChatUI.SelectedChatId.Value;
         if (chatId is null)
             return;
 
-        var chat = await Hub.Chats.Get(Session, chatId, default).ConfigureAwait(false);
-        if (chat is null)
-            return;
-
-        _ = ModalUI.Show(new JoinVideoCallModal.Model(chat, IsSettingsMode: true));
+        ChatVideoUI.ChangeVideoSessionSettings(chatId);
     }
 
     private async Task OnSwitchCamera() {

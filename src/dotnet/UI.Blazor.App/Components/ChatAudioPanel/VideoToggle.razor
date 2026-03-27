@@ -58,10 +58,7 @@
             ChatVideoUI.ResumeRecording(Chat.Id);
         } else {
             // First time → open modal to confirm
-            var mode = m.AreOthersVideoStreaming
-                ? JoinVideoCallModal.VideoCallMode.Join
-                : JoinVideoCallModal.VideoCallMode.Start;
-            _ = ModalUI.Show(new JoinVideoCallModal.Model(Chat, mode));
+            ChatVideoUI.JoinVideoSession(Chat.Id);
         }
     }
 

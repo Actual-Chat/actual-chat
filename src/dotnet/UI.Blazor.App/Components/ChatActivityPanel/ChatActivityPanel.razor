@@ -207,7 +207,7 @@
         if (isVideoStreaming) {
             // Join video call: enable watching and open modal
             ChatVideoUI.SetWatching(chatId);
-            _ = ModalUI.Show(new JoinVideoCallModal.Model(Chat!));
+            ChatVideoUI.JoinVideoSession(chatId);
         }
         _ = ChatAudioUI.SetListeningState(chatId, true);
     }
