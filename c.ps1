@@ -834,15 +834,44 @@ if ($removeWorktreeSuffix) {
 
     Write-Host "Removing worktree: $projectName-$removeWorktreeSuffix" -ForegroundColor Cyan
 
-    # Remove server config and .env file (ActualChat projects only)
+    # Stop server, build agent, and Docker containers; then remove server config
     if (Test-Path (Join-Path $mainProjectPath "ActualChat.sln")) {
         $server = [WorktreeServer]::new($mainProjectPath, $removeWorktreeSuffix)
+
+        # Stop orphaned server and build agent from previous sessions
+        if ($server.Port -and (Test-Path $worktreePath)) {
+            [LocalBuildAgent]::new($worktreePath).EnsureStopped()
+            [BuildAgentHost]::EnsureStopped($server.Port + 9)
+        }
+
+        # Kill Docker containers for this worktree
+        $containerBaseName = "$($projectName.ToLower())-$($removeWorktreeSuffix.ToLower())"
+        $existingContainers = @(docker ps -a --filter "label=worktree=$containerBaseName" --format "{{.ID}}`t{{.Names}}" 2>$null | Where-Object { $_ })
+        if ($existingContainers.Count -gt 0) {
+            foreach ($entry in $existingContainers) {
+                $parts = $entry -split "`t"
+                $cId = $parts[0]
+                $cName = $parts[1]
+                Write-Host "Removing container: $cName" -ForegroundColor Cyan
+                docker rm -f $cId 2>$null | Out-Null
+            }
+            Write-Host "Docker containers removed" -ForegroundColor Green
+        } elseif ($debugMode) {
+            Write-Host "[DEBUG] No Docker containers found for worktree '$containerBaseName'"
+        }
+
         $server.Unregister($debugMode)
 
+        # Clean up worktree files (.env, PID file)
         $worktreeEnvFile = Join-Path $worktreePath ".env"
         if (Test-Path $worktreeEnvFile) {
             Remove-Item $worktreeEnvFile -Force
             if ($debugMode) { Write-Host "[DEBUG] Removed worktree .env file" }
+        }
+        $pidFile = Join-Path $worktreePath "tmp" "server-$($server.InstanceName).pid"
+        if (Test-Path $pidFile) {
+            Remove-Item $pidFile -Force
+            if ($debugMode) { Write-Host "[DEBUG] Removed server PID file" }
         }
     }
 

@@ -380,6 +380,12 @@ class LocalBuildAgent {
         }
     }
 
+    [void] KillIfRunning() {
+        if ($this.IsRunning()) {
+            $this.StopServer()
+        }
+    }
+
     [hashtable] StopServer() {
         if (-not $this.IsRunning()) {
             return @{ stopped = $false; message = "No running server found" }
@@ -672,6 +678,21 @@ class BuildAgentHost {
             try { $this.Process.Kill($true) } catch {}
         }
         $this.Process = $null
+    }
+
+    # Find and stop an orphaned build agent by its listening port
+    static [void] KillIfRunning([int]$port) {
+        $lsofOutput = bash -c "lsof -i :$port -sTCP:LISTEN 2>/dev/null | tail -1" 2>$null
+        if ($lsofOutput) {
+            try {
+                $pid = [int](($lsofOutput -split '\s+')[1])
+                $proc = [System.Diagnostics.Process]::GetProcessById($pid)
+                if (-not $proc.HasExited) {
+                    $proc.Kill($true)
+                    Write-Host "Build agent stopped (PID: $pid)"
+                }
+            } catch {}
+        }
     }
 
     # --- Static: the blocking HTTP server loop (runs in the background process) ---
