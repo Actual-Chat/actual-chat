@@ -12,6 +12,9 @@
     <div class="c-search">
         <div class="search-input">
             <label>
+                @if (Place != null) {
+                    <span class="c-place-badge" title="@Place.Title">In the Place:</span>
+                }
                 <TextInput
                     @ref="_inputRef"
                     Text="@m.InitialText"

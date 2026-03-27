@@ -11,7 +11,10 @@
 } else {
     <LeftPanelChatContentHeader />
 }
-<LeftPlaceSearchOverlayPanel Place="@place"/>
+<div class="left-search-panel">
+    <LeftChatSearchInput Place="@place"/>
+    <LeftPlaceSearchOverlayPanel Place="@place"/>
+</div>
 
 @code {
     private IPlaces Places => Hub.Places;
