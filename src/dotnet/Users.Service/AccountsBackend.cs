@@ -290,8 +290,6 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     {
         var session = command.Session.RequireValid();
         session.RequireValid();
-        if (session.Kind is not SessionKind.Session)
-            throw StandardError.Constraint("Regular Session is required here.");
 
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive)
