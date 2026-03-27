@@ -94,14 +94,20 @@ body.narrow .video-panel.expanded .video-panel-footer {
     @apply flex-x;
 }
 body.narrow .video-panel.expanded .video-panel-header {
-    @apply absolute top-0 inset-x-0;
+    @apply absolute;
     @apply items-center justify-between;
     @apply h-16;
+    top: var(--safe-area-top);
+    left: var(--safe-area-left);
+    right: var(--safe-area-right);
 }
 body.narrow .video-panel.expanded .video-panel-footer {
-    @apply absolute bottom-0 inset-x-0;
+    @apply absolute;
     @apply items-center justify-between;
     @apply h-16;
+    bottom: var(--safe-area-bottom);
+    left: var(--safe-area-left);
+    right: var(--safe-area-right);
 }
 body.narrow .video-panel .video-panel-header > *,
 body.narrow .video-panel .video-panel-footer > * {

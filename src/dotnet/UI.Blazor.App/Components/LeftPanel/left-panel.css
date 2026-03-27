@@ -177,6 +177,14 @@ body.hoverable .add-members-btn:hover {
     @apply hidden;
 }
 
+.left-search-panel {
+    @apply absolute inset-0 z-50;
+    @apply flex-y;
+    @apply pointer-events-none;
+    @apply overflow-hidden;
+    top: var(--safe-area-top);
+}
+
 .left-panel-content-header.place.chat-roulette > .c-content {
     @apply bg-[var(--indigo-70)];
 }

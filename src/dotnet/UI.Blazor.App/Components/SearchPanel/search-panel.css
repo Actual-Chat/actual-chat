@@ -63,7 +63,11 @@
     @apply rounded-full border border-transparent;
 }
 .search-input label {
-    @apply relative flex-x;
+    @apply relative;
+    @apply flex-x;
+    @apply rounded-full;
+    @apply overflow-hidden;
+    @apply bg-input;
 }
 .search-input .search-icon,
 .search-input .c-close-btn {
@@ -82,7 +86,8 @@
     @apply h-10;
     @apply pl-10 pr-4;
     @apply rounded-full;
-    @apply text-left bg-input;
+    @apply text-left;
+    @apply bg-transparent;
 }
 .search-input:has(.c-close-btn) input {
     @apply pr-10;

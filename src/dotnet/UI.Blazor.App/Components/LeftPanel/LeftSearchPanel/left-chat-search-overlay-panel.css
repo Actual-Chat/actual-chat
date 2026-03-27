@@ -1,25 +1,26 @@
 .left-search-overlay-panel {
-    @apply z-10;
-    @apply absolute inset-0;
     @apply hidden;
-    @apply -translate-y-full;
-    @apply duration-300 delay-0 ease-in-out;
-    transition-behavior: allow-discrete;
-    transition-property: display, opacity, transform;
-}
-.left-search-overlay-panel.open {
-    @apply flex-y;
-    @apply opacity-100;
-    @apply translate-y-0;
-    @apply delay-300;
-    @starting-style {
-        transform: translateY(-100%);
-    }
-}
-.left-search-overlay-panel {
     @apply py-2;
     @apply overflow-hidden;
+    @apply opacity-0;
     @apply bg-03;
+    @apply pointer-events-auto;
+    @apply ease-in-out;
+    transform: translateY(-125%);
+    transition: display 200ms, opacity 200ms, transform 200ms;
+    transition-behavior: allow-discrete;
+}
+.left-search-overlay-panel.open {
+    @apply flex-y flex-1;
+    @apply opacity-100;
+    @apply translate-y-0;
+    @apply ease-in-out;
+    transition: display 300ms 200ms, opacity 300ms 200ms, transform 300ms 200ms;
+    transition-behavior: allow-discrete;
+    @starting-style {
+        opacity: 0;
+        transform: translateY(-125%);
+    }
 }
 .left-place-search-overlay-panel {
     @apply pt-0;
