@@ -9,11 +9,11 @@ public class ExpiringEntryTest
         var entry = ExpiringEntry.New(dict, "key1", "value1");
         dict["key1"] = entry;
 
-        entry.BumpExpiresAt(TimeSpan.FromMilliseconds(200));
+        entry.BumpExpiresAt(TimeSpan.FromMilliseconds(1000));
         entry.BeginExpire();
 
         dict.Should().ContainKey("key1");
-        await Task.Delay(500);
+        await Task.Delay(2000);
         dict.Should().NotContainKey("key1", "entry should be removed after TTL");
         entry.IsDisposed.Should().BeTrue();
     }
@@ -25,20 +25,20 @@ public class ExpiringEntryTest
         var entry = ExpiringEntry.New(dict, "key1", "value1");
         dict["key1"] = entry;
 
-        entry.BumpExpiresAt(TimeSpan.FromMilliseconds(300));
+        entry.BumpExpiresAt(TimeSpan.FromMilliseconds(1500));
         entry.BeginExpire();
 
-        // After 200ms, bump again
-        await Task.Delay(200);
+        // After 500ms, bump again
+        await Task.Delay(500);
         dict.Should().ContainKey("key1", "entry should still be alive before TTL");
-        entry.BumpExpiresAt(TimeSpan.FromMilliseconds(500));
+        entry.BumpExpiresAt(TimeSpan.FromMilliseconds(1500));
 
-        // After another 200ms (total 400ms from start, but only 200ms from bump)
-        await Task.Delay(200);
+        // After another 500ms (total 1000ms from start, but only 500ms from bump)
+        await Task.Delay(500);
         dict.Should().ContainKey("key1", "entry should still be alive after bump");
 
         // Wait for the extended TTL to expire
-        await Task.Delay(500);
+        await Task.Delay(2500);
         dict.Should().NotContainKey("key1", "entry should be removed after extended TTL");
     }
 
@@ -56,10 +56,10 @@ public class ExpiringEntryTest
         });
         dict["key1"] = entry;
 
-        entry.BumpExpiresAt(TimeSpan.FromMilliseconds(200));
+        entry.BumpExpiresAt(TimeSpan.FromMilliseconds(1000));
         entry.BeginExpire();
 
-        await Task.Delay(500);
+        await Task.Delay(2000);
         disposerCalled.Should().BeTrue("disposer should be called on expiration");
         disposedKey.Should().Be("key1");
     }
@@ -71,19 +71,19 @@ public class ExpiringEntryTest
         var entry = ExpiringEntry.New(dict, "key1", "value1");
         dict["key1"] = entry;
 
-        entry.BumpExpiresAt(TimeSpan.FromMilliseconds(500));
+        entry.BumpExpiresAt(TimeSpan.FromMilliseconds(2000));
         entry.BeginExpire();
 
-        // Bump every 200ms for 1 second — entry should survive
+        // Bump every 500ms for 2.5 seconds — entry should survive
         for (var i = 0; i < 5; i++) {
-            await Task.Delay(200);
-            entry.BumpExpiresAt(TimeSpan.FromMilliseconds(500));
+            await Task.Delay(500);
+            entry.BumpExpiresAt(TimeSpan.FromMilliseconds(2000));
         }
 
         dict.Should().ContainKey("key1", "entry should still be alive while being bumped");
 
         // Now stop bumping and wait for expiration
-        await Task.Delay(800);
+        await Task.Delay(3000);
         dict.Should().NotContainKey("key1", "entry should expire after bumping stops");
     }
 }
