@@ -645,7 +645,7 @@ class BuildAgentHost {
     # Start the agent as a background process
     [void] Start() {
         $commonScript = Join-Path $this.ProjectPath "scripts" "Common.ps1"
-        $cmd = ". '$commonScript'; [BuildAgentHost]::Run($port, '$($this.ProjectPath)')"
+        $cmd = ". '$commonScript'; [BuildAgentHost]::Run($($this.Port), '$($this.ProjectPath)')"
 
         $scriptFile = Join-Path $this.ProjectPath "tmp" "build-agent-run.ps1"
         Set-Content -Path $scriptFile -Value $cmd
