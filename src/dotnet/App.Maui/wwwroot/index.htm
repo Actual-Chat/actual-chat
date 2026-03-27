@@ -7,33 +7,37 @@
     <meta http-equiv="Content-Security-Policy" content="
         default-src 'self';
         img-src 'self'
-                https://voxt.ai
-                https://*.voxt.ai
-                https://*.dicebear.com
-                https://*.boringavatars.com/
-                https://i.ytimg.com
-                content: blob: data:;
+            https://voxt.ai
+            https://*.voxt.ai
+            https://*.dev.voxt.ai
+            https://*.local.voxt.ai
+            https://*.dicebear.com
+            https://*.boringavatars.com/
+            https://i.ytimg.com
+            content: blob: data:;
         media-src 'self' https://voxt.ai https://*.voxt.ai content: blob: data:;
         style-src 'self' 'unsafe-inline';
         frame-src https://www.youtube.com/;
         object-src 'none';
         script-src 'self'
-                   'sha256-IWFoCSRBx0i01sF31ty8kSeDtD8PRi/efpTSg/fumWo='
-                   'sha256-zU2GIxfpzdHVMmYxjdLyOs4r4XWtc9oFoEFrwbxzdQg='
-                   https://www.youtube.com/iframe_api
-                   https://www.youtube.com/s/player/;
+            'sha256-IWFoCSRBx0i01sF31ty8kSeDtD8PRi/efpTSg/fumWo='
+            'sha256-zU2GIxfpzdHVMmYxjdLyOs4r4XWtc9oFoEFrwbxzdQg='
+            https://www.youtube.com/iframe_api
+            https://www.youtube.com/s/player/;
         connect-src 'self'
-                    https://voxt.ai
-                    https://*.voxt.ai
-                    wss://voxt.ai
-                    wss://*.voxt.ai
-                    https://*.dicebear.com
-                    https://*.ingest.sentry.io
-                    https://firebaseinstallations.googleapis.com
-                    https://fcmregistrations.googleapis.com
-                    https://firebase.googleapis.com
-                    https://*.google-analytics.com/g/collect
-                    https://www.google.com/recaptcha/enterprise/clr;
+            https://voxt.ai
+            https://*.voxt.ai
+            https://*.dev.voxt.ai
+            https://*.local.voxt.ai
+            wss://voxt.ai
+            wss://*.voxt.ai
+            https://*.dicebear.com
+            https://*.ingest.sentry.io
+            https://firebaseinstallations.googleapis.com
+            https://fcmregistrations.googleapis.com
+            https://firebase.googleapis.com
+            https://*.google-analytics.com/g/collect
+            https://www.google.com/recaptcha/enterprise/clr;
         " />
     <title>Voxt</title>
     <base href="/" />

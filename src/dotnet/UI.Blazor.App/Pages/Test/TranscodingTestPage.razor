@@ -154,7 +154,7 @@
             // 2. Create Upload
             var tag = "TranscodingTest/v1";
             var metadata = new PropertyBag()
-                .Set("FileName", source.Metadata.FileName)
+                .Set("FileName", source.Metadata.FileName.Value)
                 .Set("ContentType", source.Metadata.ContentType);
             var uploadId = await UICommander.Call(new Uploads_Create(Session, source.Metadata.Length, tag, metadata));
 
