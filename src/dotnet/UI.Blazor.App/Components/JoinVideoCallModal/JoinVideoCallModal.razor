@@ -3,11 +3,10 @@
 @implements IModalView<JoinVideoCallModal.Model>
 @implements IAsyncDisposable
 @using ActualChat.UI.Blazor.App.Module
-@using ActualChat.Users
 
 <DialogFrame
     Class="join-video-call-modal modal-sm"
-    Title="@ModalTitle">
+    Title="@_title">
     <Body>
     <FormBlock Class="">
         @if (ModalModel.Mode == VideoCallMode.Join) {
@@ -59,7 +58,7 @@
                             <div class="camera-dropdown-header">Select a camera</div>
                             @foreach (var device in _videoDevices) {
                                 var isSelected = device.DeviceId == _selectedDeviceId;
-                                var isDisabled = ModalModel.IsSettingsMode;
+                                var isDisabled = IsSettingsMode;
                                 <div class="camera-dropdown-item @(isDisabled ? "disabled" : "")"
                                      @onclick="@(isDisabled ? (Func<Task>)(() => Task.CompletedTask) : () => OnCameraSelected(device))">
                                     @if (isSelected) {
@@ -114,7 +113,7 @@
                     }
                 </ButtonRound>
 
-                <ButtonRound Click="@OnSwitchCamera" IsDisabled="@ModalModel.IsSettingsMode">
+                <ButtonRound Click="@OnSwitchCamera" IsDisabled="@IsSettingsMode">
                     <i class="icon-camera-switch text-2xl"></i>
                 </ButtonRound>
             </div>
@@ -123,7 +122,7 @@
     </Body>
     <Buttons>
         <Button Class="btn-modal" Click="@(_ => Modal.Close())">Cancel</Button>
-        <Button Class="btn-modal btn-primary" Click="@OnJoinClick">@ButtonText</Button>
+        <Button Class="btn-modal btn-primary" Click="@OnJoinClick">@_submitButtonText</Button>
     </Buttons>
 </DialogFrame>
 
@@ -131,8 +130,8 @@
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.JoinVideoCallModal.create";
     private static readonly string JSEnumerateMethod = $"{BlazorUIAppModule.ImportName}.JoinVideoCallModal.enumerateDevices";
 
-    private record VideoDevice(string DeviceId, string Label);
-
+    private string _title = "";
+    private string _submitButtonText = "";
     private ElementReference _containerRef;
     private DotNetObjectReference<JoinVideoCallModal>? _blazorRef;
     private IJSObjectReference? _jsRef;
@@ -149,25 +148,26 @@
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private AudioRecorder AudioRecorder => Hub.AudioRecorder;
-
-    private string ModalTitle => ModalModel.IsSettingsMode
-        ? "Video Settings"
-        : ModalModel.Mode == VideoCallMode.Start
-            ? "Enable Video"
-            : "Join the video";
-
-    private string ButtonText => ModalModel.IsSettingsMode
-        ? "Apply"
-        : ModalModel.Mode == VideoCallMode.Start
-            ? "Start"
-            : "Join";
-
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private bool IsSettingsMode => ModalModel.Mode is VideoCallMode.Settings;
 
     protected override async Task OnInitializedAsync() {
+        _title = ModalModel.Mode switch
+        {
+            VideoCallMode.Settings => "Video Settings",
+            VideoCallMode.Start => "Enable Video",
+            VideoCallMode.Join => "Join the video",
+            _ => throw new InvalidOperationException($"Unknown video call mode: {ModalModel.Mode}")
+        };
+        _submitButtonText = ModalModel.Mode switch
+        {
+            VideoCallMode.Settings => "Apply",
+            VideoCallMode.Start => "Start",
+            VideoCallMode.Join => "Join",
+            _ => throw new InvalidOperationException($"Unknown video call mode: {ModalModel.Mode}")
+        };
         var settings = await Hub.LocalSettings.LocalAppSettings().Get();
         _selectedDeviceId = settings.SelectedCameraDeviceId ?? "";
         var recordingChatId = await ChatAudioUI.GetRecordingChatId();
@@ -186,7 +186,7 @@
         _isCameraStarting = true;
         StateHasChanged();
 
-        if (ModalModel.IsSettingsMode) {
+        if (IsSettingsMode) {
             // Settings mode: attach to the active recorder's preview stream
             var attached = await _jsRef.InvokeAsync<bool>("attachFromRecorder");
             if (attached) {
@@ -197,7 +197,6 @@
             } else {
                 _isCameraStarting = false;
             }
-            StateHasChanged();
         } else {
             // Normal mode: acquire our own stream
             var deviceId = string.IsNullOrEmpty(_selectedDeviceId) ? null : _selectedDeviceId;
@@ -209,8 +208,8 @@
             } else {
                 _isCameraStarting = false;
             }
-            StateHasChanged();
         }
+        StateHasChanged();
     }
 
     public async ValueTask DisposeAsync() {
@@ -265,6 +264,7 @@
             } else {
                 _isCameraStarting = false;
             }
+            StateHasChanged();
         }
     }
 
@@ -303,7 +303,7 @@
     }
 
     private async Task OnJoinClick() {
-        if (ModalModel.IsSettingsMode) {
+        if (IsSettingsMode) {
             // Settings mode: apply blur setting and close — recording continues
             ChatVideoUI.SetBackgroundBlur(_isBlurEnabled);
             await DisposeAsync();
@@ -353,7 +353,9 @@
 
     // Nested types
 
-    public enum VideoCallMode { Join, Start }
+    private record VideoDevice(string DeviceId, string Label);
 
-    public sealed record Model(Chat Chat, VideoCallMode Mode = VideoCallMode.Join, bool IsSettingsMode = false);
+    public enum VideoCallMode { Join, Start, Settings }
+
+    public sealed record Model(Chat Chat, VideoCallMode Mode);
 }
