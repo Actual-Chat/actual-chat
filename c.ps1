@@ -1054,6 +1054,7 @@ if ($isActualChatProject) {
         "urls" = $urlsValue
         "ASPNETCORE_URLS" = $urlsValue
         "HostSettings__BaseUri" = $baseUri
+        "AC_BUILD_AGENT_PORT" = $serverConfig.Port + 9
     }
     Update-EnvFile -ProjectPath $projectRoot -Variables $envVarsToSave -Debug:$debugMode
 }
@@ -1490,11 +1491,10 @@ switch ($mode) {
         # Build agent for server/build management: on macOS/Windows, --network host doesn't
         # truly share ports, so the .NET server must run on the host. The build agent host
         # provides an HTTP API that Claude in Docker calls to build/start/stop the server.
-        # Port = serverPort + 9 (last in the 10-port block), e.g., 7080→7089, 7100→7109
-        $buildAgentPort = if ($serverConfig) { $serverConfig.Port + 9 } else { 7089 }
+        $buildAgent = [BuildAgentHost]::new($projectRoot)
         $buildAgentEnvVars = @()
         if ($currentOS -in "macOS", "Windows") {
-            $buildAgentEnvVars = @("-e", "AC_BUILD_AGENT_PORT=$buildAgentPort")
+            $buildAgentEnvVars = @("-e", "AC_BUILD_AGENT_PORT=$($buildAgent.Port)")
         }
 
         $dockerArgs += $volumeMounts + $propagatedEnvVars + $audioEnvVars + $buildAgentEnvVars + @(
@@ -1538,8 +1538,7 @@ switch ($mode) {
             # Start build agent (macOS/Windows only) — runs build/server operations over HTTP
             # so Claude in Docker can build/start/stop the server on the host
             if ($currentOS -in "macOS", "Windows") {
-                $buildAgent = [BuildAgentHost]::new($projectRoot)
-                $buildAgent.Start($buildAgentPort)
+                $buildAgent.Start()
             }
 
             try {

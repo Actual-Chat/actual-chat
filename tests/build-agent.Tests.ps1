@@ -129,15 +129,15 @@ Describe "BuildAgentHost + BuildAgentProxy" {
         $srcDir = Join-Path $script:waIsoDir "src" "dotnet" "App.Server"
         New-Item -ItemType Directory -Path $srcDir -Force | Out-Null
         Set-Content (Join-Path $srcDir "App.Server.csproj") "<Project/>"
-        Set-Content (Join-Path $script:waIsoDir ".env") "urls=http://localhost:19878`nCoreSettings__Instance=test-wa`nHostSettings__BaseUri=https://test-wa.local.voxt.ai"
+        $script:agentPort = 7900 + (Get-Random -Minimum 0 -Maximum 99)
+        Set-Content (Join-Path $script:waIsoDir ".env") "urls=http://localhost:19878`nCoreSettings__Instance=test-wa`nHostSettings__BaseUri=https://test-wa.local.voxt.ai`nAC_BUILD_AGENT_PORT=$($script:agentPort)"
         # Copy Common.ps1 so the child process can source it
         $scriptsDir = Join-Path $script:waIsoDir "scripts"
         New-Item -ItemType Directory -Path $scriptsDir -Force | Out-Null
         Copy-Item (Join-Path $script:projectRoot "scripts" "Common.ps1") $scriptsDir
 
-        $script:agentPort = 7900 + (Get-Random -Minimum 0 -Maximum 99)
         $script:host_ = [BuildAgentHost]::new($script:waIsoDir)
-        $host_.Start($script:agentPort)
+        $host_.Start()
 
         # Wait for HTTP server to be ready
         $script:agentReady = $false

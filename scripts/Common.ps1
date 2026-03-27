@@ -633,11 +633,17 @@ class BuildAgentHost {
         $tmpDir = Join-Path $projectPath "tmp"
         if (-not (Test-Path $tmpDir)) { New-Item -ItemType Directory -Path $tmpDir -Force | Out-Null }
         $this.PidFile = Join-Path $tmpDir "build-agent.pid"
+
+        $envFile = Join-Path $projectPath ".env"
+        if (Test-Path $envFile) {
+            Get-Content $envFile | ForEach-Object {
+                if ($_ -match "^AC_BUILD_AGENT_PORT=(\d+)$") { $this.Port = [int]$Matches[1] }
+            }
+        }
     }
 
     # Start the agent as a background process
-    [void] Start([int]$port) {
-        $this.Port = $port
+    [void] Start() {
         $commonScript = Join-Path $this.ProjectPath "scripts" "Common.ps1"
         $cmd = ". '$commonScript'; [BuildAgentHost]::Run($port, '$($this.ProjectPath)')"
 
