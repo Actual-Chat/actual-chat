@@ -60,8 +60,9 @@ public class SessionsBackend(IServiceProvider services)
             IPAddress = command.IPAddress ?? sessionInfo.IPAddress,
             Description = command.Description ?? sessionInfo.Description,
             Options = command.Options.SetMany(sessionInfo.Options),
-            UserId = command.UserId ?? sessionInfo.UserId,
             AuthenticatedIdentity = command.AuthenticatedIdentity ?? sessionInfo.AuthenticatedIdentity,
+            UserId = command.UserId.IsSome(out var vUserId) ? vUserId : sessionInfo.UserId,
+
         };
         var newUserId = sessionInfo.UserId;
         dbSession = await UpsertDbSession(dbContext, session.Id, sessionInfo, cancellationToken).ConfigureAwait(false);

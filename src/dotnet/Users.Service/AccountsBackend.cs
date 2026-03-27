@@ -299,10 +299,13 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         await using var _1 = dbContext.ConfigureAwait(false);
 
         var upsertCommand = new SessionsBackend_Upsert(session) {
-            ExpiresAt = Clocks.SystemClock.Now - TimeSpan.FromSeconds(1), // In the past
-            UserId = null,
+            UserId = Option.Some<UserId?>(null),
             AuthenticatedIdentity = UserIdentity.None,
         };
+        if (command.Deactivate)
+            upsertCommand = upsertCommand with {
+                ExpiresAt = Clocks.SystemClock.Now - TimeSpan.FromSeconds(10), // In the past
+            };
         await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
 
         // Emit event
