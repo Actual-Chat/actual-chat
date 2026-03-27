@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using ActualChat.App.Server;
-using ActualChat.Users;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
 using Microsoft.Playwright;
@@ -41,14 +40,24 @@ public static class TestAuthExt
         CancellationToken cancellationToken = default)
     {
         var services = appHost.Services;
+        var accounts = services.GetRequiredService<IAccounts>();
+        var sessionsBackend = services.GetRequiredService<ISessionsBackend>();
+        var commander = services.Commander();
+
         var userIdentity = account.Identities.IsEmpty
             ? new UserIdentity("test", Ulid.NewUlid().ToString()!)
             : account.Identities.Keys.First();
         var newIdentities = account.Identities.IsEmpty
             ? ApiMap<UserIdentity, string>.Empty
             : account.Identities.Where(x => x.Key != userIdentity).ToApiMap(x => x.Key, x => x.Value);
-        var commander = services.Commander();
-        var accounts = services.GetRequiredService<IAccounts>();
+
+        // Sign out first if already signed in
+        var sessionInfo = await sessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
+        if (sessionInfo?.UserId is not null) {
+            var signOutCommand = new AccountsBackend_SignOut(session);
+            await commander.Call(signOutCommand, cancellationToken).ConfigureAwait(false);
+            await WaitForSignOut(accounts, session, cancellationToken).ConfigureAwait(false);
+        }
 
         var command = new AccountsBackend_SignIn(session, userIdentity, newIdentities, account.Claims);
         await commander.Call(command, cancellationToken).ConfigureAwait(false);
@@ -61,20 +70,30 @@ public static class TestAuthExt
         AccountFull account,
         CancellationToken cancellationToken = default)
     {
+        var session = tester.Session;
+        var services = tester.AppServices;
+        var sessionsBackend = services.GetRequiredService<ISessionsBackend>();
+        var clientAccounts = tester.ClientServices.GetRequiredService<IAccounts>();
+        var commander = services.Commander();
+
         var userIdentity = account.Identities.IsEmpty
             ? new UserIdentity("test", Ulid.NewUlid().ToString()!)
             : account.Identities.Keys.First();
         var newIdentities = account.Identities.IsEmpty
             ? ApiMap<UserIdentity, string>.Empty
             : account.Identities.Where(x => x.Key != userIdentity).ToApiMap(x => x.Key, x => x.Value);
-        var commander = tester.AppServices.Commander();
 
-        var session = tester.Session;
+        // Sign out first if already signed in
+        var sessionInfo = await sessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
+        if (sessionInfo?.UserId is not null) {
+            var signOutCommand = new AccountsBackend_SignOut(session);
+            await commander.Call(signOutCommand, cancellationToken).ConfigureAwait(false);
+            await WaitForSignOut(clientAccounts, session, cancellationToken).ConfigureAwait(false);
+        }
+
         var command = new AccountsBackend_SignIn(session, userIdentity, newIdentities, account.Claims);
         await commander.Call(command, cancellationToken).ConfigureAwait(false);
-
-        var accounts = tester.ClientServices.GetRequiredService<IAccounts>();
-        return await WaitForSignIn(accounts, session, userIdentity, cancellationToken).ConfigureAwait(false);
+        return await WaitForSignIn(clientAccounts, session, userIdentity, cancellationToken).ConfigureAwait(false);
     }
 
     public static Task SignOut(
