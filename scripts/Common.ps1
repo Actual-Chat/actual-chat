@@ -387,14 +387,40 @@ class LocalBuildAgent {
 
         $procId = $this.Process.Id
         Write-Host "Stopping server $($this.Instance) (PID: $procId)..."
-        # Use Kill($false) — Kill($true) uses process-group signaling on Linux,
-        # which can kill the parent build-agent process (same PGID).
-        try { $this.Process.Kill() } catch {}
-        Start-Sleep -Seconds 2
-        try { if (-not $this.Process.HasExited) { $this.Process.Kill() } } catch {}
+        # Kill the entire process tree. We can't use Kill($true) because it uses
+        # process-group signaling on Linux, which can kill the parent build-agent
+        # process (same PGID). Instead, kill children first, then the parent.
+        $this.KillProcessTree($procId)
         $this.Process = $null
         Remove-Item $this.PidFile -ErrorAction SilentlyContinue
+
+        # Wait for the port to be released (up to 10s)
+        for ($i = 0; $i -lt 20; $i++) {
+            if (-not $this.IsPortInUse()) { break }
+            Start-Sleep -Milliseconds 500
+        }
+
         return @{ stopped = $true; pid = $procId }
+    }
+
+    hidden [void] KillProcessTree([int]$targetPid) {
+        # Find and kill child processes first (recursive)
+        try {
+            $children = bash -c "pgrep -P $targetPid 2>/dev/null" 2>$null
+            if ($children) {
+                foreach ($childPid in ($children -split "`n" | Where-Object { $_ })) {
+                    $this.KillProcessTree([int]$childPid)
+                }
+            }
+        } catch {}
+        # Kill the process itself
+        try {
+            $proc = [System.Diagnostics.Process]::GetProcessById($targetPid)
+            if (-not $proc.HasExited) {
+                $proc.Kill()
+                $proc.WaitForExit(3000) | Out-Null
+            }
+        } catch {}
     }
 
     [hashtable] StartServer([bool]$watch) {
