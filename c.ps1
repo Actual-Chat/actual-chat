@@ -1464,17 +1464,17 @@ switch ($mode) {
             "-e", "PULSE_SERVER=$pulseServer"
         )
 
-        # Watch agent for server management: on macOS/Windows, --network host doesn't truly
-        # share ports, so the .NET server must run on the host. The watch-agent provides an
-        # HTTP API that Claude in Docker calls to start/stop/restart the server.
+        # Build agent for server/build management: on macOS/Windows, --network host doesn't
+        # truly share ports, so the .NET server must run on the host. The build agent host
+        # provides an HTTP API that Claude in Docker calls to build/start/stop the server.
         # Port = serverPort + 9 (last in the 10-port block), e.g., 7080→7089, 7100→7109
-        $watchAgentPort = if ($serverConfig) { $serverConfig.Port + 9 } else { 7089 }
-        $watchAgentEnvVars = @()
+        $buildAgentPort = if ($serverConfig) { $serverConfig.Port + 9 } else { 7089 }
+        $buildAgentEnvVars = @()
         if ($currentOS -in "macOS", "Windows") {
-            $watchAgentEnvVars = @("-e", "AC_WATCH_AGENT_PORT=$watchAgentPort")
+            $buildAgentEnvVars = @("-e", "AC_BUILD_AGENT_PORT=$buildAgentPort")
         }
 
-        $dockerArgs += $volumeMounts + $propagatedEnvVars + $audioEnvVars + $watchAgentEnvVars + @(
+        $dockerArgs += $volumeMounts + $propagatedEnvVars + $audioEnvVars + $buildAgentEnvVars + @(
             "-e", "ANTHROPIC_API_KEY=$env:ANTHROPIC_API_KEY"
             "-e", "DISABLE_AUTOUPDATER=1"
             "-e", "DOTNET_SYSTEM_NET_DISABLEIPV6=1"
@@ -1512,18 +1512,18 @@ switch ($mode) {
             Write-Host "  docker $($dockerArgs -join ' ')"
             Write-Host ""
         } else {
-            # Start watch agent (macOS/Windows only) — runs AppServer over HTTP
-            # so Claude in Docker can start/stop the .NET server on the host
+            # Start build agent (macOS/Windows only) — runs build/server operations over HTTP
+            # so Claude in Docker can build/start/stop the server on the host
             if ($currentOS -in "macOS", "Windows") {
-                $watchAgent = [WatchAgent]::new($projectRoot, $watchAgentPort)
-                $watchAgent.Start()
+                $buildAgent = [BuildAgentHost]::new($projectRoot, $buildAgentPort)
+                $buildAgent.Start()
             }
 
             try {
                 # On Windows, we're already in wt (handled at script start)
                 & docker @dockerArgs
             } finally {
-                if ($watchAgent) { $watchAgent.Stop() }
+                if ($buildAgent) { $buildAgent.Stop() }
             }
         }
     }

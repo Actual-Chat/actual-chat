@@ -295,20 +295,10 @@ function Get-ScriptDirectory {
     return $dir
 }
 
-# --- Server management ---
+# --- Build agent ---
 
-# Base type for server control. Returned by [AppServerFactory]::Connect().
-# PowerShell has no abstract methods — these throw to enforce override.
-class AppServer {
-    [hashtable] GetStatus()                          { throw "Not implemented" }
-    [hashtable] Stop()                               { throw "Not implemented" }
-    [hashtable] Start([bool]$watch)                  { throw "Not implemented" }
-    [hashtable] Restart([bool]$watch, [bool]$noBuild) { throw "Not implemented" }
-    [hashtable] Build()                              { throw "Not implemented" }
-    [hashtable] GetLog([int]$lines)                  { throw "Not implemented" }
-}
-
-class LocalAppServer : AppServer {
+# Local implementation: runs dotnet/npm commands directly on the host.
+class LocalBuildAgent {
     [string]$ProjectPath
     [string]$Instance
     [string]$BaseUri
@@ -319,7 +309,7 @@ class LocalAppServer : AppServer {
     [string]$ServerProject
     [System.Diagnostics.Process]$Process = $null
 
-    LocalAppServer([string]$projectPath) {
+    LocalBuildAgent([string]$projectPath) {
         $this.ProjectPath = $projectPath
         $this.Instance = "dev"
         $this.BaseUri = "https://local.voxt.ai"
@@ -390,7 +380,7 @@ class LocalAppServer : AppServer {
         }
     }
 
-    [hashtable] Stop() {
+    [hashtable] StopServer() {
         if (-not $this.IsRunning()) {
             return @{ stopped = $false; message = "No running server found" }
         }
@@ -398,7 +388,7 @@ class LocalAppServer : AppServer {
         $procId = $this.Process.Id
         Write-Host "Stopping server $($this.Instance) (PID: $procId)..."
         # Use Kill($false) — Kill($true) uses process-group signaling on Linux,
-        # which can kill the parent watch-agent process (same PGID).
+        # which can kill the parent build-agent process (same PGID).
         try { $this.Process.Kill() } catch {}
         Start-Sleep -Seconds 2
         try { if (-not $this.Process.HasExited) { $this.Process.Kill() } } catch {}
@@ -407,7 +397,7 @@ class LocalAppServer : AppServer {
         return @{ stopped = $true; pid = $procId }
     }
 
-    [hashtable] Start([bool]$watch) {
+    [hashtable] StartServer([bool]$watch) {
         if ($this.IsRunning()) {
             return @{ started = $false; message = "Already running"; pid = $this.Process.Id; port = $this.Port }
         }
@@ -474,26 +464,53 @@ class LocalAppServer : AppServer {
         }
     }
 
-    [hashtable] Build() {
-        Write-Host "Building..."
+    [hashtable] BuildServer() {
+        Write-Host "Building server..."
         $output = & dotnet build $this.ServerProject --verbosity quiet 2>&1
         $result = @{ exitCode = $LASTEXITCODE; output = ($output | Out-String) }
-        if ($LASTEXITCODE -eq 0) { Write-Host "Build complete" }
+        if ($LASTEXITCODE -eq 0) { Write-Host "Server build complete" }
         return $result
     }
 
-    [hashtable] Restart([bool]$watch, [bool]$noBuild) {
-        $stopResult = $this.Stop()
+    [hashtable] BuildFrontend([bool]$release) {
+        $scriptName = if ($release) { "build:Release" } else { "build:Debug" }
+        Write-Host "Running npm run $scriptName..."
+        try {
+            Push-Location $this.ProjectPath
+            $output = & npm run $scriptName 2>&1
+            $result = @{ exitCode = $LASTEXITCODE; output = ($output | Out-String); release = $release }
+            if ($LASTEXITCODE -eq 0) { Write-Host "Frontend build complete" }
+            return $result
+        } finally {
+            Pop-Location
+        }
+    }
+
+    [hashtable] InstallNpm() {
+        Write-Host "Running npm ci..."
+        try {
+            Push-Location $this.ProjectPath
+            $output = & npm ci 2>&1
+            $result = @{ exitCode = $LASTEXITCODE; output = ($output | Out-String) }
+            if ($LASTEXITCODE -eq 0) { Write-Host "npm ci complete" }
+            return $result
+        } finally {
+            Pop-Location
+        }
+    }
+
+    [hashtable] RestartServer([bool]$watch, [bool]$noBuild) {
+        $stopResult = $this.StopServer()
 
         $buildResult = $null
         if (-not $noBuild) {
-            $buildResult = $this.Build()
+            $buildResult = $this.BuildServer()
             if ($buildResult.exitCode -ne 0) {
                 return @{ error = "Build failed"; stop = $stopResult; build = $buildResult }
             }
         }
 
-        $startResult = $this.Start($watch)
+        $startResult = $this.StartServer($watch)
         return @{ stop = $stopResult; build = $buildResult; start = $startResult }
     }
 
@@ -510,18 +527,19 @@ class LocalAppServer : AppServer {
     }
 }
 
-# HTTP client for talking to a remote WatchAgent over HTTP.
-# Same method signatures as LocalAppServer so callers don't need to know which they're using.
-class RemoteAppServer : AppServer {
+# Remote implementation: HTTP client that talks to a BuildAgentHost on the host machine.
+class RemoteBuildAgent {
     [string]$BaseUrl
 
-    RemoteAppServer([string]$baseUrl) {
+    RemoteBuildAgent([string]$baseUrl) {
         $this.BaseUrl = $baseUrl.TrimEnd('/')
     }
 
-    # Create from AC_WATCH_AGENT_PORT env var. Returns $null if not set or unreachable.
-    static [RemoteAppServer] TryCreate() {
-        $port = $env:AC_WATCH_AGENT_PORT
+    # Create from AC_BUILD_AGENT_PORT env var (falls back to AC_WATCH_AGENT_PORT).
+    # Returns $null if not set or unreachable.
+    static [RemoteBuildAgent] TryCreate() {
+        $port = $env:AC_BUILD_AGENT_PORT
+        if (-not $port) { $port = $env:AC_WATCH_AGENT_PORT }
         if (-not $port) { return $null }
 
         # Resolve host.docker.internal for Docker on macOS/Windows
@@ -534,9 +552,9 @@ class RemoteAppServer : AppServer {
         $url = "http://${hostIp}:$port"
         try {
             $null = Invoke-RestMethod -Uri "$url/health" -TimeoutSec 2 -ErrorAction Stop
-            return [RemoteAppServer]::new($url)
+            return [RemoteBuildAgent]::new($url)
         } catch {
-            Write-Host "Warning: Watch agent not reachable at $url"
+            Write-Host "Warning: Build agent host not reachable at $url"
             return $null
         }
     }
@@ -546,38 +564,44 @@ class RemoteAppServer : AppServer {
     }
 
     hidden [PSObject] Post([string]$path, [hashtable]$body) {
+        return $this.Post($path, $body, 120)
+    }
+
+    hidden [PSObject] Post([string]$path, [hashtable]$body, [int]$timeoutSec) {
         $json = if ($body) { $body | ConvertTo-Json -Compress } else { "{}" }
         return Invoke-RestMethod -Uri "$($this.BaseUrl)$path" -Method Post `
-            -Body $json -ContentType "application/json" -TimeoutSec 120 -ErrorAction Stop
+            -Body $json -ContentType "application/json" -TimeoutSec $timeoutSec -ErrorAction Stop
     }
 
     [PSObject] GetStatus()                             { return $this.Get("/server/status") }
-    [PSObject] Stop()                                  { return $this.Post("/server/stop", @{}) }
-    [PSObject] Start([bool]$watch)                     { return $this.Post("/server/start", @{ watch = $watch }) }
-    [PSObject] Restart([bool]$watch, [bool]$noBuild)   { return $this.Post("/server/restart", @{ watch = $watch; noBuild = $noBuild }) }
-    [PSObject] Build()                                 { return $this.Post("/server/restart", @{ noBuild = $false }) }
+    [PSObject] StopServer()                            { return $this.Post("/server/stop", @{}) }
+    [PSObject] StartServer([bool]$watch)               { return $this.Post("/server/start", @{ watch = $watch }) }
+    [PSObject] RestartServer([bool]$watch, [bool]$noBuild) { return $this.Post("/server/restart", @{ watch = $watch; noBuild = $noBuild }) }
+    [PSObject] BuildServer()                           { return $this.Post("/server/build", @{}) }
+    [PSObject] BuildFrontend([bool]$release)            { return $this.Post("/npm/build", @{ release = $release }, 300) }
+    [PSObject] InstallNpm()                            { return $this.Post("/npm/install", @{}, 300) }
     [PSObject] GetLog([int]$lines)                     { return $this.Get("/server/log?lines=$lines") }
 }
 
-# Factory that returns the right AppServer implementation.
-# Returns RemoteAppServer if a watch-agent is available, otherwise LocalAppServer.
-class AppServerFactory {
-    static [AppServer] Create([string]$projectPath) {
-        $remote = [RemoteAppServer]::TryCreate()
-        if ($remote) {
-            Write-Host "(via watch agent)"
-            return $remote
-        }
-        return [LocalAppServer]::new($projectPath)
+# Public entry point. Auto-detects local vs remote build agent.
+# Usage: $agent = Get-BuildAgent $projectPath; $agent.BuildServer()
+function Get-BuildAgent([string]$projectPath) {
+    $remote = [RemoteBuildAgent]::TryCreate()
+    if ($remote) {
+        Write-Host "(via build agent host)"
+        return $remote
     }
+    return [LocalBuildAgent]::new($projectPath)
 }
 
-class WatchAgent {
+# HTTP server that runs on the host, serving build/server requests from Docker.
+# Started by c.ps1 launcher on macOS/Windows.
+class BuildAgentHost {
     [string]$ProjectPath
     [int]$Port
     [System.Diagnostics.Process]$Process = $null
 
-    WatchAgent([string]$projectPath, [int]$port) {
+    BuildAgentHost([string]$projectPath, [int]$port) {
         $this.ProjectPath = $projectPath
         $this.Port = $port
     }
@@ -585,12 +609,12 @@ class WatchAgent {
     # Start the agent as a background process
     [void] Start() {
         $commonScript = Join-Path $this.ProjectPath "scripts" "Common.ps1"
-        $cmd = ". '$commonScript'; [WatchAgent]::Run($($this.Port), '$($this.ProjectPath)')"
+        $cmd = ". '$commonScript'; [BuildAgentHost]::Run($($this.Port), '$($this.ProjectPath)')"
 
         # Write command to a temp script to avoid quoting issues
         $tmpDir = Join-Path $this.ProjectPath "tmp"
         if (-not (Test-Path $tmpDir)) { New-Item -ItemType Directory -Path $tmpDir -Force | Out-Null }
-        $scriptFile = Join-Path $tmpDir "watch-agent-run.ps1"
+        $scriptFile = Join-Path $tmpDir "build-agent-run.ps1"
         Set-Content -Path $scriptFile -Value $cmd
 
         $onWindows = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)
@@ -612,13 +636,13 @@ class WatchAgent {
             $null = $this.Process.StandardOutput.ReadLineAsync()
             $null = $this.Process.StandardError.ReadLineAsync()
         }
-        Write-Host "Watch agent started on port $($this.Port) (PID: $($this.Process.Id))"
+        Write-Host "Build agent started on port $($this.Port) (PID: $($this.Process.Id))"
     }
 
     # Stop the background process
     [void] Stop() {
         if ($this.Process -and -not $this.Process.HasExited) {
-            Write-Host "Stopping watch agent..."
+            Write-Host "Stopping build agent..."
             try { $this.Process.Kill($true) } catch {}
         }
         $this.Process = $null
@@ -627,7 +651,7 @@ class WatchAgent {
     # --- Static: the blocking HTTP server loop (runs in the background process) ---
 
     static [void] Run([int]$port, [string]$projectPath) {
-        $server = [LocalAppServer]::new($projectPath)
+        $agent = [LocalBuildAgent]::new($projectPath)
 
         $listener = [System.Net.HttpListener]::new()
         $listener.Prefixes.Add("http://+:$port/")
@@ -640,8 +664,8 @@ class WatchAgent {
             $listener.Start()
         }
 
-        Write-Host "Watch agent listening on port $port"
-        Write-Host "Project: $projectPath | Instance: $($server.Instance) | Server port: $($server.Port)"
+        Write-Host "Build agent listening on port $port"
+        Write-Host "Project: $projectPath | Instance: $($agent.Instance) | Server port: $($agent.Port)"
 
         try {
             while ($listener.IsListening) {
@@ -650,37 +674,43 @@ class WatchAgent {
 
                 try {
                     switch ($route) {
-                        "GET /health"         { [WatchAgent]::SendJson($ctx, @{ status = "ok"; project = $projectPath }) }
-                        "GET /server/status"  { [WatchAgent]::SendJson($ctx, $server.GetStatus()) }
-                        "POST /server/start"  { $b = [WatchAgent]::ReadBody($ctx); [WatchAgent]::SendJson($ctx, $server.Start([bool]$b.watch)) }
-                        "POST /server/stop"   { [WatchAgent]::SendJson($ctx, $server.Stop()) }
+                        "GET /health"          { [BuildAgentHost]::SendJson($ctx, @{ status = "ok"; project = $projectPath }) }
+                        "GET /server/status"   { [BuildAgentHost]::SendJson($ctx, $agent.GetStatus()) }
+                        "POST /server/start"   { $b = [BuildAgentHost]::ReadBody($ctx); [BuildAgentHost]::SendJson($ctx, $agent.StartServer([bool]$b.watch)) }
+                        "POST /server/stop"    { [BuildAgentHost]::SendJson($ctx, $agent.StopServer()) }
+                        "POST /server/build"   { [BuildAgentHost]::SendJson($ctx, $agent.BuildServer()) }
                         "POST /server/restart" {
-                            $b = [WatchAgent]::ReadBody($ctx)
-                            $r = $server.Restart([bool]$b.watch, [bool]$b.noBuild)
-                            [WatchAgent]::SendJson($ctx, $r, $(if ($r.error) { 500 } else { 200 }))
+                            $b = [BuildAgentHost]::ReadBody($ctx)
+                            $r = $agent.RestartServer([bool]$b.watch, [bool]$b.noBuild)
+                            [BuildAgentHost]::SendJson($ctx, $r, $(if ($r.error) { 500 } else { 200 }))
                         }
                         "GET /server/log" {
                             $n = 50; $q = $ctx.Request.QueryString
                             if ($q["lines"]) { $n = [int]$q["lines"] }
-                            [WatchAgent]::SendJson($ctx, $server.GetLog($n))
+                            [BuildAgentHost]::SendJson($ctx, $agent.GetLog($n))
                         }
-                        default { [WatchAgent]::SendJson($ctx, @{ error = "Not found" }, 404) }
+                        "POST /npm/install"    { [BuildAgentHost]::SendJson($ctx, $agent.InstallNpm()) }
+                        "POST /npm/build" {
+                            $b = [BuildAgentHost]::ReadBody($ctx)
+                            [BuildAgentHost]::SendJson($ctx, $agent.BuildFrontend([bool]$b.release))
+                        }
+                        default { [BuildAgentHost]::SendJson($ctx, @{ error = "Not found" }, 404) }
                     }
                 } catch {
                     Write-Host "Error: $_"
-                    try { [WatchAgent]::SendJson($ctx, @{ error = $_.ToString() }, 500) } catch {}
+                    try { [BuildAgentHost]::SendJson($ctx, @{ error = $_.ToString() }, 500) } catch {}
                 }
             }
         } finally {
             $listener.Stop()
-            Write-Host "Watch agent stopped"
+            Write-Host "Build agent stopped"
         }
     }
 
     # --- HTTP helpers ---
 
     static [void] SendJson([System.Net.HttpListenerContext]$ctx, [hashtable]$data) {
-        [WatchAgent]::SendJson($ctx, $data, 200)
+        [BuildAgentHost]::SendJson($ctx, $data, 200)
     }
 
     static [void] SendJson([System.Net.HttpListenerContext]$ctx, [hashtable]$data, [int]$code) {

@@ -33,8 +33,8 @@ done
 
 pwsh -NoProfile -c "
     . '$PROJECT_PATH/scripts/Common.ps1'
-    \$server = [AppServerFactory]::Create('$PROJECT_PATH')
-    \$r = \$server.Restart(\$$WATCH, \$$NO_BUILD)
+    \$agent = Get-BuildAgent '$PROJECT_PATH'
+    \$r = \$agent.RestartServer(\$$WATCH, \$$NO_BUILD)
     if (\$r.error) {
         Write-Host \"Error: \$(\$r.error)\"
         exit 1
@@ -48,7 +48,7 @@ pwsh -NoProfile -c "
     } else {
         Write-Host \$start.message
     }
-    \$s = \$server.GetStatus()
+    \$s = \$agent.GetStatus()
     Write-Host \"Browser: \$(\$s.baseUri)\"
 "
 ```

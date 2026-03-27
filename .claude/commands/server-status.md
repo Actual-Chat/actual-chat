@@ -15,8 +15,8 @@ PROJECT_PATH="${AC_ProjectPath:-$(pwd)}"
 
 pwsh -NoProfile -c "
     . '$PROJECT_PATH/scripts/Common.ps1'
-    \$server = [AppServerFactory]::Create('$PROJECT_PATH')
-    \$r = \$server.GetStatus()
+    \$agent = Get-BuildAgent '$PROJECT_PATH'
+    \$r = \$agent.GetStatus()
     Write-Host \"Instance: \$(\$r.instance)\"
     Write-Host \"Port:     \$(\$r.port)\"
     Write-Host \"Status:   \$(\$r.status)\"

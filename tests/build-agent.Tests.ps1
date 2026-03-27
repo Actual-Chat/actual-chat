@@ -3,17 +3,17 @@ BeforeAll {
     $script:projectRoot = Split-Path -Parent $PSScriptRoot
 }
 
-Describe "LocalAppServer" {
+Describe "LocalBuildAgent" {
     BeforeAll {
         # Use isolated temp dir so tests don't interact with a real running server
-        $script:isoDir = Join-Path ([System.IO.Path]::GetTempPath()) "test-local-server-$(Get-Random)"
+        $script:isoDir = Join-Path ([System.IO.Path]::GetTempPath()) "test-local-agent-$(Get-Random)"
         New-Item -ItemType Directory -Path $script:isoDir -Force | Out-Null
         New-Item -ItemType Directory -Path (Join-Path $script:isoDir "tmp") -Force | Out-Null
         $srcDir = Join-Path $script:isoDir "src" "dotnet" "App.Server"
         New-Item -ItemType Directory -Path $srcDir -Force | Out-Null
         Set-Content (Join-Path $srcDir "App.Server.csproj") "<Project/>"
         Set-Content (Join-Path $script:isoDir ".env") "urls=http://localhost:19877`nCoreSettings__Instance=test-iso`nHostSettings__BaseUri=https://test-iso.local.voxt.ai"
-        $script:server = [LocalAppServer]::new($script:isoDir)
+        $script:agent = [LocalBuildAgent]::new($script:isoDir)
     }
 
     AfterAll {
@@ -21,28 +21,28 @@ Describe "LocalAppServer" {
     }
 
     It "reads instance from .env" {
-        $server.Instance | Should -Be "test-iso"
+        $agent.Instance | Should -Be "test-iso"
     }
 
     It "reads port from .env" {
-        $server.Port | Should -Be 19877
+        $agent.Port | Should -Be 19877
     }
 
     It "sets ServerProject to .csproj" {
-        $server.ServerProject | Should -BeLike "*.csproj"
+        $agent.ServerProject | Should -BeLike "*.csproj"
     }
 
     It "sets LogFile to .log" {
-        $server.LogFile | Should -BeLike "*.log"
+        $agent.LogFile | Should -BeLike "*.log"
     }
 
     It "is not running initially" {
-        $server.IsRunning() | Should -BeFalse
+        $agent.IsRunning() | Should -BeFalse
     }
 
     Context "GetStatus when stopped" {
         BeforeAll {
-            $script:status = $server.GetStatus()
+            $script:status = $agent.GetStatus()
         }
 
         It "returns status=stopped" {
@@ -50,15 +50,15 @@ Describe "LocalAppServer" {
         }
 
         It "returns correct instance" {
-            $status.instance | Should -Be $server.Instance
+            $status.instance | Should -Be $agent.Instance
         }
 
         It "returns correct baseUri" {
-            $status.baseUri | Should -Be $server.BaseUri
+            $status.baseUri | Should -Be $agent.BaseUri
         }
 
         It "returns correct port" {
-            $status.port | Should -Be $server.Port
+            $status.port | Should -Be $agent.Port
         }
 
         It "returns null pid" {
@@ -66,9 +66,9 @@ Describe "LocalAppServer" {
         }
     }
 
-    Context "Stop when not running" {
+    Context "StopServer when not running" {
         BeforeAll {
-            $script:result = $server.Stop()
+            $script:result = $agent.StopServer()
         }
 
         It "returns stopped=false" {
@@ -82,7 +82,7 @@ Describe "LocalAppServer" {
 
     Context "GetLog" {
         BeforeAll {
-            $script:log = $server.GetLog(10)
+            $script:log = $agent.GetLog(10)
         }
 
         It "returns log key" {
@@ -93,12 +93,37 @@ Describe "LocalAppServer" {
             $log.ContainsKey("stderr") | Should -BeTrue
         }
     }
+
+    Context "InstallNpm" {
+        It "returns a hashtable with exitCode" {
+            # npm ci will fail (no package.json in temp dir) but should return a result
+            $result = $agent.InstallNpm()
+            $result.ContainsKey("exitCode") | Should -BeTrue
+            $result.ContainsKey("output") | Should -BeTrue
+        }
+    }
+
+    Context "BuildFrontend" {
+        It "returns a hashtable with exitCode for debug build" {
+            # npm run will fail (no package.json in temp dir) but should return a result
+            $result = $agent.BuildFrontend($false)
+            $result.ContainsKey("exitCode") | Should -BeTrue
+            $result.ContainsKey("output") | Should -BeTrue
+            $result.release | Should -BeFalse
+        }
+
+        It "returns a hashtable with exitCode for release build" {
+            $result = $agent.BuildFrontend($true)
+            $result.ContainsKey("exitCode") | Should -BeTrue
+            $result.release | Should -BeTrue
+        }
+    }
 }
 
-Describe "WatchAgent + RemoteAppServer" {
+Describe "BuildAgentHost + RemoteBuildAgent" {
     BeforeAll {
-        # Isolated temp dir so the WatchAgent's LocalAppServer doesn't find a real server
-        $script:waIsoDir = Join-Path ([System.IO.Path]::GetTempPath()) "test-watch-agent-$(Get-Random)"
+        # Isolated temp dir so the BuildAgentHost's LocalBuildAgent doesn't find a real server
+        $script:waIsoDir = Join-Path ([System.IO.Path]::GetTempPath()) "test-build-agent-$(Get-Random)"
         New-Item -ItemType Directory -Path $script:waIsoDir -Force | Out-Null
         New-Item -ItemType Directory -Path (Join-Path $script:waIsoDir "tmp") -Force | Out-Null
         $srcDir = Join-Path $script:waIsoDir "src" "dotnet" "App.Server"
@@ -111,8 +136,8 @@ Describe "WatchAgent + RemoteAppServer" {
         Copy-Item (Join-Path $script:projectRoot "scripts" "Common.ps1") $scriptsDir
 
         $script:agentPort = 7900 + (Get-Random -Minimum 0 -Maximum 99)
-        $script:agent = [WatchAgent]::new($script:waIsoDir, $script:agentPort)
-        $agent.Start()
+        $script:host_ = [BuildAgentHost]::new($script:waIsoDir, $script:agentPort)
+        $host_.Start()
 
         # Wait for HTTP server to be ready
         $script:agentReady = $false
@@ -127,16 +152,16 @@ Describe "WatchAgent + RemoteAppServer" {
     }
 
     AfterAll {
-        $agent.Stop()
+        $host_.Stop()
         Remove-Item $script:waIsoDir -Recurse -Force -ErrorAction SilentlyContinue
     }
 
     It "starts successfully" {
-        $agent.Process | Should -Not -BeNullOrEmpty
+        $host_.Process | Should -Not -BeNullOrEmpty
     }
 
     It "process is running" {
-        $agent.Process.HasExited | Should -BeFalse
+        $host_.Process.HasExited | Should -BeFalse
     }
 
     It "HTTP server is reachable" {
@@ -159,7 +184,7 @@ Describe "WatchAgent + RemoteAppServer" {
 
     Context "Client.GetStatus" {
         BeforeAll {
-            $client = [RemoteAppServer]::new("http://localhost:$script:agentPort")
+            $client = [RemoteBuildAgent]::new("http://localhost:$script:agentPort")
             $script:status = $client.GetStatus()
         }
 
@@ -176,10 +201,10 @@ Describe "WatchAgent + RemoteAppServer" {
         }
     }
 
-    Context "Client.Stop when not running" {
+    Context "Client.StopServer when not running" {
         BeforeAll {
-            $client = [RemoteAppServer]::new("http://localhost:$script:agentPort")
-            $script:result = $client.Stop()
+            $client = [RemoteBuildAgent]::new("http://localhost:$script:agentPort")
+            $script:result = $client.StopServer()
         }
 
         It "returns stopped=false" {
@@ -187,12 +212,12 @@ Describe "WatchAgent + RemoteAppServer" {
         }
     }
 
-    Context "Client.Start" {
+    Context "Client.StartServer" {
         BeforeAll {
-            $client = [RemoteAppServer]::new("http://localhost:$script:agentPort")
+            $client = [RemoteBuildAgent]::new("http://localhost:$script:agentPort")
             $script:startError = $null
             try {
-                $script:startResult = $client.Start($false)
+                $script:startResult = $client.StartServer($false)
             } catch {
                 $script:startError = $_
             }
@@ -201,8 +226,8 @@ Describe "WatchAgent + RemoteAppServer" {
         AfterAll {
             # Clean up if server was started
             if ($script:startResult -and $script:startResult.started) {
-                $client = [RemoteAppServer]::new("http://localhost:$script:agentPort")
-                try { $null = $client.Stop() } catch {}
+                $client = [RemoteBuildAgent]::new("http://localhost:$script:agentPort")
+                try { $null = $client.StopServer() } catch {}
             }
         }
 
@@ -213,12 +238,36 @@ Describe "WatchAgent + RemoteAppServer" {
 
     Context "Client.GetLog" {
         BeforeAll {
-            $client = [RemoteAppServer]::new("http://localhost:$script:agentPort")
+            $client = [RemoteBuildAgent]::new("http://localhost:$script:agentPort")
             $script:logResult = $client.GetLog(10)
         }
 
         It "returns a result" {
             $logResult | Should -Not -BeNullOrEmpty
+        }
+    }
+
+    Context "POST /npm/install via HTTP" {
+        It "returns a result" {
+            $result = Invoke-RestMethod -Uri "http://localhost:$script:agentPort/npm/install" -Method Post `
+                -Body "{}" -ContentType "application/json" -TimeoutSec 30
+            $result | Should -Not -BeNullOrEmpty
+        }
+    }
+
+    Context "POST /npm/build via HTTP" {
+        It "returns a result" {
+            $result = Invoke-RestMethod -Uri "http://localhost:$script:agentPort/npm/build" -Method Post `
+                -Body '{"release":false}' -ContentType "application/json" -TimeoutSec 30
+            $result | Should -Not -BeNullOrEmpty
+        }
+    }
+
+    Context "POST /server/build via HTTP" {
+        It "returns a result" {
+            $result = Invoke-RestMethod -Uri "http://localhost:$script:agentPort/server/build" -Method Post `
+                -Body "{}" -ContentType "application/json" -TimeoutSec 30
+            $result | Should -Not -BeNullOrEmpty
         }
     }
 
@@ -229,37 +278,48 @@ Describe "WatchAgent + RemoteAppServer" {
         }
     }
 
-    Context "Agent.Stop" {
+    Context "BuildAgentHost.Stop" {
         It "clears process" {
             # This runs in AfterAll above; verify separately
-            $agent2 = [WatchAgent]::new($script:projectRoot, 7899)
-            $agent2.Stop()
-            $agent2.Process | Should -BeNullOrEmpty
+            $host2 = [BuildAgentHost]::new($script:projectRoot, 7899)
+            $host2.Stop()
+            $host2.Process | Should -BeNullOrEmpty
         }
     }
 }
 
-Describe "RemoteAppServer.TryCreate" {
+Describe "RemoteBuildAgent.TryCreate" {
     BeforeAll {
-        $script:savedPort = $env:AC_WATCH_AGENT_PORT
+        $script:savedBuildPort = $env:AC_BUILD_AGENT_PORT
+        $script:savedWatchPort = $env:AC_WATCH_AGENT_PORT
     }
 
     AfterAll {
-        $env:AC_WATCH_AGENT_PORT = $script:savedPort
+        $env:AC_BUILD_AGENT_PORT = $script:savedBuildPort
+        $env:AC_WATCH_AGENT_PORT = $script:savedWatchPort
     }
 
-    It "returns null when AC_WATCH_AGENT_PORT is not set" {
+    It "returns null when neither env var is set" {
+        $env:AC_BUILD_AGENT_PORT = ""
         $env:AC_WATCH_AGENT_PORT = ""
-        [RemoteAppServer]::TryCreate() | Should -BeNullOrEmpty
+        [RemoteBuildAgent]::TryCreate() | Should -BeNullOrEmpty
     }
 
-    It "returns null when agent is not reachable" {
-        $env:AC_WATCH_AGENT_PORT = "19999"
-        [RemoteAppServer]::TryCreate() | Should -BeNullOrEmpty
+    It "returns null when agent is not reachable via AC_BUILD_AGENT_PORT" {
+        $env:AC_BUILD_AGENT_PORT = "19999"
+        $env:AC_WATCH_AGENT_PORT = ""
+        [RemoteBuildAgent]::TryCreate() | Should -BeNullOrEmpty
+    }
+
+    It "falls back to AC_WATCH_AGENT_PORT" {
+        $env:AC_BUILD_AGENT_PORT = ""
+        $env:AC_WATCH_AGENT_PORT = "19998"
+        # Not reachable, but should attempt the fallback
+        [RemoteBuildAgent]::TryCreate() | Should -BeNullOrEmpty
     }
 }
 
-Describe "LocalAppServer.TryReconnect" {
+Describe "LocalBuildAgent.TryReconnect" {
     BeforeAll {
         # Isolated temp dir with an unused port to prevent lsof interference
         $script:tempDir = Join-Path ([System.IO.Path]::GetTempPath()) "test-reconnect-$(Get-Random)"
@@ -276,8 +336,8 @@ Describe "LocalAppServer.TryReconnect" {
     }
 
     It "sets PidFile path" {
-        $server = [LocalAppServer]::new($script:tempDir)
-        $server.PidFile | Should -BeLike "*/tmp/server-dev.pid"
+        $agent = [LocalBuildAgent]::new($script:tempDir)
+        $agent.PidFile | Should -BeLike "*/tmp/server-dev.pid"
     }
 
     Context "with valid PID file" {
@@ -286,7 +346,7 @@ Describe "LocalAppServer.TryReconnect" {
             $psi.UseShellExecute = $false
             $script:proc = [System.Diagnostics.Process]::Start($psi)
             Set-Content (Join-Path $script:tempDir "tmp" "server-dev.pid") $script:proc.Id
-            $script:server = [LocalAppServer]::new($script:tempDir)
+            $script:agent = [LocalBuildAgent]::new($script:tempDir)
         }
 
         AfterAll {
@@ -295,12 +355,12 @@ Describe "LocalAppServer.TryReconnect" {
         }
 
         It "reconnects to the process" {
-            $script:server.IsRunning() | Should -BeTrue
-            $script:server.Process.Id | Should -Be $script:proc.Id
+            $script:agent.IsRunning() | Should -BeTrue
+            $script:agent.Process.Id | Should -Be $script:proc.Id
         }
 
         It "reports running in GetStatus" {
-            $status = $script:server.GetStatus()
+            $status = $script:agent.GetStatus()
             $status.status | Should -Be "running"
             $status.pid | Should -Be $script:proc.Id
         }
@@ -310,11 +370,11 @@ Describe "LocalAppServer.TryReconnect" {
         BeforeAll {
             $script:pidFile = Join-Path $script:tempDir "tmp" "server-dev.pid"
             Set-Content $script:pidFile "999999999"
-            $script:server = [LocalAppServer]::new($script:tempDir)
+            $script:agent = [LocalBuildAgent]::new($script:tempDir)
         }
 
         It "does not reconnect" {
-            $script:server.IsRunning() | Should -BeFalse
+            $script:agent.IsRunning() | Should -BeFalse
         }
 
         It "removes the stale PID file" {
@@ -322,14 +382,14 @@ Describe "LocalAppServer.TryReconnect" {
         }
     }
 
-    Context "Stop removes PID file" {
+    Context "StopServer removes PID file" {
         BeforeAll {
             $psi = [System.Diagnostics.ProcessStartInfo]::new("sleep", "300")
             $psi.UseShellExecute = $false
             $script:proc = [System.Diagnostics.Process]::Start($psi)
             $script:pidFile = Join-Path $script:tempDir "tmp" "server-dev.pid"
             Set-Content $script:pidFile $script:proc.Id
-            $script:server = [LocalAppServer]::new($script:tempDir)
+            $script:agent = [LocalBuildAgent]::new($script:tempDir)
         }
 
         It "PID file exists before stop" {
@@ -337,12 +397,12 @@ Describe "LocalAppServer.TryReconnect" {
         }
 
         It "removes PID file after stop" {
-            $script:server.Stop()
+            $script:agent.StopServer()
             Test-Path $script:pidFile | Should -BeFalse
         }
 
         It "reports stopped after stop" {
-            $script:server.GetStatus().status | Should -Be "stopped"
+            $script:agent.GetStatus().status | Should -Be "stopped"
         }
     }
 
@@ -357,7 +417,7 @@ Describe "LocalAppServer.TryReconnect" {
 
             Set-Content (Join-Path $script:tempDir ".env") "urls=http://localhost:$($script:testPort)"
             Remove-Item (Join-Path $script:tempDir "tmp" "server-dev.pid") -ErrorAction SilentlyContinue
-            $script:server = [LocalAppServer]::new($script:tempDir)
+            $script:agent = [LocalBuildAgent]::new($script:tempDir)
         }
 
         AfterAll {
@@ -367,8 +427,8 @@ Describe "LocalAppServer.TryReconnect" {
         }
 
         It "detects process via lsof" {
-            $script:server.IsRunning() | Should -BeTrue
-            $script:server.Process.Id | Should -Be $script:listener.Id
+            $script:agent.IsRunning() | Should -BeTrue
+            $script:agent.Process.Id | Should -Be $script:listener.Id
         }
 
         It "creates PID file from port discovery" {
@@ -379,24 +439,28 @@ Describe "LocalAppServer.TryReconnect" {
     }
 }
 
-Describe "AppServerFactory.Create" {
+Describe "Get-BuildAgent" {
     BeforeAll {
-        $script:savedPort = $env:AC_WATCH_AGENT_PORT
+        $script:savedBuildPort = $env:AC_BUILD_AGENT_PORT
+        $script:savedWatchPort = $env:AC_WATCH_AGENT_PORT
     }
 
     AfterAll {
-        $env:AC_WATCH_AGENT_PORT = $script:savedPort
+        $env:AC_BUILD_AGENT_PORT = $script:savedBuildPort
+        $env:AC_WATCH_AGENT_PORT = $script:savedWatchPort
     }
 
-    It "returns LocalAppServer when no watch agent" {
+    It "returns LocalBuildAgent when no remote agent" {
+        $env:AC_BUILD_AGENT_PORT = ""
         $env:AC_WATCH_AGENT_PORT = ""
-        $server = [AppServerFactory]::Create($script:projectRoot)
-        $server.GetType().Name | Should -Be "LocalAppServer"
+        $agent = Get-BuildAgent($script:projectRoot)
+        $agent.GetType().Name | Should -Be "LocalBuildAgent"
     }
 
-    It "returns LocalAppServer when agent unreachable" {
-        $env:AC_WATCH_AGENT_PORT = "19999"
-        $server = [AppServerFactory]::Create($script:projectRoot)
-        $server.GetType().Name | Should -Be "LocalAppServer"
+    It "returns LocalBuildAgent when agent unreachable" {
+        $env:AC_BUILD_AGENT_PORT = "19999"
+        $env:AC_WATCH_AGENT_PORT = ""
+        $agent = Get-BuildAgent($script:projectRoot)
+        $agent.GetType().Name | Should -Be "LocalBuildAgent"
     }
 }

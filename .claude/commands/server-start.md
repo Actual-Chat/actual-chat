@@ -16,7 +16,7 @@ Start the ActualChat App.Server in the background with multi-worktree support.
 
 ## Configuration
 
-Uses `AppServerFactory.Connect()` from `scripts/Common.ps1` to auto-detect whether to control the server locally or via the watch-agent (macOS/Windows Docker).
+Uses `Get-BuildAgent` from `scripts/Common.ps1` to auto-detect whether to control the server locally or via the build agent host (macOS/Windows Docker).
 
 ## Bash Implementation
 
@@ -30,8 +30,8 @@ WATCH="false"
 
 pwsh -NoProfile -c "
     . '$PROJECT_PATH/scripts/Common.ps1'
-    \$server = [AppServerFactory]::Create('$PROJECT_PATH')
-    \$r = \$server.Start(\$$WATCH)
+    \$agent = Get-BuildAgent '$PROJECT_PATH'
+    \$r = \$agent.StartServer(\$$WATCH)
     if (\$r.started) {
         Write-Host \"Started (PID: \$(\$r.pid)), port: \$(\$r.port)\"
         if (\$r.watch) { Write-Host 'Mode: dotnet watch (auto-reload)' }
@@ -40,7 +40,7 @@ pwsh -NoProfile -c "
     } else {
         Write-Host \$r.message
     }
-    \$s = \$server.GetStatus()
+    \$s = \$agent.GetStatus()
     Write-Host \"Browser: \$(\$s.baseUri)\"
 "
 ```
