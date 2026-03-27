@@ -10,7 +10,7 @@
     _formModel.PrimaryLanguageId = languages.GetOrDefault(0)?.Value ?? "";
     _formModel.SecondaryLanguageId = languages.GetOrDefault(1)?.Value ?? "";
     _formModel.TertiaryLanguageId = languages.GetOrDefault(2)?.Value ?? "";
-    var shouldDisplayTranscriberEngineSettings = m.ShouldDisplayTranscriberEngineSettings;
+    var shouldDisplayTranscriberEngineSettings = m.EnableIncompleteUI;
 }
 
 <TileTopic Topic="Languages"/>
@@ -121,5 +121,5 @@
 
     public sealed record Model(
         UserLanguageSettings Languages,
-        bool ShouldDisplayTranscriberEngineSettings);
+        bool EnableIncompleteUI);
 }

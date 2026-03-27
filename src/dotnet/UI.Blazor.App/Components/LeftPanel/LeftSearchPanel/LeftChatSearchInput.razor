@@ -50,7 +50,7 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             t => new ComputedState<Model>.Options() {
-                InitialValue = new Model(SearchUI.IsSearchModeOn.ValueOrDefault, false, SearchUI.Text.ValueOrDefault ?? ""),
+                InitialValue = new Model(SearchUI.IsSearchModeOn.ValueOrDefault, SearchUI.Text.ValueOrDefault ?? ""),
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
@@ -58,9 +58,8 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var isOpen = await SearchUI.IsSearchModeOn.Use(cancellationToken).ConfigureAwait(false)
                      || await SearchUI.IsShowRecentOn.Use(cancellationToken).ConfigureAwait(false);
-        var enableIncompleteUI =  await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         var initialText = SearchUI.Text.Value; // .Value instead of .Use() is intentional here (AY: why?)
-        return new Model(isOpen, enableIncompleteUI, initialText);
+        return new Model(isOpen, initialText);
     }
 
     private void OnClick(bool openPanel) {
@@ -87,5 +86,5 @@
 
     // Nested types
 
-    public sealed record Model(bool IsOpen, bool EnableIncompleteUI, string InitialText = "");
+    public sealed record Model(bool IsOpen, string InitialText = "");
 }
