@@ -299,11 +299,8 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
         // Check current session state
         var sessionInfo = await SessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
-        if (sessionInfo?.UserId is not { } userId || !sessionInfo.IsActive)
-            return; // Already signed out or expired
-
-        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _1 = dbContext.ConfigureAwait(false);
+        if (sessionInfo is { IsActive: false })
+            return; // Already expired
 
         var upsertCommand = new SessionsBackend_Upsert(session) {
             UserId = Option.Some<UserId?>(null),
@@ -315,8 +312,9 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             };
         await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
 
-        // Emit event
-        context.Operation.AddEvent(new UserSignedOutEvent(userId, session));
+        // Emit event if user was signed in
+        if (sessionInfo?.UserId is { } userId)
+            context.Operation.AddEvent(new UserSignedOutEvent(userId, session));
     }
 
     // [CommandHandler]

@@ -165,19 +165,20 @@ public static class TestAuthExt
         return cAccount.Value;
     }
 
-    private static async Task<AccountFull> WaitForSignOut(
+    private static Task WaitForSignOut(
         IAccounts accounts,
         Session session,
         CancellationToken cancellationToken)
-    {
-        var cAccount = await Computed
-            .Capture(() => accounts.GetOwn(session, cancellationToken), cancellationToken)
-            .ConfigureAwait(false);
-        cAccount = await cAccount
-            .When(x => x.IsGuestOrNull(), cancellationToken)
-            .WaitAsync(TimeSpan.FromSeconds(1), cancellationToken)
-            .ConfigureAwait(false);
-        return cAccount.Value;
-    }
-
+        => ComputedTest.When(
+            async ct => {
+                try {
+                    var account = await accounts.GetOwn(session, ct);
+                    account.IsGuest.Should().BeTrue();
+                }
+                catch (InvalidOperationException) {
+                    // "Inactive session or GuestId is not set" — session is effectively signed out
+                }
+            },
+            TimeSpan.FromSeconds(1)
+        ).WaitAsync(cancellationToken);
 }
