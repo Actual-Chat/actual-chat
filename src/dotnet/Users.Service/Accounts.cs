@@ -105,7 +105,7 @@ public class Accounts(IServiceProvider services) : IAccounts
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var backendCommand = new AccountsBackend_SignOut(command.Session);
+        var backendCommand = new AccountsBackend_SignOut(command.Session, command.Deactivate);
         await Commander.Call(backendCommand, cancellationToken).ConfigureAwait(false);
     }
 
