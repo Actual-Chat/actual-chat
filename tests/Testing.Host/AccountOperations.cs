@@ -61,7 +61,13 @@ public static class AccountOperations
         await tester.SignIn(account, cancellationToken);
         var cmd = new Accounts_Update(tester.Session, account, null);
         await tester.Commander.Call(cmd, cancellationToken);
-        return await tester.Accounts.GetOwn(tester.Session, cancellationToken);
+        AccountFull result = null!;
+
+        await ComputedTest.When(async ct => {
+            result = await tester.Accounts.GetOwn(tester.Session, ct);
+            result.Version.Should().BeGreaterThan(account.Version);
+        }).WaitAsync(cancellationToken);
+        return result;
     }
 
     public static async Task<AccountFull> DeleteAccount(

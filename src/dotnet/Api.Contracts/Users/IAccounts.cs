@@ -45,7 +45,8 @@ public interface IAccounts : IComputeService
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Accounts_SignOut(
-    [property: DataMember, MemoryPackOrder(0)] Session Session
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] bool Deactivate = false
 ) : ISessionCommand<Unit>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
