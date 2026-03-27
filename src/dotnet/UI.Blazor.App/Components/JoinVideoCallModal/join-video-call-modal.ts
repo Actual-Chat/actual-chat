@@ -210,8 +210,6 @@ export class JoinVideoCallModal {
         const originalTrack = previewStream.getVideoTracks()[0];
 
         this.clonedPreviewTrack = originalTrack.clone();
-        // Stop the wrapper stream's original track reference (we use the clone)
-        originalTrack.stop();
 
         this.stream = new MediaStream([this.clonedPreviewTrack]);
         this.attachedFromRecorder = true;
