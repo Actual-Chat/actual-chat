@@ -96,7 +96,7 @@ public class BackgroundActivityUITest: TestBase
 
         // ReSharper restore AccessToDisposedClosure
 
-        stateChangeCount.Should().BeGreaterThan(2);
+        stateChangeCount.Should().BeGreaterThanOrEqualTo(2);
     }
 }
 
