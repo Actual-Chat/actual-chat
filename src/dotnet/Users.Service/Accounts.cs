@@ -181,7 +181,7 @@ public class Accounts(IServiceProvider services) : IAccounts
         ownAccount.Require(AccountFull.MustNotBeGuest);
         ownAccount.Require(AccountFull.MustBeActive);
 
-        var apiKey = new Session(CoreConstants.Session.ApiKeyPrefix + Session.New().Id);
+        var apiKey = SessionExt.NewApiKey();
         var upsertCommand = new SessionsBackend_Upsert(apiKey) {
             ExpiresAt = Clocks.SystemClock.Now + TimeSpan.FromDays(command.ExpiresInDays),
             Description = command.Name,

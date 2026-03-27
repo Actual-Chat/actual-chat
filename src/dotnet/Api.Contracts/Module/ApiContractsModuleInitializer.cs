@@ -15,7 +15,7 @@ internal static class ApiContractsModuleInitializer
 
         // Session.Factory & Validator
 #pragma warning disable CA2000
-        Session.Factory = DefaultSessionFactory.New(new RandomStringGenerator(20, Alphabet.AlphaNumericDash.Symbols));
+        Session.Factory = DefaultSessionFactory.New(new RandomStringGenerator(24, Alphabet.AlphaNumericDash.Symbols));
 #pragma warning restore CA2000
         Session.Validator = session => session.Id.Length >= 20;
 
