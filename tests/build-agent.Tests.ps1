@@ -136,8 +136,8 @@ Describe "BuildAgentHost + BuildAgentProxy" {
         Copy-Item (Join-Path $script:projectRoot "scripts" "Common.ps1") $scriptsDir
 
         $script:agentPort = 7900 + (Get-Random -Minimum 0 -Maximum 99)
-        $script:host_ = [BuildAgentHost]::new($script:waIsoDir, $script:agentPort)
-        $host_.Start()
+        $script:host_ = [BuildAgentHost]::new($script:waIsoDir)
+        $host_.Start($script:agentPort)
 
         # Wait for HTTP server to be ready
         $script:agentReady = $false
@@ -281,7 +281,7 @@ Describe "BuildAgentHost + BuildAgentProxy" {
     Context "BuildAgentHost.Stop" {
         It "clears process" {
             # This runs in AfterAll above; verify separately
-            $host2 = [BuildAgentHost]::new($script:projectRoot, 7899)
+            $host2 = [BuildAgentHost]::new($script:projectRoot)
             $host2.Stop()
             $host2.Process | Should -BeNullOrEmpty
         }
