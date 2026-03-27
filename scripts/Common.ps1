@@ -380,12 +380,6 @@ class BuildAgent {
         }
     }
 
-    [void] KillIfRunning() {
-        if ($this.IsRunning()) {
-            $this.StopServer()
-        }
-    }
-
     [hashtable] StopServer() {
         if (-not $this.IsRunning()) {
             return @{ stopped = $false; message = "No running server found" }
@@ -631,22 +625,23 @@ function Get-BuildAgent([string]$projectPath) {
 class BuildAgentHost {
     [string]$ProjectPath
     [int]$Port
+    [string]$PidFile
     [System.Diagnostics.Process]$Process = $null
 
-    BuildAgentHost([string]$projectPath, [int]$port) {
+    BuildAgentHost([string]$projectPath) {
         $this.ProjectPath = $projectPath
-        $this.Port = $port
+        $tmpDir = Join-Path $projectPath "tmp"
+        if (-not (Test-Path $tmpDir)) { New-Item -ItemType Directory -Path $tmpDir -Force | Out-Null }
+        $this.PidFile = Join-Path $tmpDir "build-agent.pid"
     }
 
     # Start the agent as a background process
-    [void] Start() {
+    [void] Start([int]$port) {
+        $this.Port = $port
         $commonScript = Join-Path $this.ProjectPath "scripts" "Common.ps1"
-        $cmd = ". '$commonScript'; [BuildAgentHost]::Run($($this.Port), '$($this.ProjectPath)')"
+        $cmd = ". '$commonScript'; [BuildAgentHost]::Run($port, '$($this.ProjectPath)')"
 
-        # Write command to a temp script to avoid quoting issues
-        $tmpDir = Join-Path $this.ProjectPath "tmp"
-        if (-not (Test-Path $tmpDir)) { New-Item -ItemType Directory -Path $tmpDir -Force | Out-Null }
-        $scriptFile = Join-Path $tmpDir "build-agent-run.ps1"
+        $scriptFile = Join-Path $this.ProjectPath "tmp" "build-agent-run.ps1"
         Set-Content -Path $scriptFile -Value $cmd
 
         $onWindows = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)
@@ -668,31 +663,24 @@ class BuildAgentHost {
             $null = $this.Process.StandardOutput.ReadLineAsync()
             $null = $this.Process.StandardError.ReadLineAsync()
         }
+        Set-Content $this.PidFile $this.Process.Id
         Write-Host "Build agent started on port $($this.Port) (PID: $($this.Process.Id))"
     }
 
-    # Stop the background process
+    # Stop the background process (uses PID file as fallback for orphaned agents)
     [void] Stop() {
+        if (-not $this.Process -and (Test-Path $this.PidFile)) {
+            try {
+                $savedPid = [int](Get-Content $this.PidFile -Raw).Trim()
+                $this.Process = [System.Diagnostics.Process]::GetProcessById($savedPid)
+            } catch {}
+        }
         if ($this.Process -and -not $this.Process.HasExited) {
             Write-Host "Stopping build agent..."
             try { $this.Process.Kill($true) } catch {}
         }
         $this.Process = $null
-    }
-
-    # Find and stop an orphaned build agent by its listening port
-    static [void] KillIfRunning([int]$port) {
-        $lsofOutput = bash -c "lsof -i :$port -sTCP:LISTEN 2>/dev/null | tail -1" 2>$null
-        if ($lsofOutput) {
-            try {
-                $pid = [int](($lsofOutput -split '\s+')[1])
-                $proc = [System.Diagnostics.Process]::GetProcessById($pid)
-                if (-not $proc.HasExited) {
-                    $proc.Kill($true)
-                    Write-Host "Build agent stopped (PID: $pid)"
-                }
-            } catch {}
-        }
+        Remove-Item $this.PidFile -ErrorAction SilentlyContinue
     }
 
     # --- Static: the blocking HTTP server loop (runs in the background process) ---

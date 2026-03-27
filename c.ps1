@@ -840,8 +840,8 @@ if ($removeWorktreeSuffix) {
 
         # Stop orphaned server and build agent from previous sessions
         if ($server.Port -and (Test-Path $worktreePath)) {
-            [BuildAgent]::new($worktreePath).KillIfRunning()
-            [BuildAgentHost]::KillIfRunning($server.Port + 9)
+            [BuildAgent]::new($worktreePath).StopServer()
+            [BuildAgentHost]::new($worktreePath).Stop()
         }
 
         # Kill Docker containers for this worktree
@@ -862,16 +862,10 @@ if ($removeWorktreeSuffix) {
 
         $server.Unregister($debugMode)
 
-        # Clean up worktree files (.env, PID file)
         $worktreeEnvFile = Join-Path $worktreePath ".env"
         if (Test-Path $worktreeEnvFile) {
             Remove-Item $worktreeEnvFile -Force
             if ($debugMode) { Write-Host "[DEBUG] Removed worktree .env file" }
-        }
-        $pidFile = Join-Path $worktreePath "tmp" "server-$($server.InstanceName).pid"
-        if (Test-Path $pidFile) {
-            Remove-Item $pidFile -Force
-            if ($debugMode) { Write-Host "[DEBUG] Removed server PID file" }
         }
     }
 
@@ -1544,8 +1538,8 @@ switch ($mode) {
             # Start build agent (macOS/Windows only) — runs build/server operations over HTTP
             # so Claude in Docker can build/start/stop the server on the host
             if ($currentOS -in "macOS", "Windows") {
-                $buildAgent = [BuildAgentHost]::new($projectRoot, $buildAgentPort)
-                $buildAgent.Start()
+                $buildAgent = [BuildAgentHost]::new($projectRoot)
+                $buildAgent.Start($buildAgentPort)
             }
 
             try {
