@@ -161,6 +161,8 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     {
         var (session, authenticatedIdentity, identities, claims, mustExist) = command;
         session.RequireValid();
+        if (session.Kind is not SessionKind.Session)
+            throw StandardError.Constraint("Regular Session is required here.");
 
         identities = identities.With(authenticatedIdentity, "");
         _ = identities.HasInternalIdentity(out var internalUserId);
@@ -180,6 +182,8 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         var sessionInfo = await SessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
         if (sessionInfo is { IsActive: false })
             throw StandardError.Unavailable($"This {session.Kind.ToReadable()} is expired.");
+        if (sessionInfo?.UserId is not null)
+            throw StandardError.Constraint("Already signed in.");
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
@@ -285,6 +289,9 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     public virtual async Task OnSignOut(AccountsBackend_SignOut command, CancellationToken cancellationToken = default)
     {
         var session = command.Session.RequireValid();
+        session.RequireValid();
+        if (session.Kind is not SessionKind.Session)
+            throw StandardError.Constraint("Regular Session is required here.");
 
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive)
@@ -292,8 +299,8 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
         // Check current session state
         var sessionInfo = await SessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
-        if (sessionInfo is null or { IsActive: false })
-            return; // Session doesn't exist or already expired
+        if (sessionInfo?.UserId is not { } userId || !sessionInfo.IsActive)
+            return; // Already signed out or expired
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
@@ -309,8 +316,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
 
         // Emit event
-        if (sessionInfo.UserId is { } userId)
-            context.Operation.AddEvent(new UserSignedOutEvent(userId, session));
+        context.Operation.AddEvent(new UserSignedOutEvent(userId, session));
     }
 
     // [CommandHandler]
