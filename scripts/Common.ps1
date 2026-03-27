@@ -298,7 +298,7 @@ function Get-ScriptDirectory {
 # --- Build agent ---
 
 # Local implementation: runs dotnet/npm commands directly on the host.
-class LocalBuildAgent {
+class BuildAgent {
     [string]$ProjectPath
     [string]$Instance
     [string]$BaseUri
@@ -309,7 +309,7 @@ class LocalBuildAgent {
     [string]$ServerProject
     [System.Diagnostics.Process]$Process = $null
 
-    LocalBuildAgent([string]$projectPath) {
+    BuildAgent([string]$projectPath) {
         $this.ProjectPath = $projectPath
         $this.Instance = "dev"
         $this.BaseUri = "https://local.voxt.ai"
@@ -560,16 +560,16 @@ class LocalBuildAgent {
 }
 
 # Remote implementation: HTTP client that talks to a BuildAgentHost on the host machine.
-class RemoteBuildAgent {
+class BuildAgentProxy {
     [string]$BaseUrl
 
-    RemoteBuildAgent([string]$baseUrl) {
+    BuildAgentProxy([string]$baseUrl) {
         $this.BaseUrl = $baseUrl.TrimEnd('/')
     }
 
     # Create from AC_BUILD_AGENT_PORT env var (falls back to AC_WATCH_AGENT_PORT).
     # Returns $null if not set or unreachable.
-    static [RemoteBuildAgent] TryCreate() {
+    static [BuildAgentProxy] TryCreate() {
         $port = $env:AC_BUILD_AGENT_PORT
         if (-not $port) { $port = $env:AC_WATCH_AGENT_PORT }
         if (-not $port) { return $null }
@@ -584,7 +584,7 @@ class RemoteBuildAgent {
         $url = "http://${hostIp}:$port"
         try {
             $null = Invoke-RestMethod -Uri "$url/health" -TimeoutSec 2 -ErrorAction Stop
-            return [RemoteBuildAgent]::new($url)
+            return [BuildAgentProxy]::new($url)
         } catch {
             Write-Host "Warning: Build agent host not reachable at $url"
             return $null
@@ -618,12 +618,12 @@ class RemoteBuildAgent {
 # Public entry point. Auto-detects local vs remote build agent.
 # Usage: $agent = Get-BuildAgent $projectPath; $agent.BuildServer()
 function Get-BuildAgent([string]$projectPath) {
-    $remote = [RemoteBuildAgent]::TryCreate()
+    $remote = [BuildAgentProxy]::TryCreate()
     if ($remote) {
         Write-Host "(via build agent host)"
         return $remote
     }
-    return [LocalBuildAgent]::new($projectPath)
+    return [BuildAgent]::new($projectPath)
 }
 
 # HTTP server that runs on the host, serving build/server requests from Docker.
@@ -698,7 +698,7 @@ class BuildAgentHost {
     # --- Static: the blocking HTTP server loop (runs in the background process) ---
 
     static [void] Run([int]$port, [string]$projectPath) {
-        $agent = [LocalBuildAgent]::new($projectPath)
+        $agent = [BuildAgent]::new($projectPath)
 
         $listener = [System.Net.HttpListener]::new()
         $listener.Prefixes.Add("http://+:$port/")

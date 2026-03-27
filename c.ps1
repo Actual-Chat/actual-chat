@@ -840,8 +840,8 @@ if ($removeWorktreeSuffix) {
 
         # Stop orphaned server and build agent from previous sessions
         if ($server.Port -and (Test-Path $worktreePath)) {
-            [LocalBuildAgent]::new($worktreePath).EnsureStopped()
-            [BuildAgentHost]::EnsureStopped($server.Port + 9)
+            [BuildAgent]::new($worktreePath).KillIfRunning()
+            [BuildAgentHost]::KillIfRunning($server.Port + 9)
         }
 
         # Kill Docker containers for this worktree

@@ -3,7 +3,7 @@ BeforeAll {
     $script:projectRoot = Split-Path -Parent $PSScriptRoot
 }
 
-Describe "LocalBuildAgent" {
+Describe "BuildAgent" {
     BeforeAll {
         # Use isolated temp dir so tests don't interact with a real running server
         $script:isoDir = Join-Path ([System.IO.Path]::GetTempPath()) "test-local-agent-$(Get-Random)"
@@ -13,7 +13,7 @@ Describe "LocalBuildAgent" {
         New-Item -ItemType Directory -Path $srcDir -Force | Out-Null
         Set-Content (Join-Path $srcDir "App.Server.csproj") "<Project/>"
         Set-Content (Join-Path $script:isoDir ".env") "urls=http://localhost:19877`nCoreSettings__Instance=test-iso`nHostSettings__BaseUri=https://test-iso.local.voxt.ai"
-        $script:agent = [LocalBuildAgent]::new($script:isoDir)
+        $script:agent = [BuildAgent]::new($script:isoDir)
     }
 
     AfterAll {
@@ -120,9 +120,9 @@ Describe "LocalBuildAgent" {
     }
 }
 
-Describe "BuildAgentHost + RemoteBuildAgent" {
+Describe "BuildAgentHost + BuildAgentProxy" {
     BeforeAll {
-        # Isolated temp dir so the BuildAgentHost's LocalBuildAgent doesn't find a real server
+        # Isolated temp dir so the BuildAgentHost's BuildAgent doesn't find a real server
         $script:waIsoDir = Join-Path ([System.IO.Path]::GetTempPath()) "test-build-agent-$(Get-Random)"
         New-Item -ItemType Directory -Path $script:waIsoDir -Force | Out-Null
         New-Item -ItemType Directory -Path (Join-Path $script:waIsoDir "tmp") -Force | Out-Null
@@ -184,7 +184,7 @@ Describe "BuildAgentHost + RemoteBuildAgent" {
 
     Context "Client.GetStatus" {
         BeforeAll {
-            $client = [RemoteBuildAgent]::new("http://localhost:$script:agentPort")
+            $client = [BuildAgentProxy]::new("http://localhost:$script:agentPort")
             $script:status = $client.GetStatus()
         }
 
@@ -203,7 +203,7 @@ Describe "BuildAgentHost + RemoteBuildAgent" {
 
     Context "Client.StopServer when not running" {
         BeforeAll {
-            $client = [RemoteBuildAgent]::new("http://localhost:$script:agentPort")
+            $client = [BuildAgentProxy]::new("http://localhost:$script:agentPort")
             $script:result = $client.StopServer()
         }
 
@@ -214,7 +214,7 @@ Describe "BuildAgentHost + RemoteBuildAgent" {
 
     Context "Client.StartServer" {
         BeforeAll {
-            $client = [RemoteBuildAgent]::new("http://localhost:$script:agentPort")
+            $client = [BuildAgentProxy]::new("http://localhost:$script:agentPort")
             $script:startError = $null
             try {
                 $script:startResult = $client.StartServer($false)
@@ -226,7 +226,7 @@ Describe "BuildAgentHost + RemoteBuildAgent" {
         AfterAll {
             # Clean up if server was started
             if ($script:startResult -and $script:startResult.started) {
-                $client = [RemoteBuildAgent]::new("http://localhost:$script:agentPort")
+                $client = [BuildAgentProxy]::new("http://localhost:$script:agentPort")
                 try { $null = $client.StopServer() } catch {}
             }
         }
@@ -238,7 +238,7 @@ Describe "BuildAgentHost + RemoteBuildAgent" {
 
     Context "Client.GetLog" {
         BeforeAll {
-            $client = [RemoteBuildAgent]::new("http://localhost:$script:agentPort")
+            $client = [BuildAgentProxy]::new("http://localhost:$script:agentPort")
             $script:logResult = $client.GetLog(10)
         }
 
@@ -288,7 +288,7 @@ Describe "BuildAgentHost + RemoteBuildAgent" {
     }
 }
 
-Describe "RemoteBuildAgent.TryCreate" {
+Describe "BuildAgentProxy.TryCreate" {
     BeforeAll {
         $script:savedBuildPort = $env:AC_BUILD_AGENT_PORT
         $script:savedWatchPort = $env:AC_WATCH_AGENT_PORT
@@ -302,24 +302,24 @@ Describe "RemoteBuildAgent.TryCreate" {
     It "returns null when neither env var is set" {
         $env:AC_BUILD_AGENT_PORT = ""
         $env:AC_WATCH_AGENT_PORT = ""
-        [RemoteBuildAgent]::TryCreate() | Should -BeNullOrEmpty
+        [BuildAgentProxy]::TryCreate() | Should -BeNullOrEmpty
     }
 
     It "returns null when agent is not reachable via AC_BUILD_AGENT_PORT" {
         $env:AC_BUILD_AGENT_PORT = "19999"
         $env:AC_WATCH_AGENT_PORT = ""
-        [RemoteBuildAgent]::TryCreate() | Should -BeNullOrEmpty
+        [BuildAgentProxy]::TryCreate() | Should -BeNullOrEmpty
     }
 
     It "falls back to AC_WATCH_AGENT_PORT" {
         $env:AC_BUILD_AGENT_PORT = ""
         $env:AC_WATCH_AGENT_PORT = "19998"
         # Not reachable, but should attempt the fallback
-        [RemoteBuildAgent]::TryCreate() | Should -BeNullOrEmpty
+        [BuildAgentProxy]::TryCreate() | Should -BeNullOrEmpty
     }
 }
 
-Describe "LocalBuildAgent.TryReconnect" {
+Describe "BuildAgent.TryReconnect" {
     BeforeAll {
         # Isolated temp dir with an unused port to prevent lsof interference
         $script:tempDir = Join-Path ([System.IO.Path]::GetTempPath()) "test-reconnect-$(Get-Random)"
@@ -336,7 +336,7 @@ Describe "LocalBuildAgent.TryReconnect" {
     }
 
     It "sets PidFile path" {
-        $agent = [LocalBuildAgent]::new($script:tempDir)
+        $agent = [BuildAgent]::new($script:tempDir)
         $agent.PidFile | Should -BeLike "*/tmp/server-dev.pid"
     }
 
@@ -346,7 +346,7 @@ Describe "LocalBuildAgent.TryReconnect" {
             $psi.UseShellExecute = $false
             $script:proc = [System.Diagnostics.Process]::Start($psi)
             Set-Content (Join-Path $script:tempDir "tmp" "server-dev.pid") $script:proc.Id
-            $script:agent = [LocalBuildAgent]::new($script:tempDir)
+            $script:agent = [BuildAgent]::new($script:tempDir)
         }
 
         AfterAll {
@@ -370,7 +370,7 @@ Describe "LocalBuildAgent.TryReconnect" {
         BeforeAll {
             $script:pidFile = Join-Path $script:tempDir "tmp" "server-dev.pid"
             Set-Content $script:pidFile "999999999"
-            $script:agent = [LocalBuildAgent]::new($script:tempDir)
+            $script:agent = [BuildAgent]::new($script:tempDir)
         }
 
         It "does not reconnect" {
@@ -389,7 +389,7 @@ Describe "LocalBuildAgent.TryReconnect" {
             $script:proc = [System.Diagnostics.Process]::Start($psi)
             $script:pidFile = Join-Path $script:tempDir "tmp" "server-dev.pid"
             Set-Content $script:pidFile $script:proc.Id
-            $script:agent = [LocalBuildAgent]::new($script:tempDir)
+            $script:agent = [BuildAgent]::new($script:tempDir)
         }
 
         It "PID file exists before stop" {
@@ -417,7 +417,7 @@ Describe "LocalBuildAgent.TryReconnect" {
 
             Set-Content (Join-Path $script:tempDir ".env") "urls=http://localhost:$($script:testPort)"
             Remove-Item (Join-Path $script:tempDir "tmp" "server-dev.pid") -ErrorAction SilentlyContinue
-            $script:agent = [LocalBuildAgent]::new($script:tempDir)
+            $script:agent = [BuildAgent]::new($script:tempDir)
         }
 
         AfterAll {
@@ -450,17 +450,17 @@ Describe "Get-BuildAgent" {
         $env:AC_WATCH_AGENT_PORT = $script:savedWatchPort
     }
 
-    It "returns LocalBuildAgent when no remote agent" {
+    It "returns BuildAgent when no remote agent" {
         $env:AC_BUILD_AGENT_PORT = ""
         $env:AC_WATCH_AGENT_PORT = ""
         $agent = Get-BuildAgent($script:projectRoot)
-        $agent.GetType().Name | Should -Be "LocalBuildAgent"
+        $agent.GetType().Name | Should -Be "BuildAgent"
     }
 
-    It "returns LocalBuildAgent when agent unreachable" {
+    It "returns BuildAgent when agent unreachable" {
         $env:AC_BUILD_AGENT_PORT = "19999"
         $env:AC_WATCH_AGENT_PORT = ""
         $agent = Get-BuildAgent($script:projectRoot)
-        $agent.GetType().Name | Should -Be "LocalBuildAgent"
+        $agent.GetType().Name | Should -Be "BuildAgent"
     }
 }
