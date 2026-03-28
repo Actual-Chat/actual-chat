@@ -156,6 +156,8 @@
             finally {
                 StateHasChanged();
             }
+        } else {
+            _validationState = ValidationState.Valid;
         }
 
         return await ShowTotpVerificationModal();

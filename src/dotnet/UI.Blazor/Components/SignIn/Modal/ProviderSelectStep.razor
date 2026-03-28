@@ -233,6 +233,8 @@
             finally {
                 StateHasChanged();
             }
+        } else {
+            _validationState = ValidationState.Valid;
         }
 
         if (_validationState is ValidationState.Valid) {
