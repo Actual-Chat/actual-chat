@@ -182,6 +182,7 @@ $newContainer          = $false
 $renewContainer        = $false
 $dryRun                = $false
 $debugMode             = $false
+$buildAgentFlag        = $null     # $null = auto (ActualChat only), $true = force on, $false = force off
 $claudeArgs            = @()
 
 # Show help
@@ -205,6 +206,8 @@ function Show-Help {
     Write-Host "Options:"
     Write-Host "  --new        Force creation of a new Docker container (skip reuse)"
     Write-Host "  --renew      Remove existing containers and start a new one (use after image rebuild)"
+    Write-Host "  --agent      Force start build agent (for server management from Docker)"
+    Write-Host "  --no-agent   Disable build agent (default for non-ActualChat projects)"
     Write-Host "  --dry-run    Show environment variables and command without executing"
     Write-Host "  --debug      Show debug output for troubleshooting"
     Write-Host ""
@@ -342,6 +345,18 @@ while ($argIndex -lt $args.Count) {
     # Check for --debug
     if ($currentArg -eq "--debug") {
         $debugMode = $true
+        $argIndex++
+        continue
+    }
+
+    # Check for --agent / --no-agent
+    if ($currentArg -eq "--agent") {
+        $buildAgentFlag = $true
+        $argIndex++
+        continue
+    }
+    if ($currentArg -eq "--no-agent") {
+        $buildAgentFlag = $false
         $argIndex++
         continue
     }
@@ -1491,9 +1506,12 @@ switch ($mode) {
         # Build agent for server/build management: on macOS/Windows, --network host doesn't
         # truly share ports, so the .NET server must run on the host. The build agent host
         # provides an HTTP API that Claude in Docker calls to build/start/stop the server.
-        $buildAgent = [BuildAgentHost]::new($projectRoot)
+        # Controlled by --agent/--no-agent flags; defaults to auto (ActualChat projects only).
+        $useBuildAgent = if ($buildAgentFlag -ne $null) { $buildAgentFlag } else { $isActualChatProject }
+        $buildAgent = $null
         $buildAgentEnvVars = @()
-        if ($currentOS -in "macOS", "Windows") {
+        if ($useBuildAgent -and $currentOS -in "macOS", "Windows") {
+            $buildAgent = [BuildAgentHost]::new($projectRoot)
             $buildAgentEnvVars = @("-e", "AC_BUILD_AGENT_PORT=$($buildAgent.Port)")
         }
 
@@ -1535,9 +1553,9 @@ switch ($mode) {
             Write-Host "  docker $($dockerArgs -join ' ')"
             Write-Host ""
         } else {
-            # Start build agent (macOS/Windows only) — runs build/server operations over HTTP
+            # Start build agent if enabled — runs build/server operations over HTTP
             # so Claude in Docker can build/start/stop the server on the host
-            if ($currentOS -in "macOS", "Windows") {
+            if ($buildAgent) {
                 $buildAgent.Start()
             }
 
