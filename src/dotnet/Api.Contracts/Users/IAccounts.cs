@@ -1,4 +1,4 @@
-using ActualLab.Rpc;
+﻿using ActualLab.Rpc;
 
 namespace ActualChat.Users;
 
@@ -30,7 +30,7 @@ public interface IAccounts : IComputeService
     Task<AccountFull?> GetFull(Session session, UserId userId, CancellationToken cancellationToken);
 
     [ComputeMethod(MinCacheDuration = 10)]
-    [LegacyName(nameof(GetSessionInfo) + "New", "2.6.9999")]
+    [LegacyName("GetSessionInfo_NewUnused", "2.6.9999")]
     Task<SessionInfoFull?> GetSessionInfo(Session session, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 10)]
     Task<ApiList<SessionInfo>> ListOwnSessions(Session session, SessionKind kind, CancellationToken cancellationToken);

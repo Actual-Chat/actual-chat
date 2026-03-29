@@ -41,12 +41,15 @@ public interface ILiveVideoStreams : IComputeService
 
     [ComputeMethod]
     [Obsolete("2025.03: Use List and extract AuthorIds client-side")]
-    Task<ApiArray<AuthorId>> GetVideoStreamingAuthorIds(Session session, ChatId chatId, CancellationToken cancellationToken);
+    [LegacyName("GetVideoStreamingAuthorIds", "2.6.9999")]
+    Task<ApiArray<AuthorId>> LegacyGetVideoStreamingAuthorIds(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [RpcMethod(LocalExecutionMode = RpcLocalExecutionMode.Unconstrained)]
     [Obsolete("2025.03: Use GetSupportedCodecs instead")]
-    Task<RpcStream<ApiArray<string>>> ObserveSupportedDecoderCodecs(Session session, ChatId chatId, CancellationToken cancellationToken);
+    [LegacyName("ObserveSupportedDecoderCodecs", "2.6.9999")]
+    Task<RpcStream<ApiArray<string>>> LegacyObserveSupportedDecoderCodecs(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [Obsolete("2025.03: Use GetQualityPreset instead")]
-    Task<RpcStream<VideoQualityPreset>> ObserveStreamQualityRequests(Session session, StreamId streamId, CancellationToken cancellationToken);
+    [LegacyName("ObserveStreamQualityRequests", "2.6.9999")]
+    Task<RpcStream<VideoQualityPreset>> LegacyObserveStreamQualityRequests(Session session, StreamId streamId, CancellationToken cancellationToken);
 }
