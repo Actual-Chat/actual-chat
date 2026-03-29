@@ -92,7 +92,7 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
 #pragma warning disable CS0618 // Type or member is obsolete
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<AuthorId>> GetVideoStreamingAuthorIds(
+    public virtual async Task<ApiArray<AuthorId>> LegacyGetVideoStreamingAuthorIds(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken)
@@ -101,7 +101,7 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         return streams.Select(s => s.AuthorId).Distinct().ToApiArray();
     }
 
-    public async Task<RpcStream<ApiArray<string>>> ObserveSupportedDecoderCodecs(
+    public async Task<RpcStream<ApiArray<string>>> LegacyObserveSupportedDecoderCodecs(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken)
@@ -110,7 +110,7 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         return RpcStream.New(new[] { codecs }.ToAsyncEnumerable());
     }
 
-    public async Task<RpcStream<VideoQualityPreset>> ObserveStreamQualityRequests(
+    public async Task<RpcStream<VideoQualityPreset>> LegacyObserveStreamQualityRequests(
         Session session,
         StreamId streamId,
         CancellationToken cancellationToken)
