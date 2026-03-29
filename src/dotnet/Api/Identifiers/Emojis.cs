@@ -66,6 +66,18 @@ public static class Emojis
     public static readonly Emoji Fire = new("🔥", "Fire", EmojiGroup.Gestures);
     public static readonly Emoji HundredPoints = new("💯", "Hundred points", EmojiGroup.Gestures);
 
+    // Legacy emojis: no longer shown in the picker, but still parseable from existing reactions
+    public static readonly Emoji Boom = new("💥", "Boom", EmojiGroup.Gestures);
+
+    /// <summary>
+    /// Legacy emojis that were removed from the picker but may exist in stored reactions.
+    /// They are included in <see cref="ById"/> for parsing but excluded from <see cref="All"/>
+    /// so they don't appear in the emoji picker UI.
+    /// </summary>
+    public static readonly Emoji[] Legacy = [
+        Boom,
+    ];
+
     public static readonly Emoji[] All = [
         // Positive
         Lol,
@@ -127,7 +139,7 @@ public static class Emojis
     ];
 
     public static readonly Dictionary<string, Emoji> ById
-        = All.ToDictionary(x => x.Id.Value);
+        = All.Concat(Legacy).ToDictionary(x => x.Id.Value);
 
     public static readonly IReadOnlyDictionary<EmojiGroup, Emoji[]> ByGroup
         = All.GroupBy(x => x.Group).ToDictionary(g => g.Key, g => g.ToArray());

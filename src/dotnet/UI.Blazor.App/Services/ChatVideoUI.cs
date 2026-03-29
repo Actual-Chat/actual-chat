@@ -1,4 +1,5 @@
 using ActualChat.Streaming;
+using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -163,6 +164,10 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         if (chatId is null)
             return default;
 
+        var isVideoEnabled = await Hub.Features.IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
+        if (!isVideoEnabled)
+            return default;
+
         return await LiveVideoStreams
             .List(Session, chatId, cancellationToken)
             .ConfigureAwait(false);
@@ -189,6 +194,10 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public virtual async Task<int> GetVideoStreamMemberCount(ChatId? chatId, CancellationToken cancellationToken = default)
     {
         if (chatId is null)
+            return 0;
+
+        var isVideoEnabled = await Hub.Features.IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
+        if (!isVideoEnabled)
             return 0;
 
         return await LiveVideoStreams
