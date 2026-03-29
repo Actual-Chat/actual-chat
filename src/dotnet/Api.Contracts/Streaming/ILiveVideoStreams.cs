@@ -5,7 +5,7 @@ namespace ActualChat.Streaming;
 
 public interface ILiveVideoStreams : IComputeService
 {
-    [LegacyName("GetVideo")]
+    [LegacyName("GetVideo", "2.6.9999")]
     Task<RpcStream<VideoFrame>?> GetStream(
         Session session,
         StreamId streamId,
@@ -13,28 +13,28 @@ public interface ILiveVideoStreams : IComputeService
         CancellationToken cancellationToken);
 
     [ComputeMethod]
-    [LegacyName("ListActiveStreams")]
+    [LegacyName("ListActiveStreams", "2.6.9999")]
     Task<ApiArray<VideoStreamInfo>> List(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    [LegacyName("GetVideoStreamMemberCount")]
+    [LegacyName("GetVideoStreamMemberCount", "2.6.9999")]
     Task<int> GetMemberCount(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    [LegacyName("GetSupportedDecoderCodecs")]
+    [LegacyName("GetSupportedDecoderCodecs", "2.6.9999")]
     Task<ApiArray<string>> GetSupportedCodecs(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<VideoQualityPreset> GetQualityPreset(Session session, StreamId streamId, CancellationToken cancellationToken);
 
-    [LegacyName("RegisterVideoStreamMember")]
+    [LegacyName("RegisterVideoStreamMember", "2.6.9999")]
     Task RegisterMember(
         Session session,
         ChatId chatId,
         ApiArray<string> supportedDecoderCodecs,
         CancellationToken cancellationToken);
 
-    [LegacyName("UnregisterVideoStreamMember")]
+    [LegacyName("UnregisterVideoStreamMember", "2.6.9999")]
     Task UnregisterMember(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     // Legacy v2.6 compatibility methods
