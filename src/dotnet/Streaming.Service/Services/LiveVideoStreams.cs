@@ -86,4 +86,38 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         StreamId streamId,
         CancellationToken cancellationToken)
         => await VideoStreamingBackend.GetQualityPreset(streamId, cancellationToken).ConfigureAwait(false);
+
+    // Legacy v2.6 compatibility methods
+
+#pragma warning disable CS0618 // Type or member is obsolete
+
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<AuthorId>> GetVideoStreamingAuthorIds(
+        Session session,
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        var streams = await List(session, chatId, cancellationToken).ConfigureAwait(false);
+        return streams.Select(s => s.AuthorId).Distinct().ToApiArray();
+    }
+
+    public async Task<RpcStream<ApiArray<string>>> ObserveSupportedDecoderCodecs(
+        Session session,
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        var codecs = await GetSupportedCodecs(session, chatId, cancellationToken).ConfigureAwait(false);
+        return RpcStream.New(new[] { codecs }.ToAsyncEnumerable());
+    }
+
+    public async Task<RpcStream<VideoQualityPreset>> ObserveStreamQualityRequests(
+        Session session,
+        StreamId streamId,
+        CancellationToken cancellationToken)
+    {
+        var preset = await GetQualityPreset(session, streamId, cancellationToken).ConfigureAwait(false);
+        return RpcStream.New(new[] { preset }.ToAsyncEnumerable());
+    }
+
+#pragma warning restore CS0618
 }

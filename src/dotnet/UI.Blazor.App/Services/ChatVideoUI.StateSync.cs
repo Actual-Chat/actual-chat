@@ -1,3 +1,4 @@
+using ActualChat.UI.Blazor.Services;
 using ActualLab.Resilience;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -51,6 +52,10 @@ public partial class ChatVideoUI
     [ComputeMethod]
     protected virtual async Task<ActiveSpeakerState> GetActiveSpeakerState(CancellationToken cancellationToken)
     {
+        var isVideoEnabled = await Hub.Features.IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
+        if (!isVideoEnabled)
+            return ActiveSpeakerState.None;
+
         var chatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
         if (chatId is null)
             return ActiveSpeakerState.None;
