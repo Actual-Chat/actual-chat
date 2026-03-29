@@ -42,4 +42,21 @@ public class EmojiTest
             emoji2.Should().Be(emoji);
         }
     }
+
+    [Fact]
+    public void ParseLegacyEmojis()
+    {
+        foreach (var emoji in Emojis.Legacy) {
+            var parsed = Emoji.TryParse(emoji.Value, out var emoji2);
+            parsed.Should().BeTrue();
+            emoji2.Should().Be(emoji);
+        }
+    }
+
+    [Fact]
+    public void LegacyEmojisNotInAll()
+    {
+        foreach (var emoji in Emojis.Legacy)
+            Emojis.All.Should().NotContain(emoji);
+    }
 }
