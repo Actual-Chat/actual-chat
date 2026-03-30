@@ -17,6 +17,7 @@ public class Accounts(IServiceProvider services) : IAccounts
     private IAccountsBackend Backend { get; } = services.GetRequiredService<IAccountsBackend>();
     private ICommander Commander { get; } = services.Commander();
     private MomentClockSet Clocks { get; } = services.Clocks();
+    private ILogger Log { get; } = services.LogFor<Accounts>();
 
     // Compute methods
 
@@ -28,9 +29,10 @@ public class Accounts(IServiceProvider services) : IAccounts
         if (sessionInfo is { IsActive: true, UserId: { } vUserId })
             userId = vUserId;
         else {
-            if (sessionInfo?.GetGuestId() is not { } guestId)
-                throw StandardError.Constraint("Inactive session or GuestId is not set.");
-
+            if (sessionInfo?.GetGuestId() is not { } guestId) {
+                Log.LogWarning("Session {SessionId} is missing or has no GuestId, using a temporary guest", session.Id);
+                guestId = UserId.NewGuest();
+            }
             userId = guestId;
         }
 

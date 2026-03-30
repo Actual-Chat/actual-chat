@@ -102,6 +102,12 @@ public sealed class ServerAuth
                 if (tryIndex >= 2)
                     throw;
             }
+            catch (InvalidOperationException e)
+                when (e.Message.Contains("Inactive session", StringComparison.Ordinal)) {
+                Log.LogWarning(e, "Session is broken, creating a new one");
+                if (tryIndex >= 2)
+                    throw;
+            }
             session = Session.New();
         }
     }

@@ -421,13 +421,11 @@
             (_session, _isNewSession) = await ServerAuth.Authenticate(HttpContext, false, mustExist, cancellationToken);
         }
         catch (Exception e) when (e is { } ex && ex.Message.Contains("Account not found", StringComparison.Ordinal)) {
-            // Sign-in mode but account doesn't exist - fall through with error
+            // Sign-in mode but account doesn't exist - create a fresh session
             _signInError = "account_not_found";
-            var cookieSession = HttpContext.TryGetSessionFromCookie();
-            _session = cookieSession ?? Session.New();
-            _isNewSession = cookieSession is null;
-            if (_isNewSession)
-                HttpContext.AddSessionCookie(_session);
+            _session = Session.New();
+            _isNewSession = true;
+            HttpContext.AddSessionCookie(_session);
         }
         SessionResolver.Session = _session;
         Task<AccountFull?> accountTask;
