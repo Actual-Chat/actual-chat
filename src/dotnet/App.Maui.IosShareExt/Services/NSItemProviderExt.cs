@@ -3,7 +3,6 @@ using ActualChat.UI.Services;
 using ActualLab.IO;
 using Microsoft.Maui.Storage;
 using UniformTypeIdentifiers;
-using FilePathExt = ActualLab.IO.FilePathExt;
 
 namespace ActualChat.App.Maui.IosShareExt.Services;
 
@@ -81,47 +80,32 @@ public static class NSItemProviderExt
             if (!item.IsInMemoryImage())
                 return null;
 
-            var loadedItem = await item.LoadItemAsync(item.RegisteredContentTypes[0].Identifier, null).ConfigureAwait(false);
-            UIImage? image;
-            string? fileName;
+            using var loadedItem = await item.LoadItemAsync(item.RegisteredContentTypes[0].Identifier, null).ConfigureAwait(false);
             switch (loadedItem) {
-                case UIImage uiImage:
-                    image = uiImage;
-                    fileName = item.SuggestedName;
-                    break;
-                case NSData data:
-                    image = UIImage.LoadFromData(data);
-                    fileName = item.SuggestedName;
-                    data.DisposeSilently(); // Dispose original NSData after decoding
-                    break;
+                case NSData rawData: {
+                    // Already encoded (common for screenshots) — save directly, no UIImage bitmap needed
+                    var contentType = item.ImplyMimeType();
+                    FilePath fileName = item.SuggestedName.NullIfEmpty() ?? "image";
+                    fileName = fileName.EnsureExt(MediaMimeTypes.TryGetExtension(contentType, out var e) ? e : ".jpg");
+                    return SaveToTempFile(rawData, contentType, fileName);
+                }
+                case UIImage image: {
+                    if (image.AsJPEG() is { } jpeg) {
+                        var fileName = item.SuggestedName.NullIfEmpty() ?? "image.jpg";
+                        var source = SaveToTempFile(jpeg, "image/jpeg", fileName);
+                        jpeg.DisposeSilently();
+                        return source;
+                    }
+                    if (image.AsPNG() is { } png) {
+                        var fileName = item.SuggestedName.NullIfEmpty() ?? "image.png";
+                        var source = SaveToTempFile(png, "image/png", fileName);
+                        png.DisposeSilently();
+                        return source;
+                    }
+                    return null;
+                }
                 default:
-                    image = null;
-                    fileName = null;
-                    break;
-            }
-
-            if (image is null) {
-                loadedItem.DisposeSilently();
-                return null;
-            }
-
-            try {
-                if (image.AsJPEG() is { } jpeg) {
-                    var source = SaveToTempFile(jpeg, "image/jpeg", fileName.NullIfEmpty() ?? "image.jpg");
-                    jpeg.DisposeSilently();
-                    return source;
-                }
-
-                if (image.AsPNG() is { } png) {
-                    var source = SaveToTempFile(png, "image/png", fileName.NullIfEmpty() ?? "image.png");
-                    png.DisposeSilently();
-                    return source;
-                }
-
-                return null;
-            }
-            finally {
-                image.DisposeSilently();
+                    return null;
             }
         }
 
