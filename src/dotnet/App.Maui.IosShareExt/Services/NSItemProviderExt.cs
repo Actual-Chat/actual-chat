@@ -85,8 +85,10 @@ public static class NSItemProviderExt
                 _ => (null, null),
             };
 
-            if (image is null)
+            if (image is null) {
+                loadedItem.DisposeSilently();
                 return null;
+            }
 
             try {
                 if (image.AsJPEG() is { } jpeg) {
