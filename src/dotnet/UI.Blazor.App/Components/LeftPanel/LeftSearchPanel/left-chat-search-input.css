@@ -66,8 +66,16 @@
     @apply px-4;
 }
 .left-chat-search-input.place .search-input {
+    @apply relative;
     @apply bg-input;
+    @apply overflow-hidden;
     backdrop-filter: blur(4px);
+}
+.left-chat-search-input.place .search-input:after {
+    @apply content-empty;
+    @apply absolute inset-0 z-minus;
+    @apply bg-01;
+    @apply opacity-70;
 }
 .left-chat-search-input.place .search-input input {
     @apply text-01;

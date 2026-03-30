@@ -59,7 +59,7 @@
     @apply flex items-center justify-center;
     @apply h-12 w-22;
     @apply rounded-full border-none outline-none;
-    @apply bg-03;
+    @apply bg-round;
     @apply text-01;
     @apply cursor-pointer;
 }

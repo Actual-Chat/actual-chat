@@ -33,7 +33,9 @@
             </button>
         }
         @if (languages.Count == 1) {
-            <div class="c-none">None</div>
+            <button @onclick="@OnConfigureSecondLanguage">
+                + Add
+            </button>
         }
     </div>
 </div>
