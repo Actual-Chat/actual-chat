@@ -1,6 +1,9 @@
 using ActualChat.Maui;
 using ActualChat.UI.Services;
+using ActualLab.IO;
+using Microsoft.Maui.Storage;
 using UniformTypeIdentifiers;
+using FilePathExt = ActualLab.IO.FilePathExt;
 
 namespace ActualChat.App.Maui.IosShareExt.Services;
 
@@ -79,11 +82,23 @@ public static class NSItemProviderExt
                 return null;
 
             var loadedItem = await item.LoadItemAsync(item.RegisteredContentTypes[0].Identifier, null).ConfigureAwait(false);
-            var (image, fileName) = loadedItem switch {
-                UIImage uiImage => (uiImage, item.SuggestedName),
-                NSData data => (UIImage.LoadFromData(data), item.SuggestedName),
-                _ => (null, null),
-            };
+            UIImage? image;
+            string? fileName;
+            switch (loadedItem) {
+                case UIImage uiImage:
+                    image = uiImage;
+                    fileName = item.SuggestedName;
+                    break;
+                case NSData data:
+                    image = UIImage.LoadFromData(data);
+                    fileName = item.SuggestedName;
+                    data.DisposeSilently(); // Dispose original NSData after decoding
+                    break;
+                default:
+                    image = null;
+                    fileName = null;
+                    break;
+            }
 
             if (image is null) {
                 loadedItem.DisposeSilently();
@@ -92,17 +107,15 @@ public static class NSItemProviderExt
 
             try {
                 if (image.AsJPEG() is { } jpeg) {
-                    var bytes = jpeg.ToArray();
+                    var source = SaveToTempFile(jpeg, "image/jpeg", fileName.NullIfEmpty() ?? "image.jpg");
                     jpeg.DisposeSilently();
-                    var metadata = new UploadSourceMetadata("image/jpeg", bytes.Length, fileName.NullIfEmpty() ?? "image.jpg");
-                    return new UploadSource(metadata, new StreamUploadSource(() => Task.FromResult<Stream>(new MemoryStream(bytes))));
+                    return source;
                 }
 
                 if (image.AsPNG() is { } png) {
-                    var bytes = png.ToArray();
+                    var source = SaveToTempFile(png, "image/png", fileName.NullIfEmpty() ?? "image.png");
                     png.DisposeSilently();
-                    var metadata = new UploadSourceMetadata("image/png", bytes.Length, fileName.NullIfEmpty() ?? "image.png");
-                    return new UploadSource(metadata, new StreamUploadSource(() => Task.FromResult<Stream>(new MemoryStream(bytes))));
+                    return source;
                 }
 
                 return null;
@@ -110,6 +123,19 @@ public static class NSItemProviderExt
             finally {
                 image.DisposeSilently();
             }
+        }
+
+        private static UploadSource SaveToTempFile(NSData data, string contentType, FilePath fileName)
+        {
+            var outputDir = new FilePath(FileSystem.CacheDirectory) | "shared-images";
+            Directory.CreateDirectory(outputDir);
+            var filePath = (outputDir | fileName).ToUnique();
+            data.Save(NSUrl.FromFilename(filePath), atomically: true);
+            data.Save(filePath, NSDataWritingOptions.Atomic, out var error);
+            error.Assert($"Failed to save in-memory image to temp file '{filePath}':");
+            var fileInfo = new FileInfo(filePath);
+            var metadata = new UploadSourceMetadata(contentType, fileInfo.Length, fileName);
+            return new UploadSource(metadata, new FileUploadSource(filePath));
         }
     }
 }
