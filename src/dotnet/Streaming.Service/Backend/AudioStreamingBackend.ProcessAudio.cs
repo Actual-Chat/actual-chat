@@ -249,10 +249,11 @@ public partial class AudioStreamingBackend
 
                 // Got first non-empty transcript -> create text entry
                 // The code below is performed only once
-                textEntry = await CreateTextEntry(transcript).ConfigureAwait(false);
-                // NOTE(DF): in detect language mode, we should persist languages only on text entry finalization.
-                if (!transcriptionOptions.DetectLanguage)
-                    entryLanguage = await CreateLanguages(lastTranscript.Languages).ConfigureAwait(false);
+
+                // Publish transcript stream BEFORE creating the entry to avoid a race condition:
+                // CreateTextEntry triggers a Compute invalidation on the client, which immediately
+                // tries to subscribe to the transcript stream. If the stream isn't published yet,
+                // the client gets null and retries with backoff, missing the streaming effect.
                 var transcriptDiffStream = transcripts
                     .Replay(cancellationToken)
                     .ToTranscriptDiffs()
@@ -260,6 +261,11 @@ public partial class AudioStreamingBackend
                 await _transcriptStreams
                     .Publish(transcriptStreamId, transcriptDiffStream)
                     .ConfigureAwait(false);
+
+                textEntry = await CreateTextEntry(transcript).ConfigureAwait(false);
+                // NOTE(DF): in detect language mode, we should persist languages only on text entry finalization.
+                if (!transcriptionOptions.DetectLanguage)
+                    entryLanguage = await CreateLanguages(lastTranscript.Languages).ConfigureAwait(false);
             }
         }
         finally {
