@@ -99,8 +99,8 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
         }
 
         // Check estimated output size
-        var exportSession = CreateExportSession(filePath);
-        var estimatedSize = await exportSession.EstimateOutputFileLengthAsync().ConfigureAwait(false);
+        using var dExportSession = CreateExportSession(filePath);
+        var estimatedSize = await dExportSession.Resource.EstimateOutputFileLengthAsync().ConfigureAwait(false);
         if (estimatedSize >= sourceSize) {
             Log.LogInformation(
                 "NeedsProcessing: false (estimated {EstimatedSize} >= source {SourceSize})",
@@ -121,8 +121,10 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
         CancellationToken cancellationToken)
     {
         var outputPath = GetOutputPath(sourcePath);
-        var exportSession = CreateExportSession(sourcePath, remuxOnly);
-        exportSession.OutputUrl = NSUrl.CreateFileUrl(outputPath);
+        using var dExportSession = CreateExportSession(sourcePath, remuxOnly);
+        var exportSession = dExportSession.Resource;
+        using var outputUrl = NSUrl.CreateFileUrl(outputPath);
+        exportSession.OutputUrl = outputUrl;
 
         DebugLog?.LogInformation(
             "Transcode: exporting '{Source}' -> '{Output}' (source={SourceSize})",
@@ -176,8 +178,8 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
     {
         try {
             DebugLog?.LogInformation("GetVideoInfo: '{FilePath}'", filePath);
-            var url = NSUrl.CreateFileUrl(filePath);
-            var asset = new AVUrlAsset(url);
+            using var url = NSUrl.CreateFileUrl(filePath);
+            using var asset = new AVUrlAsset(url);
             var tracks = await asset.LoadTracksWithMediaTypeAsync(AVMediaTypes.Video.GetConstant()!)
                 .ConfigureAwait(false);
             if (tracks.Count == 0) {
@@ -212,7 +214,7 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
         }
     }
 
-    private static AVAssetExportSession CreateExportSession(FilePath sourcePath, bool remuxOnly = false)
+    private static Disposable<AVAssetExportSession> CreateExportSession(FilePath sourcePath, bool remuxOnly = false)
     {
         var sourceUrl = NSUrl.CreateFileUrl(sourcePath);
         var asset = new AVUrlAsset(sourceUrl);
@@ -222,7 +224,11 @@ public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
         var session = new AVAssetExportSession(asset, preset);
         session.OutputFileType = AVFileTypes.Mpeg4.GetConstant();
         session.ShouldOptimizeForNetworkUse = true;
-        return session;
+        return Disposable.New(session, _ => {
+            session.DisposeSilently();
+            asset.DisposeSilently();
+            sourceUrl.DisposeSilently();
+        });
     }
 
     private static void CleanupFile(FilePath path)
