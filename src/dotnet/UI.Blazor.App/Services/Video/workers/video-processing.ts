@@ -117,6 +117,7 @@ let streamingEnabled = false;
 // Pipeline
 let processing = false;
 let dimensionsReconciled = false;
+let needsRotation = false;
 let vadSpeaking = true;
 let vadRemoteStreamCount = 0;
 let vadReducedFrameIntervalMs = 1000 / 5;
@@ -376,7 +377,7 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
             infoLog?.log(`Start timestamp set to ${startTimestamp}μs`);
         }
 
-        const resized = resizeFrame(frame, encoderConfig.width, encoderConfig.height, resizeCanvas, resizeCtx, false);
+        const resized = resizeFrame(frame, encoderConfig.width, encoderConfig.height, resizeCanvas, resizeCtx, needsRotation);
         let processedFrame = resized.frame;
         resizeCanvas = resized.canvas;
         resizeCtx = resized.ctx;
@@ -569,11 +570,10 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
                 const isRotated = frameW === encoderConfig.height && frameH === encoderConfig.width
                     && frameW !== encoderConfig.width;
                 if (isRotated) {
-                    warnLog?.log(`Frame ${frameW}x${frameH} is transposed vs config ${encoderConfig.width}x${encoderConfig.height}, reconfiguring encoder to match`);
-                    encoderConfig.width = frameW; encoderConfig.height = frameH;
-                    await encoder.reconfigure({ width: frameW, height: frameH, bitrate: encoderConfig.bitrate });
-                    if (segConfig) { segConfig.outputWidth = frameW; segConfig.outputHeight = frameH; }
-                    void callbacks.onDimensionReconciled(frameW, frameH, rpcNoWait);
+                    warnLog?.log(`Frame ${frameW}x${frameH} is transposed vs config ${encoderConfig.width}x${encoderConfig.height}, enabling rotation`);
+                    needsRotation = true;
+                    // Keep encoder config at portrait dimensions — resizeFrame() rotate90 will
+                    // rotate landscape frames into portrait before encoding
                 } else if (frameW !== encoderConfig.width || frameH !== encoderConfig.height) {
                     warnLog?.log(`Display dimensions ${frameW}x${frameH} differ from config (coded: ${rawFrame.codedWidth}x${rawFrame.codedHeight}), reconfiguring`);
                     encoderConfig.width = frameW; encoderConfig.height = frameH;
@@ -630,6 +630,7 @@ export const serverImpl: VideoProcessingWorker = {
             streamCtx.processing = true;
             frameCount = 0;
             dimensionsReconciled = false;
+            needsRotation = false;
 
             const inputReader = frameInputStream.getReader();
             streamReadLoopPromise = streamReadLoop(inputReader);
@@ -673,6 +674,7 @@ export const serverImpl: VideoProcessingWorker = {
             streamCtx.processing = true;
             frameCount = 0;
             dimensionsReconciled = false;
+            needsRotation = false;
 
             const processor = new MediaStreamTrackProcessor({ track });
             const inputReader = processor.readable.getReader();
@@ -804,7 +806,7 @@ export const serverImpl: VideoProcessingWorker = {
         segInitialized = false; blurEnabled = false; resizeCanvas = null; resizeCtx = null;
         frameCount = 0; startTimestamp = undefined; lastLoggedFormat = '(unset)'; loggedI420Error = false;
         backpressureDrops = 0; backpressureTotalFrames = 0; lastBackpressureCheckTime = 0; backpressureNotified = false;
-        dimensionsReconciled = false; vadSpeaking = true; vadRemoteStreamCount = 0; vadLastPassedFrameTime = 0;
+        dimensionsReconciled = false; needsRotation = false; vadSpeaking = true; vadRemoteStreamCount = 0; vadLastPassedFrameTime = 0;
         segFrameCounter = 0; hasValidMask = false; loggedBlurFormat = false; processingFrame = false; frameSequence = 0;
         segProcessedFrames = 0; segTotalInferenceTime = 0; segTotalBlurTime = 0; segTotalProcessingTime = 0; segDroppedFrames = 0;
         videoStream = null; lastVideoStream = null; pendingStreamFrames = [];

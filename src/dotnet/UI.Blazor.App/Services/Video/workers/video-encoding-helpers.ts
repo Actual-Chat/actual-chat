@@ -64,13 +64,30 @@ export function resizeFrame(
     ctx.fillRect(0, 0, targetWidth, targetHeight);
 
     if (rotate90) {
-        // Rotate 90° clockwise: translate to top-right corner, rotate, then draw
-        // The frame is landscape (e.g. 1280x720) and canvas is portrait (e.g. 720x1280)
+        // Rotate 90° CW: in rotated coordinate space, drawing area is targetHeight × targetWidth
+        // Letterbox the frame into that space to preserve aspect ratio
+        const rotatedW = targetHeight;
+        const rotatedH = targetWidth;
+        const frameAspect = frameWidth / frameHeight;
+        const rotatedAspect = rotatedW / rotatedH;
+        let drawWidth: number, drawHeight: number, offsetX: number, offsetY: number;
+
+        if (frameAspect > rotatedAspect) {
+            drawWidth = rotatedW;
+            drawHeight = rotatedW / frameAspect;
+            offsetX = 0;
+            offsetY = (rotatedH - drawHeight) / 2;
+        } else {
+            drawHeight = rotatedH;
+            drawWidth = rotatedH * frameAspect;
+            offsetX = (rotatedW - drawWidth) / 2;
+            offsetY = 0;
+        }
+
         ctx.save();
         ctx.translate(targetWidth, 0);
         ctx.rotate(Math.PI / 2);
-        // After rotation, drawing space is targetHeight x targetWidth (landscape)
-        ctx.drawImage(frame, 0, 0, targetHeight, targetWidth);
+        ctx.drawImage(frame, offsetX, offsetY, drawWidth, drawHeight);
         ctx.restore();
     } else {
         // Standard letterboxed resize
