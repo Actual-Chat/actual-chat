@@ -78,13 +78,17 @@ public static class NSItemProviderExt
             if (!item.IsInMemoryImage())
                 return null;
 
-            // LoadDataRepresentationAsync("public.image") returns a binary plist, not encoded bytes.
-            // We must go through UIImage to get encoded data.
             using var loadedItem = await item.LoadItemAsync(item.RegisteredContentTypes[0].Identifier, null).ConfigureAwait(false);
-            if (loadedItem is not UIImage image)
+            switch (loadedItem) {
+            case NSData data: {
+                var ext = item.RegisteredContentTypes[0].PreferredFilenameExtension.NullIfEmpty() ?? ".png";
+                return SaveToTempFile(item, () => data, ext);
+            }
+            case UIImage image:
+                return SaveToTempFile(item, image.AsJPEG, ".jpg") ?? SaveToTempFile(item, image.AsPNG, ".png");
+            default:
                 return null;
-
-            return SaveToTempFile(item, image.AsJPEG, ".jpg") ?? SaveToTempFile(item, image.AsPNG, ".png");
+            }
         }
 
         private static UploadSource? SaveToTempFile(NSItemProvider provider, Func<NSData?> getData, string ext)
