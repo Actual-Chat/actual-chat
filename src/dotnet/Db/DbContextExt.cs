@@ -1,10 +1,25 @@
 using ActualChat.Db.Module;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace ActualChat.Db;
 
 public static class DbContextExt
 {
+    /// <summary>
+    /// Temporarily sets command timeout on the DbContext, restoring the original on dispose.
+    /// </summary>
+    public static ClosedDisposable<(DatabaseFacade Database, int? OriginalTimeout)> WithCommandTimeout(
+        this DbContext dbContext, int timeoutInSeconds)
+    {
+        var database = dbContext.Database;
+        var originalTimeout = database.GetCommandTimeout();
+        database.SetCommandTimeout(timeoutInSeconds);
+        return Disposable.NewClosed(
+            (Database: database, OriginalTimeout: originalTimeout),
+            state => state.Database.SetCommandTimeout(state.OriginalTimeout));
+    }
+
     // This is a helper method allowing to debug exceptions thrown from SaveChangesAsync
     public static async Task SaveChangesAsync(this DbContext dbContext, ILogger? log, CancellationToken cancellationToken = default)
     {

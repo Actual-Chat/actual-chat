@@ -11,7 +11,8 @@ public partial class MigrationFlow : Flow<Unit>, IMasterFlow
     protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
         await Apply<AccountMigrationFlow>().ConfigureAwait(false);
-        await Apply<ChatEntryMigrationFlow>().ConfigureAwait(false);
+        // Suppressed: ChatEntryMigrationFixupFlow is a superset of ChatEntryMigrationFlow
+        // await Apply<ChatEntryMigrationFlow>().ConfigureAwait(false);
         await Apply<ChatEntryMigrationFixupFlow>().ConfigureAwait(false);
     }
 
