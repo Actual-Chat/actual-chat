@@ -51,9 +51,11 @@ public sealed class LocalVideoUploadProcessor(ILogger<LocalVideoUploadProcessor>
         if (videoStream is null)
             return new ProcessedFile(upload.AsBinaryFile(), null);
 
-        var mustConvert = UploadProcessorHelper.MustConvertVideo(videoStream)
-            || UploadProcessorHelper.MustConvertVideo(mediaInfo!.Format);
         var (size, duration, _) = UploadProcessorHelper.AnalyzeVideo(videoStream);
+        var mustScale = UploadProcessorHelper.ExceedsFullHd(size);
+        var mustConvert = mustScale
+            || UploadProcessorHelper.MustConvertVideo(videoStream)
+            || UploadProcessorHelper.MustConvertVideo(mediaInfo!.Format);
 
         progress?.Report(10);
 
@@ -73,12 +75,21 @@ public sealed class LocalVideoUploadProcessor(ILogger<LocalVideoUploadProcessor>
             var tempDir = FilePath.GetApplicationTempDirectory();
             var convertedFileName = Guid.NewGuid().ToString("N") + "_" + FileExt.ShortenFileName(Path.ChangeExtension(upload.FileName, ".mp4"));
             var convertedFilePath = tempDir | convertedFileName;
+            if (mustScale)
+                size = UploadProcessorHelper.ScaleToFullHd(size);
+            // Scale filter operates on raw (unrotated) pixels, so swap dimensions for rotated video
+            var isRotated = videoStream.Rotation is 90 or 270 or -90 or -270;
+            var scaleSize = mustScale && isRotated ? new Size(size.Height, size.Width) : size;
             var ffMpegArguments = FFMpegArguments.FromFileInput(upload.TempFilePath)
                 .OutputToFile(convertedFilePath,
                     false,
-                    options => options.WithVideoCodec(VideoCodec.LibX264)
-                        .WithFastStart()
-                        .WithVariableBitrate(4));
+                    options => {
+                        options.WithVideoCodec(VideoCodec.LibX264)
+                            .WithFastStart()
+                            .WithVariableBitrate(4);
+                        if (mustScale)
+                            options.WithVideoFilters(vf => vf.Scale(scaleSize.Width, scaleSize.Height));
+                    });
             if (progress is not null) {
                 // Progress from 20% to 98% during conversion
                 Action<double> onPercentageProgress = p => {
@@ -93,9 +104,6 @@ public sealed class LocalVideoUploadProcessor(ILogger<LocalVideoUploadProcessor>
             Log.LogDebug("Local transcoding completed in {Elapsed:N0}ms for '{FileName}'",
                 stepSw.ElapsedMilliseconds, upload.FileName);
             progress?.Report(98);
-            // Delete an original temp file since we have a new converted file
-            upload.Delete();
-
             Log.LogDebug("Total video processing completed in {Elapsed:N0}ms for '{FileName}'",
                 totalSw.ElapsedMilliseconds, upload.FileName);
             return new ProcessedFile(

@@ -287,7 +287,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         var progress = new ThrottledProgress<double>(p => {
             // Fire and forget - we don't want to block processing for status updates
             _ = UpdateMediaProgress(MediaProcessingStage.ServerProcessing, p, CancellationToken.None);
-        }, TimeSpan.FromSeconds(1));
+        }, TimeSpan.FromSeconds(3));
         return progress;
 
         async Task UpdateMediaProgress(MediaProcessingStage processingStage, double p, CancellationToken cancellationToken)
