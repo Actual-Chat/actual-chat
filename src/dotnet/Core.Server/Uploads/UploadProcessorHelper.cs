@@ -9,6 +9,7 @@ namespace ActualChat.Uploads;
 public static class UploadProcessorHelper
 {
     private static readonly ILogger Log = StaticLog.For(typeof(UploadProcessorHelper));
+    private static readonly Size FullHd = new(1920, 1080);
 
     public static Size GetEffectiveSize(VideoStream video)
         => video.Rotation is 90 or 270 or -90 or -270
@@ -38,6 +39,27 @@ public static class UploadProcessorHelper
 
     public static bool MustConvertVideo(MediaFormat mediaFormat)
         => !IsMp4Container(mediaFormat);
+
+    public static bool ExceedsFullHd(Size size)
+    {
+        var longSide = Math.Max(size.Width, size.Height);
+        var shortSide = Math.Min(size.Width, size.Height);
+        return longSide > FullHd.Width || shortSide > FullHd.Height;
+    }
+
+    public static Size ScaleToFullHd(Size size)
+    {
+        if (!ExceedsFullHd(size))
+            return size;
+
+        var isPortrait = size.Height > size.Width;
+        var limit = isPortrait ? new Size(FullHd.Height, FullHd.Width) : FullHd;
+        var scale = Math.Min((double)limit.Width / size.Width, (double)limit.Height / size.Height);
+        // Round to even numbers (required by most video codecs)
+        var w = (int)(size.Width * scale) & ~1;
+        var h = (int)(size.Height * scale) & ~1;
+        return new Size(w, h);
+    }
 
     public static Task<UploadedTempFile?> Snapshot(
         Uri source, FilePath fileName, TimeSpan totalVideoDuration)
