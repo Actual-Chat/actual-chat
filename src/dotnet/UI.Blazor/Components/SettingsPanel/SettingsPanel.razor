@@ -132,13 +132,16 @@
     }
 
     protected override void OnAfterRender(bool firstRender) {
+        // On first render, tabs register during ChildContent (after _renderedTabs snapshot),
+        // so just re-render to pick them up with the correct SelectedTabId.
+        if (firstRender) {
+            StateHasChanged();
+            return;
+        }
+
         var currentTabs = _tabRegistry.SortedTabs.ToList();
         var selectedTabId = SelectedTabId;
-        // On first render, tabs register during ChildContent (after _renderedTabs snapshot),
-        // so _renderedSelectedTab is null even though SelectedTabId may be valid.
-        // Skip resolution when the current selection is already valid in the new tab set.
-        if (_renderedSelectedTab != null || selectedTabId == null || currentTabs.All(t => t.Id != selectedTabId))
-            SelectedTabId = _tabRegistry.ResolveSelectedTabId(currentTabs, _renderedTabs, _renderedSelectedTab);
+        SelectedTabId = _tabRegistry.ResolveSelectedTabId(currentTabs, _renderedTabs, _renderedSelectedTab);
         var tabsHaveChanged = !_renderedTabs.SequenceEqual(currentTabs);
 
         if (!tabsHaveChanged)
