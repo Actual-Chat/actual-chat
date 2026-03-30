@@ -85,9 +85,10 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
             if (videoStream is null)
                 return new ProcessedFile(upload.AsBinaryFile(), null);
 
-            mustConvert = UploadProcessorHelper.MustConvertVideo(videoStream)
-                || UploadProcessorHelper.MustConvertVideo(mediaInfo!.Format);
             (size, duration, frameRate) = UploadProcessorHelper.AnalyzeVideo(videoStream);
+            mustConvert = UploadProcessorHelper.ExceedsFullHd(size)
+                || UploadProcessorHelper.MustConvertVideo(videoStream)
+                || UploadProcessorHelper.MustConvertVideo(mediaInfo!.Format);
         }
 
         progress?.Report(10);
@@ -122,6 +123,9 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
                 var outputGcsUri = $"gs://{_bucket}/{outputPrefix}";
 
                 stepSw.Restart();
+                if (UploadProcessorHelper.ExceedsFullHd(size))
+                    size = UploadProcessorHelper.ScaleToFullHd(size);
+                frameRate = Math.Max(frameRate, 24);
                 var createdJob = await CreateTranscoderJob(inputGcsUri, outputGcsUri, size, frameRate, cancellationToken).ConfigureAwait(false);
                 jobName = createdJob.Name;
                 Log.LogDebug("Transcoder job created in {Elapsed:N0}ms: '{JobName}'",
@@ -275,11 +279,11 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
     private static int EstimateVideoBitrate(Size size, double frameRate)
     {
         // Estimate a reasonable bitrate based on resolution and frame rate.
-        // Formula: pixels * frameFactor * bitsPerPixel, clamped to [500Kbps, 20Mbps].
+        // ~8 Mbps for 1080p@30, ~5 Mbps for 720p@30, ~1.5 Mbps for 480p@30.
         var pixels = size.Width * size.Height;
         var frameFactor = Math.Max(frameRate, 24) / 30.0;
-        var bps = (int)(pixels * frameFactor * 0.1);
-        return Math.Clamp(bps, 500_000, 20_000_000);
+        var bps = (int)(pixels * frameFactor * 3.5);
+        return Math.Clamp(bps, 500_000, 15_000_000);
     }
 
     private async Task CleanupGcsOutputAsync(string prefix)
