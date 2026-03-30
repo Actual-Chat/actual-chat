@@ -708,6 +708,8 @@ const serverImpl: DecoderWorker = {
             averageDecodeTime: 0,
             medianDecodeTime: 0,
             pureMedianDecodeTime: -1,
+            decodeQueueSize: 0,
+            backpressureDrops: 0,
             hardwareAcceleration: 'unknown',
             resolution: 'N/A'
         };

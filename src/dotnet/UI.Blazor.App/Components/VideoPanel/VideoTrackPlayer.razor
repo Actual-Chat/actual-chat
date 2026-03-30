@@ -1,6 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components.VideoPanel
 @using ActualChat.Streaming
 @using ActualChat.UI.Blazor.App.Module
+@using ActualChat.UI.Blazor.Services
 @using ActualChat.Video
 @implements IAsyncDisposable
 @implements IVideoPlayerBackend
@@ -67,6 +68,12 @@
                 null,
                 TimeSpan.FromSeconds(30),
                 TimeSpan.FromSeconds(30));
+
+            // Ensure server clock is synced before using startedAtMs
+            // ServerTimeSync is only registered on client platforms (WASM/MAUI), not on Server
+            var serverTimeSync = Services.GetService<ServerTimeSync>();
+            if (serverTimeSync != null)
+                await serverTimeSync.EnsureSynced(_disposeCts.Token);
 
             var format = StreamInfo.Format;
             var startedAtMs = StreamInfo.StartedAt.EpochOffset.TotalMilliseconds;

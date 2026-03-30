@@ -30,6 +30,19 @@ public class ServerTimeSync : WorkerBase
         LastUpdatedAt = Clocks.CpuClock.Now - TimeSpan.FromDays(1);
     }
 
+    /// <summary>
+    /// Ensures at least one successful sync has completed.
+    /// Forces an immediate sync attempt if none has happened yet.
+    /// Call this before using server timestamps (e.g., video startedAtMs).
+    /// </summary>
+    public async Task EnsureSynced(CancellationToken cancellationToken)
+    {
+        if (SyncCount > 0)
+            return;
+
+        await Sync(cancellationToken).ConfigureAwait(false);
+    }
+
     protected override Task OnRun(CancellationToken cancellationToken)
     {
         if (!HostInfo.HostKind.IsApp()) {

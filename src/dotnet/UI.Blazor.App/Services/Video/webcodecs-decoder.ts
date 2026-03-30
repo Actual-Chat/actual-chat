@@ -22,6 +22,10 @@ export interface DecoderStats {
   medianDecodeTime: number;
   /** Decode time measured only when decode queue was empty (no wait component). -1 if no samples. */
   pureMedianDecodeTime: number;
+  /** Current decode queue size from VideoDecoder API */
+  decodeQueueSize: number;
+  /** Number of delta frames dropped due to backpressure */
+  backpressureDrops: number;
   hardwareAcceleration: string;
   resolution: string;
 }
@@ -35,6 +39,7 @@ export class WebCodecsDecoder {
     private decodeQueueAtStart: number[] = []; // Queue depth when decode was called
     private pureDecodeTimeHistory: number[] = []; // Times when queue was 0 at start
     private lastResolution: { width: number; height: number } | null = null;
+    private backpressureDrops = 0;
 
     constructor(
     private config: DecoderConfig,
@@ -247,12 +252,22 @@ export class WebCodecsDecoder {
             ? `${this.lastResolution.width}x${this.lastResolution.height}`
             : 'N/A';
 
+        // Read queue size safely (decoder may be closed)
+        let decodeQueueSize = 0;
+        try {
+            if (this.decoder.state === 'configured') {
+                decodeQueueSize = this.decoder.decodeQueueSize;
+            }
+        } catch { /* ignore */ }
+
         return {
             decodedFrames: this.frameCount,
             droppedFrames: this.droppedFrames,
             averageDecodeTime,
             medianDecodeTime,
             pureMedianDecodeTime,
+            decodeQueueSize,
+            backpressureDrops: this.backpressureDrops,
             hardwareAcceleration,
             resolution
         };
@@ -261,6 +276,7 @@ export class WebCodecsDecoder {
     reset(): void {
         this.frameCount = 0;
         this.droppedFrames = 0;
+        this.backpressureDrops = 0;
         this.decodeTimeHistory = [];
         this.decodeStartTimes = [];
         this.decodeQueueAtStart = [];

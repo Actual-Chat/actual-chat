@@ -97,6 +97,7 @@ export class VideoPlayer {
     private skippedBacklogFrames = 0;
     private rebufferDelayMs = 0;         // After tab restore, delay rendering to let buffer accumulate
     private consecutiveEmptyRenders = 0; // Safety net: count consecutive RAFs with no frame rendered
+    private lastHighLatencyLogTime = 0;  // Throttle high-latency FRAME_RECV logs
 
     // Adaptive catch-up playback state (wall-clock path only)
     private playbackRate = 1.0;
@@ -960,11 +961,14 @@ export class VideoPlayer {
                     `durationMs=${durationMs.toFixed(1)}, dataLen=${data.length}`);
             }
 
-            // Diagnostic: log implied latency for first 5 frames and every 300th
-            if (this.receivedFrameCount <= 5 || this.receivedFrameCount % 300 === 0) {
-                const nowMs = ServerClock.now();
-                const impliedCaptureAt = this.startedAtMs + offsetMs;
-                const impliedLatency = nowMs - impliedCaptureAt;
+            // Diagnostic: log implied latency for first 5 frames, every 300th, and during high latency
+            const nowMs = ServerClock.now();
+            const impliedCaptureAt = this.startedAtMs + offsetMs;
+            const impliedLatency = nowMs - impliedCaptureAt;
+            const isHighLatency = impliedLatency > 2000
+                && (performance.now() - this.lastHighLatencyLogTime > 1000);
+            if (this.receivedFrameCount <= 5 || this.receivedFrameCount % 300 === 0 || isHighLatency) {
+                if (isHighLatency) this.lastHighLatencyLogTime = performance.now();
                 warnLog?.log(
                     `FRAME_RECV: #${this.receivedFrameCount} offsetMs=${offsetMs.toFixed(0)}, ` +
                     `startedAt=${this.startedAtMs.toFixed(0)}, impliedCaptureAt=${impliedCaptureAt.toFixed(0)}, ` +
@@ -1104,7 +1108,9 @@ export class VideoPlayer {
 
                 warnLog?.log(
                     `VIDEO_DECODE: codec=${this.decoderConfig?.codec ?? 'unknown'} ` +
-                    `median=${ds.medianDecodeTime.toFixed(1)}ms avg=${ds.averageDecodeTime.toFixed(1)}ms ` +
+                    `decode=${ds.pureMedianDecodeTime >= 0 ? ds.pureMedianDecodeTime.toFixed(1) : 'N/A'}ms ` +
+                    `queueWait=${ds.medianDecodeTime.toFixed(1)}ms ` +
+                    `queueDepth=${ds.decodeQueueSize} bpDrops=${ds.backpressureDrops} ` +
                     `e2e=${this.pipelineLatencyMs.toFixed(0)}ms buf=${this.pendingFrames.length} ` +
                     `bufSpanMs=${currentBufferSpanMs.toFixed(0)} ` +
                     `recv=${recvDelta} decoded=${decodedDelta} drop=${ds.droppedFrames} ` +
@@ -1135,7 +1141,7 @@ export class VideoPlayer {
                             sessionToken,
                             this.streamId,
                             streamOffsetMs,
-                            ds.medianDecodeTime,
+                            ds.pureMedianDecodeTime >= 0 ? ds.pureMedianDecodeTime : ds.medianDecodeTime,
                             this.pendingFrames.length,
                             currentBufferSpanMs
                         );
