@@ -13,32 +13,30 @@
                 InputId="@_formModel.NameFormId"
                 IsLabelInsideInput="true"
                 Label="Name">
-                <InputText
-                    id="@_formModel.NameFormId"
-                    @bind-Value="_formModel.Name"
-                    placeholder="My API key" />
+                <TextBox
+                    Id="@_formModel.NameFormId"
+                    Placeholder="My API key"
+                    @bind-Value="@_formModel.Name"
+                    ClearButton="true"/>
             </FormSection>
 
             <FormSection
-                For="() => _formModel.ExpiresInDays"
+                For="() => _formModel.ExpiresInDaysText"
                 InputId="@_formModel.ExpiresInDaysFormId"
                 IsLabelInsideInput="true"
                 Label="Expires in (days)">
-                <InputNumber
-                    id="@_formModel.ExpiresInDaysFormId"
-                    @bind-Value="_formModel.ExpiresInDays" />
+                <TextBox
+                    Id="@_formModel.ExpiresInDaysFormId"
+                    Type="number"
+                    @bind-Value="@_formModel.ExpiresInDaysText"/>
             </FormSection>
         </FormBlock>
     </Form>
-
-    <TileItem>
-        <Content>
-            <Button Class="btn-primary" Click="@OnCreateClick">
-                Create API Key
-            </Button>
-        </Content>
-    </TileItem>
 </Tile>
+
+<Button Class="btn-primary btn-outline btn-w-full" Click="@OnCreateClick">
+    Create API Key
+</Button>
 
 @if (m.ApiKeys.Count > 0) {
     <TileTopic Topic="Your API Keys"/>
@@ -62,7 +60,7 @@
             </TileItem>
             @if (key.IsActive) {
                 <div class="flex justify-end px-4 pb-2">
-                    <Button Class="btn-sm btn-danger" Click="@(() => OnDeactivateClick(key.IdPrefix))">
+                    <Button Class="btn-sm btn-danger-light btn-outline btn-w-full" Click="@(() => OnDeactivateClick(key.IdPrefix))">
                         Deactivate
                     </Button>
                 </div>
@@ -88,13 +86,15 @@
 
     private async Task OnCreateClick()
     {
-        var command = new Accounts_CreateApiKey(Session, _formModel.Name, _formModel.ExpiresInDays);
+        if (!int.TryParse(_formModel.ExpiresInDaysText, out var expiresInDays) || expiresInDays <= 0)
+            return;
+        var command = new Accounts_CreateApiKey(Session, _formModel.Name, expiresInDays);
         var result = await UICommander.Run(command);
         if (result.HasError)
             return;
 
         _formModel.Name = "";
-        _formModel.ExpiresInDays = 365;
+        _formModel.ExpiresInDaysText = "365";
 
         // Show the key in a modal — it will never be visible again
         await Hub.ModalUI.Show(new ApiKeyRevealModal.Model(result.Value));
@@ -118,6 +118,6 @@
         public string NameFormId { get; } = "api-key-name";
         public string ExpiresInDaysFormId { get; } = "api-key-expires";
         public string Name { get; set; } = "";
-        public int ExpiresInDays { get; set; } = 365;
+        public string ExpiresInDaysText { get; set; } = "365";
     }
 }

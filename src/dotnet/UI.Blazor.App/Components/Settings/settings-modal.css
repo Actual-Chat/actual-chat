@@ -131,3 +131,30 @@ body.narrow .close-settings-btn {
 .log-viewer-page .log-list {
     height: calc(100vh - 5rem);
 }
+
+.sessions-tile-item .tile-item-body {
+    @apply w-full;
+}
+.sessions-tile-item .tile-item-body-caption {
+    @apply flex-x items-center justify-between gap-2;
+}
+.sessions-tile-item .tile-item-body-content {
+    @apply max-h-10;
+    @apply text-caption-4;
+}
+.sessions-tile-item .tile-item-body-content .c-description {
+    @apply whitespace-normal;
+}
+.sessions-tile-item .sign-out-btn {
+    @apply flex-none;
+    @apply text-[var(--danger-light)];
+    @apply cursor-pointer;
+}
+body.hoverable .sessions-tile-item .sign-out-btn:hover,
+.touch-capable .sessions-tile-item .sign-out-btn:active {
+    @apply text-[var(--danger)];
+}
+.sessions-tile-item .c-current {
+    @apply flex-none;
+    @apply text-[var(--success)];
+}
