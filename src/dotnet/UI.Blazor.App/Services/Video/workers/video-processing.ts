@@ -565,17 +565,23 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
                 dimensionsReconciled = true;
                 const frameW = rawFrame.displayWidth;
                 const frameH = rawFrame.displayHeight;
-                // Detect rotation: frame is transposed relative to encoder config (e.g. iOS portrait
-                // camera gives 1280x720 frames but encoder expects 720x1280)
+                const codedW = rawFrame.codedWidth;
+                const codedH = rawFrame.codedHeight;
+                // Detect rotation: display dims are transposed vs encoder config
+                // (MSTP gives raw sensor dims as displayWidth/Height)
                 const isRotated = frameW === encoderConfig.height && frameH === encoderConfig.width
                     && frameW !== encoderConfig.width;
-                if (isRotated) {
-                    warnLog?.log(`Frame ${frameW}x${frameH} is transposed vs config ${encoderConfig.width}x${encoderConfig.height}, enabling rotation`);
+                // Detect rotation: Safari sets display dims to post-rotation (portrait) but pixel
+                // buffer stays in sensor orientation (landscape) — coded dims reveal true pixel layout
+                const isRotatedByCoded = !isRotated
+                    && codedW === frameH && codedH === frameW && codedW !== frameW;
+                if (isRotated || isRotatedByCoded) {
+                    warnLog?.log(`Frame ${frameW}x${frameH} (coded: ${codedW}x${codedH}) is rotated vs config ${encoderConfig.width}x${encoderConfig.height}`);
                     needsRotation = true;
                     // Keep encoder config at portrait dimensions — resizeFrame() rotate90 will
                     // rotate landscape frames into portrait before encoding
                 } else if (frameW !== encoderConfig.width || frameH !== encoderConfig.height) {
-                    warnLog?.log(`Display dimensions ${frameW}x${frameH} differ from config (coded: ${rawFrame.codedWidth}x${rawFrame.codedHeight}), reconfiguring`);
+                    warnLog?.log(`Display dimensions ${frameW}x${frameH} differ from config (coded: ${codedW}x${codedH}), reconfiguring`);
                     encoderConfig.width = frameW; encoderConfig.height = frameH;
                     await encoder.reconfigure({ width: frameW, height: frameH, bitrate: encoderConfig.bitrate });
                     if (segConfig) { segConfig.outputWidth = frameW; segConfig.outputHeight = frameH; }
@@ -737,6 +743,12 @@ export const serverImpl: VideoProcessingWorker = {
 
     reconfigure: async (params): Promise<void> => {
         if (!encoder || !processing || !encoderConfig) { warnLog?.log('Cannot reconfigure: not active'); return; }
+        // Preserve encoder orientation: map incoming dimensions by magnitude
+        const inSmall = Math.min(params.width, params.height);
+        const inLarge = Math.max(params.width, params.height);
+        const isPortrait = encoderConfig.height > encoderConfig.width;
+        params.width = isPortrait ? inSmall : inLarge;
+        params.height = isPortrait ? inLarge : inSmall;
         infoLog?.log(`Reconfigure: ${params.bitrate / 1_000_000}Mbps, ${params.width}x${params.height}`);
         encoderConfig.bitrate = params.bitrate; encoderConfig.width = params.width; encoderConfig.height = params.height;
         await encoder.reconfigure(params);

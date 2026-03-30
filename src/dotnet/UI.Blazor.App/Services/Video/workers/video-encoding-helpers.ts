@@ -43,8 +43,10 @@ export function resizeFrame(
     ctx: OffscreenCanvasRenderingContext2D | null,
     rotate90?: boolean,
 ): { frame: VideoFrame; canvas: OffscreenCanvas | null; ctx: OffscreenCanvasRenderingContext2D | null } {
-    const frameWidth = frame.displayWidth;
-    const frameHeight = frame.displayHeight;
+    // When rotating, use coded dimensions (actual pixel layout) rather than display dimensions.
+    // Safari may report portrait display dims while pixel data is still in landscape sensor orientation.
+    const frameWidth = rotate90 ? (frame.codedWidth || frame.displayWidth) : frame.displayWidth;
+    const frameHeight = rotate90 ? (frame.codedHeight || frame.displayHeight) : frame.displayHeight;
 
     if (!rotate90 && frameWidth === targetWidth && frameHeight === targetHeight)
         return { frame, canvas, ctx };
@@ -60,54 +62,44 @@ export function resizeFrame(
         return { frame, canvas, ctx };
     }
 
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, targetWidth, targetHeight);
-
     if (rotate90) {
-        // Rotate 90° CW: in rotated coordinate space, drawing area is targetHeight × targetWidth
-        // Letterbox the frame into that space to preserve aspect ratio
+        // Rotate 90° CW with center-crop: source is landscape, target is portrait
+        // In rotated coordinate space, drawing area is targetHeight × targetWidth
         const rotatedW = targetHeight;
         const rotatedH = targetWidth;
         const frameAspect = frameWidth / frameHeight;
         const rotatedAspect = rotatedW / rotatedH;
-        let drawWidth: number, drawHeight: number, offsetX: number, offsetY: number;
 
+        // Center-crop source to match rotated target aspect ratio
+        let srcX = 0, srcY = 0, srcW = frameWidth, srcH = frameHeight;
         if (frameAspect > rotatedAspect) {
-            drawWidth = rotatedW;
-            drawHeight = rotatedW / frameAspect;
-            offsetX = 0;
-            offsetY = (rotatedH - drawHeight) / 2;
-        } else {
-            drawHeight = rotatedH;
-            drawWidth = rotatedH * frameAspect;
-            offsetX = (rotatedW - drawWidth) / 2;
-            offsetY = 0;
+            srcW = Math.round(frameHeight * rotatedAspect);
+            srcX = Math.round((frameWidth - srcW) / 2);
+        } else if (frameAspect < rotatedAspect) {
+            srcH = Math.round(frameWidth / rotatedAspect);
+            srcY = Math.round((frameHeight - srcH) / 2);
         }
 
         ctx.save();
         ctx.translate(targetWidth, 0);
         ctx.rotate(Math.PI / 2);
-        ctx.drawImage(frame, offsetX, offsetY, drawWidth, drawHeight);
+        ctx.drawImage(frame, srcX, srcY, srcW, srcH, 0, 0, rotatedW, rotatedH);
         ctx.restore();
     } else {
-        // Standard letterboxed resize
+        // Center-crop resize: crop source to match target aspect ratio, then scale
         const frameAspect = frameWidth / frameHeight;
         const targetAspect = targetWidth / targetHeight;
-        let drawWidth: number, drawHeight: number, offsetX: number, offsetY: number;
 
+        let srcX = 0, srcY = 0, srcW = frameWidth, srcH = frameHeight;
         if (frameAspect > targetAspect) {
-            drawWidth = targetWidth;
-            drawHeight = targetWidth / frameAspect;
-            offsetX = 0;
-            offsetY = (targetHeight - drawHeight) / 2;
-        } else {
-            drawHeight = targetHeight;
-            drawWidth = targetHeight * frameAspect;
-            offsetX = (targetWidth - drawWidth) / 2;
-            offsetY = 0;
+            srcW = Math.round(frameHeight * targetAspect);
+            srcX = Math.round((frameWidth - srcW) / 2);
+        } else if (frameAspect < targetAspect) {
+            srcH = Math.round(frameWidth / targetAspect);
+            srcY = Math.round((frameHeight - srcH) / 2);
         }
 
-        ctx.drawImage(frame, offsetX, offsetY, drawWidth, drawHeight);
+        ctx.drawImage(frame, srcX, srcY, srcW, srcH, 0, 0, targetWidth, targetHeight);
     }
 
     const newFrame = new VideoFrame(canvas, {
