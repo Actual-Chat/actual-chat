@@ -49,6 +49,7 @@ internal class GoogleResumableUploads(StorageClient client, ILogger<GoogleResuma
         CancellationToken cancellationToken)
     {
         // https://docs.cloud.google.com/storage/docs/performing-resumable-uploads#resume-upload
+        var stopwatch = Stopwatch.StartNew();
         var content = new ByteArrayContent(buffer);
         // Example: bytes 0-262143/104857600
         content.Headers.ContentRange =
@@ -57,6 +58,10 @@ internal class GoogleResumableUploads(StorageClient client, ILogger<GoogleResuma
                 offset + buffer.Length - 1,
                 totalSize);
         var response = await HttpClient.PutAsync(sessionUrl, content, cancellationToken).ConfigureAwait(false);
+        stopwatch.Stop();
+        Log.LogInformation(
+            "UploadChunk completed in {ElapsedMs}ms: Offset={Offset}, ChunkSize={ChunkSize}, TotalSize={TotalSize}, StatusCode={StatusCode}, SessionUrl={SessionUrl}",
+            stopwatch.ElapsedMilliseconds, offset, buffer.Length, totalSize, response.StatusCode, sessionUrl);
         if (response.StatusCode is HttpStatusCode.PermanentRedirect)
             return false; // Upload is not finished yet
 
