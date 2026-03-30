@@ -421,8 +421,9 @@ export class VideoPlayer {
         if (this.pipelineLatencyMs === 0) {
             this.pipelineLatencyMs = cappedLatencyMs;
         } else {
-            // Asymmetric EMA: fast response to increases (α=0.3), slow decay (α=0.05)
-            const alpha = cappedLatencyMs > this.pipelineLatencyMs ? 0.3 : 0.05;
+            // Asymmetric EMA: moderate response to increases (α=0.2), faster decay (α=0.15)
+            // to prevent ratchet effect where bursty delivery inflates the estimate permanently
+            const alpha = cappedLatencyMs > this.pipelineLatencyMs ? 0.2 : 0.15;
             this.pipelineLatencyMs = this.pipelineLatencyMs * (1 - alpha) + cappedLatencyMs * alpha;
         }
 
@@ -1083,8 +1084,17 @@ export class VideoPlayer {
             this.pullSubscription?.dispose();
             this.pullSubscription = null;
             // Flush pending frames to avoid rendering stale data after re-request
+            for (const pf of this.pendingFrames)
+                pf.close();
             this.pendingFrames.length = 0;
-            void this.startPull(this.streamId, 0);
+            this.bufferSize = 0;
+            // Reset latency estimate and timing anchor — stale values cause the same
+            // drift cycle to repeat immediately on the new stream
+            this.pipelineLatencyMs = 0;
+            this.playbackStartTime = 0;
+            // Request from the current live offset so the server starts from the next keyframe
+            const skipToMs = Math.max(0, ServerClock.now() - this.startedAtMs);
+            void this.startPull(this.streamId, skipToMs);
             return;
         }
 

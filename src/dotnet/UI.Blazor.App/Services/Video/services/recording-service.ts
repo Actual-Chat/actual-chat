@@ -15,7 +15,7 @@ const { infoLog, warnLog, errorLog } = Log.get('VideoPipeline');
 
 export interface RecordingConfig {
   mode: 'webcam' | 'screen';
-  codec: 'h264' | 'hevc' | 'av1';
+  codec: 'h264' | 'hevc' | 'av1' | 'vp9';
   codecString?: string; // Specific codec profile string (e.g., 'avc1.640028', 'av01.0.08M.08')
   hardwareAccelerated?: boolean; // Whether the selected codec is hardware accelerated
   scalabilityModes?: string[]; // Supported scalability modes for the selected codec
@@ -166,7 +166,7 @@ export class RecordingService extends EventTarget {
             return;
         }
 
-        const codecString = getCodecForCategory(codec as 'h264' | 'hevc' | 'av1', this.config.width, this.config.height);
+        const codecString = getCodecForCategory(codec as 'h264' | 'hevc' | 'av1' | 'vp9', this.config.width, this.config.height);
 
         // Skip if already using the same codec category
         const currentCategory = getCodecCategory(this.config.codecString ?? '');
@@ -180,7 +180,7 @@ export class RecordingService extends EventTarget {
         // reports AV1 support at 720p but silently falls back to H.264).
 
         infoLog?.log(`Switching codec from ${this.config.codec} to ${codec} (${codecString})`);
-        this.config.codec = codec as 'h264' | 'hevc' | 'av1';
+        this.config.codec = codec as 'h264' | 'hevc' | 'av1' | 'vp9';
         this.config.codecString = codecString;
 
         await this.pipeline.switchCodec(codecString);

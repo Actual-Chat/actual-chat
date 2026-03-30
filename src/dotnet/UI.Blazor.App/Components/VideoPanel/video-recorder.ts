@@ -531,10 +531,11 @@ export class VideoRecorder {
                 categories.add(c.category);
             }
         }
-        // Return in priority order: av1, hevc, h264
+        // Return in priority order: av1, hevc, vp9, h264
         const ordered: string[] = [];
         if (categories.has('av1')) ordered.push('av1');
         if (categories.has('hevc')) ordered.push('hevc');
+        if (categories.has('vp9')) ordered.push('vp9');
         if (categories.has('h264')) ordered.push('h264');
         return ordered;
     }

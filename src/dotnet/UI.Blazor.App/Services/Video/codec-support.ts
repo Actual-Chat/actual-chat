@@ -11,7 +11,7 @@ const { debugLog, warnLog, errorLog } = Log.get('VideoPipeline');
 export interface CodecInfo {
     name: string;
     codec: string;
-    category: 'h264' | 'hevc' | 'av1';
+    category: 'h264' | 'hevc' | 'av1' | 'vp9';
     supported: boolean;
     hardwareAccelerated: boolean;
     scalabilityModes: string[];
@@ -35,6 +35,12 @@ const CODEC_PROFILES = {
         { name: 'HEVC Main, Level 3.0', codec: 'hev1.1.6.L90.B0' },
         { name: 'HEVC Main 10, Level 4.0', codec: 'hev1.2.4.L120.B0' },
         { name: 'HEVC Main 10, Level 4.1', codec: 'hev1.2.4.L123.B0' },
+    ],
+    vp9: [
+        { name: 'VP9 Profile 0, Level 4.1', codec: 'vp09.00.41.08' },
+        { name: 'VP9 Profile 0, Level 4.0', codec: 'vp09.00.40.08' },
+        { name: 'VP9 Profile 0, Level 3.1', codec: 'vp09.00.31.08' },
+        { name: 'VP9 Profile 0, Level 3.0', codec: 'vp09.00.30.08' },
     ],
     av1: [
         { name: 'AV1 Main, Level 3.0', codec: 'av01.0.05M.08' },
@@ -75,6 +81,19 @@ export async function detectSupportedCodecs(width = 1920, height = 1080): Promis
         });
     }
 
+    // Check VP9 codecs
+    for (const profile of CODEC_PROFILES.vp9) {
+        const { supported, hardwareAccelerated, scalabilityModes } = await isCodecSupported(profile.codec, 'vp9', width, height);
+        results.push({
+            name: profile.name,
+            codec: profile.codec,
+            category: 'vp9',
+            supported,
+            hardwareAccelerated,
+            scalabilityModes,
+        });
+    }
+
     // Check AV1 codecs
     for (const profile of CODEC_PROFILES.av1) {
         const { supported, hardwareAccelerated, scalabilityModes } = await isCodecSupported(profile.codec, 'av1', width, height);
@@ -98,7 +117,7 @@ export async function detectSupportedCodecs(width = 1920, height = 1080): Promis
 
 async function isCodecSupported(
     codec: string,
-    category: 'h264' | 'hevc' | 'av1',
+    category: 'h264' | 'hevc' | 'av1' | 'vp9',
     width: number,
     height: number
 ): Promise<{ supported: boolean; hardwareAccelerated: boolean; scalabilityModes: string[] }> {
@@ -162,18 +181,22 @@ async function isCodecSupported(
     }
 }
 
-export function getCodecCategory(codecString: string): 'h264' | 'hevc' | 'av1' {
+export function getCodecCategory(codecString: string): 'h264' | 'hevc' | 'av1' | 'vp9' {
     if (codecString.startsWith('av01')) return 'av1';
     if (codecString.startsWith('hev1') || codecString.startsWith('hvc1')) return 'hevc';
+    if (codecString.startsWith('vp09')) return 'vp9';
     return 'h264';
 }
 
-export function getCodecForCategory(category: 'h264' | 'hevc' | 'av1', width: number, height: number): string {
+export function getCodecForCategory(category: 'h264' | 'hevc' | 'av1' | 'vp9', width: number, height: number): string {
     const isMobile = DeviceInfo.isMobile; // includes iOS
     const isHighRes = height > 720;
 
     if (category === 'av1') {
         return isHighRes ? 'av01.0.08M.08' : 'av01.0.05M.08'; // Main L4.0 / Main L3.0
+    }
+    if (category === 'vp9') {
+        return isHighRes ? 'vp09.00.41.08' : 'vp09.00.31.08'; // Profile 0 L4.1 / L3.1
     }
     if (category === 'hevc') {
         return isHighRes ? 'hev1.1.6.L120.B0' : 'hev1.1.6.L93.B0'; // Main L4.0 / Main L3.1
@@ -193,7 +216,7 @@ export function getDefaultCodec(supportedCodecs: CodecInfo[], width = 1280, heig
 
     const isMobile = DeviceInfo.isMobile; // includes iOS
 
-    // Priority: AV1 HW > HEVC HW > H.264 HW (profile by platform) > H.264 SW (profile by platform)
+    // Priority: AV1 HW > HEVC HW > VP9 HW > H.264 HW (profile by platform) > H.264 SW
 
     // 1. Try AV1 with hardware acceleration
     const av1HW = supportedCodecs.find(
@@ -207,6 +230,12 @@ export function getDefaultCodec(supportedCodecs: CodecInfo[], width = 1280, heig
     );
     if (hevcHW) return hevcHW.codec;
 
+    // 3. Try VP9 with hardware acceleration
+    const vp9HW = supportedCodecs.find(
+        c => c.category === 'vp9' && c.supported && c.hardwareAccelerated
+    );
+    if (vp9HW) return vp9HW.codec;
+
     // H.264 profile preference depends on platform
     // Mobile: Main > Baseline > High (power efficient)
     // Desktop: High > Main > any (better compression)
@@ -214,27 +243,27 @@ export function getDefaultCodec(supportedCodecs: CodecInfo[], width = 1280, heig
         ? ['4D40', '42E0', '6400']  // Main, Baseline, High
         : ['6400', '4D40'];         // High, Main
 
-    // 3. Try H.264 HW in profile preference order
+    // 4. Try H.264 HW in profile preference order
     for (const profile of h264ProfileOrder) {
         const match = supportedCodecs.find(
             c => c.category === 'h264' && c.supported && c.hardwareAccelerated && c.codec.includes(profile)
         );
         if (match) return match.codec;
     }
-    // 3b. Any H.264 HW
+    // 4b. Any H.264 HW
     const anyH264HW = supportedCodecs.find(
         c => c.category === 'h264' && c.supported && c.hardwareAccelerated
     );
     if (anyH264HW) return anyH264HW.codec;
 
-    // 4. Try H.264 SW in profile preference order
+    // 5. Try H.264 SW in profile preference order
     for (const profile of h264ProfileOrder) {
         const match = supportedCodecs.find(
             c => c.category === 'h264' && c.supported && c.codec.includes(profile)
         );
         if (match) return match.codec;
     }
-    // 4b. Any H.264 SW
+    // 5b. Any H.264 SW
     const anyH264 = supportedCodecs.find(
         c => c.category === 'h264' && c.supported
     );
@@ -300,6 +329,19 @@ export async function detectSupportedDecoderCodecs(): Promise<string[]> {
         }
     }
     if (hevcSupported) codecs.push('hevc');
+
+    // VP9
+    try {
+        const vp9 = await VideoDecoder.isConfigSupported({
+            codec: 'vp09.00.31.08',
+            codedWidth: 1280,
+            codedHeight: 720,
+        });
+        warnLog?.log(`Decoder VP9 (vp09.00.31.08): supported=${vp9.supported}`);
+        if (vp9.supported) codecs.push('vp9');
+    } catch (e) {
+        warnLog?.log(`Decoder VP9 (vp09.00.31.08): error=${e}`);
+    }
 
     warnLog?.log(`DECODER_CODECS: [${codecs.join(', ')}]`);
     return codecs;
