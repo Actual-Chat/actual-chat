@@ -9,9 +9,20 @@
         <div class="flex flex-col gap-4 p-4">
             <p>Copy this key now. It will not be shown again.</p>
             <code class="break-all select-all p-3 bg-surface rounded text-sm">@ModalModel.ApiKey</code>
-            <div class="flex gap-2 justify-end">
-                <CopyToClipboard ButtonClass="btn-primary" Text="@ModalModel.ApiKey" />
-                <Button Class="btn-secondary" Click="@OnCloseClick">Close</Button>
+            <div class="flex-y gap-2 justify-end">
+                <CopyTrigger CopyTextFormatString="@ModalModel.ApiKey">
+                    <Button Class="btn-modal copy-btn btn-w-full">
+                        <Icon>
+                            <i class="hide-on-copied-hint icon-copy" aria-hidden="true"></i>
+                            <i class="copied-hint icon-checkmark-simple" aria-hidden="true"></i>
+                        </Icon>
+                        <Title>
+                            <span class="hide-on-copied-hint">Copy Key</span>
+                            <span class="copied-hint">Key copied!</span>
+                        </Title>
+                    </Button>
+                </CopyTrigger>
+                <Button Class="btn-cancel btn-w-full btn-modal" Click="@OnCloseClick">Close</Button>
             </div>
         </div>
     </Body>
