@@ -14,7 +14,11 @@
     if (hasRemoteStreams) {
         _showConnecting = false;
         _noStreamsTimedOut = false;
-    } else if (!m.IsRecording && !_noStreamsTimedOut) {
+        _hadRemoteStreams = true;
+    } else if (m.IsRecording && !_hadRemoteStreams && !_noStreamsTimedOut) {
+        // Recording solo, never had remote peers — show preview, not "Connecting..."
+        _showConnecting = false;
+    } else if (!_noStreamsTimedOut) {
         _showConnecting = true;
     }
 
@@ -124,6 +128,7 @@
     private bool _autoStartPending;
     private bool _noStreamsTimedOut;
     private bool _showConnecting;
+    private bool _hadRemoteStreams;
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoPanel.create";
     private static readonly string JSEnumerateMethod = $"{BlazorUIAppModule.ImportName}.JoinVideoCallModal.enumerateDevices";
 
@@ -163,6 +168,7 @@
             _isFirstOpen = true;
             _autoStartPending = AutoStart;
             _noStreamsTimedOut = false;
+            _hadRemoteStreams = false;
         } else if (!Show && _rendered && JSRef is not null) {
             await JSRef.InvokeVoidAsync("startClosing");
         }
