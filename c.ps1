@@ -182,7 +182,6 @@ $newContainer          = $false
 $renewContainer        = $false
 $dryRun                = $false
 $debugMode             = $false
-$buildAgentFlag        = $null     # $null = auto (ActualChat only), $true = force on, $false = force off
 $claudeArgs            = @()
 
 # Show help
@@ -206,8 +205,6 @@ function Show-Help {
     Write-Host "Options:"
     Write-Host "  --new        Force creation of a new Docker container (skip reuse)"
     Write-Host "  --renew      Remove existing containers and start a new one (use after image rebuild)"
-    Write-Host "  --agent      Force start build agent (for server management from Docker)"
-    Write-Host "  --no-agent   Disable build agent (default for non-ActualChat projects)"
     Write-Host "  --dry-run    Show environment variables and command without executing"
     Write-Host "  --debug      Show debug output for troubleshooting"
     Write-Host ""
@@ -345,18 +342,6 @@ while ($argIndex -lt $args.Count) {
     # Check for --debug
     if ($currentArg -eq "--debug") {
         $debugMode = $true
-        $argIndex++
-        continue
-    }
-
-    # Check for --agent / --no-agent
-    if ($currentArg -eq "--agent") {
-        $buildAgentFlag = $true
-        $argIndex++
-        continue
-    }
-    if ($currentArg -eq "--no-agent") {
-        $buildAgentFlag = $false
         $argIndex++
         continue
     }
@@ -849,15 +834,9 @@ if ($removeWorktreeSuffix) {
 
     Write-Host "Removing worktree: $projectName-$removeWorktreeSuffix" -ForegroundColor Cyan
 
-    # Stop server, build agent, and Docker containers; then remove server config
+    # Stop server and Docker containers; then remove server config
     if (Test-Path (Join-Path $mainProjectPath "ActualChat.sln")) {
         $server = [WorktreeServer]::new($mainProjectPath, $removeWorktreeSuffix)
-
-        # Stop orphaned server and build agent from previous sessions
-        if ($server.Port -and (Test-Path $worktreePath)) {
-            [BuildAgent]::new($worktreePath).StopServer()
-            [BuildAgentHost]::new($worktreePath).Stop()
-        }
 
         # Kill Docker containers for this worktree
         $containerBaseName = "$($projectName.ToLower())-$($removeWorktreeSuffix.ToLower())"
@@ -1069,7 +1048,6 @@ if ($isActualChatProject) {
         "urls" = $urlsValue
         "ASPNETCORE_URLS" = $urlsValue
         "HostSettings__BaseUri" = $baseUri
-        "AC_BUILD_AGENT_PORT" = $serverConfig.Port + 9
     }
     Update-EnvFile -ProjectPath $projectRoot -Variables $envVarsToSave -Debug:$debugMode
 }
@@ -1510,19 +1488,7 @@ switch ($mode) {
             "-e", "PULSE_SERVER=$pulseServer"
         )
 
-        # Build agent for server/build management: on macOS/Windows, --network host doesn't
-        # truly share ports, so the .NET server must run on the host. The build agent host
-        # provides an HTTP API that Claude in Docker calls to build/start/stop the server.
-        # Controlled by --agent/--no-agent flags; defaults to auto (ActualChat projects only).
-        $useBuildAgent = if ($buildAgentFlag -ne $null) { $buildAgentFlag } else { $isActualChatProject }
-        $buildAgent = $null
-        $buildAgentEnvVars = @()
-        if ($useBuildAgent -and $currentOS -in "macOS", "Windows") {
-            $buildAgent = [BuildAgentHost]::new($projectRoot)
-            $buildAgentEnvVars = @("-e", "AC_BUILD_AGENT_PORT=$($buildAgent.Port)")
-        }
-
-        $dockerArgs += $volumeMounts + $propagatedEnvVars + $audioEnvVars + $buildAgentEnvVars + @(
+        $dockerArgs += $volumeMounts + $propagatedEnvVars + $audioEnvVars + @(
             "-e", "ANTHROPIC_API_KEY=$env:ANTHROPIC_API_KEY"
             "-e", "DISABLE_AUTOUPDATER=1"
             "-e", "DOTNET_SYSTEM_NET_DISABLEIPV6=1"
@@ -1560,18 +1526,8 @@ switch ($mode) {
             Write-Host "  docker $($dockerArgs -join ' ')"
             Write-Host ""
         } else {
-            # Start build agent if enabled — runs build/server operations over HTTP
-            # so Claude in Docker can build/start/stop the server on the host
-            if ($buildAgent) {
-                $buildAgent.Start()
-            }
-
-            try {
-                # On Windows, we're already in wt (handled at script start)
-                & docker @dockerArgs
-            } finally {
-                if ($buildAgent) { $buildAgent.Stop() }
-            }
+            # On Windows, we're already in wt (handled at script start)
+            & docker @dockerArgs
         }
     }
 

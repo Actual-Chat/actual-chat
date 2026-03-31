@@ -33,22 +33,121 @@ done
 
 pwsh -NoProfile -c "
     . '$PROJECT_PATH/scripts/Common.ps1'
-    \$agent = Get-BuildAgent '$PROJECT_PATH'
-    \$r = \$agent.RestartServer(\$$WATCH, \$$NO_BUILD)
-    if (\$r.error) {
-        Write-Host \"Error: \$(\$r.error)\"
-        exit 1
+
+    \$envFile = Join-Path '$PROJECT_PATH' '.env'
+    \$instance = 'dev'; \$port = 7080; \$baseUri = 'https://local.voxt.ai'
+    if (Test-Path \$envFile) {
+        Get-Content \$envFile | ForEach-Object {
+            if (\$_ -match '^urls=.*?(\d+)$') { \$port = [int]\$Matches[1] }
+            if (\$_ -match '^CoreSettings__Instance=(.+)$') { \$instance = \$Matches[1] }
+            if (\$_ -match '^HostSettings__BaseUri=(.+)$') { \$baseUri = \$Matches[1] }
+        }
     }
-    if (\$r.stop.stopped) { Write-Host \"Stopped (was PID: \$(\$r.stop.pid))\" }
-    if (\$r.build) { Write-Host \"Build: exit code \$(\$r.build.exitCode)\" }
-    \$start = \$r.start
-    if (\$start.started) {
-        Write-Host \"Started (PID: \$(\$start.pid)), port: \$(\$start.port)\"
-        if (\$start.ready) { Write-Host \"Server ready! (\$(\$start.readyTime)s)\" }
+
+    \$serverProject = Join-Path '$PROJECT_PATH' 'src' 'dotnet' 'App.Server' 'App.Server.csproj'
+    \$tmpDir = Join-Path '$PROJECT_PATH' 'tmp'
+    if (-not (Test-Path \$tmpDir)) { New-Item -ItemType Directory -Path \$tmpDir -Force | Out-Null }
+    \$pidFile = Join-Path \$tmpDir \"server-\$instance.pid\"
+    \$logFile = Join-Path \$tmpDir \"server-\$instance.log\"
+    \$errFile = \"\$logFile.err\"
+
+    # --- Stop ---
+    function Kill-Tree([int]\$pid) {
+        \$children = bash -c \"pgrep -P \$pid 2>/dev/null\" 2>\$null
+        if (\$children) {
+            foreach (\$c in (\$children -split \"\`n\" | Where-Object { \$_ })) { Kill-Tree([int]\$c) }
+        }
+        try {
+            \$p = [System.Diagnostics.Process]::GetProcessById(\$pid)
+            if (-not \$p.HasExited) { \$p.Kill(); \$p.WaitForExit(3000) | Out-Null }
+        } catch {}
+    }
+
+    \$proc = \$null
+    if (Test-Path \$pidFile) {
+        try {
+            \$savedPid = [int](Get-Content \$pidFile -Raw).Trim()
+            \$proc = [System.Diagnostics.Process]::GetProcessById(\$savedPid)
+            if (\$proc.HasExited) { \$proc = \$null }
+        } catch { \$proc = \$null }
+    }
+    if (-not \$proc) {
+        \$lsof = bash -c \"lsof -i :\$port 2>/dev/null | grep LISTEN | head -1\" 2>\$null
+        if (\$lsof) {
+            try { \$proc = [System.Diagnostics.Process]::GetProcessById([int]((\$lsof -split '\s+')[1])) } catch {}
+        }
+    }
+    if (\$proc -and -not \$proc.HasExited) {
+        Write-Host \"Stopping server \$instance (PID: \$(\$proc.Id))...\"
+        Kill-Tree \$proc.Id
+        Remove-Item \$pidFile -ErrorAction SilentlyContinue
+        # Wait for port release
+        for (\$i = 0; \$i -lt 20; \$i++) {
+            \$check = bash -c \"lsof -i :\$port 2>/dev/null | grep LISTEN\" 2>\$null
+            if (-not \$check) { break }
+            Start-Sleep -Milliseconds 500
+        }
+        Write-Host \"Stopped (was PID: \$(\$proc.Id))\"
     } else {
-        Write-Host \$start.message
+        Write-Host 'No running server found'
     }
-    \$s = \$agent.GetStatus()
-    Write-Host \"Browser: \$(\$s.baseUri)\"
+
+    # --- Build ---
+    if (-not \$$NO_BUILD) {
+        Write-Host 'Building server...'
+        \$output = & dotnet build \$serverProject --verbosity quiet 2>&1
+        if (\$LASTEXITCODE -ne 0) {
+            Write-Host 'Build failed:'
+            Write-Host (\$output | Out-String)
+            exit 1
+        }
+        Write-Host 'Server build complete'
+    }
+
+    # --- Start ---
+    \$env:ActualChat_CaptchaBypassEnabled = 'true'
+    \$env:ASPNETCORE_ENVIRONMENT = 'Development'
+
+    \$watch = \$$WATCH
+    \$mode = if (\$watch) { 'watch mode' } else { 'run' }
+    Write-Host \"Starting server: \$instance on port \$port (\$mode)\"
+
+    \$dotnetArgs = if (\$watch) {
+        @('watch', 'run', '--project', \$serverProject, '--no-launch-profile')
+    } else {
+        @('run', '--project', \$serverProject, '--no-launch-profile')
+    }
+
+    \$psi = [System.Diagnostics.ProcessStartInfo]::new('dotnet', (\$dotnetArgs -join ' '))
+    \$psi.WorkingDirectory = '$PROJECT_PATH'
+    \$psi.UseShellExecute = \$false
+    \$psi.RedirectStandardOutput = \$true
+    \$psi.RedirectStandardError = \$true
+    \$newProc = [System.Diagnostics.Process]::Start(\$psi)
+    Set-Content \$pidFile \$newProc.Id
+
+    \$logFs = [System.IO.FileStream]::new(\$logFile, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write, [System.IO.FileShare]::Read)
+    \$errFs = [System.IO.FileStream]::new(\$errFile, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write, [System.IO.FileShare]::Read)
+    \$null = \$newProc.StandardOutput.BaseStream.CopyToAsync(\$logFs).ContinueWith(
+        [System.Action[System.Threading.Tasks.Task]]{ param(\$t) \$logFs.Dispose() })
+    \$null = \$newProc.StandardError.BaseStream.CopyToAsync(\$errFs).ContinueWith(
+        [System.Action[System.Threading.Tasks.Task]]{ param(\$t) \$errFs.Dispose() })
+
+    # Health check
+    \$ready = \$false
+    for (\$i = 1; \$i -le 90; \$i++) {
+        Start-Sleep -Seconds 1
+        if (\$newProc.HasExited) { Write-Host 'Server process exited unexpectedly'; break }
+        try {
+            \$null = Invoke-WebRequest -Uri \"http://localhost:\$port\" -TimeoutSec 2 -ErrorAction Stop
+            \$ready = \$true
+            Write-Host \"Server ready! (\${i}s)\"
+            break
+        } catch {}
+    }
+
+    Write-Host \"Started (PID: \$(\$newProc.Id)), port: \$port\"
+    if (-not \$ready) { Write-Host 'Warning: Server may not be ready yet' }
+    Write-Host \"Browser: \$baseUri\"
 "
 ```

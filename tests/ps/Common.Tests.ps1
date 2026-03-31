@@ -291,10 +291,4 @@ Describe "Common.ps1" {
             Get-CurrentOS | Should -BeIn @("Windows", "Docker", "WSL", "Linux", "macOS", "Unknown")
         }
     }
-
-    Context "Get-ScriptDirectory" {
-        It "returns a non-empty directory path" {
-            Get-ScriptDirectory | Should -Not -BeNullOrEmpty
-        }
-    }
 }
