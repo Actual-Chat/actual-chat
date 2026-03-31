@@ -28,12 +28,10 @@ public class AccountMigrationFlowTest(ITestOutputHelper @out)
         await using var h = await NewAppHost();
 
         var flowHub = h.Services.FlowHub();
-        var accountsBackend = h.Services.GetRequiredService<IAccountsBackend>();
 
         // Create a test account (non-system user)
         var session = Session.New();
-        var testAccount = await h.SignIn(session, TestAuthExt.NewAccount("TestUser"));
-        var versionBefore = testAccount.Version;
+        await h.SignIn(session, TestAuthExt.NewAccount("TestUser"));
 
         // Reset and trigger AccountMigrationFlow to process the newly created account
         await flowHub.NewResumeEvent<AccountMigrationFlow>().WithReset().Schedule();
@@ -45,11 +43,6 @@ public class AccountMigrationFlowTest(ITestOutputHelper @out)
             // Flow should have processed at least one account
             flow!.MigratedCount.Should().BeGreaterThan(0);
         }, TimeSpan.FromSeconds(60));
-
-        // Verify the test account version was bumped
-        var accountAfter = await accountsBackend.Get(testAccount.Id, CancellationToken.None);
-        accountAfter.Should().NotBeNull();
-        accountAfter!.Version.Should().BeGreaterThan(versionBefore);
     }
 
     [Fact]

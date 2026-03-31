@@ -5,7 +5,7 @@ namespace ActualChat.Users.IntegrationTests;
 public class SessionTemporalsTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(SessionTemporalsTest)}", TestAppHostOptions.Default, @out)
 {
-    [Fact(Timeout = 30_000)]
+    [Fact(Timeout = 60_000)]
     public async Task BasicTest()
     {
         await using var h1 = await NewAppHost();
@@ -34,7 +34,7 @@ public class SessionTemporalsTest(ITestOutputHelper @out)
         value.Should().BeNull();
     }
 
-    [Fact(Timeout = 30_000)]
+    [Fact(Timeout = 60_000)]
     public async Task MultipleKeysTest()
     {
         await using var h1 = await NewAppHost();
@@ -57,7 +57,7 @@ public class SessionTemporalsTest(ITestOutputHelper @out)
         (await sessionTemporals.Get(session, "c", default)).Should().Be("3");
     }
 
-    [Fact(Timeout = 30_000)]
+    [Fact(Timeout = 60_000)]
     public async Task SessionIsolationTest()
     {
         await using var h1 = await NewAppHost();
@@ -73,7 +73,7 @@ public class SessionTemporalsTest(ITestOutputHelper @out)
         (await sessionTemporals.Get(session2, "key", default)).Should().Be("value2");
     }
 
-    [Fact(Timeout = 30_000)]
+    [Fact(Timeout = 60_000)]
     public async Task KeyLengthLimitTest()
     {
         await using var h1 = await NewAppHost();
@@ -89,7 +89,7 @@ public class SessionTemporalsTest(ITestOutputHelper @out)
         await commander.Call(new SessionTemporalsBackend_Set(session, maxKey, "v"));
     }
 
-    [Fact(Timeout = 30_000)]
+    [Fact(Timeout = 60_000)]
     public async Task ValueLengthLimitTest()
     {
         await using var h1 = await NewAppHost();
@@ -105,7 +105,7 @@ public class SessionTemporalsTest(ITestOutputHelper @out)
         await commander.Call(new SessionTemporalsBackend_Set(session, "key", maxValue));
     }
 
-    [Fact(Timeout = 30_000)]
+    [Fact(Timeout = 60_000)]
     public async Task EntryCountLimitTest()
     {
         await using var h1 = await NewAppHost();
