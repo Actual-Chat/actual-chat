@@ -1,0 +1,60 @@
+@inherits ComponentBase<AppUIHub>
+
+<Tile>
+    <Form Model="@_formModel">
+        <FormBlock Class="api-key-form-block">
+            <FormSection
+                For="() => _formModel.Name"
+                InputId="@_formModel.NameFormId"
+                IsLabelInsideInput="true"
+                Label="Name">
+                <TextBox
+                    Id="@_formModel.NameFormId"
+                    Placeholder="My API key"
+                    @bind-Value="@_formModel.Name"
+                    ClearButton="true"/>
+            </FormSection>
+
+            <FormSection
+                For="() => _formModel.ExpiresInDaysText"
+                InputId="@_formModel.ExpiresInDaysFormId"
+                IsLabelInsideInput="true"
+                Label="Expires in (days)">
+                <TextBox
+                    Id="@_formModel.ExpiresInDaysFormId"
+                    Type="number"
+                    @bind-Value="@_formModel.ExpiresInDaysText"/>
+            </FormSection>
+        </FormBlock>
+    </Form>
+</Tile>
+
+@code {
+    private readonly FormModel _formModel = new();
+
+    [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        Context.Title = "Create API Key";
+        Context.Buttons = [DialogButtonInfo.CancelButton, DialogButtonInfo.CreateSubmitButton("Create", OnCreate)];
+    }
+
+    private async Task OnCreate() {
+        if (!int.TryParse(_formModel.ExpiresInDaysText, out var expiresInDays) || expiresInDays <= 0)
+            return;
+        var command = new Accounts_CreateApiKey(Session, _formModel.Name, expiresInDays);
+        var result = await UICommander.Run(command);
+        if (result.HasError)
+            return;
+
+        Context.StepIn(DiveInDialogPage.New<ApiKeyRevealPage>(new ApiKeyRevealPage.Model(result.Value)));
+    }
+
+    private sealed class FormModel
+    {
+        public string NameFormId { get; } = "api-key-name";
+        public string ExpiresInDaysFormId { get; } = "api-key-expires";
+        public string Name { get; set; } = "";
+        public string ExpiresInDaysText { get; set; } = "365";
+    }
+}

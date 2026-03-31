@@ -147,6 +147,10 @@ body.hoverable .btn.btn-outline.btn-danger:hover::after {
     @apply hover-after;
     @apply bg-hover-after-danger;
 }
+body.hoverable .btn.btn-outline.btn-danger-light:hover::after {
+    @apply hover-after;
+    @apply bg-hover-after-danger;
+}
 body.hoverable .btn.btn-outline.btn-cancel:hover::after {
     @apply hover-after;
     @apply bg-hover-after-cancel;

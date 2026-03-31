@@ -1,0 +1,14 @@
+@inherits ComponentBase<AppUIHub>
+@implements IModalView<ApiKeyCreateModal.Model>
+
+<DiveInDialogFrame
+    Class="api-key-modal"
+    HasCloseButton="true"
+    StartPage="@(DiveInDialogPage.New<ApiKeyCreateFormPage>())">
+</DiveInDialogFrame>
+
+@code {
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    public record Model;
+}
