@@ -30,16 +30,6 @@
     </p>
 </Tile>
 
-<TileTopic Topic="Troubleshooting"/>
-<Tile>
-    <TileItem Click="@OnLogUIEnabledClick">
-        <Content>Enable log viewer</Content>
-        <Right>
-            <Toggle IsChecked="@m.IsLogUIEnabled"/>
-        </Right>
-    </TileItem>
-</Tile>
-
 <TileTopic Topic="Walk-through"/>
 <Button
     Class="add-avatar-btn"
@@ -64,7 +54,6 @@
     private IDataCollectionSettingsUI DataCollectionSettingsUI => Hub.DataCollectionSettingsUI;
     private OnboardingUI OnboardingUI => Hub.OnboardingUI;
     private BubbleUI BubbleUI => Hub.BubbleUI;
-    private LogUI LogUI => Hub.LogUI;
 
     protected override void OnInitialized()
         => NativeAppSettings = Hub.Services.GetService<INativeAppSettings>();
@@ -75,11 +64,9 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var settings = await UserSettingsUI.UserAppSettings().Get(cancellationToken).ConfigureAwait(false);
         var account = await Hub.AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
-        var appSettings = await LocalSettings.LocalAppSettings().Get(cancellationToken).ConfigureAwait(false);
         return new(
             settings.IsDataCollectionEnabled ?? false,
-            account.IsAdmin,
-            appSettings.IsLogViewerEnabledOrDefault);
+            account.IsAdmin);
     }
 
     private async Task OnRestartWalkThrough() {
@@ -99,20 +86,12 @@
         await DataCollectionSettingsUI.UpdateState(settings.IsDataCollectionEnabled is true, CancellationToken.None);
     }
 
-    private async Task OnLogUIEnabledClick() {
-        await LocalSettings.LocalAppSettings().Update(x => x with {
-            IsLogViewerEnabled = !x.IsLogViewerEnabledOrDefault,
-        });
-        LogUI.IsEnabled.Invalidate();
-    }
-
     // Nested types
 
     public record Model(
         bool IsDataCollectionEnabled,
-        bool IsAdmin,
-        bool IsLogUIEnabled)
+        bool IsAdmin)
     {
-        public static readonly Model None = new(false, false, false);
+        public static readonly Model None = new(false, false);
     }
 }
