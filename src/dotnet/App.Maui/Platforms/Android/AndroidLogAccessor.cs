@@ -1,4 +1,9 @@
+using ActualChat.UI.Blazor;
+using Android.App;
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Services;
+using ActualLab.Fusion.UI;
+using Application = Android.App.Application;
 using Environment = Android.OS.Environment;
 
 namespace ActualChat.App.Maui;
@@ -6,15 +11,20 @@ namespace ActualChat.App.Maui;
 public class AndroidLogAccessor : IMauiLogAccessor
 {
     private const string LogcatCmd = "logcat";
+    private readonly IServiceProvider _services;
     private readonly ILogger _log;
     private readonly string _downloadFolder = "";
 
-    public AndroidLogAccessor(ILogger<AndroidLogAccessor> log)
+    private ToastUI ToastUI => field ??= _services.GetRequiredService<ToastUI>();
+    private UICommander UICommander => field ??= _services.GetRequiredService<UICommander>();
+
+    public AndroidLogAccessor(IServiceProvider services)
     {
-        _log = log;
+        _services = services;
+        _log = services.LogFor<AndroidLogAccessor>();
         var downloadFolder = Environment.GetExternalStoragePublicDirectory(Environment.DirectoryDownloads);
         if (downloadFolder == null) {
-            log.LogWarning("Cannot dump logs. Reason: can not get download folder");
+            _log.LogWarning("Cannot dump logs. Reason: can not get download folder");
             return;
         }
         _downloadFolder = downloadFolder.AbsolutePath;
@@ -25,29 +35,59 @@ public class AndroidLogAccessor : IMauiLogAccessor
     public string ActionName => "Dump log file";
 #pragma warning restore CA1822
 
-    public Func<Task<bool>>? GetLogFile { get; }
+    public Func<Task>? GetLogFile { get; }
 
-    private Task<bool> AccessLogFile()
+    private Task AccessLogFile()
         => BackgroundTask.Run(AccessLogFileInternal, _log, "Access android log file failed");
 
-    private async Task<bool> AccessLogFileInternal()
+    private async Task AccessLogFileInternal()
     {
-        var now = DateTime.Now;
-        var fileName = "log_"
-            + (MauiSettings.IsDevApp ? "dev_actual_chat_" : "actual_chat_")
-            + now.ToString("yyyyMMdd_HH.mm.ss")
-            + ".txt";
-        var filePath = Path.Combine(_downloadFolder, fileName);
-        var age = TimeSpan.FromMinutes(30); // Get log for the last 30 minutes.
-        var logStartThreshold = now.Add(age.Negate());
-        var pids = await ExtractPIDs(logStartThreshold).ConfigureAwait(false);
-        if (pids.Count == 0)
-            _log.LogWarning("No PIDs found in the log");
-        var pid = System.Environment.ProcessId;
-        if (!pids.Contains(pid))
-            pids.Add(pid);
-        var dumped = await DumpLogToFile(filePath, pids, logStartThreshold).ConfigureAwait(false);
-        return dumped;
+        try {
+            var now = DateTime.Now;
+            var fileName = "log_"
+                + (MauiSettings.IsDevApp ? "dev_actual_chat_" : "actual_chat_")
+                + now.ToString("yyyyMMdd_HH.mm.ss")
+                + ".txt";
+            var filePath = Path.Combine(_downloadFolder, fileName);
+            var age = TimeSpan.FromMinutes(30); // Get log for the last 30 minutes.
+            var logStartThreshold = now.Add(age.Negate());
+            var pids = await ExtractPIDs(logStartThreshold).ConfigureAwait(false);
+            if (pids.Count == 0)
+                _log.LogWarning("No PIDs found in the log");
+            var pid = System.Environment.ProcessId;
+            if (!pids.Contains(pid))
+                pids.Add(pid);
+            await DumpLogToFile(filePath, pids, logStartThreshold).ConfigureAwait(false);
+            ShowLogSavedNotification(filePath);
+            ToastUI.Show("Log file saved to the Download folder.", "icon-checkmark-circle-2", ToastDismissDelay.Short);
+        }
+        catch (Exception e) {
+            _log.LogWarning(e, "Failed to dump log file");
+            UICommander.ShowError(StandardError.Constraint("Failed to get log file."));
+        }
+    }
+
+    private void ShowLogSavedNotification(string filePath)
+    {
+        try {
+            var context = Application.Context;
+            var downloadManager = (DownloadManager)context.GetSystemService(Android.Content.Context.DownloadService)!;
+            var file = new Java.IO.File(filePath);
+            var fileInfo = new FileInfo(filePath);
+#pragma warning disable CA1422 // Deprecated but still functional; no direct replacement available
+            downloadManager.AddCompletedDownload(
+                file.Name,
+                "Lod dump saved to Downloads",
+                true,
+                "text/plain",
+                filePath,
+                fileInfo.Length,
+                true);
+#pragma warning restore CA1422
+        }
+        catch (Exception e) {
+            _log.LogWarning(e, "Failed to show log saved notification");
+        }
     }
 
     private async Task<ICollection<int>> ExtractPIDs(DateTime logStartThreshold)
@@ -88,19 +128,12 @@ public class AndroidLogAccessor : IMauiLogAccessor
         return result;
     }
 
-    private async Task<bool> DumpLogToFile(string filePath, ICollection<int> pids, DateTime logStartThreshold)
+    private async Task DumpLogToFile(string filePath, ICollection<int> pids, DateTime logStartThreshold)
     {
-        try {
-            var outputFile = new StreamWriter(filePath);
-            await using var _ = outputFile.ConfigureAwait(false);
-            await DumpCrashBufferLogToFile(outputFile).ConfigureAwait(false);
-            await DumpMainBufferLogToFile(outputFile, pids, logStartThreshold).ConfigureAwait(false);
-            return true;
-        }
-        catch (Exception e) {
-            _log.LogWarning(e, "Failed to dump logs to file '{FilePath}'", Path.GetFileName(filePath));
-            return false;
-        }
+        var outputFile = new StreamWriter(filePath);
+        await using var _ = outputFile.ConfigureAwait(false);
+        await DumpCrashBufferLogToFile(outputFile).ConfigureAwait(false);
+        await DumpMainBufferLogToFile(outputFile, pids, logStartThreshold).ConfigureAwait(false);
     }
 
     private Task<bool> DumpCrashBufferLogToFile(StreamWriter outputFile)
@@ -177,11 +210,12 @@ public class AndroidLogAccessor : IMauiLogAccessor
             };
             process.Start();
             using var processOutput = process.StandardOutput;
-            while (!processOutput.EndOfStream) {
+            while (true) {
                 string? line = await processOutput.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+                if (line is null)
+                    break;
                 if (line.IsNullOrEmpty())
                     continue;
-
                 await lineHandler(line).ConfigureAwait(false);
             }
             return true;
