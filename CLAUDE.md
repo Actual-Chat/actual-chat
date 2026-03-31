@@ -59,9 +59,9 @@ Build artifacts are stored in `artifacts/claude-docker/` to avoid permission con
 
 **Running integration tests**: Tests detect Claude's Docker environment via `AC_OS="Linux in Docker"` and use regular localhost-based configuration (not `testsettings.docker.json`). This works because `--network host` makes localhost = host.
 
-**Running the server (Docker watch mode)**: The user starts `./run-watch.cmd` on the host before launching Claude in Docker. This runs `dotnet watch` + `npm watch` in parallel — any file change Claude makes is automatically detected (via volume mount) and triggers a rebuild/restart. Watch output is written to separate log files: `tmp/watch-dotnet.log` (server) and `tmp/watch-web.log` (frontend). After making code changes, tail `tmp/watch-dotnet.log` and wait for dotnet watch to report the server is ready (look for "Started" or the listening URL) before running tests. If the log shows build errors, fix them before proceeding. The `DOTNET_WATCH_RESTART_ON_RUDE_EDIT` env var is set so rude edits (adding/removing files, project changes) auto-restart without prompting. Logs rotate at 512KB (previous content in `.prev` files).
+**Running the server (Docker watch mode)**: The host runs `./run-watch.cmd` — it auto-rebuilds and restarts the server when you change files. After editing code, poll `tmp/watch-dotnet.log` until you see `Now listening on:` (ready) or `error` (fix and wait again). Do not use `/server-start` or `/server-restart` — the watch process owns the server. Frontend build output: `tmp/watch-web.log`.
 
-**Running the server (direct)**: Use `/server-start` to start the server, `/server-restart` to rebuild and restart, `/server-stop` to stop. Use `--watch` flag for auto-reload during UI development.
+**Running the server (direct)**: Use `/server-start`, `/server-restart`, `/server-stop`. Use `--watch` flag for auto-reload.
 
 **Propagated environment variables**: The following environment variables are automatically propagated from the host to the Docker container:
 - Variables containing `__` in their names (e.g., `ChatSettings__OpenAIApiKey` for .NET configuration)
