@@ -39,7 +39,7 @@ public partial class ChatEntryMigrationFlow : Flow<(Moment, long, long)>
         await using var __ = dbContext.ConfigureAwait(false);
 
         if (TotalEntryCount == 0 || TotalChatCount == 0) {
-            using var _t = dbContext.WithCommandTimeout(10);
+            using var _ = dbContext.Database.UseCommandTimeout(10);
             if (TotalEntryCount == 0)
                 TotalEntryCount = Math.Max(1, await dbContext.ChatEntries
                     .CountAsync(x => x.Kind == 1, cancellationToken) // 1 = legacy Audio kind
