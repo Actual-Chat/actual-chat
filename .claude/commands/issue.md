@@ -63,12 +63,12 @@ Record the created issue number from the response.
 
 ### 5. Add to project board with "In Progress" status
 
-Run the following bash commands using `GH_TOKEN="$AC_GITHUB_TOKEN"` prefix for all `gh` calls.
+Run the following bash commands (`GH_TOKEN` is set automatically by `c.ps1` from `AC_GITHUB_TOKEN`).
 
 #### 4a. Find the org project
 
 ```bash
-GH_TOKEN="$AC_GITHUB_TOKEN" gh project list --owner Actual-Chat --format json --limit 10
+gh project list --owner Actual-Chat --format json --limit 10
 ```
 
 Pick the first open project. Note the project **number**.
@@ -76,7 +76,7 @@ Pick the first open project. Note the project **number**.
 #### 4b. Add issue to project
 
 ```bash
-GH_TOKEN="$AC_GITHUB_TOKEN" gh project item-add <PROJECT_NUMBER> --owner Actual-Chat --url https://github.com/Actual-Chat/actual-chat/issues/<ISSUE_NUMBER> --format json
+gh project item-add <PROJECT_NUMBER> --owner Actual-Chat --url https://github.com/Actual-Chat/actual-chat/issues/<ISSUE_NUMBER> --format json
 ```
 
 Record the item **id** from the response.
@@ -84,13 +84,13 @@ Record the item **id** from the response.
 #### 4c. Get the Status field ID and "In Progress" option ID
 
 ```bash
-GH_TOKEN="$AC_GITHUB_TOKEN" gh project field-list <PROJECT_NUMBER> --owner Actual-Chat --format json
+gh project field-list <PROJECT_NUMBER> --owner Actual-Chat --format json
 ```
 
 Find the field named "Status" and get its **id**. Then get the option ID for "In Progress":
 
 ```bash
-GH_TOKEN="$AC_GITHUB_TOKEN" gh api graphql -f query='
+gh api graphql -f query='
 query($projectId: ID!) {
   node(id: $projectId) {
     ... on ProjectV2 {
@@ -110,7 +110,7 @@ Note: The project node ID can be obtained from `gh project view <NUMBER> --owner
 #### 4d. Set status to "In Progress"
 
 ```bash
-GH_TOKEN="$AC_GITHUB_TOKEN" gh project item-edit --project-id <PROJECT_NODE_ID> --id <ITEM_ID> --field-id <STATUS_FIELD_ID> --single-select-option-id <IN_PROGRESS_OPTION_ID>
+gh project item-edit --project-id <PROJECT_NODE_ID> --id <ITEM_ID> --field-id <STATUS_FIELD_ID> --single-select-option-id <IN_PROGRESS_OPTION_ID>
 ```
 
 ### 6. Error handling
