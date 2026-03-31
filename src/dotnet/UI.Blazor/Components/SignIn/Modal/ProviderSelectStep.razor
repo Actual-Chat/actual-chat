@@ -149,17 +149,14 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var hasSentCodeRecently = await TotpUI.HasSentCodeRecently(CancellationToken.None);
         var signInError = await SessionTemporals
-            .Get(Hub.Session, Constants.SessionTemporals.SignInErrorCodeKey, cancellationToken);
+            .Get(Hub.Session, Constants.SessionTemporals.SignInErrorKey, cancellationToken);
         if (signInError.IsNullOrEmpty())
             return new(hasSentCodeRecently);
 
-        _signInError = signInError switch {
-            Constants.SessionTemporals.SignInErrorCode_AccountNotFound => "Account not found. Register instead?",
-            _ => signInError,
-        };
+        _signInError = signInError;
 
         // Consume the error so it doesn't show again
-        var consumeCmd = new SessionTemporals_Set(Hub.Session, Constants.SessionTemporals.SignInErrorCodeKey, null);
+        var consumeCmd = new SessionTemporals_Set(Hub.Session, Constants.SessionTemporals.SignInErrorKey, null);
         _ = Hub.Services.Commander().Run(consumeCmd, CancellationToken.None);
         return new(hasSentCodeRecently);
     }
@@ -188,7 +185,7 @@
     }
 
     private async Task OnSignInWithProvider(string schema) {
-        await AccountUI.SignIn(schema, TotpSignInModel.IsRegister);
+        await AccountUI.SignIn(schema, mustExist: !TotpSignInModel.IsRegister);
     }
 
     private void OnPhoneOrEmailChanged(string? value) {
@@ -270,54 +267,56 @@
             return false;
         }
 
-        if (!TotpSignInModel.IsRegister) {
-            try {
-                var exists = await TotpUI.AccountExists(phone, CancellationToken.None);
-                if (!exists) {
-                    _signInError = "Account not found. Register instead?";
-                    _validationState = ValidationState.None;
-                    StateHasChanged();
-                    return false;
-                }
+        var mustExist = !TotpSignInModel.IsRegister;
+        try {
+            var exists = await TotpUI.AccountExists(phone, CancellationToken.None);
+            if (exists != mustExist) {
+                _signInError = exists
+                    ? "Account is already registered. Sign-in instead?"
+                    : "Account not found. Register instead?";
+                _validationState = ValidationState.None;
+                StateHasChanged();
+                return false;
             }
-            catch {
-                // If the check fails, proceed anyway — the server will validate during TOTP
-            }
+        }
+        catch {
+            // If the check fails, proceed anyway — the server will validate during TOTP
         }
         return true;
     }
 
     private async Task<bool> ValidateEmailForSend(string input) {
-        Email? emailId = null;
-        if (System.Net.Mail.MailAddress.TryCreate(input, out var mail))
-            Email.TryParse(mail.Address, out emailId);
+        Email? email = null;
+        if (System.Net.Mail.MailAddress.TryCreate(input, out var emailValue))
+            Email.TryParse(emailValue.Address, out email);
 
-        if (emailId is null) {
+        if (email is null) {
             _signInError = "Invalid phone number or email address.";
             StateHasChanged();
             return false;
         }
 
-        var blocked = await TotpUI.CheckIfBlocked(emailId, TotpPurpose.SignInEmail, CancellationToken.None);
+        var blocked = await TotpUI.CheckIfBlocked(email, TotpPurpose.SignInEmail, CancellationToken.None);
         if (!blocked.IsNullOrEmpty()) {
             _signInError = blocked;
             StateHasChanged();
             return false;
         }
 
-        if (!TotpSignInModel.IsRegister) {
-            try {
-                var exists = await TotpUI.AccountExists(emailId, CancellationToken.None);
-                if (!exists) {
-                    _signInError = "Account not found. Register instead?";
-                    _validationState = ValidationState.None;
-                    StateHasChanged();
-                    return false;
-                }
+        var mustExist = !TotpSignInModel.IsRegister;
+        try {
+            var exists = await TotpUI.AccountExists(email, CancellationToken.None);
+            if (exists != mustExist) {
+                _signInError = exists
+                    ? "Account is already registered. Sign-in instead?"
+                    : "Account not found. Register instead?";
+                _validationState = ValidationState.None;
+                StateHasChanged();
+                return false;
             }
-            catch {
-                // If the check fails, proceed anyway — the server will validate during TOTP
-            }
+        }
+        catch {
+            // If the check fails, proceed anyway — the server will validate during TOTP
         }
         return true;
     }

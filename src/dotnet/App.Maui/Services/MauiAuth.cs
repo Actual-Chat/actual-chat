@@ -17,7 +17,7 @@ internal sealed class MauiAuth(UIHub hub) : UIServiceBase<UIHub>(hub), IClientAu
         return AuthSchema.ToSchemasWithDisplayNames(schemas);
     }
 
-    public async Task SignIn(string schema, bool isRegister = false)
+    public async Task SignIn(string schema, bool? mustExist = null)
     {
         if (schema.IsNullOrEmpty())
             throw new ArgumentOutOfRangeException(nameof(schema));
@@ -26,7 +26,7 @@ internal sealed class MauiAuth(UIHub hub) : UIServiceBase<UIHub>(hub), IClientAu
         if (schema == AuthSchema.Google) {
             var googleAuth = Hub.Services.GetRequiredService<NativeGoogleAuth>();
             if (googleAuth.IsAvailable()) {
-                await googleAuth.SignIn().ConfigureAwait(false);
+                await googleAuth.SignIn(mustExist).ConfigureAwait(false);
                 return;
             }
         }
@@ -37,13 +37,13 @@ internal sealed class MauiAuth(UIHub hub) : UIServiceBase<UIHub>(hub), IClientAu
             && DeviceInfo.Version.Major >= 13)
         {
             var appleAuth = Hub.Services.GetRequiredService<NativeAppleAuth>();
-            await appleAuth.SignIn().ConfigureAwait(false);
+            await appleAuth.SignIn(mustExist).ConfigureAwait(false);
             return;
         }
 #endif
 
-        var endpoint = isRegister ? $"/signIn/{schema}?register=1" : $"/signIn/{schema}";
-        await WebSignInOrSignOut(endpoint, "Sign-in").ConfigureAwait(false);
+        var endpoint = $"/signIn/{schema}";
+        await WebSignInOrSignOut(endpoint, "Sign-in", mustExist).ConfigureAwait(false);
     }
 
     public async Task SignOut()
@@ -59,9 +59,9 @@ internal sealed class MauiAuth(UIHub hub) : UIServiceBase<UIHub>(hub), IClientAu
 
     // Private methods
 
-    private async Task WebSignInOrSignOut(string endpoint, string flowName)
+    private async Task WebSignInOrSignOut(string endpoint, string flowName, bool? mustExist = null)
     {
-        var isSignIn = endpoint.StartsWith("sign-in", StringComparison.OrdinalIgnoreCase);
+        var isSignIn = endpoint.StartsWith("/signIn", StringComparison.OrdinalIgnoreCase);
         try {
             var sessionToken = await SessionTokens.Get().ConfigureAwait(true);
             var url = $"{MauiSettings.BaseUrl}maui-auth/start"
@@ -69,6 +69,8 @@ internal sealed class MauiAuth(UIHub hub) : UIServiceBase<UIHub>(hub), IClientAu
                 + $"&e={endpoint.UrlEncode()}"
                 + $"&flow={flowName.UrlEncode()}"
                 + $"&appKind={HostInfo.AppKind:G}";
+            if (mustExist is { } vMustExist)
+                url += $"&mustExist={(vMustExist ? "1" : "0")}";
             if (MauiSettings.WebAuth.UseSystemBrowser) {
                 _ = MauiBrowser.Open(url);
                 return;

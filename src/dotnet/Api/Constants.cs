@@ -50,6 +50,7 @@ public static partial class Constants
     public static class Session
     {
         public static readonly string CookieName = "FusionAuth.SessionId";
+        public static readonly string TokenCookieName = "FusionAuth.SessionToken";
         public static readonly string HeaderName = "Session";
         public static readonly TimeSpan LastSeenAtUpdatePeriod = TimeSpan.FromMinutes(30);
     }

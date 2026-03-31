@@ -9,7 +9,7 @@ public sealed class NativeAppleAuth
     public NativeAppleAuth(IServiceProvider services)
         => Services = services;
 
-    public async Task SignIn()
+    public async Task SignIn(bool? mustExist = null)
     {
         var options = new AppleSignInAuthenticator.Options() {
             IncludeEmailScope = true,
@@ -22,6 +22,6 @@ public sealed class NativeAppleAuth
         var name = result.Properties["name"];
         var userId = result.Properties["user_id"];
         var nativeAuthClient = Services.GetRequiredService<INativeAuthClient>();
-        await nativeAuthClient.SignInApple(userId, code, email, name).ConfigureAwait(false);
+        await nativeAuthClient.SignInApple(userId, code, email, name, mustExist).ConfigureAwait(false);
     }
 }

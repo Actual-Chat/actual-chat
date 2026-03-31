@@ -10,7 +10,6 @@ public sealed class MauiAuthController(IServiceProvider services) : ControllerBa
 {
     public const string Route = "/maui-auth";
 
-    private ISecureTokensBackend SecureTokensBackend { get; } = services.GetRequiredService<ISecureTokensBackend>();
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
     private HostInfo HostInfo { get; } = services.HostInfo();
     private ILogger Log { get; } = services.LogFor<MauiAuthController>();
@@ -21,12 +20,16 @@ public sealed class MauiAuthController(IServiceProvider services) : ControllerBa
         [FromQuery(Name = "e")] string endpoint,
         [FromQuery(Name = "flow")] string flowName,
         string? redirectUrl = null,
+        int? mustExist = null,
         CancellationToken cancellationToken = default)
     {
-        var session = SecureTokensBackend.ParseSessionToken(sessionToken);
-        HttpContext.AddSessionCookie(session);
+        // Store the secure session token as a cookie — it will be picked up by AuthHelper
+        // on signIn/signOut/close flows and removed on close flow.
+        // We never store the raw session ID in a cookie here to prevent MAUI sessions leaking to the browser.
+        HttpContext.AddSessionTokenCookie(sessionToken);
         var baseUrl = HostInfo.GetAllowedBaseUrl(Request.Host.Host);
-        var closeFlowUrl = UrlMapper.ToAbsolute(baseUrl, Links.CloseFlow(flowName, false, redirectUrl));
+        var closeFlowUrl = UrlMapper.ToAbsolute(baseUrl,
+            Links.CloseFlow(flowName, false, mustExist, redirectUrl));
         if (!endpoint.StartsWith('/'))
             endpoint = $"/{endpoint}";
         return Redirect($"{endpoint}?returnUrl={closeFlowUrl.UrlEncode()}");

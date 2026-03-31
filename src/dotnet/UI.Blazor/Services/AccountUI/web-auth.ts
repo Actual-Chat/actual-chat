@@ -13,11 +13,11 @@ export class WebAuth {
     public static allowPopup = !(DeviceInfo.isMobile || DeviceInfo.isWebKit);
     public static mustRedirectOnPopupBlock = true;
 
-    public static signIn(schema: string, isRegister = false): Promise<void> {
+    public static signIn(schema: string, mustExist?: boolean | null): Promise<void> {
         const path = schema
             ? this.signInPath + '/' + schema
             : this.signInPath;
-        return this.showPopupOrRedirect(path, 'Sign-in', isRegister);
+        return this.showPopupOrRedirect(path, 'Sign-in', mustExist);
     }
 
     public static signOut(): Promise<void> {
@@ -26,22 +26,22 @@ export class WebAuth {
 
     // Private methods
 
-    private static showPopupOrRedirect(path: string, flowName: string, isRegister = false): Promise<void> {
+    private static showPopupOrRedirect(path: string, flowName: string, mustExist?: boolean | null): Promise<void> {
         if (!this.allowPopup) {
-            this.redirect(path, flowName, isRegister);
+            this.redirect(path, flowName, mustExist);
             return Promise.resolve();
         }
 
         let closeFlowUrl = this.closeFlowPath + '?flow=' + encode(flowName);
-        if (isRegister)
-            closeFlowUrl += '&register=1';
+        if (mustExist !== undefined && mustExist !== null)
+            closeFlowUrl += '&mustExist=' + (mustExist ? '1' : '0');
         const returnUrl = new URL(closeFlowUrl, document.baseURI).href;
         const url = path + '?returnUrl=' + encode(returnUrl);
         warnLog?.log(`popup: -> ${url}`);
         const popup = window.open(url, this.windowTarget, this.windowFeatures);
         if (!popup || popup.closed || typeof popup.closed == 'undefined') {
             if (this.mustRedirectOnPopupBlock) {
-                this.redirect(path, flowName, isRegister);
+                this.redirect(path, flowName, mustExist);
             }
             else {
                 alert('Authentication popup is blocked by the browser. Please allow popups on this website and retry.')
@@ -60,13 +60,13 @@ export class WebAuth {
         });
     }
 
-    private static redirect(path: string, flowName: string, isRegister = false) {
+    private static redirect(path: string, flowName: string, mustExist?: boolean | null) {
         const redirectUrl = window.location.href;
         let closeFlowUrl = this.closeFlowPath +
             '?flow=' + encode(flowName) +
             '&redirectUrl=' + encode(redirectUrl);
-        if (isRegister)
-            closeFlowUrl += '&register=1';
+        if (mustExist !== undefined && mustExist !== null)
+            closeFlowUrl += '&mustExist=' + (mustExist ? '1' : '0');
         const returnUrl = new URL(closeFlowUrl, document.baseURI).href;
         const url = new URL(path + '?returnUrl=' + encode(returnUrl), document.baseURI).href;
         warnLog?.log(`redirect: -> ${url}`);
