@@ -33,7 +33,7 @@
         </div>
     }
     <div class="audio-panel-wrapper">
-        @if (allowVideo && !IsNarrow && (isRecording || isOwnVideoStreaming || isAnyoneVideoStreaming)) {
+        @if (allowVideo && !IsNarrow && (isRecording || isOwnVideoStreaming || isAnyoneVideoStreaming || m.IsScreencasting)) {
             <div class="@(m.IsScreencasting ? "screencast-on" : "screencast-off") screencast-wrapper">
                 <ButtonRound Click="@OnScreencastClick"
                     Tooltip="@(m.IsScreencasting ? "Stop screen share" : "Share screen")"

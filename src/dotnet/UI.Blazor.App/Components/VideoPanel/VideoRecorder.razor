@@ -74,21 +74,29 @@
             BlazorRef = DotNetObjectReference.Create(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
 
-            // Auto-start recording if requested from JoinVideoCallModal
+            // Auto-start recording if requested
             if (_autoStartPending) {
                 _autoStartPending = false;
                 var chatId = Hub.ChatUI.SelectedChatId.Value;
                 if (chatId is not null) {
                     // Ensure server clock is synced before recording (TIMING_ANCHOR accuracy)
-                    // ServerTimeSync is only registered on client platforms (WASM/MAUI), not on Server
                     var serverTimeSync = Hub.Services.GetService<ServerTimeSync>();
                     if (serverTimeSync != null)
                         await serverTimeSync.EnsureSynced(default);
-                    if (!string.IsNullOrEmpty(PendingCameraDeviceId))
-                        await JSRef.InvokeVoidAsync("setSelectedCamera", PendingCameraDeviceId);
-                    await JSRef.InvokeVoidAsync("setBlurEnabled", PendingBlurEnabled);
-                    var audienceCodecs = await GetInitialAudienceCodecs(chatId);
-                    await JSRef.InvokeVoidAsync("startRecording", chatId.Value, audienceCodecs);
+
+                    var videoState = await ChatVideoUI.GetState(chatId, default).ConfigureAwait(false);
+                    if (videoState.IsScreencasting) {
+                        // Screencast: no camera, no blur — just start screen sharing
+                        var audienceCodecs = await GetInitialAudienceCodecs(chatId);
+                        await JSRef.InvokeVoidAsync("startScreencast", chatId.Value, audienceCodecs);
+                    } else {
+                        // Webcam: camera + blur setup from JoinVideoCallModal
+                        if (!string.IsNullOrEmpty(PendingCameraDeviceId))
+                            await JSRef.InvokeVoidAsync("setSelectedCamera", PendingCameraDeviceId);
+                        await JSRef.InvokeVoidAsync("setBlurEnabled", PendingBlurEnabled);
+                        var audienceCodecs = await GetInitialAudienceCodecs(chatId);
+                        await JSRef.InvokeVoidAsync("startRecording", chatId.Value, audienceCodecs);
+                    }
                 }
             }
         }
