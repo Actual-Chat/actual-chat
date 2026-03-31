@@ -60,6 +60,7 @@ export function setCallbacks(cb: VideoProcessingWorkerCallbacks): void {
 let encoder: WebCodecsEncoder | null = null;
 let encoderConfig: EncoderConfig | null = null;
 let frameCount = 0;
+let lastKeyframeTime = 0;
 let resizeCanvas: OffscreenCanvas | null = null;
 let resizeCtx: OffscreenCanvasRenderingContext2D | null = null;
 let startTimestamp: number | undefined = undefined;
@@ -435,7 +436,9 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
             processedFrame = normalized;
         }
 
-        const isKeyFrame = frameCount % 30 === 0;
+        const now = performance.now();
+        const isKeyFrame = frameCount % 30 === 0 || (now - lastKeyframeTime > 1000);
+        if (isKeyFrame) lastKeyframeTime = now;
         encoder.encode(processedFrame, isKeyFrame);
         frameCount++;
     } catch (error) {
