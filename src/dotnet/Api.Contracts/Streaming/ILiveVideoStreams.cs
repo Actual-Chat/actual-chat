@@ -27,6 +27,9 @@ public interface ILiveVideoStreams : IComputeService
     [ComputeMethod]
     Task<VideoQualityPreset> GetQualityPreset(Session session, StreamId streamId, CancellationToken cancellationToken);
 
+    [ComputeMethod]
+    Task<bool> HasActiveScreencast(Session session, ChatId chatId, CancellationToken cancellationToken);
+
     [LegacyName("RegisterVideoStreamMember", "2.6.9999")]
     Task RegisterMember(
         Session session,

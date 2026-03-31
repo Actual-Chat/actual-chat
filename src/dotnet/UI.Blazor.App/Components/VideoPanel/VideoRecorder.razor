@@ -287,10 +287,15 @@
 
         // Detect recording started while panel is already open
         if (!wasRecording && videoState.IsRecording) {
-            if (!string.IsNullOrEmpty(videoState.SelectedCameraDeviceId))
-                _ = jsRef.InvokeVoidAsync("setSelectedCamera", videoState.SelectedCameraDeviceId);
-            _ = jsRef.InvokeVoidAsync("setBlurEnabled", videoState.IsBackgroundBlurEnabled);
-            _ = jsRef.InvokeVoidAsync("startRecording", chatId.Value);
+            if (videoState.IsScreencasting) {
+                var audienceCodecs = await GetInitialAudienceCodecs(chatId);
+                _ = jsRef.InvokeVoidAsync("startScreencast", chatId.Value, audienceCodecs);
+            } else {
+                if (!string.IsNullOrEmpty(videoState.SelectedCameraDeviceId))
+                    _ = jsRef.InvokeVoidAsync("setSelectedCamera", videoState.SelectedCameraDeviceId);
+                _ = jsRef.InvokeVoidAsync("setBlurEnabled", videoState.IsBackgroundBlurEnabled);
+                _ = jsRef.InvokeVoidAsync("startRecording", chatId.Value);
+            }
         }
 
         return new (videoState);

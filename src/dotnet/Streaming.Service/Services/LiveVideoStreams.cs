@@ -81,6 +81,17 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
     }
 
     // [ComputeMethod]
+    public virtual async Task<bool> HasActiveScreencast(
+        Session session,
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
+        chatRules.Require(ChatPermissions.Read);
+        return await Backend.HasActiveScreencast(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
     public virtual async Task<VideoQualityPreset> GetQualityPreset(
         Session session,
         StreamId streamId,

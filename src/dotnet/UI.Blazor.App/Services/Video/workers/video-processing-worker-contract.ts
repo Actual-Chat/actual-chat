@@ -139,6 +139,7 @@ export interface VideoProcessingConfig {
         sessionToken: string;
         chatId: string;
         serverClockOffsetMs: number;
+        streamKind?: number; // 0 = Webcam (default), 1 = Screencast
     };
     /** When true, skip encoder + SignalR. Only run segmentation and send preview frames. */
     previewOnly?: boolean;

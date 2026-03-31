@@ -23,4 +23,7 @@ public interface ILiveVideoBackend : IComputeService, IBackendService
 
     [ComputeMethod]
     Task<ApiArray<string>> GetSupportedCodecs(ChatId chatId, CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    Task<bool> HasActiveScreencast(ChatId chatId, CancellationToken cancellationToken);
 }

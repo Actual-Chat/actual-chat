@@ -1,3 +1,4 @@
+using ActualChat.Streaming;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Resilience;
 
@@ -35,7 +36,7 @@ public partial class ChatVideoUI
             if (state is null)
                 continue;
 
-            var (chatId, speakingWithVideo) = state;
+            var (chatId, speakingWithVideo, screencastAuthorId) = state;
 
             if (chatId != prevChatId) {
                 ClearFocus();
@@ -44,6 +45,20 @@ public partial class ChatVideoUI
 
             if (chatId is null)
                 continue;
+
+            // Screencast always takes focus (no debounce)
+            if (screencastAuthorId is not null) {
+                var oldFocus = _focusedSpeakerId.Value;
+                if (oldFocus != screencastAuthorId) {
+                    if (oldFocus != null)
+                        _previousFocusedSpeakerId.Value = oldFocus;
+                    _focusedSpeakerId.Value = screencastAuthorId;
+                }
+                _focusDebounceCts?.Cancel();
+                _focusDebounceCts = null;
+                _pendingFocusCandidate = null;
+                continue;
+            }
 
             UpdateActiveSpeakers(speakingWithVideo);
         }
@@ -72,11 +87,17 @@ public partial class ChatVideoUI
             .Where(a => ownAuthor?.Id != a)
             .ToHashSet();
 
+        // Check for screencast among remote streams (not own)
+        var screencastAuthorId = videoStreams
+            .Where(s => s.StreamKind == StreamKind.Screencast && ownAuthor?.Id != s.AuthorId)
+            .Select(s => (AuthorId?)s.AuthorId)
+            .FirstOrDefault();
+
         var speakingWithVideo = audioStreamingAuthorIds
             .Where(a => remoteVideoAuthorIds.Contains(a))
             .ToArray();
 
-        return new ActiveSpeakerState(chatId, speakingWithVideo);
+        return new ActiveSpeakerState(chatId, speakingWithVideo, screencastAuthorId);
     }
 
     // Private methods
@@ -133,7 +154,7 @@ public partial class ChatVideoUI
 
     // Nested types
 
-    protected sealed record ActiveSpeakerState(ChatId? ChatId, AuthorId[] SpeakingWithVideo)
+    protected sealed record ActiveSpeakerState(ChatId? ChatId, AuthorId[] SpeakingWithVideo, AuthorId? ScreencastAuthorId = null)
     {
         public static readonly ActiveSpeakerState None = new(null, []);
     }

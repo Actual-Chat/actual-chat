@@ -104,6 +104,7 @@ const streamCtx: StreamingContext = {
     sessionToken: '',
     chatId: '',
     serverClockOffsetMs: 0,
+    streamKind: 0,
     processing: false,
 };
 let videoStream: InternalVideoStream | null = null;
@@ -616,6 +617,7 @@ export const serverImpl: VideoProcessingWorker = {
             streamCtx.sessionToken = config.streaming.sessionToken;
             streamCtx.chatId = config.streaming.chatId;
             streamCtx.serverClockOffsetMs = config.streaming.serverClockOffsetMs;
+            streamCtx.streamKind = config.streaming.streamKind ?? 0;
             streamingEnabled = true;
 
             streamCtx.signalrConnection = initSignalR(config.streaming.hubUrl);
@@ -660,6 +662,7 @@ export const serverImpl: VideoProcessingWorker = {
             streamCtx.sessionToken = config.streaming.sessionToken;
             streamCtx.chatId = config.streaming.chatId;
             streamCtx.serverClockOffsetMs = config.streaming.serverClockOffsetMs;
+            streamCtx.streamKind = config.streaming.streamKind ?? 0;
             streamingEnabled = true;
 
             streamCtx.signalrConnection = initSignalR(config.streaming.hubUrl);

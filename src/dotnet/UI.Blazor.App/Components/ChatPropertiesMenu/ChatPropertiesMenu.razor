@@ -21,6 +21,13 @@
         Text="Open right panel"
         Click="@OnOpenRightPanelClick">
     </MenuEntry>
+    @if (!ScreenSize.IsNarrow()) {
+        <MenuEntry
+            Icon="icon-screen-share"
+            Text="Share screen"
+            Click="@OnScreenShareClick">
+        </MenuEntry>
+    }
 @*
     <MenuEntry
         Icon="icon-phone-call"
@@ -29,10 +36,6 @@
     <MenuEntry
         Icon="icon-video"
         Text="Start Video call">
-    </MenuEntry>
-    <MenuEntry
-        Icon="icon-screen-share"
-        Text="Start Screen share">
     </MenuEntry>
     <MenuEntry
         Icon="icon-ai-search"
@@ -63,6 +66,9 @@
     private ChatId _chatId = null!;
 
     private ChatUI ChatUI => Hub.ChatUI;
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     protected override async Task OnParametersSetAsync() {
         if (Arguments is not [ var sChatId])
@@ -80,4 +86,10 @@
 
     private Task OnShareClick()
         => Hub.ShareUI.Share(_chatId);
+
+    private void OnScreenShareClick()
+    {
+        ChatVideoUI.SetScreencasting(_chatId);
+        _ = Hub.ChatAudioUI.SetListeningState(_chatId, true);
+    }
 }

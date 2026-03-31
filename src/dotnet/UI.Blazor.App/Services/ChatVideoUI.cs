@@ -16,6 +16,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private readonly MutableState<string?> _selectedCameraDeviceId;
     private readonly MutableState<bool> _isBackgroundBlurEnabled;
     private readonly MutableState<string?> _errorMessage;
+    private readonly MutableState<bool> _isScreencasting;
 
     // Tracks which chat the user is currently watching video in (in-memory, resets on reload)
     private readonly MutableState<ChatId?> _watchingChatId;
@@ -36,6 +37,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         _selectedCameraDeviceId = StateFactory.NewMutable((string?)null);
         _isBackgroundBlurEnabled = StateFactory.NewMutable(false);
         _errorMessage = StateFactory.NewMutable((string?)null);
+        _isScreencasting = StateFactory.NewMutable(false);
         _watchingChatId = StateFactory.NewMutable((ChatId?)null);
         _focusedSpeakerId = StateFactory.NewMutable((AuthorId?)null);
         _previousFocusedSpeakerId = StateFactory.NewMutable((AuthorId?)null);
@@ -63,6 +65,8 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         var errorMessage = isRecording
             ? await _errorMessage.Use(cancellationToken).ConfigureAwait(false)
             : null;
+        var isScreencasting = isRecording
+            && await _isScreencasting.Use(cancellationToken).ConfigureAwait(false);
 
         return new ChatVideoState(
             chatId,
@@ -71,7 +75,8 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             selectedCameraDeviceId,
             isBackgroundBlurEnabled,
             isRecording && errorMessage != null,
-            errorMessage);
+            errorMessage,
+            isScreencasting);
     }
 
     [ComputeMethod]
@@ -88,12 +93,24 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     {
         if (chatId is null) {
             _recordingChatId.Value = null;
+            _isScreencasting.Value = false;
             return;
         }
 
         _recordingChatId.Value = chatId;
         _selectedCameraDeviceId.Value = cameraDeviceId;
         _isBackgroundBlurEnabled.Value = isBackgroundBlurEnabled;
+        _isScreencasting.Value = false;
+        _errorMessage.Value = null;
+        SetWatching(chatId);
+    }
+
+    public void SetScreencasting(ChatId chatId)
+    {
+        _recordingChatId.Value = chatId;
+        _selectedCameraDeviceId.Value = null;
+        _isBackgroundBlurEnabled.Value = false;
+        _isScreencasting.Value = true;
         _errorMessage.Value = null;
         SetWatching(chatId);
     }
@@ -139,12 +156,16 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     }
 
     public void OnRecordingStopped()
-        => _recordingChatId.Value = null;
+    {
+        _recordingChatId.Value = null;
+        _isScreencasting.Value = false;
+    }
 
     public void OnRecordingError(string error)
     {
         _errorMessage.Value = error;
         _recordingChatId.Value = null;
+        _isScreencasting.Value = false;
         // Don't clear _watchingChatId — user stays watching remote streams, can retry or hang up
     }
 
