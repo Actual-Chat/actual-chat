@@ -236,9 +236,6 @@
 
 @if (_signInError != null && _closeFlow != null) {
     <script nonce="@closeFlowNonce">
-        try {
-            localStorage.setItem('signInError', '@_signInError');
-        } catch (e) { }
         setTimeout(function () {
             window.open('','_self').close();
         }, 200)
@@ -382,15 +379,16 @@
     private string? _signInError;
 
     [Inject] private IServiceProvider Services { get; init; } = null!;
+    [Inject] private IWebHostEnvironment Env { get; init; } = null!;
     [Inject] private ISessionResolver SessionResolver { get; init; } = null!;
     [Inject] private ISecureTokens SecureTokens { get; init; } = null!;
     [Inject] private ServerAuth ServerAuth { get; init; } = null!;
     [Inject] private UsersSettings UserSettings { get; init; } = null!;
     [Inject] private CaptchaUI CaptchaUI { get; init; } = null!;
-    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
-    [Inject] private IWebHostEnvironment Env { get; init; } = null!;
-    [Inject] private ILogger<RootServerPage> Log { get; init; } = null!;
     [Inject] private OpenGraphTagsProvider OpenGraphTagsProvider { get; init; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+    [Inject] private ICommander Commander { get; init; } = null!;
+    [Inject] private ILogger<RootServerPage> Log { get; init; } = null!;
 
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = null!;
@@ -422,7 +420,7 @@
         }
         catch (Exception e) when (e is { } ex && ex.Message.Contains("Account not found", StringComparison.Ordinal)) {
             // Sign-in mode but account doesn't exist - fall through with error
-            _signInError = "account_not_found";
+            _signInError = Constants.SessionTemporals.SignInErrorCode_AccountNotFound;
             var cookieSession = HttpContext.TryGetSessionFromCookie();
             _session = cookieSession ?? Session.New();
             _isNewSession = cookieSession is null;
@@ -445,6 +443,10 @@
         _contentLinkInfo = await linkInfoTask;
 
         _closeFlow = ServerAuth.IsCloseFlow(HttpContext);
+        if (_signInError != null) {
+            var setErrorCmd = new SessionTemporalsBackend_Set(_session, Constants.SessionTemporals.SignInErrorCodeKey, _signInError);
+            await Commander.Call(setErrorCmd, true, cancellationToken).ConfigureAwait(false);
+        }
         if (_closeFlow?.RedirectUrl is { } redirectUrl) {
             HttpContext.Response.Redirect(redirectUrl, false);
             return;
