@@ -115,13 +115,8 @@
         LogUI.IsEnabled.Invalidate();
     }
 
-    private async Task OnGetLogFileClick() {
-        var successfully = await MauiLogAccessor!.GetLogFile!.Invoke();
-        if (successfully)
-            ToastUI.Show("Got log file successfully.", "icon-checkmark-circle-2", ToastDismissDelay.Short);
-        else
-            UICommander.ShowError(StandardError.Constraint("Failed to get log file."));
-    }
+    private Task OnGetLogFileClick()
+        => MauiLogAccessor!.GetLogFile!.Invoke();
 
     // Nested types
 

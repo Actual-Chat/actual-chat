@@ -18,7 +18,7 @@ public static partial class MauiProgram
         services.AddScoped<INotificationsPermission>(_ => new WindowsNotificationsPermission());
         services.AddTransient<INativeAppSettings>(_ => new WindowsAppSettings());
         services.AddScoped<IRecordingPermissionRequester>(_ => new WindowsRecordingPermissionRequester());
-        services.AddScoped<IMauiLogAccessor>(c => new WindowsLogAccessor(c.LogFor<WindowsLogAccessor>()));
+        services.AddScoped<IMauiLogAccessor>(c => new WindowsLogAccessor(c));
         services.AddScoped<IAudioCapture>(c => new WindowsAudioCapture(c.LogFor<WindowsAudioCapture>()));
     }
 
