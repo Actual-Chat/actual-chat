@@ -575,11 +575,13 @@ class WorktreeServer {
         $originalLocation = Get-Location
         Set-Location $this.ProjectPath
         try {
-            $null = docker compose exec -T nginx nginx -s reload 2>&1
+            $output = docker compose exec -T nginx nginx -s reload 2>&1
             if ($LASTEXITCODE -eq 0) {
                 if ($debug) { Write-Host "[DEBUG] Reloaded nginx" }
             } else {
-                if ($debug) { Write-Host "[DEBUG] nginx reload failed (docker-compose may not be running)" }
+                Write-Host "WARNING: nginx reload failed — worktree routing may not work until nginx is restarted." -ForegroundColor Yellow
+                Write-Host "  Run: docker restart actual-chat-infra-nginx-1" -ForegroundColor Yellow
+                if ($debug) { Write-Host "[DEBUG] nginx reload output: $output" }
             }
         } finally {
             Set-Location $originalLocation
