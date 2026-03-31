@@ -7,9 +7,10 @@
 @{
     var m = State.Value;
     var recordingCls = m.VideoState.IsRecording ? "recording" : "";
+    var screencastCls = m.VideoState.IsScreencasting ? "screencast" : "";
 }
 
-<div @ref="Ref" class="video-recorder @recordingCls">
+<div @ref="Ref" class="video-recorder @recordingCls @screencastCls">
     <canvas
         class="call-video"
         @onclick="@(m.VideoState.IsRecording && RemoteStreamCount > 0 ? OnSettingsClick : null!)"></canvas>

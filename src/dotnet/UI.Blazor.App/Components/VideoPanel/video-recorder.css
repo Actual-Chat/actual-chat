@@ -8,6 +8,9 @@
     @apply bg-black;
     transform: scaleX(-1);
 }
+.video-recorder.screencast .call-video {
+    transform: none;
+}
 .video-recorder .btn-h.settings-btn {
     @apply absolute top-2 right-2;
     @apply text-white text-lg;
