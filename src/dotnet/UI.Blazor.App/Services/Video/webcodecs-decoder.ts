@@ -11,7 +11,7 @@ const { infoLog, warnLog, errorLog } = Log.get('VideoDecoder');
 export interface DecoderConfig {
   codec: string;
   optimizeForLatency: boolean;
-  hardwareAcceleration: 'prefer-hardware' | 'prefer-software';
+  hardwareAcceleration: 'prefer-hardware' | 'prefer-software' | 'no-preference';
   description?: AllowSharedBufferSource;
 }
 
@@ -241,7 +241,9 @@ export class WebCodecsDecoder {
                 // If we requested hardware and decoder is working well, likely using it
                 hardwareAcceleration = this.config.hardwareAcceleration === 'prefer-hardware'
                     ? 'likely (preferred)'
-                    : 'software (preferred)';
+                    : this.config.hardwareAcceleration === 'no-preference'
+                        ? 'auto (no-preference)'
+                        : 'software (preferred)';
             }
         } catch {
             hardwareAcceleration = 'unknown';

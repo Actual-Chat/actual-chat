@@ -189,28 +189,34 @@ export class VideoPlayer {
             debugLog?.log(`Initializing decoder worker with codec: ${codecString}`);
 
             // Check if codec is supported before creating decoder
-            try {
-                const { supported } = await VideoDecoder.isConfigSupported({
-                    codec: codecString,
-                    hardwareAcceleration: 'prefer-hardware',
-                });
-                if (!supported) {
-                    warnLog?.log(`Codec ${codecString} is not supported on this device, skipping decoder init`);
-                    this.isPlaying = false;
-                    void this.reportEnded(`Codec ${codecString} not supported`);
-                    return;
-                }
-            } catch (e) {
-                warnLog?.log(`Codec support check failed for ${codecString}:`, e);
+            // Try prefer-hardware first, fall back to no-preference (some devices
+            // report a codec as unsupported with prefer-hardware but work fine in SW)
+            let decoderSupported = false;
+            let bestAcceleration: HardwareAcceleration = 'prefer-hardware';
+            for (const accel of ['prefer-hardware', 'no-preference'] as const) {
+                try {
+                    const { supported } = await VideoDecoder.isConfigSupported({
+                        codec: codecString,
+                        hardwareAcceleration: accel,
+                    });
+                    if (supported) {
+                        decoderSupported = true;
+                        bestAcceleration = accel;
+                        break;
+                    }
+                } catch { /* continue to next */ }
+            }
+            if (!decoderSupported) {
+                warnLog?.log(`Codec ${codecString} is not supported on this device, skipping decoder init`);
                 this.isPlaying = false;
-                void this.reportEnded(`Codec support check failed for ${codecString}`);
+                void this.reportEnded(`Codec ${codecString} not supported`);
                 return;
             }
 
             this.decoderConfig = {
                 codec: codecString,
                 optimizeForLatency: true,
-                hardwareAcceleration: 'prefer-hardware',
+                hardwareAcceleration: bestAcceleration,
                 description,
             };
 

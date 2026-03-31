@@ -256,7 +256,13 @@ export function getDefaultCodec(supportedCodecs: CodecInfo[], width = 1280, heig
     );
     if (anyH264HW) return anyH264HW.codec;
 
-    // 5. Try H.264 SW in profile preference order
+    // 5. Try VP9 SW (better compression than H.264 SW)
+    const vp9SW = supportedCodecs.find(
+        c => c.category === 'vp9' && c.supported
+    );
+    if (vp9SW) return vp9SW.codec;
+
+    // 6. Try H.264 SW in profile preference order
     for (const profile of h264ProfileOrder) {
         const match = supportedCodecs.find(
             c => c.category === 'h264' && c.supported && c.codec.includes(profile)
@@ -292,18 +298,31 @@ export async function getAV1CodecSupport(): Promise<CodecInfo[]> {
     return results;
 }
 
+/** Check decoder support with prefer-hardware → no-preference fallback (matches video-player.ts init) */
+async function isDecoderCodecSupported(codec: string, width: number, height: number): Promise<boolean> {
+    for (const accel of ['prefer-hardware', 'no-preference'] as const) {
+        try {
+            const { supported } = await VideoDecoder.isConfigSupported({
+                codec,
+                codedWidth: width,
+                codedHeight: height,
+                hardwareAcceleration: accel,
+            });
+            if (supported) return true;
+        } catch { /* continue */ }
+    }
+    return false;
+}
+
 export async function detectSupportedDecoderCodecs(): Promise<string[]> {
     const codecs: string[] = ['h264']; // H.264 always assumed supported
 
-    // AV1
+    // AV1 — test both levels actually used in practice
     try {
-        const av1 = await VideoDecoder.isConfigSupported({
-            codec: 'av01.0.08M.08',
-            codedWidth: 1280,
-            codedHeight: 720,
-        });
-        warnLog?.log(`Decoder AV1 (av01.0.08M.08): supported=${av1.supported}`);
-        if (av1.supported) codecs.push('av1');
+        const av1Supported = await isDecoderCodecSupported('av01.0.08M.08', 1280, 720)
+            || await isDecoderCodecSupported('av01.0.05M.08', 1280, 720);
+        warnLog?.log(`Decoder AV1 (av01.0.08M.08): supported=${av1Supported}`);
+        if (av1Supported) codecs.push('av1');
     } catch (e) {
         warnLog?.log(`Decoder AV1 (av01.0.08M.08): error=${e}`);
     }
@@ -317,13 +336,12 @@ export async function detectSupportedDecoderCodecs(): Promise<string[]> {
         'hvc1.1.6.L93.90',     // hvc1 Main L3.1 (iOS Safari variant)
     ]) {
         try {
-            const hevc = await VideoDecoder.isConfigSupported({
-                codec: hevcCodec,
-                codedWidth: 1280,
-                codedHeight: 720,
-            });
-            warnLog?.log(`Decoder HEVC (${hevcCodec}): supported=${hevc.supported}`);
-            if (hevc.supported) { hevcSupported = true; break; }
+            if (await isDecoderCodecSupported(hevcCodec, 1280, 720)) {
+                warnLog?.log(`Decoder HEVC (${hevcCodec}): supported=true`);
+                hevcSupported = true;
+                break;
+            }
+            warnLog?.log(`Decoder HEVC (${hevcCodec}): supported=false`);
         } catch (e) {
             warnLog?.log(`Decoder HEVC (${hevcCodec}): error=${e}`);
         }
@@ -332,13 +350,9 @@ export async function detectSupportedDecoderCodecs(): Promise<string[]> {
 
     // VP9
     try {
-        const vp9 = await VideoDecoder.isConfigSupported({
-            codec: 'vp09.00.31.08',
-            codedWidth: 1280,
-            codedHeight: 720,
-        });
-        warnLog?.log(`Decoder VP9 (vp09.00.31.08): supported=${vp9.supported}`);
-        if (vp9.supported) codecs.push('vp9');
+        const vp9Supported = await isDecoderCodecSupported('vp09.00.31.08', 1280, 720);
+        warnLog?.log(`Decoder VP9 (vp09.00.31.08): supported=${vp9Supported}`);
+        if (vp9Supported) codecs.push('vp9');
     } catch (e) {
         warnLog?.log(`Decoder VP9 (vp09.00.31.08): error=${e}`);
     }
