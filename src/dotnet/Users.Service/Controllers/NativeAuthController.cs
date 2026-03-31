@@ -2,7 +2,6 @@ using System.Net.Http.Headers;
 using System.Security.Claims;
 using ActualChat.Users.Module;
 using AspNet.Security.OAuth.Apple;
-using Cysharp.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Mvc;
@@ -17,7 +16,7 @@ namespace ActualChat.Users.Controllers;
 public sealed class NativeAuthController(IServiceProvider services) : ControllerBase
 {
     private IServiceProvider Services { get; } = services;
-
+    private ICommander Commander { get; } = services.Commander();
     private ILogger Log => field ??= Services.LogFor(GetType());
 
     [HttpGet("sign-in-apple")]
@@ -26,7 +25,8 @@ public sealed class NativeAuthController(IServiceProvider services) : Controller
         string code,
         string? email,
         string? name,
-        CancellationToken cancellationToken)
+        bool? mustExist = null,
+        CancellationToken cancellationToken = default)
     {
         var session = HttpContext.GetSessionFromHeader();
         userId.RequireNonEmpty();
@@ -69,11 +69,11 @@ public sealed class NativeAuthController(IServiceProvider services) : Controller
         }
 
         var principal = new ClaimsPrincipal(identity);
-        await UpdateAuthStateWithPrincipal(session, principal, cancellationToken).ConfigureAwait(false);
+        await UpdateAuthState(session, principal, mustExist, cancellationToken).ConfigureAwait(false);
     }
 
     [HttpGet("sign-in-google")]
-    public async Task SignInGoogle(string code, CancellationToken cancellationToken)
+    public async Task SignInGoogle(string code, bool? mustExist = null, CancellationToken cancellationToken = default)
     {
         var session = HttpContext.GetSessionFromHeader();
         // code = code.UrlDecode(); // Weird, but this is somehow necessary
@@ -105,7 +105,7 @@ public sealed class NativeAuthController(IServiceProvider services) : Controller
         }
 
         var principal = new ClaimsPrincipal(identity);
-        await UpdateAuthStateWithPrincipal(session, principal, cancellationToken).ConfigureAwait(false);
+        await UpdateAuthState(session, principal, mustExist, cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods
@@ -148,16 +148,20 @@ public sealed class NativeAuthController(IServiceProvider services) : Controller
         return result;
     }
 
-    private async Task UpdateAuthStateWithPrincipal(
-        Session session,
-        ClaimsPrincipal principal,
-        CancellationToken cancellationToken)
+    private async Task UpdateAuthState(Session session, ClaimsPrincipal principal, bool? mustExist, CancellationToken cancellationToken)
     {
         var oldUser = HttpContext.User;
         HttpContext.User = principal;
         try {
-            var serverAuth = Services.GetRequiredService<ServerAuth>();
-            await serverAuth.UpdateAuthState(session, HttpContext, true, cancellationToken).ConfigureAwait(false);
+            var authHelper = Services.GetRequiredService<AuthHelper>();
+            await authHelper.UpdateAuthState(session, HttpContext, mustExist, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            var signInError = e.Message;
+            var setErrorCmd = new SessionTemporalsBackend_Set(
+                session, Constants.SessionTemporals.SignInErrorKey, signInError);
+            await Commander.Run(setErrorCmd, true, cancellationToken).ConfigureAwait(false);
+            throw;
         }
         finally {
             HttpContext.User = oldUser;

@@ -107,9 +107,9 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
     public (string Name, string DisplayName)[] GetAuthSchemas()
         => ClientAuth.GetSchemas();
 
-    public async Task SignIn(string schema, bool isRegister = false)
+    public async Task SignIn(string schema, bool? mustExist = null)
     {
-        await ClientAuth.SignIn(schema, isRegister).ConfigureAwait(false);
+        await ClientAuth.SignIn(schema, mustExist).ConfigureAwait(false);
         // TODO(AY): Make it reliable
         await NotificationUI.EnsureDeviceRegistered(CancellationToken.None).ConfigureAwait(false);
     }

@@ -80,11 +80,17 @@ public static class Links
     public static LocalUrl Invite(string format, string inviteId)
         => string.Format(format, inviteId.UrlEncode());
 
-    public static LocalUrl CloseFlow(string flowName, bool mustClose = true, string? redirectUrl = null)
+    public static LocalUrl CloseFlow(
+        string flowName,
+        bool mustClose = true,
+        int? mustExist = null,
+        string? redirectUrl = null)
     {
         var url = $"/fusion/close?flow={flowName.UrlEncode()}";
         if (!mustClose)
             url += "&mustClose=0"; // "must close" is the default
+        if (mustExist is { } vMustExist)
+            url += $"&mustExist={vMustExist}";
         if (!redirectUrl.IsNullOrEmpty())
             url += $"&redirectUrl={redirectUrl.UrlEncode()}";
         return url;

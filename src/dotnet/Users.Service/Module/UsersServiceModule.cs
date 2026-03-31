@@ -115,7 +115,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         services.AddSingleton<ISecureTokensBackend, SecureTokensBackend>(); // Used by HttpSessionExt, server-side logic in AppBase, etc.
 
         if (rpcHost.IsApiHost) {
-            services.AddSingleton<ServerAuth>(); // Used by ApiHost-s
+            services.AddSingleton<AuthHelper>(); // Used by ApiHost-s
             services.AddSingleton<ClaimMapper>(); // Used by ServerAuth
         }
 

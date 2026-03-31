@@ -192,7 +192,7 @@
             },
             browserInit: async function(hostKind, appKind, apiVersion, baseUri, supportedHosts, sessionHash, browserInfoBackendRef, clipboardInteropRef) {
                 await window.App.whenBundleReady;
-                await window.ui.BrowserInit.init(hostKind, appKind, apiVersion, baseUri, supportedHosts, sessionHash, browserInfoBackendRef, clipboardInteropRef);
+                window.ui.BrowserInit.init(hostKind, appKind, apiVersion, baseUri, supportedHosts, sessionHash, browserInfoBackendRef, clipboardInteropRef);
             },
         };
         window.App.whenBlazorReady = new Promise((resolve, _) => {
@@ -207,7 +207,7 @@
 
 <body class="app-web" style="background-color: #0C003D">
 
-@if (_closeFlow == null && !renderModeKey.StartsWith("s")) {
+@if (!_authState.IsAnyAuthFlow && !renderModeKey.StartsWith("s")) {
     <div id="web-splash" class="web-splash"></div>
     <script nonce="@webSplashNonce">
         @* We use script here to make sure this overlay isn't used as content image by crawlers *@
@@ -234,32 +234,32 @@
     </script>
 }
 
-@if (_signInError != null && _closeFlow != null) {
+@if (_authState.SignInError is { } signInError) {
     <script nonce="@closeFlowNonce">
         setTimeout(function () {
             window.open('','_self').close();
         }, 200)
     </script>
-    <div class="fusion-close" data-flow-name="@_closeFlow.Name">
+    <div class="fusion-close" data-flow-name="@(_authState.CloseFlow?.Name ?? "")">
         <div class="c-content">
             <div class="c-title">
-                <span>Account not found.</span>
+                <span>@signInError</span>
             </div>
         </div>
     </div>
-} else if (_closeFlow != null) {
-    @if (_closeFlow.MustClose) {
+} else if (_authState.CloseFlow is { } closeFlow) {
+    @if (closeFlow.MustClose) {
         <script nonce="@closeFlowNonce">
             setTimeout(function () {
                 window.open('','_self').close();
             }, 500)
         </script>
     }
-    <div class="fusion-close" data-flow-name="@_closeFlow.Name">
+    <div class="fusion-close" data-flow-name="@closeFlow.Name">
         <div class="c-content">
             <img draggable="false" src="/dist/images/landing/checkmark-checked.svg" alt="Checked">
             <div class="c-title">
-                <span>@_closeFlow.Name</span>
+                <span>@closeFlow.Name</span>
                 <span>completed.</span>
             </div>
             <div class="c-footer">
@@ -286,8 +286,8 @@
     <app id="app" class="flex flex-col h-full">
         <WebApp
             @rendermode="@(_renderMode.Mode)"
-            SessionHash="@_session?.Hash"
-            SessionToken="@_sessionToken?.Token"
+            SessionHash="@_authState.Session.Hash"
+            SessionToken="@(_sessionToken?.Token ?? "")"
             RenderModeKey="@(renderModeKey)" />
     </app>
     <!-- This block must go right after app, otherwise page content won't be blurred -->
@@ -368,21 +368,18 @@
 
 @code {
     private bool _isInitialized;
-    private bool _isNewSession;
     private LocalUrl _url;
-    private Session? _session;
+    private AuthHelper.AuthState _authState = null!;
     private Account? _account;
     private SecureToken? _sessionToken;
     private ContentLinkInfo? _contentLinkInfo;
     private RenderModeDef _renderMode = RenderModeDef.ByKey["ss"]; // Static
-    private CloseFlowInfo? _closeFlow;
-    private string? _signInError;
 
     [Inject] private IServiceProvider Services { get; init; } = null!;
     [Inject] private IWebHostEnvironment Env { get; init; } = null!;
     [Inject] private ISessionResolver SessionResolver { get; init; } = null!;
     [Inject] private ISecureTokens SecureTokens { get; init; } = null!;
-    [Inject] private ServerAuth ServerAuth { get; init; } = null!;
+    [Inject] private AuthHelper AuthHelper { get; init; } = null!;
     [Inject] private UsersSettings UserSettings { get; init; } = null!;
     [Inject] private CaptchaUI CaptchaUI { get; init; } = null!;
     [Inject] private OpenGraphTagsProvider OpenGraphTagsProvider { get; init; } = null!;
@@ -393,8 +390,8 @@
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = null!;
 
-    private HostInfo HostInfo => ServerAuth.HostInfo;
-    private IAccounts Accounts => ServerAuth.Accounts;
+    private HostInfo HostInfo => AuthHelper.HostInfo;
+    private IAccounts Accounts => AuthHelper.Accounts;
 
     public override async Task SetParametersAsync(ParameterView parameters)
     {
@@ -413,51 +410,26 @@
     private async Task Initialize() {
         var cancellationToken = HttpContext.RequestAborted;
         _url = new LocalUrl(HttpContext.Request.GetEncodedPathAndQuery());
-        var isRegister = HttpContext.Request.Query.ContainsKey("register");
-        var mustExist = !isRegister;
-        try {
-            (_session, _isNewSession) = await ServerAuth.Authenticate(HttpContext, false, mustExist, cancellationToken);
+        _authState = await AuthHelper.UpdateAuthState(HttpContext, cancellationToken);
+        var session = SessionResolver.Session = _authState.Session;
+        if (!_authState.IsAnyAuthFlow) {
+            var accountTask = Accounts.GetOwn(session, cancellationToken)!;
+            var sessionTokenTask = SecureTokens.CreateForSession(session, cancellationToken);
+            var linkInfoTask = OpenGraphTagsProvider.GetContentLinkInfo(session, _url, cancellationToken);
+            await Task.WhenAll(accountTask, sessionTokenTask, linkInfoTask);
+            _account = await accountTask;
+            _sessionToken = await sessionTokenTask;
+            _contentLinkInfo = await linkInfoTask;
         }
-        catch (Exception e) when (e is { } ex && ex.Message.Contains("Account not found", StringComparison.Ordinal)) {
-            // Sign-in mode but account doesn't exist - fall through with error
-            _signInError = Constants.SessionTemporals.SignInErrorCode_AccountNotFound;
-            var cookieSession = HttpContext.TryGetSessionFromCookie();
-            _session = cookieSession ?? Session.New();
-            _isNewSession = cookieSession is null;
-            if (_isNewSession)
-                HttpContext.AddSessionCookie(_session);
-        }
-        SessionResolver.Session = _session;
-        Task<AccountFull?> accountTask;
-        if (_isNewSession) {
-            HttpContext.Response.Cookies.Delete(RenderModeEndpoint.Cookie.Name!);
-            accountTask = Task.FromResult((AccountFull?)null);
-        } else
-            accountTask = Accounts.GetOwn(_session, cancellationToken)!;
-
-        var sessionTokenTask = SecureTokens.CreateForSession(_session, cancellationToken);
-        var linkInfoTask = OpenGraphTagsProvider.GetContentLinkInfo(_session, _url, cancellationToken);
-        await Task.WhenAll(accountTask, sessionTokenTask, linkInfoTask);
-        _account = await accountTask;
-        _sessionToken = await sessionTokenTask;
-        _contentLinkInfo = await linkInfoTask;
-
-        _closeFlow = ServerAuth.IsCloseFlow(HttpContext);
-        if (_signInError != null) {
-            var setErrorCmd = new SessionTemporalsBackend_Set(_session, Constants.SessionTemporals.SignInErrorCodeKey, _signInError);
-            await Commander.Call(setErrorCmd, true, cancellationToken).ConfigureAwait(false);
-        }
-        if (_closeFlow?.RedirectUrl is { } redirectUrl) {
+        if (_authState.CloseFlow?.RedirectUrl is { } redirectUrl) {
             HttpContext.Response.Redirect(redirectUrl, false);
             return;
         }
-
-        if (HttpContext.AcceptsInteractiveRouting() && _closeFlow == null) {
-            var useServerPrerendered = _account.IsGuestOrNull() && (_url.IsHome() || _url.IsDocsOrDocsRoot());
-            _renderMode = useServerPrerendered
+        if (!_authState.IsAnyAuthFlow && HttpContext.AcceptsInteractiveRouting()) {
+            var forceServerPrerendered = _account.IsGuestOrNull() && (_url.IsHome() || _url.IsDocsOrDocsRoot());
+            _renderMode = forceServerPrerendered
                 ? RenderModeDef.ByKey["sp"]
                 : RenderModeEndpoint.GetRenderMode(HttpContext);
         }
-        // Activity.Current = null; // We don't want to "infect" Blazor circuit with it
     }
 }

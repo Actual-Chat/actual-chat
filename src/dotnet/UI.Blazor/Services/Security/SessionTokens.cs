@@ -6,8 +6,6 @@ namespace ActualChat.UI.Blazor.Services;
 
 public sealed class SessionTokens(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService
 {
-    public const string HeaderName = "Session";
-
     private static readonly string JSSetCurrentMethod = $"{BlazorUICoreModule.ImportName}.SessionTokens.setCurrent";
 
     private readonly AsyncLock _asyncLock = new(LockReentryMode.CheckedFail);

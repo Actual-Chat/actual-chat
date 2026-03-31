@@ -202,8 +202,8 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         }
 
         if (userId is null) {
-            if (mustExist)
-                throw StandardError.NotFound<AccountFull>("Account not found.");
+            if (mustExist == true)
+                throw StandardError.Constraint("Account not found. Register instead?");
 
             // No user found by identity or internalUserId - create new account
             account = UpdateExistingAccount(null, internalUserId);
@@ -213,6 +213,9 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             isNew = true;
         }
         else {
+            if (mustExist == false)
+                throw StandardError.Constraint("Account is already registered. Sign-in instead?");
+
             // Existing user found by identity or desired ID - acquire lock first, then load and update
             var existingAccount = await Get(userId, cancellationToken).ConfigureAwait(false);
             await dbContext.Accounts.Lock(userId, cancellationToken).ConfigureAwait(false);
