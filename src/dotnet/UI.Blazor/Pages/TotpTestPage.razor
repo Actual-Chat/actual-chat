@@ -1,6 +1,5 @@
 @page "/test/totp"
 @using ActualChat.Users
-@using System.ComponentModel.DataAnnotations
 
 <RequireAccount MustBeAdmin="true"/>
 
@@ -44,6 +43,7 @@
 @code {
     private readonly Model _model = new();
 
+    [Inject] private Session Session { get; init; } = null!;
     [Inject] private IPhones Phones { get; init; } = null!;
 
     private void OnVerified() {
@@ -53,7 +53,7 @@
 
     private async Task OnVerifyClick() {
         _model.ShowVerifier = true;
-        _model.Phone = await Phones.Parse(_model.ReadablePhone, CancellationToken.None);
+        _model.Phone = await Phones.ParseWithCountryFallback(Session, _model.ReadablePhone, CancellationToken.None);
     }
 
     private void OnCancelClick() {
