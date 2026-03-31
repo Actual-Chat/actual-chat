@@ -10,7 +10,7 @@ public static class ChatEntryEx
             return chatEntry.Id.Value;
 
         var useClientId = chatEntry.IsSending || chatEntry.HasUploadingAttachments && isOwnMessage;
-        if (useClientId)
+        if (useClientId && !chatEntry.ClientUid.IsNullOrEmpty())
             return chatEntry.ClientUid;
 
         return chatEntry.Id.Value;
