@@ -7,7 +7,7 @@ namespace ActualChat.Media;
 /// </summary>
 public interface IUploadsBackend : IComputeService, IBackendService
 {
-    [ComputeMethod]
+    [ComputeMethod(MinCacheDuration = 60)]
     Task<Upload?> Get(UploadId uploadId, CancellationToken cancellationToken);
     Task<long> GetOffset(UploadId uploadId, CancellationToken cancellationToken);
 

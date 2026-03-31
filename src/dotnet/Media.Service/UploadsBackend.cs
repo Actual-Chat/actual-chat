@@ -28,7 +28,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         return upload;
     }
 
-    public virtual async Task<long> GetOffset(UploadId uploadId, CancellationToken cancellationToken)
+    public async Task<long> GetOffset(UploadId uploadId, CancellationToken cancellationToken)
     {
         if (IsGoogleStorage) {
             var upload = await Get(uploadId, cancellationToken).Require().ConfigureAwait(false);
@@ -90,6 +90,9 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
 
     public virtual async Task<long> OnAppend(UploadsBackend_Append command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return default!; // Invalidation is not expected to happen during the append operation, but just in case.
+
         var (uploadId, uploadOffset, data) = command;
         if (IsGoogleStorage) {
             var upload1 = await Get(uploadId, cancellationToken).Require().ConfigureAwait(false);
