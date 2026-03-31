@@ -220,7 +220,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 ? MeshLocksBase.DefaultKeyPrefix
                 : $"{MeshLocksBase.DefaultKeyPrefix}-{subspace}"; // Must not use "." as a delimiter!
 
-            if (useLocalKube || hasKube) {
+            if (useLocalKube) {
                 Log.LogInformation("Using {KubeMeshLocks} for mesh locks", useLocalKube ? "Local KubeMeshLocks" : "KubeMeshLocks");
                 return c.GetRequiredService<KubeMeshLocks>()
                     .With(keyPrefix, MeshLockOptions.Presets[optionsPreset]);
