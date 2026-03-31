@@ -73,9 +73,9 @@ public sealed class SeekableGcsStream(
     protected override void Dispose(bool disposing)
     {
         if (disposing) {
-            _stream?.Dispose();
+            _stream?.DisposeSilently();
             _stream = null;
-            _response?.Dispose();
+            _response?.DisposeSilently();
             _response = null;
         }
         base.Dispose(disposing);
@@ -87,7 +87,7 @@ public sealed class SeekableGcsStream(
         if (oldStream != null)
             await oldStream.DisposeAsync().ConfigureAwait(false);
         _stream = null;
-        _response?.Dispose();
+        _response?.DisposeSilently();
         _response = null;
 
         var request = new HttpRequestMessage(HttpMethod.Get, url);
@@ -106,7 +106,7 @@ public sealed class SeekableGcsStream(
         }
 
         if (response.StatusCode == HttpStatusCode.RequestedRangeNotSatisfiable) {
-            response.Dispose();
+            response.DisposeSilently();
             _streamPosition = fromPosition;
             return; // next Read will return 0 bytes (position >= Length)
         }
@@ -117,7 +117,7 @@ public sealed class SeekableGcsStream(
             _stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         }
         catch {
-            response.Dispose();
+            response.DisposeSilently();
             throw;
         }
         _streamPosition = fromPosition;

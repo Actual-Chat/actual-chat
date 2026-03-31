@@ -38,7 +38,7 @@ public class GoogleCloudBlobStorage(string bucket)
             .ConfigureAwait(false);
 
         if (response.StatusCode == HttpStatusCode.NotFound) {
-            response.Dispose();
+            response.DisposeSilently();
             return null;
         }
 
@@ -50,7 +50,7 @@ public class GoogleCloudBlobStorage(string bucket)
             return new SeekableGcsStream(httpClient, url, length, response, stream);
         }
         catch {
-            response.Dispose();
+            response.DisposeSilently();
             throw;
         }
     }
