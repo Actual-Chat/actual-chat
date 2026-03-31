@@ -81,11 +81,8 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         Log.LogWarning("RegisterActiveStream({ChatId}): #{StreamId}, AuthorId={AuthorId}, StreamKind={StreamKind}",
             chatId, streamInfo.StreamId, streamInfo.AuthorId, streamInfo.StreamKind);
         var success = await StreamsStore.SetField(chatId, streamInfo.StreamId.Value, streamInfo).ConfigureAwait(false);
-        if (success) {
+        if (success)
             InvalidateListActiveStreams(chatId);
-            if (streamInfo.StreamKind == StreamKind.Screencast)
-                InvalidateHasActiveScreencast(chatId);
-        }
     }
 
     public virtual async Task Unregister(ChatId chatId, StreamId streamId, CancellationToken cancellationToken)
@@ -93,17 +90,8 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         BumpChatEntry(chatId);
         Log.LogWarning("UnregisterActiveStream({ChatId}): #{StreamId}", chatId, streamId);
         var removed = await StreamsStore.RemoveField(chatId, streamId.Value).ConfigureAwait(false);
-        if (removed) {
+        if (removed)
             InvalidateListActiveStreams(chatId);
-            InvalidateHasActiveScreencast(chatId);
-        }
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<bool> HasActiveScreencast(ChatId chatId, CancellationToken cancellationToken)
-    {
-        var streams = await List(chatId, cancellationToken).ConfigureAwait(false);
-        return streams.Any(s => s.StreamKind == StreamKind.Screencast);
     }
 
     // [ComputeMethod]
@@ -258,9 +246,4 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
             _ = GetSupportedCodecs(chatId, default);
     }
 
-    private void InvalidateHasActiveScreencast(ChatId chatId)
-    {
-        using (Invalidation.Begin())
-            _ = HasActiveScreencast(chatId, default);
-    }
 }
