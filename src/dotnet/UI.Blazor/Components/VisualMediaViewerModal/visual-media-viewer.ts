@@ -17,7 +17,7 @@ export class VisualMediaViewer {
     private readonly footer: HTMLElement | undefined;
     private isHeaderAndFooterVisible = true;
     private readonly jumpTime: number = 5;
-    private videos: HTMLCollectionOf<HTMLVideoElement>;
+    private videos: NodeListOf<HTMLVideoElement>;
     private imageContainers: NodeListOf<HTMLElement>;
     private maxVideoWidth = 0;
     private maxVideoHeight = 0;
@@ -53,7 +53,7 @@ export class VisualMediaViewer {
         this.headerHeight = this.header.offsetHeight;
         // @ts-expect-error TODO(Andrey): fix eslint error
         this.footer = this.overlay.querySelector('.image-viewer-footer')!;
-        this.videos = this.imageViewer.getElementsByTagName('video');
+        this.videos = this.imageViewer.querySelectorAll<HTMLVideoElement>('video.video-original');
 
         // eslint-disable-next-line
         this.swiperEl = document.querySelector('.media-swiper')!;
