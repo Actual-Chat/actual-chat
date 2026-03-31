@@ -1,6 +1,6 @@
 using System.Net;
+using ActualChat.Diagnostics;
 using ActualChat.Security;
-using ActualChat.Users;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ActualChat.Chat.Controllers;
@@ -71,33 +71,50 @@ public sealed class UploadsController(IServiceProvider services) : ControllerBas
         if (!UploadId.TryParse(uploadSid, out var uploadId))
             return BadRequest("Invalid upload id.");
 
-        var ms = new MemoryStream();
-        await using (ms.ConfigureAwait(false)) {
-            await Request.Body.CopyToAsync(ms, cancellationToken).ConfigureAwait(false);
-            byte[] chunk = ms.ToArray();
-            var command = new Uploads_Append(session, uploadId, uploadOffset, chunk);
-            try {
-                var newOffset = await Commander.Call(command, cancellationToken).ConfigureAwait(false);
-                Response.Headers[Headers.UploadOffset] = newOffset.ToString();
-                Response.Headers["Access-Control-Expose-Headers"] = "Upload-Offset, Tus-Resumable, Location, Upload-Length";
-                return NoContent();
+        byte[] chunk;
+        try {
+            using var activity = CoreServerInstruments.ActivitySource.StartActivity("UploadsController.ReadRequestBody");
+            activity?.SetTag("content.length", Request.ContentLength);
+            if (Request.ContentLength is { } contentLength) {
+                chunk = new byte[(int)contentLength];
+                await Request.Body.ReadExactlyAsync(chunk, cancellationToken).ConfigureAwait(false);
             }
-            catch (UploadNotFoundException) {
-                return NotFound();
+            else {
+                const int capacityHint = 4 * 1024 * 1024; // 4MB
+                var ms = new MemoryStream(capacityHint);
+                await using (ms.ConfigureAwait(false))
+                    await Request.Body.CopyToAsync(ms, cancellationToken).ConfigureAwait(false);
+                chunk = ms.ToArray();
             }
-            catch (OffsetConflictException) {
-                return Conflict();
-            }
-            catch (UploadTransientException) {
-                return StatusCode((int)HttpStatusCode.ServiceUnavailable);
-            }
-            catch (Microsoft.AspNetCore.Http.BadHttpRequestException) {
-                throw; // Ignore, let Kestrel process it.
-            }
-            catch (Exception e) {
-                Log.LogError(e, "Failed to append chunk to upload '{UploadId}' at offset '{Offset}'", uploadId, uploadOffset);
-                return StatusCode((int)HttpStatusCode.InternalServerError);
-            }
+            activity?.SetTag("content.read_length", chunk.Length);
+        }
+        catch (Microsoft.AspNetCore.Http.BadHttpRequestException) {
+            throw; // Ignore, let Kestrel process it.
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to append chunk to upload '{UploadId}' at offset '{Offset}'", uploadId, uploadOffset);
+            return StatusCode((int)HttpStatusCode.InternalServerError);
+        }
+
+        var command = new Uploads_Append(session, uploadId, uploadOffset, chunk);
+        try {
+            var newOffset = await Commander.Call(command, cancellationToken).ConfigureAwait(false);
+            Response.Headers[Headers.UploadOffset] = newOffset.ToString();
+            Response.Headers["Access-Control-Expose-Headers"] = "Upload-Offset, Tus-Resumable, Location, Upload-Length";
+            return NoContent();
+        }
+        catch (UploadNotFoundException) {
+            return NotFound();
+        }
+        catch (OffsetConflictException) {
+            return Conflict();
+        }
+        catch (UploadTransientException) {
+            return StatusCode((int)HttpStatusCode.ServiceUnavailable);
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to append chunk to upload '{UploadId}' at offset '{Offset}'", uploadId, uploadOffset);
+            return StatusCode((int)HttpStatusCode.InternalServerError);
         }
     }
 }
