@@ -26,7 +26,7 @@ public sealed record MeshLockOptions(
         };
 
     public TimeSpan ExpirationSafetyMargin { get; init; } = TimeSpan.FromSeconds(1);
-    public TimeSpan UnconditionalCheckPeriod { get; init; } = TimeSpan.FromSeconds(10);
+    public TimeSpan UnconditionalCheckPeriod { get; init; } = TimeSpan.FromSeconds(5);
     public TimeSpan WarningDelay { get; init; } = TimeSpan.FromSeconds(15); // Negative or zero = no warning
     public bool LinkCancellationToken { get; init; } = true;
 
