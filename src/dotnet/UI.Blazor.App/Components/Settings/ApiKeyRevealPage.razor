@@ -1,0 +1,29 @@
+@inherits ComponentBase<AppUIHub>
+
+<FormBlock>
+    <p class="c-title">Copy this key now. It will not be shown again.</p>
+    <div class="api-key-container">
+        <code>@_model.ApiKey</code>
+        <CopyToClipboard
+            ButtonClass="btn-sm btn-transparent"
+            Text="@_model.ApiKey"/>
+    </div>
+</FormBlock>
+
+@code {
+    private Model _model = null!;
+
+    [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        _model = Context.GetModel<Model>();
+        Context.Title = "Your new API key";
+        Context.Buttons = [DialogButtonInfo.CreateSubmitButton("Close", OnClose)];
+    }
+
+    private void OnClose()
+        => Modal.Close();
+
+    public sealed record Model(string ApiKey);
+}
