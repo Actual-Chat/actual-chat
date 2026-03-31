@@ -39,6 +39,7 @@ public class PhonesTest(ITestOutputHelper @out)
 
     [Theory(Timeout = 30_000)]
     [InlineData("8.8.8.8", "(201) 555-0123", "1-2015550123")]     // US IP → US region
+    [InlineData("8.8.8.8", "650-924-7331", "1-6509247331")]       // US IP → US region, dashed format
     [InlineData("81.2.69.160", "7911 123456", "44-7911123456")]    // UK IP → UK region
     public async Task ParseWithCountryFallback_NationalNumberWithGeoIp(
         string ip, string input, string expected)
