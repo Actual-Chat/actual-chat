@@ -178,7 +178,7 @@
             return true;
         }
 
-        var phone = await ParsePhone(input);
+        var phone = await Phones.ParseWithCountryFallback(Hub.Session, input, CancellationToken.None);
         if (phone == null)
             return false;
 
@@ -249,7 +249,7 @@
 
         if (_validationState is ValidationState.Valid) {
             var input = _formModel.PhoneOrEmail;
-            var phone = await ParsePhone(input);
+            var phone = await Phones.ParseWithCountryFallback(Hub.Session, input, CancellationToken.None);
             if (phone is not null) {
                 if (!await ValidatePhoneForSend(phone))
                     return;
@@ -320,17 +320,6 @@
             }
         }
         return true;
-    }
-
-    private async Task<Phone?> ParsePhone(string? input) {
-        if (input.IsNullOrEmpty())
-            return null;
-
-        var phone = await Phones.Parse(input, CancellationToken.None);
-        // Try with '+' prefix — libphonenumber requires it when no region is specified
-        if (phone == null && !input.StartsWith('+'))
-            phone = await Phones.Parse("+" + input, CancellationToken.None);
-        return phone;
     }
 
     // Nested types

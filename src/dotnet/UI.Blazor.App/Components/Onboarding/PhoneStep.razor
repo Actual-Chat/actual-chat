@@ -120,7 +120,7 @@
     }
 
     private async Task<bool> InnerSave() {
-        var phone = await Phones.Parse(_model.Phone, default);
+        var phone = await Phones.ParseWithCountryFallback(Session, _model.Phone, default);
         if (phone is null)
             return false;
 

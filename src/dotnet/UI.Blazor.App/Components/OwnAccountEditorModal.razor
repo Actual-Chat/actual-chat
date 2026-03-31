@@ -187,7 +187,7 @@
             return;
 
         var account = await Hub.Accounts.GetOwn(Session, default);
-        var phone = _form.ParsedPhone = await Phones.Parse(_form.Phone, default);
+        var phone = _form.ParsedPhone = await Phones.ParseWithCountryFallback(Session, _form.Phone, default);
         if (phone != account.Phone) {
             if (phone != null)
                 return;
@@ -217,7 +217,7 @@
         if (newValue == _defaultPhoneValue)
             newValue = "";
         _form.Phone = newValue;
-        _form.ParsedPhone = await Phones.Parse(newValue, default);
+        _form.ParsedPhone = await Phones.ParseWithCountryFallback(Session, newValue, default);
         StateHasChanged();
     }
 
