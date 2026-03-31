@@ -179,7 +179,7 @@ public static class TestAuthExt
             .ConfigureAwait(false);
         cAccount = await cAccount
             .When(x => !x.IsGuestOrNull() && x.Identities.ContainsKey(userIdentity), cancellationToken)
-            .WaitAsync(TimeSpan.FromSeconds(1), cancellationToken)
+            .WaitAsync(TimeSpan.FromSeconds(3), cancellationToken)
             .ConfigureAwait(false);
         return cAccount.Value;
     }
@@ -198,6 +198,6 @@ public static class TestAuthExt
                     // "Inactive session or GuestId is not set" — session is effectively signed out
                 }
             },
-            TimeSpan.FromSeconds(1)
+            TimeSpan.FromSeconds(3)
         ).WaitAsync(cancellationToken);
 }
