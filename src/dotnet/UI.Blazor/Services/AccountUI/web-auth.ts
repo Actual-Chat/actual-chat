@@ -13,38 +13,24 @@ export class WebAuth {
     public static allowPopup = !(DeviceInfo.isMobile || DeviceInfo.isWebKit);
     public static mustRedirectOnPopupBlock = true;
 
-    public static signIn(schema: string, isRegister = false): Promise<string | null> {
+    public static signIn(schema: string, isRegister = false): Promise<void> {
         const path = schema
             ? this.signInPath + '/' + schema
             : this.signInPath;
         return this.showPopupOrRedirect(path, 'Sign-in', isRegister);
     }
 
-    public static signOut(): Promise<string | null> {
+    public static signOut(): Promise<void> {
         return this.showPopupOrRedirect(this.signOutPath, 'Sign-out');
-    }
-
-    public static consumeSignInError(): string | null {
-        try {
-            const error = localStorage.getItem('signInError');
-            if (error) {
-                localStorage.removeItem('signInError');
-                return error;
-            }
-        } catch { /* ignore */ }
-        return null;
     }
 
     // Private methods
 
-    private static showPopupOrRedirect(path: string, flowName: string, isRegister = false): Promise<string | null> {
+    private static showPopupOrRedirect(path: string, flowName: string, isRegister = false): Promise<void> {
         if (!this.allowPopup) {
             this.redirect(path, flowName, isRegister);
-            return Promise.resolve(null); // Page navigates away, never resolves meaningfully
+            return Promise.resolve();
         }
-
-        // Clear any stale error before opening popup
-        try { localStorage.removeItem('signInError'); } catch { /* ignore */ }
 
         let closeFlowUrl = this.closeFlowPath + '?flow=' + encode(flowName);
         if (isRegister)
@@ -60,17 +46,16 @@ export class WebAuth {
             else {
                 alert('Authentication popup is blocked by the browser. Please allow popups on this website and retry.')
             }
-            return Promise.resolve(null);
+            return Promise.resolve();
         }
 
-        // Monitor popup and check for errors when it closes
-        return new Promise<string | null>((resolve) => {
+        // Wait for the popup to close
+        return new Promise<void>((resolve) => {
             const interval = setInterval(() => {
                 if (!popup.closed)
                     return;
                 clearInterval(interval);
-                const error = this.consumeSignInError();
-                resolve(error);
+                resolve();
             }, 200);
         });
     }

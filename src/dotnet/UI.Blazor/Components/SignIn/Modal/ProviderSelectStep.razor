@@ -62,8 +62,8 @@
 
         <CaptchaView />
 
-        @if (!_serverError.IsNullOrEmpty()) {
-            <div class="c-account-error">@_serverError</div>
+        @if (!_signInError.IsNullOrEmpty()) {
+            <div class="c-account-error">@_signInError</div>
         }
         <Toggle Label="Register a new account"
                 IsChecked="@TotpSignInModel.IsRegister"
@@ -96,11 +96,12 @@
     private List<AuthProviderModel>? _authProviders;
     private AsyncDataAnnotationsValidator _formValidator = null!;
     private bool _showFieldErrors;
-    private string _serverError = "";
+    private string _signInError = "";
     private volatile string _placeholder = "+1(555)555-5555 or email@gmail.com";
 
     private IPhones Phones => Hub.Phones;
     private ICaptcha Captcha => Hub.Captcha;
+    private ISessionTemporals SessionTemporals => Hub.SessionTemporals;
     private CaptchaUI CaptchaUI => Hub.CaptchaUI;
     private TotpUI TotpUI => Hub.TotpUI;
 
@@ -147,7 +148,20 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var hasSentCodeRecently = await TotpUI.HasSentCodeRecently(CancellationToken.None);
-        return new (hasSentCodeRecently);
+        var signInError = await SessionTemporals
+            .Get(Hub.Session, Constants.SessionTemporals.SignInErrorCodeKey, cancellationToken);
+        if (signInError.IsNullOrEmpty())
+            return new(hasSentCodeRecently);
+
+        _signInError = signInError switch {
+            Constants.SessionTemporals.SignInErrorCode_AccountNotFound => "Account not found. Register instead?",
+            _ => signInError,
+        };
+
+        // Consume the error so it doesn't show again
+        var consumeCmd = new SessionTemporals_Set(Hub.Session, Constants.SessionTemporals.SignInErrorCodeKey, null);
+        _ = Hub.Services.Commander().Run(consumeCmd, CancellationToken.None);
+        return new(hasSentCodeRecently);
     }
 
     protected override async Task<bool> Validate() {
@@ -174,15 +188,11 @@
     }
 
     private async Task OnSignInWithProvider(string schema) {
-        var error = await AccountUI.SignIn(schema, TotpSignInModel.IsRegister);
-        if (!error.IsNullOrEmpty()) {
-            _serverError = error;
-            StateHasChanged();
-        }
+        await AccountUI.SignIn(schema, TotpSignInModel.IsRegister);
     }
 
     private void OnPhoneOrEmailChanged(string? value) {
-        _serverError = "";
+        _signInError = "";
         _showFieldErrors = true;
         var newValue = value ?? "";
         if (Equals(_formModel.PhoneOrEmail, newValue))
@@ -196,7 +206,7 @@
 
     private void OnRegisterToggleChanged(bool value) {
         TotpSignInModel.IsRegister = value;
-        _serverError = "";
+        _signInError = "";
         if (_validationState is ValidationState.CannotSend or ValidationState.Invalid)
             _validationState = ValidationState.None;
         StateHasChanged();
@@ -204,7 +214,7 @@
 
     private async Task OnSubmit() {
         _showFieldErrors = true;
-        _serverError = "";
+        _signInError = "";
         if (_validationState is ValidationState.CannotSend or ValidationState.Invalid)
             _validationState = ValidationState.None;
 
@@ -255,7 +265,7 @@
     private async Task<bool> ValidatePhoneForSend(Phone phone) {
         var blocked = await TotpUI.CheckIfBlocked(phone, TotpPurpose.SignInPhone, CancellationToken.None);
         if (!blocked.IsNullOrEmpty()) {
-            _serverError = blocked;
+            _signInError = blocked;
             StateHasChanged();
             return false;
         }
@@ -264,7 +274,7 @@
             try {
                 var exists = await TotpUI.AccountExists(phone, CancellationToken.None);
                 if (!exists) {
-                    _serverError = "Account not found. Register instead?";
+                    _signInError = "Account not found. Register instead?";
                     _validationState = ValidationState.None;
                     StateHasChanged();
                     return false;
@@ -283,14 +293,14 @@
             Email.TryParse(mail.Address, out emailId);
 
         if (emailId is null) {
-            _serverError = "Invalid phone number or email address.";
+            _signInError = "Invalid phone number or email address.";
             StateHasChanged();
             return false;
         }
 
         var blocked = await TotpUI.CheckIfBlocked(emailId, TotpPurpose.SignInEmail, CancellationToken.None);
         if (!blocked.IsNullOrEmpty()) {
-            _serverError = blocked;
+            _signInError = blocked;
             StateHasChanged();
             return false;
         }
@@ -299,7 +309,7 @@
             try {
                 var exists = await TotpUI.AccountExists(emailId, CancellationToken.None);
                 if (!exists) {
-                    _serverError = "Account not found. Register instead?";
+                    _signInError = "Account not found. Register instead?";
                     _validationState = ValidationState.None;
                     StateHasChanged();
                     return false;

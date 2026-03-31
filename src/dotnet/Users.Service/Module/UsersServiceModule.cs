@@ -129,6 +129,10 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
                 .AddHostedService(c => c.GetRequiredService<DbSessionTrimmer>());
         }
 
+        // SessionTemporals
+        rpcHost.AddApi<ISessionTemporals, SessionTemporals>();
+        rpcHost.AddBackend<ISessionTemporalsBackend, SessionTemporalsBackend>();
+
         // Accounts
         rpcHost.AddLocalApi<IAccounts, Accounts>(); // Used by Chats, etc.
         rpcHost.AddBackend<IAccountsBackend, AccountsBackend>();
