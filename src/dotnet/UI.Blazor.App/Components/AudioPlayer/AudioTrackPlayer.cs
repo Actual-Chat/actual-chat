@@ -12,7 +12,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     // Pacing: during the initial PacingDuration, push frames at real-time pace
     // so the JS audio pipeline has time to initialize (attachTrait + resume).
     // After PacingDuration, switch to buffer-based flow control.
-    private static readonly TimeSpan PacingDuration = TimeSpan.FromMilliseconds(350);
+    private static readonly TimeSpan PacingDuration = TimeSpan.FromMilliseconds(150);
 
     private readonly string _id;
     private IAudioPlaybackEngine? _playbackEngine;

@@ -52,7 +52,22 @@ public partial class AudioStreamingBackend
     {
         var session = record.Session;
         var chatId = record.ChatId;
-        var beginsAt = Clocks.SystemClock.Now;
+        // Use client's server-synced clock (same as video) for consistent A/V timing.
+        // Previously used Clocks.SystemClock.Now which added client→server transit time
+        // to the timestamp, causing audio recordedAtMs to be on a different clock base
+        // than video startedAtMs and breaking AudioVideoSync calculations.
+        var beginsAt = default(Moment) + TimeSpan.FromSeconds(record.ClientStartOffset);
+        var serverNow = Clocks.ServerClock.Now;
+        var clockDelta = serverNow - beginsAt;
+        if (Math.Abs(clockDelta.TotalSeconds) > 5) {
+            Log.LogWarning(
+                "ProcessAudio: client clock skew {ClockDeltaMs:F0}ms for chat {ChatId}, using server clock",
+                clockDelta.TotalMilliseconds, chatId);
+            beginsAt = serverNow;
+        }
+        Log.LogInformation(
+            "ProcessAudio: chatId={ChatId}, clientStartOffset={ClientStartOffset:F3}s, delta={DeltaMs:F0}ms",
+            chatId, record.ClientStartOffset, clockDelta.TotalMilliseconds);
         var rules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         rules.Require(ChatPermissions.Write);
 

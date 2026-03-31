@@ -62,6 +62,12 @@ public sealed class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         var audioInitializer = Hub.AudioInitializer;
         await audioInitializer.WhenInitialized.ConfigureAwait(false);
 
+        // Ensure server clock is synced before recording — JS ServerClock.now() needs
+        // a valid offset for accurate ClientStartOffset timestamps (same as VideoRecorder)
+        var serverTimeSync = Hub.Services.GetService<ServerTimeSync>();
+        if (serverTimeSync != null)
+            await serverTimeSync.EnsureSynced(cancellationToken).ConfigureAwait(false);
+
         using var releaser = await _stateLock.Lock(cancellationToken).ConfigureAwait(false);
         releaser.MarkLockedLocally();
 

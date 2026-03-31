@@ -44,20 +44,13 @@ public class ServerTimeSync : WorkerBase
     }
 
     protected override Task OnRun(CancellationToken cancellationToken)
-    {
-        if (!HostInfo.HostKind.IsApp()) {
-            Log.LogInformation("Exit: not a client");
-            return Task.CompletedTask;
-        }
-
-        return AsyncChain.From(Sync)
+        => AsyncChain.From(Sync)
             .RetryForever(RetryDelaySeq.Exp(0.5, 60))
             .AppendDelay(GetNextSyncDelay)
             .CycleForever()
             .Log(LogLevel.Debug, Log)
             .PrependDelay(TimeSpan.FromSeconds(3))
             .RunIsolated(cancellationToken);
-    }
 
     private TimeSpan GetNextSyncDelay()
     {
