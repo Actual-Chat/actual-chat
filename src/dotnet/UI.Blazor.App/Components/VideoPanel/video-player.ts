@@ -861,19 +861,21 @@ export class VideoPlayer {
         // After reset, delta frames are useless — need a fresh keyframe
         this.waitingForKeyframe = true;
 
-        // Set threshold to skip stale encoded frames arriving from SignalR
-        const targetLatencyMs = Math.max(this.pipelineLatencyMs, 300);
-        this.skipFramesBelowOffsetMs = (ServerClock.now() - this.startedAtMs) - targetLatencyMs;
-
-        warnLog?.log(
-            `Tab restored: flushed ${pendingCount} pending frames, decoder reset, ` +
-            `waiting for keyframe above offset ${this.skipFramesBelowOffsetMs.toFixed(0)}ms`);
-
         // Reset timing anchor so playback re-syncs on next rendered frame
         this.playbackStartTime = 0;
         this.playbackRate = 1.0;
         this.lastSeekTime = 0;
         this.rebufferDelayMs = 300;
+
+        // Dispose current pull and re-request from live offset (skip-to-live)
+        this.pullSubscription?.dispose();
+        this.pullSubscription = null;
+        this.pipelineLatencyMs = 0;
+        const skipToMs = Math.max(0, ServerClock.now() - this.startedAtMs);
+        warnLog?.log(
+            `Tab restored: flushed ${pendingCount} pending frames, decoder reset, ` +
+            `re-requesting stream from offset ${skipToMs.toFixed(0)}ms`);
+        void this.startPull(this.streamId, skipToMs);
     }
 
     /** Called by Blazor */
