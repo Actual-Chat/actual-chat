@@ -123,7 +123,8 @@ internal static class Program
                     ["EnableAnalyzer"] = "false",
                     ["EnableNETAnalyzers"] = "false"
                 },
-                cts);
+                cts,
+                Path.Combine("tmp", "watch-dotnet.log"));
             using var npmWatch = ProcessWatch.Start(
                 "web",
                 Utils.FindNpmExe(),
@@ -132,7 +133,8 @@ internal static class Program
                 new () {
                     ["CI"] = "true"
                 },
-                cts);
+                cts,
+                Path.Combine("tmp", "watch-web.log"));
             await Task.WhenAny(npmWatch.WaitForExit(), dotnetWatch.WaitForExit()).ConfigureAwait(false);
 
             Console.WriteLine(Yellow("The watching is over"));
