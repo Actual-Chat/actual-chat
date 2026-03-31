@@ -77,9 +77,6 @@ public sealed class LocalVideoUploadProcessor(ILogger<LocalVideoUploadProcessor>
             var convertedFilePath = tempDir | convertedFileName;
             if (mustScale)
                 size = UploadProcessorHelper.ScaleToFullHd(size);
-            // Scale filter operates on raw (unrotated) pixels, so swap dimensions for rotated video
-            var isRotated = videoStream.Rotation is 90 or 270 or -90 or -270;
-            var scaleSize = mustScale && isRotated ? new Size(size.Height, size.Width) : size;
             var ffMpegArguments = FFMpegArguments.FromFileInput(upload.TempFilePath)
                 .OutputToFile(convertedFilePath,
                     false,
@@ -88,7 +85,7 @@ public sealed class LocalVideoUploadProcessor(ILogger<LocalVideoUploadProcessor>
                             .WithFastStart()
                             .WithVariableBitrate(4);
                         if (mustScale)
-                            options.WithVideoFilters(vf => vf.Scale(scaleSize.Width, scaleSize.Height));
+                            options.WithVideoFilters(vf => vf.Scale(size.Width, size.Height));
                     });
             if (progress is not null) {
                 // Progress from 20% to 98% during conversion
