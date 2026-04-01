@@ -16,7 +16,7 @@ import * as path from 'path';
 
 // --- Configuration ---
 
-const CHROME_HOST = '192.168.65.254';
+const CHROME_HOST = process.env.AC_OS === 'Linux in Docker' ? '192.168.65.254' : 'localhost';
 const CHROME_PORT = 9222;
 const TEST_EMAIL = 'test-claude-agent@actual.chat';
 const TEST_OTP = '111111';
