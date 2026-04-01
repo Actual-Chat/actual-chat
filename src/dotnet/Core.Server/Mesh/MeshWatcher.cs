@@ -77,18 +77,8 @@ public sealed class MeshWatcher : WorkerBase, IHasServices
         if (lastState.IsFinal || StopToken.IsCancellationRequested)
             return lastState.ToFinal();
 
-        var lastAllNodes = lastState.AllNodes;
         var onlineNodes = (await _onlineNodes.Use(cancellationToken).ConfigureAwait(false)).ToDictionary(x => x.Ref);
-        var newOnlineNodes = onlineNodes.Values.Where(x => !lastAllNodes.ContainsKey(x.Ref)).ToList();
-        var allNodes = lastAllNodes.Values.Select(node => {
-            var isOnline = onlineNodes.ContainsKey(node.Ref);
-            return node.State switch {
-                MeshNodeState.Online => isOnline ? node : node.ToDead(),
-                MeshNodeState.Dead => node,
-                _ => throw StandardError.Internal("Unexpected MeshNode.State: " + node.State),
-            };
-        }).Concat(newOnlineNodes).ToImmutableDictionary(x => x.Ref);
-        allNodes = allNodes.AddRange(onlineNodes.Where(kv => !lastAllNodes.ContainsKey(kv.Key)));
+        var allNodes = onlineNodes.ToImmutableDictionary();
 
         // Composing the final state
         var result = new MeshState(Clock, allNodes);
