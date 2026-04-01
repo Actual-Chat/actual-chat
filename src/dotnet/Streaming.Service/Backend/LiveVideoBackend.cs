@@ -1,3 +1,4 @@
+using ActualChat.Video;
 using ActualLab.Redis;
 using StreamingContext = ActualChat.Streaming.Db.StreamingContext;
 
@@ -67,13 +68,23 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     {
         BumpChatEntry(chatId);
 
+        // Read existing streams once — needed for both screencast and webcam checks
+        var existingStreams = await SafeGetAll(StreamsStore, chatId).ConfigureAwait(false);
+
         // Enforce single screencaster per chat
         if (streamInfo.StreamKind == StreamKind.Screencast) {
-            var existingStreams = await SafeGetAll(StreamsStore, chatId).ConfigureAwait(false);
             var hasExistingScreencast = existingStreams.Values
                 .Any(s => s.StreamKind == StreamKind.Screencast && s.StreamId != streamInfo.StreamId);
             if (hasExistingScreencast)
                 throw new InvalidOperationException("Another screencast is already active in this chat.");
+        }
+
+        // Enforce webcam stream cap
+        if (streamInfo.StreamKind == StreamKind.Webcam) {
+            var webcamCount = existingStreams.Values
+                .Count(s => s.StreamKind == StreamKind.Webcam && s.StreamId != streamInfo.StreamId);
+            if (webcamCount >= Constants.Video.MaxWebcamStreamsPerChat)
+                throw new VideoStreamLimitExceededException(chatId, webcamCount);
         }
 
         Log.LogWarning("RegisterActiveStream({ChatId}): #{StreamId}, AuthorId={AuthorId}, StreamKind={StreamKind}",
