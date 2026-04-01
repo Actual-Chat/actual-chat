@@ -177,6 +177,9 @@ body.narrow .video-panel.expanded .collapsed-video-btn {
 .video-panel.expanded .remote-video-container.focused canvas.remote-video {
     @apply object-cover;
 }
+.video-panel.expanded .remote-video-container.focused.screencast canvas.remote-video {
+    @apply object-contain;
+}
 /* Previous speaker overlay — small PiP above local preview */
 .video-panel .remote-video-container.previous-speaker {
     @apply z-20 inset-auto right-1 bottom-[10.5rem];
