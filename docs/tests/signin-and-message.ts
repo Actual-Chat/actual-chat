@@ -55,7 +55,7 @@ async function main() {
 
     try {
         console.log(`Navigating to ${BASE_URL}...`);
-        await page.goto(BASE_URL, { waitUntil: 'networkidle' });
+        await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
         await page.waitForTimeout(2000);
 
         // Handle cookie consent
@@ -76,8 +76,9 @@ async function main() {
             console.log('Starting sign-in flow...');
 
             // Click "Sign in" button in header
-            const signInButton = page.locator('button.signin-button-group');
-            await signInButton.click({ timeout: 10000 });
+            const signInButton = page.locator('button.signin-button-group, button.signin-button').first();
+            await signInButton.waitFor({ state: 'visible', timeout: 10000 });
+            await signInButton.click();
             await page.waitForTimeout(2000);
             await page.screenshot({ path: screenshotPath('after-signin-click') });
 
@@ -167,7 +168,7 @@ async function main() {
 
         // Navigate to announcements chat
         console.log('Navigating to announcements chat...');
-        await page.goto(`${BASE_URL}/chat/the-actual-one`, { waitUntil: 'networkidle' });
+        await page.goto(`${BASE_URL}/chat/the-actual-one`, { waitUntil: 'domcontentloaded' });
         await page.waitForTimeout(3000);
 
         // Skip onboarding and bubbles again (in case they weren't loaded before)
