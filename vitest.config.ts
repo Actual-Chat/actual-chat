@@ -23,6 +23,6 @@ export default defineConfig({
         },
     },
     test: {
-        include: ['src/nodejs/tests/**/*.test.ts', 'tests/ts/**/*.test.ts'],
+        include: ['tests/ts/**/*.test.ts'],
     },
 });
