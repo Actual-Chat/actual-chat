@@ -122,6 +122,39 @@
         _whenCompletedSource.TrySetResult();
     }
 
+    [JSInvokable]
+    public void OnRequestQualityReduction(string codecCategory)
+    {
+        Log.LogWarning(
+            "[VideoTrackPlayer #{StreamId}] OnRequestQualityReduction: codec={Codec} — decode too slow, requesting lower quality",
+            StreamInfo.StreamId, codecCategory);
+        // TODO: Request lower quality preset from sender via existing quality request mechanism
+    }
+
+    [JSInvokable]
+    public async Task OnCodecTooSlow(string codecCategory)
+    {
+        Log.LogWarning(
+            "[VideoTrackPlayer #{StreamId}] OnCodecTooSlow: codec={Codec} — excluding from supported decoders",
+            StreamInfo.StreamId, codecCategory);
+        try {
+            // Exclude the codec and re-register with updated supported list
+            await JS.InvokeVoidAsync($"{BlazorUIAppModule.ImportName}.excludeDecoderCodec", codecCategory);
+            var decoderCodecs = await JS.InvokeAsync<string[]>(
+                $"{BlazorUIAppModule.ImportName}.detectSupportedDecoderCodecs");
+            await LiveVideoStreams.RegisterMember(
+                Session, StreamInfo.ChatId, new ApiArray<string>(decoderCodecs), CancellationToken.None);
+            Log.LogWarning(
+                "[VideoTrackPlayer #{StreamId}] Re-registered with codecs: [{Codecs}]",
+                StreamInfo.StreamId, string.Join(", ", decoderCodecs));
+        }
+        catch (Exception ex) {
+            Log.LogError(ex,
+                "[VideoTrackPlayer #{StreamId}] Failed to re-register after codec exclusion",
+                StreamInfo.StreamId);
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (_isDisposed)

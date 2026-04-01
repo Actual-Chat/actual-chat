@@ -314,50 +314,77 @@ async function isDecoderCodecSupported(codec: string, width: number, height: num
     return false;
 }
 
+// Runtime codec exclusion — codecs that technically decode but can't sustain realtime throughput
+const excludedDecoderCodecs = new Set<string>();
+
+/** Exclude a decoder codec category at runtime (persists for JS module lifetime). */
+export function excludeDecoderCodec(codec: string): void {
+    if (codec === 'h264') return; // never exclude h264 — universal fallback
+    warnLog?.log(`Excluding decoder codec: ${codec}`);
+    excludedDecoderCodecs.add(codec);
+}
+
+/** Get the set of runtime-excluded decoder codecs. */
+export function getExcludedDecoderCodecs(): string[] {
+    return [...excludedDecoderCodecs];
+}
+
 export async function detectSupportedDecoderCodecs(): Promise<string[]> {
     const codecs: string[] = ['h264']; // H.264 always assumed supported
 
     // AV1 — test both levels actually used in practice
-    try {
-        const av1Supported = await isDecoderCodecSupported('av01.0.08M.08', 1280, 720)
-            || await isDecoderCodecSupported('av01.0.05M.08', 1280, 720);
-        warnLog?.log(`Decoder AV1 (av01.0.08M.08): supported=${av1Supported}`);
-        if (av1Supported) codecs.push('av1');
-    } catch (e) {
-        warnLog?.log(`Decoder AV1 (av01.0.08M.08): error=${e}`);
+    if (!excludedDecoderCodecs.has('av1')) {
+        try {
+            const av1Supported = await isDecoderCodecSupported('av01.0.08M.08', 1280, 720)
+                || await isDecoderCodecSupported('av01.0.05M.08', 1280, 720);
+            warnLog?.log(`Decoder AV1 (av01.0.08M.08): supported=${av1Supported}`);
+            if (av1Supported) codecs.push('av1');
+        } catch (e) {
+            warnLog?.log(`Decoder AV1 (av01.0.08M.08): error=${e}`);
+        }
+    } else {
+        warnLog?.log(`Decoder AV1: excluded at runtime (too slow for realtime)`);
     }
 
     // HEVC — try multiple codec strings
-    let hevcSupported = false;
-    for (const hevcCodec of [
-        'hev1.1.6.L120.B0',    // hev1 Main L4.0
-        'hev1.1.6.L93.B0',     // hev1 Main L3.1
-        'hvc1.1.6.L120.B0',    // hvc1 Main L4.0 (iOS Safari)
-        'hvc1.1.6.L93.90',     // hvc1 Main L3.1 (iOS Safari variant)
-    ]) {
-        try {
-            if (await isDecoderCodecSupported(hevcCodec, 1280, 720)) {
-                warnLog?.log(`Decoder HEVC (${hevcCodec}): supported=true`);
-                hevcSupported = true;
-                break;
+    if (!excludedDecoderCodecs.has('hevc')) {
+        let hevcSupported = false;
+        for (const hevcCodec of [
+            'hev1.1.6.L120.B0',    // hev1 Main L4.0
+            'hev1.1.6.L93.B0',     // hev1 Main L3.1
+            'hvc1.1.6.L120.B0',    // hvc1 Main L4.0 (iOS Safari)
+            'hvc1.1.6.L93.90',     // hvc1 Main L3.1 (iOS Safari variant)
+        ]) {
+            try {
+                if (await isDecoderCodecSupported(hevcCodec, 1280, 720)) {
+                    warnLog?.log(`Decoder HEVC (${hevcCodec}): supported=true`);
+                    hevcSupported = true;
+                    break;
+                }
+                warnLog?.log(`Decoder HEVC (${hevcCodec}): supported=false`);
+            } catch (e) {
+                warnLog?.log(`Decoder HEVC (${hevcCodec}): error=${e}`);
             }
-            warnLog?.log(`Decoder HEVC (${hevcCodec}): supported=false`);
-        } catch (e) {
-            warnLog?.log(`Decoder HEVC (${hevcCodec}): error=${e}`);
         }
+        if (hevcSupported) codecs.push('hevc');
+    } else {
+        warnLog?.log(`Decoder HEVC: excluded at runtime (too slow for realtime)`);
     }
-    if (hevcSupported) codecs.push('hevc');
 
     // VP9
-    try {
-        const vp9Supported = await isDecoderCodecSupported('vp09.00.31.08', 1280, 720);
-        warnLog?.log(`Decoder VP9 (vp09.00.31.08): supported=${vp9Supported}`);
-        if (vp9Supported) codecs.push('vp9');
-    } catch (e) {
-        warnLog?.log(`Decoder VP9 (vp09.00.31.08): error=${e}`);
+    if (!excludedDecoderCodecs.has('vp9')) {
+        try {
+            const vp9Supported = await isDecoderCodecSupported('vp09.00.31.08', 1280, 720);
+            warnLog?.log(`Decoder VP9 (vp09.00.31.08): supported=${vp9Supported}`);
+            if (vp9Supported) codecs.push('vp9');
+        } catch (e) {
+            warnLog?.log(`Decoder VP9 (vp09.00.31.08): error=${e}`);
+        }
+    } else {
+        warnLog?.log(`Decoder VP9: excluded at runtime (too slow for realtime)`);
     }
 
-    warnLog?.log(`DECODER_CODECS: [${codecs.join(', ')}]`);
+    warnLog?.log(`DECODER_CODECS: [${codecs.join(', ')}]${excludedDecoderCodecs.size > 0 ? ` (excluded: [${[...excludedDecoderCodecs].join(', ')}])` : ''}`);
     return codecs;
 }
 

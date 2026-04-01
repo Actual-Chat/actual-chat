@@ -26,6 +26,12 @@ const { debugLog, warnLog, errorLog } = Log.get('VideoPlayer');
 // Skip-to-live: client detects high latency and re-requests stream from next keyframe
 const SKIP_TO_LIVE_THRESHOLD_MS = 3000; // Matches Constants.Video.SkipToLiveThresholdMs
 
+// Decode performance thresholds — if exceeded on consecutive ticks, trigger quality reduction / codec exclusion
+const SLOW_DECODE_TIME_THRESHOLD_MS = 100; // 3x the 33ms/frame budget at 30fps
+const SLOW_DECODE_QUEUE_THRESHOLD = 10;    // Normal is 0-1; 10+ means decoder is ~300ms behind
+const QUALITY_REDUCTION_TICK_COUNT = 2;    // ~10s of sustained bad performance → request quality reduction
+const CODEC_EXCLUSION_TICK_COUNT = 3;      // ~15s after quality reduction still bad → exclude codec
+
 interface PendingFrame {
     drawable: VideoFrame | ImageBitmap;
     timestamp: number;
@@ -109,6 +115,11 @@ export class VideoPlayer {
     private lastSeekTime = 0;                     // cooldown for hard seek
     private readonly seekCooldownMs = 5000;       // min interval between hard seeks
 
+    // Decode performance tracking (Phase 1 & 2: quality reduction / codec exclusion)
+    private codecSlowTickCount = 0;            // consecutive bad decode ticks (each tick = 5s)
+    private qualityReductionRequested = false;  // true after Phase 1 quality reduction was requested
+    private codecCategory: string = '';         // 'av1', 'hevc', 'vp9', 'h264' — derived from codec string
+
     // Audio sync
     private startedAtMs: number;
 
@@ -185,34 +196,42 @@ export class VideoPlayer {
                 debugLog?.log(`Decoded description: ${bytes.length} bytes`);
             }
 
-            // Map codec name to WebCodecs codec string
-            const codecString = this.mapCodecToWebCodecs(codec, description);
-            debugLog?.log(`Initializing decoder worker with codec: ${codecString}`);
+            // Build ordered list of candidate codec strings to try
+            const candidates = this.getCodecCandidates(codec, description);
+            debugLog?.log(`Codec candidates: [${candidates.join(', ')}]`);
 
-            // Check if codec is supported before creating decoder
-            // Try prefer-hardware first, fall back to no-preference (some devices
-            // report a codec as unsupported with prefer-hardware but work fine in SW)
-            let decoderSupported = false;
+            // Try each candidate with hardware preference, then software fallback
+            let codecString: string | null = null;
             let bestAcceleration: HardwareAcceleration = 'prefer-hardware';
-            for (const accel of ['prefer-hardware', 'no-preference'] as const) {
-                try {
-                    const { supported } = await VideoDecoder.isConfigSupported({
-                        codec: codecString,
-                        hardwareAcceleration: accel,
-                    });
-                    if (supported) {
-                        decoderSupported = true;
-                        bestAcceleration = accel;
-                        break;
-                    }
-                } catch { /* continue to next */ }
+            for (const candidate of candidates) {
+                for (const accel of ['prefer-hardware', 'no-preference'] as const) {
+                    try {
+                        const { supported } = await VideoDecoder.isConfigSupported({
+                            codec: candidate,
+                            hardwareAcceleration: accel,
+                        });
+                        if (supported) {
+                            codecString = candidate;
+                            bestAcceleration = accel;
+                            break;
+                        }
+                    } catch { /* continue to next */ }
+                }
+                if (codecString) break;
             }
-            if (!decoderSupported) {
-                warnLog?.log(`Codec ${codecString} is not supported on this device, skipping decoder init`);
+            if (!codecString) {
+                warnLog?.log(`No supported codec found among candidates: [${candidates.join(', ')}]`);
                 this.isPlaying = false;
-                void this.reportEnded(`Codec ${codecString} not supported`);
+                void this.reportEnded(`Codec not supported`);
                 return;
             }
+            debugLog?.log(`Selected decoder codec: ${codecString} (accel: ${bestAcceleration})`);
+            debugLog?.log(`Initializing decoder worker with codec: ${codecString}`);
+
+            // Derive codec category for performance tracking
+            this.codecCategory = VideoPlayer.getCodecCategory(codecString);
+            this.codecSlowTickCount = 0;
+            this.qualityReductionRequested = false;
 
             this.decoderConfig = {
                 codec: codecString,
@@ -265,39 +284,69 @@ export class VideoPlayer {
         return typeof VideoDecoder !== 'undefined';
     }
 
-    private mapCodecToWebCodecs(codec: string, description?: ArrayBuffer): string {
-        // Defense-in-depth: detect description format and derive codec string
-        if (description && description.byteLength >= 5) {
-            // Check HVCC (HEVC) first — it can false-positive as avcC since both start with 0x01
-            if (VideoPlayer.isHvccDescription(description)) {
-                const bytes = new Uint8Array(description);
-                // Extract HEVC profile/tier/level from HVCC structure
-                const generalProfileIdc = bytes[1] & 0x1F;
-                const tier = (bytes[1] >> 5) & 0x01;
-                const tierStr = tier ? 'H' : 'L';
-                // Always use Level 4.0 (120) for decoder — sender HW encoders may write
-                // incorrect levels (e.g., L90 for 720p) causing Chrome SW decode fallback
-                const codecString = `hev1.${generalProfileIdc}.6.${tierStr}120.B0`;
-                const declaredLower = codec.toLowerCase();
-                if (!declaredLower.startsWith('hev1') && !declaredLower.startsWith('hvc1')
-                    && declaredLower !== 'hevc' && declaredLower !== 'h265') {
-                    warnLog?.log(`Codec mismatch: declared=${codec} but description is HVCC, overriding to ${codecString}`);
+    /**
+     * Build an ordered list of codec string candidates for decoder configuration.
+     * For HEVC: tries description-derived (ground truth), then stream metadata, then hardcoded fallback.
+     * For other codecs: returns a single candidate from the legacy mapping.
+     */
+    private getCodecCandidates(codec: string, description?: ArrayBuffer): string[] {
+        if (description && description.byteLength >= 5 && VideoPlayer.isHvccDescription(description)) {
+            const bytes = new Uint8Array(description);
+            const generalProfileIdc = bytes[1] & 0x1F;
+            const tier = (bytes[1] >> 5) & 0x01;
+            const tierStr = tier ? 'H' : 'L';
+            const generalLevelIdc = bytes[12]; // actual level from encoder
+
+            const candidates: string[] = [];
+            const seen = new Set<string>();
+            const addCandidate = (c: string) => {
+                if (!seen.has(c)) {
+                    seen.add(c);
+                    candidates.push(c);
                 }
-                return codecString;
+            };
+
+            // 1. Derived from HVCC binary description (ground truth from encoder) — both hev1 and hvc1 prefixes
+            addCandidate(`hev1.${generalProfileIdc}.6.${tierStr}${generalLevelIdc}.B0`);
+            addCandidate(`hvc1.${generalProfileIdc}.6.${tierStr}${generalLevelIdc}.B0`);
+
+            // 2. Stream metadata codec string (sender's declared codec, if it's a full HEVC string)
+            const lc = codec.toLowerCase();
+            if (lc.startsWith('hev1.') || lc.startsWith('hvc1.')) {
+                addCandidate(codec);
             }
 
-            if (VideoPlayer.isAvcCDescription(description)) {
-                const bytes = new Uint8Array(description);
-                const profileIndication = bytes[1];
-                const profileCompatibility = bytes[2];
-                const levelIndication = bytes[3];
-                const codecString = `avc1.${profileIndication.toString(16).padStart(2, '0')}${profileCompatibility.toString(16).padStart(2, '0')}${levelIndication.toString(16).padStart(2, '0')}`;
-                const declaredLower = codec.toLowerCase();
-                if (declaredLower !== 'h264' && declaredLower !== 'avc1' && !declaredLower.startsWith('avc1.')) {
-                    warnLog?.log(`Codec mismatch: declared=${codec} but description is avcC, overriding to ${codecString}`);
-                }
-                return codecString;
+            // 3. Hardcoded Level 4.0 fallback (safe default for buggy HW encoders
+            //    that write incorrect levels causing Chrome SW decode fallback) — both prefixes
+            addCandidate(`hev1.${generalProfileIdc}.6.${tierStr}120.B0`);
+            addCandidate(`hvc1.${generalProfileIdc}.6.${tierStr}120.B0`);
+
+            const declaredLower = codec.toLowerCase();
+            if (!declaredLower.startsWith('hev1') && !declaredLower.startsWith('hvc1')
+                && declaredLower !== 'hevc' && declaredLower !== 'h265') {
+                warnLog?.log(`Codec mismatch: declared=${codec} but description is HVCC`);
             }
+
+            return candidates;
+        }
+
+        // Non-HEVC codecs: single candidate from legacy mapping
+        return [this.mapCodecToWebCodecs(codec, description)];
+    }
+
+    private mapCodecToWebCodecs(codec: string, description?: ArrayBuffer): string {
+        // Derive H.264 codec string from avcC description bytes
+        if (description && description.byteLength >= 5 && VideoPlayer.isAvcCDescription(description)) {
+            const bytes = new Uint8Array(description);
+            const profileIndication = bytes[1];
+            const profileCompatibility = bytes[2];
+            const levelIndication = bytes[3];
+            const codecString = `avc1.${profileIndication.toString(16).padStart(2, '0')}${profileCompatibility.toString(16).padStart(2, '0')}${levelIndication.toString(16).padStart(2, '0')}`;
+            const declaredLower = codec.toLowerCase();
+            if (declaredLower !== 'h264' && declaredLower !== 'avc1' && !declaredLower.startsWith('avc1.')) {
+                warnLog?.log(`Codec mismatch: declared=${codec} but description is avcC, overriding to ${codecString}`);
+            }
+            return codecString;
         }
 
         // If we have an avcC description and declared H.264, extract the actual profile
@@ -342,6 +391,16 @@ export class VideoPlayer {
      *   byte[12] = general_level_idc
      *   ...minimum 23 bytes total before nalu arrays
      */
+
+    private static getCodecCategory(codecString: string): string {
+        const lc = codecString.toLowerCase();
+        if (lc.startsWith('hev1') || lc.startsWith('hvc1')) return 'hevc';
+        if (lc.startsWith('av01')) return 'av1';
+        if (lc.startsWith('vp09') || lc.startsWith('vp9')) return 'vp9';
+        if (lc.startsWith('avc1') || lc.startsWith('h264')) return 'h264';
+        return 'unknown';
+    }
+
     private static isHvccDescription(description: ArrayBuffer): boolean {
         // HVCC minimum size is 23 bytes (header before nalu arrays)
         if (description.byteLength < 23) return false;
@@ -894,6 +953,9 @@ export class VideoPlayer {
         this.lastSeekTime = 0;
         this.rebufferDelayMs = 300;
 
+        // Reset decode performance tracking — Chrome may have throttled the decoder while hidden
+        this.codecSlowTickCount = 0;
+
         // Dispose current pull and re-request from live offset (skip-to-live)
         this.pullSubscription?.dispose();
         this.pullSubscription = null;
@@ -1160,6 +1222,38 @@ export class VideoPlayer {
                     `bufSpanMs=${currentBufferSpanMs.toFixed(0)} ` +
                     `recv=${recvDelta} decoded=${decodedDelta} drop=${ds.droppedFrames} ` +
                     `res=${ds.resolution} hw=${ds.hardwareAcceleration}`);
+
+                // Decode performance tracking — detect codecs that can't sustain realtime
+                const isBadTick = ds.medianDecodeTime > SLOW_DECODE_TIME_THRESHOLD_MS
+                    || ds.decodeQueueSize > SLOW_DECODE_QUEUE_THRESHOLD;
+                if (isBadTick) {
+                    this.codecSlowTickCount++;
+                    if (!this.qualityReductionRequested && this.codecSlowTickCount >= QUALITY_REDUCTION_TICK_COUNT) {
+                        // Phase 1: request quality reduction from the sender
+                        warnLog?.log(
+                            `SLOW_DECODE: ${this.codecSlowTickCount} consecutive bad ticks for ${this.codecCategory}, ` +
+                            `requesting quality reduction (medianDecode=${ds.medianDecodeTime.toFixed(1)}ms, ` +
+                            `queueDepth=${ds.decodeQueueSize})`);
+                        this.qualityReductionRequested = true;
+                        this.codecSlowTickCount = 0; // reset, give reduced quality time to take effect
+                        void this.blazorRef.invokeMethodAsync('OnRequestQualityReduction', this.codecCategory);
+                    } else if (this.qualityReductionRequested && this.codecSlowTickCount >= CODEC_EXCLUSION_TICK_COUNT
+                        && this.codecCategory !== 'h264' && this.codecCategory !== 'unknown') {
+                        // Phase 2: quality reduction didn't help — exclude codec entirely
+                        warnLog?.log(
+                            `SLOW_DECODE: codec ${this.codecCategory} too slow even after quality reduction ` +
+                            `(${this.codecSlowTickCount} more bad ticks), excluding codec`);
+                        void this.blazorRef.invokeMethodAsync('OnCodecTooSlow', this.codecCategory);
+                        void this.reportEnded('Codec too slow for realtime playback');
+                        return;
+                    }
+                } else {
+                    if (this.codecSlowTickCount > 0) {
+                        debugLog?.log(`SLOW_DECODE: reset — good tick after ${this.codecSlowTickCount} bad ticks`);
+                    }
+                    this.codecSlowTickCount = 0;
+                    this.qualityReductionRequested = false;
+                }
 
                 // A/V sync diagnostics
                 const audioState = AudioVideoSync.get(this.authorId);
