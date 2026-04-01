@@ -66,6 +66,11 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         // and wait for a fresh keyframe at the live edge for near-zero latency.
         stream = SkipToNextKeyFrame(LogFrames(stream), Log, cancellationToken);
 
+        // Wrap with pause filtering — when stream is paused, hold frames until resumed
+        if (_latencyStates.TryGetValue(streamId, out var pauseState) && pauseState.ChatId != default) {
+            stream = PauseAwareFilter(pauseState.ChatId, streamId, stream, cancellationToken);
+        }
+
         return RpcStream.New(stream);
     }
 
@@ -124,13 +129,36 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
     // [ComputeMethod]
     public virtual async Task<VideoQualityPreset> GetQualityPreset(StreamId streamId, CancellationToken cancellationToken)
     {
-        if (_latencyStates.TryGetValue(streamId, out var latencyState))
+        // Check if the stream is paused by the priority evaluator
+        if (_latencyStates.TryGetValue(streamId, out var latencyState)) {
+            if (latencyState.ChatId != default) {
+                var isPaused = await LiveVideoBackend.IsStreamPaused(
+                    latencyState.ChatId, streamId, cancellationToken).ConfigureAwait(false);
+                if (isPaused)
+                    return VideoQualityPreset.Paused;
+            }
             return await latencyState.QualityPreset.Use(cancellationToken).ConfigureAwait(false);
+        }
 
         return VideoQualityPreset.High;
     }
 
     // Private methods
+
+    private async IAsyncEnumerable<VideoFrame> PauseAwareFilter(
+        ChatId chatId,
+        StreamId streamId,
+        IAsyncEnumerable<VideoFrame> source,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+            var isPaused = await LiveVideoBackend.IsStreamPaused(chatId, streamId, cancellationToken)
+                .ConfigureAwait(false);
+            if (!isPaused)
+                yield return frame;
+            // When paused, frames are silently dropped — viewer sees last decoded frame frozen
+        }
+    }
 
     private void OnVideoStreamExpire(StreamId streamId)
         => _latencyStates.TryRemove(streamId, out _);
@@ -232,7 +260,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         await LiveVideoBackend.Register(record.ChatId, streamInfo, cancellationToken)
             .ConfigureAwait(false);
 
-        _latencyStates[record.StreamId] = new StreamLatencyState(beginsAt, record.Format, Services.StateFactory(), Log);
+        _latencyStates[record.StreamId] = new StreamLatencyState(record.ChatId, beginsAt, record.Format, Services.StateFactory(), Log);
 
         try {
             // Publish video stream for real-time viewing
@@ -334,11 +362,12 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         }
     }
 
-    public sealed class StreamLatencyState(Moment startedAt, VideoFormat format, StateFactory stateFactory, ILogger log)
+    public sealed class StreamLatencyState(ChatId chatId, Moment startedAt, VideoFormat format, StateFactory stateFactory, ILogger log)
     {
         private readonly ILogger Log = log;
         private readonly ILogger? DebugLog = log.IfEnabled(LogLevel.Debug);
 
+        public ChatId ChatId { get; } = chatId;
         public Moment StartedAt { get; } = startedAt;
         public MutableState<VideoQualityPreset> QualityPreset { get; } = stateFactory.NewMutable(VideoQualityPreset.High);
 
