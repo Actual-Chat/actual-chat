@@ -526,7 +526,7 @@ function deliverChunkToStream(
         const canCreateStream = codecSettings ?? (isAV1 && isKeyFrame);
         if (canCreateStream) {
             const settings = codecSettings ?? '';
-            infoLog?.log(`Creating VideoStream with codecSettings (${settings.length} chars)`);
+            infoLog?.log(`Creating VideoStream: codec=${encoderConfig!.codec}, ${encoderConfig!.width}x${encoderConfig!.height}, codecSettings=${settings.length} chars`);
             videoStream = new InternalVideoStream(
                 { codec: encoderConfig!.codec, width: encoderConfig!.width, height: encoderConfig!.height, codecSettings: settings },
                 streamCtx,
