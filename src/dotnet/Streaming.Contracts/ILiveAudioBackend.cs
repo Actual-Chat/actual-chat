@@ -5,9 +5,6 @@ using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
 
-/// <summary>
-/// Backend service for managing live audio streams in chats.
-/// </summary>
 [BackendService(nameof(HostRole.LiveBackend), ServiceMode.Distributed)]
 [BackendShardScheme(nameof(HostRole.LiveBackend))]
 public interface ILiveAudioBackend : IComputeService, IBackendService
