@@ -8,17 +8,17 @@
     var markup = m.Markup;
     var entry = m.Entry;
     var oldTranslation = _rendered?.Translation ?? m.Translation;
-    var oldStreaming = _rendered?.Streaming.IsStreaming ?? m.Streaming.IsStreaming;
+    var oldIsStreaming = _rendered?.Streaming.IsStreaming ?? m.Streaming.IsStreaming;
     var oldRetainedText = _rendered?.Streaming.RetainedText;
-    if (oldStreaming && !m.IsStreaming) {
+    if (oldIsStreaming && !m.IsStreaming) {
         _temporaryText = oldRetainedText;
     }
 
     _rendered = m;
     var streamingCls = "";
-    if (!oldStreaming && !m.IsStreaming) {
+    if (!oldIsStreaming && !m.IsStreaming) {
         streamingCls = "not-streaming";
-    } else if (oldStreaming && !m.IsStreaming) {
+    } else if (oldIsStreaming && !m.IsStreaming) {
         streamingCls = "from-streaming";
     } else if (m.IsStreaming) {
         streamingCls = "streaming";
