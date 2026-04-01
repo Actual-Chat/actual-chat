@@ -4,7 +4,7 @@
 .video-recorder .call-video {
     @apply absolute inset-0;
     @apply w-full h-full;
-    @apply object-cover;
+    @apply object-contain;
     @apply bg-black;
     transform: scaleX(-1);
 }
