@@ -585,11 +585,21 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
                     // Keep encoder config at portrait dimensions — resizeFrame() rotate90 will
                     // rotate landscape frames into portrait before encoding
                 } else if (frameW !== encoderConfig.width || frameH !== encoderConfig.height) {
-                    warnLog?.log(`Display dimensions ${frameW}x${frameH} differ from config (coded: ${codedW}x${codedH}), reconfiguring`);
-                    encoderConfig.width = frameW; encoderConfig.height = frameH;
-                    await encoder.reconfigure({ width: frameW, height: frameH, bitrate: encoderConfig.bitrate });
-                    if (segConfig) { segConfig.outputWidth = frameW; segConfig.outputHeight = frameH; }
-                    void callbacks.onDimensionReconciled(frameW, frameH, rpcNoWait);
+                    const inputPixels = frameW * frameH;
+                    const configPixels = encoderConfig.width * encoderConfig.height;
+                    if (inputPixels <= configPixels) {
+                        // Input is smaller than config — reconfigure encoder to match
+                        // (avoids upscaling which wastes CPU for no quality gain)
+                        warnLog?.log(`Display dimensions ${frameW}x${frameH} smaller than config ${encoderConfig.width}x${encoderConfig.height}, reconfiguring`);
+                        encoderConfig.width = frameW; encoderConfig.height = frameH;
+                        await encoder.reconfigure({ width: frameW, height: frameH, bitrate: encoderConfig.bitrate });
+                        if (segConfig) { segConfig.outputWidth = frameW; segConfig.outputHeight = frameH; }
+                        void callbacks.onDimensionReconciled(frameW, frameH, rpcNoWait);
+                    } else {
+                        // Input is larger than config (e.g., 4K screen capture with 1080p encoder config).
+                        // Keep encoder at configured resolution — resizeFrame() will downscale.
+                        debugLog?.log(`Display dimensions ${frameW}x${frameH} larger than config ${encoderConfig.width}x${encoderConfig.height}, resize canvas will downscale`);
+                    }
                 }
             }
 

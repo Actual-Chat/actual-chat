@@ -67,7 +67,8 @@ export class VideoPlayer {
 
     // Buffering state
     private bufferSize = 0;
-    private readonly maxBufferSize = 15; // frames (reduced from 30 for faster latency recovery)
+    private readonly maxBufferSize = 20; // frames
+    private lastSoftCatchupLogTime = 0;
     private lastReportedBufferLow = true;
 
     // SignalR pull subscription
@@ -433,15 +434,15 @@ export class VideoPlayer {
             this.pipelineLatencyMs = this.pipelineLatencyMs * (1 - alpha) + cappedLatencyMs * alpha;
         }
 
-        // Soft catchup: when buffer exceeds 10 frames or 300ms span, drop oldest frames
-        // to keep only the most recent ~200ms. This prevents latency from creeping up
-        // during decoder spikes (e.g., transient GPU contention).
-        if (this.pendingFrames.length > 10) {
+        // Soft catchup: when buffer is significantly backed up, drop oldest frames
+        // to keep only the most recent ~300ms. Normal steady-state buffer span is ~330ms
+        // at 30fps, so only trigger when well above that (600ms = nearly double normal).
+        if (this.pendingFrames.length > 15) {
             const bufferSpanMs = this.pendingFrames.length >= 2
                 ? (this.pendingFrames[this.pendingFrames.length - 1].timestamp - this.pendingFrames[0].timestamp) / 1000
                 : 0;
-            if (bufferSpanMs > 300) {
-                const targetSpanUs = 200 * 1000; // keep ~200ms worth of frames
+            if (bufferSpanMs > 600) {
+                const targetSpanUs = 300 * 1000; // keep ~300ms worth of frames
                 const cutoffTimestamp = this.pendingFrames[this.pendingFrames.length - 1].timestamp - targetSpanUs;
                 let dropCount = 0;
                 while (this.pendingFrames.length > 1 && this.pendingFrames[0].timestamp < cutoffTimestamp) {
@@ -449,8 +450,13 @@ export class VideoPlayer {
                     this.bufferSize--;
                     dropCount++;
                 }
-                if (dropCount > 0)
-                    debugLog?.log(`Soft catchup: dropped ${dropCount} frames, bufferSpanMs was ${bufferSpanMs.toFixed(0)}`);
+                if (dropCount > 0) {
+                    const now = performance.now();
+                    if (now - this.lastSoftCatchupLogTime > 1000) {
+                        this.lastSoftCatchupLogTime = now;
+                        debugLog?.log(`Soft catchup: dropped ${dropCount} frames, bufferSpanMs was ${bufferSpanMs.toFixed(0)}`);
+                    }
+                }
             }
         }
 
