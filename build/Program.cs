@@ -108,6 +108,12 @@ internal static class Program
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && !RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
                 throw new WithoutStackException($"Watch is not implemented for '{RuntimeInformation.OSDescription}'. Use dotnet watch + web watch without build system");
 
+            // Re-enable build server reuse for faster hot-reload rebuilds in watch mode
+            // (globally disabled in SetEnvVariables for CI/non-watch targets)
+            Environment.SetEnvironmentVariable("UseRazorBuildServer", "true");
+            Environment.SetEnvironmentVariable("UseSharedCompilation", "true");
+            Environment.SetEnvironmentVariable("MSBUILDDISABLENODEREUSE", "0");
+
             // if one of process exits then close another on Cancel()
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             // cliwrap doesn't kill children of the process..
