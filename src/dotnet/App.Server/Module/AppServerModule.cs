@@ -177,7 +177,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         services.AddHostedService(c => c.GetRequiredService<AppHostLifecycleMonitor>());
 
         // Health-checks
-        services.AddSingleton<LivelinessHealthCheck>(c => new LivelinessHealthCheck(c));
+        services.AddSingleton<LivelinessHealthCheck>(c => new LivelinessHealthCheck());
         services.AddSingleton<ReadinessHealthCheck>(c => new ReadinessHealthCheck(c));
         services.AddHealthChecks()
             .AddCheck<LivelinessHealthCheck>("App-Liveliness", tags: [HealthTags.Live])

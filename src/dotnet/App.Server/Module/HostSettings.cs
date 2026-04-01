@@ -23,7 +23,6 @@ public sealed class HostSettings
     public string DataProtection { get; set; } = "";
     public string OpenTelemetryEndpoint { get; set; } = "";
 
-    public int? LivelinessCpuLimit { get; set; }
     public int? ReadinessCpuLimit { get; set; }
     public string MeshLockSubspace { get; set; } = ""; // "?" means "make it random"
     public string MeshLockOptionsPreset { get; set; } = "";
