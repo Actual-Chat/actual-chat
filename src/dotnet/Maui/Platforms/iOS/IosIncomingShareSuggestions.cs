@@ -8,8 +8,7 @@ namespace ActualChat.Maui;
 
 public class IosIncomingShareSuggestions(IServiceProvider services) : IncomingShareSuggestions(services)
 {
-    // ReSharper disable once HeuristicUnreachableCode
-    private const string ViewChatActivityType = MauiSettings.IsDevApp ? "ai.voxt.dev.viewChat" : "ai.voxt.viewChat";
+    private const string ViewChatActivityType = $"{MauiSettings.ReverseDomain}.viewChat";
 
     private NSUserActivity? _currentActivity;
 
@@ -111,5 +110,7 @@ public class IosIncomingShareSuggestions(IServiceProvider services) : IncomingSh
 
     private static string FormatTitle(string title)
         // ReSharper disable once HeuristicUnreachableCode
+ #pragma warning disable CS0162 // Unreachable code detected
         => MauiSettings.IsDevApp ? $"🛠{title}️" : title;
+ #pragma warning restore CS0162 // Unreachable code detected
 }

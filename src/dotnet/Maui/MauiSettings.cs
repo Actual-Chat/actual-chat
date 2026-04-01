@@ -19,6 +19,9 @@ public static class MauiSettings
     public const bool AreDevToolsEnabled = false;
 #endif
 #endif
+    // ReSharper disable once HeuristicUnreachableCode
+    public const string ReverseDomain = IsDevApp ? "ai.voxt.dev" : "ai.voxt";
+    // ReSharper disable once HeuristicUnreachableCode
     public const string AppScheme = IsDevApp ? "voxt-dev" : "voxt";
     public const string DefaultHost =
         UseLocalhost
