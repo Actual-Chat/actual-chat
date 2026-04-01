@@ -1,4 +1,5 @@
 using System.Text;
+using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualLab.IO;
 using SQLite;
@@ -9,6 +10,7 @@ namespace ActualChat.Maui.Services;
 public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
 {
     public const string VersionKey = "(version)";
+
     private const SQLiteOpenFlags OpenFlags =
         // Open the database in read/write mode
         SQLiteOpenFlags.ReadWrite |
@@ -17,7 +19,9 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
         // Assume each connection is never used concurrently
         SQLiteOpenFlags.NoMutex;
 
-    private readonly SimpleConcurrentPool<SQLiteConnection>? _connectionPool;
+    private readonly SimpleConcurrentPool<SQLiteConnection>? _connectionPool; // null if Initialize failed -> no-op
+    private readonly Lock _suspendLock = new();
+    private volatile bool _isSuspended;
 
     private IServiceProvider Services { get; }
     private ILogger Log => field ??= Services.LogFor(GetType());
@@ -27,6 +31,12 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
     {
         Services = services;
         _connectionPool = Initialize(dbPath, version, key);
+        if (_connectionPool is null)
+            return;
+
+        var hostInfo = services.HostInfo();
+        if (hostInfo.AppKind is AppKind.Ios or AppKind.MacOS)
+            MauiBackgroundState.IsBackground.Updated += OnIsBackgroundUpdated;
     }
 
     public ValueTask<byte[]?[]> GetMany(string[] keys, CancellationToken cancellationToken = default)
@@ -38,6 +48,7 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
         if (_connectionPool == null)
             return ValueTask.FromResult(result);
 
+        Resume();
         using var lease = _connectionPool.Rent();
         var connection = lease.Resource;
         if (keys.Length == 1)
@@ -71,6 +82,7 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
         if (_connectionPool == null)
             return ValueTask.FromResult(Array.Empty<(string Key, byte[] Value)>());
 
+        Resume();
         using var lease = _connectionPool.Rent();
         var connection = lease.Resource;
         var dbItems = DbHelpers.SelectAll(connection);
@@ -83,6 +95,7 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
         if (_connectionPool == null || updates.Count == 0)
             return Task.CompletedTask;
 
+        Resume();
         using var lease = _connectionPool.Rent();
         var connection = lease.Resource;
         if (updates.Count == 1)
@@ -107,6 +120,7 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
         if (_connectionPool == null)
             return Task.CompletedTask;
 
+        Resume();
         using var lease = _connectionPool.Rent();
         var connection = lease.Resource;
         connection.DeleteAll<DbItem>();
@@ -167,6 +181,53 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
             if (File.Exists(file))
                 File.Delete(file);
         }
+    }
+
+    private void OnIsBackgroundUpdated(State state, StateEventKind stateEventKind)
+    {
+        if (!MauiBackgroundState.IsBackground.Value)
+            return;
+
+        // iOS requires apps to release all file locks in 5s after backgrounding
+        var suspendDelay = TimeSpan.FromSeconds(3);
+        _ = Task.Delay(suspendDelay, CancellationToken.None)
+            .ContinueWith(_ => {
+                if (MauiBackgroundState.IsBackground.Value)
+                    Suspend();
+            }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+    }
+
+    private void Suspend()
+    {
+        if (_connectionPool == null || _isSuspended)
+            return;
+
+        lock (_suspendLock) {
+            if (_isSuspended) return; // Double-check locking
+
+            _isSuspended = true;
+            try {
+                // Checkpoint WAL to flush all pending writes to the main db file,
+                // then close all idle pooled connections to release file locks.
+                using var lease = _connectionPool.Rent();
+                var connection = lease.Resource;
+                connection.ExecuteScalar<string>("PRAGMA wal_checkpoint(TRUNCATE)");
+                connection.Close();
+            }
+            catch (Exception e) {
+                Log.LogWarning(e, "Failed to checkpoint WAL during suspend");
+            }
+            _connectionPool.Drain(static c => {
+                try { c.Close(); } catch { /* Intended */ }
+            });
+        }
+    }
+
+    private void Resume()
+    {
+        if (!_isSuspended) return;
+        lock (_suspendLock)
+            _isSuspended = false;
     }
 
     // Nested types

@@ -29,6 +29,14 @@ public class SimpleConcurrentPool<T>(
         return new ResourceLease<T>(resource, this);
     }
 
+    public void Drain(Action<T> resourceAction)
+    {
+        while (_queue.TryDequeue(out var resource)) {
+            Interlocked.Decrement(ref _size);
+            resourceAction.Invoke(resource);
+        }
+    }
+
     bool IResourceReleaser<T>.Release(T resource)
     {
         if (resourceValidator != null && !resourceValidator.Invoke(resource))

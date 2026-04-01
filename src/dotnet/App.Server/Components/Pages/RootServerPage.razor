@@ -234,20 +234,8 @@
     </script>
 }
 
-@if (_authState.SignInError is { } signInError) {
-    <script nonce="@closeFlowNonce">
-        setTimeout(function () {
-            window.open('','_self').close();
-        }, 200)
-    </script>
-    <div class="fusion-close" data-flow-name="@(_authState.CloseFlow?.Name ?? "")">
-        <div class="c-content">
-            <div class="c-title">
-                <span>@signInError</span>
-            </div>
-        </div>
-    </div>
-} else if (_authState.CloseFlow is { } closeFlow) {
+@if (_authState.CloseFlow is { } closeFlow) {
+    var isFailed = closeFlow.Error != null;
     @if (closeFlow.MustClose) {
         <script nonce="@closeFlowNonce">
             setTimeout(function () {
@@ -257,10 +245,12 @@
     }
     <div class="fusion-close" data-flow-name="@closeFlow.Name">
         <div class="c-content">
-            <img draggable="false" src="/dist/images/landing/checkmark-checked.svg" alt="Checked">
+            @if (!isFailed) {
+                <img draggable="false" src="/dist/images/landing/checkmark-checked.svg" alt="Checked">
+            }
             <div class="c-title">
                 <span>@closeFlow.Name</span>
-                <span>completed.</span>
+                <span>@(isFailed ? "failed." : "completed.")</span>
             </div>
             <div class="c-footer">
                 <div>

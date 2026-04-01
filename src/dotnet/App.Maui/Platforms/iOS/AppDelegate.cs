@@ -1,4 +1,5 @@
 using ActualChat.App.Maui.Services;
+using ActualChat.Maui.Services;
 using CoreSpotlight;
 using Firebase.CloudMessaging;
 using Foundation;
@@ -100,5 +101,5 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
     }
 
     private static void SetBackgroundState(bool isBackground)
-        => MauiBackgroundStateTracker.SetBackgroundState(isBackground);
+        => MauiBackgroundState.Set(isBackground);
 }
