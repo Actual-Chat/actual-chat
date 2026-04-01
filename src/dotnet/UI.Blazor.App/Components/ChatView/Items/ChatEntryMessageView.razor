@@ -169,7 +169,7 @@
                     <ChatMessageQuote Entry="@m.RepliedEntry" IsOwn="@isReplyToOwnMessage"/>
                 }
                 @if (message.Kind is ChatMessageKind.AudioRecordingMessage) {
-                    <StreamingEntryBadge ChatId="@ChatId" IsChatLanguageSelected="@m.IsChatLanguageSelected" IsVoiceActive="@m.IsVoiceActive"/>
+                    <StreamingEntryBadge ChatId="@ChatId" IsLanguageKnown="@m.IsChatLanguageSelected" IsVoiceActive="@m.IsVoiceActive"/>
                 } else {
                     <ChatEntryMessageInternalView
                         Markup="@markup"
@@ -299,7 +299,7 @@
         if (repliedEntryId is not null)
             repliedEntry = ChatEntry.Loading(repliedEntryId);
         var isOwnMessage = Message.Flags.HasFlag(ChatMessageFlags.IsOwnMessage);
-        var selectedComputed = Computed.GetExisting(() => LanguageUI.IsChatLanguageSelected(Message.Entry.ChatId, default));
+        var selectedComputed = Computed.GetExisting(() => LanguageUI.IsChatLanguageSelected(Message.Entry.ChatId));
         var isSelected = selectedComputed ?.IsConsistent() == true &&  selectedComputed is { HasValue: true, Value: true };
         initialValue = new Model(null) {
             IsChatLanguageSelected = isSelected,
