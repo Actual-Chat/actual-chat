@@ -29,8 +29,26 @@ permissions:
   statuses: write
 
 jobs:
+  check-tested:
+    name: Check for #tested flag
+    runs-on: ubuntu-latest
+    outputs:
+      skip-tests: ${{ steps.check.outputs.skip-tests }}
+    steps:
+      - name: Check commit message for #tested
+        id: check
+        run: |
+          message="${{ github.event.head_commit.message }}"
+          if echo "$message" | grep -qiw '#tested'; then
+            echo "skip-tests=true" | tee -a $GITHUB_OUTPUT
+          else
+            echo "skip-tests=false" | tee -a $GITHUB_OUTPUT
+          fi
+
   slow-tests:
     name: Run Slow tests
+    needs: [check-tested]
+    if: needs.check-tested.outputs.skip-tests != 'true'
     uses: ./.github/workflows/_run-tests.yml
     with:
       build-target: slow-tests
