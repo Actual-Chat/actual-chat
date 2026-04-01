@@ -130,15 +130,22 @@ export class InternalVideoStream {
             while (!this.isCompleted || !this.frames.isEmpty()) {
                 while (!this.frames.isEmpty()) {
                     const frame = this.frames.shift()!;
+                    // Guard: don't send if connection is no longer active
+                    if (conn?.state !== HubConnectionState.Connected) break;
                     const encoded = encodeStreamFrame(frame);
-                    subject.next(encoded);
+                    try {
+                        subject.next(encoded);
+                    } catch {
+                        // Connection closed during send — expected during shutdown
+                        break;
+                    }
                 }
                 if (!this.isCompleted) {
                     await this.frameAdded.whenNextVoid();
                 }
             }
 
-            subject.complete();
+            try { subject.complete(); } catch { /* connection may already be closed */ }
         } catch (error) {
             errorLog?.log('VideoStream error:', error);
         } finally {

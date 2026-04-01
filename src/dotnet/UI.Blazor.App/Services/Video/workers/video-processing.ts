@@ -771,7 +771,11 @@ export const serverImpl: VideoProcessingWorker = {
         const wasStreaming = streamingEnabled;
         streamingEnabled = false;
 
-        if (videoStream) { videoStream.complete(); videoStream = null; }
+        if (videoStream) {
+            videoStream.complete();
+            try { await videoStream.whenDisposed; } catch { /* ignore */ }
+            videoStream = null;
+        }
         codecSettings = null; firstEncodedTimestamp = null; pendingStreamFrames = []; storedDescriptionBytes = null;
         await encoder.switchCodec(config);
 
@@ -815,7 +819,12 @@ export const serverImpl: VideoProcessingWorker = {
         try { await awaitAllPendingReadbacks(); } catch { /* ignore */ }
         if (frameQueue) { while (!frameQueue.isEmpty()) { const qf = frameQueue.shift(); if (qf) qf.frame.close(); } frameQueue = null; }
         if (encoder) { try { await encoder.flush(); encoder.close(); } catch (e) { warnLog?.log('Encoder close error:', e); } }
-        if (videoStream) { videoStream.complete(); videoStream = null; }
+        if (videoStream) {
+            videoStream.complete();
+            // Wait for stream loop to finish sending remaining frames before closing connection
+            try { await videoStream.whenDisposed; } catch { /* ignore */ }
+            videoStream = null;
+        }
         if (streamCtx.signalrConnection) { try { await streamCtx.signalrConnection.stop(); } catch { /* ignore */ } streamCtx.signalrConnection = null; }
         if (segInitialized) { try { outputGpuBuffer.destroy(); } catch { /* ignore */ } try { smoothedMaskBuffer.destroy(); } catch { /* ignore */ } }
 

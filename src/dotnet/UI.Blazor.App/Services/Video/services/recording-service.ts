@@ -197,22 +197,30 @@ export class RecordingService extends EventTarget {
             // Get actual video dimensions from the stream
             const videoTrack = this.inputStream.getVideoTracks()[0];
             const settings = videoTrack.getSettings();
-            const actualWidth = settings.width ?? this.config.width;
-            const actualHeight = settings.height ?? this.config.height;
+            let actualWidth = settings.width ?? this.config.width;
+            let actualHeight = settings.height ?? this.config.height;
+
+            // For screencast: cap initial resolution to 1080p to avoid sending 4K keyframes
+            // before the quality preset arrives (~1s). Floor at 720p for text readability.
+            if (this.config.mode === 'screen') {
+                const maxInitialWidth = 1920;
+                const maxInitialHeight = 1080;
+                const minWidth = 1280;
+                const minHeight = 720;
+                if (actualWidth > maxInitialWidth || actualHeight > maxInitialHeight) {
+                    const scale = Math.min(maxInitialWidth / actualWidth, maxInitialHeight / actualHeight);
+                    actualWidth = Math.max(minWidth, Math.round(actualWidth * scale));
+                    actualHeight = Math.max(minHeight, Math.round(actualHeight * scale));
+                }
+            }
 
             infoLog?.log(`Actual video dimensions: ${actualWidth}x${actualHeight}`);
 
             this.setState({ status: 'initializing-pipeline' });
             infoLog?.log('Initializing pipeline with', this.config.codec.toUpperCase(), 'codec');
 
-            // Create and start pipeline with actual dimensions
-            /*if (this.config.codec === 'av1') {
-        // const av1PipelineConfig = await this.buildAV1PipelineConfig(actualWidth, actualHeight);
-        // this.pipeline = new AV1VideoPipeline(av1PipelineConfig);
-      } else {*/
             const pipelineConfig = await this.buildPipelineConfig(actualWidth, actualHeight);
             this.pipeline = new VideoPipeline(pipelineConfig);
-            // }
             await this.pipeline.start(this.inputStream);
 
             // Start duration tracking
@@ -349,7 +357,11 @@ export class RecordingService extends EventTarget {
                 height: height,
                 bitrate: this.config.bitrate,
                 framerate: this.config.framerate,
-                keyframeInterval: this.config.framerate, // 1 keyframe per second
+                // Webcam: 2-3s interval (less frequent keyframes save bandwidth).
+                // Screencast: 1-2s interval (more frequent for text clarity on content switches).
+                keyframeInterval: this.config.mode === 'screen'
+                    ? this.config.framerate * 2   // ~2s for screencast
+                    : this.config.framerate * 3,  // ~3s for webcam
                 latencyMode: 'realtime',
                 hardwareAcceleration: this.config.hardwareAccelerated ? 'prefer-hardware' : 'no-preference',
                 scalabilityMode: scalabilityMode

@@ -67,7 +67,7 @@ export class VideoPlayer {
 
     // Buffering state
     private bufferSize = 0;
-    private readonly maxBufferSize = 30; // frames
+    private readonly maxBufferSize = 15; // frames (reduced from 30 for faster latency recovery)
     private lastReportedBufferLow = true;
 
     // SignalR pull subscription
@@ -433,7 +433,28 @@ export class VideoPlayer {
             this.pipelineLatencyMs = this.pipelineLatencyMs * (1 - alpha) + cappedLatencyMs * alpha;
         }
 
-        // When audio-sync is active, use larger buffer to retain frames from bursty delivery.
+        // Soft catchup: when buffer exceeds 10 frames or 300ms span, drop oldest frames
+        // to keep only the most recent ~200ms. This prevents latency from creeping up
+        // during decoder spikes (e.g., transient GPU contention).
+        if (this.pendingFrames.length > 10) {
+            const bufferSpanMs = this.pendingFrames.length >= 2
+                ? (this.pendingFrames[this.pendingFrames.length - 1].timestamp - this.pendingFrames[0].timestamp) / 1000
+                : 0;
+            if (bufferSpanMs > 300) {
+                const targetSpanUs = 200 * 1000; // keep ~200ms worth of frames
+                const cutoffTimestamp = this.pendingFrames[this.pendingFrames.length - 1].timestamp - targetSpanUs;
+                let dropCount = 0;
+                while (this.pendingFrames.length > 1 && this.pendingFrames[0].timestamp < cutoffTimestamp) {
+                    this.pendingFrames.shift()!.close();
+                    this.bufferSize--;
+                    dropCount++;
+                }
+                if (dropCount > 0)
+                    debugLog?.log(`Soft catchup: dropped ${dropCount} frames, bufferSpanMs was ${bufferSpanMs.toFixed(0)}`);
+            }
+        }
+
+        // Hard cap: drop oldest frames if buffer still exceeds max.
         while (this.pendingFrames.length > this.maxBufferSize) {
             const dropped = this.pendingFrames.shift()!;
             dropped.close();

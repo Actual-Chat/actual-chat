@@ -371,16 +371,16 @@ export class VideoRecorder {
             const bestCodecInfo = supportedCodecs.find(c => c.codec === bestCodecString);
             const codecCategory = getCodecCategory(bestCodecString);
 
-            // Screencast config: native resolution, no blur, no camera
+            // Screencast config: start at 1080p cap, quality preset will adjust
             const config: RecordingConfig = {
                 mode: 'screen',
                 codec: codecCategory,
                 codecString: bestCodecString,
                 hardwareAccelerated: bestCodecInfo?.hardwareAccelerated ?? false,
                 scalabilityModes: bestCodecInfo?.scalabilityModes,
-                width: 1920,  // Will be overridden by actual screen resolution
+                width: 1920,
                 height: 1080,
-                bitrate: 8_000_000, // Start at Full quality
+                bitrate: 4_000_000, // Start at High quality (not Full 8Mbps at 4K)
                 framerate: 30,
                 backgroundBlur: { enabled: false },
                 streaming: {
