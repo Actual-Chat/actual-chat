@@ -502,6 +502,13 @@ export class VideoRecorder {
             return;
         }
 
+        // Transpose preset if camera orientation doesn't match (e.g., portrait camera, landscape preset)
+        const cameraIsPortrait = this.cameraWidth > 0 && this.cameraHeight > 0 && this.cameraHeight > this.cameraWidth;
+        const presetIsLandscape = width > height;
+        if (cameraIsPortrait && presetIsLandscape) {
+            [width, height] = [height, width];
+        }
+
         // Cap to actual camera resolution — upscaling wastes CPU for no quality gain
         const cappedWidth = this.cameraWidth > 0 ? Math.min(width, this.cameraWidth) : width;
         const cappedHeight = this.cameraHeight > 0 ? Math.min(height, this.cameraHeight) : height;
