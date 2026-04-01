@@ -12,6 +12,7 @@ using ActualChat.Users.Internal;
 using ActualChat.Users.Models;
 using ActualChat.Users.Phone;
 using ActualChat.Users.Phone.Internal;
+using ActualChat.Users.Uploads;
 using ActualLab.Fusion.Server;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
@@ -147,6 +148,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         rpcHost.AddLocalApi<IAvatars, Avatars>(); // Used by Authors -> Chats, etc.
         rpcHost.AddBackend<IAvatarsBackend, AvatarsBackend>();
         services.AddSingleton<AvatarPictures>(); // Used by AvatarPicturesController for caching
+        services.AddSingleton<SvgToPngConverter>();
 
         // ChatPositions
         rpcHost.AddApi<IChatPositions, ChatPositions>();

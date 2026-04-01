@@ -19,7 +19,7 @@ public sealed partial class UrlMapper
 
     private static readonly Regex IsAbsoluteUrlRegex = IsAbsoluteUrlRegexFactory();
     private static readonly char[] UriPathEndChar = ['#', '?'];
-    private static readonly string[] ExtensionsToExclude = [".svg", ".gif"];
+    private static readonly string[] ExtensionsToExclude = [".gif"];
 
     private readonly string _baseUrlWithoutBackslash;
 
