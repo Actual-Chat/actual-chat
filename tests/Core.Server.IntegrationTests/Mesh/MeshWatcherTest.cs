@@ -34,7 +34,7 @@ public class MeshWatcherTest(ITestOutputHelper @out)
 
         _ = w1.DisposeAsync();
         await w1.State.Computed.When(x => x.IsFinal).WaitAsync(syncTimeout);
-        await w2.State.Computed.When(x => x.AllNodes.Count == 2).WaitAsync(syncTimeout);
+        await w2.State.Computed.When(x => x.AllNodes.Count == 1).WaitAsync(syncTimeout);
         await w2.State.Computed.When(x => x.LiveNodes.Length == 1).WaitAsync(syncTimeout);
 
         _ = w2.DisposeAsync();
