@@ -22,7 +22,8 @@ public class MauiModule(IServiceProvider moduleServices)
         });
         services.AddSingleton<IRemoteComputedCache>(c => {
             var options = c.GetRequiredService<SQLiteRemoteComputedCache.Options>();
-            return new SQLiteRemoteComputedCache(options, c);
+            var cache = new SQLiteRemoteComputedCache(options, c);
+            return cache;
         });
 
         // LocalSettings backend override
