@@ -41,7 +41,7 @@ permissions:
 
 jobs:
   check-tested:
-    name: Check for #tested flag
+    name: Check for tested flag
     runs-on: ubuntu-latest
     outputs:
       skip-tests: ${{ steps.check.outputs.skip-tests }}
