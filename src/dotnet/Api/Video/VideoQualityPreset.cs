@@ -1,6 +1,6 @@
 namespace ActualChat.Video;
 
-public enum VideoQualityLevel { Full = 0, High = 1, Medium = 2, Low = 3 }
+public enum VideoQualityLevel { Full = 0, High = 1, Medium = 2, Low = 3, Paused = 4 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record VideoQualityPreset(
@@ -13,6 +13,7 @@ public sealed partial record VideoQualityPreset(
     public static readonly VideoQualityPreset High   = new(VideoQualityLevel.High,   1280,  720, 4_000_000);
     public static readonly VideoQualityPreset Medium = new(VideoQualityLevel.Medium,  960,  540, 2_500_000);
     public static readonly VideoQualityPreset Low    = new(VideoQualityLevel.Low,     640,  360, 1_000_000);
+    public static readonly VideoQualityPreset Paused = new(VideoQualityLevel.Paused, 0, 0, 0);
 
     public static VideoQualityPreset ForLevel(VideoQualityLevel level)
         => level switch {
@@ -20,6 +21,7 @@ public sealed partial record VideoQualityPreset(
             VideoQualityLevel.High => High,
             VideoQualityLevel.Medium => Medium,
             VideoQualityLevel.Low => Low,
+            VideoQualityLevel.Paused => Paused,
             _ => High,
         };
 
