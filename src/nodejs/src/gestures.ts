@@ -169,6 +169,10 @@ class ContextMenuGesture extends Gesture {
             if (event.button !== 0) // Only primary button
                 return;
 
+            // Long-press gesture is only for touch input; mouse/touchpad users use right-click
+            if (event.pointerType === 'mouse')
+                return;
+
             const [, delayText] = getOrInheritData(event.target, 'contextMenuDelay');
             if (delayText === null && ScreenSize.isWide() && !DeviceInfo.isIos)
                 return; // No 'data-context-menu-delay' + wide screen + non-iOS device: default handling
