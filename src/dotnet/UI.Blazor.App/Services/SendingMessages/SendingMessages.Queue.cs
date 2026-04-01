@@ -23,9 +23,13 @@ partial class SendingMessages
                         command.Request.Text.ToPrivate());
                     throw;
                 }
-                Log.LogWarning(e,
-                    "ProcessQueueItem failed for '{Text}', retrying in {Delay}s",
-                    command.Request.Text.ToPrivate(), ProcessCommandRetryDelay.TotalSeconds);
+                if (e is OperationCanceledException)
+                    Log.LogInformation("ProcessQueueItem failed (OperationCanceledException) for '{Text}', retrying in {Delay}s",
+                        command.Request.Text.ToPrivate(), ProcessCommandRetryDelay.TotalSeconds);
+                else
+                    Log.LogWarning(e,
+                        "ProcessQueueItem failed for '{Text}', retrying in {Delay}s",
+                        command.Request.Text.ToPrivate(), ProcessCommandRetryDelay.TotalSeconds);
                 await Task.Delay(ProcessCommandRetryDelay, cancellationToken).ConfigureAwait(false);
             }
         }
@@ -52,8 +56,7 @@ partial class SendingMessages
         };
         // // Simulate long sending
         // await Task.Delay(5000, cancellationToken).ConfigureAwait(false);
-        var postResult = await UICommander.Run(cmd, cancellationToken).ConfigureAwait(false);
-        var chatEntry = postResult.Result.Value;
+        var chatEntry = await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
         if (chatEntry.Attachments.Length > 0) {
             // Refetch the entry with attachments with media populated.
             var chatEntry1 = await Chats.GetEntry(Session, chatEntry.Id, cancellationToken).ConfigureAwait(false);
