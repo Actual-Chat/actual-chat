@@ -71,7 +71,7 @@ public sealed class AuthHelper
                     tokenSession, Constants.SessionTemporals.SignInErrorKey, signInError);
                 await Commander.Run(setErrorCmd, true, cancellationToken).ConfigureAwait(false);
             }
-            return new AuthState(tokenSession, signInError, isAnyAuthFlow, closeFlow);
+            return AuthState.New(tokenSession, isAnyAuthFlow, closeFlow, mustExist, signInError);
         }
 
         // Path B: Cookie-based session (normal web flow)
@@ -104,7 +104,7 @@ public sealed class AuthHelper
             httpContext.AddSessionCookie(session);
             // httpContext.Response.Cookies.Delete(RenderModeEndpoint.Cookie.Name!);
         }
-        return new AuthState(session, signInError, isAnyAuthFlow, closeFlow);
+        return AuthState.New(session, isAnyAuthFlow, closeFlow, mustExist, signInError);
     }
 
     public async Task UpdateAuthState(
@@ -237,7 +237,7 @@ public sealed class AuthHelper
 
     private bool IsCloseFlow(HttpContext httpContext)
         => IsCloseFlow(httpContext, out _);
-    private bool IsCloseFlow(HttpContext httpContext, out CloseFlowInfo? closeFlowInfo)
+    private bool IsCloseFlow(HttpContext httpContext, out CloseFlow? closeFlowInfo)
     {
         closeFlowInfo = null;
         var request = httpContext.Request;
@@ -258,7 +258,7 @@ public sealed class AuthHelper
         var mustClose = true;
         if (request.Query.TryGetValue("mustClose", out var mustCloseValues))
             mustClose = int.TryParse(mustCloseValues.FirstOrDefault(), out var x) && x != 0;
-        closeFlowInfo = new CloseFlowInfo(name, redirectUrl, mustClose);
+        closeFlowInfo = new CloseFlow(name, redirectUrl, mustClose);
         return true;
     }
 
@@ -266,7 +266,26 @@ public sealed class AuthHelper
 
     public record AuthState(
         Session Session,
-        string? SignInError,
         bool IsAnyAuthFlow,
-        CloseFlowInfo? CloseFlow);
+        CloseFlow? CloseFlow)
+    {
+        public static AuthState New(
+            Session session, bool isAnyAuthFlow, CloseFlow? closeFlow,
+            bool? mustExist, string? error = null)
+        {
+            if (error is null)
+                return new AuthState(session, isAnyAuthFlow, closeFlow);
+            if (closeFlow is not null)
+                return new AuthState(session, isAnyAuthFlow, closeFlow with { Error = error });
+
+            closeFlow = new CloseFlow(mustExist == true ? "Register" : "Sign-in", null, true, error);
+            return new AuthState(session, isAnyAuthFlow, closeFlow);
+        }
+    }
+
+    public sealed record CloseFlow(
+        string Name,
+        string? RedirectUrl,
+        bool MustClose,
+        string? Error = null);
 }

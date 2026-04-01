@@ -161,7 +161,8 @@ public sealed class NativeAuthController(IServiceProvider services) : Controller
             var setErrorCmd = new SessionTemporalsBackend_Set(
                 session, Constants.SessionTemporals.SignInErrorKey, signInError);
             await Commander.Run(setErrorCmd, true, cancellationToken).ConfigureAwait(false);
-            throw;
+            // Don't rethrow — error is stored in SessionTemporals,
+            // ProviderSelectStep will pick it up via Fusion invalidation
         }
         finally {
             HttpContext.User = oldUser;
