@@ -7,7 +7,7 @@
  * - npm install playwright
  *
  * Usage:
- *   npx tsx docs/tests/signin-and-message.ts
+ *   npx tsx tests/ts/signin-and-message.ts
  *
  * Screenshots are saved to tmp/ folder.
  */
@@ -16,10 +16,20 @@ import { chromium } from 'playwright';
 import * as fs from 'fs';
 import * as path from 'path';
 
+// Load HostSettings__BaseUri from .env file
+function loadBaseUrl(): string {
+    const envPath = path.resolve(process.cwd(), '.env');
+    if (fs.existsSync(envPath)) {
+        const match = fs.readFileSync(envPath, 'utf-8').match(/^HostSettings__BaseUri=(.+)$/m);
+        if (match) return match[1].trim();
+    }
+    return 'https://local.voxt.ai';
+}
+
 // Configuration
 const CHROME_HOST = '192.168.65.254'; // Resolved IP for host.docker.internal
 const CHROME_PORT = 9222;
-const BASE_URL = 'https://local.voxt.ai';
+const BASE_URL = loadBaseUrl();
 const TEST_EMAIL = 'test-claude-agent@actual.chat';
 const TEST_OTP = '111111';
 
@@ -93,6 +103,21 @@ async function main() {
             await continueButton.click();
             await page.waitForTimeout(2000);
             await page.screenshot({ path: screenshotPath('after-email-submit') });
+
+            // Handle "Account not found" - check "Register a new account" toggle and resubmit
+            const accountError = page.locator('.c-account-error:has-text("Account not found")');
+            if (await accountError.isVisible({ timeout: 2000 }).catch(() => false)) {
+                console.log('Account not found - checking "Register a new account" toggle...');
+                const registerToggle = page.locator('label:has-text("Register a new account")');
+                await registerToggle.click();
+                await page.waitForTimeout(500);
+
+                // Resubmit the form
+                const registerButton = page.locator('button[type="submit"]').first();
+                await registerButton.click();
+                await page.waitForTimeout(2000);
+                await page.screenshot({ path: screenshotPath('after-register-toggle') });
+            }
 
             // Enter OTP code
             console.log('Looking for OTP input...');
