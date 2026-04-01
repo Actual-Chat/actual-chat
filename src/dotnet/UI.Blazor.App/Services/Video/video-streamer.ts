@@ -159,6 +159,13 @@ export class VideoStream {
                 debugLog?.log('Exited inner while loop, isConnected:', VideoStreamer.isConnected, 'isDisposed:', this.isDisposed);
             } catch (error) {
                 subject = null;
+                const errorMsg = String(error);
+                if (errorMsg.includes('VideoStreamLimitExceeded') || errorMsg.includes('Video stream limit reached')) {
+                    errorLog?.log('Video stream cap reached:', errorMsg);
+                    this.isCompleted = true;
+                    this.isDisposed = true;
+                    break;
+                }
                 errorLog?.log('stream error:', error);
             }
         }

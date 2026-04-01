@@ -496,7 +496,7 @@ export class VideoRecorder {
     /**
      * Reconfigure encoder bitrate/resolution (called from Blazor quality subscription)
      */
-    public reconfigure(width: number, height: number, bitrate: number): void {
+    public reconfigure(level: string, width: number, height: number, bitrate: number): void {
         if (!this.recordingService) {
             warnLog?.log('reconfigure: no active recording service');
             return;
@@ -507,21 +507,28 @@ export class VideoRecorder {
         const presetIsLandscape = width > height;
         if (cameraIsPortrait && presetIsLandscape) {
             [width, height] = [height, width];
+
+        const pipeline = this.recordingService.getPipeline();
+        if (!pipeline) return;
+
+        // Handle server-driven pause
+        if (level === 'Paused') {
+            infoLog?.log('reconfigure: server paused this stream');
+            pipeline.pauseEncoding();
+            return;
         }
+
+        // Resume if we were paused
+        pipeline.resumeEncoding();
 
         // Cap to actual camera resolution — upscaling wastes CPU for no quality gain
         const cappedWidth = this.cameraWidth > 0 ? Math.min(width, this.cameraWidth) : width;
         const cappedHeight = this.cameraHeight > 0 ? Math.min(height, this.cameraHeight) : height;
 
-        // Scale bitrate proportionally when resolution is capped
+        // Cap bitrate for mobile and low-power devices
         let cappedBitrate = bitrate;
-        if (cappedWidth !== width || cappedHeight !== height) {
-            const ratio = (cappedWidth * cappedHeight) / (width * height);
-            cappedBitrate = Math.round(bitrate * ratio);
-        }
-        // Platform-specific bitrate caps to prevent backpressure
         if (DeviceInfo.isIos) {
-            cappedBitrate = Math.min(cappedBitrate, 1_200_000);
+            cappedBitrate = Math.min(cappedBitrate, 1_000_000);
         } else if (DeviceInfo.isMobile) {
             cappedBitrate = Math.min(cappedBitrate, 2_000_000);
         }
@@ -531,7 +538,7 @@ export class VideoRecorder {
         else
             infoLog?.log(`reconfigure: ${width}x${height} @ ${bitrate / 1_000_000}Mbps`);
 
-        void this.recordingService.getPipeline()?.reconfigure({ bitrate: cappedBitrate, width: cappedWidth, height: cappedHeight });
+        void pipeline.reconfigure({ bitrate: cappedBitrate, width: cappedWidth, height: cappedHeight });
     }
 
     /**

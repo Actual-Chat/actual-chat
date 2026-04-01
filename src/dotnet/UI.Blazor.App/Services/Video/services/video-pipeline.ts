@@ -70,6 +70,8 @@ export interface IVideoPipeline {
     setPreviewCallback(callback: ((frame: VideoFrame) => void) | null): void;
     getEncoderStats(): EncoderStats;
     getSegmentationStats(): SegmentationStats | null;
+    pauseEncoding(): void;
+    resumeEncoding(): void;
 }
 
 export class VideoPipeline implements IVideoPipeline {
@@ -92,6 +94,7 @@ export class VideoPipeline implements IVideoPipeline {
     private vadSubscription: Subscription | null = null;
     private vadSilenceTimer: ReturnType<typeof setTimeout> | null = null;
     private savedBitrate: number;
+    private serverPaused = false;
 
     // Encoder backpressure state
     private backpressureStepDownCount = 0;
@@ -354,6 +357,9 @@ export class VideoPipeline implements IVideoPipeline {
     }
 
     async reconfigure(params: { bitrate: number; width: number; height: number }): Promise<void> {
+        // Don't reconfigure while server-paused — wait for resumeEncoding
+        if (this.serverPaused) return;
+
         infoLog?.log(`Reconfiguring: ${params.bitrate / 1_000_000}Mbps, ${params.width}x${params.height}`);
 
         this.config.encoderConfig.bitrate = params.bitrate;
@@ -486,6 +492,40 @@ export class VideoPipeline implements IVideoPipeline {
                 void this.worker.forceKeyFrame();
             }
         }
+    }
+
+    /**
+     * Server-driven pause: stop encoding but keep camera stream alive.
+     * Called when the priority evaluator pauses this stream.
+     */
+    pauseEncoding(): void {
+        if (this.serverPaused) return;
+        this.serverPaused = true;
+        infoLog?.log('Server pause: stopping encoder');
+
+        // Reduce to zero bitrate and tell worker to stop encoding
+        void this.worker.reconfigure({
+            bitrate: 0,
+            width: this.config.encoderConfig.width,
+            height: this.config.encoderConfig.height,
+        });
+    }
+
+    /**
+     * Server-driven resume: restart encoding after pause.
+     * Called when the priority evaluator un-pauses this stream.
+     */
+    resumeEncoding(): void {
+        if (!this.serverPaused) return;
+        this.serverPaused = false;
+        infoLog?.log('Server resume: restarting encoder');
+
+        void this.worker.reconfigure({
+            bitrate: this.savedBitrate,
+            width: this.config.encoderConfig.width,
+            height: this.config.encoderConfig.height,
+        });
+        void this.worker.forceKeyFrame();
     }
 
     private setVadActive(isActive: boolean): void {

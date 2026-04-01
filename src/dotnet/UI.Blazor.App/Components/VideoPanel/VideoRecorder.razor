@@ -187,7 +187,8 @@
                 Log.LogInformation("SubscribeToQualityRequests: received preset {Level} ({Width}x{Height} @ {Bitrate}bps)",
                     preset.Level, preset.Width, preset.Height, preset.Bitrate);
                 if (JSRef is {} jsRef)
-                    await jsRef.InvokeVoidAsync("reconfigure", cancellationToken, preset.Width, preset.Height, preset.Bitrate);
+                    await jsRef.InvokeVoidAsync("reconfigure", cancellationToken,
+                        preset.Level.ToString(), preset.Width, preset.Height, preset.Bitrate);
                 await computed.WhenInvalidated(cancellationToken).ConfigureAwait(false);
             }
         }
