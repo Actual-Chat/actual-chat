@@ -22,7 +22,4 @@ public interface ILiveVideoBackend : IComputeService, IBackendService
 
     [ComputeMethod]
     Task<ApiArray<string>> GetSupportedCodecs(ChatId chatId, CancellationToken cancellationToken);
-
-    [ComputeMethod]
-    Task<bool> IsStreamPaused(ChatId chatId, StreamId streamId, CancellationToken cancellationToken);
 }

@@ -1,4 +1,5 @@
 using ActualChat.Diagnostics;
+using ActualChat.Live;
 using ActualChat.Streaming.Services;
 using ActualChat.Video;
 using ActualLab.Diagnostics;
@@ -16,6 +17,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
     private IAuthors Authors => field ??= Services.GetRequiredService<IAuthors>();
     private MomentClockSet Clocks => field ??= Services.Clocks();
     private ILiveVideoBackend LiveVideoBackend => field ??= Services.GetRequiredService<ILiveVideoBackend>();
+    private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
     private ILogger Log => field ??= Services.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 
@@ -66,9 +68,9 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         // and wait for a fresh keyframe at the live edge for near-zero latency.
         stream = SkipToNextKeyFrame(LogFrames(stream), Log, cancellationToken);
 
-        // Wrap with pause filtering — when stream is paused, hold frames until resumed
+        // Wrap with pause filtering — when stream is paused by priority queue, drop frames
         if (_latencyStates.TryGetValue(streamId, out var pauseState) && pauseState.ChatId != default) {
-            stream = PauseAwareFilter(pauseState.ChatId, streamId, stream, cancellationToken);
+            stream = PauseAwareFilter(streamId, stream, cancellationToken);
         }
 
         return RpcStream.New(stream);
@@ -129,32 +131,79 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
     // [ComputeMethod]
     public virtual async Task<VideoQualityPreset> GetQualityPreset(StreamId streamId, CancellationToken cancellationToken)
     {
-        // Check if the stream is paused by the priority evaluator
-        if (_latencyStates.TryGetValue(streamId, out var latencyState)) {
-            if (latencyState.ChatId != default) {
-                var isPaused = await LiveVideoBackend.IsStreamPaused(
-                    latencyState.ChatId, streamId, cancellationToken).ConfigureAwait(false);
-                if (isPaused)
+        if (!_latencyStates.TryGetValue(streamId, out var latencyState))
+            return VideoQualityPreset.High;
+
+        // Check if this stream should be paused by the VAD-based priority queue
+        if (latencyState.ChatId != default && latencyState.StreamKind == StreamKind.Webcam) {
+            var videoStreams = await LiveVideoBackend.List(latencyState.ChatId, cancellationToken).ConfigureAwait(false);
+            var webcamStreams = videoStreams.Where(s => s.StreamKind == StreamKind.Webcam).ToArray();
+
+            if (webcamStreams.Length >= Constants.Video.PriorityActivationThreshold) {
+                var audioStreams = await LiveAudioBackend.List(latencyState.ChatId, cancellationToken).ConfigureAwait(false);
+                if (ShouldPauseStream(streamId, latencyState, webcamStreams, audioStreams))
                     return VideoQualityPreset.Paused;
             }
-            return await latencyState.QualityPreset.Use(cancellationToken).ConfigureAwait(false);
         }
 
-        return VideoQualityPreset.High;
+        return await latencyState.QualityPreset.Use(cancellationToken).ConfigureAwait(false);
+    }
+
+    private bool ShouldPauseStream(
+        StreamId streamId,
+        StreamLatencyState latencyState,
+        VideoStreamInfo[] webcamStreams,
+        ApiArray<LiveStreamInfo> audioStreams)
+    {
+        var speakingAuthorIds = audioStreams.Select(s => s.AuthorId).ToHashSet();
+
+        // Update this stream's last-audio-activity tracking
+        if (speakingAuthorIds.Contains(latencyState.AuthorId))
+            latencyState.LastAudioActivityAt = CpuTimestamp.Now;
+
+        // Rank all webcam streams: speaking first, then by recency
+        var ranked = webcamStreams
+            .OrderByDescending(s => speakingAuthorIds.Contains(s.AuthorId) ? 1 : 0)
+            .ThenByDescending(s => {
+                // For our own stream, use local tracking; for others, approximate by speaking status
+                if (s.StreamId == streamId)
+                    return latencyState.LastAudioActivityAt;
+                return speakingAuthorIds.Contains(s.AuthorId) ? CpuTimestamp.Now : default;
+            })
+            .ToList();
+
+        var myIndex = ranked.FindIndex(s => s.StreamId == streamId);
+        if (myIndex < 0)
+            return false; // Stream not in list — don't pause
+
+        // Within the active threshold — never pause
+        if (myIndex < Constants.Video.PriorityActivationThreshold)
+            return false;
+
+        // Beyond max active — always pause
+        if (myIndex >= Constants.Video.MaxWebcamStreamsPerChat)
+            return true;
+
+        // Between threshold and max: pause if not speaking and grace period expired
+        var isSpeaking = speakingAuthorIds.Contains(latencyState.AuthorId);
+        if (isSpeaking)
+            return false;
+
+        var withinGrace = latencyState.LastAudioActivityAt != default
+            && latencyState.LastAudioActivityAt.Elapsed < Constants.Video.SilenceGracePeriod;
+        return !withinGrace;
     }
 
     // Private methods
 
     private async IAsyncEnumerable<VideoFrame> PauseAwareFilter(
-        ChatId chatId,
         StreamId streamId,
         IAsyncEnumerable<VideoFrame> source,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-            var isPaused = await LiveVideoBackend.IsStreamPaused(chatId, streamId, cancellationToken)
-                .ConfigureAwait(false);
-            if (!isPaused)
+            var preset = await GetQualityPreset(streamId, cancellationToken).ConfigureAwait(false);
+            if (preset.Level != VideoQualityLevel.Paused)
                 yield return frame;
             // When paused, frames are silently dropped — viewer sees last decoded frame frozen
         }
@@ -260,7 +309,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         await LiveVideoBackend.Register(record.ChatId, streamInfo, cancellationToken)
             .ConfigureAwait(false);
 
-        _latencyStates[record.StreamId] = new StreamLatencyState(record.ChatId, beginsAt, record.Format, Services.StateFactory(), Log);
+        _latencyStates[record.StreamId] = new StreamLatencyState(record.ChatId, author.Id, record.StreamKind, beginsAt, record.Format, Services.StateFactory(), Log);
 
         try {
             // Publish video stream for real-time viewing
@@ -362,13 +411,16 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         }
     }
 
-    public sealed class StreamLatencyState(ChatId chatId, Moment startedAt, VideoFormat format, StateFactory stateFactory, ILogger log)
+    public sealed class StreamLatencyState(ChatId chatId, AuthorId authorId, StreamKind streamKind, Moment startedAt, VideoFormat format, StateFactory stateFactory, ILogger log)
     {
         private readonly ILogger Log = log;
         private readonly ILogger? DebugLog = log.IfEnabled(LogLevel.Debug);
 
         public ChatId ChatId { get; } = chatId;
+        public AuthorId AuthorId { get; } = authorId;
+        public StreamKind StreamKind { get; } = streamKind;
         public Moment StartedAt { get; } = startedAt;
+        public CpuTimestamp LastAudioActivityAt;
         public MutableState<VideoQualityPreset> QualityPreset { get; } = stateFactory.NewMutable(VideoQualityPreset.High);
 
         // Cap max quality to what the camera can actually provide — prevents wasteful upscaling
