@@ -2,6 +2,7 @@ using ActualChat.AspNetCore;
 using ActualChat.Controllers;
 using ActualChat.Security;
 using ActualChat.Uploads;
+using ActualChat.Users.Uploads;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ActualChat.Users.Controllers;
@@ -12,6 +13,7 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IMediaSaver MediaSaver => services.GetRequiredService<IMediaSaver>();
     private AvatarPictures AvatarPictures => services.GetRequiredService<AvatarPictures>();
+    private SvgToPngConverter SvgToPngConverter => services.GetRequiredService<SvgToPngConverter>();
 
     [HttpPost("upload-picture")]
     [DisableFormValueModelBinding]
@@ -50,10 +52,20 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
             file.ContentType,
             file.Length,
             () => Task.FromResult(file.OpenReadStream()));
-        var mediaRef = await MediaSaver
-            .Save(mediaId, uploadedFile, null, MediaKind.UserAvatarPicture, cancellationToken)
+
+        if (!MediaTypeExt.IsSvg(uploadedFile.ContentType)) {
+            var mediaRef = await MediaSaver
+                .Save(mediaId, uploadedFile, null, MediaKind.UserAvatarPicture, cancellationToken)
+                .ConfigureAwait(false);
+            return Ok(mediaRef);
+        }
+
+        // Convert SVG to PNG before saving
+        using var converted = SvgToPngConverter.Convert(uploadedFile);
+        var svgMediaRef = await MediaSaver
+            .Save(mediaId, converted, false, MediaKind.UserAvatarPicture, cancellationToken)
             .ConfigureAwait(false);
-        return Ok(mediaRef);
+        return Ok(svgMediaRef);
     }
 
     [HttpGet("{kind}/{key}")]

@@ -1,8 +1,6 @@
 using ActualChat.Hashing;
 using ActualLab.IO;
 using Microsoft.Maui.Storage;
-using SkiaSharp;
-using Svg.Skia;
 
 namespace ActualChat.Maui.Services;
 
@@ -35,13 +33,12 @@ public class IconUI(IServiceProvider services) : ProcessorBase, IComputeService
         if (url.IsNullOrEmpty())
             return Task.FromResult(FilePath.Empty);
 
-        var isSvg = url.EndsWith(".svg", StringComparison.OrdinalIgnoreCase);
-        var ext = isSvg ? ".png" : Path.GetExtension(url);
+        var ext = Path.GetExtension(url);
         var filePath = GetCacheFilePath(url, ext);
-        return FetchToCache(url, filePath, isSvg, cancellationToken);
+        return FetchToCache(url, filePath, cancellationToken);
     }
 
-    private async Task<FilePath> FetchToCache(string url, FilePath filePath, bool isSvg, CancellationToken cancellationToken)
+    private async Task<FilePath> FetchToCache(string url, FilePath filePath, CancellationToken cancellationToken)
     {
         if (File.Exists(filePath))
             return filePath;
@@ -50,12 +47,7 @@ public class IconUI(IServiceProvider services) : ProcessorBase, IComputeService
             var stream = await HttpClient.GetStreamAsync(url, cancellationToken).ConfigureAwait(false);
             await using var _ = stream.ConfigureAwait(false);
             EnsureIconCacheDir();
-            if (isSvg) {
-                using var svg = SKSvg.CreateFromStream(stream);
-                svg.Save(filePath, SKColor.Empty);
-            }
-            else
-                await stream.CopyToFile(filePath, cancellationToken).ConfigureAwait(false);
+            await stream.CopyToFile(filePath, cancellationToken).ConfigureAwait(false);
             return filePath;
         }
         catch (Exception e) {

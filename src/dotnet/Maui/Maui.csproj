@@ -81,7 +81,6 @@
     <PackageReference Include="Serilog.Extensions.Logging" />
     <PackageReference Include="sqlite-net-sqlcipher" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlcipher" />
-    <PackageReference Include="Svg.Skia" />
   </ItemGroup>
 
   <!-- Platform-specific package references -->
@@ -98,7 +97,6 @@
     <PackageReference Include="AdamE.Firebase.iOS.Analytics" />
     <PackageReference Include="AdamE.Firebase.iOS.Crashlytics" />
     <PackageReference Include="AdamE.Firebase.iOS.CloudMessaging" />
-    <PackageReference Include="Svg.Skia" />
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
     <PackageReference Include="Serilog.Sinks.Debug" />
