@@ -1,3 +1,4 @@
+using ActualChat.Live;
 using ActualChat.Video;
 
 namespace ActualChat.Streaming;
@@ -12,6 +13,10 @@ public partial class LiveVideoBackend
         private ApiArray<string> _currentSupportedDecoderCodecs = new(["av1", "hevc", "h264"]);
         private CpuTimestamp _lastCodecDowngradeAt;
 
+        // Priority queue state (in-memory, not Redis)
+        private readonly Dictionary<AuthorId, Moment> _lastAudioActivityAt = new();
+        private ApiArray<string> _pausedStreamIds = default; // StreamId.Value strings
+
         public LiveVideoBackend Owner { get; } = owner;
         public ChatId ChatId { get; } = chatId;
 
@@ -21,10 +26,25 @@ public partial class LiveVideoBackend
                 return _currentSupportedDecoderCodecs;
         }
 
+        public ApiArray<string> GetPausedStreamIds()
+        {
+            lock (_codecLock)
+                return _pausedStreamIds;
+        }
+
         public void RecomputeCodecs(Dictionary<string, ApiArray<string>> members)
         {
             lock (_codecLock)
                 RecomputeSupportedDecoderCodecsLocked(members);
+        }
+
+        public void EvaluatePriority(
+            ApiArray<VideoStreamInfo> videoStreams,
+            ApiArray<LiveStreamInfo> audioStreams,
+            MomentClockSet clocks)
+        {
+            lock (_codecLock)
+                EvaluatePriorityLocked(videoStreams, audioStreams, clocks);
         }
 
         // Private methods
@@ -81,5 +101,69 @@ public partial class LiveVideoBackend
             return new ApiArray<string>(result.ToArray());
         }
 
+        private void EvaluatePriorityLocked(
+            ApiArray<VideoStreamInfo> videoStreams,
+            ApiArray<LiveStreamInfo> audioStreams,
+            MomentClockSet clocks)
+        {
+            var webcamStreams = videoStreams.Where(s => s.StreamKind == StreamKind.Webcam).ToList();
+
+            // Below threshold — clear all pauses
+            if (webcamStreams.Count < Constants.Video.PriorityActivationThreshold) {
+                if (_pausedStreamIds.Count > 0) {
+                    _pausedStreamIds = default;
+                    Owner.InvalidateGetPausedStreamIds(ChatId);
+                }
+                return;
+            }
+
+            // Build set of currently speaking author IDs
+            var speakingAuthorIds = audioStreams.Select(s => s.AuthorId).ToHashSet();
+
+            // Update last-activity timestamps for authors currently speaking
+            var now = clocks.ServerClock.Now;
+            foreach (var stream in webcamStreams) {
+                if (speakingAuthorIds.Contains(stream.AuthorId))
+                    _lastAudioActivityAt[stream.AuthorId] = now;
+                else
+                    _lastAudioActivityAt.TryAdd(stream.AuthorId, default);
+            }
+
+            // Rank: currently speaking first, then by recency of last speech
+            var ranked = webcamStreams
+                .OrderByDescending(s => speakingAuthorIds.Contains(s.AuthorId) ? 1 : 0)
+                .ThenByDescending(s => _lastAudioActivityAt.GetValueOrDefault(s.AuthorId))
+                .ToList();
+
+            // Determine paused set
+            var paused = new List<string>();
+            for (var i = 0; i < ranked.Count; i++) {
+                if (i < Constants.Video.PriorityActivationThreshold)
+                    continue; // Always active
+
+                if (i >= Constants.Video.MaxWebcamStreamsPerChat) {
+                    paused.Add(ranked[i].StreamId.Value); // Beyond cap — always paused
+                    continue;
+                }
+
+                // Between threshold and cap: pause if not speaking and grace expired
+                var isSpeaking = speakingAuthorIds.Contains(ranked[i].AuthorId);
+                if (isSpeaking)
+                    continue;
+
+                var lastActivity = _lastAudioActivityAt.GetValueOrDefault(ranked[i].AuthorId);
+                var withinGrace = lastActivity != default
+                    && (now - lastActivity) < Constants.Video.SilenceGracePeriod;
+                if (!withinGrace)
+                    paused.Add(ranked[i].StreamId.Value);
+            }
+
+            // Only invalidate if the paused set actually changed
+            var newPaused = new ApiArray<string>(paused.ToArray());
+            if (!_pausedStreamIds.SequenceEqual(newPaused)) {
+                _pausedStreamIds = newPaused;
+                Owner.InvalidateGetPausedStreamIds(ChatId);
+            }
+        }
     }
 }
