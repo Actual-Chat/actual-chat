@@ -1,4 +1,5 @@
 using ActualChat.Notification.Flows;
+using ActualChat.Queues;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Notification.IntegrationTests;
@@ -33,6 +34,7 @@ public class NotificationFlowTest(AppHostFixture fixture, ITestOutputHelper @out
             .WithDelay(TimeSpan.Zero)
             .WithDelayQuanta(TimeSpan.Zero)
             .Schedule();
+        await Queues.WhenProcessing();
 
         // assert - notification should appear for Alice
         var notification = await GetNotification(alice, entry.Id);
@@ -68,9 +70,7 @@ public class NotificationFlowTest(AppHostFixture fixture, ITestOutputHelper @out
             .WithDelay(TimeSpan.Zero)
             .WithDelayQuanta(TimeSpan.Zero)
             .Schedule();
-
-        // assert - no notification should exist for Alice for this entry
-        await Task.Delay(TimeSpan.FromSeconds(3));
+        await Queues.WhenProcessing();
         var since = Clocks.SystemClock.Now - TimeSpan.FromMinutes(1);
         var ids = await Tester.NotificationsBackend.ListRecentNotificationIds(
             alice.Id, since, CancellationToken.None);
@@ -110,6 +110,7 @@ public class NotificationFlowTest(AppHostFixture fixture, ITestOutputHelper @out
             .WithDelay(TimeSpan.Zero)
             .WithDelayQuanta(TimeSpan.Zero)
             .Schedule();
+        await Queues.WhenProcessing();
 
         // assert - exactly 1 notification, for the first unread entry
         var notification = await GetNotification(alice, entry1.Id);
@@ -147,6 +148,7 @@ public class NotificationFlowTest(AppHostFixture fixture, ITestOutputHelper @out
             .WithDelay(TimeSpan.FromMilliseconds(100))
             .WithDelayQuanta(TimeSpan.FromSeconds(1))
             .Schedule();
+        await Queues.WhenProcessing();
 
         // assert - only 1 notification (not 2)
         var notification = await GetNotification(alice, entry.Id);
@@ -189,9 +191,7 @@ public class NotificationFlowTest(AppHostFixture fixture, ITestOutputHelper @out
             .WithDelay(TimeSpan.Zero)
             .WithDelayQuanta(TimeSpan.Zero)
             .Schedule();
-
-        // assert - no notification because entry is fresh and Alice is online
-        await Task.Delay(TimeSpan.FromSeconds(3));
+        await Queues.WhenProcessing();
         var since = Clocks.SystemClock.Now - TimeSpan.FromMinutes(1);
         var ids = await Tester.NotificationsBackend.ListRecentNotificationIds(
             alice.Id, since, CancellationToken.None);
