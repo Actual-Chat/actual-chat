@@ -28,6 +28,8 @@ For detailed project organization, see [`docs/architecture/project-structure.md`
 
 When implementing new features, see [`docs/development/implementing-features.md`](./development/implementing-features.md) for a comprehensive guide covering all layers from domain models to UI components.
 
+When creating UI components, see [`docs/development/ui-components.md`](./development/ui-components.md) for file structure, CSS naming, and styling conventions.
+
 ## Build Prerequisites
 
 - Install .NET 10
