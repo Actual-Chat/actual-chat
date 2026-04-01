@@ -119,6 +119,11 @@ public sealed class ShardOwner : WorkerBase, IHasServices
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
+        // Wait for MeshWatcher to announce this node and discover other nodes.
+        // Without this, the initial MeshState has only ThisNode, causing every node
+        // to try locking ALL shards before discovering the actual mesh topology.
+        await MeshWatcher.WhenAnnounced.WaitAsync(cancellationToken).ConfigureAwait(false);
+
         var bitmap = new BitArray(BitmapState.Value);
         var addedOwnShards = new List<int>();
         var removedOwnShards = new List<int>();
