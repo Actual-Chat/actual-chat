@@ -419,15 +419,21 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ps", "ps", "{E4F7B3A1-6C2D-
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ts", "ts", "{45EC0FB9-8037-4996-9927-443EC52ABCAD}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "unit", "unit", "{A1B2C3D4-1111-2222-3333-444455556666}"
 	ProjectSection(SolutionItems) = preProject
-		tests\ts\promises.test.ts = tests\ts\promises.test.ts
-		tests\ts\resilient-stream.test.ts = tests\ts\resilient-stream.test.ts
-		tests\ts\async-processor.test.ts = tests\ts\async-processor.test.ts
-		tests\ts\math.test.ts = tests\ts\math.test.ts
-		tests\ts\object-pool.test.ts = tests\ts\object-pool.test.ts
-		tests\ts\rpc.test.ts = tests\ts\rpc.test.ts
-		tests\ts\server-clock.test.ts = tests\ts\server-clock.test.ts
-		tests\ts\signin-and-message.test.ts = tests\ts\signin-and-message.test.ts
+		tests\ts\unit\promises.test.ts = tests\ts\unit\promises.test.ts
+		tests\ts\unit\resilient-stream.test.ts = tests\ts\unit\resilient-stream.test.ts
+		tests\ts\unit\async-processor.test.ts = tests\ts\unit\async-processor.test.ts
+		tests\ts\unit\math.test.ts = tests\ts\unit\math.test.ts
+		tests\ts\unit\object-pool.test.ts = tests\ts\unit\object-pool.test.ts
+		tests\ts\unit\rpc.test.ts = tests\ts\unit\rpc.test.ts
+		tests\ts\unit\server-clock.test.ts = tests\ts\unit\server-clock.test.ts
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "e2e", "e2e", "{A1B2C3D4-5555-6666-7777-888899990000}"
+	ProjectSection(SolutionItems) = preProject
+		tests\ts\e2e\signin-and-message.test.ts = tests\ts\e2e\signin-and-message.test.ts
 	EndProjectSection
 EndProject
 Global
@@ -1558,6 +1564,8 @@ Global
 		{E4F7B3A1-6C2D-4E8F-9A1B-3D5C7E9F0B2A} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
 		{BA67ECF6-53CD-493A-AD54-D6997F879A2D} = {9E3D1D2A-7BF6-4560-B32B-91CF7A62F918}
 		{45EC0FB9-8037-4996-9927-443EC52ABCAD} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
+		{A1B2C3D4-1111-2222-3333-444455556666} = {45EC0FB9-8037-4996-9927-443EC52ABCAD}
+		{A1B2C3D4-5555-6666-7777-888899990000} = {45EC0FB9-8037-4996-9927-443EC52ABCAD}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CB00270-3EF6-42B5-A4D4-3894AFA5E25C}
