@@ -247,25 +247,27 @@ public partial class AudioStreamingBackend
                 if (EmptyRegex.IsMatch(transcript.Text))
                     continue;
 
-                // Got first non-empty transcript -> create text entry
-                // The code below is performed only once
+                // Got first non-empty transcript -> create text entry, so the code below is performed only once
 
-                // Publish transcript stream BEFORE creating the entry to avoid a race condition:
-                // CreateTextEntry triggers a Compute invalidation on the client, which immediately
-                // tries to subscribe to the transcript stream. If the stream isn't published yet,
-                // the client gets null and retries with backoff, missing the streaming effect.
                 var transcriptDiffStream = transcripts
                     .Replay(cancellationToken)
                     .ToTranscriptDiffs()
                     .Memoize(cancellationToken);
-                await _transcriptStreams
-                    .Publish(transcriptStreamId, transcriptDiffStream)
-                    .ConfigureAwait(false);
+                var publishTranscriptStreamTask = _transcriptStreams.Publish(transcriptStreamId, transcriptDiffStream);
+
+                // Wait 0.1s for publishTranscriptStreamTask to publish the stream.
+                // We want this to happen BEFORE creating the entry to avoid a race condition
+                // where the entry is created before the stream is published.
+                // See how TranscriptStreamReader.ProcessTranscriptWithRetry and .RetryDelays,
+                // it retries with backoff if gets null.
+                await Task.Delay(TimeSpan.FromSeconds(0.1), cancellationToken).ConfigureAwait(false);
 
                 textEntry = await CreateTextEntry(transcript).ConfigureAwait(false);
                 // NOTE(DF): in detect language mode, we should persist languages only on text entry finalization.
                 if (!transcriptionOptions.DetectLanguage)
                     entryLanguage = await CreateLanguages(lastTranscript.Languages).ConfigureAwait(false);
+
+                await publishTranscriptStreamTask.ConfigureAwait(false);
             }
         }
         finally {
