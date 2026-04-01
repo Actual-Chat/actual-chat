@@ -50,7 +50,9 @@
                 </ButtonRound>
             </Right>
         </TileItem>
-        <Divider/>
+        @if (session != otherSessions[^1]) {
+            <Divider />
+        }
     }
 
     @if (otherSessions.Count == 0) {
@@ -87,10 +89,22 @@
         return UICommander.Run(command);
     }
 
-    private Task OnSignOutAllClick()
+    private async Task OnSignOutAllClick()
     {
+        var confirmed = false;
+        var model = new ConfirmModal.Model(false,
+            "This will sign out all other sessions. Continue?",
+            () => { confirmed = true; }) {
+            Title = "Sign out all?",
+            ConfirmButtonText = "Yes",
+        };
+        var modalRef = await ModalUI.Show(model).ConfigureAwait(false);
+        await modalRef.WhenClosed.ConfigureAwait(false);
+        if (!confirmed)
+            return;
+
         var command = new Accounts_DeactivateAllSessions(Session, [SessionKind.Session]);
-        return UICommander.Run(command);
+        await UICommander.Run(command).ConfigureAwait(false);
     }
 
     // Nested types
