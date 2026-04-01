@@ -294,10 +294,13 @@ export class RecordingService extends EventTarget {
 
     private async acquireMediaStream(): Promise<MediaStream> {
         if (this.config.mode === 'webcam') {
+            // const videoConstraints: MediaTrackConstraints = {
+            //     width: { ideal: this.config.width },
+            //     height: { ideal: this.config.height },
+            //     frameRate: { ideal: this.config.framerate }
+            // };
             const videoConstraints: MediaTrackConstraints = {
-                width: { ideal: this.config.width },
-                height: { ideal: this.config.height },
-                frameRate: { ideal: this.config.framerate }
+                frameRate: { ideal: this.config.framerate },
             };
 
             if (this.config.cameraDeviceId) {
