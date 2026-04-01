@@ -3,14 +3,11 @@
 @using ActualChat.Users
 @inherits Step<UIHub, ProviderSelectStep.Model>;
 @{
-    if (CurrentStep != this)
-        return;
-
-    if (_authProviders is null)
+    if (CurrentStep != this || _authProviders is null)
         return;
 
     var m = State.LastNonErrorValue;
-    var codeHasBeenSent = m.HasSentCodeRecently;
+    ProcessSignInError(m.SignInError);
 }
 
 <div class="sign-in-step provider-select-step">
@@ -48,11 +45,11 @@
                 Autocomplete="tel email username"
                 ValueChanged="@((string? v) => OnPhoneOrEmailChanged(v))"
                 Placeholder="@_placeholder"
-                disabled="@codeHasBeenSent"
+                disabled="@m.HasSentCodeRecently"
                 type="text"
                 inputmode="text"
             />
-            @if (codeHasBeenSent) {
+            @if (m.HasSentCodeRecently) {
                 <div class="c-info">
                     <i class="icon-info"></i>
                     <span>Code sent. Check your inbox or phone.</span>
@@ -97,6 +94,7 @@
     private AsyncDataAnnotationsValidator _formValidator = null!;
     private bool _showFieldErrors;
     private string _signInError = "";
+    private CpuTimestamp _lastSignInErrorConsumedAt;
     private volatile string _placeholder = "+1(555)555-5555 or email@gmail.com";
 
     private IPhones Phones => Hub.Phones;
@@ -149,22 +147,28 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var hasSentCodeRecently = await TotpUI.HasSentCodeRecently(CancellationToken.None);
         var signInError = await SessionTemporals
-            .Get(Hub.Session, Constants.SessionTemporals.SignInErrorKey, cancellationToken);
-        if (signInError.IsNullOrEmpty())
-            return new(hasSentCodeRecently);
-
-        _signInError = signInError;
-
-        // Consume the error so it doesn't show again
-        var consumeCmd = new SessionTemporals_Set(Hub.Session, Constants.SessionTemporals.SignInErrorKey, null);
-        _ = Hub.Services.Commander().Run(consumeCmd, CancellationToken.None);
-        return new(hasSentCodeRecently);
+            .Get(Hub.Session, Constants.SessionTemporals.SignInErrorKey, cancellationToken)
+            ?? "";
+        return new(hasSentCodeRecently, signInError);
     }
 
     protected override async Task<bool> Validate() {
         var isValid = _validationState is not ValidationState.Invalid
             && await _formValidator.Validate().ConfigureAwait(false);
         return isValid;
+    }
+
+    private void ProcessSignInError(string signInError) {
+        if (signInError.IsNullOrEmpty())
+            return;
+
+        _signInError = signInError;
+        if (_lastSignInErrorConsumedAt.Elapsed <= TimeSpan.FromSeconds(2))
+            return;
+
+        _lastSignInErrorConsumedAt = CpuTimestamp.Now;
+        var cmd = new SessionTemporals_Set(Hub.Session, Constants.SessionTemporals.SignInErrorKey, null);
+        _ = Hub.Services.Commander().Run(cmd, true, CancellationToken.None);
     }
 
     protected override async Task<bool> Save() {
@@ -330,7 +334,7 @@
         public string Class { get; init; } = null!;
     }
 
-    public sealed record Model(bool HasSentCodeRecently = false);
+    public sealed record Model(bool HasSentCodeRecently = false, string SignInError = "");
 
     public sealed class StepModel(ComponentIdGenerator? componentIdGenerator = null)
         : FormModel<StepModel>("phone-signin", componentIdGenerator) {
