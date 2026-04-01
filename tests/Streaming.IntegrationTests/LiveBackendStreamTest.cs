@@ -45,7 +45,7 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
         var testStreamInfo = new LiveStreamInfo {
             ChatId = chatId,
             AuthorId = AuthorId.New(chatId, 1),
-            StreamId = $"test-stream-{Guid.NewGuid():N}",
+            StreamId = StreamId.New(services.MeshWatcher().ThisNode.Ref).Value,
             BeginsAt = SystemClock.Instance.Now,
             Format = AudioSource.DefaultFormat,
         };
@@ -96,7 +96,7 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
         var testStreamInfo = new LiveStreamInfo {
             ChatId = chatId,
             AuthorId = AuthorId.New(chatId, 1),
-            StreamId = $"existing-stream-{Guid.NewGuid():N}",
+            StreamId = StreamId.New(services.MeshWatcher().ThisNode.Ref).Value,
             BeginsAt = SystemClock.Instance.Now,
             Format = AudioSource.DefaultFormat,
         };
@@ -143,7 +143,7 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
         var testStreamInfo = new LiveStreamInfo {
             ChatId = chatId,
             AuthorId = AuthorId.New(chatId, 1),
-            StreamId = $"multi-consumer-stream-{Guid.NewGuid():N}",
+            StreamId = StreamId.New(services.MeshWatcher().ThisNode.Ref).Value,
             BeginsAt = SystemClock.Instance.Now,
             Format = AudioSource.DefaultFormat,
         };
@@ -188,7 +188,7 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
         var streamInfo = new LiveStreamInfo {
             ChatId = chatId,
             AuthorId = AuthorId.New(chatId, 1),
-            StreamId = $"unregister-test-{Guid.NewGuid():N}",
+            StreamId = StreamId.New(services.MeshWatcher().ThisNode.Ref).Value,
             BeginsAt = SystemClock.Instance.Now,
             Format = AudioSource.DefaultFormat,
         };

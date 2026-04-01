@@ -40,11 +40,31 @@ permissions:
   statuses: write
 
 jobs:
+  check-tested:
+    name: Check for #tested flag
+    runs-on: ubuntu-latest
+    outputs:
+      skip-tests: ${{ steps.check.outputs.skip-tests }}
+    steps:
+      - name: Check commit message for #tested
+        id: check
+        run: |
+          message="${{ github.event.head_commit.message }}"
+          if echo "$message" | grep -qiw '#tested'; then
+            echo "skip-tests=true" | tee -a $GITHUB_OUTPUT
+          else
+            echo "skip-tests=false" | tee -a $GITHUB_OUTPUT
+          fi
+
   calc-pkg-params:
     name: Calculate package related variables
     needs:
       - unit-tests
       - integration-tests
+    if: |
+      !cancelled() &&
+      (needs.unit-tests.result == 'success' || needs.unit-tests.result == 'skipped') &&
+      (needs.integration-tests.result == 'success' || needs.integration-tests.result == 'skipped')
     runs-on: ubuntu-latest
     outputs:
       IS_DEV_MAUI: ${{ steps.calc.outputs.IS_DEV_MAUI }}
@@ -199,6 +219,8 @@ jobs:
 
   unit-tests:
     name: Run Unit tests
+    needs: [check-tested]
+    if: needs.check-tested.outputs.skip-tests != 'true'
     runs-on: ubuntu-latest
     env:
       NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
@@ -260,6 +282,8 @@ jobs:
 
   integration-tests:
     name: Run Integration tests
+    needs: [check-tested]
+    if: needs.check-tested.outputs.skip-tests != 'true'
     uses: ./.github/workflows/_run-tests.yml
     with:
       build-target: integration-tests
@@ -307,6 +331,11 @@ jobs:
       - nuget-pack
       - unit-tests
       - integration-tests
+    if: |
+      !cancelled() &&
+      needs.nuget-pack.result == 'success' &&
+      (needs.unit-tests.result == 'success' || needs.unit-tests.result == 'skipped') &&
+      (needs.integration-tests.result == 'success' || needs.integration-tests.result == 'skipped')
     environment: ${{ (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release/')) && 'prod' || '' }}
     steps:
       - uses: actions/download-artifact@v4
@@ -319,9 +348,13 @@ jobs:
   deploy-dev:
     name: Deploy dev
     if: |
-      github.ref == 'refs/heads/master' ||
-      github.ref == 'refs/heads/dev'    ||
-      startsWith(github.ref, 'refs/heads/release/')
+      !cancelled() &&
+      (github.ref == 'refs/heads/master' ||
+       github.ref == 'refs/heads/dev'    ||
+       startsWith(github.ref, 'refs/heads/release/')) &&
+      (needs.unit-tests.result == 'success' || needs.unit-tests.result == 'skipped') &&
+      (needs.integration-tests.result == 'success' || needs.integration-tests.result == 'skipped') &&
+      needs.build.result == 'success'
     runs-on: ubuntu-latest
     needs:
       - build
@@ -600,7 +633,12 @@ jobs:
   deploy-ios-to-appstore:
     name: Deploy ios app package to apple app store for ${{ github.ref_name }}
     # release branch can build for both dev and prod envs while other branches can build only for dev env
-    if: ${{ needs.calc-pkg-params.outputs.MUST_BUILD_PACKAGE == 'true' }}
+    if: |
+      !cancelled() &&
+      needs.calc-pkg-params.outputs.MUST_BUILD_PACKAGE == 'true' &&
+      needs.build-ios-pkg.result == 'success' &&
+      (needs.unit-tests.result == 'success' || needs.unit-tests.result == 'skipped') &&
+      (needs.integration-tests.result == 'success' || needs.integration-tests.result == 'skipped')
     runs-on: macos-15
     needs:
       - build-ios-pkg
@@ -734,7 +772,12 @@ jobs:
       - unit-tests
       - integration-tests
       - calc-pkg-params
-    if: ${{ needs.calc-pkg-params.outputs.MUST_BUILD_PACKAGE == 'true' }}
+    if: |
+      !cancelled() &&
+      needs.calc-pkg-params.outputs.MUST_BUILD_PACKAGE == 'true' &&
+      needs.build-android-pkg.result == 'success' &&
+      (needs.unit-tests.result == 'success' || needs.unit-tests.result == 'skipped') &&
+      (needs.integration-tests.result == 'success' || needs.integration-tests.result == 'skipped')
     runs-on: ubuntu-latest
     env:
       APP_ID: ${{needs.calc-pkg-params.outputs.APP_ID}}
@@ -780,7 +823,12 @@ jobs:
       - unit-tests
       - integration-tests
       - calc-pkg-params
-    if: ${{ needs.calc-pkg-params.outputs.MUST_BUILD_PACKAGE == 'true' }}
+    if: |
+      !cancelled() &&
+      needs.calc-pkg-params.outputs.MUST_BUILD_PACKAGE == 'true' &&
+      needs.build-android-pkg.result == 'success' &&
+      (needs.unit-tests.result == 'success' || needs.unit-tests.result == 'skipped') &&
+      (needs.integration-tests.result == 'success' || needs.integration-tests.result == 'skipped')
     runs-on: ubuntu-latest
     environment: ${{ needs.calc-pkg-params.outputs.ENVIRONMENT }}
     env:
@@ -864,7 +912,12 @@ jobs:
           retention-days: 2
   deploy-win-to-microsoft-store:
     name: Deploy win app package for ${{ github.ref_name }} to microsoft store
-    if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release/')
+    if: |
+      !cancelled() &&
+      (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release/')) &&
+      needs.build-win-pkg.result == 'success' &&
+      (needs.unit-tests.result == 'success' || needs.unit-tests.result == 'skipped') &&
+      (needs.integration-tests.result == 'success' || needs.integration-tests.result == 'skipped')
     runs-on: windows-latest
     needs:
       - build-win-pkg
