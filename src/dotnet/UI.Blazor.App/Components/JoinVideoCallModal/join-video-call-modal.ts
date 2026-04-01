@@ -110,13 +110,16 @@ export class JoinVideoCallModal {
                 audio: false,
             };
 
+            infoLog?.log('startPreview constraints:', JSON.stringify(constraints));
             this.stream = await this.getUserMediaWithRetry(constraints);
 
             // Capture the actual device ID the browser chose (important when no
             // explicit device was requested — ensures recording uses the same camera)
             const actualTrack = this.stream.getVideoTracks()[0] as MediaStreamTrack | undefined;
             if (actualTrack) {
-                const actualId = actualTrack.getSettings().deviceId;
+                const s = actualTrack.getSettings();
+                infoLog?.log(`startPreview track: deviceId=${s.deviceId}, ${s.width}x${s.height}`);
+                const actualId = s.deviceId;
                 if (actualId) this.selectedDeviceId = actualId;
             }
 

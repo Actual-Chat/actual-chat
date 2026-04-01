@@ -197,6 +197,7 @@ export class RecordingService extends EventTarget {
             // Get actual video dimensions from the stream
             const videoTrack = this.inputStream.getVideoTracks()[0];
             const settings = videoTrack.getSettings();
+            infoLog?.log(`acquireMediaStream: track settings:`, JSON.stringify(settings));
             let actualWidth = settings.width ?? this.config.width;
             let actualHeight = settings.height ?? this.config.height;
 
@@ -307,12 +308,14 @@ export class RecordingService extends EventTarget {
                 videoConstraints.deviceId = { exact: this.config.cameraDeviceId };
             }
 
+            infoLog?.log('[VideoPipeline] acquireMediaStream: webcam constraints:', JSON.stringify(videoConstraints));
             return navigator.mediaDevices.getUserMedia({
                 video: videoConstraints,
                 audio: false
             });
         } else {
             // Screen mode: use native device resolution (no constraints)
+            infoLog?.log('acquireMediaStream: screen mode, no constraints');
             return navigator.mediaDevices.getDisplayMedia({
                 video: true,
                 audio: false
