@@ -1,3 +1,4 @@
+using ActualChat.Live;
 using ActualChat.Video;
 using ActualLab.Redis;
 using StreamingContext = ActualChat.Streaming.Db.StreamingContext;
@@ -14,6 +15,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     private RedisHashStore<VideoStreamInfo> StreamsStore { get; }
     private RedisHashStore<VideoStreamMemberInfo> MembersStore { get; }
     private MeshWatcher MeshWatcher => field ??= Services.MeshWatcher();
+    private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
     private new ILogger Log => field ??= Services.LogFor(GetType());
 
     public LiveVideoBackend(IServiceProvider services)
@@ -90,8 +92,10 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         Log.LogWarning("RegisterActiveStream({ChatId}): #{StreamId}, AuthorId={AuthorId}, StreamKind={StreamKind}",
             chatId, streamInfo.StreamId, streamInfo.AuthorId, streamInfo.StreamKind);
         var success = await StreamsStore.SetField(chatId, streamInfo.StreamId.Value, streamInfo).ConfigureAwait(false);
-        if (success)
+        if (success) {
             InvalidateListActiveStreams(chatId);
+            _ = BackgroundTask.Run(() => EvaluateStreamPriority(chatId, CancellationToken.None), CancellationToken.None);
+        }
     }
 
     public virtual async Task Unregister(ChatId chatId, StreamId streamId, CancellationToken cancellationToken)
@@ -99,8 +103,10 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         BumpChatEntry(chatId);
         Log.LogWarning("UnregisterActiveStream({ChatId}): #{StreamId}", chatId, streamId);
         var removed = await StreamsStore.RemoveField(chatId, streamId.Value).ConfigureAwait(false);
-        if (removed)
+        if (removed) {
             InvalidateListActiveStreams(chatId);
+            _ = BackgroundTask.Run(() => EvaluateStreamPriority(chatId, CancellationToken.None), CancellationToken.None);
+        }
     }
 
     // [ComputeMethod]
@@ -111,6 +117,21 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         var chatState = GetChatState(chatId);
         chatState.RecomputeCodecs(activeMembers);
         return chatState.GetCurrentSupportedDecoderCodecs();
+    }
+
+    // [ComputeMethod]
+    public virtual Task<bool> IsStreamPaused(ChatId chatId, StreamId streamId, CancellationToken cancellationToken)
+    {
+        var chatState = GetChatState(chatId);
+        return Task.FromResult(chatState.IsStreamPaused(streamId));
+    }
+
+    public virtual async Task EvaluateStreamPriority(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var videoStreams = await List(chatId, cancellationToken).ConfigureAwait(false);
+        var audioStreams = await LiveAudioBackend.List(chatId, cancellationToken).ConfigureAwait(false);
+        var chatState = GetChatState(chatId);
+        chatState.EvaluatePriority(videoStreams, audioStreams);
     }
 
     public virtual async Task RegisterMember(ChatId chatId, string sessionId, ApiArray<string> supportedDecoderCodecs, CancellationToken cancellationToken)
@@ -235,6 +256,12 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         InvalidateListActiveStreams(entry.Key);
         InvalidateGetVideoStreamMemberCount(entry.Key);
         InvalidateGetSupportedDecoderCodecs(entry.Key);
+    }
+
+    internal void InvalidateIsStreamPaused(ChatId chatId)
+    {
+        using (Invalidation.Begin())
+            _ = IsStreamPaused(chatId, default, default);
     }
 
     private void InvalidateListActiveStreams(ChatId chatId)

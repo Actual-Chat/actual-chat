@@ -1,3 +1,4 @@
+using ActualChat.Live;
 using ActualChat.Video;
 
 namespace ActualChat.Streaming;
@@ -12,6 +13,10 @@ public partial class LiveVideoBackend
         private ApiArray<string> _currentSupportedDecoderCodecs = new(["av1", "hevc", "h264"]);
         private CpuTimestamp _lastCodecDowngradeAt;
 
+        // Priority queue state
+        private readonly Dictionary<AuthorId, CpuTimestamp> _lastAudioActivityAt = new();
+        private readonly HashSet<string> _pausedStreamIds = new(); // StreamId.Value strings
+
         public LiveVideoBackend Owner { get; } = owner;
         public ChatId ChatId { get; } = chatId;
 
@@ -25,6 +30,20 @@ public partial class LiveVideoBackend
         {
             lock (_codecLock)
                 RecomputeSupportedDecoderCodecsLocked(members);
+        }
+
+        public bool IsStreamPaused(StreamId streamId)
+        {
+            lock (_codecLock)
+                return _pausedStreamIds.Contains(streamId.Value);
+        }
+
+        public void EvaluatePriority(
+            ApiArray<VideoStreamInfo> videoStreams,
+            ApiArray<LiveStreamInfo> audioStreams)
+        {
+            lock (_codecLock)
+                EvaluatePriorityLocked(videoStreams, audioStreams);
         }
 
         // Private methods
@@ -79,6 +98,71 @@ public partial class LiveVideoBackend
             if (allSupportHevc) result.Add("hevc");
             result.Add("h264"); // always available
             return new ApiArray<string>(result.ToArray());
+        }
+
+        private void EvaluatePriorityLocked(
+            ApiArray<VideoStreamInfo> videoStreams,
+            ApiArray<LiveStreamInfo> audioStreams)
+        {
+            var webcamStreams = videoStreams.Where(s => s.StreamKind == StreamKind.Webcam).ToList();
+
+            // Below threshold — clear all pauses
+            if (webcamStreams.Count < Constants.Video.PriorityActivationThreshold) {
+                if (_pausedStreamIds.Count > 0) {
+                    _pausedStreamIds.Clear();
+                    Owner.InvalidateIsStreamPaused(ChatId);
+                }
+                return;
+            }
+
+            // Build set of currently speaking author IDs
+            var speakingAuthorIds = audioStreams.Select(s => s.AuthorId).ToHashSet();
+
+            // Update last-activity timestamps for authors currently speaking
+            var now = CpuTimestamp.Now;
+            foreach (var stream in webcamStreams) {
+                if (speakingAuthorIds.Contains(stream.AuthorId))
+                    _lastAudioActivityAt[stream.AuthorId] = now;
+                else
+                    _lastAudioActivityAt.TryAdd(stream.AuthorId, default);
+            }
+
+            // Rank: currently speaking first, then by recency of last speech
+            var ranked = webcamStreams
+                .OrderByDescending(s => speakingAuthorIds.Contains(s.AuthorId) ? 1 : 0)
+                .ThenByDescending(s => _lastAudioActivityAt.GetValueOrDefault(s.AuthorId))
+                .ToList();
+
+            // Top N are active, rest are paused
+            var maxActive = Constants.Video.MaxWebcamStreamsPerChat;
+            var changed = false;
+            for (var i = 0; i < ranked.Count; i++) {
+                var streamIdValue = ranked[i].StreamId.Value;
+                if (i < maxActive) {
+                    var isSpeaking = speakingAuthorIds.Contains(ranked[i].AuthorId);
+                    var lastActivity = _lastAudioActivityAt.GetValueOrDefault(ranked[i].AuthorId);
+                    var withinGrace = lastActivity != default
+                        && lastActivity.Elapsed < Constants.Video.SilenceGracePeriod;
+
+                    if (i < Constants.Video.PriorityActivationThreshold || isSpeaking || withinGrace) {
+                        if (_pausedStreamIds.Remove(streamIdValue))
+                            changed = true;
+                    } else {
+                        if (_pausedStreamIds.Add(streamIdValue))
+                            changed = true;
+                    }
+                } else {
+                    if (_pausedStreamIds.Add(streamIdValue))
+                        changed = true;
+                }
+            }
+
+            // Clean up entries for streams no longer active
+            var activeStreamIds = webcamStreams.Select(s => s.StreamId.Value).ToHashSet();
+            _pausedStreamIds.RemoveWhere(id => !activeStreamIds.Contains(id));
+
+            if (changed)
+                Owner.InvalidateIsStreamPaused(ChatId);
         }
     }
 }
