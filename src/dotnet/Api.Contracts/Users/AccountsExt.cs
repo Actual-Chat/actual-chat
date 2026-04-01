@@ -2,6 +2,18 @@ namespace ActualChat.Users;
 
 public static class AccountsExt
 {
+    public static async ValueTask<bool> IsValidSession(
+        this IAccounts accounts,
+        [NotNullWhen(true)] Session? session,
+        CancellationToken cancellationToken)
+    {
+        if (session?.IsValid() != true)
+            return false;
+
+        var sessionInfo = await accounts.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
+        return sessionInfo?.IsActive == true;
+    }
+
     public static async Task AssertCanRead(
         this IAccounts accounts,
         Session session,

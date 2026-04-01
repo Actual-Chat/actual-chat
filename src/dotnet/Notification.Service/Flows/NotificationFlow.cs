@@ -1,6 +1,5 @@
 using ActualChat.Flows;
 using ActualChat.Queues;
-using ActualChat.Users;
 
 namespace ActualChat.Notification.Flows;
 
@@ -51,7 +50,7 @@ public sealed partial class NotificationFlow : Flow<Unit>
 
         // User has an unread message — reconstruct and send the notification
         var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
-        if (chat is null) {
+        if (chat is null || chat.HasSingleAuthor) {
             SetResult(default);
             return;
         }

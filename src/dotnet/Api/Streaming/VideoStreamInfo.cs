@@ -8,5 +8,6 @@ public sealed partial record VideoStreamInfo(
     [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(2)] AuthorId AuthorId,
     [property: DataMember, MemoryPackOrder(3)] VideoFormat Format,
-    [property: DataMember, MemoryPackOrder(4)] Moment StartedAt
+    [property: DataMember, MemoryPackOrder(4)] Moment StartedAt,
+    [property: DataMember, MemoryPackOrder(5)] StreamKind StreamKind = StreamKind.Webcam
 );

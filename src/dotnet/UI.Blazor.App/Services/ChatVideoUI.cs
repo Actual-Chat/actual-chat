@@ -1,4 +1,5 @@
 using ActualChat.Streaming;
+using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -15,9 +16,10 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private readonly MutableState<string?> _selectedCameraDeviceId;
     private readonly MutableState<bool> _isBackgroundBlurEnabled;
     private readonly MutableState<string?> _errorMessage;
+    private readonly MutableState<bool> _isScreencasting;
 
-    // Tracks the last chat where the user started video recording (in-memory, resets on reload)
-    private ChatId? _joinedVideoChatId;
+    // Tracks which chat the user is currently watching video in (in-memory, resets on reload)
+    private readonly MutableState<ChatId?> _watchingChatId;
 
     // Active speaker focus state
     private readonly MutableState<AuthorId?> _focusedSpeakerId;
@@ -25,6 +27,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private CancellationTokenSource? _focusDebounceCts;
     private AuthorId? _pendingFocusCandidate;
 
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ILiveVideoStreams LiveVideoStreams => Hub.Services.GetRequiredService<ILiveVideoStreams>();
     private IAuthors Authors => Hub.Authors;
 
@@ -34,6 +37,8 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         _selectedCameraDeviceId = StateFactory.NewMutable((string?)null);
         _isBackgroundBlurEnabled = StateFactory.NewMutable(false);
         _errorMessage = StateFactory.NewMutable((string?)null);
+        _isScreencasting = StateFactory.NewMutable(false);
+        _watchingChatId = StateFactory.NewMutable((ChatId?)null);
         _focusedSpeakerId = StateFactory.NewMutable((AuthorId?)null);
         _previousFocusedSpeakerId = StateFactory.NewMutable((AuthorId?)null);
     }
@@ -49,6 +54,9 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         var recordingChatId = await _recordingChatId.Use(cancellationToken).ConfigureAwait(false);
         var isRecording = recordingChatId == chatId;
 
+        var watchingChatId = await _watchingChatId.Use(cancellationToken).ConfigureAwait(false);
+        var isWatching = watchingChatId == chatId;
+
         var selectedCameraDeviceId = isRecording
             ? await _selectedCameraDeviceId.Use(cancellationToken).ConfigureAwait(false)
             : null;
@@ -57,19 +65,27 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         var errorMessage = isRecording
             ? await _errorMessage.Use(cancellationToken).ConfigureAwait(false)
             : null;
+        var isScreencasting = isRecording
+            && await _isScreencasting.Use(cancellationToken).ConfigureAwait(false);
 
         return new ChatVideoState(
             chatId,
             isRecording,
+            isWatching,
             selectedCameraDeviceId,
             isBackgroundBlurEnabled,
             isRecording && errorMessage != null,
-            errorMessage);
+            errorMessage,
+            isScreencasting);
     }
 
     [ComputeMethod]
     public virtual async Task<ChatId?> GetRecordingChatId(CancellationToken cancellationToken = default)
         => await _recordingChatId.Use(cancellationToken).ConfigureAwait(false);
+
+    [ComputeMethod]
+    public virtual async Task<ChatId?> GetWatchingChatId(CancellationToken cancellationToken = default)
+        => await _watchingChatId.Use(cancellationToken).ConfigureAwait(false);
 
     // State mutators
 
@@ -77,14 +93,26 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     {
         if (chatId is null) {
             _recordingChatId.Value = null;
+            _isScreencasting.Value = false;
             return;
         }
 
         _recordingChatId.Value = chatId;
         _selectedCameraDeviceId.Value = cameraDeviceId;
         _isBackgroundBlurEnabled.Value = isBackgroundBlurEnabled;
+        _isScreencasting.Value = false;
         _errorMessage.Value = null;
-        _joinedVideoChatId = chatId;
+        SetWatching(chatId);
+    }
+
+    public void SetScreencasting(ChatId chatId)
+    {
+        _recordingChatId.Value = chatId;
+        _selectedCameraDeviceId.Value = null;
+        _isBackgroundBlurEnabled.Value = false;
+        _isScreencasting.Value = true;
+        _errorMessage.Value = null;
+        SetWatching(chatId);
     }
 
     public void SetSelectedCamera(string? cameraDeviceId)
@@ -96,14 +124,25 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public void SetError(string? errorMessage)
         => _errorMessage.Value = errorMessage;
 
+    public void SetWatching(ChatId? chatId)
+    {
+        if (_watchingChatId.Value == chatId)
+            return;
+        _watchingChatId.Value = chatId;
+        // Ensure listening is on when starting to watch
+        if (chatId is not null)
+            _ = ChatAudioUI.SetListeningState(chatId, true);
+    }
+
     public bool HasJoinedVideoCall(ChatId chatId)
-        => _joinedVideoChatId == chatId;
+        => _watchingChatId.Value == chatId;
 
     public void ResumeRecording(ChatId chatId)
     {
         // Resume recording without overwriting camera/blur settings preserved from the previous recording
         _recordingChatId.Value = chatId;
         _errorMessage.Value = null;
+        SetWatching(chatId);
     }
 
     // JS callback handlers (called from VideoPanel)
@@ -117,13 +156,17 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     }
 
     public void OnRecordingStopped()
-        => _recordingChatId.Value = null;
+    {
+        _recordingChatId.Value = null;
+        _isScreencasting.Value = false;
+    }
 
     public void OnRecordingError(string error)
     {
         _errorMessage.Value = error;
         _recordingChatId.Value = null;
-        _joinedVideoChatId = null;
+        _isScreencasting.Value = false;
+        // Don't clear _watchingChatId — user stays watching remote streams, can retry or hang up
     }
 
     // Active speaker focus
@@ -142,32 +185,30 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         if (chatId is null)
             return default;
 
+        var isVideoEnabled = await Hub.Features.IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
+        if (!isVideoEnabled)
+            return default;
+
         return await LiveVideoStreams
-            .ListActiveStreams(Session, chatId, cancellationToken)
+            .List(Session, chatId, cancellationToken)
             .ConfigureAwait(false);
     }
 
     [ComputeMethod]
     public virtual async Task<ApiArray<AuthorId>> GetVideoStreamingAuthorIds(ChatId? chatId, CancellationToken cancellationToken = default)
     {
-        if (chatId is null)
+        var streams = await GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(false);
+        if (streams.Count == 0)
             return default;
 
-        return await LiveVideoStreams
-            .GetVideoStreamingAuthorIds(Session, chatId, cancellationToken)
-            .ConfigureAwait(false);
+        return streams.Select(s => s.AuthorId).Distinct().ToApiArray();
     }
 
     [ComputeMethod]
     public virtual async Task<bool> IsAnyoneVideoStreaming(ChatId? chatId, CancellationToken cancellationToken = default)
     {
-        if (chatId is null)
-            return false;
-
-        var authorIds = await LiveVideoStreams
-            .GetVideoStreamingAuthorIds(Session, chatId, cancellationToken)
-            .ConfigureAwait(false);
-        return authorIds.Count > 0;
+        var streams = await GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(false);
+        return streams.Count > 0;
     }
 
     [ComputeMethod]
@@ -176,22 +217,23 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         if (chatId is null)
             return 0;
 
+        var isVideoEnabled = await Hub.Features.IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
+        if (!isVideoEnabled)
+            return 0;
+
         return await LiveVideoStreams
-            .GetVideoStreamMemberCount(Session, chatId, cancellationToken)
+            .GetMemberCount(Session, chatId, cancellationToken)
             .ConfigureAwait(false);
     }
 
     [ComputeMethod]
     public virtual async Task<bool> IsOwnVideoStreaming(ChatId? chatId, CancellationToken cancellationToken = default)
     {
-        if (chatId is null)
-            return false;
-
-        var authorIds = await GetVideoStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
-        if (authorIds.Count == 0)
+        var streams = await GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(false);
+        if (streams.Count == 0)
             return false;
 
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        return ownAuthor != null && authorIds.Contains(ownAuthor.Id);
+        return ownAuthor != null && streams.Any(s => s.AuthorId == ownAuthor.Id);
     }
 }

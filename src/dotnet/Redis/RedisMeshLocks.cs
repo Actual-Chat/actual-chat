@@ -250,7 +250,7 @@ public class RedisMeshLocks : MeshLocksBase
             return MeshLockReleaseResult.AcquiredBySomeoneElse;
         default:
             // Technically, we should never land here, coz -2 = something is off with Redis atomicity for LUA scripts
-            Log.LogError("TryRelease: {Key} = {Value} -> {Result}", $"{_fullKeyPrefix}{key}", value, r);
+            Log?.LogError("TryRelease: {Key} = {Value} -> {Result}", $"{_fullKeyPrefix}{key}", value, r);
             return MeshLockReleaseResult.UnknownError;
         }
     }

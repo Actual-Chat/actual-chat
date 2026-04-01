@@ -1,4 +1,5 @@
 using ActualChat.Chat.Db;
+using ActualChat.Db;
 using ActualChat.Flows;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
@@ -37,14 +38,17 @@ public partial class ChatEntryMigrationFlow : Flow<(Moment, long, long)>
         var dbContext = await DbHub.CreateDbContext(readWrite: true, cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        if (TotalEntryCount == 0)
-            TotalEntryCount = Math.Max(1, await dbContext.ChatEntries
-                .CountAsync(x => x.Kind == 1, cancellationToken) // 1 = legacy Audio kind
-                .ConfigureAwait(false));
-        if (TotalChatCount == 0)
-            TotalChatCount = Math.Max(1, await dbContext.Chats
-                .CountAsync(cancellationToken)
-                .ConfigureAwait(false));
+        if (TotalEntryCount == 0 || TotalChatCount == 0) {
+            using var _ = dbContext.Database.UseCommandTimeout(10);
+            if (TotalEntryCount == 0)
+                TotalEntryCount = Math.Max(1, await dbContext.ChatEntries
+                    .CountAsync(x => x.Kind == 1, cancellationToken) // 1 = legacy Audio kind
+                    .ConfigureAwait(false));
+            if (TotalChatCount == 0)
+                TotalChatCount = Math.Max(1, await dbContext.Chats
+                    .CountAsync(cancellationToken)
+                    .ConfigureAwait(false));
+        }
 
         var processedInResume = 0;
         while (processedInResume < BatchSize) {

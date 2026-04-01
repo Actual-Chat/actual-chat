@@ -2,9 +2,8 @@
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record UserSignedOutEvent(
-    [property: DataMember, MemoryPackOrder(1)] Symbol SessionId,
-    [property: DataMember, MemoryPackOrder(2)] bool IsSignOutForced,
-    [property: DataMember, MemoryPackOrder(3)] UserId UserId
+    [property: DataMember, MemoryPackOrder(1)] UserId UserId,
+    [property: DataMember, MemoryPackOrder(2)] Session Session
 ) : EventCommand, IHasShardKey<UserId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]

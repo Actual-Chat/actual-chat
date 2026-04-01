@@ -2,6 +2,9 @@
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Using Remove="ActualChat.Users" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="MemoryPack" />

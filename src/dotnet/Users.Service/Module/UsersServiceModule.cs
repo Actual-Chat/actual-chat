@@ -115,24 +115,23 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         services.AddSingleton<ISecureTokensBackend, SecureTokensBackend>(); // Used by HttpSessionExt, server-side logic in AppBase, etc.
 
         if (rpcHost.IsApiHost) {
-            services.AddSingleton<ServerAuth>(); // Used by ApiHost-s
+            services.AddSingleton<AuthHelper>(); // Used by ApiHost-s
             services.AddSingleton<ClaimMapper>(); // Used by ServerAuth
         }
 
-        // Sessions backend
+        // Sessions
         rpcHost.AddBackend<ISessionsBackend, SessionsBackend>();
         var usesSessionsBackendImpl = rpcHost.HostInfo.Roles.GetBackendServiceMode<ISessionsBackend>().UsesImplementation();
         if (usesSessionsBackendImpl) {
             // The services below are used only by SessionsBackend
-            services.AddSingleton(_ => new SessionsBackend.Options {
-                MinUpdatePresencePeriod = Constants.Session.MinUpdatePresencePeriod,
-            });
-            services.AddSingleton(_ => new DbSessionInfoTrimmer.Options {
-                MaxSessionAge = TimeSpan.FromDays(180),
-            });
-            services.AddSingleton<DbSessionInfoTrimmer>()
-                .AddHostedService(c => c.GetRequiredService<DbSessionInfoTrimmer>());
+            services.AddSingleton(_ => new DbSessionTrimmer.Options());
+            services.AddSingleton<DbSessionTrimmer>()
+                .AddHostedService(c => c.GetRequiredService<DbSessionTrimmer>());
         }
+
+        // SessionTemporals
+        rpcHost.AddApi<ISessionTemporals, SessionTemporals>();
+        rpcHost.AddBackend<ISessionTemporalsBackend, SessionTemporalsBackend>();
 
         // Accounts
         rpcHost.AddLocalApi<IAccounts, Accounts>(); // Used by Chats, etc.
@@ -248,7 +247,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         services.AddSingleton<IDbInitializer, UsersDbInitializer>();
         dbModule.AddDbContextServices<UsersDbContext>(services, db => {
             // Auth-related services
-            db.AddEntityResolver<string, DbSessionInfo>();
+            db.AddEntityResolver<string, DbSession>();
             // Other services
             db.AddEntityResolver<string, DbKvasEntry>();
             db.AddEntityResolver<string, DbAccount>(_ => new() {

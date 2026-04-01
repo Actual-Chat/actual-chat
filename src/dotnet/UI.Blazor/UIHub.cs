@@ -45,6 +45,7 @@ public class UIHub : CircuitHub, IDispatcherResolver
 
     // Account-related & chat-related services
     public ISystemProperties SystemProperties => field ??= Services.GetRequiredService<ISystemProperties>();
+    public ISessionTemporals SessionTemporals => field ??= Services.GetRequiredService<ISessionTemporals>();
     public IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
     public IAvatars Avatars => field ??= Services.GetRequiredService<IAvatars>();
     public IMediaLinkPreviews MediaLinkPreviews => field ??= Services.GetRequiredService<IMediaLinkPreviews>();

@@ -60,7 +60,7 @@
     case ChatMessageKind.SendingNewMessage:
         break;
     case ChatMessageKind.AudioRecordingMessage:
-        if (!m.IsVoiceActive || HasAuthorActiveTranscription(message))
+        if (HasAuthorActiveTranscription(message))
             return;
         break;
     default:
@@ -169,7 +169,7 @@
                     <ChatMessageQuote Entry="@m.RepliedEntry" IsOwn="@isReplyToOwnMessage"/>
                 }
                 @if (message.Kind is ChatMessageKind.AudioRecordingMessage) {
-                    <StreamingEntryBadge ChatId="@ChatId" IsChatLanguageSelected="@m.IsChatLanguageSelected"/>
+                    <StreamingEntryBadge ChatId="@ChatId" IsChatLanguageSelected="@m.IsChatLanguageSelected" IsVoiceActive="@m.IsVoiceActive"/>
                 } else {
                     <ChatEntryMessageInternalView
                         Markup="@markup"

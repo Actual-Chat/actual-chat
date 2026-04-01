@@ -23,6 +23,9 @@ import {
 
 const { debugLog, warnLog, errorLog } = Log.get('VideoPlayer');
 
+// Skip-to-live: client detects high latency and re-requests stream from next keyframe
+const SKIP_TO_LIVE_THRESHOLD_MS = 3000; // Matches Constants.Video.SkipToLiveThresholdMs
+
 interface PendingFrame {
     drawable: VideoFrame | ImageBitmap;
     timestamp: number;
@@ -94,6 +97,7 @@ export class VideoPlayer {
     private skippedBacklogFrames = 0;
     private rebufferDelayMs = 0;         // After tab restore, delay rendering to let buffer accumulate
     private consecutiveEmptyRenders = 0; // Safety net: count consecutive RAFs with no frame rendered
+    private lastHighLatencyLogTime = 0;  // Throttle high-latency FRAME_RECV logs
 
     // Adaptive catch-up playback state (wall-clock path only)
     private playbackRate = 1.0;
@@ -184,10 +188,35 @@ export class VideoPlayer {
             const codecString = this.mapCodecToWebCodecs(codec, description);
             debugLog?.log(`Initializing decoder worker with codec: ${codecString}`);
 
+            // Check if codec is supported before creating decoder
+            // Try prefer-hardware first, fall back to no-preference (some devices
+            // report a codec as unsupported with prefer-hardware but work fine in SW)
+            let decoderSupported = false;
+            let bestAcceleration: HardwareAcceleration = 'prefer-hardware';
+            for (const accel of ['prefer-hardware', 'no-preference'] as const) {
+                try {
+                    const { supported } = await VideoDecoder.isConfigSupported({
+                        codec: codecString,
+                        hardwareAcceleration: accel,
+                    });
+                    if (supported) {
+                        decoderSupported = true;
+                        bestAcceleration = accel;
+                        break;
+                    }
+                } catch { /* continue to next */ }
+            }
+            if (!decoderSupported) {
+                warnLog?.log(`Codec ${codecString} is not supported on this device, skipping decoder init`);
+                this.isPlaying = false;
+                void this.reportEnded(`Codec ${codecString} not supported`);
+                return;
+            }
+
             this.decoderConfig = {
                 codec: codecString,
                 optimizeForLatency: true,
-                hardwareAcceleration: 'prefer-hardware',
+                hardwareAcceleration: bestAcceleration,
                 description,
             };
 
@@ -243,10 +272,11 @@ export class VideoPlayer {
                 const bytes = new Uint8Array(description);
                 // Extract HEVC profile/tier/level from HVCC structure
                 const generalProfileIdc = bytes[1] & 0x1F;
-                const generalLevelIdc = bytes[12];
                 const tier = (bytes[1] >> 5) & 0x01;
                 const tierStr = tier ? 'H' : 'L';
-                const codecString = `hev1.${generalProfileIdc}.6.${tierStr}${generalLevelIdc}.B0`;
+                // Always use Level 4.0 (120) for decoder — sender HW encoders may write
+                // incorrect levels (e.g., L90 for 720p) causing Chrome SW decode fallback
+                const codecString = `hev1.${generalProfileIdc}.6.${tierStr}120.B0`;
                 const declaredLower = codec.toLowerCase();
                 if (!declaredLower.startsWith('hev1') && !declaredLower.startsWith('hvc1')
                     && declaredLower !== 'hevc' && declaredLower !== 'h265') {
@@ -397,8 +427,9 @@ export class VideoPlayer {
         if (this.pipelineLatencyMs === 0) {
             this.pipelineLatencyMs = cappedLatencyMs;
         } else {
-            // Asymmetric EMA: fast response to increases (α=0.3), slow decay (α=0.05)
-            const alpha = cappedLatencyMs > this.pipelineLatencyMs ? 0.3 : 0.05;
+            // Asymmetric EMA: moderate response to increases (α=0.2), faster decay (α=0.15)
+            // to prevent ratchet effect where bursty delivery inflates the estimate permanently
+            const alpha = cappedLatencyMs > this.pipelineLatencyMs ? 0.2 : 0.15;
             this.pipelineLatencyMs = this.pipelineLatencyMs * (1 - alpha) + cappedLatencyMs * alpha;
         }
 
@@ -830,19 +861,21 @@ export class VideoPlayer {
         // After reset, delta frames are useless — need a fresh keyframe
         this.waitingForKeyframe = true;
 
-        // Set threshold to skip stale encoded frames arriving from SignalR
-        const targetLatencyMs = Math.max(this.pipelineLatencyMs, 300);
-        this.skipFramesBelowOffsetMs = (ServerClock.now() - this.startedAtMs) - targetLatencyMs;
-
-        warnLog?.log(
-            `Tab restored: flushed ${pendingCount} pending frames, decoder reset, ` +
-            `waiting for keyframe above offset ${this.skipFramesBelowOffsetMs.toFixed(0)}ms`);
-
         // Reset timing anchor so playback re-syncs on next rendered frame
         this.playbackStartTime = 0;
         this.playbackRate = 1.0;
         this.lastSeekTime = 0;
         this.rebufferDelayMs = 300;
+
+        // Dispose current pull and re-request from live offset (skip-to-live)
+        this.pullSubscription?.dispose();
+        this.pullSubscription = null;
+        this.pipelineLatencyMs = 0;
+        const skipToMs = Math.max(0, ServerClock.now() - this.startedAtMs);
+        warnLog?.log(
+            `Tab restored: flushed ${pendingCount} pending frames, decoder reset, ` +
+            `re-requesting stream from offset ${skipToMs.toFixed(0)}ms`);
+        void this.startPull(this.streamId, skipToMs);
     }
 
     /** Called by Blazor */
@@ -937,11 +970,14 @@ export class VideoPlayer {
                     `durationMs=${durationMs.toFixed(1)}, dataLen=${data.length}`);
             }
 
-            // Diagnostic: log implied latency for first 5 frames and every 300th
-            if (this.receivedFrameCount <= 5 || this.receivedFrameCount % 300 === 0) {
-                const nowMs = ServerClock.now();
-                const impliedCaptureAt = this.startedAtMs + offsetMs;
-                const impliedLatency = nowMs - impliedCaptureAt;
+            // Diagnostic: log implied latency for first 5 frames, every 300th, and during high latency
+            const nowMs = ServerClock.now();
+            const impliedCaptureAt = this.startedAtMs + offsetMs;
+            const impliedLatency = nowMs - impliedCaptureAt;
+            const isHighLatency = impliedLatency > 2000
+                && (performance.now() - this.lastHighLatencyLogTime > 1000);
+            if (this.receivedFrameCount <= 5 || this.receivedFrameCount % 300 === 0 || isHighLatency) {
+                if (isHighLatency) this.lastHighLatencyLogTime = performance.now();
                 warnLog?.log(
                     `FRAME_RECV: #${this.receivedFrameCount} offsetMs=${offsetMs.toFixed(0)}, ` +
                     `startedAt=${this.startedAtMs.toFixed(0)}, impliedCaptureAt=${impliedCaptureAt.toFixed(0)}, ` +
@@ -967,6 +1003,8 @@ export class VideoPlayer {
 
     public async stop(): Promise<void> {
         if (!this.isPlaying) return;
+
+        warnLog?.log(`VideoPlayer stop() called for stream ${this.streamId}, rendered=${this.renderFrameCount} frames, received=${this.receivedFrameCount}`);
 
         this.isPlaying = false;
         this.playbackStartTime = 0;
@@ -1047,6 +1085,27 @@ export class VideoPlayer {
             `(startedAt=${this.startedAtMs.toFixed(0)}+offset=${this.lastRenderedOffsetMs.toFixed(0)}), ` +
             `latency=${latencyMs.toFixed(0)}ms`);
 
+        // Skip-to-live: if latency exceeds threshold, re-request the stream from the next keyframe
+        if (latencyMs > SKIP_TO_LIVE_THRESHOLD_MS) {
+            warnLog?.log(
+                `SKIP_TO_LIVE: latency ${latencyMs.toFixed(0)}ms > ${SKIP_TO_LIVE_THRESHOLD_MS}ms, re-requesting stream`);
+            this.pullSubscription?.dispose();
+            this.pullSubscription = null;
+            // Flush pending frames to avoid rendering stale data after re-request
+            for (const pf of this.pendingFrames)
+                pf.close();
+            this.pendingFrames.length = 0;
+            this.bufferSize = 0;
+            // Reset latency estimate and timing anchor — stale values cause the same
+            // drift cycle to repeat immediately on the new stream
+            this.pipelineLatencyMs = 0;
+            this.playbackStartTime = 0;
+            // Request from the current live offset so the server starts from the next keyframe
+            const skipToMs = Math.max(0, ServerClock.now() - this.startedAtMs);
+            void this.startPull(this.streamId, skipToMs);
+            return;
+        }
+
         // Collect decoder diagnostics and send enriched latency report
         const connection = VideoStreamer.connection;
         const sessionToken = SessionTokens.current;
@@ -1067,7 +1126,9 @@ export class VideoPlayer {
 
                 warnLog?.log(
                     `VIDEO_DECODE: codec=${this.decoderConfig?.codec ?? 'unknown'} ` +
-                    `median=${ds.medianDecodeTime.toFixed(1)}ms avg=${ds.averageDecodeTime.toFixed(1)}ms ` +
+                    `decode=${ds.pureMedianDecodeTime >= 0 ? ds.pureMedianDecodeTime.toFixed(1) : 'N/A'}ms ` +
+                    `queueWait=${ds.medianDecodeTime.toFixed(1)}ms ` +
+                    `queueDepth=${ds.decodeQueueSize} bpDrops=${ds.backpressureDrops} ` +
                     `e2e=${this.pipelineLatencyMs.toFixed(0)}ms buf=${this.pendingFrames.length} ` +
                     `bufSpanMs=${currentBufferSpanMs.toFixed(0)} ` +
                     `recv=${recvDelta} decoded=${decodedDelta} drop=${ds.droppedFrames} ` +
@@ -1098,7 +1159,7 @@ export class VideoPlayer {
                             sessionToken,
                             this.streamId,
                             streamOffsetMs,
-                            ds.medianDecodeTime,
+                            ds.pureMedianDecodeTime >= 0 ? ds.pureMedianDecodeTime : ds.medianDecodeTime,
                             this.pendingFrames.length,
                             currentBufferSpanMs
                         );

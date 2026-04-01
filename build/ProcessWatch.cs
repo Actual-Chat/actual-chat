@@ -22,9 +22,18 @@ public class ProcessWatch : IDisposable
         string args,
         string projectDir,
         Dictionary<string, string> envVars,
-        CancellationTokenSource cancellationTokenSource)
+        CancellationTokenSource cancellationTokenSource,
+        string? logFile = null)
     {
         try {
+            RollingLogWriter? logWriter = null;
+            if (logFile != null) {
+                var dir = Path.GetDirectoryName(logFile);
+                if (dir != null && !Directory.Exists(dir))
+                    Directory.CreateDirectory(dir);
+                logWriter = new RollingLogWriter(logFile);
+            }
+
             Process process = new ();
             var psiDotnet = new ProcessStartInfo(exe, args) {
                 UseShellExecute = false,
@@ -42,12 +51,14 @@ public class ProcessWatch : IDisposable
                     return;
 
                 Console.WriteLine(Green($"{logPrefix}: ") + Colorize(e.Data));
+                logWriter?.WriteLine(e.Data);
             };
             process.ErrorDataReceived += (_, e) => {
                 if (e.Data == null)
                     return;
 
                 Console.WriteLine(Green($"{logPrefix}: ") + Red(e.Data));
+                logWriter?.WriteLine(e.Data);
             };
             process.Start();
 
@@ -101,5 +112,36 @@ public class ProcessWatch : IDisposable
             }
         }
         catch { }
+    }
+}
+
+/// <summary>
+/// Writes to a log file, truncating from the beginning when it exceeds maxSize.
+/// On rotation, the current file is moved to .prev and a fresh file is started.
+/// </summary>
+internal sealed class RollingLogWriter(string path, long maxSize = 512 * 1024)
+{
+    private readonly string _prevPath = path + ".prev";
+    private readonly Lock _lock = new();
+    private StreamWriter _writer = new (path, append: false) { AutoFlush = true };
+    private long _bytesWritten = 0;
+
+    public void WriteLine(string line)
+    {
+        lock (_lock) {
+            _writer.WriteLine(line);
+            _bytesWritten += line.Length + Environment.NewLine.Length;
+            if (_bytesWritten >= maxSize)
+                Rotate();
+        }
+    }
+
+    private void Rotate()
+    {
+        _writer.Dispose();
+        try { File.Delete(_prevPath); } catch { }
+        try { File.Move(path, _prevPath); } catch { }
+        _writer = new StreamWriter(path, append: false) { AutoFlush = true };
+        _bytesWritten = 0;
     }
 }

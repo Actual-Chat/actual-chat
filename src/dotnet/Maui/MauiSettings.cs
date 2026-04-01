@@ -31,6 +31,7 @@ public static class MauiSettings
     public static readonly Uri BaseUri;
     public static readonly string BaseUrl;
     public static readonly AppKind AppKind;
+    public static readonly string AppUserAgent;
     public static readonly Color SplashBackgroundColor = Color.FromArgb("#0C003D");
 
     static MauiSettings()
@@ -50,6 +51,7 @@ public static class MauiSettings
 #else
         AppKind = AppKind.Unknown;
 #endif
+        AppUserAgent = $"{AppKind:G}App/{ApiConstants.FullVersionString}";
         MauiHostNameRemapper.Use();
     }
 

@@ -108,6 +108,7 @@ internal sealed class AndroidAudioPlaybackEngine(
         }
 
         lock (Lock) { // We must re-lock after await
+            _positionListener?.Deactivate();
             if (_positionListener.IsValid())
                 _positionListener.DisposeSilently();
             if (_audioTrack.IsValid()) {
@@ -165,8 +166,11 @@ internal sealed class AndroidAudioPlaybackEngine(
         var audioTrack = _audioTrack.IfValid();
         if (mustAbort) {
             try {
-                if (audioTrack?.PlayState is PlayState.Playing or PlayState.Paused)
+                _positionListener?.Deactivate();
+                if (audioTrack?.PlayState is PlayState.Playing or PlayState.Paused) {
+                    try { audioTrack.SetPlaybackPositionUpdateListener(null); } catch { }
                     audioTrack.Stop();
+                }
             }
             catch {
                 // Ignore
@@ -332,6 +336,7 @@ internal sealed class AndroidAudioPlaybackEngine(
     {
         private readonly AndroidAudioPlaybackEngine _parent;
         private readonly TaskCompletionSource _whenMarkerReachedSource = TaskCompletionSourceExt.New();
+        private volatile bool _isDeactivated;
 
         public Task WhenMarkerReached => _whenMarkerReachedSource.Task;
 
@@ -339,8 +344,17 @@ internal sealed class AndroidAudioPlaybackEngine(
         public PlayPositionListener(AndroidAudioPlaybackEngine parent)
             => _parent = parent;
 
+        public void Deactivate()
+        {
+            _isDeactivated = true;
+            _whenMarkerReachedSource.TrySetResult();
+        }
+
         public void OnMarkerReached(AudioTrack? audioTrack)
         {
+            if (_isDeactivated)
+                return;
+
             try {
                 if (!ReferenceEquals(audioTrack, _parent._audioTrack))
                     return; // Something is off, this should never happen
@@ -356,6 +370,9 @@ internal sealed class AndroidAudioPlaybackEngine(
 
         public void OnPeriodicNotification(AudioTrack? audioTrack)
         {
+            if (_isDeactivated)
+                return;
+
             try {
                 if (!ReferenceEquals(audioTrack, _parent._audioTrack))
                     return; // Something is off, this should never happen

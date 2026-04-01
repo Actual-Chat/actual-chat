@@ -16,6 +16,7 @@
     <PackageReference Include="Google.Cloud.Video.Transcoder.V1" />
     <PackageReference Include="libphonenumber-csharp" />
     <PackageReference Include="MaxMind.GeoIP2" />
+    <PackageReference Include="UAParser" />
     <PackageReference Include="Microsoft.AspNetCore.StaticFiles" />
     <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" />
     <PackageReference Include="NATS.Net" />
@@ -27,6 +28,7 @@
 
   <ItemGroup>
     <Content Include="..\..\..\lib\data\GeoLite2-Country.zip" Link="data\GeoLite2-Country.zip" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\lib\data\GeoLite2-City.zip" Link="data\GeoLite2-City.zip" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

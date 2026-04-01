@@ -14,6 +14,7 @@ export interface VideoStreamConfig {
     width: number;
     height: number;
     codecSettings?: string; // Base64 encoded codec-specific data (SPS/PPS for H.264)
+    streamKind?: number; // 0 = Webcam (default), 1 = Screencast
     onReconnect?: () => void; // Called before each PushVideo to reset sender-side state (e.g., timestamp anchor)
 }
 
@@ -133,6 +134,7 @@ export class VideoStream {
                         this.config.height,
                         this.config.codecSettings ?? '', // Base64 encoded SPS/PPS for H.264
                         ServerClock.now() / 1000,
+                        this.config.streamKind ?? 0, // 0 = Webcam, 1 = Screencast
                         subject
                     );
                     const clientStartOffsetMs = ServerClock.now();

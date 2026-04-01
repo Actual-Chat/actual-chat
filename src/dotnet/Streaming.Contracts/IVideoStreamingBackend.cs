@@ -7,13 +7,13 @@ namespace ActualChat.Streaming;
 
 [BackendService(nameof(HostRole.VideoBackend), ServiceMode.Distributed)]
 [BackendShardScheme(nameof(HostRole.VideoBackend))]
-public interface IVideoStreamingBackend : IRpcService, IBackendService
+public interface IVideoStreamingBackend : IComputeService, IRpcService, IBackendService
 {
     Task<RpcStream<VideoFrame>?> GetVideo(StreamId streamId, TimeSpan skipTo, string peerId, CancellationToken cancellationToken);
     Task PushVideo(VideoRecord record, RpcStream<VideoFrame> videoStream, CancellationToken cancellationToken);
 
-    [RpcMethod(LocalExecutionMode = RpcLocalExecutionMode.Unconstrained)]
-    Task<RpcStream<VideoQualityPreset>> ObserveStreamQualityRequests(StreamId streamId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<VideoQualityPreset> GetQualityPreset(StreamId streamId, CancellationToken cancellationToken);
 
     Task ReportPeerLatency(
         StreamId streamId,

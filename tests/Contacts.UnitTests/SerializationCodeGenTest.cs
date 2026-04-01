@@ -9,5 +9,9 @@ public class SerializationCodeGenTest(ITestOutputHelper @out) : TestBase(@out)
     {
         SerializationCodeGen.ValidateType<Change<string>>();
         SerializationCodeGen.ValidateType<ChangedContactsQuery>();
+        SerializationCodeGen.ValidateType<Contact>();
+        SerializationCodeGen.ValidateType<ExternalContactsHash>();
+        SerializationCodeGen.ValidateType<ContactSubset>();
+        SerializationCodeGen.ValidateType<ThreadContact>();
     }
 }

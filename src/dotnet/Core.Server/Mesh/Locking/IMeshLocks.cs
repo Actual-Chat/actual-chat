@@ -1,4 +1,5 @@
 using ActualLab.Resilience;
+using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Mesh;
 
@@ -22,9 +23,10 @@ public interface IMeshLocks : IHasServices
 
 public interface IMeshLocksBackend : IMeshLocks
 {
-    ILogger Log { get; }
+    ILogger? Log { get; }
     ILogger? DebugLog { get; }
     ChaosMaker ChaosMaker { get; }
+    IHostApplicationLifetime? HostLifetime { get; }
 
     // Methods MUST NOT auto-retry in case they can't reach the lock service
     Task<bool> TryRenew(string key, string value, TimeSpan expiresIn, CancellationToken cancellationToken = default);

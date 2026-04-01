@@ -104,6 +104,14 @@ See [`CODING_STYLE.md`](./CODING_STYLE.md) for detailed coding style guidelines.
 - When creating a PR, include a brief summary of changes with a standard "feat:", "fix:", "refactor:", "chore:", or "docs:" prefix.
 - Reference related issues or discussions if applicable.
 
+## Development Loop in Docker
+
+The host runs `./run-watch.cmd` — it auto-rebuilds and restarts the server when you change files.
+
+After editing code, poll `tmp/watch-dotnet.log` until you see `Now listening on:` (ready) or `error` (fix and wait again). Do not use `/server-start` or `/server-restart` — the watch process owns the server.
+
+Frontend build output: `tmp/watch-web.log`.
+
 ## Programmatic Checks
 
 - After making C# changes, run `dotnet build ActualChat.sln` to verify they don't break the build.

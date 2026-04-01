@@ -99,16 +99,19 @@
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            if (BottomHill)
+                JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                    JSCreateMethod,
+                    Ref);
+            StateHasChanged();
+            return;
+        }
+
         var currentTabs = SortedTabs.ToList();
         var selectedTabId = SelectedTabId;
         SelectedTabId = _tabRegistry.ResolveSelectedTabId(currentTabs, _renderedTabs, _renderedSelectedTab, AutoSelectInitialTab);
         var tabsHaveChanged = !_renderedTabs.SequenceEqual(currentTabs);
-
-        if (firstRender && BottomHill) {
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(
-                JSCreateMethod,
-                Ref);
-        }
 
         // If a tab list has changed, we need to rerender tab buttons.
         if (!tabsHaveChanged)

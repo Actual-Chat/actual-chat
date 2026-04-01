@@ -13,6 +13,8 @@ public interface IAccountsBackend : IComputeService, IBackendService
     Task<UserId?> GetIdByUserIdentity(UserIdentity identity, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<UserId?> GetIdByAlias(AliasId aliasId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<ApiList<Session>> ListSessions(UserId userId, CancellationToken cancellationToken);
 
     // Non-compute methods
 
@@ -29,6 +31,8 @@ public interface IAccountsBackend : IComputeService, IBackendService
 
     [CommandHandler]
     Task OnSignIn(AccountsBackend_SignIn command, CancellationToken cancellationToken = default);
+    [CommandHandler]
+    Task OnSignOut(AccountsBackend_SignOut command, CancellationToken cancellationToken = default);
     [CommandHandler]
     Task OnUpdate(AccountsBackend_Update command, CancellationToken cancellationToken);
     [CommandHandler]
@@ -51,8 +55,22 @@ public sealed partial record AccountsBackend_SignIn(
     [property: DataMember, MemoryPackOrder(1)] UserIdentity AuthenticatedIdentity,
     [property: DataMember, MemoryPackOrder(2)] ApiMap<UserIdentity, string> Identities, // May not include AuthenticatedIdentity
     [property: DataMember, MemoryPackOrder(3)] ApiMap<string, string> Claims,
-    [property: DataMember, MemoryPackOrder(4)] bool MustExist = false
+    [property: DataMember, MemoryPackOrder(4)] bool? MustExist = null
 ) : ISessionCommand<Unit>, IBackendCommand;
+
+/// <summary>
+/// Command to sign out a session.
+/// </summary>
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record AccountsBackend_SignOut(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] bool Deactivate = false
+) : ISessionCommand<Unit>, IBackendCommand, IHasShardKey<Session>
+{
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public Session ShardKey => Session;
+}
 
 /// <summary>
 /// Command to update a user account.

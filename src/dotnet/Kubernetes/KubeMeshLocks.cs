@@ -60,7 +60,7 @@ public class KubeMeshLocks : MeshLocksBase
                     await LeaseClient.Watch(Namespace, _labelSelector, OnChange, RetryDelays, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
-                Log.LogWarning(e, "Failed to watch leases");
+                Log?.LogWarning(e, "Failed to watch leases");
                 await subscription.DisposeSilentlyAsync().ConfigureAwait(false);
             }
         }, cancellationToken);
@@ -79,7 +79,7 @@ public class KubeMeshLocks : MeshLocksBase
                 if (fullName == null && _leaseFullKeys.TryGetValue(key, out var names))
                     fullName = names.FullName;
                 if (fullName == null) {
-                    Log.LogWarning("Lease {LeaseName} has no full name annotation", lease.Metadata.Name);
+                    Log?.LogWarning("Lease {LeaseName} has no full name annotation", lease.Metadata.Name);
                     return;
                 }
                 await subscription.Push(fullName[_keyPrefixLength..], ct)
@@ -176,7 +176,7 @@ public class KubeMeshLocks : MeshLocksBase
             }
         }
         catch (Exception e) {
-            Log.LogError(e, "Failed to create a K8s lease '{LeaseName}'", lease.Metadata.Name);
+            Log?.LogError(e, "Failed to create a K8s lease '{LeaseName}'", lease.Metadata.Name);
             return false;
         }
     }
@@ -299,10 +299,10 @@ public class KubeMeshLocks : MeshLocksBase
                 : "more than 30 days";
             try {
                 await LeaseClient.Delete(Namespace, lease.Metadata.Name, cancellationToken: CancellationToken.None).ConfigureAwait(false);
-                Log.LogInformation("Pruned lease: {LeaseName} (age: {Age})", lease.Metadata.Name, sAge);
+                Log?.LogInformation("Pruned lease: {LeaseName} (age: {Age})", lease.Metadata.Name, sAge);
             }
             catch (Exception e) {
-                Log.LogWarning(e, "Failed to prune lease: {LeaseName} (age: {Age})", lease.Metadata.Name, sAge);
+                Log?.LogWarning(e, "Failed to prune lease: {LeaseName} (age: {Age})", lease.Metadata.Name, sAge);
             }
         }
     }

@@ -4,8 +4,9 @@
     var m = State.Value;
     var isVideoOn = m.IsLocalVideoRecording;
     var stateCls = isVideoOn ? "video-on" : "video-off";
-    var narrowCls = IsNarrow ? "narrow" : "";
-    var wrapperCls = $"{stateCls} {narrowCls}";
+    var wrapperCls = $"{stateCls}";
+    if (IsNarrow)
+        wrapperCls += " narrow";
     var tooltip = isVideoOn ? "Stop video" : "Start video";
 }
 
@@ -14,7 +15,7 @@
         Click="@OnVideoClick"
         Tooltip="@tooltip"
         TooltipPosition="FloatingPosition.Top">
-        <i class="icon-video text-xl"></i>
+        <i class="icon-video text-2xl"></i>
     </ButtonRound>
 </div>
 
@@ -36,13 +37,13 @@
         var chat = Chat;
         var chatId = chat.Id;
 
-        var streamingAuthorIds = await ChatVideoUI.GetVideoStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
+        var videoStreams = await ChatVideoUI.GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(false);
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         var recordingChatId = await ChatVideoUI.GetRecordingChatId(cancellationToken).ConfigureAwait(false);
         var isLocalVideoRecording = recordingChatId == chatId;
 
-        var isOwnVideoStreaming = ownAuthor != null && streamingAuthorIds.Contains(ownAuthor.Id);
-        var areOthersVideoStreaming = streamingAuthorIds.Count > (isOwnVideoStreaming ? 1 : 0);
+        var isOwnVideoStreaming = ownAuthor != null && videoStreams.Any(s => s.AuthorId == ownAuthor.Id);
+        var areOthersVideoStreaming = videoStreams.Count > (isOwnVideoStreaming ? 1 : 0);
 
         return new(chat, isOwnVideoStreaming, areOthersVideoStreaming, isLocalVideoRecording);
     }

@@ -516,8 +516,7 @@ public class NotificationsBackend(IServiceProvider services)
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var sessionId = eventCommand.SessionId;
-        var session = new Session(sessionId);
+        var session = eventCommand.Session;
         var devices = await ListDevices(eventCommand.UserId, session.Hash, cancellationToken).ConfigureAwait(false);
         if (devices.Count == 0)
             return;

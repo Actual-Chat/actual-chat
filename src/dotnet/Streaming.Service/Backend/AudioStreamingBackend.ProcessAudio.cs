@@ -52,7 +52,22 @@ public partial class AudioStreamingBackend
     {
         var session = record.Session;
         var chatId = record.ChatId;
-        var beginsAt = Clocks.SystemClock.Now;
+        // Use client's server-synced clock (same as video) for consistent A/V timing.
+        // Previously used Clocks.SystemClock.Now which added client→server transit time
+        // to the timestamp, causing audio recordedAtMs to be on a different clock base
+        // than video startedAtMs and breaking AudioVideoSync calculations.
+        var beginsAt = default(Moment) + TimeSpan.FromSeconds(record.ClientStartOffset);
+        var serverNow = Clocks.ServerClock.Now;
+        var clockDelta = serverNow - beginsAt;
+        if (Math.Abs(clockDelta.TotalSeconds) > 5) {
+            Log.LogWarning(
+                "ProcessAudio: client clock skew {ClockDeltaMs:F0}ms for chat {ChatId}, using server clock",
+                clockDelta.TotalMilliseconds, chatId);
+            beginsAt = serverNow;
+        }
+        Log.LogInformation(
+            "ProcessAudio: chatId={ChatId}, clientStartOffset={ClientStartOffset:F3}s, delta={DeltaMs:F0}ms",
+            chatId, record.ClientStartOffset, clockDelta.TotalMilliseconds);
         var rules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         rules.Require(ChatPermissions.Write);
 
@@ -84,16 +99,16 @@ public partial class AudioStreamingBackend
             OpenAudioSegmentLog);
         openSegment.SetRecordedAt(recordedAt);
 
-        // Register active stream as early as possible (before creating ChatEntry)
+        // Register stream as early as possible (before creating ChatEntry)
         if (mustStreamVoice) {
-            var activeStream = new LiveStreamInfo {
+            var streamInfo = new LiveStreamInfo {
                 ChatId = chatId,
                 AuthorId = author.Id,
                 StreamId = openSegment.StreamId.Value,
                 BeginsAt = beginsAt,
                 Format = audio.Format,
             };
-            await LiveBackend.RegisterActiveStream(chatId, activeStream, cancellationToken).ConfigureAwait(false);
+            await LiveBackend.Register(chatId, streamInfo, cancellationToken).ConfigureAwait(false);
         }
 
         var audioStream = openSegment.Source
@@ -136,7 +151,7 @@ public partial class AudioStreamingBackend
         MediaId? audioMediaId = null;
         if (mustStreamVoice) {
             // Unregister active stream from LiveBackend (use CancellationToken.None to ensure cleanup happens)
-            await LiveBackend.UnregisterActiveStream(chatId, openSegment.StreamId.Value, CancellationToken.None).ConfigureAwait(false);
+            await LiveBackend.Unregister(chatId, openSegment.StreamId.Value, CancellationToken.None).ConfigureAwait(false);
             // Save audio blob and create Media record - use CancellationToken.None to ensure cleanup
             audioMediaId = await AudioSegmentSaver
                 .SaveAndCreateMedia(closedSegment, chatId, beginsAt, recordedAt, CancellationToken.None)
@@ -249,10 +264,11 @@ public partial class AudioStreamingBackend
 
                 // Got first non-empty transcript -> create text entry
                 // The code below is performed only once
-                textEntry = await CreateTextEntry(transcript).ConfigureAwait(false);
-                // NOTE(DF): in detect language mode, we should persist languages only on text entry finalization.
-                if (!transcriptionOptions.DetectLanguage)
-                    entryLanguage = await CreateLanguages(lastTranscript.Languages).ConfigureAwait(false);
+
+                // Publish transcript stream BEFORE creating the entry to avoid a race condition:
+                // CreateTextEntry triggers a Compute invalidation on the client, which immediately
+                // tries to subscribe to the transcript stream. If the stream isn't published yet,
+                // the client gets null and retries with backoff, missing the streaming effect.
                 var transcriptDiffStream = transcripts
                     .Replay(cancellationToken)
                     .ToTranscriptDiffs()
@@ -260,6 +276,11 @@ public partial class AudioStreamingBackend
                 await _transcriptStreams
                     .Publish(transcriptStreamId, transcriptDiffStream)
                     .ConfigureAwait(false);
+
+                textEntry = await CreateTextEntry(transcript).ConfigureAwait(false);
+                // NOTE(DF): in detect language mode, we should persist languages only on text entry finalization.
+                if (!transcriptionOptions.DetectLanguage)
+                    entryLanguage = await CreateLanguages(lastTranscript.Languages).ConfigureAwait(false);
             }
         }
         finally {

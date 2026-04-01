@@ -62,8 +62,8 @@
 
         <CaptchaView />
 
-        @if (!_serverError.IsNullOrEmpty()) {
-            <div class="c-account-error">@_serverError</div>
+        @if (!_signInError.IsNullOrEmpty()) {
+            <div class="c-account-error">@_signInError</div>
         }
         <Toggle Label="Register a new account"
                 IsChecked="@TotpSignInModel.IsRegister"
@@ -96,11 +96,12 @@
     private List<AuthProviderModel>? _authProviders;
     private AsyncDataAnnotationsValidator _formValidator = null!;
     private bool _showFieldErrors;
-    private string _serverError = "";
+    private string _signInError = "";
     private volatile string _placeholder = "+1(555)555-5555 or email@gmail.com";
 
     private IPhones Phones => Hub.Phones;
     private ICaptcha Captcha => Hub.Captcha;
+    private ISessionTemporals SessionTemporals => Hub.SessionTemporals;
     private CaptchaUI CaptchaUI => Hub.CaptchaUI;
     private TotpUI TotpUI => Hub.TotpUI;
 
@@ -147,7 +148,17 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var hasSentCodeRecently = await TotpUI.HasSentCodeRecently(CancellationToken.None);
-        return new (hasSentCodeRecently);
+        var signInError = await SessionTemporals
+            .Get(Hub.Session, Constants.SessionTemporals.SignInErrorKey, cancellationToken);
+        if (signInError.IsNullOrEmpty())
+            return new(hasSentCodeRecently);
+
+        _signInError = signInError;
+
+        // Consume the error so it doesn't show again
+        var consumeCmd = new SessionTemporals_Set(Hub.Session, Constants.SessionTemporals.SignInErrorKey, null);
+        _ = Hub.Services.Commander().Run(consumeCmd, CancellationToken.None);
+        return new(hasSentCodeRecently);
     }
 
     protected override async Task<bool> Validate() {
@@ -164,7 +175,7 @@
             return true;
         }
 
-        var phone = await ParsePhone(input);
+        var phone = await Phones.ParseWithCountryFallback(Hub.Session, input, CancellationToken.None);
         if (phone == null)
             return false;
 
@@ -174,15 +185,11 @@
     }
 
     private async Task OnSignInWithProvider(string schema) {
-        var error = await AccountUI.SignIn(schema, TotpSignInModel.IsRegister);
-        if (!error.IsNullOrEmpty()) {
-            _serverError = error;
-            StateHasChanged();
-        }
+        await AccountUI.SignIn(schema, mustExist: !TotpSignInModel.IsRegister);
     }
 
     private void OnPhoneOrEmailChanged(string? value) {
-        _serverError = "";
+        _signInError = "";
         _showFieldErrors = true;
         var newValue = value ?? "";
         if (Equals(_formModel.PhoneOrEmail, newValue))
@@ -196,7 +203,7 @@
 
     private void OnRegisterToggleChanged(bool value) {
         TotpSignInModel.IsRegister = value;
-        _serverError = "";
+        _signInError = "";
         if (_validationState is ValidationState.CannotSend or ValidationState.Invalid)
             _validationState = ValidationState.None;
         StateHasChanged();
@@ -204,7 +211,7 @@
 
     private async Task OnSubmit() {
         _showFieldErrors = true;
-        _serverError = "";
+        _signInError = "";
         if (_validationState is ValidationState.CannotSend or ValidationState.Invalid)
             _validationState = ValidationState.None;
 
@@ -233,11 +240,13 @@
             finally {
                 StateHasChanged();
             }
+        } else {
+            _validationState = ValidationState.Valid;
         }
 
         if (_validationState is ValidationState.Valid) {
             var input = _formModel.PhoneOrEmail;
-            var phone = await ParsePhone(input);
+            var phone = await Phones.ParseWithCountryFallback(Hub.Session, input, CancellationToken.None);
             if (phone is not null) {
                 if (!await ValidatePhoneForSend(phone))
                     return;
@@ -253,72 +262,63 @@
     private async Task<bool> ValidatePhoneForSend(Phone phone) {
         var blocked = await TotpUI.CheckIfBlocked(phone, TotpPurpose.SignInPhone, CancellationToken.None);
         if (!blocked.IsNullOrEmpty()) {
-            _serverError = blocked;
+            _signInError = blocked;
             StateHasChanged();
             return false;
         }
 
-        if (!TotpSignInModel.IsRegister) {
-            try {
-                var exists = await TotpUI.AccountExists(phone, CancellationToken.None);
-                if (!exists) {
-                    _serverError = "Account not found. Register instead?";
-                    _validationState = ValidationState.None;
-                    StateHasChanged();
-                    return false;
-                }
+        var mustExist = !TotpSignInModel.IsRegister;
+        try {
+            var exists = await TotpUI.AccountExists(phone, CancellationToken.None);
+            if (exists != mustExist) {
+                _signInError = exists
+                    ? "Account is already registered. Sign-in instead?"
+                    : "Account not found. Register instead?";
+                _validationState = ValidationState.None;
+                StateHasChanged();
+                return false;
             }
-            catch {
-                // If the check fails, proceed anyway — the server will validate during TOTP
-            }
+        }
+        catch {
+            // If the check fails, proceed anyway — the server will validate during TOTP
         }
         return true;
     }
 
     private async Task<bool> ValidateEmailForSend(string input) {
-        Email? emailId = null;
-        if (System.Net.Mail.MailAddress.TryCreate(input, out var mail))
-            Email.TryParse(mail.Address, out emailId);
+        Email? email = null;
+        if (System.Net.Mail.MailAddress.TryCreate(input, out var emailValue))
+            Email.TryParse(emailValue.Address, out email);
 
-        if (emailId is null) {
-            _serverError = "Invalid phone number or email address.";
+        if (email is null) {
+            _signInError = "Invalid phone number or email address.";
             StateHasChanged();
             return false;
         }
 
-        var blocked = await TotpUI.CheckIfBlocked(emailId, TotpPurpose.SignInEmail, CancellationToken.None);
+        var blocked = await TotpUI.CheckIfBlocked(email, TotpPurpose.SignInEmail, CancellationToken.None);
         if (!blocked.IsNullOrEmpty()) {
-            _serverError = blocked;
+            _signInError = blocked;
             StateHasChanged();
             return false;
         }
 
-        if (!TotpSignInModel.IsRegister) {
-            try {
-                var exists = await TotpUI.AccountExists(emailId, CancellationToken.None);
-                if (!exists) {
-                    _serverError = "Account not found. Register instead?";
-                    _validationState = ValidationState.None;
-                    StateHasChanged();
-                    return false;
-                }
+        var mustExist = !TotpSignInModel.IsRegister;
+        try {
+            var exists = await TotpUI.AccountExists(email, CancellationToken.None);
+            if (exists != mustExist) {
+                _signInError = exists
+                    ? "Account is already registered. Sign-in instead?"
+                    : "Account not found. Register instead?";
+                _validationState = ValidationState.None;
+                StateHasChanged();
+                return false;
             }
-            catch {
-                // If the check fails, proceed anyway — the server will validate during TOTP
-            }
+        }
+        catch {
+            // If the check fails, proceed anyway — the server will validate during TOTP
         }
         return true;
-    }
-
-    private async Task<Phone?> ParsePhone(string? input) {
-        if (input.IsNullOrEmpty())
-            return null;
-
-        var phone = await Phones.Parse(input, CancellationToken.None);
-        // Try with '+' prefix — libphonenumber requires it when no region is specified
-        if (phone == null && !input.StartsWith('+'))
-            phone = await Phones.Parse("+" + input, CancellationToken.None);
-        return phone;
     }
 
     // Nested types

@@ -39,7 +39,7 @@ public class ChatReplayerTest(ChatAppHostFixture fixture, ITestOutputHelper @out
         // Test rewind via server-side ILiveStreams.GetReplayStream
         // The rewind logic is now in ReplayStreamMuxer on the server.
         // We test it indirectly through the RPC contract.
-        var liveStreams = services.GetRequiredService<ILiveStreams>();
+        var liveStreams = services.GetRequiredService<ILiveAudioStreams>();
         var session = tester.Session;
 
         // Rewind back along the same audio entry:

@@ -66,6 +66,38 @@ public static class Emojis
     public static readonly Emoji Fire = new("🔥", "Fire", EmojiGroup.Gestures);
     public static readonly Emoji HundredPoints = new("💯", "Hundred points", EmojiGroup.Gestures);
 
+    // Legacy emojis: no longer shown in the picker, but still parseable from existing reactions
+    public static readonly Emoji Boom = new("💥", "Boom", EmojiGroup.Gestures);
+    public static readonly Emoji BeamingFace = new("😁", "Beaming face with smiling eyes", EmojiGroup.Positive);
+    public static readonly Emoji Cry = new("😢", "Crying face", EmojiGroup.Negative);
+    public static readonly Emoji ScreamingFaceInFear = new("😱", "Face screaming in fear", EmojiGroup.Negative);
+    public static readonly Emoji Please = new("🥺", "Pleading face", EmojiGroup.Love);
+    public static readonly Emoji Clap = new("👏", "Clapping hands", EmojiGroup.Gestures);
+    public static readonly Emoji RaisedHands = new("🙌", "Raising hands", EmojiGroup.Gestures);
+    public static readonly Emoji Rocket = new("🚀", "Rocket", EmojiGroup.Gestures);
+    public static readonly Emoji PartyPopper = new("🎉", "Party popper", EmojiGroup.Gestures);
+    public static readonly Emoji JackOLantern = new("🎃", "Jack-o-Lantern", EmojiGroup.Gestures);
+    public static readonly Emoji FramedPicture = new("🖼️️", "Framed picture", EmojiGroup.Gestures);
+
+    /// <summary>
+    /// Legacy emojis that were removed from the picker but may exist in stored reactions.
+    /// They are included in <see cref="ById"/> for parsing but excluded from <see cref="All"/>
+    /// so they don't appear in the emoji picker UI.
+    /// </summary>
+    public static readonly Emoji[] Legacy = [
+        Boom,
+        BeamingFace,
+        Cry,
+        ScreamingFaceInFear,
+        Please,
+        Clap,
+        RaisedHands,
+        Rocket,
+        PartyPopper,
+        JackOLantern,
+        FramedPicture,
+    ];
+
     public static readonly Emoji[] All = [
         // Positive
         Lol,
@@ -127,7 +159,7 @@ public static class Emojis
     ];
 
     public static readonly Dictionary<string, Emoji> ById
-        = All.ToDictionary(x => x.Id.Value);
+        = All.Concat(Legacy).DistinctBy(x => x.Id.Value).ToDictionary(x => x.Id.Value);
 
     public static readonly IReadOnlyDictionary<EmojiGroup, Emoji[]> ByGroup
         = All.GroupBy(x => x.Group).ToDictionary(g => g.Key, g => g.ToArray());

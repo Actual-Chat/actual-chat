@@ -2,4 +2,12 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/__detect-ios-device.sh"
 
-dotnet build src/dotnet/App.Maui/ -f net10.0-ios -p:RuntimeIdentifier=ios-arm64 -p:_DeviceName="$(detect_ios_device)" -t:"Build;Run"
+DEVICE_UDID="$(detect_ios_device)"
+APP_PATH="$SCRIPT_DIR/artifacts/bin/App.Maui/debug_net10.0-ios_ios-arm64/ActualChat.app"
+
+# Build only (mlaunch Run fails on iOS 26.3+)
+dotnet build src/dotnet/App.Maui/ -f net10.0-ios -p:RuntimeIdentifier=ios-arm64 || exit 1
+
+# Install and launch via devicectl
+xcrun devicectl device install app --device "$DEVICE_UDID" "$APP_PATH" || exit 1
+xcrun devicectl device process launch --device "$DEVICE_UDID" --terminate-existing chat.actual.dev.app

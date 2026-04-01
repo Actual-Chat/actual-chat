@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.App.Module
 @inherits ComputedStateComponent<AppUIHub, ChatAudioPanel.Model>
 @{
     var m = State.Value;
@@ -16,23 +17,30 @@
     @if (allowVideo && isHeaderVisible) {
         <div class="audio-panel-header">
             <div class="c-left">
-                <ButtonRound>
-                    <i class="icon-cast text-xl"></i>
-                </ButtonRound>
+                @if (isOwnVideoStreaming) {
+                    <ButtonRound Click="@OnSwitchCamera">
+                        <i class="icon-camera-switch text-2xl"></i>
+                    </ButtonRound>
+                } else {
+                    <div class="c-incut"></div>
+                }
+                <VideoToggle Chat="@Chat" IsNarrow="true"/>
             </div>
             <div class="c-right">
-                <VideoToggle Chat="@Chat" IsNarrow="true" />
+                <VoiceSettingsButton Chat="@Chat" IsNarrow="false" />
+                <div class="c-incut"></div>
             </div>
         </div>
     }
     <div class="audio-panel-wrapper">
-        <div class="playback-button"
-             data-bubble="@(BubbleRef.New<ListenButtonBubble>())"
-             data-bubble-priority="110"
-             data-bubble-placement="@(FloatingPosition.TopEnd.ToPositionString())">
-            <PlaybackToggle Chat="@Chat"/>
-        </div>
-        @if (allowVideo && !IsNarrow && (isRecording || isOwnVideoStreaming || isAnyoneVideoStreaming)) {
+        @if (allowVideo && !IsNarrow && (isRecording || isOwnVideoStreaming || isAnyoneVideoStreaming || m.IsScreencasting)) {
+            <div class="@(m.IsScreencasting ? "screencast-on" : "screencast-off") screencast-wrapper">
+                <ButtonRound Click="@OnScreencastClick"
+                    Tooltip="@(m.IsScreencasting ? "Stop screen share" : "Share screen")"
+                    TooltipPosition="FloatingPosition.Top">
+                    <i class="icon-screen-share text-2xl"></i>
+                </ButtonRound>
+            </div>
             <VideoToggle Chat="@Chat" />
         }
         <div class="recorder-button">
@@ -55,11 +63,59 @@
 </div>
 
 @code {
+    private static readonly string JSEnumerateMethod = $"{BlazorUIAppModule.ImportName}.JoinVideoCallModal.enumerateDevices";
+
+    private record VideoDevice(string DeviceId, string Label);
+
+    private string _selectedDeviceId = "";
+    private List<VideoDevice> _videoDevices = new();
+
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter] public bool IsNarrow { get; set; }
+
+    protected override async Task OnInitializedAsync() {
+        var settings = await Hub.LocalSettings.LocalAppSettings().Get();
+        _selectedDeviceId = settings.SelectedCameraDeviceId ?? "";
+    }
+
+    private async Task LoadVideoDevices() {
+        try {
+            var devices = await JS.InvokeAsync<VideoDevice[]>(JSEnumerateMethod);
+            _videoDevices = devices.ToList();
+        } catch {
+            _videoDevices = new();
+        }
+    }
+
+    private async Task OnSwitchCamera() {
+        await LoadVideoDevices();
+        if (_videoDevices.Count <= 1)
+            return;
+
+        var currentIndex = _videoDevices.FindIndex(d => d.DeviceId == _selectedDeviceId);
+        var nextIndex = (currentIndex + 1) % _videoDevices.Count;
+        var nextDevice = _videoDevices[nextIndex];
+
+        _selectedDeviceId = nextDevice.DeviceId;
+        await Hub.LocalSettings.LocalAppSettings().Update(
+            s => s with { SelectedCameraDeviceId = nextDevice.DeviceId });
+        ChatVideoUI.SetSelectedCamera(nextDevice.DeviceId);
+    }
+
+    private void OnScreencastClick() {
+        var chat = Chat;
+        if (chat?.Id is null)
+            return;
+
+        var m = State.Value;
+        if (m.IsScreencasting)
+            ChatVideoUI.SetRecordingChatId(null);
+        else
+            ChatVideoUI.SetScreencasting(chat.Id);
+    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -76,16 +132,18 @@
             return new(null, false, false, isVideoFeatureEnabled);
 
         var audioState = await ChatAudioUI.GetState(chat.Id).ConfigureAwait(false);
-        var isOwnVideoStreaming = await ChatVideoUI.GetRecordingChatId(cancellationToken).ConfigureAwait(false) == chat.Id;
+        var videoState = await ChatVideoUI.GetState(chat.Id, cancellationToken).ConfigureAwait(false);
+        var isOwnVideoStreaming = videoState.IsRecording;
         var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chat.Id, cancellationToken).ConfigureAwait(false);
         return new(
             audioState,
             isOwnVideoStreaming,
             isAnyoneVideoStreaming,
-            isVideoFeatureEnabled);
+            isVideoFeatureEnabled,
+            videoState.IsScreencasting);
     }
 
     // Nested classes
 
-    public sealed record Model(ChatAudioState? AudioState, bool IsOwnVideoStreaming, bool IsAnyoneVideoStreaming, bool IsVideoFeatureEnabled);
+    public sealed record Model(ChatAudioState? AudioState, bool IsOwnVideoStreaming, bool IsAnyoneVideoStreaming, bool IsVideoFeatureEnabled, bool IsScreencasting = false);
 }

@@ -273,7 +273,7 @@ namespace ActualChat.Users.Migrations
                     b.ToTable("kvas_entries");
                 });
 
-            modelBuilder.Entity("ActualChat.Users.Db.DbSessionInfo", b =>
+            modelBuilder.Entity("ActualChat.Users.Db.DbSession", b =>
                 {
                     b.Property<string>("Id")
                         .HasMaxLength(256)
@@ -290,14 +290,19 @@ namespace ActualChat.Users.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
                     b.Property<string>("IPAddress")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("ipaddress");
-
-                    b.Property<bool>("IsSignOutForced")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_sign_out_forced");
 
                     b.Property<DateTime>("LastSeenAt")
                         .HasColumnType("timestamp with time zone")
@@ -307,11 +312,6 @@ namespace ActualChat.Users.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("options_json");
-
-                    b.Property<string>("UserAgent")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("user_agent");
 
                     b.Property<string>("UserId")
                         .HasColumnType("text")
@@ -326,17 +326,20 @@ namespace ActualChat.Users.Migrations
                     b.HasKey("Id")
                         .HasName("pk_sessions");
 
-                    b.HasIndex("CreatedAt", "IsSignOutForced")
-                        .HasDatabaseName("ix_sessions_created_at_is_sign_out_forced");
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_sessions_created_at");
 
-                    b.HasIndex("IPAddress", "IsSignOutForced")
-                        .HasDatabaseName("ix_sessions_ipaddress_is_sign_out_forced");
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("ix_sessions_expires_at");
 
-                    b.HasIndex("LastSeenAt", "IsSignOutForced")
-                        .HasDatabaseName("ix_sessions_last_seen_at_is_sign_out_forced");
+                    b.HasIndex("IPAddress")
+                        .HasDatabaseName("ix_sessions_ipaddress");
 
-                    b.HasIndex("UserId", "IsSignOutForced")
-                        .HasDatabaseName("ix_sessions_user_id_is_sign_out_forced");
+                    b.HasIndex("LastSeenAt")
+                        .HasDatabaseName("ix_sessions_last_seen_at");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_sessions_user_id");
 
                     b.ToTable("_sessions");
                 });
@@ -360,6 +363,28 @@ namespace ActualChat.Users.Migrations
                         .HasName("pk_presences");
 
                     b.ToTable("presences");
+                });
+
+            modelBuilder.Entity("ActualChat.Users.Db.DbUserSession", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("user_id")
+                        .UseCollation("C");
+
+                    b.Property<string>("SessionId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("session_id")
+                        .UseCollation("C");
+
+                    b.HasKey("UserId", "SessionId");
+
+                    b.HasIndex("SessionId")
+                        .HasDatabaseName("ix_user_sessions_session_id");
+
+                    b.ToTable("user_sessions");
                 });
 
             modelBuilder.Entity("ActualLab.Fusion.EntityFramework.Operations.DbEvent", b =>

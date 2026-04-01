@@ -36,7 +36,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         // Audio & Video Streaming
         rpc.AddClient<IStreamServer>();
         services.AddSingleton<IStreamClient>(c => new StreamClient(c));
-        fusion.AddClient<ILiveStreams>();
+        fusion.AddClient<ILiveAudioStreams>();
         fusion.AddClient<ILiveVideoStreams>();
 
         // Chat
@@ -95,7 +95,6 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         fusion.AddClient<IEmailAuth>();
         fusion.AddClient<ITimeZones>();
         rpc.AddClient<ICaptcha>();
-
     }
 
     public void ConfigureFusionClients(FusionBuilder fusion)
@@ -149,10 +148,10 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
                                 var host = context.DnsEndPoint.Host;
                                 var port = context.DnsEndPoint.Port;
                                 var remapped = hostNameRemapper.Get(host);
-                                EndPoint endPoint = IPAddress.TryParse(remapped, out var ip)
-                                    ? new IPEndPoint(ip, port)
+                                var endPoint = IPAddress.TryParse(remapped, out var ip)
+                                    ? (EndPoint)new IPEndPoint(ip, port)
                                     : new DnsEndPoint(remapped, port);
-                                var socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
+                                var socket = new Socket(SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
                                 try {
                                     await socket.ConnectAsync(endPoint, cancellationToken).ConfigureAwait(false);
                                     return new NetworkStream(socket, ownsSocket: true);

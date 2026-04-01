@@ -46,7 +46,7 @@ public class RateLimiterTest(ChatCollection.AppHostFixture fixture, ITestOutputH
     {
         var key = $"rate_limit:test:{Ulid.NewUlid()}";
         var rateLimiter = RedisTokenBucketRateLimiter.Create<ChatDbContext>(
-            new RedisTokenBucketRateLimiter.Options(key, 300, TimeSpan.FromSeconds(2)),
+            new RedisTokenBucketRateLimiter.Options(key, 300, TimeSpan.FromSeconds(10)),
             AppHost.Services);
         try {
             for (int i = 0; i < 10; i++) {

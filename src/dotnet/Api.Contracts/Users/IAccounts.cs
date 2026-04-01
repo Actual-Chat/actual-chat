@@ -1,4 +1,6 @@
-﻿namespace ActualChat.Users;
+﻿using ActualLab.Rpc;
+
+namespace ActualChat.Users;
 
 /// <summary>
 /// Service for managing user accounts, sessions, and presence.
@@ -12,30 +14,40 @@ public interface IAccounts : IComputeService
     Task OnUpdate(Accounts_Update command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnDeleteOwn(Accounts_DeleteOwn command, CancellationToken cancellationToken);
-
-    // Regular methods
-    Task UpdatePresence(Session session, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task<string> OnCreateApiKey(Accounts_CreateApiKey command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnDeactivateSession(Accounts_DeactivateSession command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnDeactivateAllSessions(Accounts_DeactivateAllSessions command, CancellationToken cancellationToken);
 
     // Queries
-    [ComputeMethod(MinCacheDuration = 60)]
+    [ComputeMethod(MinCacheDuration = 60, ConsolidationDelay = 0.01)]
     Task<AccountFull> GetOwn(Session session, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 60)]
     Task<Account?> Get(Session session, UserId userId, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 60)]
     Task<AccountFull?> GetFull(Session session, UserId userId, CancellationToken cancellationToken);
 
-    // From IAuth
     [ComputeMethod(MinCacheDuration = 10)]
-    Task<SessionInfo?> GetSessionInfo(Session session, CancellationToken cancellationToken);
+    [LegacyName("GetSessionInfo_NewUnused", "2.6.9999")]
+    Task<SessionInfoFull?> GetSessionInfo(Session session, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 10)]
-    Task<bool> IsSignOutForced(Session session, CancellationToken cancellationToken);
+    Task<ApiList<SessionInfo>> ListOwnSessions(Session session, SessionKind kind, CancellationToken cancellationToken);
+
+    [Obsolete("2025.03: Use GetSessionInfo instead.")]
+    [LegacyName(nameof(GetSessionInfo), "2.6.9999")]
+    [ComputeMethod(MinCacheDuration = 10)]
+#pragma warning disable CS0809
+    Task<LegacySessionInfo?> GetLegacySessionInfo(Session session, CancellationToken cancellationToken);
+#pragma warning restore CS0809
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Accounts_SignOut(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] bool Force = false
+    [property: DataMember, MemoryPackOrder(1)] bool Deactivate = false
 ) : ISessionCommand<Unit>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
@@ -50,4 +62,26 @@ public sealed partial record Accounts_Update(
 // ReSharper disable once InconsistentNaming
 public sealed partial record Accounts_DeleteOwn(
     [property: DataMember, MemoryPackOrder(0)] Session Session
+) : ISessionCommand<Unit>, IApiCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Accounts_CreateApiKey(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] string Name,
+    [property: DataMember, MemoryPackOrder(2)] int ExpiresInDays = 365
+) : ISessionCommand<string>, IApiCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Accounts_DeactivateSession(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] string IdPrefix
+) : ISessionCommand<Unit>, IApiCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Accounts_DeactivateAllSessions(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] SessionKind[] Kinds
 ) : ISessionCommand<Unit>, IApiCommand;

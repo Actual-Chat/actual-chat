@@ -1,0 +1,102 @@
+@inherits ComputedStateComponent<AppUIHub, SessionSettings.Model>
+@{
+    var m = State.Value;
+    var ownPrefix = Session.IdPrefix;
+    var now = ServerClock.Now;
+    var currentSession = m.Sessions.FirstOrDefault(s => s.IdPrefix == ownPrefix);
+    var otherSessions = m.Sessions.Where(s => s.IdPrefix != ownPrefix).OrderByDescending(s => s.LastSeenAt).ToList();
+}
+
+<TileTopic Topic="Current Session"/>
+
+<Tile>
+    @if (currentSession != null) {
+        <TileItem IsHoverable="false" Class="sessions-tile-item">
+            <Content>
+                <span class="c-description">@currentSession.Description</span>
+            </Content>
+            <Caption>
+                <span>Current</span>
+            </Caption>
+            <Right>
+                <span class="flex items-center justify-center w-8">
+                    <i class="icon-checkmark-circle-2 text-xl text-success"></i>
+                </span>
+            </Right>
+        </TileItem>
+    }
+</Tile>
+
+<TileTopic Topic="Sessions"/>
+
+<Tile>
+    @foreach (var session in otherSessions) {
+        var activeDaysAgo = (int)(now - session.LastSeenAt).Positive().TotalDays;
+        var sActiveDaysAgo = activeDaysAgo == 0 ? "today" : $"{activeDaysAgo} {"day".Pluralize(activeDaysAgo)} ago";
+
+        <TileItem IsHoverable="false" Class="sessions-tile-item">
+            <Content>
+                <span class="c-description">@session.Description</span>
+            </Content>
+            <Caption>
+                <span>Last active: @sActiveDaysAgo</span>
+            </Caption>
+            <Right>
+                <ButtonRound
+                    Class="btn-xs btn-danger"
+                    Tooltip="Sign out"
+                    Click="@(() => OnSignOutClick(session.IdPrefix))">
+                    <i class="icon-log-out text-xl"></i>
+                </ButtonRound>
+            </Right>
+        </TileItem>
+        <Divider/>
+    }
+
+    @if (otherSessions.Count == 0) {
+        <TileItem IsHoverable="false">
+            <Content>No other sessions found.</Content>
+        </TileItem>
+    }
+</Tile>
+
+@if (otherSessions.Count > 0) {
+    <Button Class="btn-outline btn-danger-light btn-w-full" Click="@OnSignOutAllClick">
+        Sign out all other sessions
+    </Button>
+}
+
+@code {
+    private MomentClock ServerClock => Hub.Clocks.ServerClock;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = new Model(),
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
+    {
+        var sessions = await Hub.Accounts.ListOwnSessions(Session, SessionKind.Session, cancellationToken).ConfigureAwait(false);
+        return new Model { Sessions = sessions };
+    }
+
+    private Task OnSignOutClick(string idPrefix)
+    {
+        var command = new Accounts_DeactivateSession(Session, idPrefix);
+        return UICommander.Run(command);
+    }
+
+    private Task OnSignOutAllClick()
+    {
+        var command = new Accounts_DeactivateAllSessions(Session, [SessionKind.Session]);
+        return UICommander.Run(command);
+    }
+
+    // Nested types
+
+    public sealed record Model
+    {
+        public ApiList<SessionInfo> Sessions { get; init; } = new();
+    }
+}

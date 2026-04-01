@@ -120,6 +120,10 @@ body.hoverable .btn.unhovered:hover::after {
     @apply border-danger;
     @apply text-danger;
 }
+.btn.btn-outline.btn-danger-light {
+    @apply border-[var(--danger-light)];
+    @apply text-[var(--danger-light)];
+}
 .btn.btn-outline.btn-cancel {
     @apply border-cancel-text;
     @apply text-cancel-text;
@@ -140,6 +144,10 @@ body.hoverable .btn.btn-outline:hover::after {
     @apply bg-hover-after-primary;
 }
 body.hoverable .btn.btn-outline.btn-danger:hover::after {
+    @apply hover-after;
+    @apply bg-hover-after-danger;
+}
+body.hoverable .btn.btn-outline.btn-danger-light:hover::after {
     @apply hover-after;
     @apply bg-hover-after-danger;
 }

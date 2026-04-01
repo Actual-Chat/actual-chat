@@ -35,7 +35,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{89CA819A
 	ProjectSection(SolutionItems) = preProject
 		tests\Directory.Build.props = tests\Directory.Build.props
 		tests\Directory.Build.targets = tests\Directory.Build.targets
-		tests\c-audio.Tests.ps1 = tests\c-audio.Tests.ps1
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Testing", "tests\Testing\Testing.csproj", "{9326C2D8-265B-4911-AFE9-E76206F6E943}"
@@ -107,6 +106,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{9E3D1D2A-7BF6-45
 		postcss-watch-plugin.js = postcss-watch-plugin.js
 		tailwind.config.js = tailwind.config.js
 		tsconfig.json = tsconfig.json
+		__detect-ios-device.sh = __detect-ios-device.sh
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Transcription.UnitTests", "tests\Transcription.UnitTests\Transcription.UnitTests.csproj", "{33243438-DAC2-4B8E-9C60-32CEB24B1F7A}"
@@ -410,6 +410,23 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{BA67ECF6-53CD-493A-AD54-D6997F879A2D}"
 	ProjectSection(SolutionItems) = preProject
 		scripts\Common.ps1 = scripts\Common.ps1
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ps", "ps", "{E4F7B3A1-6C2D-4E8F-9A1B-3D5C7E9F0B2A}"
+	ProjectSection(SolutionItems) = preProject
+		tests\ps\Common.Tests.ps1 = tests\ps\Common.Tests.ps1
+		tests\ps\c-audio.Tests.ps1 = tests\ps\c-audio.Tests.ps1
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{45EC0FB9-8037-4996-9927-443EC52ABCAD}"
+	ProjectSection(SolutionItems) = preProject
+		src\nodejs\tests\promises.test.ts = src\nodejs\tests\promises.test.ts
+		src\nodejs\tests\resilient-stream.test.ts = src\nodejs\tests\resilient-stream.test.ts
+		src\nodejs\tests\async-processor.test.ts = src\nodejs\tests\async-processor.test.ts
+		src\nodejs\tests\math.test.ts = src\nodejs\tests\math.test.ts
+		src\nodejs\tests\object-pool.test.ts = src\nodejs\tests\object-pool.test.ts
+		src\nodejs\tests\rpc.test.ts = src\nodejs\tests\rpc.test.ts
+		src\nodejs\tests\server-clock.test.ts = src\nodejs\tests\server-clock.test.ts
 	EndProjectSection
 EndProject
 Global
@@ -1537,7 +1554,9 @@ Global
 		{4BC0B0E4-84E6-4808-A510-E81CD86AADE8} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
 		{990F0BBE-96B3-48AB-920E-B6B68A1445F0} = {4BC0B0E4-84E6-4808-A510-E81CD86AADE8}
 		{CA4C2E1C-0F62-4754-A20C-3BF00D93D327} = {4BC0B0E4-84E6-4808-A510-E81CD86AADE8}
+		{E4F7B3A1-6C2D-4E8F-9A1B-3D5C7E9F0B2A} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
 		{BA67ECF6-53CD-493A-AD54-D6997F879A2D} = {9E3D1D2A-7BF6-4560-B32B-91CF7A62F918}
+		{45EC0FB9-8037-4996-9927-443EC52ABCAD} = {609C47B5-30E6-4B2A-A8DB-1B1FD644948F}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CB00270-3EF6-42B5-A4D4-3894AFA5E25C}

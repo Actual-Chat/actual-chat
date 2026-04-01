@@ -59,11 +59,13 @@ Build artifacts are stored in `artifacts/claude-docker/` to avoid permission con
 
 **Running integration tests**: Tests detect Claude's Docker environment via `AC_OS="Linux in Docker"` and use regular localhost-based configuration (not `testsettings.docker.json`). This works because `--network host` makes localhost = host.
 
-**Running the server**: Do not run the ActualChat server from Docker. Use `/server-start` on the host OS instead (`c os` mode). The Docker environment is intended for building, testing, and code exploration only.
+**Running the server (Docker watch mode)**: The host runs `./run-watch.cmd` — it auto-rebuilds and restarts the server when you change files. After editing code, poll `tmp/watch-dotnet.log` until you see `Now listening on:` (ready) or `error` (fix and wait again). Do not use `/server-start` or `/server-restart` — the watch process owns the server. Frontend build output: `tmp/watch-web.log`.
+
+**Running the server (direct)**: Use `/server-start`, `/server-restart`, `/server-stop`. Use `--watch` flag for auto-reload.
 
 **Propagated environment variables**: The following environment variables are automatically propagated from the host to the Docker container:
 - Variables containing `__` in their names (e.g., `ChatSettings__OpenAIApiKey` for .NET configuration)
-- `GITHUB_TOKEN` - GitHub authentication token
+- `AC_GITHUB_TOKEN` - GitHub authentication token (AC_ prefix to avoid conflicts with gh CLI)
 - `NPM_READ_TOKEN` - NPM registry read token
 - `GOOGLE_CLOUD_PROJECT` - Google Cloud project ID
 - `ActualChat_*` - Any variables prefixed with `ActualChat_`

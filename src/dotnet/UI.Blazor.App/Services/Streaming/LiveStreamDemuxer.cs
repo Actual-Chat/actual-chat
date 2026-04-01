@@ -1,5 +1,4 @@
 using ActualChat.Live;
-using ActualLab.Rpc;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -8,7 +7,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// Raises events when streams start and end.
 /// </summary>
 public sealed class LiveStreamDemuxer(
-    RpcStream<LiveStreamItem> input,
+    IAsyncEnumerable<LiveStreamItem> input,
     ILogger? log,
     CancellationTokenSource? stopTokenSource = null)
     : WorkerBase(stopTokenSource)
@@ -16,7 +15,7 @@ public sealed class LiveStreamDemuxer(
     private static bool DebugMode => Constants.DebugMode.LiveStreaming;
     private readonly ConcurrentDictionary<int, Channel<byte[]>> _streams = new();
 
-    private RpcStream<LiveStreamItem> Input { get; } = input;
+    private IAsyncEnumerable<LiveStreamItem> Input { get; } = input;
     private ILogger? Log { get; } = log;
     private ILogger? DebugLog { get; } = DebugMode ? log : null;
 
@@ -28,35 +27,41 @@ public sealed class LiveStreamDemuxer(
         try {
             await foreach (var item in Input.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                 itemCount++;
-                var channel = _streams.GetValueOrDefault(item.StreamIndex);
                 switch (item) {
+                case LiveStreamReset:
+                    DebugLog?.LogDebug("StreamReset: flushing {Count} in-flight streams", _streams.Count);
+                    FlushAllStreams();
+                    continue;
                 case LiveStreamStart start:
-                    if (channel is not null) {
+                    var startChannel = _streams.GetValueOrDefault(start.StreamIndex);
+                    if (startChannel is not null) {
                         Log?.LogWarning("StreamStart N{StreamIndex}: duplicate!", start.StreamIndex);
                         continue;
                     }
                     DebugLog?.LogDebug("StreamStart N{StreamIndex}: stream #{StreamId}", start.StreamIndex, start.StreamInfo.StreamId);
-                    channel = Channel.CreateUnbounded<byte[]>(ChannelExt.UnboundedPipeOptions);
-                    _streams[start.StreamIndex] = channel;
+                    startChannel = Channel.CreateUnbounded<byte[]>(ChannelExt.UnboundedPipeOptions);
+                    _streams[start.StreamIndex] = startChannel;
 
                     // Note: We don't use StopToken here because the audio frames should remain
                     // readable until the channel is naturally completed (when StreamEnd is received).
                     // Using StopToken would cancel the enumeration when the demuxer stops.
-                    var audioFrames = ToAsyncEnumerable(channel.Reader, CancellationToken.None);
+                    var audioFrames = ToAsyncEnumerable(startChannel.Reader, CancellationToken.None);
                     StreamStarted?.Invoke(start.StreamInfo, start.PlaysAt, audioFrames);
                     break;
                 case LiveAudioFrame frame:
-                    if (channel is null)
+                    var frameChannel = _streams.GetValueOrDefault(frame.StreamIndex);
+                    if (frameChannel is null)
                         continue;
-                    if (!channel.Writer.TryWrite(frame.Data))
+                    if (!frameChannel.Writer.TryWrite(frame.Data))
                         Log?.LogWarning("Failed to write frame for stream {StreamIndex}", frame.StreamIndex);
                     continue;
                 case LiveStreamEnd end:
                     DebugLog?.LogDebug("StreamEnd #{StreamIndex}", end.StreamIndex);
-                    if (channel is null)
+                    var endChannel = _streams.GetValueOrDefault(end.StreamIndex);
+                    if (endChannel is null)
                         continue;
-                    if (_streams.TryRemove(end.StreamIndex, channel))
-                        channel.Writer.TryComplete();
+                    if (_streams.TryRemove(end.StreamIndex, endChannel))
+                        endChannel.Writer.TryComplete();
                     break;
                 }
             }
@@ -65,18 +70,20 @@ public sealed class LiveStreamDemuxer(
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
             DebugLog?.LogDebug("Cancelled after {ItemCount} items", itemCount);
         }
-        catch (RpcReconnectFailedException e) {
-            Log?.LogError(e, "Reconnect failed after {ItemCount} items", itemCount);
-        }
         catch (Exception e) {
             Log?.LogError(e, "Error processing live stream after {ItemCount} items", itemCount);
         }
         finally {
             // Clean up all remaining streams; we don't propagate the error here
-            foreach (var (_, channel) in _streams)
-                channel.Writer.TryComplete();
-            _streams.Clear();
+            FlushAllStreams();
         }
+    }
+
+    private void FlushAllStreams()
+    {
+        foreach (var (_, channel) in _streams)
+            channel.Writer.TryComplete();
+        _streams.Clear();
     }
 
     private static async IAsyncEnumerable<byte[]> ToAsyncEnumerable(

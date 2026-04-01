@@ -15,6 +15,7 @@ public sealed class NativeGoogleAuth
     private const int GoogleSignInRequestCode = 800;
 
     private readonly GoogleSignInClient _googleSignInClient;
+    private bool? _mustExist;
 
     private IServiceProvider Services { get; }
     private ILogger Log { get; }
@@ -50,8 +51,9 @@ public sealed class NativeGoogleAuth
         return statusCode == ConnectionResult.Success;
     }
 
-    public Task SignIn()
+    public Task SignIn(bool? mustExist = null)
     {
+        _mustExist = mustExist;
         var signInIntent = _googleSignInClient.SignInIntent;
         MainActivity.Current.StartActivityForResult(signInIntent, GoogleSignInRequestCode);
         return Task.CompletedTask;
@@ -90,7 +92,7 @@ public sealed class NativeGoogleAuth
                     throw StandardError.External("Failed to retrieve Google account.");
 
                 var nativeAuthClient = Services.GetRequiredService<INativeAuthClient>();
-                await nativeAuthClient.SignInGoogle(code).ConfigureAwait(true);
+                await nativeAuthClient.SignInGoogle(code, _mustExist).ConfigureAwait(true);
             }
             catch (Exception e) {
                 Log.LogError(e, "Google sign-in failed");

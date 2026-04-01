@@ -6,19 +6,14 @@ public partial class LiveVideoBackend
 {
     public sealed class ChatState(LiveVideoBackend owner, ChatId chatId)
     {
-        private readonly AsyncObservable<VideoStreamInfo> _newStreams = new();
         private readonly Lock _codecLock = new();
 
         // Codec recommendation
-        private readonly AsyncObservable<ApiArray<string>> _supportedDecoderCodecChanges = new();
         private ApiArray<string> _currentSupportedDecoderCodecs = new(["av1", "hevc", "h264"]);
         private CpuTimestamp _lastCodecDowngradeAt;
 
         public LiveVideoBackend Owner { get; } = owner;
         public ChatId ChatId { get; } = chatId;
-
-        public void PublishNewStream(VideoStreamInfo streamInfo)
-            => _newStreams.Publish(streamInfo);
 
         public ApiArray<string> GetCurrentSupportedDecoderCodecs()
         {
@@ -26,57 +21,10 @@ public partial class LiveVideoBackend
                 return _currentSupportedDecoderCodecs;
         }
 
-        public void RecomputeAndPublishCodecs(Dictionary<string, ApiArray<string>> members)
+        public void RecomputeCodecs(Dictionary<string, ApiArray<string>> members)
         {
             lock (_codecLock)
                 RecomputeSupportedDecoderCodecsLocked(members);
-        }
-
-        public async IAsyncEnumerable<VideoStreamInfo> ObserveStreams(
-            [EnumeratorCancellation] CancellationToken cancellationToken)
-        {
-            var subscription = _newStreams.Subscribe();
-            await using var _ = subscription.ConfigureAwait(false);
-
-            // Snapshot current streams from Redis
-            var redisStreams = await Owner.ListActiveStreams(ChatId, cancellationToken).ConfigureAwait(false);
-            var initialStreams = redisStreams.ToList();
-            var dedupeEndsAt = CpuTimestamp.Now + TimeSpan.FromSeconds(5);
-
-            foreach (var stream in initialStreams)
-                yield return stream;
-
-            await foreach (var stream in subscription.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false)) {
-                if (initialStreams != null) {
-                    if (CpuTimestamp.Now > dedupeEndsAt)
-                        initialStreams = null;
-                    else if (initialStreams.Exists(x => x.StreamId == stream.StreamId))
-                        continue;
-                }
-                yield return stream;
-            }
-        }
-
-        public async IAsyncEnumerable<ApiArray<string>> ObserveSupportedDecoderCodecs(
-            [EnumeratorCancellation] CancellationToken cancellationToken)
-        {
-            var subscription = _supportedDecoderCodecChanges.Subscribe();
-            await using var _ = subscription.ConfigureAwait(false);
-
-            // Yield current value first
-            ApiArray<string> currentCodecs;
-            lock (_codecLock)
-                currentCodecs = _currentSupportedDecoderCodecs;
-            yield return currentCodecs;
-
-            await foreach (var codecs in subscription.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
-                yield return codecs;
-        }
-
-        public void Complete(Exception? error = null)
-        {
-            _newStreams.TryComplete(error);
-            _supportedDecoderCodecChanges.TryComplete(error);
         }
 
         // Private methods
@@ -108,7 +56,6 @@ public partial class LiveVideoBackend
                 _lastCodecDowngradeAt = CpuTimestamp.Now;
 
             _currentSupportedDecoderCodecs = newCodecs;
-            _supportedDecoderCodecChanges.Publish(newCodecs);
         }
 
         private static ApiArray<string> ComputeSupportedDecoderCodecsLocked(Dictionary<string, ApiArray<string>> members)

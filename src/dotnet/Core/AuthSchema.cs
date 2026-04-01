@@ -24,9 +24,7 @@ public static class AuthSchema
         = new HashSet<string>() { Google, Apple };
 
     public static bool IsExternal(string schema)
-#pragma warning disable MA0002
         => ExternalSchemas.Contains(schema);
-#pragma warning restore MA0002
 
     public static (string Schema, string DisplayName)[] ToSchemasWithDisplayNames(IEnumerable<string> schemas)
         => schemas.Select(schema => (schema, DisplayNames[schema])).ToArray();

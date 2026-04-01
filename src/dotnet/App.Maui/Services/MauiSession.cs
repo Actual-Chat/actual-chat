@@ -1,15 +1,11 @@
 using ActualChat.Security;
 using ActualChat.UI.Blazor.Services;
-using ActualChat.Users;
 
 namespace ActualChat.App.Maui.Services;
-
-#pragma warning disable CA1823 // Unused members - 'SessionCreatedAtStorageKey', etc.
 
 public sealed class MauiSession(IServiceProvider services)
 {
     private const string SessionStorageKey = "Fusion.SessionId";
-    private const string SessionCreatedAtStorageKey = "Fusion.SessionId.CreatedAt";
     private static readonly Tracer Tracer = Tracer.Default[nameof(MauiSession)];
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger<MauiSession>();
@@ -42,7 +38,7 @@ public sealed class MauiSession(IServiceProvider services)
             var session = await _readSessionTask.ConfigureAwait(false);
             if (session == null) {
                 // No session -> create one
-                session = await MobileSessions.CreateSession(CancellationToken.None).ConfigureAwait(false);
+                session = await MobileSessions.CreateSession(MauiSettings.AppUserAgent, CancellationToken.None).ConfigureAwait(false);
                 TrueSessionResolver.Session = session;
                 _ = Task.Run(() => Store(session));
                 return;
@@ -51,7 +47,7 @@ public sealed class MauiSession(IServiceProvider services)
             // Session is there -> validate it
             TrueSessionResolver.Session = session;
             var validSession =
-                await MobileSessions.ValidateSession(session, CancellationToken.None).ConfigureAwait(false);
+                await MobileSessions.ValidateSession(session, MauiSettings.AppUserAgent, CancellationToken.None).ConfigureAwait(false);
             if (session == validSession)
                 return;
 

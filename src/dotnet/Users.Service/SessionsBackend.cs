@@ -8,79 +8,33 @@ namespace ActualChat.Users;
 /// <summary>
 /// Backend service implementation for session management and authentication state.
 /// </summary>
-public class SessionsBackend(
-    SessionsBackend.Options settings,
-    IServiceProvider services)
+public class SessionsBackend(IServiceProvider services)
     : DbServiceBase<UsersDbContext>(services), ISessionsBackend
 {
-    public record Options
-    {
-        // The default should be less than 3 min - see PresenceService.Options
-        public TimeSpan MinUpdatePresencePeriod { get; init; } = TimeSpan.FromMinutes(2.75);
-    }
+    private static readonly TimeSpan MinLastSeenAtUpdatePeriod
+        = (Constants.Session.LastSeenAtUpdatePeriod - TimeSpan.FromMinutes(1)).Positive();
 
-    protected Options Settings { get; } = settings;
-    protected IDbEntityResolver<string, DbSessionInfo> SessionResolver { get; init; }
-        = services.DbEntityResolver<string, DbSessionInfo>();
+    private IAccountsBackend AccountsBackend
+        => field ??= Services.GetRequiredService<IAccountsBackend>();
+    private IDbEntityResolver<string, DbSession> SessionResolver
+        => field ??= Services.DbEntityResolver<string, DbSession>();
 
     // Commands
 
     // [CommandHandler]
-    public virtual async Task OnSignOut(
-        SessionsBackend_SignOut command, CancellationToken cancellationToken = default)
-    {
-        var session = command.Session.RequireValid();
-        var force = command.Force;
-
-        var context = CommandContext.GetCurrent();
-        if (Invalidation.IsActive) {
-            _ = Get(session, default);
-            if (force)
-                _ = IsSignOutForced(session, default);
-            return;
-        }
-
-        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _1 = dbContext.ConfigureAwait(false);
-
-        // Acquire advisory lock first to prevent deadlocks
-        await dbContext.Sessions.Lock(session.Id, cancellationToken).ConfigureAwait(false);
-
-        var dbSessionInfo = await GetOrCreateDbSessionInfo(dbContext, session.Id, cancellationToken).ConfigureAwait(false);
-        var sessionInfo = dbSessionInfo.ToModel(Log);
-        if (sessionInfo.IsSignOutForced)
-            return;
-
-        // Capture user ID before sign-out for event emission
-        var userId = UserId.ParseNullable(sessionInfo.UserId);
-
-        sessionInfo = sessionInfo with {
-            LastSeenAt = Clocks.SystemClock.Now,
-            AuthenticatedIdentity = "",
-            UserId = "",
-            IsSignOutForced = force,
-        };
-        await UpsertDbSessionInfo(dbContext, session.Id, sessionInfo, cancellationToken).ConfigureAwait(false);
-
-        // Emit UserSignedOutEvent if user was authenticated
-        if (userId is not null)
-            context.Operation.AddEvent(new UserSignedOutEvent(session.Id, force, userId));
-    }
-
-    // [CommandHandler]
-    public virtual async Task<SessionInfo> OnUpsert(
+    public virtual async Task<SessionInfoFull> OnUpsert(
         SessionsBackend_Upsert command, CancellationToken cancellationToken = default)
     {
-        var (session, ipAddress, userAgent, options, userId, authenticatedIdentity) = command;
+        var session = command.Session;
         session.RequireValid();
 
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
-            var invSessionInfo = context.Operation.Items.KeylessGet<SessionInfo>();
-            if (invSessionInfo is null)
-                return null!;
-
             _ = Get(session, default);
+            if (context.Operation.Items.Get<UserId?>("OldUserId") is { } invOldUserId)
+                _ = AccountsBackend.ListSessions(invOldUserId, default);
+            if (context.Operation.Items.Get<UserId?>("NewUserId") is { } invNewUserId)
+                _ = AccountsBackend.ListSessions(invNewUserId, default);
             return null!;
         }
 
@@ -90,112 +44,118 @@ public class SessionsBackend(
         // Acquire advisory lock first to prevent deadlocks
         await dbContext.Sessions.Lock(session.Id, cancellationToken).ConfigureAwait(false);
 
-        var dbSessionInfo = await GetDbSessionInfo(dbContext, session.Id, true, cancellationToken).ConfigureAwait(false);
+        var dbSession = await GetDbSession(dbContext, session.Id, true, cancellationToken).ConfigureAwait(false);
         var now = Clocks.SystemClock.Now;
-        var sessionInfo = dbSessionInfo?.ToModel(Log)
-            ?? new SessionInfo(now) { SessionHash = session.Hash };
+        var sessionInfo = dbSession?.ToModel(Log)
+            ?? new SessionInfoFull(session) {
+                CreatedAt = now,
+                ExpiresAt = now + (session.Kind is SessionKind.ApiKey
+                    ? CoreConstants.Session.ApiKeyExpirationTime
+                    : CoreConstants.Session.SessionExpirationTime),
+            };
+        var oldUserId = sessionInfo.UserId;
         sessionInfo = sessionInfo with {
             LastSeenAt = now,
-            IPAddress = ipAddress.IsNullOrEmpty() ? sessionInfo.IPAddress : ipAddress,
-            UserAgent = userAgent.IsNullOrEmpty() ? sessionInfo.UserAgent : userAgent,
-            Options = options.SetMany(sessionInfo.Options),
-        };
-        // Update auth state if provided
-        if (userId is not null)
-            sessionInfo = sessionInfo with { UserId = userId };
-        if (authenticatedIdentity is not null)
-            sessionInfo = sessionInfo with { AuthenticatedIdentity = authenticatedIdentity };
+            ExpiresAt = command.ExpiresAt ?? sessionInfo.ExpiresAt,
+            IPAddress = command.IPAddress ?? sessionInfo.IPAddress,
+            Description = command.Description ?? sessionInfo.Description,
+            Options = command.Options.SetMany(sessionInfo.Options),
+            AuthenticatedIdentity = command.AuthenticatedIdentity ?? sessionInfo.AuthenticatedIdentity,
+            UserId = command.UserId.IsSome(out var vUserId) ? vUserId : sessionInfo.UserId,
 
-        dbSessionInfo = await UpsertDbSessionInfo(dbContext, session.Id, sessionInfo, cancellationToken)
-            .ConfigureAwait(false);
-        sessionInfo = dbSessionInfo.ToModel(Log);
-        context.Operation.Items.KeylessSet(sessionInfo);
-        return sessionInfo!;
+        };
+        var newUserId = sessionInfo.UserId;
+        dbSession = await UpsertDbSession(dbContext, session.Id, sessionInfo, cancellationToken).ConfigureAwait(false);
+
+        // Update DbUserSession mappings
+        if (oldUserId != newUserId) {
+            // Remove old mapping
+            if (oldUserId is not null) {
+                await dbContext.UserSessions
+                    .Where(x => x.UserId == oldUserId.Value && x.SessionId == session.Id)
+                    .ExecuteDeleteAsync(cancellationToken)
+                    .ConfigureAwait(false);
+                context.Operation.Items.Set("OldUserId", oldUserId);
+            }
+            // Add new mapping
+            if (newUserId is not null) {
+                dbContext.UserSessions.Add(new DbUserSession {
+                    UserId = newUserId.Value,
+                    SessionId = session.Id,
+                });
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                context.Operation.Items.Set("NewUserId", newUserId);
+            }
+        }
+
+        sessionInfo = dbSession.ToModel(Log);
+        return sessionInfo;
     }
 
-    public virtual async Task UpdatePresence(
-        Session session, CancellationToken cancellationToken = default)
+    public virtual async Task UpdateLastSeenAt(
+        Session session, string? description, string? ipAddress,
+        CancellationToken cancellationToken = default)
     {
         var sessionInfo = await Get(session, cancellationToken).ConfigureAwait(false);
         if (sessionInfo is null)
             return;
 
         var delta = Clocks.SystemClock.Now - sessionInfo.LastSeenAt;
-        if (delta < Settings.MinUpdatePresencePeriod)
+        if (delta < MinLastSeenAtUpdatePeriod)
             return; // We don't want to update this too frequently
 
-        var upsertSessionCmd = new SessionsBackend_Upsert(session);
+        var upsertSessionCmd = new SessionsBackend_Upsert(session) {
+            Description = description,
+            IPAddress = ipAddress,
+        };
+        if (session.Kind is SessionKind.Session) // Rolling expiration for regular sessions
+            upsertSessionCmd = upsertSessionCmd with {
+                ExpiresAt = Clocks.SystemClock.Now + CoreConstants.Session.SessionExpirationTime,
+            };
         await Commander.Call(upsertSessionCmd, cancellationToken).ConfigureAwait(false);
     }
 
     // Compute methods
 
     // [ComputeMethod]
-    public virtual async Task<bool> IsSignOutForced(
-        Session session, CancellationToken cancellationToken = default)
-    {
-        using var _ = Computed.BeginIsolation();
-        var sessionInfo = await Get(session, cancellationToken).ConfigureAwait(false);
-        return sessionInfo?.IsSignOutForced ?? false;
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<SessionInfo?> Get(Session session, CancellationToken cancellationToken = default)
+    public virtual async Task<SessionInfoFull?> Get(Session session, CancellationToken cancellationToken = default)
     {
         session.RequireValid();
-        var dbSessionInfo = await SessionResolver.Get(DbShard.Single, session.Id, cancellationToken).ConfigureAwait(false);
-        return dbSessionInfo?.ToModel(Log);
+        var dbSession = await SessionResolver.Get(DbShard.Single, session.Id, cancellationToken).ConfigureAwait(false);
+        return dbSession?.ToModel(Log);
     }
 
     // Private methods
 
-    private async Task<DbSessionInfo> GetOrCreateDbSessionInfo(
-        UsersDbContext dbContext, string sessionId, CancellationToken cancellationToken)
+    private async Task<DbSession> UpsertDbSession(
+        UsersDbContext dbContext, string sessionId, SessionInfoFull sessionInfo, CancellationToken cancellationToken)
     {
-        var dbSessionInfo = await GetDbSessionInfo(dbContext, sessionId, true, cancellationToken).ConfigureAwait(false);
-        if (dbSessionInfo is null) {
-            var session = new Session(sessionId);
-            var sessionInfo = new SessionInfo(session, Clocks.SystemClock.Now);
-            dbSessionInfo = dbContext.Add(
-                new DbSessionInfo() {
-                    Id = sessionId,
-                    CreatedAt = sessionInfo.CreatedAt,
-                }).Entity;
-            dbSessionInfo.UpdateFrom(sessionInfo, VersionGenerator);
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        }
-        return dbSessionInfo;
-    }
-
-    private async Task<DbSessionInfo> UpsertDbSessionInfo(
-        UsersDbContext dbContext, string sessionId, SessionInfo sessionInfo, CancellationToken cancellationToken)
-    {
-        var dbSessionInfo = await dbContext.Sessions.ForNoKeyUpdate()
+        var dbSession = await dbContext.Sessions.ForNoKeyUpdate()
             .FirstOrDefaultAsync(s => s.Id == sessionId, cancellationToken)
             .ConfigureAwait(false);
-        var isDbSessionInfoFound = dbSessionInfo is not null;
-        dbSessionInfo ??= new() {
+        var isFound = dbSession is not null;
+        dbSession ??= new() {
             Id = sessionId,
             CreatedAt = sessionInfo.CreatedAt,
+            ExpiresAt = sessionInfo.ExpiresAt.ToDateTime(),
         };
-        dbSessionInfo.UpdateFrom(sessionInfo, VersionGenerator);
-        if (isDbSessionInfoFound)
-            dbContext.Update(dbSessionInfo);
+        dbSession.UpdateFrom(sessionInfo, VersionGenerator);
+        if (isFound)
+            dbContext.Update(dbSession);
         else
-            dbContext.Add(dbSessionInfo);
+            dbContext.Add(dbSession);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        return dbSessionInfo;
+        return dbSession;
     }
 
-    private static async Task<DbSessionInfo?> GetDbSessionInfo(
+    private static async Task<DbSession?> GetDbSession(
         UsersDbContext dbContext, string sessionId, bool forUpdate, CancellationToken cancellationToken)
     {
-        var dbSessionInfos = forUpdate
+        var dbSessions = forUpdate
             ? dbContext.Sessions.ForNoKeyUpdate()
             : dbContext.Sessions;
-        return await dbSessionInfos
+        return await dbSessions
             .FirstOrDefaultAsync(s => s.Id == sessionId, cancellationToken)
             .ConfigureAwait(false);
     }
-
-    }
+}

@@ -2,18 +2,14 @@ using System.Net;
 using Google;
 using Google.Apis.Storage.v1.Data;
 using Google.Cloud.Storage.V1;
-using Microsoft.IO;
 
 namespace ActualChat.Blobs.Internal;
 
-public class GoogleCloudBlobStorage(string bucket, RecyclableMemoryStreamManager memoryStreamManager)
+public class GoogleCloudBlobStorage(string bucket)
     : IBlobStorage
 {
-    private const int MinChunkSize = 128 * 1024;
-
     private readonly StorageClient _client = StorageClient.Create();
 
-    private RecyclableMemoryStreamManager MemoryStreamManager { get; } = memoryStreamManager;
     public TimeSpan PostDeleteDelay { get; init; } = TimeSpan.FromMilliseconds(250);
 
     public ValueTask DisposeAsync()
@@ -35,23 +31,26 @@ public class GoogleCloudBlobStorage(string bucket, RecyclableMemoryStreamManager
 
     public async Task<Stream?> Read(string path, CancellationToken cancellationToken)
     {
-        var stream = MemoryStreamManager.GetStream();
-        try {
-            var options = new DownloadObjectOptions {
-                ChunkSize = MinChunkSize,
-            };
-            await _client
-                .DownloadObjectAsync(bucket, path, stream, options: options, cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-            stream.Position = 0L;
-            return stream;
-        }
-        catch (GoogleApiException ex) when (ex.HttpStatusCode == HttpStatusCode.NotFound) {
-            stream.DisposeSilently();
+        var httpClient = _client.Service.HttpClient;
+        var url = $"{_client.Service.BaseUri}b/{bucket}/o/{Uri.EscapeDataString(path)}?alt=media";
+        var response = await httpClient
+            .GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (response.StatusCode == HttpStatusCode.NotFound) {
+            response.DisposeSilently();
             return null;
         }
+
+        try {
+            response.EnsureSuccessStatusCode();
+            var length = response.Content.Headers.ContentLength
+                ?? throw new InvalidOperationException("GCS response missing Content-Length");
+            var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            return new SeekableGcsStream(httpClient, url, length, response, stream);
+        }
         catch {
-            stream.DisposeSilently();
+            response.DisposeSilently();
             throw;
         }
     }

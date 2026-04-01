@@ -71,9 +71,14 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         if (isServer) {
             services.AddScoped<DateTimeConverter>(c => new ServerSideDateTimeConverter(c));
             MomentClockSet.Default.ServerClock.Offset = TimeSpan.Zero;
+            // In Server mode, register as scoped (IJSRuntime is scoped per Blazor circuit).
+            // Sync is triggered on-demand via EnsureSynced() before recording/playback.
+            services.AddScoped(c => new ServerTimeSync(c));
         }
         else {
             services.AddScoped<DateTimeConverter>(c => new ClientSizeDateTimeConverter(c)); // WASM
+            // In WASM, hosted service auto-starts the background sync loop.
+            // Also makes ServerTimeSync resolvable via GetService<ServerTimeSync>().
             services.AddHostedService(c => new ServerTimeSync(c));
         }
         services.AddScoped(c => new FontSizeUI(c.UIHub()));

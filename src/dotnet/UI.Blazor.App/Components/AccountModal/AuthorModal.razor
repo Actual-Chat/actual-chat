@@ -172,6 +172,7 @@
         Contact? peerChatContact = null;
         if (peerChatId is not null)
             peerChatContact = await Contacts.GetForChat(session, peerChatId, cancellationToken).ConfigureAwait(false);
+
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
 
         var onlyAnonymousChatAllowed = chat is { Kind: ChatKind.Peer };

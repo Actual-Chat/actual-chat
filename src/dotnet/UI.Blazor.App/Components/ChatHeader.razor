@@ -10,24 +10,24 @@
     var isVideoStreamingEnabled = m.IsVideoStreamingEnabled;
     var isAnyoneVideoStreaming = isVideoStreamingEnabled && m.IsAnyoneVideoStreaming;
     var isPanelVisible = IsRecordingHere || IsListeningHere || isAnyoneVideoStreaming || (m.IsAnyoneTalking && m.AudioState?.ChatId == chat?.Id);
+    var isWatchingHere = m.VideoState?.IsWatching == true;
 
-    // Show video panel when recording or remote streams exist
-    if (isVideoStreamingEnabled && m.VideoState?.IsRecording == true && !_showVideoPanel) {
+    // Clear watching when navigating to a different chat
+    if (_lastWatchingChatId is not null && _lastWatchingChatId != chat?.Id)
+        ChatVideoUI.SetWatching(null);
+    _lastWatchingChatId = isWatchingHere ? chat?.Id : null;
+
+    // Show video panel when IsWatching becomes true
+    if (isVideoStreamingEnabled && !_showVideoPanel && isWatchingHere) {
         _showVideoPanel = true;
+        _autoStartRecording = m.VideoState?.IsRecording == true;
         _pendingCameraDeviceId = m.VideoState?.SelectedCameraDeviceId;
         _pendingBlurEnabled = m.VideoState?.IsBackgroundBlurEnabled ?? false;
     }
-    // Also show when listening and others are video streaming
-    else if (isVideoStreamingEnabled && !_showVideoPanel && m.IsAnyoneVideoStreaming && IsListeningHere) {
-        _showVideoPanel = true;
-    }
-    // Hide video panel when recording stopped AND no remote video streams,
-    // or when user stopped listening (but not recording own video)
-    else if (_showVideoPanel && (
-        !isVideoStreamingEnabled
-        || (m.VideoState?.IsRecording != true && !m.IsAnyoneVideoStreaming)
-        || (m.VideoState?.IsRecording != true && !IsListeningHere && m.IsAnyoneVideoStreaming))) {
+    // Hide when no longer watching or feature disabled
+    else if (_showVideoPanel && (!isVideoStreamingEnabled || !isWatchingHere)) {
         _showVideoPanel = false;
+        _autoStartRecording = false;
         _pendingCameraDeviceId = null;
         _pendingBlurEnabled = false;
     }
@@ -99,13 +99,15 @@
 }
 
 @if (m.IsVideoStreamingEnabled) {
-    <VideoPanel Show="@_showVideoPanel" PendingCameraDeviceId="@_pendingCameraDeviceId" PendingBlurEnabled="@_pendingBlurEnabled"/>
+    <VideoPanel Show="@_showVideoPanel" AutoStart="@_autoStartRecording" PendingCameraDeviceId="@_pendingCameraDeviceId" PendingBlurEnabled="@_pendingBlurEnabled"/>
 }
 
 @code {
     private bool _showVideoPanel;
+    private bool _autoStartRecording;
     private string? _pendingCameraDeviceId;
     private bool _pendingBlurEnabled;
+    private ChatId? _lastWatchingChatId;
 
     private IChats Chats => Hub.Chats;
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;

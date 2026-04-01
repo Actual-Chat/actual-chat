@@ -13,6 +13,20 @@
         : "Disabled";
 }
 
+@if (!m.IsProductionInstance) {
+    <TileTopic Topic="General Early Access"/>
+    <Tile Class="early-access-features">
+        <TileItem Click="@OnVideoStreamingEnabledClick">
+            <Icon><i class="icon-info text-2xl"></i></Icon>
+            <Content>Video streaming</Content>
+            <Caption>@videoStreamingStatus</Caption>
+            <Right>
+                <Toggle IsChecked="@m.IsVideoStreamingEnabled"/>
+            </Right>
+        </TileItem>
+    </Tile>
+}
+
 @if (m.IsAdmin) {
     if (ServerInstanceSelector != null) {
         <TileTopic Topic="Host"/>
@@ -37,14 +51,6 @@
             <Caption>@incompleteUIStatus</Caption>
             <Right>
                 <Toggle IsChecked="@m.IsIncompleteUIEnabled"/>
-            </Right>
-        </TileItem>
-        <TileItem Click="@OnVideoStreamingEnabledClick">
-            <Icon><i class="icon-info text-2xl"></i></Icon>
-            <Content>Video streaming</Content>
-            <Caption>@videoStreamingStatus</Caption>
-            <Right>
-                <Toggle IsChecked="@m.IsVideoStreamingEnabled"/>
             </Right>
         </TileItem>
     </Tile>
@@ -90,7 +96,8 @@
             settings.IsIncompleteUIEnabled ?? false,
             settings.IsVideoStreamingEnabled ?? false,
             account.IsAdmin,
-            appSettings.IsLogViewerEnabledOrDefault);
+            appSettings.IsLogViewerEnabledOrDefault,
+            Hub.HostInfo.IsProductionInstance);
     }
 
     private Task OnExperimentalFeatureEnabledClick()
@@ -130,8 +137,9 @@
         bool IsIncompleteUIEnabled,
         bool IsVideoStreamingEnabled,
         bool IsAdmin,
-        bool IsLogUIEnabled)
+        bool IsLogUIEnabled,
+        bool IsProductionInstance)
     {
-        public static readonly Model None = new(false, false, false, false, false);
+        public static readonly Model None = new(false, false, false, false, false, false);
     }
 }

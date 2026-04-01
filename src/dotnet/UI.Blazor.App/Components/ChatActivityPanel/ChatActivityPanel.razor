@@ -38,9 +38,6 @@
             MaxCount="@MaxCount"
             IsListening="@IsListening"/>
     }
-    @if (m.IsAnyoneVideoStreaming && m.VideoStreamMemberCount > 0) {
-        <div class="c-member-count">@m.VideoStreamMemberCount watching</div>
-    }
     <div class="flex-1"></div>
     <div class="c-buttons">
         @if (!IsListening && !IsRecordingHere && !IsVideoRecordingHere) {
@@ -197,8 +194,9 @@
             // User is already participating — stop everything
             if (IsRecordingHere)
                 StopRecording();
-            // Stop video recording if active
+            // Stop video recording and watching
             ChatVideoUI.SetRecordingChatId(null);
+            ChatVideoUI.SetWatching(null);
             // Stop listening
             _ = ChatAudioUI.SetListeningState(chatId, false);
             return;
@@ -207,7 +205,8 @@
         // User is not participating — join
         var isVideoStreaming = State.Value?.IsAnyoneVideoStreaming == true;
         if (isVideoStreaming) {
-            // Join video call: open modal AND start listening
+            // Join video call: enable watching and open modal
+            ChatVideoUI.SetWatching(chatId);
             _ = ModalUI.Show(new JoinVideoCallModal.Model(Chat!));
         }
         _ = ChatAudioUI.SetListeningState(chatId, true);

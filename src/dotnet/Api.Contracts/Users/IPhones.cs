@@ -9,5 +9,7 @@ public interface IPhones : IComputeService
     [ComputeMethod]
     Task<Phone?> Parse(string phone, CancellationToken cancellationToken);
     [ComputeMethod]
+    Task<Phone?> ParseWithCountryFallback(Session session, string phone, CancellationToken cancellationToken);
+    [ComputeMethod]
     Task<Phone?> GetExampleCountryPhone(Session session, CancellationToken cancellationToken);
 }

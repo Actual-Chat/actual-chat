@@ -5,81 +5,73 @@ description: Stop the ActualChat server
 
 # Stop Server
 
-Stop the ActualChat App.Server for current worktree or all worktrees.
-
-## Options
-
-| Option | Description |
-|--------|-------------|
-| (none) | Stop current worktree's server |
-| `--all` | Stop all servers |
+Stop the ActualChat App.Server for current worktree.
 
 ## Bash Implementation
 
 ```bash
 #!/bin/bash
-
 PROJECT_PATH="${AC_ProjectPath:-$(pwd)}"
-STOP_ALL="${1:-}"
 
-# Load configuration from .env file
-if [ -f "$PROJECT_PATH/.env" ]; then
-    set -a
-    source "$PROJECT_PATH/.env"
-    set +a
-fi
+pwsh -NoProfile -c "
+    . '$PROJECT_PATH/scripts/Common.ps1'
 
-INSTANCE="${CoreSettings__Instance:-dev}"
+    \$envFile = Join-Path '$PROJECT_PATH' '.env'
+    \$instance = 'dev'; \$port = 7080
+    if (Test-Path \$envFile) {
+        Get-Content \$envFile | ForEach-Object {
+            if (\$_ -match '^urls=.*?(\d+)$') { \$port = [int]\$Matches[1] }
+            if (\$_ -match '^CoreSettings__Instance=(.+)$') { \$instance = \$Matches[1] }
+        }
+    }
 
-# Determine tmp directory
-if [ "$AC_OS" = "Linux in Docker" ]; then
-    TMP_DIR="/tmp"
-else
-    TMP_DIR="$PROJECT_PATH/tmp"
-fi
+    \$pidFile = Join-Path '$PROJECT_PATH' 'tmp' \"server-\$instance.pid\"
+    \$proc = \$null
 
-stop_server() {
-    local inst="$1"
-    local tmp_dir="$2"
-    local pid_file="$tmp_dir/server-$inst.pid"
+    # Try PID file first
+    if (Test-Path \$pidFile) {
+        try {
+            \$savedPid = [int](Get-Content \$pidFile -Raw).Trim()
+            \$proc = [System.Diagnostics.Process]::GetProcessById(\$savedPid)
+            if (\$proc.HasExited) { \$proc = \$null }
+        } catch { \$proc = \$null }
+    }
 
-    if [ -f "$pid_file" ]; then
-        local pid=$(cat "$pid_file" | tr -d '[:space:]')
-        echo "Stopping $inst (PID: $pid)..."
-        kill "$pid" 2>/dev/null || true
-        sleep 2
-        kill -9 "$pid" 2>/dev/null || true
-        rm -f "$pid_file"
-        echo "Stopped"
-    else
-        echo "No PID file for $inst"
-    fi
-}
+    # Fallback: find process listening on port
+    if (-not \$proc) {
+        \$lsof = bash -c \"lsof -i :\$port 2>/dev/null | grep LISTEN | head -1\" 2>\$null
+        if (\$lsof) {
+            try {
+                \$foundPid = [int]((\$lsof -split '\s+')[1])
+                \$proc = [System.Diagnostics.Process]::GetProcessById(\$foundPid)
+                if (\$proc.HasExited) { \$proc = \$null }
+            } catch { \$proc = \$null }
+        }
+    }
 
-if [ "$STOP_ALL" = "--all" ]; then
-    # Stop all servers by scanning .env files
-    PARENT_DIR="$(dirname "$PROJECT_PATH")"
+    if (-not \$proc) {
+        Write-Host 'No running server found'
+        exit 0
+    }
 
-    for env_file in "$PARENT_DIR"/ActualChat*/.env; do
-        [ -f "$env_file" ] || continue
+    \$procId = \$proc.Id
+    Write-Host \"Stopping server \$instance (PID: \$procId)...\"
 
-        wt_path="$(dirname "$env_file")"
-        inst=$(grep -E '^CoreSettings__Instance=' "$env_file" | cut -d= -f2)
-
-        [ -z "$inst" ] && continue
-
-        # Determine tmp directory for this worktree
-        if [ "$AC_OS" = "Linux in Docker" ]; then
-            tmp_dir="/tmp"
-        else
-            tmp_dir="$wt_path/tmp"
-        fi
-
-        stop_server "$inst" "$tmp_dir"
-    done
-    pkill -9 -f "App.Server" 2>/dev/null || true
-    echo "All servers stopped"
-else
-    stop_server "$INSTANCE" "$TMP_DIR"
-fi
+    # Kill process tree
+    function Kill-Tree([int]\$pid) {
+        \$children = bash -c \"pgrep -P \$pid 2>/dev/null\" 2>\$null
+        if (\$children) {
+            foreach (\$c in (\$children -split \"\`n\" | Where-Object { \$_ })) {
+                Kill-Tree([int]\$c)
+            }
+        }
+        try {
+            \$p = [System.Diagnostics.Process]::GetProcessById(\$pid)
+            if (-not \$p.HasExited) { \$p.Kill(); \$p.WaitForExit(3000) | Out-Null }
+        } catch {}
+    }
+    Kill-Tree \$procId
+    Remove-Item \$pidFile -ErrorAction SilentlyContinue
+    Write-Host \"Stopped (was PID: \$procId)\"
+"
 ```

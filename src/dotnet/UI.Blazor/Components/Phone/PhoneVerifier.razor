@@ -90,6 +90,14 @@
             finally {
                 StateHasChanged();
             }
+        } else {
+            _validationState = ValidationState.Valid;
+            _canSendValidationMessage = await TotpUI.CheckIfBlocked(Phone, TotpPurpose.VerifyPhone, CancellationToken.None);
+            if (!_canSendValidationMessage.IsNullOrEmpty()) {
+                _validationState = ValidationState.CannotSend;
+                UICommander.ShowError(_canSendValidationMessage);
+            }
+            StateHasChanged();
         }
 
         if (_totpVerifier == null)

@@ -22,6 +22,16 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         await base.DisposeAsync();
     }
 
+    // Helper: waits for GetOwn to reflect the update
+    private Task<AccountFull> WhenOwnAccountUpdated(Func<AccountFull, bool> predicate)
+    {
+        AccountFull result = null!;
+        return ComputedTest.When(async ct => {
+            result = await Accounts.GetOwn(Tester.Session, ct);
+            predicate(result).Should().BeTrue();
+        }).ContinueWith(_ => result);
+    }
+
     // Tests for Accounts.OnUpdate (public API) - should preserve Claims and Identities
 
     [Fact]
@@ -41,8 +51,7 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Tester.Commander.Call(updateCommand);
 
         // Assert - claims should be preserved
-        var updatedAccount = await Accounts.GetOwn(Tester.Session, default);
-        updatedAccount.Name.Should().Be(account.Name + " Updated");
+        var updatedAccount = await WhenOwnAccountUpdated(a => a.Name.EndsWith(" Updated"));
         updatedAccount.Claims.Should().BeEquivalentTo(originalClaims);
     }
 
@@ -63,8 +72,7 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Tester.Commander.Call(updateCommand);
 
         // Assert - identities should be preserved
-        var updatedAccount = await Accounts.GetOwn(Tester.Session, default);
-        updatedAccount.Name.Should().Be(account.Name + " Updated");
+        var updatedAccount = await WhenOwnAccountUpdated(a => a.Name.EndsWith(" Updated"));
         updatedAccount.Identities.Should().BeEquivalentTo(originalIdentities);
     }
 
@@ -88,8 +96,7 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Tester.Commander.Call(updateCommand);
 
         // Assert - both claims and identities should be preserved
-        var updatedAccount = await Accounts.GetOwn(Tester.Session, default);
-        updatedAccount.Name.Should().Be(account.Name + " Updated");
+        var updatedAccount = await WhenOwnAccountUpdated(a => a.Name.EndsWith(" Updated"));
         updatedAccount.Claims.Should().BeEquivalentTo(originalClaims);
         updatedAccount.Identities.Should().BeEquivalentTo(originalIdentities);
     }
@@ -112,8 +119,7 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Tester.Commander.Call(updateCommand);
 
         // Assert - other properties should be updated
-        var updatedAccount = await Accounts.GetOwn(Tester.Session, default);
-        updatedAccount.Name.Should().Be(newName);
+        var updatedAccount = await WhenOwnAccountUpdated(a => a.Name == newName);
         updatedAccount.TimeZone.Should().Be(newTimeZone);
         updatedAccount.SyncContacts.Should().BeTrue();
     }
@@ -133,9 +139,11 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Commander.Call(updateCommand);
 
         // Assert - claims should be updated
-        var updatedAccount = await AccountsBackend.Get(account.Id, default);
-        updatedAccount.Should().NotBeNull();
-        updatedAccount!.Claims["custom_claim"].Should().Be(newClaimValue);
+        await ComputedTest.When(async ct => {
+            var updatedAccount = await AccountsBackend.Get(account.Id, ct);
+            updatedAccount.Should().NotBeNull();
+            updatedAccount!.Claims["custom_claim"].Should().Be(newClaimValue);
+        });
     }
 
     [Fact]
@@ -151,10 +159,12 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Commander.Call(updateCommand);
 
         // Assert - identities should be updated
-        var updatedAccount = await AccountsBackend.Get(account.Id, default);
-        updatedAccount.Should().NotBeNull();
-        updatedAccount!.Identities.ContainsKey(newIdentity).Should().BeTrue();
-        updatedAccount.Identities[newIdentity].Should().Be("test_secret");
+        await ComputedTest.When(async ct => {
+            var updatedAccount = await AccountsBackend.Get(account.Id, ct);
+            updatedAccount.Should().NotBeNull();
+            updatedAccount!.Identities.ContainsKey(newIdentity).Should().BeTrue();
+            updatedAccount.Identities[newIdentity].Should().Be("test_secret");
+        });
     }
 
     [Fact]
@@ -167,18 +177,23 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Commander.Call(setupCommand);
 
         // Verify claim exists
-        var accountAfterSetup = await AccountsBackend.Get(account.Id, default);
-        accountAfterSetup!.Claims.ContainsKey("custom_claim").Should().BeTrue();
+        await ComputedTest.When(async ct => {
+            var a = await AccountsBackend.Get(account.Id, ct);
+            a!.Claims.ContainsKey("custom_claim").Should().BeTrue();
+        });
 
         // Act - clear claims via backend (set to empty)
-        var accountWithEmptyClaims = accountAfterSetup with { Claims = ApiMap<string, string>.Empty };
+        var accountAfterSetup = await AccountsBackend.Get(account.Id, default);
+        var accountWithEmptyClaims = accountAfterSetup! with { Claims = ApiMap<string, string>.Empty };
         var updateCommand = new AccountsBackend_Update(accountWithEmptyClaims, null);
         await Commander.Call(updateCommand);
 
         // Assert - claims should be empty
-        var updatedAccount = await AccountsBackend.Get(account.Id, default);
-        updatedAccount.Should().NotBeNull();
-        updatedAccount!.Claims.Should().BeEmpty();
+        await ComputedTest.When(async ct => {
+            var updatedAccount = await AccountsBackend.Get(account.Id, ct);
+            updatedAccount.Should().NotBeNull();
+            updatedAccount!.Claims.Should().BeEmpty();
+        });
     }
 
     // Tests for backward compatibility with old apps
@@ -195,20 +210,17 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         var originalIdentitiesCount = account.Identities.Count;
 
         // Act - simulate old app update (sends minimal data with empty Claims and Identities)
-        // Old apps don't have Claims and Identities properties, so they're empty by default
         var oldAppUpdate = new AccountFull(account.Id, account.Version) {
             Name = "Updated Name",
             Status = account.Status,
-            Email = account.Email, // Keep same email to avoid validation errors
-            Phone = account.Phone, // Keep same phone to avoid validation errors
-            // Claims and Identities are empty (default) - simulating old app behavior
+            Email = account.Email,
+            Phone = account.Phone,
         };
         var updateCommand = new Accounts_Update(Tester.Session, oldAppUpdate, null);
         await Tester.Commander.Call(updateCommand);
 
         // Assert - claims and identities should be preserved
-        var updatedAccount = await Accounts.GetOwn(Tester.Session, default);
-        updatedAccount.Name.Should().Be("Updated Name");
+        var updatedAccount = await WhenOwnAccountUpdated(a => a.Name == "Updated Name");
         updatedAccount.Claims.Count.Should().Be(originalClaimsCount);
         updatedAccount.Identities.Count.Should().Be(originalIdentitiesCount);
     }
@@ -229,10 +241,12 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Tester.Commander.Call(updateCommand);
 
         // Assert - claims and identities should remain unchanged (original values preserved)
-        var updatedAccount = await Accounts.GetOwn(Tester.Session, default);
-        updatedAccount.Claims.Should().BeEquivalentTo(originalClaims);
-        updatedAccount.Identities.Should().BeEquivalentTo(originalIdentities);
-        updatedAccount.Claims.ContainsKey("malicious_claim").Should().BeFalse();
+        await ComputedTest.When(async ct => {
+            var updatedAccount = await Accounts.GetOwn(Tester.Session, ct);
+            updatedAccount.Claims.Should().BeEquivalentTo(originalClaims);
+            updatedAccount.Identities.Should().BeEquivalentTo(originalIdentities);
+            updatedAccount.Claims.ContainsKey("malicious_claim").Should().BeFalse();
+        });
     }
 
     // Tests for version checking
@@ -250,8 +264,10 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Tester.Commander.Call(updateCommand);
 
         // Assert
-        var updatedAccount = await Accounts.GetOwn(Tester.Session, default);
-        updatedAccount.Version.Should().BeGreaterThan(originalVersion);
+        await ComputedTest.When(async ct => {
+            var updatedAccount = await Accounts.GetOwn(Tester.Session, ct);
+            updatedAccount.Version.Should().BeGreaterThan(originalVersion);
+        });
     }
 
     [Fact]
@@ -266,7 +282,7 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Tester.Commander.Call(updateCommand);
 
         // Assert
-        var updatedAccount = await Accounts.GetOwn(Tester.Session, default);
+        var updatedAccount = await WhenOwnAccountUpdated(a => a.Name.EndsWith(" WithVersion"));
         updatedAccount.Name.Should().Be(account.Name + " WithVersion");
     }
 
@@ -302,6 +318,9 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         var updateCommand = new Accounts_Update(Tester.Session, accountWithEmptyClaims, null);
         await Tester.Commander.Call(updateCommand);
 
+        // Wait for update to propagate
+        await WhenOwnAccountUpdated(a => a.Name.EndsWith(" DbTest"));
+
         // Assert - verify claims are preserved in database
         var dbAccount = await GetDbAccount(account.Id);
         dbAccount.Claims.Should().NotBeEmpty();
@@ -323,6 +342,9 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         };
         var updateCommand = new Accounts_Update(Tester.Session, accountWithEmptyIdentities, null);
         await Tester.Commander.Call(updateCommand);
+
+        // Wait for update to propagate
+        await WhenOwnAccountUpdated(a => a.Name.EndsWith(" DbTest"));
 
         // Assert - verify identities are preserved in database
         var dbAccount = await GetDbAccountWithIdentities(account.Id);
@@ -409,8 +431,7 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         var updateCommand = new Accounts_Update(Tester.Session, accountWithTimeZone, null);
         await Tester.Commander.Call(updateCommand);
 
-        var updatedAccount = await Accounts.GetOwn(Tester.Session, default);
-        updatedAccount.TimeZone.Should().Be(timeZone);
+        var updatedAccount = await WhenOwnAccountUpdated(a => a.TimeZone == timeZone);
 
         // Act - sign out and sign in again
         await Tester.SignOut();
@@ -430,8 +451,7 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         var updateCommand = new Accounts_Update(Tester.Session, accountWithSyncContacts, null);
         await Tester.Commander.Call(updateCommand);
 
-        var updatedAccount = await Accounts.GetOwn(Tester.Session, default);
-        updatedAccount.SyncContacts.Should().BeTrue();
+        var updatedAccount = await WhenOwnAccountUpdated(a => a.SyncContacts);
 
         // Act - sign out and sign in again
         await Tester.SignOut();
@@ -452,10 +472,13 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         var backendUpdateCommand = new AccountsBackend_Update(accountWithGreeting, null);
         await Commander.Call(backendUpdateCommand);
 
-        var updatedAccount = await Accounts.GetOwn(Tester.Session, default);
-        updatedAccount.IsGreetingCompleted.Should().BeTrue();
+        await ComputedTest.When(async ct => {
+            var a = await Accounts.GetOwn(Tester.Session, ct);
+            a.IsGreetingCompleted.Should().BeTrue();
+        });
 
         // Act - sign out and sign in again
+        var updatedAccount = await Accounts.GetOwn(Tester.Session, default);
         await Tester.SignOut();
         var signedInAccount = await Tester.SignIn(updatedAccount);
 

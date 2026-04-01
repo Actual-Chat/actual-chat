@@ -126,18 +126,30 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
     [ComputeMethod]
    protected virtual async Task<bool> MustSuggest(ChatId chatId, CancellationToken cancellationToken)
    {
+       const int minForeignCount = 3;
+       const double minForeignRatio = 0.3;
+
        var itemVisibility = await ChatUI.ItemVisibility.Use(cancellationToken).ConfigureAwait(false);
        if (itemVisibility.IsEmpty || itemVisibility.ChatId != chatId)
            return false;
 
-       foreach (var entryId in itemVisibility.VisibleTextEntryIds)
-           if (await IsForeignEntry(entryId, true, cancellationToken).ConfigureAwait(false) == true) {
-               using(Computed.BeginIsolation())
-                   StoreMustSuggest(chatId);
-               return true;
-           }
+       var visibleEntryIds = itemVisibility.VisibleTextEntryIds;
+       var totalCount = visibleEntryIds.Count;
+       if (totalCount == 0)
+           return false;
 
-       return false;
+       var foreignCount = 0;
+       foreach (var entryId in visibleEntryIds) {
+           if (await IsForeignEntry(entryId, true, cancellationToken).ConfigureAwait(false) == true)
+               foreignCount++;
+       }
+
+       if (foreignCount < minForeignCount && (double)foreignCount / totalCount < minForeignRatio)
+           return false;
+
+       using (Computed.BeginIsolation())
+           StoreMustSuggest(chatId);
+       return true;
    }
 
    [ComputeMethod]

@@ -8,7 +8,8 @@ public sealed partial record VideoRecord(
     [property: DataMember, MemoryPackOrder(1)] Session Session,
     [property: DataMember, MemoryPackOrder(2)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(3)] double ClientStartOffset,
-    [property: DataMember, MemoryPackOrder(4)] VideoFormat Format
+    [property: DataMember, MemoryPackOrder(4)] VideoFormat Format,
+    [property: DataMember, MemoryPackOrder(5)] StreamKind StreamKind = StreamKind.Webcam
 ) : IHasId<StreamId>, IHasNodeRef
 {
     StreamId IHasId<StreamId>.Id => StreamId;

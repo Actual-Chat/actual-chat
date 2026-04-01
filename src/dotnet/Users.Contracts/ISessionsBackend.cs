@@ -9,18 +9,16 @@ public interface ISessionsBackend : IComputeService, IBackendService
 {
     // Queries
     [ComputeMethod(MinCacheDuration = 10)]
-    Task<SessionInfo?> Get(Session session, CancellationToken cancellationToken = default);
-    [ComputeMethod(MinCacheDuration = 10)]
-    Task<bool> IsSignOutForced(Session session, CancellationToken cancellationToken = default);
+    Task<SessionInfoFull?> Get(Session session, CancellationToken cancellationToken = default);
 
     // Non-compute methods
-    Task UpdatePresence(Session session, CancellationToken cancellationToken = default);
+    Task UpdateLastSeenAt(
+        Session session, string? description, string? ipAddress,
+        CancellationToken cancellationToken = default);
 
     // Commands
     [CommandHandler]
-    Task<SessionInfo> OnUpsert(SessionsBackend_Upsert command, CancellationToken cancellationToken = default);
-    [CommandHandler]
-    Task OnSignOut(SessionsBackend_SignOut command, CancellationToken cancellationToken = default);
+    Task<SessionInfoFull> OnUpsert(SessionsBackend_Upsert command, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -30,31 +28,16 @@ public interface ISessionsBackend : IComputeService, IBackendService
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
 // ReSharper disable once InconsistentNaming
 public partial record SessionsBackend_Upsert(
-    [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] string IPAddress,
-    [property: DataMember, MemoryPackOrder(2)] string UserAgent,
-    [property: DataMember, MemoryPackOrder(3)] ImmutableOptionSet Options,
-    [property: DataMember, MemoryPackOrder(4)] string? UserId = null,
-    [property: DataMember, MemoryPackOrder(5)] string? AuthenticatedIdentity = null
-) : ISessionCommand<SessionInfo>, IBackendCommand, INotLogged, IHasShardKey<Session>
+    [property: DataMember, MemoryPackOrder(0)] Session Session
+    ) : ISessionCommand<SessionInfoFull>, IBackendCommand, INotLogged, IHasShardKey<Session>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public Session ShardKey => Session;
 
-    public SessionsBackend_Upsert(Session session, string ipAddress = "", string userAgent = "")
-        : this(session, ipAddress, userAgent, default) { }
-}
-
-/// <summary>
-/// Command to sign out a session.
-/// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-// ReSharper disable once InconsistentNaming
-public partial record SessionsBackend_SignOut(
-    [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] bool Force = false
-) : ISessionCommand<Unit>, IBackendCommand, IHasShardKey<Session>
-{
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public Session ShardKey => Session;
+    [DataMember, MemoryPackOrder(1)] public string? IPAddress { get; init; }
+    [DataMember, MemoryPackOrder(2)] public string? Description { get; init; }
+    [DataMember, MemoryPackOrder(3)] public ImmutableOptionSet Options { get; init; }
+    [DataMember, MemoryPackOrder(4)] public Option<UserId?> UserId { get; init; }
+    [DataMember, MemoryPackOrder(5)] public UserIdentity? AuthenticatedIdentity { get; init; }
+    [DataMember, MemoryPackOrder(6)] public Moment? ExpiresAt { get; init; }
 }

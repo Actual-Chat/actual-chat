@@ -3,10 +3,8 @@ import { fromEvent, Subject, takeUntil, filter } from 'rxjs';
 export class VideoPanel {
     private blazorRef: DotNet.DotNetObject;
     private readonly videoPanel: HTMLElement;
-    private readonly expandBtn: HTMLElement | null = null;
     private parentElement: HTMLElement | null = null;
     private disposed$: Subject<void> = new Subject<void>();
-
     static create(videoPanel: HTMLElement, blazorRef: DotNet.DotNetObject): VideoPanel {
         return new VideoPanel(videoPanel, blazorRef);
     }
@@ -22,14 +20,6 @@ export class VideoPanel {
             this.videoPanel.classList.remove('first-time-open');
         }, 1000);
 
-        // Expand button
-        this.expandBtn = this.videoPanel.querySelector('.expand-btn');
-        if (this.expandBtn) {
-            fromEvent(this.expandBtn, 'click')
-                .pipe(takeUntil(this.disposed$))
-                .subscribe(() => this.onExpandBtnClick());
-        }
-
         // Escape key handler
         fromEvent<KeyboardEvent>(document, 'keydown')
             .pipe(
@@ -43,24 +33,32 @@ export class VideoPanel {
         if (this.disposed$.closed)
             return;
 
+        this.collapse();
         this.disposed$.next();
         this.disposed$.complete();
     }
 
-    private onExpandBtnClick() {
+    public toggleExpand() {
         if (!this.videoPanel.classList.contains('expanded')) {
-            this.videoPanel.classList.toggle('expanded');
+            this.videoPanel.classList.add('expanded');
             document.body.appendChild(this.videoPanel);
         } else {
-            this.videoPanel.classList.toggle('expanded');
-            this.parentElement?.appendChild(this.videoPanel);
+            this.collapse();
         }
+    }
+
+    public collapse() {
+        if (!this.videoPanel.classList.contains('expanded'))
+            return;
+
+        this.videoPanel.classList.remove('expanded');
+        this.parentElement?.appendChild(this.videoPanel);
     }
 
     private onEscPress() {
         if (this.videoPanel.classList.contains('expanded')) {
-            this.videoPanel.classList.remove('expanded');
-            this.parentElement?.appendChild(this.videoPanel);
+            this.collapse();
+            void this.blazorRef.invokeMethodAsync('OnCollapsed');
         }
     }
 

@@ -11,7 +11,8 @@ public abstract class ResilientStream
     };
 
     public ChannelOptions ChannelOptions { get; init; } = DefaultChannelOptions;
-    public IRetryPolicy RetryPolicy { get; init; } = new RetryPolicy(RetryDelaySeq.Exp(0.1, 5));
+    public IRetryPolicy RetryPolicy { get; init; } = new RetryPolicy(RetryDelaySeq.Exp(0.25, 5));
+    public CancellationToken CancellationToken { get; init; } = CancellationToken.None;
 }
 
 /// <summary>
@@ -25,12 +26,16 @@ public sealed class ResilientStream<T> : ResilientStream, IAsyncEnumerable<T>
 
     public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
     {
+        if (!cancellationToken.CanBeCanceled)
+            cancellationToken = CancellationToken;
         var channel = GetChannel(cancellationToken);
         return channel.Reader.ReadAllAsync(cancellationToken).GetAsyncEnumerator(cancellationToken);
     }
 
     public Channel<T> GetChannel(CancellationToken cancellationToken = default)
     {
+        if (!cancellationToken.CanBeCanceled)
+            cancellationToken = CancellationToken;
         var channel = ChannelExt.Create<T>(ChannelOptions);
         _ = Task.Run(() => PushItems(channel.Writer, cancellationToken), CancellationToken.None);
         return channel;

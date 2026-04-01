@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComponentBase<AppUIHub>
 @{
-    var text = IsChatLanguageSelected ? "Transcribing" : "Language detecting";
+    var text = !IsVoiceActive ? "Listening" : IsChatLanguageSelected ? "Transcribing" : "Language detecting";
 }
 
 <p class="chat-message-markup">
@@ -14,6 +14,7 @@
 @code {
     [Parameter] public ChatId ChatId { get; set; } = null!;
     [Parameter] public bool IsChatLanguageSelected { get; set; }
+    [Parameter] public bool IsVoiceActive { get; set; }
 
     private void OnClick()
         => ModalUI.Show(new VoiceSettingsModal.Model(ChatId));

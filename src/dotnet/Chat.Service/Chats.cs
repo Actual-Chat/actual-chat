@@ -85,6 +85,12 @@ public partial class Chats(IServiceProvider services) : IChats
         return await Backend.GetTile(chatId, idTileRange, false, cancellationToken).ConfigureAwait(false);
     }
 
+    // Legacy compat: old clients send ChatEntryKind parameter
+    [Obsolete("2025.03: Use GetTile without entryKind")]
+    public virtual Task<ChatTile> GetTile(
+        Session session, ChatId chatId, int entryKind, Range<long> idTileRange, CancellationToken cancellationToken)
+        => GetTile(session, chatId, idTileRange, cancellationToken);
+
     // [ComputeMethod]
     public virtual async Task<ChatRangeMeta> GetChatRangeMeta(
         Session session,
@@ -106,6 +112,12 @@ public partial class Chats(IServiceProvider services) : IChats
         await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
         return await Backend.GetIdRange(chatId, false, cancellationToken).ConfigureAwait(false);
     }
+
+    // Legacy compat: old clients send ChatEntryKind parameter
+    [Obsolete("2025.03: Use GetIdRange without entryKind")]
+    public virtual Task<Range<long>> GetIdRange(
+        Session session, ChatId chatId, int entryKind, CancellationToken cancellationToken)
+        => GetIdRange(session, chatId, cancellationToken);
 
     // [ComputeMethod]
     public virtual async Task<AuthorRules> GetRules(
@@ -984,4 +996,5 @@ public partial class Chats(IServiceProvider services) : IChats
             return await Backend.GetRemovedEntry(entryId, cancellationToken).ConfigureAwait(false);
         }
     }
+
 }

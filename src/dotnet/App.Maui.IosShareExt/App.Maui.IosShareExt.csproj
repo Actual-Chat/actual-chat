@@ -69,6 +69,16 @@
     <BundleResource Include="..\..\..\resources\images\converted\error-barrier-image.png" Link="%(Filename)%(Extension)" />
   </ItemGroup>
 
+  <!-- TODO: Move GoogleService-Info.plist files to Maui project and define BundleResource there,
+       so both App.Maui and App.Maui.IosShareExt inherit it without duplication.
+       Alternatively, move them to a shared non-project folder (e.g. resources/) -->
+  <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND $(TargetFramework.Contains('-ios'))">
+    <BundleResource Include="..\App.Maui\Platforms\iOS\GoogleService-Info.plist.dev" Link="GoogleService-Info.plist" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(IsDevMaui)' != 'true' AND $(TargetFramework.Contains('-ios'))">
+    <BundleResource Include="..\App.Maui\Platforms\iOS\GoogleService-Info.plist.prod" Link="GoogleService-Info.plist" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Api.Contracts\Api.Contracts.csproj" />
     <ProjectReference Include="..\Maui\Maui.csproj" />

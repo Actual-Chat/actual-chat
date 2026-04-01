@@ -132,6 +132,13 @@
     }
 
     protected override void OnAfterRender(bool firstRender) {
+        // On first render, tabs register during ChildContent (after _renderedTabs snapshot),
+        // so just re-render to pick them up with the correct SelectedTabId.
+        if (firstRender) {
+            StateHasChanged();
+            return;
+        }
+
         var currentTabs = _tabRegistry.SortedTabs.ToList();
         var selectedTabId = SelectedTabId;
         SelectedTabId = _tabRegistry.ResolveSelectedTabId(currentTabs, _renderedTabs, _renderedSelectedTab);

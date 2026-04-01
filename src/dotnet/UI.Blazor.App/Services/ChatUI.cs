@@ -207,6 +207,11 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     [ComputeMethod] // Manually & automatically invalidated
     public virtual async Task<long> GetReadEntryLid(ChatId chatId, CancellationToken cancellationToken)
     {
+        // Notes chat should always appear as fully read
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat?.HasSingleAuthor == true)
+            return long.MaxValue;
+
         // NOTE(AY): This method uses LeaseReadPositionState in a bit tricky way:
         // on the one hand, it can't depend on it, coz it disposes the lease, which means
         // computed it maintains might end up being never updated.
@@ -530,24 +535,29 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         return new Trimmed<int>(unreadCount, ChatInfo.MaxUnreadCount);
     }
 
-    private Task<SyncedState<ReadPosition>> CreateReadPositionState(ChatId chatId, CancellationToken cancellationToken)
+    private async Task<SyncedState<ReadPosition>> CreateReadPositionState(ChatId chatId, CancellationToken cancellationToken)
     {
         // Commander use here is intended: this "action" shouldn't be counted as user action
         var writeDebouncer = Debouncer.New<ICommand>(
             TimeSpan.FromSeconds(1),
             command => Commander.Run(command, CancellationToken.None));
 
-        return Task.FromResult(StateFactory.NewCustomSynced<ReadPosition>(
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var hasSingleAuthor = chat?.HasSingleAuthor == true;
+        return StateFactory.NewCustomSynced<ReadPosition>(
             new (
                 // Reader
                 async ct => {
+                    if (hasSingleAuthor) // Notes chat should always appear as fully read
+                        return ReadPosition.NewFullyRead(chatId);
+
                     using var _ = ComputedSynchronizer.Default.Activate();
                     var (entryLid, origin) = await ChatPositions.GetOwn(Session, chatId, ChatPositionKind.Read, ct).ConfigureAwait(false);
                     return new ReadPosition(chatId, entryLid, origin);
                 },
                 // Writer
                 (position, ct) => {
-                    if (position == null!)
+                    if (ReferenceEquals(position, null) || hasSingleAuthor)
                         return Task.CompletedTask;
 
                     if (position.ChatId != chatId) {
@@ -571,11 +581,11 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
                     return Task.CompletedTask;
                 }) {
-                InitialValue = ReadPosition.GetInitial(chatId),
+                InitialValue = ReadPosition.NewInitial(chatId),
                 UpdateDelayer = _readStateUpdateDelayer,
                 Category = StateCategories.Get(GetType(), nameof(ChatPositions), "[*]"),
             }
-        ));
+        );
     }
 
     private Task<MutableState<ReadPosition>> CreateViewPositionState(ChatId chatId, CancellationToken cancellationToken)

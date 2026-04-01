@@ -1,7 +1,5 @@
-using ActualChat.Chat;
 using ActualChat.Notification.Flows;
 using ActualChat.Testing.Host;
-using ActualChat.Users;
 
 namespace ActualChat.Notification.IntegrationTests;
 
@@ -20,8 +18,10 @@ public class NotificationFlowTest(AppHostFixture fixture, ITestOutputHelper @out
         var (chatId, _) = await Tester.CreateChat(false, "Test chat");
         await Tester.InviteToChat(chatId, alice);
 
-        // Ensure Alice is offline (in case a prior test checked her in)
-        await Commander.Call(new UserPresencesBackend_CheckIn(alice.Id, Clocks.SystemClock.Now - TimeSpan.FromMinutes(15), false));
+        // Ensure Alice is offline (in case a prior test checked her in).
+        // Use isActive: true so that LastActiveAt is set to the old time, overriding
+        // any recent LastActiveAt from a prior test that would keep Alice "online".
+        await Commander.Call(new UserPresencesBackend_CheckIn(alice.Id, Clocks.SystemClock.Now - TimeSpan.FromMinutes(15), true));
 
         // Bob sends a message
         await Tester.SignIn(bob);
@@ -93,8 +93,10 @@ public class NotificationFlowTest(AppHostFixture fixture, ITestOutputHelper @out
         var (chatId, _) = await Tester.CreateChat(false, "Multi-msg chat");
         await Tester.InviteToChat(chatId, alice);
 
-        // Ensure Alice is offline (in case a prior test checked her in)
-        await Commander.Call(new UserPresencesBackend_CheckIn(alice.Id, Clocks.SystemClock.Now - TimeSpan.FromMinutes(15), false));
+        // Ensure Alice is offline (in case a prior test checked her in).
+        // Use isActive: true so that LastActiveAt is set to the old time, overriding
+        // any recent LastActiveAt from a prior test that would keep Alice "online".
+        await Commander.Call(new UserPresencesBackend_CheckIn(alice.Id, Clocks.SystemClock.Now - TimeSpan.FromMinutes(15), true));
 
         // Bob sends 3 messages
         await Tester.SignIn(bob);
@@ -126,8 +128,10 @@ public class NotificationFlowTest(AppHostFixture fixture, ITestOutputHelper @out
         var (chatId, _) = await Tester.CreateChat(false, "Dedup chat");
         await Tester.InviteToChat(chatId, alice);
 
-        // Ensure Alice is offline (in case a prior test checked her in)
-        await Commander.Call(new UserPresencesBackend_CheckIn(alice.Id, Clocks.SystemClock.Now - TimeSpan.FromMinutes(15), false));
+        // Ensure Alice is offline (in case a prior test checked her in).
+        // Use isActive: true so that LastActiveAt is set to the old time, overriding
+        // any recent LastActiveAt from a prior test that would keep Alice "online".
+        await Commander.Call(new UserPresencesBackend_CheckIn(alice.Id, Clocks.SystemClock.Now - TimeSpan.FromMinutes(15), true));
 
         // Bob sends a message
         await Tester.SignIn(bob);
@@ -213,7 +217,7 @@ public class NotificationFlowTest(AppHostFixture fixture, ITestOutputHelper @out
                 .Collect();
             var notifications = retrieved.SkipNullItems().Where(x => x.EntryId == entryId).ToList();
             notifications.Should().HaveCount(1);
-            notification = notifications[0];
+            notification = notifications.FirstOrDefault()!;
         }, TimeSpan.FromSeconds(30));
         return notification;
     }

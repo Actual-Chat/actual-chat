@@ -55,11 +55,12 @@ public class StreamHub(IServiceProvider services) : Hub
         int height,
         string? codecSettings, // Base64 encoded SPS/PPS for H.264
         double clientStartOffset,
+        int streamKind, // 0 = Webcam, 1 = Screencast
         IAsyncEnumerable<byte[]> videoStream)
     {
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
-        Log.LogInformation("PushVideo: Started with codec={Codec}, {Width}x{Height}, codecSettings={CodecSettingsLen} chars",
-            codec, width, height, codecSettings?.Length ?? 0);
+        Log.LogInformation("PushVideo: Started with codec={Codec}, {Width}x{Height}, streamKind={StreamKind}, codecSettings={CodecSettingsLen} chars",
+            codec, width, height, streamKind, codecSettings?.Length ?? 0);
 
         // Convert raw byte[] frames to VideoFrame stream.
         // Each byte[] is a MessagePack map with camelCase string keys from the JS client.
@@ -72,6 +73,7 @@ public class StreamHub(IServiceProvider services) : Hub
             height,
             codecSettings,
             clientStartOffset,
+            (StreamKind)streamKind,
             ToVideoFrames(videoStream));
 
         async IAsyncEnumerable<VideoFrame> ToVideoFrames(IAsyncEnumerable<byte[]> source)
@@ -231,6 +233,7 @@ public class StreamHub(IServiceProvider services) : Hub
         int height,
         string? codecSettings, // Base64 encoded SPS/PPS for H.264
         double clientStartOffset,
+        StreamKind streamKind,
         IAsyncEnumerable<VideoFrame> videoStream)
     {
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
@@ -253,7 +256,7 @@ public class StreamHub(IServiceProvider services) : Hub
         var nodeRef = _preferThisNode ? MeshWatcher.ThisNode.Ref : nodes.GetRandom().Ref;
         var streamId = StreamId.New(nodeRef);
         var format = new VideoFormat { Codec = codec, Width = width, Height = height, CodecSettings = codecSettings ?? "" };
-        var videoRecord = new VideoRecord(streamId, session, chatIdTyped, clientStartOffset, format);
+        var videoRecord = new VideoRecord(streamId, session, chatIdTyped, clientStartOffset, format, streamKind);
         Log.LogInformation("PushVideo: {VideoRecord}, CodecSettings={CodecSettingsLen} chars", videoRecord, (codecSettings ?? "").Length);
 
         var frames = videoStream.SuppressCancellation(stopCts.Token);

@@ -5,6 +5,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Using Remove="ActualChat.Users" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />

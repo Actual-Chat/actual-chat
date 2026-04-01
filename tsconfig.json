@@ -4,6 +4,7 @@
     "src/nodejs/index.ts",
     "src/nodejs/types/",
     "src/nodejs/src/",
+    "src/nodejs/tests/",
     "src/dotnet/**/*.ts",
     "src/dotnet/UI.Blazor.App/Components/AudioPlayer/worklets/feeder-audio-worklet-processor.ts",
     "src/dotnet/UI.Blazor.App/Components/AudioPlayer/workers/opus-decoder.ts",

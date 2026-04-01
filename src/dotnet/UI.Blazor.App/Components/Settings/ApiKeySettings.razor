@@ -1,0 +1,71 @@
+@inherits ComputedStateComponent<AppUIHub, ApiKeySettings.Model>
+@{
+    var m = State.Value;
+}
+
+<TileTopic Topic="Create API Key"/>
+
+<Button Class="btn-primary btn-outline btn-w-full" Click="@OnCreateClick">
+    Create API Key
+</Button>
+
+@if (m.ApiKeys.Count > 0) {
+    <TileTopic Topic="Your API Keys"/>
+
+    <Tile>
+        @foreach (var key in m.ApiKeys.OrderByDescending(x => x.CreatedAt)) {
+            <TileItem IsHoverable="false">
+                <Content>
+                    <div class="flex flex-col">
+                        <span class="font-medium">@(key.Description.IsNullOrEmpty() ? "Unnamed key" : key.Description)</span>
+                        <span class="text-xs text-secondary">@key.IdPrefix...</span>
+                    </div>
+                </Content>
+                <Caption>
+                    Created: @key.CreatedAt.ToDateTime().ToString("g")
+                    | Expires: @key.ExpiresAt.ToDateTime().ToString("g")
+                    @if (!key.IsActive) {
+                        <span class="text-danger"> | Deactivated</span>
+                    }
+                </Caption>
+            </TileItem>
+            @if (key.IsActive) {
+                <div class="flex justify-end px-4 pb-2">
+                    <Button Class="btn-sm btn-danger-light btn-outline btn-w-full" Click="@(() => OnDeactivateClick(key.IdPrefix))">
+                        Deactivate
+                    </Button>
+                </div>
+            }
+        }
+    </Tile>
+}
+
+@code {
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = new Model(),
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
+    {
+        var apiKeys = await Hub.Accounts.ListOwnSessions(Session, SessionKind.ApiKey, cancellationToken).ConfigureAwait(false);
+        return new Model { ApiKeys = apiKeys };
+    }
+
+    private Task OnCreateClick()
+        => Hub.ModalUI.Show(new ApiKeyCreateModal.Model());
+
+    private Task OnDeactivateClick(string idPrefix)
+    {
+        var command = new Accounts_DeactivateSession(Session, idPrefix);
+        return UICommander.Run(command);
+    }
+
+    // Nested types
+
+    public sealed record Model
+    {
+        public ApiList<SessionInfo> ApiKeys { get; init; } = new();
+    }
+}

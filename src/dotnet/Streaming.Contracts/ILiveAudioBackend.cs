@@ -13,11 +13,8 @@ namespace ActualChat.Streaming;
 public interface ILiveAudioBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
-    Task<ApiArray<LiveStreamInfo>> ListActiveStreams(ChatId chatId, CancellationToken cancellationToken);
+    Task<ApiArray<LiveStreamInfo>> List(ChatId chatId, CancellationToken cancellationToken);
 
-    [RpcMethod(LocalExecutionMode = RpcLocalExecutionMode.Unconstrained)] // Handled internally by that method
-    Task<RpcStream<LiveStreamInfo>> ObserveStreams(ChatId chatId, CancellationToken cancellationToken);
-
-    Task RegisterActiveStream(ChatId chatId, LiveStreamInfo activeStream, CancellationToken cancellationToken);
-    Task UnregisterActiveStream(ChatId chatId, string streamId, CancellationToken cancellationToken);
+    Task Register(ChatId chatId, LiveStreamInfo streamInfo, CancellationToken cancellationToken);
+    Task Unregister(ChatId chatId, string streamId, CancellationToken cancellationToken);
 }

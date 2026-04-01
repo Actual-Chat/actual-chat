@@ -10,10 +10,7 @@ public static class NotificationHelper
         };
 
     public static string GetIconUrl(Chat.Chat chat, AuthorFull author, UrlMapper urlMapper)
-    {
-        var query = chat.GetIconQuery(author);
-        return urlMapper.IconUrl(query);
-    }
+        => urlMapper.IconUrl(chat.GetIconQuery(author));
 
     public static async ValueTask<(string Content, HashSet<MentionId> MentionIds)> GetText(
         ChatEntry entry,

@@ -5,68 +5,38 @@ description: Show status of all running ActualChat servers
 
 # Server Status
 
-Show status of all worktree servers by scanning `.env` files.
+Show server status for current worktree.
 
 ## Bash Implementation
 
 ```bash
 #!/bin/bash
-
 PROJECT_PATH="${AC_ProjectPath:-$(pwd)}"
-PARENT_DIR="$(dirname "$PROJECT_PATH")"
 
-# Determine if using shared /tmp (Docker) or per-worktree tmp
-if [ "$AC_OS" = "Linux in Docker" ]; then
-    USE_SHARED_TMP=true
-else
-    USE_SHARED_TMP=false
-fi
+pwsh -NoProfile -c "
+    . '$PROJECT_PATH/scripts/Common.ps1'
 
-echo ""
-printf "%-20s %-20s %-6s %-8s %s\n" "Worktree" "Instance" "Port" "PID" "Status"
-printf '%.0s-' {1..65}
-echo ""
+    \$envFile = Join-Path '$PROJECT_PATH' '.env'
+    \$instance = 'dev'; \$port = 7080; \$baseUri = 'https://local.voxt.ai'
+    if (Test-Path \$envFile) {
+        Get-Content \$envFile | ForEach-Object {
+            if (\$_ -match '^urls=.*?(\d+)$') { \$port = [int]\$Matches[1] }
+            if (\$_ -match '^CoreSettings__Instance=(.+)$') { \$instance = \$Matches[1] }
+            if (\$_ -match '^HostSettings__BaseUri=(.+)$') { \$baseUri = \$Matches[1] }
+        }
+    }
 
-for env_file in "$PARENT_DIR"/ActualChat*/.env; do
-    [ -f "$env_file" ] || continue
+    \$lsof = bash -c \"lsof -i :\$port 2>/dev/null | grep LISTEN | head -1\" 2>\$null
+    \$pid = \$null
+    \$status = 'stopped'
+    if (\$lsof) {
+        try { \$pid = [int]((\$lsof -split '\s+')[1]); \$status = 'running' } catch {}
+    }
 
-    wt_path="$(dirname "$env_file")"
-    wt_name="$(basename "$wt_path")"
-
-    # Extract instance and port from .env
-    inst=$(grep -E '^CoreSettings__Instance=' "$env_file" | cut -d= -f2)
-    port=$(grep -E '^urls=' "$env_file" | grep -oE '[0-9]+$')
-
-    [ -z "$inst" ] && continue
-
-    # Determine tmp directory for this worktree
-    if [ "$USE_SHARED_TMP" = true ]; then
-        tmp_dir="/tmp"
-    else
-        tmp_dir="$wt_path/tmp"
-    fi
-
-    pid_file="$tmp_dir/server-$inst.pid"
-
-    # Display worktree name
-    if [ "$wt_name" = "ActualChat" ]; then
-        display_wt="(main)"
-    else
-        display_wt="${wt_name#ActualChat-}"
-    fi
-
-    pid="-"
-    status="Stopped"
-    if [ -f "$pid_file" ]; then
-        pid=$(cat "$pid_file" | tr -d '[:space:]')
-        if kill -0 "$pid" 2>/dev/null; then
-            status="Running"
-        else
-            status="Stale"
-        fi
-    fi
-
-    printf "%-20s %-20s %-6s %-8s %s\n" "$display_wt" "$inst" "$port" "$pid" "$status"
-done
-echo ""
+    Write-Host \"Instance: \$instance\"
+    Write-Host \"Port:     \$port\"
+    Write-Host \"Status:   \$status\"
+    if (\$pid) { Write-Host \"PID:      \$pid\" }
+    Write-Host \"Browser:  \$baseUri\"
+"
 ```

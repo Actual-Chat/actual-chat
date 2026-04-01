@@ -17,6 +17,15 @@ public static partial class CoreConstants
         public const string LocalSuffix = $".{Local}";
     }
 
+    public static class Session
+    {
+        public const char ApiKeyPrefix = '!';
+        public const int IdPrefixLength = 8;
+        public static readonly TimeSpan SessionExpirationTime = TimeSpan.FromDays(90);
+        public static readonly TimeSpan ApiKeyExpirationTime = TimeSpan.FromDays(365);
+        public static readonly TimeSpan MaxApiKeyExpirationTime = TimeSpan.FromDays(365 * 3);
+    }
+
     public static class AsyncMemoizer
     {
         public static readonly int TargetQueueSize = 16;

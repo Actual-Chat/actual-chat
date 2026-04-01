@@ -30,21 +30,27 @@ public class ServerTimeSync : WorkerBase
         LastUpdatedAt = Clocks.CpuClock.Now - TimeSpan.FromDays(1);
     }
 
-    protected override Task OnRun(CancellationToken cancellationToken)
+    /// <summary>
+    /// Ensures at least one successful sync has completed.
+    /// Forces an immediate sync attempt if none has happened yet.
+    /// Call this before using server timestamps (e.g., video startedAtMs).
+    /// </summary>
+    public async Task EnsureSynced(CancellationToken cancellationToken)
     {
-        if (!HostInfo.HostKind.IsApp()) {
-            Log.LogInformation("Exit: not a client");
-            return Task.CompletedTask;
-        }
+        if (SyncCount > 0)
+            return;
 
-        return AsyncChain.From(Sync)
+        await Sync(cancellationToken).ConfigureAwait(false);
+    }
+
+    protected override Task OnRun(CancellationToken cancellationToken)
+        => AsyncChain.From(Sync)
             .RetryForever(RetryDelaySeq.Exp(0.5, 60))
             .AppendDelay(GetNextSyncDelay)
             .CycleForever()
             .Log(LogLevel.Debug, Log)
             .PrependDelay(TimeSpan.FromSeconds(3))
             .RunIsolated(cancellationToken);
-    }
 
     private TimeSpan GetNextSyncDelay()
     {

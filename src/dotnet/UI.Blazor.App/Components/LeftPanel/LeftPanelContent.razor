@@ -12,14 +12,9 @@
             <NavbarContent/>
             <div class="safe-area-bottom safe-area-bottom-overlay"></div>
         </div>
-        <RenderStack Name="@Regions.LeftPanelContentOverlay"/>
     </div>
 </div>
 
 @code {
-    public static class Regions {
-        public const string LeftPanelContentOverlay = "LeftPanelContentOverlay";
-    }
-
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 }

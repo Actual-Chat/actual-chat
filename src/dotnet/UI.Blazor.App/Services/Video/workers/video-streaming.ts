@@ -49,6 +49,7 @@ export interface StreamingContext {
     sessionToken: string;
     chatId: string;
     serverClockOffsetMs: number;
+    streamKind: number; // 0 = Webcam, 1 = Screencast
     processing: boolean;
 }
 
@@ -123,7 +124,8 @@ export class InternalVideoStream {
             void conn!.send('PushVideo',
                 this.ctx.sessionToken, this.ctx.chatId,
                 this.config.codec, this.config.width, this.config.height,
-                this.config.codecSettings, clientStartOffset, subject);
+                this.config.codecSettings, clientStartOffset,
+                this.ctx.streamKind, subject);
 
             while (!this.isCompleted || !this.frames.isEmpty()) {
                 while (!this.frames.isEmpty()) {

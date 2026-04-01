@@ -9,7 +9,9 @@ public sealed record MeshLockOptions(
         ExpirationSafetyMargin = TimeSpan.FromSeconds(2),
     };
     public static readonly MeshLockOptions Release = new(expirationPeriod: 11);
-    public static readonly MeshLockOptions Debug = new(expirationPeriod: 61);
+    public static readonly MeshLockOptions Debug = new(expirationPeriod: 122) {
+        RenewalPeriodRatio = 0.082f,
+    };
     public static readonly MeshLockOptions Test =  new(expirationPeriod: 21) { // GitHub build agents make huge pauses sometimes
         RenewalPeriodRatio = 0.24f,
         UnconditionalCheckPeriod = TimeSpan.FromSeconds(3),
@@ -24,7 +26,7 @@ public sealed record MeshLockOptions(
         };
 
     public TimeSpan ExpirationSafetyMargin { get; init; } = TimeSpan.FromSeconds(1);
-    public TimeSpan UnconditionalCheckPeriod { get; init; } = TimeSpan.FromSeconds(10);
+    public TimeSpan UnconditionalCheckPeriod { get; init; } = TimeSpan.FromSeconds(5);
     public TimeSpan WarningDelay { get; init; } = TimeSpan.FromSeconds(15); // Negative or zero = no warning
     public bool LinkCancellationToken { get; init; } = true;
 

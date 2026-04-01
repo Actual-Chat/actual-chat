@@ -16,10 +16,11 @@ namespace ActualChat.Users;
 public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IAccountsBackend
 {
     private const string AdminEmailDomain = Constants.Team.EmailDomain;
-    private static HashSet<string> AdminEmails { get; } = new() {
+    private static HashSet<string> AdminEmails { get; } = [
         "alex.yakunin@gmail.com",
         "ustinovas@gmail.com",
-    };
+        "crui3er@gmail.com",
+    ];
 
     private ISessionsBackend SessionsBackend => field ??= Services.GetRequiredService<ISessionsBackend>();
     private IAvatarsBackend AvatarsBackend => field ??= Services.GetRequiredService<IAvatarsBackend>();
@@ -95,6 +96,20 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         return UserId.ParseNullable(accountId);
     }
 
+    // [ComputeMethod]
+    public virtual async Task<ApiList<Session>> ListSessions(UserId userId, CancellationToken cancellationToken)
+    {
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var sessionIds = await dbContext.UserSessions
+            .Where(x => x.UserId == userId.Value)
+            .Select(x => x.SessionId)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return sessionIds.Select(x => new Session(x)).ToApiList();
+    }
+
     // Not a [ComputeMethod]!
     public async Task<Account[]> ListChanged(
         long minVersion,
@@ -122,6 +137,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         return dbAccounts.Select(x => x.ToAccount()).ToArray();
     }
 
+    // Not a [ComputeMethod]!
     public async Task<AccountFull?> GetLastChanged(CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
@@ -145,6 +161,8 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     {
         var (session, authenticatedIdentity, identities, claims, mustExist) = command;
         session.RequireValid();
+        if (session.Kind is not SessionKind.Session)
+            throw StandardError.Constraint("Regular Session is required here.");
 
         identities = identities.With(authenticatedIdentity, "");
         _ = identities.HasInternalIdentity(out var internalUserId);
@@ -160,10 +178,12 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             return;
         }
 
-        // Check if session is valid (not forced sign-out)
+        // Check if session is valid (not expired)
         var sessionInfo = await SessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
-        if (sessionInfo?.IsSignOutForced == true)
-            throw StandardError.Unauthorized("Session unavailable.");
+        if (sessionInfo is { IsActive: false })
+            throw StandardError.Unavailable($"This {session.Kind.ToReadable()} is expired.");
+        if (sessionInfo?.UserId is not null)
+            throw StandardError.Constraint("Already signed in.");
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
@@ -182,8 +202,8 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         }
 
         if (userId is null) {
-            if (mustExist)
-                throw StandardError.NotFound<AccountFull>("Account not found.");
+            if (mustExist == true)
+                throw StandardError.Constraint("Account not found. Register instead?");
 
             // No user found by identity or internalUserId - create new account
             account = UpdateExistingAccount(null, internalUserId);
@@ -193,6 +213,9 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             isNew = true;
         }
         else {
+            if (mustExist == false)
+                throw StandardError.Constraint("Account is already registered. Sign-in instead?");
+
             // Existing user found by identity or desired ID - acquire lock first, then load and update
             var existingAccount = await Get(userId, cancellationToken).ConfigureAwait(false);
             await dbContext.Accounts.Lock(userId, cancellationToken).ConfigureAwait(false);
@@ -206,9 +229,14 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         context.Operation.Items.KeylessSet(account);
         context.Operation.Items.KeylessSet(isNew);
 
-        // Update session with auth info
-        var upsertCommand = new SessionsBackend_Upsert(session, "", "", default, userId.Value, authenticatedIdentity);
-        await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+        var upsertCommand = new SessionsBackend_Upsert(session) {
+            UserId = userId,
+            AuthenticatedIdentity = authenticatedIdentity,
+        };
+        await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
+
+        // Emit UserSignedInEvent
+        context.Operation.AddEvent(new UserSignedInEvent(userId, session));
 
         // Emit NewUserEvent if this is a new user
         if (isNew) {
@@ -258,6 +286,36 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
                 originalName = $"{originalName} {surname}";
             return AccountNameValidator.Normalize(originalName);
         }
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnSignOut(AccountsBackend_SignOut command, CancellationToken cancellationToken = default)
+    {
+        var session = command.Session.RequireValid();
+        session.RequireValid();
+
+        var context = CommandContext.GetCurrent();
+        if (Invalidation.IsActive)
+            return; // SessionsBackend_Upsert handles all invalidation
+
+        // Check current session state
+        var sessionInfo = await SessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
+        if (sessionInfo is { IsActive: false })
+            return; // Already expired
+
+        var upsertCommand = new SessionsBackend_Upsert(session) {
+            UserId = Option.Some<UserId?>(null),
+            AuthenticatedIdentity = UserIdentity.None,
+        };
+        if (command.Deactivate)
+            upsertCommand = upsertCommand with {
+                ExpiresAt = Clocks.SystemClock.Now - TimeSpan.FromSeconds(10), // In the past
+            };
+        await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
+
+        // Emit event if user was signed in
+        if (sessionInfo?.UserId is { } userId)
+            context.Operation.AddEvent(new UserSignedOutEvent(userId, session));
     }
 
     // [CommandHandler]
@@ -338,6 +396,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
                     _ = GetIdByUserIdentity(invIdentity, default);
                 if (invAccount.AliasId is { } invAliasId)
                     _ = GetIdByAlias(invAliasId, default);
+                _ = ListSessions(invAccount.Id, default);
             }
             return;
         }
@@ -362,6 +421,11 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
         await dbContext.AccountIdentities
             .Where(a => a.DbAccountId == userId.Value)
+            .ExecuteDeleteAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        await dbContext.UserSessions
+            .Where(a => a.UserId == userId.Value)
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
 
