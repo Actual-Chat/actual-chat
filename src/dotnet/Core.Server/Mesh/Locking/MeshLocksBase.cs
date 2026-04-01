@@ -45,8 +45,9 @@ public abstract class MeshLocksBase : IMeshLocksBackend
         CancellationToken cancellationToken = default)
     {
         lockOptions ??= LockOptions;
+        var fullKey = GetFullKey(key);
         var holder = CreateHolder(key, lockOptions, cancellationToken);
-        DebugLog?.LogDebug("TryLock: {Key} = {Id}", key, holder.Id);
+        DebugLog?.LogDebug("TryLock: {Key} = {Id}", fullKey, holder.Id);
         try {
             cancellationToken.ThrowIfCancellationRequested();
             var isAcquired = await TryLock(key, holder.Id, lockOptions.ExpirationPeriod, cancellationToken)
@@ -56,9 +57,9 @@ public abstract class MeshLocksBase : IMeshLocksBackend
         }
         catch (Exception e) {
             if (e is OperationCanceledException)
-                DebugLog?.LogDebug("TryLock cancelled: {Key} = {Id}", key, holder.Id);
+                DebugLog?.LogDebug("TryLock cancelled: {Key} = {Id}", fullKey, holder.Id);
             else
-                DebugLog?.LogError(e, "TryLock failed: {Key} = {Id}", key, holder.Id);
+                DebugLog?.LogError(e, "TryLock failed: {Key} = {Id}", fullKey, holder.Id);
             throw;
         }
         holder.Start();
@@ -71,12 +72,13 @@ public abstract class MeshLocksBase : IMeshLocksBackend
         CancellationToken cancellationToken = default)
     {
         lockOptions ??= LockOptions;
+        var fullKey = GetFullKey(key);
         var warningDelay = lockOptions.WarningDelay.Positive();
         var warningDelayTask = warningDelay > TimeSpan.Zero
             ? Clock.Delay(warningDelay, cancellationToken)
             : null;
         var holder = CreateHolder(key, lockOptions, cancellationToken);
-        DebugLog?.LogDebug("Lock: {Key} = {Id}", key, holder.Id);
+        DebugLog?.LogDebug("Lock: {Key} = {Id}", fullKey, holder.Id);
         IAsyncSubscription<string>? changes = null;
         var changesCts = cancellationToken.CreateLinkedTokenSource();
         try {
@@ -90,7 +92,7 @@ public abstract class MeshLocksBase : IMeshLocksBackend
                         var completedTask = await Task.WhenAny(tryLockTask, warningDelayTask).ConfigureAwait(false);
                         if (completedTask == warningDelayTask) {
                             if (warningDelayTask.IsCompletedSuccessfully)
-                                Log?.LogWarning("Lock takes too long: {Key} = {Id}", key, holder.Id);
+                                Log?.LogWarning("Lock takes too long: {Key} = {Id}", fullKey, holder.Id);
                             warningDelayTask = null; // We report it just once per Lock call
                         }
                     }
@@ -123,9 +125,9 @@ public abstract class MeshLocksBase : IMeshLocksBackend
         }
         catch (Exception e) {
             if (e.IsCancellationOf(cancellationToken))
-                DebugLog?.LogDebug("Lock cancelled: {Key} = {Id}", key, holder.Id);
+                DebugLog?.LogDebug("Lock cancelled: {Key} = {Id}", fullKey, holder.Id);
             else
-                Log?.LogError(e, "Lock failed: {Key} = {Id}", key, holder.Id);
+                Log?.LogError(e, "Lock failed: {Key} = {Id}", fullKey, holder.Id);
             throw;
         }
         finally {
