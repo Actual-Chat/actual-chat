@@ -43,7 +43,8 @@ public class QualityPresetTest(ILogger log)
     }
 
     private StreamLatencyState NewStreamLatencyState(VideoFormat? format = null)
-        => new(CpuClock.Instance.Now,
+        => new(default,
+            CpuClock.Instance.Now,
             format ?? new VideoFormat { Width = 1280, Height = 720 },
             StateFactory.Default,
             Log);
