@@ -118,7 +118,7 @@ export class VideoPlayer {
     // Decode performance tracking (Phase 1 & 2: quality reduction / codec exclusion)
     private codecSlowTickCount = 0;            // consecutive bad decode ticks (each tick = 5s)
     private qualityReductionRequested = false;  // true after Phase 1 quality reduction was requested
-    private codecCategory: string = '';         // 'av1', 'hevc', 'vp9', 'h264' — derived from codec string
+    private codecCategory = '';         // 'av1', 'hevc', 'vp9', 'h264' — derived from codec string
 
     // Audio sync
     private startedAtMs: number;

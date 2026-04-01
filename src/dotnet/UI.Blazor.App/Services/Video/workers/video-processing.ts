@@ -571,7 +571,9 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
                 const frameH = rawFrame.displayHeight;
                 const codedW = rawFrame.codedWidth;
                 const codedH = rawFrame.codedHeight;
-                warnLog?.log(`DIMENSIONS: display=${frameW}x${frameH}, coded=${codedW}x${codedH}, config=${encoderConfig.width}x${encoderConfig.height}, rotation=${(rawFrame as any).rotation ?? 'N/A'}`);
+                const frameRotation = 'N/A';
+                //const frameRotation = (rawFrame as any).rotation ?? 'N/A';
+                warnLog?.log(`DIMENSIONS: display=${frameW}x${frameH}, coded=${codedW}x${codedH}, config=${encoderConfig.width}x${encoderConfig.height}, rotation=${frameRotation}`);
                 // Detect rotation: display dims are transposed vs encoder config
                 // (MSTP gives raw sensor dims as displayWidth/Height)
                 const isRotated = frameW === encoderConfig.height && frameH === encoderConfig.width
