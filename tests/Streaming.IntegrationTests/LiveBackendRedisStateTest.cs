@@ -305,11 +305,11 @@ public class LiveBackendRedisStateTest(AppHostFixture fixture, ITestOutputHelper
         return chat.Id;
     }
 
-    private static LiveStreamInfo NewAudioStreamInfo(ChatId chatId)
+    private LiveStreamInfo NewAudioStreamInfo(ChatId chatId)
         => new() {
             ChatId = chatId,
             AuthorId = AuthorId.New(chatId, 1),
-            StreamId = $"test-{Guid.NewGuid():N}",
+            StreamId = StreamId.New(AppHost.Services.MeshWatcher().ThisNode.Ref).Value,
             BeginsAt = SystemClock.Instance.Now,
             Format = AudioSource.DefaultFormat,
         };
