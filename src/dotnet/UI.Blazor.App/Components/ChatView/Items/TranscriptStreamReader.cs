@@ -6,7 +6,7 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 public class TranscriptStreamReader(ChatEntryId id, AppUIHub hub) : WorkerBase
 {
-    private static readonly RetryDelaySeq RetryDelays = RetryDelaySeq.Exp(0.1, 2);
+    private static readonly RetryDelaySeq RetryDelays = RetryDelaySeq.Exp(0.25, 2);
 
     private TranscriptUI TranscriptUI => hub.TranscriptUI;
     private IStreamClient StreamClient => hub.StreamClient;
