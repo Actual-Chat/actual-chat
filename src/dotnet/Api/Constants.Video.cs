@@ -29,5 +29,10 @@ public static partial class Constants
 
         // Codec selection
         public static readonly TimeSpan CodecSwitchHysteresisWindow = TimeSpan.FromSeconds(10);
+
+        // Stream count limits
+        public static readonly int MaxWebcamStreamsPerChat = 8;
+        public static readonly int PriorityActivationThreshold = 6;
+        public static readonly TimeSpan SilenceGracePeriod = TimeSpan.FromSeconds(30);
     }
 }
