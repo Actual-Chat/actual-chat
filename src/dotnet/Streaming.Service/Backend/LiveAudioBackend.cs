@@ -15,14 +15,15 @@ public class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
     private readonly ConcurrentDictionary<ChatId, ExpiringEntry<ChatId, Unit>> _activeChatEntries = new();
 
     private IChatsBackend ChatsBackend { get; }
-    private MomentClock ServerClock { get; }
+    private MeshWatcher MeshWatcher => field ??= Services.MeshWatcher();
     private RedisHashStore<LiveStreamInfo> StreamsStore { get; }
+    private MomentClock Clock { get; }
 
     public LiveAudioBackend(IServiceProvider services)
         : base(services, ShardScheme.LiveBackend)
     {
+        Clock = services.Clocks().SystemClock;
         ChatsBackend = services.GetRequiredService<IChatsBackend>();
-        ServerClock = services.Clocks().ServerClock;
         var redisDb = services.GetRequiredService<RedisDb<StreamingContext>>();
         StreamsStore = new RedisHashStore<LiveStreamInfo>(redisDb, "live-audio:streams", RedisTtl, Log);
     }
@@ -31,7 +32,26 @@ public class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
     public virtual async Task<ApiArray<LiveStreamInfo>> List(ChatId chatId, CancellationToken cancellationToken)
     {
         var streams = await ReadStreamsFromRedis(chatId).ConfigureAwait(false);
-        return new(streams.Values);
+        if (streams.Count == 0)
+            return default;
+
+        var meshState = await MeshWatcher.State.Use(cancellationToken).ConfigureAwait(false);
+        var liveStreams = new List<LiveStreamInfo>(streams.Count);
+        List<string>? deadStreamIds = null;
+        foreach (var (key, info) in streams) {
+            var streamId = StreamId.Parse(info.StreamId);
+            var node = meshState[streamId.NodeRef];
+            if (node is { State: MeshNodeState.Online })
+                liveStreams.Add(info);
+            else {
+                deadStreamIds ??= new();
+                deadStreamIds.Add(key);
+            }
+        }
+        if (deadStreamIds != null)
+            _ = BackgroundTask.Run(() => CleanupDeadStreams(chatId, deadStreamIds), CancellationToken.None);
+
+        return new(liveStreams);
     }
 
     public virtual async Task Register(ChatId chatId, LiveStreamInfo streamInfo, CancellationToken cancellationToken)
@@ -82,7 +102,7 @@ public class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
 
         // Fallback: reconstruct from ChatsBackend.ListEntries
         var result = new Dictionary<string, LiveStreamInfo>(StringComparer.Ordinal);
-        var minBeginsAt = ServerClock.Now - Constants.Chat.MaxEntryDuration;
+        var minBeginsAt = Clock.Now - Constants.Chat.MaxEntryDuration;
         var entries = await ChatsBackend.ListEntries(chatId, minBeginsAt, default).ConfigureAwait(false);
 
         foreach (var entry in entries)
@@ -102,6 +122,17 @@ public class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
             await StreamsStore.SetField(chatId, streamId, info).ConfigureAwait(false);
 
         return result;
+    }
+
+    private async Task CleanupDeadStreams(ChatId chatId, List<string> deadStreamIds)
+    {
+        try {
+            foreach (var id in deadStreamIds)
+                await StreamsStore.RemoveField(chatId, id).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "CleanupDeadStreams({ChatId}): failed to remove stale streams", chatId);
+        }
     }
 
     private void InvalidateListStreams(ChatId chatId)
