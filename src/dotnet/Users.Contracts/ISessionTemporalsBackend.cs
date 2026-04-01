@@ -1,7 +1,11 @@
+using ActualChat.Attributes;
+using ActualChat.Hosting;
 using ActualLab.Rpc;
 
 namespace ActualChat.Users;
 
+[BackendService(nameof(HostRole.UsersBackend), ServiceMode.Distributed)]
+[BackendShardScheme(nameof(HostRole.UsersBackend))]
 public interface ISessionTemporalsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
