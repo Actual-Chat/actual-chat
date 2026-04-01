@@ -76,11 +76,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         fusion.AddClient<IConversations>();
 
         // Users
-        rpc.AddClient<ISecureTokens>();
-        fusion.AddClient<ISystemProperties>();
-        fusion.AddClient<IMobileSessions>();
-        if (HostInfo.HostKind.IsMauiApp())
-            services.AddRestEase(restEase => restEase.AddClient<INativeAuthClient>());
+        fusion.AddClient<ISessionTemporals>();
         fusion.AddClient<IUserSettings>();
         fusion.AddClient<IServerSettings>();
         fusion.AddClient<IServerKvas>();
@@ -89,12 +85,21 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         fusion.AddClient<IUserPresences>();
         fusion.AddClient<IChatPositions>();
         fusion.AddClient<IChatUsages>();
+
+        // Auth-related
+        rpc.AddClient<ISecureTokens>();
+        fusion.AddClient<IMobileSessions>();
+        if (HostInfo.HostKind.IsMauiApp())
+            services.AddRestEase(restEase => restEase.AddClient<INativeAuthClient>());
         fusion.AddClient<IPhoneAuth>();
+        fusion.AddClient<IEmailAuth>();
+
+        // Misc.
+        rpc.AddClient<ICaptcha>();
+        fusion.AddClient<ISystemProperties>();
+        fusion.AddClient<ITimeZones>();
         fusion.AddClient<IPhones>();
         fusion.AddClient<IEmails>();
-        fusion.AddClient<IEmailAuth>();
-        fusion.AddClient<ITimeZones>();
-        rpc.AddClient<ICaptcha>();
     }
 
     public void ConfigureFusionClients(FusionBuilder fusion)

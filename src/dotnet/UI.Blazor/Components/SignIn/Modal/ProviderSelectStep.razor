@@ -6,7 +6,7 @@
     if (CurrentStep != this || _authProviders is null)
         return;
 
-    var m = State.LastNonErrorValue;
+    var m = State.Value;
     ProcessSignInError(m.SignInError);
 }
 
@@ -88,6 +88,9 @@
 </div>
 
 @code {
+    // ReSharper disable once InconsistentNaming
+    private const string SessionTemporals_SignInErrorKey = Constants.SessionTemporals.SignInErrorKey;
+
     private ValidationState _validationState = ValidationState.None;
     private StepModel _formModel = null!;
     private List<AuthProviderModel>? _authProviders;
@@ -146,8 +149,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var hasSentCodeRecently = await TotpUI.HasSentCodeRecently(CancellationToken.None);
-        var signInError = await SessionTemporals
-            .Get(Hub.Session, Constants.SessionTemporals.SignInErrorKey, cancellationToken)
+        var signInError = await SessionTemporals.Get(Session, SessionTemporals_SignInErrorKey, cancellationToken)
             ?? "";
         return new(hasSentCodeRecently, signInError);
     }
@@ -167,7 +169,7 @@
             return;
 
         _lastSignInErrorConsumedAt = CpuTimestamp.Now;
-        var cmd = new SessionTemporals_Set(Hub.Session, Constants.SessionTemporals.SignInErrorKey, null);
+        var cmd = new SessionTemporals_Set(Session, SessionTemporals_SignInErrorKey, null);
         _ = Hub.Services.Commander().Run(cmd, true, CancellationToken.None);
     }
 

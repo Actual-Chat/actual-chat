@@ -11,25 +11,26 @@ public class SessionTemporalsBackend(IServiceProvider services) : ISessionTempor
 
     private static readonly TimeSpan Ttl = TimeSpan.FromMinutes(10);
 
-    private RedisDb RedisDb { get; }
-        = services.GetRequiredService<RedisDb<UsersDbContext>>().WithKeyPrefix("Tmp");
+    private IServiceProvider Services { get; } = services;
+    private RedisDb RedisDb { get; } = services.GetRequiredService<RedisDb<UsersDbContext>>().WithKeyPrefix("Tmp");
+    private ILogger Log => field ??= Services.LogFor(GetType());
 
     // [ComputeMethod]
     public virtual async Task<string?> Get(Session session, string key, CancellationToken cancellationToken)
     {
         var db = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
         var redisKey = RedisDb.FullKey(session.Id);
-        var value = await db.HashGetAsync(redisKey, key).ConfigureAwait(false);
-        return value.IsNullOrEmpty ? null : value.ToString();
+        var redisValue = await db.HashGetAsync(redisKey, key).ConfigureAwait(false);
+        var value = redisValue.IsNullOrEmpty ? null : redisValue.ToString();
+        // Log.LogWarning("Get: {Session}/{Key} = {Value}", session, key, value ?? "null");
+        return value;
     }
 
     // [CommandHandler]
     public virtual async Task OnSet(SessionTemporalsBackend_Set command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive) {
-            _ = Get(command.Session, command.Key, default);
-            return;
-        }
+        if (Invalidation.IsActive)
+            return; // Self-invalidating command
 
         if (command.Key.Length > MaxKeyLength)
             throw new ArgumentOutOfRangeException(nameof(command),
@@ -37,6 +38,7 @@ public class SessionTemporalsBackend(IServiceProvider services) : ISessionTempor
 
         var db = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
         var redisKey = RedisDb.FullKey(command.Session.Id);
+        // Log.LogWarning("OnSet: {Session}/{Key} = {Value}", command.Session, command.Key, command.Value ?? "null");
 
         if (command.Value is { } value) {
             if (value.Length > MaxValueLength)
@@ -53,9 +55,10 @@ public class SessionTemporalsBackend(IServiceProvider services) : ISessionTempor
         }
         else
             await db.HashDeleteAsync(redisKey, command.Key).ConfigureAwait(false);
-        await db.KeyExpireAsync(redisKey, Ttl).ConfigureAwait(false);
 
         using (Invalidation.Begin())
             _ = Get(command.Session, command.Key, default);
+
+        await db.KeyExpireAsync(redisKey, Ttl).ConfigureAwait(false);
     }
 }
