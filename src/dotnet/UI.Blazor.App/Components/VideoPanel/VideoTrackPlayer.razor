@@ -78,8 +78,8 @@
             var format = StreamInfo.Format;
             var startedAtMs = StreamInfo.StartedAt.EpochOffset.TotalMilliseconds;
             Log.LogDebug(
-                "[VideoTrackPlayer #{StreamId}] Creating JS player: authorId={AuthorId}, startedAtMs={StartedAtMs}",
-                StreamInfo.StreamId, StreamInfo.AuthorId, startedAtMs);
+                "[VideoTrackPlayer #{StreamId}] Creating JS player: authorId={AuthorId}, startedAtMs={StartedAtMs}, format={Format}",
+                StreamInfo.StreamId, StreamInfo.AuthorId, startedAtMs, format);
             _jsPlayerRef = await JS.InvokeAsync<IJSObjectReference>(
                 JSCreateMethod,
                 _disposeCts.Token,
