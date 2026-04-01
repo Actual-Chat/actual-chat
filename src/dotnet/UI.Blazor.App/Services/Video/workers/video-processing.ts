@@ -60,6 +60,7 @@ export function setCallbacks(cb: VideoProcessingWorkerCallbacks): void {
 let encoder: WebCodecsEncoder | null = null;
 let encoderConfig: EncoderConfig | null = null;
 let frameCount = 0;
+let lastKeyframeTime = 0;
 let resizeCanvas: OffscreenCanvas | null = null;
 let resizeCtx: OffscreenCanvasRenderingContext2D | null = null;
 let startTimestamp: number | undefined = undefined;
@@ -104,6 +105,7 @@ const streamCtx: StreamingContext = {
     sessionToken: '',
     chatId: '',
     serverClockOffsetMs: 0,
+    streamKind: 0,
     processing: false,
 };
 let videoStream: InternalVideoStream | null = null;
@@ -434,7 +436,9 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
             processedFrame = normalized;
         }
 
-        const isKeyFrame = frameCount % 30 === 0;
+        const now = performance.now();
+        const isKeyFrame = frameCount % 30 === 0 || (now - lastKeyframeTime > 1000);
+        if (isKeyFrame) lastKeyframeTime = now;
         encoder.encode(processedFrame, isKeyFrame);
         frameCount++;
     } catch (error) {
@@ -616,6 +620,7 @@ export const serverImpl: VideoProcessingWorker = {
             streamCtx.sessionToken = config.streaming.sessionToken;
             streamCtx.chatId = config.streaming.chatId;
             streamCtx.serverClockOffsetMs = config.streaming.serverClockOffsetMs;
+            streamCtx.streamKind = config.streaming.streamKind ?? 0;
             streamingEnabled = true;
 
             streamCtx.signalrConnection = initSignalR(config.streaming.hubUrl);
@@ -660,6 +665,7 @@ export const serverImpl: VideoProcessingWorker = {
             streamCtx.sessionToken = config.streaming.sessionToken;
             streamCtx.chatId = config.streaming.chatId;
             streamCtx.serverClockOffsetMs = config.streaming.serverClockOffsetMs;
+            streamCtx.streamKind = config.streaming.streamKind ?? 0;
             streamingEnabled = true;
 
             streamCtx.signalrConnection = initSignalR(config.streaming.hubUrl);

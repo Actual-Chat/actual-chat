@@ -1,79 +1,58 @@
 @inherits ComputedStateComponent<AppUIHub, ApiKeySettings.Model>
 @{
     var m = State.Value;
+    var keys = m.ApiKeys.OrderByDescending(x => x.CreatedAt).ToList();
 }
 
 <TileTopic Topic="Create API Key"/>
 
-<Tile>
-    <Form Model="@_formModel">
-        <FormBlock>
-            <FormSection
-                For="() => _formModel.Name"
-                InputId="@_formModel.NameFormId"
-                IsLabelInsideInput="true"
-                Label="Name">
-                <InputText
-                    id="@_formModel.NameFormId"
-                    @bind-Value="_formModel.Name"
-                    placeholder="My API key" />
-            </FormSection>
-
-            <FormSection
-                For="() => _formModel.ExpiresInDays"
-                InputId="@_formModel.ExpiresInDaysFormId"
-                IsLabelInsideInput="true"
-                Label="Expires in (days)">
-                <InputNumber
-                    id="@_formModel.ExpiresInDaysFormId"
-                    @bind-Value="_formModel.ExpiresInDays" />
-            </FormSection>
-        </FormBlock>
-    </Form>
-
-    <TileItem>
-        <Content>
-            <Button Class="btn-primary" Click="@OnCreateClick">
-                Create API Key
-            </Button>
-        </Content>
-    </TileItem>
-</Tile>
+<Button Class="btn-primary btn-outline btn-w-full" Click="@OnCreateClick">
+    Create API Key
+</Button>
 
 @if (m.ApiKeys.Count > 0) {
     <TileTopic Topic="Your API Keys"/>
 
-    <Tile>
-        @foreach (var key in m.ApiKeys) {
+    <Tile Class="api-key-tile">
+        @foreach (var key in keys) {
             <TileItem IsHoverable="false">
                 <Content>
-                    <div class="flex flex-col">
-                        <span class="font-medium">@(key.Description.IsNullOrEmpty() ? "Unnamed key" : key.Description)</span>
-                        <span class="text-xs text-secondary">@key.IdPrefix...</span>
+                    <div class="c-key-info">
+                        @if (!key.IsActive) {
+                            <span class="c-deactivated">Deactivated</span>
+                        }
+                        <span class="c-key-name">@(key.Description.IsNullOrEmpty() ? "Unnamed key" : key.Description)</span>
+                        <span class="c-key-prefix">@key.IdPrefix...</span>
                     </div>
+                    @if (key.IsActive) {
+                        <div class="c-deactivate">
+                            <ButtonRound
+                                Class="btn-sm btn-danger"
+                                Tooltip="Deactivate"
+                                Click="@(() => OnDeactivateClick(key.IdPrefix))">
+                                <i class="icon-trash03 text-xl"></i>
+                            </ButtonRound>
+                        </div>
+                    }
                 </Content>
                 <Caption>
-                    Created: @key.CreatedAt.ToDateTime().ToString("g")
-                    | Expires: @key.ExpiresAt.ToDateTime().ToString("g")
-                    @if (!key.IsActive) {
-                        <span class="text-danger"> | Deactivated</span>
-                    }
+                    <span class="c-key-expires">Expires: @DateTimeConverter.ToLocalTime(key.ExpiresAt.ToDateTime()).ToString("g")</span>
                 </Caption>
             </TileItem>
-            @if (key.IsActive) {
-                <div class="flex justify-end px-4 pb-2">
-                    <Button Class="btn-sm btn-danger" Click="@(() => OnDeactivateClick(key.IdPrefix))">
-                        Deactivate
-                    </Button>
-                </div>
+            @if (key != keys[^1]) {
+                <Divider />
             }
         }
     </Tile>
 }
 
-@code {
-    private readonly FormModel _formModel = new();
+@if (keys.Any(k => k.IsActive)) {
+    <Button Class="btn-outline btn-danger-light btn-w-full" Click="@OnDeactivateAllClick">
+        Deactivate all API keys
+    </Button>
+}
 
+@code {
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = new Model(),
@@ -86,19 +65,8 @@
         return new Model { ApiKeys = apiKeys };
     }
 
-    private async Task OnCreateClick()
-    {
-        var command = new Accounts_CreateApiKey(Session, _formModel.Name, _formModel.ExpiresInDays);
-        var result = await UICommander.Run(command);
-        if (result.HasError)
-            return;
-
-        _formModel.Name = "";
-        _formModel.ExpiresInDays = 365;
-
-        // Show the key in a modal — it will never be visible again
-        await Hub.ModalUI.Show(new ApiKeyRevealModal.Model(result.Value));
-    }
+    private Task OnCreateClick()
+        => Hub.ModalUI.Show(new ApiKeyCreateModal.Model());
 
     private Task OnDeactivateClick(string idPrefix)
     {
@@ -106,18 +74,28 @@
         return UICommander.Run(command);
     }
 
+    private async Task OnDeactivateAllClick()
+    {
+        var confirmed = false;
+        var model = new ConfirmModal.Model(false,
+            "This will deactivate all your API keys. Continue?",
+            () => { confirmed = true; }) {
+            Title = "Deactivate all API keys?",
+            ConfirmButtonText = "Yes",
+        };
+        var modalRef = await ModalUI.Show(model).ConfigureAwait(false);
+        await modalRef.WhenClosed.ConfigureAwait(false);
+        if (!confirmed)
+            return;
+
+        var command = new Accounts_DeactivateAllSessions(Session, [SessionKind.ApiKey]);
+        await UICommander.Run(command).ConfigureAwait(false);
+    }
+
     // Nested types
 
     public sealed record Model
     {
         public ApiList<SessionInfo> ApiKeys { get; init; } = new();
-    }
-
-    public sealed class FormModel
-    {
-        public string NameFormId { get; } = "api-key-name";
-        public string ExpiresInDaysFormId { get; } = "api-key-expires";
-        public string Name { get; set; } = "";
-        public int ExpiresInDays { get; set; } = 365;
     }
 }

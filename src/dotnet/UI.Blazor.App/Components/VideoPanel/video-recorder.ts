@@ -24,6 +24,7 @@ export class VideoRecorder {
     // Video recording service (using video-pipeline)
     private recordingService: RecordingService | null = null;
     private isRecording = false;
+    private isScreencasting = false;
     private animationFrameId: number | null = null;
     private previewTrack: MediaStreamTrack | null = null;
     private selectedCameraDeviceId: string | null = null;
@@ -334,6 +335,118 @@ export class VideoRecorder {
     }
 
     /**
+     * Start screencast (screen sharing) recording
+     */
+    public async startScreencast(chatId: string, audienceCodecs?: string[]): Promise<void> {
+        this.chatId = chatId;
+        if (this.isRecording) {
+            warnLog?.log('Already recording');
+            return;
+        }
+
+        infoLog?.log('Starting screencast...');
+
+        try {
+            // Detect supported encoder codecs at 1080p
+            const supportedCodecs = await detectSupportedCodecs();
+            this.supportedEncoderCategories = this.extractEncoderCategories(supportedCodecs);
+
+            // Pick initial codec based on audience
+            let bestCodecString: string;
+            if (audienceCodecs && audienceCodecs.length > 0) {
+                const matchingCategories = audienceCodecs.filter(c => this.supportedEncoderCategories.includes(c));
+                if (matchingCategories.length > 0) {
+                    const audienceFilteredCodecs = supportedCodecs.filter(c =>
+                        c.supported && matchingCategories.includes(c.category)
+                    );
+                    bestCodecString = audienceFilteredCodecs.length > 0
+                        ? getDefaultCodec(audienceFilteredCodecs, 1920, 1080)
+                        : getDefaultCodec(supportedCodecs, 1920, 1080);
+                } else {
+                    bestCodecString = getDefaultCodec(supportedCodecs, 1920, 1080);
+                }
+            } else {
+                bestCodecString = getDefaultCodec(supportedCodecs, 1920, 1080);
+            }
+            const bestCodecInfo = supportedCodecs.find(c => c.codec === bestCodecString);
+            const codecCategory = getCodecCategory(bestCodecString);
+
+            // Screencast config: native resolution, no blur, no camera
+            const config: RecordingConfig = {
+                mode: 'screen',
+                codec: codecCategory,
+                codecString: bestCodecString,
+                hardwareAccelerated: bestCodecInfo?.hardwareAccelerated ?? false,
+                scalabilityModes: bestCodecInfo?.scalabilityModes,
+                width: 1920,  // Will be overridden by actual screen resolution
+                height: 1080,
+                bitrate: 8_000_000, // Start at Full quality
+                framerate: 30,
+                backgroundBlur: { enabled: false },
+                streaming: {
+                    enabled: true,
+                    chatId: this.chatId,
+                },
+                adaptiveFramerate: {
+                    enabled: true,
+                },
+            };
+
+            this.recordingService = new RecordingService(config);
+
+            this.recordingService.addEventListener('state-change', ((event: CustomEvent<RecordingState>) => {
+                this.onRecorderStateChange(event.detail);
+            }) as EventListener);
+
+            this.recordingService.addEventListener('error', ((event: CustomEvent<Error>) => {
+                this.onRecorderError(event.detail);
+            }) as EventListener);
+
+            // Start recording — getDisplayMedia will prompt the user to pick a screen
+            await this.recordingService.start();
+
+            // Get the screen track for preview and track-ended detection
+            const pipeline = this.recordingService.getPipeline();
+            const screenStream = this.recordingService.getInputStream();
+            if (screenStream) {
+                const screenTrack = screenStream.getVideoTracks()[0];
+                // Use screen track for local preview
+                this.previewTrack = screenTrack;
+
+                // Store actual screen resolution for capping reconfigure requests
+                const trackSettings = screenTrack.getSettings();
+                this.cameraWidth = trackSettings.width ?? 1920;
+                this.cameraHeight = trackSettings.height ?? 1080;
+                infoLog?.log(`Screen resolution: ${this.cameraWidth}x${this.cameraHeight}`);
+
+                // Handle browser's native "Stop sharing" button
+                screenTrack.onended = () => {
+                    infoLog?.log('Screen sharing track ended (user stopped sharing)');
+                    void this.stopRecording();
+                };
+            }
+
+            // Subscribe to VAD for adaptive framerate
+            pipeline?.subscribeToVad();
+
+            this.isRecording = true;
+            this.isScreencasting = true;
+            activeRecorderInstance = this; // eslint-disable-line @typescript-eslint/no-this-alias
+
+            // Start rendering preview from the screen stream
+            if (screenStream) {
+                this.startRenderingStream(screenStream);
+            }
+
+            await this.blazorRef.invokeMethodAsync('OnRecordingStarted');
+            infoLog?.log('Screencast started');
+        } catch (error) {
+            errorLog?.log('Failed to start screencast:', error);
+            await this.blazorRef.invokeMethodAsync('OnRecordingError', String(error));
+        }
+    }
+
+    /**
      * Stop video recording
      */
     public async stopRecording(): Promise<void> {
@@ -347,6 +460,7 @@ export class VideoRecorder {
             await this.recordingService.stop();
             this.stopRenderingStream();
             this.isRecording = false;
+            this.isScreencasting = false;
             if (activeRecorderInstance === this) activeRecorderInstance = null;
 
             // Notify Blazor
@@ -482,7 +596,10 @@ export class VideoRecorder {
             this.animationFrameId = null;
         }
         if (this.previewTrack) {
-            this.previewTrack.stop();
+            // For screencast, don't stop the track — it's shared with the pipeline.
+            // The pipeline's stop() will handle track cleanup.
+            if (!this.isScreencasting)
+                this.previewTrack.stop();
             this.previewTrack = null;
         }
         this.element.classList.remove('has-video');
@@ -556,5 +673,6 @@ export class VideoRecorder {
         }
 
         this.isRecording = false;
+        this.isScreencasting = false;
     }
 }

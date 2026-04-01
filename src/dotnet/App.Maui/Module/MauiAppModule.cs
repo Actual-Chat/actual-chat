@@ -45,7 +45,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<SystemSettingsUI>(_ => new MauiSystemSettingsUI());
         services.AddScoped<IMediaMetadataUI>(c => new MediaMetadataUI(c.AppUIHub()));
         services.AddSingleton<ReloadUI>(c => new MauiReloadUI(c)); // Replaces scoped ReloadUI
-        services.AddSingleton<BackgroundStateTracker>(c => new MauiBackgroundStateTracker(c)); // Replaces scoped WebBackgroundStateTracker
+        services.AddSingleton<BackgroundStateTracker>(_ => new MauiBackgroundStateTracker()); // Replaces scoped WebBackgroundStateTracker
         services.AddSingleton<MauiTestPage.IMauiTestPageBackend>(_ => new MauiTestPageBackend());
 
         // Permissions

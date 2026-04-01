@@ -26,6 +26,7 @@
     var firstOpenCls = _isFirstOpen ? "first-time-open" : "";
     var audioRecordingCls = m.IsAudioRecording ? "recording" : "";
     var videoBtnCls = m.IsRecording ? "video-active" : "";
+    var screencastBtnCls = m.IsScreencasting ? "video-active" : "";
     var expandedPanelRecBtnCls = $"rec-btn {audioRecordingCls}";
 }
 
@@ -63,6 +64,11 @@
             <HeaderButton Click="OnVideoClick" Class="@videoBtnCls">
                 <i class="icon-video text-lg"></i>
             </HeaderButton>
+            @if (!ScreenSize.IsNarrow()) {
+                <HeaderButton Click="OnScreencastClick" Class="@screencastBtnCls">
+                    <i class="icon-screen-share text-lg"></i>
+                </HeaderButton>
+            }
             <HeaderButton Click="OnToggleRecordingClick" Class="@expandedPanelRecBtnCls">
                 <i class="icon-recorder-left-half left"></i>
                 <i class="icon-recorder-right-half right"></i>
@@ -115,7 +121,8 @@
         ChatId? ChatId,
         IReadOnlyDictionary<AuthorId, string> AuthorNames,
         AuthorId? FocusedAuthorId,
-        AuthorId? PreviousFocusedAuthorId
+        AuthorId? PreviousFocusedAuthorId,
+        bool IsScreencasting = false
     ) {
         public static readonly Model None = new(false, [], false, false, false, 0, null, new Dictionary<AuthorId, string>(), null, null);
     }
@@ -251,6 +258,20 @@
         }
     }
 
+    private void OnScreencastClick() {
+        var m = State.Value;
+        if (m.ChatId is not { } chatId)
+            return;
+
+        if (m.IsScreencasting) {
+            // Stop screencast
+            ChatVideoUI.SetRecordingChatId(null);
+        } else {
+            // Start screencast (stops any active webcam recording)
+            ChatVideoUI.SetScreencasting(chatId);
+        }
+    }
+
     private void OnSettingsClick() {
         var m = State.Value;
         if (m.ChatId is { } chatId)
@@ -349,9 +370,13 @@
             authorNames[stream.AuthorId] = author?.Avatar.Name ?? "";
         }
 
+        // Check for screencast among remote streams — always focused
+        var screencastStream = remoteStreams.FirstOrDefault(s => s.StreamKind == StreamKind.Screencast);
+
         // Get focused speaker from ChatVideoUI (state sync maintains this)
-        var focusedAuthorId = await ChatVideoUI.GetFocusedSpeakerId(cancellationToken)
-            .ConfigureAwait(false);
+        var focusedAuthorId = screencastStream != default
+            ? screencastStream.AuthorId
+            : await ChatVideoUI.GetFocusedSpeakerId(cancellationToken).ConfigureAwait(false);
 
         // Validate focused author still has video; fall back to first remote stream
         var videoAuthorIds = remoteStreams.Select(s => s.AuthorId).ToHashSet();
@@ -371,6 +396,6 @@
             string.Join(", ", remoteStreams.Select(s => $"{s.StreamId}({s.Format.Codec})")),
             videoState.IsRecording);
 
-        return new Model(isRightPanelVisible, remoteStreams, videoState.IsRecording, audioState.IsRecording, audioState.IsListening, videoStreamMemberCount, chatId, authorNames, focusedAuthorId, previousFocusedAuthorId);
+        return new Model(isRightPanelVisible, remoteStreams, videoState.IsRecording, audioState.IsRecording, audioState.IsListening, videoStreamMemberCount, chatId, authorNames, focusedAuthorId, previousFocusedAuthorId, videoState.IsScreencasting);
     }
 }

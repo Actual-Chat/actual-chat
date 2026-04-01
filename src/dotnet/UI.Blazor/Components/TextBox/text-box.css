@@ -16,3 +16,14 @@
     @apply !pr-3;
     @apply text-ellipsis;
 }
+
+/* Chrome, Safari, Edge */
+.text-box input[type=number]::-webkit-inner-spin-button,
+.text-box input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+}
+
+/* Firefox */
+.text-box input[type=number] {
+    -moz-appearance: textfield;
+}

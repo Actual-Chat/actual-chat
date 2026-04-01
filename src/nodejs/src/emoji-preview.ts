@@ -8,6 +8,7 @@ import { Tune, TuneUI } from '../../dotnet/UI.Blazor/Services/TuneUI/tune-ui';
 const { debugLog } = Log.get('EmojiPreview');
 
 const LONG_PRESS_DELAY_MS = 300;
+const HOVER_DELAY_MS = 500;
 const CONTAINER_SIZE_REM = 12;
 const TOUCH_OFFSET_REM = 5;
 const TOUCH_MOVE_TOLERANCE_PX = 10;
@@ -16,6 +17,7 @@ export class EmojiPreview {
     private static overlay: HTMLElement | null = null;
     private static currentTarget: HTMLElement | null = null;
     private static longPressTimeout: Timeout | null = null;
+    private static hoverTimeout: ReturnType<typeof setTimeout> | null = null;
     private static isTouch = false;
     private static touchOnEmoji = false;
     private static longPressTriggered = false;
@@ -265,8 +267,26 @@ export class EmojiPreview {
 
     private static tryShowPreview(target: HTMLElement): void {
         const emojiEl = this.findEmojiElement(target);
-        if (emojiEl) {
+        if (!emojiEl)
+            return;
+
+        // Don't restart timer for the same element
+        if (this.currentTarget === emojiEl)
+            return;
+
+        this.cancelHoverTimeout();
+        this.hoverTimeout = setTimeout(() => {
+            this.hoverTimeout = null;
             this.showPreview(emojiEl);
+        }, HOVER_DELAY_MS);
+        // Track target so pointerout can cancel correctly
+        this.currentTarget = emojiEl;
+    }
+
+    private static cancelHoverTimeout(): void {
+        if (this.hoverTimeout !== null) {
+            clearTimeout(this.hoverTimeout);
+            this.hoverTimeout = null;
         }
     }
 
@@ -287,8 +307,8 @@ export class EmojiPreview {
         if (!svgName)
             return;
 
-        // Don't re-show for same element
-        if (this.currentTarget === emojiEl)
+        // Don't re-show if overlay already visible for this element
+        if (this.overlay && this.currentTarget === emojiEl)
             return;
 
         this.hidePreview();
@@ -347,6 +367,7 @@ export class EmojiPreview {
     }
 
     private static hidePreview(): void {
+        this.cancelHoverTimeout();
         if (this.overlay) {
             this.overlay.remove();
             this.overlay = null;

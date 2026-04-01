@@ -17,7 +17,7 @@
 
 <span @ref="Ref" class="@containerCls @colorCls">
     @if (m.Map == null) {
-        if (@Markup.Words.Length <= 1 || @LastFragment == null)
+        if (Markup.Words.Length <= 1 || LastFragment == null)
             @Markup.Text
         else {
             var lastWord = Markup.Words[^1];

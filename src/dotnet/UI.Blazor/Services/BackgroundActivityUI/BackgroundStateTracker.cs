@@ -9,7 +9,7 @@ public abstract class BackgroundStateTracker
 }
 
 // Must be scoped!
-public class WebBackgroundStateTracker : BackgroundStateTracker
+public sealed class WebBackgroundStateTracker : BackgroundStateTracker
 {
     private readonly ComputedState<bool> _isBackgroundState;
 

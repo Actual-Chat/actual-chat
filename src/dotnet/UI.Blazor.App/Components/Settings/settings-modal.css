@@ -1,4 +1,6 @@
-﻿.settings-modal.modal-frame {
+/* ── Settings Modal (shell) ── */
+
+.settings-modal.modal-frame {
     @apply min-h-full;
 }
 /* Override modal-level top/bottom safe area: push to children so each extends its own background.
@@ -7,6 +9,17 @@ body.wide .modal-overlay-fullscreen .settings-modal.modal-frame {
     padding-top: 0;
     padding-bottom: 0;
 }
+.close-settings-btn {
+    @apply absolute z-button;
+    top: calc(1rem + var(--safe-area-top));
+    right: calc(1rem + var(--safe-area-right));
+}
+body.narrow .close-settings-btn {
+    @apply hidden;
+}
+
+/* ── App Settings tab ── */
+
 .settings-tab .app-settings .tile-item {
     @apply h-auto;
 }
@@ -21,20 +34,12 @@ body.wide .modal-overlay-fullscreen .settings-modal.modal-frame {
     @apply cursor-pointer;
 }
 
+/* ── Theme & Render Mode ── */
+
 .settings-tab .theme-tile .tile-item:hover,
 .settings-tab .render-mode-tile .tile-item:hover {
     @apply bg-transparent;
 }
-
-.phone-verification-status {
-    @apply flex-x items-center;
-    @apply h-7 px-3 rounded-lg border-none;
-    @apply text-sm;
-}
-.phone-verification-status > i {
-    @apply text-base mr-2;
-}
-
 .render-mode-tile .label {
     @apply whitespace-normal;
     @apply text-headline-1 text-02;
@@ -51,16 +56,30 @@ body.wide .modal-overlay-fullscreen .settings-modal.modal-frame {
     @apply text-02;
 }
 
+/* ── Host Switcher ── */
+
 .host-switcher-tile .form-block.with-input-radio .tile-item {
     @apply h-16;
     @apply px-4;
 }
 
+/* ── Phone / Email / TimeZone forms ── */
+
+.phone-verification-status {
+    @apply flex-x items-center;
+    @apply h-7 px-3 rounded-lg border-none;
+    @apply text-sm;
+}
+.phone-verification-status > i {
+    @apply text-base mr-2;
+}
 .languages-form > section .form-section-validation,
 .email-form > section .form-section-validation,
 .time-zone-form > section .form-section-validation {
     @apply bg-tile;
 }
+
+/* ── Data Collection & Early Access ── */
 
 .data-collection-consent.tile .tile-item {
     @apply h-12;
@@ -71,7 +90,99 @@ body.wide .modal-overlay-fullscreen .settings-modal.modal-frame {
     @apply text-caption-6;
 }
 
-/*Settings Documents*/
+/* ── Sessions tab ── */
+
+.sessions-tile-item .tile-item-body {
+    @apply w-full;
+}
+.sessions-tile-item .tile-item-body-caption {
+    @apply flex-x items-center justify-between gap-2;
+}
+.sessions-tile-item .tile-item-body-content {
+    @apply max-h-10;
+    @apply text-caption-4;
+}
+.sessions-tile-item .tile-item-body-content .c-description {
+    @apply whitespace-normal;
+}
+.sessions-tile-item .sign-out-btn {
+    @apply flex-none;
+    @apply text-[var(--danger-light)];
+    @apply cursor-pointer;
+}
+body.hoverable .sessions-tile-item .sign-out-btn:hover,
+.touch-capable .sessions-tile-item .sign-out-btn:active {
+    @apply text-[var(--danger)];
+}
+.sessions-tile-item .c-current {
+    @apply flex-none;
+    @apply text-[var(--success)];
+}
+
+/* ── API Keys tab ── */
+
+.api-key-tile .tile-item {
+    @apply relative;
+}
+.api-key-tile .tile-item-body-content {
+    @apply max-h-none;
+}
+.api-key-tile:has(.c-deactivate) .tile-item-body-content {
+    @apply pr-12;
+}
+.api-key-tile .tile-item-body-caption {
+    @apply flex-y;
+}
+.api-key-tile .c-key-info {
+    @apply flex-x items-end gap-2;
+}
+.api-key-tile .c-key-name {
+    @apply overflow-hidden overflow-ellipsis;
+    @apply font-medium;
+}
+.api-key-tile .c-key-prefix {
+    @apply px-1;
+    @apply rounded-full;
+    @apply bg-banner-info;
+    @apply text-xs font-mono font-normal text-banner-info;
+}
+.api-key-tile .c-key-expires {
+    @apply text-xs font-mono font-normal text-03;
+}
+.api-key-tile .c-deactivated {
+    @apply text-xs font-normal text-danger;
+}
+.api-key-tile .c-deactivate {
+    @apply absolute right-0 top-0;
+}
+
+/* ── API Key Create Modal ── */
+
+.api-key-modal .form-block .c-title {
+    @apply text-01 text-text-1;
+}
+.api-key-form-block {
+    @apply p-2;
+}
+.api-key-container {
+    @apply relative;
+    @apply flex-x items-center gap-2;
+}
+.api-key-container .copy-to-clipboard {
+    @apply absolute right-1 bottom-1;
+}
+.api-key-container code {
+    @apply flex-1 flex items-center;
+    @apply min-h-12;
+    @apply pl-2 pr-11;
+    @apply rounded-lg border border-separator;
+    @apply bg-input;
+    @apply text-sm;
+    @apply break-all select-all;
+}
+
+/* ── Documents tab ── */
+
 .docs-tab.settings-tab {
     @apply overflow-y-hidden;
 }
@@ -114,14 +225,7 @@ body.narrow .docs-tab .docs-content {
     @apply bg-transparent;
 }
 
-.close-settings-btn {
-    @apply absolute z-button;
-    top: calc(1rem + var(--safe-area-top));
-    right: calc(1rem + var(--safe-area-right));
-}
-body.narrow .close-settings-btn {
-    @apply hidden;
-}
+/* ── Log Viewer tab ── */
 
 .log-viewer-tab .settings-tab-header,
 .log-viewer-tab .settings-tab-content {

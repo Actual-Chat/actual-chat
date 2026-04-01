@@ -24,7 +24,7 @@ public class TranscriptUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompute
         if (translation?.StreamId is not null)
             return new StreamingState(translation.StreamId, entry.Content, IsTranslation: true); // Already streaming translated transcript.
 
-        if (entry.ContentStreamId is not {} contentStreamId)
+        if (entry.ContentStreamId is not { } contentStreamId)
             return null; // No source stream. We can't start a translation stream.
 
         if (contentStreamId.IsNullOrEmpty())

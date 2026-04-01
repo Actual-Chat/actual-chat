@@ -16,7 +16,7 @@
     @if (!IsMultiline) {
         <input @ref="Ref"
                id="@Id"
-               type="text"
+               type="@Type"
                autocomplete="@Autocomplete"
                class="flex-1 @cls"
                value="@CurrentValue"
@@ -28,7 +28,7 @@
                id="@Id"
                rows="@MultilineRows"
                cols="@MultilineCols"
-               type="text"
+               type="@Type"
                autocomplete="@Autocomplete"
                class="flex-1 @cls"
                value="@CurrentValue"
@@ -64,6 +64,7 @@
     [Parameter] public bool IsMultiline { get; set; }
     [Parameter] public int MultilineRows { get; set; } = 2;
     [Parameter] public int MultilineCols { get; set; } = 20;
+    [Parameter] public string Type { get; set; } = "text";
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Placeholder { get; set; } = "";
     [Parameter] public bool ClearButton { get; set; }

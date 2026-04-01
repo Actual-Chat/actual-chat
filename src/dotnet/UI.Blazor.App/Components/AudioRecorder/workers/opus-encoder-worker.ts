@@ -179,7 +179,7 @@ const serverImpl: OpusEncoderWorker = {
     },
 
     updateServerClockOffset: async (offsetMs: number, _noWait?: RpcNoWait): Promise<void> => {
-        ServerClock.updateOffset(offsetMs);
+        ServerClock.updateOffset(Date.now() + offsetMs);
     },
 }
 const stateServer = rpcClientServer<RecorderStateServer>(`${logScope}.stateServer`, worker, serverImpl);

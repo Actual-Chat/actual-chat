@@ -484,6 +484,34 @@ body.narrow .to-thin .rec-icon.text-mode-on {
     @apply text-audio-panel-button-text;
 }
 
+/* === 6.2. Screencast Toggle Wrapper === */
+
+.chat-audio-panel .screencast-wrapper {
+    @apply flex-none rounded-full;
+}
+
+.chat-audio-panel .screencast-wrapper .btn.btn-round {
+    @apply bg-post-panel md:bg-input;
+    @apply text-audio-panel-button-text;
+}
+
+.list-view-layout:has(.chat-activity-panel.listening) .chat-audio-panel .screencast-wrapper .btn.btn-round {
+    @apply md:bg-01;
+}
+
+.chat-audio-panel .screencast-wrapper.screencast-on {
+    @apply outline outline-2 outline-primary outline-offset-[-1px];
+    @apply bg-round-focus;
+}
+
+.chat-audio-panel .screencast-wrapper.screencast-on .btn.btn-round {
+    @apply text-primary;
+}
+
+.chat-audio-panel .screencast-wrapper.screencast-off .btn.btn-round {
+    @apply text-audio-panel-button-text;
+}
+
 /* Narrow mode video toggle in header */
 .audio-panel-header .video-wrapper {
     @apply flex-none rounded-full;

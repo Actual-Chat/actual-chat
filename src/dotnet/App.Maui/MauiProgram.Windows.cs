@@ -1,6 +1,7 @@
 using ActualChat.App.Maui.Audio;
 using ActualChat.App.Maui.Services;
 using ActualChat.App.Maui.Services.Recording;
+using ActualChat.Maui.Services;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.Services;
@@ -26,9 +27,7 @@ public static partial class MauiProgram
         events.AddWindows(builder => {
             builder
                 .OnWindowCreated(WindowConfigurator.Configure)
-                .OnVisibilityChanged((_, args) => {
-                    MauiBackgroundStateTracker.SetBackgroundState(!args.Visible);
-                });
+                .OnVisibilityChanged((_, args) => MauiBackgroundState.Set(!args.Visible));
         });
         #if false
         // NOTE(DF): MauiLivenessProbe is switched off for now.

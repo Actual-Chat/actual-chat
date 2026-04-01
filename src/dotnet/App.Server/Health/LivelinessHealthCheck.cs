@@ -1,20 +1,14 @@
-﻿using ActualChat.App.Server.Module;
-using ActualChat.Diagnostics;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
+﻿using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace ActualChat.App.Server.Health;
 
 /// <summary>
-/// Checks server liveliness based on sustained CPU usage to detect unresponsive instances.
+/// Liveliness health check. Always returns healthy.
+/// CPU-based liveliness is an anti-pattern: high CPU means the process is working, not stuck.
+/// The HTTP probe itself proves ASP.NET is responsive; DB connectivity is checked separately.
 /// </summary>
-public class LivelinessHealthCheck(IServiceProvider services): IHealthCheck
+public class LivelinessHealthCheck : IHealthCheck
 {
-    private const double CpuUsageLimit = 70;
-    private IHealthState HealthState { get; } = services.GetRequiredService<IHealthState>();
-    private HostSettings HostSettings { get; } = services.GetRequiredService<HostSettings>();
-
-    public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = new ())
-        => Task.FromResult(HealthState.CpuMean20.Value >  (HostSettings.LivelinessCpuLimit ?? CpuUsageLimit)
-            ? HealthCheckResult.Unhealthy("Continuous critical CPU usage - requires restart.")
-            : HealthCheckResult.Healthy());
+    public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
+        => Task.FromResult(HealthCheckResult.Healthy());
 }

@@ -301,11 +301,9 @@ export class RecordingService extends EventTarget {
                 audio: false
             });
         } else {
+            // Screen mode: use native device resolution (no constraints)
             return navigator.mediaDevices.getDisplayMedia({
-                video: {
-                    width: { ideal: this.config.width },
-                    height: { ideal: this.config.height }
-                },
+                video: true,
                 audio: false
             });
         }
@@ -394,8 +392,9 @@ export class RecordingService extends EventTarget {
             pipelineConfig.streaming = {
                 enabled: true,
                 chatId: this.config.streaming.chatId,
+                streamKind: this.config.mode === 'screen' ? 1 : 0,
             };
-            infoLog?.log('Streaming enabled to chat', this.config.streaming.chatId);
+            infoLog?.log('Streaming enabled to chat', this.config.streaming.chatId, 'streamKind:', this.config.mode);
         }
 
         // Add adaptive framerate configuration if enabled

@@ -22,7 +22,8 @@ public class MauiModule(IServiceProvider moduleServices)
         });
         services.AddSingleton<IRemoteComputedCache>(c => {
             var options = c.GetRequiredService<SQLiteRemoteComputedCache.Options>();
-            return new SQLiteRemoteComputedCache(options, c);
+            var cache = new SQLiteRemoteComputedCache(options, c);
+            return cache;
         });
 
         // LocalSettings backend override
@@ -42,7 +43,7 @@ public class MauiModule(IServiceProvider moduleServices)
         services.Replace(ServiceDescriptor.Singleton(c
             => new LocalSettings(c.GetRequiredService<LocalSettings.Options>(), c)));
 
-        // sharing
+        // Sharing
 #if IOS
         var fusion = services.AddFusion();
         fusion.AddService<IconUI>(ServiceLifetime.Scoped);
@@ -50,6 +51,10 @@ public class MauiModule(IServiceProvider moduleServices)
 
         // Video transcoding
         services.AddScoped<VideoTranscoder>(c => new IosVideoTranscoder(c));
+#elif ANDROID
+        var fusion = services.AddFusion();
+        fusion.AddService<IconUI>(ServiceLifetime.Scoped);
+        fusion.AddService<IncomingShareSuggestions, AndroidIncomingShareSuggestions>(ServiceLifetime.Scoped);
 #endif
     }
 }

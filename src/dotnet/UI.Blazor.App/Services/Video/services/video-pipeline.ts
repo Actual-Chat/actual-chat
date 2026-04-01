@@ -44,6 +44,7 @@ export interface PipelineConfig {
     streaming?: {
         enabled: boolean;
         chatId: string;
+        streamKind?: number; // 0 = Webcam (default), 1 = Screencast
     };
     adaptiveFramerate?: {
         enabled: boolean;
@@ -185,6 +186,7 @@ export class VideoPipeline implements IVideoPipeline {
                 sessionToken: SessionTokens.current,
                 chatId: this.config.streaming?.chatId ?? '',
                 serverClockOffsetMs: ServerClock.offsetMs,
+                streamKind: this.config.streaming?.streamKind ?? 0,
             },
         };
 

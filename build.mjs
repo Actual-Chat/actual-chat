@@ -99,6 +99,25 @@ const options = {
 if (isWatch) {
     const ctx = await esbuild.context(options);
     await ctx.watch();
+
+    // Watch .razor/.cshtml files for Tailwind class changes.
+    // The postcss-watch-plugin emits dir-dependency messages for these,
+    // but @chialab/esbuild-plugin-postcss ignores dir-dependency (only handles dependency).
+    // So we watch them directly and trigger a rebuild when they change.
+    const razorDirs = fs.readdirSync('./src/dotnet/', { withFileTypes: true })
+        .filter(d => d.isDirectory() && d.name.includes('UI.Blazor'))
+        .map(d => `./src/dotnet/${d.name}`)
+        .concat('./src/dotnet/App.Server');
+    let rebuildTimer = null;
+    for (const dir of razorDirs) {
+        fs.watch(dir, { recursive: true }, (_eventType, filename) => {
+            if (filename?.endsWith('.razor') || filename?.endsWith('.cshtml')) {
+                // Debounce rapid changes (e.g., save-all)
+                clearTimeout(rebuildTimer);
+                rebuildTimer = setTimeout(() => ctx.rebuild().catch(() => {}), 100);
+            }
+        });
+    }
 }
 else {
     console.log('Building, mode:', isProduction ? 'production' : 'development');

@@ -68,12 +68,12 @@
 
   <ItemGroup Label="dotnet watch">
     <Watch Include="appsettings*.json" />
-    <Watch Include="wwwroot\dist\**" />
-    <Watch Remove="wwwroot\**\*.map" />
-    <Watch Remove="wwwroot\**\*.eot" />
-    <Watch Remove="wwwroot\**\*.ttf" />
-    <Watch Remove="wwwroot\**\*.woff" />
-    <Watch Remove="wwwroot\**\*.woff2" />
+    <Watch Include="..\App.Wasm\wwwroot\dist\**" />
+    <Watch Remove="..\App.Wasm\wwwroot\dist\**\*.map" />
+    <Watch Remove="..\App.Wasm\wwwroot\dist\**\*.eot" />
+    <Watch Remove="..\App.Wasm\wwwroot\dist\**\*.ttf" />
+    <Watch Remove="..\App.Wasm\wwwroot\dist\**\*.woff" />
+    <Watch Remove="..\App.Wasm\wwwroot\dist\**\*.woff2" />
   </ItemGroup>
 
   <!-- Copy "data\**" to output folder -->

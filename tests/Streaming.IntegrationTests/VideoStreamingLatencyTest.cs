@@ -60,7 +60,7 @@ public class VideoStreamingLatencyTest(AppHostFixture fixture, ITestOutputHelper
         var clientStartOffset = CpuClock.Instance.Now.EpochOffset.TotalSeconds;
         var pushTask = producerConnection.SendAsync("PushVideo",
             sessionToken, chatId.Value, Codec, FrameWidth, FrameHeight, "",
-            clientStartOffset,
+            clientStartOffset, 0, // 0 = Webcam
             PushFramesAsync(TotalFrames, sentTimestamps));
 
         // ObserveStreams yields VideoStreamInfo when stream is registered
@@ -193,7 +193,7 @@ public class VideoStreamingLatencyTest(AppHostFixture fixture, ITestOutputHelper
 
         var pushTask = producerConnection.SendAsync("PushVideo",
             sessionToken, chatId.Value, Codec, FrameWidth, FrameHeight, "",
-            clientStartOffset,
+            clientStartOffset, 0, // 0 = Webcam
             PushFramesAsync(TotalFrames, sentTimestamps));
 
         // Discover stream via ObserveStreams (yields when stream is registered)
@@ -304,7 +304,7 @@ public class VideoStreamingLatencyTest(AppHostFixture fixture, ITestOutputHelper
         var clientStartOffset = CpuClock.Instance.Now.EpochOffset.TotalSeconds;
         var pushTask = producerConnection.SendAsync("PushVideo",
             sessionToken, chatId.Value, Codec, FrameWidth, FrameHeight, "",
-            clientStartOffset,
+            clientStartOffset, 0, // 0 = Webcam
             PushFramesAsync(totalFrames, sentTimestamps));
 
         // Discover stream
