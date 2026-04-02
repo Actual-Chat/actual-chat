@@ -12,12 +12,12 @@ public class MediaProcessorTest
         var expectedResult = new ProcessedFile(input, new Size(100, 100));
 
         var processor = new Mock<IUploadProcessor>(MockBehavior.Strict);
-        processor.Setup(p => p.Supports("video/mp4")).Returns(true);
+        processor.Setup(p => p.Supports("video/mp4", It.IsAny<MediaKind>())).Returns(true);
         processor.Setup(p => p.Process(input, It.IsAny<IProgress<double>?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedResult);
 
         var mediaProcessor = CreateMediaProcessor(processor.Object);
-        var result = await mediaProcessor.ProcessUpload(input, null, CancellationToken.None);
+        var result = await mediaProcessor.ProcessUpload(input, default, null, CancellationToken.None);
 
         result.Should().BeSameAs(expectedResult);
         processor.Verify(p => p.Process(input, null, CancellationToken.None), Times.Once);
@@ -29,10 +29,10 @@ public class MediaProcessorTest
         var input = CreateUploadedFile("doc.pdf", "application/pdf");
 
         var processor = CreateProcessor();
-        processor.Setup(p => p.Supports(It.IsAny<string>())).Returns(false);
+        processor.Setup(p => p.Supports(It.IsAny<string>(), It.IsAny<MediaKind>())).Returns(false);
 
         var mediaProcessor = CreateMediaProcessor(processor.Object);
-        var result = await mediaProcessor.ProcessUpload(input, null, CancellationToken.None);
+        var result = await mediaProcessor.ProcessUpload(input, default, null, CancellationToken.None);
 
         result.File.Should().BeSameAs(input);
         result.Size.Should().BeNull();
@@ -47,15 +47,15 @@ public class MediaProcessorTest
         var expectedResult = new ProcessedFile(input, new Size(200, 200));
 
         var first = CreateProcessor();
-        first.Setup(p => p.Supports("video/mp4")).Returns(true);
+        first.Setup(p => p.Supports("video/mp4", It.IsAny<MediaKind>())).Returns(true);
         first.Setup(p => p.Process(input, It.IsAny<IProgress<double>?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedResult);
 
         var second = CreateProcessor();
-        second.Setup(p => p.Supports("video/mp4")).Returns(true);
+        second.Setup(p => p.Supports("video/mp4", It.IsAny<MediaKind>())).Returns(true);
 
         var mediaProcessor = CreateMediaProcessor(first.Object, second.Object);
-        var result = await mediaProcessor.ProcessUpload(input, null, CancellationToken.None);
+        var result = await mediaProcessor.ProcessUpload(input, default, null, CancellationToken.None);
 
         result.Should().BeSameAs(expectedResult);
         second.Verify(p => p.Process(It.IsAny<UploadedFile>(), It.IsAny<IProgress<double>?>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -67,13 +67,13 @@ public class MediaProcessorTest
         var input = CreateUploadedFile("video.mp4", "video/mp4");
 
         var processor = CreateProcessor();
-        processor.Setup(p => p.Supports("video/mp4")).Returns(true);
+        processor.Setup(p => p.Supports("video/mp4", It.IsAny<MediaKind>())).Returns(true);
         processor.Setup(p => p.Process(input, It.IsAny<IProgress<double>?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ProcessedFile(input, new Size(100, 100)));
 
         var progress = CreateProgress();
         var mediaProcessor = CreateMediaProcessor(processor.Object);
-        await mediaProcessor.ProcessUpload(input, progress.Object, CancellationToken.None);
+        await mediaProcessor.ProcessUpload(input, default, progress.Object, CancellationToken.None);
 
         progress.Verify(p => p.Report(100), Times.Once);
     }
@@ -85,7 +85,7 @@ public class MediaProcessorTest
         var progress = CreateProgress();
 
         var mediaProcessor = CreateMediaProcessor();
-        await mediaProcessor.ProcessUpload(input, progress.Object, CancellationToken.None);
+        await mediaProcessor.ProcessUpload(input, default, progress.Object, CancellationToken.None);
 
         progress.Verify(p => p.Report(It.IsAny<double>()), Times.Never);
     }

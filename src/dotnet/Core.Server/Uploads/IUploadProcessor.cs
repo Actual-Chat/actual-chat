@@ -5,6 +5,6 @@ namespace ActualChat.Uploads;
 /// </summary>
 public interface IUploadProcessor
 {
-    bool Supports(string contentType);
+    bool Supports(string contentType, MediaKind mediaKind);
     Task<ProcessedFile> Process(UploadedFile upload, IProgress<double>? progress, CancellationToken cancellationToken);
 }

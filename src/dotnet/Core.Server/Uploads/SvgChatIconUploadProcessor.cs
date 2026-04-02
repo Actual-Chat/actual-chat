@@ -1,16 +1,21 @@
-using ActualChat.Uploads;
 using ActualLab.IO;
 using SkiaSharp;
 using Svg.Skia;
 
-namespace ActualChat.Users.Uploads;
+namespace ActualChat.Uploads;
 
-public sealed class SvgToPngConverter(ILogger<SvgToPngConverter> log)
+public class SvgChatIconUploadProcessor(ILogger<SvgChatIconUploadProcessor> log) : IUploadProcessor
 {
     private const int MaxSize = 1920;
 
-    public ProcessedFile Convert(UploadedFile upload)
+    public bool Supports(string contentType, MediaKind mediaKind)
+        => MediaTypeExt.IsSvg(contentType)
+            && mediaKind is MediaKind.ChatPicture or MediaKind.UserPicture or MediaKind.UserAvatarPicture;
+
+    public Task<ProcessedFile> Process(UploadedFile upload, IProgress<double>? progress, CancellationToken cancellationToken)
     {
+        progress?.Report(0);
+
         using var inputStream = upload.Open().GetAwaiter().GetResult();
         using var svg = SKSvg.CreateFromStream(inputStream);
         var picture = svg.Picture
@@ -33,7 +38,7 @@ public sealed class SvgToPngConverter(ILogger<SvgToPngConverter> log)
 
         var outFileName = Path.ChangeExtension(upload.FileName, ".png");
         var outPath = FilePath.GetApplicationTempDirectory()
-            & (Guid.NewGuid().ToString("N") + "_" + ActualChat.Uploads.FileExt.ShortenFileName(outFileName));
+            & (Guid.NewGuid().ToString("N") + "_" + FileExt.ShortenFileName(outFileName));
 
         using var pixmap = surface.PeekPixels();
         using var fileStream = new SKFileWStream(outPath);
@@ -42,9 +47,9 @@ public sealed class SvgToPngConverter(ILogger<SvgToPngConverter> log)
 
         log.LogInformation("Converted SVG '{FileName}' to PNG ({Width}x{Height})", upload.FileName, targetWidth, targetHeight);
 
-        var tempFile = new UploadedTempFile(outFileName, "image/png", outPath);
-        var size = new SixLabors.ImageSharp.Size(targetWidth, targetHeight);
-        return new ProcessedFile(tempFile, size);
+        var converted = new UploadedTempFile(outFileName, "image/png", outPath);
+        progress?.Report(100);
+        return Task.FromResult(new ProcessedFile(converted, null));
     }
 
     private static (int Width, int Height) ComputeTargetSize(int width, int height)

@@ -5,17 +5,18 @@ using SixLabors.ImageSharp.Processing;
 
 namespace ActualChat.Uploads;
 
-public class ImageUploadProcessor(ILogger<ImageUploadProcessor> log) : IUploadProcessor
+public class ImageUploadProcessor(IServiceProvider services) : IUploadProcessor
 {
-    private ILogger Log { get; } = log;
+    private ILogger Log => field ??= services.LogFor(GetType());
 
-    public bool Supports(string contentType)
-        // SVG is a vector format that ImageSharp can't process - pass through unchanged.
-        => MediaTypeExt.IsImage(contentType) && !(MediaTypeExt.IsSvg(contentType) || MediaTypeExt.IsGif(contentType));
+    public bool Supports(string contentType, MediaKind mediaKind)
+        // GIF is passed through to preserve animation. SVG is handled by SvgChatIconUploadProcessor.
+        => MediaTypeExt.IsImage(contentType) && !MediaTypeExt.IsGif(contentType) && !MediaTypeExt.IsSvg(contentType);
 
     public async Task<ProcessedFile> Process(UploadedFile upload, IProgress<double>? progress, CancellationToken cancellationToken)
     {
         progress?.Report(0);
+
         var tempFile = await UploadProcessorHelper.DumpToTempFile(upload, cancellationToken).ConfigureAwait(false);
         ProcessedFile processedFile;
         try {

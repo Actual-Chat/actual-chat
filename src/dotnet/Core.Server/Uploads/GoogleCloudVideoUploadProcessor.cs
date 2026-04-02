@@ -36,7 +36,7 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
         Log = log;
     }
 
-    public bool Supports(string contentType)
+    public bool Supports(string contentType, MediaKind mediaKind)
         => MediaTypeExt.IsVideo(contentType);
 
     public async Task<ProcessedFile> Process(UploadedFile upload, IProgress<double>? progress, CancellationToken cancellationToken)

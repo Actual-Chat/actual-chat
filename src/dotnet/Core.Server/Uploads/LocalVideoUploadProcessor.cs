@@ -9,7 +9,7 @@ public sealed class LocalVideoUploadProcessor(ILogger<LocalVideoUploadProcessor>
 {
     private ILogger Log { get; } = log;
 
-    public bool Supports(string contentType)
+    public bool Supports(string contentType, MediaKind mediaKind)
         => MediaTypeExt.IsVideo(contentType);
 
     public async Task<ProcessedFile> Process(UploadedFile upload, IProgress<double>? progress, CancellationToken cancellationToken)

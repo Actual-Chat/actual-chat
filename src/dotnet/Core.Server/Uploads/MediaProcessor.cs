@@ -6,9 +6,9 @@ public sealed class MediaProcessor(IServiceProvider services) : IMediaProcessor
         = services.GetRequiredService<IEnumerable<IUploadProcessor>>().ToList();
     private ILogger Log =>  field ??= services.LogFor(GetType());
 
-    public async Task<ProcessedFile> ProcessUpload(UploadedFile uploadedFile, IProgress<double>? progress, CancellationToken cancellationToken)
+    public async Task<ProcessedFile> ProcessUpload(UploadedFile uploadedFile, MediaKind mediaKind, IProgress<double>? progress, CancellationToken cancellationToken)
     {
-        var processor = Processors.FirstOrDefault(x => x.Supports(uploadedFile.ContentType));
+        var processor = Processors.FirstOrDefault(x => x.Supports(uploadedFile.ContentType, mediaKind));
         if (processor is null)
             // no need to process the file
             return new ProcessedFile(uploadedFile, null);
