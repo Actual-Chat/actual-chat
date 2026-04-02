@@ -197,8 +197,9 @@ export class VideoRecorder {
             const targetBitrate = 2_000_000;
             const targetFramerate = 30;
 
-            // Detect supported encoder codecs at 1080p (avoids resolution-dependent false positives)
-            const supportedCodecs = await detectSupportedCodecs();
+            // Detect supported encoder codecs — use target resolution to avoid
+            // false negatives on mobile (e.g. Android HEVC encoders may not support 1080p)
+            const supportedCodecs = await detectSupportedCodecs(targetWidth, targetHeight);
             this.supportedCodecs = supportedCodecs;
 
             // Cache supported encoder categories for later codec negotiation
@@ -349,8 +350,11 @@ export class VideoRecorder {
         infoLog?.log('Starting screencast...');
 
         try {
-            // Detect supported encoder codecs at 1080p
-            const supportedCodecs = await detectSupportedCodecs();
+            // Detect supported encoder codecs — use mobile-aware resolution to avoid
+            // false negatives (e.g. Android HEVC encoders may not support 1080p)
+            const detectionWidth = DeviceInfo.isMobile ? 1280 : 1920;
+            const detectionHeight = DeviceInfo.isMobile ? 720 : 1080;
+            const supportedCodecs = await detectSupportedCodecs(detectionWidth, detectionHeight);
             this.supportedEncoderCategories = this.extractEncoderCategories(supportedCodecs);
 
             // Pick initial codec based on audience
