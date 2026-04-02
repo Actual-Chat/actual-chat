@@ -107,7 +107,7 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
     public (string Name, string DisplayName)[] GetAuthSchemas()
         => ClientAuth.GetSchemas();
 
-    public async Task SignIn(string schema, bool? mustExist = null)
+    public async Task SignIn(string schema, bool mustExist = false)
     {
         await ClientAuth.SignIn(schema, mustExist).ConfigureAwait(false);
         // TODO(AY): Make it reliable

@@ -83,14 +83,14 @@ public static class Links
     public static LocalUrl CloseFlow(
         string flowName,
         bool mustClose = true,
-        int? mustExist = null,
+        bool mustExist = false,
         string? redirectUrl = null)
     {
         var url = $"/fusion/close?flow={flowName.UrlEncode()}";
         if (!mustClose)
             url += "&mustClose=0"; // "must close" is the default
-        if (mustExist is { } vMustExist)
-            url += $"&mustExist={vMustExist}";
+        if (mustExist)
+            url += "&mustExist=1";
         if (!redirectUrl.IsNullOrEmpty())
             url += $"&redirectUrl={redirectUrl.UrlEncode()}";
         return url;

@@ -15,7 +15,7 @@ public sealed class NativeGoogleAuth
     private const int GoogleSignInRequestCode = 800;
 
     private readonly GoogleSignInClient _googleSignInClient;
-    private bool? _mustExist;
+    private bool _mustExist;
 
     private IServiceProvider Services { get; }
     private ILogger Log { get; }
@@ -51,7 +51,7 @@ public sealed class NativeGoogleAuth
         return statusCode == ConnectionResult.Success;
     }
 
-    public Task SignIn(bool? mustExist = null)
+    public Task SignIn(bool mustExist = false)
     {
         _mustExist = mustExist;
         var signInIntent = _googleSignInClient.SignInIntent;

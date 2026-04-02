@@ -17,7 +17,7 @@ internal sealed class MauiAuth(UIHub hub) : UIServiceBase<UIHub>(hub), IClientAu
         return AuthSchema.ToSchemasWithDisplayNames(schemas);
     }
 
-    public async Task SignIn(string schema, bool? mustExist = null)
+    public async Task SignIn(string schema, bool mustExist = false)
     {
         if (schema.IsNullOrEmpty())
             throw new ArgumentOutOfRangeException(nameof(schema));
@@ -59,7 +59,7 @@ internal sealed class MauiAuth(UIHub hub) : UIServiceBase<UIHub>(hub), IClientAu
 
     // Private methods
 
-    private async Task WebSignInOrSignOut(string endpoint, string flowName, bool? mustExist = null)
+    private async Task WebSignInOrSignOut(string endpoint, string flowName, bool mustExist = false)
     {
         var isSignIn = endpoint.StartsWith("/signIn", StringComparison.OrdinalIgnoreCase);
         try {
@@ -69,8 +69,8 @@ internal sealed class MauiAuth(UIHub hub) : UIServiceBase<UIHub>(hub), IClientAu
                 + $"&e={endpoint.UrlEncode()}"
                 + $"&flow={flowName.UrlEncode()}"
                 + $"&appKind={HostInfo.AppKind:G}";
-            if (mustExist is { } vMustExist)
-                url += $"&mustExist={(vMustExist ? "1" : "0")}";
+            if (mustExist)
+                url += "&mustExist=1";
             if (MauiSettings.WebAuth.UseSystemBrowser) {
                 _ = MauiBrowser.Open(url);
                 return;

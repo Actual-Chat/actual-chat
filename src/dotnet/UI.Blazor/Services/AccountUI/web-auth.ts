@@ -13,7 +13,7 @@ export class WebAuth {
     public static allowPopup = !(DeviceInfo.isMobile || DeviceInfo.isWebKit);
     public static mustRedirectOnPopupBlock = true;
 
-    public static signIn(schema: string, mustExist?: boolean | null): Promise<void> {
+    public static signIn(schema: string, mustExist = false): Promise<void> {
         const path = schema
             ? this.signInPath + '/' + schema
             : this.signInPath;
@@ -26,15 +26,15 @@ export class WebAuth {
 
     // Private methods
 
-    private static showPopupOrRedirect(path: string, flowName: string, mustExist?: boolean | null): Promise<void> {
+    private static showPopupOrRedirect(path: string, flowName: string, mustExist = false): Promise<void> {
         if (!this.allowPopup) {
             this.redirect(path, flowName, mustExist);
             return Promise.resolve();
         }
 
         let closeFlowUrl = this.closeFlowPath + '?flow=' + encode(flowName);
-        if (mustExist !== undefined && mustExist !== null)
-            closeFlowUrl += '&mustExist=' + (mustExist ? '1' : '0');
+        if (mustExist)
+            closeFlowUrl += '&mustExist=1';
         const returnUrl = new URL(closeFlowUrl, document.baseURI).href;
         const url = path + '?returnUrl=' + encode(returnUrl);
         warnLog?.log(`popup: -> ${url}`);
@@ -60,13 +60,13 @@ export class WebAuth {
         });
     }
 
-    private static redirect(path: string, flowName: string, mustExist?: boolean | null) {
+    private static redirect(path: string, flowName: string, mustExist = false) {
         const redirectUrl = window.location.href;
         let closeFlowUrl = this.closeFlowPath +
             '?flow=' + encode(flowName) +
             '&redirectUrl=' + encode(redirectUrl);
-        if (mustExist !== undefined && mustExist !== null)
-            closeFlowUrl += '&mustExist=' + (mustExist ? '1' : '0');
+        if (mustExist)
+            closeFlowUrl += '&mustExist=1';
         const returnUrl = new URL(closeFlowUrl, document.baseURI).href;
         const url = new URL(path + '?returnUrl=' + encode(returnUrl), document.baseURI).href;
         warnLog?.log(`redirect: -> ${url}`);

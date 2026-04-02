@@ -55,7 +55,7 @@ public sealed partial record AccountsBackend_SignIn(
     [property: DataMember, MemoryPackOrder(1)] UserIdentity AuthenticatedIdentity,
     [property: DataMember, MemoryPackOrder(2)] ApiMap<UserIdentity, string> Identities, // May not include AuthenticatedIdentity
     [property: DataMember, MemoryPackOrder(3)] ApiMap<string, string> Claims,
-    [property: DataMember, MemoryPackOrder(4)] bool? MustExist = null
+    [property: DataMember, MemoryPackOrder(4)] bool MustExist = false
 ) : ISessionCommand<Unit>, IBackendCommand;
 
 /// <summary>
