@@ -162,9 +162,15 @@ body.hoverable .video-panel .video-panel-footer > button:hover,
 }
 .video-panel .video-panel-footer > button.rec-btn {
     background: linear-gradient(180deg, #C60077 -18.32%, #2970FF 132%);
+    background-size: 100% 180%;
+    background-position: center center;
+    background-repeat: no-repeat;
+    animation: gradientShake 3s ease-in-out infinite alternate;
 }
 .video-panel .video-panel-footer > button.rec-btn.recording {
     background: linear-gradient(180deg, #2970FF -116.66%, #FF3880 66.08%);
+    background-size: auto;
+    animation: record-btn-on 1s ease-in-out forwards, record-btn-on-pulse 2s ease-in-out infinite;
 }
 .video-panel .video-panel-footer > button.rec-btn i {
     @apply text-xl leading-5;
