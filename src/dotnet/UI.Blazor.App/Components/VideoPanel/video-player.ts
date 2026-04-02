@@ -367,7 +367,7 @@ export class VideoPlayer {
             'h265': 'hvc1.1.6.L93.90',
             'hevc': 'hvc1.1.6.L93.90',
             'vp8': 'vp8',
-            'vp9': 'vp09.00.10.08',
+            'vp9': 'vp09.00.31.08',
             'av1': 'av01.0.01M.08',
         };
 

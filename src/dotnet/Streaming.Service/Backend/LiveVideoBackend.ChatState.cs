@@ -10,7 +10,7 @@ public partial class LiveVideoBackend
         private readonly Lock _codecLock = new();
 
         // Codec recommendation
-        private ApiArray<string> _currentSupportedDecoderCodecs = new(["av1", "hevc", "h264"]);
+        private ApiArray<string> _currentSupportedDecoderCodecs = new(["av1", "hevc", "vp9", "h264"]);
         private CpuTimestamp _lastCodecDowngradeAt;
 
         // Priority queue state (in-memory, not Redis)
@@ -61,7 +61,7 @@ public partial class LiveVideoBackend
             var newPrimary = newCodecs.Count > 0 ? newCodecs[0] : "h264";
 
             // Delay switching UP (h264→hevc, h264→av1, hevc→av1)
-            var codecRank = new Dictionary<string, int> { ["h264"] = 0, ["hevc"] = 1, ["av1"] = 2 };
+            var codecRank = new Dictionary<string, int> { ["h264"] = 0, ["vp9"] = 1, ["hevc"] = 2, ["av1"] = 3 };
             var currentRank = codecRank.GetValueOrDefault(currentPrimary, 0);
             var newRank = codecRank.GetValueOrDefault(newPrimary, 0);
 
@@ -81,22 +81,26 @@ public partial class LiveVideoBackend
         private static ApiArray<string> ComputeSupportedDecoderCodecsLocked(Dictionary<string, ApiArray<string>> members)
         {
             if (members.Count == 0)
-                return new ApiArray<string>(["av1", "hevc", "h264"]); // No viewers, all codecs available
+                return new ApiArray<string>(["av1", "hevc", "vp9", "h264"]); // No viewers, all codecs available
 
             var allSupportAv1 = true;
             var allSupportHevc = true;
+            var allSupportVp9 = true;
             foreach (var (_, codecs) in members) {
                 if (codecs.All(codec => codec != "av1"))
                     allSupportAv1 = false;
                 if (codecs.All(codec => codec != "hevc"))
                     allSupportHevc = false;
-                if (!allSupportAv1 && !allSupportHevc)
+                if (codecs.All(codec => codec != "vp9"))
+                    allSupportVp9 = false;
+                if (!allSupportAv1 && !allSupportHevc && !allSupportVp9)
                     break;
             }
 
             var result = new List<string>();
             if (allSupportAv1) result.Add("av1");
             if (allSupportHevc) result.Add("hevc");
+            if (allSupportVp9) result.Add("vp9");
             result.Add("h264"); // always available
             return new ApiArray<string>(result.ToArray());
         }

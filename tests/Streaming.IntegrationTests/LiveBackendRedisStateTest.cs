@@ -275,6 +275,27 @@ public class LiveBackendRedisStateTest(AppHostFixture fixture, ITestOutputHelper
         codecs.Should().Contain("h264");
     }
 
+    // --- VP9 codec negotiation ---
+
+    [Fact]
+    public async Task VideoBackend_ShouldNegotiateVp9WhenAllMembersSupport()
+    {
+        var (chatId, liveBackend) = await CreateChatWithVideoBackend("Vp9Negotiate");
+
+        // Member A supports everything
+        await liveBackend.RegisterMember(chatId, $"session-{Guid.NewGuid():N}",
+            new ApiArray<string>(["av1", "hevc", "vp9", "h264"]), CancellationToken.None);
+
+        // Member B only supports vp9 + h264
+        await liveBackend.RegisterMember(chatId, $"session-{Guid.NewGuid():N}",
+            new ApiArray<string>(["vp9", "h264"]), CancellationToken.None);
+
+        var codecs = await liveBackend.GetSupportedCodecs(chatId, CancellationToken.None);
+        codecs.Should().BeEquivalentTo(new[] { "vp9", "h264" },
+            o => o.WithStrictOrdering(),
+            "vp9 should be recommended when all members support it but not av1/hevc");
+    }
+
     // --- Helpers ---
 
     private async Task<(ChatId ChatId, ILiveAudioBackend Backend)> CreateChatWithAudioBackend(string testName)
