@@ -26,11 +26,17 @@ const { debugLog, warnLog, errorLog } = Log.get('VideoPlayer');
 // Skip-to-live: client detects high latency and re-requests stream from next keyframe
 const SKIP_TO_LIVE_THRESHOLD_MS = 3000; // Matches Constants.Video.SkipToLiveThresholdMs
 
+// Graduated recovery thresholds — escalating response to growing latency
+const CATCHUP_GENTLE_MS = 300;        // Start gentle 1.05x catch-up
+const CATCHUP_AGGRESSIVE_MS = 1000;   // Increase to 1.15x catch-up
+const DROP_TO_KEYFRAME_MS = 2000;     // Drop non-keyframes from buffer, advance to next keyframe
+
 // Decode performance thresholds — if exceeded on consecutive ticks, trigger quality reduction / codec exclusion
 const SLOW_DECODE_TIME_THRESHOLD_MS = 100; // 3x the 33ms/frame budget at 30fps
 const SLOW_DECODE_QUEUE_THRESHOLD = 10;    // Normal is 0-1; 10+ means decoder is ~300ms behind
 const QUALITY_REDUCTION_TICK_COUNT = 2;    // ~10s of sustained bad performance → request quality reduction
 const CODEC_EXCLUSION_TICK_COUNT = 3;      // ~15s after quality reduction still bad → exclude codec
+const LATENCY_REPORT_INTERVAL_MS = 2000; // Matches Constants.Video.LatencyReportInterval
 
 interface PendingFrame {
     drawable: VideoFrame | ImageBitmap;
@@ -92,6 +98,10 @@ export class VideoPlayer {
     private lastSyncLogTime = 0;        // throttle sync logging
     private sequenceNumber = 0;         // sequence number for chunks sent to decoder worker
 
+    // PLI: receiver-requested keyframe
+    private lastKeyFrameRequestTime = 0;
+    private readonly keyFrameRequestCooldownMs = 2000; // Max 1 request per 2 seconds
+
     // Diagnostics counters for 10s delta reporting
     private lastDiagDecodedFrames = 0;
     private lastDiagReceivedFrames = 0;
@@ -106,6 +116,19 @@ export class VideoPlayer {
     private consecutiveEmptyRenders = 0; // Safety net: count consecutive RAFs with no frame rendered
     private lastHighLatencyLogTime = 0;  // Throttle high-latency FRAME_RECV logs
 
+    // Adaptive jitter buffer — absorbs network jitter by delaying rendering
+    private jitterBufferMs = 40;                   // Current target delay (ms)
+    private readonly minJitterBufferMs = 20;
+    private readonly maxJitterBufferMs = 120;
+    private jitterEstimateMs = 0;                  // Smoothed inter-frame arrival jitter
+    private lastFrameArrivalTime = 0;              // For jitter measurement
+
+    // RTT measurement for proactive congestion detection
+    private smoothedRttMs = 0;
+    private previousRttMs = 0;
+    private rttGradientMs = 0;
+    private lastFrameArrivalInterval = 0;          // Previous inter-frame interval
+
     // Adaptive catch-up playback state (wall-clock path only)
     private playbackRate = 1.0;
     private readonly catchUpStartMs = 300;       // start speed-up when buffer > 300ms
@@ -116,7 +139,7 @@ export class VideoPlayer {
     private readonly seekCooldownMs = 5000;       // min interval between hard seeks
 
     // Decode performance tracking (Phase 1 & 2: quality reduction / codec exclusion)
-    private codecSlowTickCount = 0;            // consecutive bad decode ticks (each tick = 5s)
+    private codecSlowTickCount = 0;            // consecutive bad decode ticks (each tick = 2s)
     private qualityReductionRequested = false;  // true after Phase 1 quality reduction was requested
     private codecCategory = '';         // 'av1', 'hevc', 'vp9', 'h264' — derived from codec string
 
@@ -475,6 +498,22 @@ export class VideoPlayer {
     }
 
     private enqueuePendingFrame(pf: PendingFrame): void {
+        // Measure inter-frame arrival jitter for adaptive jitter buffer
+        const arrivalTime = performance.now();
+        if (this.lastFrameArrivalTime > 0) {
+            const interval = arrivalTime - this.lastFrameArrivalTime;
+            if (this.lastFrameArrivalInterval > 0) {
+                const jitter = Math.abs(interval - this.lastFrameArrivalInterval);
+                // Exponential moving average, α=0.1 for stability
+                this.jitterEstimateMs = 0.9 * this.jitterEstimateMs + 0.1 * jitter;
+                // Adapt buffer: target = 2× estimated jitter, clamped
+                this.jitterBufferMs = Math.max(this.minJitterBufferMs,
+                    Math.min(this.maxJitterBufferMs, this.jitterEstimateMs * 2));
+            }
+            this.lastFrameArrivalInterval = interval;
+        }
+        this.lastFrameArrivalTime = arrivalTime;
+
         this.pendingFrames.push(pf);
         this.bufferSize++;
 
@@ -656,26 +695,23 @@ export class VideoPlayer {
                 bufferSpanMs = (this.pendingFrames[this.pendingFrames.length - 1].timestamp
                     - this.pendingFrames[0].timestamp) / 1000;
 
-                if (bufferSpanMs > this.catchUpStartMs) {
+                if (bufferSpanMs > this.seekThresholdMs
+                    && (now - this.lastSeekTime) > this.seekCooldownMs) {
                     // Hard seek fallback: if >5s behind and cooldown elapsed, jump forward
-                    if (bufferSpanMs > this.seekThresholdMs
-                        && (now - this.lastSeekTime) > this.seekCooldownMs) {
-                        const latestTimestamp = this.pendingFrames[this.pendingFrames.length - 1].timestamp;
-                        this.playbackStartTime = now;
-                        this.firstFrameTimestamp = latestTimestamp;
-                        this.playbackRate = 1.0;
-                        this.lastSeekTime = now;
-                        warnLog?.log(
-                            `Wall-clock hard seek: bufferSpan=${bufferSpanMs.toFixed(0)}ms, ` +
-                            `pending=${this.pendingFrames.length}`);
-                    } else {
-                        // Gradual speed-up: linear ramp from 1.0 to maxPlaybackRate
-                        // as buffer goes from catchUpStartMs to 2x catchUpStartMs
-                        const excess = bufferSpanMs - this.catchUpStartMs;
-                        newRate = Math.min(
-                            1.0 + (excess / this.catchUpStartMs) * (this.maxPlaybackRate - 1.0),
-                            this.maxPlaybackRate);
-                    }
+                    const latestTimestamp = this.pendingFrames[this.pendingFrames.length - 1].timestamp;
+                    this.playbackStartTime = now;
+                    this.firstFrameTimestamp = latestTimestamp;
+                    this.playbackRate = 1.0;
+                    this.lastSeekTime = now;
+                    warnLog?.log(
+                        `Wall-clock hard seek: bufferSpan=${bufferSpanMs.toFixed(0)}ms, ` +
+                        `pending=${this.pendingFrames.length}`);
+                } else if (bufferSpanMs >= CATCHUP_AGGRESSIVE_MS) {
+                    // Graduated recovery: aggressive catch-up at 1.15x
+                    newRate = 1.15;
+                } else if (bufferSpanMs >= CATCHUP_GENTLE_MS) {
+                    // Graduated recovery: gentle catch-up at 1.05x
+                    newRate = 1.05;
                 }
             }
 
@@ -703,9 +739,14 @@ export class VideoPlayer {
                 `pendingFrames=${this.pendingFrames.length}`);
         }
 
+        // Apply jitter buffer: subtract buffer from target so fewer frames are eligible
+        // for presentation, effectively delaying rendering to absorb network jitter
+        const jitterBufferUs = this.jitterBufferMs * 1000;
+        const adjustedTargetTimestamp = targetTimestamp - jitterBufferUs;
+
         // Find the latest frame due for presentation; drop earlier ones
         let frameToRender: PendingFrame | null = null;
-        while (this.pendingFrames.length > 0 && this.pendingFrames[0].timestamp <= targetTimestamp) {
+        while (this.pendingFrames.length > 0 && this.pendingFrames[0].timestamp <= adjustedTargetTimestamp) {
             if (frameToRender) {
                 frameToRender.close();
                 this.bufferSize--;
@@ -738,7 +779,7 @@ export class VideoPlayer {
 
         // Report latency from RAF — naturally pauses when tab is hidden,
         // preventing stale reports that trigger server-side skip-to-live
-        if (now - this.lastLatencyReportTime >= 5000) {
+        if (now - this.lastLatencyReportTime >= LATENCY_REPORT_INTERVAL_MS) {
             this.lastLatencyReportTime = now;
             this.reportLatencyTick();
         }
@@ -928,6 +969,21 @@ export class VideoPlayer {
         void this.reportPlaying(0, true);
     }
 
+    private requestKeyFrame(): void {
+        const now = performance.now();
+        if (now - this.lastKeyFrameRequestTime < this.keyFrameRequestCooldownMs)
+            return;
+        this.lastKeyFrameRequestTime = now;
+
+        const connection = VideoStreamer.connection;
+        const sessionToken = SessionTokens.current;
+        if (connection && sessionToken) {
+            warnLog?.log(`PLI: requesting keyframe for stream ${this.streamId}`);
+            connection.send('RequestKeyFrame', sessionToken, this.streamId)
+                .catch((e: unknown) => warnLog?.log('RequestKeyFrame error:', e));
+        }
+    }
+
     private onVisibilityRestored(): void {
         if (!this.decoderWorker) return;
 
@@ -946,6 +1002,7 @@ export class VideoPlayer {
 
         // After reset, delta frames are useless — need a fresh keyframe
         this.waitingForKeyframe = true;
+        this.requestKeyFrame();
 
         // Reset timing anchor so playback re-syncs on next rendered frame
         this.playbackStartTime = 0;
@@ -1174,30 +1231,58 @@ export class VideoPlayer {
             `(startedAt=${this.startedAtMs.toFixed(0)}+offset=${this.lastRenderedOffsetMs.toFixed(0)}), ` +
             `latency=${latencyMs.toFixed(0)}ms`);
 
-        // Skip-to-live: if latency exceeds threshold, re-request the stream from the next keyframe
-        if (latencyMs > SKIP_TO_LIVE_THRESHOLD_MS) {
+        // Audio-sync catch-up: when latency grows, reduce pipelineLatencyMs to advance
+        // the audio-sync target, effectively catching up without disrupting A/V sync.
+        // This applies to both audio-sync and wall-clock paths.
+        if (latencyMs > CATCHUP_GENTLE_MS && latencyMs <= DROP_TO_KEYFRAME_MS) {
+            // Reduce pipeline latency estimate by a fraction of the excess to catch up gradually
+            const excessMs = latencyMs - CATCHUP_GENTLE_MS;
+            const reductionMs = Math.min(excessMs * 0.3, 20); // Reduce by up to 20ms per tick
+            if (this.pipelineLatencyMs > reductionMs) {
+                this.pipelineLatencyMs -= reductionMs;
+                warnLog?.log(
+                    `CATCHUP: latency ${latencyMs.toFixed(0)}ms, reducing pipelineLatencyMs by ${reductionMs.toFixed(1)}ms to ${this.pipelineLatencyMs.toFixed(0)}ms`);
+            }
+        }
+
+        // Graduated recovery: escalating response to growing latency
+        if (latencyMs > DROP_TO_KEYFRAME_MS && latencyMs <= SKIP_TO_LIVE_THRESHOLD_MS) {
+            // Phase 2: Drop oldest frames to catch up quickly.
+            // PendingFrame (decoded VideoFrame/ImageBitmap) lacks isKeyFrame metadata,
+            // so we can't do keyframe-aware dropping — drop the oldest half instead.
+            const dropCount = Math.floor(this.pendingFrames.length / 2);
+            if (dropCount > 0) {
+                warnLog?.log(
+                    `GRADUATED_RECOVERY: latency ${latencyMs.toFixed(0)}ms > ${DROP_TO_KEYFRAME_MS}ms, dropping ${dropCount} oldest frames`);
+                for (let i = 0; i < dropCount; i++) {
+                    this.pendingFrames[i].close();
+                }
+                this.pendingFrames.splice(0, dropCount);
+                this.bufferSize = this.pendingFrames.length;
+            }
+        }
+        else if (latencyMs > SKIP_TO_LIVE_THRESHOLD_MS) {
+            // Phase 3: Nuclear — re-request stream from live offset
             warnLog?.log(
                 `SKIP_TO_LIVE: latency ${latencyMs.toFixed(0)}ms > ${SKIP_TO_LIVE_THRESHOLD_MS}ms, re-requesting stream`);
             this.pullSubscription?.dispose();
             this.pullSubscription = null;
-            // Flush pending frames to avoid rendering stale data after re-request
             for (const pf of this.pendingFrames)
                 pf.close();
             this.pendingFrames.length = 0;
             this.bufferSize = 0;
-            // Reset decoder worker to flush its internal WebCodecs queue —
-            // without this, 60-120 stale frames remain queued and new frames
-            // from the re-requested stream queue behind them, so latency never recovers.
             if (this.decoderWorker) {
                 void this.decoderWorker.resetDecoder();
             }
-            // After decoder reset, delta frames are useless — need a fresh keyframe
             this.waitingForKeyframe = true;
-            // Reset latency estimate and timing anchor — stale values cause the same
-            // drift cycle to repeat immediately on the new stream
+            this.requestKeyFrame();
             this.pipelineLatencyMs = 0;
             this.playbackStartTime = 0;
-            // Request from the current live offset so the server starts from the next keyframe
+            // Reset jitter buffer state — stale arrival times from old stream are meaningless
+            this.jitterEstimateMs = 0;
+            this.jitterBufferMs = this.minJitterBufferMs;
+            this.lastFrameArrivalTime = 0;
+            this.lastFrameArrivalInterval = 0;
             const skipToMs = Math.max(0, ServerClock.now() - this.startedAtMs);
             void this.startPull(this.streamId, skipToMs);
             return;
@@ -1280,29 +1365,49 @@ export class VideoPlayer {
                     warnLog?.log(`AV_SYNC: no audio state for authorId=${this.authorId}`);
                 }
 
-                // Send enriched latency report with diagnostics
+                // Send enriched latency report with diagnostics + RTT measurement
                 if (connection) {
-                    try {
-                        void connection.invoke(
-                            'ReportVideoLatency',
-                            sessionToken,
-                            this.streamId,
-                            streamOffsetMs,
-                            ds.pureMedianDecodeTime >= 0 ? ds.pureMedianDecodeTime : ds.medianDecodeTime,
-                            this.pendingFrames.length,
-                            currentBufferSpanMs
-                        );
-                    } catch (e) {
-                        warnLog?.log('reportLatencyTick error:', e);
-                    }
+                    const sendTime = performance.now();
+                    connection.invoke(
+                        'ReportVideoLatency',
+                        sessionToken,
+                        this.streamId,
+                        streamOffsetMs,
+                        ds.pureMedianDecodeTime >= 0 ? ds.pureMedianDecodeTime : ds.medianDecodeTime,
+                        this.pendingFrames.length,
+                        currentBufferSpanMs
+                    ).then(() => {
+                        this.updateRttEstimate(performance.now() - sendTime);
+                    }).catch((e: unknown) => {
+                        warnLog?.log('ReportVideoLatency invoke error:', e);
+                    });
                 }
             });
         } else if (connection) {
-            // No decoder worker — send basic report without diagnostics
-            try {
-                void connection.invoke('ReportVideoLatency', sessionToken, this.streamId, streamOffsetMs);
-            } catch (e) {
-                warnLog?.log('reportLatencyTick error:', e);
+            // No decoder worker — send basic report without diagnostics + RTT measurement
+            const sendTime = performance.now();
+            connection.invoke('ReportVideoLatency', sessionToken, this.streamId, streamOffsetMs)
+                .then(() => {
+                    this.updateRttEstimate(performance.now() - sendTime);
+                }).catch((e: unknown) => {
+                    warnLog?.log('ReportVideoLatency invoke error:', e);
+                });
+        }
+    }
+
+    private updateRttEstimate(rttMs: number): void {
+        this.previousRttMs = this.smoothedRttMs;
+        this.smoothedRttMs = this.smoothedRttMs === 0 ? rttMs : 0.8 * this.smoothedRttMs + 0.2 * rttMs;
+        this.rttGradientMs = this.smoothedRttMs - this.previousRttMs;
+
+        // Proactive congestion detection: RTT increasing rapidly
+        if (this.rttGradientMs > 50 && this.smoothedRttMs > 100) {
+            warnLog?.log(
+                `RTT_GRADIENT: rtt=${this.smoothedRttMs.toFixed(0)}ms, gradient=${this.rttGradientMs.toFixed(0)}ms — congestion detected`);
+            // Proactively request quality reduction before latency threshold is hit
+            if (!this.qualityReductionRequested && this.codecCategory) {
+                void this.blazorRef.invokeMethodAsync('OnRequestQualityReduction', this.codecCategory);
+                this.qualityReductionRequested = true;
             }
         }
     }

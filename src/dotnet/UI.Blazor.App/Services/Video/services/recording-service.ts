@@ -354,6 +354,8 @@ export class RecordingService extends EventTarget {
         infoLog?.log('Using codec string:', codecString, 'for', this.config.codec);
         if (scalabilityMode) {
             infoLog?.log('Using scalability mode:', scalabilityMode);
+            if (scalabilityMode === 'L1T1')
+                infoLog?.log('SVC temporal layers (L1T2/L1T3) not supported on this hardware');
         }
 
         const pipelineConfig: PipelineConfig = {

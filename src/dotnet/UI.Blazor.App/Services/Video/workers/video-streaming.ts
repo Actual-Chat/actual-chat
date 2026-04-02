@@ -22,6 +22,7 @@ export interface VideoStreamFrame {
     data: Uint8Array;
     description?: Uint8Array;
     codec?: string;
+    temporalLayerId?: number;
 }
 
 export function microsecondsToTicks(microseconds: number): number {
@@ -41,6 +42,8 @@ export function encodeStreamFrame(frame: VideoStreamFrame): Uint8Array {
     }
     if (frame.description) obj.description = frame.description;
     if (frame.codec) obj.codec = frame.codec;
+    if (frame.temporalLayerId !== undefined && frame.temporalLayerId > 0)
+        obj.temporalLayerId = frame.temporalLayerId;
     return encode(obj);
 }
 

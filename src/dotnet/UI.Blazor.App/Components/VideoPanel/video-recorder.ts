@@ -541,6 +541,16 @@ export class VideoRecorder {
         void pipeline.reconfigure({ bitrate: cappedBitrate, width: cappedWidth, height: cappedHeight });
     }
 
+    public forceKeyFrame(): void {
+        const pipeline = this.recordingService?.getPipeline();
+        if (!pipeline) {
+            warnLog?.log('forceKeyFrame: no active pipeline');
+            return;
+        }
+        infoLog?.log('forceKeyFrame: PLI — forcing keyframe on encoder');
+        void pipeline.forceKeyFrame();
+    }
+
     /**
      * Start rendering the output stream to canvas
      */

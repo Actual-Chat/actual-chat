@@ -9,6 +9,15 @@ import Denque from 'denque';
 
 const { infoLog, errorLog } = Log.get('VideoEncoder');
 
+// WebCodecs SVC metadata (svc.temporalLayerId) is not yet in TS typings
+function extractTemporalLayerId(metadata: EncodedVideoChunkMetadata | undefined): number | undefined {
+    if (!metadata) return undefined;
+    const svc = (metadata as Record<string, unknown>)['svc'];
+    if (svc != null && typeof svc === 'object')
+        return (svc as { temporalLayerId?: number }).temporalLayerId;
+    return undefined;
+}
+
 export interface EncoderConfig {
   codec: string; // Support any codec string to handle H.264, HEVC, AV1, VP9, etc.
   width: number;
@@ -31,6 +40,7 @@ export interface EncodedChunkData {
   type: 'key' | 'delta';
   byteLength: number;
   sequenceNumber: number; // Added for chunk ordering to prevent out-of-order delivery issues
+  temporalLayerId?: number; // SVC temporal layer: 0 = base, 1+ = enhancement
 }
 
 export interface EncoderStats {
@@ -207,7 +217,8 @@ export class WebCodecsEncoder {
                     timestamp: chunk.timestamp,
                     type: chunk.type,
                     byteLength: chunk.byteLength,
-                    sequenceNumber: this.chunkSequence++
+                    sequenceNumber: this.chunkSequence++,
+                    temporalLayerId: extractTemporalLayerId(metadata),
                 };
 
                 this.totalBytes += chunk.byteLength;

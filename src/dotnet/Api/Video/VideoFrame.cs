@@ -37,4 +37,18 @@ public partial class VideoFrame : MediaFrame
     /// </summary>
     [DataMember(Order = 7), MemoryPackOrder(7), Key("codec")]
     public string? Codec { get; init; }
+
+    /// <summary>
+    /// SVC temporal layer ID. 0 = base layer, 1+ = enhancement layers.
+    /// </summary>
+    [DataMember(Order = 8), MemoryPackOrder(8), Key("temporalLayerId")]
+    public int TemporalLayerId { get; init; }
+
+    /// <summary>
+    /// Cached serialized bytes for zero-copy forwarding. Set once during deserialization
+    /// in StreamHub.ToVideoFrames(). Do not mutate after initial assignment.
+    /// Filters must only drop frames (not mutate them), or cached bytes become stale.
+    /// </summary>
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public byte[]? CachedSerializedBytes { get; set; }
 }

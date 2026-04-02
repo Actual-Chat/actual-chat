@@ -7,7 +7,8 @@ public sealed partial record VideoQualityPreset(
     [property: DataMember, MemoryPackOrder(0)] VideoQualityLevel Level,
     [property: DataMember, MemoryPackOrder(1)] int Width,
     [property: DataMember, MemoryPackOrder(2)] int Height,
-    [property: DataMember, MemoryPackOrder(3)] int Bitrate
+    [property: DataMember, MemoryPackOrder(3)] int Bitrate,
+    [property: DataMember, MemoryPackOrder(4)] bool KeyFrameRequested = false
 ) {
     public static readonly VideoQualityPreset Full   = new(VideoQualityLevel.Full,   1920, 1080, 8_000_000);
     public static readonly VideoQualityPreset High   = new(VideoQualityLevel.High,   1280,  720, 4_000_000);

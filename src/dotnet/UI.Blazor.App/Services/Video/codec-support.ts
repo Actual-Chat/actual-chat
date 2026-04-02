@@ -389,15 +389,15 @@ export async function detectSupportedDecoderCodecs(): Promise<string[]> {
 }
 
 export function getBestScalabilityMode(scalabilityModes: string[]): string | undefined {
-    // Priority: L1T1 > L1T2 > L1T3
-    if (scalabilityModes.includes('L1T1')) {
-        return 'L1T1';
-    }
-    if (scalabilityModes.includes('L1T2')) {
+    // Priority: L1T2 > L1T3 > L1T1 (prefer SVC for temporal layer dropping)
+    if (scalabilityModes.includes('L1T2'))
         return 'L1T2';
-    }
-    if (scalabilityModes.includes('L1T3')) {
+
+    if (scalabilityModes.includes('L1T3'))
         return 'L1T3';
-    }
+
+    if (scalabilityModes.includes('L1T1'))
+        return 'L1T1';
+
     return undefined;
 }

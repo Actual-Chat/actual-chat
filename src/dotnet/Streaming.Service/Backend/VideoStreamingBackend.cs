@@ -10,6 +10,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 {
     private readonly StreamStore<VideoFrame> _videoStreams;
     private readonly ConcurrentDictionary<StreamId, StreamLatencyState> _latencyStates = new();
+    private readonly ConcurrentDictionary<StreamId, bool> _keyFrameRequests = new();
 
     private MeshNode ThisNode => field ??= Services.MeshWatcher().ThisNode;
     private IChats Chats => field ??= Services.GetRequiredService<IChats>();
@@ -65,6 +66,9 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         // Always start from the next live keyframe — skip all buffered frames
         // and wait for a fresh keyframe at the live edge for near-zero latency.
         stream = SkipToNextKeyFrame(LogFrames(stream), Log, cancellationToken);
+
+        // Per-viewer temporal layer filtering — drop enhancement layers for slow peers
+        stream = TemporalLayerFilter(streamId, peerId, stream, cancellationToken);
 
         // Wrap with pause filtering — when stream is paused by priority queue, drop frames
         if (_latencyStates.TryGetValue(streamId, out var pauseState) && pauseState.ChatId != default) {
@@ -126,6 +130,20 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         return Task.CompletedTask;
     }
 
+    public virtual Task RequestKeyFrame(StreamId streamId, CancellationToken cancellationToken = default)
+    {
+        ValidateStreamId(streamId);
+        _keyFrameRequests[streamId] = true;
+        Log.LogInformation("RequestKeyFrame: streamId={StreamId}", streamId);
+        return Task.CompletedTask;
+    }
+
+    public virtual Task<bool> ConsumeKeyFrameRequest(StreamId streamId, CancellationToken cancellationToken = default)
+    {
+        ValidateStreamId(streamId);
+        return Task.FromResult(_keyFrameRequests.TryRemove(streamId, out _));
+    }
+
     // [ComputeMethod]
     public virtual async Task<VideoQualityPreset> GetQualityPreset(StreamId streamId, CancellationToken cancellationToken)
     {
@@ -140,7 +158,13 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                 return VideoQualityPreset.Paused;
         }
 
-        return await latencyState.QualityPreset.Use(cancellationToken).ConfigureAwait(false);
+        var preset = await latencyState.QualityPreset.Use(cancellationToken).ConfigureAwait(false);
+
+        // Consume any pending keyframe request (atomic: only first caller gets it)
+        if (_keyFrameRequests.TryRemove(streamId, out _))
+            preset = preset with { KeyFrameRequested = true };
+
+        return preset;
     }
 
     // Private methods
@@ -158,8 +182,25 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         }
     }
 
+    private async IAsyncEnumerable<VideoFrame> TemporalLayerFilter(
+        StreamId streamId,
+        string peerId,
+        IAsyncEnumerable<VideoFrame> source,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+            var latencyState = _latencyStates.GetValueOrDefault(streamId);
+            var maxLayer = latencyState?.GetPeerMaxTemporalLayer(peerId) ?? int.MaxValue;
+            if (frame.TemporalLayerId <= maxLayer)
+                yield return frame;
+        }
+    }
+
     private void OnVideoStreamExpire(StreamId streamId)
-        => _latencyStates.TryRemove(streamId, out _);
+    {
+        _latencyStates.TryRemove(streamId, out _);
+        _keyFrameRequests.TryRemove(streamId, out _);
+    }
 
     /// <summary>
     /// Skip-to-live: discard all buffered frames, then wait for the next live keyframe.
@@ -272,6 +313,11 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             {
                 await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                     frameCount++;
+
+                    // Track throughput for quality adaptation
+                    var latencyState = _latencyStates.GetValueOrDefault(record.StreamId);
+                    latencyState?.RecordFrameBytes(frame.Data?.Length ?? 0);
+
                     if (frameCount <= 3 || frameCount % 100 == 0)
                         DebugLog?.LogDebug(
                             "PushVideoInternal frame #{Count}: Offset={Offset}ms, IsKey={IsKey}, DataLen={DataLen}, DescLen={DescLen}",
@@ -321,6 +367,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         public float MedianDecodeTimeMs { get; private set; } = -1;
         public int BufferDepth { get; private set; } = -1;
         public float BufferSpanMs { get; private set; } = -1;
+        public int MaxTemporalLayer { get; private set; } = int.MaxValue;
         public bool IsWarmedUp => _createdAt.Elapsed >= Constants.Video.PeerWarmupDuration;
 
         /// <summary>
@@ -356,6 +403,14 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                     BufferDepth = bufferDepth;
                 if (bufferSpanMs >= 0)
                     BufferSpanMs = bufferSpanMs;
+
+                // Compute max temporal layer based on latency
+                if (MedianLatencyMs > Constants.Video.HighLatencyThresholdMs)
+                    MaxTemporalLayer = 0; // Base layer only
+                else if (MedianLatencyMs > Constants.Video.LowLatencyThresholdMs)
+                    MaxTemporalLayer = 0; // Conservative: base layer when borderline
+                else
+                    MaxTemporalLayer = int.MaxValue; // All layers
             }
         }
     }
@@ -384,6 +439,15 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         private CpuTimestamp _lastQualityChangeAt = CpuTimestamp.Now;
         private CpuTimestamp _lastEvaluationAt;
 
+        // Throughput measurement
+        private long _totalBytesReceived;
+        private long _bytesAtLastCheck;
+        private CpuTimestamp _lastThroughputCheckAt = CpuTimestamp.Now;
+        private int _consecutiveLowThroughputChecks;
+
+
+        public int GetPeerMaxTemporalLayer(string peerId)
+            => _peers.TryGetValue(peerId, out var state) ? state.MaxTemporalLayer : int.MaxValue;
 
         public void RecordPeerLatency(string peerId, float latencyMs,
             float medianDecodeTimeMs = -1, int bufferDepth = -1, float bufferSpanMs = -1)
@@ -399,10 +463,46 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                 EvaluateQuality();
         }
 
+        public void RecordFrameBytes(int byteCount)
+        {
+            Interlocked.Add(ref _totalBytesReceived, byteCount);
+        }
+
         private void EvaluateQuality()
         {
             lock (_evaluationLock) {
                 _lastEvaluationAt = CpuTimestamp.Now;
+
+                var currentQuality = QualityPreset.Value.Level;
+
+                // Throughput-based proactive step-down: detect sender upload saturation
+                var elapsedSinceCheck = _lastThroughputCheckAt.Elapsed;
+                if (elapsedSinceCheck >= Constants.Video.QualityDecisionInterval) {
+                    var currentBytes = Interlocked.Read(ref _totalBytesReceived);
+                    var bytesDelta = currentBytes - _bytesAtLastCheck;
+                    _bytesAtLastCheck = currentBytes;
+                    var measuredBps = bytesDelta * 8.0 / elapsedSinceCheck.TotalSeconds;
+                    var targetBps = QualityPreset.Value.Bitrate;
+                    _lastThroughputCheckAt = CpuTimestamp.Now;
+
+                    if (targetBps > 0 && measuredBps < targetBps * Constants.Video.ThroughputStepDownRatio) {
+                        _consecutiveLowThroughputChecks++;
+                        if (_consecutiveLowThroughputChecks >= Constants.Video.ThroughputStepDownConsecutiveChecks) {
+                            var stepped = VideoQualityPreset.StepDown(currentQuality);
+                            if (stepped != null) {
+                                _consecutiveLowThroughputChecks = 0;
+                                _lastQualityChangeAt = CpuTimestamp.Now;
+                                QualityPreset.Value = stepped;
+                                Log.LogInformation(
+                                    "EvaluateQuality: THROUGHPUT STEP DOWN {OldLevel} -> {NewLevel}, measured={MeasuredKbps:F0}kbps vs target={TargetKbps:F0}kbps",
+                                    currentQuality, stepped.Level, measuredBps / 1000, targetBps / 1000.0);
+                                return;
+                            }
+                        }
+                    }
+                    else
+                        _consecutiveLowThroughputChecks = 0;
+                }
 
                 var peers = _peers.ToList();
                 if (peers.Count == 0)
@@ -437,7 +537,6 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                     : Constants.Video.PeerOutlierRatio;
 
                 // Step down sender quality only if enough NETWORK-bound peers are slow
-                var currentQuality = QualityPreset.Value.Level;
                 if (networkSlowRatio > effectiveOutlierRatio) {
                     var stepped = VideoQualityPreset.StepDown(currentQuality);
                     if (stepped != null) {

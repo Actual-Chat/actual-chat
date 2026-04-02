@@ -184,11 +184,14 @@
                     () => liveVideoStreams.GetQualityPreset(Session, ownStreamId, cancellationToken),
                     cancellationToken).ConfigureAwait(false);
                 var preset = computed.Value;
-                Log.LogInformation("SubscribeToQualityRequests: received preset {Level} ({Width}x{Height} @ {Bitrate}bps)",
-                    preset.Level, preset.Width, preset.Height, preset.Bitrate);
-                if (JSRef is {} jsRef)
+                Log.LogInformation("SubscribeToQualityRequests: received preset {Level} ({Width}x{Height} @ {Bitrate}bps), keyframe={KeyFrame}",
+                    preset.Level, preset.Width, preset.Height, preset.Bitrate, preset.KeyFrameRequested);
+                if (JSRef is {} jsRef) {
                     await jsRef.InvokeVoidAsync("reconfigure", cancellationToken,
                         preset.Level.ToString(), preset.Width, preset.Height, preset.Bitrate);
+                    if (preset.KeyFrameRequested)
+                        await jsRef.InvokeVoidAsync("forceKeyFrame", cancellationToken);
+                }
                 await computed.WhenInvalidated(cancellationToken).ConfigureAwait(false);
             }
         }

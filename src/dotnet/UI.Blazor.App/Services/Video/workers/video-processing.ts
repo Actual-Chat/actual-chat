@@ -437,9 +437,9 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
         }
 
         const now = performance.now();
-        const isKeyFrame = frameCount % 30 === 0 || (now - lastKeyframeTime > 1000);
-        if (isKeyFrame) lastKeyframeTime = now;
-        encoder.encode(processedFrame, isKeyFrame);
+        // Let the encoder decide keyframes based on its keyframeInterval config
+        // (set by recording-service.ts: ~2s screencast, ~3s webcam)
+        encoder.encode(processedFrame, false);
         frameCount++;
     } catch (error) {
         errorLog?.log('Error encoding frame:', error);
@@ -475,7 +475,7 @@ function onEncoderOutput(chunkData: EncodedChunkData): void {
 
     if (streamingEnabled) {
         deliverChunkToStream(chunkBuffer, chunkData.chunk.timestamp, chunkData.chunk.duration ?? 0,
-            chunkData.type === 'key', actualCodec, chunkData.sequenceNumber, descBuffer);
+            chunkData.type === 'key', actualCodec, chunkData.sequenceNumber, descBuffer, chunkData.temporalLayerId);
     } else {
         void callbacks.onSerializedChunk(
             chunkBuffer, chunkData.chunk.timestamp, chunkData.chunk.duration ?? 0,
@@ -484,9 +484,14 @@ function onEncoderOutput(chunkData: EncodedChunkData): void {
 }
 
 function deliverChunkToStream(
-    chunkBytes: ArrayBuffer, timestamp: number, duration: number,
-    isKeyFrame: boolean, codec: string, sequenceNumber: number,
-    descriptionBytes?: ArrayBuffer
+    chunkBytes: ArrayBuffer,
+    timestamp: number,
+    duration: number,
+    isKeyFrame: boolean,
+    codec: string,
+    sequenceNumber: number,
+    descriptionBytes?: ArrayBuffer,
+    temporalLayerId?: number
 ): void {
     const chunkData = new Uint8Array(chunkBytes);
     firstEncodedTimestamp ??= timestamp;
@@ -498,6 +503,7 @@ function deliverChunkToStream(
         isKeyFrame,
         width: encoderConfig!.width, height: encoderConfig!.height,
         data: chunkData, codec: isKeyFrame ? codec : undefined,
+        temporalLayerId: temporalLayerId,
     };
 
     if (isKeyFrame) {

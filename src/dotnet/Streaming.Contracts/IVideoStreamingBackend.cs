@@ -15,6 +15,9 @@ public interface IVideoStreamingBackend : IComputeService, IRpcService, IBackend
     [ComputeMethod]
     Task<VideoQualityPreset> GetQualityPreset(StreamId streamId, CancellationToken cancellationToken);
 
+    Task RequestKeyFrame(StreamId streamId, CancellationToken cancellationToken = default);
+    Task<bool> ConsumeKeyFrameRequest(StreamId streamId, CancellationToken cancellationToken = default);
+
     Task ReportPeerLatency(
         StreamId streamId,
         string peerId,

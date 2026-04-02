@@ -25,6 +25,7 @@ public class StreamHub(IServiceProvider services) : Hub
     private IHostApplicationLifetime HostLifetime { get; } = services.HostLifetime();
     private IAudioStreamingBackend Backend { get; } = services.GetRequiredService<IAudioStreamingBackend>();
     private IVideoStreamingBackend VideoStreamingBackend { get; } = services.GetRequiredService<IVideoStreamingBackend>();
+    private MomentClockSet Clocks { get; } = services.Clocks();
     private ILogger Log { get; } = services.LogFor<StreamHub>();
 
     // Currently unused
@@ -97,6 +98,8 @@ public class StreamHub(IServiceProvider services) : Hub
                     continue;
                 }
 
+                frame.CachedSerializedBytes = frameBytes; // Cache for zero-copy forwarding
+
                 if (frame.IsKeyFrame) {
                     lastWidth = frame.Width;
                     lastHeight = frame.Height;
@@ -113,8 +116,17 @@ public class StreamHub(IServiceProvider services) : Hub
         }
     }
 
+    // PLI-equivalent: receiver requests a keyframe from the sender
+    public Task RequestKeyFrame(string sessionToken, string streamId)
+    {
+        _ = GetSessionFromToken(sessionToken); // validate token
+        var sid = StreamId.Parse(streamId);
+        VideoStreamingBackend.RequestKeyFrame(sid);
+        return Task.CompletedTask;
+    }
+
     // Latency reporting for JS video clients — uses same ConnectionId as GetVideo
-    public Task ReportVideoLatency(
+    public async Task<double> ReportVideoLatency(
         string sessionToken,
         string streamId,
         double streamOffsetMs,
@@ -125,10 +137,13 @@ public class StreamHub(IServiceProvider services) : Hub
         _ = GetSessionFromToken(sessionToken); // validate token
         var peerId = Context.ConnectionId;
         var parsedStreamId = StreamId.Parse(streamId);
-        return VideoStreamingBackend.ReportPeerLatency(
+        await VideoStreamingBackend.ReportPeerLatency(
             parsedStreamId, peerId, streamOffsetMs,
             medianDecodeTimeMs, bufferDepth, bufferSpanMs,
-            CancellationToken.None);
+            CancellationToken.None).ConfigureAwait(false);
+
+        // Return server timestamp for client-side RTT measurement
+        return Clocks.SystemClock.UtcNow.ToUnixTimeMilliseconds();
     }
 
     // Video pull method for JS client — streams video frames via SignalR
@@ -173,7 +188,7 @@ public class StreamHub(IServiceProvider services) : Hub
             frameCount++;
             if (frameCount <= 30 || frameCount % 30 == 0)
                 Log.LogInformation("GetVideo sending frame #{Total}", frameCount);
-            yield return SerializeVideoFrame(frame);
+            yield return frame.CachedSerializedBytes ?? SerializeVideoFrame(frame);
         }
 
         Log.LogInformation("GetVideo: stream ended after {Count} frames", frameCount);
@@ -299,6 +314,7 @@ public class StreamHub(IServiceProvider services) : Hub
             byte[]? data = null;
             byte[]? description = null;
             string? codec = null;
+            var temporalLayerId = 0;
 
             for (var i = 0; i < mapLen; i++) {
                 var key = reader.ReadString();
@@ -327,6 +343,9 @@ public class StreamHub(IServiceProvider services) : Hub
                     case "codec":
                         codec = reader.TryReadNil() ? null : reader.ReadString();
                         break;
+                    case "temporalLayerId":
+                        temporalLayerId = reader.ReadInt32();
+                        break;
                     default:
                         reader.Skip();
                         break;
@@ -341,6 +360,7 @@ public class StreamHub(IServiceProvider services) : Hub
                 Height = height != 0 ? height : fallbackHeight,
                 Description = description,
                 Codec = isKeyFrame ? (codec ?? fallbackCodec) : codec,
+                TemporalLayerId = temporalLayerId,
             };
         }
         catch {
@@ -357,6 +377,7 @@ public class StreamHub(IServiceProvider services) : Hub
         if (frame.IsKeyFrame) fieldCount += 3; // isKeyFrame, width, height
         if (frame.Description != null) fieldCount++;
         if (frame.Codec != null) fieldCount++;
+        if (frame.TemporalLayerId > 0) fieldCount++;
 
         writer.WriteMapHeader(fieldCount);
 
@@ -382,6 +403,10 @@ public class StreamHub(IServiceProvider services) : Hub
         if (frame.Codec != null) {
             writer.Write("codec");
             writer.Write(frame.Codec);
+        }
+        if (frame.TemporalLayerId > 0) {
+            writer.Write("temporalLayerId");
+            writer.Write(frame.TemporalLayerId);
         }
 
         writer.Flush();
