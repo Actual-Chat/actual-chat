@@ -38,10 +38,11 @@ export class VideoPanel {
         this.disposed$.complete();
     }
 
-    public toggleExpand() {
+    public toggleExpand(): void {
         if (!this.videoPanel.classList.contains('expanded')) {
             this.videoPanel.classList.add('expanded');
             document.body.appendChild(this.videoPanel);
+            void this.blazorRef.invokeMethodAsync('OnExpanded');
         } else {
             this.collapse();
         }
@@ -53,13 +54,12 @@ export class VideoPanel {
 
         this.videoPanel.classList.remove('expanded');
         this.parentElement?.appendChild(this.videoPanel);
+        void this.blazorRef.invokeMethodAsync('OnCollapsed');
     }
 
     private onEscPress() {
-        if (this.videoPanel.classList.contains('expanded')) {
+        if (this.videoPanel.classList.contains('expanded'))
             this.collapse();
-            void this.blazorRef.invokeMethodAsync('OnCollapsed');
-        }
     }
 
     public startClosing() {

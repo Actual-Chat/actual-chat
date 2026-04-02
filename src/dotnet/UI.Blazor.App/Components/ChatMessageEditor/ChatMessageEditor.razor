@@ -37,7 +37,7 @@
                  data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
                 <div class="c-left-buttons">
                     <ButtonRound
-                        data-menu="@(MenuRef.New<ChatMessageEditorMenu>())"
+                        data-menu="@(MenuRef.New<ChatMessageEditorMenu>(_editorId))"
                         data-menu-trigger="@MenuTrigger.Primary"
                         data-menu-placement="@(FloatingPosition.Top.ToPositionString())"
                         Class="post-panel-btn attach-btn btn-transparent btn-xxs">
@@ -82,10 +82,13 @@
 
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.ChatMessageEditor.create";
+    private static int _nextEditorId;
 
     private static object MentionListManagerKey { get; } = new();
     private static object AttachmentListKey { get; } = new();
     private static object MarkupEditorKey { get; } = new();
+
+    private readonly string _editorId = $"editor-{Interlocked.Increment(ref _nextEditorId)}";
 
     private readonly AsyncLock _postLock = new(LockReentryMode.CheckedFail);
     private AttachmentListHolder _attachmentListHolder = null!;
@@ -346,8 +349,12 @@
         => OnCancel(cancellationToken);
 
     private Task OnAttachButtonClickEvent(AttachButtonClickEvent @event, CancellationToken cancellationToken)
-        => OnAttachClick(@event.AcceptTypes);
+        => @event.EditorId.IsNullOrEmpty() || @event.EditorId == _editorId
+            ? OnAttachClick(@event.AcceptTypes)
+            : Task.CompletedTask;
 
     private Task OnMentionButtonClickEvent(MentionButtonClickEvent @event, CancellationToken cancellationToken)
-        => OnMentionButtonClick();
+        => @event.EditorId.IsNullOrEmpty() || @event.EditorId == _editorId
+            ? OnMentionButtonClick()
+            : Task.CompletedTask;
 }

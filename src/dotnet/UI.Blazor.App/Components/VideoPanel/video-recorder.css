@@ -8,6 +8,12 @@
     @apply bg-black;
     transform: scaleX(-1);
 }
+.video-panel.expanded .video-recorder .call-video {
+    @apply rounded-lg;
+}
+.video-panel.expanded:has(.video-panel-chat) .video-recorder .call-video {
+    width: calc(100% - var(--video-panel-chat-width) - 0.5rem);
+}
 .video-recorder.screencast .call-video {
     transform: none;
 }
