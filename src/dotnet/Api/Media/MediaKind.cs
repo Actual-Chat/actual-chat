@@ -13,3 +13,11 @@ public enum MediaKind
     UserAvatarPicture = 0x21,
     LinkPreviewPicture = 0x30,
 }
+
+public static class MediaKindExt
+{
+    extension(MediaKind mediaKind)
+    {
+        public bool IsChatIcon => mediaKind is MediaKind.ChatPicture or MediaKind.UserPicture or MediaKind.UserAvatarPicture;
+    }
+}

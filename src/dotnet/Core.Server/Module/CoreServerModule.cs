@@ -45,7 +45,7 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
             services.AddInMemoryQueues();
 
         // Upload processors
-        services.AddSingleton<IUploadProcessor, SvgChatIconUploadProcessor>();
+        services.AddSingleton<IUploadProcessor, IconUploadProcessor>();
         services.AddSingleton<IUploadProcessor, ImageUploadProcessor>();
 
         // Blob storages
