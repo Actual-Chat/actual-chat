@@ -1185,6 +1185,14 @@ export class VideoPlayer {
                 pf.close();
             this.pendingFrames.length = 0;
             this.bufferSize = 0;
+            // Reset decoder worker to flush its internal WebCodecs queue —
+            // without this, 60-120 stale frames remain queued and new frames
+            // from the re-requested stream queue behind them, so latency never recovers.
+            if (this.decoderWorker) {
+                void this.decoderWorker.resetDecoder();
+            }
+            // After decoder reset, delta frames are useless — need a fresh keyframe
+            this.waitingForKeyframe = true;
             // Reset latency estimate and timing anchor — stale values cause the same
             // drift cycle to repeat immediately on the new stream
             this.pipelineLatencyMs = 0;

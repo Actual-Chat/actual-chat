@@ -505,7 +505,7 @@ export class VideoRecorder {
         // Transpose preset if camera orientation doesn't match (e.g., portrait camera, landscape preset)
         const cameraIsPortrait = this.cameraWidth > 0 && this.cameraHeight > 0 && this.cameraHeight > this.cameraWidth;
         const presetIsLandscape = width > height;
-        if (cameraIsPortrait && presetIsLandscape) {
+        if (cameraIsPortrait && presetIsLandscape)
             [width, height] = [height, width];
 
         const pipeline = this.recordingService.getPipeline();
