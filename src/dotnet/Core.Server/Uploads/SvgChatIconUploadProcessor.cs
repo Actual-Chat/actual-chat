@@ -10,7 +10,7 @@ public class SvgChatIconUploadProcessor(ILogger<SvgChatIconUploadProcessor> log)
 
     public bool Supports(string contentType, MediaKind mediaKind)
         => MediaTypeExt.IsSvg(contentType)
-            && mediaKind is MediaKind.ChatPicture or MediaKind.UserPicture or MediaKind.UserAvatarPicture;
+            && mediaKind is MediaKind.ChatPicture or MediaKind.UserPicture or MediaKind.UserAvatarPicture or MediaKind.LinkPreviewPicture;
 
     public Task<ProcessedFile> Process(UploadedFile upload, IProgress<double>? progress, CancellationToken cancellationToken)
     {
