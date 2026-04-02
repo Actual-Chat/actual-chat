@@ -1,7 +1,4 @@
 using ActualLab.IO;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Png;
-using SixLabors.ImageSharp.Processing;
 using SkiaSharp;
 using Svg.Skia;
 
@@ -37,10 +34,32 @@ public class IconUploadProcessor(ILogger<IconUploadProcessor> log) : IUploadProc
         if (MediaTypeExt.IsSvg(upload.ContentType))
             return ProcessSvg(upload, progress);
 
-        if (UniversalFormats.Contains(upload.ContentType))
-            return await ProcessRaster(upload, progress, cancellationToken).ConfigureAwait(false);
+        progress?.Report(0);
+        var convertToPng = !UniversalFormats.Contains(upload.ContentType);
+        var tempFile = await UploadProcessorHelper.DumpToTempFile(upload, cancellationToken).ConfigureAwait(false);
+        ProcessedFile result;
+        try {
+            result = await UploadProcessorHelper.ProcessRasterImage(tempFile, MaxSize, convertToPng, progress, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch {
+            tempFile.Delete();
+            throw;
+        }
+        if (result.File != tempFile)
+            tempFile.Delete();
 
-        return await ConvertToPng(upload, progress, cancellationToken).ConfigureAwait(false);
+        if (convertToPng)
+            log.LogInformation(
+                "Converted '{ContentType}' icon '{FileName}' to PNG ({Width}x{Height})",
+                upload.ContentType, upload.FileName, result.Size?.Width, result.Size?.Height);
+        else if (result.File != tempFile)
+            log.LogInformation(
+                "Processed raster icon '{FileName}' ({Width}x{Height})",
+                upload.FileName, result.Size?.Width, result.Size?.Height);
+
+        progress?.Report(100);
+        return result;
     }
 
     private ProcessedFile ProcessSvg(UploadedFile upload, IProgress<double>? progress)
@@ -80,94 +99,6 @@ public class IconUploadProcessor(ILogger<IconUploadProcessor> log) : IUploadProc
         var converted = new UploadedTempFile(outPath.FileName, "image/png", outPath);
         progress?.Report(100);
         return new ProcessedFile(converted, null);
-    }
-
-    private async Task<ProcessedFile> ProcessRaster(UploadedFile upload, IProgress<double>? progress, CancellationToken cancellationToken)
-    {
-        progress?.Report(0);
-
-        var tempFile = await UploadProcessorHelper.DumpToTempFile(upload, cancellationToken).ConfigureAwait(false);
-        try {
-            var inputStream = await tempFile.Open().ConfigureAwait(false);
-            await using var _ = inputStream.ConfigureAwait(false);
-
-            using var image = await Image.LoadAsync(inputStream, cancellationToken).ConfigureAwait(false);
-            progress?.Report(30);
-
-            var resizeRequired = image.Width > MaxSize || image.Height > MaxSize;
-            var imageProcessingRequired = image.Metadata.ExifProfile != null || resizeRequired;
-            if (!imageProcessingRequired) {
-                progress?.Report(100);
-                return new ProcessedFile(tempFile, image.Size);
-            }
-
-            image.Mutate(img => {
-                img.AutoOrient();
-                if (resizeRequired)
-                    img.Resize(new ResizeOptions { Mode = ResizeMode.Max, Size = new Size(MaxSize) });
-            });
-            image.Metadata.ExifProfile = null;
-            var imageSize = image.Size;
-            progress?.Report(60);
-
-            var outPath = (FilePath.GetApplicationTempDirectory() & upload.FileName)
-                .ToUnique(randomLength: 10);
-            var outStream = File.OpenWrite(outPath);
-            await using (outStream.ConfigureAwait(false))
-                await image.SaveAsync(outStream, image.Metadata.DecodedImageFormat!, cancellationToken).ConfigureAwait(false);
-
-            tempFile.Delete();
-            log.LogInformation(
-                "Processed raster icon '{FileName}' ({Width}x{Height})",
-                upload.FileName, imageSize.Width, imageSize.Height);
-            progress?.Report(100);
-            return new ProcessedFile(new UploadedTempFile(upload.FileName, upload.ContentType, outPath), imageSize);
-        }
-        catch {
-            tempFile.Delete();
-            throw;
-        }
-    }
-
-    private async Task<ProcessedFile> ConvertToPng(UploadedFile upload, IProgress<double>? progress, CancellationToken cancellationToken)
-    {
-        progress?.Report(0);
-
-        var tempFile = await UploadProcessorHelper.DumpToTempFile(upload, cancellationToken).ConfigureAwait(false);
-        try {
-            var inputStream = await tempFile.Open().ConfigureAwait(false);
-            await using var _ = inputStream.ConfigureAwait(false);
-
-            using var image = await Image.LoadAsync(inputStream, cancellationToken).ConfigureAwait(false);
-            progress?.Report(30);
-
-            image.Mutate(img => {
-                img.AutoOrient();
-                if (image.Width > MaxSize || image.Height > MaxSize)
-                    img.Resize(new ResizeOptions { Mode = ResizeMode.Max, Size = new Size(MaxSize) });
-            });
-            image.Metadata.ExifProfile = null;
-            var imageSize = image.Size;
-            progress?.Report(60);
-
-            var outPath = (FilePath.GetApplicationTempDirectory() & upload.FileName).ChangeExtension(".png")
-                .ToUnique(randomLength: 10);
-            var outStream = File.OpenWrite(outPath);
-            await using (outStream.ConfigureAwait(false)) {
-                await image.SaveAsync(outStream, new PngEncoder(), cancellationToken).ConfigureAwait(false);
-            }
-
-            log.LogInformation(
-                "Converted '{ContentType}' icon '{FileName}' to PNG ({Width}x{Height})",
-                upload.ContentType, upload.FileName, imageSize.Width, imageSize.Height);
-
-            var converted = new UploadedTempFile(outPath.FileName, "image/png", outPath);
-            progress?.Report(100);
-            return new ProcessedFile(converted, imageSize);
-        }
-        finally {
-            tempFile.Delete();
-        }
     }
 
     private static (int Width, int Height) ComputeTargetSize(int width, int height)
