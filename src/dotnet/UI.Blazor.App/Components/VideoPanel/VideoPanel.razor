@@ -76,8 +76,14 @@
                 </HeaderButton>
             }
             <HeaderButton Click="OnToggleRecordingClick" Class="@expandedPanelRecBtnCls">
-                <i class="icon-recorder-left-half left"></i>
-                <i class="icon-recorder-right-half right"></i>
+                @if (m.IsAudioRecording) {
+                    <active-recording-svg
+                        size="8"
+                        isRecording="true"/>
+                } else {
+                    <i class="icon-recorder-left-half left"></i>
+                    <i class="icon-recorder-right-half right"></i>
+                }
             </HeaderButton>
             <HeaderButton Click="OnSettingsClick">
                 <i class="icon-options-2 text-lg"></i>
