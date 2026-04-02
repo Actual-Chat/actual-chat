@@ -90,7 +90,7 @@ public class ImageGrabber(IServiceProvider services)
         if (downloadedFile is null)
             return null;
 
-        var processedFile = await MediaProcessor.ProcessUpload(downloadedFile, default, null, cancellationToken).ConfigureAwait(false);
+        var processedFile = await MediaProcessor.ProcessUpload(downloadedFile, MediaKind.LinkPreviewPicture, null, cancellationToken).ConfigureAwait(false);
         if (!MediaTypeExt.IsSupportedImage(processedFile.File.ContentType))
             return null;
 
@@ -150,7 +150,7 @@ public class ImageGrabber(IServiceProvider services)
         if (media is not null)
             return media.Id;
 
-        await MediaSaver.Save(mediaId, processedFile.File, processedFile.Size, MediaKind.ChatPicture, cancellationToken).ConfigureAwait(false);
+        await MediaSaver.Save(mediaId, processedFile.File, processedFile.Size, MediaKind.LinkPreviewPicture, cancellationToken).ConfigureAwait(false);
         return mediaId;
     }
 

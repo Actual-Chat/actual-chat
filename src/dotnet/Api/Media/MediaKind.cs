@@ -11,4 +11,5 @@ public enum MediaKind
     ChatPicture = 0x10,
     UserPicture = 0x20,
     UserAvatarPicture = 0x21,
+    LinkPreviewPicture = 0x30,
 }
