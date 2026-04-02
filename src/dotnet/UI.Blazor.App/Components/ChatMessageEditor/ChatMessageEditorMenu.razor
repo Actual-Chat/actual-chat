@@ -29,13 +29,15 @@
 </div>
 
 @code {
+    private string EditorId => Arguments.Length > 0 ? Arguments[0] : "";
+
     private async Task OnAttachClick(string acceptTypes = "") {
         await WhenClosed.ConfigureAwait(false);
-        _ = UIEventHub.Publish(new AttachButtonClickEvent(acceptTypes));
+        _ = UIEventHub.Publish(new AttachButtonClickEvent(acceptTypes, EditorId));
     }
 
     private async Task OnMentionClick() {
         await WhenClosed.ConfigureAwait(false);
-        _ = UIEventHub.Publish(new MentionButtonClickEvent());
+        _ = UIEventHub.Publish(new MentionButtonClickEvent(EditorId));
     }
 }
