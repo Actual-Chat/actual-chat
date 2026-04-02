@@ -48,9 +48,10 @@ jobs:
     steps:
       - name: Check commit message for #tested
         id: check
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
-          message="${{ github.event.head_commit.message }}"
-          if echo "$message" | grep -qiw '#tested'; then
+          if echo "$COMMIT_MESSAGE" | grep -qiw '#tested'; then
             echo "skip-tests=true" | tee -a $GITHUB_OUTPUT
           else
             echo "skip-tests=false" | tee -a $GITHUB_OUTPUT
