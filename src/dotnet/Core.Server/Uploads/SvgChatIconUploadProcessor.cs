@@ -36,9 +36,8 @@ public class SvgChatIconUploadProcessor(ILogger<SvgChatIconUploadProcessor> log)
         canvas.Scale(scaleX, scaleY);
         canvas.DrawPicture(picture);
 
-        var outFileName = Path.ChangeExtension(upload.FileName, ".png");
-        var outPath = FilePath.GetApplicationTempDirectory()
-            & (Guid.NewGuid().ToString("N") + "_" + FileExt.ShortenFileName(outFileName));
+        var outPath = (FilePath.GetApplicationTempDirectory() & upload.FileName).ChangeExtension(".png")
+            .ToUnique(randomLength: 10);
 
         using var pixmap = surface.PeekPixels();
         using var fileStream = new SKFileWStream(outPath);
@@ -47,7 +46,7 @@ public class SvgChatIconUploadProcessor(ILogger<SvgChatIconUploadProcessor> log)
 
         log.LogInformation("Converted SVG '{FileName}' to PNG ({Width}x{Height})", upload.FileName, targetWidth, targetHeight);
 
-        var converted = new UploadedTempFile(outFileName, "image/png", outPath);
+        var converted = new UploadedTempFile(outPath.FileName, "image/png", outPath);
         progress?.Report(100);
         return Task.FromResult(new ProcessedFile(converted, null));
     }
