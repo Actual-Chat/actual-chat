@@ -116,8 +116,9 @@
     <PackageVersion Include="ActualLab.Rpc" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Rpc.Server" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Testing" Version="$(ActualLabFusionVersion)" />
-    <PackageVersion Include="Svg.Skia" Version="3.7.0" />
-    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="3.119.2" />
+    <PackageVersion Include="Svg.Skia" Version="4.0.0-rc1" />
+    <PackageVersion Include="SkiaSharp" Version="3.119.3-preview.1.1" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="3.119.3-preview.1.1" />
   </ItemGroup>
   <!-- All other packages -->
   <ItemGroup>
