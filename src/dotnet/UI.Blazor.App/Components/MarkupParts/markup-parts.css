@@ -220,11 +220,12 @@ ul {
     list-style: none outside;
 }
 ul.list-markup li {
-    @apply pl-2;
+    @apply relative pl-4;
 }
-ul.list-markup li::marker {
+ul.list-markup li::before {
     content: "\2012";
-    color: var(--text-01);
+    @apply absolute left-0;
+    @apply text-01;
 }
 
 .unknown-markup {
