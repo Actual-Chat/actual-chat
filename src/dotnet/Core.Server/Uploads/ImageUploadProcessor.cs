@@ -10,8 +10,11 @@ public class ImageUploadProcessor(IServiceProvider services) : IUploadProcessor
     private ILogger Log => field ??= services.LogFor(GetType());
 
     public bool Supports(string contentType, MediaKind mediaKind)
-        // GIF is passed through to preserve animation. SVG is handled by SvgChatIconUploadProcessor.
-        => MediaTypeExt.IsImage(contentType) && !MediaTypeExt.IsGif(contentType) && !MediaTypeExt.IsSvg(contentType);
+        // GIF is passed through to preserve animation. Icon media kinds are handled by IconUploadProcessor.
+        => MediaTypeExt.IsImage(contentType)
+            && !MediaTypeExt.IsGif(contentType)
+            && !MediaTypeExt.IsSvg(contentType)
+            && !mediaKind.IsChatIcon;
 
     public async Task<ProcessedFile> Process(UploadedFile upload, IProgress<double>? progress, CancellationToken cancellationToken)
     {
