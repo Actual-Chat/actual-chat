@@ -58,6 +58,7 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
         TimeSpan duration;
         double frameRate;
         bool mustConvert;
+        bool hasAudio;
 
         if (savedState != null) {
             Log.LogDebug("Resuming transcoder job '{JobName}' for '{FileName}'",
@@ -66,6 +67,7 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
             duration = TimeSpan.FromSeconds(savedState.Duration);
             frameRate = 0; // Not important since we're resuming a job.
             mustConvert = true;
+            hasAudio = false; // Irrelevant — job is already created with the right config.
         }
         else {
             IMediaAnalysis? mediaInfo = null;
@@ -89,6 +91,7 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
             mustConvert = UploadProcessorHelper.ExceedsFullHd(size)
                 || UploadProcessorHelper.MustConvertVideo(videoStream)
                 || UploadProcessorHelper.MustConvertVideo(mediaInfo!.Format);
+            hasAudio = mediaInfo!.PrimaryAudioStream is not null;
         }
 
         progress?.Report(10);
@@ -126,7 +129,7 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
                 if (UploadProcessorHelper.ExceedsFullHd(size))
                     size = UploadProcessorHelper.ScaleToFullHd(size);
                 frameRate = Math.Max(frameRate, 24);
-                var createdJob = await CreateTranscoderJob(inputGcsUri, outputGcsUri, size, frameRate, cancellationToken).ConfigureAwait(false);
+                var createdJob = await CreateTranscoderJob(inputGcsUri, outputGcsUri, size, frameRate, hasAudio, cancellationToken).ConfigureAwait(false);
                 jobName = createdJob.Name;
                 Log.LogDebug("Transcoder job created in {Elapsed:N0}ms: '{JobName}'",
                     stepSw.ElapsedMilliseconds, jobName);
@@ -189,43 +192,52 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
     }
 
     private async Task<Job> CreateTranscoderJob(
-        string inputGcsUri, string outputGcsUri, Size size, double frameRate, CancellationToken cancellationToken)
+        string inputGcsUri, string outputGcsUri, Size size, double frameRate, bool hasAudio, CancellationToken cancellationToken)
     {
         var client = await TranscoderServiceClient.CreateAsync(cancellationToken).ConfigureAwait(false);
         var parent = LocationName.FromProjectLocation(_projectId, _regionId);
         const string videoStreamKey = "video_stream0";
         const string audioStreamKey = "audio_stream0";
+
+        var elementaryStreams = new List<ElementaryStream> {
+            new ElementaryStream {
+                Key = videoStreamKey,
+                VideoStream = new TranscoderVideoStream {
+                    H264 = new TranscoderVideoStream.Types.H264CodecSettings {
+                        BitrateBps = EstimateVideoBitrate(size, frameRate),
+                        CrfLevel = 23,
+                        FrameRate = frameRate,
+                        HeightPixels = size.Height,
+                        WidthPixels = size.Width,
+                    },
+                },
+            },
+        };
+
+        var muxElementaryStreams = new List<string> { videoStreamKey };
+
+        if (hasAudio) {
+            elementaryStreams.Add(new ElementaryStream {
+                Key = audioStreamKey,
+                AudioStream = new TranscoderAudioStream {
+                    Codec = "aac",
+                    BitrateBps = 128_000,
+                },
+            });
+            muxElementaryStreams.Add(audioStreamKey);
+        }
+
         var job = new Job {
             InputUri = inputGcsUri,
             OutputUri = outputGcsUri,
             Config = new JobConfig {
-                ElementaryStreams = {
-                    new ElementaryStream {
-                        Key = videoStreamKey,
-                        VideoStream = new TranscoderVideoStream {
-                            H264 = new TranscoderVideoStream.Types.H264CodecSettings {
-                                BitrateBps = EstimateVideoBitrate(size, frameRate),
-                                CrfLevel = 23,
-                                FrameRate = frameRate,
-                                HeightPixels = size.Height,
-                                WidthPixels = size.Width,
-                            },
-                        },
-                    },
-                    new ElementaryStream {
-                        Key = audioStreamKey,
-                        AudioStream = new TranscoderAudioStream {
-                            Codec = "aac",
-                            BitrateBps = 128_000,
-                        },
-                    },
-                },
+                ElementaryStreams = { elementaryStreams },
                 MuxStreams = {
                     new MuxStream {
                         Key = "output",
                         Container = "mp4",
                         FileName = "output.mp4",
-                        ElementaryStreams = { videoStreamKey, audioStreamKey },
+                        ElementaryStreams = { muxElementaryStreams },
                     },
                 },
             },
