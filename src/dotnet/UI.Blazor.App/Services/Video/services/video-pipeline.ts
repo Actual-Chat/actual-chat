@@ -101,6 +101,9 @@ export class VideoPipeline implements IVideoPipeline {
     private backpressureStepDownCount = 0;
     private lastBackpressureStepDown = 0;
 
+    // Encoder failure callback (set by recording-service for codec fallback)
+    public onEncoderFailure: ((failedCodec: string) => void) | null = null;
+
     // Server clock sync
     private clockUnsubscribe: (() => void) | null = null;
 
@@ -148,6 +151,10 @@ export class VideoPipeline implements IVideoPipeline {
                 },
                 onBackpressure: (dropRate: number) => {
                     this.handleEncoderBackpressure(dropRate);
+                    return Promise.resolve();
+                },
+                onEncoderFailed: (codec: string) => {
+                    this.handleEncoderFailure(codec);
                     return Promise.resolve();
                 },
                 onDimensionReconciled: (width: number, height: number) => {
@@ -576,6 +583,14 @@ export class VideoPipeline implements IVideoPipeline {
                 }, delay);
             }
         }
+    }
+
+    // ─── Encoder failure ──────────────────────────────────────────────────
+
+    private handleEncoderFailure(codec: string): void {
+        errorLog?.log(`Encoder failed for codec ${codec}`);
+        if (this.onEncoderFailure)
+            this.onEncoderFailure(codec);
     }
 
     // ─── Backpressure ───────────────────────────────────────────────────────

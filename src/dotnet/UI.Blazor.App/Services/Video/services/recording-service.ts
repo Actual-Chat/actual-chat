@@ -222,6 +222,18 @@ export class RecordingService extends EventTarget {
 
             const pipelineConfig = await this.buildPipelineConfig(actualWidth, actualHeight);
             this.pipeline = new VideoPipeline(pipelineConfig);
+
+            // Wire up encoder failure fallback — switch to H264 if current codec dies
+            this.pipeline.onEncoderFailure = (failedCodec: string) => {
+                const category = getCodecCategory(failedCodec);
+                if (category === 'h264') {
+                    errorLog?.log(`H264 encoder also failed — no fallback available`);
+                    return;
+                }
+                warnLog?.log(`Encoder failed for ${category}, falling back to H264`);
+                void this.switchCodec('h264');
+            };
+
             await this.pipeline.start(this.inputStream);
 
             // Start duration tracking

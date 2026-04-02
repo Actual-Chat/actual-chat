@@ -59,8 +59,10 @@ export function setCallbacks(cb: VideoProcessingWorkerCallbacks): void {
 // Encoder
 let encoder: WebCodecsEncoder | null = null;
 let encoderConfig: EncoderConfig | null = null;
-let frameCount = 0;
-let lastKeyframeTime = 0;
+let encoderFailed = false;
+let encoderErrorSeen = false;
+let framesWithoutOutput = 0;
+let nextFrameIsKeyFrame = false;
 let resizeCanvas: OffscreenCanvas | null = null;
 let resizeCtx: OffscreenCanvasRenderingContext2D | null = null;
 let startTimestamp: number | undefined = undefined;
@@ -436,11 +438,20 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
             processedFrame = normalized;
         }
 
-        const now = performance.now();
         // Let the encoder decide keyframes based on its keyframeInterval config
         // (set by recording-service.ts: ~2s screencast, ~3s webcam)
-        encoder.encode(processedFrame, false);
-        frameCount++;
+        const forceKf = nextFrameIsKeyFrame;
+        nextFrameIsKeyFrame = false;
+        encoder.encode(processedFrame, forceKf);
+        framesWithoutOutput++;
+
+        // Detect dead encoder: error seen + 90 frames (3s@30fps) with zero output
+        if (encoderErrorSeen && framesWithoutOutput > 90 && !encoderFailed) {
+            encoderFailed = true;
+            const codec = encoderConfig.codec;
+            errorLog?.log(`Encoder dead: ${codec} — ${framesWithoutOutput} frames with no output after error`);
+            void callbacks.onEncoderFailed(codec, rpcNoWait);
+        }
     } catch (error) {
         errorLog?.log('Error encoding frame:', error);
         try { frame.close(); } catch { /* already closed */ }
@@ -448,6 +459,9 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
 }
 
 function onEncoderOutput(chunkData: EncodedChunkData): void {
+    framesWithoutOutput = 0;
+    encoderErrorSeen = false;
+
     const chunkBuffer = new ArrayBuffer(chunkData.byteLength);
     chunkData.chunk.copyTo(new Uint8Array(chunkBuffer));
 
@@ -555,7 +569,10 @@ function deliverChunkToStream(
 
 function createEncoder(config: EncoderConfig): void {
     encoderConfig = config;
-    encoder = new WebCodecsEncoder(config, onEncoderOutput, (error) => { errorLog?.log('Encoder error:', error); });
+    encoder = new WebCodecsEncoder(config, onEncoderOutput, (error) => {
+        errorLog?.log('Encoder error:', error.name, error.message);
+        encoderErrorSeen = true;
+    });
     encoder.initialize();
 }
 
@@ -658,7 +675,6 @@ export const serverImpl: VideoProcessingWorker = {
 
             processing = true;
             streamCtx.processing = true;
-            frameCount = 0;
             dimensionsReconciled = false;
             needsRotation = false;
 
@@ -703,7 +719,6 @@ export const serverImpl: VideoProcessingWorker = {
 
             processing = true;
             streamCtx.processing = true;
-            frameCount = 0;
             dimensionsReconciled = false;
             needsRotation = false;
 
@@ -746,7 +761,6 @@ export const serverImpl: VideoProcessingWorker = {
 
             processing = true;
             streamCtx.processing = true;
-            frameCount = 0;
 
             infoLog?.log(`Video processing worker started (${isPreviewOnly ? 'preview-only' : 'RPC'} mode)`);
         } catch (error) {
@@ -802,8 +816,9 @@ export const serverImpl: VideoProcessingWorker = {
         streamingEnabled = wasStreaming;
         pendingStreamFrames = [];
         encoderConfig = config; resizeCanvas = null; resizeCtx = null;
-        frameCount = 0; startTimestamp = undefined;
+        startTimestamp = undefined;
         backpressureDrops = 0; backpressureTotalFrames = 0; lastBackpressureCheckTime = 0; backpressureNotified = false;
+        encoderFailed = false; encoderErrorSeen = false; framesWithoutOutput = 0;
         infoLog?.log('Codec switched successfully');
     },
 
@@ -823,7 +838,7 @@ export const serverImpl: VideoProcessingWorker = {
     },
 
     // eslint-disable-next-line @typescript-eslint/require-await
-    forceKeyFrame: async (): Promise<void> => { frameCount = 0; infoLog?.log('Forced next frame to be keyframe'); },
+    forceKeyFrame: async (): Promise<void> => { nextFrameIsKeyFrame = true; infoLog?.log('Forced next frame to be keyframe'); },
 
     flush: async (): Promise<void> => {
         if (encoder) { try { await encoder.flush(); infoLog?.log('Encoder flushed'); } catch (e) { warnLog?.log('Encoder flush error:', e); } }
@@ -850,7 +865,7 @@ export const serverImpl: VideoProcessingWorker = {
         // Reset all state
         encoder = null; encoderConfig = null; onnxSession = null; segConfig = null; resolvedModelConfig = null;
         segInitialized = false; blurEnabled = false; resizeCanvas = null; resizeCtx = null;
-        frameCount = 0; startTimestamp = undefined; lastLoggedFormat = '(unset)'; loggedI420Error = false;
+        startTimestamp = undefined; lastLoggedFormat = '(unset)'; loggedI420Error = false;
         backpressureDrops = 0; backpressureTotalFrames = 0; lastBackpressureCheckTime = 0; backpressureNotified = false;
         dimensionsReconciled = false; needsRotation = false; vadSpeaking = true; vadRemoteStreamCount = 0; vadLastPassedFrameTime = 0;
         segFrameCounter = 0; hasValidMask = false; loggedBlurFormat = false; processingFrame = false; frameSequence = 0;

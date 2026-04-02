@@ -229,7 +229,7 @@ export class WebCodecsEncoder {
                 this.onChunk(chunkData);
             },
             error: (e: DOMException) => {
-                errorLog?.log('Encoder error:', e);
+                errorLog?.log('Encoder error:', e.name, e.message);
                 this.onError(e as unknown as Error);
             }
         });

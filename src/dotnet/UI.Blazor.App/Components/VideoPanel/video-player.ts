@@ -1009,6 +1009,9 @@ export class VideoPlayer {
         this.playbackRate = 1.0;
         this.lastSeekTime = 0;
         this.rebufferDelayMs = 300;
+        // Reset lastRenderedOffsetMs so reportLatencyTick skips until a fresh frame renders
+        // (prevents SKIP_TO_LIVE loop from using stale offset after background→foreground)
+        this.lastRenderedOffsetMs = 0;
 
         // Reset decode performance tracking — Chrome may have throttled the decoder while hidden
         this.codecSlowTickCount = 0;

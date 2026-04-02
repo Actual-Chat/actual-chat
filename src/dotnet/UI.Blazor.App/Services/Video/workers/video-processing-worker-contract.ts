@@ -174,6 +174,7 @@ export interface VideoProcessingWorkerCallbacks {
         isKeyFrame: boolean, codec: string, sequenceNumber: number,
         descriptionBytes?: ArrayBuffer, noWait?: RpcNoWait): Promise<void>;
     onBackpressure(dropRate: number, noWait?: RpcNoWait): Promise<void>;
+    onEncoderFailed(codec: string, noWait?: RpcNoWait): Promise<void>;
     onDimensionReconciled(width: number, height: number, noWait?: RpcNoWait): Promise<void>;
     onPreviewFrame(frame: VideoFrame, noWait?: RpcNoWait): Promise<void>;
     onStreamCreated(codecSettings: string, noWait?: RpcNoWait): Promise<void>;

@@ -38,6 +38,7 @@ export class VideoRecorder {
     private previewPaused = false;
     // Cached encoder capabilities (detected at 1080p at recording start)
     private supportedEncoderCategories: string[] = [];
+    private supportedCodecs: CodecInfo[] = [];
 
     static create(element: HTMLElement, blazorRef: DotNet.DotNetObject): VideoRecorder {
         return new VideoRecorder(element, blazorRef);
@@ -198,6 +199,7 @@ export class VideoRecorder {
 
             // Detect supported encoder codecs at 1080p (avoids resolution-dependent false positives)
             const supportedCodecs = await detectSupportedCodecs();
+            this.supportedCodecs = supportedCodecs;
 
             // Cache supported encoder categories for later codec negotiation
             this.supportedEncoderCategories = this.extractEncoderCategories(supportedCodecs);
@@ -481,16 +483,24 @@ export class VideoRecorder {
         if (!this.recordingService) return;
 
         // Filter server's list by sender's encoder capabilities
-        const matchingCodecs = codecs.filter(c => this.supportedEncoderCategories.includes(c));
-        const picked = matchingCodecs.length > 0 ? matchingCodecs[0] : null;
+        const matchingCategories = codecs.filter(c => this.supportedEncoderCategories.includes(c));
 
-        if (!picked) {
+        if (matchingCategories.length === 0) {
             warnLog?.log(`updateSupportedDecoderCodecs: no match between server codecs [${codecs.join(', ')}] and encoder capabilities [${this.supportedEncoderCategories.join(', ')}], keeping current codec`);
             return;
         }
 
-        infoLog?.log(`Selected encoder codec: ${picked} from supported decoders: [${codecs.join(', ')}]`);
-        await this.recordingService.switchCodec(picked);
+        // Use getDefaultCodec() for HW-aware selection (same logic as initial codec pick)
+        const audienceFilteredCodecs = this.supportedCodecs.filter(c =>
+            c.supported && matchingCategories.includes(c.category)
+        );
+        if (audienceFilteredCodecs.length === 0) return;
+
+        const pickedCodecString = getDefaultCodec(audienceFilteredCodecs, this.cameraWidth || 1280, this.cameraHeight || 720);
+        const pickedCategory = getCodecCategory(pickedCodecString);
+
+        infoLog?.log(`Selected encoder codec: ${pickedCategory} from supported decoders: [${codecs.join(', ')}]`);
+        await this.recordingService.switchCodec(pickedCategory);
     }
 
     /**
@@ -669,6 +679,9 @@ export class VideoRecorder {
             if (c.supported) {
                 // AV1 software encoding is too expensive for real-time — require HW
                 if (c.category === 'av1' && !c.hardwareAccelerated) continue;
+                // On mobile, SW encoding is too CPU-intensive for anything except H264
+                // (VP9-SW on Android silently drops all frames, HEVC-SW is equally broken)
+                if (DeviceInfo.isMobile && !c.hardwareAccelerated && c.category !== 'h264') continue;
                 categories.add(c.category);
             }
         }

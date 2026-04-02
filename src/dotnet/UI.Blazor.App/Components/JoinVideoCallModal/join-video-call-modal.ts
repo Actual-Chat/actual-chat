@@ -365,6 +365,7 @@ export class JoinVideoCallModal {
                     },
                     onSerializedChunk: () => Promise.resolve(),
                     onBackpressure: () => Promise.resolve(),
+                    onEncoderFailed: () => Promise.resolve(),
                     onDimensionReconciled: () => Promise.resolve(),
                     onStreamCreated: () => Promise.resolve(),
                 } as VideoProcessingWorkerCallbacks
