@@ -111,9 +111,10 @@ public partial class LiveVideoBackend
             // Below threshold — unpause all
             if (webcamStreams.Count < Constants.Video.PriorityActivationThreshold) {
                 if (_pausedStreamIds.Count > 0) {
-                    foreach (var id in _pausedStreamIds)
-                        Owner.InvalidateShouldPause(ChatId, StreamId.Parse(id));
+                    var toInvalidate = _pausedStreamIds.ToList();
                     _pausedStreamIds.Clear();
+                    foreach (var id in toInvalidate)
+                        Owner.InvalidateShouldPause(ChatId, StreamId.Parse(id));
                 }
                 return;
             }
@@ -159,20 +160,24 @@ public partial class LiveVideoBackend
                     newPaused.Add(ranked[i].StreamId.Value);
             }
 
-            // Diff: invalidate only streams whose pause state changed
-            // Newly paused (was active, now paused)
+            // 1. Collect streams whose pause state changed
+            var changedIds = new List<string>();
             foreach (var id in newPaused) {
                 if (!_pausedStreamIds.Contains(id))
-                    Owner.InvalidateShouldPause(ChatId, StreamId.Parse(id));
+                    changedIds.Add(id); // newly paused
             }
-            // Newly unpaused (was paused, now active)
             foreach (var id in _pausedStreamIds) {
                 if (!newPaused.Contains(id))
-                    Owner.InvalidateShouldPause(ChatId, StreamId.Parse(id));
+                    changedIds.Add(id); // newly unpaused
             }
-            // Replace the set
+
+            // 2. Update state
             _pausedStreamIds.Clear();
             _pausedStreamIds.UnionWith(newPaused);
+
+            // 3. Invalidate — subscribers will read the updated state
+            foreach (var id in changedIds)
+                Owner.InvalidateShouldPause(ChatId, StreamId.Parse(id));
         }
     }
 }
