@@ -43,8 +43,6 @@
 
 @switch (message.Kind) {
     case ChatMessageKind.None:
-        if (entry.IsContentStreaming && entry.Content.IsNullOrEmpty() && HasAuthorActiveTranscription(message))
-            return;
         break;
     case ChatMessageKind.DateLine:
         <ChatMessageDateLine Date="@message.Date"/>
@@ -60,7 +58,7 @@
     case ChatMessageKind.SendingNewMessage:
         break;
     case ChatMessageKind.AudioRecordingMessage:
-        if (HasAuthorActiveTranscription(message))
+        if (HasPriorStreamingEntry(message))
             return;
         break;
     default:
@@ -475,7 +473,7 @@
     private void OnForwardedAuthorClick(Author forwardedAuthor)
         => _ = AuthorUI.Show(forwardedAuthor.Id);
 
-    private static bool HasAuthorActiveTranscription(ChatEntryMessage message) {
+    private static bool HasPriorStreamingEntry(ChatEntryMessage message) {
         var authorId = message.Entry.AuthorId;
         var current = message.PreviousMessage;
         for (var i = 0; i < 50 && current != null; i++, current = current.PreviousMessage) {

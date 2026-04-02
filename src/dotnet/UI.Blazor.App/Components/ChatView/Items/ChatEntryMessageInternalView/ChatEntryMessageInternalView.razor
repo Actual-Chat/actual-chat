@@ -67,7 +67,7 @@
         @if (sm.RetainedText.IsNullOrEmpty()
              && sm.ChangedText.IsNullOrEmpty()
              && sm.AnimatedText.IsNullOrEmpty()
-             && !HasAuthorActiveTranscription()) {
+             && !HasNewerStreamingEntry()) {
             <StreamingEntryBadge ChatId="@ChatContext.ChatId" IsLanguageKnown="@IsChatLanguageSelected" IsVoiceActive="@true"/>
         }
         @if (!sm.RetainedText.IsNullOrEmpty()) {
@@ -131,10 +131,10 @@
     private TranslationUI TranslationUI => Hub.TranslationUI;
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
 
-    private bool HasAuthorActiveTranscription() {
+    private bool HasNewerStreamingEntry() {
         var authorId = Message.Entry.AuthorId;
-        var current = Message.PreviousMessage;
-        for (var i = 0; i < 50 && current != null; i++, current = current.PreviousMessage) {
+        var current = Message.NextMessage;
+        for (var i = 0; i < 50 && current != null; i++, current = current.NextMessage) {
             if (current is ChatEntryMessage em
                 && em.Entry.AuthorId == authorId
                 && em.Entry.IsContentStreaming)
