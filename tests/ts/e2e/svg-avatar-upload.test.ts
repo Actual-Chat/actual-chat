@@ -216,7 +216,7 @@ describe('SVG avatar upload', () => {
         expect(blobId).toMatch(/\.png$/);
     }, 30_000);
 
-    it('should upload SVG avatar through the settings UI', async () => {
+    it('should upload SVG avatar through the settings UI and convert to PNG', async () => {
         await page.goto(`${BASE_URL}/settings`, { waitUntil: 'domcontentloaded' });
         await page.waitForTimeout(3000);
         await skipOnboarding(page);
@@ -254,10 +254,15 @@ describe('SVG avatar upload', () => {
         await page.waitForTimeout(3000);
         await page.screenshot({ path: screenshot('svg-avatar-uploaded') });
 
-        // Verify the uploaded image is visible in the editor
+        // Verify the uploaded image is visible and is a PNG (not SVG)
         const avatarPic = avatarModal.locator('.pic img, .pic-upload img').first();
         const hasPic = await avatarPic.isVisible({ timeout: 5000 }).catch(() => false);
         expect(hasPic).toBe(true);
+
+        // Check the img src — it should reference a .png blob, not .svg
+        const imgSrc = await avatarPic.getAttribute('src') ?? '';
+        console.log('Avatar editor img src after SVG upload:', imgSrc);
+        expect(imgSrc).toMatch(/\.png/);
 
         // Save
         const saveButton = avatarModal.locator('button:has-text("Save")').first();
@@ -267,7 +272,7 @@ describe('SVG avatar upload', () => {
         await page.screenshot({ path: screenshot('svg-avatar-saved') });
     }, 60_000);
 
-    it('should upload SVG picture in New Chat modal', async () => {
+    it('should upload SVG picture in New Chat modal and convert to PNG', async () => {
         await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
         await page.waitForTimeout(2000);
         await skipOnboarding(page);
@@ -292,10 +297,14 @@ describe('SVG avatar upload', () => {
         await page.waitForTimeout(3000);
         await page.screenshot({ path: screenshot('svg-new-chat-uploaded') });
 
-        // Verify pic-upload shows an image
+        // Verify pic-upload shows an image that is PNG (converted from SVG)
         const chatPic = page.locator('.pic-upload .pic img').first();
         const hasPic = await chatPic.isVisible({ timeout: 5000 }).catch(() => false);
         expect(hasPic).toBe(true);
+
+        const imgSrc = await chatPic.getAttribute('src') ?? '';
+        console.log('New chat img src after SVG upload:', imgSrc);
+        expect(imgSrc).toMatch(/\.png/);
 
         // Close modal
         await page.keyboard.press('Escape');

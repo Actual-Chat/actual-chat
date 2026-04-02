@@ -17,6 +17,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
     private GoogleResumableUploads GoogleResumableUploads => field ??= new GoogleResumableUploads(StorageClient.Create(), Services.LogFor<GoogleResumableUploads>());
     private IMediaProcessor MediaProcessor { get; } = services.GetRequiredService<IMediaProcessor>();
     private IMediaSaver MediaSaver { get; } = services.GetRequiredService<IMediaSaver>();
+    private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
     private IMediaProgressBackend MediaProgressBackend => field ??= Services.GetRequiredService<IMediaProgressBackend>();
 
     private bool IsGoogleStorage => Blobs is GoogleCloudBlobStorages;
@@ -172,16 +173,19 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
 
             var uploadedFile = GetUploadedStreamFileFrom(upload, cancellationToken);
 
+            var media = await MediaBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
+            var mediaKind = media?.Kind ?? MediaKind.Unknown;
+
             stepSw.Restart();
             progress = CreateMediaConvertingProgressTracker(mediaId);
-            using var processedFile = await MediaProcessor.ProcessUpload(uploadedFile, default, progress, cancellationToken)
+            using var processedFile = await MediaProcessor.ProcessUpload(uploadedFile, mediaKind, progress, cancellationToken)
                 .ConfigureAwait(false);
             Log.LogDebug("OnProcessAndSaveContent: ProcessUpload completed in {Elapsed}ms (upload '{UploadId}', media '{MediaId}')",
                 stepSw.ElapsedMilliseconds, uploadId, mediaId);
 
             stepSw.Restart();
             var mediaRef = await MediaSaver
-                .Save(mediaId, processedFile, isUpdate: true, default, cancellationToken)
+                .Save(mediaId, processedFile, isUpdate: true, mediaKind, cancellationToken)
                 .ConfigureAwait(false);
             Log.LogDebug("OnProcessAndSaveContent: MediaSaver.Save completed in {Elapsed}ms (upload '{UploadId}', media '{MediaId}')",
                 stepSw.ElapsedMilliseconds, uploadId, mediaId);

@@ -9,12 +9,14 @@
     }
     <PicUpload
         Scope="@Scope"
+        MediaKind="@this.MediaKind"
         Picked="@Picked"/>
 </div>
 
 @code {
     [Parameter] public string Class { get; set; } = "";
     [Parameter, EditorRequired] public string Scope { get; set; } = "";
+    [Parameter] public MediaKind MediaKind { get; set; }
     [Parameter] public EventCallback<MediaRef> Picked { get; set; }
     [Parameter] public RenderFragment? Icon { get; set; }
 }

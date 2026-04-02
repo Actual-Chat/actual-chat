@@ -53,6 +53,7 @@
         <div class="c-center">
             <PicUpload
                 Scope="@_form.ImageScope"
+                MediaKind="@MediaKind.ChatPicture"
                 IsSquare="true"
                 Size="@SquareSize.Size16"
                 Title="@_form.Title"
@@ -64,10 +65,12 @@
             <div class="c-buttons">
                 <PicUploadButton
                     Scope="@_form.ImageScope"
+                    MediaKind="@MediaKind.ChatPicture"
                     Picked="@OnImagePicked"/>
 
                 <PicUploadButton
                     Scope="@_form.ImageScope"
+                    MediaKind="@MediaKind.ChatPicture"
                     Picked="@OnBackgroundPicked">
                     <Icon>
                         <i class="icon-image text-2xl"></i>
