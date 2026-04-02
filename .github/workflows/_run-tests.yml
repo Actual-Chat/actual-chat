@@ -27,10 +27,23 @@ on:
         type: string
         default: '-Xms1024m -Xmx1024m'
         description: "OpenSearch JVM heap size"
+      skip-tests:
+        type: boolean
+        default: false
+        description: "Skip tests (used when #tested flag is present)"
 
 jobs:
+  skip-tests:
+    name: ${{ inputs.report-name }} (skipped)
+    if: ${{ inputs.skip-tests }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Tests skipped due to #tested flag
+        run: echo "Tests skipped due to #tested flag"
+
   run-tests:
     name: ${{ inputs.report-name }}
+    if: ${{ !inputs.skip-tests }}
     runs-on: ubuntu-latest
     env:
       NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
