@@ -57,7 +57,7 @@ public class ImageUploadProcessor(IServiceProvider services) : IUploadProcessor
 
         progress?.Report(20);
         Size imageSize;
-        var outPath = FilePath.GetApplicationTempDirectory() & (Guid.NewGuid().ToString("N") + "_" + FileExt.ShortenFileName(upload.FileName));
+        var outPath = (FilePath.GetApplicationTempDirectory() & upload.FileName).ToUnique(randomLength: 10);
         var outStream = File.OpenWrite(outPath);
         await using (var _ = outStream.ConfigureAwait(false)) {
             var inputStream = await upload.Open().ConfigureAwait(false);
