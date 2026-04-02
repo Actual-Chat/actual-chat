@@ -1,0 +1,132 @@
+@namespace ActualChat.UI.Blazor.App.Pages
+@page "/test/video-input"
+@using System.Text.Json
+@using ActualChat.UI.Blazor.App.Module
+
+<RequireAccount MustBeAdmin="true"/>
+<MainHeader>Video Input Devices</MainHeader>
+
+<div class="test-page-btn-group" style="margin-bottom: 1rem;">
+    <Button Class="btn-primary" Click="@(_ => RefreshDevices())">
+        Refresh
+    </Button>
+    <Button Class="btn-cancel" Click="@(_ => RequestPermission())">
+        Request Permission
+    </Button>
+</div>
+
+@if (_error != null) {
+    <div style="color: red; margin-bottom: 1rem;">@_error</div>
+}
+
+@if (_devices == null) {
+    <div>Click "Refresh" to enumerate devices or "Request Permission" first.</div>
+} else if (_devices.Length == 0) {
+    <div>No video input devices found.</div>
+} else {
+    @for (var i = 0; i < _devices.Length; i++) {
+        var d = _devices[i];
+        var deviceCaps = _deviceCapabilities.GetValueOrDefault(d.DeviceId);
+        var trackCaps = _trackCapabilities.GetValueOrDefault(d.DeviceId);
+        <div style="margin-bottom: 1.5rem; border: 1px solid #ccc; border-radius: 0.5rem; padding: 1rem; user-select: text;">
+            <h3 style="margin: 0 0 0.5rem;">@(i + 1). @(d.Label.IsNullOrEmpty() ? "(no label)" : d.Label)</h3>
+            <div style="font-size: 0.85em; margin-bottom: 0.25rem;">
+                <b>Device ID:</b> <span style="word-break: break-all;">@d.DeviceId</span>
+            </div>
+            <div style="font-size: 0.85em; margin-bottom: 0.5rem;">
+                <b>Group ID:</b> <span style="word-break: break-all;">@d.GroupId</span>
+            </div>
+
+            @if (deviceCaps == null) {
+                <Button Class="btn-sm btn-outline" style="margin-bottom: 0.5rem;" Click="@(_ => LoadDeviceCapabilities(d.DeviceId))">
+                    InputDeviceInfo.getCapabilities()
+                </Button>
+            } else {
+                <details open style="margin-bottom: 0.5rem;">
+                    <summary style="cursor: pointer; font-weight: bold; margin-bottom: 0.5rem;">InputDeviceInfo.getCapabilities()</summary>
+                    <pre style="background: var(--background-03); padding: 0.75rem; border-radius: 0.25rem; white-space: pre-wrap; word-break: break-all; font-size: 0.8em; margin: 0;">@deviceCaps</pre>
+                </details>
+            }
+            @if (trackCaps == null) {
+                <Button Class="btn-sm btn-outline" style="margin-bottom: 0.5rem;" Click="@(_ => LoadTrackCapabilities(d.DeviceId))">
+                    MediaStreamTrack.getCapabilities()
+                </Button>
+            } else {
+                <details open style="margin-bottom: 0.5rem;">
+                    <summary style="cursor: pointer; font-weight: bold; margin-bottom: 0.5rem;">MediaStreamTrack.getCapabilities()</summary>
+                    <pre style="background: var(--background-03); padding: 0.75rem; border-radius: 0.25rem; white-space: pre-wrap; word-break: break-all; font-size: 0.8em; margin: 0;">@trackCaps</pre>
+                </details>
+            }
+        </div>
+    }
+}
+
+@code {
+    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+
+    private VideoDeviceInfo[]? _devices;
+    private readonly Dictionary<string, string> _deviceCapabilities = new();
+    private readonly Dictionary<string, string> _trackCapabilities = new();
+    private string? _error;
+
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender)
+            await RefreshDevices();
+    }
+
+    private async Task RefreshDevices() {
+        _error = null;
+        _deviceCapabilities.Clear();
+        _trackCapabilities.Clear();
+        try {
+            _devices = await JS.InvokeAsync<VideoDeviceInfo[]>(
+                $"{BlazorUIAppModule.ImportName}.VideoInputTestPage.getVideoInputDevices");
+        }
+        catch (Exception ex) {
+            _error = ex.Message;
+            _devices = null;
+        }
+        StateHasChanged();
+    }
+
+    private async Task LoadDeviceCapabilities(string deviceId) {
+        try {
+            var json = await JS.InvokeAsync<JsonElement>(
+                $"{BlazorUIAppModule.ImportName}.VideoInputTestPage.getDeviceCapabilities", deviceId);
+            _deviceCapabilities[deviceId] = JsonSerializer.Serialize(json, JsonOptions);
+        }
+        catch (Exception ex) {
+            _deviceCapabilities[deviceId] = $"Error: {ex.Message}";
+        }
+        StateHasChanged();
+    }
+
+    private async Task LoadTrackCapabilities(string deviceId) {
+        try {
+            var json = await JS.InvokeAsync<JsonElement>(
+                $"{BlazorUIAppModule.ImportName}.VideoInputTestPage.getTrackCapabilities", deviceId);
+            _trackCapabilities[deviceId] = JsonSerializer.Serialize(json, JsonOptions);
+        }
+        catch (Exception ex) {
+            _trackCapabilities[deviceId] = $"Error: {ex.Message}";
+        }
+        StateHasChanged();
+    }
+
+    private async Task RequestPermission() {
+        _error = null;
+        try {
+            await JS.InvokeVoidAsync(
+                $"{BlazorUIAppModule.ImportName}.VideoInputTestPage.requestVideoPermission");
+            await RefreshDevices();
+        }
+        catch (Exception ex) {
+            _error = ex.Message;
+        }
+        StateHasChanged();
+    }
+
+    public record VideoDeviceInfo(string DeviceId, string Kind, string Label, string GroupId);
+}
