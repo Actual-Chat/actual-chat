@@ -132,11 +132,11 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         if (!_latencyStates.TryGetValue(streamId, out var latencyState))
             return VideoQualityPreset.High;
 
-        // Check if this stream is paused by the priority evaluator (one RPC per chat, stable invalidation)
+        // Check if this stream is paused by the priority evaluator (per-stream cached, low chatter)
         if (latencyState.ChatId != default) {
-            var pausedIds = await LiveVideoBackend.GetPausedStreamIds(latencyState.ChatId, cancellationToken)
+            var isPaused = await LiveVideoBackend.ShouldPause(latencyState.ChatId, streamId, cancellationToken)
                 .ConfigureAwait(false);
-            if (pausedIds.Contains(streamId.Value))
+            if (isPaused)
                 return VideoQualityPreset.Paused;
         }
 

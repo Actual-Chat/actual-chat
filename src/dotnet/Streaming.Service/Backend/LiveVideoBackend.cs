@@ -121,10 +121,10 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     }
 
     // [ComputeMethod]
-    public virtual Task<ApiArray<string>> GetPausedStreamIds(ChatId chatId, CancellationToken cancellationToken)
+    public virtual Task<bool> ShouldPause(ChatId chatId, StreamId streamId, CancellationToken cancellationToken)
     {
         var chatState = GetChatState(chatId);
-        return Task.FromResult(chatState.GetPausedStreamIds());
+        return Task.FromResult(chatState.ShouldPause(streamId));
     }
 
     public virtual async Task EvaluateStreamPriority(ChatId chatId, CancellationToken cancellationToken)
@@ -259,10 +259,10 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         InvalidateGetSupportedDecoderCodecs(entry.Key);
     }
 
-    internal void InvalidateGetPausedStreamIds(ChatId chatId)
+    internal void InvalidateShouldPause(ChatId chatId, StreamId streamId)
     {
         using (Invalidation.Begin())
-            _ = GetPausedStreamIds(chatId, default);
+            _ = ShouldPause(chatId, streamId, default);
     }
 
     private void InvalidateListActiveStreams(ChatId chatId)

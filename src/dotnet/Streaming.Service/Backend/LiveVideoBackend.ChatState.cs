@@ -15,7 +15,7 @@ public partial class LiveVideoBackend
 
         // Priority queue state (in-memory, not Redis)
         private readonly Dictionary<AuthorId, Moment> _lastAudioActivityAt = new();
-        private ApiArray<string> _pausedStreamIds = default; // StreamId.Value strings
+        private readonly HashSet<string> _pausedStreamIds = new(); // StreamId.Value strings
 
         public LiveVideoBackend Owner { get; } = owner;
         public ChatId ChatId { get; } = chatId;
@@ -26,10 +26,10 @@ public partial class LiveVideoBackend
                 return _currentSupportedDecoderCodecs;
         }
 
-        public ApiArray<string> GetPausedStreamIds()
+        public bool ShouldPause(StreamId streamId)
         {
             lock (_codecLock)
-                return _pausedStreamIds;
+                return _pausedStreamIds.Contains(streamId.Value);
         }
 
         public void RecomputeCodecs(Dictionary<string, ApiArray<string>> members)
@@ -108,11 +108,12 @@ public partial class LiveVideoBackend
         {
             var webcamStreams = videoStreams.Where(s => s.StreamKind == StreamKind.Webcam).ToList();
 
-            // Below threshold — clear all pauses
+            // Below threshold — unpause all
             if (webcamStreams.Count < Constants.Video.PriorityActivationThreshold) {
                 if (_pausedStreamIds.Count > 0) {
-                    _pausedStreamIds = default;
-                    Owner.InvalidateGetPausedStreamIds(ChatId);
+                    foreach (var id in _pausedStreamIds)
+                        Owner.InvalidateShouldPause(ChatId, StreamId.Parse(id));
+                    _pausedStreamIds.Clear();
                 }
                 return;
             }
@@ -135,14 +136,14 @@ public partial class LiveVideoBackend
                 .ThenByDescending(s => _lastAudioActivityAt.GetValueOrDefault(s.AuthorId))
                 .ToList();
 
-            // Determine paused set
-            var paused = new List<string>();
+            // Compute new paused set
+            var newPaused = new HashSet<string>(StringComparer.Ordinal);
             for (var i = 0; i < ranked.Count; i++) {
                 if (i < Constants.Video.PriorityActivationThreshold)
                     continue; // Always active
 
                 if (i >= Constants.Video.MaxWebcamStreamsPerChat) {
-                    paused.Add(ranked[i].StreamId.Value); // Beyond cap — always paused
+                    newPaused.Add(ranked[i].StreamId.Value);
                     continue;
                 }
 
@@ -155,15 +156,23 @@ public partial class LiveVideoBackend
                 var withinGrace = lastActivity != default
                     && (now - lastActivity) < Constants.Video.SilenceGracePeriod;
                 if (!withinGrace)
-                    paused.Add(ranked[i].StreamId.Value);
+                    newPaused.Add(ranked[i].StreamId.Value);
             }
 
-            // Only invalidate if the paused set actually changed
-            var newPaused = new ApiArray<string>(paused.ToArray());
-            if (!_pausedStreamIds.SequenceEqual(newPaused)) {
-                _pausedStreamIds = newPaused;
-                Owner.InvalidateGetPausedStreamIds(ChatId);
+            // Diff: invalidate only streams whose pause state changed
+            // Newly paused (was active, now paused)
+            foreach (var id in newPaused) {
+                if (!_pausedStreamIds.Contains(id))
+                    Owner.InvalidateShouldPause(ChatId, StreamId.Parse(id));
             }
+            // Newly unpaused (was paused, now active)
+            foreach (var id in _pausedStreamIds) {
+                if (!newPaused.Contains(id))
+                    Owner.InvalidateShouldPause(ChatId, StreamId.Parse(id));
+            }
+            // Replace the set
+            _pausedStreamIds.Clear();
+            _pausedStreamIds.UnionWith(newPaused);
         }
     }
 }
