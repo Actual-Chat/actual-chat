@@ -15,6 +15,7 @@
     }
 
     _rendered = m;
+    _renderedIsChatLanguageSelected = IsChatLanguageSelected;
     var streamingCls = "";
     if (!oldIsStreaming && !m.IsStreaming) {
         streamingCls = "not-streaming";
@@ -66,10 +67,8 @@
         @if (sm.RetainedText.IsNullOrEmpty()
              && sm.ChangedText.IsNullOrEmpty()
              && sm.AnimatedText.IsNullOrEmpty()
-             && IsFirstAuthorMessage
-             && !IsChatLanguageSelected
              && !HasAuthorActiveTranscription()) {
-            <StreamingEntryBadge ChatId="@ChatContext.ChatId" IsChatLanguageSelected="@false" IsVoiceActive="@true"/>
+            <StreamingEntryBadge ChatId="@ChatContext.ChatId" IsLanguageKnown="@IsChatLanguageSelected" IsVoiceActive="@true"/>
         }
         @if (!sm.RetainedText.IsNullOrEmpty()) {
             <span class="retained">@sm.RetainedText</span>
@@ -123,6 +122,7 @@
 
     private string? _temporaryText;
     private Model? _rendered;
+    private bool _renderedIsChatLanguageSelected;
     private TranscriptStreamReader _streamReader = null!;
     private ChatEntryId _textEntryId = null!;
     private ILogger Log => Hub.LogFor(GetType());
@@ -207,20 +207,18 @@
 
     protected override bool ShouldRender() {
         var stateValue = State.Value;
-        var shouldRender = _rendered is null || !ReferenceEquals(_rendered, stateValue)
-            && (stateValue.IsStreaming
-                || _rendered.IsStreaming != stateValue.IsStreaming
-                || _rendered.Entry.ContentHash != stateValue.Entry.ContentHash
-                || _rendered.Entry.IsSending != stateValue.Entry.IsSending
-                || _rendered.Entry.HasAudio != stateValue.Entry.HasAudio
-                || _rendered.Markup != stateValue.Markup
-                || _rendered.Translation != stateValue.Translation
-                || _rendered.IsUnread != stateValue.IsUnread
-                || _rendered.IsUnreadBlockStart != stateValue.IsUnreadBlockStart);
-        // if (!shouldRender) {
-        //     Log.LogInformation("Skipping render for {EntryId} (IsStreaming: {IsStreaming}, Translation: {TranslationState})",
-        //         Message.Entry.Id, stateValue.IsStreaming, stateValue.Translation);
-        // }
+        var shouldRender = _rendered is null
+            || _renderedIsChatLanguageSelected != IsChatLanguageSelected
+            || !ReferenceEquals(_rendered, stateValue)
+                && (stateValue.IsStreaming
+                    || _rendered.IsStreaming != stateValue.IsStreaming
+                    || _rendered.Entry.ContentHash != stateValue.Entry.ContentHash
+                    || _rendered.Entry.IsSending != stateValue.Entry.IsSending
+                    || _rendered.Entry.HasAudio != stateValue.Entry.HasAudio
+                    || _rendered.Markup != stateValue.Markup
+                    || _rendered.Translation != stateValue.Translation
+                    || _rendered.IsUnread != stateValue.IsUnread
+                    || _rendered.IsUnreadBlockStart != stateValue.IsUnreadBlockStart);
         return shouldRender;
     }
 
