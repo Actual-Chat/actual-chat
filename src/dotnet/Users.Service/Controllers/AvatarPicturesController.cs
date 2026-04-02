@@ -2,7 +2,6 @@ using ActualChat.AspNetCore;
 using ActualChat.Controllers;
 using ActualChat.Security;
 using ActualChat.Uploads;
-using ActualChat.Users.Uploads;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ActualChat.Users.Controllers;
@@ -11,9 +10,9 @@ namespace ActualChat.Users.Controllers;
 public sealed class AvatarPicturesController(IServiceProvider services) : ControllerBase
 {
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
+    private IMediaProcessor MediaProcessor => services.GetRequiredService<IMediaProcessor>();
     private IMediaSaver MediaSaver => services.GetRequiredService<IMediaSaver>();
     private AvatarPictures AvatarPictures => services.GetRequiredService<AvatarPictures>();
-    private SvgToPngConverter SvgToPngConverter => services.GetRequiredService<SvgToPngConverter>();
 
     [HttpPost("upload-picture")]
     [DisableFormValueModelBinding]
@@ -53,19 +52,13 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
             file.Length,
             () => Task.FromResult(file.OpenReadStream()));
 
-        if (!MediaTypeExt.IsSvg(uploadedFile.ContentType)) {
-            var mediaRef = await MediaSaver
-                .Save(mediaId, uploadedFile, null, MediaKind.UserAvatarPicture, cancellationToken)
-                .ConfigureAwait(false);
-            return Ok(mediaRef);
-        }
-
-        // Convert SVG to PNG before saving
-        using var converted = SvgToPngConverter.Convert(uploadedFile);
-        var svgMediaRef = await MediaSaver
-            .Save(mediaId, converted, false, MediaKind.UserAvatarPicture, cancellationToken)
+        using var processed = await MediaProcessor
+            .ProcessUpload(uploadedFile, MediaKind.UserAvatarPicture, null, cancellationToken)
             .ConfigureAwait(false);
-        return Ok(svgMediaRef);
+        var mediaRef = await MediaSaver
+            .Save(mediaId, processed, false, MediaKind.UserAvatarPicture, cancellationToken)
+            .ConfigureAwait(false);
+        return Ok(mediaRef);
     }
 
     [HttpGet("{kind}/{key}")]

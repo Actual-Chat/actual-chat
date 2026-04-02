@@ -47,7 +47,7 @@ public sealed class ChatMediaController(IServiceProvider services) : ControllerB
             file.ContentType,
             file.Length,
             () => Task.FromResult(file.OpenReadStream()));
-        using var processedFile = await MediaProcessor.ProcessUpload(uploadedFile, cancellationToken).ConfigureAwait(false);
+        using var processedFile = await MediaProcessor.ProcessUpload(uploadedFile, MediaKind.ChatEntryAttachment, null, cancellationToken).ConfigureAwait(false);
         var mediaRef = await MediaSaver
             .Save(MediaId.New(chatId.Value), processedFile, isUpdate:false, MediaKind.ChatEntryAttachment, cancellationToken)
             .ConfigureAwait(false);

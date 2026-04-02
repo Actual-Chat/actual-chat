@@ -90,7 +90,7 @@ public class ImageGrabber(IServiceProvider services)
         if (downloadedFile is null)
             return null;
 
-        var processedFile = await MediaProcessor.ProcessUpload(downloadedFile, cancellationToken).ConfigureAwait(false);
+        var processedFile = await MediaProcessor.ProcessUpload(downloadedFile, default, null, cancellationToken).ConfigureAwait(false);
         if (!MediaTypeExt.IsSupportedImage(processedFile.File.ContentType))
             return null;
 

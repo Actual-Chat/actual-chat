@@ -20,5 +20,5 @@ public class LocalVideoUploadProcessorTest
     [InlineData("text/plain", false)]
     [InlineData("application/pdf", false)]
     public void Supports_ReturnsExpectedResult(string contentType, bool expected)
-        => _processor.Supports(contentType).Should().Be(expected);
+        => _processor.Supports(contentType, default).Should().Be(expected);
 }
