@@ -25,7 +25,7 @@ public sealed class NativeAuthController(IServiceProvider services) : Controller
         string code,
         string? email,
         string? name,
-        bool? mustExist = null,
+        bool mustExist = false,
         CancellationToken cancellationToken = default)
     {
         var session = HttpContext.GetSessionFromHeader();
@@ -73,7 +73,7 @@ public sealed class NativeAuthController(IServiceProvider services) : Controller
     }
 
     [HttpGet("sign-in-google")]
-    public async Task SignInGoogle(string code, bool? mustExist = null, CancellationToken cancellationToken = default)
+    public async Task SignInGoogle(string code, bool mustExist = false, CancellationToken cancellationToken = default)
     {
         var session = HttpContext.GetSessionFromHeader();
         // code = code.UrlDecode(); // Weird, but this is somehow necessary
@@ -148,7 +148,7 @@ public sealed class NativeAuthController(IServiceProvider services) : Controller
         return result;
     }
 
-    private async Task UpdateAuthState(Session session, ClaimsPrincipal principal, bool? mustExist, CancellationToken cancellationToken)
+    private async Task UpdateAuthState(Session session, ClaimsPrincipal principal, bool mustExist, CancellationToken cancellationToken)
     {
         var oldUser = HttpContext.User;
         HttpContext.User = principal;

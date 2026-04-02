@@ -16,7 +16,9 @@ public static class UserIdentityExt
     public static bool HasInternalIdentity(this ApiMap<UserIdentity, string> identities)
         => identities.HasInternalIdentity(out _);
 
-    public static bool HasInternalIdentity(this ApiMap<UserIdentity, string> identities, [NotNullWhen(true)] out UserId? userId)
+    public static bool HasInternalIdentity(
+        this ApiMap<UserIdentity, string> identities,
+        [NotNullWhen(true)] out UserId? userId)
     {
         var identity = identities.Keys.FirstOrDefault(x => x.Schema == UserIdentity.InternalSchema);
         userId = identity.IsValid ? UserId.TryParse(identity.Value) : null;

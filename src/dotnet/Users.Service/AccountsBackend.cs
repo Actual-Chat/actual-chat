@@ -194,6 +194,20 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             .GetUserIdByIdentity(authenticatedIdentity, true, cancellationToken)
             .ConfigureAwait(false);
 
+        // If not found by authenticatedIdentity, try fallback lookup by other identities
+        // (e.g., provider identity not in DB yet, but email identity links to existing user)
+        if (userId is null) {
+            foreach (var (fallbackIdentity, _) in identities) {
+                if (!fallbackIdentity.IsValid || fallbackIdentity == authenticatedIdentity)
+                    continue;
+                userId = await dbContext
+                    .GetUserIdByIdentity(fallbackIdentity, true, cancellationToken)
+                    .ConfigureAwait(false);
+                if (userId is not null)
+                    break;
+            }
+        }
+
         // If no user found by identity but internalUserId is provided, check if account exists by ID
         if (userId is null && internalUserId is not null) {
             var internalAccount = await Get(internalUserId, cancellationToken).ConfigureAwait(false);
@@ -202,7 +216,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         }
 
         if (userId is null) {
-            if (mustExist == true)
+            if (mustExist)
                 throw StandardError.Constraint("Account not found. Register instead?");
 
             // No user found by identity or internalUserId - create new account
@@ -213,9 +227,6 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             isNew = true;
         }
         else {
-            if (mustExist == false)
-                throw StandardError.Constraint("Account is already registered. Sign-in instead?");
-
             // Existing user found by identity or desired ID - acquire lock first, then load and update
             var existingAccount = await Get(userId, cancellationToken).ConfigureAwait(false);
             await dbContext.Accounts.Lock(userId, cancellationToken).ConfigureAwait(false);
@@ -523,6 +534,13 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
                 foundIdentity.Secret = secret;
                 continue;
             }
+
+            // Never steal identities from other accounts
+            var existingOwner = await dbContext
+                .GetUserIdByIdentity(userIdentity, false, cancellationToken)
+                .ConfigureAwait(false);
+            if (existingOwner is not null)
+                continue; // Already exists (for this or another account)
 
             dbAccount.Identities.Add(new DbAccountIdentity {
                 Id = userIdentity.Id,

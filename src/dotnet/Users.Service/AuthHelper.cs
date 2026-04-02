@@ -45,13 +45,10 @@ public sealed class AuthHelper
             || IsSignInFlow(httpContext)
             || IsNativeSignInFlow(httpContext)
             || IsSignOutFlow(httpContext);
-        // "mustExist" query param: absent = null (old client, allow both register & login),
-        // "0" = false (register), "1" = true (login, account must exist)
-        bool? mustExist = isCloseFlow
+        var mustExist = isCloseFlow
             && httpContext.Request.Query.TryGetValue("mustExist", out var mustExistValues)
             && int.TryParse(mustExistValues.FirstOrDefault(), out var mustExistValue)
-            ? mustExistValue != 0
-            : null;
+            && mustExistValue != 0;
 
         // Path A: Token-based session (MAUI sign-in/sign-out/close flows)
         // Token-based sessions are mobile app sessions — they must NEVER leak to browser's session cookie.
@@ -110,7 +107,7 @@ public sealed class AuthHelper
     public async Task UpdateAuthState(
         Session session,
         HttpContext httpContext,
-        bool? mustExist,
+        bool mustExist,
         CancellationToken cancellationToken)
     {
         if (session.Kind is SessionKind.ApiKey)
@@ -179,7 +176,7 @@ public sealed class AuthHelper
         Session session,
         ClaimsPrincipal httpUser,
         string authSchema,
-        bool? mustExist,
+        bool mustExist,
         CancellationToken cancellationToken)
     {
         var httpUserIdentityName = httpUser.Identity?.Name ?? "";
@@ -203,14 +200,16 @@ public sealed class AuthHelper
             || !ActualChat.Email.TryParse(emailClaim, out var email))
             goto exit;
 
-        var emailHash = email.Hash;
-        var userId = await AccountsBackend.GetUserIdByEmailHash(emailHash, cancellationToken).ConfigureAwait(false);
+        // Provider identity is not found - try to find existing user by email identity
+        var emailIdentity = UserIdentityExt.NewEmailIdentity(email);
+        var userId = await AccountsBackend.GetIdByUserIdentity(emailIdentity, cancellationToken).ConfigureAwait(false)
+            ?? await AccountsBackend.GetUserIdByEmailHash(email.Hash, cancellationToken).ConfigureAwait(false);
         if (userId is null)
             goto exit;
 
-        // Found existing user by email - use email identity as authenticated identity
-        authenticatedIdentity = UserIdentityExt.NewEmailIdentity(email);
-        identities = identities.With(identity, "");
+        // Found existing user by email or email hash - keep provider as authenticatedIdentity,
+        // add email identity so OnSignIn can find the user via fallback lookup
+        identities = identities.WithEmailIdentity(email);
 
         exit:
         return new AccountsBackend_SignIn(session, authenticatedIdentity, identities, claims, mustExist);
@@ -271,14 +270,14 @@ public sealed class AuthHelper
     {
         public static AuthState New(
             Session session, bool isAnyAuthFlow, CloseFlow? closeFlow,
-            bool? mustExist, string? error = null)
+            bool mustExist, string? error = null)
         {
             if (error is null)
                 return new AuthState(session, isAnyAuthFlow, closeFlow);
             if (closeFlow is not null)
                 return new AuthState(session, isAnyAuthFlow, closeFlow with { Error = error });
 
-            closeFlow = new CloseFlow(mustExist == true ? "Register" : "Sign-in", null, true, error);
+            closeFlow = new CloseFlow(mustExist ? "Sign-in" : "Register", null, true, error);
             return new AuthState(session, isAnyAuthFlow, closeFlow);
         }
     }

@@ -9,7 +9,7 @@ public sealed class NativeAppleAuth
     public NativeAppleAuth(IServiceProvider services)
         => Services = services;
 
-    public async Task SignIn(bool? mustExist = null)
+    public async Task SignIn(bool mustExist = false)
     {
         var options = new AppleSignInAuthenticator.Options() {
             IncludeEmailScope = true,
