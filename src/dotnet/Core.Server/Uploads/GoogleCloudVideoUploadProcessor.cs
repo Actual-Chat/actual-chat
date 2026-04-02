@@ -192,7 +192,9 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
     }
 
     private async Task<Job> CreateTranscoderJob(
-        string inputGcsUri, string outputGcsUri, Size size, double frameRate, bool hasAudio, CancellationToken cancellationToken)
+        string inputGcsUri, string outputGcsUri,
+        Size size, double frameRate, bool hasAudio,
+        CancellationToken cancellationToken)
     {
         var client = await TranscoderServiceClient.CreateAsync(cancellationToken).ConfigureAwait(false);
         var parent = LocationName.FromProjectLocation(_projectId, _regionId);
