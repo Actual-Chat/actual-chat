@@ -110,12 +110,13 @@ public partial class LiveVideoBackend
 
             // Below threshold — unpause all
             if (webcamStreams.Count < Constants.Video.PriorityActivationThreshold) {
-                if (_pausedStreamIds.Count > 0) {
-                    var toInvalidate = _pausedStreamIds.ToList();
-                    _pausedStreamIds.Clear();
-                    foreach (var id in toInvalidate)
-                        Owner.InvalidateShouldPause(ChatId, StreamId.Parse(id));
-                }
+                if (_pausedStreamIds.Count == 0)
+                    return;
+
+                var toInvalidate = _pausedStreamIds.ToList();
+                _pausedStreamIds.Clear();
+                foreach (var id in toInvalidate)
+                    Owner.InvalidateShouldPause(ChatId, StreamId.Parse(id));
                 return;
             }
 
@@ -161,15 +162,10 @@ public partial class LiveVideoBackend
             }
 
             // 1. Collect streams whose pause state changed
-            var changedIds = new List<string>();
-            foreach (var id in newPaused) {
-                if (!_pausedStreamIds.Contains(id))
-                    changedIds.Add(id); // newly paused
-            }
-            foreach (var id in _pausedStreamIds) {
-                if (!newPaused.Contains(id))
-                    changedIds.Add(id); // newly unpaused
-            }
+            var changedIds = newPaused
+                .Where(id => !_pausedStreamIds.Contains(id)) // newly paused
+                .Concat(_pausedStreamIds.Where(id => !newPaused.Contains(id)))  // newly unpaused
+                .ToList();
 
             // 2. Update state
             _pausedStreamIds.Clear();
