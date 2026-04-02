@@ -45,6 +45,7 @@
             <div class="c-center">
                 <PicUpload
                     Scope="@_form.ImageScope"
+                    MediaKind="@MediaKind.ChatPicture"
                     Size="@SquareSize.Size16"
                     Title="@_form.Title"
                     Picture="@_form.Picture"
@@ -56,6 +57,7 @@
                     <PicUploadButton
                         Class="btn btn-round btn-sm"
                         Scope="@_form.ImageScope"
+                        MediaKind="@MediaKind.ChatPicture"
                         Picked="@OnImagePicked"/>
 
                     @if (m.EnableIncompleteUI) {

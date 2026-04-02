@@ -24,6 +24,7 @@
 <div class="c-center">
     <PicUpload
         Scope="@mediaScope"
+        MediaKind="@MediaKind.UserAvatarPicture"
         IsSquare="false"
         Size="@SquareSize.Size16"
         Title="@Title"
@@ -33,6 +34,7 @@
     <div class="c-buttons">
         <PicUploadButton
             Scope="@mediaScope"
+            MediaKind="@MediaKind.UserAvatarPicture"
             Picked="@OnImagePicked">
             <Icon>
                 <i class="icon-image text-2xl"></i>

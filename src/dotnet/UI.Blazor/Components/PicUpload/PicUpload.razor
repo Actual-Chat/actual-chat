@@ -26,6 +26,7 @@
         <FileUpload
             id="@_inputId"
             Scope="@Scope"
+            MediaKind="@MediaKind"
             Uploaded="OnUploaded"
             MaxSize="Constants.Attachments.AvatarPictureFileSizeLimit"
             accept="image/*"
@@ -71,6 +72,7 @@
     [Parameter] public bool IsSquare { get; set; }
     [Parameter] public string? AvatarKey { get; set; }
     [Parameter, EditorRequired] public string Scope { get; set; } = "";
+    [Parameter] public MediaKind MediaKind { get; set; }
     [Parameter] public RenderFragment? NoPicture { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
     [Parameter] public EventCallback<MediaRef> Picked { get; set; }

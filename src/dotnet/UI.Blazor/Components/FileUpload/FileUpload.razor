@@ -11,6 +11,7 @@
     private FileUploadPicker _picker = null!;
 
     [Parameter, EditorRequired] public string Scope { get; set; } = "";
+    [Parameter] public MediaKind MediaKind { get; set; }
     [Parameter] public int? MaxSize { get; set; }
     [Parameter] public EventCallback<MediaRef> Uploaded { get; set; }
 
@@ -26,7 +27,7 @@
             }
 
             // Reserve MediaId
-            var mediaId = await UICommander.Call(new Media_ReserveMedia(Session, Scope));
+            var mediaId = await UICommander.Call(new Media_ReserveMedia(Session, Scope) { Kind = MediaKind });
 
             // Create Upload
             var tag = $"FileUpload/v1/{Scope}";
