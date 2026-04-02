@@ -110,14 +110,16 @@ public class IconUploadProcessor(ILogger<IconUploadProcessor> log) : IUploadProc
             var imageSize = image.Size;
             progress?.Report(60);
 
-            var outPath = FilePath.GetApplicationTempDirectory()
-                & (Guid.NewGuid().ToString("N") + "_" + FileExt.ShortenFileName(upload.FileName));
+            var outPath = (FilePath.GetApplicationTempDirectory() & upload.FileName)
+                .ToUnique(randomLength: 10);
             var outStream = File.OpenWrite(outPath);
-            await using (outStream.ConfigureAwait(false)) {
+            await using (outStream.ConfigureAwait(false))
                 await image.SaveAsync(outStream, image.Metadata.DecodedImageFormat!, cancellationToken).ConfigureAwait(false);
-            }
 
             tempFile.Delete();
+            log.LogInformation(
+                "Processed raster icon '{FileName}' ({Width}x{Height})",
+                upload.FileName, imageSize.Width, imageSize.Height);
             progress?.Report(100);
             return new ProcessedFile(new UploadedTempFile(upload.FileName, upload.ContentType, outPath), imageSize);
         }
