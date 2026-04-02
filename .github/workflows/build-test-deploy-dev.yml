@@ -221,9 +221,9 @@ jobs:
       NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
       SKIP_TESTS: ${{ needs.check-tested.outputs.skip-tests }}
     steps:
-      - name: Tests skipped due to #tested flag
+      - name: Skip tests
         if: env.SKIP_TESTS == 'true'
-        run: echo "Tests skipped due to #tested flag"
+        run: 'echo "Tests are skipped"'
 
       - name: Install dependencies
         if: env.SKIP_TESTS != 'true'
