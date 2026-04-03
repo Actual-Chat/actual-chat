@@ -10,8 +10,11 @@ public class IconUploadProcessorTest : IDisposable
 
     public IconUploadProcessorTest()
     {
-        var logger = new Mock<ILogger<IconUploadProcessor>>(MockBehavior.Loose);
-        _processor = new IconUploadProcessor(logger.Object);
+        var services = new ServiceCollection()
+            .AddLogging()
+            .AddSingleton<ImageNormalizer>()
+            .BuildServiceProvider();
+        _processor = new IconUploadProcessor(services);
     }
 
     public void Dispose()
