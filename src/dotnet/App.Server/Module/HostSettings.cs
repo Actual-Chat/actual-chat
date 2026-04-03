@@ -22,6 +22,10 @@ public sealed class HostSettings
     /// </summary>
     public string DataProtection { get; set; } = "";
     public string OpenTelemetryEndpoint { get; set; } = "";
+    /// <summary>
+    /// Trace sampling rate for OpenTelemetry (0.0 = none, 1.0 = all). Default: 0.1 (10%).
+    /// </summary>
+    public double OpenTelemetryTraceSampleRate { get; set; } = 0.1;
 
     public int? ReadinessCpuLimit { get; set; }
     public string MeshLockSubspace { get; set; } = ""; // "?" means "make it random"

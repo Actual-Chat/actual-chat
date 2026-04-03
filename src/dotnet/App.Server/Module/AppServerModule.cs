@@ -401,6 +401,8 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             })
         );
         otel.WithTracing(tracer => tracer
+            .SetSampler(new ParentBasedSampler(new TraceIdRatioBasedSampler(
+                Settings.OpenTelemetryTraceSampleRate)))
             .SetErrorStatusOnException()
             .AddSource(RpcInstruments.ActivitySource.Name) // ActualLab.Rpc
             .AddSource(CommanderInstruments.ActivitySource.Name) // ActualLab.Commander
