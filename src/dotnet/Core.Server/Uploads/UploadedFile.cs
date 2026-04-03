@@ -1,4 +1,5 @@
 using System.Net.Mime;
+using ActualChat.IO;
 using ActualLab.IO;
 
 namespace ActualChat.Uploads;
@@ -26,14 +27,10 @@ public static class UploadedFileExt
 
     public static async Task<UploadedTempFile> DumpToTempFile(this UploadedFile file, CancellationToken cancellationToken)
     {
-        var tempFileName = Guid.NewGuid() + "_" + file.FileName;
-        var tempFilePath = FilePath.GetApplicationTempDirectory() & FileExt.ShortenFileName(tempFileName);
-        var target = File.OpenWrite(tempFilePath);
-        await using var _1 = target.ConfigureAwait(false);
+        var tempFilePath = (FilePath.GetApplicationTempDirectory() & file.FileName).ToUnique(randomLength: 10);
         var source = await file.Open().ConfigureAwait(false);
-        await using var _2 = source.ConfigureAwait(false);
-        await source.CopyToAsync(target, cancellationToken).ConfigureAwait(false);
-        target.Position = 0;
+        await using var _ = source.ConfigureAwait(false);
+        await source.CopyToFile(tempFilePath, cancellationToken).ConfigureAwait(false);
         return new UploadedTempFile(file.FileName, file.ContentType, tempFilePath);
     }
 }
