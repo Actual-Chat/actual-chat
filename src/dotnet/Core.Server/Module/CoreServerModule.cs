@@ -45,6 +45,7 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
             services.AddInMemoryQueues();
 
         // Upload processors
+        services.AddSingleton<ImageNormalizer>();
         services.AddSingleton<IUploadProcessor, IconUploadProcessor>();
         services.AddSingleton<IUploadProcessor, ImageUploadProcessor>();
 

@@ -9,9 +9,11 @@ namespace ActualChat.Uploads;
 /// SVG → PNG via SkiaSharp; exotic raster formats (AVIF, WebP, HEIF, etc.) → PNG via ImageSharp;
 /// JPEG/PNG → resize/orient via ImageSharp (kept in original format).
 /// </summary>
-public class IconUploadProcessor(ILogger<IconUploadProcessor> log) : IUploadProcessor
+public class IconUploadProcessor(IServiceProvider services) : IUploadProcessor
 {
     private const int MaxSize = 1920;
+    private ILogger Log => field ??= services.LogFor(GetType());
+    private ImageNormalizer ImageNormalizer => field ??= services.GetRequiredService<ImageNormalizer>();
 
     private static readonly HashSet<string> UniversalFormats = new(StringComparer.OrdinalIgnoreCase) {
         "image/jpeg",
@@ -39,7 +41,7 @@ public class IconUploadProcessor(ILogger<IconUploadProcessor> log) : IUploadProc
         var tempFile = await UploadProcessorHelper.DumpToTempFile(upload, cancellationToken).ConfigureAwait(false);
         ProcessedFile result;
         try {
-            result = await UploadProcessorHelper.ProcessRasterImage(tempFile, MaxSize, convertToPng, progress, cancellationToken)
+            result = await ImageNormalizer.Normalize(tempFile, MaxSize, convertToPng, progress, cancellationToken)
                 .ConfigureAwait(false);
         }
         catch {
@@ -50,11 +52,11 @@ public class IconUploadProcessor(ILogger<IconUploadProcessor> log) : IUploadProc
             tempFile.Delete();
 
         if (convertToPng)
-            log.LogInformation(
+            Log.LogInformation(
                 "Converted '{ContentType}' icon '{FileName}' to PNG ({Width}x{Height})",
                 upload.ContentType, upload.FileName, result.Size?.Width, result.Size?.Height);
         else if (result.File != tempFile)
-            log.LogInformation(
+            Log.LogInformation(
                 "Processed raster icon '{FileName}' ({Width}x{Height})",
                 upload.FileName, result.Size?.Width, result.Size?.Height);
 
@@ -94,7 +96,7 @@ public class IconUploadProcessor(ILogger<IconUploadProcessor> log) : IUploadProc
         if (!pixmap.Encode(fileStream, SKEncodedImageFormat.Png, 100))
             throw StandardError.Internal("Failed to encode SVG as PNG.");
 
-        log.LogInformation("Converted SVG '{FileName}' to PNG ({Width}x{Height})", upload.FileName, targetWidth, targetHeight);
+        Log.LogInformation("Converted SVG '{FileName}' to PNG ({Width}x{Height})", upload.FileName, targetWidth, targetHeight);
 
         var converted = new UploadedTempFile(outPath.FileName, "image/png", outPath);
         progress?.Report(100);
