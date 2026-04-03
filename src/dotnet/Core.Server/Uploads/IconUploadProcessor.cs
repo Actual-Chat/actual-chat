@@ -6,8 +6,8 @@ namespace ActualChat.Uploads;
 
 /// <summary>
 /// Handles all icon image uploads (chat/user/avatar pictures).
-/// SVG → PNG via SkiaSharp; exotic raster formats (AVIF, WebP, HEIF, etc.) → PNG via ImageSharp;
-/// JPEG/PNG → resize/orient via ImageSharp (kept in original format).
+/// SVG → PNG via SkiaSharp; BMP → PNG via ImageSharp;
+/// JPEG/PNG/WebP → resize/orient via ImageSharp (kept in original format).
 /// </summary>
 public class IconUploadProcessor(IServiceProvider services) : IUploadProcessor
 {
@@ -18,18 +18,16 @@ public class IconUploadProcessor(IServiceProvider services) : IUploadProcessor
     private static readonly HashSet<string> UniversalFormats = new(StringComparer.OrdinalIgnoreCase) {
         "image/jpeg",
         "image/png",
+        "image/webp",
+    };
+
+    private static readonly HashSet<string> SupportedFormats = new(UniversalFormats, StringComparer.OrdinalIgnoreCase) {
+        "image/bmp",
+        "image/svg+xml",
     };
 
     public bool Supports(string contentType, MediaKind mediaKind)
-    {
-        if (!mediaKind.IsChatIcon)
-            return false;
-
-        if (MediaTypeExt.IsSvg(contentType))
-            return true;
-
-        return MediaTypeExt.IsImage(contentType) && !MediaTypeExt.IsGif(contentType);
-    }
+        => mediaKind.IsChatIcon && SupportedFormats.Contains(contentType);
 
     public async Task<ProcessedFile> Process(UploadedFile upload, IProgress<double>? progress, CancellationToken cancellationToken)
     {
