@@ -15,19 +15,8 @@ public class IconUploadProcessor(IServiceProvider services) : IUploadProcessor
     private ILogger Log => field ??= services.LogFor(GetType());
     private RasterImageNormalizer RasterImageNormalizer => field ??= services.GetRequiredService<RasterImageNormalizer>();
 
-    private static readonly HashSet<string> UniversalFormats = new(StringComparer.OrdinalIgnoreCase) {
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-    };
-
-    private static readonly HashSet<string> SupportedFormats = new(UniversalFormats, StringComparer.OrdinalIgnoreCase) {
-        "image/bmp",
-        "image/svg+xml",
-    };
-
     public bool Supports(string contentType, MediaKind mediaKind)
-        => mediaKind.IsChatIcon && SupportedFormats.Contains(contentType);
+        => mediaKind.IsChatIcon && MediaTypeExt.SupportedAvatarContentTypes.Contains(contentType);
 
     public async Task<ProcessedFile> Process(UploadedFile upload, IProgress<double>? progress, CancellationToken cancellationToken)
     {
@@ -35,7 +24,7 @@ public class IconUploadProcessor(IServiceProvider services) : IUploadProcessor
             return ProcessSvg(upload, progress);
 
         progress?.Report(0);
-        var convertToPng = !UniversalFormats.Contains(upload.ContentType);
+        var convertToPng = !MediaTypeExt.AvatarPassthroughContentTypes.Contains(upload.ContentType);
         var tempFile = await upload.DumpToTempFile(cancellationToken).ConfigureAwait(false);
         ProcessedFile result;
         try {

@@ -1,5 +1,6 @@
 using System.Numerics;
 using ActualChat.Hosting;
+using ActualChat.Media;
 
 namespace ActualChat;
 
@@ -157,8 +158,13 @@ public static partial class Constants
     {
         public const int FileSizeLimit = 500 * 1024 * 1024;
         public const int AvatarPictureFileSizeLimit = 50 * 1024 * 1024;
-        public const string AvatarPictureAccept = ".jpg,.jpeg,.png,.bmp,.svg,.webp";
         public const int FileCountLimit = 10;
+
+        /// <summary>HTML accept attribute value for avatar picture file inputs.</summary>
+        public static readonly string AvatarPictureAccept = string.Join(',',
+            MediaTypeExt.SupportedAvatarContentTypes
+                .Select(m => MediaMimeTypes.TryGetExtension(m, out var ext) ? ext : null)
+                .SkipNullItems());
         public const int MaxImageWidth = 480; // In pixels
         public const int MaxImageHeight = 360; // In pixels
         public const int MaxThumbnailWidth = 48; // In pixels
