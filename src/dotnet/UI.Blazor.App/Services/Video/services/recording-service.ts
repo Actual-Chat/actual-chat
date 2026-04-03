@@ -8,6 +8,7 @@ import { getBestScalabilityMode, getCodecCategory, getCodecForCategory } from '.
 import { detectGPUBackends } from '../gpu-support';
 import type { SegmentationConfig } from '../workers/video-processing-worker-contract';
 import { createDefaultSegmentationConfig, createAdaptiveSegmentationConfig } from '../workers/video-processing-worker-contract';
+import { MediaCapture } from './media-capture';
 import { Log } from 'logging';
 import { DeviceInfo } from 'device-info';
 
@@ -57,7 +58,7 @@ export interface RecordingState {
 export class RecordingService extends EventTarget {
     private config: RecordingConfig;
     private pipeline: VideoPipeline /*| AV1VideoPipeline*/ | null = null;
-    private inputStream: MediaStream | null = null;
+    private inputTrack: MediaStreamTrack | null = null;
     private state: RecordingState = {
         isRecording: false,
         duration: 0,
@@ -191,12 +192,11 @@ export class RecordingService extends EventTarget {
             this.setState({ status: 'acquiring-media' });
             infoLog?.log('Acquiring media stream...');
 
-            // Get input stream based on mode
-            this.inputStream = await this.acquireMediaStream();
+            // Get input track based on mode
+            this.inputTrack = await this.acquireMediaTrack();
 
-            // Get actual video dimensions from the stream
-            const videoTrack = this.inputStream.getVideoTracks()[0];
-            const settings = videoTrack.getSettings();
+            // Get actual video dimensions from the track
+            const settings = this.inputTrack.getSettings();
             infoLog?.log(`acquireMediaStream: track settings:`, JSON.stringify(settings));
             let actualWidth = settings.width ?? this.config.width;
             let actualHeight = settings.height ?? this.config.height;
@@ -234,7 +234,7 @@ export class RecordingService extends EventTarget {
                 void this.switchCodec('h264');
             };
 
-            await this.pipeline.start(this.inputStream);
+            await this.pipeline.start(new MediaStream([this.inputTrack]));
 
             // Start duration tracking
             this.startTime = performance.now();
@@ -283,10 +283,10 @@ export class RecordingService extends EventTarget {
             this.durationInterval = null;
         }
 
-        // Stop input stream
-        if (this.inputStream) {
-            this.inputStream.getTracks().forEach(track => track.stop());
-            this.inputStream = null;
+        // Stop input track
+        if (this.inputTrack) {
+            this.inputTrack.stop();
+            this.inputTrack = null;
         }
 
         // Stop pipeline to tear down streaming and unregister backend stream
@@ -305,33 +305,16 @@ export class RecordingService extends EventTarget {
         infoLog?.log('Recording stopped');
     }
 
-    private async acquireMediaStream(): Promise<MediaStream> {
+    private async acquireMediaTrack(): Promise<MediaStreamTrack> {
         if (this.config.mode === 'webcam') {
-            // const videoConstraints: MediaTrackConstraints = {
-            //     width: { ideal: this.config.width },
-            //     height: { ideal: this.config.height },
-            //     frameRate: { ideal: this.config.framerate }
-            // };
-            const videoConstraints: MediaTrackConstraints = {
-                frameRate: { ideal: this.config.framerate },
-            };
-
-            if (this.config.cameraDeviceId) {
-                videoConstraints.deviceId = { exact: this.config.cameraDeviceId };
-            }
-
-            infoLog?.log('[VideoPipeline] acquireMediaStream: webcam constraints:', JSON.stringify(videoConstraints));
-            return navigator.mediaDevices.getUserMedia({
-                video: videoConstraints,
-                audio: false
+            return MediaCapture.captureCameraStream({
+                deviceId: this.config.cameraDeviceId,
+                frameRate: this.config.framerate,
+                width: this.config.width,
+                height: this.config.height,
             });
         } else {
-            // Screen mode: use native device resolution (no constraints)
-            infoLog?.log('acquireMediaStream: screen mode, no constraints');
-            return navigator.mediaDevices.getDisplayMedia({
-                video: true,
-                audio: false
-            });
+            return MediaCapture.captureScreencast();
         }
     }
 
@@ -453,9 +436,9 @@ export class RecordingService extends EventTarget {
     }
 
     private cleanup(): void {
-        if (this.inputStream) {
-            this.inputStream.getTracks().forEach(track => track.stop());
-            this.inputStream = null;
+        if (this.inputTrack) {
+            this.inputTrack.stop();
+            this.inputTrack = null;
         }
         this.pipeline = null;
         this.startTime = 0;
@@ -465,8 +448,8 @@ export class RecordingService extends EventTarget {
         return { ...this.state };
     }
 
-    getInputStream(): MediaStream | null {
-        return this.inputStream;
+    getInputTrack(): MediaStreamTrack | null {
+        return this.inputTrack;
     }
 
     /**

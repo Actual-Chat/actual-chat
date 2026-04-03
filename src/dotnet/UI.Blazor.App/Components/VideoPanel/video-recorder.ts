@@ -1,6 +1,7 @@
 import { Log } from 'logging';
 import { DeviceInfo } from 'device-info';
 import { RecordingService, type RecordingConfig, type RecordingState } from '../../Services/Video/services/recording-service';
+import { MediaCapture } from '../../Services/Video/services/media-capture';
 import { detectSupportedCodecs, getDefaultCodec, getCodecCategory, type CodecInfo } from '../../Services/Video/codec-support';
 
 const { debugLog, infoLog, warnLog, errorLog } = Log.get('VideoRecorder');
@@ -14,6 +15,11 @@ export interface VideoDevice {
 let activeRecorderInstance: VideoRecorder | null = null;
 export function getActiveRecorder(): VideoRecorder | null {
     return activeRecorderInstance;
+}
+
+interface Size {
+    width: number;
+    height: number;
 }
 
 export class VideoRecorder {
@@ -51,30 +57,6 @@ export class VideoRecorder {
         // Get canvas element for rendering
         this.canvas = this.element.querySelector('.call-video')!;
         this.canvasCtx = this.canvas.getContext('2d');
-    }
-
-    /**
-     * Enumerate available video devices
-     */
-    public async enumerateVideoDevices(): Promise<VideoDevice[]> {
-        try {
-            // Request permission if not already granted
-            await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            const videoDevices = devices
-                .filter(device => device.kind === 'videoinput')
-                .map(device => ({
-                    deviceId: device.deviceId,
-                    label: device.label || `Camera ${device.deviceId.slice(0, 8)}`
-                }));
-
-            infoLog?.log('Enumerated video devices:', videoDevices);
-            return videoDevices;
-        } catch (error) {
-            errorLog?.log('Failed to enumerate video devices:', error);
-            return [];
-        }
     }
 
     /**
@@ -192,14 +174,13 @@ export class VideoRecorder {
         try {
             // Capture at 720p on all platforms — lower resolutions may select the wrong
             // camera on Android and produce aspect-ratio mismatches.
-            const targetWidth = 1280;
-            const targetHeight = 720;
+            const targetSize = { width: 1280, height: 720 };
             const targetBitrate = 2_000_000;
             const targetFramerate = 30;
 
             // Detect supported encoder codecs — use target resolution to avoid
             // false negatives on mobile (e.g. Android HEVC encoders may not support 1080p)
-            const supportedCodecs = await detectSupportedCodecs(targetWidth, targetHeight);
+            const supportedCodecs = await detectSupportedCodecs(targetSize.width, targetSize.height);
             this.supportedCodecs = supportedCodecs;
 
             // Cache supported encoder categories for later codec negotiation
@@ -208,24 +189,7 @@ export class VideoRecorder {
 
             // Pick initial codec: if audience codecs are known, pick the best encoder
             // codec that the audience can decode — avoids mid-stream codec switches
-            let bestCodecString: string;
-            if (audienceCodecs && audienceCodecs.length > 0) {
-                infoLog?.log(`Audience decoder codecs: [${audienceCodecs.join(', ')}]`);
-                const matchingCategories = audienceCodecs.filter(c => this.supportedEncoderCategories.includes(c));
-                if (matchingCategories.length > 0) {
-                    // Filter supported codecs to only those in audience-compatible categories
-                    const audienceFilteredCodecs = supportedCodecs.filter(c =>
-                        c.supported && matchingCategories.includes(c.category)
-                    );
-                    bestCodecString = audienceFilteredCodecs.length > 0
-                        ? getDefaultCodec(audienceFilteredCodecs, targetWidth, targetHeight)
-                        : getDefaultCodec(supportedCodecs, targetWidth, targetHeight);
-                } else {
-                    bestCodecString = getDefaultCodec(supportedCodecs, targetWidth, targetHeight);
-                }
-            } else {
-                bestCodecString = getDefaultCodec(supportedCodecs, targetWidth, targetHeight);
-            }
+            const bestCodecString = this.pickInitialCodec(supportedCodecs, audienceCodecs, targetSize);
             const bestCodecInfo = supportedCodecs.find(c => c.codec === bestCodecString);
             const codecCategory = getCodecCategory(bestCodecString);
             infoLog?.log(`Initial codec selection: ${codecCategory} (${bestCodecString}), hw=${bestCodecInfo?.hardwareAccelerated ?? false}`);
@@ -237,8 +201,8 @@ export class VideoRecorder {
                 codecString: bestCodecString,
                 hardwareAccelerated: bestCodecInfo?.hardwareAccelerated ?? false,
                 scalabilityModes: bestCodecInfo?.scalabilityModes,
-                width: targetWidth,
-                height: targetHeight,
+                width: targetSize.width,
+                height: targetSize.height,
                 bitrate: targetBitrate,
                 framerate: targetFramerate,
                 cameraDeviceId: this.selectedCameraDeviceId ?? undefined,
@@ -256,35 +220,23 @@ export class VideoRecorder {
                 },
             };
 
-            console.warn('[VideoRecorder] Creating RecordingService with streaming:', config.streaming);
-            this.recordingService = new RecordingService(config);
+            this.recordingService = this.createRecordingService(config);
 
-            // Listen for state changes
-            this.recordingService.addEventListener('state-change', ((event: CustomEvent<RecordingState>) => {
-                this.onRecorderStateChange(event.detail);
-            }) as EventListener);
-
-            // Listen for errors
-            this.recordingService.addEventListener('error', ((event: CustomEvent<Error>) => {
-                this.onRecorderError(event.detail);
-            }) as EventListener);
-
-            // Acquire a separate camera stream for local preview.
+            // Acquire a separate camera track for local preview.
             // We must get this BEFORE starting the recording pipeline, because
             // the pipeline's MediaStreamTrackProcessor exclusively consumes
             // frames from the track it's given — cloning after that point
             // produces a dead track in Chromium.
-            const previewConstraints: MediaStreamConstraints = {
-                video: this.selectedCameraDeviceId
-                    ? { deviceId: { exact: this.selectedCameraDeviceId }, width: { ideal: targetWidth }, height: { ideal: targetHeight }, frameRate: { ideal: targetFramerate } }
-                    : { width: { ideal: targetWidth }, height: { ideal: targetHeight }, frameRate: { ideal: targetFramerate } },
-                audio: false,
-            };
-            const previewStream = await navigator.mediaDevices.getUserMedia(previewConstraints);
-            this.previewTrack = previewStream.getVideoTracks()[0];
+            this.previewTrack = await MediaCapture.captureCameraStream({
+                deviceId: this.selectedCameraDeviceId ?? undefined,
+                width: targetSize.width,
+                height: targetSize.height,
+                frameRate: targetFramerate,
+            });
 
             // Store actual camera resolution for capping reconfigure requests
             const trackSettings = this.previewTrack.getSettings();
+            infoLog?.log(`Track resolution: ${trackSettings.width}x${trackSettings.height}`);
             this.cameraWidth = trackSettings.width ?? config.width;
             this.cameraHeight = trackSettings.height ?? config.height;
             infoLog?.log(`Camera resolution: ${this.cameraWidth}x${this.cameraHeight}`);
@@ -325,7 +277,7 @@ export class VideoRecorder {
 
             // Start rendering preview AFTER isRecording is set
             console.warn('[VideoRecorder] Starting preview rendering, canvas:', !!this.canvas, 'canvasCtx:', !!this.canvasCtx);
-            this.startRenderingStream(previewStream);
+            this.startRenderingStream(this.previewTrack);
 
             // Notify Blazor
             await this.blazorRef.invokeMethodAsync('OnRecordingStarted');
@@ -358,22 +310,8 @@ export class VideoRecorder {
             this.supportedEncoderCategories = this.extractEncoderCategories(supportedCodecs);
 
             // Pick initial codec based on audience
-            let bestCodecString: string;
-            if (audienceCodecs && audienceCodecs.length > 0) {
-                const matchingCategories = audienceCodecs.filter(c => this.supportedEncoderCategories.includes(c));
-                if (matchingCategories.length > 0) {
-                    const audienceFilteredCodecs = supportedCodecs.filter(c =>
-                        c.supported && matchingCategories.includes(c.category)
-                    );
-                    bestCodecString = audienceFilteredCodecs.length > 0
-                        ? getDefaultCodec(audienceFilteredCodecs, 1920, 1080)
-                        : getDefaultCodec(supportedCodecs, 1920, 1080);
-                } else {
-                    bestCodecString = getDefaultCodec(supportedCodecs, 1920, 1080);
-                }
-            } else {
-                bestCodecString = getDefaultCodec(supportedCodecs, 1920, 1080);
-            }
+            const targetSize = { width: 1920, height: 1080 };
+            const bestCodecString = this.pickInitialCodec(supportedCodecs, audienceCodecs, targetSize);
             const bestCodecInfo = supportedCodecs.find(c => c.codec === bestCodecString);
             const codecCategory = getCodecCategory(bestCodecString);
 
@@ -384,8 +322,8 @@ export class VideoRecorder {
                 codecString: bestCodecString,
                 hardwareAccelerated: bestCodecInfo?.hardwareAccelerated ?? false,
                 scalabilityModes: bestCodecInfo?.scalabilityModes,
-                width: 1920,
-                height: 1080,
+                width: targetSize.width,
+                height: targetSize.height,
                 bitrate: 4_000_000, // Start at High quality (not Full 8Mbps at 4K)
                 framerate: 30,
                 backgroundBlur: { enabled: false },
@@ -398,31 +336,22 @@ export class VideoRecorder {
                 },
             };
 
-            this.recordingService = new RecordingService(config);
-
-            this.recordingService.addEventListener('state-change', ((event: CustomEvent<RecordingState>) => {
-                this.onRecorderStateChange(event.detail);
-            }) as EventListener);
-
-            this.recordingService.addEventListener('error', ((event: CustomEvent<Error>) => {
-                this.onRecorderError(event.detail);
-            }) as EventListener);
+            this.recordingService = this.createRecordingService(config);
 
             // Start recording — getDisplayMedia will prompt the user to pick a screen
             await this.recordingService.start();
 
             // Get the screen track for preview and track-ended detection
             const pipeline = this.recordingService.getPipeline();
-            const screenStream = this.recordingService.getInputStream();
-            if (screenStream) {
-                const screenTrack = screenStream.getVideoTracks()[0];
+            const screenTrack = this.recordingService.getInputTrack();
+            if (screenTrack) {
                 // Use screen track for local preview
                 this.previewTrack = screenTrack;
 
                 // Store actual screen resolution for capping reconfigure requests
                 const trackSettings = screenTrack.getSettings();
-                this.cameraWidth = trackSettings.width ?? 1920;
-                this.cameraHeight = trackSettings.height ?? 1080;
+                this.cameraWidth = trackSettings.width ?? targetSize.width;
+                this.cameraHeight = trackSettings.height ?? targetSize.height;
                 infoLog?.log(`Screen resolution: ${this.cameraWidth}x${this.cameraHeight}`);
 
                 // Handle browser's native "Stop sharing" button
@@ -439,9 +368,9 @@ export class VideoRecorder {
             this.isScreencasting = true;
             activeRecorderInstance = this; // eslint-disable-line @typescript-eslint/no-this-alias
 
-            // Start rendering preview from the screen stream
-            if (screenStream) {
-                this.startRenderingStream(screenStream);
+            // Start rendering preview from the screen track
+            if (screenTrack) {
+                this.startRenderingStream(screenTrack);
             }
 
             await this.blazorRef.invokeMethodAsync('OnRecordingStarted');
@@ -516,12 +445,6 @@ export class VideoRecorder {
             return;
         }
 
-        // Transpose preset if camera orientation doesn't match (e.g., portrait camera, landscape preset)
-        const cameraIsPortrait = this.cameraWidth > 0 && this.cameraHeight > 0 && this.cameraHeight > this.cameraWidth;
-        const presetIsLandscape = width > height;
-        if (cameraIsPortrait && presetIsLandscape)
-            [width, height] = [height, width];
-
         const pipeline = this.recordingService.getPipeline();
         if (!pipeline) return;
 
@@ -534,6 +457,13 @@ export class VideoRecorder {
 
         // Resume if we were paused
         pipeline.resumeEncoding();
+
+        // Transpose preset if camera orientation doesn't match (e.g., portrait camera, landscape preset)
+        infoLog?.log(`reconfigure: level=${level}, size=${width}x${height}, bitrate=${bitrate}, cameraSize=${this.cameraWidth}x${this.cameraHeight}`, );
+        const cameraIsPortrait = this.cameraWidth > 0 && this.cameraHeight > 0 && this.cameraHeight > this.cameraWidth;
+        const presetIsLandscape = width > height;
+        if (cameraIsPortrait && presetIsLandscape)
+            [width, height] = [height, width];
 
         // Cap to actual camera resolution — upscaling wastes CPU for no quality gain
         const cappedWidth = this.cameraWidth > 0 ? Math.min(width, this.cameraWidth) : width;
@@ -565,16 +495,44 @@ export class VideoRecorder {
         void pipeline.forceKeyFrame();
     }
 
+    private pickInitialCodec(supportedCodecs: CodecInfo[], audienceCodecs: string[] | undefined, size: Size) {
+        if (audienceCodecs && audienceCodecs.length > 0) {
+            const matchingCategories = audienceCodecs.filter(c => this.supportedEncoderCategories.includes(c));
+            if (matchingCategories.length > 0) {
+                const audienceFilteredCodecs = supportedCodecs.filter(c =>
+                    c.supported && matchingCategories.includes(c.category),
+                );
+                return audienceFilteredCodecs.length > 0
+                    ? getDefaultCodec(audienceFilteredCodecs, size.width, size.height)
+                    : getDefaultCodec(supportedCodecs, size.width, size.height);
+            } else {
+                return getDefaultCodec(supportedCodecs, size.width, size.height);
+            }
+        } else {
+            return getDefaultCodec(supportedCodecs, size.width, size.height);
+        }
+    }
+
+    private createRecordingService(config: RecordingConfig): RecordingService {
+        const recordingService = new RecordingService(config);
+        recordingService.addEventListener('state-change', ((event: CustomEvent<RecordingState>) => {
+            this.onRecorderStateChange(event.detail);
+        }) as EventListener);
+        recordingService.addEventListener('error', ((event: CustomEvent<Error>) => {
+            this.onRecorderError(event.detail);
+        }) as EventListener);
+        return recordingService;
+    }
+
     /**
      * Start rendering the output stream to canvas
      */
-    private startRenderingStream(stream: MediaStream): void {
-        const videoTrack = stream.getVideoTracks()[0];
+    private startRenderingStream(videoTrack: MediaStreamTrack): void {
         console.warn('[VideoRecorder] startRenderingStream: videoTrack:', !!videoTrack, 'canvas:', !!this.canvas, 'canvasCtx:', !!this.canvasCtx);
 
         // Create a video element to render the stream
         const video = document.createElement('video');
-        video.srcObject = stream;
+        video.srcObject = new MediaStream([videoTrack]);
         video.muted = true;
         video.playsInline = true;
         void video.play();
