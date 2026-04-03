@@ -1,5 +1,6 @@
 using ActualChat.Diagnostics;
 using ActualChat.Flows.Infrastructure;
+using ActualChat.Hosting;
 using ActualChat.Queues;
 using ActualLab.Diagnostics;
 
@@ -11,6 +12,7 @@ public sealed class FlowHub(IServiceProvider services) : IHasServices
     internal ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Flows);
 
     public IServiceProvider Services { get; } = services;
+    public HostInfo HostInfo { get; } = services.HostInfo();
     public FlowDefs Defs { get; } = services.GetRequiredService<FlowDefs>();
     public IFlowBackend Backend => field ??= Services.GetRequiredService<IFlowBackend>();
     public ICommander Commander { get; } = services.Commander();

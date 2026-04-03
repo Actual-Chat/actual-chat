@@ -2,6 +2,9 @@ namespace ActualChat.Chat;
 
 public static class ChatEntryExt
 {
+    public static Moment GetEndsAt(this ChatEntry entry)
+        => entry.EndsAt ?? entry.Audio?.EndsAt ?? entry.BeginsAt;
+
     public static ChatEntryId? GetRepliedChatEntryId(this ChatEntry entry)
         => entry.RepliedEntryLid is { } repliedEntryLid
             ? ChatEntryId.New(entry.Id.ChatId, repliedEntryLid)
@@ -13,9 +16,6 @@ public static class ChatEntryExt
             Audio = src.Audio,
             LinkPreviews = src.LinkPreviews,
         };
-
-    public static Moment GetEndsAt(this ChatEntry entry)
-        => entry.EndsAt ?? entry.BeginsAt;
 
     public static bool SupportsLanguageDetection([NotNullWhen(true)] this ChatEntry? entry)
     {

@@ -94,7 +94,8 @@ public abstract class ChatPlayer : ProcessorBase
         _ = BackgroundTask.Run(async () => {
             try {
                 await Play(Playback, startAt, playToken).ConfigureAwait(false);
-                await TaskExt.NeverEnding(playToken).ConfigureAwait(false);
+                if (PlayerKind == ChatPlayerKind.Listening)
+                    await TaskExt.NeverEnding(playToken).ConfigureAwait(false);
             }
             catch (Exception e) {
                 if (e is not OperationCanceledException)

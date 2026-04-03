@@ -67,15 +67,13 @@ public partial class ChatEntryMigrationFlow : Flow<(Moment, long, long)>
                 return;
             }
 
-            // Get batch of text entries that have AudioEntryId set but no MediaId yet
+            // Get batch of text entries - uses (ChatId, Kind, LocalId) index
             var remaining = BatchSize - processedInResume;
             var batch = await dbContext.ChatEntries
                 .Where(e => e.ChatId == chatId
                     && e.Kind == 0 // 0 = Text kind
-                    && e.AudioEntryId != null
-                    && (e.AudioId == null || e.AudioId == "")) // Skipping already migrated entries
+                    && e.LocalId > LastProcessedLocalId)
                 .OrderBy(e => e.LocalId)
-                .Where(e => e.LocalId > LastProcessedLocalId)
                 .Take(remaining)
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
@@ -91,6 +89,10 @@ public partial class ChatEntryMigrationFlow : Flow<(Moment, long, long)>
             try {
                 var migratedInBatch = 0;
                 foreach (var textEntry in batch) {
+                    // Skip entries that don't need migration
+                    if (textEntry.AudioEntryId == null || !textEntry.AudioId.IsNullOrEmpty())
+                        continue;
+
                     try {
                         await ProcessOne(dbContext, textEntry, cancellationToken).ConfigureAwait(false);
                         migratedInBatch++;
@@ -101,7 +103,7 @@ public partial class ChatEntryMigrationFlow : Flow<(Moment, long, long)>
                 }
                 LastProcessedLocalId = batch[^1].LocalId;
                 MigratedEntryCount += migratedInBatch;
-                processedInResume += migratedInBatch;
+                processedInResume += batch.Count;
             }
             finally {
                 await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
