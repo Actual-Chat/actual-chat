@@ -38,13 +38,19 @@ export class JoinVideoCallModal {
 
     static async enumerateDevices(): Promise<VideoDevice[]> {
         try {
+            // Request permission first to get device labels
+            const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            tempStream.getTracks().forEach(t => t.stop());
+
             const devices = await navigator.mediaDevices.enumerateDevices();
-            return devices
+            const videoDevices = devices
                 .filter(d => d.kind === 'videoinput')
                 .map(d => ({
                     deviceId: d.deviceId,
                     label: d.label || `Camera ${d.deviceId.slice(0, 8)}`,
                 }));
+            infoLog?.log('Enumerated video devices:', videoDevices);
+            return videoDevices;
         } catch (error) {
             errorLog?.log('Failed to enumerate video devices:', error);
             return [];
@@ -69,25 +75,6 @@ export class JoinVideoCallModal {
         // Off-DOM canvas for capturing frames to feed the blur worker
         this.captureCanvas = document.createElement('canvas');
         this.captureCtx = this.captureCanvas.getContext('2d')!;
-    }
-
-    public async enumerateVideoDevices(): Promise<VideoDevice[]> {
-        try {
-            // Request permission first to get device labels
-            const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-            tempStream.getTracks().forEach(t => t.stop());
-
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            return devices
-                .filter(d => d.kind === 'videoinput')
-                .map(d => ({
-                    deviceId: d.deviceId,
-                    label: d.label || `Camera ${d.deviceId.slice(0, 8)}`,
-                }));
-        } catch (error) {
-            errorLog?.log('Failed to enumerate video devices:', error);
-            return [];
-        }
     }
 
     public async startPreview(deviceId?: string): Promise<boolean> {

@@ -57,7 +57,7 @@
                         <div class="camera-dropdown">
                             <div class="camera-dropdown-header">Select a camera</div>
                             @foreach (var device in _videoDevices) {
-                                var isSelected = device.DeviceId == _selectedDeviceId;
+                                var isSelected = device == _selectedDevice;
                                 var isDisabled = IsSettingsMode;
                                 <div class="camera-dropdown-item @(isDisabled ? "disabled" : "")"
                                      @onclick="@(isDisabled ? (Func<Task>)(() => Task.CompletedTask) : () => OnCameraSelected(device))">
@@ -137,12 +137,13 @@
     private IJSObjectReference? _jsRef;
 
     private bool _isVideoOn;
-    private string _selectedDeviceId = "";
     private bool _isBlurEnabled;
     private bool _isCameraDropdownOpen;
     private bool _isRecording;
     private bool _isCameraStarting;
     private List<VideoDevice> _videoDevices = new();
+    private VideoDevice? _selectedDevice;
+    private Task<string> _getLastSelectedDeviceIdTask = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -168,10 +169,14 @@
             VideoCallMode.Join => "Join",
             _ => throw new InvalidOperationException($"Unknown video call mode: {ModalModel.Mode}")
         };
-        var settings = await Hub.LocalSettings.LocalAppSettings().Get();
-        _selectedDeviceId = settings.SelectedCameraDeviceId ?? "";
+        _getLastSelectedDeviceIdTask = GetLastSelectedDeviceId();
         var recordingChatId = await ChatAudioUI.GetRecordingChatId();
         _isRecording = recordingChatId == ModalModel.Chat.Id;
+    }
+
+    private async Task<string> GetLastSelectedDeviceId() {
+        var settings = await Hub.LocalSettings.LocalAppSettings().Get();
+        return settings.SelectedCameraDeviceId ?? "";
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -179,6 +184,10 @@
             return;
 
         await LoadVideoDevices();
+        var lastSelectedDeviceId = await _getLastSelectedDeviceIdTask;
+        if (!lastSelectedDeviceId.IsNullOrEmpty() && _videoDevices.Count > 0)
+            _selectedDevice = _videoDevices.FirstOrDefault(d => d.DeviceId == lastSelectedDeviceId);
+
         await EnsureJsRef();
         if (_jsRef is null)
             return;
@@ -199,7 +208,7 @@
             }
         } else {
             // Normal mode: acquire our own stream
-            var deviceId = string.IsNullOrEmpty(_selectedDeviceId) ? null : _selectedDeviceId;
+            var deviceId = _selectedDevice?.DeviceId;
             var success = await _jsRef.InvokeAsync<bool>("startPreview", deviceId);
             if (success) {
                 _isVideoOn = true;
@@ -257,8 +266,7 @@
             _isCameraStarting = false;
         } else {
             _isCameraStarting = true;
-            var deviceId = string.IsNullOrEmpty(_selectedDeviceId) ? null : _selectedDeviceId;
-            var success = await _jsRef.InvokeAsync<bool>("startPreview", deviceId);
+            var success = await _jsRef.InvokeAsync<bool>("startPreview", _selectedDevice?.DeviceId);
             if (success) {
                 _isVideoOn = true;
             } else {
@@ -272,7 +280,7 @@
         => _isCameraDropdownOpen = !_isCameraDropdownOpen;
 
     private async Task OnCameraSelected(VideoDevice device) {
-        _selectedDeviceId = device.DeviceId;
+        _selectedDevice = device;
         _isCameraDropdownOpen = false;
         await Hub.LocalSettings.LocalAppSettings().Update(
             s => s with { SelectedCameraDeviceId = device.DeviceId });
@@ -286,7 +294,7 @@
         if (_videoDevices.Count <= 1)
             return;
 
-        var currentIndex = _videoDevices.FindIndex(d => d.DeviceId == _selectedDeviceId);
+        var currentIndex = _videoDevices.FindIndex(d => d == _selectedDevice);
         var nextIndex = (currentIndex + 1) % _videoDevices.Count;
         await OnCameraSelected(_videoDevices[nextIndex]);
     }
@@ -318,7 +326,7 @@
         if (_jsRef is not null)
             deviceId = await _jsRef.InvokeAsync<string?>("getActualDeviceId");
         if (string.IsNullOrEmpty(deviceId))
-            deviceId = string.IsNullOrEmpty(_selectedDeviceId) ? null : _selectedDeviceId;
+            deviceId = _selectedDevice?.DeviceId;
 
         await DisposeAsync();
         var chatId = ModalModel.Chat.Id;
@@ -353,6 +361,7 @@
 
     // Nested types
 
+    // ReSharper disable once ClassNeverInstantiated.Local — instantiated via JS interop deserialization
     private record VideoDevice(string DeviceId, string Label);
 
     public enum VideoCallMode { Join, Start, Settings }
