@@ -29,7 +29,7 @@
             MediaKind="@MediaKind"
             Uploaded="OnUploaded"
             MaxSize="Constants.Attachments.AvatarPictureFileSizeLimit"
-            accept="image/*"
+            accept="@Constants.Attachments.AvatarPictureAccept"
             hidden>
         </FileUpload>
         <label for="@_inputId"
@@ -78,9 +78,8 @@
     [Parameter] public EventCallback<MediaRef> Picked { get; set; }
     [Parameter] public EventCallback GenerateAvatar { get; set; }
 
-    protected override void OnInitialized() {
-        _inputId = ComponentIdGenerator.Next("pic-upload-input-file");
-    }
+    protected override void OnInitialized()
+        => _inputId = ComponentIdGenerator.Next("pic-upload-input-file");
 
     public async ValueTask DisposeAsync() {
         await _jsRef.DisposeSilentlyAsync("dispose");
