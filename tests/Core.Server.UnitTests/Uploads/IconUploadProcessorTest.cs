@@ -12,7 +12,7 @@ public class IconUploadProcessorTest : IDisposable
     {
         var services = new ServiceCollection()
             .AddLogging()
-            .AddSingleton<ImageNormalizer>()
+            .AddSingleton<RasterImageNormalizer>()
             .BuildServiceProvider();
         _processor = new IconUploadProcessor(services);
     }
