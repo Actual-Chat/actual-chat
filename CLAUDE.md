@@ -152,6 +152,16 @@ dotnet build ActualChat.CI.slnf
 dotnet build ActualChat.sln
 ```
 
+## TypeScript Validation
+
+When modifying TypeScript files under `src/nodejs/` or `src/dotnet/UI.Blazor.App/`, always validate changes by running:
+
+```bash
+npm run build:Release
+```
+
+This runs `tsc --noEmit`, `eslint`, and the production build. It catches unused variables, type errors, and lint violations that `tsc --noEmit` alone may miss.
+
 # Testing
 
 ## Debugging Test Failures

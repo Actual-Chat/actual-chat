@@ -177,6 +177,13 @@ export class VideoStreamer {
     public static connection: signalR.HubConnection | null = null;
     public static readonly streams = new Array<VideoStream>();
     public static lastStream: VideoStream | null = null;
+    private static readonly reconnectedCallbacks = new Set<() => void>();
+
+    /** Register a callback to be invoked when the streams hub reconnects after a drop. */
+    public static onReconnected(callback: () => void): () => void {
+        this.reconnectedCallbacks.add(callback);
+        return () => { this.reconnectedCallbacks.delete(callback); };
+    }
 
     public static init(hubUrl: string): void {
         infoLog?.log('init called with hubUrl:', hubUrl);
@@ -196,7 +203,13 @@ export class VideoStreamer {
 
         this.connection.onclose((err) => warnLog?.log('Connection closed:', err));
         this.connection.onreconnecting((err) => warnLog?.log('Reconnecting:', err));
-        this.connection.onreconnected((id) => warnLog?.log('Reconnected:', id));
+        this.connection.onreconnected((id) => {
+            warnLog?.log('Reconnected:', id);
+            // Notify all active video players to re-establish their pull subscriptions
+            for (const cb of this.reconnectedCallbacks) {
+                try { cb(); } catch { /* ignore */ }
+            }
+        });
 
         this.connection.start()
             .then(() => infoLog?.log('Connected successfully, state:', this.connection!.state))

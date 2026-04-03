@@ -135,6 +135,12 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         ValidateStreamId(streamId);
         _keyFrameRequests[streamId] = true;
         Log.LogInformation("RequestKeyFrame: streamId={StreamId}", streamId);
+
+        // Invalidate GetQualityPreset so the sender's SubscribeToQualityRequests
+        // picks up the keyframe request immediately (within one round-trip)
+        using (Invalidation.Begin())
+            _ = GetQualityPreset(streamId, default);
+
         return Task.CompletedTask;
     }
 

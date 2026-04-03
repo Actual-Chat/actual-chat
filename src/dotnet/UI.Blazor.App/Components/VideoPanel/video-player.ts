@@ -72,6 +72,7 @@ export class VideoPlayer {
     private conversionQueue: Promise<void> = Promise.resolve();
     private isPlaying = false;
     private visibilitySubscription: Subscription | null = null;
+    private reconnectUnsubscribe: (() => void) | null = null;
 
     // Buffer chunks until we receive a keyframe with description
     private waitingForKeyframe = true;
@@ -110,6 +111,7 @@ export class VideoPlayer {
     private lastRenderedOffsetMs = 0;   // offset of the latest decoded frame (ms from stream start)
     private lastLatencyReportTime = 0;
     private pipelineLatencyMs = 0;      // Smoothed video pipeline latency estimate (ms)
+    private lastSkipToLiveTime = 0;     // Cooldown: prevent rapid SKIP_TO_LIVE cascading
     private skipFramesBelowOffsetMs = 0; // After tab restore, skip decoded frames below this offset
     private skippedBacklogFrames = 0;
     private rebufferDelayMs = 0;         // After tab restore, delay rendering to let buffer accumulate
@@ -636,7 +638,10 @@ export class VideoPlayer {
         if (audioState) {
             const audioPlayingAtMs = AudioVideoSync.interpolatePlayingAt(audioState) * 1000;
             const rawTargetVideoOffsetMs = (audioState.recordedAtMs - this.startedAtMs) + audioPlayingAtMs;
-            const targetVideoOffsetMs = rawTargetVideoOffsetMs - this.pipelineLatencyMs;
+            // Audio sync already accounts for end-to-end latency through audioState.recordedAtMs —
+            // subtracting pipelineLatencyMs would double-count, making the target too conservative
+            // and causing buffer bloat → render stall → SKIP_TO_LIVE spiral.
+            const targetVideoOffsetMs = rawTargetVideoOffsetMs;
             targetTimestamp = targetVideoOffsetMs * 1000;
 
             // When audio sync targets a time before this video stream started
@@ -965,6 +970,19 @@ export class VideoPlayer {
             }
         });
 
+        // Listen for VideoStreamer reconnect to re-establish pull after WebSocket drop
+        this.reconnectUnsubscribe = VideoStreamer.onReconnected(() => {
+            if (!this.isPlaying) return;
+            warnLog?.log(`VideoStreamer reconnected — re-pulling stream ${this.streamId}`);
+            this.pullSubscription?.dispose();
+            this.pullSubscription = null;
+            this.pullRetryCount = 0;
+            this.playbackStartTime = 0;
+            this.lastRenderedOffsetMs = 0;
+            const skipToMs = Math.max(0, ServerClock.now() - this.startedAtMs);
+            void this.startPull(this.streamId, skipToMs);
+        });
+
         // Report initial playing state
         void this.reportPlaying(0, true);
     }
@@ -1042,53 +1060,41 @@ export class VideoPlayer {
         const sessionToken = SessionTokens.current;
         debugLog?.log(`startPull: stream=${streamId}, skipTo=${skipToMs}ms, retryCount=${this.pullRetryCount}`);
 
-        const pullStartTime = performance.now();
-        let receivedFramesDuringPull = false;
-
         const streamResult = connection.stream<Uint8Array>(
             'GetVideo', sessionToken, streamId, skipToMs);
 
         this.pullSubscription = streamResult.subscribe({
             next: (frameBytes: Uint8Array) => {
-                receivedFramesDuringPull = true;
                 this.pullRetryCount = 0; // reset on successful frame receipt
                 this.processReceivedFrame(frameBytes);
             },
             error: (err: Error) => {
-                const elapsed = performance.now() - pullStartTime;
-                if (elapsed < 2000 && this.pullRetryCount < 3 && this.isPlaying) {
-                    this.pullRetryCount++;
-                    warnLog?.log(
-                        `Pull stream error after ${elapsed.toFixed(0)}ms, retry #${this.pullRetryCount}: ${err.message}`);
-                    this.pullRetryTimer = setTimeout(() => {
-                        this.pullRetryTimer = null;
-                        if (!this.isPlaying) return;
-                        const retrySkipToMs = ServerClock.now() - this.startedAtMs;
-                        void this.startPull(streamId, retrySkipToMs);
-                    }, 1000);
-                    return;
-                }
-                errorLog?.log('Pull stream error:', err);
-                // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-                void this.reportEnded(err?.message ?? 'Pull stream error');
+                if (!this.isPlaying) return;
+                this.pullRetryCount++;
+                const delay = Math.min(1000 * this.pullRetryCount, 5000);
+                warnLog?.log(
+                    `Pull stream error (retry #${this.pullRetryCount}, delay ${delay}ms): ${err.message}`);
+                this.pullRetryTimer = setTimeout(() => {
+                    this.pullRetryTimer = null;
+                    if (!this.isPlaying) return;
+                    this.pullRetryCount = 0;
+                    const retrySkipToMs = ServerClock.now() - this.startedAtMs;
+                    void this.startPull(streamId, retrySkipToMs);
+                }, delay);
             },
             complete: () => {
-                const elapsed = performance.now() - pullStartTime;
-                if (elapsed < 2000 && this.pullRetryCount < 3 && this.isPlaying) {
-                    this.pullRetryCount++;
-                    warnLog?.log(
-                        `Pull stream ended quickly (${elapsed.toFixed(0)}ms, ` +
-                        `frames=${receivedFramesDuringPull}), retry #${this.pullRetryCount}`);
-                    this.pullRetryTimer = setTimeout(() => {
-                        this.pullRetryTimer = null;
-                        if (!this.isPlaying) return;
-                        const retrySkipToMs = ServerClock.now() - this.startedAtMs;
-                        void this.startPull(streamId, retrySkipToMs);
-                    }, 1000);
-                    return;
-                }
-                debugLog?.log('Pull stream completed');
-                void this.reportEnded(undefined);
+                if (!this.isPlaying) return;
+                this.pullRetryCount++;
+                const delay = Math.min(1000 * this.pullRetryCount, 5000);
+                warnLog?.log(
+                    `Pull stream completed while playing (retry #${this.pullRetryCount}, delay ${delay}ms)`);
+                this.pullRetryTimer = setTimeout(() => {
+                    this.pullRetryTimer = null;
+                    if (!this.isPlaying) return;
+                    this.pullRetryCount = 0;
+                    const retrySkipToMs = ServerClock.now() - this.startedAtMs;
+                    void this.startPull(streamId, retrySkipToMs);
+                }, delay);
             },
         });
     }
@@ -1178,6 +1184,12 @@ export class VideoPlayer {
             this.visibilitySubscription = null;
         }
 
+        // Remove reconnect listener
+        if (this.reconnectUnsubscribe) {
+            this.reconnectUnsubscribe();
+            this.reconnectUnsubscribe = null;
+        }
+
         this.stopPull();
 
         // Close all pending frames
@@ -1248,6 +1260,10 @@ export class VideoPlayer {
             }
         }
 
+        // Cooldown: after SKIP_TO_LIVE, give the new stream time to stabilize
+        if (performance.now() - this.lastSkipToLiveTime < 5000)
+            return;
+
         // Graduated recovery: escalating response to growing latency
         if (latencyMs > DROP_TO_KEYFRAME_MS && latencyMs <= SKIP_TO_LIVE_THRESHOLD_MS) {
             // Phase 2: Drop oldest frames to catch up quickly.
@@ -1281,6 +1297,9 @@ export class VideoPlayer {
             this.requestKeyFrame();
             this.pipelineLatencyMs = 0;
             this.playbackStartTime = 0;
+            // Prevent stale latency report before first new frame renders
+            this.lastRenderedOffsetMs = 0;
+            this.lastSkipToLiveTime = performance.now();
             // Reset jitter buffer state — stale arrival times from old stream are meaningless
             this.jitterEstimateMs = 0;
             this.jitterBufferMs = this.minJitterBufferMs;
