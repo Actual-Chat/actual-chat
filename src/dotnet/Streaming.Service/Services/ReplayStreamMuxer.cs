@@ -97,9 +97,11 @@ public sealed class ReplayStreamMuxer : WorkerBase
                 if (entryEndsAt < resolvedStartAt.Value)
                     continue;
 
-                // Detect and skip gaps
-                if (entry.BeginsAt > lastEntryEnd)
-                    gapAdjustment += entry.BeginsAt - lastEntryEnd;
+                // Detect and skip gaps: only count time after lastEntryEnd
+                // that isn't covered by this entry's audio range
+                var gapStart = Moment.Max(lastEntryEnd, resolvedStartAt.Value);
+                if (entry.BeginsAt > gapStart)
+                    gapAdjustment += entry.BeginsAt - gapStart;
 
                 // Pacing: check how far ahead we are of expected client playback
                 var expectedPosition = resolvedStartAt.Value + gapAdjustment + (serverClock.Now - streamStartedAt) * Speed;
@@ -279,7 +281,7 @@ public sealed class ReplayStreamMuxer : WorkerBase
         await foreach (var entry in entries.ConfigureAwait(false)) {
             if (!entry.HasAudio || entry.IsContentStreaming)
                 continue;
-            if (entry.EndsAt < playingAt)
+            if (entry.GetEndsAt() < playingAt)
                 continue;
 
             var entryBeginsAt = Moment.Max(entry.BeginsAt, lastPlayingAt);
@@ -315,7 +317,7 @@ public sealed class ReplayStreamMuxer : WorkerBase
         await foreach (var entry in entries.ConfigureAwait(false)) {
             if (!entry.HasAudio || entry.IsContentStreaming)
                 continue;
-            if (entry.EndsAt >= playingAt) {
+            if (entry.GetEndsAt() >= playingAt) {
                 lastEntry = entry;
                 break;
             }
@@ -334,9 +336,7 @@ public sealed class ReplayStreamMuxer : WorkerBase
                 continue;
 
             var entryBeginsAt = entry.BeginsAt;
-            var entryEndsAt = entry.EndsAt is { } endsAt
-                ? Moment.Min(endsAt, lastPlayingAt)
-                : lastPlayingAt;
+            var entryEndsAt = Moment.Min(entry.GetEndsAt(), lastPlayingAt);
 
             var expectedRewindPosition = entryEndsAt - remainingOffset;
             if (expectedRewindPosition >= entryBeginsAt)
