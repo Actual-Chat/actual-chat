@@ -20,13 +20,22 @@ public class ImageNormalizer(ILogger<ImageNormalizer> log)
         using var image = await Image.LoadAsync(inputStream, cancellationToken).ConfigureAwait(false);
         progress?.Report(30);
 
-        var resizeRequired = image.Width > maxSize || image.Height > maxSize;
-        var mustProcess = convertToPng || image.Metadata.ExifProfile != null || resizeRequired;
-        if (!mustProcess) {
-            log.LogDebug("Image '{FileName}' needs no processing ({Width}x{Height})",
-                upload.FileName, image.Width, image.Height);
+        var changed = OrientAndResize(image, maxSize);
+        progress?.Report(60);
+
+        if (!changed && !convertToPng) {
+            log.LogDebug("Image '{FileName}' needs no processing ({Width}x{Height})", upload.FileName, image.Width, image.Height);
             return new ProcessedFile(upload, image.Size);
         }
+
+        return await Save(upload, image, convertToPng, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static bool OrientAndResize(Image image, int maxSize)
+    {
+        var resizeRequired = image.Width > maxSize || image.Height > maxSize;
+        if (!resizeRequired && image.Metadata.ExifProfile is null)
+            return false;
 
         image.Mutate(img => {
             img.AutoOrient();
@@ -34,14 +43,18 @@ public class ImageNormalizer(ILogger<ImageNormalizer> log)
                 img.Resize(new ResizeOptions { Mode = ResizeMode.Max, Size = new Size(maxSize) });
         });
         image.Metadata.ExifProfile = null;
-        var imageSize = image.Size;
-        progress?.Report(60);
+        return true;
+    }
 
+    private async Task<ProcessedFile> Save(
+        UploadedFile upload, Image image, bool convertToPng, CancellationToken cancellationToken)
+    {
+        var imageSize = image.Size;
         var outPath = (FilePath.GetApplicationTempDirectory() & upload.FileName).ToUnique(randomLength: 10);
         if (convertToPng)
             outPath = outPath.ChangeExtension(".png");
         var outStream = File.OpenWrite(outPath);
-        await using var _1 = outStream.ConfigureAwait(false);
+        await using var _ = outStream.ConfigureAwait(false);
         var format = convertToPng ? PngFormat.Instance : image.Metadata.DecodedImageFormat!;
         await image.SaveAsync(outStream, format, cancellationToken).ConfigureAwait(false);
         var contentType = convertToPng ? "image/png" : upload.ContentType;
