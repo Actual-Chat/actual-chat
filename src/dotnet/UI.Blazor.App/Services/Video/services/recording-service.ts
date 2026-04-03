@@ -332,6 +332,18 @@ export class RecordingService extends EventTarget {
             height = 540;
         }
 
+        // Mobile webcam: cap to 720p — mobile cameras often ignore getUserMedia
+        // resolution hints and return native sensor resolution (e.g. 1920x2560),
+        // which exceeds H.264 level 3.1 coded area limits (921,600 pixels).
+        if (this.config.mode === 'webcam' && DeviceInfo.isMobile) {
+            const maxDim = 1280;
+            if (width > maxDim || height > maxDim) {
+                const scale = Math.min(maxDim / width, maxDim / height);
+                width = Math.round(width * scale) & ~1;
+                height = Math.round(height * scale) & ~1;
+            }
+        }
+
         // Use the specific codec string if provided, otherwise use defaults
         let codecString: string;
 

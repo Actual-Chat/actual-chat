@@ -19,10 +19,14 @@ export interface CodecInfo {
 
 const CODEC_PROFILES = {
     h264: [
+        { name: 'H.264 High 5.2', codec: 'avc1.640034' },
+        { name: 'H.264 High 5.1', codec: 'avc1.640033' },
         { name: 'H.264 High 4.1', codec: 'avc1.640029' },
         { name: 'H.264 High 4.0', codec: 'avc1.640028' },
         { name: 'H.264 High 3.1', codec: 'avc1.64001F' },
         { name: 'H.264 High 3.0', codec: 'avc1.64001E' },
+        { name: 'H.264 Main 5.2', codec: 'avc1.4D4034' },
+        { name: 'H.264 Main 4.1', codec: 'avc1.4D4029' },
         { name: 'H.264 Main 3.1', codec: 'avc1.4D401F' },
         { name: 'H.264 Main 3.0', codec: 'avc1.4D401E' },
         { name: 'H.264 Baseline 3.1', codec: 'avc1.42E01F' },
@@ -202,10 +206,16 @@ export function getCodecForCategory(category: 'h264' | 'hevc' | 'av1' | 'vp9', w
         return isHighRes ? 'hev1.1.6.L120.B0' : 'hev1.1.6.L93.B0'; // Main L4.0 / Main L3.1
     }
     // H.264: Firefox and mobile use Main profile, desktop uses High (better compression)
+    // Pick level based on coded area — level 3.1 only supports 921,600 pixels
+    const pixels = width * height;
     if (isMobile || DeviceInfo.isFirefox) {
+        if (pixels > 2_073_600) return 'avc1.4D4034'; // Main 5.2 (max ~4.2M px)
+        if (pixels > 921_600) return 'avc1.4D4029';   // Main 4.1 (max ~2.1M px)
         return 'avc1.4D401F'; // Main 3.1
     }
-    return isHighRes ? 'avc1.640028' : 'avc1.64001F'; // High 4.0 / High 3.1
+    if (pixels > 2_073_600) return 'avc1.640034'; // High 5.2
+    if (pixels > 921_600) return 'avc1.640028';   // High 4.0
+    return 'avc1.64001F'; // High 3.1
 }
 
 export function getDefaultCodec(supportedCodecs: CodecInfo[], width = 1280, height = 720): string {
