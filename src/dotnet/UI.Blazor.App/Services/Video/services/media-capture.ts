@@ -7,6 +7,7 @@ export interface CameraCaptureOptions {
     width?: number;
     height?: number;
     frameRate?: number;
+    maxRetries?: number;
 }
 
 export class MediaCapture {
@@ -18,29 +19,66 @@ export class MediaCapture {
         if (options.frameRate) {
             videoConstraints.frameRate = { ideal: options.frameRate };
         }
-        // NOTE(DF): To think how to handle width/height options.
-        // Given size typically has album orientation. But on smartphones camera video might be in portrait orientation.
-        // if (options.width) {
-        //     videoConstraints.width = { ideal: options.width };
-        // }
-        // if (options.height) {
-        //     videoConstraints.height = { ideal: options.height };
-        // }
         infoLog?.log('captureCameraStream: constraints:', JSON.stringify(videoConstraints));
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: videoConstraints,
-                audio: false,
-            });
-            const videoTrack = stream.getVideoTracks()[0];
-            const settings = videoTrack.getSettings();
-            infoLog?.log('captureCameraStream: camera stream settings:', JSON.stringify(settings));
-            return videoTrack;
+        const maxRetries = options.maxRetries ?? 0;
+        let videoTrack: MediaStreamTrack;
+        for (let attempt = 0; ; attempt++) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: videoConstraints,
+                    audio: false,
+                });
+                videoTrack = stream.getVideoTracks()[0];
+                break;
+            }
+            catch (e) {
+                const isDeviceBusy = e instanceof DOMException
+                    && (e.name === 'NotReadableError' || e.name === 'AbortError');
+                if (isDeviceBusy && attempt < maxRetries) {
+                    const delayMs = 300 * (attempt + 1);
+                    infoLog?.log(`captureCameraStream: camera busy, retrying in ${delayMs}ms (attempt ${attempt + 1}/${maxRetries})`);
+                    await new Promise(resolve => setTimeout(resolve, delayMs));
+                    continue;
+                }
+                infoLog?.log('captureCameraStream: failed to capture camera stream. Error:', JSON.stringify(e), (e as OverconstrainedError).constraint);
+                throw e;
+            }
         }
-        catch (e) {
-            infoLog?.log('captureCameraStream: failed to capture camera stream. Error:', JSON.stringify(e), (e as OverconstrainedError).constraint);
-            throw e;
+
+        const initialSettings = videoTrack.getSettings();
+        infoLog?.log(`captureCameraStream: initial ${initialSettings.width}x${initialSettings.height}`);
+
+        // Apply requested resolution via applyConstraints, adapting to stream orientation
+        if (options.width && options.height && initialSettings.width && initialSettings.height) {
+            const isPortrait = initialSettings.height > initialSettings.width;
+            // Requested dimensions assume landscape; swap for portrait streams
+            const targetWidth = isPortrait ? options.height : options.width;
+            const targetHeight = isPortrait ? options.width : options.height;
+
+            const orientationMatches = isPortrait
+                ? initialSettings.height > initialSettings.width
+                : initialSettings.width >= initialSettings.height;
+            const hasMatchingDimension = initialSettings.width === targetWidth || initialSettings.height === targetHeight;
+            if (orientationMatches && hasMatchingDimension) {
+                infoLog?.log(`captureCameraStream: close enough at ${initialSettings.width}x${initialSettings.height} (target ${targetWidth}x${targetHeight}), skipping applyConstraints`);
+            } else {
+                try {
+                    infoLog?.log(`captureCameraStream: applying ${targetWidth}x${targetHeight} (portrait=${isPortrait})`);
+                    await videoTrack.applyConstraints({
+                        width: { ideal: targetWidth },
+                        height: { ideal: targetHeight },
+                    });
+                    const adjusted = videoTrack.getSettings();
+                    infoLog?.log(`captureCameraStream: after applyConstraints ${adjusted.width}x${adjusted.height}`);
+                } catch (e) {
+                    // applyConstraints failed — track stays in its previous state per spec
+                    const kept = videoTrack.getSettings();
+                    infoLog?.log(`captureCameraStream: applyConstraints failed, keeping ${kept.width}x${kept.height}. Error:`, e);
+                }
+            }
         }
+
+        return videoTrack;
     }
 
     static async captureScreencast(): Promise<MediaStreamTrack> {

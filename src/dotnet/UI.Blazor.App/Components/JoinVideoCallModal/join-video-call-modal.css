@@ -110,6 +110,8 @@
     @apply bg-01;
     @apply shadow-context;
     @apply -translate-x-1/2;
+    @apply overflow-y-auto;
+    max-height: 30vh;
 }
 .join-video-call-modal .camera-dropdown-header {
     @apply text-caption-1 text-02 px-4 h-6 flex items-center;
