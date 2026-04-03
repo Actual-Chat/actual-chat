@@ -46,10 +46,8 @@ public class ImageNormalizer(ILogger<ImageNormalizer> log)
         return true;
     }
 
-    private async Task<ProcessedFile> Save(
-        UploadedFile upload, Image image, bool convertToPng, CancellationToken cancellationToken)
+    private async Task<ProcessedFile> Save(UploadedFile upload, Image image, bool convertToPng, CancellationToken cancellationToken)
     {
-        var imageSize = image.Size;
         var outPath = (FilePath.GetApplicationTempDirectory() & upload.FileName).ToUnique(randomLength: 10);
         if (convertToPng)
             outPath = outPath.ChangeExtension(".png");
@@ -60,9 +58,12 @@ public class ImageNormalizer(ILogger<ImageNormalizer> log)
         var contentType = convertToPng ? "image/png" : upload.ContentType;
 
         log.LogInformation("Normalized '{FileName}' → {Width}x{Height}{ConvertNote}",
-            upload.FileName, imageSize.Width, imageSize.Height,
+            upload.FileName, image.Size.Width, image.Size.Height,
             convertToPng ? " (converted to PNG)" : "");
 
-        return new ProcessedFile(new UploadedTempFile(outPath.FileName, contentType, outPath), imageSize);
+        var displayedName = upload.FileName;
+        if (convertToPng)
+            displayedName = displayedName.ChangeExtension(".png");
+        return new ProcessedFile(new UploadedTempFile(displayedName, contentType, outPath), image.Size);
     }
 }
