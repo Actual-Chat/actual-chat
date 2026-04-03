@@ -18,6 +18,7 @@ public partial class MigrationFlow : Flow<Unit>, IMasterFlow
             // Suppressed: ChatEntryMigrationFixupFlow is a superset of ChatEntryMigrationFlow
             // await Apply<ChatEntryMigrationFlow>().ConfigureAwait(false);
             await Apply<ChatEntryMigrationFixupFlow>().ConfigureAwait(false);
+            await Apply<IconSvgToPngMigrationFlow>().ConfigureAwait(false);
             await Apply<ChatEntryEndsAtFixupFlow>(
                 dependsOn: [typeof(ChatEntryMigrationFixupFlow)]).ConfigureAwait(false);
         }

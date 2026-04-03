@@ -234,7 +234,9 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         });
 
         // Flows
-        services.AddFlows().Add<MigrationFlow>();
+        services.AddFlows()
+            .Add<MigrationFlow>()
+            .Add<IconSvgToPngMigrationFlow>();
 
         // Web
         var binPath = new FilePath(Assembly.GetExecutingAssembly().Location).FullPath.DirectoryPath;
