@@ -81,7 +81,7 @@ public partial class Chats(IServiceProvider services) : IChats
         Range<long> idTileRange,
         CancellationToken cancellationToken)
     {
-        await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
+        await RequireCanRead(session, chatId, cancellationToken).ConfigureAwait(false);
         return await Backend.GetTile(chatId, idTileRange, false, cancellationToken).ConfigureAwait(false);
     }
 
@@ -98,7 +98,7 @@ public partial class Chats(IServiceProvider services) : IChats
         long idTileStart,
         CancellationToken cancellationToken)
     {
-        await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
+        await RequireCanRead(session, chatId, cancellationToken).ConfigureAwait(false);
         return await Backend.GetChatRangeMeta(chatId, idTileStart, cancellationToken).ConfigureAwait(false);
     }
 
@@ -109,7 +109,7 @@ public partial class Chats(IServiceProvider services) : IChats
         ChatId chatId,
         CancellationToken cancellationToken)
     {
-        await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
+        await RequireCanRead(session, chatId, cancellationToken).ConfigureAwait(false);
         return await Backend.GetIdRange(chatId, false, cancellationToken).ConfigureAwait(false);
     }
 
@@ -144,8 +144,7 @@ public partial class Chats(IServiceProvider services) : IChats
         ChatId chatId,
         CancellationToken cancellationToken)
     {
-        var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false); // Make sure we can read the chat
-        if (chat == null)
+        if (!await CanRead(session, chatId, cancellationToken).ConfigureAwait(false))
             return null;
 
         return await Backend.GetNews(chatId, cancellationToken).ConfigureAwait(false);
@@ -154,7 +153,7 @@ public partial class Chats(IServiceProvider services) : IChats
     // [ComputeMethod]
     public virtual async Task<Author[]> ListMentionableAuthors(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
-        await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
+        await RequireCanRead(session, chatId, cancellationToken).ConfigureAwait(false);
         var authorIds = await AuthorsBackend.ListAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
         var authors = await authorIds
             .Select(id => Authors.Get(session, chatId, id, cancellationToken))
@@ -921,6 +920,19 @@ public partial class Chats(IServiceProvider services) : IChats
     }
 
     // Private methods
+
+    private async ValueTask RequireCanRead(Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var rules = await GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (!rules.CanRead())
+            throw StandardError.NotFound<Chat>();
+    }
+
+    private async ValueTask<bool> CanRead(Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var rules = await GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
+        return rules.CanRead();
+    }
 
     private async Task<PrincipalId> GetOwnPrincipalId(
         Session session, ChatId chatId,
