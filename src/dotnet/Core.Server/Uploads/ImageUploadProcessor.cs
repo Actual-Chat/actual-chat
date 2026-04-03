@@ -1,5 +1,6 @@
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats;
+using Size = ActualChat.Media.Size;
 
 namespace ActualChat.Uploads;
 
@@ -42,7 +43,7 @@ public class ImageUploadProcessor(IServiceProvider services) : IUploadProcessor
         // Do not process GIFs and other animated images.
         if (imageInfo.FrameMetadataCollection.Count > 0
             || imageInfo.Metadata.TryGetGifMetadata(out _))
-            return new ProcessedFile(upload, imageInfo.Size);
+            return new ProcessedFile(upload, new Size(imageInfo.Width, imageInfo.Height));
 
         return await RasterImageNormalizer.Normalize(upload, 1920, progress: progress, cancellationToken: cancellationToken)
             .ConfigureAwait(false);

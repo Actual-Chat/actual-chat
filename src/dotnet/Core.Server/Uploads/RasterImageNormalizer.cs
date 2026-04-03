@@ -2,6 +2,7 @@ using ActualLab.IO;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.Processing;
+using Size = ActualChat.Media.Size;
 
 namespace ActualChat.Uploads;
 
@@ -25,7 +26,7 @@ public class RasterImageNormalizer(ILogger<RasterImageNormalizer> log)
 
         if (!changed && !convertToPng) {
             log.LogDebug("Image '{FileName}' needs no processing ({Width}x{Height})", upload.FileName, image.Width, image.Height);
-            return new ProcessedFile(upload, image.Size);
+            return new ProcessedFile(upload, new Size(image.Width, image.Height));
         }
 
         return await Save(upload, image, convertToPng, cancellationToken).ConfigureAwait(false);
@@ -40,7 +41,7 @@ public class RasterImageNormalizer(ILogger<RasterImageNormalizer> log)
         image.Mutate(img => {
             img.AutoOrient();
             if (resizeRequired)
-                img.Resize(new ResizeOptions { Mode = ResizeMode.Max, Size = new Size(maxSize) });
+                img.Resize(new ResizeOptions { Mode = ResizeMode.Max, Size = new SixLabors.ImageSharp.Size(maxSize) });
         });
         image.Metadata.ExifProfile = null;
         return true;
@@ -58,12 +59,12 @@ public class RasterImageNormalizer(ILogger<RasterImageNormalizer> log)
         var contentType = convertToPng ? "image/png" : upload.ContentType;
 
         log.LogInformation("Normalized '{FileName}' → {Width}x{Height}{ConvertNote}",
-            upload.FileName, image.Size.Width, image.Size.Height,
+            upload.FileName, image.Width, image.Height,
             convertToPng ? " (converted to PNG)" : "");
 
         var displayedName = upload.FileName;
         if (convertToPng)
             displayedName = displayedName.ChangeExtension(".png");
-        return new ProcessedFile(new UploadedTempFile(displayedName, contentType, outPath), image.Size);
+        return new ProcessedFile(new UploadedTempFile(displayedName, contentType, outPath), new Size(image.Width, image.Height));
     }
 }

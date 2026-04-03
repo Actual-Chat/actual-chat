@@ -3,7 +3,7 @@ using ActualLab.Generators;
 using ActualLab.IO;
 using Foundation;
 using PhotosUI;
-using Size = ActualChat.UI.App.Size;
+using Size = ActualChat.Media.Size;
 
 namespace ActualChat.App.Maui;
 
