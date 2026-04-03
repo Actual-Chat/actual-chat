@@ -6,7 +6,7 @@ namespace ActualChat.Uploads;
 public class ImageUploadProcessor(IServiceProvider services) : IUploadProcessor
 {
     private ILogger Log => field ??= services.LogFor(GetType());
-    private ImageNormalizer ImageNormalizer => field ??= services.GetRequiredService<ImageNormalizer>();
+    private RasterImageNormalizer RasterImageNormalizer => field ??= services.GetRequiredService<RasterImageNormalizer>();
 
     public bool Supports(string contentType, MediaKind mediaKind)
         // GIF is passed through to preserve animation. Icon media kinds are handled by IconUploadProcessor.
@@ -44,7 +44,7 @@ public class ImageUploadProcessor(IServiceProvider services) : IUploadProcessor
             || imageInfo.Metadata.TryGetGifMetadata(out _))
             return new ProcessedFile(upload, imageInfo.Size);
 
-        return await ImageNormalizer.Normalize(upload, 1920, progress: progress, cancellationToken: cancellationToken)
+        return await RasterImageNormalizer.Normalize(upload, 1920, progress: progress, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
     }
 

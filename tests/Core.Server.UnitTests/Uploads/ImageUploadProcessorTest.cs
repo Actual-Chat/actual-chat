@@ -11,7 +11,7 @@ public class ImageUploadProcessorTest : IDisposable
     {
         var services = new ServiceCollection()
             .AddLogging()
-            .AddSingleton<ImageNormalizer>()
+            .AddSingleton<RasterImageNormalizer>()
             .BuildServiceProvider();
         _processor = new ImageUploadProcessor(services);
     }

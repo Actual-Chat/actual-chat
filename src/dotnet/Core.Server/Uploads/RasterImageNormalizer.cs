@@ -5,7 +5,7 @@ using SixLabors.ImageSharp.Processing;
 
 namespace ActualChat.Uploads;
 
-public class ImageNormalizer(ILogger<ImageNormalizer> log)
+public class RasterImageNormalizer(ILogger<RasterImageNormalizer> log)
 {
     public async Task<ProcessedFile> Normalize(
         UploadedFile upload,

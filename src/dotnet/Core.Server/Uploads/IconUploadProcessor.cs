@@ -13,7 +13,7 @@ public class IconUploadProcessor(IServiceProvider services) : IUploadProcessor
 {
     private const int MaxSize = 1920;
     private ILogger Log => field ??= services.LogFor(GetType());
-    private ImageNormalizer ImageNormalizer => field ??= services.GetRequiredService<ImageNormalizer>();
+    private RasterImageNormalizer RasterImageNormalizer => field ??= services.GetRequiredService<RasterImageNormalizer>();
 
     private static readonly HashSet<string> UniversalFormats = new(StringComparer.OrdinalIgnoreCase) {
         "image/jpeg",
@@ -41,7 +41,7 @@ public class IconUploadProcessor(IServiceProvider services) : IUploadProcessor
         var tempFile = await UploadProcessorHelper.DumpToTempFile(upload, cancellationToken).ConfigureAwait(false);
         ProcessedFile result;
         try {
-            result = await ImageNormalizer.Normalize(tempFile, MaxSize, convertToPng, progress, cancellationToken)
+            result = await RasterImageNormalizer.Normalize(tempFile, MaxSize, convertToPng, progress, cancellationToken)
                 .ConfigureAwait(false);
         }
         catch {
