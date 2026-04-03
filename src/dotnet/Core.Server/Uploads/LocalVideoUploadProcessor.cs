@@ -15,7 +15,7 @@ public sealed class LocalVideoUploadProcessor(ILogger<LocalVideoUploadProcessor>
     public async Task<ProcessedFile> Process(UploadedFile upload, IProgress<double>? progress, CancellationToken cancellationToken)
     {
         progress?.Report(0);
-        var tempFile = await UploadProcessorHelper.DumpToTempFile(upload, cancellationToken).ConfigureAwait(false);
+        var tempFile = await upload.DumpToTempFile(cancellationToken).ConfigureAwait(false);
         ProcessedFile processedFile;
         try {
             processedFile = await ProcessInternal(tempFile, progress, cancellationToken).ConfigureAwait(false);

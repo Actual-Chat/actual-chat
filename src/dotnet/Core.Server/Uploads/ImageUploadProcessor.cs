@@ -19,7 +19,7 @@ public class ImageUploadProcessor(IServiceProvider services) : IUploadProcessor
     {
         progress?.Report(0);
 
-        var tempFile = await UploadProcessorHelper.DumpToTempFile(upload, cancellationToken).ConfigureAwait(false);
+        var tempFile = await upload.DumpToTempFile(cancellationToken).ConfigureAwait(false);
         ProcessedFile processedFile;
         try {
             processedFile = await ProcessInternal(tempFile, progress, cancellationToken).ConfigureAwait(false);
