@@ -1,4 +1,4 @@
-namespace ActualChat.UI.App;
+namespace ActualChat.Media;
 
 [StructLayout(LayoutKind.Auto)]
 public readonly record struct Size(int Width, int Height)

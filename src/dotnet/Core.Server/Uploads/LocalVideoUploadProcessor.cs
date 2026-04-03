@@ -1,8 +1,6 @@
 using ActualLab.IO;
 using FFMpegCore;
 using FFMpegCore.Enums;
-using SixLabors.ImageSharp;
-
 namespace ActualChat.Uploads;
 
 public sealed class LocalVideoUploadProcessor(ILogger<LocalVideoUploadProcessor> log) : IUploadProcessor

@@ -3,38 +3,24 @@ using Google.Api.Gax.ResourceNames;
 using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Storage.V1;
 using Google.Cloud.Video.Transcoder.V1;
-using SixLabors.ImageSharp;
 using TranscoderAudioStream = Google.Cloud.Video.Transcoder.V1.AudioStream;
 using TranscoderVideoStream = Google.Cloud.Video.Transcoder.V1.VideoStream;
 
 namespace ActualChat.Uploads;
 
-public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
+public sealed class GoogleCloudVideoUploadProcessor(
+    StorageClient storageClient,
+    string bucket,
+    string projectId,
+    string regionId,
+    ILogger<GoogleCloudVideoUploadProcessor> log)
+    : IUploadProcessor
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan JobTimeout = TimeSpan.FromMinutes(14);
     private static readonly TimeSpan SignedUrlExpiry = TimeSpan.FromHours(1);
 
-    private readonly StorageClient _storageClient;
-    private readonly string _bucket;
-    private readonly string _projectId;
-    private readonly string _regionId;
-
-    private ILogger Log { get; }
-
-    public GoogleCloudVideoUploadProcessor(
-        StorageClient storageClient,
-        string bucket,
-        string projectId,
-        string regionId,
-        ILogger<GoogleCloudVideoUploadProcessor> log)
-    {
-        _storageClient = storageClient;
-        _bucket = bucket;
-        _projectId = projectId;
-        _regionId = regionId;
-        Log = log;
-    }
+    private ILogger Log { get; } = log;
 
     public bool Supports(string contentType, MediaKind mediaKind)
         => MediaTypeExt.IsVideo(contentType);
@@ -122,8 +108,8 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
             }
             else {
                 outputPrefix = $"transcode-output/{Guid.NewGuid():N}/";
-                var inputGcsUri = $"gs://{_bucket}/{blobFile.BlobPath}";
-                var outputGcsUri = $"gs://{_bucket}/{outputPrefix}";
+                var inputGcsUri = $"gs://{bucket}/{blobFile.BlobPath}";
+                var outputGcsUri = $"gs://{bucket}/{outputPrefix}";
 
                 stepSw.Restart();
                 if (UploadProcessorHelper.ExceedsFullHd(size))
@@ -188,7 +174,7 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
     {
         var credential = await GoogleCredential.GetApplicationDefaultAsync().ConfigureAwait(false);
         var urlSigner = UrlSigner.FromCredential(credential);
-        return await urlSigner.SignAsync(_bucket, objectName, SignedUrlExpiry, cancellationToken: CancellationToken.None).ConfigureAwait(false);
+        return await urlSigner.SignAsync(bucket, objectName, SignedUrlExpiry, cancellationToken: CancellationToken.None).ConfigureAwait(false);
     }
 
     private async Task<Job> CreateTranscoderJob(
@@ -197,7 +183,7 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
         CancellationToken cancellationToken)
     {
         var client = await TranscoderServiceClient.CreateAsync(cancellationToken).ConfigureAwait(false);
-        var parent = LocationName.FromProjectLocation(_projectId, _regionId);
+        var parent = LocationName.FromProjectLocation(projectId, regionId);
         const string videoStreamKey = "video_stream0";
         const string audioStreamKey = "audio_stream0";
 
@@ -278,14 +264,14 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
 
     private async Task<long> GetObjectLength(string objectName, CancellationToken cancellationToken)
     {
-        var obj = await _storageClient.GetObjectAsync(_bucket, objectName, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var obj = await storageClient.GetObjectAsync(bucket, objectName, cancellationToken: cancellationToken).ConfigureAwait(false);
         return (long)(obj.Size ?? 0);
     }
 
     private async Task<Stream> OpenGcsObject(string objectName)
     {
         var stream = new MemoryStream();
-        await _storageClient.DownloadObjectAsync(_bucket, objectName, stream, cancellationToken: default).ConfigureAwait(false);
+        await storageClient.DownloadObjectAsync(bucket, objectName, stream, cancellationToken: default).ConfigureAwait(false);
         stream.Position = 0;
         return stream;
     }
@@ -303,9 +289,9 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
     private async Task CleanupGcsOutputAsync(string prefix)
     {
         try {
-            var objects = _storageClient.ListObjectsAsync(_bucket, prefix);
+            var objects = storageClient.ListObjectsAsync(bucket, prefix);
             await foreach (var obj in objects.ConfigureAwait(false))
-                await _storageClient.DeleteObjectAsync(obj, cancellationToken: default).ConfigureAwait(false);
+                await storageClient.DeleteObjectAsync(obj, cancellationToken: default).ConfigureAwait(false);
         }
         catch (Exception e) {
             Log.LogWarning(e, "Failed to cleanup GCS transcoder output at '{Prefix}'", prefix);
@@ -322,7 +308,7 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
         try {
             var stream = MemoryStreamManager.Default.GetStream();
             await using (stream.ConfigureAwait(false)) {
-                await _storageClient.DownloadObjectAsync(_bucket, stateObjectName, stream, cancellationToken: cancellationToken).ConfigureAwait(false);
+                await storageClient.DownloadObjectAsync(bucket, stateObjectName, stream, cancellationToken: cancellationToken).ConfigureAwait(false);
                 stream.Position = 0;
                 return await JsonSerializer.DeserializeAsync<TranscoderState>(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
             }
@@ -346,7 +332,7 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
         await using (stream.ConfigureAwait(false)) {
             await JsonSerializer.SerializeAsync(stream, state, cancellationToken: cancellationToken).ConfigureAwait(false);
             stream.Position = 0;
-            await _storageClient.UploadObjectAsync(_bucket, stateObjectName, "application/json", stream, cancellationToken: cancellationToken).ConfigureAwait(false);
+            await storageClient.UploadObjectAsync(bucket, stateObjectName, "application/json", stream, cancellationToken: cancellationToken).ConfigureAwait(false);
             Log.LogDebug("Saved transcoder state '{StateObject}': job '{JobName}'", stateObjectName, jobName);
         }
     }
@@ -354,7 +340,7 @@ public sealed class GoogleCloudVideoUploadProcessor : IUploadProcessor
     private async Task DeleteState(string stateObjectName)
     {
         try {
-            await _storageClient.DeleteObjectAsync(_bucket, stateObjectName, cancellationToken: default).ConfigureAwait(false);
+            await storageClient.DeleteObjectAsync(bucket, stateObjectName, cancellationToken: default).ConfigureAwait(false);
             Log.LogDebug("Deleted transcoder state '{StateObject}'", stateObjectName);
         }
         catch (Exception e) {

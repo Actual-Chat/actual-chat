@@ -2,8 +2,6 @@ using System.Net.Mime;
 using ActualLab.IO;
 using FFMpegCore;
 using MediaFormat = FFMpegCore.MediaFormat;
-using SixLabors.ImageSharp;
-
 namespace ActualChat.Uploads;
 
 public static class UploadProcessorHelper

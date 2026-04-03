@@ -1,5 +1,3 @@
-using SixLabors.ImageSharp;
-
 namespace ActualChat.Uploads;
 
 /// <summary>

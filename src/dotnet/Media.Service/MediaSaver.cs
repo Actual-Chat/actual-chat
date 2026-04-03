@@ -1,8 +1,6 @@
 using System.Text;
 using ActualChat.Hashing;
 using ActualChat.Uploads;
-using SixLabors.ImageSharp;
-
 namespace ActualChat.Media;
 
 /// <summary>

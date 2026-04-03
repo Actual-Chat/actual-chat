@@ -1,6 +1,5 @@
 using ActualChat.Uploads;
 using FFMpegCore;
-using SixLabors.ImageSharp;
 
 namespace ActualChat.Core.Server.UnitTests.Uploads;
 

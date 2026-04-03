@@ -1,5 +1,4 @@
 using ActualChat.Uploads;
-using SixLabors.ImageSharp;
 
 namespace ActualChat.Core.Server.UnitTests.Uploads;
 
