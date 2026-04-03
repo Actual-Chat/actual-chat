@@ -38,7 +38,7 @@ public class IconUploadProcessor(IServiceProvider services) : IUploadProcessor
 
         progress?.Report(0);
         var convertToPng = !UniversalFormats.Contains(upload.ContentType);
-        var tempFile = await UploadProcessorHelper.DumpToTempFile(upload, cancellationToken).ConfigureAwait(false);
+        var tempFile = await upload.DumpToTempFile(cancellationToken).ConfigureAwait(false);
         ProcessedFile result;
         try {
             result = await RasterImageNormalizer.Normalize(tempFile, MaxSize, convertToPng, progress, cancellationToken)
