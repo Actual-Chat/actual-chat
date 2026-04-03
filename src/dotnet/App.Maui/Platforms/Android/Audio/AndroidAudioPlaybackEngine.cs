@@ -108,11 +108,16 @@ internal sealed class AndroidAudioPlaybackEngine(
         }
 
         lock (Lock) { // We must re-lock after await
+            // Deactivate and remove listener BEFORE stopping the track
+            // to prevent OnPeriodicNotification callbacks on a stopped/released track,
+            // which can cause stack overflow via JNI interop infinite recursion
             _positionListener?.Deactivate();
+            if (_audioTrack.IsValid()) {
+                try { _audioTrack.SetPlaybackPositionUpdateListener(null); } catch { /* Ignore */ }
+            }
             if (_positionListener.IsValid())
                 _positionListener.DisposeSilently();
             if (_audioTrack.IsValid()) {
-                try { _audioTrack.SetPlaybackPositionUpdateListener(null); } catch { /* Ignore */ }
                 try {
                     if (_audioTrack.PlayState is PlayState.Playing or PlayState.Paused)
                         _audioTrack.Stop();
@@ -121,6 +126,7 @@ internal sealed class AndroidAudioPlaybackEngine(
                 try { _audioTrack.Release(); } catch { /* Ignore */ }
                 _audioTrack.DisposeSilently();
             }
+            _audioTrack = null;
 
             if (_positionListenerHandle.IsAllocated)
                 _positionListenerHandle.Free();
@@ -356,8 +362,8 @@ internal sealed class AndroidAudioPlaybackEngine(
                 return;
 
             try {
-                if (!ReferenceEquals(audioTrack, _parent._audioTrack))
-                    return; // Something is off, this should never happen
+                if (_parent._audioTrack is null || !ReferenceEquals(audioTrack, _parent._audioTrack))
+                    return; // Something is off or already disposing
 
                 _parent.NotifyPlaying(_parent._fedSampleCount);
                 _whenMarkerReachedSource.TrySetResult();
@@ -374,10 +380,11 @@ internal sealed class AndroidAudioPlaybackEngine(
                 return;
 
             try {
-                if (!ReferenceEquals(audioTrack, _parent._audioTrack))
-                    return; // Something is off, this should never happen
+                var parentTrack = _parent._audioTrack;
+                if (parentTrack is null || !ReferenceEquals(audioTrack, parentTrack))
+                    return; // Something is off or already disposing
 
-                if (audioTrack.IsValid())
+                if (parentTrack.PlayState != PlayState.Stopped)
                     _parent.NotifyPlaying(_parent.GetPlayedSampleCount());
                 else {
                     _parent.NotifyPlaying(_parent._fedSampleCount);
