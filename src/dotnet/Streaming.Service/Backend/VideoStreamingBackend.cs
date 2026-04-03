@@ -47,33 +47,16 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             return null;
         }
 
-        Log.LogInformation("GetVideo: #{StreamId} found, wrapping with logging", streamId);
-
-        // Debug: wrap stream to count and log frames being sent to client
-        var frameCount = 0;
-        async IAsyncEnumerable<VideoFrame> LogFrames(IAsyncEnumerable<VideoFrame> source)
-        {
-            await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-                frameCount++;
-                if (frameCount <= 3 || frameCount % 100 == 0)
-                    DebugLog?.LogDebug("GetVideo sending frame #{Count}: Offset={Offset}ms, Size={Size}, IsKey={IsKey}, PeerId={PeerId}",
-                        frameCount, frame.Offset.TotalMilliseconds, frame.Data?.Length ?? 0, frame.IsKeyFrame, peerId);
-                yield return frame;
-            }
-            DebugLog?.LogDebug("GetVideo stream ended after {Count} frames for PeerId={PeerId}", frameCount, peerId);
-        }
-
         // Always start from the next live keyframe — skip all buffered frames
         // and wait for a fresh keyframe at the live edge for near-zero latency.
-        stream = SkipToNextKeyFrame(LogFrames(stream), Log, cancellationToken);
+        stream = SkipToNextKeyFrame(stream, Log, cancellationToken);
 
         // Per-viewer temporal layer filtering — drop enhancement layers for slow peers
         stream = TemporalLayerFilter(streamId, peerId, stream, cancellationToken);
 
         // Wrap with pause filtering — when stream is paused by priority queue, drop frames
-        if (_latencyStates.TryGetValue(streamId, out var pauseState) && pauseState.ChatId != default) {
+        if (_latencyStates.TryGetValue(streamId, out var pauseState) && pauseState.ChatId != default)
             stream = PauseAwareFilter(streamId, stream, cancellationToken);
-        }
 
         return RpcStream.New(stream);
     }
@@ -115,13 +98,13 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             var latency = Clocks.ServerClock.Now - (latencyState.StartedAt + TimeSpan.FromMilliseconds(streamOffsetMs));
             if (latency > TimeSpan.Zero) {
                 AppMeters.VideoLatency.Record(latency.TotalMilliseconds);
-                Log.LogWarning("ReportPeerLatency: #{StreamId}, PeerId={PeerId}, StreamOffsetMs={StreamOffsetMs:F0}, LatencyMs={LatencyMs:F0}, DecodeMs={DecodeMs:F1}, BufDepth={BufDepth}, BufSpanMs={BufSpanMs:F0}",
+                DebugLog?.LogDebug("ReportPeerLatency: #{StreamId}, PeerId={PeerId}, StreamOffsetMs={StreamOffsetMs:F0}, LatencyMs={LatencyMs:F0}, DecodeMs={DecodeMs:F1}, BufDepth={BufDepth}, BufSpanMs={BufSpanMs:F0}",
                     streamId, peerId, streamOffsetMs, latency.TotalMilliseconds, medianDecodeTimeMs, bufferDepth, bufferSpanMs);
                 latencyState.RecordPeerLatency(peerId, (float)latency.TotalMilliseconds,
                     (float)medianDecodeTimeMs, bufferDepth, (float)bufferSpanMs);
             }
             else {
-                Log.LogWarning("ReportPeerLatency: #{StreamId}, PeerId={PeerId}, negative latency={LatencyMs:F0}ms (clock skew?), skipping",
+                DebugLog?.LogDebug("ReportPeerLatency: #{StreamId}, PeerId={PeerId}, negative latency={LatencyMs:F0}ms (clock skew?), skipping",
                     streamId, peerId, latency.TotalMilliseconds);
             }
             return Task.CompletedTask;
@@ -315,7 +298,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             var frameCount = 0;
             var lastHeartbeat = CpuTimestamp.Now;
             var heartbeatInterval = TimeSpan.FromMinutes(2.5); // Half of LiveVideoBackend.ChatStateTtl
-            async IAsyncEnumerable<VideoFrame> LogFrames(IAsyncEnumerable<VideoFrame> source)
+            async IAsyncEnumerable<VideoFrame> ProcessFrames(IAsyncEnumerable<VideoFrame> source)
             {
                 await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                     frameCount++;
@@ -323,11 +306,6 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                     // Track throughput for quality adaptation
                     var latencyState = _latencyStates.GetValueOrDefault(record.StreamId);
                     latencyState?.RecordFrameBytes(frame.Data?.Length ?? 0);
-
-                    if (frameCount <= 3 || frameCount % 100 == 0)
-                        DebugLog?.LogDebug(
-                            "PushVideoInternal frame #{Count}: Offset={Offset}ms, IsKey={IsKey}, DataLen={DataLen}, DescLen={DescLen}",
-                            frameCount, frame.Offset.TotalMilliseconds, frame.IsKeyFrame, frame.Data?.Length ?? 0, frame.Description?.Length ?? 0);
 
                     if (lastHeartbeat.Elapsed >= heartbeatInterval) {
                         lastHeartbeat = CpuTimestamp.Now;
@@ -338,10 +316,9 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 
                     yield return frame;
                 }
-                DebugLog?.LogDebug("PushVideoInternal: stream completed with {Count} frames", frameCount);
             }
 
-            var memoizer = LogFrames(videoFrames).Memoize(
+            var memoizer = ProcessFrames(videoFrames).Memoize(
                 Constants.Video.RetentionBufferSize,
                 cancellationToken);
             await _videoStreams.Publish(record.StreamId, memoizer).ConfigureAwait(false);

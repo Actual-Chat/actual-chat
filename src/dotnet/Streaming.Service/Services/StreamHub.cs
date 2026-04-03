@@ -1,5 +1,6 @@
 using System.Buffers;
 using ActualChat.Audio;
+using ActualChat.Streaming.Diagnostics;
 using ActualChat.Video;
 using ActualChat.Hosting;
 using ActualChat.Security;
@@ -87,7 +88,11 @@ public class StreamHub(IServiceProvider services) : Hub
                 if (frameBytes.Length == 0)
                     continue;
 
+                var tsBeforeDeserialize = Stopwatch.GetTimestamp();
                 var frame = DeserializeVideoFrame(frameBytes, codec, lastWidth, lastHeight);
+                var deserializeUs = Stopwatch.GetElapsedTime(tsBeforeDeserialize).TotalMicroseconds;
+                StreamingMeters.VideoFrameDeserializeDuration.Record(deserializeUs);
+
                 if (frame == null) {
                     failedFrameCount++;
                     if (failedFrameCount <= 3 || failedFrameCount % 100 == 0)
@@ -99,6 +104,9 @@ public class StreamHub(IServiceProvider services) : Hub
                 }
 
                 frame.CachedSerializedBytes = frameBytes; // Cache for zero-copy forwarding
+                StreamingMeters.VideoFrameSizeBytes.Record(frameBytes.Length);
+                StreamingMeters.VideoFramesReceived.Add(1);
+                StreamingMeters.VideoBytesReceived.Add(frameBytes.Length);
 
                 if (frame.IsKeyFrame) {
                     lastWidth = frame.Width;
@@ -106,13 +114,10 @@ public class StreamHub(IServiceProvider services) : Hub
                 }
 
                 frameCount++;
-                if (frameCount <= 3 || frameCount % 30 == 0 || frame.IsKeyFrame)
-                    Log.LogInformation("PushVideo frame #{Count}: Offset={Offset}ms, IsKey={IsKey}, DataLen={DataLen}, DescLen={DescLen}",
-                        frameCount, frame.Offset.TotalMilliseconds, frame.IsKeyFrame, frame.Data?.Length ?? 0, frame.Description?.Length ?? 0);
-
                 yield return frame;
             }
-            Log.LogInformation("PushVideo: stream ended after {FrameCount} total frames", frameCount);
+            Log.LogInformation("PushVideo: stream ended after {FrameCount} frames ({FailedCount} failed)",
+                frameCount, failedFrameCount);
         }
     }
 
@@ -183,15 +188,31 @@ public class StreamHub(IServiceProvider services) : Hub
         }
 
         var frameCount = 0;
+        StreamingMeters.VideoActiveConsumers.Add(1);
+        try {
+            await foreach (var frame in rpcStream.WithCancellation(stopCts.Token).ConfigureAwait(false)) {
+                frameCount++;
 
-        await foreach (var frame in rpcStream.WithCancellation(stopCts.Token).ConfigureAwait(false)) {
-            frameCount++;
-            if (frameCount <= 30 || frameCount % 30 == 0)
-                Log.LogInformation("GetVideo sending frame #{Total}", frameCount);
-            yield return frame.CachedSerializedBytes ?? SerializeVideoFrame(frame);
+                byte[] bytes;
+                if (frame.CachedSerializedBytes != null)
+                    bytes = frame.CachedSerializedBytes;
+                else {
+                    var tsBeforeSerialize = Stopwatch.GetTimestamp();
+                    bytes = SerializeVideoFrame(frame);
+                    var serializeUs = Stopwatch.GetElapsedTime(tsBeforeSerialize).TotalMicroseconds;
+                    StreamingMeters.VideoFrameSerializeDuration.Record(serializeUs);
+                }
+                StreamingMeters.VideoFramesSent.Add(1);
+                StreamingMeters.VideoBytesSent.Add(bytes.Length);
+                yield return bytes;
+            }
+        }
+        finally {
+            StreamingMeters.VideoActiveConsumers.Add(-1);
         }
 
-        Log.LogInformation("GetVideo: stream ended after {Count} frames", frameCount);
+        Log.LogInformation("GetVideo: #{StreamId} ended after {Count} frames, PeerId={PeerId}",
+            parsedStreamId, frameCount, peerId);
     }
 
     // Private methods

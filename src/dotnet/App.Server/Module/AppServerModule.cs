@@ -7,6 +7,7 @@ using ActualChat.Diagnostics;
 using ActualChat.Hosting;
 using ActualChat.Kubernetes;
 using ActualChat.MLSearch.Diagnostics;
+using ActualChat.Streaming.Diagnostics;
 using ActualChat.Module;
 using ActualChat.Redis;
 using ActualChat.Redis.Module;
@@ -367,6 +368,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             .AddMeter(AppInstruments.Meter.Name)
             .AddMeter(AppUIInstruments.Meter.Name)
             .AddMeter(MLSearchInstruments.Meter.Name)
+            .AddMeter(StreamingInstruments.Meter.Name)
             .AddOtlpExporter(cfg => {
                 cfg.ExportProcessorType = ExportProcessorType.Batch;
                 cfg.BatchExportProcessorOptions = new BatchExportActivityProcessorOptions {
@@ -409,6 +411,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             .AddSource(AppInstruments.ActivitySource.Name)
             .AddSource(AppUIInstruments.ActivitySource.Name)
             .AddSource(MLSearchInstruments.ActivitySource.Name)
+            .AddSource(StreamingInstruments.ActivitySource.Name)
             .AddAspNetCoreInstrumentation(opt => {
                 var excludedPaths = new PathString[] {
                     "/favicon_voxt.ico",
