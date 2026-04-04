@@ -10,7 +10,6 @@ public class AndroidJSInterface : JObject
 
     public event Action<string>? MessageReceived;
 
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AndroidJSInterface))]
     // ReSharper disable once ConvertToPrimaryConstructor
     public AndroidJSInterface(Android.Webkit.WebView webView)
         => _webView = webView;

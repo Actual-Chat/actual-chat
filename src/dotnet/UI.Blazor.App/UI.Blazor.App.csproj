@@ -24,8 +24,4 @@
     <UpToDateCheckInput Remove="Components\SummaryMessage\TestSummaryMessageContent.razor" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Services\Live\" />
-  </ItemGroup>
-
 </Project>

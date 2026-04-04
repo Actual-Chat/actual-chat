@@ -22,7 +22,6 @@ public sealed class SQLiteRemoteComputedCache : AppRemoteComputedCache
 
     private new Options Settings { get; }
 
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SQLiteRemoteComputedCache))]
     public SQLiteRemoteComputedCache(Options settings, IServiceProvider services)
         : base(settings, services)
     {

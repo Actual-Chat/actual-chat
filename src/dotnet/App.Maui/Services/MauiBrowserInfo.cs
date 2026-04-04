@@ -10,7 +10,6 @@ namespace ActualChat.App.Maui.Services;
 /// </summary>
 public class MauiBrowserInfo : BrowserInfo
 {
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiBrowserInfo))]
     public MauiBrowserInfo(UIHub hub) : base(hub)
     {
         var appKind = HostInfo.AppKind;

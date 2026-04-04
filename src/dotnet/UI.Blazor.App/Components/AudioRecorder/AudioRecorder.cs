@@ -1,4 +1,4 @@
-﻿using ActualChat.Diagnostics;
+using ActualChat.Diagnostics;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
@@ -37,7 +37,6 @@ public sealed class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 
     public IState<AudioRecorderState> State => _state;
 
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AudioRecorder))]
     public AudioRecorder(AppUIHub hub)
     {
         Hub = hub;

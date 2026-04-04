@@ -1,3 +1,4 @@
+using ActualChat.UI.Blazor.Components.SideNav;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.Module;
@@ -13,6 +14,8 @@ namespace ActualChat.UI.Blazor.Module;
 [JsonSerializable(typeof(IBrowserInfoBackend.InitResult))]
 // [JsonSerializable(typeof(IWebShareInfoBackend.InitResult))] -- name matches with another InitResult, won't work
 [JsonSerializable(typeof(VirtualListDataQuery))]
+// Enums used in JS interop
+[JsonSerializable(typeof(SideNavSide))]
 // Supporting types
 [JsonSerializable(typeof(Range<string>))]
 [JsonSerializable(typeof(Range<double>))]

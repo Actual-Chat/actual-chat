@@ -17,7 +17,6 @@ public sealed class DebugUI : UIServiceBase<UIHub>, IDisposable
 
     public Task WhenReady { get; }
 
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DebugUI))]
     public DebugUI(UIHub hub) : base(hub)
     {
         _blazorRef = DotNetObjectReference.Create(this);

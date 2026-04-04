@@ -23,7 +23,6 @@ public sealed class MauiSession(IServiceProvider services)
         => field ??= SecureStorage.Default;
 #endif
 
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiSession))]
     public static Task Start()
         => _readSessionTask = Task.Run(Read);
 

@@ -1,6 +1,5 @@
 ﻿using ActualChat.UI.Blazor.App.Components;
 using ActualChat.Hosting;
-using ActualChat.UI;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using MauiPermissions = Microsoft.Maui.ApplicationModel.Permissions;
@@ -12,7 +11,6 @@ namespace ActualChat.App.Maui.Services;
 /// </summary>
 public class MauiMicrophonePermissionHandler : MicrophonePermissionHandler
 {
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiMicrophonePermissionHandler))]
     public MauiMicrophonePermissionHandler(UIHub hub, bool mustStart = true)
         : base(hub, false)
     {

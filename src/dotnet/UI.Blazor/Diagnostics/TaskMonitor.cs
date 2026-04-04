@@ -18,7 +18,6 @@ public class TaskMonitor : WorkerBase
         Clocks = services.Clocks();
     }
 
-    [DynamicDependency(DynamicallyAccessedMemberTypes.NonPublicMethods, typeof(TaskScheduler))]
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         var scheduler = TaskScheduler.Current;

@@ -1,5 +1,4 @@
 using ActualChat.Aot;
-using ActualChat.Internal;
 using ActualLab.Generators;
 using ActualLab.Resilience;
 using ActualLab.Rpc;

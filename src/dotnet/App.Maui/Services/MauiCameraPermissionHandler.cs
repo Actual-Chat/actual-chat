@@ -10,7 +10,6 @@ namespace ActualChat.App.Maui.Services;
 /// </summary>
 public class MauiCameraPermissionHandler : CameraPermissionHandler
 {
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiCameraPermissionHandler))]
     public MauiCameraPermissionHandler(UIHub hub, bool mustStart = true)
         : base(hub, false)
     {

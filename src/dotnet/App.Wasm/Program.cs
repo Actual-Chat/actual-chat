@@ -11,7 +11,11 @@ namespace ActualChat.App.Wasm;
 
 public static class Program
 {
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(WebApp))]
+    static Program()
+    {
+        CodeKeeper.Keep<WebApp>();
+    }
+
     public static async Task Main(string[] args)
     {
         Tracer.Default.MethodPoint();

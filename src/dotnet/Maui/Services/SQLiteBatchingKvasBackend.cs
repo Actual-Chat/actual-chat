@@ -26,7 +26,6 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
     private IServiceProvider Services { get; }
     private ILogger Log => field ??= Services.LogFor(GetType());
 
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SQLiteBatchingKvasBackend))]
     public SQLiteBatchingKvasBackend(FilePath dbPath, string version, IServiceProvider services, byte[]? key = null)
     {
         Services = services;
@@ -251,7 +250,6 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
         public static string DeleteSql = null!;
         public static string UpsertSql = null!;
 
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DbHelpers))]
         public static SQLiteConnection OpenConnection(FilePath dbPath, byte[]? key = null)
         {
             // byte[] key uses raw hex format (PRAGMA key = "x'...'"), skipping PBKDF2

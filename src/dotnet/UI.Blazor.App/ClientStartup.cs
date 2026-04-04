@@ -35,95 +35,10 @@ namespace ActualChat.UI.Blazor.App;
 
 public static class ClientStartup
 {
-    // Libraries
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(PriorityQueue<,>))] // MemoryPack uses it
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(Range<>))] // JS dependency
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ImmutableOptionSet))] // Media.MetadataJson
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(OptionSet))] // Maybe some other JSON
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NewtonsoftJsonSerialized<>))] // Media.MetadataJson
-    // Blazor
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DotNetObjectReference<>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(EventCallback<>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All,
-        "Microsoft.JSInterop.Infrastructure.ArrayBuilder`1", "Microsoft.JSInterop")]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All,
-        "Microsoft.JSInterop.Infrastructure.DotNetObjectReferenceJsonConverter`1", "Microsoft.JSInterop")]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(HeadOutlet))]
-    // Diffs
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MissingDiffHandler<,>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ObjectDiffHandler<>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(StringDiffHandler))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NullableDiffHandler<>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RecordDiffHandler<,>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(OptionDiffHandler<>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SetDiffHandler<,>))]
-    // Test Pages
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DiscoverTestPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MarkupEditorTestPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(PlaceInfoTestPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AudioPlayerTestPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(BlazorTestPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(EmbeddedTestPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(JSTestPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiTestPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ShareInModalTestPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ExternalContactsTestPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RequirementsTestPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DiveInModalTestPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(EmailTemplatesTestPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ErrorBarrierTestPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RenderSlotTestPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(FeaturesTestPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(InfoToastTestPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ReconnectOverlayTestPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(WebSplashTestPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SkeletonsTestPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SvgCatsTestPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SystemTestPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TotpTestPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UIColorsTestPage))]
-    // Pages
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(PlaceInfoPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DocsCookiesPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DocsFaqPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DocsPrivacyPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DocsTermsPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AdminCopyChatToPlacePage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AuthTestPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ChatPage))]
-    // [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(EmbeddedChatPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UserPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UnavailablePage))]
-    // Components
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TextInputOptions))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ChatView))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(VirtualList<>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(VirtualListData<>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(VirtualListRenderState))]
     public static void Initialize()
     {
         // AppContext feature switches
         // AppContext.SetSwitch("System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported", false);
-
-        // CodeKeeper actions
-        if (CodeKeeper.AlwaysFalse) {
-            ProxyCodeKeeper.Extension = new AppProxyCodeKeeper();
-            CodeKeeper.Keep<ParameterComparer>();
-            CodeKeeper.Keep<ByValueParameterComparer>();
-            CodeKeeper.Keep<ByItemParameterComparer>();
-            CodeKeeper.Keep<ByItemSetParameterComparer>();
-            CodeKeeper.Keep<ByNoneParameterComparer>();
-            CodeKeeper.Keep<ByRefParameterComparer>();
-            CodeKeeper.Keep<ByUuidParameterComparer>();
-            CodeKeeper.Keep<DefaultParameterComparer>();
-            CodeKeeper.Keep<ByVersionParameterComparer<long>>();
-            CodeKeeper.Keep<ByIdAndVersionParameterComparer<ChatId, long>>();
-            CodeKeeper.Keep<ByIdAndVersionParameterComparer<PlaceId, long>>();
-            CodeKeeper.Keep<ByUuidAndVersionParameterComparer<long>>();
-
-            CodeKeeper.Keep<DefaultLayout>();
-            CodeKeeper.Keep<InterfaceImmutableDictionaryFormatter<PlaceId, ChatId>>();
-        }
 
         // Rpc & Fusion defaults
         RuntimeInfo.IsServer = false;

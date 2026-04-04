@@ -1,5 +1,4 @@
 using ActualChat.Aot;
-using ActualChat.UI.Blazor.App.Internal;
 
 namespace ActualChat.UI.Blazor.App.Module;
 

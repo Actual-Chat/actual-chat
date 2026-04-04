@@ -6,7 +6,7 @@
 
 using ActualChat.Aot;
 
-namespace ActualChat.UI.Blazor.App.Internal;
+namespace ActualChat.UI.Blazor.App.Module;
 
 internal partial class BlazorUIAppAotSource : IAotSource
 {
