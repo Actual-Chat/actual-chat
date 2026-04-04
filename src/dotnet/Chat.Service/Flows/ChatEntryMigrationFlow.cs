@@ -14,7 +14,8 @@ namespace ActualChat.Chat.Flows;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class ChatEntryMigrationFlow : Flow<(Moment, long, long)>
 {
-    private const int BatchSize = 100;
+    private const int BatchSize = 300;
+    private const int MaxChatsPerResume = 300;
     private static readonly RandomTimeSpan BatchDelay = TimeSpan.FromSeconds(2).ToRandom(0.25);
 
     private DbHub<ChatDbContext> DbHub => field ??= Services.DbHub<ChatDbContext>();
@@ -51,7 +52,8 @@ public partial class ChatEntryMigrationFlow : Flow<(Moment, long, long)>
         }
 
         var processedInResume = 0;
-        while (processedInResume < BatchSize) {
+        var chatsInResume = 0;
+        while (processedInResume < BatchSize && chatsInResume < MaxChatsPerResume) {
             // Get next chat to process
             var chatQuery = dbContext.Chats.OrderBy(x => x.Id);
             if (!LastProcessedChatId.IsNullOrEmpty())
@@ -83,6 +85,7 @@ public partial class ChatEntryMigrationFlow : Flow<(Moment, long, long)>
                 LastProcessedLocalId = 0;
                 LastProcessedChatId = chatId;
                 MigratedChatCount++;
+                chatsInResume++;
                 continue;
             }
 
@@ -114,6 +117,7 @@ public partial class ChatEntryMigrationFlow : Flow<(Moment, long, long)>
                 LastProcessedLocalId = 0;
                 LastProcessedChatId = chatId;
                 MigratedChatCount++;
+                chatsInResume++;
             }
         }
 
