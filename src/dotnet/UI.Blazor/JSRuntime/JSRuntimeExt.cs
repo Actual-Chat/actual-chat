@@ -18,6 +18,9 @@ public static class JSRuntimeExt
         while (jsRuntime is IJSRuntimeWrapper wrapper)
             jsRuntime = wrapper.WrappedJSRuntime;
 
+        // NOTE(AOT): Injection of source-gen JSON contexts into JSRuntime is disabled for now.
+        // We need to figure out how to make it work with Blazor, the code below breaks serialization there.
+#if false
         var jsRuntimeType = jsRuntime.GetType();
         var optionsProperty = jsRuntimeType.GetProperty(
             "JsonSerializerOptions",
@@ -25,13 +28,13 @@ public static class JSRuntimeExt
         if (optionsProperty?.GetValue(jsRuntime) is not JsonSerializerOptions options)
             return;
 
-        // TODO(AOT): Injection of source-gen JSON contexts into JSRuntime is disabled for now.
         // JsonSerializerContext instances cause issues with the TypeInfoResolverChain —
         // even when wrapped to return null for unknown types, their presence changes
         // how the chain resolves types like object[] used internally by JSRuntime.
         // The CodeKeeper string-based keeps handle AOT retention for STJ converter types instead.
-        // var contexts = AotJsonContexts.All;
-        // if (contexts.Length > 0)
-        //     options.TypeInfoResolverChain.Insert(0, new SafeCompositeResolver(contexts));
+        var contexts = AotJsonContexts.All;
+        if (contexts.Length > 0)
+            options.TypeInfoResolverChain.Insert(0, new SafeCompositeResolver(contexts));
+#endif
     }
 }

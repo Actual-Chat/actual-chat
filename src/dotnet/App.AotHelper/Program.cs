@@ -7,7 +7,7 @@ string? projectRoot = null;
 for (var i = 0; i < args.Length; i++) {
     if (args[i] is "-g" or "--generate") {
         generateMode = true;
-        if (i + 1 < args.Length)
+        if (i + 1 < args.Length && !args[i + 1].StartsWith('-'))
             projectRoot = args[++i];
     }
 }
