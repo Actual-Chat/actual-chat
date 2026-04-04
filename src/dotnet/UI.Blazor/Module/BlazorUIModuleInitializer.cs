@@ -159,11 +159,21 @@ internal static class BlazorUIModuleInitializer
         CodeKeeper.Keep(tIEnumerableOfTConverter + "[[" + qIReadOnlyCollectionOfKvpTune + "],[" + qKvpTuneTuneInfo + "]], " + aJson);
         CodeKeeper.Keep(tICollectionOfTConverter + "[[" + qICollectionOfKvpTune + "],[" + qKvpTuneTuneInfo + "]], " + aJson);
 
-        // PlayableTextMarkup.Word — array + object converters
+        // PlayableTextMarkup.Word — array, object, and collection interface converters
         const string aApi = "ActualChat.Api";
         const string qPlayableWord = "ActualChat.Chat.PlayableTextMarkup+Word, " + aApi;
+        const string qIEnumerableOfWord = "System.Collections.Generic.IEnumerable`1[[" + qPlayableWord + "]], " + aRuntime;
+        const string qIReadOnlyCollOfWord = "System.Collections.Generic.IReadOnlyCollection`1[[" + qPlayableWord + "]], " + aRuntime;
+        const string qIReadOnlyListOfWord = "System.Collections.Generic.IReadOnlyList`1[[" + qPlayableWord + "]], " + aRuntime;
+        const string qIListOfWord = "System.Collections.Generic.IList`1[[" + qPlayableWord + "]], " + aRuntime;
+        const string qICollOfWord = "System.Collections.Generic.ICollection`1[[" + qPlayableWord + "]], " + aRuntime;
         CodeKeeper.Keep(tArrayConverter + "[[" + qObject + "],[" + qPlayableWord + "]], " + aJson);
         CodeKeeper.Keep(tObjectDefaultConverter + "[[" + qPlayableWord + "]], " + aJson);
+        CodeKeeper.Keep(tIEnumerableOfTConverter + "[[" + qIEnumerableOfWord + "],[" + qPlayableWord + "]], " + aJson);
+        CodeKeeper.Keep(tIEnumerableOfTConverter + "[[" + qIReadOnlyCollOfWord + "],[" + qPlayableWord + "]], " + aJson);
+        CodeKeeper.Keep(tIEnumerableOfTConverter + "[[" + qIReadOnlyListOfWord + "],[" + qPlayableWord + "]], " + aJson);
+        CodeKeeper.Keep(tIListConverter + "[[" + qIListOfWord + "],[" + qPlayableWord + "]], " + aJson);
+        CodeKeeper.Keep(tICollectionOfTConverter + "[[" + qICollOfWord + "],[" + qPlayableWord + "]], " + aJson);
 
         // ObjectDefaultConverter<VoidTaskResult>
         const string qVoidTaskResult = "System.Threading.Tasks.VoidTaskResult, " + aCoreLib;
