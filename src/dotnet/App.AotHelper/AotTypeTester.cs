@@ -93,10 +93,10 @@ public static class AotTypeTester
         }
 
         // Fallback for Native AOT: explicit registration (deduplicates by type)
-        AotTypes.AddSource(new Internal.CoreAotSource());
-        AotTypes.AddSource(new Internal.ApiAotSource());
-        AotTypes.AddSource(new Internal.ApiContractsAotSource());
-        AotTypes.AddSource(new ActualChat.UI.Blazor.Internal.BlazorUIAotSource());
-        AotTypes.AddSource(new ActualChat.UI.Blazor.App.Internal.BlazorUIAppAotSource());
+        AotTypes.AddSource(new ActualChat.Module.CoreAotSource());
+        AotTypes.AddSource(new ActualChat.Module.ApiAotSource());
+        AotTypes.AddSource(new ActualChat.Module.ApiContractsAotSource());
+        AotTypes.AddSource(new ActualChat.UI.Blazor.Module.BlazorUIAotSource());
+        AotTypes.AddSource(new ActualChat.UI.Blazor.App.Module.BlazorUIAppAotSource());
     }
 }

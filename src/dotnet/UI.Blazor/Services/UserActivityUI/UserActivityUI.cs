@@ -16,7 +16,6 @@ public class UserActivityUI : UIServiceBase<UIHub>, IUserActivityUIBackend
 
     public IState<Moment> ActiveUntil => _activeUntil; // CPU time
 
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UserActivityUI))]
     public UserActivityUI(UIHub hub) : base(hub)
     {
         CpuClock = Clocks.CpuClock;

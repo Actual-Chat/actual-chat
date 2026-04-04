@@ -28,7 +28,6 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private IMediaMetadataUI MediaMetadataUI => field ??= Services.GetRequiredService<IMediaMetadataUI>();
     private IAudioPlaybackEngineFactory Factory { get; }
 
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AudioTrackPlayer))]
     public AudioTrackPlayer(
         string id,
         TrackInfo trackInfo,

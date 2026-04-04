@@ -31,7 +31,6 @@ public class BrowserInfo : UIServiceBase<UIHub>, IBrowserInfoBackend
     public Task WhenReady => WhenReadySource.Task;
     public Task WhenWasmReady => WhenWasmReadySource.Task;
 
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(BrowserInfo))]
     public BrowserInfo(UIHub hub) : base(hub)
     {
         BlazorRef = DotNetObjectReference.Create<IBrowserInfoBackend>(this);

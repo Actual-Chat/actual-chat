@@ -28,21 +28,32 @@ internal static class WindowConfigurator
             _ = t.Wait(TimeSpan.FromSeconds(5));
         };
 
-        var appWindow = window.GetAppWindow()!;
-        appWindow.Closing += (_, e) => {
-            if (!App.MustMinimizeOnQuit)
-                return;
+        try {
+            var appWindow = window.GetAppWindow()!;
+            appWindow.Closing += (_, e) => {
+                if (!App.MustMinimizeOnQuit)
+                    return;
 
-            var presenter = (Microsoft.UI.Windowing.OverlappedPresenter)appWindow.Presenter;
-            presenter.Minimize();
-            e.Cancel = true;
-        };
+                var presenter = (Microsoft.UI.Windowing.OverlappedPresenter)appWindow.Presenter;
+                presenter.Minimize();
+                e.Cancel = true;
+            };
+        }
+        catch {
+            // In unpackaged/AOT mode, GetAppWindow may fail
+        }
     }
 
     private static void ConfigureStartupSize(Window window)
     {
-        var appWindow = window.GetAppWindow()!;
-        var presenter = (Microsoft.UI.Windowing.OverlappedPresenter)appWindow.Presenter;
-        presenter.Maximize();
+        try {
+            var appWindow = window.GetAppWindow()!;
+            var presenter = (Microsoft.UI.Windowing.OverlappedPresenter)appWindow.Presenter;
+            presenter.Maximize();
+        }
+        catch {
+            // In unpackaged/AOT mode, GetAppWindow may fail — just activate the window
+            window.Activate();
+        }
     }
 }

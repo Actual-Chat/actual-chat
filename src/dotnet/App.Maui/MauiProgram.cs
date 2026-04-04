@@ -33,30 +33,53 @@ public static partial class MauiProgram
     private static ILogger Log => field ??= StaticLog.For(typeof(MauiProgram));
     private static Tracer Tracer => field ??= Tracer.Default[nameof(MauiProgram)];
 
-    static MauiProgram()
-        => MauiDiagnostics.Initialize();
+    private const string CrashLogPath = @"C:\Temp\fce.log";
 
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiProgram))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiDiagnostics))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(WebViewManager))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(Editor))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All,
-        "Microsoft.AspNetCore.Components.WebView.Maui.AndroidWebKitWebViewManager", "Microsoft.AspNetCore.Components.WebView.Maui")]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All,
-        "Microsoft.AspNetCore.Components.WebView.IpcCommon", "Microsoft.AspNetCore.Components.WebView")]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All,
-        "Microsoft.AspNetCore.Components.WebView.IpcCommon.IncomingMessageType", "Microsoft.AspNetCore.Components.WebView")]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All,
-        "Microsoft.AspNetCore.Components.WebView.IpcCommon.OutgoingMessageType", "Microsoft.AspNetCore.Components.WebView")]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All,
-        "Microsoft.AspNetCore.Components.WebView.IpcSender", "Microsoft.AspNetCore.Components.WebView")]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All,
-        "Microsoft.AspNetCore.Components.WebView.IpcReceiver", "Microsoft.AspNetCore.Components.WebView")]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All,
-        "Microsoft.AspNetCore.Components.WebView.IpcReceiver", "Microsoft.AspNetCore.Components.WebView")]
+    static MauiProgram()
+    {
+        // Early crash logging — before anything else, to catch Native AOT issues
+        AppDomain.CurrentDomain.FirstChanceException += (_, e) => {
+            try {
+                var line = $"[{DateTime.Now:HH:mm:ss.fff}] FCE: {e.Exception}\n";
+                File.AppendAllText(CrashLogPath, line);
+            }
+            catch { /* best effort */ }
+        };
+        AppDomain.CurrentDomain.UnhandledException += (_, e) => {
+            try {
+                var line = $"[{DateTime.Now:HH:mm:ss.fff}] UNHANDLED: {e.ExceptionObject}\n";
+                File.AppendAllText(CrashLogPath, line);
+            }
+            catch { /* best effort */ }
+        };
+
+        try {
+            File.WriteAllText(CrashLogPath, $"[{DateTime.Now:HH:mm:ss.fff}] === App starting ===\n");
+            MauiDiagnostics.Initialize();
+            File.AppendAllText(CrashLogPath, $"[{DateTime.Now:HH:mm:ss.fff}] MauiDiagnostics.Initialize() done\n");
+        }
+        catch (Exception ex) {
+            File.AppendAllText(CrashLogPath, $"[{DateTime.Now:HH:mm:ss.fff}] FATAL in static ctor: {ex}\n");
+            throw;
+        }
+    }
+
     public static MauiApp CreateMauiApp()
     {
         using var _1 = Tracer.MethodRegion();
+
+        // Parse -t <seconds> for auto-shutdown (used for AOT testing)
+        var args = Environment.GetCommandLineArgs();
+        for (var i = 1; i < args.Length; i++) {
+            if (args[i] == "-t" && i + 1 < args.Length && int.TryParse(args[i + 1], out var seconds)) {
+                _ = Task.Run(async () => {
+                    await Task.Delay(seconds * 1000).ConfigureAwait(false);
+                    Log.LogInformation("Auto-shutdown after {Seconds}s", seconds);
+                    Environment.Exit(0);
+                });
+                i++;
+            }
+        }
 
         MauiExceptionHandlers.Use();
         MauiRuntimeSettings.Apply();
@@ -260,8 +283,8 @@ public static partial class MauiProgram
             typeof(SafeJSRuntime),
             c => {
                 var wrapped = (IJSRuntime)ActivatorUtilities.CreateInstance(c, webViewJSRuntimeType);
-                // AOT: inject source-generated JSON type info resolvers into the underlying JSRuntime
-                wrapped.InjectJsonTypeInfoResolvers();
+                // AOT: disabled for now - causes no window to appear
+                // wrapped.InjectJsonTypeInfoResolvers();
                 return new SafeJSRuntime(wrapped);
             },
             jsRuntimeRegistration.Lifetime));

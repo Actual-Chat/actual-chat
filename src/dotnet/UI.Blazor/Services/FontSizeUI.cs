@@ -13,7 +13,6 @@ public class FontSizeUI : UIServiceBase<UIHub>
 
     public SyncedState<string> FontSize { get; }
 
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(FontSizeUI))]
     public FontSizeUI(UIHub hub) : base(hub)
     {
         FontSize = Hub.StateFactory.NewCustomSynced(new SyncedState<string>.CustomOptions(Reader, Writer));

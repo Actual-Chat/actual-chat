@@ -27,7 +27,6 @@ public class MauiLivenessProbe : WorkerBase
     public static void Check(TimeSpan delay)
         => _ = Task.Delay(delay).ContinueWith(_ => Check(), TaskScheduler.Default);
 
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiLivenessProbe))]
     public static void Check()
     {
         lock (StaticLock)

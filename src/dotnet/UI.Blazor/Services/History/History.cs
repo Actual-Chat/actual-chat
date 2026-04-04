@@ -45,7 +45,6 @@ public partial class History : UIServiceBase<UIHub>, IDisposable
     public LocalUrl LocalUrl => new(_url, ParseOrNone.Option);
     public event EventHandler<LocationChangedEventArgs>? LocationChanged;
 
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(History))]
     public History(UIHub hub) : base(hub)
     {
         DebugLog = Constants.DebugMode.History ? Log.IfEnabled(LogLevel.Debug) : null;

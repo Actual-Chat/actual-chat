@@ -11,7 +11,6 @@ namespace ActualChat.App.Maui.Services;
 /// </summary>
 public class MauiContactsPermissionHandler : ContactsPermissionHandler
 {
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiContactsPermissionHandler))]
     public MauiContactsPermissionHandler(UIHub hub, bool mustStart = true)
         : base(hub, false)
     {

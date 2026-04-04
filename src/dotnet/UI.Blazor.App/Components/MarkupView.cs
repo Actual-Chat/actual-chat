@@ -7,8 +7,6 @@ public sealed class MarkupView : MarkupViewBase<Markup>
 {
     private TypeMapper<IMarkupView> ViewResolver => field ??= Hub.Services.GetRequiredService<TypeMapper<IMarkupView>>();
 
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MarkupViewBase<>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ComputedMarkupViewBase<,>))]
     public MarkupView() { }
 
     protected override void BuildRenderTree(RenderTreeBuilder builder)

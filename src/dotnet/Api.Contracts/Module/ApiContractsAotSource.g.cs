@@ -6,7 +6,7 @@
 
 using ActualChat.Aot;
 
-namespace ActualChat.Internal;
+namespace ActualChat.Module;
 
 internal partial class ApiContractsAotSource : IAotSource
 {

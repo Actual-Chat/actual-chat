@@ -28,7 +28,6 @@ public class EscapistSubscription : IAsyncDisposable
         return subscription;
     }
 
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(EscapistSubscription))]
     public EscapistSubscription() { }
 
     public async ValueTask DisposeAsync()

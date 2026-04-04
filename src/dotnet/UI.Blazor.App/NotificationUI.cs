@@ -33,7 +33,6 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
     public IState<bool?> PermissionState => _permissionState;
     public Task WhenReady { get; }
 
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NotificationUI))]
     public NotificationUI(UIHub hub)
     {
         Hub = hub;

@@ -1,4 +1,4 @@
-﻿using ActualChat.UI.Blazor.Module;
+using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Components;
 
@@ -13,7 +13,6 @@ public sealed class WebShareInfo : UIServiceBase<UIHub>, IDisposable, IWebShareI
 
     private Task WhenReady => _whenReadySource.Task;
 
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(WebShareInfo))]
     public WebShareInfo(UIHub hub) : base(hub)
     {
         _backendRef = DotNetObjectReference.Create<IWebShareInfoBackend>(this);

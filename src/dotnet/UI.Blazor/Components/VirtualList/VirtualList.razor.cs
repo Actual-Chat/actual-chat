@@ -49,9 +49,6 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
     [Parameter] public Action<VirtualListItemVisibility>? ItemVisibilityChanged { get; set; }
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(VirtualList<>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(VirtualListData<>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(VirtualListDataQuery))]
     public VirtualList() { }
 
     [JSInvokable]

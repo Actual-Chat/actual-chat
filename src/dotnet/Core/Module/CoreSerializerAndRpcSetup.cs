@@ -1,5 +1,4 @@
 using ActualChat.Aot;
-using ActualChat.Internal;
 using ActualLab.Rpc;
 
 namespace ActualChat.Module;
