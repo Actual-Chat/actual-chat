@@ -16,8 +16,18 @@ public static class StjConverterDiscovery
     // Framework types that are always used by Blazor's JSRuntime IPC
     private static readonly Type[] FrameworkRootTypes = [
         typeof(JsonElement),
+        typeof(JsonElement[]),
         typeof(Microsoft.AspNetCore.Components.ElementReference),
         typeof(Microsoft.AspNetCore.Components.NavigationOptions),
+        // JSInterop enums serialized internally
+        typeof(Microsoft.JSInterop.JSCallResultType),
+        typeof(Microsoft.JSInterop.Infrastructure.JSCallType),
+        // Blazor IPC uses these collection types
+        typeof(IEnumerable<char>),
+        typeof(KeyValuePair<string, object>),
+        typeof(IEnumerable<KeyValuePair<string, object>>),
+        typeof(ICollection<KeyValuePair<string, object>>),
+        typeof(IReadOnlyCollection<KeyValuePair<string, object>>),
     ];
 
     // Internal framework types (by AQN) that need keeping but can't be discovered via STJ
