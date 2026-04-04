@@ -158,14 +158,14 @@ public static class MarbleAvatars
         using var paint = new SKPaint();
         paint.Color = SKColors.White;
         paint.IsAntialias = true;
-        paint.TextSize = FontSize;
-        paint.TextAlign = SKTextAlign.Center;
-        paint.Typeface = SKTypeface.FromFamilyName(null, new SKFontStyle(SKFontStyleWeight.Medium, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright));
 
-        var metrics = paint.FontMetrics;
+        var typeface = SKTypeface.FromFamilyName(null, new SKFontStyle(SKFontStyleWeight.Medium, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright));
+        using var font = new SKFont(typeface, FontSize);
+
+        var metrics = font.Metrics;
         var x = Size / 2f;
         var y = (Size - (metrics.Ascent + metrics.Descent)) / 2f;
-        canvas.DrawText(title, x, y, paint);
+        canvas.DrawText(title, x, y, SKTextAlign.Center, font, paint);
     }
 
     private static ColorProperty[] GenerateColors(string key, string[] colors)
