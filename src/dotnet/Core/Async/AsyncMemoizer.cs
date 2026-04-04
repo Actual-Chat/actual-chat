@@ -171,6 +171,8 @@ public sealed class AsyncMemoizer<T> : AsyncMemoizer, IAsyncMemoizer<T>
             ExceptionDispatchInfo.Capture(e).Throw();
         }
         finally {
+            if (!IsCompleted)
+                Complete(SuccessfulCompletion);
             _newTargets.Writer.TryComplete();
             await _source.DisposeAsync().ConfigureAwait(false);
         }

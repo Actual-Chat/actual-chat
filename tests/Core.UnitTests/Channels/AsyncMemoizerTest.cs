@@ -669,6 +669,32 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         source.Writer.Complete();
     }
 
+    [Fact]
+    public async Task Cancellation_CompletesWriteTask()
+    {
+        // Regression test: cancelling the source token must cause WriteTask to complete.
+        // Previously, OperationCanceledException skipped Complete(), leaving WriteTask
+        // hanging forever — causing memory leaks (zombie memoizers never disposed).
+        using var cts = new CancellationTokenSource();
+        var source = Channel.CreateUnbounded<int>();
+        source.Writer.TryWrite(1);
+        source.Writer.TryWrite(2);
+        var memoizer = source.Memoize(10, cts.Token);
+
+        await SpinWaitForBuffered(memoizer, 2);
+
+        // Cancel the source — simulates video call disconnect
+        await cts.CancelAsync();
+
+        // Both tasks must complete promptly
+        await memoizer.ReadTask.WaitAsync(TimeSpan.FromSeconds(5)).SuppressCancellationAwait(false);
+        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
+        memoizer.IsCompleted.Should().BeTrue();
+
+        // Dispose must succeed without hanging
+        memoizer.Dispose();
+    }
+
     // === Helpers ===
 
     private static async Task SpinWaitForBuffered<T>(AsyncMemoizer<T> memoizer, int expectedCount, int timeoutMs = 5000)
