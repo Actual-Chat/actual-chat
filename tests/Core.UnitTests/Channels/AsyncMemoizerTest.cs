@@ -743,6 +743,171 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         items.Last().Should().Be(50, "most recent item should be present");
     }
 
+    // === Issue: Unbounded mode retains references in old buffers ===
+
+    [Fact]
+    public async Task Unbounded_OldBufferRetainsReferences()
+    {
+        // When unbounded memoizer grows its buffer, old items are copied to the new buffer,
+        // but the old buffer (in _oldBuffersHead) still holds references to those items.
+        // For reference types, this prevents GC of items that have been logically evicted.
+        var source = Channel.CreateUnbounded<object>();
+        var memoizer = source.Memoize(cancellationToken: CancellationToken.None);
+        // Initial buffer size is 16 — write 20 items to trigger growth
+        var weakRefs = new List<WeakReference>();
+        for (var i = 0; i < 20; i++) {
+            var obj = new object();
+            weakRefs.Add(new WeakReference(obj));
+            source.Writer.TryWrite(obj);
+        }
+        await SpinWaitForBuffered(memoizer, 20);
+
+        // Complete and dispose — this returns buffers to pool with clearOnReturn
+        source.Writer.Complete();
+        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
+        memoizer.Dispose();
+
+        // Force GC
+        GC.Collect(2, GCCollectionMode.Forced, true);
+        GC.WaitForPendingFinalizers();
+        GC.Collect(2, GCCollectionMode.Forced, true);
+
+        // After dispose, all items should be collectable
+        var aliveCount = weakRefs.Count(wr => wr.IsAlive);
+        aliveCount.Should().Be(0,
+            "all items should be GC'd after dispose — old buffers must clear references");
+    }
+
+    [Fact]
+    public async Task Unbounded_OldBufferClearsReferencesOnGrowth()
+    {
+        // When unbounded memoizer grows, old buffer references must be cleared
+        // so items are only held by the new (active) buffer, not duplicated.
+        var source = Channel.CreateUnbounded<object>();
+        var memoizer = source.Memoize(cancellationToken: CancellationToken.None);
+
+        // Write 20 items to trigger growth from initial 16 → 32.
+        // The early item will be in the old buffer AND copied to the new buffer.
+        // After growth, old buffer references should be cleared.
+        var earlyItem = new object();
+        var earlyWeakRef = new WeakReference(earlyItem);
+        source.Writer.TryWrite(earlyItem);
+        earlyItem = null!; // Drop our strong reference
+        for (var i = 1; i < 20; i++)
+            source.Writer.TryWrite(new object());
+        await SpinWaitForBuffered(memoizer, 20);
+
+        // The item is still held by the active buffer (memoizer keeps all items in unbounded mode)
+        GC.Collect(2, GCCollectionMode.Forced, true);
+        GC.WaitForPendingFinalizers();
+        earlyWeakRef.IsAlive.Should().BeTrue("item is still in the active buffer");
+
+        source.Writer.Complete();
+        memoizer.Dispose();
+
+        // After dispose, the item should be collectable
+        GC.Collect(2, GCCollectionMode.Forced, true);
+        GC.WaitForPendingFinalizers();
+        GC.Collect(2, GCCollectionMode.Forced, true);
+        earlyWeakRef.IsAlive.Should().BeFalse("item should be GC'd after dispose");
+    }
+
+    // === Issue: Dispose doesn't await Read/Write tasks ===
+
+    [Fact]
+    public async Task Dispose_WhileWriteTaskStillRunning()
+    {
+        // Dispose returns buffers to ArrayPool immediately, but the Write task
+        // may still be reading from _snapshot.Buffer. This test checks if the
+        // Write task accesses the buffer after Dispose returns it to the pool.
+        var gate = new TaskCompletionSource();
+        async IAsyncEnumerable<int> SlowSource([EnumeratorCancellation] CancellationToken ct = default)
+        {
+            yield return 1;
+            await gate.Task.WaitAsync(ct).ConfigureAwait(false);
+            yield return 2;
+        }
+
+        var memoizer = SlowSource().Memoize(10);
+        await SpinWaitForBuffered(memoizer, 1);
+
+        // Start a consumer that will be mid-read
+        var items = new List<int>();
+        var replayTask = Task.Run(async () => {
+            await foreach (var item in memoizer.Replay())
+                items.Add(item);
+        });
+
+        // Let consumer receive first item
+        await Task.Delay(50);
+
+        // Release second item and immediately dispose
+        gate.SetResult();
+        await memoizer.ReadTask.WaitAsync(TimeSpan.FromSeconds(5));
+
+        // Dispose while Write task may still be distributing to consumer
+        memoizer.Dispose();
+
+        // The Write task should still complete cleanly
+        // (currently it may access a returned buffer — this documents the issue)
+        var writeCompleted = memoizer.WriteTask.Wait(TimeSpan.FromSeconds(2));
+        writeCompleted.Should().BeTrue("Write task should complete even after Dispose");
+    }
+
+    // === Issue: AddReplayTarget completion race ===
+
+    [Fact]
+    public async Task AddReplayTarget_SourceCompletesWhileRegistering()
+    {
+        // Race condition: source completes between the first CopyTo in AddReplayTarget
+        // and the channel being registered in _newTargets. The fallback path
+        // (await WriteTask + re-copy) must properly propagate completion.
+        for (var attempt = 0; attempt < 50; attempt++) {
+            var source = Channel.CreateUnbounded<int>();
+            for (var i = 1; i <= 5; i++)
+                source.Writer.TryWrite(i);
+
+            var memoizer = source.Memoize(10);
+            await SpinWaitForBuffered(memoizer, 5);
+
+            // Complete source right before starting replay — creates a race
+            // between AddReplayTarget's snapshot.CopyTo and the completion propagation
+            source.Writer.Complete();
+
+            // Replay must get all items AND see completion (not hang)
+            var items = await memoizer.Replay()
+                .ToListAsync()
+                .AsTask()
+                .WaitAsync(TimeSpan.FromSeconds(2));
+
+            items.Should().Equal(1, 2, 3, 4, 5);
+            memoizer.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task AddReplayTarget_LateJoinerAfterCompletion()
+    {
+        // A consumer joining after the source has fully completed must
+        // receive all buffered items and see completion.
+        var source = Channel.CreateUnbounded<int>();
+        for (var i = 1; i <= 3; i++)
+            source.Writer.TryWrite(i);
+        source.Writer.Complete();
+
+        var memoizer = source.Memoize(10);
+        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
+
+        // Source fully completed — late joiner should still work
+        var items = await memoizer.Replay()
+            .ToListAsync()
+            .AsTask()
+            .WaitAsync(TimeSpan.FromSeconds(2));
+
+        items.Should().Equal(1, 2, 3);
+        memoizer.Dispose();
+    }
+
     // === Helpers ===
 
     private static async Task SpinWaitForBuffered<T>(AsyncMemoizer<T> memoizer, int expectedCount, int timeoutMs = 5000)

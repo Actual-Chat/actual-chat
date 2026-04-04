@@ -39,6 +39,7 @@ public sealed class AsyncMemoizer<T> : AsyncMemoizer, IAsyncMemoizer<T>
     private OldBufferNode? _oldBuffersHead; // linked list of grown-out-of buffers (unbounded mode)
     private long _totalWritten; // absolute write position
     private volatile Snapshot _snapshot;
+    private Snapshot? _spareSnapshot; // single-slot pool for Snapshot reuse
     private volatile Exception? _completion; // null = running, ChannelClosedException = success, other = error
 
     public Task ReadTask { get; }
@@ -91,7 +92,8 @@ public sealed class AsyncMemoizer<T> : AsyncMemoizer, IAsyncMemoizer<T>
             new BoundedChannelOptions(CoreConstants.AsyncMemoizer.TargetQueueSize) {
                 SingleReader = true,
             });
-        _snapshot = new Snapshot(_buffer, _buffer.Length - 1, 0, 0);
+        _snapshot = new Snapshot();
+        _snapshot.Reset(_buffer, _buffer.Length - 1, 0, 0);
         WriteTask = BackgroundTask.Run(() => Write(cancellationToken), cancellationToken);
         ReadTask = BackgroundTask.Run(() => Read(cancellationToken), cancellationToken);
     }
@@ -99,6 +101,13 @@ public sealed class AsyncMemoizer<T> : AsyncMemoizer, IAsyncMemoizer<T>
     protected override void Dispose(bool disposing)
     {
         _newTargets.Writer.TryComplete();
+        // Wait for tasks to stop accessing buffers before returning them to the pool
+        try {
+            Task.WhenAll(ReadTask, WriteTask).Wait(TimeSpan.FromSeconds(5));
+        }
+        catch {
+            // Best-effort — tasks may have faulted or been cancelled
+        }
         var clearOnReturn = RuntimeHelpers.IsReferenceOrContainsReferences<T>();
         _pool.Return(_buffer, clearOnReturn);
         for (var node = _oldBuffersHead; node != null; node = node.Next)
@@ -190,9 +199,13 @@ public sealed class AsyncMemoizer<T> : AsyncMemoizer, IAsyncMemoizer<T>
         if (IsUnbounded) {
             // Growing mode: ensure capacity and append
             if (writePos >= _buffer.Length) {
-                var newBuffer = _pool.Rent(_buffer.Length * 2);
-                Array.Copy(_buffer, newBuffer, _buffer.Length);
-                _oldBuffersHead = new OldBufferNode(_buffer, _oldBuffersHead);
+                var oldBuffer = _buffer;
+                var newBuffer = _pool.Rent(oldBuffer.Length * 2);
+                Array.Copy(oldBuffer, newBuffer, oldBuffer.Length);
+                // Clear references in old buffer to allow GC of items
+                if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+                    Array.Clear(oldBuffer);
+                _oldBuffersHead = new OldBufferNode(oldBuffer, _oldBuffersHead);
                 _buffer = newBuffer;
             }
             _buffer[writePos] = item;
@@ -210,7 +223,8 @@ public sealed class AsyncMemoizer<T> : AsyncMemoizer, IAsyncMemoizer<T>
                 : 0;
 
         // Snapshot always gets buffer.Length - 1 as mask (works for both modes)
-        var newSnapshot = new Snapshot(_buffer, _buffer.Length - 1, startIndex, _totalWritten);
+        var newSnapshot = Interlocked.Exchange(ref _spareSnapshot, null) ?? new Snapshot();
+        newSnapshot.Reset(_buffer, _buffer.Length - 1, startIndex, _totalWritten);
         var oldSnapshot = Interlocked.Exchange(ref _snapshot, newSnapshot);
         oldSnapshot.MarkOutdated();
     }
@@ -223,7 +237,8 @@ public sealed class AsyncMemoizer<T> : AsyncMemoizer, IAsyncMemoizer<T>
             : _totalWritten > _capacity
                 ? _totalWritten - _capacity
                 : 0;
-        var finalSnapshot = new Snapshot(_buffer, _buffer.Length - 1, startIndex, _totalWritten, completion);
+        var finalSnapshot = Interlocked.Exchange(ref _spareSnapshot, null) ?? new Snapshot();
+        finalSnapshot.Reset(_buffer, _buffer.Length - 1, startIndex, _totalWritten, completion);
         var old = Interlocked.Exchange(ref _snapshot, finalSnapshot);
         old.MarkOutdated();
     }
@@ -267,6 +282,11 @@ public sealed class AsyncMemoizer<T> : AsyncMemoizer, IAsyncMemoizer<T>
             var skipUpTo = Math.Max(oldSnapshot?.EndIndex ?? 0, newSnapshot.StartIndex);
             if (newSnapshot == oldSnapshot)
                 return newSnapshot;
+
+            // Return old snapshot to spare slot for reuse by WriteItem
+            if (oldSnapshot != null)
+                Interlocked.CompareExchange(ref _spareSnapshot, oldSnapshot, null);
+
             foreach (var target in _targets) {
                 try {
                     for (var i = skipUpTo; i < newSnapshot.EndIndex; i++) {
@@ -297,22 +317,27 @@ public sealed class AsyncMemoizer<T> : AsyncMemoizer, IAsyncMemoizer<T>
 
     // Nested types
 
-    private sealed class Snapshot(
-        T[] buffer,
-        int mask,
-        long startIndex,
-        long endIndex,
-        Exception? completion = null)
+    private sealed class Snapshot
     {
-        private readonly AsyncTaskMethodBuilder _whenOutdatedSource = AsyncTaskMethodBuilderExt.New();
+        private AsyncTaskMethodBuilder _whenOutdatedSource;
 
-        public readonly T[] Buffer = buffer;
-        public readonly int Mask = mask;
-        public readonly long StartIndex = startIndex; // absolute index of oldest item
-        public readonly long EndIndex = endIndex;   // absolute index past newest item
-        public readonly Exception? Completion = completion;
+        public T[] Buffer = null!;
+        public int Mask;
+        public long StartIndex; // absolute index of oldest item
+        public long EndIndex;   // absolute index past newest item
+        public Exception? Completion;
         public Task WhenOutdated => _whenOutdatedSource.Task;
         public bool IsCompleted => Completion != null;
+
+        public void Reset(T[] buffer, int mask, long startIndex, long endIndex, Exception? completion = null)
+        {
+            _whenOutdatedSource = AsyncTaskMethodBuilderExt.New();
+            Buffer = buffer;
+            Mask = mask;
+            StartIndex = startIndex;
+            EndIndex = endIndex;
+            Completion = completion;
+        }
 
         public void MarkOutdated()
             => _whenOutdatedSource.TrySetResult();

@@ -48,15 +48,15 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             return null;
         }
 
-        // Skip to keyframe on startup and recover from gaps caused by bounded replay dropping frames
-        stream = KeyFrameGapFilter(stream, Log, cancellationToken);
-
         // Per-viewer temporal layer filtering — drop enhancement layers for slow peers
         stream = TemporalLayerFilter(streamId, peerId, stream, cancellationToken);
 
-        // Wrap with pause filtering — when stream is paused by priority queue, drop frames
+        // Pause filtering — when stream is paused by priority queue, drop frames
         if (_latencyStates.TryGetValue(streamId, out var pauseState) && pauseState.ChatId != default)
             stream = PauseAwareFilter(streamId, stream, cancellationToken);
+
+        // Last: recover from any gaps caused by upstream filters or bounded replay dropping frames
+        stream = KeyFrameGapFilter(stream, Log, cancellationToken);
 
         return RpcStream.New(stream);
     }
@@ -163,11 +163,33 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         IAsyncEnumerable<VideoFrame> source,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-            var preset = await GetQualityPreset(streamId, cancellationToken).ConfigureAwait(false);
-            if (preset.Level != VideoQualityLevel.Paused)
-                yield return frame;
+        // Cache quality preset and refresh only on invalidation (not per-frame)
+        var computed = await Computed
+            .Capture(() => GetQualityPreset(streamId, cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        var preset = computed.Value;
+
+        using var refreshCts = cancellationToken.CreateLinkedTokenSource();
+        var refreshToken = refreshCts.Token;
+        var refreshTask = BackgroundTask.Run(async () => {
+            while (!refreshToken.IsCancellationRequested) {
+                await computed.WhenInvalidated(refreshToken).ConfigureAwait(false);
+                computed = await Computed
+                    .Capture(() => GetQualityPreset(streamId, refreshToken), refreshToken)
+                    .ConfigureAwait(false);
+                preset = computed.Value;
+            }
+        }, refreshToken);
+
+        try {
+            await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false))
+                if (preset.Level != VideoQualityLevel.Paused)
+                    yield return frame;
             // When paused, frames are silently dropped — viewer sees last decoded frame frozen
+        }
+        finally {
+            refreshCts.CancelAndDisposeSilently();
+            await refreshTask.SuppressCancellationAwait(false);
         }
     }
 
