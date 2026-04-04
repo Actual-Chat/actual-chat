@@ -41,6 +41,8 @@ public static class StjConverterDiscovery
         typeof(KeyValuePair<ActualChat.UI.Blazor.Services.Tune, ActualChat.UI.Blazor.Services.TuneInfo>),
         typeof(List<ActualLab.Text.Symbol>),
         typeof(ActualLab.Text.Symbol),
+        typeof(ActualChat.Chat.PlayableTextMarkup.Word),
+        typeof(ActualChat.Chat.PlayableTextMarkup.Word[]),
     ];
 
     // Internal framework types (by AQN) that need keeping but can't be discovered via STJ
