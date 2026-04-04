@@ -55,18 +55,21 @@ export class MediaCapture {
             const targetWidth = isPortrait ? options.height : options.width;
             const targetHeight = isPortrait ? options.width : options.height;
 
-            const orientationMatches = isPortrait
-                ? initialSettings.height > initialSettings.width
-                : initialSettings.width >= initialSettings.height;
-            const hasMatchingDimension = initialSettings.width === targetWidth || initialSettings.height === targetHeight;
-            if (orientationMatches && hasMatchingDimension) {
-                infoLog?.log(`captureCameraStream: close enough at ${initialSettings.width}x${initialSettings.height} (target ${targetWidth}x${targetHeight}), skipping applyConstraints`);
+            // Fit into target frame preserving original aspect ratio
+            const scale = Math.min(
+                targetWidth / initialSettings.width,
+                targetHeight / initialSettings.height,
+            );
+            if (scale >= 1) {
+                infoLog?.log(`captureCameraStream: ${initialSettings.width}x${initialSettings.height} fits in ${targetWidth}x${targetHeight}, skipping applyConstraints`);
             } else {
+                const fitWidth = Math.round(initialSettings.width * scale);
+                const fitHeight = Math.round(initialSettings.height * scale);
                 try {
-                    infoLog?.log(`captureCameraStream: applying ${targetWidth}x${targetHeight} (portrait=${isPortrait})`);
+                    infoLog?.log(`captureCameraStream: fitting ${initialSettings.width}x${initialSettings.height} into ${targetWidth}x${targetHeight} -> ${fitWidth}x${fitHeight}`);
                     await videoTrack.applyConstraints({
-                        width: { ideal: targetWidth },
-                        height: { ideal: targetHeight },
+                        width: { ideal: fitWidth },
+                        height: { ideal: fitHeight },
                     });
                     const adjusted = videoTrack.getSettings();
                     infoLog?.log(`captureCameraStream: after applyConstraints ${adjusted.width}x${adjusted.height}`);
