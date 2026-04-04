@@ -83,7 +83,7 @@ public sealed partial class AuthorId : PrincipalId, IStringIdentifier<AuthorId>
             return true;
         }
 
-        var chatIdLength = s.IndexOf(":");
+        var chatIdLength = s.IndexOf(':');
         if (chatIdLength == -1)
             return false;
 

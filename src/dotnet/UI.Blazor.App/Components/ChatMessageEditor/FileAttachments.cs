@@ -80,7 +80,7 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         return await TryAddFileAttachment(list, fileProvider);
     }
 
-    private Exception? CheckCanAdd(AttachmentList list, long length)
+    private static Exception? CheckCanAdd(AttachmentList list, long length)
     {
         if (length > Constants.Attachments.FileSizeLimit)
             return AttachmentList.FileTooBigError();

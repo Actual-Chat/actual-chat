@@ -28,7 +28,7 @@ public abstract class MeshLocksBase : IMeshLocksBackend
     public IMeshLocksBackend Backend => this;
 
     // IMeshLocksBackend
-    ILogger IMeshLocksBackend.Log => Log;
+    ILogger? IMeshLocksBackend.Log => Log;
     ILogger? IMeshLocksBackend.DebugLog => DebugLog;
     ChaosMaker IMeshLocksBackend.ChaosMaker => ChaosMaker;
     IHostApplicationLifetime? IMeshLocksBackend.HostLifetime => HostLifetime;

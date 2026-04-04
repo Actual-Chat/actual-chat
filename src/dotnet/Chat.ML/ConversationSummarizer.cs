@@ -238,7 +238,7 @@ public class ConversationSummarizer(ConversationSummarizer.Options settings, ISe
         return true;
     }
 
-    private PromptExecutionSettings CreateExecutionSettings()
+    private static PromptExecutionSettings CreateExecutionSettings()
         => new OpenAIPromptExecutionSettings {
             ReasoningEffort = null,
             ResponseFormat = ChatResponseFormat.ForJsonSchema(

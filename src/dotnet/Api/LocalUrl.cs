@@ -24,9 +24,9 @@ public readonly partial struct LocalUrl : IEquatable<LocalUrl>
             _value = "/";
             return;
         }
-        if (!value.StartsWith("/"))
+        if (!value.StartsWith('/'))
             value = "/" + value;
-        if (value.EndsWith("/") && value.Length > 1)
+        if (value.EndsWith('/') && value.Length > 1)
             value = value[..^1];
         _value = value;
     }

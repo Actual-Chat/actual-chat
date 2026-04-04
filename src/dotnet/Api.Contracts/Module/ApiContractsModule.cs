@@ -19,7 +19,6 @@ using ActualLab.Rpc.WebSockets;
 
 namespace ActualChat.Module;
 
-#pragma warning disable IL2026 // Fine for modules
 
 public sealed class ApiContractsModule(IServiceProvider moduleServices)
     : HostModule(moduleServices), IAppModule

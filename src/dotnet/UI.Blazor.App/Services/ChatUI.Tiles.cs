@@ -514,7 +514,6 @@ public partial class ChatUI
                 var isAudio = entry.HasAudio;
                 var shouldAddToResult = idRange.Contains(entry.LocalId) || entry.IsSending; // add sending entries
                 var flags = default(ChatMessageFlags);
-                var indexDocId = "";
                 if (isBlockStart)
                     flags |= ChatMessageFlags.BlockStart;
                 if ((isBlockStart && isAudio) || isPrevAudio ^ isAudio)
@@ -785,11 +784,6 @@ public partial class ChatUI
             CancellationToken.None);
 
     // Private methods
-
-    private Task<IReadOnlyDictionary<ChatEntryId, string>> GetIndexDocIds(
-        List<ChatEntry> entries,
-        CancellationToken cancellationToken)
-        => Task.FromResult<IReadOnlyDictionary<ChatEntryId, string>>(ImmutableDictionary<ChatEntryId, string>.Empty);
 
     private static bool IsBlockStart(ChatEntry? prevEntry, ChatEntry entry)
     {

@@ -225,8 +225,10 @@ namespace ActualChat.Transcription
                 int m = newSig.Length;
 
                 const int inf = int.MaxValue / 4;
+#pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
                 var dp = new int[n + 1, m + 1];
                 var step = new byte[n + 1, m + 1]; // 1=diag, 2=up, 3=left
+#pragma warning restore CA1814
 
                 for (int i = 0; i <= n; i++)
                 for (int j = 0; j <= m; j++)

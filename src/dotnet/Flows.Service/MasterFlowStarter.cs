@@ -2,6 +2,8 @@ using ActualChat.Flows.Infrastructure;
 
 namespace ActualChat.Flows;
 
+#pragma warning disable CA1812 // Avoid uninstantiated internal classes (it doesn't see MasterFlowStarter instantiation)
+
 /// <summary>
 /// Starts master flows (singleton background processes) on their owning shard.
 /// </summary>

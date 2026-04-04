@@ -19,7 +19,7 @@ public class EditMembersUI(AppUIHub hub)
         return canAddContacts;
     }
 
-    public bool CanAddMembers(Chat.Chat chat)
+    public static bool CanAddMembers(Chat.Chat chat)
     {
         if (!chat.CanInvite())
             return false;

@@ -1,3 +1,5 @@
+using ActualChat.Aot;
+using ActualChat.Internal;
 using ActualLab.Generators;
 using ActualLab.Resilience;
 using ActualLab.Rpc;
@@ -11,7 +13,7 @@ internal static class ApiContractsModuleInitializer
     [ModuleInitializer]
     internal static void ModuleInitializer()
     {
-        // This type initializer sets all super-early defaults
+        AotTypes.AddSource(new ApiContractsAotSource());
 
         // Default binary serializer
         ByteSerializer.Default = MessagePackByteSerializer.Default;

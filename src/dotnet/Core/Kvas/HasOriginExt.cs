@@ -4,8 +4,6 @@ public static class HasOriginExt
 {
     private static readonly ConcurrentDictionary<Type, Action<object, string>> OriginSetters = new();
 
-    [UnconditionalSuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require ...")]
-    [UnconditionalSuppressMessage("Trimming", "IL2111:LambdaParameter", Justification = "Target is used in the lambda.")]
     public static void SetOrigin<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]T>(this T target, string origin)
     where T: class, IHasOrigin
     {

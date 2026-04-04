@@ -87,7 +87,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             return Task.CompletedTask;
         };
 
-        var upload = new FilesUpload(attachments, uploadEntries.ToArray(), releaseUpload);
+        var upload = new FilesUpload(attachments, uploadEntries.ToArray());
         return _filesUploadRegistry.Register(upload, releaseUpload);
     }
 

@@ -1,3 +1,6 @@
+using ActualChat.Aot;
+using ActualChat.UI.Blazor.App.Internal;
+
 namespace ActualChat.UI.Blazor.App.Module;
 
 #pragma warning disable CA2255 // Module initializer is intended to be used in...
@@ -7,6 +10,7 @@ internal static class BlazorUIAppModuleInitializer
     [ModuleInitializer]
     internal static void ModuleInitializer()
     {
+        AotTypes.AddSource(new BlazorUIAppAotSource());
         RenderModeDef.All = [
             new("a", "Auto") { Mode = new InteractiveAutoRenderMode(prerender: false) },
             new("w", "WASM") { Mode = new InteractiveWebAssemblyRenderMode(prerender: false) },
