@@ -220,7 +220,8 @@
   </PropertyGroup>
 
   <!-- Trimming -->
-  <ItemGroup>
+  <!-- Trimmer root assemblies — not needed for Native AOT (CodeKeeper handles retention) -->
+  <ItemGroup Condition="!$(UseNativeAot)">
     <!--
     <TrimmerRootDescriptor Include="ILLink.Descriptors.xml" />
     -->
