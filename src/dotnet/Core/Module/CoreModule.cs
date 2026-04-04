@@ -11,14 +11,11 @@ namespace ActualChat.Module;
 /// <summary>
 /// Configures core services for both server and client applications.
 /// </summary>
-#pragma warning disable IL2026, IL2111 // Fine for modules
 #pragma warning disable CA1822 // Method can be static
 
 public sealed class CoreModule(IServiceProvider moduleServices)
     : HostModule<CoreSettings>(moduleServices)
 {
-    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Fine for Fusion.")]
-    [UnconditionalSuppressMessage("Trimming", "IL2111:DynamicallyAccessedMembersAttribute", Justification = "Features are already marked with DynamicallyAccessedMembersAttribute.")]
     protected internal override void InjectServices(IServiceCollection services)
     {
         var hostKind = HostInfo.HostKind;

@@ -1,6 +1,6 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class FilesUpload(ImmutableArray<Attachment> attachments, UploadFileRequestEntry[] uploadEntries, Func<Task> onRelease)
+public class FilesUpload(ImmutableArray<Attachment> attachments, UploadFileRequestEntry[] uploadEntries)
 {
     public int Count => uploadEntries.Length;
     public ImmutableArray<Attachment> Attachments { get; } = attachments;

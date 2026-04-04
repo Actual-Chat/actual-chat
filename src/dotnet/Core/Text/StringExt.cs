@@ -285,7 +285,7 @@ public static partial class StringExt
         if (hostPortOrUrl.IsNullOrEmpty())
             return false;
 
-        var columnIndex = hostPortOrUrl.IndexOf(":");
+        var columnIndex = hostPortOrUrl.IndexOf(':');
         if (columnIndex <= 0) {
             host = hostPortOrUrl;
             return true;

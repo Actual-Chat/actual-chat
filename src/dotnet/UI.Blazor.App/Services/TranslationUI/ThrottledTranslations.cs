@@ -140,10 +140,10 @@ public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IA
         return cData.Value!;
     }
 
-    private IEnumerable<TranslationId> ToPossibleTranslationIds(IEnumerable<ChatMessageKey> keys, ChatId chatId, Language targetLanguage)
+    private static IEnumerable<TranslationId> ToPossibleTranslationIds(IEnumerable<ChatMessageKey> keys, ChatId chatId, Language targetLanguage)
         => keys.SelectMany(x => ToPossibleTranslationIds(x, chatId, targetLanguage));
 
-    private IEnumerable<TranslationId> ToPossibleTranslationIds(ChatMessageKey key, ChatId chatId, Language targetLanguage)
+    private static IEnumerable<TranslationId> ToPossibleTranslationIds(ChatMessageKey key, ChatId chatId, Language targetLanguage)
         => key.Kind switch {
             ChatMessageKind.None => [TranslationId.New(ChatEntryId.New(chatId, key.LocalId), targetLanguage)],
             ChatMessageKind.ConversationStart => [

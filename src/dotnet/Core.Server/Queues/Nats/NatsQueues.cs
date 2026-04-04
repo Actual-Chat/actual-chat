@@ -46,7 +46,8 @@ public sealed partial class NatsQueues(NatsQueues.Options settings, IServiceProv
         var instancePrefix = NatsSettings.InstancePrefix;
         var context = new NatsJSContext(Connection);
         await foreach (var stream in context.ListStreamsAsync(cancellationToken: cancellationToken).ConfigureAwait(false)) {
-            if (!stream.Info.Config.Name.StartsWith(instancePrefix))
+            var streamName = stream.Info.Config.Name ?? "";
+            if (!streamName.StartsWith(instancePrefix))
                 continue;
 
             // await stream.DeleteAsync(cancellationToken).ConfigureAwait(false);

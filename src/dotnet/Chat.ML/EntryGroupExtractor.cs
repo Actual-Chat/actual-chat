@@ -201,7 +201,7 @@ public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, ILo
         }
     }
 
-    private bool ShouldMerge(EntryGroupBuilder groupBuilder, EntryGroupBuilder chunkBuilder)
+    private static bool ShouldMerge(EntryGroupBuilder groupBuilder, EntryGroupBuilder chunkBuilder)
     {
         if (chunkBuilder.WordCount == 0)
             return false;
@@ -219,7 +219,7 @@ public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, ILo
         return shouldMerge;
     }
 
-    private double GetAuthorIntersection(EntryGroupBuilder groupBuilder, EntryGroupBuilder chunkBuilder)
+    private static double GetAuthorIntersection(EntryGroupBuilder groupBuilder, EntryGroupBuilder chunkBuilder)
     {
         var groupActivity = groupBuilder.AuthorActivity;
         var chunkActivity = chunkBuilder.AuthorActivity;

@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
+    <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
+  </PropertyGroup>
+
+  <!-- Release configuration -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <IsPublishable>true</IsPublishable>
+    <PublishAot>true</PublishAot>
+    <TrimMode>full</TrimMode>
+    <IlcGenerateStackTraceData>true</IlcGenerateStackTraceData>
+    <IlcDisableReflection>false</IlcDisableReflection>
+    <IlcTrimMetadata>true</IlcTrimMetadata>
+  </PropertyGroup>
+
+  <!-- Debug symbols -->
+  <PropertyGroup>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>portable</DebugType>
+    <TrimmerRemoveSymbols>false</TrimmerRemoveSymbols>
+    <StripSymbols>false</StripSymbols>
+  </PropertyGroup>
+
+  <!-- Ensures ArgumentList variants with generics are trimmed in Native AOT -->
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="ArgumentList.AllowGenerics" Value="false" Trim="true" />
+  </ItemGroup>
+
+  <!-- References: same surface as App.Wasm + App.ConsoleClient -->
+  <ItemGroup>
+    <ProjectReference Include="..\Api.Contracts\Api.Contracts.csproj" />
+    <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
+  </ItemGroup>
+
+</Project>

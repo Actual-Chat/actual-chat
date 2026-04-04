@@ -9,12 +9,9 @@ public sealed class ExternalContactHasher
 {
     private IByteSerializer ByteSerializer { get; } = MemoryPackByteSerializer.Default;
 
-    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Fields are accessed via reflection and marked with DynamicallyAccessedMembers")]
     public HashString Compute(ExternalContactFull externalContactFull)
     {
- #pragma warning disable IL2026
         using var buffer = ByteSerializer.Write(HashedExternalContact.From(externalContactFull));
- #pragma warning restore IL2026
         return buffer.WrittenSpan.Hash().SHA256().ToBase64HashString(HashAlgorithm.SHA256);
     }
 

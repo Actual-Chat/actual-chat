@@ -1,9 +1,7 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
-public static class ChatEntryEx
+public static class ChatEntryExt
 {
-    private static readonly ILogger Log = StaticLog.For(typeof(ChatEntryEx));
-
     public static string GetClientId(this ChatEntry chatEntry, bool isOwnMessage)
     {
         if (chatEntry.IsSystemEntry)

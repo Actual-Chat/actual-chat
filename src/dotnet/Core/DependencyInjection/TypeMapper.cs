@@ -3,7 +3,7 @@ namespace ActualChat.DependencyInjection;
 /// <summary>
 /// Resolves implementation types from a <see cref="TypeMap{TScope}"/> with caching.
 /// </summary>
-public sealed class TypeMapper<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]TScope>
+public sealed class TypeMapper<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TScope>
 {
     private readonly Dictionary<Type, Type> _map;
     private readonly ConcurrentDictionary<Type, LazySlim<Type, TypeMapper<TScope>, Type?>> _cache = new();
@@ -26,7 +26,7 @@ public sealed class TypeMapper<[DynamicallyAccessedMembers(DynamicallyAccessedMe
 
     [UnconditionalSuppressMessage("Trimming", "IL2073:NoMatchingAnnotation", Justification = "Type is marked with DynamicallyAccessedMembers.")]
     [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-    public Type Get([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]Type source)
+    public Type Get([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type source)
         => TryGet(source)
             ?? throw StandardError.NotFound<Type>(
                 $"No matching {typeof(TScope).GetName()} is found for type '{source.GetName()}'.");

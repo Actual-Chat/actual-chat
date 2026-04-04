@@ -202,6 +202,8 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
        => UserSettingsUI.ChatUserSettings(GetTranslationSettingsTargetChatId(chatId))
            .Update(x => x with { TranslationTargetLanguage = language }, cancellationToken);
 
+   // Private methods
+
    private Task<bool?> GetSubHeaderVisibility(ChatId chatId, CancellationToken cancellationToken)
        => UserSettingsUI.ChatUserSettings(GetTranslationSettingsTargetChatId(chatId))
            .Get(x => x.IsTranslationSubHeaderVisible, cancellationToken);
@@ -212,7 +214,7 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
        return TranslationId.New(translationSourceId, targetLanguage);
    }
 
-   private ChatId GetTranslationSettingsTargetChatId(ChatId chatId)
+   private static ChatId GetTranslationSettingsTargetChatId(ChatId chatId)
        => chatId.IsThread(out var threadChatId) ? threadChatId.GetOutermostParent() : chatId;
 
    private void StoreMustSuggest(ChatId chatId)

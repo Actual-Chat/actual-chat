@@ -2,6 +2,8 @@ using System.Text;
 
 namespace ActualChat.Flows.Infrastructure;
 
+#pragma warning disable CA1863 // Use 'CompositeFormat' for string formatting
+
 public sealed class FlowConsole(IFlowImpl flow, string prefix = "")
 {
     private const int InitialCapacity = 128;

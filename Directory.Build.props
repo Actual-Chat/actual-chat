@@ -31,6 +31,7 @@
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'App.Wasm'">App.Wasm</ProjectKind>
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'App.Maui'">Maui</ProjectKind>
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'App.Maui.IosShareExt'">Maui</ProjectKind>
+    <ProjectKind Condition="'$(MSBuildProjectName)' == 'App.AotHelper'">App.AotHelper</ProjectKind>
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'Maui'">Maui</ProjectKind>
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'Core'">Core</ProjectKind>
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'Core.Server'">Core.Server</ProjectKind>
@@ -50,6 +51,7 @@
     <IsServerSideProject Condition="'$(ProjectKind)' == 'Testing'">true</IsServerSideProject>
     <IsServerSideProject Condition="'$(ProjectKind)' == 'Tests'">true</IsServerSideProject>
     <IsStandaloneProject Condition="'$(ProjectKind)' == 'App.ConsoleClient'">true</IsStandaloneProject>
+    <IsStandaloneProject Condition="'$(ProjectKind)' == 'App.AotHelper'">true</IsStandaloneProject>
     <IsMauiProject Condition="'$(ProjectKind)' == 'Maui'">true</IsMauiProject>
   </PropertyGroup>
 
@@ -230,6 +232,7 @@
     <!-- CA1815: Struct C should override Equals -->
     <!-- CA1816: Change Dispose() to call GC.SuppressFinalize(object) -->
     <!-- CA1819: Properties should not return arrays -->
+    <!-- CA1826: Do not use Enumerable methods on indexable collections -->
     <!-- CA1848: For improved performance, use the LoggerMessage delegates instead of calling ... -->
     <!-- CA1859: Change return type of method M from TBase to T for improved performance -->
     <!-- CA1873: Evaluation of this argument may be expensive and unnecessary if logging is disabled -->
@@ -243,8 +246,13 @@
     <NoWarn>$(NoWarn);CA1001;CA1002;CA1003;CA1030;CA1031;CA1033;CA1034;CA1036;CA1040;CA1043</NoWarn>
     <NoWarn>$(NoWarn);CA1051;CA1054;CA1055;CA1056;CA1063;CA1065;CA1308;CA1508;CA1510;CA1515</NoWarn>
     <NoWarn>$(NoWarn);CA1707;CA1711;CA1720;CA1724;CA1725</NoWarn>
-    <NoWarn>$(NoWarn);CA1802;CA1805;CA1810;CA1815;CA1816;CA1819;CA1848;CA1859;CA1873</NoWarn>
+    <NoWarn>$(NoWarn);CA1802;CA1805;CA1810;CA1815;CA1816;CA1819;CA1826;CA1848;CA1859;CA1873</NoWarn>
     <NoWarn>$(NoWarn);CA2000;CA2208;CA2211;CA2213;CA2225;CA2234;CA5394</NoWarn>
+    <!-- Trimming / AOT: suppressed globally, handled via CodeKeeper infrastructure -->
+    <!-- IL2026: Using member with 'RequiresUnreferencedCodeAttribute' -->
+    <!-- IL2110: Field with 'DynamicallyAccessedMembersAttribute' accessed via reflection -->
+    <!-- IL2111: Method with 'DynamicallyAccessedMembersAttribute' accessed via reflection -->
+    <NoWarn>$(NoWarn);IL2026;IL2110;IL2111</NoWarn>
     <!-- String comparison / culture: invariant culture is configured globally, so these are unnecessary -->
     <!-- CA1304: The behavior of 'string.ToLower()' could vary based on the current user's locale settings -->
     <!-- CA1305: The behavior of 'FormattableString' could vary based on the current user's locale settings -->

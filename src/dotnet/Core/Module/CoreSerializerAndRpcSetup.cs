@@ -1,3 +1,5 @@
+using ActualChat.Aot;
+using ActualChat.Internal;
 using ActualLab.Rpc;
 
 namespace ActualChat.Module;
@@ -9,7 +11,7 @@ public static class CoreSerializerAndRpcSetup
     [ModuleInitializer]
     internal static void ModuleInitializer()
     {
-        // Empty for now, but likely to be used in the future
+        AotTypes.AddSource(new CoreAotSource());
     }
 
     public static void Configure(bool isServer)

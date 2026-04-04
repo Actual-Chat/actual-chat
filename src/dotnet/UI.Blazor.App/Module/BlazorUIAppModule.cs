@@ -18,14 +18,11 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace ActualChat.UI.Blazor.App.Module;
 
-#pragma warning disable IL2026 // Fine for modules
-
 public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
     : HostModule(moduleServices), IBlazorUIModule
 {
     public static string ImportName => "blazorApp";
 
-    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Fine for Fusion.")]
     protected override void InjectServices(IServiceCollection services)
     {
         var fusion = services.AddFusion();
