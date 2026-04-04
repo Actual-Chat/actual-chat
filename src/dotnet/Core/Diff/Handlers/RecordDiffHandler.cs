@@ -15,8 +15,6 @@ public sealed class RecordDiffHandler<
     public RecordDiffPropertyInfo[] Properties { get; init; }
     public Func<TRecord, TRecord> Cloner { get; init; }
 
-    [UnconditionalSuppressMessage("Trimming", "IL2055:CanBeAnalyzed", Justification = "All generic arguments are dynamically accessed.")]
-    [UnconditionalSuppressMessage("Trimming", "IL2076:GenericArgumentDontSatisfy", Justification = "All generic arguments are dynamically accessed.")]
     public RecordDiffHandler(DiffEngine engine) : base(engine)
     {
         var tRecord = typeof(TRecord);
@@ -81,7 +79,6 @@ public sealed class RecordDiffHandler<
         public Func<object, TRecordProperty> RecordPropertyGetter { get; }
         public Action<object, TRecordProperty>? RecordPropertySetter { get; }
 
-        [UnconditionalSuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require ...")]
         public RecordDiffPropertyInfo(DiffEngine engine, PropertyInfo diffProperty, PropertyInfo recordProperty)
             : base(engine, diffProperty, recordProperty)
         {

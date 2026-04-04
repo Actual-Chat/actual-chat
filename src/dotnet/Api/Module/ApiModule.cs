@@ -7,12 +7,10 @@ namespace ActualChat.Module;
 /// <summary>
 /// Registers Api project services with the DI container.
 /// </summary>
-#pragma warning disable IL2026 // Fine for modules
 
 public sealed class ApiModule(IServiceProvider moduleServices)
     : HostModule(moduleServices)
 {
-    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Fine for Fusion")]
     protected override void InjectServices(IServiceCollection services)
     {
         // Common services

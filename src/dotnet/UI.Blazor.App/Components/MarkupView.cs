@@ -11,7 +11,6 @@ public sealed class MarkupView : MarkupViewBase<Markup>
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ComputedMarkupViewBase<,>))]
     public MarkupView() { }
 
-    [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "UI types are expected to be untrimmed.")]
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {
         var componentType = ViewResolver.TryGet(Markup.GetType()) ?? typeof(UnknownMarkupView);

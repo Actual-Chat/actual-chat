@@ -25,7 +25,6 @@ public sealed partial record AccountFull : Account
         (AccountFull? a) => a is not null && (a.Status == AccountStatus.Active || a.IsAdmin),
         new(() => StandardError.Account.Inactive()));
 
-    [UnconditionalSuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require ...")]
     private static Action<AccountFull, Phone> PhoneSetter
         => field ??= typeof(AccountFull).GetProperty(nameof(Phone))!.GetSetter<AccountFull, Phone>();
 

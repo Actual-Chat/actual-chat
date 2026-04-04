@@ -1,5 +1,4 @@
 using ActualChat.App.AotHelper;
-using static System.Console;
 
 // Parse arguments
 var generateMode = false;
@@ -13,7 +12,6 @@ for (var i = 0; i < args.Length; i++) {
     }
 }
 
-if (generateMode)
-    return AotTypeGenerator.Generate(projectRoot);
-
-return AotTypeTester.RunTests();
+return generateMode
+    ? AotTypeGenerator.Generate(projectRoot)
+    : AotTypeTester.RunTests();

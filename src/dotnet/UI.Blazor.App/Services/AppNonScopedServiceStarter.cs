@@ -152,11 +152,9 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
 #pragma warning restore CA1861
 
         static void Warmup<T>(T instance) {
-#pragma warning disable IL2026
             var s = ByteSerializer.Default;
             using var buffer = s.Write(instance, typeof(T));
             s.Read(buffer.WrittenMemory, typeof(T), out _);
-#pragma warning restore IL2026
         }
     }
 
@@ -193,11 +191,9 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
         return;
 
         static void Warmup<T>(T instance) {
-#pragma warning disable IL2026
             var s = SystemJsonSerializer.Default;
             var json = s.Write(instance);
             s.Read<T>(json);
-#pragma warning restore IL2026
         }
     }
 

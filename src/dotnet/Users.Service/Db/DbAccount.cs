@@ -35,7 +35,6 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
         set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
-    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "We assume server-side code is fully preserved")]
     public string ClaimsJson {
         get => _claims.Data;
         set => _claims = value;

@@ -11,6 +11,7 @@ internal static class BlazorUIAppModuleInitializer
     internal static void ModuleInitializer()
     {
         AotTypes.AddSource(new BlazorUIAppAotSource());
+        AotJsonContexts.Add(BlazorUIAppJsonContext.Default);
         RenderModeDef.All = [
             new("a", "Auto") { Mode = new InteractiveAutoRenderMode(prerender: false) },
             new("w", "WASM") { Mode = new InteractiveWebAssemblyRenderMode(prerender: false) },

@@ -20,14 +20,11 @@ public class BannerUI : UIServiceBase<UIHub>
         ViewResolver = Services.GetRequiredService<TypeMapper<IBannerView>>();
     }
 
-    [UnconditionalSuppressMessage("Trimming", "IL2072:DoesNotSatisfyDynamicallyAccessedMemberTypes.Method", Justification = "TBannerModel is marked with DynamicallyAccessedMembers.")]
     public BannerDef Show<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]TBannerModel>(TBannerModel bannerModel)
         where TBannerModel : notnull
     {
         var componentType = ViewResolver.Get(bannerModel.GetType());
-#pragma warning disable IL2072
         var banner = Create(bannerModel, componentType);
-#pragma warning restore IL2072
 
         lock (_lock)
             _banners.Value = _banners.Value.Add(banner);

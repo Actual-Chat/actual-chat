@@ -42,11 +42,9 @@ public static class StableHash
                 if (!typeof(ISymbolIdentifier).IsAssignableFrom(type))
                     return null;
 
-#pragma warning disable IL2060
                 return (Delegate?)HashSymbolIdentifierMethod
                     .MakeGenericMethod(type)
                     .CreateDelegate(typeof(Hasher<>).MakeGenericType(type));
-#pragma warning restore IL2060
             })
             .Or<IHasId<string>?>(value => value is null ? 0 : HashString(value.Id))
             .Or<IHasId<Symbol>?>(value => value is null ? 0 : HashString(value.Id.Value))
@@ -133,11 +131,9 @@ public static class StableHash
 
             if (type.IsValueType) {
                 if (typeof(ISymbolIdentifier).IsAssignableFrom(type)) {
-#pragma warning disable IL2060
                     return HashSymbolIdentifierMethod
                         .MakeGenericMethod(type)
                         .CreateDelegate<Hasher<T>>();
-#pragma warning restore IL2060
                 }
                 return null;
             }

@@ -24,7 +24,6 @@ public sealed class TypeMapper<[DynamicallyAccessedMembers(DynamicallyAccessedMe
             .ToDictionary(kv => kv.Key, kv => kv.Value)))
     { }
 
-    [UnconditionalSuppressMessage("Trimming", "IL2073:NoMatchingAnnotation", Justification = "Type is marked with DynamicallyAccessedMembers.")]
     [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     public Type Get([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type source)
         => TryGet(source)
@@ -36,8 +35,6 @@ public sealed class TypeMapper<[DynamicallyAccessedMembers(DynamicallyAccessedMe
         if (source == null)
             throw new ArgumentNullException(nameof(source));
 
-        [UnconditionalSuppressMessage("Trimming", "IL2055", Justification = "Covered by DynamicallyAccessedMemberTypes.All above")]
-        [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "Covered by DynamicallyAccessedMemberTypes.All above")]
         static Type? MappedTypeFactory(Type key, TypeMapper<TScope> self) {
             var source1 = key;
             var baseTypes = source1.GetAllBaseTypes(true, true);

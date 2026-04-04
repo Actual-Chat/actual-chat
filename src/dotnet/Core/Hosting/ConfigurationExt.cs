@@ -4,7 +4,6 @@ namespace ActualChat.Hosting;
 
 public static class ConfigurationExt
 {
-    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Covered by DynamicallyAccessedMemberTypes.All")]
     public static TSettings Settings<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TSettings>(
         this IConfiguration configuration,

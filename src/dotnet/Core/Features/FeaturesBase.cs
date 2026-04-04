@@ -51,11 +51,8 @@ public abstract class FeaturesBase(
     }
 
     // [ComputeMethod]
-    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Features are marked with DynamicallyAccessedMembers.")]
-    [UnconditionalSuppressMessage("Trimming", "IL2072:NotSatisfyDynamicallyAccessedMemberTypesAll", Justification = "Features are marked with DynamicallyAccessedMembers.")]
     public virtual async Task<byte[]> GetData(TypeRef featureTypeRef, CancellationToken cancellationToken)
     {
-#pragma warning disable IL2026, IL2072
         var featureType = featureTypeRef.Resolve();
         var featureDef = Registry.Get(featureType);
         var value = await Get(featureType, cancellationToken).ConfigureAwait(false);
@@ -63,6 +60,5 @@ public abstract class FeaturesBase(
         using var buffer = new ArrayPoolBufferWriter<byte>(ArrayPools.SharedBytePool, 256);
         Serializer.Write(buffer, value, featureDef.ResultType);
         return buffer.WrittenSpan.ToArray();
-#pragma warning restore IL2026, IL2072
     }
 }

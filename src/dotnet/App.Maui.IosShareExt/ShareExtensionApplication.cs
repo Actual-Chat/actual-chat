@@ -13,7 +13,6 @@ using Microsoft.Maui.Devices;
 
 namespace ActualChat.App.Maui.IosShareExt;
 
-#pragma warning disable IL2026
 public class ShareExtensionApplication(ServiceProvider services) : IHasServices
 {
     public IServiceProvider Services => services;

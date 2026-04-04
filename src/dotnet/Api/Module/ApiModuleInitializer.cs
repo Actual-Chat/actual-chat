@@ -1,5 +1,5 @@
+using ActualChat.Aot;
 using ActualChat.Internal;
-using ActualLab.Rpc;
 
 namespace ActualChat.Module;
 
@@ -13,6 +13,7 @@ public static class ApiModuleInitializer
     [ModuleInitializer]
     internal static void ModuleInitializer()
     {
+        AotTypes.AddSource(new ApiAotSource());
         // This is super important: TypeRef and some other types that were formerly using Symbol
         // are stored in our DB, and this option enables their legacy serialization mode.
         StringAsSymbolMemoryPackFormatterAttribute.IsEnabled = true;

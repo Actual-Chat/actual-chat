@@ -40,7 +40,6 @@ public abstract class HubClientBase : IDisposable
     protected Task<HubConnection> GetConnection(CancellationToken cancellationToken)
         => Connector.GetConnection(cancellationToken);
 
-    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Messages are marked as preserved.")]
     protected virtual async Task<HubConnection> Connect(CancellationToken cancellationToken)
     {
         var hubUri = new Uri(HubUrl, UriKind.Absolute);

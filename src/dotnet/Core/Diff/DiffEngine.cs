@@ -45,7 +45,6 @@ public sealed class DiffEngine(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type sourceType,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type diffType)
     {
-        [UnconditionalSuppressMessage("Trimming", "IL2077", Justification = "Covered by DynamicallyAccessedMemberTypes.All above")]
         static IDiffHandler HandlerFactory((Type SourceType, Type DiffType) key, DiffEngine self) {
             var (tSource, tDiff) = key;
             return self.CreateHandler(tSource, tDiff);
@@ -74,8 +73,6 @@ public sealed class DiffEngine(
 
     // Protected methods
 
-#pragma warning disable IL2067, IL2070, IL2072
-    [UnconditionalSuppressMessage("Trimming", "IL2072:NotSatisfyDynamicallyAccessedMemberTypes.PublicConstructors", Justification = "T is marked with DynamicallyAccessedMembers.")]
     private IDiffHandler CreateHandler(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]Type sourceType,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]Type diffType)
@@ -90,5 +87,4 @@ public sealed class DiffEngine(
         tHandler ??= typeof(MissingDiffHandler<,>).MakeGenericType(sourceType, diffType);
         return (IDiffHandler)Services.CreateInstance(tHandler);
     }
-#pragma warning restore IL2067, IL2070, IL2072
 }

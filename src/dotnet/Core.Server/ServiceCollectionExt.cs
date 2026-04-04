@@ -10,7 +10,6 @@ using NATS.Client.Core;
 
 namespace ActualChat;
 
-[UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Fine for server code")]
 public static class ServiceCollectionExt
 {
     // Private accessors

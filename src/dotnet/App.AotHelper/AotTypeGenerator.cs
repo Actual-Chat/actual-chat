@@ -9,6 +9,7 @@ public static class AotTypeGenerator
 {
     // Assemblies to scan for components and APIs
     private static readonly string[] AssemblyNames = [
+        "ActualChat.Core",
         "ActualChat.Api",
         "ActualChat.Api.Contracts",
         "ActualChat.UI.Blazor",
@@ -21,12 +22,17 @@ public static class AotTypeGenerator
             "CoreAotSource",
             "ActualChat.Internal",
             "Core/Module/CoreAotSource.g.cs",
-            [AotTypeKind.Api]),
+            [AotTypeKind.Api, AotTypeKind.Serializable]),
+        new("ActualChat.Api",
+            "ApiAotSource",
+            "ActualChat.Internal",
+            "Api/Module/ApiAotSource.g.cs",
+            [AotTypeKind.Serializable]),
         new("ActualChat.Api.Contracts",
             "ApiContractsAotSource",
             "ActualChat.Internal",
             "Api.Contracts/Module/ApiContractsAotSource.g.cs",
-            [AotTypeKind.Api]),
+            [AotTypeKind.Api, AotTypeKind.Serializable]),
         new("ActualChat.UI.Blazor",
             "BlazorUIAotSource",
             "ActualChat.UI.Blazor.Internal",
@@ -56,9 +62,11 @@ public static class AotTypeGenerator
         LoadAssemblies();
         var components = DiscoverTypes(typeof(ComponentBase), includeAbstract: false, interfacesOnly: false);
         var apis = DiscoverTypes(typeof(IComputeService), includeAbstract: true, interfacesOnly: true);
+        var serializables = DiscoverSerializableTypes();
 
         WriteLine($"Discovered {components.Count} Blazor components");
         WriteLine($"Discovered {apis.Count} API interfaces");
+        WriteLine($"Discovered {serializables.Count} serializable types");
 
         foreach (var target in Targets) {
             // Collect types from all requested kinds, filtered to the target assembly
@@ -67,6 +75,7 @@ public static class AotTypeGenerator
                 var source = kind switch {
                     AotTypeKind.Api => apis,
                     AotTypeKind.Component => components,
+                    AotTypeKind.Serializable => serializables,
                     _ => [],
                 };
                 filtered.AddRange(source
@@ -164,6 +173,48 @@ public static class AotTypeGenerator
         return result;
     }
 
+    /// <summary>
+    /// Discovers types marked with [MemoryPackable] or [DataContract] that are
+    /// used as serializable DTOs (commands, results, etc.).
+    /// </summary>
+    private static List<Type> DiscoverSerializableTypes()
+    {
+        var memoryPackableAttrName = "MemoryPack.MemoryPackableAttribute";
+        var result = new List<Type>();
+
+        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies()) {
+            var name = assembly.GetName().Name ?? "";
+            if (!name.StartsWith("ActualChat.", StringComparison.Ordinal))
+                continue;
+
+            try {
+                foreach (var type in assembly.GetTypes()) {
+                    if (type.IsAbstract || type.IsInterface || type.IsGenericTypeDefinition)
+                        continue;
+                    // Look for [MemoryPackable] attribute (the primary serialization marker)
+                    if (!type.CustomAttributes.Any(a =>
+                        a.AttributeType.FullName == memoryPackableAttrName))
+                        continue;
+                    result.Add(type);
+                }
+            }
+            catch (ReflectionTypeLoadException e) {
+                foreach (var type in e.Types) {
+                    if (type == null || type.IsAbstract || type.IsInterface || type.IsGenericTypeDefinition)
+                        continue;
+                    if (!type.CustomAttributes.Any(a =>
+                        a.AttributeType.FullName == memoryPackableAttrName))
+                        continue;
+                    result.Add(type);
+                }
+            }
+        }
+
+        result.Sort((a, b) => string.Compare(
+            a.FullName, b.FullName, StringComparison.Ordinal));
+        return result;
+    }
+
     private static string GenerateSourceFile(AotSourceTarget target, List<(Type Type, AotTypeKind Kind)> types)
     {
         var sb = new StringBuilder();
@@ -187,10 +238,12 @@ public static class AotTypeGenerator
             sb.AppendLine("        if (CodeKeeper.AlwaysTrue)");
             sb.AppendLine("            return;");
             sb.AppendLine();
-            foreach (var (type, _) in types) {
+            foreach (var (type, kind) in types) {
                 var typeName = FormatTypeName(type);
-                if (typeName != null)
-                    sb.AppendLine($"        CodeKeeper.Keep<{typeName}>();");
+                if (typeName == null) continue;
+                // Use KeepSerializable for serializable types to also retain serializer infrastructure
+                var method = kind == AotTypeKind.Serializable ? "KeepSerializable" : "Keep";
+                sb.AppendLine($"        CodeKeeper.{method}<{typeName}>();");
             }
         }
         sb.AppendLine("    }");

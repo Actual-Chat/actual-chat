@@ -4,6 +4,7 @@ using ActualChat.Hosting;
 using ActualChat.Logging;
 using ActualChat.Maui.Module;
 using ActualChat.Security;
+using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Diagnostics;
@@ -25,8 +26,6 @@ using Foundation;
 #endif
 
 namespace ActualChat.App.Maui;
-
-#pragma warning disable IL2026
 
 public static partial class MauiProgram
 {
@@ -194,9 +193,7 @@ public static partial class MauiProgram
         if (contentTypeProvider == null)
             throw StandardError.Constraint("'ContentTypeProvider' field has null value.");
 
-#pragma warning disable IL2075
         var mappingsPropertyInfo = contentTypeProviderType.GetProperty("Mappings", BindingFlags.Instance | BindingFlags.Public);
-#pragma warning restore IL2075
         var mapping = (IDictionary<string,string>)mappingsPropertyInfo!.GetValue(contentTypeProvider)!;
         mapping[".mjs"] = "text/javascript";
 #else
@@ -250,29 +247,34 @@ public static partial class MauiProgram
     {
         var jsRuntimeRegistration = services.FirstOrDefault(c => c.ServiceType == typeof(IJSRuntime));
         if (jsRuntimeRegistration == null) {
-            Log.LogWarning("IJSRuntime registration is not found. Can't override WebViewJSRuntime");
+            Log.LogWarning("Can't add SafeJSRuntime: IJSRuntime registration is not found");
             return;
         }
         var webViewJSRuntimeType = jsRuntimeRegistration.ImplementationType;
         if (webViewJSRuntimeType == null) {
-            Log.LogWarning("IJSRuntime registration has no ImplementationType. Can't override WebViewJSRuntime");
+            Log.LogWarning("Can't add SafeJSRuntime: IJSRuntime registration has no ImplementationType");
             return;
         }
         services.Remove(jsRuntimeRegistration);
         services.Add(new ServiceDescriptor(
             typeof(SafeJSRuntime),
-            c => new SafeJSRuntime((IJSRuntime)ActivatorUtilities.CreateInstance(c, webViewJSRuntimeType)),
+            c => {
+                var wrapped = (IJSRuntime)ActivatorUtilities.CreateInstance(c, webViewJSRuntimeType);
+                // AOT: inject source-generated JSON type info resolvers into the underlying JSRuntime
+                wrapped.InjectJsonTypeInfoResolvers();
+                return new SafeJSRuntime(wrapped);
+            },
             jsRuntimeRegistration.Lifetime));
         services.Add(new ServiceDescriptor(
             typeof(IJSRuntime),
             c => {
                 var safeJSRuntime = c.GetRequiredService<SafeJSRuntime>();
                 if (!safeJSRuntime.IsReady && safeJSRuntime.MarkReady())
-                    // The very first IJSRuntime service resolved first time from PageContext is cast to WebViewJSRuntime
-                    // to being attached to WebView. So we need to return the original WebViewJSRuntime instance
+                    // The very first IJSRuntime service resolved first time from PageContext is cast to WrappedJSRuntime
+                    // to being attached to WebView. So we need to return the original WrappedJSRuntime instance
                     // specifically for this call, and after that we can return SafeJSRuntime.
                     // See https://github.com/dotnet/aspnetcore/blob/410efd482f494d1ab05ce25b932b5788699c2308/src/Components/WebView/WebView/src/PageContext.cs#L44
-                    return safeJSRuntime.WebViewJSRuntime;
+                    return safeJSRuntime.WrappedJSRuntime;
 
                 // After that there is no more bindings with implementation type, so we can return protected JSRuntime.
                 return safeJSRuntime;

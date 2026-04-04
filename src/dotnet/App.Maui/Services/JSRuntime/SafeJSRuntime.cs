@@ -1,3 +1,4 @@
+using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App;
 using Microsoft.JSInterop;
 
@@ -26,7 +27,7 @@ namespace ActualChat.App.Maui.Services;
 /// <summary>
 /// Wrapper around <see cref="IJSRuntime"/> that tracks connection state and handles disconnection gracefully.
 /// </summary>
-public sealed class SafeJSRuntime(IJSRuntime webViewJSRuntime) : IJSRuntime
+public sealed class SafeJSRuntime(IJSRuntime wrappedJSRuntime) : IJSRuntimeWrapper
 {
     internal const DynamicallyAccessedMemberTypes JsonSerialized =
         DynamicallyAccessedMemberTypes.PublicConstructors
@@ -38,7 +39,7 @@ public sealed class SafeJSRuntime(IJSRuntime webViewJSRuntime) : IJSRuntime
     public bool IsDisconnected => _state == 2;
     public bool IsReady => _state != 0;
 
-    internal IJSRuntime WebViewJSRuntime { get; } = webViewJSRuntime;
+    public IJSRuntime WrappedJSRuntime { get; } = wrappedJSRuntime;
 
     static SafeJSRuntime()
         => FirstChanceExceptionLogger.ShouldSkip += e => e.IsJSDisconnectedException();
@@ -86,7 +87,7 @@ public sealed class SafeJSRuntime(IJSRuntime webViewJSRuntime) : IJSRuntime
     public IJSRuntime RequireConnected()
         => IsDisconnected
             ? throw JSRuntimeErrors.Disconnected()
-            : WebViewJSRuntime;
+            : WrappedJSRuntime;
 
     public static object?[]? ToUnsafe(object?[]? args)
     {
