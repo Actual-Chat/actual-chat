@@ -110,13 +110,24 @@ internal static class BlazorUIModuleInitializer
         const string qRangeInt = "ActualChat.Mathematics.Range`1[[" + qInt32 + "]], " + aActualChatCore;
         const string qVirtualListDataQuery = "ActualChat.UI.Blazor.Components.VirtualListDataQuery, " + aUIBlazor;
         CodeKeeper.Keep(tSmallObjectConverter + "[[" + qVirtualListDataQuery + "],[" + qRangeString + "],[" + qRangeDouble + "],[" + qRangeInt + "],[" + qObject + "]], " + aJson);
-        // SmallObjectWithParameterizedConstructorConverter for Range<string>, Range<double>, Range<int>, Range<long>
+        // Range<T> — SmallObjectConverter + JsonPropertyInfo for all used variants
         const string qInt64 = "System.Int64, " + aCoreLib;
+        const string qSingle = "System.Single, " + aCoreLib;
         const string qRangeLong = "ActualChat.Mathematics.Range`1[[" + qInt64 + "]], " + aActualChatCore;
+        const string qRangeFloat = "ActualChat.Mathematics.Range`1[[" + qSingle + "]], " + aActualChatCore;
+        const string tJsonPropertyInfo = "System.Text.Json.Serialization.Metadata.JsonPropertyInfo`1";
+        // SmallObjectConverters
         CodeKeeper.Keep(tSmallObjectConverter + "[[" + qRangeString + "],[" + qString + "],[" + qString + "],[" + qObject + "],[" + qObject + "]], " + aJson);
         CodeKeeper.Keep(tSmallObjectConverter + "[[" + qRangeDouble + "],[" + qDouble + "],[" + qDouble + "],[" + qObject + "],[" + qObject + "]], " + aJson);
         CodeKeeper.Keep(tSmallObjectConverter + "[[" + qRangeInt + "],[" + qInt32 + "],[" + qInt32 + "],[" + qObject + "],[" + qObject + "]], " + aJson);
         CodeKeeper.Keep(tSmallObjectConverter + "[[" + qRangeLong + "],[" + qInt64 + "],[" + qInt64 + "],[" + qObject + "],[" + qObject + "]], " + aJson);
+        CodeKeeper.Keep(tSmallObjectConverter + "[[" + qRangeFloat + "],[" + qSingle + "],[" + qSingle + "],[" + qObject + "],[" + qObject + "]], " + aJson);
+        // JsonPropertyInfo for each Range variant
+        CodeKeeper.Keep(tJsonPropertyInfo + "[[" + qRangeString + "]], " + aJson);
+        CodeKeeper.Keep(tJsonPropertyInfo + "[[" + qRangeDouble + "]], " + aJson);
+        CodeKeeper.Keep(tJsonPropertyInfo + "[[" + qRangeInt + "]], " + aJson);
+        CodeKeeper.Keep(tJsonPropertyInfo + "[[" + qRangeLong + "]], " + aJson);
+        CodeKeeper.Keep(tJsonPropertyInfo + "[[" + qRangeFloat + "]], " + aJson);
 
         // ObjectDefaultConverter<NavigationOptions> — Blazor navigation
         const string qNavigationOptions = "Microsoft.AspNetCore.Components.NavigationOptions, " + aComponents;
@@ -126,8 +137,9 @@ internal static class BlazorUIModuleInitializer
         CodeKeeper.Keep("Microsoft.JSInterop.Infrastructure.TaskGenericsUtil+TaskResultGetter`1" +
             "[[System.Threading.Tasks.VoidTaskResult, " + aCoreLib + "]], " + aJSInterop);
 
-        // RuntimeHelpers.IsReferenceOrContainsReferences<long> — needed for value-type generic operations
+        // Value types needing RuntimeHelpers.IsReferenceOrContainsReferences<T>
         CodeKeeper.Keep<long>();
+        CodeKeeper.Keep<float>();
         // IEnumerableOfTConverter, ICollectionOfTConverter (for object KVPs)
         CodeKeeper.Keep(tIEnumerableOfTConverter + "[[" + qIEnumerableOfChar + "],[" + qChar + "]], " + aJson);
         CodeKeeper.Keep(tIEnumerableOfTConverter + "[[" + qIEnumerableOfKvp + "],[" + qKvp + "]], " + aJson);
@@ -147,10 +159,11 @@ internal static class BlazorUIModuleInitializer
         CodeKeeper.Keep(tIEnumerableOfTConverter + "[[" + qIReadOnlyCollectionOfKvpTune + "],[" + qKvpTuneTuneInfo + "]], " + aJson);
         CodeKeeper.Keep(tICollectionOfTConverter + "[[" + qICollectionOfKvpTune + "],[" + qKvpTuneTuneInfo + "]], " + aJson);
 
-        // ArrayConverter<PlayableTextMarkup.Word[], PlayableTextMarkup.Word>
+        // PlayableTextMarkup.Word — array + object converters
         const string aApi = "ActualChat.Api";
         const string qPlayableWord = "ActualChat.Chat.PlayableTextMarkup+Word, " + aApi;
         CodeKeeper.Keep(tArrayConverter + "[[" + qObject + "],[" + qPlayableWord + "]], " + aJson);
+        CodeKeeper.Keep(tObjectDefaultConverter + "[[" + qPlayableWord + "]], " + aJson);
 
         // ObjectDefaultConverter<VoidTaskResult>
         const string qVoidTaskResult = "System.Threading.Tasks.VoidTaskResult, " + aCoreLib;
@@ -169,6 +182,7 @@ internal static class BlazorUIModuleInitializer
         CodeKeeper.Keep(tIEnumerableOfTConverter + "[[" + qIEnumerableOfKvpStringBool + "],[" + qKvpStringBool + "]], " + aJson);
         CodeKeeper.Keep(tIEnumerableOfTConverter + "[[" + qIReadOnlyCollOfKvpStringBool + "],[" + qKvpStringBool + "]], " + aJson);
         CodeKeeper.Keep(tICollectionOfTConverter + "[[" + qICollOfKvpStringBool + "],[" + qKvpStringBool + "]], " + aJson);
+        CodeKeeper.Keep(tSmallObjectConverter + "[[" + qKvpStringBool + "],[" + qString + "],[" + qBool + "],[" + qObject + "],[" + qObject + "]], " + aJson);
 
         // Fusion Blazor: ComputedStateComponent.CreateDefaultStateOptionsFactory<bool>
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1" +

@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization.Metadata;
 using ActualChat.Aot;
 using ActualChat.UI.Blazor.Module;
 
@@ -24,11 +25,13 @@ public static class JSRuntimeExt
         if (optionsProperty?.GetValue(jsRuntime) is not JsonSerializerOptions options)
             return;
 
-        // Append after the default resolver: JsonSerializerContext throws (rather than
-        // returning null) for types it doesn't know, so it can't go first in the chain.
-        var contexts = AotJsonContexts.All;
-        var typeInfoResolverChain = options.TypeInfoResolverChain;
-        for (var i = 0; i < contexts.Length; i++)
-            typeInfoResolverChain.Insert(i, contexts[i]);
+        // TODO(AOT): Injection of source-gen JSON contexts into JSRuntime is disabled for now.
+        // JsonSerializerContext instances cause issues with the TypeInfoResolverChain —
+        // even when wrapped to return null for unknown types, their presence changes
+        // how the chain resolves types like object[] used internally by JSRuntime.
+        // The CodeKeeper string-based keeps handle AOT retention for STJ converter types instead.
+        // var contexts = AotJsonContexts.All;
+        // if (contexts.Length > 0)
+        //     options.TypeInfoResolverChain.Insert(0, new SafeCompositeResolver(contexts));
     }
 }

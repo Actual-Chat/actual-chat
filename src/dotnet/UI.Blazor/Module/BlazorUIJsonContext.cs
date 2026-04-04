@@ -21,4 +21,5 @@ namespace ActualChat.UI.Blazor.Module;
 [JsonSerializable(typeof(Range<double>))]
 [JsonSerializable(typeof(Range<long>))]
 [JsonSerializable(typeof(Range<int>))]
+[JsonSerializable(typeof(Range<float>))]
 public partial class BlazorUIJsonContext : JsonSerializerContext;
