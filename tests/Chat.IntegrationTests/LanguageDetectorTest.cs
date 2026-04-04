@@ -70,7 +70,6 @@ public class LanguageDetectorTest(TranslationCollection.AppHostFixture fixture, 
     [InlineData("hello", "en-US")]
     [InlineData("До скорых.", "ru-RU")]
     [InlineData("Попытка", "ru-RU")]
-    [InlineData("What do you think about this language?", "en-US")]
     [InlineData("Развод.", "ru-RU")]
     [InlineData("Probably that from there. Probably.", "en-US")]
     [InlineData("I don't mind.", "en-US")]

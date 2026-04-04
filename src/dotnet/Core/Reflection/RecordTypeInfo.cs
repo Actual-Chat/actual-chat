@@ -7,18 +7,6 @@ public abstract class RecordTypeInfo
 {
     public bool IsRecord { get; init; }
     public Func<object, object> UntypedCloner { get; init; } = null!;
-
-    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "CodeKeepers are used only to retain the code")]
-    [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "CodeKeepers are used only to retain the code")]
-    [UnconditionalSuppressMessage("Trimming", "IL3050", Justification = "CodeKeepers are used only to retain the code")]
-    public static void KeepCodeForType<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>()
-    {
-        if (CodeKeeper.AlwaysTrue)
-            return;
-
-        CodeKeeper.Keep<RecordTypeInfoFactory<T>>();
-        CodeKeeper.Keep<RecordTypeInfo<T>>();
-    }
 }
 
 public class RecordTypeInfo<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T> : RecordTypeInfo

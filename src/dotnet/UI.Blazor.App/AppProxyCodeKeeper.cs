@@ -1,5 +1,6 @@
 using ActualChat.Reflection;
-using ActualLab.Fusion.Trimming;
+using ActualLab.Interception;
+using ActualLab.Interception.Trimming;
 
 namespace ActualChat.UI.Blazor.App;
 
@@ -10,26 +11,33 @@ namespace ActualChat.UI.Blazor.App;
 [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "CodeKeepers are used only to retain the code")]
 [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "CodeKeepers are used only to retain the code")]
 [UnconditionalSuppressMessage("Trimming", "IL3050", Justification = "CodeKeepers are used only to retain the code")]
-public class AppProxyCodeKeeper : FusionProxyCodeKeeper
+public class AppProxyCodeKeeper : ProxyCodeKeeper.IExtension
 {
-    public override void KeepMethodArgument<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TArg>(
-        string name = "", int index = -1)
+    public void KeepProxy<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TBase,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TProxy>()
+        where TBase : IRequiresAsyncProxy where TProxy : IProxy
+    { }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public void KeepMethodArgument<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TArg>(
+        string name, int index)
     {
-        if (AlwaysTrue)
+        if (CodeKeeper.AlwaysTrue)
             return;
 
-        RecordTypeInfo.KeepCodeForType<TArg>();
-        base.KeepMethodArgument<TArg>(name, index);
+        CodeKeeper.Keep<RecordTypeInfoFactory<TArg>>();
+        CodeKeeper.Keep<RecordTypeInfo<TArg>>();
     }
 
-    public override void KeepMethodResult<
+    public void KeepMethodResult<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TResult,
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TUnwrapped>(string name = "")
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TUnwrapped>(string name)
     {
-        if (AlwaysTrue)
+        if (CodeKeeper.AlwaysTrue)
             return;
 
-        RecordTypeInfo.KeepCodeForType<TUnwrapped>();
-        base.KeepMethodResult<TResult, TUnwrapped>(name);
+        CodeKeeper.Keep<RecordTypeInfoFactory<TUnwrapped>>();
+        CodeKeeper.Keep<RecordTypeInfo<TUnwrapped>>();
     }
 }

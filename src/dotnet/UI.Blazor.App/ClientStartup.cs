@@ -109,48 +109,23 @@ public static class ClientStartup
         // AppContext.SetSwitch("System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported", false);
 
         // CodeKeeper actions
-        CodeKeeper.AddFakeAction(() => {
-            // Extra "keep code" calls should be added here
-
-            // Hardcode the known comparer types to avoid trimming
-            // var typeKeeper = CodeKeeper.Get<TypeCodeKeeper>();
-            // typeKeeper.KeepType<ByValueParameterComparer>();
-            // typeKeeper.KeepType<ByItemParameterComparer>();
-            // typeKeeper.KeepType<ByItemSetParameterComparer>();
-            // typeKeeper.KeepType<ByNoneParameterComparer>();
-            // typeKeeper.KeepType<ByRefParameterComparer>();
-            // typeKeeper.KeepType<ByUuidParameterComparer>();
-            // typeKeeper.KeepType<DefaultParameterComparer>();
-            // typeKeeper.KeepType<ByVersionParameterComparer<long>>();
-            // typeKeeper.KeepType<ByIdAndVersionParameterComparer<ChatId, long>>();
-            // typeKeeper.KeepType<ByIdAndVersionParameterComparer<PlaceId, long>>();
-            // typeKeeper.KeepType<ByUuidAndVersionParameterComparer<long>>();
-            CodeKeeper.CallSilently(() => _ = new ByValueParameterComparer().AreEqual(null, null));
-            CodeKeeper.CallSilently(() => _ = new ByItemParameterComparer().AreEqual(null, null));
-            CodeKeeper.CallSilently(() => _ = new ByItemSetParameterComparer().AreEqual(null, null));
-            CodeKeeper.CallSilently(() => _ = new ByNoneParameterComparer().AreEqual(null, null));
-            CodeKeeper.CallSilently(() => _ = new ByRefParameterComparer().AreEqual(null, null));
-            CodeKeeper.CallSilently(() => _ = new ByUuidParameterComparer().AreEqual(null, null));
-            CodeKeeper.CallSilently(() => _ = new DefaultParameterComparer().AreEqual(null, null));
-            CodeKeeper.CallSilently(() => _ = new ByVersionParameterComparer<long>().AreEqual(null, null));
-            CodeKeeper.CallSilently(() => _ = new ByIdAndVersionParameterComparer<ChatId, long>().AreEqual(null, null));
-            CodeKeeper.CallSilently(() => _ = new ByIdAndVersionParameterComparer<PlaceId, long>().AreEqual(null, null));
-            CodeKeeper.CallSilently(() => _ = new ByUuidAndVersionParameterComparer<long>().AreEqual(null, null));
-
-            CodeKeeper.CallSilently(() => _ = new DefaultLayout());
-            CodeKeeper.CallSilently(() => _ = new InterfaceImmutableDictionaryFormatter<PlaceId, ChatId>());
-            // TODO: Add support for parameter comparers
-        });
-        CodeKeeper.Set<ProxyCodeKeeper, AppProxyCodeKeeper>();
         if (CodeKeeper.AlwaysFalse) {
-            // NOTE(AY): This block actually does nothing, it's just to measure the time RunActions() takes (if called).
-            // Currently, any proxy uses .AddAction() to register its "actions", even though it's not needed -
-            // .AddFakeAction() is enough for AOT code generation & IL trimmers.
-            // So likely I'll remove .AddAction() and this block later.
+            ProxyCodeKeeper.Extension = new AppProxyCodeKeeper();
+            CodeKeeper.Keep<ParameterComparer>();
+            CodeKeeper.Keep<ByValueParameterComparer>();
+            CodeKeeper.Keep<ByItemParameterComparer>();
+            CodeKeeper.Keep<ByItemSetParameterComparer>();
+            CodeKeeper.Keep<ByNoneParameterComparer>();
+            CodeKeeper.Keep<ByRefParameterComparer>();
+            CodeKeeper.Keep<ByUuidParameterComparer>();
+            CodeKeeper.Keep<DefaultParameterComparer>();
+            CodeKeeper.Keep<ByVersionParameterComparer<long>>();
+            CodeKeeper.Keep<ByIdAndVersionParameterComparer<ChatId, long>>();
+            CodeKeeper.Keep<ByIdAndVersionParameterComparer<PlaceId, long>>();
+            CodeKeeper.Keep<ByUuidAndVersionParameterComparer<long>>();
 
-            var now = CpuTimestamp.Now;
-            CodeKeeper.RunActions(); // ~ 60ms, all due to JIT?
-            Tracer.Default[nameof(CodeKeeper)].Point($"RunActions took {now.Elapsed.ToShortString()}");
+            CodeKeeper.Keep<DefaultLayout>();
+            CodeKeeper.Keep<InterfaceImmutableDictionaryFormatter<PlaceId, ChatId>>();
         }
 
         // Rpc & Fusion defaults
