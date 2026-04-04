@@ -8,9 +8,6 @@ namespace ActualChat.UI.Blazor.App;
 /// A code keeper that prevents the .NET trimmer from removing App-specific proxy types,
 /// computed functions, and RPC call types.
 /// </summary>
-[UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "CodeKeepers are used only to retain the code")]
-[UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "CodeKeepers are used only to retain the code")]
-[UnconditionalSuppressMessage("Trimming", "IL3050", Justification = "CodeKeepers are used only to retain the code")]
 public class AppProxyCodeKeeper : ProxyCodeKeeper.IExtension
 {
     public void KeepProxy<

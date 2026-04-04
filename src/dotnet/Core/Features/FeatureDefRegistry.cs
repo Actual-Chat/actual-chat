@@ -24,7 +24,6 @@ public abstract class FeatureDefRegistry<
     public TFeatureDef Get(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type featureType)
     {
-        [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "Covered by DynamicallyAccessedMemberTypes.All above")]
         static TFeatureDef FeatureDefFactory(Type featureType1) {
             var instance = featureType1.CreateInstance();
             if (instance is TFeatureDef featureDef)

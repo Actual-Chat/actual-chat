@@ -29,8 +29,6 @@ public abstract class ComputedStateView(IosHub hub) : StatefulView(hub)
     public static string GetMutableStateCategory(Type componentType)
         => StateCategoryCache.GetOrAdd(componentType, static t => $"{t.GetName()}.MutableState");
 
-    [UnconditionalSuppressMessage("Trimming", "IL2060", Justification = "We assume GetDefaultOptions method is preserved")]
-    [UnconditionalSuppressMessage("Trimming", "IL3050", Justification = "We assume GetDefaultOptions method is preserved")]
     public static IComputedStateOptions CreateDefaultStateOptions(Type componentType)
         => CreateDefaultStateOptionsCache.GetOrAdd(componentType,
             static componentType => {

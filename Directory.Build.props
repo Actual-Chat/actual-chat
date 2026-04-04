@@ -250,9 +250,18 @@
     <NoWarn>$(NoWarn);CA2000;CA2208;CA2211;CA2213;CA2225;CA2234;CA5394</NoWarn>
     <!-- Trimming / AOT: suppressed globally, handled via CodeKeeper infrastructure -->
     <!-- IL2026: Using member with 'RequiresUnreferencedCodeAttribute' -->
+    <!-- IL2046: 'RequiresUnreferencedCodeAttribute' on base method vs implementation mismatch -->
+    <!-- IL2055: Call to Type.MakeGenericType with unknown type argument -->
+    <!-- IL2060: Call to Type.GetMethod with unknown name -->
+    <!-- IL2067: Argument does not satisfy 'DynamicallyAccessedMembersAttribute' -->
+    <!-- IL2072: Return value does not satisfy 'DynamicallyAccessedMembersAttribute' -->
+    <!-- IL2073: Annotation mismatch on return value -->
+    <!-- IL2075: Call to non-public member via reflection -->
+    <!-- IL2092: Annotation mismatch on parameter -->
     <!-- IL2110: Field with 'DynamicallyAccessedMembersAttribute' accessed via reflection -->
     <!-- IL2111: Method with 'DynamicallyAccessedMembersAttribute' accessed via reflection -->
-    <NoWarn>$(NoWarn);IL2026;IL2110;IL2111</NoWarn>
+    <!-- IL3050: Using member with 'RequiresDynamicCodeAttribute' -->
+    <NoWarn>$(NoWarn);IL2026;IL2046;IL2055;IL2060;IL2067;IL2072;IL2073;IL2075;IL2092;IL2110;IL2111;IL3050</NoWarn>
     <!-- String comparison / culture: invariant culture is configured globally, so these are unnecessary -->
     <!-- CA1304: The behavior of 'string.ToLower()' could vary based on the current user's locale settings -->
     <!-- CA1305: The behavior of 'FormattableString' could vary based on the current user's locale settings -->

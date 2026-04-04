@@ -13,7 +13,6 @@ public class RecordTypeInfo<[DynamicallyAccessedMembers(DynamicallyAccessedMembe
 {
     public readonly Func<T, T> Cloner;
 
-#pragma warning disable IL2090
     public RecordTypeInfo()
     {
         var type = typeof(T);
@@ -31,7 +30,6 @@ public class RecordTypeInfo<[DynamicallyAccessedMembers(DynamicallyAccessedMembe
         eBody = Expression.Call(Expression.Convert(pUntypedSelf, type), mClone!);
         UntypedCloner = (Func<object, object>)Expression.Lambda(eBody, pUntypedSelf).Compile();
     }
-#pragma warning restore IL2090
 }
 
 public sealed class RecordTypeInfoFactory<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>

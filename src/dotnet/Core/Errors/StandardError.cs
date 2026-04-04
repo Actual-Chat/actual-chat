@@ -37,11 +37,8 @@ public static partial class StandardError
     public static Exception Format(Type target, string? value = null)
         => Format(target.GetName(), value);
 
-    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "We format string as JSON here, so no reflection needed.")]
     public static Exception Format(string target, string? value)
-#pragma warning disable IL2026 // We format string as JSON here, so no reflection needed
         => Format($"Invalid {target} format: {(value == null ? "null" : JsonFormatter.Format(value))}");
-#pragma warning restore IL2026
 
     public static Exception NotSupported(string message)
         => new NotSupportedException(message);

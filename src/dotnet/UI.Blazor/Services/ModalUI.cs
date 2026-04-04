@@ -59,13 +59,10 @@ public sealed class ModalUI(UIHub hub) : UIServiceBase<UIHub>(hub)
         return modalRef;
     }
 
-#pragma warning disable IL2073
-    [UnconditionalSuppressMessage("Trimming", "IL2072:NotSatisfyDynamicallyAccessedMemberTypes.All", Justification = "TModel is marked with DynamicallyAccessedMembers.")]
     [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     private Type GetComponentType<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TModel>
         (TModel model)
         where TModel : class
         => ViewResolver.Get(model.GetType());
-#pragma warning restore IL2073
 }

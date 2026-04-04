@@ -21,6 +21,21 @@ internal partial class CoreAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.IServerFeaturesClient>();
         CodeKeeper.Keep<global::ActualChat.Kvas.IServerKvas>();
         CodeKeeper.Keep<global::ActualChat.Kvas.IServerSettings>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Hashing.HashString>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Hosting.HostRole>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Kvas.ServerKvas_MigrateGuestKeys>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Kvas.ServerKvas_Set>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Kvas.ServerKvas_SetMany>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Kvas.ServerSettings_Set>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Mathematics.Internal.OldLinearMap>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Mathematics.LinearMap>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Mathematics.LinearMapDiff>();
+        CodeKeeper.KeepSerializable<global::ActualChat.NodeRef>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Search.SearchMatch>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Search.SearchMatchPart>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Search.SearchPhrase>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Security.SecureToken>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Security.SecureValue>();
     }
 
     public (Type, AotTypeKind)[] ListTypes()
@@ -31,5 +46,20 @@ internal partial class CoreAotSource : IAotSource
             (typeof(global::ActualChat.IServerFeaturesClient), AotTypeKind.Api),
             (typeof(global::ActualChat.Kvas.IServerKvas), AotTypeKind.Api),
             (typeof(global::ActualChat.Kvas.IServerSettings), AotTypeKind.Api),
+            (typeof(global::ActualChat.Hashing.HashString), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Hosting.HostRole), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Kvas.ServerKvas_MigrateGuestKeys), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Kvas.ServerKvas_Set), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Kvas.ServerKvas_SetMany), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Kvas.ServerSettings_Set), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Mathematics.Internal.OldLinearMap), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Mathematics.LinearMap), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Mathematics.LinearMapDiff), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.NodeRef), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Search.SearchMatch), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Search.SearchMatchPart), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Search.SearchPhrase), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Security.SecureToken), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Security.SecureValue), AotTypeKind.Serializable),
         ];
 }

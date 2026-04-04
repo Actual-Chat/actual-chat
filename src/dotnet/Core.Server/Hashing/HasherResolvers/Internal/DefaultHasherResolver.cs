@@ -1,7 +1,5 @@
 namespace ActualChat.Hashing.Internal;
 
-#pragma warning disable IL2111, IL2060, IL2067
-
 public sealed class DefaultHasherResolver : HasherResolver
 {
     private static readonly ConcurrentDictionary<Type, Delegate?> Cache = new ();

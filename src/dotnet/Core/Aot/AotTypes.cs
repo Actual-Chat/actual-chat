@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization.Metadata;
+
 namespace ActualChat.Aot;
 
 /// <summary>
@@ -6,6 +8,7 @@ namespace ActualChat.Aot;
 public static class AotTypes
 {
     private static readonly List<IAotSource> Sources = new();
+    private static readonly List<IJsonTypeInfoResolver> JsonTypeInfoResolverStore = new();
 
     public static IDictionary<Type, AotTypeKind> All {
         get {

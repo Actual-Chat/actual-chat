@@ -3,8 +3,7 @@ namespace ActualChat;
 /// <summary>
 /// Client interface for accessing server features via RPC.
 /// </summary>
-public interface IServerFeaturesClient : IServerFeatures
-{ }
+public interface IServerFeaturesClient : IServerFeatures;
 
 /// <summary>
 /// Client-side implementation that fetches server features via <see cref="IServerFeaturesClient"/>.
@@ -17,16 +16,13 @@ public class ServerFeaturesClient(IServiceProvider services) : IServerFeatures
     public IServerFeaturesClient Client { get; } = services.GetRequiredService<IServerFeaturesClient>();
 
     // [ComputeMethod]
-    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "FeatureType already marked with DynamicallyAccessedMembers.")]
     public virtual async Task<object?> Get(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type featureType,
         CancellationToken cancellationToken)
     {
-#pragma warning disable IL2026, IL2067
         var featureDef = ServerFeatureDefRegistry.Instance.Get(featureType);
         var data = await GetData(featureType, cancellationToken).ConfigureAwait(false);
         var result = Serializer.Read(data, featureDef.ResultType, out _);
-#pragma warning restore IL2026, IL2067
         return result;
     }
 

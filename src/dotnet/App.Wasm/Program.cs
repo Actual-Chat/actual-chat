@@ -1,7 +1,6 @@
 using ActualChat.Audio.WebM;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.App;
-using ActualChat.UI.Blazor.Diagnostics;
 using ActualChat.UI.Diagnostics;
 // Keep it: it lets <Project Sdk="Microsoft.NET.Sdk.Razor"> compile
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
@@ -13,7 +12,6 @@ namespace ActualChat.App.Wasm;
 public static class Program
 {
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(WebApp))]
-    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Main is an entry point.")]
     public static async Task Main(string[] args)
     {
         Tracer.Default.MethodPoint();

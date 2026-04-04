@@ -132,12 +132,8 @@ public partial class MauiWebView
         static WebResourceUtils()
         {
             var assembly = typeof(BlazorWebViewHandler).Assembly;
- #pragma warning disable IL2026
             var type = assembly.GetType("Microsoft.AspNetCore.Components.WebView.Maui.StaticContentProvider")!;
-#pragma warning restore IL2026
- #pragma warning disable IL2075
             var methodInfo = type.GetMethod("GetResponseContentTypeOrDefault", BindingFlags.Static | BindingFlags.NonPublic)!;
- #pragma warning restore IL2075
             GetResponseContentTypeOrDefaultFunc = methodInfo.CreateDelegate<Func<string, string>>();
         }
 

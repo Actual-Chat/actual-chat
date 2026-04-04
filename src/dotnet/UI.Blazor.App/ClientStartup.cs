@@ -234,5 +234,31 @@ public static class ClientStartup
         if (platformModuleFactory != null)
             moduleHostBuilder = moduleHostBuilder.AddModules(platformModuleFactory.Invoke(moduleServices));
         moduleHostBuilder.Build(services);
+
+        if (hostInfo.AppKind == AppKind.Wasm)
+            AugmentJSRuntime(services);
+    }
+
+    // Private methods
+
+    private static void AugmentJSRuntime(IServiceCollection services)
+    {
+        var jsRuntimeRegistration = services.FirstOrDefault(c => c.ServiceType == typeof(IJSRuntime));
+        if (jsRuntimeRegistration == null)
+            return;
+
+        var jsRuntimeType = jsRuntimeRegistration.ImplementationType;
+        if (jsRuntimeType == null)
+            return;
+
+        // services.Remove(jsRuntimeRegistration);
+        services.Add(new ServiceDescriptor(
+            typeof(IJSRuntime),
+            c => {
+                var jsRuntime = (IJSRuntime)ActivatorUtilities.CreateInstance(c, jsRuntimeType);
+                jsRuntime.InjectJsonTypeInfoResolvers();
+                return jsRuntime;
+            },
+            jsRuntimeRegistration.Lifetime));
     }
 }

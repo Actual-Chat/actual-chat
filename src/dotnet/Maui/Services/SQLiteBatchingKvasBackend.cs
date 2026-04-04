@@ -285,7 +285,6 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
             return cmd.ExecuteDeferredQuery<DbItem>(Mapping).FirstOrDefault();
         }
 
-        [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "string[] is always JSON-serializable")]
         public static IEnumerable<DbItem> FindMany(SQLiteConnection connection, string[] keys)
         {
             var keysJson = JsonSerializer.Serialize(keys);

@@ -51,6 +51,88 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.Users.ISystemProperties>();
         CodeKeeper.Keep<global::ActualChat.Users.ITimeZones>();
         CodeKeeper.Keep<global::ActualChat.Users.IUserPresences>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.AliasTarget>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Authors_Exclude>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Authors_Invite>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Authors_Join>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Authors_Leave>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Authors_PromoteToOwner>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Authors_Restore>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Authors_SetAvatar>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.ChatThreads_Start>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.ChatThreads_ToggleThreadFollowStatus>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Chat_CopyChat>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Chat_CopyChatResult>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Chat_PublishCopiedChat>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Chats_Change>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Chats_ForwardEntries>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Chats_GetOrCreateFromTemplate>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Chats_RemoveEntries>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Chats_RemoveEntry>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Chats_RestoreEntries>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Chats_RestoreEntry>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Chats_UpsertEntry>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Chats_UpsertTextEntry>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Conversations_Summarize>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.MeshDiagInfo>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.MeshRpcPeerRefDiagInfo>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.NodeDiagInfo>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Places_Change>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Places_Exclude>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Places_Invite>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Places_Join>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Places_Leave>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Places_PromoteToOwner>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Places_Restore>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Reactions_React>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Roles_Change>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.RpcPeerDiagInfo>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.ThreadStat>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Contacts.Contacts_Change>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Contacts.Contacts_Touch>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Contacts.ExternalContactChange>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Contacts.ExternalContactHashes_Change>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Contacts.ExternalContacts_BulkChange>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Invite.Invites_Generate>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Invite.Invites_Revoke>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Invite.Invites_Use>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Media.Media_ProcessUpload>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Media.Media_RemoveMedia>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Media.Media_ReserveMedia>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Media.Media_UpdateProgress>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Media.Uploads_Append>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Media.Uploads_ConvertToMediaRef>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Media.Uploads_Create>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Media.Uploads_Remove>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Media.Uploads_StartProcessUpload>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Notification.Notifications_DeregisterDevice>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Notification.Notifications_Handle>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Notification.Notifications_NotifyMembers>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Notification.Notifications_NotifyMentionedMembers>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Notification.Notifications_RegisterDevice>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Users.Accounts_CreateApiKey>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Users.Accounts_DeactivateAllSessions>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Users.Accounts_DeactivateSession>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Users.Accounts_DeleteOwn>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Users.Accounts_SignOut>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Users.Accounts_Update>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Users.Avatars_Change>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Users.Avatars_SetDefault>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Users.ChatPositions_Set>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Users.ChatUsages_RegisterUsage>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Users.EmailAuth_SendTotp>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Users.EmailAuth_ValidateTotp>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Users.EmailAuth_VerifyEmail>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Users.Emails_SendDigest>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Users.PhoneAuth_SendTotp>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Users.PhoneAuth_ValidateTotp>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Users.PhoneAuth_VerifyPhone>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Users.RecaptchaValidationResult>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Users.ServerApiInfo>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Users.SessionTemporals_Set>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Users.SystemProperties_InvalidateEverything>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Users.SystemProperties_PruneComputedGraph>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Users.UserPresences_CheckIn>();
     }
 
     public (Type, AotTypeKind)[] ListTypes()
@@ -91,5 +173,87 @@ internal partial class ApiContractsAotSource : IAotSource
             (typeof(global::ActualChat.Users.ISystemProperties), AotTypeKind.Api),
             (typeof(global::ActualChat.Users.ITimeZones), AotTypeKind.Api),
             (typeof(global::ActualChat.Users.IUserPresences), AotTypeKind.Api),
+            (typeof(global::ActualChat.Chat.AliasTarget), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Authors_Exclude), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Authors_Invite), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Authors_Join), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Authors_Leave), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Authors_PromoteToOwner), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Authors_Restore), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Authors_SetAvatar), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.ChatThreads_Start), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.ChatThreads_ToggleThreadFollowStatus), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Chat_CopyChat), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Chat_CopyChatResult), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Chat_PublishCopiedChat), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Chats_Change), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Chats_ForwardEntries), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Chats_GetOrCreateFromTemplate), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Chats_RemoveEntries), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Chats_RemoveEntry), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Chats_RestoreEntries), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Chats_RestoreEntry), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Chats_UpsertEntry), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Chats_UpsertTextEntry), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Conversations_Summarize), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.MeshDiagInfo), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.MeshRpcPeerRefDiagInfo), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.NodeDiagInfo), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Places_Change), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Places_Exclude), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Places_Invite), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Places_Join), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Places_Leave), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Places_PromoteToOwner), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Places_Restore), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Reactions_React), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Roles_Change), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.RpcPeerDiagInfo), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.ThreadStat), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Contacts.Contacts_Change), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Contacts.Contacts_Touch), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Contacts.ExternalContactChange), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Contacts.ExternalContactHashes_Change), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Contacts.ExternalContacts_BulkChange), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Invite.Invites_Generate), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Invite.Invites_Revoke), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Invite.Invites_Use), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Media.Media_ProcessUpload), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Media.Media_RemoveMedia), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Media.Media_ReserveMedia), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Media.Media_UpdateProgress), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Media.Uploads_Append), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Media.Uploads_ConvertToMediaRef), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Media.Uploads_Create), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Media.Uploads_Remove), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Media.Uploads_StartProcessUpload), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Notification.Notifications_DeregisterDevice), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Notification.Notifications_Handle), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Notification.Notifications_NotifyMembers), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Notification.Notifications_NotifyMentionedMembers), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Notification.Notifications_RegisterDevice), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Users.Accounts_CreateApiKey), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Users.Accounts_DeactivateAllSessions), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Users.Accounts_DeactivateSession), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Users.Accounts_DeleteOwn), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Users.Accounts_SignOut), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Users.Accounts_Update), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Users.Avatars_Change), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Users.Avatars_SetDefault), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Users.ChatPositions_Set), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Users.ChatUsages_RegisterUsage), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Users.EmailAuth_SendTotp), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Users.EmailAuth_ValidateTotp), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Users.EmailAuth_VerifyEmail), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Users.Emails_SendDigest), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Users.PhoneAuth_SendTotp), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Users.PhoneAuth_ValidateTotp), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Users.PhoneAuth_VerifyPhone), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Users.RecaptchaValidationResult), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Users.ServerApiInfo), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Users.SessionTemporals_Set), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Users.SystemProperties_InvalidateEverything), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Users.SystemProperties_PruneComputedGraph), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Users.UserPresences_CheckIn), AotTypeKind.Serializable),
         ];
 }

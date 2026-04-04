@@ -27,8 +27,6 @@ public sealed class SetDiffHandler<
         return new SetDiff<TSet, TItem>(added, removed);
     }
 
-#pragma warning disable IL2077
-    [UnconditionalSuppressMessage("Trimming", "IL2077:GenericArgumentDontSatisfy", Justification = "All generic arguments are dynamically accessed.")]
     public override TSet Patch(TSet source, SetDiff<TSet, TItem> diff)
     {
         var removedItems = diff.RemovedItems.ToHashSet();
@@ -49,5 +47,4 @@ public sealed class SetDiffHandler<
             return (TSet)(object)ImmutableHashSet.Create(target);
         return (TSet)_setType.CreateInstance(target);
     }
-#pragma warning restore IL2077
 }

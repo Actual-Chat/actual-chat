@@ -19,11 +19,9 @@ using ActualLab.Rpc.WebSockets;
 
 namespace ActualChat.Module;
 
-
 public sealed class ApiContractsModule(IServiceProvider moduleServices)
     : HostModule(moduleServices), IAppModule
 {
-    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Fine for Fusion")]
     protected override void InjectServices(IServiceCollection services)
     {
         var fusion = services.AddFusion();

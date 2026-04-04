@@ -110,7 +110,6 @@ public sealed class RpcBackendHelpers(IServiceProvider services) : RpcServiceBas
 
     private sealed class TypedRouterFactory<T> : GenericInstanceFactory, IGenericInstanceFactory<T>
     {
-        [UnconditionalSuppressMessage("Trimming", "IL2060", Justification = "We assume Task<T> methods are preserved")]
         public override Func<BackendServiceDef, RpcMethodDef, ArgumentList, MeshRef> Generate()
         {
             if (typeof(T) == typeof(Unit))

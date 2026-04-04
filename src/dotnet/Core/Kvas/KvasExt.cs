@@ -2,8 +2,6 @@ using CommunityToolkit.HighPerformance.Buffers;
 
 namespace ActualChat.Kvas;
 
-#pragma warning disable IL2026 // We change everything to DynamicallyAccessedMemberTypes.All on serialized type
-
 public static class KvasExt
 {
     public static KvasSerializer Serializer { get; set; } = KvasSerializer.Default;
@@ -15,7 +13,6 @@ public static class KvasExt
         this IKvas kvas) where T : class, IHasKvasKey<T>, new()
         => new (kvas, T.KvasKey);
 
-    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "T is marked with DynamicallyAccessedMembers.")]
     public static async ValueTask<T?> Get<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
         (this IKvas kvas, string key, CancellationToken cancellationToken = default)
@@ -25,14 +22,12 @@ public static class KvasExt
         return data is null ? null : (T)Serializer.Read(data, typeof(T), out _)!;
   }
 
-    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "T is marked with DynamicallyAccessedMembers.")]
     public static ValueTask<T?> Get<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
         (this IKvas kvas, CancellationToken cancellationToken = default)
         where T : class, IHasKvasKey<T>
         => kvas.Get<T>(T.KvasKey, cancellationToken);
 
-    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "T is marked with DynamicallyAccessedMembers.")]
     [UnconditionalSuppressMessage("Tasks", "MA0100", Justification = "Don't need to wait for Set completion to dispose buffer writer.")]
     public static Task Set<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
@@ -47,7 +42,6 @@ public static class KvasExt
         return kvas.Set(key, buffer.WrittenMemory.ToArray(), cancellationToken);
     }
 
-    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "T is marked with DynamicallyAccessedMembers.")]
     [UnconditionalSuppressMessage("Tasks", "MA0100", Justification = "Don't need to wait for Set completion to dispose buffer writer.")]
     public static Task Set<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
@@ -55,7 +49,6 @@ public static class KvasExt
         where T : class, IHasKvasKey<T>
         => kvas.Set(T.KvasKey, value, cancellationToken);
 
-    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "T is marked with DynamicallyAccessedMembers.")]
     public static async Task<T> Update<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
         (this IKvas kvas, string key, Func<T, T> update, CancellationToken cancellationToken = default)
@@ -67,7 +60,6 @@ public static class KvasExt
         return newValue;
     }
 
-    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "T is marked with DynamicallyAccessedMembers.")]
     public static async Task<T> Update<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
         (this IKvas kvas, Func<T, T> update, CancellationToken cancellationToken = default)
@@ -114,7 +106,6 @@ public static class KvasExt
         => new ScopedKvasProxy<TScope>(kvas);
 
     // BatchingKvas
-    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "T is marked with DynamicallyAccessedMembers.")]
     public static async ValueTask<(string, T)[]> ListAllEntries<
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
         (this BatchingKvas kvas, CancellationToken cancellationToken = default)

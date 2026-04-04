@@ -11,5 +11,6 @@ internal static class BlazorUIModuleInitializer
     internal static void ModuleInitializer()
     {
         AotTypes.AddSource(new BlazorUIAotSource());
+        AotJsonContexts.Add(BlazorUIJsonContext.Default);
     }
 }

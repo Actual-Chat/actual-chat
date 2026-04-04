@@ -6,8 +6,6 @@ namespace ActualChat.Kvas;
 /// <summary>
 /// Serializer for <see cref="IKvas"/> that supports both binary and text formats.
 /// </summary>
-#pragma warning disable IL2046, IL2092 // We change everything to DynamicallyAccessedMemberTypes.All here
-
 public class KvasSerializer : ByteSerializerBase
 {
     private const byte MemoryPackMarker = 0x0;

@@ -1,7 +1,5 @@
 namespace ActualChat.Hashing.Internal;
 
-#pragma warning disable IL2111, IL2060, IL2067
-
 public sealed class ExpandingHasherResolver(
     HasherResolver baseResolver,
     Func<ExpandingHasherResolver, Type, Delegate?>? expander = null
