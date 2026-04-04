@@ -283,8 +283,7 @@ public static partial class MauiProgram
             typeof(SafeJSRuntime),
             c => {
                 var wrapped = (IJSRuntime)ActivatorUtilities.CreateInstance(c, webViewJSRuntimeType);
-                // AOT: disabled for now - causes no window to appear
-                // wrapped.InjectJsonTypeInfoResolvers();
+                wrapped.InjectJsonTypeInfoResolvers();
                 return new SafeJSRuntime(wrapped);
             },
             jsRuntimeRegistration.Lifetime));
