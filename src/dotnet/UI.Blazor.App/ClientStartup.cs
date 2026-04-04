@@ -158,6 +158,8 @@ public static class ClientStartup
 
     private static void AugmentJSRuntime(IServiceCollection services)
     {
+        // NOTE(AOT): Injection of source-gen JSON contexts is disabled for now, see InjectJsonTypeInfoResolvers
+#if false
         var jsRuntimeRegistration = services.FirstOrDefault(c => c.ServiceType == typeof(IJSRuntime));
         if (jsRuntimeRegistration == null)
             return;
@@ -175,5 +177,6 @@ public static class ClientStartup
                 return jsRuntime;
             },
             jsRuntimeRegistration.Lifetime));
+#endif
     }
 }

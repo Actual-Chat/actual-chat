@@ -3,6 +3,8 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.Module;
 
+// NOTE(AY): This type is unused for now, but may be useful later
+
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
