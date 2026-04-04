@@ -30,6 +30,19 @@ public static class StjConverterDiscovery
         typeof(IReadOnlyCollection<KeyValuePair<string, object>>),
     ];
 
+    // App types used in Blazor component parameters or JS interop that aren't
+    // discoverable from [JSInvokable]/[JsonSerializable] scanning alone.
+    // These need to be listed explicitly as additional root types.
+    private static readonly Type[] AppRootTypes = [
+        typeof(ActualChat.UI.Blazor.Components.VirtualListEdge),
+        typeof(ActualChat.UI.Blazor.Services.Tune),
+        typeof(ActualChat.UI.Blazor.Services.TuneInfo),
+        typeof(Dictionary<ActualChat.UI.Blazor.Services.Tune, ActualChat.UI.Blazor.Services.TuneInfo>),
+        typeof(KeyValuePair<ActualChat.UI.Blazor.Services.Tune, ActualChat.UI.Blazor.Services.TuneInfo>),
+        typeof(List<ActualLab.Text.Symbol>),
+        typeof(ActualLab.Text.Symbol),
+    ];
+
     // Internal framework types (by AQN) that need keeping but can't be discovered via STJ
     private static readonly string[] FrameworkKeeps = [
         // JSInterop internals
@@ -65,8 +78,10 @@ public static class StjConverterDiscovery
     {
         var rootTypes = new HashSet<Type>();
 
-        // 1. Framework root types
+        // 1. Framework + app root types
         foreach (var t in FrameworkRootTypes)
+            rootTypes.Add(t);
+        foreach (var t in AppRootTypes)
             rootTypes.Add(t);
 
         // 2. Scan [JSInvokable] method parameters and return types
