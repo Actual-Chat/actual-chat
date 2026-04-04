@@ -45,6 +45,14 @@ public partial class VideoFrame : MediaFrame
     public int TemporalLayerId { get; init; }
 
     /// <summary>
+    /// Monotonically increasing keyframe sequence number. Assigned server-side in ProcessFrames.
+    /// Incremented on each keyframe; non-keyframes inherit the current value.
+    /// Used for gap detection when frames are dropped by bounded replay channels.
+    /// </summary>
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public long KeyFrameNumber { get; set; }
+
+    /// <summary>
     /// Cached serialized bytes for zero-copy forwarding. Set once during deserialization
     /// in StreamHub.ToVideoFrames(). Do not mutate after initial assignment.
     /// Filters must only drop frames (not mutate them), or cached bytes become stale.

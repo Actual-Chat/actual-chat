@@ -30,6 +30,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             StreamIdValidator = ValidateStreamId,
             StreamCount = AppMeters.VideoStreamCount,
             ExpirationDelay = Constants.Video.StreamExpirationDelay,
+            ReplayTailSize = Constants.Video.ReplayBufferSize,
             OnStreamExpire = OnVideoStreamExpire,
             Log = services.LogFor($"{typeFullName}.VideoStreams"),
         };
@@ -47,9 +48,8 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             return null;
         }
 
-        // Always start from the next live keyframe — skip all buffered frames
-        // and wait for a fresh keyframe at the live edge for near-zero latency.
-        stream = SkipToNextKeyFrame(stream, Log, cancellationToken);
+        // Skip to keyframe on startup and recover from gaps caused by bounded replay dropping frames
+        stream = KeyFrameGapFilter(stream, Log, cancellationToken);
 
         // Per-viewer temporal layer filtering — drop enhancement layers for slow peers
         stream = TemporalLayerFilter(streamId, peerId, stream, cancellationToken);
@@ -192,60 +192,45 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
     }
 
     /// <summary>
-    /// Skip-to-live: discard all buffered frames, then wait for the next live keyframe.
-    /// Used when the client re-requests the stream after detecting high latency.
-    /// Waiting for the next keyframe naturally eliminates latency — the keyframe is produced
-    /// at the live edge, so the consumer starts with near-zero delay.
+    /// Filters video frames to ensure decoder-safe output:
+    /// - On startup: skips until the first keyframe (skip-to-live)
+    /// - During playback: if a gap is detected (KeyFrameNumber mismatch from dropped frames),
+    ///   skips until the next keyframe to avoid feeding broken deltas to the decoder.
     /// </summary>
-    private static async IAsyncEnumerable<VideoFrame> SkipToNextKeyFrame(
-        IAsyncEnumerable<VideoFrame> stream,
+    internal static async IAsyncEnumerable<VideoFrame> KeyFrameGapFilter(
+        IAsyncEnumerable<VideoFrame> source,
         ILogger log,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var enumerator = stream.GetAsyncEnumerator(cancellationToken);
-        await using var _ = enumerator.ConfigureAwait(false);
-        var skipped = 0;
+        var lastKeyFrameNumber = -1L;
+        var skipping = true; // Start in skip mode — wait for first keyframe
+        var skippedCount = 0;
 
-        // Phase 1: Skip all synchronously-available (buffered) frames
-        while (true) {
-            var moveNext = enumerator.MoveNextAsync();
-            if (!moveNext.IsCompleted) {
-                // Reached live edge — await this frame
-                if (!await moveNext.ConfigureAwait(false))
-                    yield break;
-                break;
-            }
-            if (!moveNext.Result)
-                yield break; // stream ended
-            skipped++;
-        }
-
-        // Phase 2: At the live edge — skip delta frames until next keyframe
-        // The current frame (from Phase 1 break) might be a keyframe
-        if (enumerator.Current.IsKeyFrame) {
-            log.LogInformation(
-                "SkipToNextKeyFrame: found keyframe at offset {Offset}ms after skipping {Skipped} buffered frames",
-                enumerator.Current.Offset.TotalMilliseconds, skipped);
-            yield return enumerator.Current;
-        }
-        else {
-            skipped++;
-            // Wait for the next keyframe (at most ~1s at 30fps/GOP=30)
-            while (await enumerator.MoveNextAsync().ConfigureAwait(false)) {
-                if (enumerator.Current.IsKeyFrame) {
+        await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+            if (frame.IsKeyFrame) {
+                if (skipping && skippedCount > 0)
                     log.LogInformation(
-                        "SkipToNextKeyFrame: found keyframe at offset {Offset}ms after skipping {Skipped} frames",
-                        enumerator.Current.Offset.TotalMilliseconds, skipped);
-                    yield return enumerator.Current;
-                    break;
+                        "KeyFrameGapFilter: found keyframe (KF#{KeyFrameNumber}) after skipping {Skipped} frames",
+                        frame.KeyFrameNumber, skippedCount);
+                lastKeyFrameNumber = frame.KeyFrameNumber;
+                skipping = false;
+                skippedCount = 0;
+                yield return frame;
+            }
+            else if (!skipping && frame.KeyFrameNumber == lastKeyFrameNumber) {
+                yield return frame;
+            }
+            else {
+                // Gap detected or initial skip: non-keyframe with unexpected KeyFrameNumber
+                if (!skipping) {
+                    skipping = true;
+                    log.LogInformation(
+                        "KeyFrameGapFilter: gap detected — expected KF#{Expected}, got KF#{Actual}, skipping to next keyframe",
+                        lastKeyFrameNumber, frame.KeyFrameNumber);
                 }
-                skipped++;
+                skippedCount++;
             }
         }
-
-        // Phase 3: Pass-through remaining frames
-        while (await enumerator.MoveNextAsync().ConfigureAwait(false))
-            yield return enumerator.Current;
     }
 
     private async Task PushVideoInternal(
@@ -296,12 +281,16 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             Log.LogInformation("PushVideoInternal: publishing #{StreamId} to StreamStore", record.StreamId);
 
             var frameCount = 0;
+            var keyFrameNumber = 0L;
             var lastHeartbeat = CpuTimestamp.Now;
             var heartbeatInterval = TimeSpan.FromMinutes(2.5); // Half of LiveVideoBackend.ChatStateTtl
             async IAsyncEnumerable<VideoFrame> ProcessFrames(IAsyncEnumerable<VideoFrame> source)
             {
                 await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                     frameCount++;
+                    if (frame.IsKeyFrame)
+                        keyFrameNumber++;
+                    frame.KeyFrameNumber = keyFrameNumber;
 
                     // Track throughput for quality adaptation
                     var latencyState = _latencyStates.GetValueOrDefault(record.StreamId);

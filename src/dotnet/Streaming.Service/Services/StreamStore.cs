@@ -7,10 +7,11 @@ namespace ActualChat.Streaming.Services;
 /// </summary>
 public class StreamStore<TItem> : ProcessorBase
 {
-    private readonly ConcurrentDictionary<Symbol, ExpiringEntry<Symbol, AsyncTaskMethodBuilder<IAsyncMemoizer<TItem>?>>> _streams = new();
+    private readonly ConcurrentDictionary<Symbol, ExpiringEntry<Symbol, AsyncTaskMethodBuilder<AsyncMemoizer<TItem>?>>> _streams = new();
 
     public TimeSpan ExpirationDelay { get; init; } = TimeSpan.FromSeconds(5);
     public TimeSpan ShareWaitDelay { get; init; } = TimeSpan.FromSeconds(2);
+    public int ReplayTailSize { get; init; } = int.MaxValue;
     public Action<StreamId> StreamIdValidator { get; init; } = static _ => { };
     public Action<StreamId> OnStreamExpire { get; init; } = static _ => { };
     public UpDownCounter<int>? StreamCount { get; init; }
@@ -36,7 +37,7 @@ public class StreamStore<TItem> : ProcessorBase
                 return null;
 
             var memoizer = await entry.Value.Task.ConfigureAwait(false);
-            return memoizer?.Replay(cancellationToken);
+            return memoizer?.Replay(ReplayTailSize, cancellationToken);
         }
 
         if (!waitForShare)
@@ -47,7 +48,7 @@ public class StreamStore<TItem> : ProcessorBase
             var memoizer = await entry.Value.Task
                 .WaitAsync(ShareWaitDelay, cancellationToken)
                 .ConfigureAwait(false);
-            return memoizer?.Replay(cancellationToken);
+            return memoizer?.Replay(ReplayTailSize, cancellationToken);
         }
         catch (TimeoutException) {
             Log?.LogWarning("Get(#{StreamId}): TIMEOUT waiting for stream after {Timeout}s", streamId, ShareWaitDelay.TotalSeconds);
@@ -57,7 +58,7 @@ public class StreamStore<TItem> : ProcessorBase
 
     public Task Publish(StreamId streamId, IAsyncEnumerable<TItem> stream)
         => Publish(streamId, stream.Memoize());
-    public Task Publish(StreamId streamId, IAsyncMemoizer<TItem> memoizer)
+    public Task Publish(StreamId streamId, AsyncMemoizer<TItem> memoizer)
     {
         StreamIdValidator.Invoke(streamId);
         StopToken.ThrowIfCancellationRequested();
@@ -87,11 +88,11 @@ public class StreamStore<TItem> : ProcessorBase
 
     // Protected methods
 
-    protected ExpiringEntry<Symbol, AsyncTaskMethodBuilder<IAsyncMemoizer<TItem>?>> GetOrAddStream(StreamId streamId)
+    protected ExpiringEntry<Symbol, AsyncTaskMethodBuilder<AsyncMemoizer<TItem>?>> GetOrAddStream(StreamId streamId)
     {
         var entry = _streams.GetOrAdd(streamId.Value,
             static (key, self) => {
-                var memoizerSource = AsyncTaskMethodBuilderExt.New<IAsyncMemoizer<TItem>?>();
+                var memoizerSource = AsyncTaskMethodBuilderExt.New<AsyncMemoizer<TItem>?>();
                 var disposeTokenSource = self.StopToken.CreateLinkedTokenSource();
                 var entry = ExpiringEntry
                     .New(self._streams, key, memoizerSource, disposeTokenSource)

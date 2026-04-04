@@ -695,6 +695,54 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         memoizer.Dispose();
     }
 
+    [Fact]
+    public async Task BoundedReplay_DropsOldestWhenConsumerIsSlow()
+    {
+        // When tailSize < int.MaxValue, Replay() uses a bounded channel with DropOldest.
+        // A slow consumer should lose old frames rather than accumulating unbounded memory.
+        var source = Channel.CreateUnbounded<int>();
+        var memoizer = source.Memoize(100); // ring buffer capacity
+
+        // Push initial items
+        for (var i = 1; i <= 10; i++)
+            source.Writer.TryWrite(i);
+        await SpinWaitForBuffered(memoizer, 10);
+
+        // Start a replay with small tailSize (bounded channel of size 5)
+        const int replayTailSize = 5;
+        var firstItem = new TaskCompletionSource<int>();
+        var gate = new TaskCompletionSource();
+        var items = new List<int>();
+        var replayTask = Task.Run(async () => {
+            await foreach (var item in memoizer.Replay(replayTailSize)) {
+                if (!firstItem.Task.IsCompleted) {
+                    firstItem.SetResult(item);
+                    await gate.Task.ConfigureAwait(false); // Block consumer after first read
+                }
+                items.Add(item);
+            }
+        });
+
+        // Wait for consumer to read first item and block
+        await firstItem.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        // Overflow the bounded channel while consumer is blocked
+        for (var i = 11; i <= 50; i++)
+            source.Writer.TryWrite(i);
+        await SpinWaitForBuffered(memoizer, 50);
+        await Task.Delay(100); // Let Write task distribute to bounded channel
+
+        // Complete source and unblock consumer
+        source.Writer.Complete();
+        gate.SetResult();
+        await replayTask.WaitAsync(TimeSpan.FromSeconds(5));
+
+        // Consumer should have the first item + only recent items (old ones dropped)
+        items.First().Should().BeGreaterThan(1, "initial tail should skip oldest items");
+        items.Should().NotContain(11, "items overflowed by DropOldest should be missing");
+        items.Last().Should().Be(50, "most recent item should be present");
+    }
+
     // === Helpers ===
 
     private static async Task SpinWaitForBuffered<T>(AsyncMemoizer<T> memoizer, int expectedCount, int timeoutMs = 5000)

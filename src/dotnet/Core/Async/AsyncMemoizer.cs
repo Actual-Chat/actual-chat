@@ -113,7 +113,12 @@ public sealed class AsyncMemoizer<T> : AsyncMemoizer, IAsyncMemoizer<T>
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         // AY: SingleWriter should be false!
-        var channel = Channel.CreateUnbounded<T>(new UnboundedChannelOptions { SingleReader = true });
+        var channel = tailSize == int.MaxValue
+            ? Channel.CreateUnbounded<T>(new UnboundedChannelOptions { SingleReader = true })
+            : Channel.CreateBounded<T>(new BoundedChannelOptions(tailSize) {
+                SingleReader = true,
+                FullMode = BoundedChannelFullMode.DropOldest,
+            });
         await AddReplayTarget(channel, tailSize, cancellationToken).ConfigureAwait(false);
         try {
             var reader = channel.Reader;
