@@ -62,7 +62,12 @@ public partial class AppHost
         // Add a few default sources
         cfg.AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: false);
         cfg.AddDotNetEnv(Path.Combine(AppContext.BaseDirectory, ".env"), new(setEnvVars: false));
+        cfg.AddEnvironmentVariables("ASPNETCORE_");
         cfg.AddEnvironmentVariables();
+        // If HostSettings:BasePort is set (e.g. from .env for worktrees), use it as server URL.
+        // In Aspire mode, ASPNETCORE_URLS env var (line above) takes precedence.
+        if (int.TryParse(cfg["HostSettings:BasePort"], out var basePort))
+            cfg.AddInMemoryCollection([new(WebHostDefaults.ServerUrlsKey, $"http://0.0.0.0:{basePort}")]);
         ConfigureHost?.Invoke(ctx, cfg);
 
         /////

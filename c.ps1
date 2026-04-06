@@ -1042,13 +1042,9 @@ if ($isActualChatProject) {
     # Write server configuration to .env file in the project/worktree directory
     # Uses .NET configuration names so they're automatically picked up by the server
     $baseUri = if ($serverConfig.InstanceName -ne "dev") { "https://$($serverConfig.InstanceName).local.voxt.ai" } else { "https://local.voxt.ai" }
-    $urlsValue = "http://0.0.0.0:$($serverConfig.Port)"
     $envVarsToSave = @{
         "CoreSettings__Instance" = $serverConfig.InstanceName
-        # Use 0.0.0.0 to allow connections from nginx container
-        # "urls" is for .NET config loading, "ASPNETCORE_URLS" is for env var loading
-        "urls" = $urlsValue
-        "ASPNETCORE_URLS" = $urlsValue
+        "HostSettings__BasePort" = "$($serverConfig.Port)"
         "HostSettings__BaseUri" = $baseUri
     }
     Update-EnvFile -ProjectPath $projectRoot -Variables $envVarsToSave -Debug:$debugMode

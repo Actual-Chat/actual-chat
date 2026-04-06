@@ -8,7 +8,7 @@ using Aspire.Hosting.ApplicationModel;
 using DotNetEnv.Configuration;
 
 var builder = DistributedApplication.CreateBuilder(args);
-builder.Configuration.AddDotNetEnv(Path.Combine(AppContext.BaseDirectory, ".env"));
+builder.Configuration.AddDotNetEnv(Path.Combine(AppContext.BaseDirectory, ".env"), new(setEnvVars: false));
 var basePort = GetBasePort(builder.Configuration); // 7080, 7090, etc.
 var meshLockSubspace = Alphabet.AlphaNumeric.Generator8.Next();
 var meshLockOptionsPreset = "Default"; // Change it to "DebugFriendly" for debugging purposes
@@ -23,7 +23,7 @@ IResourceBuilder<ProjectResource> AddHost(string name, int port, string role)
 {
     var args = $"-role:{role} -kb -distributed".Split(' ');
     return builder.AddProject<Projects.App_Server>(name, options => { options.ExcludeLaunchProfile = true; })
-        .WithHttpEndpoint(port)
+        .WithHttpEndpoint(port, isProxied: false)
         .WithEnvironment("HostSettings__IsAspireManaged", "true")
         .WithEnvironment("DOTNET_ENVIRONMENT", "Development") // Optional
         .WithEnvironment("HostSettings__MeshLockSubspace", meshLockSubspace)
@@ -33,9 +33,8 @@ IResourceBuilder<ProjectResource> AddHost(string name, int port, string role)
 
 int GetBasePort(IConfiguration configuration)
 {
-    // Try urls config (from env var or appsettings): "http://0.0.0.0:7090"
-    var urls = configuration["urls"].NullIfEmpty() ?? configuration["ASPNETCORE_URLS"];
-    if (!urls.IsNullOrEmpty() && Uri.TryCreate(urls, UriKind.Absolute, out var uri))
-        return uri.Port;
-    return 7080; // Default
+    // HostSettings__BasePort is set by c.ps1 in .env (e.g. 7090 for worktrees)
+    if (int.TryParse(configuration["HostSettings:BasePort"], out var basePort))
+        return basePort;
+    return 7080; // Default matches nginx config
 }
