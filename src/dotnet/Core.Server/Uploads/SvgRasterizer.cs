@@ -50,18 +50,11 @@ public class SvgRasterizer(ILogger<SvgRasterizer> log)
         return new Size(targetWidth, targetHeight);
     }
 
-    public Result RasterizeToPng(Stream svgStream, int size)
+    public (MemoryStream Stream, Size Size) RasterizeToPng(Stream svgStream, int size)
     {
         var pngStream = new MemoryStream();
         var pngSize = RasterizeToPng(svgStream, pngStream, size);
         pngStream.Position = 0;
-        return new Result(pngStream, pngSize);
-    }
-
-    // Nested types
-
-    public sealed record Result(MemoryStream Stream, Size Size) : IAsyncDisposable
-    {
-        public ValueTask DisposeAsync() => Stream.DisposeAsync();
+        return (pngStream, pngSize);
     }
 }
