@@ -142,8 +142,8 @@ public class IconUploadProcessorTest : IDisposable
 
         // assert
         result.Size.Should().NotBeNull();
-        result.Size!.Value.Width.Should().BeLessThanOrEqualTo(1920);
-        result.Size!.Value.Height.Should().BeLessThanOrEqualTo(1920);
+        result.Size!.Value.Width.Should().BeLessThanOrEqualTo(Constants.Attachments.MaxIconSize);
+        result.Size!.Value.Height.Should().BeLessThanOrEqualTo(Constants.Attachments.MaxIconSize);
     }
 
     // Helpers

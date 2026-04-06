@@ -23,7 +23,7 @@ namespace ActualChat.App.Server.Flows;
 public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
 {
     private const int BatchSize = 50;
-    private const int MaxSize = 1920;
+    private const int MaxSize = Constants.Attachments.MaxIconSize;
     private static readonly RandomTimeSpan BatchDelay = TimeSpan.FromSeconds(2).ToRandom(0.25);
 
     private DbHub<UsersDbContext> UsersDbHub => field ??= Services.DbHub<UsersDbContext>();

@@ -11,7 +11,7 @@ namespace ActualChat.Uploads;
 /// </summary>
 public class IconUploadProcessor(IServiceProvider services) : IUploadProcessor
 {
-    private const int MaxSize = 1920;
+    private const int MaxSize = Constants.Attachments.MaxIconSize;
     private ILogger Log => field ??= services.LogFor(GetType());
     private RasterImageNormalizer RasterImageNormalizer => field ??= services.GetRequiredService<RasterImageNormalizer>();
 
