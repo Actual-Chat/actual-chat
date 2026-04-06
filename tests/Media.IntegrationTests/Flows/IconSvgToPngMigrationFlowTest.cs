@@ -30,8 +30,11 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
             TestSvgBytes, ".svg", "image/svg+xml", MediaKind.UserAvatarPicture, "avatar.svg");
         await SeedAvatar(mediaId);
 
-        // act & assert: flow converts the media to PNG
-        await RunFlowAndAssert(async ct => {
+        // act
+        await RunFlow();
+
+        // assert: media is converted to PNG
+        await AssertFlow(async ct => {
             var updated = await MediaBackend.GetFull(mediaId, ct);
             updated.Should().NotBeNull();
             updated.ContentType.Should().Be("image/png");
@@ -56,11 +59,14 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
             pngBytes, ".png", "image/png", MediaKind.UserAvatarPicture, "avatar.png", width: 50, height: 50);
         await SeedAvatar(mediaId);
 
-        // act & assert: flow completes and the PNG media is left untouched
-        await RunFlowAndAssert(async ct => {
+        // act
+        await RunFlow();
+
+        // assert: flow completes and the PNG media is left untouched
+        await AssertFlow(async ct => {
             var unchanged = await MediaBackend.GetFull(mediaId, ct);
             unchanged.Should().NotBeNull();
-            unchanged!.ContentType.Should().Be("image/png");
+            unchanged.ContentType.Should().Be("image/png");
             unchanged.BlobId.Should().Be(pngBlobId);
         });
     }
@@ -73,11 +79,14 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
             blobBytes: null, ".svg", "image/svg+xml", MediaKind.ChatPicture, "missing.svg");
         await SeedChat(mediaId);
 
-        // act & assert: flow completes and the media is left as SVG (missing blob -> skipped)
-        await RunFlowAndAssert(async ct => {
+        // act
+        await RunFlow();
+
+        // assert: flow completes and the media is left as SVG (missing blob -> skipped)
+        await AssertFlow(async ct => {
             var unchanged = await MediaBackend.GetFull(mediaId, ct);
             unchanged.Should().NotBeNull();
-            unchanged!.ContentType.Should().Be("image/svg+xml");
+            unchanged.ContentType.Should().Be("image/svg+xml");
             unchanged.BlobId.Should().Be(svgBlobId);
         });
     }
@@ -97,13 +106,16 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         await SeedChat(chatMediaId);
         await SeedPlace(placeMediaId);
 
-        // act & assert: flow completes and all 3 media records were converted
+        // act
+        await RunFlow();
+
+        // assert: flow completes and all 3 media records were converted
         var mediaIds = new[] { avatarMediaId, chatMediaId, placeMediaId };
-        await RunFlowAndAssert(async ct => {
+        await AssertFlow(async ct => {
             foreach (var mediaId in mediaIds) {
                 var updated = await MediaBackend.GetFull(mediaId, ct);
                 updated.Should().NotBeNull();
-                updated!.ContentType.Should().Be("image/png");
+                updated.ContentType.Should().Be("image/png");
                 updated.BlobId.Should().EndWith(".png");
             }
         });
@@ -141,24 +153,24 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         return (mediaId, blobId);
     }
 
-    // Schedules the migration flow with reset, then retries `assertion` (plus
-    // standard "flow completed" checks) until it passes or times out.
-    private async Task RunFlowAndAssert(Func<CancellationToken, Task> assertion)
-    {
-        await FlowHub.NewResumeEvent<IconSvgToPngMigrationFlow>().WithReset().Schedule();
-        await ComputedTest.When(async ct => {
+    // Schedules the migration flow with reset.
+    private Task RunFlow()
+        => FlowHub.NewResumeEvent<IconSvgToPngMigrationFlow>().WithReset().Schedule();
+
+    // Waits until the flow has completed and `assertion` passes (or times out).
+    private Task AssertFlow(Func<CancellationToken, Task> assertion)
+        => ComputedTest.When(async ct => {
             var flow = await FlowHub.TryGet<IconSvgToPngMigrationFlow>("", ct);
             flow.Should().NotBeNull();
             flow.UntypedResult.Should().NotBeNull();
             await assertion(ct).ConfigureAwait(false);
         }, TimeSpan.FromSeconds(30));
-    }
 
     private async Task AssertBlobExists(string blobId)
     {
         var stream = await BlobStorage.Read(blobId, CancellationToken.None);
         stream.Should().NotBeNull();
-        await using var _ = stream!.ConfigureAwait(false);
+        await using var _ = stream.ConfigureAwait(false);
         stream.Length.Should().BeGreaterThan(0);
     }
 
