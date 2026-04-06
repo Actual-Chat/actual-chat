@@ -696,6 +696,31 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
+    public async Task Cancellation_LateJoinerCanReplayBufferedItems()
+    {
+        // When source token is cancelled, write pipeline must still complete and
+        // a late consumer should be able to replay all items already cached.
+        using var cts = new CancellationTokenSource();
+        var source = Channel.CreateUnbounded<int>();
+        for (var i = 1; i <= 5; i++)
+            source.Writer.TryWrite(i);
+
+        var memoizer = source.Memoize(10, cts.Token);
+        await SpinWaitForBuffered(memoizer, 5);
+
+        await cts.CancelAsync();
+        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
+
+        var replayed = await memoizer.Replay()
+            .ToListAsync()
+            .AsTask()
+            .WaitAsync(TimeSpan.FromSeconds(2));
+
+        replayed.Should().Equal(1, 2, 3, 4, 5);
+        memoizer.Dispose();
+    }
+
+    [Fact]
     public async Task BoundedReplay_DropsOldestWhenConsumerIsSlow()
     {
         // When tailSize < int.MaxValue, Replay() uses a bounded channel with DropOldest.
@@ -753,13 +778,10 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         // For reference types, this prevents GC of items that have been logically evicted.
         var source = Channel.CreateUnbounded<object>();
         var memoizer = source.Memoize(cancellationToken: CancellationToken.None);
-        // Initial buffer size is 16 — write 20 items to trigger growth
-        var weakRefs = new List<WeakReference>();
-        for (var i = 0; i < 20; i++) {
-            var obj = new object();
-            weakRefs.Add(new WeakReference(obj));
-            source.Writer.TryWrite(obj);
-        }
+        // Initial buffer size is 16 — write 20 items to trigger growth.
+        // Item creation is in a non-async helper to avoid async state machine
+        // fields retaining the last object reference during GC.
+        var weakRefs = PopulateChannelWithTrackedObjects(source, 20);
         await SpinWaitForBuffered(memoizer, 20);
 
         // Complete and dispose — this returns buffers to pool with clearOnReturn
@@ -919,6 +941,18 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
             await Task.Yield();
         }
         throw new TimeoutException($"Timed out waiting for {expectedCount} buffered items, got {memoizer.BufferedCount}");
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static List<WeakReference> PopulateChannelWithTrackedObjects(Channel<object> channel, int count)
+    {
+        var weakRefs = new List<WeakReference>();
+        for (var i = 0; i < count; i++) {
+            var obj = new object();
+            weakRefs.Add(new WeakReference(obj));
+            channel.Writer.TryWrite(obj);
+        }
+        return weakRefs;
     }
 
     private static async IAsyncEnumerable<T> CreateFailingSource<T>(

@@ -94,8 +94,8 @@ public sealed class AsyncMemoizer<T> : AsyncMemoizer, IAsyncMemoizer<T>
             });
         _snapshot = new Snapshot();
         _snapshot.Reset(_buffer, _buffer.Length - 1, 0, 0);
-        WriteTask = BackgroundTask.Run(() => Write(cancellationToken), cancellationToken);
-        ReadTask = BackgroundTask.Run(() => Read(cancellationToken), cancellationToken);
+        WriteTask = BackgroundTask.Run(() => Write(cancellationToken).SuppressCancellation(), cancellationToken);
+        ReadTask = BackgroundTask.Run(() => Read(cancellationToken).SuppressCancellation(), cancellationToken);
     }
 
     protected override void Dispose(bool disposing)
