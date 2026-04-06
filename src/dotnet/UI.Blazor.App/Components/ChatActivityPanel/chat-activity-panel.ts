@@ -7,13 +7,10 @@ import { DocumentEvents, tryPreventDefaultForEvent } from 'event-handling';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 import { Disposables } from 'disposable';
 
-// Sizes in rem units
-const HEADER_COLLAPSED_HEIGHT_REM = 3.5;
-const HEADER_EXPANDED_HEIGHT_REM = 7.5;
-const HEADER_HEIGHT_RANGE_REM = HEADER_EXPANDED_HEIGHT_REM - HEADER_COLLAPSED_HEIGHT_REM; // 4rem
-const PIN_BADGE_THRESHOLD_REM = 3.75; // extra rem after full expand to show pin badge
+// Wrapper height (the only animated element for collapse/expand)
+const WRAPPER_HEIGHT_REM = 3.5; // h-14
+const PIN_BADGE_THRESHOLD_REM = 3.75; // extra drag to show pin badge
 
-// Get current font size and convert rem to pixels
 function getRemSize(): number {
     return parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
 }
@@ -22,15 +19,11 @@ function remToPx(rem: number): number {
     return rem * getRemSize();
 }
 
-function getSafeAreaTop(): number {
-    const value = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-top');
-    return parseFloat(value) || 0;
-}
-
 export class ChatActivityPanel {
     private readonly activityPanel: HTMLElement;
     private chatView: HTMLElement;
     private header: HTMLElement;
+    private wrapper: HTMLElement;
     private bottomSheet: HTMLElement | null;
     private pinBadge: HTMLElement | null;
     private unpinBadge: HTMLElement | null;
@@ -52,11 +45,12 @@ export class ChatActivityPanel {
 
         this.chatView = document.querySelector('.chat-view')!;
         this.header = this.activityPanel.closest('.layout-header')!;
+        this.wrapper = this.activityPanel.closest('.header-activity-panel-wrapper')!;
         this.bottomSheet = document.querySelector('.bottom-sheet');
         this.pinBadge = this.bottomSheet?.querySelector('.pin-badge') ?? null;
         this.unpinBadge = this.bottomSheet?.querySelector('.unpin-badge') ?? null;
 
-        if (!this.chatView || !this.header) {
+        if (!this.chatView || !this.header || !this.wrapper) {
             return;
         }
 
@@ -74,11 +68,10 @@ export class ChatActivityPanel {
             takeUntil(this.disposed$)
         ).subscribe(() => this.collapse());
 
-        // Pointer events: swipe down to expand header
+        // Pointer events: swipe down on header/subheader to expand header
         merge(
             fromEvent<PointerEvent>(this.header, 'pointerdown'),
-            fromEvent<PointerEvent>(this.activityPanel, 'pointerdown'),
-            fromEvent<PointerEvent>(this.chatView, 'pointerdown')
+            fromEvent<PointerEvent>(this.activityPanel, 'pointerdown')
         ).pipe(
             filter(e => e.target !== this.bottomSheet && !this.bottomSheet?.contains(e.target as Node)),
             filter(e => !this.isPinned || !this.activityPanel.contains(e.target as Node)),
@@ -188,6 +181,7 @@ export class ChatActivityPanel {
 }
 
 // Gesture: Drag bottom-sheet down to toggle pin/unpin
+// Animates the wrapper height (the single collapse/expand control point)
 class BottomSheetTogglePinGesture extends Gesture {
     private toggled = false;
     private badgeVisible = false;
@@ -207,23 +201,22 @@ class BottomSheetTogglePinGesture extends Gesture {
 
         const bottomSheet = document.querySelector<HTMLElement>('.bottom-sheet')!;
         const header = panel['header'];
+        const wrapper = panel['wrapper'];
         const isPinned = panel['isPinned'];
         const badge = isPinned ? panel['unpinBadge'] : panel['pinBadge'];
-        if (!bottomSheet || !header) {
+        if (!bottomSheet || !header || !wrapper) {
             this.dispose();
             return;
         }
 
         tryPreventDefaultForEvent(touchStartEvent);
 
-        // Calculate pixel values based on current font size + safe area
-        const safeAreaTop = getSafeAreaTop();
-        const headerCollapsedHeight = remToPx(HEADER_COLLAPSED_HEIGHT_REM) + safeAreaTop;
-        const headerHeightRange = remToPx(HEADER_HEIGHT_RANGE_REM);
+        const wrapperHeightRange = remToPx(WRAPPER_HEIGHT_REM);
         const pinBadgeThreshold = remToPx(PIN_BADGE_THRESHOLD_REM);
 
         // Start from current state
-        this.currentProgress = panel.getState() === 'collapsed' ? 0 : 1;
+        const startProgress = panel.getState() === 'collapsed' ? 0 : 1;
+        this.currentProgress = startProgress;
 
         // Visual feedback that bottom-sheet is touched (but don't change header yet)
         bottomSheet.classList.add('active');
@@ -232,9 +225,10 @@ class BottomSheetTogglePinGesture extends Gesture {
             if (this.dragStarted) return;
             this.dragStarted = true;
 
-            // Set initial height BEFORE removing classes to prevent jump
-            const initialHeight = headerCollapsedHeight + (headerHeightRange * this.currentProgress);
-            header.style.maxHeight = `${initialHeight}px`;
+            // Set initial wrapper height BEFORE removing classes to prevent jump
+            const initialHeight = wrapperHeightRange * this.currentProgress;
+            wrapper.style.height = `${initialHeight}px`;
+            wrapper.style.transition = 'none';
 
             bottomSheet.classList.remove('active');
             bottomSheet.classList.add('dragging');
@@ -252,7 +246,8 @@ class BottomSheetTogglePinGesture extends Gesture {
                 badge.style.visibility = '';
             }
             header.classList.remove('dragging');
-            header.style.maxHeight = '';
+            wrapper.style.height = '';
+            wrapper.style.transition = '';
         };
 
         const snapToState = () => {
@@ -303,15 +298,16 @@ class BottomSheetTogglePinGesture extends Gesture {
 
                 tryPreventDefaultForEvent(e);
 
-                // Calculate progress: 0 = collapsed, 1 = fully expanded
-                this.currentProgress = Math.max(0, Math.min(1, dy / headerHeightRange));
-                const currentHeight = headerCollapsedHeight + (headerHeightRange * this.currentProgress);
+                // Calculate progress: 0 = collapsed (h-0), 1 = expanded (h-14)
+                const effectiveDy = dy + startProgress * wrapperHeightRange;
+                this.currentProgress = Math.max(0, Math.min(1, effectiveDy / wrapperHeightRange));
+                const currentHeight = wrapperHeightRange * this.currentProgress;
 
                 // Calculate extra drag beyond full expand for badge
-                const extraDrag = Math.max(0, dy - headerHeightRange);
+                const extraDrag = Math.max(0, effectiveDy - wrapperHeightRange);
                 const sheetOffset = Math.min(extraDrag, pinBadgeThreshold);
 
-                header.style.maxHeight = `${currentHeight}px`;
+                wrapper.style.height = `${currentHeight}px`;
                 bottomSheet.style.transform = `translateX(-50%) translateY(${sheetOffset}px)`;
 
                 // Progressive badge scaling based on extra drag distance

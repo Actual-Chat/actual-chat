@@ -294,7 +294,7 @@ body.narrow .layout-header > .c-content.selection-header {
     @apply w-full;
     @apply mt-1;
 }
-.layout-subheader > :last-child:not(.date-visor-wrapper) {
+.layout-subheader > .bottom-sheet {
     @apply mb-0.5;
 }
 
@@ -340,63 +340,52 @@ body.narrow .layout-header > .c-content.selection-header {
     @apply absolute inset-x-0 bottom-0;
     @apply h-40;
 }
+/* Header height is driven by content flow — no max-height.
+   Collapse/expand is controlled solely via .header-activity-panel-wrapper height. */
 .list-view-layout .layout-header {
     @apply items-center;
-    max-height: calc(3.5rem + var(--safe-area-top));
+    min-height: calc(3.5rem + var(--safe-area-top));
 }
-.list-view-layout .layout-header:has(.header-activity-panel-wrapper):not(:has(.video-panel)),
+.list-view-layout .layout-header:has(.header-activity-panel-wrapper),
 .list-view-layout:has(.chat-activity-panel.listening) .layout-header {
     @apply relative;
     @apply bg-transparent;
     @apply border-transparent;
-    transition: max-height 0.5s ease;
-}
-.list-view-layout .layout-header.dragging {
-    transition: none;
 }
 .list-view-layout .layout-header.dragging .hideable {
     transition: none;
 }
-body.narrow .list-view-layout .layout-header:has(.header-activity-panel-wrapper):not(:has(.video-panel)),
+body.narrow .list-view-layout .layout-header:has(.header-activity-panel-wrapper),
 body.narrow .list-view-layout:has(.chat-activity-panel.listening) .layout-header {
-    background: linear-gradient(to bottom, var(--violet-80-20) -20%, var(--transparent) 100%);
+    background: linear-gradient(
+        to bottom,
+        var(--violet-60-20) 15%,
+        var(--violet-70-10) 40%,
+        var(--transparent) 100%);
 }
-.list-view-layout .layout-header:has(.header-activity-panel-wrapper):has(.video-panel) {
-    transition: none;
-}
-.list-view-layout .layout-header:has(.header-activity-panel-wrapper),
-.list-view-layout .layout-header.expanded:has(.header-activity-panel-wrapper) {
-    max-height: calc(7.5rem + var(--safe-area-top));
-}
-.list-view-layout .layout-header:has(.header-activity-panel-wrapper):has(.video-panel),
-.list-view-layout .layout-header.expanded:has(.header-activity-panel-wrapper):has(.video-panel) {
-    max-height: calc(19.5rem + var(--safe-area-top));
-}
-.list-view-layout .layout-header.collapsed:has(.header-activity-panel-wrapper) {
-    max-height: calc(3.5rem + var(--safe-area-top));
-}
-.list-view-layout .layout-header.collapsed:has(.header-activity-panel-wrapper):has(.video-panel) {
-    max-height: calc(16rem + var(--safe-area-top));
-}
-.list-view-layout .layout-header:has(.video-panel) {
-    max-height: 100%;
-    box-shadow: 0 1rem 2rem 0.5rem var(--background-01);
+/* Video panel styling — no max-height, just visual treatment */
+.list-view-layout .layout-header:has(.video-panel:not(.collapsed)) {
     border: none;
 }
+.list-view-layout:has(.video-panel:not(.collapsed)) .layout-subheader {
+    @apply z-40;
+}
+/* Hideable elements (control panel buttons) */
 .list-view-layout .layout-header:has(.header-activity-panel-wrapper) .hideable {
     transition-property: opacity, transform, max-width;
     transition-duration: 0.5s;
     transition-timing-function: ease;
-    transition-delay: 0.15s;
 }
 .list-view-layout .layout-header.expanded:has(.header-activity-panel-wrapper) .hideable {
     @apply opacity-100;
     transform: scale(1);
+    transition-delay: 0.15s;
 }
 .list-view-layout .layout-header.collapsed:has(.header-activity-panel-wrapper) .hideable {
     @apply overflow-hidden;
     @apply opacity-0;
     transform: scale(0);
+    transition-delay: 0s;
 }
 .list-view-layout .layout-header.collapsed:has(.header-activity-panel-wrapper) .author-circle:not(:first-child) {
     @apply -ml-5;
@@ -408,11 +397,19 @@ body.narrow .list-view-layout .layout-header.collapsed .chat-header-control-pane
     @apply max-w-0;
 }
 body.narrow .list-view-layout .layout-header.collapsed .chat-header-title {
-    @apply pr-8;
+    @apply pr-16;
 }
+/* Wrapper is the SINGLE animated element for collapse/expand */
 .header-activity-panel-wrapper {
     @apply flex-x items-center;
     @apply w-full h-14;
+    transition: height 0.5s ease;
+}
+.layout-header.collapsed .header-activity-panel-wrapper {
+    @apply h-0;
+}
+.layout-header.dragging .header-activity-panel-wrapper {
+    transition: none;
 }
 .layout-header.pinned .header-activity-panel-wrapper {
     border-top: 1px solid var(--violet-80-20);
@@ -726,7 +723,7 @@ body.wide .error-container {
 .bottom-sheet.dragging::before {
     @apply w-32;
 }
-.layout-subheader > :last-child.bottom-sheet {
+.layout-subheader > .bottom-sheet {
     @apply mt-1.5 -mb-3;
 }
 .list-view-layout:has(.header-activity-panel-wrapper) .bottom-sheet,

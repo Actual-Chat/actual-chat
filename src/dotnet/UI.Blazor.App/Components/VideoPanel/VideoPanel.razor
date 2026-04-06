@@ -31,7 +31,7 @@
 }
 
 @if (_rendered) {
-    <div @ref="Ref" class="video-panel @firstOpenCls @cls @recordingCls @remoteStreamsCls @(_isExpanded ? "expanded" : "")">
+    <div @ref="Ref" class="video-panel @firstOpenCls @cls @recordingCls @remoteStreamsCls @(_isExpanded ? "expanded" : "") @(Collapsed ? "collapsed" : "")">
         @* Header for mobile full-screen video *@
         <div class="video-panel-header">
             <HeaderButton Class="expand-btn show-with-delay expanded-video-btn" Click="@OnExpandClick">
@@ -148,6 +148,7 @@
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter] public bool Show { get; set; }
+    [Parameter] public bool Collapsed { get; set; }
     [Parameter] public bool AutoStart { get; set; }
     [Parameter] public string? PendingCameraDeviceId { get; set; }
     [Parameter] public bool PendingBlurEnabled { get; set; }

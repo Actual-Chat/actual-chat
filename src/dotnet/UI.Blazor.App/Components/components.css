@@ -118,9 +118,6 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
     @apply truncate;
     transition: padding 0.3s ease-in-out;
 }
-body.narrow .layout-header.collapsed .chat-header-center {
-    @apply pl-9;
-}
 body.narrow .layout-header.collapsed:has(.chat-activity-panel:not(.listening)) .chat-header-center {
     @apply pr-16;
 }

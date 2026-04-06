@@ -21,6 +21,9 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     // Tracks which chat the user is currently watching video in (in-memory, resets on reload)
     private readonly MutableState<ChatId?> _watchingChatId;
 
+    // UI-only: hides video panel without affecting watching/recording state
+    private readonly MutableState<bool> _isVideoPanelCollapsed;
+
     // Active speaker focus state
     private readonly MutableState<AuthorId?> _focusedSpeakerId;
     private readonly MutableState<AuthorId?> _previousFocusedSpeakerId;
@@ -40,6 +43,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         _errorMessage = StateFactory.NewMutable((string?)null);
         _isScreencasting = StateFactory.NewMutable(false);
         _watchingChatId = StateFactory.NewMutable((ChatId?)null);
+        _isVideoPanelCollapsed = StateFactory.NewMutable(false);
         _focusedSpeakerId = StateFactory.NewMutable((AuthorId?)null);
         _previousFocusedSpeakerId = StateFactory.NewMutable((AuthorId?)null);
     }
@@ -88,6 +92,10 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public virtual async Task<ChatId?> GetWatchingChatId(CancellationToken cancellationToken = default)
         => await _watchingChatId.Use(cancellationToken).ConfigureAwait(false);
 
+    [ComputeMethod]
+    public virtual async Task<bool> GetIsVideoPanelCollapsed(CancellationToken cancellationToken = default)
+        => await _isVideoPanelCollapsed.Use(cancellationToken).ConfigureAwait(false);
+
     // State mutators
 
     public void SetRecordingChatId(ChatId? chatId, string? cameraDeviceId = null, bool isBackgroundBlurEnabled = false)
@@ -130,6 +138,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         if (_watchingChatId.Value == chatId)
             return;
         _watchingChatId.Value = chatId;
+        _isVideoPanelCollapsed.Value = false; // Reset collapsed state on watching change
         // Ensure listening is on when starting to watch
         if (chatId is not null)
             _ = ChatAudioUI.SetListeningState(chatId, true);
@@ -137,6 +146,9 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     public bool HasJoinedVideoCall(ChatId chatId)
         => _watchingChatId.Value == chatId;
+
+    public void SetVideoPanelCollapsed(bool collapsed)
+        => _isVideoPanelCollapsed.Value = collapsed;
 
     public void ResumeRecording(ChatId chatId)
     {

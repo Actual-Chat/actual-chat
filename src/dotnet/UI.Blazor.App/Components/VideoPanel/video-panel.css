@@ -10,6 +10,9 @@
 .video-panel:not(.expanded) {
     @apply max-w-192;
 }
+.video-panel.collapsed {
+    @apply hidden;
+}
 .video-panel.first-time-open {
     animation: smoothShowVideoPanel 0.3s ease-in-out forwards;
 }
