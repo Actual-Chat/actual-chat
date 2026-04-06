@@ -182,33 +182,41 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         if (!dbMedia.BlobId.EndsWith(".svg"))
             return false;
 
+        var pngBlob = await ConvertSvgBlobToPng(dbMedia, cancellationToken).ConfigureAwait(false);
+        if (pngBlob == null)
+            return false;
+
         var metadata = MetadataSerializer.Read(dbMedia.MetadataJson);
+        var fileName = metadata[nameof(Media.Media.FileName)] as string ?? "";
+        metadata = metadata
+            .Set(nameof(Media.Media.ContentType), "image/png")
+            .Set(nameof(Media.Media.FileName), Path.ChangeExtension(fileName, ".png"))
+            .Set(nameof(Media.Media.Width), pngBlob.Size.Width)
+            .Set(nameof(Media.Media.Height), pngBlob.Size.Height)
+            .Set(nameof(Media.Media.Length), pngBlob.Length);
+
+        dbMedia.BlobId = pngBlob.BlobId;
+        dbMedia.MetadataJson = MetadataSerializer.Write(metadata);
+        return true;
+    }
+
+    private async Task<PngBlobInfo?> ConvertSvgBlobToPng(DbMedia dbMedia, CancellationToken cancellationToken)
+    {
         var svgStream = await BlobStorage.Read(dbMedia.BlobId, cancellationToken).ConfigureAwait(false);
         if (svgStream == null) {
             Console.LogWarning($"Blob not found for media {dbMedia.Id}: {dbMedia.BlobId}");
-            return false;
+            return null;
         }
         await using var _1 = svgStream.ConfigureAwait(false);
         var png = await ConvertSvgToPng(svgStream, cancellationToken).ConfigureAwait(false);
         if (png == null)
-            return false;
+            return null;
 
         await using var _2 = png.ConfigureAwait(false);
         var mediaId = MediaId.Parse(dbMedia.Id);
         var newBlobId = MediaSaver.GetBlobId(mediaId, ".png");
         await BlobStorage.Write(newBlobId, png.Stream, "image/png", cancellationToken).ConfigureAwait(false);
-
-        var fileName = metadata[nameof(Media.Media.FileName)] as string ?? "";
-        metadata = metadata
-            .Set(nameof(Media.Media.ContentType), "image/png")
-            .Set(nameof(Media.Media.FileName), Path.ChangeExtension(fileName, ".png"))
-            .Set(nameof(Media.Media.Width), png.Size.Width)
-            .Set(nameof(Media.Media.Height), png.Size.Height)
-            .Set(nameof(Media.Media.Length), png.Stream.Length);
-
-        dbMedia.BlobId = newBlobId;
-        dbMedia.MetadataJson = MetadataSerializer.Write(metadata);
-        return true;
+        return new PngBlobInfo(newBlobId, png.Size, png.Stream.Length);
     }
 
     private async Task<Image?> ConvertSvgToPng(Stream svgStream, CancellationToken cancellationToken)
@@ -259,4 +267,6 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         public ValueTask DisposeAsync()
             => Stream.DisposeAsync();
     }
+
+    private sealed record PngBlobInfo(string BlobId, Size Size, long Length);
 }
