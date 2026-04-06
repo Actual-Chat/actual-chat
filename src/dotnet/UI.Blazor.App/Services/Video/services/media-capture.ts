@@ -23,6 +23,12 @@ export class MediaCapture {
         if (options.frameRate) {
             videoConstraints.frameRate = { ideal: options.frameRate };
         }
+        if (options.width && options.height) {
+            const min = Math.min(options.width, options.height);
+            const max = Math.max(options.width, options.height);
+            videoConstraints.width = { min: min, max: max };
+            videoConstraints.height = { min: min, max: max };
+        }
         infoLog?.log(`${tag}: constraints:`, JSON.stringify(videoConstraints));
         const maxRetries = options.maxRetries ?? 0;
         let videoTrack: MediaStreamTrack;
@@ -51,38 +57,6 @@ export class MediaCapture {
 
         const initialSettings = videoTrack.getSettings();
         infoLog?.log(`${tag}: initial ${initialSettings.width}x${initialSettings.height}`);
-
-        // Apply requested resolution via applyConstraints, adapting to stream orientation
-        if (options.width && options.height && initialSettings.width && initialSettings.height) {
-            const isPortrait = initialSettings.height > initialSettings.width;
-            // Requested dimensions assume landscape; swap for portrait streams
-            const targetWidth = isPortrait ? options.height : options.width;
-            const targetHeight = isPortrait ? options.width : options.height;
-            if (targetWidth === initialSettings.width && targetHeight === initialSettings.height) {
-                infoLog?.log(`${tag}: ${initialSettings.width}x${initialSettings.height} already matches ${targetWidth}x${targetHeight}, skipping applyConstraints`);
-            } else {
-                // Fit into target frame preserving original aspect ratio
-                const scale = Math.min(
-                    targetWidth / initialSettings.width,
-                    targetHeight / initialSettings.height,
-                );
-                const fitWidth = Math.round(initialSettings.width * scale);
-                const fitHeight = Math.round(initialSettings.height * scale);
-                try {
-                    infoLog?.log(`${tag}: fitting ${initialSettings.width}x${initialSettings.height} into ${targetWidth}x${targetHeight} -> ${fitWidth}x${fitHeight}`);
-                    await videoTrack.applyConstraints({
-                        width: { ideal: fitWidth },
-                        height: { ideal: fitHeight },
-                    });
-                    const adjusted = videoTrack.getSettings();
-                    infoLog?.log(`${tag}: after applyConstraints ${adjusted.width}x${adjusted.height}`);
-                } catch (e) {
-                    // applyConstraints failed — track stays in its previous state per spec
-                    const kept = videoTrack.getSettings();
-                    infoLog?.log(`${tag}: applyConstraints failed, keeping ${kept.width}x${kept.height}. Error:`, e);
-                }
-            }
-        }
 
         return videoTrack;
     }
