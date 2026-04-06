@@ -208,7 +208,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             return null;
         }
         await using var _1 = svgStream.ConfigureAwait(false);
-        var png = await ConvertSvgToPng(svgStream, cancellationToken).ConfigureAwait(false);
+        var png = await ConvertSvgToPng(svgStream).ConfigureAwait(false);
         if (png == null)
             return null;
 
@@ -219,9 +219,10 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         return new PngBlobInfo(newBlobId, png.Size, png.Stream.Length);
     }
 
-    private async Task<Image?> ConvertSvgToPng(Stream svgStream, CancellationToken cancellationToken)
+    private async Task<Image?> ConvertSvgToPng(Stream svgStream)
     {
         await using var _ = svgStream.ConfigureAwait(false);
+        Console.Log($"ConvertSvgToPng: parsing SVG ({svgStream.Length} bytes)");
         using var svg = SKSvg.CreateFromStream(svgStream);
         var picture = svg.Picture
             ?? throw StandardError.Internal("Failed to parse SVG file.");
@@ -233,6 +234,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         var target = new Size((int)bounds.Width, (int)bounds.Height).Fit(new Size(MaxSize, MaxSize));
         var scaleX = target.Width / bounds.Width;
         var scaleY = target.Height / bounds.Height;
+        Console.Log($"ConvertSvgToPng: SVG bounds {bounds.Width}x{bounds.Height}, target {target.Width}x{target.Height}");
 
         var imageInfo = new SKImageInfo(target.Width, target.Height, SKColorType.Rgba8888, SKAlphaType.Premul);
         using var surface = SKSurface.Create(imageInfo);
@@ -247,6 +249,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         var stream = new MemoryStream((int)data.Size);
         data.SaveTo(stream);
         stream.Position = 0;
+        Console.Log($"ConvertSvgToPng: encoded PNG ({stream.Length} bytes)");
         return new Image(stream, target);
     }
 
