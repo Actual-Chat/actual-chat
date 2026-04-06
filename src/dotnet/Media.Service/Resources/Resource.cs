@@ -2,12 +2,12 @@ namespace ActualChat.Media.Resources;
 
 public class Resource(string name)
 {
-    public static readonly Resource AlumniSvg = new ("alumni.svg");
-    public static readonly Resource CoworkersSvg = new ("coworkers.svg");
-    public static readonly Resource FamilySvg = new ("family.svg");
-    public static readonly Resource NotesSvg = new ("notes.svg");
-    public static readonly Resource FriendsSvg = new ("friends.svg");
-    public static readonly Resource Sherlock = new ("sherlock.svg");
+    public static readonly Resource AlumniPng = new ("alumni.png");
+    public static readonly Resource CoworkersPng = new ("coworkers.png");
+    public static readonly Resource FamilyPng = new ("family.png");
+    public static readonly Resource NotesPng = new ("notes.png");
+    public static readonly Resource FriendsPng = new ("friends.png");
+    public static readonly Resource SherlockPng = new ("sherlock.png");
 
     public string Name { get; } = name;
 
@@ -15,9 +15,6 @@ public class Resource(string name)
     {
         var assembly = Assembly.GetExecutingAssembly();
         var stream = assembly.GetManifestResourceStream(typeof(Resource), Name);
-        if (stream != null)
-            return stream;
-
-        throw StandardError.Internal($"Resource is not found: {Name}.");
+        return stream ?? throw StandardError.Internal($"Resource is not found: {Name}.");
     }
 }
