@@ -1,11 +1,10 @@
 using ActualChat.Chat.Db;
 using ActualChat.Flows;
 using ActualChat.Media.Db;
+using ActualChat.Uploads;
 using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
-using SkiaSharp;
-using Svg.Skia;
 
 namespace ActualChat.App.Server.Flows;
 
@@ -30,6 +29,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
     private DbHub<ChatDbContext> ChatDbHub => field ??= Services.DbHub<ChatDbContext>();
     private DbHub<MediaDbContext> MediaDbHub => field ??= Services.DbHub<MediaDbContext>();
     private IBlobStorage BlobStorage => field ??= Services.BlobStorages()[BlobScope.ContentRecord];
+    private SvgRasterizer SvgRasterizer => field ??= Services.GetRequiredService<SvgRasterizer>();
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public MigrationPhase Phase { get; set; }
@@ -208,49 +208,15 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             return null;
         }
         await using var _1 = svgStream.ConfigureAwait(false);
-        var png = await ConvertSvgToPng(svgStream).ConfigureAwait(false);
-        if (png == null)
-            return null;
+        Console.Log($"ConvertSvgToPng: parsing SVG ({svgStream.Length} bytes)");
+        var (pngStream, size) = SvgRasterizer.RasterizeToPng(svgStream, MaxSize);
+        await using var _2 = pngStream.ConfigureAwait(false);
+        Console.Log($"ConvertSvgToPng: encoded PNG {size.Width}x{size.Height} ({pngStream.Length} bytes)");
 
-        await using var _2 = png.ConfigureAwait(false);
         var mediaId = MediaId.Parse(dbMedia.Id);
         var newBlobId = MediaSaver.GetBlobId(mediaId, ".png");
-        await BlobStorage.Write(newBlobId, png.Stream, "image/png", cancellationToken).ConfigureAwait(false);
-        return new PngBlobInfo(newBlobId, png.Size, png.Stream.Length);
-    }
-
-    private async Task<Image?> ConvertSvgToPng(Stream svgStream)
-    {
-        await using var _ = svgStream.ConfigureAwait(false);
-        Console.Log($"ConvertSvgToPng: parsing SVG ({svgStream.Length} bytes)");
-        using var svg = SKSvg.CreateFromStream(svgStream);
-        var picture = svg.Picture
-            ?? throw StandardError.Internal("Failed to parse SVG file.");
-
-        var bounds = picture.CullRect;
-        if (bounds.Width <= 0 || bounds.Height <= 0)
-            throw StandardError.Internal("SVG has invalid dimensions.");
-
-        var target = new Size((int)bounds.Width, (int)bounds.Height).Fit(new Size(MaxSize, MaxSize));
-        var scaleX = target.Width / bounds.Width;
-        var scaleY = target.Height / bounds.Height;
-        Console.Log($"ConvertSvgToPng: SVG bounds {bounds.Width}x{bounds.Height}, target {target.Width}x{target.Height}");
-
-        var imageInfo = new SKImageInfo(target.Width, target.Height, SKColorType.Rgba8888, SKAlphaType.Premul);
-        using var surface = SKSurface.Create(imageInfo);
-        var canvas = surface.Canvas;
-        canvas.Clear(SKColors.Transparent);
-        canvas.Scale(scaleX, scaleY);
-        canvas.DrawPicture(picture);
-
-        using var pixmap = surface.PeekPixels();
-        using var data = pixmap.Encode(SKEncodedImageFormat.Png, 100)
-            ?? throw StandardError.Internal("Failed to encode SVG as PNG.");
-        var stream = new MemoryStream((int)data.Size);
-        data.SaveTo(stream);
-        stream.Position = 0;
-        Console.Log($"ConvertSvgToPng: encoded PNG ({stream.Length} bytes)");
-        return new Image(stream, target);
+        await BlobStorage.Write(newBlobId, pngStream, "image/png", cancellationToken).ConfigureAwait(false);
+        return new PngBlobInfo(newBlobId, size, pngStream.Length);
     }
 
     // Nested types
@@ -264,12 +230,6 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
     }
 
     private sealed record UsedMedia(string EntityId, string MediaId);
-
-    private sealed record Image(MemoryStream Stream, Size Size) : IAsyncDisposable
-    {
-        public ValueTask DisposeAsync()
-            => Stream.DisposeAsync();
-    }
 
     private sealed record PngBlobInfo(string BlobId, Size Size, long Length);
 }

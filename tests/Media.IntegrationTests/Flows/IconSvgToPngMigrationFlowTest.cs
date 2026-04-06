@@ -39,8 +39,8 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
             updated.ContentType.Should().Be("image/png");
             updated.BlobId.Should().NotBe(svgBlobId);
             updated.BlobId.Should().EndWith(".png");
-            updated.Width.Should().Be(100);
-            updated.Height.Should().Be(100);
+            updated.Width.Should().Be(Constants.Attachments.MaxIconSize);
+            updated.Height.Should().Be(Constants.Attachments.MaxIconSize);
         });
 
         // assert: PNG blob exists, old SVG blob is preserved
