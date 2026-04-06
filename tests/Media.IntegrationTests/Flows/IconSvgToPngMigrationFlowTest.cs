@@ -1,10 +1,8 @@
 using ActualChat.App.Server.Flows;
 using ActualChat.Chat.Db;
-using ActualChat.Media.Db;
 using ActualChat.Testing.Host;
 using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;
-using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Media.IntegrationTests.Flows;
 
@@ -20,7 +18,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         """u8.ToArray();
 
     private IBlobStorage BlobStorage { get; } = fixture.AppHost.Services.BlobStorages()[BlobScope.ContentRecord];
-    private DbHub<MediaDbContext> MediaDbHub { get; } = fixture.AppHost.Services.DbHub<MediaDbContext>();
+    private IMediaBackend MediaBackend { get; } = fixture.AppHost.Services.GetRequiredService<IMediaBackend>();
     private DbHub<UsersDbContext> UsersDbHub { get; } = fixture.AppHost.Services.DbHub<UsersDbContext>();
     private DbHub<ChatDbContext> ChatDbHub { get; } = fixture.AppHost.Services.DbHub<ChatDbContext>();
 
@@ -34,7 +32,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
 
         // act & assert: flow converts the media to PNG
         await RunFlowAndAssert(async ct => {
-            var updated = await GetDbMedia(mediaId, ct);
+            var updated = await MediaBackend.GetFull(mediaId, ct);
             updated.Should().NotBeNull();
             updated.ContentType.Should().Be("image/png");
             updated.BlobId.Should().NotBe(svgBlobId);
@@ -44,7 +42,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         });
 
         // assert: PNG blob exists, old SVG blob is preserved
-        var current = await GetDbMedia(mediaId, CancellationToken.None);
+        var current = await MediaBackend.GetFull(mediaId, CancellationToken.None);
         await AssertBlobExists(current!.BlobId);
         await AssertBlobExists(svgBlobId);
     }
@@ -60,7 +58,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
 
         // act & assert: flow completes and the PNG media is left untouched
         await RunFlowAndAssert(async ct => {
-            var unchanged = await GetDbMedia(mediaId, ct);
+            var unchanged = await MediaBackend.GetFull(mediaId, ct);
             unchanged.Should().NotBeNull();
             unchanged!.ContentType.Should().Be("image/png");
             unchanged.BlobId.Should().Be(pngBlobId);
@@ -77,7 +75,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
 
         // act & assert: flow completes and the media is left as SVG (missing blob -> skipped)
         await RunFlowAndAssert(async ct => {
-            var unchanged = await GetDbMedia(mediaId, ct);
+            var unchanged = await MediaBackend.GetFull(mediaId, ct);
             unchanged.Should().NotBeNull();
             unchanged!.ContentType.Should().Be("image/svg+xml");
             unchanged.BlobId.Should().Be(svgBlobId);
@@ -103,7 +101,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         var mediaIds = new[] { avatarMediaId, chatMediaId, placeMediaId };
         await RunFlowAndAssert(async ct => {
             foreach (var mediaId in mediaIds) {
-                var updated = await GetDbMedia(mediaId, ct);
+                var updated = await MediaBackend.GetFull(mediaId, ct);
                 updated.Should().NotBeNull();
                 updated!.ContentType.Should().Be("image/png");
                 updated.BlobId.Should().EndWith(".png");
@@ -162,18 +160,6 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         stream.Should().NotBeNull();
         await using var _ = stream!.ConfigureAwait(false);
         stream.Length.Should().BeGreaterThan(0);
-    }
-
-    // Reads DbMedia directly (bypasses Fusion cache), because the flow writes via plain
-    // SaveChangesAsync which doesn't trigger MediaBackend.GetFull invalidation.
-    private async Task<MediaFull?> GetDbMedia(MediaId mediaId, CancellationToken cancellationToken)
-    {
-        var dbContext = await MediaDbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _ = dbContext.ConfigureAwait(false);
-        var dbMedia = await dbContext.Media.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == mediaId.Value, cancellationToken)
-            .ConfigureAwait(false);
-        return dbMedia?.ToModel();
     }
 
     private async Task SeedAvatar(MediaId mediaId)

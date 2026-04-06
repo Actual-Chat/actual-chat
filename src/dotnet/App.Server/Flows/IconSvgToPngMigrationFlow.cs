@@ -1,6 +1,5 @@
 using ActualChat.Chat.Db;
 using ActualChat.Flows;
-using ActualChat.Media.Db;
 using ActualChat.Uploads;
 using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;
@@ -13,9 +12,9 @@ namespace ActualChat.App.Server.Flows;
 /// Walks <see cref="DbAvatar"/>, <see cref="DbChat"/>, and <see cref="DbPlace"/>
 /// to collect media IDs that are actually used as icons, then converts any
 /// of those that are SVG to PNG via SkiaSharp.
-/// Scanning the referencing tables (rather than <see cref="DbMedia"/> directly)
+/// Scanning the referencing tables (rather than the Media table directly)
 /// is the only way to leave chat-entry attachment SVGs untouched, because
-/// old <see cref="DbMedia"/> records have <see cref="MediaKind.Unknown"/>.
+/// old media records have <see cref="MediaKind.Unknown"/>.
 /// </summary>
 [Flow(DataVersion = 1, DelayQuanta = 0)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
@@ -27,9 +26,10 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
 
     private DbHub<UsersDbContext> UsersDbHub => field ??= Services.DbHub<UsersDbContext>();
     private DbHub<ChatDbContext> ChatDbHub => field ??= Services.DbHub<ChatDbContext>();
-    private DbHub<MediaDbContext> MediaDbHub => field ??= Services.DbHub<MediaDbContext>();
     private IBlobStorage BlobStorage => field ??= Services.BlobStorages()[BlobScope.ContentRecord];
     private SvgRasterizer SvgRasterizer => field ??= Services.GetRequiredService<SvgRasterizer>();
+    private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
+    private ICommander Commander => Hub.Commander;
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public MigrationPhase Phase { get; set; }
@@ -150,61 +150,51 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
 
     private async Task ConvertBatch(List<UsedMedia> items, CancellationToken cancellationToken)
     {
-        var mediaDb = await MediaDbHub.CreateDbContext(readWrite: true, cancellationToken).ConfigureAwait(false);
-        await using var _ = mediaDb.ConfigureAwait(false);
-
-        var mediaIds = items.Select(x => x.MediaId).Distinct().ToList();
-        var dbMediaRecords = await mediaDb.Media
-            .Where(x => mediaIds.Contains(x.Id))
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-
-        foreach (var dbMedia in dbMediaRecords) {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var item in items.Where(item => seen.Add(item.MediaId)))
             try {
-                var converted = await ProcessOne(dbMedia, cancellationToken).ConfigureAwait(false);
+                var converted = await ProcessOne(MediaId.Parse(item.MediaId), cancellationToken).ConfigureAwait(false);
                 if (converted)
                     ConvertedCount++;
                 else
                     SkippedCount++;
             }
             catch (Exception e) {
-                Console.LogError($"Failed to convert media {dbMedia.Id}: {e.Message}", e);
+                Console.LogError($"Failed to convert media {item.MediaId}: {e.Message}", e);
                 SkippedCount++;
             }
-        }
 
-        await mediaDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         LastProcessedEntityId = items[^1].EntityId;
     }
 
-    private async Task<bool> ProcessOne(DbMedia dbMedia, CancellationToken cancellationToken)
+    private async Task<bool> ProcessOne(MediaId mediaId, CancellationToken cancellationToken)
     {
-        if (!dbMedia.BlobId.EndsWith(".svg"))
+        var media = await MediaBackend.GetFull(mediaId, cancellationToken).ConfigureAwait(false);
+        if (media is null || !media.BlobId.EndsWith(".svg"))
             return false;
 
-        var pngBlob = await ConvertSvgBlobToPng(dbMedia, cancellationToken).ConfigureAwait(false);
+        var pngBlob = await ConvertSvgBlobToPng(mediaId, media.BlobId, cancellationToken).ConfigureAwait(false);
         if (pngBlob == null)
             return false;
 
-        var metadata = MetadataSerializer.Read(dbMedia.MetadataJson);
-        var fileName = metadata[nameof(Media.Media.FileName)] as string ?? "";
-        metadata = metadata
-            .Set(nameof(Media.Media.ContentType), "image/png")
-            .Set(nameof(Media.Media.FileName), Path.ChangeExtension(fileName, ".png"))
-            .Set(nameof(Media.Media.Width), pngBlob.Size.Width)
-            .Set(nameof(Media.Media.Height), pngBlob.Size.Height)
-            .Set(nameof(Media.Media.Length), pngBlob.Length);
-
-        dbMedia.BlobId = pngBlob.BlobId;
-        dbMedia.MetadataJson = MetadataSerializer.Write(metadata);
+        var updated = media with {
+            BlobId = pngBlob.BlobId,
+            ContentType = "image/png",
+            FileName = Path.ChangeExtension(media.FileName, ".png"),
+            Width = pngBlob.Size.Width,
+            Height = pngBlob.Size.Height,
+            Length = pngBlob.Length,
+        };
+        var changeCommand = new MediaBackend_Change(mediaId, null, new Change<MediaFull> { Update = updated });
+        await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
         return true;
     }
 
-    private async Task<PngBlobInfo?> ConvertSvgBlobToPng(DbMedia dbMedia, CancellationToken cancellationToken)
+    private async Task<PngBlobInfo?> ConvertSvgBlobToPng(MediaId mediaId, string svgBlobId, CancellationToken cancellationToken)
     {
-        var svgStream = await BlobStorage.Read(dbMedia.BlobId, cancellationToken).ConfigureAwait(false);
+        var svgStream = await BlobStorage.Read(svgBlobId, cancellationToken).ConfigureAwait(false);
         if (svgStream == null) {
-            Console.LogWarning($"Blob not found for media {dbMedia.Id}: {dbMedia.BlobId}");
+            Console.LogWarning($"Blob not found for media {mediaId.Value}: {svgBlobId}");
             return null;
         }
         await using var _1 = svgStream.ConfigureAwait(false);
@@ -213,7 +203,6 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         await using var _2 = pngStream.ConfigureAwait(false);
         Console.Log($"ConvertSvgToPng: encoded PNG {size.Width}x{size.Height} ({pngStream.Length} bytes)");
 
-        var mediaId = MediaId.Parse(dbMedia.Id);
         var newBlobId = MediaSaver.GetBlobId(mediaId, ".png");
         await BlobStorage.Write(newBlobId, pngStream, "image/png", cancellationToken).ConfigureAwait(false);
         return new PngBlobInfo(newBlobId, size, pngStream.Length);
