@@ -154,6 +154,7 @@ public class FilteredVideoStreamTest(ILogger log)
                 StreamId.New(new NodeRef("test-node"), "test-local"),
                 "test-peer",
                 hasPauseFilter: false,
+                TimeSpan.Zero,
                 source,
                 cancellationToken)
             .ToListAsync(cancellationToken);

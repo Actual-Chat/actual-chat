@@ -15,6 +15,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
     private readonly StreamStore<VideoFrame> _videoStreams;
     private readonly ConcurrentDictionary<StreamId, StreamLatencyState> _latencyStates = new();
     private readonly ConcurrentDictionary<StreamId, bool> _keyFrameRequests = new();
+    private readonly ConcurrentDictionary<StreamId, CpuTimestamp> _lastKeyFrameRequestTime = new();
 
     private MeshNode ThisNode => field ??= Services.MeshWatcher().ThisNode;
     private IChats Chats => field ??= Services.GetRequiredService<IChats>();
@@ -53,7 +54,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         }
 
         var hasPauseFilter = _latencyStates.TryGetValue(streamId, out _) && _latencyStates[streamId].ChatId != default;
-        return RpcStream.New(FilteredVideoStream(streamId, peerId, hasPauseFilter, stream, cancellationToken));
+        return RpcStream.New(FilteredVideoStream(streamId, peerId, hasPauseFilter, skipTo, stream, cancellationToken));
     }
 
     public virtual async Task PushVideo(
@@ -111,6 +112,17 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
     public virtual Task RequestKeyFrame(StreamId streamId, CancellationToken cancellationToken = default)
     {
         ValidateStreamId(streamId);
+
+        // Rate-limit PLI: collapse multiple receivers' requests into one per cooldown window
+        var now = CpuTimestamp.Now;
+        var lastTime = _lastKeyFrameRequestTime.GetOrAdd(streamId, now);
+        if (lastTime != now && lastTime.Elapsed < Constants.Video.KeyFrameRequestCooldown) {
+            Log.LogDebug("RequestKeyFrame: streamId={StreamId} — throttled (last {Elapsed:F1}s ago)",
+                streamId, lastTime.Elapsed.TotalSeconds);
+            return Task.CompletedTask;
+        }
+        _lastKeyFrameRequestTime[streamId] = now;
+
         _keyFrameRequests[streamId] = true;
         Log.LogInformation("RequestKeyFrame: streamId={StreamId}", streamId);
 
@@ -162,6 +174,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         StreamId streamId,
         string peerId,
         bool hasPauseFilter,
+        TimeSpan skipTo,
         IAsyncEnumerable<VideoFrame> source,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -191,6 +204,10 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             }, refreshToken);
         }
 
+        // --- SkipTo filter state: skip frames until we reach a keyframe at or past skipTo ---
+        var skipToActive = skipTo > TimeSpan.Zero;
+        var skipToFramesSkipped = 0;
+
         // --- KeyFrame gap filter state ---
         var lastKeyFrameNumber = -1L;
         var skipping = true; // Start in skip mode — wait for first keyframe
@@ -198,6 +215,20 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 
         try {
             await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                // 0. SkipTo filter — drop all frames before the requested offset (must land on keyframe)
+                if (skipToActive) {
+                    if (frame.Offset < skipTo || !frame.IsKeyFrame) {
+                        skipToFramesSkipped++;
+                        continue;
+                    }
+                    // Found a keyframe at or past skipTo — deactivate skipTo filter
+                    if (skipToFramesSkipped > 0)
+                        Log.LogInformation(
+                            "FilteredVideoStream: SkipTo={SkipTo} — skipped {Skipped} frames, resuming at offset {Offset}",
+                            skipTo, skipToFramesSkipped, frame.Offset);
+                    skipToActive = false;
+                }
+
                 // 1. Temporal layer filter — drop enhancement layers for slow peers
                 var latencyState = _latencyStates.GetValueOrDefault(streamId);
                 var maxLayer = latencyState?.GetPeerMaxTemporalLayer(peerId) ?? int.MaxValue;
@@ -432,6 +463,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         private long _bytesAtLastCheck;
         private CpuTimestamp _lastThroughputCheckAt = CpuTimestamp.Now;
         private int _consecutiveLowThroughputChecks;
+        private int _consecutiveHighThroughputChecks;
 
 
         public int GetPeerMaxTemporalLayer(string peerId)
@@ -490,6 +522,25 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                     }
                     else
                         _consecutiveLowThroughputChecks = 0;
+
+                    // Over-delivery detection: HW encoder ignoring bitrate cap (e.g. HEVC VBR at 12Mbps vs 4Mbps target)
+                    if (targetBps > 0 && measuredBps > targetBps * Constants.Video.ThroughputOverDeliveryRatio) {
+                        _consecutiveHighThroughputChecks++;
+                        if (_consecutiveHighThroughputChecks >= Constants.Video.ThroughputStepDownConsecutiveChecks) {
+                            var stepped = VideoQualityPreset.StepDown(currentQuality);
+                            if (stepped != null) {
+                                _consecutiveHighThroughputChecks = 0;
+                                _lastQualityChangeAt = CpuTimestamp.Now;
+                                QualityPreset.Value = stepped;
+                                Log.LogInformation(
+                                    "EvaluateQuality: OVER-DELIVERY STEP DOWN {OldLevel} -> {NewLevel}, measured={MeasuredKbps:F0}kbps vs target={TargetKbps:F0}kbps (>{Ratio:F1}x)",
+                                    currentQuality, stepped.Level, measuredBps / 1000, targetBps / 1000.0, Constants.Video.ThroughputOverDeliveryRatio);
+                                return;
+                            }
+                        }
+                    }
+                    else
+                        _consecutiveHighThroughputChecks = 0;
                 }
 
                 var peers = _peers.ToList();

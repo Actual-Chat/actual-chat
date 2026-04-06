@@ -27,7 +27,11 @@ public static partial class Constants
 
         // Throughput-based quality adaptation
         public static readonly float ThroughputStepDownRatio = 0.5f; // Step down when actual < 50% of target
+        public static readonly float ThroughputOverDeliveryRatio = 2.5f; // Step down when actual > 250% of target
         public static readonly int ThroughputStepDownConsecutiveChecks = 2; // Require 2 consecutive low checks
+
+        // PLI rate limiting
+        public static readonly TimeSpan KeyFrameRequestCooldown = TimeSpan.FromSeconds(5);
 
         // Warmup
         public static readonly TimeSpan PeerWarmupDuration = TimeSpan.FromSeconds(10);

@@ -179,6 +179,7 @@
             Log.LogInformation("SubscribeToQualityRequests: found own stream #{StreamId}, subscribing", ownStreamId);
 
             var liveVideoStreams = Hub.Services.GetRequiredService<ILiveVideoStreams>();
+            VideoQualityPreset? lastAppliedPreset = null;
             while (true) {
                 var computed = await Computed.Capture(
                     () => liveVideoStreams.GetQualityPreset(Session, ownStreamId, cancellationToken),
@@ -187,8 +188,19 @@
                 Log.LogInformation("SubscribeToQualityRequests: received preset {Level} ({Width}x{Height} @ {Bitrate}bps), keyframe={KeyFrame}",
                     preset.Level, preset.Width, preset.Height, preset.Bitrate, preset.KeyFrameRequested);
                 if (JSRef is {} jsRef) {
-                    await jsRef.InvokeVoidAsync("reconfigure", cancellationToken,
-                        preset.Level.ToString(), preset.Width, preset.Height, preset.Bitrate);
+                    // Only reconfigure encoder when resolution/bitrate/level actually changed.
+                    // PLI-only presets (same level + KeyFrameRequested) should not trigger reconfigure,
+                    // because reconfigure resets HW encoder rate control and causes oversized keyframes.
+                    var qualityChanged = lastAppliedPreset == null
+                        || lastAppliedPreset.Level != preset.Level
+                        || lastAppliedPreset.Width != preset.Width
+                        || lastAppliedPreset.Height != preset.Height
+                        || lastAppliedPreset.Bitrate != preset.Bitrate;
+                    if (qualityChanged) {
+                        await jsRef.InvokeVoidAsync("reconfigure", cancellationToken,
+                            preset.Level.ToString(), preset.Width, preset.Height, preset.Bitrate);
+                        lastAppliedPreset = preset;
+                    }
                     if (preset.KeyFrameRequested)
                         await jsRef.InvokeVoidAsync("forceKeyFrame", cancellationToken);
                 }

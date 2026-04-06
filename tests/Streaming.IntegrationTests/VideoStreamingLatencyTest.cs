@@ -260,8 +260,8 @@ public class VideoStreamingLatencyTest(AppHostFixture fixture, ITestOutputHelper
         Out.WriteLine($"First frame offset: {firstFrame.Offset.TotalSeconds:F2}s, IsKeyFrame: {firstFrame.IsKeyFrame}");
         Out.WriteLine($"Stream ended cleanly: {streamEndedCleanly}");
 
-        firstFrame.Offset.Should().BeGreaterThanOrEqualTo(TimeSpan.FromSeconds(3),
-            "late joiner should skip ahead to recent keyframe in the retention buffer");
+        firstFrame.Offset.Should().BeGreaterThanOrEqualTo(TimeSpan.FromSeconds(3) - FrameDuration,
+            "late joiner should skip ahead to recent keyframe in the retention buffer (allowing one-frame tick rounding)");
 
         if (keyframeLatencies.Count > 0) {
             var p50 = Percentile(keyframeLatencies, 0.50);
@@ -352,8 +352,8 @@ public class VideoStreamingLatencyTest(AppHostFixture fixture, ITestOutputHelper
         Out.WriteLine($"First frame: offset={firstFrame.Offset.TotalSeconds:F2}s, isKeyFrame={firstFrame.IsKeyFrame}, elapsed={elapsedSinceStart:F2}s");
 
         // The frame offset should be at least 3 seconds into the stream (we waited 5s)
-        firstFrame.Offset.Should().BeGreaterThanOrEqualTo(TimeSpan.FromSeconds(3),
-            "keyframe should be near the live edge, not at the start of the buffer");
+        firstFrame.Offset.Should().BeGreaterThanOrEqualTo(TimeSpan.FromSeconds(3) - FrameDuration,
+            "keyframe should be near the live edge, not at the start of the buffer (allowing one-frame tick rounding)");
 
         Out.WriteLine($"SkipToLive successful: first frame at {firstFrame.Offset.TotalSeconds:F2}s");
     }

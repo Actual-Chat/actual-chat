@@ -174,7 +174,7 @@ export class VideoRecorder {
             // Capture at 720p on all platforms — lower resolutions may select the wrong
             // camera on Android and produce aspect-ratio mismatches.
             const targetSize = { width: 1280, height: 720 };
-            const targetBitrate = 2_000_000;
+            const targetBitrate = 4_000_000; // Must match VideoQualityPreset.High to avoid immediate reconfigure
             const targetFramerate = 30;
 
             // Detect supported encoder codecs — use target resolution to avoid

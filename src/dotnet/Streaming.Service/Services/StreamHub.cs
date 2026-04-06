@@ -20,6 +20,8 @@ public class StreamHub(IServiceProvider services) : Hub
     private static readonly Task<string> PongTask = Task.FromResult("Pong");
     // Dedicated pool to avoid SharedArrayPool.Trim() lock contention under GC pressure
     private static readonly ArrayPool<byte> SerializationPool = ArrayPool<byte>.Create();
+    // Track active video pull subscriptions per peer+stream to cancel stale pulls
+    private static readonly ConcurrentDictionary<(string PeerId, string StreamId), CancellationTokenSource> ActiveVideoPulls = new();
 
     private readonly bool _preferThisNode = services.HostInfo().HasRole(HostRole.OneServer);
 
@@ -173,26 +175,39 @@ public class StreamHub(IServiceProvider services) : Hub
 
         Log.LogInformation("GetVideo: #{StreamId}, SkipTo={SkipTo}, PeerId={PeerId}", parsedStreamId, skipTo, peerId);
 
+        // Cancel any previous pull for the same peer+stream to prevent stale frames
+        var pullKey = (peerId, streamId);
+        var pullCts = CancellationTokenSource.CreateLinkedTokenSource(stopCts.Token);
+        if (ActiveVideoPulls.TryRemove(pullKey, out var oldCts)) {
+            Log.LogInformation("GetVideo: cancelling previous pull for #{StreamId}, PeerId={PeerId}", parsedStreamId, peerId);
+            oldCts.CancelAndDisposeSilently();
+        }
+        ActiveVideoPulls[pullKey] = pullCts;
+
         RpcStream<VideoFrame>? rpcStream;
         try {
             rpcStream = await VideoStreamingBackend
-                .GetVideo(parsedStreamId, skipTo, peerId, stopCts.Token)
+                .GetVideo(parsedStreamId, skipTo, peerId, pullCts.Token)
                 .ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, "GetVideo: Error getting video for stream #{StreamId}", streamId);
+            ActiveVideoPulls.TryRemove(pullKey, out _);
+            pullCts.CancelAndDisposeSilently();
             yield break;
         }
 
         if (rpcStream == null) {
             Log.LogWarning("GetVideo: Stream #{StreamId} not found", streamId);
+            ActiveVideoPulls.TryRemove(pullKey, out _);
+            pullCts.CancelAndDisposeSilently();
             yield break;
         }
 
         var frameCount = 0;
         StreamingMeters.VideoActiveConsumers.Add(1);
         try {
-            await foreach (var frame in SuppressClientStreamCancellation(rpcStream, parsedStreamId, peerId, stopCts.Token).ConfigureAwait(false)) {
+            await foreach (var frame in SuppressClientStreamCancellation(rpcStream, parsedStreamId, peerId, pullCts.Token).ConfigureAwait(false)) {
                 frameCount++;
 
                 byte[] bytes;
@@ -211,6 +226,8 @@ public class StreamHub(IServiceProvider services) : Hub
         }
         finally {
             StreamingMeters.VideoActiveConsumers.Add(-1);
+            ActiveVideoPulls.TryRemove(pullKey, out _);
+            pullCts.CancelAndDisposeSilently();
         }
 
         Log.LogInformation("GetVideo: #{StreamId} ended after {Count} frames, PeerId={PeerId}",

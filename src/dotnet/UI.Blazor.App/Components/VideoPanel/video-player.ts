@@ -101,7 +101,7 @@ export class VideoPlayer {
 
     // PLI: receiver-requested keyframe
     private lastKeyFrameRequestTime = 0;
-    private readonly keyFrameRequestCooldownMs = 2000; // Max 1 request per 2 seconds
+    private readonly keyFrameRequestCooldownMs = 10000; // Max 1 request per 10 seconds
 
     // Diagnostics counters for 10s delta reporting
     private lastDiagDecodedFrames = 0;
@@ -1284,6 +1284,16 @@ export class VideoPlayer {
             // Phase 3: Nuclear — re-request stream from live offset
             warnLog?.log(
                 `SKIP_TO_LIVE: latency ${latencyMs.toFixed(0)}ms > ${SKIP_TO_LIVE_THRESHOLD_MS}ms, re-requesting stream`);
+
+            // Report the high latency to the server BEFORE resetting state,
+            // so EvaluateQuality can detect that this peer is struggling and step down sender quality.
+            const connection = VideoStreamer.connection;
+            const sessionToken = SessionTokens.current;
+            if (connection && sessionToken) {
+                connection.invoke('ReportVideoLatency', sessionToken, this.streamId, streamOffsetMs)
+                    .catch(() => { /* best-effort */ });
+            }
+
             this.pullSubscription?.dispose();
             this.pullSubscription = null;
             for (const pf of this.pendingFrames)
