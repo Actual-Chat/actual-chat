@@ -171,6 +171,7 @@ public static partial class Constants
         public const int MaxThumbnailHeight = 36; // In pixels
         public const int MaxAvatarWidth = 720;
         public const int MaxAvatarHeight = 720;
+        public const int MaxIconSize = 1024;
         public static readonly Vector2 MaxResolution = new(MaxImageWidth, MaxImageHeight);
         public static readonly Vector2 MaxActualResolution = MaxResolution * 2;
         public static readonly Vector2 MaxThumbnailResolution = new(MaxThumbnailWidth, MaxThumbnailHeight);
