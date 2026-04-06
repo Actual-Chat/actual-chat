@@ -963,7 +963,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
         }
         else if (change.IsUpdate(out update)) {
-            throw new InvalidOperationException("SHIT SHOULD NOT BE THERE!!!!!....");
             chatId.Require();
             ownerId.RequireNull();
             update.PlaceId.RequireNull();
