@@ -2,9 +2,11 @@ using ActualChat.Video;
 
 namespace ActualChat.Streaming.UnitTests;
 
-public class KeyFrameGapFilterTest(ILogger log)
+public class FilteredVideoStreamTest(ILogger log)
 {
     private ILogger Log { get; } = log;
+
+    // --- KeyFrame gap detection (formerly KeyFrameGapFilterTest) ---
 
     [Fact]
     public async Task SkipsUntilFirstKeyFrame()
@@ -92,7 +94,7 @@ public class KeyFrameGapFilterTest(ILogger log)
     }
 
     [Fact]
-    public async Task RespectsCanellation()
+    public async Task RespectsCancellation()
     {
         using var cts = new CancellationTokenSource();
         var frames = new[] {
@@ -105,14 +107,72 @@ public class KeyFrameGapFilterTest(ILogger log)
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
+    // --- Temporal layer filtering ---
+
+    [Fact]
+    public async Task PassesAllTemporalLayersByDefault()
+    {
+        // Without latency state, maxLayer = int.MaxValue → all layers pass
+        var frames = new[] {
+            KeyFrame(1, temporalLayer: 0),
+            Delta(kf: 1, temporalLayer: 1),
+            Delta(kf: 1, temporalLayer: 2),
+        };
+        var result = await Filter(frames);
+
+        result.Should().HaveCount(3, "all temporal layers should pass when no latency state");
+    }
+
+    // --- Combined: gap + temporal layer interaction ---
+
+    [Fact]
+    public async Task GapRecoveryWorksWithMixedTemporalLayers()
+    {
+        var frames = new[] {
+            KeyFrame(1, temporalLayer: 0),
+            Delta(kf: 1, temporalLayer: 0),
+            Delta(kf: 1, temporalLayer: 1),
+            // Gap
+            Delta(kf: 3, temporalLayer: 0),
+            KeyFrame(4, temporalLayer: 0),
+            Delta(kf: 4, temporalLayer: 1),
+        };
+        var result = await Filter(frames);
+
+        result.Should().HaveCount(5);
+        result.Select(f => f.KeyFrameNumber).Should().Equal(1, 1, 1, 4, 4);
+    }
+
     // Helpers
 
     private async Task<List<VideoFrame>> Filter(VideoFrame[] frames, CancellationToken cancellationToken = default)
     {
+        var backend = CreateBackend();
         var source = ToAsyncEnumerable(frames, cancellationToken);
-        return await VideoStreamingBackend
-            .KeyFrameGapFilter(source, Log, cancellationToken)
+        return await backend
+            .FilteredVideoStream(
+                StreamId.New(new NodeRef("test-node"), "test-local"),
+                "test-peer",
+                hasPauseFilter: false,
+                source,
+                cancellationToken)
             .ToListAsync(cancellationToken);
+    }
+
+    private VideoStreamingBackend CreateBackend()
+    {
+        // Minimal service provider — only ILoggerFactory needed for the filter pipeline
+        var services = new ServiceCollection()
+            .AddLogging(b => b.AddProvider(new TestLoggerProvider(Log)).SetMinimumLevel(LogLevel.Debug))
+            .BuildServiceProvider();
+
+        return new VideoStreamingBackend(services);
+    }
+
+    private sealed class TestLoggerProvider(ILogger logger) : ILoggerProvider
+    {
+        public ILogger CreateLogger(string categoryName) => logger;
+        public void Dispose() { }
     }
 
     private static async IAsyncEnumerable<VideoFrame> ToAsyncEnumerable(
@@ -126,6 +186,9 @@ public class KeyFrameGapFilterTest(ILogger log)
         }
     }
 
-    private static VideoFrame KeyFrame(long kfNumber) => new(true) { KeyFrameNumber = kfNumber };
-    private static VideoFrame Delta(long kf) => new(false) { KeyFrameNumber = kf };
+    private static VideoFrame KeyFrame(long kfNumber, int temporalLayer = 0)
+        => new(true) { KeyFrameNumber = kfNumber, TemporalLayerId = temporalLayer };
+
+    private static VideoFrame Delta(long kf, int temporalLayer = 0)
+        => new(false) { KeyFrameNumber = kf, TemporalLayerId = temporalLayer };
 }

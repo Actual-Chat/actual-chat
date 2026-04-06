@@ -246,7 +246,8 @@ public partial class Chats(IServiceProvider services) : IChats
             return null!; // It just spawns other commands, so nothing to do here
 
         var (session, chatId, expectedVersion, change) = command;
-        var chat = chatId is null ? null
+        var chat = chatId is null
+            ? null
             : await Get(session, chatId, cancellationToken).ConfigureAwait(false);
 
         var changeCommand = new ChatsBackend_Change(chatId, expectedVersion, change.RequireValid());

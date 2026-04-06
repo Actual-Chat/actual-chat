@@ -1,3 +1,4 @@
+using System.Buffers;
 using ActualChat.Diagnostics;
 using ActualChat.Streaming.Services;
 using ActualChat.Video;
@@ -8,6 +9,9 @@ namespace ActualChat.Streaming;
 
 public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 {
+    // Dedicated pool to avoid SharedArrayPool.Trim() contention under GC pressure
+    private static readonly ArrayPool<VideoFrame> VideoFramePool = ArrayPool<VideoFrame>.Create();
+
     private readonly StreamStore<VideoFrame> _videoStreams;
     private readonly ConcurrentDictionary<StreamId, StreamLatencyState> _latencyStates = new();
     private readonly ConcurrentDictionary<StreamId, bool> _keyFrameRequests = new();
@@ -48,17 +52,8 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             return null;
         }
 
-        // Per-viewer temporal layer filtering — drop enhancement layers for slow peers
-        stream = TemporalLayerFilter(streamId, peerId, stream, cancellationToken);
-
-        // Pause filtering — when stream is paused by priority queue, drop frames
-        if (_latencyStates.TryGetValue(streamId, out var pauseState) && pauseState.ChatId != default)
-            stream = PauseAwareFilter(streamId, stream, cancellationToken);
-
-        // Last: recover from any gaps caused by upstream filters or bounded replay dropping frames
-        stream = KeyFrameGapFilter(stream, Log, cancellationToken);
-
-        return RpcStream.New(stream);
+        var hasPauseFilter = _latencyStates.TryGetValue(streamId, out _) && _latencyStates[streamId].ChatId != default;
+        return RpcStream.New(FilteredVideoStream(streamId, peerId, hasPauseFilter, stream, cancellationToken));
     }
 
     public virtual async Task PushVideo(
@@ -158,52 +153,92 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 
     // Private methods
 
-    private async IAsyncEnumerable<VideoFrame> PauseAwareFilter(
-        StreamId streamId,
-        IAsyncEnumerable<VideoFrame> source,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        // Cache quality preset and refresh only on invalidation (not per-frame)
-        var computed = await Computed
-            .Capture(() => GetQualityPreset(streamId, cancellationToken), cancellationToken)
-            .ConfigureAwait(false);
-        var preset = computed.Value;
-
-        using var refreshCts = cancellationToken.CreateLinkedTokenSource();
-        var refreshToken = refreshCts.Token;
-        var refreshTask = BackgroundTask.Run(async () => {
-            while (!refreshToken.IsCancellationRequested) {
-                await computed.WhenInvalidated(refreshToken).ConfigureAwait(false);
-                computed = await Computed
-                    .Capture(() => GetQualityPreset(streamId, refreshToken), refreshToken)
-                    .ConfigureAwait(false);
-                preset = computed.Value;
-            }
-        }, refreshToken);
-
-        try {
-            await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false))
-                if (preset.Level != VideoQualityLevel.Paused)
-                    yield return frame;
-            // When paused, frames are silently dropped — viewer sees last decoded frame frozen
-        }
-        finally {
-            refreshCts.CancelAndDisposeSilently();
-            await refreshTask.SuppressCancellationAwait(false);
-        }
-    }
-
-    private async IAsyncEnumerable<VideoFrame> TemporalLayerFilter(
+    /// <summary>
+    /// Combined per-consumer video filter pipeline. Merges temporal layer filtering,
+    /// pause-aware filtering, and keyframe gap recovery into a single async iterator
+    /// to minimize async state machine overhead (one await-foreach instead of three).
+    /// </summary>
+    internal async IAsyncEnumerable<VideoFrame> FilteredVideoStream(
         StreamId streamId,
         string peerId,
+        bool hasPauseFilter,
         IAsyncEnumerable<VideoFrame> source,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-            var latencyState = _latencyStates.GetValueOrDefault(streamId);
-            var maxLayer = latencyState?.GetPeerMaxTemporalLayer(peerId) ?? int.MaxValue;
-            if (frame.TemporalLayerId <= maxLayer)
-                yield return frame;
+        // --- Pause filter state: background task refreshes quality preset on invalidation ---
+        var preset = VideoQualityPreset.High;
+        CancellationTokenSource? refreshCts = null;
+        Task? refreshTask = null;
+
+        if (hasPauseFilter) {
+            var computed = await Computed
+                .Capture(() => GetQualityPreset(streamId, cancellationToken), cancellationToken)
+                .ConfigureAwait(false);
+            preset = computed.Value;
+
+            refreshCts = cancellationToken.CreateLinkedTokenSource();
+            var refreshToken = refreshCts.Token;
+            var capturedComputed = computed;
+            refreshTask = BackgroundTask.Run(async () => {
+                var c = capturedComputed;
+                while (!refreshToken.IsCancellationRequested) {
+                    await c.WhenInvalidated(refreshToken).ConfigureAwait(false);
+                    c = await Computed
+                        .Capture(() => GetQualityPreset(streamId, refreshToken), refreshToken)
+                        .ConfigureAwait(false);
+                    preset = c.Value;
+                }
+            }, refreshToken);
+        }
+
+        // --- KeyFrame gap filter state ---
+        var lastKeyFrameNumber = -1L;
+        var skipping = true; // Start in skip mode — wait for first keyframe
+        var skippedCount = 0;
+
+        try {
+            await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                // 1. Temporal layer filter — drop enhancement layers for slow peers
+                var latencyState = _latencyStates.GetValueOrDefault(streamId);
+                var maxLayer = latencyState?.GetPeerMaxTemporalLayer(peerId) ?? int.MaxValue;
+                if (frame.TemporalLayerId > maxLayer)
+                    continue;
+
+                // 2. Pause filter — drop all frames when stream is paused by priority queue
+                if (hasPauseFilter && preset.Level == VideoQualityLevel.Paused)
+                    continue;
+
+                // 3. KeyFrame gap filter — ensure decoder-safe output
+                if (frame.IsKeyFrame) {
+                    if (skipping && skippedCount > 0)
+                        Log.LogInformation(
+                            "FilteredVideoStream: found keyframe (KF#{KeyFrameNumber}) after skipping {Skipped} frames",
+                            frame.KeyFrameNumber, skippedCount);
+                    lastKeyFrameNumber = frame.KeyFrameNumber;
+                    skipping = false;
+                    skippedCount = 0;
+                    yield return frame;
+                }
+                else if (!skipping && frame.KeyFrameNumber == lastKeyFrameNumber) {
+                    yield return frame;
+                }
+                else {
+                    if (!skipping) {
+                        skipping = true;
+                        Log.LogInformation(
+                            "FilteredVideoStream: gap detected — expected KF#{Expected}, got KF#{Actual}, skipping to next keyframe",
+                            lastKeyFrameNumber, frame.KeyFrameNumber);
+                    }
+                    skippedCount++;
+                }
+            }
+        }
+        finally {
+            if (refreshCts != null) {
+                refreshCts.CancelAndDisposeSilently();
+                if (refreshTask != null)
+                    await refreshTask.SuppressCancellationAwait(false);
+            }
         }
     }
 
@@ -211,48 +246,6 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
     {
         _latencyStates.TryRemove(streamId, out _);
         _keyFrameRequests.TryRemove(streamId, out _);
-    }
-
-    /// <summary>
-    /// Filters video frames to ensure decoder-safe output:
-    /// - On startup: skips until the first keyframe (skip-to-live)
-    /// - During playback: if a gap is detected (KeyFrameNumber mismatch from dropped frames),
-    ///   skips until the next keyframe to avoid feeding broken deltas to the decoder.
-    /// </summary>
-    internal static async IAsyncEnumerable<VideoFrame> KeyFrameGapFilter(
-        IAsyncEnumerable<VideoFrame> source,
-        ILogger log,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        var lastKeyFrameNumber = -1L;
-        var skipping = true; // Start in skip mode — wait for first keyframe
-        var skippedCount = 0;
-
-        await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-            if (frame.IsKeyFrame) {
-                if (skipping && skippedCount > 0)
-                    log.LogInformation(
-                        "KeyFrameGapFilter: found keyframe (KF#{KeyFrameNumber}) after skipping {Skipped} frames",
-                        frame.KeyFrameNumber, skippedCount);
-                lastKeyFrameNumber = frame.KeyFrameNumber;
-                skipping = false;
-                skippedCount = 0;
-                yield return frame;
-            }
-            else if (!skipping && frame.KeyFrameNumber == lastKeyFrameNumber) {
-                yield return frame;
-            }
-            else {
-                // Gap detected or initial skip: non-keyframe with unexpected KeyFrameNumber
-                if (!skipping) {
-                    skipping = true;
-                    log.LogInformation(
-                        "KeyFrameGapFilter: gap detected — expected KF#{Expected}, got KF#{Actual}, skipping to next keyframe",
-                        lastKeyFrameNumber, frame.KeyFrameNumber);
-                }
-                skippedCount++;
-            }
-        }
     }
 
     private async Task PushVideoInternal(
@@ -314,9 +307,9 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                         keyFrameNumber++;
                     frame.KeyFrameNumber = keyFrameNumber;
 
-                    // Track throughput for quality adaptation
+                    // Track throughput for quality adaptation (use CachedSerializedBytes since Data is not copied)
                     var latencyState = _latencyStates.GetValueOrDefault(record.StreamId);
-                    latencyState?.RecordFrameBytes(frame.Data?.Length ?? 0);
+                    latencyState?.RecordFrameBytes(frame.CachedSerializedBytes?.Length ?? frame.Data?.Length ?? 0);
 
                     if (lastHeartbeat.Elapsed >= heartbeatInterval) {
                         lastHeartbeat = CpuTimestamp.Now;
@@ -331,6 +324,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 
             var memoizer = ProcessFrames(videoFrames).Memoize(
                 Constants.Video.RetentionBufferSize,
+                VideoFramePool,
                 cancellationToken);
             await _videoStreams.Publish(record.StreamId, memoizer).ConfigureAwait(false);
         }

@@ -18,6 +18,8 @@ namespace ActualChat.Streaming.Services;
 public class StreamHub(IServiceProvider services) : Hub
 {
     private static readonly Task<string> PongTask = Task.FromResult("Pong");
+    // Dedicated pool to avoid SharedArrayPool.Trim() lock contention under GC pressure
+    private static readonly ArrayPool<byte> SerializationPool = ArrayPool<byte>.Create();
 
     private readonly bool _preferThisNode = services.HostInfo().HasRole(HostRole.OneServer);
 
@@ -190,7 +192,7 @@ public class StreamHub(IServiceProvider services) : Hub
         var frameCount = 0;
         StreamingMeters.VideoActiveConsumers.Add(1);
         try {
-            await foreach (var frame in rpcStream.WithCancellation(stopCts.Token).ConfigureAwait(false)) {
+            await foreach (var frame in SuppressClientStreamCancellation(rpcStream, parsedStreamId, peerId, stopCts.Token).ConfigureAwait(false)) {
                 frameCount++;
 
                 byte[] bytes;
@@ -315,6 +317,33 @@ public class StreamHub(IServiceProvider services) : Hub
         => sessionToken.IsNullOrEmpty() ? null
             : SecureTokensBackend.ParseSessionToken(sessionToken);
 
+    private async IAsyncEnumerable<VideoFrame> SuppressClientStreamCancellation(
+        IAsyncEnumerable<VideoFrame> source,
+        StreamId streamId,
+        string peerId,
+        CancellationToken cancellationToken)
+    {
+        var enumerator = source.GetAsyncEnumerator(cancellationToken);
+        await using var _ = enumerator.ConfigureAwait(false);
+        while (true) {
+            bool moved;
+            try {
+                moved = await enumerator.MoveNextAsync().ConfigureAwait(false);
+            }
+            catch (HubException e) when (e.Message.StartsWith("Stream canceled by client", StringComparison.Ordinal)) {
+                Log.LogDebug("GetVideo: #{StreamId} stream canceled by client, PeerId={PeerId}", streamId, peerId);
+                yield break;
+            }
+            catch (OperationCanceledException) {
+                Log.LogDebug("GetVideo: #{StreamId} canceled, PeerId={PeerId}", streamId, peerId);
+                yield break;
+            }
+            if (!moved)
+                yield break;
+            yield return enumerator.Current;
+        }
+    }
+
     /// <summary>
     /// Deserialize a MessagePack-encoded video frame from the JS client.
     /// The JS client sends a map with camelCase string keys and numeric ticks.
@@ -356,7 +385,9 @@ public class StreamHub(IServiceProvider services) : Hub
                         height = reader.ReadInt32();
                         break;
                     case "data":
-                        data = reader.ReadBytes()?.ToArray();
+                        // Skip the byte[] copy — CachedSerializedBytes holds the original payload
+                        // for zero-copy fan-out. Just skip past the data in the reader.
+                        reader.ReadBytes();
                         break;
                     case "description":
                         description = reader.TryReadNil() ? null : reader.ReadBytes()?.ToArray();
@@ -391,7 +422,7 @@ public class StreamHub(IServiceProvider services) : Hub
 
     private static byte[] SerializeVideoFrame(VideoFrame frame)
     {
-        using var buffer = new ArrayPoolBuffer<byte>(1024, mustClear: false);
+        using var buffer = new ArrayPoolBuffer<byte>(SerializationPool, 1024, mustClear: false);
         var writer = new MessagePackWriter(buffer);
 
         var fieldCount = 3; // offset, duration, data

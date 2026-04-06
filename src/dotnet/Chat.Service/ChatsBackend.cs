@@ -842,8 +842,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbChat = chatId is null ? null :
-            await dbContext.Chats.ForUpdate()
+        var dbChat = chatId is null
+            ? null
+            : await dbContext.Chats.ForUpdate()
                 // ReSharper disable once AccessToModifiedClosure
                 .FirstOrDefaultAsync(c => c.Id == chatId.Value, cancellationToken)
                 .ConfigureAwait(false);
@@ -962,6 +963,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
         }
         else if (change.IsUpdate(out update)) {
+            throw new InvalidOperationException("SHIT SHOULD NOT BE THERE!!!!!....");
             chatId.Require();
             ownerId.RequireNull();
             update.PlaceId.RequireNull();

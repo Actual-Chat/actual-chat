@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="$(BaseName).Streaming.UnitTests" />
     <InternalsVisibleTo Include="$(BaseName).Audio.IntegrationTests" />
     <InternalsVisibleTo Include="$(BaseName).Transcription.UnitTests" />
     <InternalsVisibleTo Include="$(BaseName).Transcription.IntegrationTests" />
