@@ -18,8 +18,8 @@ class ChatActivityPanelIconSvg extends LitElement {
             this.size = 6;
             return html`
                 <svg class="video-icon ${this.isActive ? ' active' : ''}" width="${this.size * 4}" height="${this.size * 4}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="2" y="6" width="13" height="12" rx="2" stroke="var(--danger)" stroke-width="2" fill="none"/>
-                    <path d="M15 10L21 7V17L15 14" stroke="var(--danger)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                    <rect x="2" y="6" width="13" height="12" rx="2" stroke="var(--violet-60)" stroke-width="2" fill="none"/>
+                    <path d="M15 10L21 7V17L15 14" stroke="var(--violet-60)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
                 </svg>
             `;
         }

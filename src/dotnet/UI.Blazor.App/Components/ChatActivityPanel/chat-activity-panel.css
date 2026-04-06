@@ -121,7 +121,7 @@ body.narrow .chat-activity-panel:after {
 }
 body.narrow .chat-activity-panel > .c-buttons > .btn.not-listening {
     @apply px-4;
-    @apply rounded-full;
+    @apply rounded-lg;
 }
 .chat-activity-panel > .c-icon {
     @apply flex-none flex items-center justify-center;
@@ -140,11 +140,11 @@ body.narrow .chat-activity-panel > .c-buttons > .btn.not-listening {
 }
 .chat-activity-panel .btn.not-listening {
     @apply md:px-4;
-    @apply text-[var(--violet-70)] text-caption-3;
+    @apply text-[var(--violet-60)] text-caption-3;
     @apply bg-[var(--leave-btn)];
 }
 .chat-activity-panel .btn-h.listening {
-    @apply md:-mr-0.5 pb-1;
+    @apply md:-mr-0.5;
     @apply text-primary text-caption-3;
 }
 body.hoverable .chat-activity-panel .btn-h.listening:hover,
@@ -365,14 +365,12 @@ body.narrow .chat-activity-panel.listening:after {
 }
 .header-activity-panel-wrapper {
     @apply relative overflow-visible;
-    transition: padding-bottom 0.3s ease-in-out;
-    animation: smoothShow 0.3s ease-in-out forwards;
+    /* height transition is defined in main.css on the wrapper */
 }
 .header-activity-panel-wrapper .chat-activity-panel {
-    @apply absolute z-10 bottom-0.5 inset-x-0;
+    @apply absolute z-10 bottom-0 inset-x-0;
     @apply h-14 w-auto;
     @apply pl-3 pr-2;
-    transition: bottom 0.3s ease-in-out;
 }
 
 .header-activity-panel-wrapper .chat-activity-panel {
@@ -380,22 +378,7 @@ body.narrow .chat-activity-panel.listening:after {
     mask-image: linear-gradient(to bottom, transparent 0%, black 20%);
 }
 
-@keyframes smoothShow {
-    0% {
-        opacity: 0;
-        transform: translateY(-100%);
-    }
-    100% {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.layout-header.collapsed .header-activity-panel-wrapper {
-    @apply pb-3;
-}
 .layout-header.collapsed .header-activity-panel-wrapper .chat-activity-panel {
-    @apply bottom-3;
     @apply pointer-events-none;
 }
 .layout-header.collapsed .header-activity-panel-wrapper .chat-activity-panel > * {
@@ -406,9 +389,7 @@ body.narrow .chat-activity-panel.listening:after {
 .header-activity-panel-wrapper.dragging {
     @apply z-button;
     transition: none;
-    animation: none;
 }
 .header-activity-panel-wrapper.dragging .chat-activity-panel {
     @apply z-button;
-    transition: none;
 }

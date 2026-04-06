@@ -99,7 +99,7 @@
 }
 
 @if (m.IsVideoStreamingEnabled) {
-    <VideoPanel Show="@_showVideoPanel" AutoStart="@_autoStartRecording" PendingCameraDeviceId="@_pendingCameraDeviceId" PendingBlurEnabled="@_pendingBlurEnabled"/>
+    <VideoPanel Show="@_showVideoPanel" Collapsed="@m.IsVideoPanelCollapsed" AutoStart="@_autoStartRecording" PendingCameraDeviceId="@_pendingCameraDeviceId" PendingBlurEnabled="@_pendingBlurEnabled"/>
 }
 
 @code {
@@ -166,6 +166,7 @@
         var isSearchMode = await Hub.PanelsUI.Right.IsSearchMode.Use(cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         var isVideoStreamingEnabled = await Hub.Features.IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
+        var isVideoPanelCollapsed = await ChatVideoUI.GetIsVideoPanelCollapsed(cancellationToken).ConfigureAwait(false);
         return new() {
             Chat = chat,
             AudioState = audioState,
@@ -176,6 +177,7 @@
             IsSearchMode = isSearchMode,
             EnableIncompleteUI = enableIncompleteUI,
             IsVideoStreamingEnabled = isVideoStreamingEnabled,
+            IsVideoPanelCollapsed = isVideoPanelCollapsed,
         };
     }
 
@@ -219,5 +221,6 @@
         public bool IsSearchMode { get; init; }
         public bool EnableIncompleteUI { get; init; }
         public bool IsVideoStreamingEnabled { get; init; }
+        public bool IsVideoPanelCollapsed { get; init; }
     }
 }
