@@ -1,15 +1,17 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComponentBase<AppUIHub>
+@inherits ComputedStateComponent<AppUIHub, JoinVideoCallModal.ComputedModel>
 @implements IModalView<JoinVideoCallModal.Model>
-@implements IAsyncDisposable
 @using ActualChat.UI.Blazor.App.Module
+@{
+    var m = State.Value;
+}
 
 <DialogFrame
     Class="join-video-call-modal modal-sm"
-    Title="@_title">
+    Title="@Title">
     <Body>
     <FormBlock Class="">
-        @if (ModalModel.Mode == VideoCallMode.Join) {
+        @if (m.ShowActiveSessionInfo) {
             <div class="c-members">
                 <ChatActivities
                     @key="@ModalModel.Chat.Id.Value"
@@ -122,7 +124,7 @@
     </Body>
     <Buttons>
         <Button Class="btn-modal" Click="@(_ => Modal.Close())">Cancel</Button>
-        <Button Class="btn-modal btn-primary" Click="@OnJoinClick">@_submitButtonText</Button>
+        <Button Class="btn-modal btn-primary" Click="@OnJoinClick">@SubmitButtonText</Button>
     </Buttons>
 </DialogFrame>
 
@@ -130,8 +132,6 @@
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.JoinVideoCallModal.create";
     private static readonly string JSEnumerateMethod = $"{BlazorUIAppModule.ImportName}.JoinVideoCallModal.enumerateDevices";
 
-    private string _title = "";
-    private string _submitButtonText = "";
     private ElementReference _containerRef;
     private DotNetObjectReference<JoinVideoCallModal>? _blazorRef;
     private IJSObjectReference? _jsRef;
@@ -154,28 +154,38 @@
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private bool IsSettingsMode => ModalModel.Mode is VideoCallMode.Settings;
 
+    private string Title => IsSettingsMode ? "Video Settings"
+        : State.Value.ShowActiveSessionInfo ? "Join the video"
+        : "Enable Video";
+
+    private string SubmitButtonText => IsSettingsMode ? "Apply"
+        : State.Value.ShowActiveSessionInfo ? "Join"
+        : "Start";
+
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
+        => new() {
+            InitialValue = new(false),
+            UpdateDelayer = FixedDelayer.NextTick,
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
+        var chat = ModalModel.Chat;
+        if (IsSettingsMode)
+            return new ComputedModel(false);
+
+        var hasRemoteStreams = await ChatVideoUI.HasRemoteStreams(chat.Id, cancellationToken).ConfigureAwait(false);
+        return new(hasRemoteStreams);
+    }
+
     protected override async Task OnInitializedAsync() {
-        _title = ModalModel.Mode switch
-        {
-            VideoCallMode.Settings => "Video Settings",
-            VideoCallMode.Start => "Enable Video",
-            VideoCallMode.Join => "Join the video",
-            _ => throw new InvalidOperationException($"Unknown video call mode: {ModalModel.Mode}")
-        };
-        _submitButtonText = ModalModel.Mode switch
-        {
-            VideoCallMode.Settings => "Apply",
-            VideoCallMode.Start => "Start",
-            VideoCallMode.Join => "Join",
-            _ => throw new InvalidOperationException($"Unknown video call mode: {ModalModel.Mode}")
-        };
         _getLastSelectedDeviceIdTask = GetLastSelectedDeviceId();
         var recordingChatId = await ChatAudioUI.GetRecordingChatId();
         _isRecording = recordingChatId == ModalModel.Chat.Id;
     }
 
     private async Task<string> GetLastSelectedDeviceId() {
-        var settings = await Hub.LocalSettings.LocalAppSettings().Get();
+        var settings = await LocalSettings.LocalAppSettings().Get();
         return settings.SelectedCameraDeviceId ?? "";
     }
 
@@ -221,7 +231,7 @@
         StateHasChanged();
     }
 
-    public async ValueTask DisposeAsync() {
+    public override async ValueTask DisposeAsync() {
         if (_jsRef is not null) {
             await _jsRef.InvokeVoidAsync("dispose");
             await _jsRef.DisposeAsync();
@@ -229,6 +239,7 @@
         }
         _blazorRef?.Dispose();
         _blazorRef = null;
+        await base.DisposeAsync();
     }
 
     private async Task LoadVideoDevices() {
@@ -311,26 +322,20 @@
     }
 
     private async Task OnJoinClick() {
-        if (IsSettingsMode) {
-            // Settings mode: apply blur setting and close — recording continues
-            ChatVideoUI.SetBackgroundBlur(_isBlurEnabled);
-            await DisposeAsync();
-            Modal.Close();
-            return;
+        if (!IsSettingsMode) {
+            // Get actual device ID from JS before closing — the browser may have
+            // picked a different camera than what was originally requested (e.g.,
+            // front camera when no device ID was specified).
+            string? deviceId = null;
+            if (_jsRef is not null)
+                deviceId = await _jsRef.InvokeAsync<string?>("getActualDeviceId");
+            if (string.IsNullOrEmpty(deviceId))
+                deviceId = _selectedDevice?.DeviceId;
+            ModalModel.SelectedDeviceId = deviceId;
         }
-
-        // Get actual device ID from JS before disposing — the browser may have
-        // picked a different camera than what was originally requested (e.g.,
-        // front camera when no device ID was specified).
-        string? deviceId = null;
-        if (_jsRef is not null)
-            deviceId = await _jsRef.InvokeAsync<string?>("getActualDeviceId");
-        if (string.IsNullOrEmpty(deviceId))
-            deviceId = _selectedDevice?.DeviceId;
-
+        ModalModel.IsBlurEnabled = _isBlurEnabled;
+        ModalModel.IsConfirmed = true;
         await DisposeAsync();
-        var chatId = ModalModel.Chat.Id;
-        ChatVideoUI.SetRecordingChatId(chatId, deviceId, _isBlurEnabled);
         Modal.Close();
     }
 
@@ -364,7 +369,18 @@
     // ReSharper disable once ClassNeverInstantiated.Local — instantiated via JS interop deserialization
     private record VideoDevice(string DeviceId, string Label);
 
-    public enum VideoCallMode { Join, Start, Settings }
+    public enum VideoCallMode { Join, Settings }
 
-    public sealed record Model(Chat Chat, VideoCallMode Mode);
+    public sealed class Model(Chat chat, VideoCallMode mode)
+    {
+        public Chat Chat { get; } = chat;
+        public VideoCallMode Mode { get; } = mode;
+
+        // Result properties — set by the modal before closing
+        public bool IsConfirmed { get; set; }
+        public string? SelectedDeviceId { get; set; }
+        public bool IsBlurEnabled { get; set; }
+    }
+
+    public sealed record ComputedModel(bool ShowActiveSessionInfo);
 }

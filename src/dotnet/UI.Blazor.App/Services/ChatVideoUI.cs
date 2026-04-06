@@ -183,13 +183,13 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             if (chat is null)
                 return;
 
-            var hasRemoteStreams = await HasRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
+            var model = new JoinVideoCallModal.Model(chat, JoinVideoCallModal.VideoCallMode.Join);
+            var modeRef = await ModalUI.Show(model, CancellationToken.None).ConfigureAwait(true);
+            await modeRef.WhenClosed.ConfigureAwait(true);
+            if (!model.IsConfirmed)
+                return;
 
-            var mode = hasRemoteStreams
-                ? JoinVideoCallModal.VideoCallMode.Join
-                : JoinVideoCallModal.VideoCallMode.Start;
-            var model = new JoinVideoCallModal.Model(chat, mode);
-            _ = ModalUI.Show(model, CancellationToken.None);
+            SetRecordingChatId(chatId, model.SelectedDeviceId, model.IsBlurEnabled);
         }
     }
 
@@ -205,7 +205,12 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
                 return;
 
             var model = new JoinVideoCallModal.Model(chat, JoinVideoCallModal.VideoCallMode.Settings);
-            _ = ModalUI.Show(model, CancellationToken.None);
+            var modeRef = await ModalUI.Show(model, CancellationToken.None).ConfigureAwait(true);
+            await modeRef.WhenClosed.ConfigureAwait(true);
+            if (!model.IsConfirmed)
+                return;
+
+            SetBackgroundBlur(model.IsBlurEnabled);
         }
     }
 
@@ -220,11 +225,8 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         => await _previousFocusedSpeakerId.Use(cancellationToken).ConfigureAwait(false);
 
     [ComputeMethod]
-    public virtual async Task<ApiArray<VideoStreamInfo>> GetActiveVideoStreams(ChatId? chatId, CancellationToken cancellationToken = default)
+    public virtual async Task<ApiArray<VideoStreamInfo>> GetActiveVideoStreams(ChatId chatId, CancellationToken cancellationToken = default)
     {
-        if (chatId is null)
-            return default;
-
         var isVideoEnabled = await Features.IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
         if (!isVideoEnabled)
             return default;
@@ -274,15 +276,12 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         return ownAuthor != null && streams.Any(s => s.AuthorId == ownAuthor.Id);
     }
 
-    private async Task<bool> HasRemoteStreams(ChatId chatId, CancellationToken cancellationToken)
+    [ComputeMethod]
+    public virtual async Task<bool> HasRemoteStreams(ChatId chatId, CancellationToken cancellationToken = default)
     {
         var videoStreams = await GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(false);
         if (videoStreams.Count == 0)
             return false;
-
-        var recordingChatId = await GetRecordingChatId(cancellationToken).ConfigureAwait(false);
-        if (recordingChatId != chatId)
-            return true;
 
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         return videoStreams.Any(s => s.AuthorId != ownAuthor?.Id);

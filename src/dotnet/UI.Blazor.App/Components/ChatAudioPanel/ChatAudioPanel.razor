@@ -107,9 +107,6 @@
 
     private void OnScreencastClick() {
         var chat = Chat;
-        if (chat?.Id is null)
-            return;
-
         var m = State.Value;
         if (m.IsScreencasting)
             ChatVideoUI.SetRecordingChatId(null);
@@ -128,9 +125,6 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
         var isVideoFeatureEnabled = await Features.IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
-        if (chat?.Id is null)
-            return new(null, false, false, isVideoFeatureEnabled);
-
         var audioState = await ChatAudioUI.GetState(chat.Id).ConfigureAwait(false);
         var videoState = await ChatVideoUI.GetState(chat.Id, cancellationToken).ConfigureAwait(false);
         var isOwnVideoStreaming = videoState.IsRecording;
