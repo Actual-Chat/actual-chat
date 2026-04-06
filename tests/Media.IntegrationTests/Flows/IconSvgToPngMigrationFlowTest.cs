@@ -28,7 +28,7 @@ public class IconSvgToPngMigrationFlowTest(ITestOutputHelper @out)
         var mediaId = MediaId.New("test-chat");
         var svgBlobId = MediaSaver.GetBlobId(mediaId, ".svg");
         using (var svgStream = new MemoryStream(TestSvgBytes))
-            await blobStorage.Write(svgBlobId, svgStream, "image/svg+xml", default);
+            await blobStorage.Write(svgBlobId, svgStream, "image/svg+xml", CancellationToken.None);
 
         var media = new MediaFull(mediaId) {
             Kind = MediaKind.UserAvatarPicture,
@@ -41,8 +41,8 @@ public class IconSvgToPngMigrationFlowTest(ITestOutputHelper @out)
         };
         await commander.Call(
             new MediaBackend_Change(mediaId, null, new Change<MediaFull> { Create = media }),
-            true, default);
-        await SeedAvatar(services, mediaId, default);
+            true, CancellationToken.None);
+        await SeedAvatar(services, mediaId, CancellationToken.None);
 
         // act
         var flowHub = services.FlowHub();
@@ -53,10 +53,10 @@ public class IconSvgToPngMigrationFlowTest(ITestOutputHelper @out)
         await ComputedTest.When(async ct => {
             var flow = await flowHub.TryGet<IconSvgToPngMigrationFlow>("", ct);
             flow.Should().NotBeNull();
-            flow!.UntypedResult.Should().NotBeNull();
+            flow.UntypedResult.Should().NotBeNull();
             var updated = await mediaBackend.GetFull(mediaId, ct);
             updated.Should().NotBeNull();
-            updated!.ContentType.Should().Be("image/png");
+            updated.ContentType.Should().Be("image/png");
             updated.BlobId.Should().NotBe(svgBlobId);
             updated.BlobId.Should().EndWith(".png");
             updated.Width.Should().Be(100);
@@ -64,14 +64,14 @@ public class IconSvgToPngMigrationFlowTest(ITestOutputHelper @out)
         }, TimeSpan.FromSeconds(30));
 
         // assert: PNG blob exists, old SVG blob is preserved
-        var current = await mediaBackend.GetFull(mediaId, default);
-        var pngStream = await blobStorage.Read(current!.BlobId, default);
+        var current = await mediaBackend.GetFull(mediaId, CancellationToken.None);
+        var pngStream = await blobStorage.Read(current!.BlobId, CancellationToken.None);
         pngStream.Should().NotBeNull();
-        await using (pngStream!.ConfigureAwait(false))
+        await using (pngStream.ConfigureAwait(false))
             pngStream.Length.Should().BeGreaterThan(0);
-        var oldBlob = await blobStorage.Read(svgBlobId, default);
+        var oldBlob = await blobStorage.Read(svgBlobId, CancellationToken.None);
         oldBlob.Should().NotBeNull();
-        await using (oldBlob!.ConfigureAwait(false)) { }
+        await using (oldBlob.ConfigureAwait(false)) { }
     }
 
     [Fact]
@@ -87,7 +87,7 @@ public class IconSvgToPngMigrationFlowTest(ITestOutputHelper @out)
         var mediaId = MediaId.New("test-chat");
         var pngBlobId = MediaSaver.GetBlobId(mediaId, ".png");
         using (var pngStream = new MemoryStream(pngBytes))
-            await blobStorage.Write(pngBlobId, pngStream, "image/png", default);
+            await blobStorage.Write(pngBlobId, pngStream, "image/png", CancellationToken.None);
 
         var media = new MediaFull(mediaId) {
             Kind = MediaKind.UserAvatarPicture,
@@ -100,8 +100,8 @@ public class IconSvgToPngMigrationFlowTest(ITestOutputHelper @out)
         };
         await commander.Call(
             new MediaBackend_Change(mediaId, null, new Change<MediaFull> { Create = media }),
-            true, default);
-        await SeedAvatar(services, mediaId, default);
+            true, CancellationToken.None);
+        await SeedAvatar(services, mediaId, CancellationToken.None);
 
         // act
         var flowHub = services.FlowHub();
@@ -112,10 +112,10 @@ public class IconSvgToPngMigrationFlowTest(ITestOutputHelper @out)
         await ComputedTest.When(async ct => {
             var flow = await flowHub.TryGet<IconSvgToPngMigrationFlow>("", ct);
             flow.Should().NotBeNull();
-            flow!.UntypedResult.Should().NotBeNull();
+            flow.UntypedResult.Should().NotBeNull();
             var unchanged = await mediaBackend.GetFull(mediaId, ct);
             unchanged.Should().NotBeNull();
-            unchanged!.ContentType.Should().Be("image/png");
+            unchanged.ContentType.Should().Be("image/png");
             unchanged.BlobId.Should().Be(pngBlobId);
         }, TimeSpan.FromSeconds(30));
     }
@@ -141,8 +141,8 @@ public class IconSvgToPngMigrationFlowTest(ITestOutputHelper @out)
         };
         await commander.Call(
             new MediaBackend_Change(mediaId, null, new Change<MediaFull> { Create = media }),
-            true, default);
-        await SeedChat(services, mediaId, default);
+            true, CancellationToken.None);
+        await SeedChat(services, mediaId, CancellationToken.None);
 
         // act
         var flowHub = services.FlowHub();
@@ -153,10 +153,10 @@ public class IconSvgToPngMigrationFlowTest(ITestOutputHelper @out)
         await ComputedTest.When(async ct => {
             var flow = await flowHub.TryGet<IconSvgToPngMigrationFlow>("", ct);
             flow.Should().NotBeNull();
-            flow!.UntypedResult.Should().NotBeNull();
+            flow.UntypedResult.Should().NotBeNull();
             var unchanged = await mediaBackend.GetFull(mediaId, ct);
             unchanged.Should().NotBeNull();
-            unchanged!.ContentType.Should().Be("image/svg+xml");
+            unchanged.ContentType.Should().Be("image/svg+xml");
             unchanged.BlobId.Should().Be(svgBlobId);
         }, TimeSpan.FromSeconds(30));
     }
@@ -166,17 +166,15 @@ public class IconSvgToPngMigrationFlowTest(ITestOutputHelper @out)
     {
         await using var h = await NewAppHost();
         var services = h.Services;
-        var commander = services.Commander();
-        var blobStorage = services.BlobStorages()[BlobScope.ContentRecord];
 
         // arrange: 3 SVG media records, each referenced by a different entity kind
         var avatarMediaId = await SeedSvgMedia(services, "avatar.svg");
         var chatMediaId = await SeedSvgMedia(services, "chat.svg");
         var placeMediaId = await SeedSvgMedia(services, "place.svg");
 
-        await SeedAvatar(services, avatarMediaId, default);
-        await SeedChat(services, chatMediaId, default);
-        await SeedPlace(services, placeMediaId, default);
+        await SeedAvatar(services, avatarMediaId, CancellationToken.None);
+        await SeedChat(services, chatMediaId, CancellationToken.None);
+        await SeedPlace(services, placeMediaId, CancellationToken.None);
 
         // act
         var flowHub = services.FlowHub();
@@ -188,11 +186,11 @@ public class IconSvgToPngMigrationFlowTest(ITestOutputHelper @out)
         await ComputedTest.When(async ct => {
             var flow = await flowHub.TryGet<IconSvgToPngMigrationFlow>("", ct);
             flow.Should().NotBeNull();
-            flow!.UntypedResult.Should().NotBeNull();
+            flow.UntypedResult.Should().NotBeNull();
             foreach (var mediaId in mediaIds) {
                 var updated = await mediaBackend.GetFull(mediaId, ct);
                 updated.Should().NotBeNull();
-                updated!.ContentType.Should().Be("image/png");
+                updated.ContentType.Should().Be("image/png");
                 updated.BlobId.Should().EndWith(".png");
             }
         }, TimeSpan.FromSeconds(30));
@@ -208,7 +206,7 @@ public class IconSvgToPngMigrationFlowTest(ITestOutputHelper @out)
         var mediaId = MediaId.New("test-chat");
         var svgBlobId = MediaSaver.GetBlobId(mediaId, ".svg");
         using (var svgStream = new MemoryStream(TestSvgBytes))
-            await blobStorage.Write(svgBlobId, svgStream, "image/svg+xml", default);
+            await blobStorage.Write(svgBlobId, svgStream, "image/svg+xml", CancellationToken.None);
 
         var media = new MediaFull(mediaId) {
             Kind = MediaKind.ChatPicture,
@@ -221,7 +219,7 @@ public class IconSvgToPngMigrationFlowTest(ITestOutputHelper @out)
         };
         await commander.Call(
             new MediaBackend_Change(mediaId, null, new Change<MediaFull> { Create = media }),
-            true, default);
+            true, CancellationToken.None);
         return mediaId;
     }
 
