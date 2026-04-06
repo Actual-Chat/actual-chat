@@ -40,7 +40,7 @@ public static class UrlMapperExt
             if (pictureUrl.IsNullOrEmpty())
                 return "";
 
-            return mapper.ImagePreviewUrl(pictureUrl, (int?)Constants.Attachments.MaxAvatarResolution.X, (int?)Constants.Attachments.MaxAvatarResolution.Y);
+            return mapper.ImagePreviewUrl(pictureUrl, Constants.Attachments.MaxAvatarPreviewSize, Constants.Attachments.MaxAvatarPreviewSize);
         }
 
         public string AvatarUrl(AvatarQuery query)
