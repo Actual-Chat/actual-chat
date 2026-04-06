@@ -27,22 +27,18 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
     private DbHub<MediaDbContext> MediaDbHub => field ??= Services.DbHub<MediaDbContext>();
     private IBlobStorage BlobStorage => field ??= Services.BlobStorages()[BlobScope.ContentRecord];
 
-    /// <summary> 0 = Avatars, 1 = Chats, 2 = Places, 3 = Done </summary>
     [DataMember(Order = 0), MemoryPackOrder(0)]
-    public int Phase { get; set; }
-
+    public MigrationPhase Phase { get; set; }
     [DataMember(Order = 1), MemoryPackOrder(1)]
     public string? LastProcessedEntityId { get; set; }
-
     [DataMember(Order = 2), MemoryPackOrder(2)]
     public long ConvertedCount { get; set; }
-
     [DataMember(Order = 3), MemoryPackOrder(3)]
     public long SkippedCount { get; set; }
 
     protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
-        while (Phase < 3) {
+        while (Phase < MigrationPhase.Done) {
             var mediaIds = await GetNextBatch(cancellationToken).ConfigureAwait(false);
             if (mediaIds.Count == 0) {
                 // Current phase done, move to next
@@ -53,10 +49,9 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
 
             await ConvertBatch(mediaIds, cancellationToken).ConfigureAwait(false);
 
-            var phaseName = Phase switch { 0 => "Avatars", 1 => "Chats", 2 => "Places", _ => "?" };
-            Console.Log($"Phase {phaseName}: {ConvertedCount} converted, {SkippedCount} skipped");
+            Console.Log($"Phase {Phase}: {ConvertedCount} converted, {SkippedCount} skipped");
 
-            if (mediaIds.Count < BatchSize)  {
+            if (mediaIds.Count < BatchSize) {
                 Phase++;
                 LastProcessedEntityId = null;
                 continue;
@@ -70,11 +65,13 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         SetResult((Hub.Clocks.SystemClock.Now, ConvertedCount));
     }
 
+    // Private methods
+
     private async Task<List<(string EntityId, string MediaId)>> GetNextBatch(CancellationToken cancellationToken)
         => Phase switch {
-            0 => await GetAvatarBatch(cancellationToken).ConfigureAwait(false),
-            1 => await GetChatBatch(cancellationToken).ConfigureAwait(false),
-            2 => await GetPlaceBatch(cancellationToken).ConfigureAwait(false),
+            MigrationPhase.Avatars => await GetAvatarBatch(cancellationToken).ConfigureAwait(false),
+            MigrationPhase.Chats => await GetChatBatch(cancellationToken).ConfigureAwait(false),
+            MigrationPhase.Places => await GetPlaceBatch(cancellationToken).ConfigureAwait(false),
             _ => [],
         };
 
@@ -250,5 +247,15 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
 
         var scale = Math.Min((float)MaxSize / width, (float)MaxSize / height);
         return ((int)(width * scale), (int)(height * scale));
+    }
+
+    // Nested types
+
+    public enum MigrationPhase
+    {
+        Avatars = 0,
+        Chats = 1,
+        Places = 2,
+        Done = 3,
     }
 }
