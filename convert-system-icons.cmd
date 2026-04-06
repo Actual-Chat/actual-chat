@@ -13,9 +13,19 @@
     )
 
     set inDir=src\dotnet\Media.Service\Resources
+    set outDir=%inDir%\Converted
+    if not exist "%outDir%" mkdir "%outDir%"
+
     for %%F in (%inDir%\*.svg) do (
         echo Converting %%~nxF
-        rsvg-convert -w 512 -h 512 -o %inDir%\%%~nF.png %%F || exit /b 1
+        rsvg-convert -w 512 -h 512 -o %outDir%\%%~nF.png %%F || exit /b 1
+    )
+
+    for %%F in (%outDir%\*.png) do (
+        if not exist "%inDir%\%%~nF.svg" (
+            echo Removing stale %%~nxF
+            del "%outDir%\%%~nxF" || exit /b 1
+        )
     )
     exit /b 0
 BATCH
@@ -35,8 +45,20 @@ EOF
 fi
 
 inDir="src/dotnet/Media.Service/Resources"
+outDir="$inDir/Converted"
+mkdir -p "$outDir"
+
 for svg in "$inDir"/*.svg; do
     name=$(basename "$svg" .svg)
     echo "Converting ${name}.svg"
-    rsvg-convert -w 512 -h 512 -o "$inDir/${name}.png" "$svg"
+    rsvg-convert -w 512 -h 512 -o "$outDir/${name}.png" "$svg"
+done
+
+for png in "$outDir"/*.png; do
+    [ -e "$png" ] || continue
+    name=$(basename "$png" .png)
+    if [ ! -f "$inDir/${name}.svg" ]; then
+        echo "Removing stale ${name}.png"
+        rm -- "$png"
+    fi
 done
