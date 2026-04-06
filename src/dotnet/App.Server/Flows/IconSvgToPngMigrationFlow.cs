@@ -223,7 +223,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         if (bounds.Width <= 0 || bounds.Height <= 0)
             throw StandardError.Internal("SVG has invalid dimensions.");
 
-        var target = ComputeTargetSize(new Size((int)bounds.Width, (int)bounds.Height));
+        var target = new Size((int)bounds.Width, (int)bounds.Height).Fit(new Size(MaxSize, MaxSize));
         var scaleX = target.Width / bounds.Width;
         var scaleY = target.Height / bounds.Height;
 
@@ -238,15 +238,6 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         using var data = pixmap.Encode(SKEncodedImageFormat.Png, 100)
             ?? throw StandardError.Internal("Failed to encode SVG as PNG.");
         return (data.ToArray(), target);
-    }
-
-    private static Size ComputeTargetSize(Size source)
-    {
-        if (source.Width <= MaxSize && source.Height <= MaxSize)
-            return source;
-
-        var scale = Math.Min((float)MaxSize / source.Width, (float)MaxSize / source.Height);
-        return new Size((int)(source.Width * scale), (int)(source.Height * scale));
     }
 
     // Nested types
