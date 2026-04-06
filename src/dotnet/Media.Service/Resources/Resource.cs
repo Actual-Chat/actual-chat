@@ -14,7 +14,8 @@ public class Resource(string name)
     public Stream GetStream()
     {
         var assembly = Assembly.GetExecutingAssembly();
-        var stream = assembly.GetManifestResourceStream(typeof(Resource), Name);
+        var resourceName = $"{typeof(Resource).Namespace}.Converted.{Name}";
+        var stream = assembly.GetManifestResourceStream(resourceName);
         return stream ?? throw StandardError.Internal($"Resource is not found: {Name}.");
     }
 }
