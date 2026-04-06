@@ -188,33 +188,32 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             Console.LogWarning($"Blob not found for media {dbMedia.Id}: {dbMedia.BlobId}");
             return false;
         }
+        await using var _1 = svgStream.ConfigureAwait(false);
+        var png = await ConvertSvgToPng(svgStream, cancellationToken).ConfigureAwait(false);
+        if (png == null)
+            return false;
 
-        byte[] pngBytes;
-        Size size;
-        await using (svgStream.ConfigureAwait(false)) {
-            (pngBytes, size) = ConvertSvgToPng(svgStream);
-        }
-
+        await using var _2 = png.ConfigureAwait(false);
         var mediaId = MediaId.Parse(dbMedia.Id);
         var newBlobId = MediaSaver.GetBlobId(mediaId, ".png");
-        using var pngStream = new MemoryStream(pngBytes);
-        await BlobStorage.Write(newBlobId, pngStream, "image/png", cancellationToken).ConfigureAwait(false);
+        await BlobStorage.Write(newBlobId, png.Stream, "image/png", cancellationToken).ConfigureAwait(false);
 
         var fileName = metadata[nameof(Media.Media.FileName)] as string ?? "";
         metadata = metadata
             .Set(nameof(Media.Media.ContentType), "image/png")
             .Set(nameof(Media.Media.FileName), Path.ChangeExtension(fileName, ".png"))
-            .Set(nameof(Media.Media.Width), size.Width)
-            .Set(nameof(Media.Media.Height), size.Height)
-            .Set(nameof(Media.Media.Length), (long)pngBytes.Length);
+            .Set(nameof(Media.Media.Width), png.Size.Width)
+            .Set(nameof(Media.Media.Height), png.Size.Height)
+            .Set(nameof(Media.Media.Length), png.Stream.Length);
 
         dbMedia.BlobId = newBlobId;
         dbMedia.MetadataJson = MetadataSerializer.Write(metadata);
         return true;
     }
 
-    private static (byte[] PngBytes, Size Size) ConvertSvgToPng(Stream svgStream)
+    private async Task<Image?> ConvertSvgToPng(Stream svgStream, CancellationToken cancellationToken)
     {
+        await using var _ = svgStream.ConfigureAwait(false);
         using var svg = SKSvg.CreateFromStream(svgStream);
         var picture = svg.Picture
             ?? throw StandardError.Internal("Failed to parse SVG file.");
@@ -237,7 +236,10 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         using var pixmap = surface.PeekPixels();
         using var data = pixmap.Encode(SKEncodedImageFormat.Png, 100)
             ?? throw StandardError.Internal("Failed to encode SVG as PNG.");
-        return (data.ToArray(), target);
+        var stream = new MemoryStream((int)data.Size);
+        data.SaveTo(stream);
+        stream.Position = 0;
+        return new Image(stream, target);
     }
 
     // Nested types
@@ -251,4 +253,10 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
     }
 
     private sealed record UsedMedia(string EntityId, string MediaId);
+
+    private sealed record Image(MemoryStream Stream, Size Size) : IAsyncDisposable
+    {
+        public ValueTask DisposeAsync()
+            => Stream.DisposeAsync();
+    }
 }
