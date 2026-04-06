@@ -71,7 +71,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
 
     // Private methods
 
-    private async Task<List<(string EntityId, string MediaId)>> GetNextBatch(CancellationToken cancellationToken)
+    private async Task<List<UsedMedia>> GetNextBatch(CancellationToken cancellationToken)
         => Phase switch {
             MigrationPhase.Avatars => await GetAvatarBatch(cancellationToken).ConfigureAwait(false),
             MigrationPhase.Chats => await GetChatBatch(cancellationToken).ConfigureAwait(false),
@@ -79,7 +79,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             _ => [],
         };
 
-    private async Task<List<(string EntityId, string MediaId)>> GetAvatarBatch(CancellationToken cancellationToken)
+    private async Task<List<UsedMedia>> GetAvatarBatch(CancellationToken cancellationToken)
     {
         var db = await UsersDbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = db.ConfigureAwait(false);
@@ -96,10 +96,10 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             .Select(x => new { x.Id, x.MediaId })
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return rows.Select(x => (x.Id, x.MediaId)).ToList();
+        return rows.Select(x => new UsedMedia(x.Id, x.MediaId)).ToList();
     }
 
-    private async Task<List<(string EntityId, string MediaId)>> GetChatBatch(CancellationToken cancellationToken)
+    private async Task<List<UsedMedia>> GetChatBatch(CancellationToken cancellationToken)
     {
         var db = await ChatDbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = db.ConfigureAwait(false);
@@ -116,10 +116,10 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             .Select(x => new { x.Id, x.MediaId })
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return rows.Select(x => (x.Id, x.MediaId)).ToList();
+        return rows.Select(x => new UsedMedia(x.Id, x.MediaId)).ToList();
     }
 
-    private async Task<List<(string EntityId, string MediaId)>> GetPlaceBatch(CancellationToken cancellationToken)
+    private async Task<List<UsedMedia>> GetPlaceBatch(CancellationToken cancellationToken)
     {
         var db = await ChatDbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = db.ConfigureAwait(false);
@@ -138,19 +138,17 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             .ConfigureAwait(false);
 
         // Flatten: a place can have both MediaId and BackgroundMediaId
-        var result = new List<(string, string)>();
+        var result = new List<UsedMedia>();
         foreach (var p in places) {
             if (!p.MediaId.IsNullOrEmpty())
-                result.Add((p.Id, p.MediaId));
+                result.Add(new UsedMedia(p.Id, p.MediaId));
             if (!p.BackgroundMediaId.IsNullOrEmpty())
-                result.Add((p.Id, p.BackgroundMediaId));
+                result.Add(new UsedMedia(p.Id, p.BackgroundMediaId));
         }
         return result;
     }
 
-    private async Task ConvertBatch(
-        List<(string EntityId, string MediaId)> items,
-        CancellationToken cancellationToken)
+    private async Task ConvertBatch(List<UsedMedia> items, CancellationToken cancellationToken)
     {
         var mediaDb = await MediaDbHub.CreateDbContext(readWrite: true, cancellationToken).ConfigureAwait(false);
         await using var _ = mediaDb.ConfigureAwait(false);
@@ -253,9 +251,6 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
 
     // Nested types
 
-    /// <summary>
-    /// Phase of the SVG-to-PNG migration scan.
-    /// </summary>
     public enum MigrationPhase
     {
         Avatars = 0,
@@ -263,4 +258,6 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         Places = 2,
         Done = 3,
     }
+
+    private sealed record UsedMedia(string EntityId, string MediaId);
 }
