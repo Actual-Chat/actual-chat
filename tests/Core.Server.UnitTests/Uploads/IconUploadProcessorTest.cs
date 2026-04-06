@@ -27,13 +27,13 @@ public class IconUploadProcessorTest : IDisposable
     [InlineData("image/jpeg", MediaKind.ChatPicture, true)]
     [InlineData("image/png", MediaKind.ChatPicture, true)]
     [InlineData("image/webp", MediaKind.ChatPicture, true)]
-    [InlineData("image/avif", MediaKind.ChatPicture, true)]
-    [InlineData("image/heif", MediaKind.ChatPicture, true)]
-    [InlineData("image/heic", MediaKind.ChatPicture, true)]
     [InlineData("image/bmp", MediaKind.ChatPicture, true)]
     [InlineData("image/svg+xml", MediaKind.ChatPicture, true)]
     [InlineData("image/jpeg", MediaKind.UserPicture, true)]
     [InlineData("image/webp", MediaKind.UserAvatarPicture, true)]
+    [InlineData("image/avif", MediaKind.ChatPicture, false)] // not in SupportedAvatarContentTypes
+    [InlineData("image/heif", MediaKind.ChatPicture, false)] // not in SupportedAvatarContentTypes
+    [InlineData("image/heic", MediaKind.ChatPicture, false)] // not in SupportedAvatarContentTypes
     [InlineData("image/gif", MediaKind.ChatPicture, false)] // GIF excluded
     [InlineData("image/jpeg", MediaKind.LinkPreviewPicture, false)] // not a chat icon
     [InlineData("image/jpeg", MediaKind.ChatEntryAttachment, false)] // not a chat icon
@@ -98,7 +98,7 @@ public class IconUploadProcessorTest : IDisposable
     }
 
     [Fact]
-    public async Task ShouldConvertWebpToPng()
+    public async Task ShouldKeepWebpFormat()
     {
         // arrange
         var upload = TestImages.CreateUploadedFile("icon.webp", "image/webp", TestImages.CreateWebp(100, 100));
@@ -108,10 +108,9 @@ public class IconUploadProcessorTest : IDisposable
         _processedFiles.Add(result);
 
         // assert
-        result.File.ContentType.Should().Be("image/png");
-        result.File.FileName.ToString().Should().EndWith(".png");
+        result.File.ContentType.Should().Be("image/webp");
         result.Size.Should().NotBeNull();
-        await AssertImageFormat(result.File, "image/png");
+        await AssertImageFormat(result.File, "image/webp");
     }
 
     [Fact]
