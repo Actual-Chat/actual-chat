@@ -11,8 +11,12 @@ namespace ActualChat.App.Server.Flows;
 
 /// <summary>
 /// Migrates existing SVG icon blobs to PNG.
-/// Scans DbAvatar, DbChat, and DbPlace to collect media IDs,
-/// then converts any SVG media to PNG via SkiaSharp.
+/// Walks <see cref="DbAvatar"/>, <see cref="DbChat"/>, and <see cref="DbPlace"/>
+/// to collect media IDs that are actually used as icons, then converts any
+/// of those that are SVG to PNG via SkiaSharp.
+/// Scanning the referencing tables (rather than <see cref="DbMedia"/> directly)
+/// is the only way to leave chat-entry attachment SVGs untouched, because
+/// old <see cref="DbMedia"/> records have <see cref="MediaKind.Unknown"/>.
 /// </summary>
 [Flow(DataVersion = 1, DelayQuanta = 0)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
@@ -84,15 +88,15 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             .Where(x => x.MediaId != "")
             .OrderBy(x => x.Id)
             .AsQueryable();
-
         if (!LastProcessedEntityId.IsNullOrEmpty())
             query = query.Where(x => string.Compare(x.Id, LastProcessedEntityId) > 0);
 
-        return await query
+        var rows = await query
             .Take(BatchSize)
-            .Select(x => ValueTuple.Create(x.Id, x.MediaId))
+            .Select(x => new { x.Id, x.MediaId })
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+        return rows.Select(x => (x.Id, x.MediaId)).ToList();
     }
 
     private async Task<List<(string EntityId, string MediaId)>> GetChatBatch(CancellationToken cancellationToken)
@@ -104,15 +108,15 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             .Where(x => x.MediaId != "")
             .OrderBy(x => x.Id)
             .AsQueryable();
-
         if (!LastProcessedEntityId.IsNullOrEmpty())
             query = query.Where(x => string.Compare(x.Id, LastProcessedEntityId) > 0);
 
-        return await query
+        var rows = await query
             .Take(BatchSize)
-            .Select(x => ValueTuple.Create(x.Id, x.MediaId))
+            .Select(x => new { x.Id, x.MediaId })
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+        return rows.Select(x => (x.Id, x.MediaId)).ToList();
     }
 
     private async Task<List<(string EntityId, string MediaId)>> GetPlaceBatch(CancellationToken cancellationToken)
@@ -124,7 +128,6 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             .Where(x => x.MediaId != "" || x.BackgroundMediaId != "")
             .OrderBy(x => x.Id)
             .AsQueryable();
-
         if (!LastProcessedEntityId.IsNullOrEmpty())
             query = query.Where(x => string.Compare(x.Id, LastProcessedEntityId) > 0);
 
@@ -150,7 +153,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         CancellationToken cancellationToken)
     {
         var mediaDb = await MediaDbHub.CreateDbContext(readWrite: true, cancellationToken).ConfigureAwait(false);
-        await using var __ = mediaDb.ConfigureAwait(false);
+        await using var _ = mediaDb.ConfigureAwait(false);
 
         var mediaIds = items.Select(x => x.MediaId).Distinct().ToList();
         var dbMediaRecords = await mediaDb.Media
@@ -178,11 +181,10 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
 
     private async Task<bool> ProcessOne(DbMedia dbMedia, CancellationToken cancellationToken)
     {
-        var metadata = MetadataSerializer.Read(dbMedia.MetadataJson);
-        var contentType = metadata[nameof(Media.Media.ContentType)] as string;
-        if (!MediaTypeExt.IsSvg(contentType))
+        if (!dbMedia.BlobId.EndsWith(".svg"))
             return false;
 
+        var metadata = MetadataSerializer.Read(dbMedia.MetadataJson);
         var svgStream = await BlobStorage.Read(dbMedia.BlobId, cancellationToken).ConfigureAwait(false);
         if (svgStream == null) {
             Console.LogWarning($"Blob not found for media {dbMedia.Id}: {dbMedia.BlobId}");
@@ -190,9 +192,9 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         }
 
         byte[] pngBytes;
-        int width, height;
+        Size size;
         await using (svgStream.ConfigureAwait(false)) {
-            (pngBytes, width, height) = ConvertSvgToPng(svgStream);
+            (pngBytes, size) = ConvertSvgToPng(svgStream);
         }
 
         var mediaId = MediaId.Parse(dbMedia.Id);
@@ -204,8 +206,8 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         metadata = metadata
             .Set(nameof(Media.Media.ContentType), "image/png")
             .Set(nameof(Media.Media.FileName), Path.ChangeExtension(fileName, ".png"))
-            .Set(nameof(Media.Media.Width), width)
-            .Set(nameof(Media.Media.Height), height)
+            .Set(nameof(Media.Media.Width), size.Width)
+            .Set(nameof(Media.Media.Height), size.Height)
             .Set(nameof(Media.Media.Length), (long)pngBytes.Length);
 
         dbMedia.BlobId = newBlobId;
@@ -213,7 +215,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         return true;
     }
 
-    private static (byte[] PngBytes, int Width, int Height) ConvertSvgToPng(Stream svgStream)
+    private static (byte[] PngBytes, Size Size) ConvertSvgToPng(Stream svgStream)
     {
         using var svg = SKSvg.CreateFromStream(svgStream);
         var picture = svg.Picture
@@ -223,11 +225,11 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         if (bounds.Width <= 0 || bounds.Height <= 0)
             throw StandardError.Internal("SVG has invalid dimensions.");
 
-        var (targetWidth, targetHeight) = ComputeTargetSize((int)bounds.Width, (int)bounds.Height);
-        var scaleX = targetWidth / bounds.Width;
-        var scaleY = targetHeight / bounds.Height;
+        var target = ComputeTargetSize(new Size((int)bounds.Width, (int)bounds.Height));
+        var scaleX = target.Width / bounds.Width;
+        var scaleY = target.Height / bounds.Height;
 
-        var imageInfo = new SKImageInfo(targetWidth, targetHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
+        var imageInfo = new SKImageInfo(target.Width, target.Height, SKColorType.Rgba8888, SKAlphaType.Premul);
         using var surface = SKSurface.Create(imageInfo);
         var canvas = surface.Canvas;
         canvas.Clear(SKColors.Transparent);
@@ -237,20 +239,23 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         using var pixmap = surface.PeekPixels();
         using var data = pixmap.Encode(SKEncodedImageFormat.Png, 100)
             ?? throw StandardError.Internal("Failed to encode SVG as PNG.");
-        return (data.ToArray(), targetWidth, targetHeight);
+        return (data.ToArray(), target);
     }
 
-    private static (int Width, int Height) ComputeTargetSize(int width, int height)
+    private static Size ComputeTargetSize(Size source)
     {
-        if (width <= MaxSize && height <= MaxSize)
-            return (width, height);
+        if (source.Width <= MaxSize && source.Height <= MaxSize)
+            return source;
 
-        var scale = Math.Min((float)MaxSize / width, (float)MaxSize / height);
-        return ((int)(width * scale), (int)(height * scale));
+        var scale = Math.Min((float)MaxSize / source.Width, (float)MaxSize / source.Height);
+        return new Size((int)(source.Width * scale), (int)(source.Height * scale));
     }
 
     // Nested types
 
+    /// <summary>
+    /// Phase of the SVG-to-PNG migration scan.
+    /// </summary>
     public enum MigrationPhase
     {
         Avatars = 0,
