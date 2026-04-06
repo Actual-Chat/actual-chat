@@ -218,7 +218,7 @@ export function getCodecForCategory(category: 'h264' | 'hevc' | 'av1' | 'vp9', w
     return 'avc1.64001F'; // High 3.1
 }
 
-export function getDefaultCodec(supportedCodecs: CodecInfo[], width = 1280, height = 720): string {
+export function getDefaultCodec(supportedCodecs: CodecInfo[], width: number, height: number): string {
     // Firefox: force H.264 Main 3.1 — only reliable encoder profile
     if (DeviceInfo.isFirefox) {
         return 'avc1.4D401F';

@@ -1,7 +1,6 @@
 import { Log } from 'logging';
 import { DeviceInfo } from 'device-info';
 import { RecordingService, type RecordingConfig, type RecordingState } from '../../Services/Video/services/recording-service';
-import { MediaCapture } from '../../Services/Video/services/media-capture';
 import { detectSupportedCodecs, getDefaultCodec, getCodecCategory, type CodecInfo } from '../../Services/Video/codec-support';
 
 const { debugLog, infoLog, warnLog, errorLog } = Log.get('VideoRecorder');
@@ -222,37 +221,18 @@ export class VideoRecorder {
 
             this.recordingService = this.createRecordingService(config);
 
-            // Acquire a separate camera track for local preview.
-            // We must get this BEFORE starting the recording pipeline, because
-            // the pipeline's MediaStreamTrackProcessor exclusively consumes
-            // frames from the track it's given — cloning after that point
-            // produces a dead track in Chromium.
-            this.previewTrack = await MediaCapture.captureCameraStream({
-                deviceId: this.selectedCameraDeviceId ?? undefined,
-                width: targetSize.width,
-                height: targetSize.height,
-                frameRate: targetFramerate,
-            });
-
-            // Store actual camera resolution for capping reconfigure requests
-            const trackSettings = this.previewTrack.getSettings();
-            infoLog?.log(`Track resolution: ${trackSettings.width}x${trackSettings.height}`);
-            this.cameraWidth = trackSettings.width ?? config.width;
-            this.cameraHeight = trackSettings.height ?? config.height;
-            infoLog?.log(`Camera resolution: ${this.cameraWidth}x${this.cameraHeight}`);
-
-            // Ensure recording uses the same camera as preview
-            const previewDeviceId = trackSettings.deviceId;
-            if (previewDeviceId && !this.selectedCameraDeviceId) {
-                infoLog?.log(`Captured preview camera device ID: ${previewDeviceId}`);
-                this.selectedCameraDeviceId = previewDeviceId;
-                this.recordingService.updateConfig({ cameraDeviceId: previewDeviceId });
-            }
-
             // Start recording (this initializes the video-pipeline)
             console.warn('[VideoRecorder] Calling recordingService.start()...');
             await this.recordingService.start();
             console.warn('[VideoRecorder] recordingService.start() completed successfully');
+
+            this.previewTrack = this.recordingService.getInputTrack()
+            // Store actual camera resolution for capping reconfigure requests
+            const trackSettings = this.previewTrack!.getSettings();
+            infoLog?.log(`Track resolution: ${trackSettings.width}x${trackSettings.height}`);
+            this.cameraWidth = trackSettings.width ?? config.width;
+            this.cameraHeight = trackSettings.height ?? config.height;
+            infoLog?.log(`Camera resolution: ${this.cameraWidth}x${this.cameraHeight}`);
 
             // Subscribe to VAD for adaptive framerate
             this.recordingService.getPipeline()?.subscribeToVad();
@@ -277,7 +257,7 @@ export class VideoRecorder {
 
             // Start rendering preview AFTER isRecording is set
             console.warn('[VideoRecorder] Starting preview rendering, canvas:', !!this.canvas, 'canvasCtx:', !!this.canvasCtx);
-            this.startRenderingStream(this.previewTrack);
+            this.startRenderingStream(this.previewTrack!);
 
             // Notify Blazor
             await this.blazorRef.invokeMethodAsync('OnRecordingStarted');
