@@ -801,10 +801,10 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
-    public async Task Unbounded_OldBufferClearsReferencesOnGrowth()
+    public async Task Unbounded_OldBufferClearsReferencesOnDispose()
     {
-        // When unbounded memoizer grows, old buffer references must be cleared
-        // so items are only held by the new (active) buffer, not duplicated.
+        // Old buffer references are NOT cleared on growth (concurrent readers need them).
+        // They are cleared when returned to the pool in Dispose().
         var source = Channel.CreateUnbounded<object>();
         var memoizer = source.Memoize(cancellationToken: CancellationToken.None);
 
@@ -927,6 +927,94 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
             .WaitAsync(TimeSpan.FromSeconds(2));
 
         items.Should().Equal(1, 2, 3);
+        memoizer.Dispose();
+    }
+
+    // === Regression: concurrent read during buffer growth must not yield nulls ===
+
+    [Fact]
+    public async Task Unbounded_ReplayDuringGrowth_NoNulls()
+    {
+        // Reproduces NRE from AudioSourceExt.Concat:55 —
+        // AddReplayTarget captures a snapshot referencing buffer B1,
+        // then WriteItem grows the buffer and Array.Clear(B1) nulls out
+        // items that the snapshot reader is still iterating over.
+        const int initialItems = 14; // just under initial capacity (16)
+        const int growthItems = 50;  // enough to trigger multiple growths
+
+        var source = Channel.CreateUnbounded<object>();
+
+        // Write items up to just below initial buffer capacity
+        for (var i = 0; i < initialItems; i++)
+            source.Writer.TryWrite(new object());
+
+        var memoizer = source.Memoize(cancellationToken: CancellationToken.None);
+        await SpinWaitForBuffered(memoizer, initialItems);
+
+        // Start a replay — this captures a snapshot pointing at the current buffer
+        var replayTask = Task.Run(async () => {
+            var items = new List<object>();
+            await foreach (var item in memoizer.Replay().ConfigureAwait(false)) {
+                item.Should().NotBeNull("snapshot reader must not see nulled-out buffer slots");
+                items.Add(item);
+                if (items.Count >= initialItems + growthItems)
+                    break;
+            }
+            return items;
+        });
+
+        // Give replay a moment to start reading from the snapshot
+        await Task.Delay(50);
+
+        // Now pump more items to trigger buffer growth (16 → 32 → 64 → ...)
+        for (var i = 0; i < growthItems; i++)
+            source.Writer.TryWrite(new object());
+
+        var result = await replayTask.WaitAsync(TimeSpan.FromSeconds(10));
+        result.Should().HaveCount(initialItems + growthItems);
+        result.Should().NotContainNulls("all items must survive buffer growth");
+
+        source.Writer.Complete();
+        memoizer.Dispose();
+    }
+
+    [Fact]
+    public async Task Unbounded_AddReplayTargetDuringGrowth_NoNulls()
+    {
+        // Variant: AddReplayTarget is called right as buffer grows,
+        // so CopyTo iterates the old-buffer snapshot.
+        const int totalItems = 100; // forces growth from 16 → 32 → 64 → 128
+        var gate = new TaskCompletionSource();
+
+        async IAsyncEnumerable<object> SlowSource([EnumeratorCancellation] CancellationToken ct = default)
+        {
+            for (var i = 0; i < 15; i++) // fill near capacity
+                yield return new object();
+            await gate.Task.WaitAsync(ct).ConfigureAwait(false);
+            for (var i = 15; i < totalItems; i++) // trigger growth
+                yield return new object();
+        }
+
+        var memoizer = SlowSource().Memoize(cancellationToken: CancellationToken.None);
+        await SpinWaitForBuffered(memoizer, 15);
+
+        // Capture snapshot via AddReplayTarget while buffer is at near-capacity
+        var channel = Channel.CreateUnbounded<object>(new UnboundedChannelOptions { SingleReader = true });
+        await memoizer.AddReplayTarget(channel, int.MaxValue);
+
+        // Release the gate — source will push items that trigger growth
+        gate.SetResult();
+        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(10));
+
+        // Read all items from the channel and verify none are null
+        var items = new List<object>();
+        while (await channel.Reader.WaitToReadAsync().ConfigureAwait(false))
+        while (channel.Reader.TryRead(out var item))
+            items.Add(item);
+
+        items.Should().HaveCount(totalItems);
+        items.Should().NotContainNulls("items copied via AddReplayTarget must survive buffer growth");
+
         memoizer.Dispose();
     }
 

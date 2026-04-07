@@ -202,9 +202,9 @@ public sealed class AsyncMemoizer<T> : AsyncMemoizer, IAsyncMemoizer<T>
                 var oldBuffer = _buffer;
                 var newBuffer = _pool.Rent(oldBuffer.Length * 2);
                 Array.Copy(oldBuffer, newBuffer, oldBuffer.Length);
-                // NOTE: Do NOT clear oldBuffer here — concurrent Replay consumers
-                // may hold Snapshots that still reference it. Since all items are
-                // copied to newBuffer, they remain reachable regardless.
+                // Note: do NOT clear oldBuffer here — concurrent snapshot readers
+                // (AddReplayTarget / CopyTo) may still be reading from it.
+                // Old buffers are cleared when returned to the pool in Dispose().
                 _oldBuffersHead = new OldBufferNode(oldBuffer, _oldBuffersHead);
                 _buffer = newBuffer;
             }
