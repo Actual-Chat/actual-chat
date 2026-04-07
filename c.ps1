@@ -1039,15 +1039,17 @@ if ($isActualChatProject) {
     $server = [WorktreeServer]::new($mainProjectPath, $worktree)
     $serverConfig = $server.Register($debugMode)
 
-    # Write server configuration to .env file in the project/worktree directory
-    # Uses .NET configuration names so they're automatically picked up by the server
-    $baseUri = if ($serverConfig.InstanceName -ne "dev") { "https://$($serverConfig.InstanceName).local.voxt.ai" } else { "https://local.voxt.ai" }
-    $envVarsToSave = @{
-        "CoreSettings__Instance" = $serverConfig.InstanceName
-        "HostSettings__BasePort" = "$($serverConfig.Port)"
-        "HostSettings__BaseUri" = $baseUri
+    # Write server configuration to .env file in the worktree directory.
+    # Uses .NET configuration names so they're automatically picked up by the server.
+    # Skipped for the main project (dev instance) so its .env stays untouched.
+    if ($serverConfig.InstanceName -ne "dev") {
+        $envVarsToSave = @{
+            "CoreSettings__Instance" = $serverConfig.InstanceName
+            "HostSettings__BasePort" = "$($serverConfig.Port)"
+            "HostSettings__BaseUri" = "https://$($serverConfig.InstanceName).local.voxt.ai"
+        }
+        Update-EnvFile -ProjectPath $projectRoot -Variables $envVarsToSave -Debug:$debugMode
     }
-    Update-EnvFile -ProjectPath $projectRoot -Variables $envVarsToSave -Debug:$debugMode
 }
 
 # Suppress output when launching docker (inner instance will output)
