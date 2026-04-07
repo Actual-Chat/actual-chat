@@ -213,6 +213,7 @@ public class VideoStreamingLatencyTest(AppHostFixture fixture, ITestOutputHelper
         // Late consumer joins
         await using var consumerConnection = CreateHubConnection(hubUrl);
         await consumerConnection.StartAsync();
+        var consumerJoinedTs = Stopwatch.GetTimestamp();
 
         var keyframeLatencies = new List<double>();
         var receivedOffsets = new List<long>();
@@ -233,11 +234,17 @@ public class VideoStreamingLatencyTest(AppHostFixture fixture, ITestOutputHelper
                 firstFrame ??= frame;
                 receivedOffsets.Add(frame.Offset.Ticks);
 
-                // Track keyframe latencies
+                // Track keyframe latencies — skip frames produced before consumer joined
+                // (they come from the retention buffer and have inflated "latency")
                 if (frame.IsKeyFrame && sentTimestamps.TryGetValue(frame.Offset.Ticks, out var sentTs)) {
                     var latency = Stopwatch.GetElapsedTime(sentTs, receiveTs);
-                    keyframeLatencies.Add(latency.TotalMilliseconds);
-                    Out.WriteLine($"  Keyframe @ {frame.Offset.TotalSeconds:F2}s: latency={latency.TotalMilliseconds:F1}ms");
+                    if (sentTs < consumerJoinedTs) {
+                        Out.WriteLine($"  Keyframe @ {frame.Offset.TotalSeconds:F2}s: latency={latency.TotalMilliseconds:F1}ms (buffered, excluded)");
+                    }
+                    else {
+                        keyframeLatencies.Add(latency.TotalMilliseconds);
+                        Out.WriteLine($"  Keyframe @ {frame.Offset.TotalSeconds:F2}s: latency={latency.TotalMilliseconds:F1}ms");
+                    }
                 }
             }
         }
