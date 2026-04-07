@@ -46,16 +46,16 @@ public class IconSvgToPngMigrationFlowStressTest(AppHostFixture fixture, ITestOu
         var placeIds = new PlaceId[countPerPhase];
 
         for (var i = 0; i < countPerPhase; i++) {
-            avatarSvgIds[i] = await CreateSvgMedia(MediaKind.UserAvatarPicture, $"avatar-{i}.svg");
+            avatarSvgIds[i] = await CreateSvgMedia($"avatar-{i}.svg");
             avatarIds[i] = await CreateAvatar(account.Id, avatarSvgIds[i]);
 
-            chatSvgIds[i] = await CreateSvgMedia(MediaKind.ChatPicture, $"chat-{i}.svg");
+            chatSvgIds[i] = await CreateSvgMedia($"chat-{i}.svg");
             (chatIds[i], _) = await Tester.CreateChat(diff => diff with {
                 IsPublic = true,
                 MediaId = chatSvgIds[i],
             });
 
-            placeSvgIds[i] = await CreateSvgMedia(MediaKind.ChatPicture, $"place-{i}.svg");
+            placeSvgIds[i] = await CreateSvgMedia($"place-{i}.svg");
             var place = await Tester.CreatePlace(diff => diff with {
                 IsPublic = true,
                 MediaId = placeSvgIds[i],
@@ -78,7 +78,7 @@ public class IconSvgToPngMigrationFlowStressTest(AppHostFixture fixture, ITestOu
 
     // Private methods
 
-    private async Task<MediaId> CreateSvgMedia(MediaKind kind, string fileName)
+    private async Task<MediaId> CreateSvgMedia(string fileName)
     {
         var mediaId = MediaId.New("test-chat");
         var file = new UploadedStreamFile(
@@ -87,10 +87,11 @@ public class IconSvgToPngMigrationFlowStressTest(AppHostFixture fixture, ITestOu
             TestSvgBytes.Length,
             () => Task.FromResult<Stream>(new MemoryStream(TestSvgBytes)));
         // MediaSaver.Save persists the blob and creates the MediaFull row.
-        // No image processing happens here — the SVG bytes survive intact,
-        // which is the same shape production has for the legacy SVG icons
-        // we're trying to migrate.
-        await MediaSaver.Save(mediaId, file, new Size(100, 100), kind, CancellationToken.None);
+        // No image processing happens here — the SVG bytes survive intact.
+        // Kind is Unknown (the default 0 in the DB) to mimic the legacy
+        // production rows the migration is built for: old media records
+        // were written before MediaKind existed and have Kind = Unknown.
+        await MediaSaver.Save(mediaId, file, new Size(100, 100), MediaKind.Unknown, CancellationToken.None);
         return mediaId;
     }
 
