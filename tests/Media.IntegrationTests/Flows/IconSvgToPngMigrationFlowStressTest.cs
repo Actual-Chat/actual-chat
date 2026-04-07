@@ -9,10 +9,6 @@ namespace ActualChat.Media.IntegrationTests.Flows;
 public class IconSvgToPngMigrationFlowStressTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    // Must be > IconSvgToPngMigrationFlow.BatchSize (50) so each phase pages
-    // through one full batch + one partial batch, exercising the cursor.
-    private const int CountPerPhase = 60;
-
     private static readonly byte[] TestSvgBytes = """
         <?xml version="1.0" encoding="UTF-8"?>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
@@ -31,20 +27,25 @@ public class IconSvgToPngMigrationFlowStressTest(AppHostFixture fixture, ITestOu
         await base.DisposeAsync();
     }
 
-    [Fact]
-    public async Task ShouldConvertManyEntitiesAcrossAllPhases()
+    // countPerPhase must be > IconSvgToPngMigrationFlow.BatchSize (50) so that
+    // each phase pages through at least one full batch + one partial batch,
+    // exercising the LastProcessedEntityId cursor.
+    [Theory]
+    [InlineData(51)]
+    [InlineData(201)]
+    public async Task ShouldConvertManyEntitiesAcrossAllPhases(int countPerPhase)
     {
         // arrange — sign in as the test user that will own all seeded entities
         var account = await Tester.SignInAsUniqueBob();
 
-        var avatarSvgIds = new MediaId[CountPerPhase];
-        var avatarIds = new Symbol[CountPerPhase];
-        var chatSvgIds = new MediaId[CountPerPhase];
-        var chatIds = new ChatId[CountPerPhase];
-        var placeSvgIds = new MediaId[CountPerPhase];
-        var placeIds = new PlaceId[CountPerPhase];
+        var avatarSvgIds = new MediaId[countPerPhase];
+        var avatarIds = new Symbol[countPerPhase];
+        var chatSvgIds = new MediaId[countPerPhase];
+        var chatIds = new ChatId[countPerPhase];
+        var placeSvgIds = new MediaId[countPerPhase];
+        var placeIds = new PlaceId[countPerPhase];
 
-        for (var i = 0; i < CountPerPhase; i++) {
+        for (var i = 0; i < countPerPhase; i++) {
             avatarSvgIds[i] = await CreateSvgMedia(MediaKind.UserAvatarPicture, $"avatar-{i}.svg");
             avatarIds[i] = await CreateAvatar(account.Id, avatarSvgIds[i]);
 
@@ -67,7 +68,7 @@ public class IconSvgToPngMigrationFlowStressTest(AppHostFixture fixture, ITestOu
 
         // assert: every seeded host entity has been repointed to a new MediaId pointing at a PNG
         await AssertFlow(async ct => {
-            for (var i = 0; i < CountPerPhase; i++) {
+            for (var i = 0; i < countPerPhase; i++) {
                 await AssertAvatarRepointedToPng(avatarIds[i], avatarSvgIds[i], ct);
                 await AssertChatRepointedToPng(chatIds[i], chatSvgIds[i], ct);
                 await AssertPlaceRepointedToPng(placeIds[i], placeSvgIds[i], ct);
