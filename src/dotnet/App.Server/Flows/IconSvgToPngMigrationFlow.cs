@@ -111,7 +111,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             .Select(x => new { x.Id, x.MediaId })
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return rows.Select(x => new UsedMedia(x.Id, MediaId.Parse(x.MediaId), false)).ToList();
+        return rows.ConvertAll(x => new UsedMedia(x.Id, MediaId.Parse(x.MediaId), false));
     }
 
     private async Task<List<UsedMedia>> GetChatBatch(CancellationToken cancellationToken)
@@ -131,7 +131,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             .Select(x => new { x.Id, x.MediaId })
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return rows.Select(x => new UsedMedia(x.Id, MediaId.Parse(x.MediaId), false)).ToList();
+        return rows.ConvertAll(x => new UsedMedia(x.Id, MediaId.Parse(x.MediaId), false));
     }
 
     private async Task<List<UsedMedia>> GetPlaceBatch(CancellationToken cancellationToken)
