@@ -1,6 +1,6 @@
 Describe "Common.ps1" {
     BeforeAll {
-        . "$PSScriptRoot/../../scripts/Common.ps1"
+        . "$PSScriptRoot/../../../scripts/Common.ps1"
     }
 
     Context "Set-EnvFileValue" {

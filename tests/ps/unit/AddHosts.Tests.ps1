@@ -1,17 +1,17 @@
 BeforeDiscovery {
-    # Skip conditions on individual Contexts reference Get-CurrentOS and
-    # [LinuxRootCertStore], which Pester evaluates during the discovery phase
-    # - before BeforeAll runs - so both files must be dot-sourced into the
+    # The "LinuxRootCertStore.IsInstalled" Context uses [LinuxRootCertStore]
+    # in a -Skip expression, which Pester evaluates during the discovery
+    # phase - before BeforeAll runs - so the type must be loaded into the
     # discovery scope as well.
-    . "$PSScriptRoot/../../scripts/Common.ps1"
-    . "$PSScriptRoot/../../add-hosts.ps1"
+    . "$PSScriptRoot/../../../scripts/Common.ps1"
+    . "$PSScriptRoot/../../../add-hosts.ps1"
 }
 
-Describe "add-hosts.ps1" {
+Describe "add-hosts.ps1 (unit)" {
     BeforeAll {
-        . "$PSScriptRoot/../../scripts/Common.ps1"
-        . "$PSScriptRoot/../../add-hosts.ps1"
-        $script:certPath = (Resolve-Path "$PSScriptRoot/../../.config/local.voxt.ai/ssl/rootCA.crt").Path
+        . "$PSScriptRoot/../../../scripts/Common.ps1"
+        . "$PSScriptRoot/../../../add-hosts.ps1"
+        $script:certPath = (Resolve-Path "$PSScriptRoot/../../../.config/local.voxt.ai/ssl/rootCA.crt").Path
         $script:expectedThumbprint = ([System.Security.Cryptography.X509Certificates.X509Certificate2]::new($script:certPath)).Thumbprint
     }
 
@@ -87,14 +87,6 @@ Describe "add-hosts.ps1" {
         }
     }
 
-    Context "MacOSRootCertStore.IsInstalled" -Skip:((Get-CurrentOS) -ne 'macOS') {
-        It "returns a Boolean for the bundled rootCA.crt" {
-            # Real call against the System keychain - we don't assert true/false
-            # because the result depends on the developer's local trust state.
-            [MacOSRootCertStore]::new().IsInstalled($script:certPath) | Should -BeOfType [bool]
-        }
-    }
-
     Context "LinuxRootCertStore.IsInstalled" {
         BeforeAll {
             $script:linuxDest = [LinuxRootCertStore]::DestPath
@@ -137,14 +129,113 @@ Describe "add-hosts.ps1" {
         It "is constructible" {
             [DotnetDevCert]::new() | Should -Not -BeNullOrEmpty
         }
+    }
 
-        It "IsTrusted returns a Boolean" {
-            # Real call to `dotnet dev-certs https --check` - read-only.
-            [DotnetDevCert]::new().IsTrusted() | Should -BeOfType [bool]
+    Context "WindowsRootCertStore.Install" {
+        It "calls Start-Process certutil with the cert path and -Verb RunAs" {
+            Mock Start-Process { [pscustomobject]@{ ExitCode = 0 } }
+            [WindowsRootCertStore]::new().Install('C:\fake\rootCA.crt')
+            Should -Invoke Start-Process -Times 1 -Exactly -ParameterFilter {
+                $FilePath -eq 'certutil' -and
+                $Verb -eq 'RunAs' -and
+                ($ArgumentList -join ' ') -match '-addstore -f ROOT' -and
+                ($ArgumentList -join ' ') -match 'rootCA\.crt'
+            }
+        }
+
+        It "does not throw when certutil exits non-zero (prints warning)" {
+            Mock Start-Process { [pscustomobject]@{ ExitCode = 5 } }
+            { [WindowsRootCertStore]::new().Install('C:\fake\rootCA.crt') } | Should -Not -Throw
+        }
+
+        It "does not throw when Start-Process itself throws (prints manual instructions)" {
+            Mock Start-Process { throw "elevation cancelled" }
+            { [WindowsRootCertStore]::new().Install('C:\fake\rootCA.crt') } | Should -Not -Throw
         }
     }
 
-    Context "Configure-LocalEnvHosts function" {
+    Context "MacOSRootCertStore.Install" {
+        It "shells out to sudo security add-trusted-cert with the cert path" {
+            Mock sudo { }
+            [MacOSRootCertStore]::new().Install('/tmp/fake-rootCA.crt')
+            Should -Invoke sudo -Times 1 -Exactly -ParameterFilter {
+                ($args -join ' ') -match 'security add-trusted-cert' -and
+                ($args -join ' ') -match '/Library/Keychains/System\.keychain' -and
+                ($args -join ' ') -match '/tmp/fake-rootCA\.crt'
+            }
+        }
+    }
+
+    Context "LinuxRootCertStore.Install" {
+        It "calls sudo cp then sudo update-ca-certificates" {
+            Mock sudo { }
+            [LinuxRootCertStore]::new().Install('/tmp/fake-rootCA.crt')
+            Should -Invoke sudo -Times 2 -Exactly
+            Should -Invoke sudo -ParameterFilter {
+                ($args -join ' ') -match '^cp /tmp/fake-rootCA\.crt /usr/local/share/ca-certificates/voxt'
+            }
+            Should -Invoke sudo -ParameterFilter {
+                ($args -join ' ') -eq 'update-ca-certificates'
+            }
+        }
+
+        It "uses the namespaced DestPath as the copy target" {
+            Mock sudo { }
+            [LinuxRootCertStore]::new().Install('/tmp/fake-rootCA.crt')
+            Should -Invoke sudo -ParameterFilter {
+                ($args -join ' ').EndsWith([LinuxRootCertStore]::DestPath)
+            }
+        }
+    }
+
+    Context "DotnetDevCert.Install" {
+        BeforeEach {
+            # USERPROFILE is unset on macOS/Linux but DotnetDevCert.Install uses
+            # it as the PFX export base on the Windows branch.
+            $script:savedUserProfile = $env:USERPROFILE
+            $env:USERPROFILE = [System.IO.Path]::GetTempPath().TrimEnd([System.IO.Path]::DirectorySeparatorChar)
+        }
+        AfterEach {
+            if ($null -ne $script:savedUserProfile) {
+                $env:USERPROFILE = $script:savedUserProfile
+            } else {
+                Remove-Item Env:USERPROFILE -ErrorAction SilentlyContinue
+            }
+        }
+
+        It "on non-Windows: only invokes 'dotnet dev-certs https --trust'" {
+            Mock Get-CurrentOS { 'macOS' }
+            Mock dotnet { $global:LASTEXITCODE = 0 }
+            [DotnetDevCert]::new().Install()
+            Should -Invoke dotnet -Times 1 -Exactly -ParameterFilter {
+                ($args -join ' ') -eq 'dev-certs https --trust'
+            }
+        }
+
+        It "on Windows when PFX missing: creates dir, exports PFX, then trusts" {
+            Mock Get-CurrentOS { 'Windows' }
+            Mock Test-Path { $false }
+            Mock New-Item { }
+            Mock dotnet { $global:LASTEXITCODE = 0 }
+            [DotnetDevCert]::new().Install()
+            Should -Invoke New-Item -Times 1 -ParameterFilter { $ItemType -eq 'Directory' }
+            Should -Invoke dotnet -Times 2 -Exactly
+            Should -Invoke dotnet -ParameterFilter { ($args -join ' ') -match 'dev-certs https -ep .* -p crypticpassword' }
+            Should -Invoke dotnet -ParameterFilter { ($args -join ' ') -eq 'dev-certs https --trust' }
+        }
+
+        It "on Windows when PFX exists: skips export, only trusts" {
+            Mock Get-CurrentOS { 'Windows' }
+            Mock Test-Path { $true }
+            Mock dotnet { $global:LASTEXITCODE = 0 }
+            [DotnetDevCert]::new().Install()
+            Should -Invoke dotnet -Times 1 -Exactly -ParameterFilter {
+                ($args -join ' ') -eq 'dev-certs https --trust'
+            }
+        }
+    }
+
+    Context "Configure-LocalEnvHosts function shape" {
         It "is defined" {
             Get-Command Configure-LocalEnvHosts -CommandType Function -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
         }

@@ -3,10 +3,10 @@ $currentOS = if ($IsWindows -or $env:OS -eq "Windows_NT") { "Windows" } elseif (
 
 Describe "PulseAudioSetup on $currentOS" {
     BeforeAll {
-        . "$PSScriptRoot/../../scripts/Common.ps1"
+        . "$PSScriptRoot/../../../scripts/Common.ps1"
 
         # Source PulseAudioSetup class from c.ps1 by extracting just the class definition
-        $scriptContent = Get-Content "$PSScriptRoot/../../c.ps1" -Raw
+        $scriptContent = Get-Content "$PSScriptRoot/../../../c.ps1" -Raw
         $classPattern = '(?s)(class PulseAudioSetup \{.+?\n\})'
         if ($scriptContent -match $classPattern) {
             Invoke-Expression $Matches[1]
