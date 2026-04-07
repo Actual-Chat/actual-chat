@@ -1,8 +1,10 @@
 BeforeDiscovery {
-    # Skip conditions on individual Contexts call Get-CurrentOS, which Pester
-    # evaluates during the discovery phase - before BeforeAll runs - so we
-    # need Common.ps1 dot-sourced into the discovery scope.
+    # Skip conditions on individual Contexts reference Get-CurrentOS and
+    # [LinuxRootCertStore], which Pester evaluates during the discovery phase
+    # - before BeforeAll runs - so both files must be dot-sourced into the
+    # discovery scope as well.
     . "$PSScriptRoot/../../scripts/Common.ps1"
+    . "$PSScriptRoot/../../add-hosts.ps1"
 }
 
 Describe "add-hosts.ps1" {
@@ -94,32 +96,36 @@ Describe "add-hosts.ps1" {
     }
 
     Context "LinuxRootCertStore.IsInstalled" {
-        It "returns false when /usr/local/share/ca-certificates/rootCA.crt is missing" -Skip:(Test-Path '/usr/local/share/ca-certificates/rootCA.crt') {
+        BeforeAll {
+            $script:linuxDest = [LinuxRootCertStore]::DestPath
+        }
+
+        It "uses a namespaced filename (not generic rootCA.crt)" {
+            # Guards against accidental clobber of certs from mkcert / other tools
+            [LinuxRootCertStore]::DestPath | Should -Not -Be '/usr/local/share/ca-certificates/rootCA.crt'
+            [LinuxRootCertStore]::DestPath | Should -Match '^/usr/local/share/ca-certificates/voxt[-.].+\.crt$'
+        }
+
+        It "returns false when destination is missing" -Skip:(Test-Path ([LinuxRootCertStore]::DestPath)) {
             [LinuxRootCertStore]::new().IsInstalled($script:certPath) | Should -BeFalse
         }
 
         It "returns true when destination exists with the same hash" {
-            $tempCert = [System.IO.Path]::GetTempFileName()
-            try {
-                Copy-Item $script:certPath $tempCert -Force
-                Mock Test-Path { $true } -ParameterFilter { $Path -eq '/usr/local/share/ca-certificates/rootCA.crt' }
-                Mock Get-FileHash {
-                    [pscustomobject]@{ Hash = 'AAAA' }
-                } -ParameterFilter { $Path -eq '/usr/local/share/ca-certificates/rootCA.crt' }
-                Mock Get-FileHash {
-                    [pscustomobject]@{ Hash = 'AAAA' }
-                } -ParameterFilter { $Path -eq $script:certPath }
-                [LinuxRootCertStore]::new().IsInstalled($script:certPath) | Should -BeTrue
-            } finally {
-                Remove-Item $tempCert -ErrorAction SilentlyContinue
-            }
+            Mock Test-Path { $true } -ParameterFilter { $Path -eq $script:linuxDest }
+            Mock Get-FileHash {
+                [pscustomobject]@{ Hash = 'AAAA' }
+            } -ParameterFilter { $Path -eq $script:linuxDest }
+            Mock Get-FileHash {
+                [pscustomobject]@{ Hash = 'AAAA' }
+            } -ParameterFilter { $Path -eq $script:certPath }
+            [LinuxRootCertStore]::new().IsInstalled($script:certPath) | Should -BeTrue
         }
 
         It "returns false when destination exists with a different hash" {
-            Mock Test-Path { $true } -ParameterFilter { $Path -eq '/usr/local/share/ca-certificates/rootCA.crt' }
+            Mock Test-Path { $true } -ParameterFilter { $Path -eq $script:linuxDest }
             Mock Get-FileHash {
                 [pscustomobject]@{ Hash = 'AAAA' }
-            } -ParameterFilter { $Path -eq '/usr/local/share/ca-certificates/rootCA.crt' }
+            } -ParameterFilter { $Path -eq $script:linuxDest }
             Mock Get-FileHash {
                 [pscustomobject]@{ Hash = 'BBBB' }
             } -ParameterFilter { $Path -eq $script:certPath }
