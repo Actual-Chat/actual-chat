@@ -1,9 +1,6 @@
 using ActualChat.App.Server.Flows;
-using ActualChat.Chat.Db;
 using ActualChat.Testing.Host;
-using ActualChat.Users.Db;
-using ActualLab.Fusion.EntityFramework;
-using Microsoft.EntityFrameworkCore;
+using ActualChat.Uploads;
 
 namespace ActualChat.Media.IntegrationTests.Flows;
 
@@ -20,17 +17,32 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         </svg>
         """u8.ToArray();
 
+    private IWebClientTester Tester { get; } = fixture.AppHost.NewWebClientTester(@out);
     private IBlobStorage BlobStorage { get; } = fixture.AppHost.Services.BlobStorages()[BlobScope.ContentRecord];
+    private IMediaSaver MediaSaver { get; } = fixture.AppHost.Services.GetRequiredService<IMediaSaver>();
     private IMediaBackend MediaBackend { get; } = fixture.AppHost.Services.GetRequiredService<IMediaBackend>();
-    private DbHub<UsersDbContext> UsersDbHub { get; } = fixture.AppHost.Services.DbHub<UsersDbContext>();
-    private DbHub<ChatDbContext> ChatDbHub { get; } = fixture.AppHost.Services.DbHub<ChatDbContext>();
+    private IAvatars Avatars { get; } = fixture.AppHost.Services.GetRequiredService<IAvatars>();
+
+    private AccountFull _account = null!;
+
+    protected override async Task InitializeAsync()
+    {
+        await base.InitializeAsync();
+        _account = await Tester.SignInAsUniqueBob();
+    }
+
+    protected override async Task DisposeAsync()
+    {
+        await Tester.DisposeSilentlyAsync();
+        await base.DisposeAsync();
+    }
 
     [Fact]
     public async Task ShouldConvertSvgMediaToPng()
     {
         // arrange: seed an SVG media record + an Avatar that references it
         var (svgMediaId, svgBlobId) = await CreateMedia(
-            TestSvgBytes, ".svg", "image/svg+xml", MediaKind.UserAvatarPicture, "avatar.svg");
+            TestSvgBytes, "image/svg+xml", MediaKind.UserAvatarPicture, "avatar.svg");
         var avatarId = await SeedAvatar(svgMediaId);
 
         // act
@@ -62,7 +74,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
     {
         // arrange
         var (svgMediaId, _) = await CreateMedia(
-            TestSvgBytes, ".svg", "image/svg+xml", MediaKind.UserAvatarPicture, "avatar.svg");
+            TestSvgBytes, "image/svg+xml", MediaKind.UserAvatarPicture, "avatar.svg");
         var avatarId = await SeedAvatar(svgMediaId);
 
         // act
@@ -84,7 +96,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
     {
         // arrange
         var (svgMediaId, svgBlobId) = await CreateMedia(
-            TestSvgBytes, ".svg", "image/svg+xml", MediaKind.UserAvatarPicture, "avatar.svg");
+            TestSvgBytes, "image/svg+xml", MediaKind.UserAvatarPicture, "avatar.svg");
         await SeedAvatar(svgMediaId);
         var originalSvg = await MediaBackend.GetFull(svgMediaId, CancellationToken.None);
         originalSvg.Should().NotBeNull();
@@ -114,7 +126,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
     {
         // arrange
         var (svgMediaId, _) = await CreateMedia(
-            TestSvgBytes, ".svg", "image/svg+xml", MediaKind.UserAvatarPicture, "avatar.svg");
+            TestSvgBytes, "image/svg+xml", MediaKind.UserAvatarPicture, "avatar.svg");
         var avatarId = await SeedAvatar(svgMediaId);
 
         // act 1
@@ -145,7 +157,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
     {
         // arrange: SVG media referenced by both an avatar and a chat-entry attachment
         var (svgMediaId, svgBlobId) = await CreateMedia(
-            TestSvgBytes, ".svg", "image/svg+xml", MediaKind.UserAvatarPicture, "shared.svg");
+            TestSvgBytes, "image/svg+xml", MediaKind.UserAvatarPicture, "shared.svg");
         var avatarId = await SeedAvatar(svgMediaId);
         await SeedChatEntryAttachment(svgMediaId);
 
@@ -174,7 +186,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         // arrange: seed a PNG media record + an Avatar that references it
         var pngBytes = TestImages.CreatePng(50, 50);
         var (pngMediaId, pngBlobId) = await CreateMedia(
-            pngBytes, ".png", "image/png", MediaKind.UserAvatarPicture, "avatar.png", width: 50, height: 50);
+            pngBytes, "image/png", MediaKind.UserAvatarPicture, "avatar.png", width: 50, height: 50);
         var avatarId = await SeedAvatar(pngMediaId);
 
         // act
@@ -195,9 +207,9 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
     [Fact]
     public async Task ShouldHandleMissingBlob()
     {
-        // arrange: seed an SVG media record (without writing the blob) + a Chat that references it
+        // arrange: seed an SVG media record + a Chat that references it, then drop the blob
         var (svgMediaId, svgBlobId) = await CreateMedia(
-            blobBytes: null, ".svg", "image/svg+xml", MediaKind.ChatPicture, "missing.svg");
+            TestSvgBytes, "image/svg+xml", MediaKind.ChatPicture, "missing.svg", deleteBlob: true);
         var chatId = await SeedChat(svgMediaId);
 
         // act
@@ -220,11 +232,11 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
     {
         // arrange: 3 SVG media records, each referenced by a different entity kind
         var (avatarSvgId, _) = await CreateMedia(
-            TestSvgBytes, ".svg", "image/svg+xml", MediaKind.UserAvatarPicture, "avatar.svg");
+            TestSvgBytes, "image/svg+xml", MediaKind.UserAvatarPicture, "avatar.svg");
         var (chatSvgId, _) = await CreateMedia(
-            TestSvgBytes, ".svg", "image/svg+xml", MediaKind.ChatPicture, "chat.svg");
+            TestSvgBytes, "image/svg+xml", MediaKind.ChatPicture, "chat.svg");
         var (placeSvgId, _) = await CreateMedia(
-            TestSvgBytes, ".svg", "image/svg+xml", MediaKind.ChatPicture, "place.svg");
+            TestSvgBytes, "image/svg+xml", MediaKind.ChatPicture, "place.svg");
 
         var avatarId = await SeedAvatar(avatarSvgId);
         var chatId = await SeedChat(chatSvgId);
@@ -254,33 +266,24 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
     }
 
     private async Task<(MediaId MediaId, string BlobId)> CreateMedia(
-        byte[]? blobBytes,
-        string extension,
+        byte[] blobBytes,
         string contentType,
         MediaKind kind,
         string fileName,
         int width = 100,
-        int height = 100)
+        int height = 100,
+        bool deleteBlob = false)
     {
         var mediaId = MediaId.New("test-chat");
-        var blobId = MediaSaver.GetBlobId(mediaId, extension);
-        if (blobBytes is not null) {
-            using var stream = new MemoryStream(blobBytes);
-            await BlobStorage.Write(blobId, stream, contentType, CancellationToken.None);
-        }
-        var media = new MediaFull(mediaId) {
-            Kind = kind,
-            BlobId = blobId,
-            ContentType = contentType,
-            FileName = fileName,
-            Width = width,
-            Height = height,
-            Length = blobBytes?.Length ?? 0,
-        };
-        await Commander.Call(
-            new MediaBackend_Change(mediaId, null, new Change<MediaFull> { Create = media }),
-            true, CancellationToken.None);
-        return (mediaId, blobId);
+        var file = new UploadedStreamFile(
+            fileName,
+            contentType,
+            blobBytes.Length,
+            () => Task.FromResult<Stream>(new MemoryStream(blobBytes)));
+        var mediaRef = await MediaSaver.Save(mediaId, file, new Size(width, height), kind, CancellationToken.None);
+        if (deleteBlob)
+            await BlobStorage.Delete(mediaRef.BlobId, CancellationToken.None);
+        return (mediaId, mediaRef.BlobId);
     }
 
     // Schedules the migration flow with reset.
@@ -306,107 +309,59 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
 
     private async Task<Symbol> SeedAvatar(MediaId mediaId)
     {
-        var avatarId = DbAvatar.IdGenerator.Next();
-        var dbContext = await UsersDbHub.CreateDbContext(readWrite: true, CancellationToken.None).ConfigureAwait(false);
-        await using var _ = dbContext.ConfigureAwait(false);
-        dbContext.Avatars.Add(new DbAvatar {
-            Id = avatarId,
-            Version = 1,
-            UserId = UserId.New().Value,
-            Name = "test",
-            MediaId = mediaId.Value,
-        });
-        await dbContext.SaveChangesAsync(CancellationToken.None).ConfigureAwait(false);
-        return avatarId;
+        var command = new Avatars_Change(
+            Tester.Session,
+            Symbol.Empty,
+            null,
+            new Change<AvatarFull> {
+                Create = new AvatarFull(_account.Id) {
+                    Name = "test",
+                    MediaId = mediaId,
+                },
+            });
+        var avatar = await Commander.Call(command, true, CancellationToken.None);
+        return avatar.Id;
     }
 
     private async Task<ChatId> SeedChat(MediaId mediaId)
     {
-        var dbContext = await ChatDbHub.CreateDbContext(readWrite: true, CancellationToken.None).ConfigureAwait(false);
-        await using var _ = dbContext.ConfigureAwait(false);
-        var chatId = (ChatId)GroupChatId.New();
-        dbContext.Chats.Add(new DbChat {
-            Id = chatId.Value,
-            Version = 1,
-            Title = "test",
-            Kind = ChatKind.Group,
-            MediaId = mediaId.Value,
-            CreatedAt = DateTime.UtcNow,
+        var (chatId, _) = await Tester.CreateChat(diff => diff with {
+            IsPublic = true,
+            MediaId = mediaId,
         });
-        await dbContext.SaveChangesAsync(CancellationToken.None).ConfigureAwait(false);
         return chatId;
     }
 
     private async Task<PlaceId> SeedPlace(MediaId mediaId)
     {
-        var dbContext = await ChatDbHub.CreateDbContext(readWrite: true, CancellationToken.None).ConfigureAwait(false);
-        await using var _ = dbContext.ConfigureAwait(false);
-        var placeId = PlaceId.New();
-        dbContext.Places.Add(new DbPlace {
-            Id = placeId.Value,
-            Version = 1,
-            Title = "test",
-            MediaId = mediaId.Value,
-            CreatedAt = DateTime.UtcNow,
+        var place = await Tester.CreatePlace(diff => diff with {
+            IsPublic = true,
+            MediaId = mediaId,
         });
-        // PlacesBackend.OnChange propagates place updates to the place's root chat and
-        // requires it to exist on Update. Seed it so RepointPlace can run end-to-end.
-        var rootChatId = (ChatId)placeId.RootChatId;
-        dbContext.Chats.Add(new DbChat {
-            Id = rootChatId.Value,
-            Version = 1,
-            Title = "test",
-            Kind = ChatKind.Place,
-            CreatedAt = DateTime.UtcNow,
-        });
-        await dbContext.SaveChangesAsync(CancellationToken.None).ConfigureAwait(false);
-        return placeId;
+        return place.Id;
     }
 
     private async Task SeedChatEntryAttachment(MediaId mediaId)
     {
-        var dbContext = await ChatDbHub.CreateDbContext(readWrite: true, CancellationToken.None).ConfigureAwait(false);
-        await using var _ = dbContext.ConfigureAwait(false);
-        // The migration's IsReferencedOutsideIcons check only filters by MediaId, so the
-        // (otherwise required) entry id can be a placeholder — no FK enforces it.
-        var fakeEntryId = $"{GroupChatId.New().Value}:0:0";
-        dbContext.ChatEntryAttachments.Add(new DbChatEntryAttachment {
-            Id = $"{fakeEntryId}:0",
-            Version = 1,
-            EntryId = fakeEntryId,
-            Index = 0,
-            MediaId = mediaId.Value,
-        });
-        await dbContext.SaveChangesAsync(CancellationToken.None).ConfigureAwait(false);
+        var (chatId, _) = await Tester.CreateChat(diff => diff with { IsPublic = true });
+        await Tester.CreateTextEntry(chatId, "test", mediaId);
     }
 
     private async Task<MediaId?> GetAvatarMediaId(Symbol avatarId, CancellationToken cancellationToken)
     {
-        var dbContext = await UsersDbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _ = dbContext.ConfigureAwait(false);
-        var dbAvatar = await dbContext.Avatars
-            .FirstOrDefaultAsync(x => x.Id == avatarId.Value, cancellationToken)
-            .ConfigureAwait(false);
-        return MediaId.ParseNullable(dbAvatar?.MediaId);
+        var avatar = await Avatars.GetOwn(Tester.Session, avatarId, cancellationToken);
+        return avatar?.MediaId;
     }
 
     private async Task<MediaId?> GetChatMediaId(ChatId chatId, CancellationToken cancellationToken)
     {
-        var dbContext = await ChatDbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _ = dbContext.ConfigureAwait(false);
-        var dbChat = await dbContext.Chats
-            .FirstOrDefaultAsync(x => x.Id == chatId.Value, cancellationToken)
-            .ConfigureAwait(false);
-        return MediaId.ParseNullable(dbChat?.MediaId);
+        var chat = await Tester.Chats.Get(Tester.Session, chatId, cancellationToken);
+        return chat?.MediaId;
     }
 
     private async Task<MediaId?> GetPlaceMediaId(PlaceId placeId, CancellationToken cancellationToken)
     {
-        var dbContext = await ChatDbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _ = dbContext.ConfigureAwait(false);
-        var dbPlace = await dbContext.Places
-            .FirstOrDefaultAsync(x => x.Id == placeId.Value, cancellationToken)
-            .ConfigureAwait(false);
-        return MediaId.ParseNullable(dbPlace?.MediaId);
+        var place = await Tester.Places.Get(Tester.Session, placeId, cancellationToken);
+        return place?.MediaId;
     }
 }
