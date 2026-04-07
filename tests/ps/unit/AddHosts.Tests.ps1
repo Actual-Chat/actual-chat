@@ -154,7 +154,8 @@ Describe "add-hosts.ps1 (unit)" {
         }
     }
 
-    Context "MacOSRootCertStore.Install" {
+    Context "MacOSRootCertStore.Install" -Skip:((Get-CurrentOS) -ne 'macOS') {
+        # `sudo` doesn't exist on Windows, so Pester can't mock it there.
         It "shells out to sudo security add-trusted-cert with the cert path" {
             Mock sudo { }
             [MacOSRootCertStore]::new().Install('/tmp/fake-rootCA.crt')
@@ -166,7 +167,8 @@ Describe "add-hosts.ps1 (unit)" {
         }
     }
 
-    Context "LinuxRootCertStore.Install" {
+    Context "LinuxRootCertStore.Install" -Skip:((Get-CurrentOS) -notin @('Linux', 'Docker', 'WSL')) {
+        # `sudo` doesn't exist on Windows, so Pester can't mock it there.
         It "calls sudo cp then sudo update-ca-certificates" {
             Mock sudo { }
             [LinuxRootCertStore]::new().Install('/tmp/fake-rootCA.crt')
