@@ -37,15 +37,11 @@
         var chat = Chat;
         var chatId = chat.Id;
 
-        var videoStreams = await ChatVideoUI.GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(false);
-        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         var recordingChatId = await ChatVideoUI.GetRecordingChatId(cancellationToken).ConfigureAwait(false);
         var isLocalVideoRecording = recordingChatId == chatId;
+        var isOwnVideoStreaming = await ChatVideoUI.IsOwnVideoStreaming(chatId, cancellationToken).ConfigureAwait(false);
 
-        var isOwnVideoStreaming = ownAuthor != null && videoStreams.Any(s => s.AuthorId == ownAuthor.Id);
-        var areOthersVideoStreaming = videoStreams.Count > (isOwnVideoStreaming ? 1 : 0);
-
-        return new(chat, isOwnVideoStreaming, areOthersVideoStreaming, isLocalVideoRecording);
+        return new(chat, isOwnVideoStreaming, isLocalVideoRecording);
     }
 
     private void OnVideoClick() {
@@ -67,9 +63,8 @@
     public sealed record Model(
         Chat Chat,
         bool IsOwnVideoStreaming,
-        bool AreOthersVideoStreaming,
         bool IsLocalVideoRecording
     ) {
-        public static Model NewLoading(Chat chat) => new(chat, false, false, false);
+        public static Model NewLoading(Chat chat) => new(chat, false, false);
     }
 }

@@ -7,8 +7,7 @@
         searchCls += " on";
     var isThread = chat?.Id.IsThread() ?? false;
     var showBackBtn = isThread || ScreenSize.IsNarrow();
-    var isVideoStreamingEnabled = m.IsVideoStreamingEnabled;
-    var isAnyoneVideoStreaming = isVideoStreamingEnabled && m.IsAnyoneVideoStreaming;
+    var isAnyoneVideoStreaming = m.IsAnyoneVideoStreaming;
     var isPanelVisible = IsRecordingHere || IsListeningHere || isAnyoneVideoStreaming || (m.IsAnyoneTalking && m.AudioState?.ChatId == chat?.Id);
     var isWatchingHere = m.VideoState?.IsWatching == true;
 
@@ -18,14 +17,14 @@
     _lastWatchingChatId = isWatchingHere ? chat?.Id : null;
 
     // Show video panel when IsWatching becomes true
-    if (isVideoStreamingEnabled && !_showVideoPanel && isWatchingHere) {
+    if (!_showVideoPanel && isWatchingHere) {
         _showVideoPanel = true;
         _autoStartRecording = m.VideoState?.IsRecording == true;
         _pendingCameraDeviceId = m.VideoState?.SelectedCameraDeviceId;
         _pendingBlurEnabled = m.VideoState?.IsBackgroundBlurEnabled ?? false;
     }
     // Hide when no longer watching or feature disabled
-    else if (_showVideoPanel && (!isVideoStreamingEnabled || !isWatchingHere)) {
+    else if (_showVideoPanel && !isWatchingHere) {
         _showVideoPanel = false;
         _autoStartRecording = false;
         _pendingCameraDeviceId = null;
@@ -160,12 +159,12 @@
             videoState = await ChatVideoUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
         }
 
-        var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chatId, cancellationToken).ConfigureAwait(false);
+        var isAnyoneVideoStreaming = chatId is not null && await ChatVideoUI.IsAnyoneVideoStreaming(chatId, cancellationToken).ConfigureAwait(false);
 
         var hasSelection = await Hub.SelectionUI.HasSelection.Use(cancellationToken).ConfigureAwait(false);
         var isSearchMode = await Hub.PanelsUI.Right.IsSearchMode.Use(cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
-        var isVideoStreamingEnabled = await Hub.Features.IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
+        var isVideoStreamingEnabled = await ChatVideoUI.IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
         var isVideoPanelCollapsed = await ChatVideoUI.GetIsVideoPanelCollapsed(cancellationToken).ConfigureAwait(false);
         return new() {
             Chat = chat,

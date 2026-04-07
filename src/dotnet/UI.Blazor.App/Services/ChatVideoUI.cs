@@ -56,6 +56,10 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     [ComputeMethod]
     public virtual async Task<ChatVideoState> GetState(ChatId chatId, CancellationToken cancellationToken = default)
     {
+        var isVideoEnabled = await IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
+        if (!isVideoEnabled)
+            return ChatVideoState.None;
+
         var recordingChatId = await _recordingChatId.Use(cancellationToken).ConfigureAwait(false);
         var isRecording = recordingChatId == chatId;
 
@@ -239,13 +243,33 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     [ComputeMethod]
     public virtual async Task<ApiArray<VideoStreamInfo>> GetActiveVideoStreams(ChatId chatId, CancellationToken cancellationToken = default)
     {
-        var isVideoEnabled = await Features.IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
+        var isVideoEnabled = await IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
         if (!isVideoEnabled)
-            return default;
+            return [];
 
         return await LiveVideoStreams
             .List(Session, chatId, cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<int> GetVideoStreamMemberCount(ChatId chatId, CancellationToken cancellationToken = default)
+    {
+        var isEnabled = await IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
+        if (!isEnabled)
+            return 0;
+
+        return await LiveVideoStreams
+            .GetMemberCount(Session, chatId, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<VideoStreamInfo[]> GetRemoteStreams(ChatId chatId, CancellationToken cancellationToken = default)
+    {
+        var videoStreams = await GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(false);
+        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        return videoStreams.Where(s => s.AuthorId != ownAuthor?.Id).ToArray();
     }
 
     [ComputeMethod]
@@ -263,18 +287,6 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     {
         var streams = await GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(false);
         return streams.Count > 0;
-    }
-
-    [ComputeMethod]
-    public virtual async Task<int> GetVideoStreamMemberCount(ChatId chatId, CancellationToken cancellationToken = default)
-    {
-        var isVideoEnabled = await Features.IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
-        if (!isVideoEnabled)
-            return 0;
-
-        return await LiveVideoStreams
-            .GetMemberCount(Session, chatId, cancellationToken)
-            .ConfigureAwait(false);
     }
 
     [ComputeMethod]
@@ -298,4 +310,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         return videoStreams.Any(s => s.AuthorId != ownAuthor?.Id);
     }
+
+    public ValueTask<bool> IsVideoStreamingEnabled(CancellationToken cancellationToken)
+        => Features.IsVideoStreamingEnabled(cancellationToken);
 }

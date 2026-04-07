@@ -201,7 +201,7 @@
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
 
-        BlazorRef?.DisposeSilently();
+        BlazorRef.DisposeSilently();
         BlazorRef = null!;
 
         await InvokeAsync(StateHasChanged);
@@ -346,12 +346,7 @@
         if (activeStreams.Count == 0)
             return new Model(isRightPanelVisible, [], videoState.IsRecording, audioState.IsRecording, audioState.IsListening, 0, chatId, emptyNames, null, null);
 
-        // Filter out own stream (shown in local preview)
-        var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken);
-        var remoteStreams = activeStreams
-            .Where(s => ownAuthor?.Id != s.AuthorId)
-            .ToArray();
-
+        var remoteStreams = await ChatVideoUI.GetRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
 
         // Resolve author names for remote streams
         var authorNames = new Dictionary<AuthorId, string>();
@@ -372,7 +367,7 @@
         var videoAuthorIds = remoteStreams.Select(s => s.AuthorId).ToHashSet();
         if (focusedAuthorId != null && !videoAuthorIds.Contains(focusedAuthorId))
             focusedAuthorId = null;
-        focusedAuthorId ??= remoteStreams.Length > 0 ? remoteStreams[0].AuthorId : null;
+        focusedAuthorId ??= remoteStreams.FirstOrDefault()?.AuthorId;
 
         // Get previous focused speaker and validate
         var previousFocusedAuthorId = await ChatVideoUI.GetPreviousFocusedSpeakerId(cancellationToken)

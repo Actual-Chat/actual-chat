@@ -11,7 +11,6 @@
         return;
 
     var chat = Chat;
-    var chatId = chat?.Id;
     var iconSize = ScreenSize.IsNarrow() ? 6 : 8;
     var isParticipating = IsListening || IsRecordingHere || IsVideoRecordingHere;
     var isActive = m.IsAnyoneTalking;
@@ -35,9 +34,9 @@
         </div>
     }
     @* Talking heads - shown when anyone is talking *@
-    @if (m.IsAnyoneTalking && chatId is not null) {
+    @if (m.IsAnyoneTalking && chat is not null) {
         <ChatActivities
-            @key="@chatId.Value"
+            @key="@chat.Id.Value"
             Chat="@chat"
             MaxCount="@MaxCount"
             IsListening="@IsListening"/>
@@ -178,24 +177,20 @@
 
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
         var isAnyoneTalking = await LiveStreamUI.IsAnyoneStreaming(chatId, cancellationToken).ConfigureAwait(false);
-        var isVideoStreamingEnabled = await Hub.Features.IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
-        var isAnyoneVideoStreaming = isVideoStreamingEnabled
-            && await ChatVideoUI.IsAnyoneVideoStreaming(chatId, cancellationToken).ConfigureAwait(false);
-        var videoStreamMemberCount = isAnyoneVideoStreaming
-            ? await ChatVideoUI.GetVideoStreamMemberCount(chatId, cancellationToken).ConfigureAwait(false)
-            : 0;
+        var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chatId, cancellationToken).ConfigureAwait(false);
+        var videoStreamMemberCount = await ChatVideoUI.GetVideoStreamMemberCount(chatId, cancellationToken).ConfigureAwait(false);
         var stopListeningAt = audioState.IsListening
             ? await ChatAudioUI.GetStopListeningAt(chatId, cancellationToken).ConfigureAwait(false)
             : null;
         if (stopListeningAt.HasValue) {
             var remaining = (stopListeningAt.Value - Hub.Clocks.CpuClock.Now).TotalSeconds;
             if (remaining > 30)
-                Computed.GetCurrent()?.Invalidate(TimeSpan.FromSeconds(remaining - 30));
+                Computed.GetCurrent().Invalidate(TimeSpan.FromSeconds(remaining - 30));
             else if (remaining > 0) {
                 // Align invalidation to the next second boundary for consistent countdown ticks
                 var fractional = remaining - Math.Floor(remaining);
                 var delay = fractional > 0.05 ? fractional : fractional + 1.0;
-                Computed.GetCurrent()?.Invalidate(TimeSpan.FromSeconds(delay));
+                Computed.GetCurrent().Invalidate(TimeSpan.FromSeconds(delay));
             }
         }
 

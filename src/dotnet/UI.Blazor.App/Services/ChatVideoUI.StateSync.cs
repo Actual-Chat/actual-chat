@@ -67,7 +67,7 @@ public partial class ChatVideoUI
     [ComputeMethod]
     protected virtual async Task<ActiveSpeakerState> GetActiveSpeakerState(CancellationToken cancellationToken)
     {
-        var isVideoEnabled = await Hub.Features.IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
+        var isVideoEnabled = await IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
         if (!isVideoEnabled)
             return ActiveSpeakerState.None;
 
