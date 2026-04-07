@@ -57,6 +57,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{9E3D1D2A-7BF6-45
 		.gitattributes = .gitattributes
 		.gitignore = .gitignore
 		add-hosts.cmd = add-hosts.cmd
+		add-hosts.ps1 = add-hosts.ps1
 		clean.cmd = clean.cmd
 		Directory.Build.props = Directory.Build.props
 		Directory.Build.targets = Directory.Build.targets
