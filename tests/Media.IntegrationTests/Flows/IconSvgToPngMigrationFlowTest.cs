@@ -40,11 +40,11 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         await AssertFlow(async ct => {
             var newMediaId = await GetAvatarMediaId(avatarId, ct);
             newMediaId.Should().NotBeNull();
-            newMediaId!.Value.Should().NotBe(svgMediaId.Value);
+            newMediaId.Value.Should().NotBe(svgMediaId.Value);
 
             var pngMedia = await MediaBackend.GetFull(newMediaId, ct);
             pngMedia.Should().NotBeNull();
-            pngMedia!.ContentType.Should().Be("image/png");
+            pngMedia.ContentType.Should().Be("image/png");
             pngMedia.BlobId.Should().EndWith(".png");
             pngMedia.Width.Should().Be(Constants.Attachments.MaxIconSize);
             pngMedia.Height.Should().Be(Constants.Attachments.MaxIconSize);
@@ -74,7 +74,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
             newMediaId.Should().NotBeNull();
             var pngMedia = await MediaBackend.GetFull(newMediaId, ct);
             pngMedia.Should().NotBeNull();
-            var replacesMediaId = pngMedia!.Metadata[ReplacesMediaIdKey];
+            var replacesMediaId = pngMedia.Metadata[ReplacesMediaIdKey];
             replacesMediaId.Should().Be(svgMediaId.Value);
         });
     }
@@ -88,7 +88,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         await SeedAvatar(svgMediaId);
         var originalSvg = await MediaBackend.GetFull(svgMediaId, CancellationToken.None);
         originalSvg.Should().NotBeNull();
-        var originalVersion = originalSvg!.Version;
+        var originalVersion = originalSvg.Version;
 
         // act
         await RunFlow();
@@ -97,7 +97,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         await AssertFlow(async ct => {
             var stillSvg = await MediaBackend.GetFull(svgMediaId, ct);
             stillSvg.Should().NotBeNull();
-            stillSvg!.BlobId.Should().Be(svgBlobId);
+            stillSvg.BlobId.Should().Be(svgBlobId);
             stillSvg.ContentType.Should().Be("image/svg+xml");
             stillSvg.FileName.Should().Be("avatar.svg");
             stillSvg.Width.Should().Be(100);
@@ -133,7 +133,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         await AssertFlow(async ct => {
             var flow = await FlowHub.TryGet<IconSvgToPngMigrationFlow>("", ct);
             flow.Should().NotBeNull();
-            flow!.ConvertedCount.Should().Be(0);
+            flow.ConvertedCount.Should().Be(0);
 
             var mediaIdAfterSecondRun = await GetAvatarMediaId(avatarId, ct);
             mediaIdAfterSecondRun.Should().Be(mediaIdAfterFirstRun);
@@ -159,7 +159,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
 
             var stillSvg = await MediaBackend.GetFull(svgMediaId, ct);
             stillSvg.Should().NotBeNull();
-            stillSvg!.BlobId.Should().Be(svgBlobId);
+            stillSvg.BlobId.Should().Be(svgBlobId);
             stillSvg.ContentType.Should().Be("image/svg+xml");
 
             var flow = await FlowHub.TryGet<IconSvgToPngMigrationFlow>("", ct);
@@ -187,7 +187,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
 
             var unchanged = await MediaBackend.GetFull(pngMediaId, ct);
             unchanged.Should().NotBeNull();
-            unchanged!.ContentType.Should().Be("image/png");
+            unchanged.ContentType.Should().Be("image/png");
             unchanged.BlobId.Should().Be(pngBlobId);
         });
     }
@@ -210,7 +210,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
 
             var stillSvg = await MediaBackend.GetFull(svgMediaId, ct);
             stillSvg.Should().NotBeNull();
-            stillSvg!.ContentType.Should().Be("image/svg+xml");
+            stillSvg.ContentType.Should().Be("image/svg+xml");
             stillSvg.BlobId.Should().Be(svgBlobId);
         });
     }
@@ -246,10 +246,10 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
     private async Task AssertRepointedToPng(MediaId originalSvgId, MediaId? newMediaId, CancellationToken ct)
     {
         newMediaId.Should().NotBeNull();
-        newMediaId!.Value.Should().NotBe(originalSvgId.Value);
+        newMediaId.Value.Should().NotBe(originalSvgId.Value);
         var pngMedia = await MediaBackend.GetFull(newMediaId, ct);
         pngMedia.Should().NotBeNull();
-        pngMedia!.ContentType.Should().Be("image/png");
+        pngMedia.ContentType.Should().Be("image/png");
         pngMedia.BlobId.Should().EndWith(".png");
     }
 
