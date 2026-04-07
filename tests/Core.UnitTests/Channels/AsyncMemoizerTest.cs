@@ -809,12 +809,9 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         var memoizer = source.Memoize(cancellationToken: CancellationToken.None);
 
         // Write 20 items to trigger growth from initial 16 → 32.
-        // The early item will be in the old buffer AND copied to the new buffer.
-        // After growth, old buffer references should be cleared.
-        var earlyItem = new object();
-        var earlyWeakRef = new WeakReference(earlyItem);
-        source.Writer.TryWrite(earlyItem);
-        earlyItem = null!; // Drop our strong reference
+        // Item creation is in a non-async helper to avoid async state machine
+        // fields retaining the object reference during GC.
+        var earlyWeakRef = WriteEarlyItemAndGetWeakRef(source);
         for (var i = 1; i < 20; i++)
             source.Writer.TryWrite(new object());
         await SpinWaitForBuffered(memoizer, 20);
@@ -1029,6 +1026,15 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
             await Task.Yield();
         }
         throw new TimeoutException($"Timed out waiting for {expectedCount} buffered items, got {memoizer.BufferedCount}");
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static WeakReference WriteEarlyItemAndGetWeakRef(Channel<object> channel)
+    {
+        var item = new object();
+        var weakRef = new WeakReference(item);
+        channel.Writer.TryWrite(item);
+        return weakRef;
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
