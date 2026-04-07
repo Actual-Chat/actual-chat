@@ -33,15 +33,33 @@ Describe "add-hosts.ps1 (e2e)" {
     Context "Configure-LocalEnvHosts" {
         # Cross-platform e2e tests for the orchestrator. We do NOT pin
         # Get-CurrentOS - the real factory dispatches to whichever subclass
-        # matches the host OS, and assertions branch on $script:os. The only
-        # mocks are at the OS-side-effect boundary so the host stays clean:
-        # `sudo` (mac/linux), `Start-Process` (windows certutil), `dotnet`
-        # (would mutate the dev cert), `Update-HostEntries` / `Update-LocalIP`
-        # (would mutate /etc/hosts and .env).
+        # matches the host OS, and assertions branch on $script:os.
+        #
+        # Update-HostEntries AND Update-LocalIP both run for real:
+        #   - Get-HostsFilePath is mocked to return a temp file, so the real
+        #     Update-HostEntries writes its entries to a user-writable file
+        #     (no sudo / UAC). Common.ps1's direct-write-then-elevate logic
+        #     means the temp-file write succeeds without elevation.
+        #   - Push-Location to a temp dir redirects Update-LocalIP's default
+        #     `./.env` target to the same temp dir.
+        #
+        # Mocks are kept to the minimum needed to keep the host clean:
+        #   - Get-HostsFilePath: redirected to a temp hosts file (above).
+        #   - Get-LocalIP: stubbed to a deterministic LAN IP so the .env
+        #     assertion is independent of the host's network config.
+        #   - dotnet ... --trust: mutates the user's dev cert. Only the
+        #     --trust invocation is intercepted; --check runs for real.
+        #   - sudo (Mac/Linux): would actually elevate.
+        #   - Start-Process (Windows): would prompt UAC for certutil.
         BeforeEach {
-            Mock Update-HostEntries { }
-            Mock Update-LocalIP { }
-            Mock dotnet { $global:LASTEXITCODE = 0 }
+            $script:tempDir = New-Item -ItemType Directory -Path ([System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "addhosts-e2e-$(Get-Random)"))
+            $script:tempHostsFile = Join-Path $script:tempDir 'hosts'
+            Set-Content -Path $script:tempHostsFile -Value '' -NoNewline
+            Push-Location $script:tempDir
+
+            Mock Get-HostsFilePath { $script:tempHostsFile }
+            Mock Get-LocalIP { '192.168.42.42' }
+            Mock dotnet { $global:LASTEXITCODE = 0 } -ParameterFilter { ($args -join ' ') -match '--trust' }
             if ($script:os -eq 'Windows') {
                 Mock Start-Process { [pscustomobject]@{ ExitCode = 0 } }
             } else {
@@ -52,16 +70,29 @@ Describe "add-hosts.ps1 (e2e)" {
             }
         }
 
-        It "updates hosts entries twice and LOCAL_IP once" {
-            Configure-LocalEnvHosts
-            Should -Invoke Update-HostEntries -Times 2 -Exactly
-            Should -Invoke Update-LocalIP -Times 1 -Exactly
+        AfterEach {
+            Pop-Location -ErrorAction SilentlyContinue
+            if ($script:tempDir) {
+                Remove-Item $script:tempDir -Recurse -Force -ErrorAction SilentlyContinue
+            }
         }
 
-        It "calls voxt.ai and actual.chat host sets" {
+        It "writes LOCAL_IP to .env in cwd via real Update-LocalIP" {
             Configure-LocalEnvHosts
-            Should -Invoke Update-HostEntries -ParameterFilter { $Hostnames -contains 'local.voxt.ai' }
-            Should -Invoke Update-HostEntries -ParameterFilter { $Hostnames -contains 'local.actual.chat' }
+            $envFile = Join-Path $script:tempDir '.env'
+            $envFile | Should -Exist
+            Get-Content $envFile -Raw | Should -Match 'LOCAL_IP=192\.168\.42\.42'
+        }
+
+        It "writes voxt.ai and actual.chat host entries to the hosts file via real Update-HostEntries" {
+            Configure-LocalEnvHosts
+            $hostsContent = Get-Content $script:tempHostsFile -Raw
+            $hostsContent | Should -Match '192\.168\.42\.42\s+local\.voxt\.ai'
+            $hostsContent | Should -Match '192\.168\.42\.42\s+media\.local\.voxt\.ai'
+            $hostsContent | Should -Match '192\.168\.42\.42\s+cdn\.local\.voxt\.ai'
+            $hostsContent | Should -Match '192\.168\.42\.42\s+local\.actual\.chat'
+            $hostsContent | Should -Match '192\.168\.42\.42\s+media\.local\.actual\.chat'
+            $hostsContent | Should -Match '192\.168\.42\.42\s+cdn\.local\.actual\.chat'
         }
 
         It "with -Force, runs root cert install via the OS-appropriate command" {
@@ -86,16 +117,9 @@ Describe "add-hosts.ps1 (e2e)" {
             Should -Invoke dotnet -ParameterFilter { ($args -join ' ') -eq 'dev-certs https --trust' }
         }
 
-        It "calls dotnet dev-certs --check when not forced" {
-            Configure-LocalEnvHosts
-            Should -Invoke dotnet -ParameterFilter { ($args -join ' ') -match '^dev-certs https --check' }
-        }
-
         It "when dotnet --check fails, runs dotnet --trust" {
-            Mock dotnet {
-                if (($args -join ' ') -match '--check') { $global:LASTEXITCODE = 1 }
-                else { $global:LASTEXITCODE = 0 }
-            }
+            # Override the unfiltered --check fall-through with a non-zero exit.
+            Mock dotnet { $global:LASTEXITCODE = 1 } -ParameterFilter { ($args -join ' ') -match '--check' }
             Configure-LocalEnvHosts
             Should -Invoke dotnet -ParameterFilter { ($args -join ' ') -eq 'dev-certs https --trust' }
         }
@@ -103,7 +127,7 @@ Describe "add-hosts.ps1 (e2e)" {
         It "when cert file is missing, writes error and skips installs" {
             Mock Test-Path { $false } -ParameterFilter { $Path -match 'rootCA\.crt$' }
             Configure-LocalEnvHosts -ErrorAction SilentlyContinue
-            Should -Invoke dotnet -Times 0
+            Should -Invoke dotnet -Times 0 -ParameterFilter { ($args -join ' ') -match '--trust' }
             if ($script:os -eq 'Windows') {
                 Should -Invoke Start-Process -Times 0
             } else {

@@ -236,8 +236,10 @@ function Update-HostEntries {
         return $IP
     }
 
-    # Build the update script
-    $script = ""
+    # Build the update script. ErrorActionPreference=Stop so file-system
+    # errors (e.g. permission denied on /etc/hosts) become terminating
+    # exceptions the outer try/catch can handle.
+    $script = "`$ErrorActionPreference='Stop'; "
     if ($needsUpdate) {
         $patterns = ($Hostnames | ForEach-Object { [regex]::Escape($_) }) -join '|'
         $script += "`$content = Get-Content '$hostsFile' | Where-Object { `$_ -notmatch '(?<=\s)($patterns)(?=\s|$)' }; "
@@ -246,11 +248,15 @@ function Update-HostEntries {
     $newEntries = $entriesToAdd -join "`n"
     $script += "Add-Content '$hostsFile' `"``n$newEntries`""
 
-    if ((Get-CurrentOS) -eq "Windows") {
-        try {
-            Invoke-Expression $script
-            Write-Host "Updated hosts file"
-        } catch {
+    # Try a direct write first - it succeeds when the hosts file is
+    # user-writable (e.g. tests redirecting Get-HostsFilePath to a temp file)
+    # and avoids unnecessary elevation prompts. Fall back to OS-appropriate
+    # elevation only on permission failure.
+    try {
+        Invoke-Expression $script
+        Write-Host "Updated hosts file"
+    } catch {
+        if ((Get-CurrentOS) -eq "Windows") {
             Write-Host "Requesting elevation to update hosts file..."
             try {
                 Start-Process powershell -Verb RunAs -ArgumentList "-NoProfile -Command $script" -Wait -ErrorAction Stop
@@ -259,21 +265,21 @@ function Update-HostEntries {
                 Write-Host "Could not update hosts file. Add manually:" -ForegroundColor Yellow
                 $entriesToAdd | ForEach-Object { Write-Host $_ }
             }
-        }
-    } else {
-        Write-Host "Updating hosts file (sudo required)..."
-        $tempFile = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "update-hosts-$(Get-Random).ps1")
-        try {
-            Set-Content $tempFile $script -NoNewline
-            sudo pwsh -NoProfile -File $tempFile
-            if ($LASTEXITCODE -eq 0) {
-                Write-Host "Updated hosts file"
-            } else {
-                Write-Host "Could not update hosts file. Add manually:" -ForegroundColor Yellow
-                $entriesToAdd | ForEach-Object { Write-Host $_ }
+        } else {
+            Write-Host "Updating hosts file (sudo required)..."
+            $tempFile = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "update-hosts-$(Get-Random).ps1")
+            try {
+                Set-Content $tempFile $script -NoNewline
+                sudo pwsh -NoProfile -File $tempFile
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Host "Updated hosts file (via sudo)"
+                } else {
+                    Write-Host "Could not update hosts file. Add manually:" -ForegroundColor Yellow
+                    $entriesToAdd | ForEach-Object { Write-Host $_ }
+                }
+            } finally {
+                Remove-Item $tempFile -ErrorAction SilentlyContinue
             }
-        } finally {
-            Remove-Item $tempFile -ErrorAction SilentlyContinue
         }
     }
 
