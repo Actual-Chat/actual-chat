@@ -68,6 +68,8 @@ public static class TestAppHostFactory
                         (x => x.BaseUri, serverUrls),
                         (x => x.MeshLockSubspace, options.MeshLockSubspace),
                         (x => x.MeshLockOptionsPreset, options.MeshLockOptionsPreset));
+                // Ensure random port overrides any BasePort from .env
+                cfg.AddInMemoryCollection([new(WebHostDefaults.ServerUrlsKey, serverUrls)]);
 
                 // Overrides from options
                 options.ConfigureHost?.Invoke(ctx, cfg);
