@@ -190,14 +190,6 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         if (svg is null || !svg.BlobId.EndsWith(".svg"))
             return false;
 
-        // Defensive: refuse to repoint if some attachment table also references this media id.
-        // We only rewrite Avatar/Chat/Place references; leaving an attachment dangling would
-        // be a real bug. In practice icons and attachments don't share MediaIds.
-        if (await IsReferencedOutsideIcons(svgMediaId, cancellationToken).ConfigureAwait(false)) {
-            Console.LogWarning($"Skipping {svgMediaId.Value}: referenced outside icon tables");
-            return false;
-        }
-
         // 1. Allocate a new MediaId in the same scope and rasterize the SVG into a new PNG blob.
         var pngMediaId = MediaId.New(svgMediaId.Scope);
         var pngBlob = await ConvertSvgBlobToPng(pngMediaId, svg.BlobId, cancellationToken).ConfigureAwait(false);
@@ -225,6 +217,9 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         // 3. Repoint the host entity (Avatar / Chat / Place) at the new PNG MediaId
         //    via the appropriate *Backend_Change command. The original SVG Media row
         //    and SVG blob remain untouched and form a self-contained backup.
+        //    A future cleanup flow can drop SVG rows that are no longer referenced
+        //    anywhere (icons or chat-entry attachments) using the ReplacesMediaId
+        //    metadata as the starting set.
         await RepointReference(item, pngMediaId, cancellationToken).ConfigureAwait(false);
 
         return true;
@@ -278,17 +273,6 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         return Commander.Call(
             new PlacesBackend_Change(placeId, null, new Change<PlaceDiff> { Update = diff }),
             true, cancellationToken);
-    }
-
-    private async Task<bool> IsReferencedOutsideIcons(MediaId mediaId, CancellationToken cancellationToken)
-    {
-        var db = await ChatDbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _ = db.ConfigureAwait(false);
-
-        var sid = mediaId.Value;
-        return await db.ChatEntryAttachments
-            .AnyAsync(x => x.MediaId == sid || x.ThumbnailMediaId == sid, cancellationToken)
-            .ConfigureAwait(false);
     }
 
     private async Task<PngBlobInfo?> ConvertSvgBlobToPng(MediaId mediaId, string svgBlobId, CancellationToken cancellationToken)
