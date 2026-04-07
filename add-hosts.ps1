@@ -1,113 +1,130 @@
 #!/usr/bin/env pwsh
-# Functions to configure the hosts file, the LOCAL_IP entry in .env, and trust
-# dev SSL certificates. Idempotent: skips work that's already done. Only
-# requests admin (Windows) or sudo (macOS/Linux) when an action actually needs
-# it.
+# Classes and functions to configure the hosts file, the LOCAL_IP entry in
+# .env, and trust dev SSL certificates. Idempotent: skips work that's already
+# done. Only requests admin (Windows) or sudo (macOS/Linux) when an action
+# actually needs it.
 #
-# This file contains only function definitions. Depends on scripts/Common.ps1
-# being dot-sourced into the same scope. To use it:
+# This file contains only class and function definitions. Depends on
+# scripts/Common.ps1 being dot-sourced into the same scope. To use it:
 #
 #     pwsh -NoProfile -c ". ./scripts/Common.ps1; . ./add-hosts.ps1; Configure-LocalEnvHosts"
 
-function Get-CertThumbprint {
-    [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$Path)
-    $cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($Path)
-    return $cert.Thumbprint
+# --- Root CA trust store -----------------------------------------------------
+
+class RootCertStore {
+    static [string] GetThumbprint([string]$path) {
+        $cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($path)
+        return $cert.Thumbprint
+    }
+
+    static [RootCertStore] ForCurrentOS() {
+        switch (Get-CurrentOS) {
+            'Windows' { return [WindowsRootCertStore]::new() }
+            'macOS'   { return [MacOSRootCertStore]::new() }
+            default   { return [LinuxRootCertStore]::new() }
+        }
+        return $null  # unreachable
+    }
+
+    [bool] IsInstalled([string]$path) {
+        throw "Not implemented - use a platform-specific subclass"
+    }
+
+    [void] Install([string]$path) {
+        throw "Not implemented - use a platform-specific subclass"
+    }
 }
 
-function Test-RootCertInstalled {
-    [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$Path)
+class WindowsRootCertStore : RootCertStore {
+    [bool] IsInstalled([string]$path) {
+        $thumbprint = [RootCertStore]::GetThumbprint($path)
+        $store = [System.Security.Cryptography.X509Certificates.X509Store]::new('Root', 'LocalMachine')
+        try {
+            $store.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadOnly)
+            return [bool]($store.Certificates | Where-Object { $_.Thumbprint -ieq $thumbprint })
+        } finally {
+            $store.Close()
+        }
+    }
 
-    switch (Get-CurrentOS) {
-        'Windows' {
-            $thumbprint = Get-CertThumbprint -Path $Path
-            $store = [System.Security.Cryptography.X509Certificates.X509Store]::new('Root', 'LocalMachine')
-            try {
-                $store.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadOnly)
-                return [bool]($store.Certificates | Where-Object { $_.Thumbprint -ieq $thumbprint })
-            } finally {
-                $store.Close()
+    [void] Install([string]$path) {
+        Write-Host "Trusting root certificate (admin required)..."
+        try {
+            $proc = Start-Process certutil `
+                -ArgumentList @('-addstore', '-f', 'ROOT', "`"$path`"") `
+                -Verb RunAs -Wait -PassThru -ErrorAction Stop
+            if ($proc.ExitCode -ne 0) {
+                Write-Host "certutil exited with code $($proc.ExitCode)" -ForegroundColor Yellow
+            }
+        } catch {
+            Write-Host "Could not elevate to install root certificate." -ForegroundColor Yellow
+            Write-Host "Run manually as admin:" -ForegroundColor Yellow
+            Write-Host "  certutil -addstore -f ROOT `"$path`""
+        }
+    }
+}
+
+class MacOSRootCertStore : RootCertStore {
+    [bool] IsInstalled([string]$path) {
+        $thumbprint = [RootCertStore]::GetThumbprint($path)
+        $found = security find-certificate -a -Z /Library/Keychains/System.keychain 2>$null |
+            Select-String -Pattern "SHA-1 hash: $thumbprint" -SimpleMatch -Quiet
+        return [bool]$found
+    }
+
+    [void] Install([string]$path) {
+        Write-Host "Trusting root certificate (sudo required)..."
+        sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain $path
+    }
+}
+
+class LinuxRootCertStore : RootCertStore {
+    # Linux / WSL / Docker
+    [bool] IsInstalled([string]$path) {
+        $destPath = '/usr/local/share/ca-certificates/rootCA.crt'
+        if (-not (Test-Path $destPath)) { return $false }
+        return (Get-FileHash $path -Algorithm SHA256).Hash -eq (Get-FileHash $destPath -Algorithm SHA256).Hash
+    }
+
+    [void] Install([string]$path) {
+        Write-Host "Trusting root certificate (sudo required)..."
+        sudo cp $path /usr/local/share/ca-certificates/rootCA.crt
+        sudo update-ca-certificates
+    }
+}
+
+# --- .NET dev cert -----------------------------------------------------------
+
+class DotnetDevCert {
+    [bool] IsTrusted() {
+        # `--check --trust` returns 0 only if a trusted dev cert exists.
+        # On Linux, --trust is unsupported, so fall back to existence check.
+        if ((Get-CurrentOS) -in @('Windows', 'macOS')) {
+            & dotnet dev-certs https --check --trust *> $null
+        } else {
+            & dotnet dev-certs https --check *> $null
+        }
+        return $LASTEXITCODE -eq 0
+    }
+
+    [void] Install() {
+        if ((Get-CurrentOS) -eq 'Windows') {
+            $pfxPath = Join-Path $env:USERPROFILE '.aspnet/https/aspnetapp.pfx'
+            $pfxDir = Split-Path -Parent $pfxPath
+            if (-not (Test-Path $pfxDir)) {
+                New-Item -ItemType Directory -Path $pfxDir -Force | Out-Null
+            }
+            if (-not (Test-Path $pfxPath)) {
+                Write-Host "Exporting dev cert PFX to $pfxPath..."
+                & dotnet dev-certs https -ep $pfxPath -p crypticpassword
             }
         }
-        'macOS' {
-            $thumbprint = Get-CertThumbprint -Path $Path
-            $found = security find-certificate -a -Z /Library/Keychains/System.keychain 2>$null |
-                Select-String -Pattern "SHA-1 hash: $thumbprint" -SimpleMatch -Quiet
-            return [bool]$found
-        }
-        default {
-            # Linux / WSL / Docker
-            $destPath = '/usr/local/share/ca-certificates/rootCA.crt'
-            if (-not (Test-Path $destPath)) { return $false }
-            return (Get-FileHash $Path -Algorithm SHA256).Hash -eq (Get-FileHash $destPath -Algorithm SHA256).Hash
-        }
+        Write-Host "Installing dotnet dev-certs (--trust)..."
+        & dotnet dev-certs https --trust
     }
 }
 
-function Install-RootCert {
-    [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$Path)
-
-    switch (Get-CurrentOS) {
-        'Windows' {
-            Write-Host "Trusting root certificate (admin required)..."
-            try {
-                $proc = Start-Process certutil `
-                    -ArgumentList @('-addstore', '-f', 'ROOT', "`"$Path`"") `
-                    -Verb RunAs -Wait -PassThru -ErrorAction Stop
-                if ($proc.ExitCode -ne 0) {
-                    Write-Host "certutil exited with code $($proc.ExitCode)" -ForegroundColor Yellow
-                }
-            } catch {
-                Write-Host "Could not elevate to install root certificate." -ForegroundColor Yellow
-                Write-Host "Run manually as admin:" -ForegroundColor Yellow
-                Write-Host "  certutil -addstore -f ROOT `"$Path`""
-            }
-        }
-        'macOS' {
-            Write-Host "Trusting root certificate (sudo required)..."
-            sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain $Path
-        }
-        default {
-            Write-Host "Trusting root certificate (sudo required)..."
-            sudo cp $Path /usr/local/share/ca-certificates/rootCA.crt
-            sudo update-ca-certificates
-        }
-    }
-}
-
-function Test-DotnetDevCertTrusted {
-    [CmdletBinding()]
-    param()
-    # `--check --trust` returns 0 only if a trusted dev cert exists.
-    # On Linux, --trust is unsupported, so fall back to existence check.
-    if ((Get-CurrentOS) -in @('Windows', 'macOS')) {
-        & dotnet dev-certs https --check --trust *> $null
-    } else {
-        & dotnet dev-certs https --check *> $null
-    }
-    return $LASTEXITCODE -eq 0
-}
-
-function Install-DotnetDevCert {
-    [CmdletBinding()]
-    param()
-    if ((Get-CurrentOS) -eq 'Windows') {
-        $pfxPath = Join-Path $env:USERPROFILE '.aspnet/https/aspnetapp.pfx'
-        $pfxDir = Split-Path -Parent $pfxPath
-        if (-not (Test-Path $pfxDir)) {
-            New-Item -ItemType Directory -Path $pfxDir -Force | Out-Null
-        }
-        if (-not (Test-Path $pfxPath)) {
-            Write-Host "Exporting dev cert PFX to $pfxPath..."
-            & dotnet dev-certs https -ep $pfxPath -p crypticpassword
-        }
-    }
-    Write-Host "Installing dotnet dev-certs (--trust)..."
-    & dotnet dev-certs https --trust
-}
+# --- Orchestrator ------------------------------------------------------------
 
 function Configure-LocalEnvHosts {
     [CmdletBinding()]
@@ -129,17 +146,19 @@ function Configure-LocalEnvHosts {
         return
     }
 
-    if (-not $Force -and (Test-RootCertInstalled -Path $certPath)) {
+    $rootStore = [RootCertStore]::ForCurrentOS()
+    if (-not $Force -and $rootStore.IsInstalled($certPath)) {
         Write-Host "Root certificate already trusted - skipping"
     } else {
-        Install-RootCert -Path $certPath
+        $rootStore.Install($certPath)
     }
 
     # 3. .NET dev cert
-    if (-not $Force -and (Test-DotnetDevCertTrusted)) {
+    $devCert = [DotnetDevCert]::new()
+    if (-not $Force -and $devCert.IsTrusted()) {
         Write-Host "dotnet dev-certs already trusted - skipping"
     } else {
-        Install-DotnetDevCert
+        $devCert.Install()
     }
 
     Write-Host "Done."

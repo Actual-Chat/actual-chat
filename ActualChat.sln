@@ -415,6 +415,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{BA67
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ps", "ps", "{E4F7B3A1-6C2D-4E8F-9A1B-3D5C7E9F0B2A}"
 	ProjectSection(SolutionItems) = preProject
+		tests\ps\AddHosts.Tests.ps1 = tests\ps\AddHosts.Tests.ps1
 		tests\ps\Common.Tests.ps1 = tests\ps\Common.Tests.ps1
 		tests\ps\c-audio.Tests.ps1 = tests\ps\c-audio.Tests.ps1
 	EndProjectSection
