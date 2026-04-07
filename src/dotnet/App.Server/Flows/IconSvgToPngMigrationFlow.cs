@@ -111,7 +111,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             .Select(x => new { x.Id, x.MediaId })
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return rows.Select(x => new UsedMedia(x.Id, x.MediaId, false)).ToList();
+        return rows.Select(x => new UsedMedia(x.Id, MediaId.Parse(x.MediaId), false)).ToList();
     }
 
     private async Task<List<UsedMedia>> GetChatBatch(CancellationToken cancellationToken)
@@ -131,7 +131,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             .Select(x => new { x.Id, x.MediaId })
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return rows.Select(x => new UsedMedia(x.Id, x.MediaId, false)).ToList();
+        return rows.Select(x => new UsedMedia(x.Id, MediaId.Parse(x.MediaId), false)).ToList();
     }
 
     private async Task<List<UsedMedia>> GetPlaceBatch(CancellationToken cancellationToken)
@@ -156,9 +156,9 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         var result = new List<UsedMedia>();
         foreach (var p in places) {
             if (!p.MediaId.IsNullOrEmpty())
-                result.Add(new UsedMedia(p.Id, p.MediaId, false));
+                result.Add(new UsedMedia(p.Id, MediaId.Parse(p.MediaId), false));
             if (!p.BackgroundMediaId.IsNullOrEmpty())
-                result.Add(new UsedMedia(p.Id, p.BackgroundMediaId, true));
+                result.Add(new UsedMedia(p.Id, MediaId.Parse(p.BackgroundMediaId), true));
         }
         return result;
     }
@@ -185,7 +185,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
 
     private async Task<bool> ProcessOne(UsedMedia item, CancellationToken cancellationToken)
     {
-        var svg = await MediaBackend.GetFull(MediaId.Parse(item.MediaId), cancellationToken).ConfigureAwait(false);
+        var svg = await MediaBackend.GetFull(item.MediaId, cancellationToken).ConfigureAwait(false);
         if (svg is null || !svg.BlobId.EndsWith(".svg"))
             return false;
 
@@ -219,52 +219,52 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         // NOTE: A future cleanup flow can drop SVG rows that are no longer referenced
         //    anywhere (icons or chat-entry attachments) using the ReplacesMediaId
         //    metadata as the starting set.
-        await RepointReference(item, pngMediaId, cancellationToken).ConfigureAwait(false);
+        await RepointReference(item with { MediaId = pngMediaId }, cancellationToken).ConfigureAwait(false);
 
         return true;
     }
 
-    private Task RepointReference(UsedMedia item, MediaId pngMediaId, CancellationToken cancellationToken)
+    private Task RepointReference(UsedMedia item, CancellationToken cancellationToken)
         => Phase switch {
-            MigrationPhase.Avatars => RepointAvatar(item.EntityId, pngMediaId, cancellationToken),
-            MigrationPhase.Chats => RepointChat(item.EntityId, pngMediaId, cancellationToken),
-            MigrationPhase.Places => RepointPlace(item.EntityId, item.IsBackground, pngMediaId, cancellationToken),
+            MigrationPhase.Avatars => RepointAvatar(item, cancellationToken),
+            MigrationPhase.Chats => RepointChat(item, cancellationToken),
+            MigrationPhase.Places => RepointPlace(item, cancellationToken),
             _ => Task.CompletedTask,
         };
 
-    private async Task RepointAvatar(string avatarSid, MediaId pngMediaId, CancellationToken cancellationToken)
+    private async Task RepointAvatar(UsedMedia item, CancellationToken cancellationToken)
     {
         // Load the row directly rather than via AvatarsBackend.Get; the resolver
         // cache may not see avatars added through paths other than the backend.
         var db = await UsersDbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = db.ConfigureAwait(false);
         var dbAvatar = await db.Avatars
-            .FirstOrDefaultAsync(x => x.Id == avatarSid, cancellationToken)
+            .FirstOrDefaultAsync(x => x.Id == item.EntityId, cancellationToken)
             .ConfigureAwait(false);
         if (dbAvatar is null) {
-            Console.LogWarning($"Avatar {avatarSid} disappeared before repoint");
+            Console.LogWarning($"Avatar {item.EntityId} disappeared before repoint");
             return;
         }
-        var updated = dbAvatar.ToModel() with { MediaId = pngMediaId };
+        var updated = dbAvatar.ToModel() with { MediaId = item.MediaId };
         await Commander.Call(
-            new AvatarsBackend_Change((Symbol)avatarSid, null, Change.Update(updated)),
+            new AvatarsBackend_Change((Symbol)item.EntityId, null, Change.Update(updated)),
             true, cancellationToken).ConfigureAwait(false);
     }
 
-    private Task RepointChat(string chatSid, MediaId pngMediaId, CancellationToken cancellationToken)
+    private Task RepointChat(UsedMedia item, CancellationToken cancellationToken)
     {
-        var chatId = ChatId.Parse(chatSid);
+        var chatId = ChatId.Parse(item.EntityId);
         return Commander.Call(
-            new ChatsBackend_Change(chatId, null, Change.Update(new ChatDiff { MediaId = pngMediaId })),
+            new ChatsBackend_Change(chatId, null, Change.Update(new ChatDiff { MediaId = item.MediaId })),
             true, cancellationToken);
     }
 
-    private Task RepointPlace(string placeSid, bool isBackground, MediaId pngMediaId, CancellationToken cancellationToken)
+    private Task RepointPlace(UsedMedia item, CancellationToken cancellationToken)
     {
-        var placeId = PlaceId.Parse(placeSid);
-        var diff = isBackground
-            ? new PlaceDiff { BackgroundMediaId = pngMediaId }
-            : new PlaceDiff { MediaId = pngMediaId };
+        var placeId = PlaceId.Parse(item.EntityId);
+        var diff = item.IsBackground
+            ? new PlaceDiff { BackgroundMediaId = item.MediaId }
+            : new PlaceDiff { MediaId = item.MediaId };
         return Commander.Call(
             new PlacesBackend_Change(placeId, null, Change.Update(diff)),
             true, cancellationToken);
@@ -298,7 +298,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         Done = 3,
     }
 
-    private sealed record UsedMedia(string EntityId, string MediaId, bool IsBackground);
+    private sealed record UsedMedia(string EntityId, MediaId MediaId, bool IsBackground);
 
     private sealed record PngBlobInfo(string BlobId, Size Size, long Length);
 }
