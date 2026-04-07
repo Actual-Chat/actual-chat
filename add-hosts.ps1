@@ -138,8 +138,10 @@ function Configure-LocalEnvHosts {
     # 1. Hosts file + .env LOCAL_IP. Update-HostEntries already elevates only
     #    when the file actually needs changes.
     Write-Host "Updating hosts file and .env LOCAL_IP..."
-    Update-HostEntries -DetectIP -Hostnames @('local.voxt.ai', 'media.local.voxt.ai', 'cdn.local.voxt.ai') | Out-Null
-    Update-HostEntries -DetectIP -Hostnames @('local.actual.chat', 'media.local.actual.chat', 'cdn.local.actual.chat') | Out-Null
+    Update-HostEntries -DetectIP -Hostnames @(
+        'local.voxt.ai', 'media.local.voxt.ai', 'cdn.local.voxt.ai',
+        'local.actual.chat', 'media.local.actual.chat', 'cdn.local.actual.chat'
+    ) | Out-Null
     Update-LocalIP | Out-Null
 
     # 2. Root CA
