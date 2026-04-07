@@ -232,36 +232,36 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             _ => Task.CompletedTask,
         };
 
-    private async Task RepointAvatar(string avatarIdValue, MediaId pngMediaId, CancellationToken cancellationToken)
+    private async Task RepointAvatar(string avatarSid, MediaId pngMediaId, CancellationToken cancellationToken)
     {
         // Load the row directly rather than via AvatarsBackend.Get; the resolver
         // cache may not see avatars added through paths other than the backend.
         var db = await UsersDbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = db.ConfigureAwait(false);
         var dbAvatar = await db.Avatars
-            .FirstOrDefaultAsync(x => x.Id == avatarIdValue, cancellationToken)
+            .FirstOrDefaultAsync(x => x.Id == avatarSid, cancellationToken)
             .ConfigureAwait(false);
         if (dbAvatar is null) {
-            Console.LogWarning($"Avatar {avatarIdValue} disappeared before repoint");
+            Console.LogWarning($"Avatar {avatarSid} disappeared before repoint");
             return;
         }
         var updated = dbAvatar.ToModel() with { MediaId = pngMediaId };
         await Commander.Call(
-            new AvatarsBackend_Change((Symbol)avatarIdValue, null, Change.Update(updated)),
+            new AvatarsBackend_Change((Symbol)avatarSid, null, Change.Update(updated)),
             true, cancellationToken).ConfigureAwait(false);
     }
 
-    private Task RepointChat(string chatIdValue, MediaId pngMediaId, CancellationToken cancellationToken)
+    private Task RepointChat(string chatSid, MediaId pngMediaId, CancellationToken cancellationToken)
     {
-        var chatId = ChatId.Parse(chatIdValue);
+        var chatId = ChatId.Parse(chatSid);
         return Commander.Call(
             new ChatsBackend_Change(chatId, null, Change.Update(new ChatDiff { MediaId = pngMediaId })),
             true, cancellationToken);
     }
 
-    private Task RepointPlace(string placeIdValue, bool isBackground, MediaId pngMediaId, CancellationToken cancellationToken)
+    private Task RepointPlace(string placeSid, bool isBackground, MediaId pngMediaId, CancellationToken cancellationToken)
     {
-        var placeId = PlaceId.Parse(placeIdValue);
+        var placeId = PlaceId.Parse(placeSid);
         var diff = isBackground
             ? new PlaceDiff { BackgroundMediaId = pngMediaId }
             : new PlaceDiff { MediaId = pngMediaId };
