@@ -291,4 +291,93 @@ Describe "Common.ps1" {
             Get-CurrentOS | Should -BeIn @("Windows", "Docker", "WSL", "Linux", "macOS", "Unknown")
         }
     }
+
+    Context "Select-LanIPv4" {
+        BeforeAll {
+            function New-Cand {
+                param([string]$Iface, [string]$Ip)
+                [pscustomobject]@{ Interface = $Iface; IPAddress = $Ip }
+            }
+        }
+
+        It "returns null on empty input" {
+            Select-LanIPv4 -Candidates @() | Should -BeNullOrEmpty
+        }
+
+        It "filters out loopback" {
+            $c = @((New-Cand 'lo0' '127.0.0.1'))
+            Select-LanIPv4 -Candidates $c | Should -BeNullOrEmpty
+        }
+
+        It "filters out link-local APIPA" {
+            $c = @((New-Cand 'en0' '169.254.1.5'))
+            Select-LanIPv4 -Candidates $c | Should -BeNullOrEmpty
+        }
+
+        It "filters out VPN tunnel interfaces (utun)" {
+            $c = @((New-Cand 'utun3' '100.64.0.7'))
+            Select-LanIPv4 -Candidates $c | Should -BeNullOrEmpty
+        }
+
+        It "filters out Docker/VM bridge interfaces" {
+            $c = @(
+                (New-Cand 'bridge100' '192.168.64.1')
+                (New-Cand 'docker0'   '172.17.0.1')
+                (New-Cand 'vEthernet (WSL)' '172.20.0.1')
+            )
+            Select-LanIPv4 -Candidates $c | Should -BeNullOrEmpty
+        }
+
+        It "prefers 192.168/16 over 10/8" {
+            $c = @(
+                (New-Cand 'eth1' '10.0.0.5')
+                (New-Cand 'eth0' '192.168.1.5')
+            )
+            Select-LanIPv4 -Candidates $c | Should -Be '192.168.1.5'
+        }
+
+        It "prefers 10/8 over 172.16/12" {
+            $c = @(
+                (New-Cand 'eth1' '172.16.0.5')
+                (New-Cand 'eth0' '10.0.0.5')
+            )
+            Select-LanIPv4 -Candidates $c | Should -Be '10.0.0.5'
+        }
+
+        It "recognises 172.16-31 as private but not 172.32+" {
+            $c = @((New-Cand 'eth0' '172.20.0.5'))
+            Select-LanIPv4 -Candidates $c | Should -Be '172.20.0.5'
+            $c2 = @((New-Cand 'eth0' '172.32.0.5'))
+            Select-LanIPv4 -Candidates $c2 | Should -Be '172.32.0.5'  # falls through to "no RFC1918" path
+        }
+
+        It "picks first candidate within tier" {
+            $c = @(
+                (New-Cand 'en0' '192.168.1.10')
+                (New-Cand 'en1' '192.168.1.20')
+            )
+            Select-LanIPv4 -Candidates $c | Should -Be '192.168.1.10'
+        }
+
+        It "falls through to non-RFC1918 candidate as a last resort" {
+            $c = @((New-Cand 'eth0' '203.0.113.5'))
+            Select-LanIPv4 -Candidates $c | Should -Be '203.0.113.5'
+        }
+
+        It "real-world: VPN tunnel + LAN — picks LAN, not tunnel" {
+            $c = @(
+                (New-Cand 'utun4' '100.115.92.10')   # Tailscale
+                (New-Cand 'en0'   '192.168.31.220')  # Wi-Fi
+            )
+            Select-LanIPv4 -Candidates $c | Should -Be '192.168.31.220'
+        }
+
+        It "real-world: Docker bridge + LAN — picks LAN, not bridge" {
+            $c = @(
+                (New-Cand 'bridge100' '192.168.64.1')
+                (New-Cand 'en0'       '192.168.31.220')
+            )
+            Select-LanIPv4 -Candidates $c | Should -Be '192.168.31.220'
+        }
+    }
 }

@@ -28,34 +28,92 @@ function Get-CurrentOS {
     return "Unknown"
 }
 
-function Get-LocalIP {
+# Interface name patterns excluded from LAN IPv4 selection. Covers VPN tunnels,
+# Apple proprietary radios, Docker/Hyper-V/VM bridges, and loopback aliases.
+# Match is case-insensitive (PowerShell -match default).
+$script:NonLanInterfaceRegex = '^(utun|tun|tap|ppp|wg|tailscale|zt|gif|stf|ipsec|awdl|llw|anpi|bridge|vmnet|docker|veth|br-|vboxnet|vmware|vethernet|loopback)'
+
+function Select-LanIPv4 {
     <#
     .SYNOPSIS
-        Detects the local LAN IP address (first non-localhost IPv4).
+        Picks the most likely LAN-reachable IPv4 from candidate (interface, address) pairs.
+    .DESCRIPTION
+        Filters out loopback (127/8), link-local (169.254/16), and addresses on
+        virtual/tunnel/bridge interfaces (VPN, Docker, Hyper-V, etc.). Then
+        prefers RFC1918 private ranges in this order: 192.168.0.0/16,
+        10.0.0.0/8, 172.16.0.0/12. Falls through to the first remaining
+        candidate (e.g. a public IP) if no RFC1918 match.
+    .PARAMETER Candidates
+        Array of objects with .Interface and .IPAddress properties.
     #>
-    $os = Get-CurrentOS
-    $localIp = $null
-    switch ($os) {
+    param([Parameter(Mandatory)][AllowEmptyCollection()][object[]]$Candidates)
+
+    $filtered = @($Candidates | Where-Object {
+        $_ -and $_.IPAddress -and $_.Interface -and
+        $_.IPAddress -match '^\d+\.\d+\.\d+\.\d+$' -and
+        $_.IPAddress -notmatch '^127\.' -and
+        $_.IPAddress -notmatch '^169\.254\.' -and
+        $_.Interface -notmatch $script:NonLanInterfaceRegex
+    })
+    if ($filtered.Count -eq 0) { return $null }
+
+    foreach ($tier in @('^192\.168\.', '^10\.', '^172\.(1[6-9]|2[0-9]|3[0-1])\.')) {
+        $pick = $filtered | Where-Object { $_.IPAddress -match $tier } | Select-Object -First 1
+        if ($pick) { return $pick.IPAddress }
+    }
+    return $filtered[0].IPAddress
+}
+
+function Get-LocalIPv4Candidates {
+    <#
+    .SYNOPSIS
+        Enumerates all (interface, IPv4) pairs on the host as PSCustomObjects.
+    #>
+    switch (Get-CurrentOS) {
         "macOS" {
-            $localIp = (ifconfig | Select-String 'inet (\d+\.\d+\.\d+\.\d+)' -AllMatches).Matches |
-                ForEach-Object { $_.Groups[1].Value } |
-                Where-Object { $_ -ne '127.0.0.1' } |
-                Select-Object -First 1
+            $pairs = @()
+            $currentIface = $null
+            foreach ($line in (ifconfig 2>$null)) {
+                if ($line -match '^([^\s:]+):\s') {
+                    $currentIface = $matches[1]
+                } elseif ($currentIface -and $line -match '^\s+inet (\d+\.\d+\.\d+\.\d+)') {
+                    $pairs += [pscustomobject]@{ Interface = $currentIface; IPAddress = $matches[1] }
+                }
+            }
+            return $pairs
         }
         "Windows" {
-            $localIp = (Get-NetIPAddress -AddressFamily IPv4 |
-                Where-Object { $_.IPAddress -ne '127.0.0.1' -and $_.PrefixOrigin -ne 'WellKnown' } |
-                Select-Object -First 1).IPAddress
+            return @(Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+                Where-Object { $_.PrefixOrigin -ne 'WellKnown' } |
+                ForEach-Object {
+                    [pscustomobject]@{ Interface = $_.InterfaceAlias; IPAddress = $_.IPAddress }
+                })
         }
         default {
             # Linux, Docker, WSL
-            $localIp = (hostname -I 2>$null) -split ' ' | Where-Object { $_ } | Select-Object -First 1
-            if (-not $localIp) {
-                $localIp = (ip route get 1.1.1.1 2>$null | Select-String 'src (\d+\.\d+\.\d+\.\d+)').Matches.Groups[1].Value
+            $pairs = @()
+            foreach ($line in (ip -4 -o addr show 2>$null)) {
+                if ($line -match '^\d+:\s+(\S+)\s+inet\s+(\d+\.\d+\.\d+\.\d+)') {
+                    $pairs += [pscustomobject]@{ Interface = $matches[1]; IPAddress = $matches[2] }
+                }
             }
+            return $pairs
         }
     }
-    return $localIp
+}
+
+function Get-LocalIP {
+    <#
+    .SYNOPSIS
+        Detects a stable LAN IPv4 reachable from the host, Docker containers,
+        and other devices on the same LAN.
+    .DESCRIPTION
+        Enumerates all IPv4 addresses on physical interfaces (excluding
+        loopback, link-local, VPN tunnels, and Docker/VM bridges) and picks
+        an RFC1918 private address, preferring 192.168/16, then 10/8, then
+        172.16/12. Returns $null if no LAN candidates are found.
+    #>
+    return Select-LanIPv4 -Candidates (Get-LocalIPv4Candidates)
 }
 
 function Set-EnvFileValue {
