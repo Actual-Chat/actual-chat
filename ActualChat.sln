@@ -424,6 +424,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "e2e", "e2e", "{B1B2C3D4-5555-6666-7777-888899990000}"
 	ProjectSection(SolutionItems) = preProject
 		tests\ps\e2e\AddHosts.Tests.ps1 = tests\ps\e2e\AddHosts.Tests.ps1
+		tests\ps\e2e\Common.Tests.ps1 = tests\ps\e2e\Common.Tests.ps1
 		tests\ps\e2e\c-audio.Tests.ps1 = tests\ps\e2e\c-audio.Tests.ps1
 	EndProjectSection
 EndProject

@@ -64,10 +64,15 @@ function Select-LanIPv4 {
     return $filtered[0].IPAddress
 }
 
-function Get-LocalIPv4Candidates {
+function _Get-LocalIPv4Candidates {
     <#
     .SYNOPSIS
         Enumerates all (interface, IPv4) pairs on the host as PSCustomObjects.
+    .NOTES
+        Internal helper for Get-LocalIP. The leading underscore signals
+        "private by convention" - PowerShell .ps1 files have no real
+        visibility control without converting to a .psm1 module, so this is
+        the lightweight marker. Do not call from outside Common.ps1.
     #>
     switch (Get-CurrentOS) {
         "macOS" {
@@ -113,7 +118,7 @@ function Get-LocalIP {
         an RFC1918 private address, preferring 192.168/16, then 10/8, then
         172.16/12. Returns $null if no LAN candidates are found.
     #>
-    return Select-LanIPv4 -Candidates (Get-LocalIPv4Candidates)
+    return Select-LanIPv4 -Candidates (_Get-LocalIPv4Candidates)
 }
 
 function Set-EnvFileValue {
