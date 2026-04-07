@@ -185,13 +185,12 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
 
     private async Task<bool> ProcessOne(UsedMedia item, CancellationToken cancellationToken)
     {
-        var svgMediaId = MediaId.Parse(item.MediaId);
-        var svg = await MediaBackend.GetFull(svgMediaId, cancellationToken).ConfigureAwait(false);
+        var svg = await MediaBackend.GetFull(MediaId.Parse(item.MediaId), cancellationToken).ConfigureAwait(false);
         if (svg is null || !svg.BlobId.EndsWith(".svg"))
             return false;
 
         // 1. Allocate a new MediaId in the same scope and rasterize the SVG into a new PNG blob.
-        var pngMediaId = MediaId.New(svgMediaId.Scope);
+        var pngMediaId = MediaId.New(svg.Id.Scope);
         var pngBlob = await ConvertSvgBlobToPng(pngMediaId, svg.BlobId, cancellationToken).ConfigureAwait(false);
         if (pngBlob is null)
             return false;
@@ -208,7 +207,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             UserId = svg.UserId,
         };
         pngMedia = pngMedia with {
-            Metadata = pngMedia.Metadata.Set(ReplacesMediaIdMetadataKey, svgMediaId.Value),
+            Metadata = pngMedia.Metadata.Set(ReplacesMediaIdMetadataKey, svg.Id.Value),
         };
         await Commander.Call(
             new MediaBackend_Change(pngMediaId, null, Change.Create(pngMedia)),
@@ -271,11 +270,11 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             true, cancellationToken);
     }
 
-    private async Task<PngBlobInfo?> ConvertSvgBlobToPng(MediaId mediaId, string svgBlobId, CancellationToken cancellationToken)
+    private async Task<PngBlobInfo?> ConvertSvgBlobToPng(MediaId pngMediaId, string svgBlobId, CancellationToken cancellationToken)
     {
         var svgStream = await BlobStorage.Read(svgBlobId, cancellationToken).ConfigureAwait(false);
         if (svgStream == null) {
-            Console.LogWarning($"Blob not found for media {mediaId.Value}: {svgBlobId}");
+            Console.LogWarning($"Blob not found for media {pngMediaId.Value}: {svgBlobId}");
             return null;
         }
         await using var _1 = svgStream.ConfigureAwait(false);
@@ -284,9 +283,9 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         await using var _2 = pngStream.ConfigureAwait(false);
         Console.Log($"ConvertSvgToPng: encoded PNG {size.Width}x{size.Height} ({pngStream.Length} bytes)");
 
-        var newBlobId = MediaSaver.GetBlobId(mediaId, ".png");
-        await BlobStorage.Write(newBlobId, pngStream, "image/png", cancellationToken).ConfigureAwait(false);
-        return new PngBlobInfo(newBlobId, size, pngStream.Length);
+        var pngBlobId = MediaSaver.GetBlobId(pngMediaId, ".png");
+        await BlobStorage.Write(pngBlobId, pngStream, "image/png", cancellationToken).ConfigureAwait(false);
+        return new PngBlobInfo(pngBlobId, size, pngStream.Length);
     }
 
     // Nested types
