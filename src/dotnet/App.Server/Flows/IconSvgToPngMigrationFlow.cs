@@ -16,13 +16,28 @@ namespace ActualChat.App.Server.Flows;
 /// is the only way to leave chat-entry attachment SVGs untouched, because
 /// old media records have <see cref="MediaKind.Unknown"/>.
 /// </summary>
-[Flow(DataVersion = 1, DelayQuanta = 0)]
+/// <remarks>
+/// Conversion allocates a brand new <see cref="MediaId"/> for the PNG and
+/// repoints the host entity (avatar/chat/place) at it via the appropriate
+/// backend command. The original SVG <see cref="MediaFull"/> row and SVG
+/// blob are left fully untouched, forming a complete self-contained backup.
+/// The new PNG row carries <see cref="ReplacesMediaIdMetadataKey"/> in its metadata
+/// pointing back at the original SVG MediaId — this is backup-only data,
+/// not read by application code, but a future restore/cleanup tool can
+/// consume it.
+/// </remarks>
+[Flow(DataVersion = 2, DelayQuanta = 0)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
 {
     private const int BatchSize = 50;
     private const int MaxSize = Constants.Attachments.MaxIconSize;
     private static readonly RandomTimeSpan BatchDelay = TimeSpan.FromSeconds(2).ToRandom(0.25);
+
+    // Metadata key written on the *new* PNG Media row pointing back at the original
+    // SVG MediaId. Backup data only — not read by application code. A future
+    // restore/rerun/cleanup tool would consume it.
+    private const string ReplacesMediaIdMetadataKey = "ReplacesMediaId";
 
     private DbHub<UsersDbContext> UsersDbHub => field ??= Services.DbHub<UsersDbContext>();
     private DbHub<ChatDbContext> ChatDbHub => field ??= Services.DbHub<ChatDbContext>();
@@ -43,19 +58,19 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
     protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
         while (Phase < MigrationPhase.Done) {
-            var mediaIds = await GetNextBatch(cancellationToken).ConfigureAwait(false);
-            if (mediaIds.Count == 0) {
+            var items = await GetNextBatch(cancellationToken).ConfigureAwait(false);
+            if (items.Count == 0) {
                 // Current phase done, move to next
                 Phase++;
                 LastProcessedEntityId = null;
                 continue;
             }
 
-            await ConvertBatch(mediaIds, cancellationToken).ConfigureAwait(false);
+            await ConvertBatch(items, cancellationToken).ConfigureAwait(false);
 
             Console.Log($"Phase {Phase}: {ConvertedCount} converted, {SkippedCount} skipped");
 
-            if (mediaIds.Count < BatchSize) {
+            if (items.Count < BatchSize) {
                 Phase++;
                 LastProcessedEntityId = null;
                 continue;
@@ -69,7 +84,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         SetResult((Hub.Clocks.SystemClock.Now, ConvertedCount));
     }
 
-    // Private methods
+    // Private methods - batch fetching
 
     private async Task<List<UsedMedia>> GetNextBatch(CancellationToken cancellationToken)
         => Phase switch {
@@ -96,7 +111,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             .Select(x => new { x.Id, x.MediaId })
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return rows.Select(x => new UsedMedia(x.Id, x.MediaId)).ToList();
+        return rows.Select(x => new UsedMedia(x.Id, x.MediaId, false)).ToList();
     }
 
     private async Task<List<UsedMedia>> GetChatBatch(CancellationToken cancellationToken)
@@ -116,7 +131,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             .Select(x => new { x.Id, x.MediaId })
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return rows.Select(x => new UsedMedia(x.Id, x.MediaId)).ToList();
+        return rows.Select(x => new UsedMedia(x.Id, x.MediaId, false)).ToList();
     }
 
     private async Task<List<UsedMedia>> GetPlaceBatch(CancellationToken cancellationToken)
@@ -141,19 +156,20 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         var result = new List<UsedMedia>();
         foreach (var p in places) {
             if (!p.MediaId.IsNullOrEmpty())
-                result.Add(new UsedMedia(p.Id, p.MediaId));
+                result.Add(new UsedMedia(p.Id, p.MediaId, false));
             if (!p.BackgroundMediaId.IsNullOrEmpty())
-                result.Add(new UsedMedia(p.Id, p.BackgroundMediaId));
+                result.Add(new UsedMedia(p.Id, p.BackgroundMediaId, true));
         }
         return result;
     }
 
+    // Private methods - conversion
+
     private async Task ConvertBatch(List<UsedMedia> items, CancellationToken cancellationToken)
     {
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var item in items.Where(item => seen.Add(item.MediaId)))
+        foreach (var item in items)
             try {
-                var converted = await ProcessOne(MediaId.Parse(item.MediaId), cancellationToken).ConfigureAwait(false);
+                var converted = await ProcessOne(item, cancellationToken).ConfigureAwait(false);
                 if (converted)
                     ConvertedCount++;
                 else
@@ -167,27 +183,112 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         LastProcessedEntityId = items[^1].EntityId;
     }
 
-    private async Task<bool> ProcessOne(MediaId mediaId, CancellationToken cancellationToken)
+    private async Task<bool> ProcessOne(UsedMedia item, CancellationToken cancellationToken)
     {
-        var media = await MediaBackend.GetFull(mediaId, cancellationToken).ConfigureAwait(false);
-        if (media is null || !media.BlobId.EndsWith(".svg"))
+        var svgMediaId = MediaId.Parse(item.MediaId);
+        var svg = await MediaBackend.GetFull(svgMediaId, cancellationToken).ConfigureAwait(false);
+        if (svg is null || !svg.BlobId.EndsWith(".svg"))
             return false;
 
-        var pngBlob = await ConvertSvgBlobToPng(mediaId, media.BlobId, cancellationToken).ConfigureAwait(false);
-        if (pngBlob == null)
+        // Defensive: refuse to repoint if some attachment table also references this media id.
+        // We only rewrite Avatar/Chat/Place references; leaving an attachment dangling would
+        // be a real bug. In practice icons and attachments don't share MediaIds.
+        if (await IsReferencedOutsideIcons(svgMediaId, cancellationToken).ConfigureAwait(false)) {
+            Console.LogWarning($"Skipping {svgMediaId.Value}: referenced outside icon tables");
+            return false;
+        }
+
+        // 1. Allocate a new MediaId in the same scope and rasterize the SVG into a new PNG blob.
+        var pngMediaId = MediaId.New(svgMediaId.Scope);
+        var pngBlob = await ConvertSvgBlobToPng(pngMediaId, svg.BlobId, cancellationToken).ConfigureAwait(false);
+        if (pngBlob is null)
             return false;
 
-        var updated = media with {
+        // 2. Create the new PNG Media row carrying ReplacesMediaId provenance.
+        var pngMedia = new MediaFull(pngMediaId) {
+            Kind = svg.Kind,
             BlobId = pngBlob.BlobId,
             ContentType = "image/png",
-            FileName = Path.ChangeExtension(media.FileName, ".png"),
+            FileName = Path.ChangeExtension(svg.FileName, ".png"),
             Width = pngBlob.Size.Width,
             Height = pngBlob.Size.Height,
             Length = pngBlob.Length,
+            UserId = svg.UserId,
         };
-        var changeCommand = new MediaBackend_Change(mediaId, null, new Change<MediaFull> { Update = updated });
-        await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
+        pngMedia = pngMedia with {
+            Metadata = pngMedia.Metadata.Set(ReplacesMediaIdMetadataKey, svgMediaId.Value),
+        };
+        await Commander.Call(
+            new MediaBackend_Change(pngMediaId, null, new Change<MediaFull> { Create = pngMedia }),
+            true, cancellationToken).ConfigureAwait(false);
+
+        // 3. Repoint the host entity (Avatar / Chat / Place) at the new PNG MediaId
+        //    via the appropriate *Backend_Change command. The original SVG Media row
+        //    and SVG blob remain untouched and form a self-contained backup.
+        await RepointReference(item, pngMediaId, cancellationToken).ConfigureAwait(false);
+
         return true;
+    }
+
+    private Task RepointReference(UsedMedia item, MediaId pngMediaId, CancellationToken cancellationToken)
+        => Phase switch {
+            MigrationPhase.Avatars => RepointAvatar(item.EntityId, pngMediaId, cancellationToken),
+            MigrationPhase.Chats => RepointChat(item.EntityId, pngMediaId, cancellationToken),
+            MigrationPhase.Places => RepointPlace(item.EntityId, item.IsBackground, pngMediaId, cancellationToken),
+            _ => Task.CompletedTask,
+        };
+
+    private async Task RepointAvatar(string avatarIdValue, MediaId pngMediaId, CancellationToken cancellationToken)
+    {
+        // Load the row directly rather than via AvatarsBackend.Get; the resolver
+        // cache may not see avatars added through paths other than the backend.
+        var db = await UsersDbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = db.ConfigureAwait(false);
+        var dbAvatar = await db.Avatars
+            .FirstOrDefaultAsync(x => x.Id == avatarIdValue, cancellationToken)
+            .ConfigureAwait(false);
+        if (dbAvatar is null) {
+            Console.LogWarning($"Avatar {avatarIdValue} disappeared before repoint");
+            return;
+        }
+        // AvatarsBackend.OnChange takes a full AvatarFull and overwrites all fields, so
+        // we hand it the existing row state with only MediaId swapped.
+        var updated = dbAvatar.ToModel() with { MediaId = pngMediaId };
+        await Commander.Call(
+            new AvatarsBackend_Change((Symbol)avatarIdValue, null, new Change<AvatarFull> { Update = updated }),
+            true, cancellationToken).ConfigureAwait(false);
+    }
+
+    private Task RepointChat(string chatIdValue, MediaId pngMediaId, CancellationToken cancellationToken)
+    {
+        var chatId = ChatId.Parse(chatIdValue);
+        return Commander.Call(
+            new ChatsBackend_Change(chatId, null, new Change<ChatDiff> {
+                Update = new ChatDiff { MediaId = pngMediaId },
+            }),
+            true, cancellationToken);
+    }
+
+    private Task RepointPlace(string placeIdValue, bool isBackground, MediaId pngMediaId, CancellationToken cancellationToken)
+    {
+        var placeId = PlaceId.Parse(placeIdValue);
+        var diff = isBackground
+            ? new PlaceDiff { BackgroundMediaId = pngMediaId }
+            : new PlaceDiff { MediaId = pngMediaId };
+        return Commander.Call(
+            new PlacesBackend_Change(placeId, null, new Change<PlaceDiff> { Update = diff }),
+            true, cancellationToken);
+    }
+
+    private async Task<bool> IsReferencedOutsideIcons(MediaId mediaId, CancellationToken cancellationToken)
+    {
+        var db = await ChatDbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = db.ConfigureAwait(false);
+
+        var sid = mediaId.Value;
+        return await db.ChatEntryAttachments
+            .AnyAsync(x => x.MediaId == sid || x.ThumbnailMediaId == sid, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private async Task<PngBlobInfo?> ConvertSvgBlobToPng(MediaId mediaId, string svgBlobId, CancellationToken cancellationToken)
@@ -218,7 +319,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         Done = 3,
     }
 
-    private sealed record UsedMedia(string EntityId, string MediaId);
+    private sealed record UsedMedia(string EntityId, string MediaId, bool IsBackground);
 
     private sealed record PngBlobInfo(string BlobId, Size Size, long Length);
 }
