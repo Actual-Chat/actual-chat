@@ -7,7 +7,7 @@
 # This file contains only function definitions. Depends on scripts/Common.ps1
 # being dot-sourced into the same scope. To use it:
 #
-#     pwsh -NoProfile -c ". ./scripts/Common.ps1; . ./add-hosts.ps1; Add-Hosts"
+#     pwsh -NoProfile -c ". ./scripts/Common.ps1; . ./add-hosts.ps1; Configure-LocalEnvHosts"
 
 function Get-CertThumbprint {
     [CmdletBinding()]
@@ -109,7 +109,7 @@ function Install-DotnetDevCert {
     & dotnet dev-certs https --trust
 }
 
-function Add-Hosts {
+function Configure-LocalEnvHosts {
     [CmdletBinding()]
     param(
         [switch]$Force
