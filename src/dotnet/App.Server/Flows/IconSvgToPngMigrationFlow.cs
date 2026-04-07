@@ -211,13 +211,13 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             Metadata = pngMedia.Metadata.Set(ReplacesMediaIdMetadataKey, svgMediaId.Value),
         };
         await Commander.Call(
-            new MediaBackend_Change(pngMediaId, null, new Change<MediaFull> { Create = pngMedia }),
+            new MediaBackend_Change(pngMediaId, null, Change.Create(pngMedia)),
             true, cancellationToken).ConfigureAwait(false);
 
         // 3. Repoint the host entity (Avatar / Chat / Place) at the new PNG MediaId
         //    via the appropriate *Backend_Change command. The original SVG Media row
         //    and SVG blob remain untouched and form a self-contained backup.
-        //    A future cleanup flow can drop SVG rows that are no longer referenced
+        // NOTE: A future cleanup flow can drop SVG rows that are no longer referenced
         //    anywhere (icons or chat-entry attachments) using the ReplacesMediaId
         //    metadata as the starting set.
         await RepointReference(item, pngMediaId, cancellationToken).ConfigureAwait(false);
@@ -246,11 +246,9 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             Console.LogWarning($"Avatar {avatarIdValue} disappeared before repoint");
             return;
         }
-        // AvatarsBackend.OnChange takes a full AvatarFull and overwrites all fields, so
-        // we hand it the existing row state with only MediaId swapped.
         var updated = dbAvatar.ToModel() with { MediaId = pngMediaId };
         await Commander.Call(
-            new AvatarsBackend_Change((Symbol)avatarIdValue, null, new Change<AvatarFull> { Update = updated }),
+            new AvatarsBackend_Change((Symbol)avatarIdValue, null, Change.Update(updated)),
             true, cancellationToken).ConfigureAwait(false);
     }
 
@@ -258,9 +256,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
     {
         var chatId = ChatId.Parse(chatIdValue);
         return Commander.Call(
-            new ChatsBackend_Change(chatId, null, new Change<ChatDiff> {
-                Update = new ChatDiff { MediaId = pngMediaId },
-            }),
+            new ChatsBackend_Change(chatId, null, Change.Update(new ChatDiff { MediaId = pngMediaId })),
             true, cancellationToken);
     }
 
@@ -271,7 +267,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             ? new PlaceDiff { BackgroundMediaId = pngMediaId }
             : new PlaceDiff { MediaId = pngMediaId };
         return Commander.Call(
-            new PlacesBackend_Change(placeId, null, new Change<PlaceDiff> { Update = diff }),
+            new PlacesBackend_Change(placeId, null, Change.Update(diff)),
             true, cancellationToken);
     }
 
