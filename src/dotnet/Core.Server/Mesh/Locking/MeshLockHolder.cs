@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using ActualChat.Logging;
 
 namespace ActualChat.Mesh;
@@ -87,11 +88,14 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
                 }
             }, CancellationToken.None);
 
-        var isHeld = true;
-        while (isHeld) {
-            await Clock.Delay(Options.RenewalPeriod, cancellationToken).ConfigureAwait(false);
-            isHeld = await TryRenew(cancellationToken).ConfigureAwait(false);
-        }
+        // Register with shared renewal thread — single dedicated OS thread for all locks
+        var renewalThread = MeshLockRenewalThread.GetInstance(Backend.HostLifetime.StopToken());
+        using var registration = renewalThread.Register(this);
+        var isExpired = await registration.WhenExpired(cancellationToken);
+        if (!isExpired)
+            return; // normal shutdown
+
+        // Lock expired during renewal
         lock (Lock)
             IsExpiredOnRenewal = true;
         Log?.LogError("[+-] {Key}: reported as expired on renewal", FullKey);
@@ -207,6 +211,193 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
             // will catch the case where we've run past the deadline
             // ReSharper disable once MethodSupportsCancellation
             await Task.Delay(Backend.RetryDelays[failureCount]).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// Process-wide singleton that runs one dedicated OS thread servicing
+    /// all <see cref="MeshLockHolder"/> renewals. This thread is immune to
+    /// ThreadPool starvation, which can cause lock expiry under heavy async load.
+    /// The thread never blocks on Redis calls — it fires them asynchronously
+    /// and checks results on the next iteration.
+    /// </summary>
+    private sealed class MeshLockRenewalThread
+    {
+        private static readonly Lock InstanceLock = new();
+        private static volatile MeshLockRenewalThread? _instance;
+
+        private readonly ConcurrentDictionary<MeshLockHolder, RenewalEntry> _entries = new();
+        private readonly SemaphoreSlim _wakeSemaphore = new(0, 1);
+        private readonly CancellationToken _hostStopToken;
+
+        private volatile bool _isStopped;
+
+        public static MeshLockRenewalThread GetInstance(CancellationToken hostStopToken)
+        {
+            if (_instance is { _isStopped: false } instance)
+                return instance;
+
+            lock (InstanceLock) {
+                if (_instance is not { _isStopped: false })
+                    _instance = new MeshLockRenewalThread(hostStopToken);
+
+                return _instance;
+            }
+        }
+
+        private MeshLockRenewalThread(CancellationToken hostStopToken)
+        {
+            _hostStopToken = hostStopToken;
+            var thread = new Thread(Run) {
+                IsBackground = true,
+                Name = "MeshLockRenewal",
+                Priority = ThreadPriority.AboveNormal,
+            };
+            thread.Start();
+        }
+
+        public ThreadRegistration Register(MeshLockHolder holder)
+        {
+            var entry = new RenewalEntry {
+                NextRenewalAt = holder.Clock.Now + holder.Options.RenewalPeriod,
+            };
+            _entries[holder] = entry;
+            TryWakeUp();
+            return new ThreadRegistration(this, holder, entry.ExpiredTcs.Task);
+        }
+
+        private void Unregister(MeshLockHolder holder)
+        {
+            if (_entries.TryRemove(holder, out var entry))
+                entry.ExpiredTcs.TrySetCanceled();
+        }
+
+        private void TryWakeUp()
+        {
+            try {
+                _wakeSemaphore.Release();
+            }
+            catch (SemaphoreFullException) {
+                // Already signaled
+            }
+        }
+
+        private void Run()
+        {
+            try {
+                while (true) {
+                    var minSleepMs = 1000;
+
+                    foreach (var (holder, entry) in _entries.ToArray()) {
+                        if (entry.ExpiredTcs.Task.IsCompleted) {
+                            _entries.TryRemove(holder, out _);
+                            continue;
+                        }
+
+                        var ct = holder.StopToken;
+                        if (ct.IsCancellationRequested) {
+                            _entries.TryRemove(holder, out _);
+                            entry.ExpiredTcs.TrySetCanceled(ct);
+                            continue;
+                        }
+
+                        // Check pending renewal result (non-blocking)
+                        if (entry.PendingRenewal is { } pending) {
+                            if (!pending.IsCompleted) {
+                                minSleepMs = Math.Min(minSleepMs, 50);
+                                continue;
+                            }
+
+                            entry.PendingRenewal = null;
+                            try {
+                                var isHeld = pending.GetAwaiter().GetResult();
+                                if (!isHeld) {
+                                    _entries.TryRemove(holder, out _);
+                                    entry.ExpiredTcs.TrySetResult();
+                                    continue;
+                                }
+                                entry.NextRenewalAt = holder.Clock.Now + holder.Options.RenewalPeriod;
+                            }
+                            catch (OperationCanceledException) {
+                                _entries.TryRemove(holder, out _);
+                                entry.ExpiredTcs.TrySetCanceled();
+                                continue;
+                            }
+                            catch (Exception) {
+                                _entries.TryRemove(holder, out _);
+                                entry.ExpiredTcs.TrySetResult();
+                                continue;
+                            }
+                        }
+
+                        // Check if it's time to start a new renewal
+                        var now = holder.Clock.Now;
+                        var remaining = entry.NextRenewalAt - now;
+
+                        if (remaining <= TimeSpan.Zero) {
+                            entry.PendingRenewal = holder.TryRenew(ct);
+                            minSleepMs = Math.Min(minSleepMs, 50);
+                            continue;
+                        }
+
+                        var remainingMs = (int)remaining.TotalMilliseconds;
+                        if (remainingMs < minSleepMs)
+                            minSleepMs = remainingMs;
+                    }
+
+                    try {
+                        _ = _wakeSemaphore.Wait(Math.Max(10, minSleepMs), _hostStopToken);
+                    }
+                    catch (Exception e) when (e is ObjectDisposedException or OperationCanceledException) {
+                        break;
+                    }
+                }
+            }
+            finally {
+                _isStopped = true;
+                foreach (var (_, entry) in _entries.ToArray())
+                    entry.ExpiredTcs.TrySetCanceled();
+                _entries.Clear();
+                _wakeSemaphore.Dispose();
+            }
+        }
+
+        public readonly struct ThreadRegistration : IDisposable
+        {
+            private readonly MeshLockRenewalThread _thread;
+            private readonly MeshLockHolder _holder;
+            private readonly Task _expiredTask;
+            internal ThreadRegistration(MeshLockRenewalThread thread, MeshLockHolder holder, Task expiredTask)
+            {
+                _thread = thread;
+                _holder = holder;
+                _expiredTask = expiredTask;
+            }
+
+            /// <summary>
+            /// Waits until the lock expires or the cancellation token fires.
+            /// Returns true if the lock expired, false if cancelled (normal shutdown).
+            /// </summary>
+            public async Task<bool> WhenExpired(CancellationToken cancellationToken)
+            {
+                try {
+                    await _expiredTask.WaitAsync(cancellationToken).ConfigureAwait(false);
+                    return true; // completed = lock expired
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+                    return false; // cancelled = normal shutdown
+                }
+            }
+
+            public void Dispose()
+                => _thread.Unregister(_holder);
+        }
+
+        private sealed class RenewalEntry
+        {
+            public readonly TaskCompletionSource ExpiredTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            public Moment NextRenewalAt;
+            public Task<bool>? PendingRenewal;
         }
     }
 }

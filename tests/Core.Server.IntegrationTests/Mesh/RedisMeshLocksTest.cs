@@ -47,24 +47,30 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
             ExpirationPeriod = TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 5 : 2),
         };
 
+        Out.WriteLine("Starting test...");
         var key = Alphabet.AlphaNumeric.Generator8.Next();
         (await locks.ListKeys("")).Should().BeEmpty();
         (await locks.GetInfo(key)).Should().BeNull();
 
+        Out.WriteLine("Locking...");
         await using var h = await locks.Lock(key, lockOptions);
         (await locks.TryLock(key)).Should().BeNull();
         (await locks.ListKeys("")).Should().Equal([key]);
 
+        Out.WriteLine("Unlocking...");
         await locks.Backend.ForceRelease(key, false);
         (await locks.GetInfo(key)).Should().BeNull();
 
         var minDelay = TimeSpanExt.Max(
             locks.LockOptions.UnconditionalCheckPeriod,
             lockOptions.ExpirationPeriod);
+        Out.WriteLine($"Waiting for lock to be gone (min delay = {minDelay})...");
         await Task.Delay(minDelay + TimeSpan.FromSeconds(0.5));
 
+        Out.WriteLine("Lock released, checking cancellation token...");
         // We don't silently re-acquire the locks, so it must be gone
         h.StopToken.IsCancellationRequested.Should().BeTrue();
+        Out.WriteLine("Test passed.");
     }
 
     [Fact(Timeout = 30_000)]
