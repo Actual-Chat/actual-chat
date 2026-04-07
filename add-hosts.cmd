@@ -14,7 +14,7 @@
     pwsh -NoProfile -c ". ./scripts/Common.ps1; Update-HostEntries -DetectIP -Hostnames 'local.voxt.ai','media.local.voxt.ai','cdn.local.voxt.ai' | Out-Null; Update-HostEntries -DetectIP -Hostnames 'local.actual.chat','media.local.actual.chat','cdn.local.actual.chat' | Out-Null; Update-LocalIP | Out-Null"
 
     set wd=%~dp0
-    set certFilePath=%wd%.config\local.voxt.ai\ssl\local.voxt.ai.crt
+    set certFilePath=%wd%.config\local.voxt.ai\ssl\rootCA.crt
     echo trusting certificate '%certFilePath%'...
     certutil -addstore -f "ROOT" "%certFilePath%"
 
@@ -29,7 +29,7 @@ BATCH
 #!/bin/sh
 
 trustCertificate() {
-    certPath=.config/local.voxt.ai/ssl/local.voxt.ai.crt
+    certPath=.config/local.voxt.ai/ssl/rootCA.crt
     case `uname` in
       Darwin)
         sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain $certPath
