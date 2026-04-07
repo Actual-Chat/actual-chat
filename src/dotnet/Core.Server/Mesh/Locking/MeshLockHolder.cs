@@ -8,18 +8,23 @@ namespace ActualChat.Mesh;
 /// </summary>
 public class MeshLockHolder : WorkerBase, IHasId<string>
 {
-    protected readonly IMeshLocksBackend Backend;
-    protected MomentClock Clock => Backend.Clock;
-    protected ILogger? Log => Backend.Log;
-    protected ILogger? DebugLog => Backend.DebugLog;
-    protected HashSet<Task>? Dependencies;
+    private readonly IMeshLocksBackend _backend;
+    private HashSet<Task>? _dependencies;
+    private long _expiresAtTicks;
+
+    private MomentClock Clock => _backend.Clock;
+    private ILogger? Log => _backend.Log;
+    private ILogger? DebugLog => _backend.DebugLog;
 
     public string Id { get; } // This is the ID of the lock holder, i.e., this object
     public string Key { get; }
     public string FullKey { get; }
     public MeshLockOptions Options { get; }
     public Moment CreatedAt { get; }
-    public Moment ExpiresAt { get; protected set; }
+    public Moment ExpiresAt {
+        get => new(Interlocked.Read(ref _expiresAtTicks));
+        protected set => Interlocked.Exchange(ref _expiresAtTicks, value.EpochOffsetTicks);
+    }
     public bool IsExpiredOnRenewal { get; protected set; }
 
     public MeshLockHolder(
@@ -35,7 +40,7 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
 
         options.RequireValid();
 
-        Backend = backend;
+        _backend = backend;
         Id = id;
         Key = key;
         FullKey = backend.GetFullKey(key);
@@ -48,7 +53,7 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
         Task dependency;
         lock (Lock) {
             StopToken.ThrowIfCancellationRequested();
-            var dependencies = Dependencies ??= new ();
+            var dependencies = _dependencies ??= new ();
             dependency = dependencyFactory.Invoke(StopToken);
             dependencies.Add(dependency);
         }
@@ -60,7 +65,7 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
     public void RemoveDependency(Task dependency)
     {
         lock (Lock)
-            Dependencies?.Remove(dependency);
+            _dependencies?.Remove(dependency);
     }
 
     // Protected methods
@@ -73,7 +78,7 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
             "[+] {Key}: acquired in {AcquireTime}, value = {StoredValue}",
             FullKey, (now - CreatedAt).ToShortString(), Id);
 
-        var chaosMaker = Backend.ChaosMaker;
+        var chaosMaker = _backend.ChaosMaker;
         if (chaosMaker.IsEnabled)
             _ = Task.Run(async () => {
                 try {
@@ -89,7 +94,7 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
             }, CancellationToken.None);
 
         // Register with shared renewal thread — single dedicated OS thread for all locks
-        var renewalThread = MeshLockRenewalThread.GetInstance(Backend.HostLifetime.StopToken());
+        var renewalThread = MeshLockRenewalThread.GetInstance(_backend.HostLifetime.StopToken());
         using var registration = renewalThread.Register(this);
         var isExpired = await registration.WhenExpired(cancellationToken);
         if (!isExpired)
@@ -106,8 +111,8 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
     {
         Task[]? dependencies;
         lock (Lock) {
-            dependencies = Dependencies?.ToArray() ?? [];
-            Dependencies = null;
+            dependencies = _dependencies?.ToArray() ?? [];
+            _dependencies = null;
         }
         try {
             if (dependencies.Length > 0) {
@@ -140,7 +145,7 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
             try {
                 var expiresAt = Clock.Now + Options.ExpirationPeriod;
                 // DebugLog?.LogDebug("[+*] {Key}: renew {StoredValue}", FullKey, StoredValue);
-                var isRenewed = await Backend
+                var isRenewed = await _backend
                     .TryRenew(Key, Id, Options.ExpirationPeriod, expiredToken)
                     .ConfigureAwait(false);
                 if (isRenewed) {
@@ -168,7 +173,7 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
 
             // Backoff before retrying - the expiresIn check at the top of the loop
             // will catch the case where we've run past the deadline
-            await Clock.Delay(Backend.RetryDelays[failureCount], cancellationToken).ConfigureAwait(false);
+            await Clock.Delay(_backend.RetryDelays[failureCount], cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -185,7 +190,7 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
             var timeoutCts = new CancellationTokenSource(expiresIn);
             var timeoutToken = timeoutCts.Token;
             try {
-                var result = await Backend.TryRelease(Key, Id, timeoutToken).ConfigureAwait(false);
+                var result = await _backend.TryRelease(Key, Id, timeoutToken).ConfigureAwait(false);
                 if (result == MeshLockReleaseResult.Released) {
                     // Uncomment for debugging - too verbose
                     // Log?.LogDebug("[+*] {Key}: released", FullKey);
@@ -209,8 +214,7 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
 
             // Backoff before retrying - the expiresIn check at the top of the loop
             // will catch the case where we've run past the deadline
-            // ReSharper disable once MethodSupportsCancellation
-            await Task.Delay(Backend.RetryDelays[failureCount]).ConfigureAwait(false);
+            await Clock.Delay(_backend.RetryDelays[failureCount]).ConfigureAwait(false);
         }
     }
 
@@ -323,7 +327,8 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
                                 entry.ExpiredTcs.TrySetCanceled();
                                 continue;
                             }
-                            catch (Exception) {
+                            catch (Exception e) {
+                                holder.Log?.LogError(e, "[+*] {Key}: renewal failed with unexpected error", holder.FullKey);
                                 _entries.TryRemove(holder, out _);
                                 entry.ExpiredTcs.TrySetResult();
                                 continue;
@@ -384,8 +389,8 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
                     await _expiredTask.WaitAsync(cancellationToken).ConfigureAwait(false);
                     return true; // completed = lock expired
                 }
-                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-                    return false; // cancelled = normal shutdown
+                catch (OperationCanceledException) {
+                    return false; // cancelled = normal shutdown or renewal thread stopped
                 }
             }
 
