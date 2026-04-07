@@ -112,6 +112,12 @@ public sealed class AsyncMemoizer<T> : AsyncMemoizer, IAsyncMemoizer<T>
         _pool.Return(_buffer, clearOnReturn);
         for (var node = _oldBuffersHead; node != null; node = node.Next)
             _pool.Return(node.Buffer, clearOnReturn);
+
+        // Break all reference chains to allow GC of buffered items
+        _buffer = Array.Empty<T>();
+        _oldBuffersHead = null;
+        _snapshot = new Snapshot();
+        _spareSnapshot = null;
     }
 
     public IAsyncEnumerable<T> Replay(CancellationToken cancellationToken = default)
