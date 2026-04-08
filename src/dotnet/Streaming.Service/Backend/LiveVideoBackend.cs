@@ -127,14 +127,6 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         return Task.FromResult(chatState.ShouldPause(streamId));
     }
 
-    public virtual async Task EvaluateStreamPriority(ChatId chatId, CancellationToken cancellationToken)
-    {
-        var videoStreams = await List(chatId, cancellationToken).ConfigureAwait(false);
-        var audioStreams = await LiveAudioBackend.List(chatId, cancellationToken).ConfigureAwait(false);
-        var chatState = GetChatState(chatId);
-        chatState.EvaluatePriority(videoStreams, audioStreams, Clocks);
-    }
-
     public virtual async Task RegisterMember(ChatId chatId, string sessionId, ApiArray<string> supportedDecoderCodecs, CancellationToken cancellationToken)
     {
         var memberInfo = new VideoStreamMemberInfo(supportedDecoderCodecs, DateTime.UtcNow.Ticks);
@@ -168,6 +160,14 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
 
     // Private methods
 
+    private async Task EvaluateStreamPriority(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var videoStreams = await List(chatId, cancellationToken).ConfigureAwait(false);
+        var audioStreams = await LiveAudioBackend.List(chatId, cancellationToken).ConfigureAwait(false);
+        var chatState = GetChatState(chatId);
+        chatState.EvaluatePriority(videoStreams, audioStreams, Clocks);
+    }
+
     private static readonly TimeSpan MemberStalenessThreshold = TimeSpan.FromSeconds(90);
 
     private (Dictionary<string, ApiArray<string>> Active, List<string>? StaleKeys) FilterStaleMembers(
@@ -178,15 +178,13 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         var active = new Dictionary<string, ApiArray<string>>(allMembers.Count, StringComparer.Ordinal);
         List<string>? staleKeys = null;
 
-        foreach (var (sessionId, info) in allMembers) {
-            if (info.RegisteredAtTicks >= cutoff) {
+        foreach (var (sessionId, info) in allMembers)
+            if (info.RegisteredAtTicks >= cutoff)
                 active[sessionId] = info.SupportedDecoderCodecs;
-            }
             else {
                 staleKeys ??= new();
                 staleKeys.Add(sessionId);
             }
-        }
 
         // Fire-and-forget cleanup of stale entries from Redis
         if (staleKeys != null)

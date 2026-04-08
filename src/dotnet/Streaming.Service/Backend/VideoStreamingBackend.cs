@@ -19,15 +19,17 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
     private IAuthors Authors => field ??= Services.GetRequiredService<IAuthors>();
     private MomentClockSet Clocks => field ??= Services.Clocks();
     private ILiveVideoBackend LiveVideoBackend => field ??= Services.GetRequiredService<ILiveVideoBackend>();
-    private StreamLatencyStore LatencyStore => field ??= Services.GetRequiredService<StreamLatencyStore>();
-    private ILogger Log => field ??= Services.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 
     private IServiceProvider Services { get; }
+    private StreamLatencyStore LatencyStore { get; }
+    private ILogger Log { get; }
 
     public VideoStreamingBackend(IServiceProvider services)
     {
         Services = services;
+        LatencyStore = services.GetRequiredService<StreamLatencyStore>();
+        Log = services.LogFor(GetType());
         var typeFullName = GetType().FullName;
         _videoStreams = new StreamStore<VideoFrame> {
             StreamIdValidator = ValidateStreamId,

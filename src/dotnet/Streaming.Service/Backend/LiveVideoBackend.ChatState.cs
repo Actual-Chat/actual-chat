@@ -1,5 +1,5 @@
+using System.Collections.Frozen;
 using ActualChat.Live;
-using ActualChat.Video;
 
 namespace ActualChat.Streaming;
 
@@ -15,7 +15,7 @@ public partial class LiveVideoBackend
 
         // Priority queue state (in-memory, not Redis)
         private readonly Dictionary<AuthorId, Moment> _lastAudioActivityAt = new();
-        private readonly HashSet<string> _pausedStreamIds = new(); // StreamId.Value strings
+        private volatile FrozenSet<string> _pausedStreamIds = FrozenSet<string>.Empty;
 
         public LiveVideoBackend Owner { get; } = owner;
         public ChatId ChatId { get; } = chatId;
@@ -26,16 +26,14 @@ public partial class LiveVideoBackend
                 return _currentSupportedDecoderCodecs;
         }
 
+        // Lock-free: reads an immutable FrozenSet snapshot
         public bool ShouldPause(StreamId streamId)
-        {
-            lock (_codecLock)
-                return _pausedStreamIds.Contains(streamId.Value);
-        }
+            => _pausedStreamIds.Contains(streamId.Value);
 
         public void RecomputeCodecs(Dictionary<string, ApiArray<string>> members)
         {
             lock (_codecLock)
-                RecomputeSupportedDecoderCodecsLocked(members);
+                RecomputeSupportedDecoderCodecs(members);
         }
 
         public void EvaluatePriority(
@@ -43,16 +41,21 @@ public partial class LiveVideoBackend
             ApiArray<LiveStreamInfo> audioStreams,
             MomentClockSet clocks)
         {
+            List<string> changedIds;
             lock (_codecLock)
-                EvaluatePriorityLocked(videoStreams, audioStreams, clocks);
+                changedIds = EvaluatePriorityLocked(videoStreams, audioStreams, clocks);
+
+            // Invalidate OUTSIDE lock — no longer blocks ShouldPause readers
+            foreach (var id in changedIds)
+                Owner.InvalidateShouldPause(ChatId, StreamId.Parse(id));
         }
 
         // Private methods
 
         // Must be called under _codecLock
-        private void RecomputeSupportedDecoderCodecsLocked(Dictionary<string, ApiArray<string>> members)
+        private void RecomputeSupportedDecoderCodecs(Dictionary<string, ApiArray<string>> members)
         {
-            var newCodecs = ComputeSupportedDecoderCodecsLocked(members);
+            var newCodecs = ComputeSupportedDecoderCodecs(members);
             if (_currentSupportedDecoderCodecs.SequenceEqual(newCodecs))
                 return;
 
@@ -78,7 +81,7 @@ public partial class LiveVideoBackend
             _currentSupportedDecoderCodecs = newCodecs;
         }
 
-        private static ApiArray<string> ComputeSupportedDecoderCodecsLocked(Dictionary<string, ApiArray<string>> members)
+        private static ApiArray<string> ComputeSupportedDecoderCodecs(Dictionary<string, ApiArray<string>> members)
         {
             if (members.Count == 0)
                 return new ApiArray<string>(["av1", "hevc", "vp9", "h264"]); // No viewers, all codecs available
@@ -105,23 +108,23 @@ public partial class LiveVideoBackend
             return new ApiArray<string>(result.ToArray());
         }
 
-        private void EvaluatePriorityLocked(
+        // Returns list of changed stream IDs for invalidation (done outside lock by caller)
+        private List<string> EvaluatePriorityLocked(
             ApiArray<VideoStreamInfo> videoStreams,
             ApiArray<LiveStreamInfo> audioStreams,
             MomentClockSet clocks)
         {
             var webcamStreams = videoStreams.Where(s => s.StreamKind == StreamKind.Webcam).ToList();
+            var currentPaused = _pausedStreamIds;
 
             // Below threshold — unpause all
             if (webcamStreams.Count < Constants.Video.PriorityActivationThreshold) {
-                if (_pausedStreamIds.Count == 0)
-                    return;
+                if (currentPaused.Count == 0)
+                    return [];
 
-                var toInvalidate = _pausedStreamIds.ToList();
-                _pausedStreamIds.Clear();
-                foreach (var id in toInvalidate)
-                    Owner.InvalidateShouldPause(ChatId, StreamId.Parse(id));
-                return;
+                var toInvalidate = currentPaused.ToList();
+                _pausedStreamIds = FrozenSet<string>.Empty;
+                return toInvalidate;
             }
 
             // Build set of currently speaking author IDs
@@ -129,12 +132,11 @@ public partial class LiveVideoBackend
 
             // Update last-activity timestamps for authors currently speaking
             var now = clocks.ServerClock.Now;
-            foreach (var stream in webcamStreams) {
+            foreach (var stream in webcamStreams)
                 if (speakingAuthorIds.Contains(stream.AuthorId))
                     _lastAudioActivityAt[stream.AuthorId] = now;
                 else
                     _lastAudioActivityAt.TryAdd(stream.AuthorId, default);
-            }
 
             // Rank: currently speaking first, then by recency of last speech
             var ranked = webcamStreams
@@ -165,19 +167,16 @@ public partial class LiveVideoBackend
                     newPaused.Add(ranked[i].StreamId.Value);
             }
 
-            // 1. Collect streams whose pause state changed
+            // Collect streams whose pause state changed
             var changedIds = newPaused
-                .Where(id => !_pausedStreamIds.Contains(id)) // newly paused
-                .Concat(_pausedStreamIds.Where(id => !newPaused.Contains(id)))  // newly unpaused
+                .Where(id => !currentPaused.Contains(id)) // newly paused
+                .Concat(currentPaused.Where(id => !newPaused.Contains(id)))  // newly unpaused
                 .ToList();
 
-            // 2. Update state
-            _pausedStreamIds.Clear();
-            _pausedStreamIds.UnionWith(newPaused);
+            // Atomic swap — ShouldPause readers see old or new, never torn
+            _pausedStreamIds = newPaused.ToFrozenSet(StringComparer.Ordinal);
 
-            // 3. Invalidate — subscribers will read the updated state
-            foreach (var id in changedIds)
-                Owner.InvalidateShouldPause(ChatId, StreamId.Parse(id));
+            return changedIds;
         }
     }
 }
