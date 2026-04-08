@@ -147,7 +147,8 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
         };
 
         var key = Alphabet.AlphaNumeric.Generator8.Next();
-        await using var h = await locks.Lock(key, lockOptions);
+        // Do not use await using as we are disposing manually at the end of the test to check that renewal works until disposal.
+        var h = await locks.Lock(key, lockOptions);
 
         // Capture initial ExpiresAt
         var initialExpiresAt = h.ExpiresAt;
