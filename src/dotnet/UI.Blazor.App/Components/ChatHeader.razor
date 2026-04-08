@@ -9,19 +9,6 @@
     var showBackBtn = isThread || ScreenSize.IsNarrow();
     var isAnyoneVideoStreaming = m.IsAnyoneVideoStreaming;
     var isPanelVisible = IsRecordingHere || IsListeningHere || isAnyoneVideoStreaming || (m.IsAnyoneTalking && m.AudioState?.ChatId == chat?.Id);
-    var isWatchingHere = m.VideoState?.IsWatching == true;
-
-    // Clear watching when navigating to a different chat
-    if (_lastWatchingChatId is not null && _lastWatchingChatId != chat?.Id)
-        ChatVideoUI.SetWatching(null);
-    _lastWatchingChatId = isWatchingHere ? chat?.Id : null;
-
-    // Show video panel when IsWatching becomes true
-    if (!_showVideoPanel && isWatchingHere)
-        _showVideoPanel = true;
-    // Hide when no longer watching or feature disabled
-    else if (_showVideoPanel && !isWatchingHere)
-        _showVideoPanel = false;
 }
 
 @if (m.HasSelection) {
@@ -90,13 +77,10 @@
 }
 
 @if (m.IsVideoStreamingEnabled) {
-    <VideoPanel Show="@_showVideoPanel" Collapsed="@m.IsVideoPanelCollapsed"/>
+    <VideoPanel />
 }
 
 @code {
-    private bool _showVideoPanel;
-    private ChatId? _lastWatchingChatId;
-
     private IChats Chats => Hub.Chats;
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
@@ -135,7 +119,6 @@
 
         Chat? chat = null;
         ChatAudioState? audioState = null;
-        ChatVideoState? videoState = null;
         if (chatId is not null)
             chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
 
@@ -143,10 +126,8 @@
         if (chatId is not null)
             authorIds = await LiveStreamUI.GetStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
 
-        if (chatId is not null) {
+        if (chatId is not null)
             audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
-            videoState = await ChatVideoUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
-        }
 
         var isAnyoneVideoStreaming = chatId is not null && await ChatVideoUI.IsAnyoneVideoStreaming(chatId, cancellationToken).ConfigureAwait(false);
 
@@ -154,18 +135,15 @@
         var isSearchMode = await Hub.PanelsUI.Right.IsSearchMode.Use(cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         var isVideoStreamingEnabled = await ChatVideoUI.IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
-        var isVideoPanelCollapsed = await ChatVideoUI.GetIsVideoPanelCollapsed(cancellationToken).ConfigureAwait(false);
         return new() {
             Chat = chat,
             AudioState = audioState,
-            VideoState = videoState,
             IsAnyoneTalking = authorIds.Length > 0,
             IsAnyoneVideoStreaming = isAnyoneVideoStreaming,
             HasSelection = hasSelection,
             IsSearchMode = isSearchMode,
             EnableIncompleteUI = enableIncompleteUI,
             IsVideoStreamingEnabled = isVideoStreamingEnabled,
-            IsVideoPanelCollapsed = isVideoPanelCollapsed,
         };
     }
 
@@ -202,13 +180,12 @@
 
         public Chat? Chat { get; init; }
         public ChatAudioState? AudioState { get; init; }
-        public ChatVideoState? VideoState { get; init; }
+
         public bool IsAnyoneTalking { get; init; }
         public bool IsAnyoneVideoStreaming { get; init; }
         public bool HasSelection { get; init; }
         public bool IsSearchMode { get; init; }
         public bool EnableIncompleteUI { get; init; }
         public bool IsVideoStreamingEnabled { get; init; }
-        public bool IsVideoPanelCollapsed { get; init; }
     }
 }
