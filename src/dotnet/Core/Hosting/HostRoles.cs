@@ -46,8 +46,7 @@ public static class HostRoles
                     if (roles.Contains(HostRole.OneBackendServer)) {
                         roles.Add(HostRole.EventQueue);
                         roles.Add(HostRole.FlowsBackend);
-                        roles.Add(HostRole.AudioBackend);
-                        roles.Add(HostRole.VideoBackend);
+                        roles.Add(HostRole.StreamingBackend);
                         roles.Add(HostRole.LiveBackend);
                         roles.Add(HostRole.MediaBackend);
                         roles.Add(HostRole.ChatBackend);

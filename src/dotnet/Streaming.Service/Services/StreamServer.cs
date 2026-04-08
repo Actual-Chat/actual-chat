@@ -59,9 +59,9 @@ public class StreamServer(IServiceProvider services) : IStreamServer
         var chatIdTyped = ChatId.Parse(chatId);
         var repliedEntryIdTyped = ChatEntryId.ParseNullable(repliedChatEntryId);
 
-        var nodes = MeshWatcher.State.Value.LiveNodesByRole[HostRole.AudioBackend];
+        var nodes = MeshWatcher.State.Value.LiveNodesByRole[HostRole.StreamingBackend];
         if (nodes.Length == 0) {
-            Log.LogError("No nodes serving {Role} role!", HostRole.AudioBackend);
+            Log.LogError("No nodes serving {Role} role!", HostRole.StreamingBackend);
             return; // No backends
         }
 
@@ -84,9 +84,9 @@ public class StreamServer(IServiceProvider services) : IStreamServer
     {
         var chatIdTyped = ChatId.Parse(chatId);
 
-        var nodes = MeshWatcher.State.Value.LiveNodesByRole[HostRole.VideoBackend];
+        var nodes = MeshWatcher.State.Value.LiveNodesByRole[HostRole.StreamingBackend];
         if (nodes.Length == 0) {
-            Log.LogError("No nodes serving {Role} role!", HostRole.VideoBackend);
+            Log.LogError("No nodes serving {Role} role!", HostRole.StreamingBackend);
             return;
         }
 
