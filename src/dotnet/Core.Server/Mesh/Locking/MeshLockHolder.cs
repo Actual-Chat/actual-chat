@@ -203,9 +203,8 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
 
             // Backoff before retrying - the expiresIn check at the top of the loop
             // will catch the case where we've run past the deadline
-            await Clock.Delay(_backend.RetryDelays[failureCount], timeoutToken)
-                .SuppressCancellation()
-                .ConfigureAwait(false);
+            // ReSharper disable once MethodSupportsCancellation
+            await Clock.Delay(_backend.RetryDelays[failureCount]).ConfigureAwait(false);
         }
     }
 
