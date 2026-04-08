@@ -130,7 +130,6 @@
 
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.JoinVideoCallModal.create";
-    private static readonly string JSEnumerateMethod = $"{BlazorUIAppModule.ImportName}.JoinVideoCallModal.enumerateDevices";
 
     private ElementReference _containerRef;
     private DotNetObjectReference<JoinVideoCallModal>? _blazorRef;
@@ -243,13 +242,8 @@
     }
 
     private async Task LoadVideoDevices() {
-        try {
-            var devices = await JS.InvokeAsync<VideoDevice[]>(JSEnumerateMethod);
-            _videoDevices = devices.ToList();
-            StateHasChanged();
-        } catch {
-            _videoDevices = new();
-        }
+        _videoDevices = (await ChatVideoUI.EnumerateVideoDevices()).ToList();
+        StateHasChanged();
     }
 
     private async Task EnsureJsRef() {
@@ -365,9 +359,6 @@
         => _isBlurEnabled ? "blur-btn active" : "blur-btn";
 
     // Nested types
-
-    // ReSharper disable once ClassNeverInstantiated.Local — instantiated via JS interop deserialization
-    private record VideoDevice(string DeviceId, string Label);
 
     public enum VideoCallMode { Join, Settings }
 

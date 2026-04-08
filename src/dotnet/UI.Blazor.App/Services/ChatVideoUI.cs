@@ -1,4 +1,5 @@
 using ActualChat.Streaming;
+using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
 
@@ -186,6 +187,36 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         // Don't clear _watchingChatId — user stays watching remote streams, can retry or hang up
     }
 
+    // Device enumeration
+
+    public async Task<VideoDevice[]> EnumerateVideoDevices()
+    {
+        try {
+            var jsMethod = $"{BlazorUIAppModule.ImportName}.JoinVideoCallModal.enumerateDevices";
+            return await JS.InvokeAsync<VideoDevice[]>(jsMethod).ConfigureAwait(false);
+        }
+        catch {
+            return [];
+        }
+    }
+
+    public async Task SwitchCamera()
+    {
+        var devices = await EnumerateVideoDevices().ConfigureAwait(false);
+        if (devices.Length <= 1)
+            return;
+
+        var localAppSettings = LocalSettings.LocalAppSettings();
+        var settings = await localAppSettings.Get().ConfigureAwait(false);
+        var currentId = settings.SelectedCameraDeviceId ?? "";
+        var currentIndex = Array.FindIndex(devices, d => d.DeviceId == currentId);
+        var nextIndex = (currentIndex + 1) % devices.Length;
+        var nextDevice = devices[nextIndex];
+        await localAppSettings.Update(
+            s => s with { SelectedCameraDeviceId = nextDevice.DeviceId }).ConfigureAwait(false);
+        SetSelectedCamera(nextDevice.DeviceId);
+    }
+
     // Modal helpers
 
     public void JoinVideoSession(ChatId chatId)
@@ -314,3 +345,6 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public ValueTask<bool> IsVideoStreamingEnabled(CancellationToken cancellationToken)
         => Features.IsVideoStreamingEnabled(cancellationToken);
 }
+
+// ReSharper disable once ClassNeverInstantiated.Global — instantiated via JS interop deserialization
+public sealed record VideoDevice(string DeviceId, string Label);
