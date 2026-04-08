@@ -1,0 +1,86 @@
+@namespace ActualChat.UI.Blazor.App.Components.VideoPanel
+@using ActualChat.UI.Blazor.App.Module
+@inherits ComputedStateComponent<AppUIHub, VideoStreamingPreview.Model>
+@{
+    var m = State.Value;
+    var recordingCls = m.VideoState.IsRecording ? "recording" : "";
+    var screencastCls = m.VideoState.IsScreencasting ? "screencast" : "";
+}
+
+<div @ref="Ref" class="video-streaming-preview @recordingCls @screencastCls">
+    <canvas
+        class="call-video"
+        @onclick="@(m.VideoState.IsRecording && !m.IsAloneOnStream ? OnSettingsClick : null!)"></canvas>
+    <div class="video-loading">
+        <span class="spinner-icon-wrapper">
+            <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
+        </span>
+    </div>
+    @if (m.VideoState.IsRecording && m.IsAloneOnStream) {
+        <HeaderButton Class="settings-btn" Click="@OnSettingsClick">
+            <i class="icon-settings text-lg"></i>
+        </HeaderButton>
+        <div class="video-participant-label">
+            <i class="icon-video"></i>
+            <span>You</span>
+        </div>
+    }
+    @if (m.VideoState.HasError) {
+        <div class="video-error">
+            <span>@(m.VideoState.ErrorMessage ?? "")</span>
+        </div>
+    }
+</div>
+
+@code {
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoStreamingPreview.create";
+
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private ElementReference Ref { get; set; }
+    private IJSObjectReference? JSRef { get; set; }
+
+    public override async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        await base.DisposeAsync();
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            t => new ComputedState<Model>.Options {
+                InitialValue = Model.None,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken);
+        if (chatId is null)
+            return Model.None;
+
+        var videoState = await ChatVideoUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
+        var remoteStreams = await ChatVideoUI.GetRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
+        return new Model(videoState, remoteStreams.Length == 0);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender)
+            return;
+
+        JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
+    }
+
+    private void OnSettingsClick() {
+        var chatId = Hub.ChatUI.SelectedChatId.Value;
+        if (chatId is null)
+            return;
+
+        ChatVideoUI.ChangeVideoSessionSettings(chatId);
+    }
+
+    // Nested types
+
+    public sealed record Model(ChatVideoState VideoState, bool IsAloneOnStream) {
+        public static readonly Model None = new(ChatVideoState.None, true);
+    }
+}
