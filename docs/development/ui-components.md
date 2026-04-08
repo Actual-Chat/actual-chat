@@ -99,6 +99,35 @@ Standard components inside (buttons, separators, tiles, inputs) do NOT need extr
 .amazing-panel .btn.amazing-panel-btn { }
 ```
 
+### Toggle State
+
+For buttons and elements that behave like a toggle (on/off), use the `.on` class (and `.off` if needed). Do not invent custom state classes like `.video-active` or `.is-selected`:
+
+```razor
+<button class="@(isRecording ? "on" : "")">
+```
+```css
+.amazing-panel > button.on {
+    @apply outline-2 outline-primary;
+}
+```
+
+### Semantic Host Classes for JS Queries
+
+When TypeScript needs to find a parent container via `closest()`, add a dedicated semantic class to the host element instead of relying on layout-specific classes. This decouples the JS logic from the page structure:
+
+**Wrong:**
+```typescript
+this.host = this.el.closest('.video-panel-chat') ?? this.el.closest('.list-view-layout');
+```
+
+**Correct:**
+```typescript
+this.host = this.el.closest('.upload-drag-drop-host');
+```
+
+Then apply the class to each host element in Razor/C#.
+
 ## No Inline Tailwind in Razor
 
 Do NOT write Tailwind utility classes directly in `.razor` markup. Instead, assign a CSS class and use `@apply` in the CSS file.
