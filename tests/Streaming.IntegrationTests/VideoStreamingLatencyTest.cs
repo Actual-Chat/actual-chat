@@ -208,12 +208,15 @@ public class VideoStreamingLatencyTest(AppHostFixture fixture, ITestOutputHelper
         // invocation message is sent, NOT when all stream items are delivered.
         // The IAsyncEnumerable is consumed in a background task by SignalR.
         await Task.Delay(TimeSpan.FromSeconds(5));
-        Out.WriteLine($"Waited ~5s for producer data ({sentTimestamps.Count} frames sent so far), joining late...");
+        var framesBeforeJoin = sentTimestamps.Count;
+        Out.WriteLine($"Waited ~5s for producer data ({framesBeforeJoin} frames sent so far), joining late...");
+
+        // Compute the stream offset at join time — frames at or before this offset are from the buffer
+        var joinStreamOffset = TimeSpan.FromTicks(FrameDuration.Ticks * framesBeforeJoin);
 
         // Late consumer joins
         await using var consumerConnection = CreateHubConnection(hubUrl);
         await consumerConnection.StartAsync();
-        var consumerJoinedTs = Stopwatch.GetTimestamp();
 
         var keyframeLatencies = new List<double>();
         var receivedOffsets = new List<long>();
@@ -234,11 +237,11 @@ public class VideoStreamingLatencyTest(AppHostFixture fixture, ITestOutputHelper
                 firstFrame ??= frame;
                 receivedOffsets.Add(frame.Offset.Ticks);
 
-                // Track keyframe latencies — skip frames produced before consumer joined
+                // Track keyframe latencies — skip frames whose offset predates the join point
                 // (they come from the retention buffer and have inflated "latency")
                 if (frame.IsKeyFrame && sentTimestamps.TryGetValue(frame.Offset.Ticks, out var sentTs)) {
                     var latency = Stopwatch.GetElapsedTime(sentTs, receiveTs);
-                    if (sentTs < consumerJoinedTs) {
+                    if (frame.Offset <= joinStreamOffset) {
                         Out.WriteLine($"  Keyframe @ {frame.Offset.TotalSeconds:F2}s: latency={latency.TotalMilliseconds:F1}ms (buffered, excluded)");
                     }
                     else {
