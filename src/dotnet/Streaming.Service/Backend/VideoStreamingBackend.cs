@@ -83,7 +83,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
     // Quality control — stream-local state
 
     // [ComputeMethod]
-    public virtual async Task<VideoQualityPreset> GetQualityPreset(StreamId streamId, string peerId, CancellationToken cancellationToken)
+    public virtual async Task<VideoQualityPreset> GetQualityPreset(StreamId streamId, CancellationToken cancellationToken)
     {
         if (!LatencyStore.LatencyStates.TryGetValue(streamId, out var latencyState))
             return VideoQualityPreset.High;
@@ -99,10 +99,6 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         // Consume any pending keyframe request (atomic: only first caller gets it)
         if (LatencyStore.KeyFrameRequests.TryRemove(streamId, out _))
             preset = preset with { IsKeyFrameRequested = true };
-
-        // Add per-peer temporal layer filtering
-        if (!peerId.IsNullOrEmpty())
-            preset = preset with { MaxTemporalLayer = LatencyStore.GetPeerMaxTemporalLayer(streamId, peerId) };
 
         return preset;
     }
@@ -123,7 +119,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 
         // Invalidate GetQualityPreset so computed consumers re-evaluate reactively
         using (Invalidation.Begin())
-            _ = GetQualityPreset(streamId, "", default);
+            _ = GetQualityPreset(streamId, default);
 
         return Task.CompletedTask;
     }
@@ -137,12 +133,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         double bufferSpanMs = -1,
         CancellationToken cancellationToken = default)
     {
-        var oldMaxLayer = LatencyStore.GetPeerMaxTemporalLayer(streamId, peerId);
         LatencyStore.ReportPeerLatency(streamId, peerId, streamOffsetMs, medianDecodeTimeMs, bufferDepth, bufferSpanMs);
-        var newMaxLayer = LatencyStore.GetPeerMaxTemporalLayer(streamId, peerId);
-        if (newMaxLayer != oldMaxLayer)
-            using (Invalidation.Begin())
-                _ = GetQualityPreset(streamId, peerId, default);
         return Task.CompletedTask;
     }
 
@@ -167,12 +158,16 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         var refreshTask = BackgroundTask.Run(async () => {
             while (!refreshToken.IsCancellationRequested) {
                 var computed = await Computed
-                    .Capture(() => GetQualityPreset(streamId, peerId, refreshToken), refreshToken)
+                    .Capture(() => GetQualityPreset(streamId, refreshToken), refreshToken)
                     .ConfigureAwait(false);
                 preset = computed.Value;
                 await computed.WhenInvalidated(refreshToken).ConfigureAwait(false);
             }
         }, refreshToken);
+
+        // --- Per-peer temporal layer: cached locally, refreshed once per second ---
+        var maxTemporalLayer = LatencyStore.GetPeerMaxTemporalLayer(streamId, peerId);
+        var maxTemporalLayerUpdatedAt = CpuTimestamp.Now;
 
         // --- SkipTo filter state: skip frames until we reach a keyframe at or past skipTo ---
         var skipToActive = skipTo > TimeSpan.Zero;
@@ -200,7 +195,11 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                 }
 
                 // 1. Temporal layer filter — drop enhancement layers for slow peers
-                if (frame.TemporalLayerId > preset.MaxTemporalLayer)
+                if (maxTemporalLayerUpdatedAt.Elapsed.TotalSeconds >= 1) {
+                    maxTemporalLayer = LatencyStore.GetPeerMaxTemporalLayer(streamId, peerId);
+                    maxTemporalLayerUpdatedAt = CpuTimestamp.Now;
+                }
+                if (frame.TemporalLayerId > maxTemporalLayer)
                     continue;
 
                 // 2. Pause filter — drop all frames when stream is paused by priority queue

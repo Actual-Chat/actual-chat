@@ -14,7 +14,7 @@ public class VideoQualityPresetTest(AppHostFixture fixture, ITestOutputHelper @o
         var backend = AppHost.Services.GetRequiredService<IVideoStreamingBackend>();
         var unknownStreamId = StreamId.New(AppHost.Services.MeshWatcher().ThisNode.Ref);
 
-        var preset = await backend.GetQualityPreset(unknownStreamId, "", CancellationToken.None);
+        var preset = await backend.GetQualityPreset(unknownStreamId, CancellationToken.None);
 
         preset.Should().NotBeNull();
         preset.Level.Should().Be(VideoQualityLevel.High,
@@ -29,7 +29,7 @@ public class VideoQualityPresetTest(AppHostFixture fixture, ITestOutputHelper @o
 
         // Should work with Computed.Capture
         var computed = await Computed.Capture(
-            () => backend.GetQualityPreset(streamId, "", CancellationToken.None));
+            () => backend.GetQualityPreset(streamId, CancellationToken.None));
 
         computed.Value.Level.Should().Be(VideoQualityLevel.High);
         computed.IsConsistent().Should().BeTrue();

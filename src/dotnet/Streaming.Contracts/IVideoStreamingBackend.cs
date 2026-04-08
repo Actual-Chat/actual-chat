@@ -13,7 +13,7 @@ public interface IVideoStreamingBackend : IComputeService, IRpcService, IBackend
 
     // Quality control — stream-local state, routed by StreamId.NodeRef
     [ComputeMethod]
-    Task<VideoQualityPreset> GetQualityPreset(StreamId streamId, string peerId, CancellationToken cancellationToken);
+    Task<VideoQualityPreset> GetQualityPreset(StreamId streamId, CancellationToken cancellationToken);
 
     Task RequestKeyFrame(StreamId streamId, CancellationToken cancellationToken = default);
 
