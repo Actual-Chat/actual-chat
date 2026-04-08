@@ -211,8 +211,12 @@ public class VideoStreamingLatencyTest(AppHostFixture fixture, ITestOutputHelper
         var framesBeforeJoin = sentTimestamps.Count;
         Out.WriteLine($"Waited ~5s for producer data ({framesBeforeJoin} frames sent so far), joining late...");
 
-        // Compute the stream offset at join time — frames at or before this offset are from the buffer
-        var joinStreamOffset = TimeSpan.FromTicks(FrameDuration.Ticks * framesBeforeJoin);
+        // Compute the stream offset at join time — frames at or before this offset are from the buffer.
+        // Frame offsets are zero-based, so if N frames have been sent, the latest buffered
+        // frame offset is typically (N - 1) * FrameDuration. Guard the empty-buffer case.
+        var joinStreamOffset = framesBeforeJoin > 0
+            ? TimeSpan.FromTicks(FrameDuration.Ticks * (framesBeforeJoin - 1))
+            : TimeSpan.Zero;
 
         // Late consumer joins
         await using var consumerConnection = CreateHubConnection(hubUrl);

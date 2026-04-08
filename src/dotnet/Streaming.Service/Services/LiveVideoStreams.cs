@@ -85,8 +85,7 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         Session session,
         StreamId streamId,
         CancellationToken cancellationToken)
-        // We use peerId only for temporal layer filtering, so it's fine to use empty string
-        => await VideoStreamingBackend.GetQualityPreset(streamId, "", cancellationToken).ConfigureAwait(false);
+        => await VideoStreamingBackend.GetQualityPreset(streamId, cancellationToken).ConfigureAwait(false);
 
     // Legacy v2.6 compatibility methods
 
