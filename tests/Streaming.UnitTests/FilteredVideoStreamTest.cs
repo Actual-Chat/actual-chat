@@ -1,4 +1,5 @@
 using ActualChat.Video;
+using ActualLab.Rpc;
 
 namespace ActualChat.Streaming.UnitTests;
 
@@ -161,12 +162,16 @@ public class FilteredVideoStreamTest(ILogger log)
 
     private VideoStreamingBackend CreateBackend()
     {
-        // Minimal service provider — only ILoggerFactory needed for the filter pipeline
         var services = new ServiceCollection()
+            .AddSingleton<StreamLatencyStore>()
             .AddLogging(b => b.AddProvider(new TestLoggerProvider(Log)).SetMinimumLevel(LogLevel.Debug))
+            .AddFusion(fusion => {
+                fusion.AddService<VideoStreamingBackend>();
+            })
             .BuildServiceProvider();
 
-        return new VideoStreamingBackend(services);
+        // Resolve through DI so Fusion intercepts [ComputeMethod] calls
+        return services.GetRequiredService<VideoStreamingBackend>();
     }
 
     private sealed class TestLoggerProvider(ILogger logger) : ILoggerProvider
