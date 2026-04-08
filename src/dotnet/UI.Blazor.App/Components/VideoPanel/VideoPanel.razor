@@ -5,6 +5,26 @@
 @inherits ComputedStateComponent<AppUIHub, VideoPanel.Model>
 @{
     var m = State.Value;
+    var isWatching = m.IsWatching;
+
+    // Clear watching when navigating to a different chat
+    if (_lastWatchingChatId is not null && m.ChatId is not null && _lastWatchingChatId != m.ChatId)
+        ChatVideoUI.SetWatching(null);
+    _lastWatchingChatId = isWatching ? m.ChatId : null;
+
+    // Handle show/hide transitions based on watching state
+    if (isWatching && !_rendered) {
+        _rendered = true;
+        _isFirstOpen = true;
+        _noStreamsTimedOut = false;
+        _hadRemoteStreams = false;
+    } else if (!isWatching && _rendered) {
+        _shouldStartClosing = true;
+    }
+
+    if (!_rendered)
+        return;
+
     var cls = m.IsRightPanelVisible ? "rp-visible" : "";
     var recordingCls = m.IsRecording ? "recording" : "";
     var hasRemoteStreams = m.RemoteStreams.Length > 0;
@@ -33,8 +53,7 @@
         _lastChat = mChat;
 }
 
-@if (_rendered) {
-    <div @ref="Ref" class="video-panel @firstOpenCls @cls @recordingCls @remoteStreamsCls @(_isExpanded ? "expanded" : "") @(Collapsed ? "collapsed" : "")">
+    <div @ref="Ref" class="video-panel @firstOpenCls @cls @recordingCls @remoteStreamsCls @(_isExpanded ? "expanded" : "") @(m.IsCollapsed ? "collapsed" : "")">
       <div class="c-container">
         @* Header for expanded video *@
         <div class="video-panel-toolbar video-panel-header">
@@ -124,7 +143,6 @@
         }
       </div>
     </div>
-}
 
 @code {
     private bool _rendered;
@@ -135,6 +153,8 @@
     private bool _noStreamsTimedOut;
     private bool _showConnecting;
     private bool _hadRemoteStreams;
+    private bool _shouldStartClosing;
+    private ChatId? _lastWatchingChatId;
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoPanel.create";
 
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
@@ -145,8 +165,6 @@
     private IJSObjectReference? JSRef { get; set; }
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-    [Parameter] public bool Show { get; set; }
-    [Parameter] public bool Collapsed { get; set; }
 
     public override async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
@@ -157,22 +175,17 @@
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (_shouldStartClosing) {
+            _shouldStartClosing = false;
+            if (JSRef is not null)
+                await JSRef.InvokeVoidAsync("startClosing");
+        }
+
         if (_rendered && JSRef is null) {
             BlazorRef = DotNetObjectReference.Create(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
 
             _ = ClearFirstOpenAsync();
-        }
-    }
-
-    protected override async Task OnParametersSetAsync() {
-        if (Show && !_rendered) {
-            _rendered = true;
-            _isFirstOpen = true;
-            _noStreamsTimedOut = false;
-            _hadRemoteStreams = false;
-        } else if (!Show && _rendered && JSRef is not null) {
-            await JSRef.InvokeVoidAsync("startClosing");
         }
     }
 
@@ -322,8 +335,16 @@
             ? await Hub.Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false)
             : null;
 
+        var isWatching = false;
+        var isCollapsed = false;
+        if (chatId is not null) {
+            var watchingChatId = await ChatVideoUI.GetWatchingChatId(cancellationToken).ConfigureAwait(false);
+            isWatching = watchingChatId == chatId;
+            isCollapsed = await ChatVideoUI.GetIsVideoPanelCollapsed(cancellationToken).ConfigureAwait(false);
+        }
+
         if (chatId is null)
-            return new Model(isRightPanelVisible, [], false, false, false, 0, null, null);
+            return new Model(isRightPanelVisible, [], false, false, false, 0, null, null, IsWatching: isWatching, IsCollapsed: isCollapsed);
 
         // Get centralized video state (for recording status)
         var videoState = await ChatVideoUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
@@ -336,7 +357,7 @@
             : 0;
 
         if (activeStreams.Count == 0)
-            return new Model(isRightPanelVisible, [], videoState.IsRecording, audioState.IsRecording, audioState.IsListening, 0, chatId, chat);
+            return new Model(isRightPanelVisible, [], videoState.IsRecording, audioState.IsRecording, audioState.IsListening, 0, chatId, chat, IsWatching: isWatching, IsCollapsed: isCollapsed);
 
         var remoteStreams = await ChatVideoUI.GetRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
 
@@ -344,7 +365,7 @@
             string.Join(", ", remoteStreams.Select(s => $"{s.StreamId}({s.Format.Codec})")),
             videoState.IsRecording);
 
-        return new Model(isRightPanelVisible, remoteStreams, videoState.IsRecording, audioState.IsRecording, audioState.IsListening, videoStreamMemberCount, chatId, chat, videoState.IsScreencasting);
+        return new Model(isRightPanelVisible, remoteStreams, videoState.IsRecording, audioState.IsRecording, audioState.IsListening, videoStreamMemberCount, chatId, chat, videoState.IsScreencasting, isWatching, isCollapsed);
     }
 
     // Nested types
@@ -358,7 +379,9 @@
         int VideoStreamMemberCount,
         ChatId? ChatId,
         Chat? Chat,
-        bool IsScreencasting = false
+        bool IsScreencasting = false,
+        bool IsWatching = false,
+        bool IsCollapsed = false
     ) {
         public static readonly Model None = new(false, [], false, false, false, 0, null, null);
     }
