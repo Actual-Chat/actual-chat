@@ -125,48 +125,44 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
         }
     }
 
+    /// <summary>
+    /// Single renewal attempt. Returns true if renewed, false if lock expired.
+    /// Throws on transient errors (e.g. Redis connection) — the renewal thread
+    /// will schedule a retry with backoff.
+    /// </summary>
     private async Task<bool> TryRenew(CancellationToken cancellationToken)
     {
-        var failureCount = 0;
-        while (true) {
-            var expiresIn = ExpiresAt - Options.ExpirationSafetyMargin - Clock.Now;
-            if (expiresIn < TimeSpan.Zero) {
-                Log?.LogError("[+*] {Key}: renewal failed - too late to renew", FullKey);
+        var expiresIn = ExpiresAt - Options.ExpirationSafetyMargin - Clock.Now;
+        if (expiresIn < TimeSpan.Zero) {
+            Log?.LogError("[+*] {Key}: renewal failed - too late to renew", FullKey);
+            return false;
+        }
+
+        var expiredCts = cancellationToken.CreateLinkedTokenSource();
+        var expiredToken = expiredCts.Token;
+        expiredCts.CancelAfter(expiresIn);
+        try {
+            var expiresAt = Clock.Now + Options.ExpirationPeriod;
+            var isRenewed = await _backend
+                .TryRenew(Key, Id, Options.ExpirationPeriod, expiredToken)
+                .ConfigureAwait(false);
+            if (isRenewed)
+                ExpiresAt = expiresAt;
+            else
+                Log?.LogError("[+*] {Key}: renewal failed - key already expired", FullKey);
+            return isRenewed;
+        }
+        // ReSharper disable once PossiblyMistakenUseOfCancellationToken
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            if (expiredToken.IsCancellationRequested) {
+                Log?.LogError(e, "[+*] {Key}: renewal failed - timeout", FullKey);
                 return false;
             }
-
-            var expiredCts = cancellationToken.CreateLinkedTokenSource();
-            var expiredToken = expiredCts.Token;
-            expiredCts.CancelAfter(expiresIn);
-            try {
-                var expiresAt = Clock.Now + Options.ExpirationPeriod;
-                // DebugLog?.LogDebug("[+*] {Key}: renew {StoredValue}", FullKey, StoredValue);
-                var isRenewed = await _backend
-                    .TryRenew(Key, Id, Options.ExpirationPeriod, expiredToken)
-                    .ConfigureAwait(false);
-                if (isRenewed)
-                    ExpiresAt = expiresAt;
-                else
-                    Log?.LogError("[+*] {Key}: renewal failed - key already expired", FullKey);
-                return isRenewed;
-            }
-            // ReSharper disable once PossiblyMistakenUseOfCancellationToken
-            catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
-                if (expiredToken.IsCancellationRequested) {
-                    Log?.LogError(e, "[+*] {Key}: renewal failed - timeout", FullKey);
-                    return false;
-                }
-
-                failureCount++;
-                Log?.LogError(e, "[+*] {Key}: renewal failed, will retry", FullKey);
-            }
-            finally {
-                expiredCts.CancelAndDisposeSilently();
-            }
-
-            // Backoff before retrying - the expiresIn check at the top of the loop
-            // will catch the case where we've run past the deadline
-            await Clock.Delay(_backend.RetryDelays[failureCount], cancellationToken).ConfigureAwait(false);
+            // Transient error — let it propagate to the renewal thread for retry scheduling
+            throw;
+        }
+        finally {
+            expiredCts.CancelAndDisposeSilently();
         }
     }
 
@@ -299,6 +295,7 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
                                     entry.ExpiredTcs.TrySetResult();
                                     continue;
                                 }
+                                entry.FailureCount = 0;
                                 entry.NextRenewalAt = holder.Clock.Now + holder.Options.RenewalPeriod;
                             }
                             catch (OperationCanceledException) {
@@ -307,11 +304,24 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
                                 continue;
                             }
                             catch (Exception e) {
-                                holder.Log?.LogError(e,
-                                    "[+*] {Key}: renewal failed with unexpected error",
-                                    holder.FullKey);
-                                _entries.TryRemove(holder, out _);
-                                entry.ExpiredTcs.TrySetResult();
+                                // Transient failure — schedule retry with backoff
+                                entry.FailureCount++;
+                                var retryDelay = holder._backend.RetryDelays[entry.FailureCount];
+                                var retryNow = holder.Clock.Now;
+                                var deadline = holder.ExpiresAt - holder.Options.ExpirationSafetyMargin;
+                                if (retryNow + retryDelay >= deadline) {
+                                    holder.Log?.LogError(e,
+                                        "[+*] {Key}: renewal failed, no time to retry",
+                                        holder.FullKey);
+                                    _entries.TryRemove(holder, out _);
+                                    entry.ExpiredTcs.TrySetResult();
+                                }
+                                else {
+                                    holder.Log?.LogWarning(e,
+                                        "[+*] {Key}: renewal failed, will retry in {Delay}",
+                                        holder.FullKey, retryDelay);
+                                    entry.NextRenewalAt = retryNow + retryDelay;
+                                }
                                 continue;
                             }
                         }
@@ -321,6 +331,12 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
                         var remaining = entry.NextRenewalAt - now;
 
                         if (remaining <= TimeSpan.Zero) {
+                            // Re-check: holder may have been stopped between the earlier check and now
+                            if (ct.IsCancellationRequested) {
+                                _entries.TryRemove(holder, out _);
+                                entry.ExpiredTcs.TrySetCanceled(ct);
+                                continue;
+                            }
                             entry.PendingRenewal = holder.TryRenew(ct);
                             minSleepMs = Math.Min(minSleepMs, 50);
                             continue;
@@ -330,11 +346,20 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
                         if (remainingMs < minSleepMs)
                             minSleepMs = remainingMs;
                     }
-                    catch (Exception) {
-                        // Prevent one bad entry from crashing the thread and orphaning all others
+                    catch (Exception ex) {
+                        // Prevent one bad entry from crashing the thread and orphaning all others.
+                        // Use TrySetCanceled (not TrySetResult) to signal clean shutdown rather than
+                        // false expiration, which would trigger host termination via MeshWatcher.
                         _entries.TryRemove(holder, out _);
-                        entry.ExpiredTcs.TrySetResult();
-                        holder.Log?.LogWarning("[+*] {Key}: renewal failed - exception", holder.FullKey);
+                        entry.ExpiredTcs.TrySetCanceled();
+                        try {
+                            holder.Log?.LogWarning(ex,
+                                "[+*] {Key}: renewal entry removed due to unexpected error",
+                                holder.FullKey);
+                        }
+                        catch {
+                            // Logger might be from a disposed service provider
+                        }
                     }
                 }
                 _ = _wakeSemaphore.Wait(Math.Max(10, minSleepMs));
@@ -390,6 +415,7 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
             public readonly TaskCompletionSource ExpiredTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
             public Moment NextRenewalAt;
             public Task<bool>? PendingRenewal;
+            public int FailureCount;
         }
     }
 }
