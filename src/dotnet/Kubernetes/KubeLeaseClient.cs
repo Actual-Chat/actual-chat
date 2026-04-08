@@ -60,6 +60,52 @@ public sealed class KubeLeaseClient(IServiceProvider services)
         return (await response.Content.ReadFromJsonAsync<Api.Lease>(WebJsonSerializeOptions, ct).ConfigureAwait(false))!;
     }
 
+    public Api.Lease? GetBlocking(
+        string @namespace, string name,
+        TimeSpan? requestTimeout = null,
+        CancellationToken cancellationToken = default)
+    {
+        Log.LogDebug("GetBlocking lease {LeaseName} in namespace {Namespace}", name, @namespace);
+        using var cts = CreateTimeoutCts(requestTimeout, cancellationToken);
+        var ct = cts?.Token ?? cancellationToken;
+        using var httpClient = CreateHttpClient(ct).GetAwaiter().GetResult();
+        using var request = new HttpRequestMessage(HttpMethod.Get, GetUrl(@namespace, name));
+        using var response = httpClient.Send(request, ct);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            return null;
+        if (response.StatusCode == HttpStatusCode.Forbidden)
+            throw StandardError.Constraint(
+                "Kubernetes Role/ClusterRole to manage Leases is required for the service account.");
+        response.EnsureSuccessStatusCode();
+        using var stream = response.Content.ReadAsStream(ct);
+        return JsonSerializer.Deserialize<Api.Lease>(stream, WebJsonSerializeOptions);
+    }
+
+    public Api.Lease ReplaceBlocking(
+        string @namespace, Api.Lease lease,
+        TimeSpan? requestTimeout = null,
+        CancellationToken cancellationToken = default)
+    {
+        Log.LogDebug("ReplaceBlocking lease {LeaseName} in namespace {Namespace}", lease.Metadata.Name, @namespace);
+        var labels = lease.Metadata.Labels;
+        if (labels == null || labels.Count == 0)
+            throw StandardError.Internal("Lease metadata labels cannot be null or empty.");
+
+        using var cts = CreateTimeoutCts(requestTimeout, cancellationToken);
+        var ct = cts?.Token ?? cancellationToken;
+        using var httpClient = CreateHttpClient(ct).GetAwaiter().GetResult();
+        var json = JsonSerializer.Serialize(lease, WebJsonSerializeOptions);
+        using var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+        using var request = new HttpRequestMessage(HttpMethod.Put, GetUrl(@namespace, lease.Metadata.Name)) { Content = content };
+        using var response = httpClient.Send(request, ct);
+        if (response.StatusCode == HttpStatusCode.Forbidden)
+            throw StandardError.Constraint(
+                "Kubernetes Role/ClusterRole to manage Leases is required for the service account.");
+        response.EnsureSuccessStatusCode();
+        using var stream = response.Content.ReadAsStream(ct);
+        return JsonSerializer.Deserialize<Api.Lease>(stream, WebJsonSerializeOptions)!;
+    }
+
     public async Task<Api.Lease> Replace(
         string @namespace, Api.Lease lease,
         TimeSpan? requestTimeout = null,

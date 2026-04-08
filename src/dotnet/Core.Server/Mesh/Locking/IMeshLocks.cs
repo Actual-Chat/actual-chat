@@ -29,7 +29,10 @@ public interface IMeshLocksBackend : IMeshLocks
     IHostApplicationLifetime? HostLifetime { get; }
 
     // Methods MUST NOT auto-retry in case they can't reach the lock service
-    Task<bool> TryRenew(string key, string value, TimeSpan expiresIn, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Synchronous renewal — called from the dedicated renewal thread to avoid ThreadPool starvation.
+    /// </summary>
+    bool TryRenewBlocking(string key, string value, TimeSpan expiresIn, CancellationToken cancellationToken = default);
     Task<MeshLockReleaseResult> TryRelease(string key, string value, CancellationToken cancellationToken = default);
 
     // The method below must be used only in tests

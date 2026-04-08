@@ -144,8 +144,8 @@ public abstract class MeshLocksBase : IMeshLocksBackend
     public abstract Task<List<string>> ListKeys(string prefix, CancellationToken cancellationToken = default);
     public abstract IMeshLocks With(string keyPrefix, MeshLockOptions? lockOptions);
 
-    Task<bool> IMeshLocksBackend.TryRenew(string key, string value, TimeSpan expiresIn, CancellationToken cancellationToken)
-        => TryRenew(key, value, expiresIn, cancellationToken);
+    bool IMeshLocksBackend.TryRenewBlocking(string key, string value, TimeSpan expiresIn, CancellationToken cancellationToken)
+        => TryRenewBlocking(key, value, expiresIn, cancellationToken);
     Task<MeshLockReleaseResult> IMeshLocksBackend.TryRelease(string key, string value, CancellationToken cancellationToken)
         => TryRelease(key, value, cancellationToken);
     Task<bool> IMeshLocksBackend.ForceRelease(string key, bool mustNotify, CancellationToken cancellationToken)
@@ -166,7 +166,7 @@ public abstract class MeshLocksBase : IMeshLocksBackend
         => string.Concat(HolderKeyPrefix, Interlocked.Increment(ref LastHolderId).ToString());
 
     protected abstract Task<bool> TryLock(string key, string value, TimeSpan expiresIn, CancellationToken cancellationToken);
-    protected abstract Task<bool> TryRenew(string key, string value, TimeSpan expiresIn, CancellationToken cancellationToken);
+    protected abstract bool TryRenewBlocking(string key, string value, TimeSpan expiresIn, CancellationToken cancellationToken);
     protected abstract Task<MeshLockReleaseResult> TryRelease(string key, string value, CancellationToken cancellationToken);
     protected abstract Task<bool> ForceRelease(string key, bool mustNotify, CancellationToken cancellationToken);
 }

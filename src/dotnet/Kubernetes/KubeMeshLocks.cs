@@ -181,7 +181,7 @@ public class KubeMeshLocks : MeshLocksBase
         }
     }
 
-    protected override async Task<bool> TryRenew(string key, string value, TimeSpan expiresIn, CancellationToken cancellationToken)
+    protected override bool TryRenewBlocking(string key, string value, TimeSpan expiresIn, CancellationToken cancellationToken)
     {
         var requestTimeout = KubeLeaseClient.DefaultRequestTimeout;
         var (_, name) = GetName(key);
@@ -198,7 +198,7 @@ public class KubeMeshLocks : MeshLocksBase
                 }
             };
             try {
-                var replaced = await LeaseClient.Replace(Namespace, updatedLease, requestTimeout, cancellationToken).ConfigureAwait(false);
+                var replaced = LeaseClient.ReplaceBlocking(Namespace, updatedLease, requestTimeout, cancellationToken);
                 _cachedLeases[key] = replaced;
                 return true;
             }
@@ -209,7 +209,7 @@ public class KubeMeshLocks : MeshLocksBase
         }
 
         // Fallback: GET + Replace
-        var existingLease = await LeaseClient.Get(Namespace, name, requestTimeout, cancellationToken).ConfigureAwait(false);
+        var existingLease = LeaseClient.GetBlocking(Namespace, name, requestTimeout, cancellationToken);
         if (existingLease == null || existingLease.Spec.HolderIdentity != value || IsExpired(existingLease))
             return false;
 
@@ -221,7 +221,7 @@ public class KubeMeshLocks : MeshLocksBase
         };
 
         try {
-            var replaced = await LeaseClient.Replace(Namespace, existingLease, requestTimeout, cancellationToken).ConfigureAwait(false);
+            var replaced = LeaseClient.ReplaceBlocking(Namespace, existingLease, requestTimeout, cancellationToken);
             _cachedLeases[key] = replaced;
             return true;
         }

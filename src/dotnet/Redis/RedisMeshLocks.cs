@@ -222,16 +222,17 @@ public class RedisMeshLocks : MeshLocksBase
         }
     }
 
-    protected override async Task<bool> TryRenew(string key, string value, TimeSpan expiresIn, CancellationToken cancellationToken)
+    protected override bool TryRenewBlocking(string key, string value, TimeSpan expiresIn, CancellationToken cancellationToken)
     {
-        // Must not auto-retry!
-        var database = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
+        // Synchronous path for the dedicated renewal thread — no ThreadPool dependency
+        var valueTask = RedisDb.Database.Get(cancellationToken);
+        var database = valueTask.IsCompletedSuccessfully
+            ? valueTask.Result
+            : valueTask.AsTask().GetAwaiter().GetResult();
         var expiresInMs = (long)expiresIn.TotalMilliseconds;
-        var r = (long)await database
-            .ScriptEvaluateAsync(TryRenewScript, [key, ""], [value, expiresInMs], CommandFlags.DemandMaster)
-            .ConfigureAwait(false);
+        var r = (long)database.ScriptEvaluate(TryRenewScript, [(RedisKey)key, (RedisKey)""], [(RedisValue)value, expiresInMs], CommandFlags.DemandMaster);
         if (r != 0)
-            DebugLog?.LogDebug("TryRenew: {Key} = {Value} -> {Result} @ {ExpiresIn}", $"{_fullKeyPrefix}{key}", value, r, expiresInMs);
+            DebugLog?.LogDebug("TryRenewBlocking: {Key} = {Value} -> {Result} @ {ExpiresIn}", $"{_fullKeyPrefix}{key}", value, r, expiresInMs);
         return r >= 0;
     }
 
