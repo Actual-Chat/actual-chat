@@ -281,8 +281,10 @@
         }
     }
 
-    private void OnCameraDropdownToggle()
-        => _isCameraDropdownOpen = !_isCameraDropdownOpen;
+    private void OnCameraDropdownToggle() {
+        _isCameraDropdownOpen = !_isCameraDropdownOpen;
+        StateHasChanged();
+    }
 
     private async Task OnCameraSelected(VideoDevice device) {
         _selectedDevice = device;
@@ -293,6 +295,8 @@
         // Switch camera if preview is active
         if (_isVideoOn && _jsRef is not null)
             await _jsRef.InvokeAsync<bool>("switchCamera", device.DeviceId);
+
+        StateHasChanged();
     }
 
     private async Task OnSwitchCamera() {
