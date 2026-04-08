@@ -5,11 +5,13 @@ import type { IUploadStreamSource } from 'UI.Blazor/Services/FileUploads/web-upl
 
 const MAX_SOURCE_SIZE = 2048;
 const EXPORT_SIZE = 512;
-const ZOOM_STEP = 0.03;
+const ZOOM_STEP = 0.02;
 const MAX_ZOOM_FACTOR = 4; // max 4× zoom relative to initial fit
-const ROTATE_ANIM_DURATION = 350; // ms for button rotation animation
 const HANDLE_SIZE = 12; // chevron handle size in pixels
 const HANDLE_HIT_RADIUS = 24; // hit area for grabbing the handle
+const ROTATE_SPEED = 60; // degrees per second for continuous button rotation
+const ZOOM_SPEED = 0.5; // scale units per second for continuous button zoom
+const SQUARE_CORNER_RADIUS = 32; // rounded-2xl equivalent for square viewport
 
 export function clickFileInput(input: HTMLInputElement): void {
     input.click();
@@ -31,6 +33,10 @@ export class AvatarCropModal implements Disposable, IUploadStreamSource {
     private readonly previewCtx: CanvasRenderingContext2D;
     private readonly img: HTMLImageElement;
     private readonly blobUrl: string;
+    private readonly isSquare: boolean;
+    private readonly viewportAspectRatio: number; // 0 = square/circle, >0 = W:H ratio
+    private readonly hasBlur: boolean;
+    private blurRadius = 0;
 
     private sourceCanvas: HTMLCanvasElement | null = null;
     private offsetX = 0;
@@ -45,6 +51,9 @@ export class AvatarCropModal implements Disposable, IUploadStreamSource {
     private lastY = 0;
     private croppedBlob: Blob | null = null;
     private animationId: number | null = null;
+    private rotateDirection = 0; // -1 = CCW, 0 = none, 1 = CW
+    private zoomDirection = 0; // -1 = out, 0 = none, 1 = in
+    private lastAnimTime = 0;
     private disposed$: Subject<void> = new Subject<void>();
 
     // Pinch-to-zoom/rotate state
@@ -59,8 +68,11 @@ export class AvatarCropModal implements Disposable, IUploadStreamSource {
         previewCanvas: HTMLCanvasElement,
         blobUrl: string,
         blazorRef: DotNet.DotNetObject,
+        isSquare = false,
+        viewportAspectRatio = 0,
+        hasBlur = false,
     ): AvatarCropModal {
-        return new AvatarCropModal(canvas, previewCanvas, blobUrl, blazorRef);
+        return new AvatarCropModal(canvas, previewCanvas, blobUrl, blazorRef, isSquare, viewportAspectRatio, hasBlur);
     }
 
     constructor(
@@ -68,12 +80,18 @@ export class AvatarCropModal implements Disposable, IUploadStreamSource {
         previewCanvas: HTMLCanvasElement,
         blobUrl: string,
         blazorRef: DotNet.DotNetObject,
+        isSquare = false,
+        viewportAspectRatio = 0,
+        hasBlur = false,
     ) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d')!;
         this.previewCanvas = previewCanvas;
         this.previewCtx = previewCanvas.getContext('2d')!;
         this.blobUrl = blobUrl;
+        this.isSquare = isSquare;
+        this.viewportAspectRatio = viewportAspectRatio;
+        this.hasBlur = hasBlur;
 
         this.img = new Image();
         this.img.onload = () => this.onImageLoaded();
@@ -136,6 +154,40 @@ export class AvatarCropModal implements Disposable, IUploadStreamSource {
             else
                 this.zoomOut();
         });
+
+        // Continuous zoom/rotation buttons
+        const modal = canvas.closest('.avatar-crop-modal')!;
+        const holdButtons: [string, () => void, () => void][] = [
+            ['.btn-zoom-out', () => this.zoomDirection = -1, () => this.zoomDirection = 0],
+            ['.btn-zoom-in', () => this.zoomDirection = 1, () => this.zoomDirection = 0],
+            ['.btn-rotate-ccw', () => this.rotateDirection = -1, () => this.rotateDirection = 0],
+            ['.btn-rotate-cw', () => this.rotateDirection = 1, () => this.rotateDirection = 0],
+        ];
+        for (const [selector, onStart, onStop] of holdButtons) {
+            const btn = modal.querySelector(selector)!;
+            fromEvent(btn, 'pointerdown').pipe(
+                takeUntil(this.disposed$),
+            ).subscribe(() => { onStart(); this.startContinuousAction(); });
+            fromEvent(btn, 'pointerup').pipe(
+                takeUntil(this.disposed$),
+            ).subscribe(() => { onStop(); this.stopContinuousActionIfIdle(); });
+            fromEvent(btn, 'pointerleave').pipe(
+                takeUntil(this.disposed$),
+            ).subscribe(() => { onStop(); this.stopContinuousActionIfIdle(); });
+        }
+
+        // Blur slider
+        if (hasBlur) {
+            const blurSlider = modal.querySelector<HTMLInputElement>('.blur-range')!;
+            fromEvent(blurSlider, 'input').pipe(
+                takeUntil(this.disposed$),
+            ).subscribe(() => {
+                this.blurRadius = Number(blurSlider.value);
+                const progress = (this.blurRadius / 16) * 100;
+                blurSlider.style.setProperty('--progress', `${progress}%`);
+                this.render();
+            });
+        }
     }
 
     public getBlob(): Blob {
@@ -161,60 +213,38 @@ export class AvatarCropModal implements Disposable, IUploadStreamSource {
         this.render();
     }
 
-    public rotate(): void {
-        // If already animating, skip
-        if (this.animationId !== null)
-            return;
-
-        // If already at a 90° multiple, advance by 90; otherwise snap to next 90° clockwise
-        const mod = ((this.rotation % 90) + 90) % 90;
-        let target: number;
-        if (mod < 0.5 || mod > 89.5)
-            target = Math.round(this.rotation / 90) * 90 + 90;
-        else
-            target = Math.ceil(this.rotation / 90) * 90;
-
-        this.animateRotation(this.rotation, target);
+    private startContinuousAction(): void {
+        this.lastAnimTime = performance.now();
+        this.animationId ??= requestAnimationFrame(now => this.continuousActionStep(now));
     }
 
-    private animateRotation(from: number, to: number): void {
-        const startTime = performance.now();
-        const startScale = this.scale;
-
-        // Pre-compute target scale
-        const origRotation = this.rotation;
-        this.rotation = to;
-        const viewportSize = this.getViewportRadius() * 2;
-        const { w, h } = this.getRotatedDimensions();
-        const targetScale = (w > 0 && h > 0) ? Math.max(viewportSize / w, viewportSize / h) : startScale;
-        this.rotation = origRotation;
-
-        const step = (now: number) => {
-            const elapsed = now - startTime;
-            const t = Math.min(1, elapsed / ROTATE_ANIM_DURATION);
-            // ease-out cubic
-            const ease = 1 - Math.pow(1 - t, 3);
-
-            this.rotation = from + (to - from) * ease;
-            this.scale = startScale + (targetScale - startScale) * ease;
-            this.offsetX = this.offsetX * (1 - ease * 0.3); // gradually reduce offset
-            this.offsetY = this.offsetY * (1 - ease * 0.3);
-            this.clampOffset();
-            this.render();
-
-            if (t < 1) {
-                this.animationId = requestAnimationFrame(step);
-            } else {
-                this.rotation = to % 360;
-                this.scale = targetScale;
-                this.offsetX = 0;
-                this.offsetY = 0;
-                this.clampOffset();
+    private stopContinuousActionIfIdle(): void {
+        if (this.rotateDirection === 0 && this.zoomDirection === 0) {
+            if (this.animationId !== null) {
+                cancelAnimationFrame(this.animationId);
                 this.animationId = null;
-                this.render();
             }
-        };
-        this.animationId = requestAnimationFrame(step);
+        }
+    }
+
+    private continuousActionStep(now: number): void {
+        const dt = (now - this.lastAnimTime) / 1000;
+        this.lastAnimTime = now;
+
+        if (this.rotateDirection !== 0)
+            this.rotation += this.rotateDirection * ROTATE_SPEED * dt;
+        if (this.zoomDirection !== 0) {
+            this.scale += this.zoomDirection * ZOOM_SPEED * dt;
+            this.scale = Math.max(this.minScale, Math.min(this.maxScale, this.scale));
+        }
+
+        this.clampOffset();
+        this.render();
+
+        if (this.rotateDirection !== 0 || this.zoomDirection !== 0)
+            this.animationId = requestAnimationFrame(t => this.continuousActionStep(t));
+        else
+            this.animationId = null;
     }
 
     public async exportCrop(): Promise<boolean> {
@@ -280,30 +310,55 @@ export class AvatarCropModal implements Disposable, IUploadStreamSource {
     }
 
     // Computes scale limits once based on the worst-case rotation angle.
-    // minScale = viewportDiameter / min(sourceW, sourceH) — guarantees coverage at any angle.
     private computeScaleLimits(): void {
-        const viewportSize = this.getViewportRadius() * 2;
+        const { vw, vh } = this.getViewportSize();
         const sw = this.getSourceWidth();
         const sh = this.getSourceHeight();
         if (sw === 0 || sh === 0)
             return;
 
-        this.minScale = viewportSize / Math.min(sw, sh);
+        this.minScale = Math.max(vw / sw, vh / sh);
         this.maxScale = this.minScale * MAX_ZOOM_FACTOR;
     }
 
     // Sets scale to fit the image at the current rotation
     private fitToViewport(): void {
-        const viewportSize = this.getViewportRadius() * 2;
+        const { vw, vh } = this.getViewportSize();
         const { w, h } = this.getRotatedDimensions();
         if (w === 0 || h === 0)
             return;
 
-        this.scale = Math.max(viewportSize / w, viewportSize / h);
+        this.scale = Math.max(vw / w, vh / h);
     }
 
     private getViewportRadius(): number {
         return Math.min(this.canvas.width, this.canvas.height) * 0.5;
+    }
+
+    // Returns the viewport dimensions: {vw, vh} in canvas pixels
+    private getViewportSize(): { vw: number; vh: number } {
+        if (this.viewportAspectRatio > 0) {
+            const vw = this.canvas.width;
+            const vh = vw / this.viewportAspectRatio;
+            return { vw, vh };
+        }
+        const r = this.getViewportRadius();
+        return { vw: r * 2, vh: r * 2 };
+    }
+
+    // Traces the viewport shape path (circle, rounded square, or rectangle) without calling fill/stroke/clip.
+    private traceViewportPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, vw?: number, vh?: number): void {
+        if (this.viewportAspectRatio > 0) {
+            const w = vw ?? this.canvas.width;
+            const h = vh ?? w / this.viewportAspectRatio;
+            ctx.roundRect(cx - w / 2, cy - h / 2, w, h, 8);
+        } else if (this.isSquare) {
+            const mainR = this.getViewportRadius();
+            const cornerR = mainR > 0 ? SQUARE_CORNER_RADIUS * (r / mainR) : SQUARE_CORNER_RADIUS;
+            ctx.roundRect(cx - r, cy - r, r * 2, r * 2, cornerR);
+        } else {
+            ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        }
     }
 
     // Clamp offset so the viewport circle stays fully inside the rotated image rectangle.
@@ -311,14 +366,16 @@ export class AvatarCropModal implements Disposable, IUploadStreamSource {
     private clampOffset(): void {
         const sw = this.getSourceWidth();
         const sh = this.getSourceHeight();
-        const r = this.getViewportRadius();
+        const { vw, vh } = this.getViewportSize();
+        const halfVW = vw / 2;
+        const halfVH = vh / 2;
         const rad = this.rotation * Math.PI / 180;
         const cos = Math.cos(rad);
         const sin = Math.sin(rad);
 
         // Max offset along image-local X and Y axes
-        const maxU = Math.max(0, sw * this.scale / 2 - r);
-        const maxV = Math.max(0, sh * this.scale / 2 - r);
+        const maxU = Math.max(0, sw * this.scale / 2 - halfVW);
+        const maxV = Math.max(0, sh * this.scale / 2 - halfVH);
 
         // Project canvas offset onto image-local axes
         let u = this.offsetX * cos + this.offsetY * sin;
@@ -347,29 +404,31 @@ export class AvatarCropModal implements Disposable, IUploadStreamSource {
         // Draw the image centered with current transform
         this.drawTransformedImage(ctx, cx, cy);
 
-        // Draw darkened overlay with circular cutout
+        // Draw darkened overlay with viewport cutout
         ctx.save();
         ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
         ctx.beginPath();
         ctx.rect(0, 0, width, height);
-        ctx.arc(cx, cy, r, 0, Math.PI * 2, true); // counterclockwise = cutout
-        ctx.fill();
+        this.traceViewportPath(ctx, cx, cy, r);
+        // Use evenodd to cut out the viewport shape
+        ctx.fill('evenodd');
         ctx.restore();
 
-        // Draw circle border
+        // Draw viewport border
         ctx.save();
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        this.traceViewportPath(ctx, cx, cy, r);
         ctx.stroke();
         ctx.restore();
 
         // Draw dashed crosshair lines rotated with the image
         this.renderCrosshair(ctx, cx, cy, r);
 
-        // Draw rotation float handle
-        this.renderFloat(ctx, cx, cy, r);
+        // Draw rotation float handle (circle mode only)
+        if (!this.isSquare && this.viewportAspectRatio === 0)
+            this.renderFloat(ctx, cx, cy, r);
 
         this.renderPreview();
     }
@@ -392,22 +451,27 @@ export class AvatarCropModal implements Disposable, IUploadStreamSource {
     }
 
     private renderPreview(): void {
-        const size = this.previewCanvas.width;
+        const pw = this.previewCanvas.width;
+        const ph = this.previewCanvas.height;
         const pCtx = this.previewCtx;
 
-        pCtx.clearRect(0, 0, size, size);
+        pCtx.clearRect(0, 0, pw, ph);
 
-        // Clip to circle
+        // Clip to viewport shape
         pCtx.save();
         pCtx.beginPath();
-        pCtx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+        this.traceViewportPath(pCtx, pw / 2, ph / 2, Math.min(pw, ph) / 2, pw, ph);
         pCtx.clip();
 
-        // Draw the same transformed image, scaled to preview size
-        const r = this.getViewportRadius();
-        const previewScale = size / (r * 2);
+        // Apply blur if set
+        if (this.blurRadius > 0)
+            pCtx.filter = `blur(${this.blurRadius * (pw / this.canvas.width)}px)`;
 
-        pCtx.translate(size / 2, size / 2);
+        // Draw the same transformed image, scaled to preview size
+        const { vw, vh } = this.getViewportSize();
+        const previewScale = Math.min(pw / vw, ph / vh);
+
+        pCtx.translate(pw / 2, ph / 2);
         pCtx.scale(previewScale, previewScale);
         pCtx.translate(this.offsetX, this.offsetY);
         pCtx.rotate((this.rotation * Math.PI) / 180);
@@ -422,15 +486,20 @@ export class AvatarCropModal implements Disposable, IUploadStreamSource {
     }
 
     private renderCrop(): Promise<Blob | null> {
+        const { vw, vh } = this.getViewportSize();
+        const exportW = EXPORT_SIZE;
+        const exportH = Math.round(EXPORT_SIZE * (vh / vw));
         const offscreen = document.createElement('canvas');
-        offscreen.width = EXPORT_SIZE;
-        offscreen.height = EXPORT_SIZE;
+        offscreen.width = exportW;
+        offscreen.height = exportH;
         const ctx = offscreen.getContext('2d')!;
 
-        const r = this.getViewportRadius();
-        const exportScale = EXPORT_SIZE / (r * 2);
+        const exportScale = exportW / vw;
 
-        ctx.translate(EXPORT_SIZE / 2, EXPORT_SIZE / 2);
+        if (this.blurRadius > 0)
+            ctx.filter = `blur(${this.blurRadius * exportScale}px)`;
+
+        ctx.translate(exportW / 2, exportH / 2);
         ctx.scale(exportScale, exportScale);
         ctx.translate(this.offsetX, this.offsetY);
         ctx.rotate((this.rotation * Math.PI) / 180);
@@ -508,10 +577,22 @@ export class AvatarCropModal implements Disposable, IUploadStreamSource {
         ctx.restore();
     }
 
-    // Handle position: inset from circle edge so it's fully visible inside
+    // Handle position: inset from viewport edge so it's fully visible inside
     private getFloatPosition(cx: number, cy: number, r: number): { fx: number; fy: number } {
         const floatAngle = (this.rotation - 90) * Math.PI / 180;
-        const inset = r - HANDLE_SIZE * 0.9 + 2; // pull inside the circle, +2px outward
+        const inset = r - HANDLE_SIZE * 0.9 + 2;
+        if (this.isSquare) {
+            // For square viewport, clamp the handle position to stay inside the rounded rect
+            const cos = Math.cos(floatAngle);
+            const sin = Math.sin(floatAngle);
+            const maxD = Math.max(Math.abs(cos), Math.abs(sin));
+            const edgeDist = maxD > 0 ? inset / maxD : inset;
+            const d = Math.min(inset, edgeDist);
+            return {
+                fx: cx + d * cos,
+                fy: cy + d * sin,
+            };
+        }
         return {
             fx: cx + inset * Math.cos(floatAngle),
             fy: cy + inset * Math.sin(floatAngle),
@@ -540,7 +621,7 @@ export class AvatarCropModal implements Disposable, IUploadStreamSource {
 
     private handlePointerDown(clientX: number, clientY: number, e: Event): void {
         preventDefaultForEvent(e);
-        if (this.isNearFloat(clientX, clientY)) {
+        if (!this.isSquare && this.viewportAspectRatio === 0 && this.isNearFloat(clientX, clientY)) {
             this.rotationDragging = true;
         } else {
             this.dragging = true;
@@ -593,14 +674,12 @@ export class AvatarCropModal implements Disposable, IUploadStreamSource {
 
     private handlePinchStart(e: TouchEvent): void {
         preventDefaultForEvent(e);
-        // Cancel any single-finger drag
+        // Cancel any single-finger drag or button actions
         this.dragging = false;
         this.rotationDragging = false;
-        // Cancel any button-rotate animation
-        if (this.animationId !== null) {
-            cancelAnimationFrame(this.animationId);
-            this.animationId = null;
-        }
+        this.rotateDirection = 0;
+        this.zoomDirection = 0;
+        this.stopContinuousActionIfIdle();
 
         this.pinching = true;
         const [t0, t1] = [e.touches[0], e.touches[1]];

@@ -6,8 +6,8 @@
 @implements IAsyncDisposable
 
 <DialogFrame
-    Class="avatar-crop-modal"
-    Title="Crop avatar"
+    Class="@("avatar-crop-modal" + (ModalModel.IsSquare ? " square" : "") + (ModalModel.HasBlur ? " has-blur" : ""))"
+    Title="@(ModalModel.HasBlur ? "Crop wallpaper" : ModalModel.IsSquare ? "Crop place avatar" : "Crop avatar")"
     HasCloseButton="true">
     <Body>
         @if (_hasError) {
@@ -20,24 +20,46 @@
                 <div class="c-canvas-container">
                     <canvas @ref="_canvasRef" width="400" height="400"></canvas>
                 </div>
-                <div class="c-preview">
-                    <canvas @ref="_previewRef" width="40" height="40"></canvas>
-                    <span class="c-preview-label">Preview</span>
-                </div>
+                @if (ModalModel.ViewportAspectRatio > 0) {
+                    <div class="c-preview">
+                        <canvas @ref="_previewRef" width="120" height="@((int)(120 / ModalModel.ViewportAspectRatio))"></canvas>
+                        <span class="c-preview-label">Preview</span>
+                    </div>
+                } else {
+                    <div class="c-preview">
+                        <canvas @ref="_previewRef" width="40" height="40"></canvas>
+                        <span class="c-preview-label">Preview</span>
+                    </div>
+                }
             </div>
             <div class="c-controls">
-                <ButtonRound Click="@OnZoomOut" Tooltip="Zoom out">
-                    <i class="icon-minus-circle text-2xl"></i>
-                </ButtonRound>
-                <ButtonRound Click="@OnZoomIn" Tooltip="Zoom in">
-                    <i class="icon-plus-circle text-2xl"></i>
-                </ButtonRound>
-                <ButtonRound Click="@OnRotate" Tooltip="Rotate">
-                    <i class="icon-refresh text-2xl"></i>
-                </ButtonRound>
-                <ButtonRound Class="btn-confirm" Click="@OnConfirm" Tooltip="Apply">
-                    <i class="icon-checkmark-simple text-2xl"></i>
-                </ButtonRound>
+                @if (ModalModel.HasBlur) {
+                    <div class="c-blur-slider">
+                        <input type="range" class="blur-range" min="0" max="16" step="1" value="0" />
+                        <span class="c-blur-label">Blur</span>
+                    </div>
+                }
+                <div class="c-buttons-row">
+                    <div class="c-group">
+                        <ButtonRound Class="btn-zoom-out" Tooltip="Zoom out">
+                            <i class="icon-minus-circle text-2xl"></i>
+                        </ButtonRound>
+                        <ButtonRound Class="btn-zoom-in" Tooltip="Zoom in">
+                            <i class="icon-plus-circle text-2xl"></i>
+                        </ButtonRound>
+                    </div>
+                    <ButtonRound Class="btn-confirm" Click="@OnConfirm" Tooltip="Apply">
+                        <i class="icon-checkmark-simple text-2xl"></i>
+                    </ButtonRound>
+                    <div class="c-group">
+                        <ButtonRound Class="btn-rotate-ccw" Tooltip="Rotate left">
+                            <i class="icon-refresh text-2xl c-flip"></i>
+                        </ButtonRound>
+                        <ButtonRound Class="btn-rotate-cw" Tooltip="Rotate right">
+                            <i class="icon-refresh text-2xl"></i>
+                        </ButtonRound>
+                    </div>
+                </div>
             </div>
         }
     </Body>
@@ -67,7 +89,10 @@
             _canvasRef,
             _previewRef,
             ModalModel.BlobUrl,
-            _blazorRef).ConfigureAwait(true);
+            _blazorRef,
+            ModalModel.IsSquare,
+            ModalModel.ViewportAspectRatio,
+            ModalModel.HasBlur).ConfigureAwait(true);
     }
 
     public async ValueTask DisposeAsync() {
@@ -84,15 +109,6 @@
         _hasError = true;
         StateHasChanged();
     }
-
-    private async Task OnZoomIn()
-        => await _jsRef!.InvokeVoidAsync("zoomIn").ConfigureAwait(true);
-
-    private async Task OnZoomOut()
-        => await _jsRef!.InvokeVoidAsync("zoomOut").ConfigureAwait(true);
-
-    private async Task OnRotate()
-        => await _jsRef!.InvokeVoidAsync("rotate").ConfigureAwait(true);
 
     private async Task OnConfirm() {
         try {
@@ -128,5 +144,11 @@
 
     // Nested types
 
-    public sealed record Model(string BlobUrl, string Scope, Action<MediaRef>? OnCropped);
+    public sealed record Model(
+        string BlobUrl,
+        string Scope,
+        Action<MediaRef>? OnCropped,
+        bool IsSquare = false,
+        float ViewportAspectRatio = 0,
+        bool HasBlur = false);
 }
