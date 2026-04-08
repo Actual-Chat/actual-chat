@@ -175,6 +175,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddTypeMap<IModalView>(map => map
             .Add<OwnAccountEditorModal.Model, OwnAccountEditorModal>()
             .Add<OwnAvatarEditorModal.Model, OwnAvatarEditorModal>()
+            .Add<AvatarCropModal.Model, AvatarCropModal>()
             .Add<DeleteAccountModal.Model, DeleteAccountModal>()
         );
 

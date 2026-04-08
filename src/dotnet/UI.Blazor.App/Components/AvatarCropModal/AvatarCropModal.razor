@@ -1,0 +1,127 @@
+@using ActualChat.Media
+@using ActualChat.UI.Blazor.App.Module
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
+@implements IModalView<AvatarCropModal.Model>
+@implements IAsyncDisposable
+
+<DialogFrame
+    Class="avatar-crop-modal"
+    Title="Edit avatar cover"
+    HasCloseButton="true">
+    <Body>
+        @if (_hasError) {
+            <div class="c-error">
+                <i class="icon-warning text-2xl"></i>
+                <span>Failed to load image</span>
+            </div>
+        } else {
+            <div class="c-content">
+                <div class="c-canvas-container">
+                    <canvas @ref="_canvasRef" width="400" height="400"></canvas>
+                </div>
+                <div class="c-preview">
+                    <canvas @ref="_previewRef" width="40" height="40"></canvas>
+                    <span class="c-preview-label">Preview</span>
+                </div>
+            </div>
+            <div class="c-controls">
+                <ButtonRound Click="@OnZoomOut" Tooltip="Zoom out">
+                    <i class="icon-minus-circle text-2xl"></i>
+                </ButtonRound>
+                <ButtonRound Click="@OnZoomIn" Tooltip="Zoom in">
+                    <i class="icon-plus-circle text-2xl"></i>
+                </ButtonRound>
+                <ButtonRound Click="@OnRotate" Tooltip="Rotate">
+                    <i class="icon-refresh text-2xl"></i>
+                </ButtonRound>
+                <ButtonRound Class="btn-confirm" Click="@OnConfirm" Tooltip="Apply">
+                    <i class="icon-checkmark-simple text-2xl"></i>
+                </ButtonRound>
+            </div>
+        }
+    </Body>
+</DialogFrame>
+
+@code {
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.AvatarCropModal.create";
+
+    private FileUploader FileUploader => field ??= Services.GetRequiredService<FileUploader>();
+
+    private ElementReference _canvasRef;
+    private ElementReference _previewRef;
+    private IJSObjectReference _jsRef = null!;
+    private bool _hasError;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender)
+            return;
+
+        var blazorRef = DotNetObjectReference.Create(this);
+        _jsRef = await JS.InvokeAsync<IJSObjectReference>(
+            JSCreateMethod,
+            _canvasRef,
+            _previewRef,
+            ModalModel.BlobUrl,
+            blazorRef).ConfigureAwait(true);
+    }
+
+    public async ValueTask DisposeAsync() {
+        await _jsRef.DisposeSilentlyAsync("dispose");
+        _jsRef = null!;
+    }
+
+    [JSInvokable("OnImageLoadError")]
+    public void OnImageLoadError() {
+        _hasError = true;
+        StateHasChanged();
+    }
+
+    private async Task OnZoomIn()
+        => await _jsRef.InvokeVoidAsync("zoomIn").ConfigureAwait(true);
+
+    private async Task OnZoomOut()
+        => await _jsRef.InvokeVoidAsync("zoomOut").ConfigureAwait(true);
+
+    private async Task OnRotate()
+        => await _jsRef.InvokeVoidAsync("rotate").ConfigureAwait(true);
+
+    private async Task OnConfirm() {
+        try {
+            var exported = await _jsRef.InvokeAsync<bool>("exportCrop").ConfigureAwait(true);
+            if (!exported) {
+                UICommander.ShowError(StandardError.Constraint("Failed to export cropped image."));
+                return;
+            }
+
+            // Upload the cropped blob via the standard pipeline
+            var scope = ModalModel.Scope;
+            var mediaId = await UICommander.Call(new Media_ReserveMedia(Session, scope));
+
+            var tag = $"FileUpload/v1/{scope}";
+            var metadata = new PropertyBag()
+                .Set("FileName", "avatar-crop.png")
+                .Set("ContentType", "image/png");
+            var blobSize = await _jsRef.InvokeAsync<long>("getCroppedBlobSize").ConfigureAwait(true);
+            var uploadId = await UICommander.Call(new Uploads_Create(Session, blobSize, tag, metadata));
+
+            var streamSource = new WebUploadStreamSource(_jsRef);
+            await FileUploader.Upload(streamSource, uploadId, null, CancellationToken.None);
+
+            var mediaRef = await UICommander.Call(new Media_ProcessUpload(Session, mediaId, uploadId));
+
+            ModalModel.OnCropped?.Invoke(mediaRef);
+            Modal.Close();
+        }
+        catch (Exception e) {
+            UICommander.ShowError(e);
+        }
+    }
+
+    // Nested types
+
+    public sealed record Model(string BlobUrl, string Scope, Action<MediaRef>? OnCropped);
+}

@@ -1,10 +1,8 @@
 @using ActualChat.Media
+@using ActualChat.UI.Blazor.App.Module
 @using ActualLab.Generators
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComponentBase<AppUIHub>
-@{
-    var mediaScope = MediaUploadScopes.ForAccount(AccountUI.OwnAccount.Value);
-}
 
 <div class="c-top">
     <Pic
@@ -50,14 +48,16 @@
 @code {
     private static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
 
+    private string mediaScope => MediaUploadScopes.ForAccount(AccountUI.OwnAccount.Value);
+
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public Picture? Picture { get; set; }
     [Parameter] public EventCallback<Picture> ImagePicked { get; set; }
     [Parameter] public EventCallback CloseRequested { get; set; }
 
+    private void OnImagePicked(MediaRef mediaRef)
+        => ImagePicked.InvokeAsync(new Picture(mediaRef));
+
     private void OnGenerateAvatarClick()
         => ImagePicked.InvokeAsync(new Picture(null, null, DefaultUserPicture.GetAvatarKey(IdGenerator.Next())));
-
-    private void OnImagePicked(MediaRef mediaRef)
-        => ImagePicked.InvokeAsync(new(mediaRef));
 }

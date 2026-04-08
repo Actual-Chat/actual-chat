@@ -1,0 +1,63 @@
+.avatar-crop-modal .dialog-body {
+    @apply flex-y items-center justify-between gap-16;
+    @apply p-4;
+    @apply overflow-hidden;
+    @apply select-none;
+}
+
+/* ── Canvas container ── */
+
+.avatar-crop-modal .c-content {
+    @apply flex-y items-center justify-center gap-4;
+    @apply h-full;
+}
+
+.avatar-crop-modal .c-canvas-container {
+    @apply relative;
+    @apply w-full;
+    @apply rounded-lg;
+    @apply overflow-hidden;
+    aspect-ratio: 1;
+    outline: var(--background-05) solid 0.25rem;
+    outline-offset: 0;
+}
+.avatar-crop-modal .c-canvas-container > canvas {
+    @apply w-full h-full;
+    @apply cursor-grab;
+    touch-action: none;
+}
+.avatar-crop-modal .c-canvas-container > canvas:active {
+    @apply cursor-grabbing;
+}
+
+/* ── Preview ── */
+
+.avatar-crop-modal .c-preview {
+    @apply flex-x items-center gap-3;
+}
+.avatar-crop-modal .c-preview > canvas {
+    @apply rounded-full;
+    @apply border border-separator;
+}
+.avatar-crop-modal .c-preview-label {
+    @apply text-sm text-03;
+}
+
+/* ── Controls ── */
+
+.avatar-crop-modal .c-controls {
+    @apply flex-x items-center justify-center gap-3;
+}
+.avatar-crop-modal .c-controls .btn-round.btn-confirm {
+    @apply bg-primary;
+    @apply text-white;
+}
+
+/* ── Error ── */
+
+.avatar-crop-modal .c-error {
+    @apply flex-y items-center justify-center gap-2;
+    @apply w-full;
+    @apply py-16;
+    @apply text-danger text-sm;
+}
