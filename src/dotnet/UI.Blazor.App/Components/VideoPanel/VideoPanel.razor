@@ -107,11 +107,7 @@
                     </div>
                 }
                 @foreach (var streamInfo in m.RemoteStreams) {
-                    var name = m.AuthorNames.GetValueOrDefault(streamInfo.AuthorId, "");
-                    var isFocused = streamInfo.AuthorId == m.FocusedAuthorId;
-                    var isPrevious = streamInfo.AuthorId == m.PreviousFocusedAuthorId;
-                    var focusedCls = isFocused ? "focused" : isPrevious ? "previous-speaker" : "";
-                    <VideoTrackPlayer @key="streamInfo.StreamId.Value" StreamInfo="@streamInfo" AuthorName="@name" FocusedClass="@focusedCls"/>
+                    <RemoteStreamPlayer @key="streamInfo.StreamId.Value" StreamInfo="@streamInfo" />
                 }
             </div>
             <HeaderButton Class="expand-btn show-with-delay collapsed-video-btn" Click="@OnExpandClick">
@@ -131,23 +127,6 @@
 }
 
 @code {
-    public sealed record Model(
-        bool IsRightPanelVisible,
-        VideoStreamInfo[] RemoteStreams,
-        bool IsRecording,
-        bool IsAudioRecording,
-        bool IsListening,
-        int VideoStreamMemberCount,
-        ChatId? ChatId,
-        Chat? Chat,
-        IReadOnlyDictionary<AuthorId, string> AuthorNames,
-        AuthorId? FocusedAuthorId,
-        AuthorId? PreviousFocusedAuthorId,
-        bool IsScreencasting = false
-    ) {
-        public static readonly Model None = new(false, [], false, false, false, 0, null, null, new Dictionary<AuthorId, string>(), null, null);
-    }
-
     private bool _rendered;
     private bool _isFirstOpen = true;
     private bool _isExpanded;
@@ -328,7 +307,7 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             t => new ComputedState<Model>.Options {
-                InitialValue = new Model(!ScreenSize.IsNarrow() && PanelsUI.Right.IsVisible.Value, [], false, false, false, 0, null, null, new Dictionary<AuthorId, string>(), null, null),
+                InitialValue = new Model(!ScreenSize.IsNarrow() && PanelsUI.Right.IsVisible.Value, [], false, false, false, 0, null, null),
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
@@ -338,16 +317,13 @@
         if (!ScreenSize.IsNarrow())
             isRightPanelVisible = await PanelsUI.Right.IsVisible.Use(cancellationToken);
 
-        // Get current chat
-        var emptyNames = (IReadOnlyDictionary<AuthorId, string>)new Dictionary<AuthorId, string>();
-
         var chatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken);
         var chat = chatId is not null
             ? await Hub.Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false)
             : null;
 
         if (chatId is null)
-            return new Model(isRightPanelVisible, [], false, false, false, 0, null, null, emptyNames, null, null);
+            return new Model(isRightPanelVisible, [], false, false, false, 0, null, null);
 
         // Get centralized video state (for recording status)
         var videoState = await ChatVideoUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
@@ -360,43 +336,30 @@
             : 0;
 
         if (activeStreams.Count == 0)
-            return new Model(isRightPanelVisible, [], videoState.IsRecording, audioState.IsRecording, audioState.IsListening, 0, chatId, chat, emptyNames, null, null);
+            return new Model(isRightPanelVisible, [], videoState.IsRecording, audioState.IsRecording, audioState.IsListening, 0, chatId, chat);
 
         var remoteStreams = await ChatVideoUI.GetRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
-
-        // Resolve author names for remote streams
-        var authorNames = new Dictionary<AuthorId, string>();
-        foreach (var stream in remoteStreams) {
-            var author = await Hub.Authors.Get(Session, chatId, stream.AuthorId, cancellationToken);
-            authorNames[stream.AuthorId] = author?.Avatar.Name ?? "";
-        }
-
-        // Check for screencast among remote streams — always focused
-        var screencastStream = remoteStreams.FirstOrDefault(s => s.StreamKind == StreamKind.Screencast);
-
-        // Get focused speaker from ChatVideoUI (state sync maintains this)
-        var focusedAuthorId = screencastStream != default
-            ? screencastStream.AuthorId
-            : await ChatVideoUI.GetFocusedSpeakerId(cancellationToken).ConfigureAwait(false);
-
-        // Validate focused author still has video; fall back to first remote stream
-        var videoAuthorIds = remoteStreams.Select(s => s.AuthorId).ToHashSet();
-        if (focusedAuthorId != null && !videoAuthorIds.Contains(focusedAuthorId))
-            focusedAuthorId = null;
-        focusedAuthorId ??= remoteStreams.FirstOrDefault()?.AuthorId;
-
-        // Get previous focused speaker and validate
-        var previousFocusedAuthorId = await ChatVideoUI.GetPreviousFocusedSpeakerId(cancellationToken)
-            .ConfigureAwait(false);
-        if (previousFocusedAuthorId != null
-            && (!videoAuthorIds.Contains(previousFocusedAuthorId)
-                || previousFocusedAuthorId == focusedAuthorId))
-            previousFocusedAuthorId = null;
 
         Log.LogWarning("[VideoPanel] ComputeState: remoteStreams=[{Streams}], isRecording={IsRecording}",
             string.Join(", ", remoteStreams.Select(s => $"{s.StreamId}({s.Format.Codec})")),
             videoState.IsRecording);
 
-         return new Model(isRightPanelVisible, remoteStreams, videoState.IsRecording, audioState.IsRecording, audioState.IsListening, videoStreamMemberCount, chatId, chat, authorNames, focusedAuthorId, previousFocusedAuthorId, videoState.IsScreencasting);
+        return new Model(isRightPanelVisible, remoteStreams, videoState.IsRecording, audioState.IsRecording, audioState.IsListening, videoStreamMemberCount, chatId, chat, videoState.IsScreencasting);
+    }
+
+    // Nested types
+
+    public sealed record Model(
+        bool IsRightPanelVisible,
+        VideoStreamInfo[] RemoteStreams,
+        bool IsRecording,
+        bool IsAudioRecording,
+        bool IsListening,
+        int VideoStreamMemberCount,
+        ChatId? ChatId,
+        Chat? Chat,
+        bool IsScreencasting = false
+    ) {
+        public static readonly Model None = new(false, [], false, false, false, 0, null, null);
     }
 }

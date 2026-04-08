@@ -278,10 +278,7 @@ public partial class ChatVideoUI
             .ConfigureAwait(false);
 
         await foreach (var (state, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
-            if (state is null)
-                continue;
-
-            var (chatId, speakingWithVideo, screencastAuthorId) = state;
+            var (chatId, speakingWithVideo, remoteAuthorIds, screencastAuthorId) = state;
 
             if (chatId != prevChatId) {
                 ClearFocus();
@@ -306,6 +303,13 @@ public partial class ChatVideoUI
             }
 
             UpdateActiveSpeakers(speakingWithVideo);
+
+            // Validate focused author is still among remote streams; fallback to first
+            var currentFocus = _focusedSpeakerId.Value;
+            if (currentFocus != null && remoteAuthorIds.Length > 0 && !remoteAuthorIds.Contains(currentFocus))
+                _focusedSpeakerId.Value = null;
+            if (_focusedSpeakerId.Value is null && remoteAuthorIds.Length > 0)
+                _focusedSpeakerId.Value = remoteAuthorIds[0];
         }
     }
 
@@ -342,7 +346,7 @@ public partial class ChatVideoUI
             .Where(a => remoteVideoAuthorIds.Contains(a))
             .ToArray();
 
-        return new ActiveSpeakerState(chatId, speakingWithVideo, screencastAuthorId);
+        return new ActiveSpeakerState(chatId, speakingWithVideo, remoteVideoAuthorIds.ToArray(), screencastAuthorId);
     }
 
     // Private methods
@@ -405,8 +409,8 @@ public partial class ChatVideoUI
         public static readonly RecordingIntent None = new(null, null, false, false);
     }
 
-    protected sealed record ActiveSpeakerState(ChatId? ChatId, AuthorId[] SpeakingWithVideo, AuthorId? ScreencastAuthorId = null)
+    protected sealed record ActiveSpeakerState(ChatId? ChatId, AuthorId[] SpeakingWithVideo, AuthorId[] RemoteVideoAuthorIds, AuthorId? ScreencastAuthorId = null)
     {
-        public static readonly ActiveSpeakerState None = new(null, []);
+        public static readonly ActiveSpeakerState None = new(null, [], []);
     }
 }
