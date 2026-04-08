@@ -1,11 +1,9 @@
 @namespace ActualChat.UI.Blazor.App.Components.VideoPanel
 @using ActualChat.Streaming
 @using ActualChat.UI.Blazor.App.Module
-@using ActualChat.UI.Blazor.Services
-@using ActualChat.Video
-@implements IAsyncDisposable
+@inherits ComponentBase<AppUIHub>
 @implements IVideoPlayerBackend
-@inject IServiceProvider Services
+@implements IAsyncDisposable
 
 @{
     var streamKindCls = StreamInfo.StreamKind == StreamKind.Screencast ? "screencast" : "";
@@ -36,9 +34,7 @@
     private bool _isViewerRegistered;
 
     private ILogger Log => field ??= Services.LogFor<VideoTrackPlayer>();
-    private IJSRuntime JS => field ??= Services.GetRequiredService<IJSRuntime>();
     private ILiveVideoStreams LiveVideoStreams => field ??= Services.GetRequiredService<ILiveVideoStreams>();
-    private Session Session => field ??= Services.Session();
 
     private ElementReference CanvasRef { get; set; }
     private DotNetObjectReference<VideoTrackPlayer>? BlazorRef { get; set; }

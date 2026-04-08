@@ -1,0 +1,62 @@
+@namespace ActualChat.UI.Blazor.App.Components.VideoPanel
+@using ActualChat.Streaming
+@inherits ComputedStateComponent<AppUIHub, RemoteStreamPlayer.Model>
+@{
+    var m = State.Value;
+    _rendered = m;
+    var focusedCls = m.Accent switch {
+        RemoteStreamFocus.Focused => "focused",
+            RemoteStreamFocus.PreviousSpeaker => "previous-speaker",
+            _ => ""
+    };
+}
+
+<VideoTrackPlayer StreamInfo="@StreamInfo" AuthorName="@m.AuthorName" FocusedClass="@focusedCls" />
+
+@code {
+    private Model? _rendered;
+
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private IAuthors Authors => Hub.Authors;
+
+    [Parameter, EditorRequired]
+    public VideoStreamInfo StreamInfo { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            t => new ComputedState<Model>.Options {
+                InitialValue = Model.None,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var authorId = StreamInfo.AuthorId;
+
+        // Resolve author name
+        var author = await Authors.Get(Session, StreamInfo.ChatId, authorId, cancellationToken);
+        var authorName = author?.Avatar.Name ?? "";
+
+        // Get focused speaker (fallback logic is in ChatVideoUI.StateSync)
+        var focusedAuthorId = await ChatVideoUI.GetFocusedSpeakerId(cancellationToken).ConfigureAwait(false);
+
+        var isFocused = authorId == focusedAuthorId;
+        if (isFocused)
+            return new Model(authorName, RemoteStreamFocus.Focused);
+
+        var previousFocusedAuthorId = await ChatVideoUI.GetPreviousFocusedSpeakerId(cancellationToken).ConfigureAwait(false);
+        var isPreviousSpeaker = authorId == previousFocusedAuthorId && !isFocused;
+        return new Model(authorName, isPreviousSpeaker ? RemoteStreamFocus.PreviousSpeaker : RemoteStreamFocus.None);
+    }
+
+    protected override bool ShouldRender()
+        => _rendered is null || _rendered != State.Value;
+
+    // Nested types
+
+    public enum RemoteStreamFocus { None, Focused, PreviousSpeaker };
+
+    public sealed record Model(string AuthorName, RemoteStreamFocus Accent) {
+        public static readonly Model None = new("", RemoteStreamFocus.None);
+    }
+}
