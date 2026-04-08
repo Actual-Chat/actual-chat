@@ -215,6 +215,142 @@ Properties are grouped by category, top to bottom. Use `@apply` for Tailwind uti
 
 Not all categories are present in every rule — include only what's needed. When a category has only one or two utilities, they can share a line. Separate comments are optional.
 
+## TypeScript Interop
+
+### Class Structure
+
+TypeScript classes that integrate with Blazor follow this pattern:
+
+```typescript
+import { Disposable } from 'disposable';
+import { fromEvent, Subject, takeUntil } from 'rxjs';
+import { preventDefaultForEvent } from 'event-handling';
+
+export class AmazingPanel implements Disposable {
+    private disposed$: Subject<void> = new Subject<void>();
+
+    // Static factory for Blazor JS interop
+    public static create(
+        element: HTMLElement,
+        blazorRef: DotNet.DotNetObject,
+    ): AmazingPanel {
+        return new AmazingPanel(element, blazorRef);
+    }
+
+    constructor(
+        private readonly element: HTMLElement,
+        blazorRef: DotNet.DotNetObject,
+    ) {
+        // Subscribe to DOM events with auto-cleanup
+        fromEvent<MouseEvent>(element, 'click').pipe(
+            takeUntil(this.disposed$),
+        ).subscribe(e => this.handleClick(e));
+    }
+
+    public dispose(): void {
+        if (this.disposed$.closed)
+            return;
+
+        this.disposed$.next();
+        this.disposed$.complete();
+    }
+}
+```
+
+Key conventions:
+- **`static create()`** — factory method called from Blazor via `JS.InvokeAsync<IJSObjectReference>`
+- **`Disposable` interface** — implement `dispose()` for cleanup, called from Blazor via `DisposeSilentlyAsync("dispose")`
+- **`Subject` + `takeUntil`** — use RxJS `fromEvent` with `takeUntil(this.disposed$)` for DOM event subscriptions instead of manual `addEventListener`/`removeEventListener`. All subscriptions auto-unsubscribe on dispose.
+- **`preventDefaultForEvent`** — use the shared helper from `event-handling` module instead of `e.preventDefault()`
+- **`disposed$.closed`** — check this instead of a separate `disposed` boolean flag
+
+### Blazor Side
+
+```csharp
+@code {
+    // Use the module's ImportName for the JS method path
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.AmazingPanel.create";
+
+    private IJSObjectReference _jsRef = null!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender)
+            return;
+
+        var blazorRef = DotNetObjectReference.Create(this);
+        _jsRef = await JS.InvokeAsync<IJSObjectReference>(
+            JSCreateMethod, _elementRef, blazorRef).ConfigureAwait(true);
+    }
+
+    public async ValueTask DisposeAsync() {
+        await _jsRef.DisposeSilentlyAsync("dispose");
+        _jsRef = null!;
+    }
+}
+```
+
+- **`ImportName`** — `BlazorUICoreModule.ImportName` (`"ui"`) for `UI.Blazor` components, `BlazorUIAppModule.ImportName` (`"blazorApp"`) for `UI.Blazor.App` components
+- **`.ConfigureAwait(true)`** — use in UI code when accessing instance members after await
+
+## Modal Components
+
+### Structure
+
+Modal components implement `IModalView<T>` with a nested `Model` record:
+
+```csharp
+@implements IModalView<AmazingModal.Model>
+
+<DialogFrame Class="amazing-modal" Title="Amazing" HasCloseButton="true">
+    <Body>...</Body>
+    <Buttons>...</Buttons>
+</DialogFrame>
+
+@code {
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private void CloseModal() => Modal.Close();
+
+    public sealed record Model(string SomeParam);
+}
+```
+
+### Registration
+
+Every modal must be registered in `BlazorUIAppModule.cs`:
+
+```csharp
+services.AddTypeMap<IModalView>(map => map
+    .Add<AmazingModal.Model, AmazingModal>()
+);
+```
+
+### CSS Scoping
+
+The `Class` parameter on `DialogFrame` becomes the CSS scoping class. Use it to scope all styles:
+
+```css
+.amazing-modal .dialog-body { }
+.amazing-modal .c-content { }
+```
+
+### Opening Modals
+
+```csharp
+await Hub.ModalUI.Show(new AmazingModal.Model("value")).ConfigureAwait(true);
+```
+
+### Registration Checklist
+
+When creating a new component with TS/CSS/Modal, register it in all required places:
+
+| What | Where |
+|------|-------|
+| CSS file | `styles.css` — add `@import` |
+| TypeScript file | `exports.ts` — add `export *` |
+| Modal component | `BlazorUIAppModule.cs` — add `.Add<Model, Component>()` |
+
 ## See Also
 
 - [Implementing Features](./implementing-features.md) — full-stack feature implementation guide

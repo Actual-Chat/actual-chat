@@ -2,6 +2,7 @@
 @import './Pages/Landing/landing.css';
 
 @import './Components/components.css';
+@import './Components/AvatarCropModal/avatar-crop-modal.css';
 @import './Components/AvatarSelect/avatar-select.css';
 @import './Components/AccountDropdown/account-dropdown.css';
 @import './Components/AccountModal/account-modal.css';
