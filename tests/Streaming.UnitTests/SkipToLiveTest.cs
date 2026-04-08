@@ -1,5 +1,4 @@
-using ActualChat.Video;
-using static ActualChat.Streaming.VideoStreamingBackend;
+using static ActualChat.Streaming.StreamLatencyStore;
 
 namespace ActualChat.Streaming.UnitTests;
 

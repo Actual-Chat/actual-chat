@@ -126,12 +126,11 @@ public class StreamHub(IServiceProvider services) : Hub
     }
 
     // PLI-equivalent: receiver requests a keyframe from the sender
-    public Task RequestKeyFrame(string sessionToken, string streamId)
+    public async Task RequestKeyFrame(string sessionToken, string streamId)
     {
         _ = GetSessionFromToken(sessionToken); // validate token
         var sid = StreamId.Parse(streamId);
-        VideoStreamingBackend.RequestKeyFrame(sid);
-        return Task.CompletedTask;
+        await VideoStreamingBackend.RequestKeyFrame(sid).ConfigureAwait(false);
     }
 
     // Latency reporting for JS video clients — uses same ConnectionId as GetVideo
@@ -256,9 +255,9 @@ public class StreamHub(IServiceProvider services) : Hub
             return;
 
         stopCts.CancelAfter(Constants.Chat.MaxEntryDuration + TimeSpan.FromSeconds(5));
-        var nodes = MeshWatcher.State.Value.LiveNodesByRole[HostRole.AudioBackend];
+        var nodes = MeshWatcher.State.Value.LiveNodesByRole[HostRole.StreamingBackend];
         if (nodes.Length == 0) {
-            Log.LogError("No nodes serving {Role} role!", HostRole.AudioBackend);
+            Log.LogError("No nodes serving {Role} role!", HostRole.StreamingBackend);
             return; // No backends
         }
 
@@ -302,9 +301,9 @@ public class StreamHub(IServiceProvider services) : Hub
             return;
 
         stopCts.CancelAfter(Constants.Chat.MaxEntryDuration + TimeSpan.FromSeconds(5));
-        var nodes = MeshWatcher.State.Value.LiveNodesByRole[HostRole.VideoBackend];
+        var nodes = MeshWatcher.State.Value.LiveNodesByRole[HostRole.StreamingBackend];
         if (nodes.Length == 0) {
-            Log.LogError("No nodes serving {Role} role!", HostRole.VideoBackend);
+            Log.LogError("No nodes serving {Role} role!", HostRole.StreamingBackend);
             return; // No backends
         }
 

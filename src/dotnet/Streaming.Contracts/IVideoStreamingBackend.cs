@@ -5,18 +5,17 @@ using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
 
-[BackendService(nameof(HostRole.VideoBackend), ServiceMode.Distributed)]
-[BackendShardScheme(nameof(HostRole.VideoBackend))]
+[BackendService(nameof(HostRole.StreamingBackend), ServiceMode.Server)]
 public interface IVideoStreamingBackend : IComputeService, IRpcService, IBackendService
 {
     Task<RpcStream<VideoFrame>?> GetVideo(StreamId streamId, TimeSpan skipTo, string peerId, CancellationToken cancellationToken);
     Task PushVideo(VideoRecord record, RpcStream<VideoFrame> videoStream, CancellationToken cancellationToken);
 
+    // Quality control — stream-local state, routed by StreamId.NodeRef
     [ComputeMethod]
-    Task<VideoQualityPreset> GetQualityPreset(StreamId streamId, CancellationToken cancellationToken);
+    Task<VideoQualityPreset> GetQualityPreset(StreamId streamId, string peerId, CancellationToken cancellationToken);
 
     Task RequestKeyFrame(StreamId streamId, CancellationToken cancellationToken = default);
-    Task<bool> ConsumeKeyFrameRequest(StreamId streamId, CancellationToken cancellationToken = default);
 
     Task ReportPeerLatency(
         StreamId streamId,

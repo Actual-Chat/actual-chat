@@ -28,7 +28,7 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
     {
         // RPC host
         var rpcHost = services.AddRpcHost(HostInfo);
-        var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IAudioStreamingBackend>() is ServiceMode.Client;
+        var isBackendClient = HostInfo.Roles.GetBackendServiceMode<ILiveAudioBackend>() is ServiceMode.Client;
 
         // SignalR hub
         if (rpcHost.IsApiHost) {
@@ -51,9 +51,9 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
         rpcHost.AddBackend<IVideoStreamingBackend, VideoStreamingBackend>();
 		rpcHost.AddBackend<ILiveAudioBackend, LiveAudioBackend>();
         rpcHost.AddBackend<ILiveVideoBackend, LiveVideoBackend>();
+        services.AddSingleton<StreamLatencyStore>();
         services.AddSingleton<IStreamClient, StreamBackendClient>(); // Client for IAudioStreamingBackend
         services.TryAddSingleton<AudioSettings>(); // AudioSettings are not configured now
-        services.AddHostedService<VideoBackendWarmup>();
         if (isBackendClient)
             return;
 
