@@ -518,12 +518,15 @@ export class AvatarCropModal implements Disposable, IUploadStreamSource {
         };
     }
 
-    private isNearFloat(clientX: number, clientY: number): boolean {
+    private toCanvasCoords(clientX: number, clientY: number): [number, number] {
         const rect = this.canvas.getBoundingClientRect();
         const scaleX = this.canvas.width / rect.width;
         const scaleY = this.canvas.height / rect.height;
-        const canvasX = (clientX - rect.left) * scaleX;
-        const canvasY = (clientY - rect.top) * scaleY;
+        return [(clientX - rect.left) * scaleX, (clientY - rect.top) * scaleY];
+    }
+
+    private isNearFloat(clientX: number, clientY: number): boolean {
+        const [canvasX, canvasY] = this.toCanvasCoords(clientX, clientY);
 
         const cx = this.canvas.width / 2;
         const cy = this.canvas.height / 2;
@@ -541,8 +544,9 @@ export class AvatarCropModal implements Disposable, IUploadStreamSource {
             this.rotationDragging = true;
         } else {
             this.dragging = true;
-            this.lastX = clientX;
-            this.lastY = clientY;
+            const [cx, cy] = this.toCanvasCoords(clientX, clientY);
+            this.lastX = cx;
+            this.lastY = cy;
         }
     }
 
@@ -551,10 +555,11 @@ export class AvatarCropModal implements Disposable, IUploadStreamSource {
         if (this.rotationDragging) {
             this.applyRotationDrag(clientX, clientY);
         } else if (this.dragging) {
-            const dx = clientX - this.lastX;
-            const dy = clientY - this.lastY;
-            this.lastX = clientX;
-            this.lastY = clientY;
+            const [cx, cy] = this.toCanvasCoords(clientX, clientY);
+            const dx = cx - this.lastX;
+            const dy = cy - this.lastY;
+            this.lastX = cx;
+            this.lastY = cy;
             this.applyPan(dx, dy);
         }
     }
@@ -565,11 +570,7 @@ export class AvatarCropModal implements Disposable, IUploadStreamSource {
     }
 
     private applyRotationDrag(clientX: number, clientY: number): void {
-        const rect = this.canvas.getBoundingClientRect();
-        const scaleX = this.canvas.width / rect.width;
-        const scaleY = this.canvas.height / rect.height;
-        const canvasX = (clientX - rect.left) * scaleX;
-        const canvasY = (clientY - rect.top) * scaleY;
+        const [canvasX, canvasY] = this.toCanvasCoords(clientX, clientY);
 
         const cx = this.canvas.width / 2;
         const cy = this.canvas.height / 2;
