@@ -152,8 +152,6 @@
         public static readonly Model None = new(false, [], false, false, false, 0, null, null, new Dictionary<AuthorId, string>(), null, null);
     }
 
-    private record VideoDevice(string DeviceId, string Label);
-
     private bool _rendered;
     private bool _isFirstOpen = true;
     private bool _isExpanded;
@@ -164,7 +162,6 @@
     private bool _showConnecting;
     private bool _hadRemoteStreams;
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoPanel.create";
-    private static readonly string JSEnumerateMethod = $"{BlazorUIAppModule.ImportName}.JoinVideoCallModal.enumerateDevices";
 
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
@@ -320,25 +317,8 @@
         ChatVideoUI.ChangeVideoSessionSettings(chatId);
     }
 
-    private async Task OnSwitchCamera() {
-        try {
-            var devices = await JS.InvokeAsync<VideoDevice[]>(JSEnumerateMethod);
-            if (devices.Length <= 1)
-                return;
-
-            var settings = await Hub.LocalSettings.LocalAppSettings().Get();
-            var currentId = settings.SelectedCameraDeviceId ?? "";
-            var currentIndex = Array.FindIndex(devices, d => d.DeviceId == currentId);
-            var nextIndex = (currentIndex + 1) % devices.Length;
-            var nextDevice = devices[nextIndex];
-
-            await Hub.LocalSettings.LocalAppSettings().Update(
-                s => s with { SelectedCameraDeviceId = nextDevice.DeviceId });
-            ChatVideoUI.SetSelectedCamera(nextDevice.DeviceId);
-        } catch {
-            // Camera enumeration may fail if no permission
-        }
-    }
+    private Task OnSwitchCamera()
+        => ChatVideoUI.SwitchCamera();
 
     private void OnChatClick() {
         _isChatVisible = !_isChatVisible;

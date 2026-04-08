@@ -63,47 +63,14 @@
 </div>
 
 @code {
-    private static readonly string JSEnumerateMethod = $"{BlazorUIAppModule.ImportName}.JoinVideoCallModal.enumerateDevices";
-
-    private record VideoDevice(string DeviceId, string Label);
-
-    private string _selectedDeviceId = "";
-    private List<VideoDevice> _videoDevices = new();
-
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter] public bool IsNarrow { get; set; }
 
-    protected override async Task OnInitializedAsync() {
-        var settings = await Hub.LocalSettings.LocalAppSettings().Get();
-        _selectedDeviceId = settings.SelectedCameraDeviceId ?? "";
-    }
-
-    private async Task LoadVideoDevices() {
-        try {
-            var devices = await JS.InvokeAsync<VideoDevice[]>(JSEnumerateMethod);
-            _videoDevices = devices.ToList();
-        } catch {
-            _videoDevices = new();
-        }
-    }
-
-    private async Task OnSwitchCamera() {
-        await LoadVideoDevices();
-        if (_videoDevices.Count <= 1)
-            return;
-
-        var currentIndex = _videoDevices.FindIndex(d => d.DeviceId == _selectedDeviceId);
-        var nextIndex = (currentIndex + 1) % _videoDevices.Count;
-        var nextDevice = _videoDevices[nextIndex];
-
-        _selectedDeviceId = nextDevice.DeviceId;
-        await Hub.LocalSettings.LocalAppSettings().Update(
-            s => s with { SelectedCameraDeviceId = nextDevice.DeviceId });
-        ChatVideoUI.SetSelectedCamera(nextDevice.DeviceId);
-    }
+    private Task OnSwitchCamera()
+        => ChatVideoUI.SwitchCamera();
 
     private void OnScreencastClick() {
         var chat = Chat;
