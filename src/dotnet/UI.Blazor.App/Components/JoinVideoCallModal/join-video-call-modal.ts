@@ -1,7 +1,7 @@
 import { Log } from 'logging';
 import { rpcClientServer, rpcNoWait } from 'rpc';
 import type { Disposable } from 'disposable';
-import { getActiveRecorder, type VideoDevice } from '../VideoPanel/video-recorder';
+import { getActiveRecorder } from '../VideoPanel/video-recorder';
 import type { VideoProcessingWorker, VideoProcessingWorkerCallbacks } from '../../Services/Video/workers/video-processing-worker-contract';
 import { createAdaptiveSegmentationConfig } from '../../Services/Video/workers/video-processing-worker-contract';
 import { detectGPUBackends } from '../../Services/Video/gpu-support';
@@ -36,27 +36,6 @@ export class JoinVideoCallModal {
         return new JoinVideoCallModal(container, blazorRef);
     }
 
-    static async enumerateDevices(): Promise<VideoDevice[]> {
-        try {
-            // Request permission first to get device labels
-            const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
-            tempStream.getTracks().forEach(t => t.stop());
-
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            const videoDevices = devices
-                .filter(d => d.kind === 'videoinput')
-                .map(d => ({
-                    deviceId: d.deviceId,
-                    label: d.label || `Camera ${d.deviceId.slice(0, 8)}`,
-                }));
-            infoLog?.log('Enumerated video devices:', videoDevices);
-            return videoDevices;
-        } catch (error) {
-            errorLog?.log('Failed to enumerate video devices:', error);
-            return [];
-        }
-    }
-
     constructor(container: HTMLElement, blazorRef: DotNet.DotNetObject) {
         this.blazorRef = blazorRef;
         this.container = container;
@@ -75,7 +54,6 @@ export class JoinVideoCallModal {
         // Off-DOM canvas for capturing frames to feed the blur worker
         this.captureCanvas = document.createElement('canvas');
         this.captureCtx = this.captureCanvas.getContext('2d')!;
-
     }
 
     public async startPreview(deviceId?: string): Promise<boolean> {

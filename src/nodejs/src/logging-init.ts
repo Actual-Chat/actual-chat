@@ -98,6 +98,7 @@ export type LogScope =
     | 'AudioVideoSync'
     | 'VideoPlayer'
     | 'VideoRecorder'
+    | 'VideoStreamingPreview'
     | 'VideoStreamer'
     | 'VideoPipeline'
     | 'VideoEncoder'

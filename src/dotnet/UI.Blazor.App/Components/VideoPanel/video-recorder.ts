@@ -10,7 +10,7 @@ export interface VideoDevice {
     label: string;
 }
 
-// Module-level singleton so the modal can find the active recorder
+// Module-level singleton so the modal and preview can find the active recorder
 let activeRecorderInstance: VideoRecorder | null = null;
 export function getActiveRecorder(): VideoRecorder | null {
     return activeRecorderInstance;
@@ -23,14 +23,10 @@ interface Size {
 
 export class VideoRecorder {
     private blazorRef: DotNet.DotNetObject;
-    private readonly element: HTMLElement;
-    private readonly canvas: HTMLCanvasElement | null = null;
-    private readonly canvasCtx: CanvasRenderingContext2D | null = null;
     // Video recording service (using video-pipeline)
     private recordingService: RecordingService | null = null;
     private isRecording = false;
     private isScreencasting = false;
-    private animationFrameId: number | null = null;
     private previewTrack: MediaStreamTrack | null = null;
     private selectedCameraDeviceId: string | null = null;
     private chatId = '';
@@ -41,21 +37,40 @@ export class VideoRecorder {
     private cameraWidth = 0;
     private cameraHeight = 0;
     private previewPaused = false;
-    // Cached encoder capabilities (detected at 1080p at recording start)
+    // Cached encoder capabilities (detected at recording start)
     private supportedEncoderCategories: string[] = [];
     private supportedCodecs: CodecInfo[] = [];
 
-    static create(element: HTMLElement, blazorRef: DotNet.DotNetObject): VideoRecorder {
-        return new VideoRecorder(element, blazorRef);
+    /** External callback for blur preview frames — set by VideoStreamingPreview */
+    public onPreviewFrame: ((frame: VideoFrame) => void) | null = null;
+
+    static create(blazorRef: DotNet.DotNetObject): VideoRecorder {
+        return new VideoRecorder(blazorRef);
     }
 
-    constructor(element: HTMLElement, blazorRef: DotNet.DotNetObject) {
-        this.blazorRef = blazorRef;
-        this.element = element;
+    static async enumerateDevices(): Promise<VideoDevice[]> {
+        try {
+            // Request permission first to get device labels
+            const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            tempStream.getTracks().forEach(t => t.stop());
 
-        // Get canvas element for rendering
-        this.canvas = this.element.querySelector('.call-video')!;
-        this.canvasCtx = this.canvas.getContext('2d');
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices
+                .filter(d => d.kind === 'videoinput')
+                .map(d => ({
+                    deviceId: d.deviceId,
+                    label: d.label || `Camera ${d.deviceId.slice(0, 8)}`,
+                }));
+            infoLog?.log('Enumerated video devices:', videoDevices);
+            return videoDevices;
+        } catch (error) {
+            errorLog?.log('Failed to enumerate video devices:', error);
+            return [];
+        }
+    }
+
+    constructor(blazorRef: DotNet.DotNetObject) {
+        this.blazorRef = blazorRef;
     }
 
     /**
@@ -80,7 +95,7 @@ export class VideoRecorder {
 
         try {
             // Tear down current recording silently (no Blazor notification)
-            this.stopRenderingStream();
+            this.cleanupPreviewTrack();
             await this.recordingService.stop();
             this.recordingService = null;
             this.isRecording = false;
@@ -130,6 +145,13 @@ export class VideoRecorder {
     }
 
     /**
+     * Get the raw preview track for rendering by VideoStreamingPreview.
+     */
+    public getPreviewTrack(): MediaStreamTrack | null {
+        return this.previewTrack;
+    }
+
+    /**
      * Get the device ID of the currently selected camera.
      */
     public getPreviewDeviceId(): string | null {
@@ -144,14 +166,28 @@ export class VideoRecorder {
     }
 
     /**
-     * Pause the recorder's own preview rendering (so only the modal draws while it's open).
+     * Whether this recorder is currently in screencast mode.
+     */
+    public isScreencastActive(): boolean {
+        return this.isScreencasting;
+    }
+
+    /**
+     * Whether preview rendering is paused (modal is open).
+     */
+    public isPreviewPaused(): boolean {
+        return this.previewPaused;
+    }
+
+    /**
+     * Pause the preview rendering (so only the modal draws while it's open).
      */
     public pausePreviewRendering(): void {
         this.previewPaused = true;
     }
 
     /**
-     * Resume the recorder's own preview rendering.
+     * Resume the preview rendering.
      */
     public resumePreviewRendering(): void {
         this.previewPaused = false;
@@ -162,7 +198,6 @@ export class VideoRecorder {
      */
     public async startRecording(chatId: string, audienceCodecs?: string[]): Promise<void> {
         this.chatId = chatId;
-        console.warn('[VideoRecorder] startRecording called, isRecording:', this.isRecording, 'chatId:', this.chatId);
         if (this.isRecording) {
             warnLog?.log('Already recording');
             return;
@@ -222,9 +257,7 @@ export class VideoRecorder {
             this.recordingService = this.createRecordingService(config);
 
             // Start recording (this initializes the video-pipeline)
-            console.warn('[VideoRecorder] Calling recordingService.start()...');
             await this.recordingService.start();
-            console.warn('[VideoRecorder] recordingService.start() completed successfully');
 
             this.previewTrack = this.recordingService.getInputTrack()
             // Store actual camera resolution for capping reconfigure requests
@@ -237,29 +270,16 @@ export class VideoRecorder {
             // Subscribe to VAD for adaptive framerate
             this.recordingService.getPipeline()?.subscribeToVad();
 
-            // Set preview callback so blurred frames render to the preview canvas
+            // Set preview callback so blurred frames are forwarded to the external handler
             this.recordingService.setPreviewCallback((frame: VideoFrame) => {
-                if (this.isBlurEnabled && this.canvas && this.canvasCtx) {
-                    if (this.canvas.width !== frame.displayWidth || this.canvas.height !== frame.displayHeight) {
-                        if (frame.displayWidth > 0 && frame.displayHeight > 0) {
-                            this.canvas.width = frame.displayWidth;
-                            this.canvas.height = frame.displayHeight;
-                        }
-                    }
-                    this.canvasCtx.drawImage(frame, 0, 0);
-                }
+                if (this.isBlurEnabled && this.onPreviewFrame)
+                    this.onPreviewFrame(frame);
             });
 
-            // Set isRecording BEFORE starting the render loop — the render loop
-            // checks this flag and exits permanently if it's false on the first frame.
             this.isRecording = true;
             activeRecorderInstance = this; // eslint-disable-line @typescript-eslint/no-this-alias
 
-            // Start rendering preview AFTER isRecording is set
-            console.warn('[VideoRecorder] Starting preview rendering, canvas:', !!this.canvas, 'canvasCtx:', !!this.canvasCtx);
-            this.startRenderingStream(this.previewTrack!);
-
-            // Notify Blazor
+            // Notify Blazor that recording started successfully
             await this.blazorRef.invokeMethodAsync('OnRecordingStarted');
 
             infoLog?.log('Video recording started');
@@ -348,11 +368,6 @@ export class VideoRecorder {
             this.isScreencasting = true;
             activeRecorderInstance = this; // eslint-disable-line @typescript-eslint/no-this-alias
 
-            // Start rendering preview from the screen track
-            if (screenTrack) {
-                this.startRenderingStream(screenTrack);
-            }
-
             await this.blazorRef.invokeMethodAsync('OnRecordingStarted');
             infoLog?.log('Screencast started');
         } catch (error) {
@@ -373,7 +388,7 @@ export class VideoRecorder {
 
         try {
             await this.recordingService.stop();
-            this.stopRenderingStream();
+            this.cleanupPreviewTrack();
             this.isRecording = false;
             this.isScreencasting = false;
             if (activeRecorderInstance === this) activeRecorderInstance = null;
@@ -504,73 +519,7 @@ export class VideoRecorder {
         return recordingService;
     }
 
-    /**
-     * Start rendering the output stream to canvas
-     */
-    private startRenderingStream(videoTrack: MediaStreamTrack): void {
-        console.warn('[VideoRecorder] startRenderingStream: videoTrack:', !!videoTrack, 'canvas:', !!this.canvas, 'canvasCtx:', !!this.canvasCtx);
-
-        // Create a video element to render the stream
-        const video = document.createElement('video');
-        video.srcObject = new MediaStream([videoTrack]);
-        video.muted = true;
-        video.playsInline = true;
-        void video.play();
-
-        let frameCount = 0;
-        let hasVideo = false;
-        const renderFrame = () => {
-            if (!this.isRecording || !this.canvas || !this.canvasCtx) {
-                console.warn('[VideoRecorder] renderFrame: exiting loop, isRecording:', this.isRecording);
-                return;
-            }
-            frameCount++;
-            if (frameCount <= 3 || frameCount % 300 === 0)
-                console.warn(`[VideoRecorder] renderFrame #${frameCount}: videoWidth=${String(video.videoWidth)}, videoHeight=${String(video.videoHeight)}`);
-
-            // Mark first frame received — hides loading spinner
-            if (!hasVideo && video.videoWidth > 0 && video.videoHeight > 0) {
-                hasVideo = true;
-                this.element.classList.add('has-video');
-            }
-
-            // When preview is paused (modal is open), skip drawing but keep the loop alive.
-            if (this.previewPaused) {
-                this.animationFrameId = requestAnimationFrame(renderFrame);
-                return;
-            }
-
-            // When blur is enabled, the preview callback renders blurred frames directly.
-            // Only draw the raw camera feed when blur is off.
-            if (!this.isBlurEnabled) {
-                // Resize canvas if needed
-                if (this.canvas.width !== video.videoWidth || this.canvas.height !== video.videoHeight) {
-                    if (video.videoWidth > 0 && video.videoHeight > 0) {
-                        this.canvas.width = video.videoWidth;
-                        this.canvas.height = video.videoHeight;
-                    }
-                }
-
-                // Draw frame to canvas
-                if (video.videoWidth > 0 && video.videoHeight > 0) {
-                    this.canvasCtx.drawImage(video, 0, 0);
-                }
-            }
-
-            this.animationFrameId = requestAnimationFrame(renderFrame);
-        };
-
-        this.animationFrameId = requestAnimationFrame(renderFrame);
-    }
-
-    /**
-     * Stop rendering the stream
-     */
-    private stopRenderingStream(): void {
-        if (this.animationFrameId !== null) {
-            cancelAnimationFrame(this.animationFrameId);
-            this.animationFrameId = null;
-        }
+    private cleanupPreviewTrack(): void {
         if (this.previewTrack) {
             // For screencast, don't stop the track — it's shared with the pipeline.
             // The pipeline's stop() will handle track cleanup.
@@ -578,7 +527,6 @@ export class VideoRecorder {
                 this.previewTrack.stop();
             this.previewTrack = null;
         }
-        this.element.classList.remove('has-video');
     }
 
     /**
@@ -591,16 +539,6 @@ export class VideoRecorder {
         this.lastStatus = state.status;
 
         debugLog?.log('Recorder state changed:', state);
-
-        // Update UI based on state
-        if (state.status.startsWith('error')) {
-            this.element.classList.add('has-error');
-        } else {
-            this.element.classList.remove('has-error');
-        }
-
-        // Notify Blazor of state change
-        void this.blazorRef.invokeMethodAsync('OnRecorderStateChanged', JSON.stringify(state));
     }
 
     /**
@@ -642,8 +580,7 @@ export class VideoRecorder {
         this.disposed = true;
         if (activeRecorderInstance === this) activeRecorderInstance = null;
 
-        // Stop rendering
-        this.stopRenderingStream();
+        this.cleanupPreviewTrack();
 
         // Stop recording service
         if (this.recordingService) {
@@ -651,6 +588,7 @@ export class VideoRecorder {
             this.recordingService = null;
         }
 
+        this.onPreviewFrame = null;
         this.isRecording = false;
         this.isScreencasting = false;
     }

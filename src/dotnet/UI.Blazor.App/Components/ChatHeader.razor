@@ -17,19 +17,11 @@
     _lastWatchingChatId = isWatchingHere ? chat?.Id : null;
 
     // Show video panel when IsWatching becomes true
-    if (!_showVideoPanel && isWatchingHere) {
+    if (!_showVideoPanel && isWatchingHere)
         _showVideoPanel = true;
-        _autoStartRecording = m.VideoState?.IsRecording == true;
-        _pendingCameraDeviceId = m.VideoState?.SelectedCameraDeviceId;
-        _pendingBlurEnabled = m.VideoState?.IsBackgroundBlurEnabled ?? false;
-    }
     // Hide when no longer watching or feature disabled
-    else if (_showVideoPanel && !isWatchingHere) {
+    else if (_showVideoPanel && !isWatchingHere)
         _showVideoPanel = false;
-        _autoStartRecording = false;
-        _pendingCameraDeviceId = null;
-        _pendingBlurEnabled = false;
-    }
 }
 
 @if (m.HasSelection) {
@@ -98,14 +90,11 @@
 }
 
 @if (m.IsVideoStreamingEnabled) {
-    <VideoPanel Show="@_showVideoPanel" Collapsed="@m.IsVideoPanelCollapsed" AutoStart="@_autoStartRecording" PendingCameraDeviceId="@_pendingCameraDeviceId" PendingBlurEnabled="@_pendingBlurEnabled"/>
+    <VideoPanel Show="@_showVideoPanel" Collapsed="@m.IsVideoPanelCollapsed"/>
 }
 
 @code {
     private bool _showVideoPanel;
-    private bool _autoStartRecording;
-    private string? _pendingCameraDeviceId;
-    private bool _pendingBlurEnabled;
     private ChatId? _lastWatchingChatId;
 
     private IChats Chats => Hub.Chats;

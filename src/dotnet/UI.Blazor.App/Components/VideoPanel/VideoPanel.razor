@@ -119,11 +119,7 @@
                 <i class="icon-collapse text-lg expanded-video-panel"></i>
             </HeaderButton>
         </div>
-        <VideoRecorder
-            PendingCameraDeviceId="@PendingCameraDeviceId"
-            PendingBlurEnabled="@PendingBlurEnabled"
-            RemoteStreamCount="@m.RemoteStreams.Length"
-            AutoStart="@_autoStartPending"/>
+        <VideoStreamingPreview />
         @if (_isExpanded && _isChatVisible && !ScreenSize.IsNarrow() && _lastChat is { } chat) {
             <div class="video-panel-chat upload-drag-drop-host">
                 <ChatView @key="@chat.Id.Value" ChatId="@chat.Id"/>
@@ -157,7 +153,6 @@
     private bool _isExpanded;
     private bool _isChatVisible = true;
     private Chat? _lastChat;
-    private bool _autoStartPending;
     private bool _noStreamsTimedOut;
     private bool _showConnecting;
     private bool _hadRemoteStreams;
@@ -173,9 +168,6 @@
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter] public bool Show { get; set; }
     [Parameter] public bool Collapsed { get; set; }
-    [Parameter] public bool AutoStart { get; set; }
-    [Parameter] public string? PendingCameraDeviceId { get; set; }
-    [Parameter] public bool PendingBlurEnabled { get; set; }
 
     public override async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
@@ -198,7 +190,6 @@
         if (Show && !_rendered) {
             _rendered = true;
             _isFirstOpen = true;
-            _autoStartPending = AutoStart;
             _noStreamsTimedOut = false;
             _hadRemoteStreams = false;
         } else if (!Show && _rendered && JSRef is not null) {
@@ -221,7 +212,6 @@
         _rendered = false;
         _isExpanded = false;
         _lastChat = null;
-        _autoStartPending = false;
         ChatVideoUI.OnRecordingStopped();
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
@@ -407,6 +397,6 @@
             string.Join(", ", remoteStreams.Select(s => $"{s.StreamId}({s.Format.Codec})")),
             videoState.IsRecording);
 
-        return new Model(isRightPanelVisible, remoteStreams, videoState.IsRecording, audioState.IsRecording, audioState.IsListening, videoStreamMemberCount, chatId, chat, authorNames, focusedAuthorId, previousFocusedAuthorId, videoState.IsScreencasting);
+         return new Model(isRightPanelVisible, remoteStreams, videoState.IsRecording, audioState.IsRecording, audioState.IsListening, videoStreamMemberCount, chatId, chat, authorNames, focusedAuthorId, previousFocusedAuthorId, videoState.IsScreencasting);
     }
 }

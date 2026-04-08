@@ -1,55 +1,55 @@
-.video-recorder:not(.recording) {
+.video-streaming-preview:not(.recording) {
     display: none;
 }
-.video-recorder .call-video {
+.video-streaming-preview .call-video {
     @apply absolute inset-0;
     @apply w-full h-full;
     @apply object-contain;
     @apply bg-black;
     transform: scaleX(-1);
 }
-body.wide .video-panel.expanded .video-recorder .call-video {
+body.wide .video-panel.expanded .video-streaming-preview .call-video {
     @apply rounded-lg;
 }
-.video-panel.expanded:has(.video-panel-chat) .video-recorder .call-video {
+.video-panel.expanded:has(.video-panel-chat) .video-streaming-preview .call-video {
     width: calc(100% - var(--video-panel-chat-width) - 0.5rem);
 }
-.video-recorder.screencast .call-video {
+.video-streaming-preview.screencast .call-video {
     transform: none;
 }
-.video-recorder .btn-h.settings-btn {
+.video-streaming-preview .btn-h.settings-btn {
     @apply absolute top-2 right-2;
     @apply text-white text-lg;
 }
-body.hoverable .video-recorder .btn-h.settings-btn:hover {
+body.hoverable .video-streaming-preview .btn-h.settings-btn:hover {
     @apply text-white;
     @apply opacity-80;
 }
-.video-panel.expanded .video-recorder .btn-h.settings-btn {
+.video-panel.expanded .video-streaming-preview .btn-h.settings-btn {
     @apply hidden;
 }
 
 /* Participant labels */
-.video-recorder .video-participant-label {
+.video-streaming-preview .video-participant-label {
     @apply hidden;
 }
-.video-recorder .video-participant-label i {
+.video-streaming-preview .video-participant-label i {
     @apply text-xs;
 }
 
 /* Loading spinner — shown while camera is starting */
-.video-recorder .video-loading {
+.video-streaming-preview .video-loading {
     @apply absolute inset-0;
     @apply flex items-center justify-center;
     @apply bg-black;
 }
-.video-recorder:not(.recording) .video-loading,
-.video-recorder.has-video .video-loading {
+.video-streaming-preview:not(.recording) .video-loading,
+.video-streaming-preview.has-video .video-loading {
     @apply hidden;
 }
 
 /* Error display */
-.video-recorder .video-error {
+.video-streaming-preview .video-error {
     @apply absolute bottom-12 left-1/2 -translate-x-1/2;
     @apply bg-[var(--red-70)] text-white;
     @apply px-4 py-2 rounded-lg;

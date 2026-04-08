@@ -1,6 +1,7 @@
 using ActualChat.Streaming;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Services;
+using ActualChat.Video;
 using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -30,6 +31,10 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private readonly MutableState<AuthorId?> _previousFocusedSpeakerId;
     private CancellationTokenSource? _focusDebounceCts;
     private AuthorId? _pendingFocusCandidate;
+
+    // JS recorder lifecycle (managed by SyncRecordingLifecycle AsyncChain)
+    private IJSObjectReference? _jsRecorder;
+    private DotNetObjectReference<RecorderCallbacks>? _callbacksRef;
 
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private IChats Chats => Hub.Chats;
@@ -192,10 +197,11 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public async Task<VideoDevice[]> EnumerateVideoDevices()
     {
         try {
-            var jsMethod = $"{BlazorUIAppModule.ImportName}.JoinVideoCallModal.enumerateDevices";
+            var jsMethod = $"{BlazorUIAppModule.ImportName}.VideoRecorder.enumerateDevices";
             return await JS.InvokeAsync<VideoDevice[]>(jsMethod).ConfigureAwait(false);
         }
-        catch {
+        catch(Exception e) {
+            Log.LogError(e, "EnumerateVideoDevices failed");
             return [];
         }
     }
@@ -344,6 +350,54 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     public ValueTask<bool> IsVideoStreamingEnabled(CancellationToken cancellationToken)
         => Features.IsVideoStreamingEnabled(cancellationToken);
+
+    // JS recorder lifecycle helpers
+
+    private async Task EnsureJsRecorder()
+    {
+        if (_jsRecorder is not null)
+            return;
+        _callbacksRef = DotNetObjectReference.Create(new RecorderCallbacks(this));
+        var jsMethod = $"{BlazorUIAppModule.ImportName}.VideoRecorder.create";
+        _jsRecorder = await JS.InvokeAsync<IJSObjectReference>(jsMethod, _callbacksRef).ConfigureAwait(false);
+    }
+
+    private async Task<string[]> GetInitialAudienceCodecs(ChatId chatId)
+    {
+        try {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            var codecs = await LiveVideoStreams
+                .GetSupportedCodecs(Session, chatId, cts.Token)
+                .ConfigureAwait(false);
+            Log.LogInformation("GetInitialAudienceCodecs: codecs=[{Codecs}]", string.Join(", ", codecs));
+            return codecs.ToArray();
+        }
+        catch (OperationCanceledException) {
+            Log.LogInformation("GetInitialAudienceCodecs: timed out, no audience codecs available");
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "GetInitialAudienceCodecs failed");
+        }
+        return [];
+    }
+
+    // Nested types
+
+    private sealed class RecorderCallbacks(ChatVideoUI owner)
+    {
+        [JSInvokable]
+        public void OnRecordingStarted()
+        {
+            // Recording started successfully — state is already set by the caller (SyncRecordingLifecycle).
+            // This callback exists so JS can signal readiness for quality/codec subscriptions.
+        }
+
+        [JSInvokable]
+        public void OnRecordingStopped() => owner.OnRecordingStopped();
+
+        [JSInvokable]
+        public void OnRecordingError(string error) => owner.OnRecordingError(error);
+    }
 }
 
 // ReSharper disable once ClassNeverInstantiated.Global — instantiated via JS interop deserialization
