@@ -14,8 +14,8 @@ public sealed class StreamLatencyStore(IServiceProvider services)
     internal readonly ConcurrentDictionary<StreamId, bool> KeyFrameRequests = new();
     internal readonly ConcurrentDictionary<StreamId, CpuTimestamp> LastKeyFrameRequestTime = new();
 
-    private MomentClockSet Clocks => field ??= services.Clocks();
-    private ILogger Log => field ??= services.LogFor(GetType());
+    private MomentClockSet Clocks { get; } = services.Clocks();
+    private ILogger Log { get; } = services.LogFor<StreamLatencyStore>();
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 
     public int GetPeerMaxTemporalLayer(StreamId streamId, string peerId)
