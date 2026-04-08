@@ -73,12 +73,12 @@ public partial class MarkupParser : IMarkupParser
         Token(c => char.IsLetterOrDigit(c) || @":;/\?&#+=%$@*[](){}_.,\-~'!|".Contains(c)).Labelled("URL character");
 
     private const string UrlProtoRe = @"(http|ftp)s?\:\/\/";
-    private const string UrlHostRe = @"[0-9a-zA-Z]([-.\w]*[0-9a-zA-Z])*";
+    private const string UrlHostRe = @"[0-9a-zA-Z](?>[-.\w]*[0-9a-zA-Z])*";
     private const string UrlPortRe = @":(0-9)*";
-    private const string UrlPathRe = @"\/[a-zA-Z0-9\-\.\?\*\,\'\[\]\(\)\{\}\/\\\+&%\$#_!\|]*";
+    private const string UrlPathRe = @"[/?][a-zA-Z0-9\-\.\?\*\,\'\[\]\(\)\{\}\/\\\+&%\$#_!\|;=:@~]*";
     private const string FullUrlRe = $"{UrlProtoRe}{UrlHostRe}({UrlPortRe})?({UrlPathRe})?";
     private const string ShortUrlRe = $@"www\.{UrlHostRe}({UrlPortRe})?({UrlPathRe})?";
-    private const string UrlRe = $"^({FullUrlRe})|({ShortUrlRe})$";
+    private const string UrlRe = $"^(?:{FullUrlRe}|{ShortUrlRe})$";
 
     [GeneratedRegex(UrlRe, RegexOptions.ExplicitCapture)]
     private static partial Regex UrlRegexFactory();
@@ -95,7 +95,7 @@ public partial class MarkupParser : IMarkupParser
     private const string EmailNameRe = @"[A-Za-z0-9!#$%&'*+\-\/=?\^_`{|}~][A-Za-z0-9!#$%&'*+\-\/=?\^_`{|}~.]*";
     private const string ShortEmailRe = $"{EmailNameRe}@{UrlHostRe}";
     private const string FullEmailRe = $"mailto:{ShortEmailRe}";
-    private const string EmailRe = $"^({FullEmailRe})|({ShortEmailRe})$";
+    private const string EmailRe = $"^(?:{FullEmailRe}|{ShortEmailRe})$";
 
     [GeneratedRegex(EmailRe, RegexOptions.ExplicitCapture)]
     private static partial Regex EmailRegexFactory();

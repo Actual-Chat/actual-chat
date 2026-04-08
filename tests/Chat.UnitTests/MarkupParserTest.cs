@@ -716,6 +716,47 @@ code
             $"markup type is {markup.GetType().Name} for input: \"{input}\"");
     }
 
+    [Theory]
+    [InlineData("user@example.com")]
+    [InlineData("mailto:user@example.com")]
+    [InlineData("test.user+tag@sub.domain.org")]
+    public void EmailRegexValidInputTest(string input)
+    {
+        var p = Parse<ParagraphMarkup>(input, out var text);
+        var m = p.Content.Should().BeOfType<UrlMarkup>().Subject;
+        m.Url.Should().Be(text);
+        m.Kind.Should().Be(UrlMarkupKind.Email);
+    }
+
+    [Theory]
+    [InlineData("user@" + "aaaaaaaaaaaaaaaaaaaaaaaaaaaa" + ".")]
+    [InlineData("user@" + "aaaaaaaaaaaaaaaaaaaaaaaaaaaa" + "-")]
+    [InlineData("user@" + "aaaaaaaaaaaaaaaaaaaaaaaaaaaa" + "_")]
+    public void EmailRegexNoBacktrackingTest(string input)
+    {
+        // UrlHostRe = [0-9a-zA-Z]([-.\w]*[0-9a-zA-Z])* has a nested quantifier.
+        // When the host part is a long run of alphanumeric chars followed by a char
+        // in [-.\w] but NOT in [0-9a-zA-Z] (i.e. '.', '-', '_'), the regex engine
+        // tries exponentially many partitions before failing.
+        // The fix uses an atomic group (?>...) to prevent this backtracking.
+        // These inputs go through MarkupParser -> Pidgin Email parser -> EmailRegex.IsMatch().
+        var task = Task.Run(() => new MarkupParser().Parse(input));
+        var completed = task.Wait(TimeSpan.FromSeconds(5));
+        completed.Should().BeTrue("parsing must complete within 5s (no regex backtracking)");
+    }
+
+    [Theory]
+    [InlineData("https://" + "aaaaaaaaaaaaaaaaaaaaaaaaaaaa" + ".")]
+    [InlineData("https://" + "aaaaaaaaaaaaaaaaaaaaaaaaaaaa" + "-")]
+    [InlineData("www." + "aaaaaaaaaaaaaaaaaaaaaaaaaaaa" + ".")]
+    public void UrlRegexNoBacktrackingTest(string input)
+    {
+        // Same nested quantifier issue in UrlHostRe, triggered via URL parsing path.
+        var task = Task.Run(() => new MarkupParser().Parse(input));
+        var completed = task.Wait(TimeSpan.FromSeconds(5));
+        completed.Should().BeTrue("parsing must complete within 5s (no regex backtracking)");
+    }
+
     // Helpers
 
     private TResult Parse<TResult>(string text, out string copy)
