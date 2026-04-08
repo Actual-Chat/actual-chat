@@ -1,0 +1,39 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, bool>
+@{
+    if (!State.Value)
+        return;
+}
+
+<div class="header-activity-panel-wrapper">
+    <ChatActivityPanel Chat="@Chat" MaxCount="3" Click="@Click"/>
+</div>
+
+@code {
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
+    private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
+
+    [ParameterComparer(typeof(ByRefParameterComparer))]
+    [Parameter, EditorRequired] public Chat Chat { get; set; }
+    [Parameter] public EventCallback Click { get; set; }
+
+    protected override ComputedState<bool>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<bool>.Options() {
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+        var chatId = Chat.Id;
+        var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
+        var isRecordingHere = activeChats.Any(c => c.IsRecording && c.ChatId == chatId);
+        var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
+        var isListeningHere = audioState is { IsListening: true } && audioState.ChatId == chatId;
+        var isAnyoneTalking = await LiveStreamUI.IsAnyoneStreaming(chatId, cancellationToken).ConfigureAwait(false);
+        var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chatId, cancellationToken).ConfigureAwait(false);
+        return isRecordingHere || isListeningHere || isAnyoneVideoStreaming || (isAnyoneTalking && audioState.ChatId == chatId);
+    }
+}
