@@ -258,20 +258,20 @@ body.narrow .video-panel .remote-video-container.previous-speaker {
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
-.video-panel.has-remote-streams .video-recorder {
+.video-panel.has-remote-streams .video-streaming-preview {
     @apply absolute bottom-1 right-1 z-10;
     @apply w-20 h-20;
     @apply rounded-lg border-2 border-white;
     @apply overflow-hidden;
     @apply cursor-pointer;
 }
-body.wide .video-panel.has-remote-streams .video-recorder {
+body.wide .video-panel.has-remote-streams .video-streaming-preview {
     @apply w-40 h-40;
 }
-.video-panel.has-remote-streams.expanded .video-recorder {
+.video-panel.has-remote-streams.expanded .video-streaming-preview {
     @apply bottom-18;
 }
-.video-panel.has-remote-streams.expanded .video-recorder {
+.video-panel.has-remote-streams.expanded .video-streaming-preview {
     @apply right-1;
 }
 .video-panel .remote-streams canvas.remote-video {
