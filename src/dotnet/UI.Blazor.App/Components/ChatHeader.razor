@@ -7,8 +7,6 @@
         searchCls += " on";
     var isThread = chat?.Id.IsThread() ?? false;
     var showBackBtn = isThread || ScreenSize.IsNarrow();
-    var isAnyoneVideoStreaming = m.IsAnyoneVideoStreaming;
-    var isPanelVisible = IsRecordingHere || IsListeningHere || isAnyoneVideoStreaming || (m.IsAnyoneTalking && m.AudioState?.ChatId == chat?.Id);
 }
 
 @if (m.HasSelection) {
@@ -60,44 +58,26 @@
     </div>
     @if (chat is not null) {
         <div class="chat-header-control-panel hideable">
-        <TranslationButton ChatId="@chat.Id"/>
-        @if (chat.Id.IsThread(out var threadChatId)) {
-            <ChatHeaderFollowThreadToggle ThreadChatId="@threadChatId"/>
-        }
-        @if (IsRightNavigateButtonVisible) {
-            <ChatHeaderRightPanelToggle Chat="@Chat" Click="@OnToggleRightPanelClick"/>
-        }
-    </div>
+            <TranslationButton ChatId="@chat.Id"/>
+            @if (chat.Id.IsThread(out var threadChatId)) {
+                <ChatHeaderFollowThreadToggle ThreadChatId="@threadChatId"/>
+            }
+            @if (IsRightNavigateButtonVisible) {
+                <ChatHeaderRightPanelToggle Chat="@Chat" Click="@OnToggleRightPanelClick"/>
+            }
+        </div>
     }
 </div>
-@if (ScreenSize.IsNarrow() && isPanelVisible) {
-    <div class="header-activity-panel-wrapper">
-        <ChatActivityPanel Chat="@chat" MaxCount="3" Click="@OnToggleRightPanelClick"/>
-    </div>
+@if (ScreenSize.IsNarrow() && chat is not null) {
+    <ChatActivityPanelNarrowScreenWrapper Chat="@chat" Click="@OnToggleRightPanelClick" />
 }
 
-@if (m.IsVideoStreamingEnabled) {
+@if(m.IsVideoStreamingEnabled) {
     <VideoPanel />
 }
 
 @code {
-    private IChats Chats => Hub.Chats;
-    private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
-    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
-    private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
-
-    private ChatId? RecordingChatId {
-        get {
-            var activeChats = ActiveChatsUI.ActiveChats.Value;
-            var recordingChat = activeChats.FirstOrDefault(c => c.IsRecording);
-            return recordingChat?.ChatId;
-        }
-    }
-
-    private bool IsRecordingHere => Chat?.Id is not null && RecordingChatId == Chat.Id;
-    private bool IsUpdating => Chat?.Id is not null && State.Value?.Chat?.Id != Chat.Id;
-    private bool IsListeningHere => !IsUpdating && State is { Value.AudioState.IsListening: true } && State.Value.AudioState.ChatId == Chat?.Id;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [ParameterComparer(typeof(ByRefParameterComparer))]
@@ -115,31 +95,11 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatId = Chat?.Id;
-
-        Chat? chat = null;
-        ChatAudioState? audioState = null;
-        if (chatId is not null)
-            chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
-
-        AuthorId[] authorIds = [];
-        if (chatId is not null)
-            authorIds = await LiveStreamUI.GetStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
-
-        if (chatId is not null)
-            audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
-
-        var isAnyoneVideoStreaming = chatId is not null && await ChatVideoUI.IsAnyoneVideoStreaming(chatId, cancellationToken).ConfigureAwait(false);
-
         var hasSelection = await Hub.SelectionUI.HasSelection.Use(cancellationToken).ConfigureAwait(false);
         var isSearchMode = await Hub.PanelsUI.Right.IsSearchMode.Use(cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         var isVideoStreamingEnabled = await ChatVideoUI.IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
         return new() {
-            Chat = chat,
-            AudioState = audioState,
-            IsAnyoneTalking = authorIds.Length > 0,
-            IsAnyoneVideoStreaming = isAnyoneVideoStreaming,
             HasSelection = hasSelection,
             IsSearchMode = isSearchMode,
             EnableIncompleteUI = enableIncompleteUI,
@@ -178,11 +138,6 @@
     public sealed record Model {
         public static readonly Model None = new ();
 
-        public Chat? Chat { get; init; }
-        public ChatAudioState? AudioState { get; init; }
-
-        public bool IsAnyoneTalking { get; init; }
-        public bool IsAnyoneVideoStreaming { get; init; }
         public bool HasSelection { get; init; }
         public bool IsSearchMode { get; init; }
         public bool EnableIncompleteUI { get; init; }
