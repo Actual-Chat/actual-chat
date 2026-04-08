@@ -25,10 +25,10 @@
     var remoteStreamsCls = hasRemoteStreams ? "has-remote-streams" : "";
     var firstOpenCls = _isFirstOpen ? "first-time-open" : "";
     var audioRecordingCls = m.IsAudioRecording ? "recording" : "";
-    var videoBtnCls = m.IsRecording ? "video-active" : "";
-    var screencastBtnCls = m.IsScreencasting ? "video-active" : "";
+    var videoBtnCls = m.IsRecording ? "on" : "";
+    var screencastBtnCls = m.IsScreencasting ? "on" : "";
     var expandedPanelRecBtnCls = $"rec-btn {audioRecordingCls}";
-    var chatBtnCls = _isChatVisible ? "video-active" : "";
+    var chatBtnCls = _isChatVisible ? "on" : "";
     if (m.Chat is { } mChat)
         _lastChat = mChat;
 }
@@ -37,7 +37,7 @@
     <div @ref="Ref" class="video-panel @firstOpenCls @cls @recordingCls @remoteStreamsCls @(_isExpanded ? "expanded" : "") @(Collapsed ? "collapsed" : "")">
       <div class="c-container">
         @* Header for expanded video *@
-        <div class="video-panel-header">
+        <div class="video-panel-toolbar video-panel-header">
             <HeaderButton Class="expand-btn show-with-delay expanded-video-btn" Click="@OnExpandClick">
                 <i class="icon-expand text-lg collapsed-video-panel"></i>
                 <i class="icon-collapse text-lg expanded-video-panel"></i>
@@ -61,7 +61,7 @@
         </div>
 
         @* Footer for mobile full-screen video *@
-        <div class="video-panel-footer">
+        <div class="video-panel-toolbar video-panel-footer">
             @if (ScreenSize.IsNarrow()) {
                 <HeaderButton Click="@OnSwitchCamera">
                     <i class="icon-camera-switch text-lg"></i>
@@ -125,7 +125,7 @@
             RemoteStreamCount="@m.RemoteStreams.Length"
             AutoStart="@_autoStartPending"/>
         @if (_isExpanded && _isChatVisible && !ScreenSize.IsNarrow() && _lastChat is { } chat) {
-            <div class="video-panel-chat">
+            <div class="video-panel-chat upload-drag-drop-host">
                 <ChatView @key="@chat.Id.Value" ChatId="@chat.Id"/>
                 <ChatMessageEditor @key="@("vp-editor-" + chat.Id.Value)" Chat="@chat"/>
             </div>

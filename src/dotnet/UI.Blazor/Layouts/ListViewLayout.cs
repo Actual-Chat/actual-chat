@@ -3,5 +3,5 @@ namespace ActualChat.UI.Blazor.Layouts;
 public class ListViewLayout : DefaultLayout
 {
     public ListViewLayout()
-        => MiddlePanelClass = "list-view-layout";
+        => MiddlePanelClass = "list-view-layout upload-drag-drop-host";
 }

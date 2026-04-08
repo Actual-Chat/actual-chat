@@ -349,12 +349,12 @@
         => OnCancel(cancellationToken);
 
     private Task OnAttachButtonClickEvent(AttachButtonClickEvent @event, CancellationToken cancellationToken)
-        => @event.EditorId.IsNullOrEmpty() || @event.EditorId == _editorId
+        => @event.EditorId == _editorId
             ? OnAttachClick(@event.AcceptTypes)
             : Task.CompletedTask;
 
     private Task OnMentionButtonClickEvent(MentionButtonClickEvent @event, CancellationToken cancellationToken)
-        => @event.EditorId.IsNullOrEmpty() || @event.EditorId == _editorId
+        => @event.EditorId == _editorId
             ? OnMentionButtonClick()
             : Task.CompletedTask;
 }
