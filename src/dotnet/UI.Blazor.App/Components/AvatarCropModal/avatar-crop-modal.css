@@ -19,7 +19,10 @@
     @apply overflow-hidden;
     aspect-ratio: 1;
     outline: var(--background-05) solid 0.25rem;
-    outline-offset: 0;
+    outline-offset: -1px;
+}
+.avatar-crop-modal.square .c-canvas-container {
+    @apply rounded-4xl;
 }
 .avatar-crop-modal .c-canvas-container > canvas {
     @apply w-full h-full;
@@ -39,18 +42,100 @@
     @apply rounded-full;
     @apply border border-separator;
 }
+.avatar-crop-modal.square .c-preview > canvas {
+    @apply rounded-lg;
+}
 .avatar-crop-modal .c-preview-label {
     @apply text-sm text-03;
+}
+
+/* ── Wallpaper preview ── */
+
+.avatar-crop-modal.has-blur .c-preview > canvas {
+    @apply rounded-lg;
+}
+
+/* ── Blur slider ── */
+
+.avatar-crop-modal .c-blur-slider {
+    @apply flex-y items-center;
+    @apply w-full;
+    @apply px-2;
+    row-gap: 4px;
+    --track-height: 2px;
+    --thumb-size: 16px;
+    --track-color: var(--separator);
+    --progress-color: var(--blue-50-50);
+    --thumb-color: var(--primary);
+}
+.avatar-crop-modal .c-blur-slider .blur-range,
+.avatar-crop-modal .c-blur-slider .blur-range:focus {
+    @apply w-full;
+    @apply border-none outline-none shadow-none ring-0;
+    @apply bg-transparent;
+    @apply cursor-pointer;
+    height: var(--thumb-size);
+    padding: 0 calc(var(--thumb-size) / 2);
+    appearance: none;
+    -webkit-appearance: none;
+}
+.avatar-crop-modal .c-blur-slider .blur-range::-webkit-slider-runnable-track {
+    @apply rounded-full;
+    height: var(--track-height);
+    background: linear-gradient(
+        to right,
+        var(--progress-color) 0%,
+        var(--progress-color) var(--progress, 0%),
+        var(--track-color) var(--progress, 0%),
+        var(--track-color) 100%
+    );
+}
+.avatar-crop-modal .c-blur-slider .blur-range::-webkit-slider-thumb {
+    width: var(--thumb-size);
+    height: var(--thumb-size);
+    border-radius: 50%;
+    background: var(--thumb-color);
+    margin-top: calc((var(--track-height) - var(--thumb-size)) / 2);
+    -webkit-appearance: none;
+}
+.avatar-crop-modal .c-blur-slider .blur-range::-moz-range-track {
+    @apply rounded-full;
+    height: var(--track-height);
+    background: var(--track-color);
+}
+.avatar-crop-modal .c-blur-slider .blur-range::-moz-range-thumb {
+    width: var(--thumb-size);
+    height: var(--thumb-size);
+    border-radius: 50%;
+    border: none;
+    background: var(--thumb-color);
+}
+.avatar-crop-modal .c-blur-slider .blur-range::-moz-range-progress {
+    @apply rounded-full;
+    height: var(--track-height);
+    background: var(--progress-color);
+}
+.avatar-crop-modal .c-blur-label {
+    @apply text-xs text-03;
 }
 
 /* ── Controls ── */
 
 .avatar-crop-modal .c-controls {
+    @apply flex-y items-center gap-3;
+}
+.avatar-crop-modal .c-controls .c-buttons-row {
     @apply flex-x items-center justify-center gap-3;
+}
+.avatar-crop-modal .c-controls .c-group {
+    @apply flex-x items-center gap-1;
 }
 .avatar-crop-modal .c-controls .btn-round.btn-confirm {
     @apply bg-primary;
     @apply text-white;
+}
+.avatar-crop-modal .c-controls .c-flip {
+    @apply -scale-x-100;
 }
 
 /* ── Error ── */
