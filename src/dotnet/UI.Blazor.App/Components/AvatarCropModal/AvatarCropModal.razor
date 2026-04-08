@@ -7,7 +7,7 @@
 
 <DialogFrame
     Class="avatar-crop-modal"
-    Title="Edit avatar cover"
+    Title="Crop avatar"
     HasCloseButton="true">
     <Body>
         @if (_hasError) {
@@ -50,7 +50,8 @@
 
     private ElementReference _canvasRef;
     private ElementReference _previewRef;
-    private IJSObjectReference _jsRef = null!;
+    private IJSObjectReference? _jsRef;
+    private DotNetObjectReference<AvatarCropModal>? _blazorRef;
     private bool _hasError;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
@@ -60,18 +61,22 @@
         if (!firstRender)
             return;
 
-        var blazorRef = DotNetObjectReference.Create(this);
+        _blazorRef = DotNetObjectReference.Create(this);
         _jsRef = await JS.InvokeAsync<IJSObjectReference>(
             JSCreateMethod,
             _canvasRef,
             _previewRef,
             ModalModel.BlobUrl,
-            blazorRef).ConfigureAwait(true);
+            _blazorRef).ConfigureAwait(true);
     }
 
     public async ValueTask DisposeAsync() {
-        await _jsRef.DisposeSilentlyAsync("dispose");
-        _jsRef = null!;
+        if (_jsRef is { } jsRef) {
+            _jsRef = null;
+            await jsRef.DisposeSilentlyAsync("dispose");
+        }
+        _blazorRef?.Dispose();
+        _blazorRef = null;
     }
 
     [JSInvokable("OnImageLoadError")]
@@ -81,17 +86,17 @@
     }
 
     private async Task OnZoomIn()
-        => await _jsRef.InvokeVoidAsync("zoomIn").ConfigureAwait(true);
+        => await _jsRef!.InvokeVoidAsync("zoomIn").ConfigureAwait(true);
 
     private async Task OnZoomOut()
-        => await _jsRef.InvokeVoidAsync("zoomOut").ConfigureAwait(true);
+        => await _jsRef!.InvokeVoidAsync("zoomOut").ConfigureAwait(true);
 
     private async Task OnRotate()
-        => await _jsRef.InvokeVoidAsync("rotate").ConfigureAwait(true);
+        => await _jsRef!.InvokeVoidAsync("rotate").ConfigureAwait(true);
 
     private async Task OnConfirm() {
         try {
-            var exported = await _jsRef.InvokeAsync<bool>("exportCrop").ConfigureAwait(true);
+            var exported = await _jsRef!.InvokeAsync<bool>("exportCrop").ConfigureAwait(true);
             if (!exported) {
                 UICommander.ShowError(StandardError.Constraint("Failed to export cropped image."));
                 return;
@@ -105,10 +110,10 @@
             var metadata = new PropertyBag()
                 .Set("FileName", "avatar-crop.png")
                 .Set("ContentType", "image/png");
-            var blobSize = await _jsRef.InvokeAsync<long>("getCroppedBlobSize").ConfigureAwait(true);
+            var blobSize = await _jsRef!.InvokeAsync<long>("getCroppedBlobSize").ConfigureAwait(true);
             var uploadId = await UICommander.Call(new Uploads_Create(Session, blobSize, tag, metadata));
 
-            var streamSource = new WebUploadStreamSource(_jsRef);
+            var streamSource = new WebUploadStreamSource(_jsRef!);
             await FileUploader.Upload(streamSource, uploadId, null, CancellationToken.None);
 
             var mediaRef = await UICommander.Call(new Media_ProcessUpload(Session, mediaId, uploadId));
