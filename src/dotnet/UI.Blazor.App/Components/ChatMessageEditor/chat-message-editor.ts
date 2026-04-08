@@ -95,7 +95,7 @@ export class ChatMessageEditor {
         }
 
         // Drag-and-drop file attachment
-        this.chatPanel = this.editorDiv.closest('.video-panel-chat') ?? this.editorDiv.closest('.list-view-layout');
+        this.chatPanel = this.editorDiv.closest('.upload-drag-drop-host');
         if (this.chatPanel) {
             this.dragDropOverlay = document.createElement('div');
             this.dragDropOverlay.className = 'drag-drop-overlay';

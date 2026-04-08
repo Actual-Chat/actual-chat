@@ -97,8 +97,7 @@ body.wide .video-panel.rp-visible {
 .video-panel.expanded .expanded-video-panel {
     @apply block;
 }
-.video-panel .video-panel-header,
-.video-panel .video-panel-footer {
+.video-panel .video-panel-toolbar {
     @apply absolute z-[1000];
     @apply hidden;
     @apply px-4;
@@ -116,48 +115,37 @@ body.wide .video-panel.rp-visible {
 .video-panel .video-panel-footer {
     @apply pb-4;
 }
-.video-panel.expanded .video-panel-header,
-.video-panel.expanded .video-panel-footer {
+.video-panel.expanded .video-panel-toolbar {
     @apply flex-x;
+    @apply absolute;
+    @apply items-center justify-between;
+    @apply h-16;
+    left: var(--safe-area-left);
+    right: var(--safe-area-right);
 }
 body.wide .video-panel.expanded .video-panel-footer {
     @apply justify-center gap-4;
 }
 .video-panel.expanded .video-panel-header {
-    @apply absolute;
-    @apply items-center justify-between;
-    @apply h-16;
     top: var(--safe-area-top);
-    left: var(--safe-area-left);
-    right: var(--safe-area-right);
 }
 .video-panel.expanded .video-panel-footer {
-    @apply absolute;
-    @apply items-center justify-between;
-    @apply h-16;
     bottom: var(--safe-area-bottom);
-    left: var(--safe-area-left);
-    right: var(--safe-area-right);
 }
-.video-panel.expanded:has(.video-panel-chat:not(.chat-hidden)) .video-panel-header,
-.video-panel.expanded:has(.video-panel-chat:not(.chat-hidden)) .video-panel-footer {
+.video-panel.expanded:has(.video-panel-chat:not(.chat-hidden)) .video-panel-toolbar {
     right: calc(var(--video-panel-chat-width) + 0.5rem);
 }
-.video-panel .video-panel-header > *,
-.video-panel .video-panel-footer > * {
+.video-panel .video-panel-toolbar > * {
     background: linear-gradient(0deg, rgba(255, 255, 255, 0.50) -46.21%, rgba(255, 255, 255, 0.10) 103.45%, rgba(255, 255, 255, 0.35) 103.45%);
     @apply text-white;
     backdrop-filter: blur(8px);
 }
-.video-panel .video-panel-header > button,
-.video-panel .video-panel-footer > button {
+.video-panel .video-panel-toolbar > button {
     @apply w-12 h-12;
     @apply rounded-full;
 }
-body.hoverable .video-panel .video-panel-header > button:hover,
-.touch-capable .video-panel .video-panel-header > button:active,
-body.hoverable .video-panel .video-panel-footer > button:hover,
-.touch-capable .video-panel .video-panel-footer > button:active {
+body.hoverable .video-panel .video-panel-toolbar > button:hover,
+.touch-capable .video-panel .video-panel-toolbar > button:active {
     @apply text-[var(--white-50)];
 }
 .video-panel .video-panel-footer > button.rec-btn {
@@ -178,13 +166,13 @@ body.hoverable .video-panel .video-panel-footer > button:hover,
 .video-panel .video-panel-footer > button.rec-btn i.left {
     @apply -mr-0.5;
 }
-.video-panel .video-panel-footer > button.video-active {
+.video-panel .video-panel-footer > button.on {
     @apply outline-2 -outline-offset-1 outline-primary;
     @apply text-primary;
     outline-style: solid;
 }
-body.hoverable .video-panel .video-panel-footer > button.video-active:hover,
-.touch-capable .video-panel .video-panel-footer > button.video-active:active {
+body.hoverable .video-panel .video-panel-footer > button.on:hover,
+.touch-capable .video-panel .video-panel-footer > button.on:active {
     @apply outline-[var(--blue-50-50)];
     @apply text-[var(--blue-50-50)];
 }
