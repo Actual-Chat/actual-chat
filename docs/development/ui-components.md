@@ -99,6 +99,8 @@ Standard components inside (buttons, separators, tiles, inputs) do NOT need extr
 .amazing-panel .btn.amazing-panel-btn { }
 ```
 
+When adding a custom class to a button, use the `btn-` prefix followed by the purpose: `btn-rec`, `btn-save`, `btn-confirm`. Do not put `btn` at the end (`rec-btn`, `save-form-btn`).
+
 ### Toggle State
 
 For buttons and elements that behave like a toggle (on/off), use the `.on` class (and `.off` if needed). Do not invent custom state classes like `.video-active` or `.is-selected`:
@@ -127,6 +129,17 @@ this.host = this.el.closest('.upload-drag-drop-host');
 ```
 
 Then apply the class to each host element in Razor/C#.
+
+### Hover and Touch Styles
+
+Use `body.hoverable` for hover styles (desktop with mouse) and `.touch-capable` for active/tap styles (touch devices). Do not use plain `:hover` or `:active` — hover can "stick" on touch devices after a tap:
+
+```css
+body.hoverable .amazing-panel > button:hover,
+.touch-capable .amazing-panel > button:active {
+    @apply text-primary;
+}
+```
 
 ## No Inline Tailwind in Razor
 
@@ -271,20 +284,25 @@ Key conventions:
     // Use the module's ImportName for the JS method path
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.AmazingPanel.create";
 
-    private IJSObjectReference _jsRef = null!;
+    private IJSObjectReference? _jsRef;
+    private DotNetObjectReference<AmazingPanel>? _blazorRef;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (!firstRender)
             return;
 
-        var blazorRef = DotNetObjectReference.Create(this);
+        _blazorRef = DotNetObjectReference.Create(this);
         _jsRef = await JS.InvokeAsync<IJSObjectReference>(
-            JSCreateMethod, _elementRef, blazorRef).ConfigureAwait(true);
+            JSCreateMethod, _elementRef, _blazorRef).ConfigureAwait(true);
     }
 
     public async ValueTask DisposeAsync() {
-        await _jsRef.DisposeSilentlyAsync("dispose");
-        _jsRef = null!;
+        if (_jsRef is { } jsRef) {
+            _jsRef = null;
+            await jsRef.DisposeSilentlyAsync("dispose");
+        }
+        _blazorRef?.Dispose();
+        _blazorRef = null;
     }
 }
 ```
