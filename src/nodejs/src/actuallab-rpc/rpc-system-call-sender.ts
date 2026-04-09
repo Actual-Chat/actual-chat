@@ -24,85 +24,66 @@
 //     suppress error responses when the peer is shutting down.  TS has no stop
 //     mode concept.
 
-import { RpcSystemCalls } from "./rpc-message.js";
-import { serializeMessage } from "./rpc-serialization.js";
+import { RpcSystemCalls, type RpcMessage } from "./rpc-message.js";
+import { serializeMessage, serializeBinaryMessage } from "./rpc-serialization.js";
 import type { RpcConnection } from "./rpc-connection.js";
 
 /** Sends system RPC messages — like .NET's RpcSystemCallSender. */
 export class RpcSystemCallSender {
+
+  private _send(conn: RpcConnection, envelope: RpcMessage, args?: unknown[]): void {
+    if (conn.binaryMode) {
+      conn.sendBinary(serializeBinaryMessage(envelope, args));
+    } else {
+      conn.send(serializeMessage(envelope, args));
+    }
+  }
+
   handshake(conn: RpcConnection, peerId: string, hubId: string, index: number): void {
-    const msg = serializeMessage({ Method: RpcSystemCalls.handshake }, [{
+    this._send(conn, { Method: RpcSystemCalls.handshake }, [{
       RemotePeerId: peerId,
       RemoteApiVersionSet: null,
       RemoteHubId: hubId,
       ProtocolVersion: 2,
       Index: index,
     }]);
-    conn.send(msg);
   }
 
   ok(conn: RpcConnection, relatedId: number, result: unknown): void {
-    const msg = serializeMessage({ Method: RpcSystemCalls.ok, RelatedId: relatedId }, [result]);
-    conn.send(msg);
+    this._send(conn, { Method: RpcSystemCalls.ok, RelatedId: relatedId }, [result]);
   }
 
   error(conn: RpcConnection, relatedId: number, error: unknown): void {
     const message = error instanceof Error ? error.message : String(error);
-    const msg = serializeMessage(
-      { Method: RpcSystemCalls.error, RelatedId: relatedId },
-      [{ Message: message }],
-    );
-    conn.send(msg);
+    this._send(conn, { Method: RpcSystemCalls.error, RelatedId: relatedId }, [{ Message: message }]);
   }
 
   cancel(conn: RpcConnection, relatedId: number): void {
-    const msg = serializeMessage({ Method: RpcSystemCalls.cancel, RelatedId: relatedId });
-    conn.send(msg);
+    this._send(conn, { Method: RpcSystemCalls.cancel, RelatedId: relatedId });
   }
 
   keepAlive(conn: RpcConnection, activeCallIds: number[]): void {
-    const msg = serializeMessage({ Method: RpcSystemCalls.keepAlive }, [activeCallIds]);
-    conn.send(msg);
+    this._send(conn, { Method: RpcSystemCalls.keepAlive }, [activeCallIds]);
   }
 
   item(conn: RpcConnection, localId: number, index: number, item: unknown): void {
-    const msg = serializeMessage(
-      { Method: RpcSystemCalls.item, RelatedId: localId },
-      [index, item],
-    );
-    conn.send(msg);
+    this._send(conn, { Method: RpcSystemCalls.item, RelatedId: localId }, [index, item]);
   }
 
   batch(conn: RpcConnection, localId: number, index: number, items: unknown[]): void {
-    const msg = serializeMessage(
-      { Method: RpcSystemCalls.batch, RelatedId: localId },
-      [index, items],
-    );
-    conn.send(msg);
+    this._send(conn, { Method: RpcSystemCalls.batch, RelatedId: localId }, [index, items]);
   }
 
   end(conn: RpcConnection, localId: number, index: number, error: { Message: string } | null = null): void {
-    const msg = serializeMessage(
-      { Method: RpcSystemCalls.end, RelatedId: localId },
-      [index, error],
-    );
-    conn.send(msg);
+    this._send(conn, { Method: RpcSystemCalls.end, RelatedId: localId }, [index, error]);
   }
 
   ack(conn: RpcConnection, localId: number, nextIndex: number, hostId: string): void {
-    const msg = serializeMessage(
-      { Method: RpcSystemCalls.ack, RelatedId: localId },
-      [nextIndex, hostId],
-    );
-    conn.send(msg);
+    this._send(conn, { Method: RpcSystemCalls.ack, RelatedId: localId }, [nextIndex, hostId]);
   }
 
   ackEnd(conn: RpcConnection, localId: number, hostId: string): void {
-    const msg = serializeMessage(
-      { Method: RpcSystemCalls.ackEnd, RelatedId: localId },
-      [hostId],
-    );
-    conn.send(msg);
+    this._send(conn, { Method: RpcSystemCalls.ackEnd, RelatedId: localId }, [hostId]);
   }
 
 }

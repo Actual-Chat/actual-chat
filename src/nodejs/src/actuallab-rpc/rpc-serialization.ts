@@ -1,36 +1,22 @@
-// .NET counterparts:
-//   RpcMessageSerializer (abstract) — serialises a complete outbound message (method
-//     ref + headers + argument data) into a frame.  Has binary (V4/V5 compact) and
-//     text (V3) implementations.
-//   RpcArgumentSerializer (abstract) — serialises/deserialises individual argument
-//     lists using MessagePack, MemoryPack, or System.Text.Json.
-//   RpcTextMessageSerializerV3 — the text-based wire format: JSON envelope line,
-//     delimiter, JSON-encoded argument segments.
+// Serialization for the RPC wire format.
 //
-// Omitted from .NET:
-//   - Polymorphic argument handling — .NET's json5/njson5 formats inspect each
-//     argument's runtime type and may wrap it with type info for polymorphic
-//     deserialization.  TS uses plain JSON.stringify (no static type info),
-//     which matches the json5np/njson5np "no polymorphism" formats.
-//   - Binary serialization (RpcByteMessageSerializer, MessagePack, MemoryPack) —
-//     not available in browsers; JSON is the only format TS supports.
-//   - ArgumentData / ReadOnlyMemory<byte> lazy deserialization — .NET defers
-//     deserializing argument bytes until the call handler runs (important for
-//     zero-copy binary paths).  TS deserializes eagerly since JSON.parse is cheap
-//     and there's no memory-ownership concern in JS.
-//   - RpcSerializationFormat / RpcSerializationFormatResolver — the protocol
-//     negotiation that picks byte-vs-text, V3-vs-V4-vs-V5.  TS speaks text-V3
-//     only; no negotiation needed.
-//   - Size limits (MaxArgumentDataSize) — .NET enforces 130 MB caps.  TS relies
-//     on the WebSocket library's built-in frame limits; adding an explicit cap
-//     would be straightforward but isn't necessary for the current client use case.
+// Supports two formats:
+//   - Text (json5np): JSON envelope + delimiter-separated JSON args (V3 wire format)
+//   - Binary (msgpack6np): V5 binary envelope + MessagePack-encoded args
+//
+// The format is selected at connection time via the `f=` query parameter.
 
+import { encode as msgpackEncode, decode as msgpackDecode, type DecodeOptions } from "@msgpack/msgpack";
 import type { RpcMessage } from "./rpc-message.js";
 import {
   ENVELOPE_DELIMITER,
   ARG_DELIMITER,
   FRAME_DELIMITER,
 } from "./rpc-message.js";
+
+// ============================================================
+// Text format (json5np) — V3 wire format
+// ============================================================
 
 /** Serializes an RpcMessage + args into the json5 wire format. */
 export function serializeMessage(message: RpcMessage, args?: unknown[]): string {
@@ -76,4 +62,197 @@ export function deserializeMessage(raw: string): { message: RpcMessage; args: un
   });
 
   return { message, args };
+}
+
+// ============================================================
+// Binary format (msgpack6np) — V5 wire format
+// ============================================================
+
+// MessagePack decode options
+const msgpackDecodeOptions: DecodeOptions = {};
+
+const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
+
+// --- LEB128 VarUInt helpers ---
+
+function writeVarUint(value: number, out: number[]): void {
+  if (value < 0) value = 0;
+  do {
+    let byte = value & 0x7F;
+    value >>>= 7;
+    if (value > 0) byte |= 0x80;
+    out.push(byte);
+  } while (value > 0);
+}
+
+function readVarUint(data: Uint8Array, offset: number): { value: number; bytesRead: number } {
+  let value = 0, shift = 0, bytesRead = 0;
+  do {
+    const byte = data[offset + bytesRead];
+    value |= (byte & 0x7F) << shift;
+    bytesRead++;
+    if ((byte & 0x80) === 0) break;
+    shift += 7;
+  } while (shift < 35); // Max 5 bytes for uint32
+  return { value: value >>> 0, bytesRead };
+}
+
+// --- Binary helpers ---
+
+function concatUint8Arrays(arrays: Uint8Array[]): Uint8Array {
+  let totalLength = 0;
+  for (const arr of arrays) totalLength += arr.length;
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const arr of arrays) {
+    result.set(arr, offset);
+    offset += arr.length;
+  }
+  return result;
+}
+
+/**
+ * Serializes an RpcMessage + args into V5 binary format (msgpack6np).
+ *
+ * Layout: [4-byte LE size][envelope][argData]
+ * Envelope: [callType|headerCount byte][VarUint relatedId][LVarSpan methodRef][4-byte LE argLen]
+ * ArgData: concatenated MessagePack-encoded arguments
+ *
+ * Size field value includes itself (4 bytes).
+ */
+export function serializeBinaryMessage(message: RpcMessage, args?: unknown[]): Uint8Array {
+  // Build envelope header bytes
+  const headerParts: number[] = [];
+
+  // Byte 0: CallTypeId (3 bits) | HeaderCount (5 bits)
+  headerParts.push((message.CallType ?? 0) & 0x7); // No headers → upper 5 bits = 0
+
+  // RelatedId as VarUint
+  writeVarUint(message.RelatedId ?? 0, headerParts);
+
+  // MethodRef as LVarSpan (VarUint length + UTF-8 bytes)
+  const methodBytes = textEncoder.encode(message.Method ?? "");
+  writeVarUint(methodBytes.length, headerParts);
+
+  const headerBuf = new Uint8Array(headerParts);
+
+  // Serialize arguments with MessagePack (concatenated, no polymorphism)
+  const argBuffers: Uint8Array[] = [];
+  if (args && args.length > 0) {
+    for (const arg of args) {
+      argBuffers.push(msgpackEncode(arg));
+    }
+  }
+  const argData = argBuffers.length > 0 ? concatUint8Arrays(argBuffers) : new Uint8Array(0);
+
+  // ArgData length as fixed 4-byte LE
+  const argLenBuf = new Uint8Array(4);
+  new DataView(argLenBuf.buffer).setInt32(0, argData.length, true);
+
+  // Assemble envelope: header + methodBytes + argLen + argData
+  const envelope = concatUint8Arrays([headerBuf, methodBytes, argLenBuf, argData]);
+
+  // V5 frame: 4-byte LE size prefix (includes itself)
+  const totalSize = 4 + envelope.length;
+  const result = new Uint8Array(totalSize);
+  new DataView(result.buffer).setInt32(0, totalSize, true);
+  result.set(envelope, 4);
+
+  return result;
+}
+
+/**
+ * Deserializes a single V5 binary message starting at `offset`.
+ * Returns parsed message, args, and number of bytes consumed.
+ */
+export function deserializeBinaryMessage(
+  data: Uint8Array,
+  offset: number,
+): { message: RpcMessage; args: unknown[]; bytesRead: number } {
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+
+  // Read 4-byte LE size (includes the 4-byte size field itself)
+  const totalSize = view.getInt32(offset, true);
+  const msgStart = offset + 4;
+  const msgEnd = offset + totalSize;
+  let pos = msgStart;
+
+  // Byte 0: CallTypeId (3 bits) | HeaderCount (5 bits)
+  const byte0 = data[pos++];
+  const callTypeId = byte0 & 0x7;
+  const headerCount = (byte0 >> 3) & 0x1F;
+
+  // RelatedId as VarUint
+  const relId = readVarUint(data, pos);
+  pos += relId.bytesRead;
+
+  // MethodRef as LVarSpan
+  const methodLen = readVarUint(data, pos);
+  pos += methodLen.bytesRead;
+  const methodBytes = data.subarray(pos, pos + methodLen.value);
+  const method = textDecoder.decode(methodBytes);
+  pos += methodLen.value;
+
+  // ArgData length as fixed 4-byte LE
+  const argDataLen = view.getInt32(pos, true);
+  pos += 4;
+
+  // Skip headers (if any — TS client doesn't use them)
+  if (headerCount > 0) {
+    for (let h = 0; h < headerCount; h++) {
+      // L1Memory: 1-byte length prefix + key bytes
+      const keyLen = data[pos++];
+      pos += keyLen;
+      // LVarSpan: VarUint length + value bytes
+      const valLen = readVarUint(data, pos);
+      pos += valLen.bytesRead + valLen.value;
+    }
+  }
+
+  // Deserialize arguments from argData
+  const args: unknown[] = [];
+  const argEnd = pos + argDataLen;
+  while (pos < argEnd) {
+    const decoded = msgpackDecode(data.subarray(pos, argEnd), msgpackDecodeOptions);
+    // We need to figure out how many bytes were consumed.
+    // Re-encode to get the size (not ideal but correct for now).
+    // TODO: Use a streaming decoder or manual offset tracking for performance.
+    const reEncoded = msgpackEncode(decoded);
+    pos += reEncoded.length;
+    args.push(decoded);
+  }
+
+  const message: RpcMessage = {
+    Method: method,
+    RelatedId: relId.value,
+    CallType: callTypeId,
+  };
+
+  return { message, args, bytesRead: totalSize };
+}
+
+/**
+ * Splits a binary WebSocket frame into individual deserialized messages.
+ * V5 frames contain one or more size-prefixed messages.
+ */
+export function splitBinaryFrame(
+  frame: Uint8Array,
+): Array<{ message: RpcMessage; args: unknown[] }> {
+  const results: Array<{ message: RpcMessage; args: unknown[] }> = [];
+  let offset = 0;
+  while (offset < frame.length) {
+    const { message, args, bytesRead } = deserializeBinaryMessage(frame, offset);
+    results.push({ message, args });
+    offset += bytesRead;
+  }
+  return results;
+}
+
+/**
+ * Serializes multiple binary messages into a single WebSocket frame.
+ * Simply concatenates the already size-prefixed messages.
+ */
+export function serializeBinaryFrame(messages: Uint8Array[]): Uint8Array {
+  return concatUint8Arrays(messages);
 }

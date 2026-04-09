@@ -77,7 +77,7 @@
 
 import { EventHandlerSet, PromiseSource } from "../actuallab-core/index.js";
 import { RpcClientPeerReconnectDelayer } from "./rpc-client-peer-reconnect-delayer.js";
-import { RpcWebSocketConnection, type RpcConnection, type WebSocketLike } from "./rpc-connection.js";
+import { RpcWebSocketConnection, type RpcConnection, type RpcReceivedMessage, type WebSocketLike } from "./rpc-connection.js";
 import {
   RpcOutboundCall,
   RpcOutboundCallTracker,
@@ -88,6 +88,7 @@ import { RpcSystemCalls, type RpcMessage } from "./rpc-message.js";
 import {
   serializeMessage,
   deserializeMessage,
+  serializeBinaryMessage,
 } from "./rpc-serialization.js";
 import type { RpcHub } from "./rpc-hub.js";
 import { RpcRemoteObjectTracker } from "./rpc-remote-object-tracker.js";
@@ -183,20 +184,27 @@ export abstract class RpcPeer {
     });
   }
 
+  /** Whether this peer uses binary (MessagePack) serialization. */
+  get isBinaryMode(): boolean { return false; }
+
   call(method: string, args?: unknown[], options?: RpcCallOptions): RpcOutboundCall {
     const callId = this.outbound.nextId();
     const outboundCall = options?.outboundCallFactory
       ? options.outboundCallFactory(callId, method)
       : new RpcOutboundCall(callId, method);
 
-    const msg = serializeMessage(
-      { Method: method, RelatedId: callId, CallType: options?.callTypeId ?? 0 },
-      args,
-    );
-    outboundCall.serializedMessage = msg;
+    const envelope: RpcMessage = { Method: method, RelatedId: callId, CallType: options?.callTypeId ?? 0 };
+    if (this.isBinaryMode) {
+      outboundCall.serializedBinaryMessage = serializeBinaryMessage(envelope, args);
+    } else {
+      outboundCall.serializedMessage = serializeMessage(envelope, args);
+    }
     if (this._connection !== undefined) {
       this.outbound.register(outboundCall);
-      this._connection.send(msg);
+      if (this.isBinaryMode)
+        this._connection.sendBinary(outboundCall.serializedBinaryMessage!);
+      else
+        this._connection.send(outboundCall.serializedMessage);
     } else {
       this._pendingSends.push(outboundCall);
     }
@@ -234,8 +242,12 @@ export abstract class RpcPeer {
 
   callNoWait(method: string, args?: unknown[]): void {
     if (this._connection === undefined) return; // silently drop
-    const msg = serializeMessage({ Method: method, RelatedId: 0 }, args);
-    this._connection.send(msg); // never throws
+    const envelope: RpcMessage = { Method: method, RelatedId: 0 };
+    if (this.isBinaryMode) {
+      this._connection.sendBinary(serializeBinaryMessage(envelope, args));
+    } else {
+      this._connection.send(serializeMessage(envelope, args));
+    }
   }
 
   close(): void {
@@ -259,7 +271,10 @@ export abstract class RpcPeer {
     if (this._pendingSends.length === 0 || this._connection === undefined) return;
     for (const call of this._pendingSends) {
       this.outbound.register(call);
-      this._connection.send(call.serializedMessage);
+      if (this.isBinaryMode && call.serializedBinaryMessage)
+        this._connection.sendBinary(call.serializedBinaryMessage);
+      else
+        this._connection.send(call.serializedMessage);
     }
     this._pendingSends.length = 0;
   }
@@ -270,8 +285,17 @@ export abstract class RpcPeer {
     // RpcServerPeer sends its own handshake back.
   }
 
-  private _handleMessage(raw: string): void {
-    const { message, args } = deserializeMessage(raw);
+  private _handleMessage(received: RpcReceivedMessage): void {
+    let message: RpcMessage;
+    let args: unknown[];
+    if (received.kind === "binary") {
+      message = received.message;
+      args = received.args;
+    } else {
+      const parsed = deserializeMessage(received.raw);
+      message = parsed.message;
+      args = parsed.args;
+    }
     const method = message.Method ?? "";
 
     // Handshake — dispatch to subclass handler
@@ -399,6 +423,10 @@ export class RpcClientPeer extends RpcPeer {
     this.serializationFormat = serializationFormat ?? DEFAULT_SERIALIZATION_FORMAT;
   }
 
+  override get isBinaryMode(): boolean {
+    return this.serializationFormat.startsWith("msgpack") || this.serializationFormat.startsWith("mempack");
+  }
+
   get connectionKind(): RpcPeerConnectionKind {
     return this._connectionKind;
   }
@@ -420,7 +448,7 @@ export class RpcClientPeer extends RpcPeer {
       let lastCloseReason = "";
       try {
         const ws = wsFactory?.(connUrl) ?? new WebSocket(connUrl) as unknown as WebSocketLike;
-        const conn = new RpcWebSocketConnection(ws);
+        const conn = new RpcWebSocketConnection(ws, this.isBinaryMode);
         this._connectionKind = RpcPeerConnectionKind.Connecting;
 
         // Track close info for unsupported format detection
