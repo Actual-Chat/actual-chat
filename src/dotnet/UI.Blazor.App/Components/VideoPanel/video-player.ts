@@ -1,6 +1,8 @@
 import * as signalR from '@microsoft/signalr';
 import { decode } from '@msgpack/msgpack';
 import { Log } from 'logging';
+import { initVideoRpc, getVideoRpcClient } from '../../Services/Video/video-rpc-client';
+import type { VideoFrameDto } from '../../Services/Video/video-rpc-service';
 import { fastRaf } from 'fast-raf';
 import { ServerClock } from 'server-clock';
 import { rpcClientServer, rpcNoWait } from 'rpc';
@@ -114,8 +116,8 @@ export class VideoPlayer {
     private lastSoftCatchupLogTime = 0;
     private lastReportedBufferLow = true;
 
-    // SignalR pull subscription
-    private pullSubscription: signalR.ISubscription<Uint8Array> | null = null;
+    // Video pull — Fusion RPC with abort controller for cancellation
+    private pullAbortController: AbortController | null = null;
     private pullRetryCount = 0;
     private pullRetryTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -1013,8 +1015,8 @@ export class VideoPlayer {
         this.reconnectUnsubscribe = VideoStreamer.onReconnected(() => {
             if (!this.isPlaying) return;
             warnLog?.log(`VideoStreamer reconnected — re-pulling stream ${this.streamId}`);
-            this.pullSubscription?.dispose();
-            this.pullSubscription = null;
+            this.pullAbortController?.abort();
+            this.pullAbortController = null;
             this.pullRetryCount = 0;
             this.playbackStartTime = 0;
             this.lastRenderedOffsetMs = 0;
@@ -1074,8 +1076,8 @@ export class VideoPlayer {
         this.codecSlowTickCount = 0;
 
         // Dispose current pull and re-request from live offset (skip-to-live)
-        this.pullSubscription?.dispose();
-        this.pullSubscription = null;
+        this.pullAbortController?.abort();
+        this.pullAbortController = null;
         this.pipelineLatencyMs = 0;
         const skipToMs = Math.max(0, ServerClock.now() - this.startedAtMs);
         warnLog?.log(
@@ -1091,38 +1093,28 @@ export class VideoPlayer {
             return;
         }
 
-        const hubUrl = BrowserInit.getUrl('/api/hub/streams');
-        VideoStreamer.init(hubUrl);
-        await VideoStreamer.ensureConnected();
+        // Cancel any existing pull
+        this.pullAbortController?.abort();
+        const abortController = new AbortController();
+        this.pullAbortController = abortController;
 
-        const connection = VideoStreamer.connection!;
+        const rpcWsUrl = BrowserInit.getUrl('/rpc/ws').replace(/^http/, 'ws');
+        initVideoRpc(rpcWsUrl);
+        const client = getVideoRpcClient();
         const sessionToken = SessionTokens.current;
+        const skipToTicks = skipToMs * 10000; // ms → .NET TimeSpan ticks
+
         debugLog?.log(`startPull: stream=${streamId}, skipTo=${skipToMs}ms, retryCount=${this.pullRetryCount}`);
 
-        const streamResult = connection.stream<Uint8Array>(
-            'GetVideo', sessionToken, streamId, skipToMs);
-
-        this.pullSubscription = streamResult.subscribe({
-            next: (frameBytes: Uint8Array) => {
-                this.pullRetryCount = 0; // reset on successful frame receipt
-                this.processReceivedFrame(frameBytes);
-            },
-            error: (err: Error) => {
-                if (!this.isPlaying) return;
-                this.pullRetryCount++;
-                const delay = Math.min(1000 * this.pullRetryCount, 5000);
-                warnLog?.log(
-                    `Pull stream error (retry #${this.pullRetryCount}, delay ${delay}ms): ${err.message}`);
-                this.pullRetryTimer = setTimeout(() => {
-                    this.pullRetryTimer = null;
-                    if (!this.isPlaying) return;
-                    this.pullRetryCount = 0;
-                    const retrySkipToMs = ServerClock.now() - this.startedAtMs;
-                    void this.startPull(streamId, retrySkipToMs);
-                }, delay);
-            },
-            complete: () => {
-                if (!this.isPlaying) return;
+        try {
+            const stream = await client.GetStream(sessionToken, streamId, skipToTicks);
+            for await (const frame of stream) {
+                if (abortController.signal.aborted || !this.isPlaying) break;
+                this.pullRetryCount = 0;
+                this.processRpcFrame(frame);
+            }
+            // Stream completed normally
+            if (!abortController.signal.aborted && this.isPlaying) {
                 this.pullRetryCount++;
                 const delay = Math.min(1000 * this.pullRetryCount, 5000);
                 warnLog?.log(
@@ -1134,23 +1126,31 @@ export class VideoPlayer {
                     const retrySkipToMs = ServerClock.now() - this.startedAtMs;
                     void this.startPull(streamId, retrySkipToMs);
                 }, delay);
-            },
-        });
+            }
+        } catch (err) {
+            if (abortController.signal.aborted || !this.isPlaying) return;
+            this.pullRetryCount++;
+            const delay = Math.min(1000 * this.pullRetryCount, 5000);
+            const message = err instanceof Error ? err.message : String(err);
+            warnLog?.log(
+                `Pull stream error (retry #${this.pullRetryCount}, delay ${delay}ms): ${message}`);
+            this.pullRetryTimer = setTimeout(() => {
+                this.pullRetryTimer = null;
+                if (!this.isPlaying) return;
+                this.pullRetryCount = 0;
+                const retrySkipToMs = ServerClock.now() - this.startedAtMs;
+                void this.startPull(streamId, retrySkipToMs);
+            }, delay);
+        }
     }
 
-    private processReceivedFrame(frameBytes: Uint8Array): void {
+    private processRpcFrame(frame: VideoFrameDto): void {
         try {
-            const map = decode(frameBytes) as Record<string, unknown>;
-
-            const offset = map.offset as number;          // .NET ticks
-            const duration = map.duration as number;       // .NET ticks
-            const isKeyFrame = (map.isKeyFrame as boolean | undefined) ?? false;
-            const data = map.data as Uint8Array;
-            const description = map.description as Uint8Array | undefined;
-
-            // Convert ticks to milliseconds (1 tick = 100ns = 0.0001ms)
-            const offsetMs = offset / 10000;
-            const durationMs = duration / 10000;
+            const offsetMs = frame.offset / 10000;   // .NET ticks → ms
+            const durationMs = frame.duration / 10000;
+            const isKeyFrame = frame.isKeyFrame ?? false;
+            const data = frame.data as Uint8Array;
+            const description = frame.description as Uint8Array | undefined;
 
             this.receivedFrameCount++;
             if (isKeyFrame) {
@@ -1160,7 +1160,7 @@ export class VideoPlayer {
                     `dataLen=${data.length}, descLen=${description?.length ?? 0}`);
             } else if (this.receivedFrameCount % 100 === 1) {
                 debugLog?.log(
-                    `processReceivedFrame #${this.receivedFrameCount}: offsetMs=${offsetMs.toFixed(0)}, ` +
+                    `processRpcFrame #${this.receivedFrameCount}: offsetMs=${offsetMs.toFixed(0)}, ` +
                     `durationMs=${durationMs.toFixed(1)}, dataLen=${data.length}`);
             }
 
@@ -1180,7 +1180,7 @@ export class VideoPlayer {
 
             this.pushFrame(data, offsetMs, durationMs, isKeyFrame, description);
         } catch (error) {
-            errorLog?.log('Error deserializing received frame:', error);
+            errorLog?.log('Error processing received frame:', error);
         }
     }
 
@@ -1189,9 +1189,9 @@ export class VideoPlayer {
             clearTimeout(this.pullRetryTimer);
             this.pullRetryTimer = null;
         }
-        if (this.pullSubscription) {
-            this.pullSubscription.dispose();
-            this.pullSubscription = null;
+        if (this.pullAbortController) {
+            this.pullAbortController.abort();
+            this.pullAbortController = null;
         }
     }
 
@@ -1378,8 +1378,8 @@ export class VideoPlayer {
                     .catch(() => { /* best-effort */ });
             }
 
-            this.pullSubscription?.dispose();
-            this.pullSubscription = null;
+            this.pullAbortController?.abort();
+            this.pullAbortController = null;
             for (const pf of this.pendingFrames)
                 pf.close();
             this.pendingFrames.length = 0;
