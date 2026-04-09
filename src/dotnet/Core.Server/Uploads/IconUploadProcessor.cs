@@ -61,10 +61,10 @@ public class IconUploadProcessor(IServiceProvider services) : IUploadProcessor
             .ToUnique(randomLength: 10);
         var pngStream = File.Create(outPath);
         await using var _2 = pngStream.ConfigureAwait(false);
-        SvgRasterizer.RasterizeToPng(svgStream, pngStream, MaxSize);
+        var size = SvgRasterizer.RasterizeToPng(svgStream, pngStream, MaxSize);
 
         var converted = new UploadedTempFile(outPath.FileName, "image/png", outPath);
         progress?.Report(100);
-        return new ProcessedFile(converted, null);
+        return new ProcessedFile(converted, size);
     }
 }
