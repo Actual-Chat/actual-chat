@@ -45,6 +45,9 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
         if (file.Length > Constants.Attachments.AvatarPictureFileSizeLimit)
             return BadRequest("Image is too big.");
 
+        if (!MediaTypeExt.SupportedAvatarContentTypes.Contains(file.ContentType))
+            return BadRequest($"Unsupported image type '{file.ContentType}'.");
+
         var mediaId = MediaId.New(account.Id.Value);
         var uploadedFile = new UploadedStreamFile(
             file.FileName,
