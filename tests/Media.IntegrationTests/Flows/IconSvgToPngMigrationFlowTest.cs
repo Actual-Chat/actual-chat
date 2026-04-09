@@ -257,6 +257,65 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
     }
 
     [Fact]
+    public async Task ShouldConvertPlaceBackgroundMediaId()
+    {
+        // arrange: a place with only BackgroundMediaId set to an SVG
+        // (MediaId slot is empty). Exercises the IsBackground=true branch
+        // in GetPlaceBatch flatten + RepointPlace.
+        var (bgSvgId, _) = await CreateMedia(
+            TestSvgBytes, "image/svg+xml", MediaKind.ChatPicture, "place-bg.svg");
+        var placeId = await CreatePlaceWithBackground(bgSvgId);
+
+        // act
+        await RunFlow();
+
+        // assert: BackgroundMediaId repointed to a new PNG, original SVG row intact
+        await AssertFlow(async ct => {
+            var place = await Tester.Places.Get(Tester.Session, placeId, ct);
+            place.Should().NotBeNull();
+            place.BackgroundMediaId.Should().NotBeNull();
+            place.BackgroundMediaId!.Value.Should().NotBe(bgSvgId.Value);
+            await AssertRepointedToPng(bgSvgId, place.BackgroundMediaId, ct);
+
+            var stillSvg = await MediaBackend.GetFull(bgSvgId, ct);
+            stillSvg.Should().NotBeNull();
+            stillSvg.ContentType.Should().Be("image/svg+xml");
+        });
+    }
+
+    [Fact]
+    public async Task ShouldConvertPlaceMediaIdAndBackgroundMediaIdIndependently()
+    {
+        // arrange: a place with DISTINCT SVG media in both slots.
+        // Both must be repointed to different new PNG MediaIds.
+        var (fgSvgId, _) = await CreateMedia(
+            TestSvgBytes, "image/svg+xml", MediaKind.ChatPicture, "place-fg.svg");
+        var (bgSvgId, _) = await CreateMedia(
+            TestSvgBytes, "image/svg+xml", MediaKind.ChatPicture, "place-bg.svg");
+        var place = await Tester.CreatePlace(diff => diff with {
+            IsPublic = true,
+            MediaId = fgSvgId,
+            BackgroundMediaId = bgSvgId,
+        });
+
+        // act
+        await RunFlow();
+
+        // assert: both slots repointed, to DIFFERENT PNG MediaIds
+        await AssertFlow(async ct => {
+            var updated = await Tester.Places.Get(Tester.Session, place.Id, ct);
+            updated.Should().NotBeNull();
+            updated.MediaId.Should().NotBeNull();
+            updated.BackgroundMediaId.Should().NotBeNull();
+            updated.MediaId!.Value.Should().NotBe(fgSvgId.Value);
+            updated.BackgroundMediaId!.Value.Should().NotBe(bgSvgId.Value);
+            updated.MediaId!.Value.Should().NotBe(updated.BackgroundMediaId!.Value);
+            await AssertRepointedToPng(fgSvgId, updated.MediaId, ct);
+            await AssertRepointedToPng(bgSvgId, updated.BackgroundMediaId, ct);
+        });
+    }
+
+    [Fact]
     public async Task ShouldConvertMediaReferencedByAvatarChatAndPlace()
     {
         // arrange: 3 SVG media records, each referenced by a different entity kind
@@ -376,6 +435,15 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         var place = await Tester.CreatePlace(diff => diff with {
             IsPublic = true,
             MediaId = mediaId,
+        });
+        return place.Id;
+    }
+
+    private async Task<PlaceId> CreatePlaceWithBackground(MediaId backgroundMediaId)
+    {
+        var place = await Tester.CreatePlace(diff => diff with {
+            IsPublic = true,
+            BackgroundMediaId = backgroundMediaId,
         });
         return place.Id;
     }
