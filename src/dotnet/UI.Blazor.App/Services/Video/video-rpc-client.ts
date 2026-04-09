@@ -1,20 +1,30 @@
-// Video RPC client — connects to ILiveVideoStreams via Fusion RPC WebSocket.
-// Replaces SignalR's GetVideo path for video frame pull.
+// Video RPC client — connects to ILiveVideoStreams and IStreamServer via Fusion RPC WebSocket.
+// Replaces SignalR for both video pull (GetStream) and push (PushVideo) paths.
 
-import { RpcHub, RpcClientPeer } from 'actuallab-rpc';
-import { LiveVideoStreamsDef, type VideoFrameDto } from './video-rpc-service.js';
+import { RpcHub, RpcClientPeer, RpcClientStreamSender } from 'actuallab-rpc';
+import { LiveVideoStreamsDef, StreamServerDef, type VideoFrameDto } from './video-rpc-service.js';
 
 let _hub: RpcHub | undefined;
 let _peer: RpcClientPeer | undefined;
-let _client: VideoRpcClient | undefined;
+let _pullClient: VideoRpcPullClient | undefined;
+let _pushClient: VideoRpcPushClient | undefined;
 let _baseUrl: string | undefined;
 
-/** Serialization format — use binary MessagePack for efficient video frame transport. */
-const SERIALIZATION_FORMAT = 'msgpack6np';
+/** Serialization format — binary MessagePack for efficient video frame transport. */
+const SERIALIZATION_FORMAT = 'msgpack6';
 
-export interface VideoRpcClient {
+// --- Pull client (ILiveVideoStreams) ---
+
+export interface VideoRpcPullClient {
   GetStream(session: string, streamId: string, skipToTicks: number): Promise<AsyncIterable<VideoFrameDto>>;
   List(session: string, chatId: string): Promise<unknown>;
+}
+
+// --- Push client (IStreamServer) ---
+
+export interface VideoRpcPushClient {
+  PushVideo(session: string, chatId: string, clientStartOffset: number,
+    format: unknown, frameStreamRef: string): Promise<void>;
 }
 
 /**
@@ -25,25 +35,50 @@ export function initVideoRpc(rpcWsUrl: string): void {
   _baseUrl = rpcWsUrl;
 }
 
-/** Get the ILiveVideoStreams RPC client. Lazily creates hub + peer + starts connection. */
-export function getVideoRpcClient(): VideoRpcClient {
-  if (!_client) {
+function ensurePeer(): RpcClientPeer {
+  if (!_peer) {
     if (!_baseUrl)
       throw new Error('Video RPC not initialized. Call initVideoRpc(url) first.');
-
-    _hub = new RpcHub('video-rpc');
+    _hub = new RpcHub(); // hubId must be a UUID for binary MessagePack GuidFormatter
     _peer = new RpcClientPeer(_hub, _baseUrl, SERIALIZATION_FORMAT);
-    _client = _hub.addClient(_peer, LiveVideoStreamsDef) as unknown as VideoRpcClient;
-    // Start connection loop (reconnects automatically)
     void _peer.run();
   }
-  return _client;
+  return _peer;
+}
+
+/** Get the ILiveVideoStreams RPC client (video pull). */
+export function getVideoRpcClient(): VideoRpcPullClient {
+  if (!_pullClient) {
+    const peer = ensurePeer();
+    _pullClient = _hub!.addClient(peer, LiveVideoStreamsDef) as unknown as VideoRpcPullClient;
+  }
+  return _pullClient;
+}
+
+/** Get the IStreamServer RPC client (video push). */
+export function getVideoRpcPushClient(): VideoRpcPushClient {
+  if (!_pushClient) {
+    const peer = ensurePeer();
+    _pushClient = _hub!.addClient(peer, StreamServerDef) as unknown as VideoRpcPushClient;
+  }
+  return _pushClient;
+}
+
+/**
+ * Create a client-side stream sender for pushing video frames to the server.
+ * Returns the sender (call writeFrom/sendItem) and its ref string (pass as RPC arg).
+ */
+export function createVideoFrameSender(): { sender: RpcClientStreamSender<VideoFrameDto>; ref: string } {
+  const peer = ensurePeer();
+  const sender = new RpcClientStreamSender<VideoFrameDto>(peer);
+  return { sender, ref: sender.toRef() };
 }
 
 /** Disconnect the video RPC client. */
 export function disconnectVideoRpc(): void {
   _peer?.close();
   _peer = undefined;
-  _client = undefined;
+  _pullClient = undefined;
+  _pushClient = undefined;
   _hub = undefined;
 }

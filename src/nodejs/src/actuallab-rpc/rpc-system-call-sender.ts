@@ -40,13 +40,12 @@ export class RpcSystemCallSender {
   }
 
   handshake(conn: RpcConnection, peerId: string, hubId: string, index: number): void {
-    this._send(conn, { Method: RpcSystemCalls.handshake }, [{
-      RemotePeerId: peerId,
-      RemoteApiVersionSet: null,
-      RemoteHubId: hubId,
-      ProtocolVersion: 2,
-      Index: index,
-    }]);
+    // RpcHandshake uses [MessagePackObject] array mode: [Key(0)] RemotePeerId, [Key(1)] RemoteApiVersionSet, etc.
+    // For binary (MessagePack), send as array. For text (JSON), send as object.
+    const handshakeArg = conn.binaryMode
+      ? [peerId, null, hubId, 2, index]  // Array for MessagePack
+      : { RemotePeerId: peerId, RemoteApiVersionSet: null, RemoteHubId: hubId, ProtocolVersion: 2, Index: index };
+    this._send(conn, { Method: RpcSystemCalls.handshake }, [handshakeArg]);
   }
 
   ok(conn: RpcConnection, relatedId: number, result: unknown): void {

@@ -20,7 +20,9 @@ public static class CoreSerializerAndRpcSetup
             RpcSerializationFormat.MemoryPackV5,
             RpcSerializationFormat.MemoryPackV5C,
             RpcSerializationFormat.MemoryPackV6,
-            RpcSerializationFormat.MemoryPackV6C);
+            RpcSerializationFormat.MemoryPackV6C,
+            RpcSerializationFormat.MessagePackV6,
+            RpcSerializationFormat.MessagePackV6C);
 
         RpcSerializationFormatResolver.Default
 #if DEBUG

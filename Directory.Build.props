@@ -55,7 +55,7 @@
 
   <PropertyGroup>
     <UseMemoryPack Condition="'$(UseMemoryPack)' == ''">true</UseMemoryPack>
-    <UseMessagePack Condition="'$(UseMessagePack)' == ''">false</UseMessagePack>
+    <UseMessagePack Condition="'$(UseMessagePack)' == ''">true</UseMessagePack>
     <DefineConstants Condition="$(UseMemoryPack)">$(DefineConstants);USE_MEMORYPACK</DefineConstants>
     <DefineConstants Condition="$(UseMessagePack)">$(DefineConstants);USE_MESSAGEPACK</DefineConstants>
   </PropertyGroup>
