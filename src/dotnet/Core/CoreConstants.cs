@@ -26,11 +26,6 @@ public static partial class CoreConstants
         public static readonly TimeSpan MaxApiKeyExpirationTime = TimeSpan.FromDays(365 * 3);
     }
 
-    public static class AsyncMemoizer
-    {
-        public static readonly int TargetQueueSize = 16;
-    }
-
     public static class MessageProcessor
     {
         public static readonly int QueueSize = 128;
