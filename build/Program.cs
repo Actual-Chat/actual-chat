@@ -162,8 +162,10 @@ internal static class Program
         });
 
         Target(Targets.NpmInstall, async () => {
-            var nodeModulesDir = "node_modules";
-            if (!Directory.Exists(nodeModulesDir)) {
+            // npm writes node_modules/.package-lock.json only after a successful install,
+            // so it's a reliable marker — unlike checking the directory itself, which c.ps1
+            // pre-creates as an empty Docker mount point in worktrees.
+            if (!File.Exists(Path.Combine("node_modules", ".package-lock.json"))) {
                 await Npm()
                     .WithArguments("ci")
                     .ToConsole(Blue("npm install: "))
