@@ -40,7 +40,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
     [Fact]
     public async Task ShouldConvertSvgMediaToPng()
     {
-        // arrange: seed an SVG media record + an Avatar that references it
+        // arrange
         var (svgMediaId, svgBlobId) = await CreateMedia(
             TestSvgBytes, "image/svg+xml", MediaKind.UserAvatarPicture, "avatar.svg");
         var avatarId = await CreateAvatar(svgMediaId);
@@ -48,7 +48,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         // act
         await RunFlow();
 
-        // assert: the avatar now points at a *new* MediaId whose blob is PNG
+        // assert: avatar points at a new PNG MediaId
         await AssertFlow(async ct => {
             var newMediaId = await GetAvatarMediaId(avatarId, ct);
             newMediaId.Should().NotBeNull();
@@ -62,7 +62,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
             pngMedia.Height.Should().Be(Constants.Attachments.MaxIconSize);
         });
 
-        // assert: PNG blob exists, original SVG blob is preserved
+        // assert: both PNG and original SVG blobs exist
         var newAvatarMediaId = await GetAvatarMediaId(avatarId, CancellationToken.None);
         var pngRow = await MediaBackend.GetFull(newAvatarMediaId, CancellationToken.None);
         await AssertBlobExists(pngRow!.BlobId);
@@ -80,7 +80,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         // act
         await RunFlow();
 
-        // assert: the new PNG row carries ReplacesMediaId pointing back at the original SVG MediaId
+        // assert: new PNG row carries ReplacesMediaId pointing back at the original SVG
         await AssertFlow(async ct => {
             var newMediaId = await GetAvatarMediaId(avatarId, ct);
             newMediaId.Should().NotBeNull();
@@ -105,7 +105,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         // act
         await RunFlow();
 
-        // assert: the original SVG Media row is byte-for-byte intact and the blob still exists
+        // assert: original SVG row and blob are byte-for-byte intact
         await AssertFlow(async ct => {
             var stillSvg = await MediaBackend.GetFull(svgMediaId, ct);
             stillSvg.Should().NotBeNull();
@@ -138,10 +138,10 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
             mediaIdAfterFirstRun!.Value.Should().NotBe(svgMediaId.Value);
         });
 
-        // act 2 — re-run from a clean flow state
+        // act 2: re-run from a clean flow state
         await RunFlow();
 
-        // assert: the avatar's MediaId is unchanged and the second run converted nothing
+        // assert: second run converts nothing; avatar MediaId unchanged
         await AssertFlow(async ct => {
             var flow = await FlowHub.TryGet<IconSvgToPngMigrationFlow>("", ct);
             flow.Should().NotBeNull();
@@ -155,7 +155,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
     [Fact]
     public async Task ShouldSkipMediaReferencedByAttachments()
     {
-        // arrange: SVG media referenced by both an avatar and a chat-entry attachment
+        // arrange: SVG referenced by both an avatar and a chat-entry attachment
         var (svgMediaId, svgBlobId) = await CreateMedia(
             TestSvgBytes, "image/svg+xml", MediaKind.UserAvatarPicture, "shared.svg");
         var avatarId = await CreateAvatar(svgMediaId);
@@ -164,7 +164,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         // act
         await RunFlow();
 
-        // assert: avatar still points at the original SVG MediaId, original row untouched
+        // assert: avatar and SVG row untouched
         await AssertFlow(async ct => {
             var mediaIdAfter = await GetAvatarMediaId(avatarId, ct);
             mediaIdAfter.Should().Be(svgMediaId);
@@ -183,7 +183,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
     [Fact]
     public async Task ShouldSkipNonSvgMedia()
     {
-        // arrange: seed a PNG media record + an Avatar that references it
+        // arrange
         var pngBytes = TestImages.CreatePng(50, 50);
         var (pngMediaId, pngBlobId) = await CreateMedia(
             pngBytes, "image/png", MediaKind.UserAvatarPicture, "avatar.png", width: 50, height: 50);
@@ -192,7 +192,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         // act
         await RunFlow();
 
-        // assert: flow completes and the avatar still points at the original PNG media
+        // assert: avatar still points at the original PNG
         await AssertFlow(async ct => {
             var mediaIdAfter = await GetAvatarMediaId(avatarId, ct);
             mediaIdAfter.Should().Be(pngMediaId);
@@ -207,7 +207,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
     [Fact]
     public async Task ShouldHandleMissingBlob()
     {
-        // arrange: seed an SVG media record + a Chat that references it, then drop the blob
+        // arrange: chat SVG with its blob removed
         var (svgMediaId, svgBlobId) = await CreateMedia(
             TestSvgBytes, "image/svg+xml", MediaKind.ChatPicture, "missing.svg", deleteBlob: true);
         var chatId = await CreateChat(svgMediaId);
@@ -215,7 +215,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         // act
         await RunFlow();
 
-        // assert: flow completes and the chat still points at the original SVG media (missing blob -> skipped)
+        // assert: missing blob -> skipped; chat still points at the original SVG
         await AssertFlow(async ct => {
             var mediaIdAfter = await GetChatMediaId(chatId, ct);
             mediaIdAfter.Should().Be(svgMediaId);
@@ -230,10 +230,8 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
     [Fact]
     public async Task ShouldSkipSystemIcons()
     {
-        // arrange: seed an SVG media record in the "system-icons" scope and reference
-        // it from an avatar. System-icons rows are hard-coded by MediaId and
-        // MediaDbInitializer already upgrades them in place on startup, so the
-        // flow must exclude them from every batch query entirely.
+        // arrange: SVG in "system-icons" scope referenced by an avatar.
+        // MediaDbInitializer upgrades these in place on startup, so the flow must skip them.
         var systemIconMediaId = MediaId.New("system-icons");
         var (svgMediaId, svgBlobId) = await CreateMediaWithId(
             systemIconMediaId, TestSvgBytes, "image/svg+xml", MediaKind.UserAvatarPicture, "system-icon.svg");
@@ -242,7 +240,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         // act
         await RunFlow();
 
-        // assert: avatar reference, the media row, and the blob are all byte-for-byte untouched.
+        // assert: avatar, media row, and blob all untouched
         await AssertFlow(async ct => {
             var mediaIdAfter = await GetAvatarMediaId(avatarId, ct);
             mediaIdAfter.Should().Be(svgMediaId);
@@ -259,9 +257,8 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
     [Fact]
     public async Task ShouldConvertPlaceBackgroundMediaId()
     {
-        // arrange: a place with only BackgroundMediaId set to an SVG
-        // (MediaId slot is empty). Exercises the IsBackground=true branch
-        // in GetPlaceBatch flatten + RepointPlace.
+        // arrange: place with only BackgroundMediaId set — exercises the
+        // IsBackground=true branch in GetPlaceBatch flatten + RepointPlace.
         var (bgSvgId, _) = await CreateMedia(
             TestSvgBytes, "image/svg+xml", MediaKind.ChatPicture, "place-bg.svg");
         var placeId = await CreatePlaceWithBackground(bgSvgId);
@@ -269,7 +266,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         // act
         await RunFlow();
 
-        // assert: BackgroundMediaId repointed to a new PNG, original SVG row intact
+        // assert: BackgroundMediaId repointed to a new PNG; original SVG row intact
         await AssertFlow(async ct => {
             var place = await Tester.Places.Get(Tester.Session, placeId, ct);
             place.Should().NotBeNull();
@@ -286,8 +283,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
     [Fact]
     public async Task ShouldConvertPlaceMediaIdAndBackgroundMediaIdIndependently()
     {
-        // arrange: a place with DISTINCT SVG media in both slots.
-        // Both must be repointed to different new PNG MediaIds.
+        // arrange: place with distinct SVGs in both slots
         var (fgSvgId, _) = await CreateMedia(
             TestSvgBytes, "image/svg+xml", MediaKind.ChatPicture, "place-fg.svg");
         var (bgSvgId, _) = await CreateMedia(
@@ -301,7 +297,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         // act
         await RunFlow();
 
-        // assert: both slots repointed, to DIFFERENT PNG MediaIds
+        // assert: both slots repointed to distinct PNG MediaIds
         await AssertFlow(async ct => {
             var updated = await Tester.Places.Get(Tester.Session, place.Id, ct);
             updated.Should().NotBeNull();
@@ -318,7 +314,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
     [Fact]
     public async Task ShouldConvertMediaReferencedByAvatarChatAndPlace()
     {
-        // arrange: 3 SVG media records, each referenced by a different entity kind
+        // arrange: one SVG per entity kind
         var (avatarSvgId, _) = await CreateMedia(
             TestSvgBytes, "image/svg+xml", MediaKind.UserAvatarPicture, "avatar.svg");
         var (chatSvgId, _) = await CreateMedia(
@@ -333,7 +329,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         // act
         await RunFlow();
 
-        // assert: each host entity now points at a different MediaId whose blob is PNG
+        // assert: each entity repointed to a new PNG
         await AssertFlow(async ct => {
             await AssertRepointedToPng(avatarSvgId, await GetAvatarMediaId(avatarId, ct), ct);
             await AssertRepointedToPng(chatSvgId, await GetChatMediaId(chatId, ct), ct);
@@ -384,11 +380,11 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         return (mediaId, mediaRef.BlobId);
     }
 
-    // Schedules the migration flow with reset.
+    // Reschedules the flow from a clean state.
     private Task RunFlow()
         => FlowHub.NewResumeEvent<IconSvgToPngMigrationFlow>().WithReset().Schedule();
 
-    // Waits until the flow has completed and `assertion` passes (or times out).
+    // Waits until the flow completes and `assertion` passes, or times out.
     private Task AssertFlow(Func<CancellationToken, Task> assertion)
         => ComputedTest.When(async ct => {
             var flow = await FlowHub.TryGet<IconSvgToPngMigrationFlow>("", ct);
