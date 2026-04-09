@@ -47,17 +47,7 @@
     <div class="flex-1"></div>
     <div class="c-buttons">
         @if (showVideoPanelToggle) {
-            <HeaderButton
-                Class="video-panel-toggle"
-                StopPropagation="true"
-                PreventDefault="true"
-                Click="@OnToggleVideoPanel">
-                @if (m.IsVideoPanelCollapsed) {
-                    <i class="icon-video-expand"></i>
-                } else {
-                    <i class="icon-video-collapse"></i>
-                }
-            </HeaderButton>
+            <ShowVideoPanelToggle ChatId="@chat.Id"/>
         }
         @if (!isListening && !isRecordingHere && !isVideoRecordingHere) {
             <Button
@@ -98,8 +88,6 @@
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
 
-    private bool IsVideoPanelCollapsed => State.Value?.IsVideoPanelCollapsed == true;
-
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter, EditorRequired] public Chat Chat { get; set; }
     [Parameter] public int MaxCount { get; set; } = 5;
@@ -123,9 +111,7 @@
         var isAnyoneTalking = await LiveStreamUI.IsAnyoneStreaming(chatId, cancellationToken).ConfigureAwait(false);
         var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chatId, cancellationToken).ConfigureAwait(false);
         var isOwnVideoRecording = await ChatVideoUI.GetRecordingChatId(cancellationToken).ConfigureAwait(false) == chatId;
-        var isVideoPanelCollapsed = await ChatVideoUI.GetIsVideoPanelCollapsed(cancellationToken).ConfigureAwait(false);
-
-        return new (chat, audioState, isAnyoneTalking, isAnyoneVideoStreaming, isOwnVideoRecording, isVideoPanelCollapsed);
+        return new (chat, audioState, isAnyoneTalking, isAnyoneVideoStreaming, isOwnVideoRecording);
     }
 
     private async Task OnJoinClick(ChatId chatId) {
@@ -166,9 +152,6 @@
     private bool IsUpdating(ChatId chatId)
         => chatId != Chat.Id;
 
-    private void OnToggleVideoPanel()
-        => ChatVideoUI.SetVideoPanelCollapsed(!IsVideoPanelCollapsed);
-
     private void StopRecording(ChatId chatId) {
         if (!IsValidAction())
             return;
@@ -196,8 +179,7 @@
         ChatAudioState AudioState,
         bool IsAnyoneTalking,
         bool IsAnyoneVideoStreaming,
-        bool IsOwnVideoRecording = false,
-        bool IsVideoPanelCollapsed = false) {
+        bool IsOwnVideoRecording = false) {
         public bool IsListening => AudioState.IsListening;
         public bool IsRecordingHere => AudioState.IsRecording;
     }
