@@ -244,7 +244,7 @@
             : 0;
 
         if (activeStreams.Count == 0)
-            return new Model(isRightPanelVisible, [], ownStreamingMode, audioState.IsRecording, audioState.IsListening, 0, chatId, chat, isCollapsed);
+            return new Model(isRightPanelVisible, [], ownStreamingMode, audioState.IsRecording, audioState.IsListening, 0, chat, isCollapsed);
 
         var remoteStreams = await ChatVideoUI.GetRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
 
@@ -252,7 +252,7 @@
             string.Join(", ", remoteStreams.Select(s => $"{s.StreamId}({s.Format.Codec})")),
             ownStreamingMode);
 
-        return new Model(isRightPanelVisible, remoteStreams, ownStreamingMode, audioState.IsRecording, audioState.IsListening, videoStreamMemberCount, chatId, chat, isCollapsed);
+        return new Model(isRightPanelVisible, remoteStreams, ownStreamingMode, audioState.IsRecording, audioState.IsListening, videoStreamMemberCount, chat, isCollapsed);
     }
 
     private void OnHangUpClick() {
@@ -339,10 +339,9 @@
         bool IsAudioRecording,
         bool IsListening,
         int VideoStreamMemberCount,
-        ChatId ChatId,
         Chat? Chat,
-        bool IsCollapsed = false
+        bool IsCollapsed
     ) {
-        public static readonly Model Loading = new(false, [], null, false, false, 0, null!, null);
+        public static readonly Model Loading = new(false, [], null, false, false, 0, null, false);
     }
 }
