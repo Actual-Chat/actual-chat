@@ -117,7 +117,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             .OrderBy(x => x.Id)
             .AsQueryable();
         if (!LastProcessedEntityId.IsNullOrEmpty())
-            query = query.Where(x => string.Compare(x.Id, LastProcessedEntityId) > 0);
+            query = query.Where(x => x.Id.CompareTo(LastProcessedEntityId) > 0);
 
         var rows = await query
             .Take(BatchSize)
@@ -137,7 +137,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             .OrderBy(x => x.Id)
             .AsQueryable();
         if (!LastProcessedEntityId.IsNullOrEmpty())
-            query = query.Where(x => string.Compare(x.Id, LastProcessedEntityId) > 0);
+            query = query.Where(x => x.Id.CompareTo(LastProcessedEntityId) > 0);
 
         var rows = await query
             .Take(BatchSize)
@@ -162,7 +162,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             .OrderBy(x => x.Id)
             .AsQueryable();
         if (!LastProcessedEntityId.IsNullOrEmpty())
-            query = query.Where(x => string.Compare(x.Id, LastProcessedEntityId) > 0);
+            query = query.Where(x => x.Id.CompareTo(LastProcessedEntityId) > 0);
 
         var places = await query
             .Take(BatchSize)
@@ -205,7 +205,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
     private async Task<bool> ProcessOne(UsedMedia item, CancellationToken cancellationToken)
     {
         var svg = await MediaBackend.GetFull(item.MediaId, cancellationToken).ConfigureAwait(false);
-        if (svg is null || !svg.BlobId.EndsWith(".svg"))
+        if (svg is null || !svg.BlobId.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
             return false;
 
         // 1. Allocate a new MediaId in the same scope and rasterize the SVG into a new PNG blob.
