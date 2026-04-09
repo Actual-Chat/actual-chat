@@ -12,13 +12,23 @@ public class StreamServer(IServiceProvider services) : IStreamServer
     private MeshWatcher MeshWatcher { get; } = services.MeshWatcher();
     private IAudioStreamingBackend Backend { get; } = services.GetRequiredService<IAudioStreamingBackend>();
     private IVideoStreamingBackend VideoBackend { get; } = services.GetRequiredService<IVideoStreamingBackend>();
+    private RemoteAudioStreamCache RemoteAudioCache { get; } = services.GetRequiredService<RemoteAudioStreamCache>();
     private ILogger Log { get; } = services.LogFor<StreamServer>();
 
     public async Task<RpcStream<byte[]>?> GetAudio(string streamId, TimeSpan skipTo, CancellationToken cancellationToken)
     {
-        // We must return another RpcStream here - they aren't "shareable"
-        var source = await Backend.GetAudio(StreamId.Parse(streamId), skipTo, cancellationToken).ConfigureAwait(false);
-        return source == null ? null : RpcStream.New(source);
+        var parsedStreamId = StreamId.Parse(streamId);
+        var isLocal = parsedStreamId.NodeRef == MeshWatcher.ThisNode.Ref;
+
+        if (isLocal) {
+            // Local stream: use backend directly
+            var source = await Backend.GetAudio(parsedStreamId, skipTo, cancellationToken).ConfigureAwait(false);
+            return source == null ? null : RpcStream.New(source);
+        }
+
+        // Remote stream: fetch raw, cache locally, apply skipTo
+        var cached = await GetOrFetchRemoteAudio(parsedStreamId, skipTo, cancellationToken).ConfigureAwait(false);
+        return cached == null ? null : RpcStream.New(cached);
     }
 
     public async Task<RpcStream<TranscriptDiff>?> GetTranscript(string streamId, CancellationToken cancellationToken)
@@ -82,5 +92,28 @@ public class StreamServer(IServiceProvider services) : IStreamServer
 
         using var stopCts = new CancellationTokenSource(Constants.Chat.MaxEntryDuration + TimeSpan.FromSeconds(5));
         await VideoBackend.PushVideo(videoRecord, newFrameStream, stopCts.Token).ConfigureAwait(false);
+    }
+
+    private async Task<IAsyncEnumerable<byte[]>?> GetOrFetchRemoteAudio(
+        StreamId streamId, TimeSpan skipTo, CancellationToken cancellationToken)
+    {
+        var store = RemoteAudioCache.Store;
+
+        // Fast path: already cached locally
+        var stream = await store.Get(streamId, false, cancellationToken).ConfigureAwait(false);
+        if (stream != null)
+            return AudioStreamingBackend.SkipTo(stream, skipTo, cancellationToken);
+
+        // Fetch from remote backend via RPC (skipTo=0 to get full stream for caching)
+        var rawRpcStream = await Backend
+            .GetAudio(streamId, TimeSpan.Zero, cancellationToken)
+            .ConfigureAwait(false);
+        if (rawRpcStream == null)
+            return null;
+
+        Log.LogInformation("GetOrFetchRemoteAudio: caching #{StreamId} locally", streamId);
+        await store.Publish(streamId, (IAsyncEnumerable<byte[]>)rawRpcStream).ConfigureAwait(false);
+        stream = await store.Get(streamId, true, cancellationToken).ConfigureAwait(false);
+        return stream == null ? null : AudioStreamingBackend.SkipTo(stream, skipTo, cancellationToken);
     }
 }

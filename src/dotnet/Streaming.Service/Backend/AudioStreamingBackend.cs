@@ -120,7 +120,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
                 $"Wrong mesh node: expected {ThisNode.Ref}, but got {streamId.NodeRef}.");
     }
 
-    private static IAsyncEnumerable<byte[]> SkipTo(
+    internal static IAsyncEnumerable<byte[]> SkipTo(
         IAsyncEnumerable<byte[]> stream,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
