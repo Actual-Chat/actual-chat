@@ -246,7 +246,7 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         try { await memoizer.ReadTask.WaitAsync(TimeSpan.FromSeconds(5)); }
         catch (InvalidOperationException) { }
 
-        // WriteTask = ReadTask in pull-based model, so it throws the same error
+        // WriteTask completes normally after Read task failure closes _newTargets channel
         try { await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5)); }
         catch (InvalidOperationException) { }
 
@@ -725,8 +725,8 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public async Task BoundedReplay_SlowConsumerSkipsEvictedItems()
     {
-        // With pull-based consumers, a slow consumer's cursor falls behind.
-        // When it resumes, it catches up from snapshot.StartIndex (skipping evicted items).
+        // A slow consumer blocks while new items overflow the bounded ring buffer.
+        // The Write task skips evicted items (StartIndex advances past them).
         // The consumer sees: initial tail items, then a gap, then items still in the ring.
         var source = Channel.CreateUnbounded<int>();
         var memoizer = source.Memoize(10); // ring buffer capacity = 10
@@ -1021,8 +1021,8 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public async Task PushFanOut_AllConsumersEventuallyGetAllItems()
     {
-        // Even though slow consumers block fast consumers temporarily,
-        // once the slow consumer is drained, all consumers eventually receive all items.
+        // The Write task fans out sequentially, so a slow consumer's WriteAsync
+        // temporarily delays delivery to subsequent consumers. All eventually receive all items.
         var source = Channel.CreateUnbounded<int>();
         var memoizer = source.Memoize(1000);
 

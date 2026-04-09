@@ -267,9 +267,12 @@ public sealed class AsyncMemoizer<T> : AsyncMemoizer, IAsyncMemoizer<T>
                 var signal = EnsureNewDataSignal();
                 currentVersion = Volatile.Read(ref _version);
                 if (currentVersion == lastVersion) {
-                    // Also check if _newTargets channel is closed (Read task exited)
+                    // Check if _newTargets channel is closed (Read task exited)
                     if (_newTargets.Reader.Completion.IsCompleted && !_newTargets.Reader.TryPeek(out _))
                         break;
+                    // Check for pending targets to prevent missed wakeups from AddReplayTarget
+                    if (_newTargets.Reader.TryPeek(out _))
+                        continue;
                     await signal.Task.ConfigureAwait(false);
                 }
             }
