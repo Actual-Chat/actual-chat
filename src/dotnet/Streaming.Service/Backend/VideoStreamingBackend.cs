@@ -56,6 +56,17 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         return RpcStream.New(FilteredVideoStream(streamId, peerId, skipTo, stream, cancellationToken));
     }
 
+    public virtual async Task<RpcStream<VideoFrame>?> GetVideoRaw(StreamId streamId, CancellationToken cancellationToken)
+    {
+        Log.LogInformation("GetVideoRaw: #{StreamId}", streamId);
+        var stream = await _videoStreams.Get(streamId, cancellationToken).ConfigureAwait(false);
+        if (stream == null) {
+            Log.LogWarning("GetVideoRaw: #{StreamId} not found in StreamStore", streamId);
+            return null;
+        }
+        return RpcStream.New(stream);
+    }
+
     public virtual async Task PushVideo(
         VideoRecord record,
         RpcStream<VideoFrame> videoStream,

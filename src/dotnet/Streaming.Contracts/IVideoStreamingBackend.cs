@@ -9,6 +9,7 @@ namespace ActualChat.Streaming;
 public interface IVideoStreamingBackend : IComputeService, IRpcService, IBackendService
 {
     Task<RpcStream<VideoFrame>?> GetVideo(StreamId streamId, TimeSpan skipTo, string peerId, CancellationToken cancellationToken);
+    Task<RpcStream<VideoFrame>?> GetVideoRaw(StreamId streamId, CancellationToken cancellationToken);
     Task PushVideo(VideoRecord record, RpcStream<VideoFrame> videoStream, CancellationToken cancellationToken);
 
     // Quality control — stream-local state, routed by StreamId.NodeRef
