@@ -13,7 +13,6 @@
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
-    private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
 
     [ParameterComparer(typeof(ByRefParameterComparer))]
     [Parameter, EditorRequired] public Chat Chat { get; set; }
@@ -28,12 +27,13 @@
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
         var chatId = Chat.Id;
-        var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
-        var isRecordingHere = activeChats.Any(c => c.IsRecording && c.ChatId == chatId);
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
-        var isListeningHere = audioState is { IsListening: true } && audioState.ChatId == chatId;
+        if (audioState.IsListening || audioState.IsRecording)
+            return true;
         var isAnyoneTalking = await LiveStreamUI.IsAnyoneStreaming(chatId, cancellationToken).ConfigureAwait(false);
+        if (isAnyoneTalking)
+            return true;
         var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chatId, cancellationToken).ConfigureAwait(false);
-        return isRecordingHere || isListeningHere || isAnyoneVideoStreaming || (isAnyoneTalking && audioState.ChatId == chatId);
+        return isAnyoneVideoStreaming;
     }
 }
