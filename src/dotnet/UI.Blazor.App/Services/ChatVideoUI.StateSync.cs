@@ -183,7 +183,7 @@ public partial class ChatVideoUI
                     cancellationToken).ConfigureAwait(false);
                 var preset = computed.Value;
                 Log.LogInformation("SubscribeToQualityRequests: received preset {Level} ({Width}x{Height} @ {Bitrate}bps), keyframe={KeyFrame}",
-                    preset.Level, preset.Width, preset.Height, preset.Bitrate, preset.KeyFrameRequested);
+                    preset.Level, preset.Width, preset.Height, preset.Bitrate, preset.IsKeyFrameRequested);
                 if (_jsRecorder is { } jsRef) {
                     // Only reconfigure encoder when resolution/bitrate/level actually changed.
                     var qualityChanged = lastAppliedPreset == null
@@ -197,7 +197,7 @@ public partial class ChatVideoUI
                             .ConfigureAwait(false);
                         lastAppliedPreset = preset;
                     }
-                    if (preset.KeyFrameRequested)
+                    if (preset.IsKeyFrameRequested)
                         await jsRef.InvokeVoidAsync("forceKeyFrame", cancellationToken).ConfigureAwait(false);
                 }
                 await computed.WhenInvalidated(cancellationToken).ConfigureAwait(false);
