@@ -145,6 +145,21 @@ body.wide .video-panel.expanded .video-panel-footer {
         @apply justify-center gap-4;
     }
 }
+
+/* Toolbar hide/show animation on tap */
+.video-panel.expanded .video-panel-toolbar {
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.video-panel.expanded.toolbar-hidden .video-panel-header {
+    @apply opacity-0;
+    @apply -translate-y-full;
+    @apply pointer-events-none;
+}
+.video-panel.expanded.toolbar-hidden .video-panel-footer {
+    @apply opacity-0;
+    @apply translate-y-full;
+    @apply pointer-events-none;
+}
 .video-panel.expanded .video-panel-header {
     @apply top-0;
 }
@@ -225,6 +240,9 @@ body.hoverable .btn-h.expand-btn:hover {
 }
 .video-panel.expanded .remote-video-container.focused canvas.remote-video {
     @apply object-cover;
+}
+.video-panel.expanded .remote-video-container.focused.screencast {
+    @apply overflow-hidden;
 }
 .video-panel.expanded .remote-video-container.focused.screencast canvas.remote-video {
     @apply object-contain;
