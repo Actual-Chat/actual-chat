@@ -246,7 +246,9 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         try { await memoizer.ReadTask.WaitAsync(TimeSpan.FromSeconds(5)); }
         catch (InvalidOperationException) { }
 
-        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
+        // WriteTask = ReadTask in pull-based model, so it throws the same error
+        try { await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5)); }
+        catch (InvalidOperationException) { }
 
         var items = new List<int>();
         var caughtError = await Assert.ThrowsAsync<InvalidOperationException>(async () => {
@@ -721,25 +723,25 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
-    public async Task BoundedReplay_DropsOldestWhenConsumerIsSlow()
+    public async Task BoundedReplay_SlowConsumerSkipsEvictedItems()
     {
-        // When tailSize < int.MaxValue, Replay() uses a bounded channel with DropOldest.
-        // A slow consumer should lose old frames rather than accumulating unbounded memory.
+        // With pull-based consumers, a slow consumer's cursor falls behind.
+        // When it resumes, it catches up from snapshot.StartIndex (skipping evicted items).
+        // The consumer sees: initial tail items, then a gap, then items still in the ring.
         var source = Channel.CreateUnbounded<int>();
-        var memoizer = source.Memoize(100); // ring buffer capacity
+        var memoizer = source.Memoize(10); // ring buffer capacity = 10
 
         // Push initial items
-        for (var i = 1; i <= 10; i++)
+        for (var i = 1; i <= 5; i++)
             source.Writer.TryWrite(i);
-        await SpinWaitForBuffered(memoizer, 10);
+        await SpinWaitForBuffered(memoizer, 5);
 
-        // Start a replay with small tailSize (bounded channel of size 5)
-        const int replayTailSize = 5;
+        // Start a replay — consumer will block after first item
         var firstItem = new TaskCompletionSource<int>();
         var gate = new TaskCompletionSource();
         var items = new List<int>();
         var replayTask = Task.Run(async () => {
-            await foreach (var item in memoizer.Replay(replayTailSize)) {
+            await foreach (var item in memoizer.Replay()) {
                 if (!firstItem.Task.IsCompleted) {
                     firstItem.SetResult(item);
                     await gate.Task.ConfigureAwait(false); // Block consumer after first read
@@ -751,21 +753,20 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         // Wait for consumer to read first item and block
         await firstItem.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
-        // Overflow the bounded channel while consumer is blocked
-        for (var i = 11; i <= 50; i++)
+        // Overflow the ring buffer while consumer is blocked (capacity=10, write 50 items)
+        for (var i = 6; i <= 50; i++)
             source.Writer.TryWrite(i);
         await SpinWaitForBuffered(memoizer, 50);
-        await Task.Delay(100); // Let Write task distribute to bounded channel
 
         // Complete source and unblock consumer
         source.Writer.Complete();
         gate.SetResult();
         await replayTask.WaitAsync(TimeSpan.FromSeconds(5));
 
-        // Consumer should have the first item + only recent items (old ones dropped)
-        items.First().Should().BeGreaterThan(1, "initial tail should skip oldest items");
-        items.Should().NotContain(11, "items overflowed by DropOldest should be missing");
+        // Consumer should have the first item + only the ring buffer tail
+        items.First().Should().Be(1, "first item was read before blocking");
         items.Last().Should().Be(50, "most recent item should be present");
+        items.Should().HaveCountLessThan(50, "some items should be skipped due to ring eviction");
     }
 
     // === Issue: Unbounded mode retains references in old buffers ===
@@ -1011,6 +1012,36 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
 
         items.Should().HaveCount(totalItems);
         items.Should().NotContainNulls("items copied via AddReplayTarget must survive buffer growth");
+
+        memoizer.Dispose();
+    }
+
+    // === Push-based fan-out behavior tests ===
+
+    [Fact]
+    public async Task PushFanOut_AllConsumersEventuallyGetAllItems()
+    {
+        // Even though slow consumers block fast consumers temporarily,
+        // once the slow consumer is drained, all consumers eventually receive all items.
+        var source = Channel.CreateUnbounded<int>();
+        var memoizer = source.Memoize(1000);
+
+        var channels = new Channel<int>[5];
+        for (var i = 0; i < channels.Length; i++) {
+            channels[i] = Channel.CreateUnbounded<int>(new UnboundedChannelOptions { SingleReader = true });
+            await memoizer.AddReplayTarget(channels[i].Writer, 0);
+        }
+
+        for (var i = 1; i <= 100; i++)
+            source.Writer.TryWrite(i);
+        source.Writer.Complete();
+
+        // All consumers should eventually get all items
+        foreach (var ch in channels) {
+            var items = await ch.Reader.ReadAllAsync().ToListAsync()
+                .AsTask().WaitAsync(TimeSpan.FromSeconds(5));
+            items.Should().Equal(Enumerable.Range(1, 100));
+        }
 
         memoizer.Dispose();
     }
