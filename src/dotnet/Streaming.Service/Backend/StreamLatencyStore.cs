@@ -39,7 +39,7 @@ public sealed class StreamLatencyStore(IServiceProvider services)
         LastKeyFrameRequestTime.TryRemove(streamId, out _);
     }
 
-    public Task ReportPeerLatency(
+    public void ReportPeerLatency(
         StreamId streamId,
         string peerId,
         double streamOffsetMs,
@@ -56,14 +56,12 @@ public sealed class StreamLatencyStore(IServiceProvider services)
                 latencyState.RecordPeerLatency(peerId, (float)latency.TotalMilliseconds,
                     (float)medianDecodeTimeMs, bufferDepth, (float)bufferSpanMs);
             }
-            else {
+            else
                 DebugLog?.LogDebug("ReportPeerLatency: #{StreamId}, PeerId={PeerId}, negative latency={LatencyMs:F0}ms (clock skew?), skipping",
                     streamId, peerId, latency.TotalMilliseconds);
-            }
-            return Task.CompletedTask;
+            return;
         }
         Log.LogWarning("ReportPeerLatency: No latency state for stream #{StreamId}", streamId);
-        return Task.CompletedTask;
     }
 
     // Latency state classes
