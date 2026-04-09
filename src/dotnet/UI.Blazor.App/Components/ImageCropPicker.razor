@@ -1,0 +1,41 @@
+@using ActualChat.Media
+@using ActualChat.UI.Blazor.App.Module
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
+
+<input @ref="_fileInputRef"
+       type="file"
+       accept="image/*"
+       @onchange="@OnFileSelected"
+       hidden />
+
+@code {
+    private static readonly string JSClickFileInput = $"{BlazorUIAppModule.ImportName}.clickFileInput";
+    private static readonly string JSCreateBlobUrl = $"{BlazorUIAppModule.ImportName}.createBlobUrlFromInput";
+    private static readonly string JSClearFileInput = $"{BlazorUIAppModule.ImportName}.clearFileInput";
+
+    private ElementReference _fileInputRef;
+
+    [Parameter, EditorRequired] public string Scope { get; set; } = "";
+    [Parameter] public EventCallback<MediaRef> OnCropped { get; set; }
+    [Parameter] public bool IsSquare { get; set; }
+    [Parameter] public float ViewportAspectRatio { get; set; }
+    [Parameter] public bool HasBlur { get; set; }
+
+    public async Task Pick()
+        => await JS.InvokeVoidAsync(JSClickFileInput, _fileInputRef).ConfigureAwait(true);
+
+    private async Task OnFileSelected() {
+        var blobUrl = await JS.InvokeAsync<string?>(JSCreateBlobUrl, _fileInputRef).ConfigureAwait(true);
+        if (blobUrl == null)
+            return;
+
+        await JS.InvokeVoidAsync(JSClearFileInput, _fileInputRef).ConfigureAwait(true);
+
+        var model = new PicCropModal.Model(blobUrl, Scope, OnCroppedInternal, IsSquare, ViewportAspectRatio, HasBlur);
+        await Hub.ModalUI.Show(model).ConfigureAwait(true);
+    }
+
+    private void OnCroppedInternal(MediaRef mediaRef)
+        => _ = OnCropped.InvokeAsync(mediaRef);
+}
