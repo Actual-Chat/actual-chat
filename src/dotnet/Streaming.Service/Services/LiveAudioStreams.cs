@@ -43,7 +43,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
             if (_liveMuxers.TryRemove(key, out var oldMuxer))
                 _ = oldMuxer.DisposeSilentlyAsync(); // No need to await for this here
 
-            muxer = new LiveStreamMuxer(Services, session, chatId, settings);
+            muxer = new LiveStreamMuxer(Services, chatId, settings);
             _liveMuxers[key] = muxer;
         }
 

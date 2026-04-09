@@ -1,4 +1,5 @@
 using ActualChat.Live;
+using ActualLab.Rpc;
 
 namespace ActualChat.Streaming.Services;
 
@@ -16,11 +17,9 @@ public sealed class LiveStreamMuxer : WorkerBase
     public LiveStreamSettings Settings => _settings;
 
     private IServiceProvider Services { get; }
-    private Session Session { get; }
     private ChatId ChatId { get; }
-    private IChats Chats => field ??= Services.GetRequiredService<IChats>();
     private ILiveAudioBackend LiveBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
-    private IStreamClient StreamClient => field ??= Services.GetRequiredService<IStreamClient>();
+    private IStreamServer StreamServer => field ??= Services.GetRequiredService<IStreamServer>();
     private MomentClockSet Clocks => field ??= Services.Clocks();
     private ILogger Log => field ??= Services.LogFor<LiveStreamMuxer>();
 
@@ -28,12 +27,10 @@ public sealed class LiveStreamMuxer : WorkerBase
 
     public LiveStreamMuxer(
         IServiceProvider services,
-        Session session,
         ChatId chatId,
         LiveStreamSettings settings)
     {
         Services = services;
-        Session = session;
         ChatId = chatId;
         _settings = settings;
         _output = ChannelExt.Create<LiveStreamItem>(ChannelExt.UnboundedFanInOptions);
@@ -54,15 +51,7 @@ public sealed class LiveStreamMuxer : WorkerBase
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         try {
-            Log.LogInformation("OnRun: Starting for chat {ChatId}, session {Session}", ChatId, Session);
-
-            var chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(false);
-            if (chat?.Rules.CanRead() != true) {
-                Log.LogWarning("OnRun: Cannot read chat {ChatId}, chat={Chat}, rules={Rules}",
-                    ChatId, chat?.Id, chat?.Rules);
-                return;
-            }
-            Log.LogInformation("OnRun: Chat access verified for {ChatId}", ChatId);
+            Log.LogInformation("OnRun: Starting for chat {ChatId}", ChatId);
 
             var serverClock = Clocks.ServerClock;
             await serverClock.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -126,10 +115,13 @@ public sealed class LiveStreamMuxer : WorkerBase
         var frameCount = 0;
         try {
             var streamId = streamInfo.StreamId;
-            var audioSource = await StreamClient
+            var rpcStream = await StreamServer
                 .GetAudio(streamId, TimeSpan.Zero, cancellationToken)
                 .ConfigureAwait(false);
-            Log.LogDebug("Got audio source, format={Format}", audioSource.Format);
+            if (rpcStream == null) {
+                Log.LogWarning("ProcessStream: Stream #{StreamId} not found", streamId);
+                return;
+            }
 
             // Emit stream start
             var startItem = new LiveStreamStart {
@@ -140,10 +132,13 @@ public sealed class LiveStreamMuxer : WorkerBase
             Log.LogDebug("Emitted StreamStart for stream #{StreamIndex}", streamIndex);
 
             // Emit audio frames
-            await foreach (var frame in audioSource.GetFrames(cancellationToken).ConfigureAwait(false)) {
+            var audioStream = ((IAsyncEnumerable<byte[]>)rpcStream)
+                .SuppressException<byte[], RpcReconnectFailedException>(cancellationToken)
+                .SuppressCancellation(cancellationToken);
+            await foreach (var data in audioStream.ConfigureAwait(false)) {
                 var audioFrame = new LiveAudioFrame {
                     StreamIndex = streamIndex,
-                    Data = frame.Data,
+                    Data = data,
                 };
                 await _output.Writer.WriteAsync(audioFrame, cancellationToken).ConfigureAwait(false);
                 frameCount++;
