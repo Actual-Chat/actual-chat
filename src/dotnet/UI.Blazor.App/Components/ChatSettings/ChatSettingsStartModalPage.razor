@@ -43,22 +43,20 @@
                 </ButtonRound>
             </div>
             <div class="c-center">
-                <PicUpload
-                    Scope="@_form.ImageScope"
-                    MediaKind="@MediaKind.ChatPicture"
-                    Size="@SquareSize.Size16"
+                <Pic
                     Title="@_form.Title"
                     Picture="@_form.Picture"
+                    Size="@SquareSize.Size16"
                     AvatarKind="@_avatarKind"
-                    AvatarKey="@_avatarKey"
-                    Picked="@OnImagePicked"/>
+                    AvatarKey="@_avatarKey"/>
 
                 <div class="c-buttons">
-                    <PicUploadButton
-                        Class="btn btn-round btn-sm"
-                        Scope="@_form.ImageScope"
-                        MediaKind="@MediaKind.ChatPicture"
-                        Picked="@OnImagePicked"/>
+                    <ButtonRound Class="btn-sm" Click="@(() => _avatarPicker!.Pick())">
+                        <i class="icon-person-add-2 text-2xl"></i>
+                    </ButtonRound>
+                    <ImageCropPicker @ref="_avatarPicker"
+                        Scope="@_form!.ImageScope"
+                        OnCropped="@OnImagePicked" />
 
                     @if (m.EnableIncompleteUI) {
                         <ButtonRound Class="btn-sm" Click="@OnGenerateAvatarClick">
@@ -153,6 +151,7 @@
     private Form?_formRef;
     private FormModel? _form;
     private DialogButtonInfo _submitButtonInfo = null!;
+    private ImageCropPicker? _avatarPicker;
     private AvatarKind _avatarKind;
     private string? _avatarKey;
     private PlaceId? _placeId;
