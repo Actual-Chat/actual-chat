@@ -27,7 +27,7 @@
             <span>You</span>
         </div>
     }
-    @if (m.OwnStreamingState is {} recordingState) {
+    @if (m.OwnStreamingState is { HasError: true } recordingState) {
         <div class="video-error">
             <span>@(recordingState.ErrorMessage ?? "")</span>
         </div>
