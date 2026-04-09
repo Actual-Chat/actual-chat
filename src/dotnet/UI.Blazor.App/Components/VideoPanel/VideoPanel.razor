@@ -6,11 +6,12 @@
 @{
     var m = State.Value;
     var isWatching = m.IsWatching;
+    var chatId = m.ChatId;
 
     // Clear watching when navigating to a different chat
-    if (_lastWatchingChatId is not null && m.ChatId is not null && _lastWatchingChatId != m.ChatId)
+    if (_lastWatchingChatId is not null && chatId is not null && _lastWatchingChatId != chatId)
         ChatVideoUI.SetWatching(null);
-    _lastWatchingChatId = isWatching ? m.ChatId : null;
+    _lastWatchingChatId = isWatching ? chatId : null;
 
     // Handle show/hide transitions based on watching state
     if (isWatching && !_rendered) {
@@ -25,8 +26,11 @@
     if (!_rendered)
         return;
 
+    _lastChatId ??= chatId;
     var cls = m.IsRightPanelVisible ? "rp-visible" : "";
-    var recordingCls = m.IsRecording ? "recording" : "";
+    var isOwnCameraStreaming = m.OwnStreamingMode == VideoRecorderMode.Camera;
+    var isOwnScreencasting = m.OwnStreamingMode == VideoRecorderMode.Screencast;
+    var recordingCls = isOwnCameraStreaming ? "recording" : "";
     var hasRemoteStreams = m.RemoteStreams.Length > 0;
 
     // Show "Connecting..." overlay when no remote streams and not recording;
@@ -35,7 +39,7 @@
         _showConnecting = false;
         _noStreamsTimedOut = false;
         _hadRemoteStreams = true;
-    } else if (m.IsRecording && !_hadRemoteStreams && !_noStreamsTimedOut) {
+    } else if (isOwnCameraStreaming && !_hadRemoteStreams && !_noStreamsTimedOut) {
         // Recording solo, never had remote peers — show preview, not "Connecting..."
         _showConnecting = false;
     } else if (!_noStreamsTimedOut) {
@@ -45,8 +49,8 @@
     var remoteStreamsCls = hasRemoteStreams ? "has-remote-streams" : "";
     var firstOpenCls = _isFirstOpen ? "first-time-open" : "";
     var audioRecordingCls = m.IsAudioRecording ? "recording" : "";
-    var videoBtnCls = m.IsRecording ? "on" : "";
-    var screencastBtnCls = m.IsScreencasting ? "on" : "";
+    var videoBtnCls = isOwnCameraStreaming ? "on" : "";
+    var screencastBtnCls = isOwnScreencasting ? "on" : "";
     var expandedPanelRecBtnCls = $"rec-btn {audioRecordingCls}";
     var chatBtnCls = _isChatVisible ? "on" : "";
     if (m.Chat is { } mChat)
@@ -73,8 +77,7 @@
                 StopPropagation="true"
                 PreventDefault="true"
                 Click="@OnHangUpClick"
-                TooltipPosition="FloatingPosition.Bottom"
-                MustKeepAwake="@(!IsListening)">
+                TooltipPosition="FloatingPosition.Bottom">
                 <i class="icon-phone-off"></i>
             </HeaderButton>
         </div>
@@ -86,11 +89,11 @@
                     <i class="icon-camera-switch text-lg"></i>
                 </HeaderButton>
             }
-            <HeaderButton Click="OnVideoClick" Class="@videoBtnCls">
+            <HeaderButton Click="@(() => OnVideoClick(!isOwnCameraStreaming, (chatId ?? _lastChatId)!))" Class="@videoBtnCls">
                 <i class="icon-video text-lg"></i>
             </HeaderButton>
             @if (!ScreenSize.IsNarrow()) {
-                <HeaderButton Click="OnScreencastClick" Class="@screencastBtnCls">
+                <HeaderButton Click="@(() => OnScreencastClick(!isOwnScreencasting, (chatId ?? _lastChatId)!))" Class="@screencastBtnCls">
                     <i class="icon-screen-share text-lg"></i>
                 </HeaderButton>
             }
@@ -155,6 +158,7 @@
     private bool _hadRemoteStreams;
     private bool _shouldStartClosing;
     private ChatId? _lastWatchingChatId;
+    private ChatId? _lastChatId;
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoPanel.create";
 
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
@@ -193,7 +197,7 @@
         _showConnecting = false;
         _noStreamsTimedOut = true;
         var m = State.Value;
-        if (m.RemoteStreams.Length == 0 && !m.IsRecording) {
+        if (m.RemoteStreams.Length == 0 && m.OwnStreamingMode is not null) {
             ChatVideoUI.SetWatching(null);
         }
         StateHasChanged();
@@ -228,14 +232,12 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    private bool IsListening => State is { Value.IsListening: true };
-
     private void OnHangUpClick() {
         var m = State.Value;
         if (m.ChatId is not { } chatId)
             return;
 
-        if (m.IsRecording)
+        if (m.OwnStreamingMode is not null) // NOTE(DF): strange condition
             _ = ChatAudioUI.SetRecordingChatId(null);
         ChatVideoUI.SetRecordingChatId(null);
         ChatVideoUI.SetWatching(null);
@@ -253,12 +255,8 @@
             _ = ChatAudioUI.SetRecordingChatId(chatId);
     }
 
-    private void OnVideoClick() {
-        var m = State.Value;
-        if (m.ChatId is not { } chatId)
-            return;
-
-        if (m.IsRecording) {
+    private void OnVideoClick(bool enable, ChatId chatId) {
+        if (!enable) {
             // Stop own video recording (keep panel open for remote streams)
             ChatVideoUI.SetRecordingChatId(null);
         } else if (ChatVideoUI.HasJoinedVideoCall(chatId)) {
@@ -270,12 +268,8 @@
         }
     }
 
-    private void OnScreencastClick() {
-        var m = State.Value;
-        if (m.ChatId is not { } chatId)
-            return;
-
-        if (m.IsScreencasting) {
+    private void OnScreencastClick(bool enable, ChatId chatId) {
+        if (!enable) {
             // Stop screencast
             ChatVideoUI.SetRecordingChatId(null);
         } else {
@@ -320,7 +314,7 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             t => new ComputedState<Model>.Options {
-                InitialValue = new Model(!ScreenSize.IsNarrow() && PanelsUI.Right.IsVisible.Value, [], false, false, false, 0, null, null),
+                InitialValue = new Model(!ScreenSize.IsNarrow() && PanelsUI.Right.IsVisible.Value, [], null, false, false, 0, null, null),
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
@@ -335,19 +329,16 @@
             ? await Hub.Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false)
             : null;
 
-        var isWatching = false;
-        var isCollapsed = false;
-        if (chatId is not null) {
-            var watchingChatId = await ChatVideoUI.GetWatchingChatId(cancellationToken).ConfigureAwait(false);
-            isWatching = watchingChatId == chatId;
-            isCollapsed = await ChatVideoUI.GetIsVideoPanelCollapsed(cancellationToken).ConfigureAwait(false);
-        }
-
         if (chatId is null)
-            return new Model(isRightPanelVisible, [], false, false, false, 0, null, null, IsWatching: isWatching, IsCollapsed: isCollapsed);
+            return new Model(isRightPanelVisible, [], null, false, false, 0, null, null);
+
+        var watchingChatId = await ChatVideoUI.GetWatchingChatId(cancellationToken).ConfigureAwait(false);
+        var isWatching = watchingChatId == chatId;
+        var isCollapsed = await ChatVideoUI.GetIsVideoPanelCollapsed(cancellationToken).ConfigureAwait(false);
 
         // Get centralized video state (for recording status)
-        var videoState = await ChatVideoUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
+        var ownStreamingState = await ChatVideoUI.GetVideoStreamingState(chatId, cancellationToken).ConfigureAwait(false);
+        var ownStreamingMode = ownStreamingState?.Mode;
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
 
         // Get active video streams for this chat
@@ -357,15 +348,15 @@
             : 0;
 
         if (activeStreams.Count == 0)
-            return new Model(isRightPanelVisible, [], videoState.IsRecording, audioState.IsRecording, audioState.IsListening, 0, chatId, chat, IsWatching: isWatching, IsCollapsed: isCollapsed);
+            return new Model(isRightPanelVisible, [], ownStreamingMode, audioState.IsRecording, audioState.IsListening, 0, chatId, chat, IsWatching: isWatching, IsCollapsed: isCollapsed);
 
         var remoteStreams = await ChatVideoUI.GetRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
 
         Log.LogWarning("[VideoPanel] ComputeState: remoteStreams=[{Streams}], isRecording={IsRecording}",
             string.Join(", ", remoteStreams.Select(s => $"{s.StreamId}({s.Format.Codec})")),
-            videoState.IsRecording);
+            ownStreamingMode);
 
-        return new Model(isRightPanelVisible, remoteStreams, videoState.IsRecording, audioState.IsRecording, audioState.IsListening, videoStreamMemberCount, chatId, chat, videoState.IsScreencasting, isWatching, isCollapsed);
+        return new Model(isRightPanelVisible, remoteStreams, ownStreamingMode, audioState.IsRecording, audioState.IsListening, videoStreamMemberCount, chatId, chat, isWatching, isCollapsed);
     }
 
     // Nested types
@@ -373,16 +364,15 @@
     public sealed record Model(
         bool IsRightPanelVisible,
         VideoStreamInfo[] RemoteStreams,
-        bool IsRecording,
+        VideoRecorderMode? OwnStreamingMode,
         bool IsAudioRecording,
         bool IsListening,
         int VideoStreamMemberCount,
         ChatId? ChatId,
         Chat? Chat,
-        bool IsScreencasting = false,
         bool IsWatching = false,
         bool IsCollapsed = false
     ) {
-        public static readonly Model None = new(false, [], false, false, false, 0, null, null);
+        public static readonly Model None = new(false, [], null, false, false, 0, null, null);
     }
 }
