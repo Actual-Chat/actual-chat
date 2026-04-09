@@ -43,7 +43,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         // arrange: seed an SVG media record + an Avatar that references it
         var (svgMediaId, svgBlobId) = await CreateMedia(
             TestSvgBytes, "image/svg+xml", MediaKind.UserAvatarPicture, "avatar.svg");
-        var avatarId = await SeedAvatar(svgMediaId);
+        var avatarId = await CreateAvatar(svgMediaId);
 
         // act
         await RunFlow();
@@ -75,7 +75,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         // arrange
         var (svgMediaId, _) = await CreateMedia(
             TestSvgBytes, "image/svg+xml", MediaKind.UserAvatarPicture, "avatar.svg");
-        var avatarId = await SeedAvatar(svgMediaId);
+        var avatarId = await CreateAvatar(svgMediaId);
 
         // act
         await RunFlow();
@@ -97,7 +97,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         // arrange
         var (svgMediaId, svgBlobId) = await CreateMedia(
             TestSvgBytes, "image/svg+xml", MediaKind.UserAvatarPicture, "avatar.svg");
-        await SeedAvatar(svgMediaId);
+        await CreateAvatar(svgMediaId);
         var originalSvg = await MediaBackend.GetFull(svgMediaId, CancellationToken.None);
         originalSvg.Should().NotBeNull();
         var originalVersion = originalSvg.Version;
@@ -127,7 +127,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         // arrange
         var (svgMediaId, _) = await CreateMedia(
             TestSvgBytes, "image/svg+xml", MediaKind.UserAvatarPicture, "avatar.svg");
-        var avatarId = await SeedAvatar(svgMediaId);
+        var avatarId = await CreateAvatar(svgMediaId);
 
         // act 1
         await RunFlow();
@@ -158,8 +158,8 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         // arrange: SVG media referenced by both an avatar and a chat-entry attachment
         var (svgMediaId, svgBlobId) = await CreateMedia(
             TestSvgBytes, "image/svg+xml", MediaKind.UserAvatarPicture, "shared.svg");
-        var avatarId = await SeedAvatar(svgMediaId);
-        await SeedChatEntryAttachment(svgMediaId);
+        var avatarId = await CreateAvatar(svgMediaId);
+        await CreateChatEntryWithAttachment(svgMediaId);
 
         // act
         await RunFlow();
@@ -187,7 +187,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         var pngBytes = TestImages.CreatePng(50, 50);
         var (pngMediaId, pngBlobId) = await CreateMedia(
             pngBytes, "image/png", MediaKind.UserAvatarPicture, "avatar.png", width: 50, height: 50);
-        var avatarId = await SeedAvatar(pngMediaId);
+        var avatarId = await CreateAvatar(pngMediaId);
 
         // act
         await RunFlow();
@@ -210,7 +210,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         // arrange: seed an SVG media record + a Chat that references it, then drop the blob
         var (svgMediaId, svgBlobId) = await CreateMedia(
             TestSvgBytes, "image/svg+xml", MediaKind.ChatPicture, "missing.svg", deleteBlob: true);
-        var chatId = await SeedChat(svgMediaId);
+        var chatId = await CreateChat(svgMediaId);
 
         // act
         await RunFlow();
@@ -238,9 +238,9 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         var (placeSvgId, _) = await CreateMedia(
             TestSvgBytes, "image/svg+xml", MediaKind.ChatPicture, "place.svg");
 
-        var avatarId = await SeedAvatar(avatarSvgId);
-        var chatId = await SeedChat(chatSvgId);
-        var placeId = await SeedPlace(placeSvgId);
+        var avatarId = await CreateAvatar(avatarSvgId);
+        var chatId = await CreateChat(chatSvgId);
+        var placeId = await CreatePlace(placeSvgId);
 
         // act
         await RunFlow();
@@ -307,7 +307,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         stream.Length.Should().BeGreaterThan(0);
     }
 
-    private async Task<Symbol> SeedAvatar(MediaId mediaId)
+    private async Task<Symbol> CreateAvatar(MediaId mediaId)
     {
         var command = new Avatars_Change(
             Tester.Session,
@@ -323,7 +323,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         return avatar.Id;
     }
 
-    private async Task<ChatId> SeedChat(MediaId mediaId)
+    private async Task<ChatId> CreateChat(MediaId mediaId)
     {
         var (chatId, _) = await Tester.CreateChat(diff => diff with {
             IsPublic = true,
@@ -332,7 +332,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         return chatId;
     }
 
-    private async Task<PlaceId> SeedPlace(MediaId mediaId)
+    private async Task<PlaceId> CreatePlace(MediaId mediaId)
     {
         var place = await Tester.CreatePlace(diff => diff with {
             IsPublic = true,
@@ -341,7 +341,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         return place.Id;
     }
 
-    private async Task SeedChatEntryAttachment(MediaId mediaId)
+    private async Task CreateChatEntryWithAttachment(MediaId mediaId)
     {
         var (chatId, _) = await Tester.CreateChat(diff => diff with { IsPublic = true });
         await Tester.CreateTextEntry(chatId, "test", mediaId);
