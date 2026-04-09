@@ -104,10 +104,13 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             return VideoQualityPreset.High;
 
         // Check if this stream is paused by the priority evaluator (cross-service RPC to ChatId shard)
-        var isPaused = await LiveVideoBackend.ShouldPause(latencyState.ChatId, streamId, cancellationToken)
-            .ConfigureAwait(false);
-        if (isPaused)
-            return VideoQualityPreset.Paused;
+        // Skip pause check for remote-cached streams that have no ChatId
+        if (latencyState.ChatId is not null) {
+            var isPaused = await LiveVideoBackend.ShouldPause(latencyState.ChatId, streamId, cancellationToken)
+                .ConfigureAwait(false);
+            if (isPaused)
+                return VideoQualityPreset.Paused;
+        }
 
         var preset = await latencyState.QualityPreset.Use(cancellationToken).ConfigureAwait(false);
 
@@ -120,6 +123,11 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 
     public virtual Task RequestKeyFrame(StreamId streamId, CancellationToken cancellationToken = default)
     {
+        if (!LatencyStore.LatencyStates.ContainsKey(streamId)) {
+            Log.LogDebug("RequestKeyFrame: streamId={StreamId} — ignored, stream not known locally", streamId);
+            return Task.CompletedTask;
+        }
+
         // Rate-limit PLI: collapse multiple receivers' requests into one per cooldown window
         var now = CpuTimestamp.Now;
         var lastTime = LatencyStore.LastKeyFrameRequestTime.GetOrAdd(streamId, now);
