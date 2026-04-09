@@ -26,7 +26,7 @@ export function clearFileInput(input: HTMLInputElement): void {
     input.value = '';
 }
 
-export class AvatarCropModal implements Disposable, IUploadStreamSource {
+export class PicCropModal implements Disposable, IUploadStreamSource {
     private readonly canvas: HTMLCanvasElement;
     private readonly ctx: CanvasRenderingContext2D;
     private readonly previewCanvas: HTMLCanvasElement;
@@ -71,8 +71,8 @@ export class AvatarCropModal implements Disposable, IUploadStreamSource {
         isSquare = false,
         viewportAspectRatio = 0,
         hasBlur = false,
-    ): AvatarCropModal {
-        return new AvatarCropModal(canvas, previewCanvas, blobUrl, blazorRef, isSquare, viewportAspectRatio, hasBlur);
+    ): PicCropModal {
+        return new PicCropModal(canvas, previewCanvas, blobUrl, blazorRef, isSquare, viewportAspectRatio, hasBlur);
     }
 
     constructor(
@@ -156,7 +156,7 @@ export class AvatarCropModal implements Disposable, IUploadStreamSource {
         });
 
         // Continuous zoom/rotation buttons
-        const modal = canvas.closest('.avatar-crop-modal')!;
+        const modal = canvas.closest('.pic-crop-modal')!;
         const holdButtons: [string, () => void, () => void][] = [
             ['.btn-zoom-out', () => this.zoomDirection = -1, () => this.zoomDirection = 0],
             ['.btn-zoom-in', () => this.zoomDirection = 1, () => this.zoomDirection = 0],
@@ -192,13 +192,13 @@ export class AvatarCropModal implements Disposable, IUploadStreamSource {
 
     public getBlob(): Blob {
         if (!this.croppedBlob)
-            throw new Error('AvatarCropModal: no cropped blob available.');
+            throw new Error('PicCropModal: no cropped blob available.');
         return this.croppedBlob;
     }
 
     public getCroppedBlobSize(): number {
         if (!this.croppedBlob)
-            throw new Error('AvatarCropModal: no cropped blob available.');
+            throw new Error('PicCropModal: no cropped blob available.');
         return this.croppedBlob.size;
     }
 

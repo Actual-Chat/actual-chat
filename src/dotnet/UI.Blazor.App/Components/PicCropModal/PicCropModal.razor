@@ -2,11 +2,11 @@
 @using ActualChat.UI.Blazor.App.Module
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComponentBase<AppUIHub>
-@implements IModalView<AvatarCropModal.Model>
+@implements IModalView<PicCropModal.Model>
 @implements IAsyncDisposable
 
 <DialogFrame
-    Class="@("avatar-crop-modal" + (ModalModel.IsSquare ? " square" : "") + (ModalModel.HasBlur ? " has-blur" : ""))"
+    Class="@("pic-crop-modal" + (ModalModel.IsSquare ? " square" : "") + (ModalModel.HasBlur ? " has-blur" : ""))"
     Title="@(ModalModel.HasBlur ? "Crop wallpaper" : ModalModel.IsSquare ? "Crop place avatar" : "Crop avatar")"
     HasCloseButton="true">
     <Body>
@@ -66,14 +66,14 @@
 </DialogFrame>
 
 @code {
-    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.AvatarCropModal.create";
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.PicCropModal.create";
 
     private FileUploader FileUploader => field ??= Services.GetRequiredService<FileUploader>();
 
     private ElementReference _canvasRef;
     private ElementReference _previewRef;
     private IJSObjectReference? _jsRef;
-    private DotNetObjectReference<AvatarCropModal>? _blazorRef;
+    private DotNetObjectReference<PicCropModal>? _blazorRef;
     private bool _hasError;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;

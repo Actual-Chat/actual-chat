@@ -1,4 +1,4 @@
-.avatar-crop-modal .dialog-body {
+.pic-crop-modal .dialog-body {
     @apply flex-y items-center justify-between gap-16;
     @apply p-4;
     @apply overflow-hidden;
@@ -7,12 +7,12 @@
 
 /* ── Canvas container ── */
 
-.avatar-crop-modal .c-content {
+.pic-crop-modal .c-content {
     @apply flex-y items-center justify-center gap-4;
     @apply h-full;
 }
 
-.avatar-crop-modal .c-canvas-container {
+.pic-crop-modal .c-canvas-container {
     @apply relative;
     @apply w-full;
     @apply rounded-lg;
@@ -21,43 +21,43 @@
     outline: var(--background-05) solid 0.25rem;
     outline-offset: -1px;
 }
-.avatar-crop-modal.square .c-canvas-container {
+.pic-crop-modal.square .c-canvas-container {
     @apply rounded-4xl;
 }
-.avatar-crop-modal .c-canvas-container > canvas {
+.pic-crop-modal .c-canvas-container > canvas {
     @apply w-full h-full;
     @apply cursor-grab;
     touch-action: none;
 }
-.avatar-crop-modal .c-canvas-container > canvas:active {
+.pic-crop-modal .c-canvas-container > canvas:active {
     @apply cursor-grabbing;
 }
 
 /* ── Preview ── */
 
-.avatar-crop-modal .c-preview {
+.pic-crop-modal .c-preview {
     @apply flex-x items-center gap-3;
 }
-.avatar-crop-modal .c-preview > canvas {
+.pic-crop-modal .c-preview > canvas {
     @apply rounded-full;
     @apply border border-separator;
 }
-.avatar-crop-modal.square .c-preview > canvas {
+.pic-crop-modal.square .c-preview > canvas {
     @apply rounded-lg;
 }
-.avatar-crop-modal .c-preview-label {
+.pic-crop-modal .c-preview-label {
     @apply text-sm text-03;
 }
 
 /* ── Wallpaper preview ── */
 
-.avatar-crop-modal.has-blur .c-preview > canvas {
+.pic-crop-modal.has-blur .c-preview > canvas {
     @apply rounded-lg;
 }
 
 /* ── Blur slider ── */
 
-.avatar-crop-modal .c-blur-slider {
+.pic-crop-modal .c-blur-slider {
     @apply flex-y items-center;
     @apply w-full;
     @apply px-2;
@@ -68,8 +68,8 @@
     --progress-color: var(--blue-50-50);
     --thumb-color: var(--primary);
 }
-.avatar-crop-modal .c-blur-slider .blur-range,
-.avatar-crop-modal .c-blur-slider .blur-range:focus {
+.pic-crop-modal .c-blur-slider .blur-range,
+.pic-crop-modal .c-blur-slider .blur-range:focus {
     @apply w-full;
     @apply border-none outline-none shadow-none ring-0;
     @apply bg-transparent;
@@ -79,7 +79,7 @@
     appearance: none;
     -webkit-appearance: none;
 }
-.avatar-crop-modal .c-blur-slider .blur-range::-webkit-slider-runnable-track {
+.pic-crop-modal .c-blur-slider .blur-range::-webkit-slider-runnable-track {
     @apply rounded-full;
     height: var(--track-height);
     background: linear-gradient(
@@ -90,7 +90,7 @@
         var(--track-color) 100%
     );
 }
-.avatar-crop-modal .c-blur-slider .blur-range::-webkit-slider-thumb {
+.pic-crop-modal .c-blur-slider .blur-range::-webkit-slider-thumb {
     width: var(--thumb-size);
     height: var(--thumb-size);
     border-radius: 50%;
@@ -98,49 +98,49 @@
     margin-top: calc((var(--track-height) - var(--thumb-size)) / 2);
     -webkit-appearance: none;
 }
-.avatar-crop-modal .c-blur-slider .blur-range::-moz-range-track {
+.pic-crop-modal .c-blur-slider .blur-range::-moz-range-track {
     @apply rounded-full;
     height: var(--track-height);
     background: var(--track-color);
 }
-.avatar-crop-modal .c-blur-slider .blur-range::-moz-range-thumb {
+.pic-crop-modal .c-blur-slider .blur-range::-moz-range-thumb {
     width: var(--thumb-size);
     height: var(--thumb-size);
     border-radius: 50%;
     border: none;
     background: var(--thumb-color);
 }
-.avatar-crop-modal .c-blur-slider .blur-range::-moz-range-progress {
+.pic-crop-modal .c-blur-slider .blur-range::-moz-range-progress {
     @apply rounded-full;
     height: var(--track-height);
     background: var(--progress-color);
 }
-.avatar-crop-modal .c-blur-label {
+.pic-crop-modal .c-blur-label {
     @apply text-xs text-03;
 }
 
 /* ── Controls ── */
 
-.avatar-crop-modal .c-controls {
+.pic-crop-modal .c-controls {
     @apply flex-y items-center gap-3;
 }
-.avatar-crop-modal .c-controls .c-buttons-row {
+.pic-crop-modal .c-controls .c-buttons-row {
     @apply flex-x items-center justify-center gap-3;
 }
-.avatar-crop-modal .c-controls .c-group {
+.pic-crop-modal .c-controls .c-group {
     @apply flex-x items-center gap-1;
 }
-.avatar-crop-modal .c-controls .btn-round.btn-confirm {
+.pic-crop-modal .c-controls .btn-round.btn-confirm {
     @apply bg-primary;
     @apply text-white;
 }
-.avatar-crop-modal .c-controls .c-flip {
+.pic-crop-modal .c-controls .c-flip {
     @apply -scale-x-100;
 }
 
 /* ── Error ── */
 
-.avatar-crop-modal .c-error {
+.pic-crop-modal .c-error {
     @apply flex-y items-center justify-center gap-2;
     @apply w-full;
     @apply py-16;
