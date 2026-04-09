@@ -1,7 +1,6 @@
 using ActualChat.Streaming;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Services;
-using ActualChat.Video;
 using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -95,6 +94,23 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     }
 
     [ComputeMethod]
+    public virtual async Task<VideoStreamingState?> GetVideoStreamingState(ChatId chatId, CancellationToken cancellationToken = default)
+    {
+        var isVideoEnabled = await IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
+        if (!isVideoEnabled)
+            return null;
+
+        var recordingChatId = await _recordingChatId.Use(cancellationToken).ConfigureAwait(false);
+        if (recordingChatId != chatId)
+            return null;
+
+        var isScreencasting = await _isScreencasting.Use(cancellationToken).ConfigureAwait(false);
+        var errorMessage = await _errorMessage.Use(cancellationToken).ConfigureAwait(false);
+        var mode = isScreencasting ? VideoRecorderMode.Screencast : VideoRecorderMode.Camera;
+        return new VideoStreamingState(chatId, mode, errorMessage);
+    }
+
+    [ComputeMethod]
     public virtual async Task<ChatId?> GetRecordingChatId(CancellationToken cancellationToken = default)
         => await _recordingChatId.Use(cancellationToken).ConfigureAwait(false);
 
@@ -139,9 +155,6 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     public void SetBackgroundBlur(bool enabled)
         => _isBackgroundBlurEnabled.Value = enabled;
-
-    public void SetError(string? errorMessage)
-        => _errorMessage.Value = errorMessage;
 
     public void SetWatching(ChatId? chatId)
     {
@@ -402,3 +415,12 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
 // ReSharper disable once ClassNeverInstantiated.Global — instantiated via JS interop deserialization
 public sealed record VideoDevice(string DeviceId, string Label);
+
+public enum VideoRecorderMode { Camera, Screencast };
+
+public sealed record VideoStreamingState(ChatId ChatId, VideoRecorderMode Mode, string? ErrorMessage)
+{
+    public bool HasError => ErrorMessage != null;
+}
+
+public sealed record CameraRecorderSettings(string? DeviceId, bool IsBlurEnabled);

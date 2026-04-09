@@ -1,23 +1,25 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using ActualChat.UI.Blazor.App.Module
 @inherits ComputedStateComponent<AppUIHub, ChatAudioPanel.Model>
 @{
     var m = State.Value;
     var audioState = m.AudioState;
+    var isListening = audioState?.IsListening == true;
     var isRecording = audioState?.IsRecording == true;
-    var isOwnVideoStreaming = m.IsOwnVideoStreaming;
-    var isAnyoneVideoStreaming = m.IsAnyoneVideoStreaming;
-    var isHeaderVisible = audioState != null && IsNarrow
-        && (audioState.IsListening || isOwnVideoStreaming)
-        && (audioState.IsRecording || isOwnVideoStreaming || isAnyoneVideoStreaming);
     var allowVideo = m.IsVideoFeatureEnabled;
+    var isOwnCameraStreaming = m.OwnStreamingMode == VideoRecorderMode.Camera;
+    var isOwnScreencasting = m.OwnStreamingMode == VideoRecorderMode.Screencast;
+    var isAnyoneVideoStreaming = m.IsAnyoneVideoStreaming;
+    var showHeader = allowVideo
+        && (isListening || isOwnCameraStreaming)
+        && (isRecording || isOwnCameraStreaming || isAnyoneVideoStreaming);
+    var showMainVideoControls = allowVideo && (isRecording || isAnyoneVideoStreaming || m.OwnStreamingMode is not null);
 }
 
 <div class="chat-audio-panel">
-    @if (allowVideo && isHeaderVisible) {
+    @if (IsNarrow && showHeader) {
         <div class="audio-panel-header">
             <div class="c-left">
-                @if (isOwnVideoStreaming) {
+                @if (isOwnCameraStreaming) {
                     <ButtonRound Click="@OnSwitchCamera">
                         <i class="icon-camera-switch text-2xl"></i>
                     </ButtonRound>
@@ -33,10 +35,10 @@
         </div>
     }
     <div class="audio-panel-wrapper">
-        @if (allowVideo && !IsNarrow && (isRecording || isOwnVideoStreaming || isAnyoneVideoStreaming || m.IsScreencasting)) {
-            <div class="@(m.IsScreencasting ? "screencast-on" : "screencast-off") screencast-wrapper">
-                <ButtonRound Click="@OnScreencastClick"
-                    Tooltip="@(m.IsScreencasting ? "Stop screen share" : "Share screen")"
+        @if (!IsNarrow && showMainVideoControls) {
+            <div class="@(isOwnScreencasting ? "screencast-on" : "screencast-off") screencast-wrapper">
+                <ButtonRound Click="@(() => OnScreencastClick(!isOwnScreencasting))"
+                    Tooltip="@(isOwnScreencasting ? "Stop screen share" : "Share screen")"
                     TooltipPosition="FloatingPosition.Top">
                     <i class="icon-screen-share text-2xl"></i>
                 </ButtonRound>
@@ -72,10 +74,9 @@
     private Task OnSwitchCamera()
         => ChatVideoUI.SwitchCamera();
 
-    private void OnScreencastClick() {
+    private void OnScreencastClick(bool enable) {
         var chat = Chat;
-        var m = State.Value;
-        if (m.IsScreencasting)
+        if (!enable)
             ChatVideoUI.SetRecordingChatId(null);
         else
             ChatVideoUI.SetScreencasting(chat.Id);
@@ -84,27 +85,26 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<Model>.Options {
-                InitialValue = new Model(null, false, false, false),
+                InitialValue = new Model(null, false, false, null),
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
-        var isVideoFeatureEnabled = await ChatVideoUI.IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
         var audioState = await ChatAudioUI.GetState(chat.Id).ConfigureAwait(false);
-        var videoState = await ChatVideoUI.GetState(chat.Id, cancellationToken).ConfigureAwait(false);
-        var isOwnVideoStreaming = videoState.IsRecording;
+        var isVideoFeatureEnabled = await ChatVideoUI.IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
         var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chat.Id, cancellationToken).ConfigureAwait(false);
+        var ownStreamingState = await ChatVideoUI.GetVideoStreamingState(chat.Id, cancellationToken).ConfigureAwait(false);
         return new(
             audioState,
-            isOwnVideoStreaming,
-            isAnyoneVideoStreaming,
             isVideoFeatureEnabled,
-            videoState.IsScreencasting);
+            isAnyoneVideoStreaming,
+            ownStreamingState?.Mode);
+
     }
 
     // Nested classes
 
-    public sealed record Model(ChatAudioState? AudioState, bool IsOwnVideoStreaming, bool IsAnyoneVideoStreaming, bool IsVideoFeatureEnabled, bool IsScreencasting = false);
+    public sealed record Model(ChatAudioState? AudioState, bool IsVideoFeatureEnabled, bool IsAnyoneVideoStreaming, VideoRecorderMode? OwnStreamingMode);
 }

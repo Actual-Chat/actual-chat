@@ -3,20 +3,22 @@
 @inherits ComputedStateComponent<AppUIHub, VideoStreamingPreview.Model>
 @{
     var m = State.Value;
-    var recordingCls = m.VideoState.IsRecording ? "recording" : "";
-    var screencastCls = m.VideoState.IsScreencasting ? "screencast" : "";
+    var isRecording = m.OwnStreamingState?.Mode==VideoRecorderMode.Camera;
+    var isScreencasting = m.OwnStreamingState?.Mode==VideoRecorderMode.Screencast;
+    var recordingCls = isRecording ? "recording" : "";
+    var screencastCls = isScreencasting ? "screencast" : "";
 }
 
 <div @ref="Ref" class="video-streaming-preview @recordingCls @screencastCls">
     <canvas
         class="call-video"
-        @onclick="@(m.VideoState.IsRecording && !m.IsAloneOnStream ? OnSettingsClick : null!)"></canvas>
+        @onclick="@(isRecording && !m.IsAloneOnStream ? OnSettingsClick : null!)"></canvas>
     <div class="video-loading">
         <span class="spinner-icon-wrapper">
             <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
         </span>
     </div>
-    @if (m.VideoState.IsRecording && m.IsAloneOnStream) {
+    @if (isRecording && m.IsAloneOnStream) {
         <HeaderButton Class="settings-btn" Click="@OnSettingsClick">
             <i class="icon-settings text-lg"></i>
         </HeaderButton>
@@ -25,9 +27,9 @@
             <span>You</span>
         </div>
     }
-    @if (m.VideoState.HasError) {
+    @if (m.OwnStreamingState is {} recordingState) {
         <div class="video-error">
-            <span>@(m.VideoState.ErrorMessage ?? "")</span>
+            <span>@(recordingState.ErrorMessage ?? "")</span>
         </div>
     }
 </div>
@@ -58,9 +60,9 @@
         if (chatId is null)
             return Model.None;
 
-        var videoState = await ChatVideoUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
+        var streamingState = await ChatVideoUI.GetVideoStreamingState(chatId, cancellationToken).ConfigureAwait(false);
         var remoteStreams = await ChatVideoUI.GetRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
-        return new Model(videoState, remoteStreams.Length == 0);
+        return new Model(streamingState, remoteStreams.Length == 0);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -80,7 +82,7 @@
 
     // Nested types
 
-    public sealed record Model(ChatVideoState VideoState, bool IsAloneOnStream) {
-        public static readonly Model None = new(ChatVideoState.None, true);
+    public sealed record Model(VideoStreamingState? OwnStreamingState, bool IsAloneOnStream) {
+        public static readonly Model None = new(null, true);
     }
 }
