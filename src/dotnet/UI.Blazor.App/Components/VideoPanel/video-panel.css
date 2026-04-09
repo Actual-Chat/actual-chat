@@ -269,10 +269,7 @@ body.wide .video-panel.has-remote-streams .video-streaming-preview {
     @apply w-40 h-40;
 }
 .video-panel.has-remote-streams.expanded .video-streaming-preview {
-    @apply bottom-18;
-}
-.video-panel.has-remote-streams.expanded .video-streaming-preview {
-    @apply right-1;
+    @apply bottom-18 right-1;
 }
 .video-panel .remote-streams canvas.remote-video {
     @apply w-full h-full;
