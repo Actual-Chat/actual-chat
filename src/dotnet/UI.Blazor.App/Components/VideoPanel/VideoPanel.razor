@@ -197,7 +197,7 @@
         _showConnecting = false;
         _noStreamsTimedOut = true;
         var m = State.Value;
-        if (m.RemoteStreams.Length == 0 && m.OwnStreamingMode is not null) {
+        if (m.RemoteStreams.Length == 0 && m.OwnStreamingMode is null) {
             ChatVideoUI.SetWatching(null);
         }
         StateHasChanged();
