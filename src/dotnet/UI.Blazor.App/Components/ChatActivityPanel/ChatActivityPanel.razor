@@ -6,18 +6,21 @@
     if (m is null)
         return;
 
-    var isVisible = m.IsAnyoneTalking || m.IsAnyoneVideoStreaming || m.AudioState.IsListening || IsRecordingHere;
+    var isVisible = m.IsAnyoneTalking || m.IsAnyoneVideoStreaming || m.IsListening || m.IsRecordingHere;
     if (!isVisible)
         return;
 
     var chat = Chat;
     var iconSize = ScreenSize.IsNarrow() ? 6 : 8;
-    var isParticipating = IsListening || IsRecordingHere || IsVideoRecordingHere;
+    var isListening = m.IsListening;
+    var isRecordingHere = m.IsRecordingHere;
+    var isVideoRecordingHere = m.IsOwnVideoRecording;
+    var isParticipating = isListening || isRecordingHere || isVideoRecordingHere;
     var isActive = m.IsAnyoneTalking;
     var showVideoIcon = m.IsAnyoneVideoStreaming && !m.IsAnyoneTalking;
     var iconMode = showVideoIcon ? "video" : "audio";
-    var tooltip = IsListening ? "Listening..." : "Listen";
-    var cls = IsListening ? " listening" : "";
+    var tooltip = isListening ? "Listening..." : "Listen";
+    var cls = isListening ? " listening" : "";
     var joinButtonText = "Join muted";
     var showVideoPanelToggle = m.IsAnyoneVideoStreaming && isParticipating;
 }
@@ -34,12 +37,12 @@
         </div>
     }
     @* Talking heads - shown when anyone is talking *@
-    @if (m.IsAnyoneTalking && chat is not null) {
+    @if (m.IsAnyoneTalking) {
         <ChatActivities
             @key="@chat.Id.Value"
             Chat="@chat"
             MaxCount="@MaxCount"
-            IsListening="@IsListening"/>
+            IsListening="@isListening"/>
     }
     <div class="flex-1"></div>
     <div class="c-buttons">
@@ -56,26 +59,24 @@
                 }
             </HeaderButton>
         }
-        @if (!IsListening && !IsRecordingHere && !IsVideoRecordingHere) {
+        @if (!isListening && !isRecordingHere && !isVideoRecordingHere) {
             <Button
                 Class="btn-sm btn-transparent unhovered not-listening"
                 StopPropagation="true"
                 PreventDefault="true"
-                Click="@OnClick"
+                Click="@(() => OnJoinClick(chat.Id))"
                 Tooltip="@tooltip"
-                TooltipPosition="FloatingPosition.Bottom"
-                MustKeepAwake="@(!IsListening)">
+                TooltipPosition="FloatingPosition.Bottom">
                 @joinButtonText
             </Button>
-        } else if (IsRecordingHere || IsVideoRecordingHere) {
+        } else if (isRecordingHere || isVideoRecordingHere) {
             <HeaderButton
                 Class="talking"
                 StopPropagation="true"
                 PreventDefault="true"
-                Click="@OnClick"
+                Click="@(() => OnHungUpClick(chat.Id))"
                 Tooltip="@tooltip"
-                TooltipPosition="FloatingPosition.Bottom"
-                MustKeepAwake="@(!IsListening)">
+                TooltipPosition="FloatingPosition.Bottom">
                 <i class="icon-phone-off"></i>
             </HeaderButton>
         } else {
@@ -105,10 +106,9 @@
                     Class="listening"
                     StopPropagation="true"
                     PreventDefault="true"
-                    Click="@OnClick"
+                    Click="@(() => OnStopListeningClick(chat.Id))"
                     Tooltip="@tooltip"
-                    TooltipPosition="FloatingPosition.Bottom"
-                    MustKeepAwake="@(!IsListening)">
+                    TooltipPosition="FloatingPosition.Bottom">
                     @if (isCountingDown) {
                         var remaining = (int)Math.Ceiling(remainingSeconds);
                         var mm = remaining / 60;
@@ -139,22 +139,10 @@
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
 
-    private ChatId? RecordingChatId {
-        get {
-            var activeChats = ActiveChatsUI.ActiveChats.Value;
-            var recordingChat = activeChats.FirstOrDefault(c => c.IsRecording);
-            return recordingChat?.ChatId;
-        }
-    }
-
-    private bool IsRecordingHere => Chat?.Id is not null && RecordingChatId == Chat.Id;
-    private bool IsVideoRecordingHere => Chat?.Id is not null && State.Value?.IsOwnVideoRecording == true;
-    private bool IsUpdating => Chat?.Id is not null && State.Value?.Chat.Id != Chat.Id;
-    private bool IsListening => !IsUpdating && State is { Value.AudioState.IsListening: true };
     private bool IsVideoPanelCollapsed => State.Value?.IsVideoPanelCollapsed == true;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-    [Parameter, EditorRequired] public Chat? Chat { get; set; }
+    [Parameter, EditorRequired] public Chat Chat { get; set; }
     [Parameter] public int MaxCount { get; set; } = 5;
     [Parameter] public EventCallback Click { get; set; }
 
@@ -171,14 +159,10 @@
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
-        var chatId = chat?.Id;
-        if (chat is null || chatId is null)
-            return null;
-
+        var chatId = chat.Id;
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
         var isAnyoneTalking = await LiveStreamUI.IsAnyoneStreaming(chatId, cancellationToken).ConfigureAwait(false);
         var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chatId, cancellationToken).ConfigureAwait(false);
-        var videoStreamMemberCount = await ChatVideoUI.GetVideoStreamMemberCount(chatId, cancellationToken).ConfigureAwait(false);
         var stopListeningAt = audioState.IsListening
             ? await ChatAudioUI.GetStopListeningAt(chatId, cancellationToken).ConfigureAwait(false)
             : null;
@@ -197,42 +181,59 @@
         var isOwnVideoRecording = await ChatVideoUI.GetRecordingChatId(cancellationToken).ConfigureAwait(false) == chatId;
         var isVideoPanelCollapsed = await ChatVideoUI.GetIsVideoPanelCollapsed(cancellationToken).ConfigureAwait(false);
 
-        return new (chat, audioState, isAnyoneTalking, isAnyoneVideoStreaming, videoStreamMemberCount, isOwnVideoRecording, stopListeningAt, isVideoPanelCollapsed);
+        return new (chat, audioState, isAnyoneTalking, isAnyoneVideoStreaming, isOwnVideoRecording, stopListeningAt, isVideoPanelCollapsed);
     }
 
-    private void OnClick() {
-        if (IsUpdating || Chat?.Id is not { } chatId)
+    private async Task OnJoinClick(ChatId chatId) {
+        if (IsUpdating(chatId))
             return;
-
-        if (IsListening || IsRecordingHere || IsVideoRecordingHere) {
-            // User is already participating — stop everything
-            if (IsRecordingHere)
-                StopRecording();
-            // Stop video recording and watching
-            ChatVideoUI.SetRecordingChatId(null);
-            ChatVideoUI.SetWatching(null);
-            // Stop listening
-            _ = ChatAudioUI.SetListeningState(chatId, false);
-            return;
-        }
 
         // User is not participating — join with listening only (no recording, no camera)
-        if (State.Value?.IsAnyoneVideoStreaming == true)
-            ChatVideoUI.SetWatching(chatId); // Open video panel to see others' streams
         _ = ChatAudioUI.SetListeningState(chatId, true);
+        // Open video panel to see others' streams
+        var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chatId, CancellationToken.None).ConfigureAwait(false);
+        if (isAnyoneVideoStreaming)
+            ChatVideoUI.SetWatching(chatId);
     }
+
+    private async Task OnHungUpClick(ChatId chatId) {
+        if (IsUpdating(chatId))
+            return;
+
+        // User is already participating — stop everything
+        var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
+        if (audioState.IsRecording)
+            StopRecording(chatId);
+        // Stop video recording and watching
+        ChatVideoUI.SetRecordingChatId(null);
+        ChatVideoUI.SetWatching(null);
+        // Stop listening
+        _ = ChatAudioUI.SetListeningState(chatId, false);
+    }
+
+    private void OnStopListeningClick(ChatId chatId) {
+        if (IsUpdating(chatId))
+            return;
+
+        // Stop listening
+        _ = ChatAudioUI.SetListeningState(chatId, false);
+    }
+
+    private bool IsUpdating(ChatId chatId)
+        => chatId != Chat.Id;
 
     private void OnToggleVideoPanel()
         => ChatVideoUI.SetVideoPanelCollapsed(!IsVideoPanelCollapsed);
 
-    private void StopRecording() {
+    private void StopRecording(ChatId chatId) {
         if (!IsValidAction())
             return;
 
         _ = _taskSerializer.Enqueue(async _ => {
-            // .ConfigureAwait(false) is fine here
-            if (RecordingChatId is not null)
-                await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(false);
+            var activeChats = ActiveChatsUI.ActiveChats.Value;
+            var recordingChatId = activeChats.FirstOrDefault(c => c.IsRecording)?.ChatId;
+            if (recordingChatId == chatId)
+                await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(false); // .ConfigureAwait(false) is fine here
         }, mustAbortPreviousTasks: true);
     }
 
@@ -251,8 +252,10 @@
         ChatAudioState AudioState,
         bool IsAnyoneTalking,
         bool IsAnyoneVideoStreaming,
-        int VideoStreamMemberCount,
         bool IsOwnVideoRecording = false,
         Moment? StopListeningAt = null,
-        bool IsVideoPanelCollapsed = false);
+        bool IsVideoPanelCollapsed = false) {
+        public bool IsListening => AudioState.IsListening;
+        public bool IsRecordingHere => AudioState.IsRecording;
+    }
 }
