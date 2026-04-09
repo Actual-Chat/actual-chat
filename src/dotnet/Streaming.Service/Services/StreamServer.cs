@@ -9,8 +9,6 @@ namespace ActualChat.Streaming.Services;
 
 public class StreamServer(IServiceProvider services) : IStreamServer
 {
-    private readonly bool _preferThisNode = services.HostInfo().HasRole(HostRole.OneServer);
-
     private MeshWatcher MeshWatcher { get; } = services.MeshWatcher();
     private IAudioStreamingBackend Backend { get; } = services.GetRequiredService<IAudioStreamingBackend>();
     private IVideoStreamingBackend VideoBackend { get; } = services.GetRequiredService<IVideoStreamingBackend>();
@@ -59,14 +57,7 @@ public class StreamServer(IServiceProvider services) : IStreamServer
         var chatIdTyped = ChatId.Parse(chatId);
         var repliedEntryIdTyped = ChatEntryId.ParseNullable(repliedChatEntryId);
 
-        var nodes = MeshWatcher.State.Value.LiveNodesByRole[HostRole.StreamingBackend];
-        if (nodes.Length == 0) {
-            Log.LogError("No nodes serving {Role} role!", HostRole.StreamingBackend);
-            return; // No backends
-        }
-
-        var nodeRef = _preferThisNode ? MeshWatcher.ThisNode.Ref : nodes.GetRandom().Ref;
-        var streamId = StreamId.New(nodeRef);
+        var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
         var audioRecord = new AudioRecord(streamId, session, chatIdTyped, clientStartOffset, repliedEntryIdTyped);
         var newFrameStream = RpcStream.New(frameStream);
         Log.LogInformation("PushAudio: {AudioRecord}", audioRecord);
@@ -84,14 +75,7 @@ public class StreamServer(IServiceProvider services) : IStreamServer
     {
         var chatIdTyped = ChatId.Parse(chatId);
 
-        var nodes = MeshWatcher.State.Value.LiveNodesByRole[HostRole.StreamingBackend];
-        if (nodes.Length == 0) {
-            Log.LogError("No nodes serving {Role} role!", HostRole.StreamingBackend);
-            return;
-        }
-
-        var nodeRef = _preferThisNode ? MeshWatcher.ThisNode.Ref : nodes.GetRandom().Ref;
-        var streamId = StreamId.New(nodeRef);
+        var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
         var videoRecord = new VideoRecord(streamId, session, chatIdTyped, clientStartOffset, format);
         var newFrameStream = RpcStream.New(frameStream);
         Log.LogInformation("PushVideo: {VideoRecord}", videoRecord);
