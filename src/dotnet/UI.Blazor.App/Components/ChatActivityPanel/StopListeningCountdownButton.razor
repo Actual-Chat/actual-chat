@@ -1,11 +1,11 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AppUIHub, StopListeningCountdownButton.Model>
+@inherits ComputedStateComponent<AppUIHub, Moment?>
 @{
-    var m = State.Value;
+    var stopListeningAt = State.Value;
     const double countdownSeconds = 30;
     const double circumference = 100.531;
-    var remainingSeconds = m.StopListeningAt.HasValue
-        ? Math.Max(0, (m.StopListeningAt.Value - Hub.Clocks.CpuClock.Now).TotalSeconds)
+    var remainingSeconds = stopListeningAt.HasValue
+        ? Math.Max(0, (stopListeningAt.Value - Now).TotalSeconds)
         : 0;
     var isCountingDown = remainingSeconds > 0 && remainingSeconds <= countdownSeconds;
     var dashOffset = isCountingDown
@@ -54,10 +54,10 @@
     [Parameter, EditorRequired] public ChatId ChatId { get; set; }
     [Parameter, EditorRequired] public EventCallback Click { get; set; }
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<Moment?> ComputeState(CancellationToken cancellationToken) {
         var stopListeningAt = await ChatAudioUI.GetStopListeningAt(ChatId, cancellationToken).ConfigureAwait(false);
         if (!stopListeningAt.HasValue)
-            return new(null);
+            return null;
 
         var remaining = (stopListeningAt.Value - Now).TotalSeconds;
         if (remaining > 30)
@@ -68,10 +68,6 @@
             var delay = fractional > 0.05 ? fractional : fractional + 1.0;
             Computed.GetCurrent().Invalidate(TimeSpan.FromSeconds(delay));
         }
-        return new (stopListeningAt);
+        return stopListeningAt;
     }
-
-    // Nested types
-
-    public sealed record Model(Moment? StopListeningAt);
 }
