@@ -52,6 +52,8 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
 		rpcHost.AddBackend<ILiveAudioBackend, LiveAudioBackend>();
         rpcHost.AddBackend<ILiveVideoBackend, LiveVideoBackend>();
         services.AddSingleton<StreamLatencyStore>();
+        services.AddSingleton<RemoteVideoStreamCache>();
+        services.AddSingleton<RemoteAudioStreamCache>();
         services.AddSingleton<IStreamClient, StreamBackendClient>(); // Client for IAudioStreamingBackend
         services.TryAddSingleton<AudioSettings>(); // AudioSettings are not configured now
         if (isBackendClient)
