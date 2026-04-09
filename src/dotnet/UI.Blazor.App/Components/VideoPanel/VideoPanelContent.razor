@@ -29,7 +29,7 @@
     var isOwnCameraStreaming = ownStreamingMode == VideoRecorderMode.Camera;
     var isOwnScreencasting = ownStreamingMode == VideoRecorderMode.Screencast;
     var recordingCls = isOwnCameraStreaming ? "recording" : "";
-    var remoteStreamsCls = hasRemoteStreams ? "has-remote-streams" : "";
+    var remoteStreamsCls = hasRemoteStreams || _showConnecting ? "has-remote-streams" : "";
     var firstOpenCls = _isFirstOpen ? "first-time-open" : "";
     var audioRecordingCls = m.IsAudioRecording ? "recording" : "";
     var videoBtnCls = isOwnCameraStreaming ? "on" : "";
