@@ -3,6 +3,7 @@ using ActualChat.Flows;
 using ActualChat.Uploads;
 using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;
+using ActualLab.Versioning;
 using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.App.Server.Flows;
@@ -67,6 +68,10 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
     public long ConvertedCount { get; set; }
     [DataMember(Order = 3), MemoryPackOrder(3)]
     public long SkippedCount { get; set; }
+    // Exceptions thrown during ProcessOne — anything that's not an intentional skip.
+    // Non-zero at completion means a developer needs to investigate the logs.
+    [DataMember(Order = 4), MemoryPackOrder(4)]
+    public long FailedCount { get; set; }
 
     protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
@@ -81,7 +86,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
 
             await ConvertBatch(items, cancellationToken).ConfigureAwait(false);
 
-            Console.Log($"Phase {Phase}: {ConvertedCount} converted, {SkippedCount} skipped");
+            Console.Log($"Phase {Phase}: {ConvertedCount} converted, {SkippedCount} skipped, {FailedCount} failed");
 
             if (items.Count < BatchSize) {
                 Phase++;
@@ -93,7 +98,12 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             return;
         }
 
-        Console.Log($"Completed: {ConvertedCount} converted, {SkippedCount} skipped");
+        if (FailedCount > 0)
+            Console.LogError(
+                $"Completed with failures: {ConvertedCount} converted, {SkippedCount} skipped, {FailedCount} FAILED — "
+                + "review error logs for 'Failed to convert media' entries and take action on affected entities.");
+        else
+            Console.Log($"Completed: {ConvertedCount} converted, {SkippedCount} skipped");
         SetResult((Hub.Clocks.SystemClock.Now, ConvertedCount));
     }
 
@@ -195,8 +205,11 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
                     SkippedCount++;
             }
             catch (Exception e) {
+                // Any exception here is unexpected — intentional no-ops (missing blob,
+                // not-an-SVG, user changed picture concurrently) all return normally.
+                // Failures are counted separately so the end-of-flow summary flags them.
                 Console.LogError($"Failed to convert media {item.MediaId}: {e.Message}", e);
-                SkippedCount++;
+                FailedCount++;
             }
 
         LastProcessedEntityId = items[^1].EntityId;
@@ -238,52 +251,82 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         // NOTE: A future cleanup flow can drop SVG rows that are no longer referenced
         //    anywhere (icons or chat-entry attachments) using the ReplacesMediaId
         //    metadata as the starting set.
-        await RepointReference(item with { MediaId = pngMediaId }, cancellationToken).ConfigureAwait(false);
+        await Repoint(item, pngMediaId, cancellationToken).ConfigureAwait(false);
 
         return true;
     }
 
-    private Task RepointReference(UsedMedia item, CancellationToken cancellationToken)
+    private Task Repoint(UsedMedia item, MediaId newMediaId, CancellationToken cancellationToken)
         => Phase switch {
-            MigrationPhase.Avatars => RepointAvatar(item, cancellationToken),
-            MigrationPhase.Chats => RepointChat(item, cancellationToken),
-            MigrationPhase.Places => RepointPlace(item, cancellationToken),
+            MigrationPhase.Avatars => RepointAvatar(item, newMediaId, cancellationToken),
+            MigrationPhase.Chats => RepointChat(item, newMediaId, cancellationToken),
+            MigrationPhase.Places => RepointPlace(item, newMediaId, cancellationToken),
             _ => Task.CompletedTask,
         };
 
-    private async Task RepointAvatar(UsedMedia item, CancellationToken cancellationToken)
+    // Concurrency model for the avatar repoint:
+    //  - The row is loaded and Change.Update passes *all* fields (Name, Bio, etc.),
+    //    so a racing Avatars_Change command would be clobbered if we used
+    //    ExpectedVersion = null. We therefore use strict optimistic concurrency.
+    //  - If a concurrent writer already changed MediaId to something that isn't our
+    //    original SVG (the user picked a new picture), we respect that and return.
+    //  - On VersionMismatchException we re-read and retry up to RepointMaxAttempts.
+    //  - If we still can't land the update after that many tries, we throw — the
+    //    per-item catch in ConvertBatch will log it and bump FailedCount, which
+    //    surfaces in the end-of-flow summary as "NEEDS DEV ATTENTION".
+    private const int RepointMaxAttempts = 5;
+
+    private async Task RepointAvatar(UsedMedia item, MediaId newMediaId, CancellationToken cancellationToken)
     {
-        // Load the row directly rather than via AvatarsBackend.Get; the resolver
-        // cache may not see avatars added through paths other than the backend.
-        var db = await UsersDbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _ = db.ConfigureAwait(false);
-        var dbAvatar = await db.Avatars
-            .FirstOrDefaultAsync(x => x.Id == item.EntityId, cancellationToken)
-            .ConfigureAwait(false);
-        if (dbAvatar is null) {
-            Console.LogWarning($"Avatar {item.EntityId} disappeared before repoint");
-            return;
+        for (var attempt = 1; attempt <= RepointMaxAttempts; attempt++) {
+            // Load the row directly rather than via AvatarsBackend.Get; the resolver
+            // cache may not see avatars added through paths other than the backend.
+            var db = await UsersDbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+            await using var _ = db.ConfigureAwait(false);
+            var dbAvatar = await db.Avatars
+                .FirstOrDefaultAsync(x => x.Id == item.EntityId, cancellationToken)
+                .ConfigureAwait(false);
+            if (dbAvatar is null) {
+                Console.Log($"Avatar {item.EntityId} disappeared before repoint; repoint skipped");
+                return;
+            }
+            // Concurrent writer already pointed the avatar at a different MediaId
+            // (e.g. the user uploaded a new picture during migration) — respect it.
+            if (dbAvatar.MediaId != item.MediaId.Value) {
+                Console.Log($"Avatar {item.EntityId} was concurrently changed to '{dbAvatar.MediaId}'; repoint skipped");
+                return;
+            }
+            var updated = dbAvatar.ToModel() with { MediaId = newMediaId };
+            try {
+                await Commander.Call(
+                    new AvatarsBackend_Change(item.EntityId, dbAvatar.Version, Change.Update(updated)),
+                    true, cancellationToken).ConfigureAwait(false);
+                return;
+            }
+            catch (VersionMismatchException) {
+                // Concurrent update bumped Version — re-read and retry.
+                Console.Log($"Avatar {item.EntityId} version conflict on attempt {attempt}/{RepointMaxAttempts}, retrying");
+            }
         }
-        var updated = dbAvatar.ToModel() with { MediaId = item.MediaId };
-        await Commander.Call(
-            new AvatarsBackend_Change((Symbol)item.EntityId, null, Change.Update(updated)),
-            true, cancellationToken).ConfigureAwait(false);
+        throw StandardError.Internal(
+            $"Avatar {item.EntityId} repoint failed after {RepointMaxAttempts} version conflicts — "
+            + "avatar was left pointing at the original SVG; NEEDS DEV ATTENTION.");
     }
 
-    private Task RepointChat(UsedMedia item, CancellationToken cancellationToken)
+    private Task RepointChat(UsedMedia item, MediaId newMediaId, CancellationToken cancellationToken)
     {
         var chatId = ChatId.Parse(item.EntityId);
         return Commander.Call(
-            new ChatsBackend_Change(chatId, null, Change.Update(new ChatDiff { MediaId = item.MediaId })),
+            new ChatsBackend_Change(chatId, null, Change.Update(new ChatDiff { MediaId = newMediaId })),
             true, cancellationToken);
     }
 
-    private Task RepointPlace(UsedMedia item, CancellationToken cancellationToken)
+    private Task RepointPlace(UsedMedia item, MediaId newMediaId, CancellationToken cancellationToken)
     {
         var placeId = PlaceId.Parse(item.EntityId);
         var diff = item.IsBackground
-            ? new PlaceDiff { BackgroundMediaId = item.MediaId }
-            : new PlaceDiff { MediaId = item.MediaId };
+            ? new PlaceDiff { BackgroundMediaId = newMediaId }
+            : new PlaceDiff { MediaId = newMediaId };
         return Commander.Call(
             new PlacesBackend_Change(placeId, null, Change.Update(diff)),
             true, cancellationToken);
