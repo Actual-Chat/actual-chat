@@ -30,6 +30,7 @@
                     @key="@_model.AvatarId.Value"
                     id="fileUpload"
                     Scope="@MediaUploadScopes.ForAccount(AccountUI.OwnAccount.Value)"
+                    MediaKind="@MediaKind.UserAvatarPicture"
                     Uploaded="OnImagePicked"
                     MaxSize="Constants.Attachments.AvatarPictureFileSizeLimit"
                     accept="@Constants.Attachments.AvatarPictureAccept"
