@@ -7,11 +7,6 @@ public static class FeaturesExt
         CancellationToken cancellationToken = default)
         => features.Get<Features_EnableIncompleteUI>(cancellationToken);
 
-    public static ValueTask<bool> IsAnonymousChatEnabled(
-        this IFeatures features,
-        CancellationToken cancellationToken = default)
-        => features.Get<Features_EnableAnonymousChat>(cancellationToken);
-
     public static ValueTask<bool> IsVideoStreamingEnabled(
         this IFeatures features,
         CancellationToken cancellationToken = default)
