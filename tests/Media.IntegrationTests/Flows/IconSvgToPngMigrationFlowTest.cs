@@ -228,6 +228,35 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
     }
 
     [Fact]
+    public async Task ShouldSkipSystemIcons()
+    {
+        // arrange: seed an SVG media record in the "system-icons" scope and reference
+        // it from an avatar. System-icons rows are hard-coded by MediaId and
+        // MediaDbInitializer already upgrades them in place on startup, so the
+        // flow must exclude them from every batch query entirely.
+        var systemIconMediaId = MediaId.New("system-icons");
+        var (svgMediaId, svgBlobId) = await CreateMediaWithId(
+            systemIconMediaId, TestSvgBytes, "image/svg+xml", MediaKind.UserAvatarPicture, "system-icon.svg");
+        var avatarId = await CreateAvatar(svgMediaId);
+
+        // act
+        await RunFlow();
+
+        // assert: avatar reference, the media row, and the blob are all byte-for-byte untouched.
+        await AssertFlow(async ct => {
+            var mediaIdAfter = await GetAvatarMediaId(avatarId, ct);
+            mediaIdAfter.Should().Be(svgMediaId);
+
+            var media = await MediaBackend.GetFull(svgMediaId, ct);
+            media.Should().NotBeNull();
+            media.ContentType.Should().Be("image/svg+xml");
+            media.BlobId.Should().Be(svgBlobId);
+            media.FileName.Should().Be("system-icon.svg");
+        });
+        await AssertBlobExists(svgBlobId);
+    }
+
+    [Fact]
     public async Task ShouldConvertMediaReferencedByAvatarChatAndPlace()
     {
         // arrange: 3 SVG media records, each referenced by a different entity kind
@@ -265,7 +294,18 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         pngMedia.BlobId.Should().EndWith(".png");
     }
 
-    private async Task<(MediaId MediaId, string BlobId)> CreateMedia(
+    private Task<(MediaId MediaId, string BlobId)> CreateMedia(
+        byte[] blobBytes,
+        string contentType,
+        MediaKind kind,
+        string fileName,
+        int width = 100,
+        int height = 100,
+        bool deleteBlob = false)
+        => CreateMediaWithId(MediaId.New("test-chat"), blobBytes, contentType, kind, fileName, width, height, deleteBlob);
+
+    private async Task<(MediaId MediaId, string BlobId)> CreateMediaWithId(
+        MediaId mediaId,
         byte[] blobBytes,
         string contentType,
         MediaKind kind,
@@ -274,7 +314,6 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
         int height = 100,
         bool deleteBlob = false)
     {
-        var mediaId = MediaId.New("test-chat");
         var file = new UploadedStreamFile(
             fileName,
             contentType,
