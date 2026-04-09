@@ -1,10 +1,9 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AppUIHub, VideoToggle.Model>
+@inherits ComputedStateComponent<AppUIHub, bool>
 @{
-    var m = State.Value;
-    var isVideoOn = m.IsLocalVideoRecording;
+    var isVideoOn = State.Value;
     var stateCls = isVideoOn ? "video-on" : "video-off";
-    var wrapperCls = $"{stateCls}";
+    var wrapperCls = stateCls;
     if (IsNarrow)
         wrapperCls += " narrow";
     var tooltip = isVideoOn ? "Stop video" : "Start video";
@@ -12,7 +11,7 @@
 
 <div class="@wrapperCls video-wrapper">
     <ButtonRound
-        Click="@OnVideoClick"
+        Click="@(() => OnVideoClick(!isVideoOn))"
         Tooltip="@tooltip"
         TooltipPosition="FloatingPosition.Top">
         <i class="icon-video text-2xl"></i>
@@ -20,33 +19,29 @@
 </div>
 
 @code {
-    private IAuthors Authors => Hub.Authors;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter] public bool IsNarrow { get; set; }
 
-    protected override ComputedState<Model>.Options GetStateOptions()
+    protected override ComputedState<bool>.Options GetStateOptions()
         => new() {
-            InitialValue = Model.NewLoading(Chat),
+            InitialValue = false,
             UpdateDelayer = FixedDelayer.NextTick,
             Category = GetStateCategory(GetType()),
         };
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
         var chatId = chat.Id;
 
-        var recordingChatId = await ChatVideoUI.GetRecordingChatId(cancellationToken).ConfigureAwait(false);
-        var isLocalVideoRecording = recordingChatId == chatId;
-        var isOwnVideoStreaming = await ChatVideoUI.IsOwnVideoStreaming(chatId, cancellationToken).ConfigureAwait(false);
-
-        return new(chat, isOwnVideoStreaming, isLocalVideoRecording);
+        var ownStreamingState = await ChatVideoUI.GetVideoStreamingState(chatId, cancellationToken).ConfigureAwait(false);
+        var isOwnCameraStreaming = ownStreamingState?.Mode == VideoRecorderMode.Camera;
+        return isOwnCameraStreaming;
     }
 
-    private void OnVideoClick() {
-        var m = State.Value;
-        if (m.IsLocalVideoRecording) {
+    private void OnVideoClick(bool enable) {
+        if (!enable) {
             // Recording → stop
             ChatVideoUI.SetRecordingChatId(null);
         } else if (ChatVideoUI.HasJoinedVideoCall(Chat.Id)) {
