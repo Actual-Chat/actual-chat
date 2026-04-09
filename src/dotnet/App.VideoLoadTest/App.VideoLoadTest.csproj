@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Api.Contracts\Api.Contracts.csproj" />
+    <ProjectReference Include="..\Streaming.Contracts\Streaming.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
