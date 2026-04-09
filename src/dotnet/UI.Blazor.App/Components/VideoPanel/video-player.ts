@@ -1066,14 +1066,22 @@ export class VideoPlayer {
         const rpcWsUrl = BrowserInit.getUrl('/rpc/ws').replace(/^http/, 'ws');
         initVideoRpc(rpcWsUrl);
         const client = getVideoRpcClient();
-        const sessionToken = SessionTokens.current;
-        const skipToTicks = skipToMs * 10000; // ms → .NET TimeSpan ticks
+        // Fusion RPC resolves Session.Default ("~") to the actual session from the WebSocket connection context
+        const session = '~';
+        const skipToTicks = Math.round(skipToMs * 10000); // ms → .NET TimeSpan ticks (must be integer for MessagePack int64)
 
-        debugLog?.log(`startPull: stream=${streamId}, skipTo=${skipToMs}ms, retryCount=${this.pullRetryCount}`);
+        warnLog?.log(`startPull [RPC]: stream=${streamId}, skipTo=${skipToMs}ms, skipToTicks=${skipToTicks}, retryCount=${this.pullRetryCount}, rpcUrl=${rpcWsUrl}`);
 
         try {
-            const stream = await client.GetStream(sessionToken, streamId, skipToTicks);
+            warnLog?.log(`startPull [RPC]: calling GetStream(~, ${streamId}, ${skipToTicks})`);
+            const stream = await client.GetStream(session, streamId, skipToTicks);
+            warnLog?.log(`startPull [RPC]: GetStream returned, starting iteration`);
+            let frameCount = 0;
             for await (const frame of stream) {
+                frameCount++;
+                if (frameCount <= 3 || frameCount % 100 === 0) {
+                    warnLog?.log(`startPull [RPC]: received frame #${frameCount}, keys=${frame ? Object.keys(frame as object).join(',') : 'null'}`);
+                }
                 if (abortController.signal.aborted || !this.isPlaying) break;
                 this.pullRetryCount = 0;
                 this.processRpcFrame(frame);
@@ -1093,10 +1101,12 @@ export class VideoPlayer {
                 }, delay);
             }
         } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            const stack = err instanceof Error ? err.stack : '';
+            warnLog?.log(`startPull [RPC] ERROR: ${message}`, stack);
             if (abortController.signal.aborted || !this.isPlaying) return;
             this.pullRetryCount++;
             const delay = Math.min(1000 * this.pullRetryCount, 5000);
-            const message = err instanceof Error ? err.message : String(err);
             warnLog?.log(
                 `Pull stream error (retry #${this.pullRetryCount}, delay ${delay}ms): ${message}`);
             this.pullRetryTimer = setTimeout(() => {

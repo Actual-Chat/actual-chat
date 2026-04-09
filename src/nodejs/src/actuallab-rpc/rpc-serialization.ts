@@ -6,7 +6,7 @@
 //
 // The format is selected at connection time via the `f=` query parameter.
 
-import { encode as msgpackEncode, decode as msgpackDecode, type DecodeOptions } from "@msgpack/msgpack";
+import { encode as msgpackEncode, decode as msgpackDecode, decodeMulti as msgpackDecodeMulti, type DecodeOptions } from "@msgpack/msgpack";
 import type { RpcMessage } from "./rpc-message.js";
 import {
   ENVELOPE_DELIMITER,
@@ -125,8 +125,8 @@ export function serializeBinaryMessage(message: RpcMessage, args?: unknown[]): U
   // Build envelope header bytes
   const headerParts: number[] = [];
 
-  // Byte 0: CallTypeId (3 bits) | HeaderCount (5 bits)
-  headerParts.push((message.CallType ?? 0) & 0x7); // No headers → upper 5 bits = 0
+  // Byte 0: upper 3 bits = CallTypeId, lower 5 bits = HeaderCount (always 0 from TS)
+  headerParts.push(((message.CallType ?? 0) << 5) & 0xE0);
 
   // RelatedId as VarUint
   writeVarUint(message.RelatedId ?? 0, headerParts);
@@ -150,16 +150,9 @@ export function serializeBinaryMessage(message: RpcMessage, args?: unknown[]): U
   const argLenBuf = new Uint8Array(4);
   new DataView(argLenBuf.buffer).setInt32(0, argData.length, true);
 
-  // Assemble envelope: header + methodBytes + argLen + argData
-  const envelope = concatUint8Arrays([headerBuf, methodBytes, argLenBuf, argData]);
-
-  // V5 frame: 4-byte LE size prefix (includes itself)
-  const totalSize = 4 + envelope.length;
-  const result = new Uint8Array(totalSize);
-  new DataView(result.buffer).setInt32(0, totalSize, true);
-  result.set(envelope, 4);
-
-  return result;
+  // V5: NO frame-level size prefix (PersistsMessageSize = false)
+  // Assemble: header + methodBytes + argLen + argData
+  return concatUint8Arrays([headerBuf, methodBytes, argLenBuf, argData]);
 }
 
 /**
@@ -172,16 +165,13 @@ export function deserializeBinaryMessage(
 ): { message: RpcMessage; args: unknown[]; bytesRead: number } {
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
 
-  // Read 4-byte LE size (includes the 4-byte size field itself)
-  const totalSize = view.getInt32(offset, true);
-  const msgStart = offset + 4;
-  const msgEnd = offset + totalSize;
-  let pos = msgStart;
+  // V5: no frame-level size prefix. Parse envelope directly.
+  let pos = offset;
 
-  // Byte 0: CallTypeId (3 bits) | HeaderCount (5 bits)
+  // Byte 0: upper 3 bits = CallTypeId, lower 5 bits = HeaderCount
   const byte0 = data[pos++];
-  const callTypeId = byte0 & 0x7;
-  const headerCount = (byte0 >> 3) & 0x1F;
+  const callTypeId = (byte0 >> 5) & 0x7;
+  const headerCount = byte0 & 0x1F;
 
   // RelatedId as VarUint
   const relId = readVarUint(data, pos);
@@ -210,17 +200,16 @@ export function deserializeBinaryMessage(
     }
   }
 
-  // Deserialize arguments from argData
+  // Deserialize arguments from argData — multiple concatenated MessagePack values
   const args: unknown[] = [];
   const argEnd = pos + argDataLen;
-  while (pos < argEnd) {
-    const decoded = msgpackDecode(data.subarray(pos, argEnd), msgpackDecodeOptions);
-    // We need to figure out how many bytes were consumed.
-    // Re-encode to get the size (not ideal but correct for now).
-    // TODO: Use a streaming decoder or manual offset tracking for performance.
-    const reEncoded = msgpackEncode(decoded);
-    pos += reEncoded.length;
-    args.push(decoded);
+  if (argDataLen > 0) {
+    const argSlice = data.subarray(pos, argEnd);
+    // decodeMulti yields each MessagePack value from concatenated buffer
+    for (const decoded of msgpackDecodeMulti(argSlice)) {
+      args.push(decoded);
+    }
+    pos = argEnd;
   }
 
   const message: RpcMessage = {
@@ -229,24 +218,19 @@ export function deserializeBinaryMessage(
     CallType: callTypeId,
   };
 
-  return { message, args, bytesRead: totalSize };
+  return { message, args, bytesRead: pos - offset };
 }
 
 /**
  * Splits a binary WebSocket frame into individual deserialized messages.
- * V5 frames contain one or more size-prefixed messages.
+ * V5 with PersistsMessageSize=false: each WebSocket message is one RPC message.
  */
 export function splitBinaryFrame(
   frame: Uint8Array,
 ): Array<{ message: RpcMessage; args: unknown[] }> {
-  const results: Array<{ message: RpcMessage; args: unknown[] }> = [];
-  let offset = 0;
-  while (offset < frame.length) {
-    const { message, args, bytesRead } = deserializeBinaryMessage(frame, offset);
-    results.push({ message, args });
-    offset += bytesRead;
-  }
-  return results;
+  // No size prefix — the entire frame is a single message
+  const { message, args } = deserializeBinaryMessage(frame, 0);
+  return [{ message, args }];
 }
 
 /**

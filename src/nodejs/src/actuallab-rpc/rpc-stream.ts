@@ -17,16 +17,32 @@ export interface RpcStreamRef {
  * Returns null if the value is not a valid stream reference.
  */
 export function parseStreamRef(value: unknown): RpcStreamRef | null {
-  if (typeof value !== "string") return null;
-  const parts = value.split(",");
-  if (parts.length < 4 || parts.length > 5) return null;
-  const hostId = parts[0]!;
-  const localId = parseInt(parts[1]!, 10);
-  const ackPeriod = parseInt(parts[2]!, 10);
-  const ackAdvance = parseInt(parts[3]!, 10);
-  if (isNaN(localId) || isNaN(ackPeriod) || isNaN(ackAdvance)) return null;
-  const allowReconnect = parts.length < 5 || parts[4] !== "0";
-  return { hostId, localId, ackPeriod, ackAdvance, allowReconnect };
+  // Text format: "hostId,localId,ackPeriod,ackAdvance[,allowReconnect]"
+  if (typeof value === "string") {
+    const parts = value.split(",");
+    if (parts.length < 4 || parts.length > 5) return null;
+    const hostId = parts[0]!;
+    const localId = parseInt(parts[1]!, 10);
+    const ackPeriod = parseInt(parts[2]!, 10);
+    const ackAdvance = parseInt(parts[3]!, 10);
+    if (isNaN(localId) || isNaN(ackPeriod) || isNaN(ackAdvance)) return null;
+    const allowReconnect = parts.length < 5 || parts[4] !== "0";
+    return { hostId, localId, ackPeriod, ackAdvance, allowReconnect };
+  }
+  // Binary (MessagePack) format: { SerializedId: [hostId, localId], AckPeriod, AckAdvance, AllowReconnect }
+  if (typeof value === "object" && value !== null) {
+    const obj = value as Record<string, unknown>;
+    const serializedId = obj.SerializedId as unknown[];
+    if (!Array.isArray(serializedId) || serializedId.length < 2) return null;
+    return {
+      hostId: String(serializedId[0]),
+      localId: Number(serializedId[1]),
+      ackPeriod: Number(obj.AckPeriod ?? 256),
+      ackAdvance: Number(obj.AckAdvance ?? 128),
+      allowReconnect: obj.AllowReconnect !== false,
+    };
+  }
+  return null;
 }
 
 /**
