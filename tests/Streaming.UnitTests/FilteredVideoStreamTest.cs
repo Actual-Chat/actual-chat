@@ -1,3 +1,4 @@
+using ActualChat.Streaming.Services;
 using ActualChat.Video;
 using ActualLab.Rpc;
 
@@ -148,20 +149,6 @@ public class FilteredVideoStreamTest(ILogger log)
 
     private async Task<List<VideoFrame>> Filter(VideoFrame[] frames, CancellationToken cancellationToken = default)
     {
-        var backend = CreateBackend();
-        var source = ToAsyncEnumerable(frames, cancellationToken);
-        return await backend
-            .FilteredVideoStream(
-                StreamId.New(new NodeRef("test-node"), "test-local"),
-                "test-peer",
-                TimeSpan.Zero,
-                source,
-                cancellationToken)
-            .ToListAsync(cancellationToken);
-    }
-
-    private VideoStreamingBackend CreateBackend()
-    {
         var services = new ServiceCollection()
             .AddSingleton<StreamLatencyStore>()
             .AddLogging(b => b.AddProvider(new TestLoggerProvider(Log)).SetMinimumLevel(LogLevel.Debug))
@@ -170,8 +157,19 @@ public class FilteredVideoStreamTest(ILogger log)
             })
             .BuildServiceProvider();
 
-        // Resolve through DI so Fusion intercepts [ComputeMethod] calls
-        return services.GetRequiredService<VideoStreamingBackend>();
+        var latencyStore = services.GetRequiredService<StreamLatencyStore>();
+        var backend = services.GetRequiredService<VideoStreamingBackend>();
+        var streamId = StreamId.New(new NodeRef("test-node"), "test-local");
+
+        var filter = new VideoStreamFilter(
+            latencyStore.GetPeerMaxTemporalLayer,
+            (sid, ct) => Computed.Capture(() => backend.GetQualityPreset(sid, ct), ct),
+            Log);
+
+        var source = ToAsyncEnumerable(frames, cancellationToken);
+        return await filter
+            .Apply(streamId, "test-peer", TimeSpan.Zero, source, cancellationToken)
+            .ToListAsync(cancellationToken);
     }
 
     private sealed class TestLoggerProvider(ILogger logger) : ILoggerProvider
