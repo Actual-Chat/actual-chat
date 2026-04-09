@@ -23,8 +23,6 @@ public class StreamHub(IServiceProvider services) : Hub
     // Track active video pull subscriptions per peer+stream to cancel stale pulls
     private static readonly ConcurrentDictionary<(string PeerId, string StreamId), CancellationTokenSource> ActiveVideoPulls = new();
 
-    private readonly bool _preferThisNode = services.HostInfo().HasRole(HostRole.OneServer);
-
     private MeshWatcher MeshWatcher { get; } = services.MeshWatcher();
     private ISecureTokensBackend SecureTokensBackend { get; } = services.GetRequiredService<ISecureTokensBackend>();
     private IHostApplicationLifetime HostLifetime { get; } = services.HostLifetime();
@@ -255,14 +253,7 @@ public class StreamHub(IServiceProvider services) : Hub
             return;
 
         stopCts.CancelAfter(Constants.Chat.MaxEntryDuration + TimeSpan.FromSeconds(5));
-        var nodes = MeshWatcher.State.Value.LiveNodesByRole[HostRole.StreamingBackend];
-        if (nodes.Length == 0) {
-            Log.LogError("No nodes serving {Role} role!", HostRole.StreamingBackend);
-            return; // No backends
-        }
-
-        var nodeRef = _preferThisNode ? MeshWatcher.ThisNode.Ref : nodes.GetRandom().Ref;
-        var streamId = StreamId.New(nodeRef);
+        var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
         var audioRecord = new AudioRecord(streamId, session, chatIdTyped, clientStartOffset, repliedEntryIdTyped);
 
         Log.LogInformation("ProcessAudio: {AudioRecord}", audioRecord);
@@ -301,14 +292,7 @@ public class StreamHub(IServiceProvider services) : Hub
             return;
 
         stopCts.CancelAfter(Constants.Chat.MaxEntryDuration + TimeSpan.FromSeconds(5));
-        var nodes = MeshWatcher.State.Value.LiveNodesByRole[HostRole.StreamingBackend];
-        if (nodes.Length == 0) {
-            Log.LogError("No nodes serving {Role} role!", HostRole.StreamingBackend);
-            return; // No backends
-        }
-
-        var nodeRef = _preferThisNode ? MeshWatcher.ThisNode.Ref : nodes.GetRandom().Ref;
-        var streamId = StreamId.New(nodeRef);
+        var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
         var format = new VideoFormat { Codec = codec, Width = width, Height = height, CodecSettings = codecSettings ?? "" };
         var videoRecord = new VideoRecord(streamId, session, chatIdTyped, clientStartOffset, format, streamKind);
         Log.LogInformation("PushVideo: {VideoRecord}, CodecSettings={CodecSettingsLen} chars", videoRecord, (codecSettings ?? "").Length);
