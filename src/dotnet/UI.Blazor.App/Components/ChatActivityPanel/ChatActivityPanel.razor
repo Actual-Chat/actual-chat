@@ -64,7 +64,7 @@
                 Class="talking"
                 StopPropagation="true"
                 PreventDefault="true"
-                Click="@(() => OnHungUpClick(chat.Id))"
+                Click="@(() => OnHangUpClick(chat.Id))"
                 Tooltip="@tooltip"
                 TooltipPosition="FloatingPosition.Bottom">
                 <i class="icon-phone-off"></i>
@@ -126,7 +126,7 @@
             ChatVideoUI.SetWatching(chatId);
     }
 
-    private async Task OnHungUpClick(ChatId chatId) {
+    private async Task OnHangUpClick(ChatId chatId) {
         if (IsUpdating(chatId))
             return;
 
