@@ -9,30 +9,21 @@ using Microsoft.EntityFrameworkCore;
 namespace ActualChat.App.Server.Flows;
 
 /// <summary>
-/// Migrates existing SVG icon blobs to PNG.
-/// Walks <see cref="DbAvatar"/>, <see cref="DbChat"/>, and <see cref="DbPlace"/>
-/// to collect media IDs that are actually used as icons, then converts any
-/// of those that are SVG to PNG via SkiaSharp.
-/// Scanning the referencing tables (rather than the Media table directly)
-/// is the only way to leave chat-entry attachment SVGs untouched, because
-/// old media records have <see cref="MediaKind.Unknown"/>.
+/// Migrates existing SVG icon blobs to PNG by walking <see cref="DbAvatar"/>,
+/// <see cref="DbChat"/>, and <see cref="DbPlace"/> and converting the SVGs they reference.
 /// </summary>
 /// <remarks>
-/// Conversion allocates a brand new <see cref="MediaId"/> for the PNG and
-/// repoints the host entity (avatar/chat/place) at it via the appropriate
-/// backend command. The original SVG <see cref="MediaFull"/> row and SVG
-/// blob are left fully untouched, forming a complete self-contained backup.
-/// The new PNG row carries <see cref="ReplacesMediaIdMetadataKey"/> in its
-/// metadata pointing back at the original SVG MediaId — this is backup-only
-/// data, not read by application code, but a future restore/cleanup tool
-/// can consume it.
+/// Scanning referencing tables (rather than Media directly) is the only way to leave
+/// chat-entry attachment SVGs untouched — old media rows have <see cref="MediaKind.Unknown"/>.
 ///
-/// Entities whose MediaId starts with <see cref="SystemIconsPrefix"/> are
-/// excluded from every phase at the SQL level: their IDs are hard-coded in
-/// <c>MediaDbInitializer</c>, <c>ChatsBackend</c>, and <see cref="Constants"/>,
-/// and <c>MediaDbInitializer</c> already upgrades those rows from SVG to PNG
-/// in place on every startup. Reprocessing them here would either be a
-/// no-op or (worse) repoint hard-coded references at a random new MediaId.
+/// Each conversion allocates a new <see cref="MediaId"/>, writes a PNG
+/// <see cref="MediaFull"/> tagged with <see cref="ReplacesMediaIdMetadataKey"/>, and
+/// repoints the host entity. The original SVG row and blob are preserved as a
+/// self-contained backup; a future cleanup tool can use the metadata key to find them.
+///
+/// <see cref="SystemIconsPrefix"/> rows are excluded at the SQL level — their IDs are
+/// hard-coded in <c>MediaDbInitializer</c>/<c>ChatsBackend</c>/<see cref="Constants"/>,
+/// and <c>MediaDbInitializer</c> already upgrades them to PNG in place on startup.
 /// </remarks>
 [Flow(DataVersion = 2, DelayQuanta = 0)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
@@ -42,15 +33,12 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
     private const int MaxSize = Constants.Attachments.MaxIconSize;
     private static readonly RandomTimeSpan BatchDelay = TimeSpan.FromSeconds(2).ToRandom(0.25);
 
-    // MediaId prefix for seeded system icons (e.g. "system-icons:notes").
-    // These are filtered out of every batch query — their IDs are hard-coded
-    // in MediaDbInitializer / ChatsBackend / Constants, and MediaDbInitializer
-    // already upgrades the corresponding rows from SVG to PNG in place on startup.
+    // Seeded system icons (e.g. "system-icons:notes"). Filtered out of every batch:
+    // MediaDbInitializer already upgrades them in place on startup.
     private const string SystemIconsPrefix = "system-icons:";
 
-    // Metadata key written on the *new* PNG Media row pointing back at the original
-    // SVG MediaId. Backup data only — not read by application code. A future
-    // restore/rerun/cleanup tool would consume it.
+    // Metadata key on the new PNG row pointing back at the original SVG MediaId.
+    // Backup-only — not read by application code.
     private const string ReplacesMediaIdMetadataKey = "ReplacesMediaId";
 
     private DbHub<UsersDbContext> UsersDbHub => field ??= Services.DbHub<UsersDbContext>();
@@ -68,8 +56,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
     public long ConvertedCount { get; set; }
     [DataMember(Order = 3), MemoryPackOrder(3)]
     public long SkippedCount { get; set; }
-    // Exceptions thrown during ProcessOne — anything that's not an intentional skip.
-    // Non-zero at completion means a developer needs to investigate the logs.
+    // Unexpected ProcessOne exceptions. Non-zero at completion needs dev attention.
     [DataMember(Order = 4), MemoryPackOrder(4)]
     public long FailedCount { get; set; }
 
@@ -78,7 +65,6 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         while (Phase < MigrationPhase.Done) {
             var items = await GetNextBatch(cancellationToken).ConfigureAwait(false);
             if (items.Count == 0) {
-                // Current phase done, move to next
                 Phase++;
                 LastProcessedEntityId = null;
                 continue;
@@ -162,9 +148,8 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         var db = await ChatDbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = db.ConfigureAwait(false);
 
-        // A place is worth loading if at least one of its two media slots is
-        // non-empty and not a system icon. The per-slot filter below then
-        // drops the individual system-icons values.
+        // Load places with at least one non-system-icons slot; the flatten below
+        // drops any individual system-icons values.
         var query = db.Places
             .Where(x =>
                 (x.MediaId != "" && !x.MediaId.StartsWith(SystemIconsPrefix))
@@ -180,8 +165,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        // Flatten: a place can have both MediaId and BackgroundMediaId, and only
-        // one of them may be a non-system-icons candidate.
+        // Flatten both slots; only non-system-icons values become candidates.
         var result = new List<UsedMedia>();
         foreach (var p in places) {
             if (!p.MediaId.IsNullOrEmpty() && !p.MediaId.StartsWith(SystemIconsPrefix, StringComparison.Ordinal))
@@ -205,9 +189,8 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
                     SkippedCount++;
             }
             catch (Exception e) {
-                // Any exception here is unexpected — intentional no-ops (missing blob,
-                // not-an-SVG, user changed picture concurrently) all return normally.
-                // Failures are counted separately so the end-of-flow summary flags them.
+                // Intentional no-ops (missing blob, not-an-SVG, concurrent change) return
+                // normally; anything reaching here is unexpected and flagged in the summary.
                 Console.LogError($"Failed to convert media {item.MediaId}: {e.Message}", e);
                 FailedCount++;
             }
@@ -221,13 +204,13 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         if (svg is null || !svg.BlobId.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
             return false;
 
-        // 1. Allocate a new MediaId in the same scope and rasterize the SVG into a new PNG blob.
+        // 1. Allocate a new MediaId in the same scope; rasterize SVG to a new PNG blob.
         var pngMediaId = MediaId.New(svg.Id.Scope);
         var pngBlob = await ConvertSvgBlobToPng(pngMediaId, svg.BlobId, cancellationToken).ConfigureAwait(false);
         if (pngBlob is null)
             return false;
 
-        // 2. Create the new PNG Media row carrying ReplacesMediaId provenance.
+        // 2. Create the PNG Media row with ReplacesMediaId provenance.
         var pngMedia = new MediaFull(pngMediaId) {
             Kind = svg.Kind,
             BlobId = pngBlob.BlobId,
@@ -245,12 +228,9 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             new MediaBackend_Change(pngMediaId, null, Change.Create(pngMedia)),
             true, cancellationToken).ConfigureAwait(false);
 
-        // 3. Repoint the host entity (Avatar / Chat / Place) at the new PNG MediaId
-        //    via the appropriate *Backend_Change command. The original SVG Media row
-        //    and SVG blob remain untouched and form a self-contained backup.
-        // NOTE: A future cleanup flow can drop SVG rows that are no longer referenced
-        //    anywhere (icons or chat-entry attachments) using the ReplacesMediaId
-        //    metadata as the starting set.
+        // 3. Repoint the host entity at the new PNG. The original SVG row and blob
+        //    remain as a self-contained backup; a future cleanup flow can use
+        //    ReplacesMediaId to find orphaned SVG rows.
         await Repoint(item, pngMediaId, cancellationToken).ConfigureAwait(false);
 
         return true;
@@ -264,23 +244,18 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             _ => Task.CompletedTask,
         };
 
-    // Concurrency model for the avatar repoint:
-    //  - The row is loaded and Change.Update passes *all* fields (Name, Bio, etc.),
-    //    so a racing Avatars_Change command would be clobbered if we used
-    //    ExpectedVersion = null. We therefore use strict optimistic concurrency.
-    //  - If a concurrent writer already changed MediaId to something that isn't our
-    //    original SVG (the user picked a new picture), we respect that and return.
-    //  - On VersionMismatchException we re-read and retry up to RepointMaxAttempts.
-    //  - If we still can't land the update after that many tries, we throw — the
-    //    per-item catch in ConvertBatch will log it and bump FailedCount, which
-    //    surfaces in the end-of-flow summary as "NEEDS DEV ATTENTION".
+    // Avatar repoint uses strict optimistic concurrency because Change.Update passes
+    // all fields — ExpectedVersion=null would clobber a racing Avatars_Change. On
+    // VersionMismatchException we re-read and retry up to RepointMaxAttempts. If the
+    // MediaId was concurrently changed to anything but our SVG (user picked a new
+    // picture), we respect it. Exceeding the retry budget throws and bumps FailedCount.
     private const int RepointMaxAttempts = 5;
 
     private async Task RepointAvatar(UsedMedia item, MediaId newMediaId, CancellationToken cancellationToken)
     {
         for (var attempt = 1; attempt <= RepointMaxAttempts; attempt++) {
-            // Load the row directly rather than via AvatarsBackend.Get; the resolver
-            // cache may not see avatars added through paths other than the backend.
+            // Read directly — AvatarsBackend's resolver cache may miss avatars
+            // created via non-backend paths.
             var db = await UsersDbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
             await using var _ = db.ConfigureAwait(false);
             var dbAvatar = await db.Avatars
@@ -290,8 +265,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
                 Console.Log($"Avatar {item.EntityId} disappeared before repoint; repoint skipped");
                 return;
             }
-            // Concurrent writer already pointed the avatar at a different MediaId
-            // (e.g. the user uploaded a new picture during migration) — respect it.
+            // Concurrent writer already repointed the avatar (e.g. user uploaded a new picture) — respect it.
             if (dbAvatar.MediaId != item.MediaId.Value) {
                 Console.Log($"Avatar {item.EntityId} was concurrently changed to '{dbAvatar.MediaId}'; repoint skipped");
                 return;
@@ -304,7 +278,6 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
                 return;
             }
             catch (VersionMismatchException) {
-                // Concurrent update bumped Version — re-read and retry.
                 Console.Log($"Avatar {item.EntityId} version conflict on attempt {attempt}/{RepointMaxAttempts}, retrying");
             }
         }
