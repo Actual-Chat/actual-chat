@@ -401,9 +401,9 @@ public class StreamHub(IServiceProvider services) : Hub
                         height = reader.ReadInt32();
                         break;
                     case "data":
-                        // Skip the byte[] copy — CachedSerializedBytes holds the original payload
-                        // for zero-copy fan-out. Just skip past the data in the reader.
-                        reader.ReadBytes();
+                        // Store data for cross-pod RPC fallback (CachedSerializedBytes is [IgnoreMember]).
+                        // In-process path still uses CachedSerializedBytes for zero-copy fan-out.
+                        data = reader.ReadBytes()?.ToArray();
                         break;
                     case "description":
                         description = reader.TryReadNil() ? null : reader.ReadBytes()?.ToArray();

@@ -833,6 +833,10 @@ export class VideoPlayer {
 
         // If we're waiting for a keyframe with description, buffer chunks
         if (this.waitingForKeyframe) {
+            if (isKeyFrame && frameData.length === 0) {
+                debugLog?.log(`Skipping empty-data keyframe at offset ${timestampMs.toFixed(0)}ms, descLen=${description?.length ?? 0}`);
+                return;
+            }
             const needsDescription = !!this.decoderConfig?.description;
             if (isKeyFrame && (!needsDescription || (description && description.length > 0))) {
                 // After tab restore: skip keyframes that are too old
