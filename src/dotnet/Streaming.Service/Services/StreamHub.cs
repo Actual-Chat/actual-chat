@@ -29,6 +29,8 @@ public class StreamHub(IServiceProvider services) : Hub
     private IAudioStreamingBackend Backend { get; } = services.GetRequiredService<IAudioStreamingBackend>();
     private IVideoStreamingBackend VideoStreamingBackend { get; } = services.GetRequiredService<IVideoStreamingBackend>();
     private MomentClockSet Clocks { get; } = services.Clocks();
+    private RemoteVideoStreamCache RemoteVideoCache { get; } = services.GetRequiredService<RemoteVideoStreamCache>();
+    private StreamLatencyStore LocalLatencyStore { get; } = services.GetRequiredService<StreamLatencyStore>();
     private ILogger Log { get; } = services.LogFor<StreamHub>();
 
     // Currently unused
@@ -148,6 +150,10 @@ public class StreamHub(IServiceProvider services) : Hub
             medianDecodeTimeMs, bufferDepth, bufferSpanMs,
             CancellationToken.None).ConfigureAwait(false);
 
+        // Also record locally for per-consumer filtering on cached remote streams
+        LocalLatencyStore.ReportPeerLatency(parsedStreamId, peerId, streamOffsetMs,
+            medianDecodeTimeMs, bufferDepth, bufferSpanMs);
+
         // Return server timestamp for client-side RTT measurement
         return Clocks.SystemClock.UtcNow.ToUnixTimeMilliseconds();
     }
@@ -181,20 +187,46 @@ public class StreamHub(IServiceProvider services) : Hub
         }
         ActiveVideoPulls[pullKey] = pullCts;
 
-        RpcStream<VideoFrame>? rpcStream;
-        try {
-            rpcStream = await VideoStreamingBackend
-                .GetVideo(parsedStreamId, skipTo, peerId, pullCts.Token)
-                .ConfigureAwait(false);
+        IAsyncEnumerable<VideoFrame>? videoStream;
+        var isLocal = parsedStreamId.NodeRef == MeshWatcher.ThisNode.Ref;
+        if (isLocal) {
+            // Local stream: use backend directly (includes per-consumer filtering)
+            try {
+                videoStream = await VideoStreamingBackend
+                    .GetVideo(parsedStreamId, skipTo, peerId, pullCts.Token)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception e) when (e is not OperationCanceledException) {
+                Log.LogError(e, "GetVideo: Error getting video for stream #{StreamId}", streamId);
+                ActiveVideoPulls.TryRemove(pullKey, out _);
+                pullCts.CancelAndDisposeSilently();
+                yield break;
+            }
         }
-        catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogError(e, "GetVideo: Error getting video for stream #{StreamId}", streamId);
-            ActiveVideoPulls.TryRemove(pullKey, out _);
-            pullCts.CancelAndDisposeSilently();
-            yield break;
+        else {
+            // Remote stream: fetch raw, cache locally, filter per-consumer
+            try {
+                var rawStream = await GetOrFetchRemoteVideo(parsedStreamId, pullCts.Token)
+                    .ConfigureAwait(false);
+                if (rawStream != null) {
+                    var filter = new VideoStreamFilter(
+                        LocalLatencyStore.GetPeerMaxTemporalLayer,
+                        (sid, ct) => Computed.Capture(() => VideoStreamingBackend.GetQualityPreset(sid, ct), ct),
+                        Log);
+                    videoStream = filter.Apply(parsedStreamId, peerId, skipTo, rawStream, pullCts.Token);
+                }
+                else
+                    videoStream = null;
+            }
+            catch (Exception e) when (e is not OperationCanceledException) {
+                Log.LogError(e, "GetVideo: Error fetching remote video for stream #{StreamId}", streamId);
+                ActiveVideoPulls.TryRemove(pullKey, out _);
+                pullCts.CancelAndDisposeSilently();
+                yield break;
+            }
         }
 
-        if (rpcStream == null) {
+        if (videoStream == null) {
             Log.LogWarning("GetVideo: Stream #{StreamId} not found", streamId);
             ActiveVideoPulls.TryRemove(pullKey, out _);
             pullCts.CancelAndDisposeSilently();
@@ -204,7 +236,7 @@ public class StreamHub(IServiceProvider services) : Hub
         var frameCount = 0;
         StreamingMeters.VideoActiveConsumers.Add(1);
         try {
-            await foreach (var frame in SuppressClientStreamCancellation(rpcStream, parsedStreamId, peerId, pullCts.Token).ConfigureAwait(false)) {
+            await foreach (var frame in SuppressClientStreamCancellation(videoStream, parsedStreamId, peerId, pullCts.Token).ConfigureAwait(false)) {
                 frameCount++;
 
                 byte[] bytes;
@@ -302,6 +334,33 @@ public class StreamHub(IServiceProvider services) : Hub
         await VideoStreamingBackend
             .PushVideo(videoRecord, frameStream, CancellationToken.None)
             .SilentAwait(false);
+    }
+
+    private async Task<IAsyncEnumerable<VideoFrame>?> GetOrFetchRemoteVideo(
+        StreamId streamId, CancellationToken cancellationToken)
+    {
+        var store = RemoteVideoCache.Store;
+
+        // Fast path: already cached locally
+        var stream = await store.Get(streamId, false, cancellationToken).ConfigureAwait(false);
+        if (stream != null)
+            return stream;
+
+        // Fetch raw (unfiltered) stream from remote backend via RPC
+        var rawRpcStream = await VideoStreamingBackend
+            .GetVideoRaw(streamId, cancellationToken)
+            .ConfigureAwait(false);
+        if (rawRpcStream == null)
+            return null;
+
+        // Register local latency state for per-consumer filtering
+        LocalLatencyStore.RegisterStreamLatencyState(
+            streamId, default, Clocks.ServerClock.Now, default);
+
+        // Publish to local cache — first publisher wins (TrySetResult inside)
+        Log.LogInformation("GetOrFetchRemoteVideo: caching #{StreamId} locally", streamId);
+        await store.Publish(streamId, (IAsyncEnumerable<VideoFrame>)rawRpcStream).ConfigureAwait(false);
+        return await store.Get(streamId, true, cancellationToken).ConfigureAwait(false);
     }
 
     private CancellationTokenSource CreateStopTokenSource(HttpContext httpContext)
