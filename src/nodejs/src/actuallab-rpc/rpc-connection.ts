@@ -89,6 +89,7 @@ export class RpcWebSocketConnection implements RpcConnection {
     }
 
     ws.onopen = () => {
+      console.log('[RpcConnection] WebSocket opened, binaryMode:', binaryMode);
       this._connected.resolve();
       this._flush();
     };
@@ -97,9 +98,16 @@ export class RpcWebSocketConnection implements RpcConnection {
       if (ev.data instanceof ArrayBuffer) {
         // Binary frame — V5 size-prefixed messages
         const frame = new Uint8Array(ev.data);
-        const messages = splitBinaryFrame(frame);
-        for (const { message, args } of messages) {
-          this.messageReceived.trigger({ kind: "binary", message, args });
+        console.log('[RpcConnection] Binary message received, size:', frame.length, 'first bytes:', Array.from(frame.slice(0, 20)));
+        try {
+          const messages = splitBinaryFrame(frame);
+          console.log('[RpcConnection] Parsed', messages.length, 'binary messages');
+          for (const { message, args } of messages) {
+            console.log('[RpcConnection] Binary msg:', message.Method, 'RelatedId:', message.RelatedId, 'args:', args.length);
+            this.messageReceived.trigger({ kind: "binary", message, args });
+          }
+        } catch (e) {
+          console.error('[RpcConnection] Failed to parse binary frame:', e);
         }
       } else {
         // Text frame — JSON delimited messages
@@ -150,9 +158,12 @@ export class RpcWebSocketConnection implements RpcConnection {
 
   private _sendRaw(data: string | Uint8Array): void {
     try {
-      if (this._ws.readyState === WebSocketState.OPEN)
+      if (this._ws.readyState === WebSocketState.OPEN) {
+        if (data instanceof Uint8Array) {
+          console.log('[RpcConnection] Sending binary, size:', data.length, 'first bytes:', Array.from(data.slice(0, 20)));
+        }
         this._ws.send(data);
-      else if (this._ws.readyState === WebSocketState.CONNECTING)
+      } else if (this._ws.readyState === WebSocketState.CONNECTING)
         this._sendBuffer.push(data);
       // CLOSING/CLOSED: silently drop
     } catch {
