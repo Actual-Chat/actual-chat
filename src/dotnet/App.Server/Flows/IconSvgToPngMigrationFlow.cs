@@ -21,10 +21,17 @@ namespace ActualChat.App.Server.Flows;
 /// repoints the host entity (avatar/chat/place) at it via the appropriate
 /// backend command. The original SVG <see cref="MediaFull"/> row and SVG
 /// blob are left fully untouched, forming a complete self-contained backup.
-/// The new PNG row carries <see cref="ReplacesMediaIdMetadataKey"/> in its metadata
-/// pointing back at the original SVG MediaId — this is backup-only data,
-/// not read by application code, but a future restore/cleanup tool can
-/// consume it.
+/// The new PNG row carries <see cref="ReplacesMediaIdMetadataKey"/> in its
+/// metadata pointing back at the original SVG MediaId — this is backup-only
+/// data, not read by application code, but a future restore/cleanup tool
+/// can consume it.
+///
+/// Entities whose MediaId starts with <see cref="SystemIconsPrefix"/> are
+/// excluded from every phase at the SQL level: their IDs are hard-coded in
+/// <c>MediaDbInitializer</c>, <c>ChatsBackend</c>, and <see cref="Constants"/>,
+/// and <c>MediaDbInitializer</c> already upgrades those rows from SVG to PNG
+/// in place on every startup. Reprocessing them here would either be a
+/// no-op or (worse) repoint hard-coded references at a random new MediaId.
 /// </remarks>
 [Flow(DataVersion = 2, DelayQuanta = 0)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
@@ -33,6 +40,12 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
     private const int BatchSize = 50;
     private const int MaxSize = Constants.Attachments.MaxIconSize;
     private static readonly RandomTimeSpan BatchDelay = TimeSpan.FromSeconds(2).ToRandom(0.25);
+
+    // MediaId prefix for seeded system icons (e.g. "system-icons:notes").
+    // These are filtered out of every batch query — their IDs are hard-coded
+    // in MediaDbInitializer / ChatsBackend / Constants, and MediaDbInitializer
+    // already upgrades the corresponding rows from SVG to PNG in place on startup.
+    private const string SystemIconsPrefix = "system-icons:";
 
     // Metadata key written on the *new* PNG Media row pointing back at the original
     // SVG MediaId. Backup data only — not read by application code. A future
@@ -100,7 +113,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         await using var _ = db.ConfigureAwait(false);
 
         var query = db.Avatars
-            .Where(x => x.MediaId != "")
+            .Where(x => x.MediaId != "" && !x.MediaId.StartsWith(SystemIconsPrefix))
             .OrderBy(x => x.Id)
             .AsQueryable();
         if (!LastProcessedEntityId.IsNullOrEmpty())
@@ -120,7 +133,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         await using var _ = db.ConfigureAwait(false);
 
         var query = db.Chats
-            .Where(x => x.MediaId != "")
+            .Where(x => x.MediaId != "" && !x.MediaId.StartsWith(SystemIconsPrefix))
             .OrderBy(x => x.Id)
             .AsQueryable();
         if (!LastProcessedEntityId.IsNullOrEmpty())
@@ -139,8 +152,13 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         var db = await ChatDbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = db.ConfigureAwait(false);
 
+        // A place is worth loading if at least one of its two media slots is
+        // non-empty and not a system icon. The per-slot filter below then
+        // drops the individual system-icons values.
         var query = db.Places
-            .Where(x => x.MediaId != "" || x.BackgroundMediaId != "")
+            .Where(x =>
+                (x.MediaId != "" && !x.MediaId.StartsWith(SystemIconsPrefix))
+                || (x.BackgroundMediaId != "" && !x.BackgroundMediaId.StartsWith(SystemIconsPrefix)))
             .OrderBy(x => x.Id)
             .AsQueryable();
         if (!LastProcessedEntityId.IsNullOrEmpty())
@@ -152,12 +170,13 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        // Flatten: a place can have both MediaId and BackgroundMediaId
+        // Flatten: a place can have both MediaId and BackgroundMediaId, and only
+        // one of them may be a non-system-icons candidate.
         var result = new List<UsedMedia>();
         foreach (var p in places) {
-            if (!p.MediaId.IsNullOrEmpty())
+            if (!p.MediaId.IsNullOrEmpty() && !p.MediaId.StartsWith(SystemIconsPrefix, StringComparison.Ordinal))
                 result.Add(new UsedMedia(p.Id, MediaId.Parse(p.MediaId), false));
-            if (!p.BackgroundMediaId.IsNullOrEmpty())
+            if (!p.BackgroundMediaId.IsNullOrEmpty() && !p.BackgroundMediaId.StartsWith(SystemIconsPrefix, StringComparison.Ordinal))
                 result.Add(new UsedMedia(p.Id, MediaId.Parse(p.BackgroundMediaId), true));
         }
         return result;
