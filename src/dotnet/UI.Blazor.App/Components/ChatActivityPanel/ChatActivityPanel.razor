@@ -80,48 +80,7 @@
                 <i class="icon-phone-off"></i>
             </HeaderButton>
         } else {
-            const double countdownSeconds = 30;
-            const double circumference = 100.531;
-            var remainingSeconds = m.StopListeningAt.HasValue
-                ? Math.Max(0, (m.StopListeningAt.Value - Hub.Clocks.CpuClock.Now).TotalSeconds)
-                : 0;
-            var isCountingDown = remainingSeconds > 0 && remainingSeconds <= countdownSeconds;
-            var dashOffset = isCountingDown
-                ? (circumference * (1 - remainingSeconds / countdownSeconds)).ToString("F2", CultureInfo.InvariantCulture)
-                : "0";
-            <div class="listening-timer">
-                @if (isCountingDown) {
-                    <svg class="timer-ring" viewBox="0 0 36 36"
-                         data-bubble="@(BubbleRef.New<ListeningTimerBubble>())"
-                         data-bubble-priority="115"
-                         data-bubble-placement="@(FloatingPosition.Bottom.ToPositionString())">
-                        <circle class="timer-ring-bg"
-                                cx="18" cy="18" r="16"/>
-                        <circle class="timer-ring-circle"
-                                cx="18" cy="18" r="16"
-                                style="stroke-dashoffset: @(dashOffset)"/>
-                    </svg>
-                }
-                <HeaderButton
-                    Class="listening"
-                    StopPropagation="true"
-                    PreventDefault="true"
-                    Click="@(() => OnStopListeningClick(chat.Id))"
-                    Tooltip="@tooltip"
-                    TooltipPosition="FloatingPosition.Bottom">
-                    @if (isCountingDown) {
-                        var remaining = (int)Math.Ceiling(remainingSeconds);
-                        var mm = remaining / 60;
-                        var ss = remaining % 60;
-                        <span class="timer-icon-swap">
-                            <i class="icon-listen swap-a"></i>
-                            <span class="swap-b timer-countdown-text">@($"{mm:D2}:{ss:D2}")</span>
-                        </span>
-                    } else {
-                        <i class="icon-listen"></i>
-                    }
-                </HeaderButton>
-            </div>
+            <StopListeningCountdownButton ChatId="@chat.Id" Click="@(() => OnStopListeningClick(chat.Id))"/>
         }
     </div>
 </div>
@@ -163,25 +122,10 @@
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
         var isAnyoneTalking = await LiveStreamUI.IsAnyoneStreaming(chatId, cancellationToken).ConfigureAwait(false);
         var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chatId, cancellationToken).ConfigureAwait(false);
-        var stopListeningAt = audioState.IsListening
-            ? await ChatAudioUI.GetStopListeningAt(chatId, cancellationToken).ConfigureAwait(false)
-            : null;
-        if (stopListeningAt.HasValue) {
-            var remaining = (stopListeningAt.Value - Hub.Clocks.CpuClock.Now).TotalSeconds;
-            if (remaining > 30)
-                Computed.GetCurrent().Invalidate(TimeSpan.FromSeconds(remaining - 30));
-            else if (remaining > 0) {
-                // Align invalidation to the next second boundary for consistent countdown ticks
-                var fractional = remaining - Math.Floor(remaining);
-                var delay = fractional > 0.05 ? fractional : fractional + 1.0;
-                Computed.GetCurrent().Invalidate(TimeSpan.FromSeconds(delay));
-            }
-        }
-
         var isOwnVideoRecording = await ChatVideoUI.GetRecordingChatId(cancellationToken).ConfigureAwait(false) == chatId;
         var isVideoPanelCollapsed = await ChatVideoUI.GetIsVideoPanelCollapsed(cancellationToken).ConfigureAwait(false);
 
-        return new (chat, audioState, isAnyoneTalking, isAnyoneVideoStreaming, isOwnVideoRecording, stopListeningAt, isVideoPanelCollapsed);
+        return new (chat, audioState, isAnyoneTalking, isAnyoneVideoStreaming, isOwnVideoRecording, isVideoPanelCollapsed);
     }
 
     private async Task OnJoinClick(ChatId chatId) {
@@ -253,7 +197,6 @@
         bool IsAnyoneTalking,
         bool IsAnyoneVideoStreaming,
         bool IsOwnVideoRecording = false,
-        Moment? StopListeningAt = null,
         bool IsVideoPanelCollapsed = false) {
         public bool IsListening => AudioState.IsListening;
         public bool IsRecordingHere => AudioState.IsRecording;
