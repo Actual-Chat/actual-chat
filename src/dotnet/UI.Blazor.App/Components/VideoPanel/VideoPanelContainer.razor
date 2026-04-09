@@ -1,0 +1,74 @@
+@namespace ActualChat.UI.Blazor.Components
+@inherits ComputedStateComponent<AppUIHub, VideoPanelContainer.Model>
+@{
+    var m = State.Value;
+    var isWatching = m.IsWatching;
+    var chatId = m.SelectedChatId;
+
+    // TODO(DF): move this logic to ChatVideoUI
+    // Clear watching when navigating to a different chat
+    if (_lastWatchingChatId is not null && chatId is not null && _lastWatchingChatId != chatId)
+        ChatVideoUI.SetWatching(null);
+    _lastWatchingChatId = isWatching ? chatId : null;
+
+    // Handle show/hide transitions based on watching state
+    if (!_rendered && isWatching) {
+        _rendered = true;
+        _chatIdToRender = chatId;
+        _isClosing = false;
+    } else if (_rendered && !isWatching) {
+        _isClosing = true;
+    }
+
+    if (!_rendered)
+        _chatIdToRender = null;
+}
+
+@if (_chatIdToRender is not null) {
+    <VideoPanelContent ChatId="@_chatIdToRender" IsClosing="@_isClosing" OnClosed="@OnContentClosed" />
+}
+
+@code {
+    private bool _rendered;
+    private ChatId? _chatIdToRender;
+    private bool _isClosing;
+    private ChatId? _lastWatchingChatId;
+
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            t => new ComputedState<Model>.Options {
+                InitialValue = Model.None,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken);
+        if (chatId is null)
+            return new Model(null, false);
+
+        var watchingChatId = await ChatVideoUI.GetWatchingChatId(cancellationToken).ConfigureAwait(false);
+        var isWatching = watchingChatId == chatId;
+
+        return new Model(chatId, isWatching);
+    }
+
+    private void OnContentClosed() {
+        _rendered = false;
+        _isClosing = false;
+        StateHasChanged();
+    }
+
+    // Nested types
+
+    public sealed record Model(
+        [property:MemberNotNullWhen(true, nameof(Model.IsWatching))]ChatId? SelectedChatId,
+        bool IsWatching
+    ) {
+        public static readonly Model None = new(null, false);
+    }
+}
