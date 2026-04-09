@@ -1,4 +1,4 @@
-.video-streaming-preview:not(.recording) {
+.video-streaming-preview:not(.has-video) {
     display: none;
 }
 .video-streaming-preview .call-video {
@@ -43,7 +43,6 @@ body.hoverable .video-streaming-preview .btn-h.settings-btn:hover {
     @apply flex items-center justify-center;
     @apply bg-black;
 }
-.video-streaming-preview:not(.recording) .video-loading,
 .video-streaming-preview.has-video .video-loading {
     @apply hidden;
 }
