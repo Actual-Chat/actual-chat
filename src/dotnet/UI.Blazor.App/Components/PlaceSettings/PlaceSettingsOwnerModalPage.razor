@@ -51,31 +51,32 @@
             </ButtonRound>
         </div>
         <div class="c-center">
-            <PicUpload
-                Scope="@_form.ImageScope"
-                MediaKind="@MediaKind.ChatPicture"
-                IsSquare="true"
-                Size="@SquareSize.Size16"
+            <Pic
                 Title="@_form.Title"
                 Picture="@_form.Picture"
+                Size="@SquareSize.Size16"
+                IsSquare="true"
                 AvatarKind="@AvatarKind.Marble"
-                AvatarKey="@PlaceId.Value"
-                Picked="@OnImagePicked"/>
+                AvatarKey="@PlaceId.Value"/>
 
             <div class="c-buttons">
-                <PicUploadButton
-                    Scope="@_form.ImageScope"
-                    MediaKind="@MediaKind.ChatPicture"
-                    Picked="@OnImagePicked"/>
+                <ButtonRound Class="btn-modal btn-sm" Click="@(() => _avatarPicker!.Pick())">
+                    <i class="icon-person-add-2 text-2xl"></i>
+                </ButtonRound>
+                <ImageCropPicker @ref="_avatarPicker"
+                    Scope="@_form!.ImageScope"
+                    IsSquare="true"
+                    OnCropped="@OnImagePicked" />
 
-                <PicUploadButton
-                    Scope="@_form.ImageScope"
-                    MediaKind="@MediaKind.ChatPicture"
-                    Picked="@OnBackgroundPicked">
-                    <Icon>
-                        <i class="icon-image text-2xl"></i>
-                    </Icon>
-                </PicUploadButton>
+                <ButtonRound Class="btn-modal btn-sm" Click="@(() => _wallpaperPicker!.Pick())">
+                    <i class="icon-image text-2xl"></i>
+                </ButtonRound>
+                <ImageCropPicker @ref="_wallpaperPicker"
+                    Scope="@_form!.ImageScope"
+                    IsSquare="true"
+                    ViewportAspectRatio="2.5f"
+                    HasBlur="true"
+                    OnCropped="@OnBackgroundPicked" />
             </div>
         </div>
     </FormBlock>
@@ -148,6 +149,8 @@
     private Form?_formRef;
     private FormModel? _form;
     private DialogButtonInfo _submitButtonInfo = null!;
+    private ImageCropPicker? _avatarPicker;
+    private ImageCropPicker? _wallpaperPicker;
 
     private IPlaces Places => Hub.Places;
     private ChatUI ChatUI => Hub.ChatUI;
