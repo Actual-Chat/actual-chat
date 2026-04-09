@@ -566,6 +566,12 @@ const serverImpl: DecoderWorker = {
                 }
             }
 
+            // Defense-in-depth: never feed empty data to the decoder
+            if (data.byteLength === 0) {
+                warnLog?.log(`Skipping chunk with empty data: seq=${sequenceNumber}, isKey=${isKeyFrame}`);
+                return;
+            }
+
             // Create EncodedVideoChunk from raw bytes
             const chunk = new EncodedVideoChunk({
                 type: isKeyFrame ? 'key' : 'delta',
