@@ -32,36 +32,36 @@ export interface VideoRpcPushClient {
  * @param rpcWsUrl Full WebSocket URL for the RPC endpoint, e.g. "wss://local.voxt.ai/rpc/ws"
  */
 export function initVideoRpc(rpcWsUrl: string): void {
-  _baseUrl = rpcWsUrl;
+    _baseUrl = rpcWsUrl;
 }
 
 function ensurePeer(): RpcClientPeer {
-  if (!_peer) {
-    if (!_baseUrl)
-      throw new Error('Video RPC not initialized. Call initVideoRpc(url) first.');
-    _hub = new RpcHub(); // hubId must be a UUID for binary MessagePack GuidFormatter
-    _peer = new RpcClientPeer(_hub, _baseUrl, SERIALIZATION_FORMAT);
-    void _peer.run();
-  }
-  return _peer;
+    if (!_peer) {
+        if (!_baseUrl)
+            throw new Error('Video RPC not initialized. Call initVideoRpc(url) first.');
+        _hub = new RpcHub(); // hubId must be a UUID for binary MessagePack GuidFormatter
+        _peer = new RpcClientPeer(_hub, _baseUrl, SERIALIZATION_FORMAT);
+        void _peer.run();
+    }
+    return _peer;
 }
 
 /** Get the ILiveVideoStreams RPC client (video pull). */
 export function getVideoRpcClient(): VideoRpcPullClient {
-  if (!_pullClient) {
-    const peer = ensurePeer();
-    _pullClient = _hub!.addClient(peer, LiveVideoStreamsDef) as unknown as VideoRpcPullClient;
-  }
-  return _pullClient;
+    if (!_pullClient) {
+        const peer = ensurePeer();
+        _pullClient = _hub!.addClient(peer, LiveVideoStreamsDef) as unknown as VideoRpcPullClient;
+    }
+    return _pullClient;
 }
 
 /** Get the IStreamServer RPC client (video push). */
 export function getVideoRpcPushClient(): VideoRpcPushClient {
-  if (!_pushClient) {
-    const peer = ensurePeer();
-    _pushClient = _hub!.addClient(peer, StreamServerDef) as unknown as VideoRpcPushClient;
-  }
-  return _pushClient;
+    if (!_pushClient) {
+        const peer = ensurePeer();
+        _pushClient = _hub!.addClient(peer, StreamServerDef) as unknown as VideoRpcPushClient;
+    }
+    return _pushClient;
 }
 
 /**
@@ -69,16 +69,16 @@ export function getVideoRpcPushClient(): VideoRpcPushClient {
  * Returns the sender (call writeFrom/sendItem) and its ref string (pass as RPC arg).
  */
 export function createVideoFrameSender(): { sender: RpcClientStreamSender<VideoFrameDto>; ref: string } {
-  const peer = ensurePeer();
-  const sender = new RpcClientStreamSender<VideoFrameDto>(peer);
-  return { sender, ref: sender.toRef() };
+    const peer = ensurePeer();
+    const sender = new RpcClientStreamSender<VideoFrameDto>(peer);
+    return { sender, ref: sender.toRef() };
 }
 
 /** Disconnect the video RPC client. */
 export function disconnectVideoRpc(): void {
-  _peer?.close();
-  _peer = undefined;
-  _pullClient = undefined;
-  _pushClient = undefined;
-  _hub = undefined;
+    _peer?.close();
+    _peer = undefined;
+    _pullClient = undefined;
+    _pushClient = undefined;
+    _hub = undefined;
 }

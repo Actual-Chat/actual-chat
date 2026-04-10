@@ -110,7 +110,7 @@ export type RpcConnectionUrlResolver = (peer: RpcClientPeer) => string;
 
 /** Default connection URL provider — appends `clientId` and `f` query parameters. */
 export const defaultConnectionUrlResolver: RpcConnectionUrlResolver = (peer) => {
-  const sep = peer.ref.includes('?') ? '&' : '?';
+  const sep = peer.ref.includes("?") ? "&" : "?";
   return peer.ref + sep + `clientId=${peer.clientId}&f=${peer.serializationFormat}`;
 };
 
@@ -597,7 +597,7 @@ export class RpcServerPeer extends RpcPeer {
  * .NET Guid stores the first 3 groups in little-endian byte order.
  */
 function guidToBase64Url(uuid: string): string {
-  const hex = uuid.replace(/-/g, '');
+  const hex = uuid.replace(/-/g, "");
   const bytes = new Uint8Array(16);
 
   // Group 1 (bytes 0-3): little-endian
@@ -616,5 +616,5 @@ function guidToBase64Url(uuid: string): string {
     bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
 
   const binary = String.fromCharCode(...bytes);
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }

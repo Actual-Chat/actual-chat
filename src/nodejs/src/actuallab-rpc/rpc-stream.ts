@@ -155,7 +155,7 @@ export class RpcStream<T> implements AsyncIterable<T>, IRpcObject {
     this._iterating = true;
 
     let bufferIndex = 0;
-    let consumedIndex = 0;
+    let _consumedIndex = 0;
 
     const self = this;
 
@@ -172,7 +172,7 @@ export class RpcStream<T> implements AsyncIterable<T>, IRpcObject {
           if (bufferIndex < self._buffer.length) {
             const value = self._buffer[bufferIndex]!;
             bufferIndex++;
-            consumedIndex++;
+            _consumedIndex++;
             return { value, done: false };
           }
 

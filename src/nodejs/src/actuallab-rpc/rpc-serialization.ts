@@ -6,7 +6,7 @@
 //
 // The format is selected at connection time via the `f=` query parameter.
 
-import { encode as msgpackEncode, decode as msgpackDecode, decodeMulti as msgpackDecodeMulti, type DecodeOptions } from "@msgpack/msgpack";
+import { encode as msgpackEncode, decode as _msgpackDecode, decodeMulti as msgpackDecodeMulti, type DecodeOptions } from "@msgpack/msgpack";
 import type { RpcMessage } from "./rpc-message.js";
 import {
   ENVELOPE_DELIMITER,
@@ -69,7 +69,7 @@ export function deserializeMessage(raw: string): { message: RpcMessage; args: un
 // ============================================================
 
 // MessagePack decode options
-const msgpackDecodeOptions: DecodeOptions = {};
+const _msgpackDecodeOptions: DecodeOptions = {};
 
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
