@@ -306,7 +306,7 @@ export class JoinVideoCallModal {
             await this.previewWorker.initialize({
                 encoder: { codec: 'av01.0.01M.08', width: 640, height: 360, bitrate: 500_000, framerate: 15, keyframeInterval: 30, latencyMode: 'realtime', hardwareAcceleration: 'prefer-software' },
                 segmentation: segConfig,
-                streaming: { hubUrl: '', sessionToken: '', chatId: '', serverClockOffsetMs: 0 },
+                streaming: { rpcWsUrl: '', sessionToken: '', chatId: '', serverClockOffsetMs: 0 },
                 previewOnly: true,
             }, { type: 'rpc-timeout', timeoutMs: 15000 });
 

@@ -189,11 +189,13 @@ export class VideoPipeline implements IVideoPipeline {
         this.processing = true;
 
         // Build worker config
-        const hubUrl = BrowserInit.getUrl('/api/hub/streams');
+        // Fusion RPC WebSocket URL — worker pushes frames via
+        // `IStreamServer.PushVideo` over this connection.
+        const rpcWsUrl = BrowserInit.getUrl('/rpc/ws').replace(/^http/, 'ws');
         const workerConfig: VideoProcessingConfig = {
             encoder: this.config.encoderConfig,
             streaming: {
-                hubUrl,
+                rpcWsUrl,
                 sessionToken: SessionTokens.current,
                 chatId: this.config.streaming?.chatId ?? '',
                 serverClockOffsetMs: ServerClock.offsetMs,
