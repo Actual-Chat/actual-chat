@@ -1,7 +1,6 @@
 param(
     [string]$ProjectPath,
     [string]$CustomPort = "",
-    [switch]$Kill,
     [Alias("all")][switch]$CheckAll
 )
 
@@ -227,31 +226,25 @@ function Check-Port([int]$checkPort, [string]$label) {
                 }
                 if ($dockerInfo['Command']) { Write-Host "  Command: $($dockerInfo.Command)" }
 
-                if ($Kill) {
-                    Write-Host ''
-                    if ($dockerInfo['Pid']) {
-                        Write-Host "  Killing process (PID: $($dockerInfo.Pid)) inside container..."
-                        docker exec $dockerInfo.ContainerId kill $dockerInfo.Pid 2>$null | Out-Null
-                        Start-Sleep -Milliseconds 1000
-                        # Force kill if still alive
-                        docker exec $dockerInfo.ContainerId kill -0 $dockerInfo.Pid 2>$null
-                        if ($LASTEXITCODE -eq 0) {
-                            docker exec $dockerInfo.ContainerId kill -9 $dockerInfo.Pid 2>$null | Out-Null
-                            Start-Sleep -Milliseconds 500
-                        }
-                    } else {
-                        Write-Host "  Could not identify process PID inside container"
-                    }
-                    $stillUp = Find-DockerContainer $checkPort
-                    if ($stillUp) {
-                        Write-Host '  Result: Port still in use inside Docker'
-                    } else {
-                        Write-Host '  Result: Port is now FREE'
+                Write-Host ''
+                if ($dockerInfo['Pid']) {
+                    Write-Host "  Killing process (PID: $($dockerInfo.Pid)) inside container..."
+                    docker exec $dockerInfo.ContainerId kill $dockerInfo.Pid 2>$null | Out-Null
+                    Start-Sleep -Milliseconds 1000
+                    # Force kill if still alive
+                    docker exec $dockerInfo.ContainerId kill -0 $dockerInfo.Pid 2>$null
+                    if ($LASTEXITCODE -eq 0) {
+                        docker exec $dockerInfo.ContainerId kill -9 $dockerInfo.Pid 2>$null | Out-Null
+                        Start-Sleep -Milliseconds 500
                     }
                 } else {
-                    Write-Host ''
-                    Write-Host '  To kill this process, run:'
-                    Write-Host "    ./stop-server.cmd -Kill"
+                    Write-Host "  Could not identify process PID inside container"
+                }
+                $stillUp = Find-DockerContainer $checkPort
+                if ($stillUp) {
+                    Write-Host '  Result: Port still in use inside Docker'
+                } else {
+                    Write-Host '  Result: Port is now FREE'
                 }
                 return
             }
@@ -311,22 +304,16 @@ function Check-Port([int]$checkPort, [string]$label) {
         Write-Host '  Identity: UNKNOWN - no PID file for this instance'
     }
 
-    if ($Kill) {
-        Write-Host ''
-        Write-Host "  Killing process tree (PID: $foundPid)..."
-        Kill-ProcessTree $foundPid
-        Remove-Item $pidFile -ErrorAction SilentlyContinue
+    Write-Host ''
+    Write-Host "  Killing process tree (PID: $foundPid)..."
+    Kill-ProcessTree $foundPid
+    Remove-Item $pidFile -ErrorAction SilentlyContinue
 
-        Start-Sleep -Milliseconds 500
-        if (Test-PortListening $checkPort) {
-            Write-Host '  Result: Port still in use (process may need more time to exit)'
-        } else {
-            Write-Host '  Result: Port is now FREE'
-        }
+    Start-Sleep -Milliseconds 500
+    if (Test-PortListening $checkPort) {
+        Write-Host '  Result: Port still in use (process may need more time to exit)'
     } else {
-        Write-Host ''
-        Write-Host '  To kill this process, run:'
-        Write-Host "    /server-port-check --kill"
+        Write-Host '  Result: Port is now FREE'
     }
 }
 

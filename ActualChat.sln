@@ -411,6 +411,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{BA67ECF6-53CD-493A-AD54-D6997F879A2D}"
 	ProjectSection(SolutionItems) = preProject
 		scripts\Common.ps1 = scripts\Common.ps1
+		scripts\ServerPorts.ps1 = scripts\ServerPorts.ps1
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ps", "ps", "{E4F7B3A1-6C2D-4E8F-9A1B-3D5C7E9F0B2A}"
