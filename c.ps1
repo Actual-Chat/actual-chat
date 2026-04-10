@@ -572,19 +572,24 @@ class WorktreeServer {
     }
 
     hidden [void] ReloadNginx([bool]$debug) {
-        $originalLocation = Get-Location
-        Set-Location $this.ProjectPath
-        try {
-            $output = docker compose exec -T nginx nginx -s reload 2>&1
+        $nginxContainer = docker ps --filter "name=actual-chat-infra-nginx" --format "{{.Names}}" 2>$null | Select-Object -First 1
+        if (-not $nginxContainer) {
+            Write-Host "WARNING: nginx container not found — worktree routing may not work." -ForegroundColor Yellow
+            return
+        }
+
+        docker exec $nginxContainer nginx -s reload 2>$null | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            if ($debug) { Write-Host "[DEBUG] Reloaded nginx" }
+        } else {
+            # Reload can fail due to stale bind mounts; restart refreshes them
+            if ($debug) { Write-Host "[DEBUG] nginx reload failed, restarting container" }
+            docker restart $nginxContainer 2>$null | Out-Null
             if ($LASTEXITCODE -eq 0) {
-                if ($debug) { Write-Host "[DEBUG] Reloaded nginx" }
+                if ($debug) { Write-Host "[DEBUG] Restarted nginx" }
             } else {
-                Write-Host "WARNING: nginx reload failed — worktree routing may not work until nginx is restarted." -ForegroundColor Yellow
-                Write-Host "  Run: docker restart actual-chat-infra-nginx-1" -ForegroundColor Yellow
-                if ($debug) { Write-Host "[DEBUG] nginx reload output: $output" }
+                Write-Host "WARNING: nginx restart failed — worktree routing may not work." -ForegroundColor Yellow
             }
-        } finally {
-            Set-Location $originalLocation
         }
     }
 
