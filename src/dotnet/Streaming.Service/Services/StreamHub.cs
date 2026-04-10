@@ -359,7 +359,10 @@ public class StreamHub(IServiceProvider services) : Hub
 
         // Publish to local cache — first publisher wins (TrySetResult inside)
         Log.LogInformation("GetOrFetchRemoteVideo: caching #{StreamId} locally", streamId);
-        await store.Publish(streamId, (IAsyncEnumerable<VideoFrame>)rawRpcStream).ConfigureAwait(false);
+        // See StreamServer.GetOrFetchRemoteAudio for rationale: Publish returns
+        // memoizer.WriteTask and must not be awaited inline, or every remote peer
+        // will block until the producer stops.
+        _ = store.Publish(streamId, (IAsyncEnumerable<VideoFrame>)rawRpcStream);
         return await store.Get(streamId, true, cancellationToken).ConfigureAwait(false);
     }
 

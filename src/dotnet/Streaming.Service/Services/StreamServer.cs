@@ -94,6 +94,9 @@ public class StreamServer(IServiceProvider services) : IStreamServer
         await VideoBackend.PushVideo(videoRecord, newFrameStream, stopCts.Token).ConfigureAwait(false);
     }
 
+
+    // Private methods
+
     private async Task<IAsyncEnumerable<byte[]>?> GetOrFetchRemoteAudio(
         StreamId streamId, TimeSpan skipTo, CancellationToken cancellationToken)
     {
@@ -112,7 +115,12 @@ public class StreamServer(IServiceProvider services) : IStreamServer
             return null;
 
         Log.LogInformation("GetOrFetchRemoteAudio: caching #{StreamId} locally", streamId);
-        await store.Publish(streamId, (IAsyncEnumerable<byte[]>)rawRpcStream).ConfigureAwait(false);
+        // Publish returns memoizer.WriteTask which only completes when the source
+        // stream ends — do NOT await it here, or every remote peer will block until
+        // the speaker stops talking. The memoizer is registered in the store
+        // synchronously before Publish returns, so the subsequent Get succeeds
+        // immediately.
+        _ = store.Publish(streamId, (IAsyncEnumerable<byte[]>)rawRpcStream);
         stream = await store.Get(streamId, true, cancellationToken).ConfigureAwait(false);
         return stream == null ? null : AudioStreamingBackend.SkipTo(stream, skipTo, cancellationToken);
     }
