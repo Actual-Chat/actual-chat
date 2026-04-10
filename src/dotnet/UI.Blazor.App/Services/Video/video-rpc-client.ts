@@ -2,7 +2,7 @@
 // Replaces SignalR for both video pull (GetStream) and push (PushVideo) paths.
 
 import { RpcHub, RpcClientPeer, RpcClientStreamSender } from 'actuallab-rpc';
-import { LiveVideoStreamsDef, StreamServerDef, type VideoFrameDto } from './video-rpc-service.js';
+import { LiveVideoStreamsDef, StreamServerDef, type VideoFrameDto, type VideoFormatDto } from './video-rpc-service.js';
 
 let _hub: RpcHub | undefined;
 let _peer: RpcClientPeer | undefined;
@@ -24,7 +24,7 @@ export interface VideoRpcPullClient {
 
 export interface VideoRpcPushClient {
   PushVideo(session: string, chatId: string, clientStartOffset: number,
-    format: unknown, frameStreamRef: string): Promise<void>;
+    format: VideoFormatDto, frameStreamRef: string): Promise<void>;
 }
 
 /**
