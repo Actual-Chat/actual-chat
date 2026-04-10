@@ -127,10 +127,10 @@ body.wide .video-panel.expanded .video-panel-footer {
     @apply justify-center gap-4;
 }
 .video-panel.expanded .video-panel-header {
-    top: var(--safe-area-top);
+    @apply top-0;
 }
 .video-panel.expanded .video-panel-footer {
-    bottom: var(--safe-area-bottom);
+    @apply bottom-0;
 }
 .video-panel.expanded:has(.video-panel-chat:not(.chat-hidden)) .video-panel-toolbar {
     right: calc(var(--video-panel-chat-width) + 0.5rem);
