@@ -55,41 +55,6 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     // Core state accessors
 
     [ComputeMethod]
-    public virtual async Task<ChatVideoState> GetState(ChatId chatId, CancellationToken cancellationToken = default)
-    {
-        var isVideoEnabled = await IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
-        if (!isVideoEnabled)
-            return ChatVideoState.None;
-
-        var recordingChatId = await _recordingChatId.Use(cancellationToken).ConfigureAwait(false);
-        var isRecording = recordingChatId == chatId;
-
-        var watchingChatId = await _watchingChatId.Use(cancellationToken).ConfigureAwait(false);
-        var isWatching = watchingChatId == chatId;
-
-        var selectedCameraDeviceId = isRecording
-            ? await _selectedCameraDeviceId.Use(cancellationToken).ConfigureAwait(false)
-            : null;
-        var isBackgroundBlurEnabled = isRecording
-            && await _isBackgroundBlurEnabled.Use(cancellationToken).ConfigureAwait(false);
-        var errorMessage = isRecording
-            ? await _errorMessage.Use(cancellationToken).ConfigureAwait(false)
-            : null;
-        var isScreencasting = isRecording
-            && await _isScreencasting.Use(cancellationToken).ConfigureAwait(false);
-
-        return new ChatVideoState(
-            chatId,
-            isRecording,
-            isWatching,
-            selectedCameraDeviceId,
-            isBackgroundBlurEnabled,
-            isRecording && errorMessage != null,
-            errorMessage,
-            isScreencasting);
-    }
-
-    [ComputeMethod]
     public virtual async Task<VideoStreamingState?> GetVideoStreamingState(ChatId chatId, CancellationToken cancellationToken = default)
     {
         var isVideoEnabled = await IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
