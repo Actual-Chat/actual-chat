@@ -1,17 +1,30 @@
 /**
- * In-worker SignalR video streaming.
- * InternalVideoStream class and SignalR connection management.
+ * In-worker video streaming over Fusion RPC binary transport.
+ *
+ * Sends encoded frames to the server via `IStreamServer.PushVideo`, using an
+ * `RpcClientStreamSender<VideoFrameDto>` to stream typed frame objects. The
+ * server keeps its SignalR `StreamHub.PushVideo` endpoint for backward
+ * compatibility with older clients, but this worker no longer touches it.
  */
 
-import * as signalR from '@microsoft/signalr';
-import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
-import { HubConnectionState } from '@microsoft/signalr';
-import { encode } from '@msgpack/msgpack';
 import Denque from 'denque';
 import { EventHandlerSet } from 'event-handling';
 import { Log } from 'logging';
+import { RpcHub, RpcClientPeer, RpcClientStreamSender } from 'actuallab-rpc';
+import {
+    StreamServerDef,
+    type VideoFormatDto,
+    type VideoFrameDto,
+} from '../video-rpc-service';
 
 const { debugLog, infoLog, warnLog, errorLog } = Log.get('VideoPipeline');
+
+/** Serialization format for Fusion RPC push. Matches the pull side. */
+const RPC_SERIALIZATION_FORMAT = 'msgpack6';
+
+/** Session token used by PushVideo — `'~'` = Session.Default, resolved from the
+ *  WebSocket connection context (same trick as the pull side GetStream call). */
+const RPC_SESSION_DEFAULT = '~';
 
 export interface VideoStreamFrame {
     offset: number;
@@ -29,31 +42,23 @@ export function microsecondsToTicks(microseconds: number): number {
     return microseconds * 10;
 }
 
-export function encodeStreamFrame(frame: VideoStreamFrame): Uint8Array {
-    const obj: Record<string, unknown> = {
-        offset: frame.offset,
-        duration: frame.duration,
-        data: frame.data,
-    };
-    if (frame.isKeyFrame) {
-        obj.isKeyFrame = true;
-        obj.width = frame.width;
-        obj.height = frame.height;
-    }
-    if (frame.description) obj.description = frame.description;
-    if (frame.codec) obj.codec = frame.codec;
-    if (frame.temporalLayerId !== undefined && frame.temporalLayerId > 0)
-        obj.temporalLayerId = frame.temporalLayerId;
-    return encode(obj);
-}
-
 export interface StreamingContext {
-    signalrConnection: signalR.HubConnection | null;
     sessionToken: string;
     chatId: string;
     serverClockOffsetMs: number;
     streamKind: number; // 0 = Webcam, 1 = Screencast
     processing: boolean;
+    /** Fusion RPC WebSocket URL. */
+    rpcWsUrl: string | null;
+    /** Lazily-constructed RPC hub (worker-local). */
+    rpcHub: RpcHub | null;
+    /** Lazily-constructed RPC client peer (worker-local). */
+    rpcPeer: RpcClientPeer | null;
+    /** Lazily-constructed `IStreamServer` RPC client. */
+    rpcStreamServer: {
+        PushVideo(session: string, chatId: string, clientStartOffset: number,
+            format: VideoFormatDto, frameStreamRef: unknown): Promise<void>;
+    } | null;
 }
 
 export function serverClockNow(ctx: StreamingContext): number {
@@ -61,7 +66,51 @@ export function serverClockNow(ctx: StreamingContext): number {
 }
 
 /**
- * Internal VideoStream — simplified version that lives in the worker.
+ * Convert a worker-side `VideoStreamFrame` into the MessagePack map shape
+ * expected by `.NET VideoFrame` (`[MessagePackObject(true)]` ⇒ PascalCase keys).
+ */
+function frameToDto(frame: VideoStreamFrame): VideoFrameDto {
+    const dto: VideoFrameDto = {
+        Data: frame.data,
+        Offset: frame.offset,
+        Duration: frame.duration,
+        IsKeyFrame: frame.isKeyFrame,
+    };
+    if (frame.isKeyFrame) {
+        dto.Width = frame.width;
+        dto.Height = frame.height;
+    }
+    if (frame.description) dto.Description = frame.description;
+    if (frame.codec) dto.Codec = frame.codec;
+    if (frame.temporalLayerId !== undefined && frame.temporalLayerId > 0)
+        dto.TemporalLayerId = frame.temporalLayerId;
+    return dto;
+}
+
+/**
+ * Lazily initialise the Fusion RPC push peer for the worker context. The hub,
+ * peer and `IStreamServer` client are cached on the `StreamingContext` so every
+ * `InternalVideoStream` instance shares the same WebSocket for the life of the
+ * worker.
+ */
+export function ensureRpcPush(ctx: StreamingContext): void {
+    if (ctx.rpcPeer && ctx.rpcStreamServer) return;
+    if (!ctx.rpcWsUrl)
+        throw new Error('Fusion RPC push: rpcWsUrl is not set');
+    ctx.rpcHub ??= new RpcHub(); // hubId must be a UUID; RpcHub() assigns one
+    if (!ctx.rpcPeer) {
+        ctx.rpcPeer = new RpcClientPeer(ctx.rpcHub, ctx.rpcWsUrl, RPC_SERIALIZATION_FORMAT);
+        void ctx.rpcPeer.run();
+    }
+    ctx.rpcStreamServer ??= ctx.rpcHub.addClient(ctx.rpcPeer, StreamServerDef) as unknown as {
+        PushVideo(session: string, chatId: string, clientStartOffset: number,
+            format: VideoFormatDto, frameStreamRef: unknown): Promise<void>;
+    };
+}
+
+/**
+ * In-worker video stream producer. Buffers encoded frames and pumps them to
+ * the server via `IStreamServer.PushVideo` over Fusion RPC binary transport.
  */
 export class InternalVideoStream {
     private readonly frames = new Denque<VideoStreamFrame>();
@@ -102,19 +151,14 @@ export class InternalVideoStream {
     }
 
     private async stream(streamAfter?: Promise<void>): Promise<void> {
+        let sender: RpcClientStreamSender<VideoFrameDto> | null = null;
         try {
             if (streamAfter) await streamAfter;
-
-            const subject = new signalR.Subject<Uint8Array>();
-            const conn = this.ctx.signalrConnection;
-
-            while (conn?.state !== HubConnectionState.Connected && this.ctx.processing) {
-                if (conn?.state === HubConnectionState.Disconnected) {
-                    try { await conn.start(); } catch { /* retry */ }
-                }
-                await new Promise(r => setTimeout(r, 100));
-            }
             if (!this.ctx.processing) return;
+
+            ensureRpcPush(this.ctx);
+            const streamServer = this.ctx.rpcStreamServer!;
+            const peer = this.ctx.rpcPeer!;
 
             this.onReconnect?.();
 
@@ -124,58 +168,40 @@ export class InternalVideoStream {
             infoLog?.log(`PushVideo: codec=${this.config.codec}, ` +
                 `${this.config.width}x${this.config.height}, settings=${this.config.codecSettings.length} chars`);
 
-            void conn!.send('PushVideo',
-                this.ctx.sessionToken, this.ctx.chatId,
-                this.config.codec, this.config.width, this.config.height,
-                this.config.codecSettings, clientStartOffset,
-                this.ctx.streamKind, subject);
+            sender = new RpcClientStreamSender<VideoFrameDto>(peer);
+            const format: VideoFormatDto = {
+                Codec: this.config.codec,
+                Width: this.config.width,
+                Height: this.config.height,
+                CodecSettings: this.config.codecSettings,
+            };
 
+            // Fire-and-forget: server awaits the frameStream completion. Any
+            // rejection is logged but shouldn't cancel the pump loop since the
+            // sender owns the lifetime of the stream.
+            void streamServer
+                .PushVideo(RPC_SESSION_DEFAULT, this.ctx.chatId, clientStartOffset, format, sender.toRef())
+                .catch((err: unknown) => warnLog?.log('PushVideo rejected:', err));
+
+            // Pump frames. RpcClientStreamSender internally waits for the
+            // server's initial ack before its first `sendItem` leaves the wire.
             while (!this.isCompleted || !this.frames.isEmpty()) {
                 while (!this.frames.isEmpty()) {
                     const frame = this.frames.shift()!;
-                    // Guard: don't send if connection is no longer active
-                    if (conn?.state !== HubConnectionState.Connected) break;
-                    const encoded = encodeStreamFrame(frame);
-                    try {
-                        subject.next(encoded);
-                    } catch {
-                        // Connection closed during send — expected during shutdown
-                        break;
-                    }
+                    sender.sendItem(frameToDto(frame));
                 }
                 if (!this.isCompleted) {
                     await this.frameAdded.whenNextVoid();
                 }
             }
 
-            try { subject.complete(); } catch { /* connection may already be closed */ }
+            sender.sendEnd();
         } catch (error) {
             errorLog?.log('VideoStream error:', error);
+            try { sender?.sendEnd(error instanceof Error ? error : new Error(String(error))); }
+            catch { /* ignore */ }
         } finally {
             this.isDisposed = true;
         }
     }
-}
-
-export function initSignalR(hubUrl: string): signalR.HubConnection {
-    const connection = new signalR.HubConnectionBuilder()
-        .withUrl(hubUrl, {
-            transport: signalR.HttpTransportType.WebSockets,
-            skipNegotiation: true,
-        })
-        .withHubProtocol(new MessagePackHubProtocol())
-        .withAutomaticReconnect()
-        .build();
-
-    connection.onclose(() => warnLog?.log('SignalR connection closed'));
-    connection.onreconnecting(() => warnLog?.log('SignalR reconnecting...'));
-    connection.onreconnected(() => infoLog?.log('SignalR reconnected'));
-
-    void connection.start().then(() => {
-        infoLog?.log('SignalR connected');
-    }).catch((error: unknown) => {
-        errorLog?.log('SignalR connection failed:', error);
-    });
-
-    return connection;
 }

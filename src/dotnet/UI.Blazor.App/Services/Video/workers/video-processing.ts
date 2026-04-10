@@ -10,7 +10,7 @@ import Denque from 'denque';
 import * as ort from 'onnxruntime-web';
 
 import { type EncoderConfig, type EncodedChunkData, WebCodecsEncoder } from '../webcodecs-encoder';
-import type { SegmentationConfig, SegmentationStats, ModelConfig, VideoProcessingWorker, VideoProcessingWorkerCallbacks, VideoProcessingStats } from './video-processing-worker-contract';
+import type { SegmentationConfig, SegmentationStats, ModelConfig, VideoProcessingConfig, VideoProcessingWorker, VideoProcessingWorkerCallbacks, VideoProcessingStats } from './video-processing-worker-contract';
 import { getModelConfig } from './video-processing-worker-contract';
 import {
     initTensorWebGPU,
@@ -32,7 +32,7 @@ import { WebGPUManager } from '../webgpu-manager';
 import { isAvcCDescription, deriveAvcCodecFromDescription, resizeFrame, cpuRgbaToI420 } from './video-encoding-helpers';
 import {
     type VideoStreamFrame, type StreamingContext,
-    microsecondsToTicks, InternalVideoStream, initSignalR,
+    microsecondsToTicks, InternalVideoStream,
 } from './video-streaming';
 
 // Import the ONNX model so esbuild copies it to dist/assets/onnx/
@@ -103,15 +103,36 @@ let frameSequence = 0;
 
 // Streaming
 const streamCtx: StreamingContext = {
-    signalrConnection: null,
     sessionToken: '',
     chatId: '',
     serverClockOffsetMs: 0,
     streamKind: 0,
     processing: false,
+    rpcWsUrl: null,
+    rpcHub: null,
+    rpcPeer: null,
+    rpcStreamServer: null,
 };
 let videoStream: InternalVideoStream | null = null;
 let lastVideoStream: InternalVideoStream | null = null;
+
+/**
+ * Apply a `VideoProcessingConfig.streaming` block to the shared `streamCtx`.
+ * The Fusion RPC peer is constructed lazily on the first frame by
+ * `InternalVideoStream` / `ensureRpcPush(ctx)`, so this is a pure state copy.
+ */
+function applyStreamingConfig(config: VideoProcessingConfig): void {
+    const s = config.streaming;
+    streamCtx.sessionToken = s.sessionToken;
+    streamCtx.chatId = s.chatId;
+    streamCtx.serverClockOffsetMs = s.serverClockOffsetMs;
+    streamCtx.streamKind = s.streamKind ?? 0;
+    streamCtx.rpcWsUrl = s.rpcWsUrl;
+    streamingEnabled = true;
+
+    if (!streamCtx.rpcWsUrl)
+        warnLog?.log('streaming enabled but rpcWsUrl is empty — push will fail at stream creation');
+}
 let pendingStreamFrames: VideoStreamFrame[] = [];
 let codecSettings: string | null = null;
 let storedDescriptionBytes: Uint8Array | null = null;
@@ -653,13 +674,7 @@ export const serverImpl: VideoProcessingWorker = {
     startWithStream: async (config, frameInputStream): Promise<void> => {
         try {
             infoLog?.log('Starting video processing worker (stream mode)...');
-            streamCtx.sessionToken = config.streaming.sessionToken;
-            streamCtx.chatId = config.streaming.chatId;
-            streamCtx.serverClockOffsetMs = config.streaming.serverClockOffsetMs;
-            streamCtx.streamKind = config.streaming.streamKind ?? 0;
-            streamingEnabled = true;
-
-            streamCtx.signalrConnection = initSignalR(config.streaming.hubUrl);
+            applyStreamingConfig(config);
 
             if (config.segmentation) {
                 await initializeSegmentation({ ...config.segmentation, outputWidth: config.encoder.width, outputHeight: config.encoder.height });
@@ -697,13 +712,7 @@ export const serverImpl: VideoProcessingWorker = {
                 throw new Error('MediaStreamTrackProcessor not available in worker scope');
             }
 
-            streamCtx.sessionToken = config.streaming.sessionToken;
-            streamCtx.chatId = config.streaming.chatId;
-            streamCtx.serverClockOffsetMs = config.streaming.serverClockOffsetMs;
-            streamCtx.streamKind = config.streaming.streamKind ?? 0;
-            streamingEnabled = true;
-
-            streamCtx.signalrConnection = initSignalR(config.streaming.hubUrl);
+            applyStreamingConfig(config);
 
             if (config.segmentation) {
                 await initializeSegmentation({ ...config.segmentation, outputWidth: config.encoder.width, outputHeight: config.encoder.height });
@@ -739,11 +748,7 @@ export const serverImpl: VideoProcessingWorker = {
             infoLog?.log(`Starting video processing worker (${isPreviewOnly ? 'preview-only' : 'RPC'} mode)...`);
 
             if (!isPreviewOnly) {
-                streamCtx.sessionToken = config.streaming.sessionToken;
-                streamCtx.chatId = config.streaming.chatId;
-                streamCtx.serverClockOffsetMs = config.streaming.serverClockOffsetMs;
-                streamingEnabled = true;
-                streamCtx.signalrConnection = initSignalR(config.streaming.hubUrl);
+                applyStreamingConfig(config);
             }
 
             if (config.segmentation) {
@@ -859,7 +864,7 @@ export const serverImpl: VideoProcessingWorker = {
             try { await videoStream.whenDisposed; } catch { /* ignore */ }
             videoStream = null;
         }
-        if (streamCtx.signalrConnection) { try { await streamCtx.signalrConnection.stop(); } catch { /* ignore */ } streamCtx.signalrConnection = null; }
+        if (streamCtx.rpcPeer) { try { streamCtx.rpcPeer.close(); } catch { /* ignore */ } streamCtx.rpcPeer = null; streamCtx.rpcHub = null; streamCtx.rpcStreamServer = null; }
         if (segInitialized) { try { outputGpuBuffer.destroy(); } catch { /* ignore */ } try { smoothedMaskBuffer.destroy(); } catch { /* ignore */ } }
 
         // Reset all state

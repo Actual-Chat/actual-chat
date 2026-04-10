@@ -53,9 +53,24 @@ export class RpcClientStreamSender<T> implements IRpcObject {
     peer.sharedObjects.register(this);
   }
 
-  /** Returns the stream reference string to pass as an RPC method argument. */
-  toRef(): string {
-    return `${this.id.hostId},${this.id.localId},${this.ackPeriod},${this.ackAdvance},${this.allowReconnect ? "1" : "0"}`;
+  /**
+   * Returns the stream reference to pass as an RPC method argument. The server
+   * deserializes this into `RpcStream<T>`, which is `[MessagePackObject(true)]`
+   * on the wire — a MessagePack map with implicit PascalCase property keys. The
+   * `SerializedId` field is itself an `RpcObjectId` value, which is
+   * `[MessagePackObject]` with integer keys ⇒ a 2-element `[hostId, localId]`
+   * array in MessagePack.
+   *
+   * Return type is `unknown` so callers can pass it as an RPC method argument
+   * of any nominal type; the binary serializer treats it as an opaque object.
+   */
+  toRef(): unknown {
+    return {
+      SerializedId: [this.id.hostId, this.id.localId],
+      AckPeriod: this.ackPeriod,
+      AckAdvance: this.ackAdvance,
+      AllowReconnect: this.allowReconnect,
+    };
   }
 
   /** Called by system call handler when $sys.Ack is received from the server. */

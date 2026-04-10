@@ -133,9 +133,10 @@ export interface VideoProcessingConfig {
     segmentation?: SegmentationConfig;
     /** Adaptive framerate settings */
     adaptiveFramerate?: { reducedFps: number };
-    /** SignalR streaming configuration */
+    /** Streaming configuration — Fusion RPC push via `IStreamServer.PushVideo`. */
     streaming: {
-        hubUrl: string;
+        /** Fusion RPC WebSocket URL, e.g. `wss://host/rpc/ws`. */
+        rpcWsUrl: string;
         sessionToken: string;
         chatId: string;
         serverClockOffsetMs: number;

@@ -24,7 +24,7 @@ export interface VideoRpcPullClient {
 
 export interface VideoRpcPushClient {
   PushVideo(session: string, chatId: string, clientStartOffset: number,
-    format: VideoFormatDto, frameStreamRef: string): Promise<void>;
+    format: VideoFormatDto, frameStreamRef: unknown): Promise<void>;
 }
 
 /**
@@ -66,9 +66,10 @@ export function getVideoRpcPushClient(): VideoRpcPushClient {
 
 /**
  * Create a client-side stream sender for pushing video frames to the server.
- * Returns the sender (call writeFrom/sendItem) and its ref string (pass as RPC arg).
+ * Returns the sender (call writeFrom/sendItem) and its ref object (pass as RPC
+ * method argument — the binary serializer encodes it as a MessagePack map).
  */
-export function createVideoFrameSender(): { sender: RpcClientStreamSender<VideoFrameDto>; ref: string } {
+export function createVideoFrameSender(): { sender: RpcClientStreamSender<VideoFrameDto>; ref: unknown } {
     const peer = ensurePeer();
     const sender = new RpcClientStreamSender<VideoFrameDto>(peer);
     return { sender, ref: sender.toRef() };
