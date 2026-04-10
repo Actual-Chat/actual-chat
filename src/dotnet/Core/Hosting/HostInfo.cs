@@ -36,7 +36,7 @@ public sealed record HostInfo
             return string.Equals(host, CoreConstants.Hosts.Prod, StringComparison.OrdinalIgnoreCase) ? BaseUrlKind.Production
                 : string.Equals(host, CoreConstants.Hosts.Dev, StringComparison.OrdinalIgnoreCase) ? BaseUrlKind.Development
                 : string.Equals(host, CoreConstants.Hosts.Local, StringComparison.OrdinalIgnoreCase) ? BaseUrlKind.Local
-                // Support worktree subdomains: wt1.local.voxt.ai, cdn.wt1.local.voxt.ai, etc.
+                // Support worktree subdomains: wt1.local.voxt.ai, cdn-wt1.local.voxt.ai, etc.
                 : host.EndsWith(CoreConstants.Hosts.LocalSuffix, StringComparison.OrdinalIgnoreCase) ? BaseUrlKind.Local
                 : BaseUrlKind.Unknown;
         });

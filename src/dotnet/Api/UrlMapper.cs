@@ -56,9 +56,12 @@ public sealed partial class UrlMapper
         ImageProxyBaseUrl = "";
         HasImageProxy = false;
         if (IsVoxt || IsDevVoxt || IsLocalVoxt) {
-            // For worktree subdomains (wt1.local.voxt.ai), CDN is cdn.wt1.local.voxt.ai
-            ContentBaseUrl = $"{BaseUri.Scheme}://cdn.{BaseUri.Host}/";
-            ImageProxyBaseUrl = $"{BaseUri.Scheme}://media.{BaseUri.Host}/";
+            var cdnSubdomainSeparator =
+                BaseUri.Host.EndsWith(Constants.Hosts.LocalVoxtSuffix, StringComparison.OrdinalIgnoreCase)
+                    ? '-'
+                    : '.';
+            ContentBaseUrl = $"{BaseUri.Scheme}://cdn{cdnSubdomainSeparator}{BaseUri.Host}/";
+            ImageProxyBaseUrl = $"{BaseUri.Scheme}://media{cdnSubdomainSeparator}{BaseUri.Host}/";
             HasImageProxy = true;
         }
         WebsocketBaseUrl = GetWebSocketUrl(_baseUrlWithoutBackslash);

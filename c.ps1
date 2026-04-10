@@ -487,12 +487,12 @@ class WorktreeServer {
             -join $worktreeSuffix[0..([Math]::Min(19, $worktreeSuffix.Length - 1))]
         } else { "dev" }
 
-        # Build hostnames for this worktree (main project doesn't need custom hostnames)
+        # Build hostnames for this worktree (main project doesn't need custom hostnames).
         $this.Hostnames = if (-not $this.IsMainProject) {
             @(
                 "$($this.InstanceName).local.voxt.ai",
-                "cdn.$($this.InstanceName).local.voxt.ai",
-                "media.$($this.InstanceName).local.voxt.ai"
+                "cdn-$($this.InstanceName).local.voxt.ai",
+                "media-$($this.InstanceName).local.voxt.ai"
             )
         } else { @() }
 

@@ -80,7 +80,7 @@ services:
       - 53
     command:
       # Wildcard DNS entries for multi-worktree support
-      # Matches: local.voxt.ai, wt1.local.voxt.ai, cdn.wt1.local.voxt.ai, etc.
+      # Matches: local.voxt.ai, wt1.local.voxt.ai, cdn-wt1.local.voxt.ai, etc.
       - --address=/.local.voxt.ai/${LOCAL_IP:-127.0.0.1}
       - --address=/.local.actual.chat/${LOCAL_IP:-127.0.0.1}
       - --address=/embedded.voxt.ai/${LOCAL_IP:-127.0.0.1}
