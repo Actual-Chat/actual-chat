@@ -221,11 +221,19 @@ export class RpcStream<T> implements AsyncIterable<T>, IRpcObject {
     }
   }
 
-  private _sendAck(nextIndex: number, _mustReset: boolean): void {
+  private static readonly _emptyGuid = "00000000-0000-0000-0000-000000000000";
+
+  private _sendAck(nextIndex: number, mustReset: boolean): void {
     this._ackSentUpTo = nextIndex;
     const conn = this.peer.connection;
     if (conn) {
-      this.peer.hub.systemCallSender.ack(conn, this.id.localId, nextIndex, this.id.hostId);
+      // .NET server treats any non-default hostId as a reset/reconnect request
+      // (RpcSharedStream.OnAck: `var mustReset = hostId != default;`).  When the
+      // stream has AllowReconnect=false, a reset-flagged ack on an already-running
+      // stream is rejected with $sys.Disconnect.  Mirror the .NET client behavior
+      // and send the empty Guid for normal progress acks.
+      const hostId = mustReset ? this.id.hostId : RpcStream._emptyGuid;
+      this.peer.hub.systemCallSender.ack(conn, this.id.localId, nextIndex, hostId);
     }
   }
 
