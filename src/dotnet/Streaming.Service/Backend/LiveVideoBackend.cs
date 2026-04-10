@@ -31,6 +31,12 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     // [ComputeMethod]
     public virtual async Task<ApiArray<VideoStreamInfo>> List(ChatId chatId, CancellationToken cancellationToken)
     {
+        // Adds a dependency on this node's shard ownership state for chatId.
+        // Invalidates this computed on any ownership transition (gain/loss/handover),
+        // so bound RPC clients get pushed invalidations and reroute to the new owner.
+        // Throws RpcRerouteException if the call landed on a node not mapped to this shard.
+        await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
+
         var streams = await SafeGetAll(StreamsStore, chatId).ConfigureAwait(false);
         if (streams.Count == 0)
             return default;
@@ -62,6 +68,8 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     // [ComputeMethod]
     public virtual async Task<int> GetVideoStreamMemberCount(ChatId chatId, CancellationToken cancellationToken)
     {
+        await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
+
         var allMembers = await SafeGetAll(MembersStore, chatId).ConfigureAwait(false);
         var (activeMembers, _) = FilterStaleMembers(chatId, allMembers);
         return activeMembers.Count;
@@ -113,6 +121,8 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     // [ComputeMethod]
     public virtual async Task<ApiArray<string>> GetSupportedCodecs(ChatId chatId, CancellationToken cancellationToken)
     {
+        await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
+
         var allMembers = await SafeGetAll(MembersStore, chatId).ConfigureAwait(false);
         var (activeMembers, _) = FilterStaleMembers(chatId, allMembers);
         var chatState = GetChatState(chatId);
@@ -121,10 +131,12 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     }
 
     // [ComputeMethod]
-    public virtual Task<bool> ShouldPause(ChatId chatId, StreamId streamId, CancellationToken cancellationToken)
+    public virtual async Task<bool> ShouldPause(ChatId chatId, StreamId streamId, CancellationToken cancellationToken)
     {
+        await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
+
         var chatState = GetChatState(chatId);
-        return Task.FromResult(chatState.ShouldPause(streamId));
+        return chatState.ShouldPause(streamId);
     }
 
     public virtual async Task RegisterMember(ChatId chatId, string sessionId, ApiArray<string> supportedDecoderCodecs, CancellationToken cancellationToken)

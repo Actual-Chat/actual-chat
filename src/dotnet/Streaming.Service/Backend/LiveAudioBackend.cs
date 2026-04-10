@@ -31,6 +31,12 @@ public class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
     // [ComputeMethod]
     public virtual async Task<ApiArray<LiveStreamInfo>> List(ChatId chatId, CancellationToken cancellationToken)
     {
+        // Adds a dependency on this node's shard ownership state for chatId.
+        // Invalidates this computed on any ownership transition (gain/loss/handover),
+        // so bound RPC clients get pushed invalidations and reroute to the new owner.
+        // Throws RpcRerouteException if the call landed on a node not mapped to this shard.
+        await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
+
         var streams = await ReadStreamsFromRedis(chatId).ConfigureAwait(false);
         if (streams.Count == 0)
             return default;
