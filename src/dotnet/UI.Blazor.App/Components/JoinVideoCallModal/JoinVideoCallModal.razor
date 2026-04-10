@@ -271,14 +271,15 @@
             _isCameraStarting = false;
         } else {
             _isCameraStarting = true;
+            StateHasChanged();
             var success = await _jsRef.InvokeAsync<bool>("startPreview", _selectedDevice?.DeviceId);
             if (success) {
                 _isVideoOn = true;
             } else {
                 _isCameraStarting = false;
             }
-            StateHasChanged();
         }
+        StateHasChanged();
     }
 
     private void OnCameraDropdownToggle() {
@@ -289,6 +290,8 @@
     private async Task OnCameraSelected(VideoDevice device) {
         _selectedDevice = device;
         _isCameraDropdownOpen = false;
+        StateHasChanged();
+
         await Hub.LocalSettings.LocalAppSettings().Update(
             s => s with { SelectedCameraDeviceId = device.DeviceId });
 
