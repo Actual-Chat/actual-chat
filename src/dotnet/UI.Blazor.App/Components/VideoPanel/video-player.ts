@@ -1,5 +1,3 @@
-import * as signalR from '@microsoft/signalr';
-import { decode } from '@msgpack/msgpack';
 import { Log } from 'logging';
 import { initVideoRpc, getVideoRpcClient } from '../../Services/Video/video-rpc-client';
 import type { VideoFrameDto } from '../../Services/Video/video-rpc-service';
@@ -73,6 +71,10 @@ export class VideoPlayer {
     private readonly isSafari: boolean;
     private conversionQueue: Promise<void> = Promise.resolve();
     private isPlaying = false;
+    // Read `isPlaying` through this getter inside async loops to prevent TS
+    // control-flow analysis from narrowing it to `true` after an early-return
+    // guard — the value can flip to `false` via stop()/dispose() between awaits.
+    private get _isPlayingNow(): boolean { return this.isPlaying; }
     private visibilitySubscription: Subscription | null = null;
     private reconnectUnsubscribe: (() => void) | null = null;
 
@@ -1080,14 +1082,14 @@ export class VideoPlayer {
             for await (const frame of stream) {
                 frameCount++;
                 if (frameCount <= 3 || frameCount % 100 === 0) {
-                    warnLog?.log(`startPull [RPC]: received frame #${frameCount}, keys=${frame ? Object.keys(frame as object).join(',') : 'null'}`);
+                    warnLog?.log(`startPull [RPC]: received frame #${frameCount}, keys=${Object.keys(frame).join(',')}`);
                 }
-                if (abortController.signal.aborted || !this.isPlaying) break;
+                if (abortController.signal.aborted || !this._isPlayingNow) break;
                 this.pullRetryCount = 0;
                 this.processRpcFrame(frame);
             }
             // Stream completed normally
-            if (!abortController.signal.aborted && this.isPlaying) {
+            if (!abortController.signal.aborted && this._isPlayingNow) {
                 this.pullRetryCount++;
                 const delay = Math.min(1000 * this.pullRetryCount, 5000);
                 warnLog?.log(
@@ -1104,7 +1106,7 @@ export class VideoPlayer {
             const message = err instanceof Error ? err.message : String(err);
             const stack = err instanceof Error ? err.stack : '';
             warnLog?.log(`startPull [RPC] ERROR: ${message}`, stack);
-            if (abortController.signal.aborted || !this.isPlaying) return;
+            if (abortController.signal.aborted || !this._isPlayingNow) return;
             this.pullRetryCount++;
             const delay = Math.min(1000 * this.pullRetryCount, 5000);
             warnLog?.log(
@@ -1123,9 +1125,9 @@ export class VideoPlayer {
         try {
             const offsetMs = frame.offset / 10000;   // .NET ticks → ms
             const durationMs = frame.duration / 10000;
-            const isKeyFrame = frame.isKeyFrame ?? false;
-            const data = frame.data as Uint8Array;
-            const description = frame.description as Uint8Array | undefined;
+            const isKeyFrame = frame.isKeyFrame;
+            const data = frame.data;
+            const description = frame.description ?? undefined;
 
             this.receivedFrameCount++;
             if (isKeyFrame) {

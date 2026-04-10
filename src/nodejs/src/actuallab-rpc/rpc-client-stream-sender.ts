@@ -37,10 +37,10 @@ export class RpcClientStreamSender<T> implements IRpcObject {
   private _started = new PromiseSource<void>();
 
   constructor(
-      peer: RpcPeer,
-      ackPeriod = DEFAULT_ACK_PERIOD,
-      ackAdvance = DEFAULT_ACK_ADVANCE,
-      allowReconnect = false
+    peer: RpcPeer,
+    ackPeriod = DEFAULT_ACK_PERIOD,
+    ackAdvance = DEFAULT_ACK_ADVANCE,
+    allowReconnect = false
   ) {
     const localId = peer.sharedObjects.nextId();
     this.id = { hostId: peer.hub.hubId, localId };

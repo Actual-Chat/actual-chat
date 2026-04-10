@@ -6,21 +6,21 @@ import { defineRpcService, RpcType } from 'actuallab-rpc';
 // --- ILiveVideoStreams (video pull) ---
 // .NET: Task<RpcStream<VideoFrame>?> GetStream(Session session, StreamId streamId, TimeSpan skipTo, CancellationToken ct)
 // Wire: "ILiveVideoStreams.GetStream:3" (3 args excl. CancellationToken)
-export const LiveVideoStreamsDef = defineRpcService("ILiveVideoStreams", {
-  // wireArgCount = args.length + 1 (CancellationToken) by default
-  GetStream: { args: ["session", "streamId", "skipTo"], returns: RpcType.stream },
-  List: { args: ["session", "chatId"] },
-  GetMemberCount: { args: ["session", "chatId"] },
-  GetSupportedCodecs: { args: ["session", "chatId"] },
-  GetQualityPreset: { args: ["session", "streamId"] },
-  RegisterMember: { args: ["session", "chatId", "supportedDecoderCodecs"] },
-  UnregisterMember: { args: ["session", "chatId"] },
+export const LiveVideoStreamsDef = defineRpcService('ILiveVideoStreams', {
+    // wireArgCount = args.length + 1 (CancellationToken) by default
+    GetStream: { args: ['session', 'streamId', 'skipTo'], returns: RpcType.stream },
+    List: { args: ['session', 'chatId'] },
+    GetMemberCount: { args: ['session', 'chatId'] },
+    GetSupportedCodecs: { args: ['session', 'chatId'] },
+    GetQualityPreset: { args: ['session', 'streamId'] },
+    RegisterMember: { args: ['session', 'chatId', 'supportedDecoderCodecs'] },
+    UnregisterMember: { args: ['session', 'chatId'] },
 });
 
 // --- IStreamServer (video push + audio) ---
 // .NET: Task PushVideo(Session session, string chatId, double clientStartOffset, VideoFormat format, RpcStream<VideoFrame> frameStream, CancellationToken ct)
-export const StreamServerDef = defineRpcService("IStreamServer", {
-  PushVideo: { args: ["session", "chatId", "clientStartOffset", "format", "frameStream"] },
+export const StreamServerDef = defineRpcService('IStreamServer', {
+    PushVideo: { args: ['session', 'chatId', 'clientStartOffset', 'format', 'frameStream'] },
 });
 
 // --- VideoFrame TypeScript interface ---
