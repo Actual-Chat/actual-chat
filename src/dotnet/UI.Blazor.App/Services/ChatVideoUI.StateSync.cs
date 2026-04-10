@@ -68,6 +68,7 @@ public partial class ChatVideoUI
                 if (recorder is null) {
                     // Recording should start
                     try {
+                        _errorMessage.Value = null; // Clear any previous error
                         recorder = await VideoRecorder.Create(Hub).ConfigureAwait(false);
                         // Ensure server clock is synced before recording (TIMING_ANCHOR accuracy)
                         var serverTimeSync = Hub.Services.GetService<ServerTimeSync>();

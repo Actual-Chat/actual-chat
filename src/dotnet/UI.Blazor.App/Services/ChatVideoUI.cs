@@ -91,7 +91,6 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     {
         _recordingChatId.Value = chatId;
         _isScreencasting.Value = true;
-        _errorMessage.Value = null;
         OpenVideoPanel(chatId);
     }
 
@@ -117,7 +116,6 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     {
         // Resume recording without overwriting camera/blur settings preserved from the previous recording
         _recordingChatId.Value = chatId;
-        _errorMessage.Value = null;
         OpenVideoPanel(chatId);
     }
 
@@ -125,24 +123,16 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     public void OnRecordingStarted(ChatId chatId)
     {
-        if (_recordingChatId.Value == chatId)
-            return;
-        _recordingChatId.Value = chatId;
-        _errorMessage.Value = null;
     }
 
     public void OnRecordingStopped()
-    {
-        _recordingChatId.Value = null;
-        _isScreencasting.Value = false;
-    }
+        => StopStreaming();
 
     public void OnRecordingError(string error)
     {
         _errorMessage.Value = error;
-        _recordingChatId.Value = null;
-        _isScreencasting.Value = false;
-        // Don't clear _watchingChatId — user stays watching remote streams, can retry or hang up
+        StopStreaming();
+        // Don't close the video panel. User stays watching remote streams, can retry or hang up
     }
 
     // Device enumeration
@@ -310,7 +300,6 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         _selectedCameraDeviceId.Value = cameraDeviceId;
         _isBackgroundBlurEnabled.Value = isBackgroundBlurEnabled;
         _isScreencasting.Value = false;
-        _errorMessage.Value = null;
         OpenVideoPanel(chatId);
     }
 }
