@@ -16,31 +16,32 @@ public class AndroidThemeHandler : MauiThemeHandler
         if (!base.Apply(topBarColor, bottomBarColor, theme))
             return false;
 
-        SetNavigationBarColor(bottomBarColor);
+        SetBarsAppearance(topBarColor, bottomBarColor);
         return true;
     }
 
     [UnconditionalSuppressMessage("Trimming",
         "CA1422: Call site is reachable on Android >= v.X, obsolete on >= v.Y",
         Justification = "Fine for Window.SetNavigationBarColor")]
-    public static bool SetNavigationBarColor(string bottomBarColor)
+    public static bool SetBarsAppearance(string topBarColor, string bottomBarColor)
     {
         var window = Window;
         if (window == null)
             return false;
 
-        var androidColor = Android.Graphics.Color.ParseColor(bottomBarColor);
+        var statusBarColor = Android.Graphics.Color.ParseColor(topBarColor);
+        var navBarColor = Android.Graphics.Color.ParseColor(bottomBarColor);
         if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.Q) {
             window.NavigationBarContrastEnforced = false;
             window.SetNavigationBarColor(Android.Graphics.Color.Transparent);
         }
         else
-            window.SetNavigationBarColor(androidColor);
+            window.SetNavigationBarColor(navBarColor);
 
-        // Set navigation bar icon appearance (light/dark)
-        var isNavBarDark = IsDark(androidColor);
+        // Set status/navigation bar icon appearance (light/dark)
         var wic = new WindowInsetsControllerCompat(window, window.DecorView);
-        wic.AppearanceLightNavigationBars = !isNavBarDark;
+        wic.AppearanceLightStatusBars = !IsDark(statusBarColor);
+        wic.AppearanceLightNavigationBars = !IsDark(navBarColor);
         return true;
     }
 
