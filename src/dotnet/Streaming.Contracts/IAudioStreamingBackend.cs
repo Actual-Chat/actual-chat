@@ -9,7 +9,7 @@ namespace ActualChat.Streaming;
 /// <summary>
 /// Backend service for audio and transcript streaming.
 /// </summary>
-[BackendService(nameof(HostRole.StreamingBackend), ServiceMode.Server)]
+[BackendService(nameof(HostRole.StreamingBackend), ServiceMode.Distributed)]
 public interface IAudioStreamingBackend : IRpcService, IBackendService
 {
     Task<RpcStream<byte[]>?> GetAudio(

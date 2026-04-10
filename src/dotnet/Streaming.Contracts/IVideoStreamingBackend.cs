@@ -5,7 +5,7 @@ using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
 
-[BackendService(nameof(HostRole.StreamingBackend), ServiceMode.Server)]
+[BackendService(nameof(HostRole.StreamingBackend), ServiceMode.Distributed)]
 public interface IVideoStreamingBackend : IComputeService, IRpcService, IBackendService
 {
     Task<RpcStream<VideoFrame>?> GetVideo(StreamId streamId, TimeSpan skipTo, string peerId, CancellationToken cancellationToken);
