@@ -1158,11 +1158,11 @@ export class VideoPlayer {
 
     private processRpcFrame(frame: VideoFrameDto): void {
         try {
-            const offsetMs = frame.offset / 10000;   // .NET ticks → ms
-            const durationMs = frame.duration / 10000;
-            const isKeyFrame = frame.isKeyFrame;
-            const data = frame.data;
-            const description = frame.description ?? undefined;
+            const offsetMs = frame.Offset / 10000;   // .NET ticks → ms
+            const durationMs = frame.Duration / 10000;
+            const isKeyFrame = frame.IsKeyFrame;
+            const data = frame.Data;
+            const description = frame.Description ?? undefined;
 
             this.receivedFrameCount++;
             if (isKeyFrame) {

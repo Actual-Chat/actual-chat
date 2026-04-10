@@ -24,16 +24,28 @@ export const StreamServerDef = defineRpcService('IStreamServer', {
 });
 
 // --- VideoFrame TypeScript interface ---
-// Matches .NET VideoFrame serialized via MessagePack with string keys.
+// Matches .NET VideoFrame serialized via MessagePack with implicit string keys.
+// VideoFrame.cs is [MessagePackObject(true)] (no explicit [Key] attrs), so the
+// wire keys are PascalCase property names.
 // TimeSpan is serialized as int64 ticks (100ns units).
 export interface VideoFrameDto {
-  data: Uint8Array;
-  offset: number;       // TimeSpan ticks (int64)
-  duration: number;     // TimeSpan ticks (int64)
-  isKeyFrame: boolean;
-  width?: number;
-  height?: number;
-  description?: Uint8Array | null;
-  codec?: string | null;
-  temporalLayerId?: number;
+  Data: Uint8Array;
+  Offset: number;       // TimeSpan ticks (int64)
+  Duration: number;     // TimeSpan ticks (int64)
+  IsKeyFrame: boolean;
+  Width?: number;
+  Height?: number;
+  Description?: Uint8Array | null;
+  Codec?: string | null;
+  TemporalLayerId?: number;
+}
+
+// --- VideoFormat TypeScript interface ---
+// Matches .NET VideoFormat serialized via MessagePack with implicit string keys.
+// VideoFormat.cs is [MessagePackObject(true)] → PascalCase property names.
+export interface VideoFormatDto {
+  Codec: string;
+  Width: number;
+  Height: number;
+  CodecSettings: string;
 }

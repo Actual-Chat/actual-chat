@@ -1,6 +1,6 @@
 namespace ActualChat.Video;
 
-[DataContract, MemoryPackable, MessagePackObject]
+[DataContract, MemoryPackable, MessagePackObject(true)]
 public partial class VideoFrame : MediaFrame
 {
     // Parameterless constructor for MessagePack and MemoryPack deserialization
@@ -11,37 +11,37 @@ public partial class VideoFrame : MediaFrame
     public VideoFrame(bool isKeyFrame)
         => IsKeyFrame = isKeyFrame;
 
-    [DataMember(Order = 1), MemoryPackOrder(1), Key("offset")]
+    [DataMember(Order = 1), MemoryPackOrder(1)]
     public override TimeSpan Offset { get; init; }
 
-    [DataMember(Order = 2), MemoryPackOrder(2), Key("duration")]
+    [DataMember(Order = 2), MemoryPackOrder(2)]
     public override TimeSpan Duration { get; init; }
 
-    [DataMember(Order = 3), MemoryPackOrder(3), Key("isKeyFrame")]
+    [DataMember(Order = 3), MemoryPackOrder(3)]
     public override bool IsKeyFrame { get; init; }
 
-    [DataMember(Order = 4), MemoryPackOrder(4), Key("width")]
+    [DataMember(Order = 4), MemoryPackOrder(4)]
     public int Width { get; init; }
 
-    [DataMember(Order = 5), MemoryPackOrder(5), Key("height")]
+    [DataMember(Order = 5), MemoryPackOrder(5)]
     public int Height { get; init; }
 
     /// <summary>
     /// Codec-specific data (SPS/PPS for H.264). Only present on keyframes.
     /// </summary>
-    [DataMember(Order = 6), MemoryPackOrder(6), Key("description")]
+    [DataMember(Order = 6), MemoryPackOrder(6)]
     public byte[]? Description { get; init; }
 
     /// <summary>
     /// Codec identifier (e.g., "avc1" for H.264). Only present on keyframes.
     /// </summary>
-    [DataMember(Order = 7), MemoryPackOrder(7), Key("codec")]
+    [DataMember(Order = 7), MemoryPackOrder(7)]
     public string? Codec { get; init; }
 
     /// <summary>
     /// SVC temporal layer ID. 0 = base layer, 1+ = enhancement layers.
     /// </summary>
-    [DataMember(Order = 8), MemoryPackOrder(8), Key("temporalLayerId")]
+    [DataMember(Order = 8), MemoryPackOrder(8)]
     public int TemporalLayerId { get; init; }
 
     /// <summary>
