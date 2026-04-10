@@ -21,8 +21,6 @@
 }
 
 .video-panel.expanded,
-body.wide .video-panel.expanded,
-body.wide .video-panel.rp-visible.expanded,
 body.narrow .video-panel.expanded {
     @apply fixed z-button inset-0;
     @apply max-w-none max-h-none;
@@ -34,7 +32,9 @@ body.narrow .video-panel.expanded {
         var(--safe-area-bottom)
         var(--safe-area-left);
 }
+body.wide .video-panel.rp-visible.expanded,
 body.wide .video-panel.expanded {
+    @apply max-w-none max-h-none;
     @apply bg-03;
     padding:
         calc(var(--safe-area-top) + 0.5rem)
@@ -42,8 +42,11 @@ body.wide .video-panel.expanded {
         calc(var(--safe-area-bottom) + 0.5rem)
         calc(var(--safe-area-left) + 0.5rem)
 }
-.video-panel.expanded > .c-container > .c-content {
+.video-panel.expanded .video-panel-content {
     @apply rounded-none;
+}
+body.wide .video-panel.expanded .video-panel-content {
+    @apply justify-start;
 }
 body.narrow .video-panel {
     @apply min-h-48 max-h-48;
@@ -66,23 +69,34 @@ body.wide .video-panel.rp-visible {
     @apply flex items-center justify-center;
     @apply w-full h-full;
 }
-.video-panel > .c-container > .c-content {
+body.wide .video-panel.expanded > .c-container {
+    @apply rounded-lg;
+    @apply overflow-hidden;
+}
+body.wide .video-panel.expanded:has(.video-panel-chat) > .c-container {
+    @apply justify-start;
+}
+.video-panel .video-panel-content {
     @apply relative;
     @apply flex items-center justify-center;
     @apply w-full h-full;
     @apply bg-03;
 }
-.video-panel.first-time-open > .c-container > .c-content {
+.video-panel.first-time-open .video-panel-content {
     @apply w-0 h-0;
     @apply rounded-none;
     animation: smoothShowVideoPanelContent 0.3s ease-in-out 0.2s forwards;
 }
-.video-panel.closing > .c-container > .c-content {
+.video-panel.closing .video-panel-content {
     animation: smoothHideVideoPanelContent 0.35s ease-in-out forwards;
 }
 .video-panel .btn-h.expand-btn {
     @apply absolute top-2 left-2 z-10;
+    @apply w-12 h-12;
+    @apply rounded-full;
     @apply text-white text-lg;
+    background: linear-gradient(0deg, rgba(255, 255, 255, 0.50) -46.21%, rgba(255, 255, 255, 0.10) 103.45%, rgba(255, 255, 255, 0.35) 103.45%);
+    backdrop-filter: blur(8px);
 }
 .video-panel .btn-h.expand-btn.expanded-video-btn {
     @apply inset-auto;
@@ -126,6 +140,11 @@ body.wide .video-panel.rp-visible {
 body.wide .video-panel.expanded .video-panel-footer {
     @apply justify-center gap-4;
 }
+@media (orientation: landscape) {
+    body.narrow .video-panel.expanded .video-panel-footer {
+        @apply justify-center gap-4;
+    }
+}
 .video-panel.expanded .video-panel-header {
     @apply top-0;
 }
@@ -136,8 +155,8 @@ body.wide .video-panel.expanded .video-panel-footer {
     right: calc(var(--video-panel-chat-width) + 0.5rem);
 }
 .video-panel .video-panel-toolbar > * {
-    background: linear-gradient(0deg, rgba(255, 255, 255, 0.50) -46.21%, rgba(255, 255, 255, 0.10) 103.45%, rgba(255, 255, 255, 0.35) 103.45%);
     @apply text-white;
+    background: linear-gradient(0deg, rgba(255, 255, 255, 0.50) -46.21%, rgba(255, 255, 255, 0.10) 103.45%, rgba(255, 255, 255, 0.35) 103.45%);
     backdrop-filter: blur(8px);
 }
 .video-panel .video-panel-toolbar > button {
@@ -196,13 +215,13 @@ body.hoverable .btn-h.expand-btn:hover {
 
 .video-panel .remote-video-container {
     @apply absolute inset-0;
-    opacity: 0;
-    pointer-events: none;
+    @apply opacity-0;
+    @apply pointer-events-none;
     transition: opacity 0.3s ease, transform 0.4s ease;
 }
 .video-panel .remote-video-container.focused {
-    opacity: 1;
-    pointer-events: auto;
+    @apply opacity-100;
+    @apply pointer-events-auto;
 }
 .video-panel.expanded .remote-video-container.focused canvas.remote-video {
     @apply object-cover;
@@ -222,11 +241,14 @@ body.hoverable .btn-h.expand-btn:hover {
     transition: opacity 0.3s ease, transform 0.4s ease;
 }
 body.narrow .video-panel .remote-video-container.previous-speaker {
-    @apply bottom-[5.5rem];
+    @apply bottom-22;
+    @apply w-20 h-20;
+}
+body.narrow .video-panel.expanded .remote-video-container.previous-speaker {
     @apply w-20 h-20;
 }
 .video-panel.expanded .remote-video-container.previous-speaker {
-    @apply bottom-18 right-22;
+    @apply bottom-20 right-48;
 }
 .video-panel .remote-video-container.previous-speaker .video-participant-label {
     @apply hidden;
@@ -241,6 +263,12 @@ body.narrow .video-panel .remote-video-container.previous-speaker {
 .video-panel .remote-streams:empty {
     @apply hidden;
 }
+body.wide .video-panel.expanded .remote-streams {
+    @apply rounded-lg;
+}
+body.wide .video-panel.expanded:has(.video-panel-chat) .remote-streams {
+    width: calc(100% - var(--video-panel-chat-width) - 0.5rem);
+}
 .video-panel .connecting-overlay {
     @apply absolute inset-0;
     @apply flex flex-col items-center justify-center gap-2;
@@ -250,16 +278,16 @@ body.narrow .video-panel .remote-video-container.previous-speaker {
 }
 .video-panel .connecting-spinner {
     @apply w-8 h-8;
+    @apply rounded-full;
     border: 2px solid var(--white-40);
     border-top-color: var(--white);
-    @apply rounded-full;
     animation: spin 1s linear infinite;
 }
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
 .video-panel.has-remote-streams .video-streaming-preview {
-    @apply absolute bottom-1 right-1 z-10;
+    @apply relative z-10;
     @apply w-20 h-20;
     @apply rounded-lg border-2 border-white;
     @apply overflow-hidden;
@@ -268,20 +296,16 @@ body.narrow .video-panel .remote-video-container.previous-speaker {
 body.wide .video-panel.has-remote-streams .video-streaming-preview {
     @apply w-40 h-40;
 }
-.video-panel.has-remote-streams.expanded .video-streaming-preview {
-    @apply bottom-18 right-1;
-}
 .video-panel .remote-streams canvas.remote-video {
     @apply w-full h-full;
     @apply bg-black;
     @apply text-white;
     @apply pointer-events-auto;
-    @apply object-contain;
+    @apply object-cover;
 }
 .video-panel .remote-streams .previous-speaker canvas.remote-video {
     @apply object-cover;
 }
-
 .video-panel .chat-btn {
     @apply absolute right-4;
 }
@@ -301,7 +325,7 @@ body.wide .video-panel.has-remote-streams .video-streaming-preview {
     .video-panel:has(.video-panel-chat) { --video-panel-chat-width: 40rem; }
 }
 .video-panel-chat {
-    @apply absolute z-[999] right-0 top-0 bottom-0;
+    @apply absolute z-tooltip right-0 top-0 bottom-0;
     @apply flex-y;
     @apply p-1;
     @apply rounded-lg;
@@ -383,6 +407,67 @@ body.wide .video-panel.has-remote-streams .video-streaming-preview {
     100% {
         filter: blur(4px) opacity(0);
     }
+}
+
+/* ── Video panel sidebar (previous speaker + local preview) ── */
+.video-panel .video-panel-content {
+    @apply flex-x;
+}
+.video-panel.expanded:has(.video-panel-chat) .video-panel-content {
+    width: calc(100% - var(--video-panel-chat-width) - 0.5rem);
+}
+.video-panel .video-panel-content > .remote-streams {
+    @apply relative flex-1 min-w-0;
+}
+.video-panel .video-panel-content > .c-sidebar {
+    @apply absolute bottom-1 right-1;
+}
+.video-panel.expanded .video-panel-content > .c-sidebar {
+    @apply bottom-20 right-4;
+}
+@media (orientation: landscape) {
+    body.narrow .video-panel.expanded .video-panel-content > .c-sidebar {
+        @apply bottom-4;
+    }
+}
+.video-panel.expanded:has(.video-panel-chat) .video-panel-content > .c-sidebar {
+    @apply bottom-20;
+}
+.video-panel .video-panel-content .c-sidebar-content {
+    @apply flex-y items-end gap-1;
+}
+.video-panel.expanded .video-panel-content .c-sidebar-content {
+    @apply flex-x items-end;
+}
+.video-panel .video-panel-content .c-sidebar-content > .remote-video-container.previous-speaker {
+    @apply relative inset-auto;
+    @apply w-20 h-20;
+    @apply rounded-lg border-2 border-separator;
+    @apply overflow-hidden;
+    @apply opacity-100;
+    @apply pointer-events-auto;
+}
+body.wide .video-panel .video-panel-content .c-sidebar-content > .remote-video-container.previous-speaker {
+    @apply w-40 h-40;
+}
+.video-panel .video-panel-content .c-sidebar-content > .remote-video-container.previous-speaker canvas.remote-video {
+    @apply w-full h-full;
+    @apply object-cover;
+}
+.video-panel .video-panel-content .c-sidebar-content > .video-streaming-preview {
+    @apply relative;
+}
+/* No remote streams — preview fills the whole c-content */
+.video-panel:not(.has-remote-streams) .video-panel-content > .c-sidebar {
+    @apply static;
+    @apply w-full h-full;
+}
+.video-panel:not(.has-remote-streams) .video-panel-content .c-sidebar-content {
+    @apply w-full h-full;
+}
+.video-panel:not(.has-remote-streams) .video-panel-content .c-sidebar-content > .video-streaming-preview {
+    @apply w-full h-full;
+    @apply rounded-none border-0;
 }
 
 @keyframes smoothHideVideoPanelContent {

@@ -2,23 +2,19 @@
     display: none;
 }
 .video-streaming-preview .call-video {
-    @apply absolute inset-0;
     @apply w-full h-full;
-    @apply object-contain;
+    @apply object-cover;
     @apply bg-black;
     transform: scaleX(-1);
 }
 body.wide .video-panel.expanded .video-streaming-preview .call-video {
     @apply rounded-lg;
 }
-.video-panel.expanded:has(.video-panel-chat) .video-streaming-preview .call-video {
-    width: calc(100% - var(--video-panel-chat-width) - 0.5rem);
-}
 .video-streaming-preview.screencast .call-video {
     transform: none;
 }
 .video-streaming-preview .btn-h.settings-btn {
-    @apply absolute top-2 right-2;
+    @apply absolute top-0.5 right-0.5;
     @apply text-white text-lg;
 }
 body.hoverable .video-streaming-preview .btn-h.settings-btn:hover {

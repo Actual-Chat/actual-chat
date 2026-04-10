@@ -105,7 +105,7 @@
                 </HeaderButton>
             }
         </div>
-        <div class="c-content">
+        <div class="video-panel-content">
             <div class="remote-streams">
                 @if (_showConnecting) {
                     <UITimer Period="TimeSpan.FromSeconds(5)" IsRecurring="false" Tick="OnConnectingTimeout" />
@@ -114,16 +114,23 @@
                         <span>Connecting...</span>
                     </div>
                 }
-                @foreach (var streamInfo in m.RemoteStreams) {
+                @foreach (var streamInfo in m.RemoteStreams.Where(s => s.AuthorId != m.PreviousSpeakerAuthorId)) {
                     <RemoteStreamPlayer @key="streamInfo.StreamId.Value" StreamInfo="@streamInfo" />
                 }
+            </div>
+            <div class="c-sidebar">
+                <div class="c-sidebar-content">
+                    @if (m.PreviousSpeakerStream is { } prevStream) {
+                        <RemoteStreamPlayer @key="prevStream.StreamId.Value" StreamInfo="@prevStream" />
+                    }
+                    <VideoStreamingPreview />
+                </div>
             </div>
             <HeaderButton Class="expand-btn show-with-delay collapsed-video-btn" Click="@OnExpandClick">
                 <i class="icon-expand text-lg collapsed-video-panel"></i>
                 <i class="icon-collapse text-lg expanded-video-panel"></i>
             </HeaderButton>
         </div>
-        <VideoStreamingPreview />
         @if (_isExpanded && _isChatVisible && !ScreenSize.IsNarrow() && _lastChat is { } chat) {
             <div class="video-panel-chat upload-drag-drop-host">
                 <ChatView @key="@chat.Id.Value" ChatId="@chat.Id"/>
@@ -247,12 +254,13 @@
             return new Model(isRightPanelVisible, [], ownStreamingMode, audioState.IsRecording, audioState.IsListening, 0, chat, isCollapsed);
 
         var remoteStreams = await ChatVideoUI.GetRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
+        var previousSpeakerId = await ChatVideoUI.GetPreviousFocusedSpeakerId(cancellationToken).ConfigureAwait(false);
 
         Log.LogWarning("[VideoPanelContent] ComputeState: remoteStreams=[{Streams}], isRecording={IsRecording}",
             string.Join(", ", remoteStreams.Select(s => $"{s.StreamId}({s.Format.Codec})")),
             ownStreamingMode);
 
-        return new Model(isRightPanelVisible, remoteStreams, ownStreamingMode, audioState.IsRecording, audioState.IsListening, videoStreamMemberCount, chat, isCollapsed);
+        return new Model(isRightPanelVisible, remoteStreams, ownStreamingMode, audioState.IsRecording, audioState.IsListening, videoStreamMemberCount, chat, isCollapsed, previousSpeakerId);
     }
 
     private void OnHangUpClick() {
@@ -340,8 +348,11 @@
         bool IsListening,
         int VideoStreamMemberCount,
         Chat? Chat,
-        bool IsCollapsed
+        bool IsCollapsed = false,
+        AuthorId? PreviousSpeakerAuthorId = null
     ) {
+        public VideoStreamInfo? PreviousSpeakerStream
+            => PreviousSpeakerAuthorId is null ? null : RemoteStreams.FirstOrDefault(s => s.AuthorId == PreviousSpeakerAuthorId);
         public static readonly Model Loading = new(false, [], null, false, false, 0, null, false);
     }
 }

@@ -66,7 +66,7 @@ export class VideoPanel {
         this.videoPanel.classList.remove('first-time-open');
         this.videoPanel.classList.add('closing');
 
-        const content = this.videoPanel.querySelector('.c-content')!;
+        const content = this.videoPanel.querySelector('.video-panel-content')!;
         let handled = false;
         const complete = () => {
             if (handled) return;
