@@ -77,6 +77,74 @@ function Find-ListeningPid([int]$p) {
     if ($fuser -and $fuser -match '(\d+)') {
         return @{ Pid = [int]$Matches[1]; Name = ''; User = ''; Source = 'fuser' }
     }
+
+    # /proc/net/tcp fallback: find socket inode, then scan /proc/*/fd for the owning PID
+    $hexPort = '{0:X4}' -f $p
+    foreach ($f in @('/proc/net/tcp', '/proc/net/tcp6')) {
+        if (-not (Test-Path $f)) { continue }
+        $lines = Get-Content $f | Where-Object { $_ -match ":$hexPort\s" -and $_ -match '\s0A\s' }
+        foreach ($line in $lines) {
+            $fields = $line.Trim() -split '\s+'
+            if ($fields.Count -ge 10) {
+                $inode = $fields[9]
+                if ($inode -and $inode -ne '0') {
+                    $foundPid = bash -c "find /proc/[0-9]*/fd -lname 'socket:\[$inode\]' 2>/dev/null | head -1 | cut -d/ -f3" 2>$null
+                    if ($foundPid -and $foundPid -match '^\d+$') {
+                        $procName = bash -c "cat /proc/$foundPid/comm 2>/dev/null" 2>$null
+                        return @{ Pid = [int]$foundPid; Name = if ($procName) { $procName.Trim() } else { '' }; User = ''; Source = '/proc/net/tcp' }
+                    }
+                }
+            }
+        }
+    }
+
+    return $null
+}
+
+function Find-DockerContainer([int]$p) {
+    if ($inDocker) { return $null }
+    try { $null = Get-Command docker -ErrorAction Stop } catch { return $null }
+
+    $hexPort = '{0:X4}' -f $p
+    $containers = @(docker ps --filter "label=worktree" --format "{{.ID}}|{{.Names}}" 2>$null | Where-Object { $_ })
+
+    foreach ($line in $containers) {
+        $sep = $line.IndexOf('|')
+        $cId = if ($sep -gt 0) { $line.Substring(0, $sep) } else { $line }
+        $cName = if ($sep -gt 0) { $line.Substring($sep + 1) } else { $cId }
+
+        # Read /proc/net/tcp inside the container and parse in PowerShell
+        $tcpData = docker exec $cId cat /proc/net/tcp /proc/net/tcp6 2>$null
+        if (-not $tcpData) { continue }
+        $match = $tcpData | Where-Object { $_ -match ":$hexPort\s" -and $_ -match '\s0A\s' } | Select-Object -First 1
+        if (-not $match) { continue }
+
+        # Extract socket inode from the matching line
+        $fields = $match.Trim() -split '\s+'
+        $inode = if ($fields.Count -ge 10) { $fields[9] } else { '' }
+
+        $result = @{ ContainerId = $cId; ContainerName = $cName }
+
+        if ($inode -and $inode -ne '0') {
+            # Find PID and process info from inode — pipe script via stdin to avoid escaping issues
+            $script = @'
+inode=__INODE__
+pid=$(find /proc/[0-9]*/fd -lname "socket:\[$inode\]" 2>/dev/null | head -1 | cut -d/ -f3)
+[ -z "$pid" ] && exit 0
+comm=$(cat /proc/$pid/comm 2>/dev/null)
+cmd=$(tr '\0' ' ' < /proc/$pid/cmdline 2>/dev/null)
+echo "$pid|$comm|$cmd"
+'@
+            $script = $script.Replace('__INODE__', $inode)
+            $pidInfo = ($script | docker exec -i $cId bash 2>$null)
+            if ($pidInfo -and $pidInfo.Trim() -match '^(\d+)\|([^|]*)\|(.*)$') {
+                $result['Pid'] = [int]$Matches[1]
+                $result['ProcessName'] = $Matches[2].Trim()
+                $result['Command'] = $Matches[3].Trim()
+            }
+        }
+        return $result
+    }
     return $null
 }
 
@@ -148,6 +216,46 @@ function Check-Port([int]$checkPort, [string]$label) {
     Write-Host "=== Port $checkPort ($label) ==="
 
     if (-not (Test-PortListening $checkPort)) {
+        # Port not visible locally; check Docker containers
+        # (on macOS, --network host doesn't expose container ports to the host)
+        if (-not $inDocker) {
+            $dockerInfo = Find-DockerContainer $checkPort
+            if ($dockerInfo) {
+                Write-Host "  Status: IN USE (inside Docker: $($dockerInfo.ContainerName))"
+                if ($dockerInfo['ProcessName']) {
+                    Write-Host "  Process: $($dockerInfo.ProcessName)$(if ($dockerInfo['Pid']) { " (PID: $($dockerInfo.Pid) inside container)" })"
+                }
+                if ($dockerInfo['Command']) { Write-Host "  Command: $($dockerInfo.Command)" }
+
+                if ($Kill) {
+                    Write-Host ''
+                    if ($dockerInfo['Pid']) {
+                        Write-Host "  Killing process (PID: $($dockerInfo.Pid)) inside container..."
+                        docker exec $dockerInfo.ContainerId kill $dockerInfo.Pid 2>$null | Out-Null
+                        Start-Sleep -Milliseconds 1000
+                        # Force kill if still alive
+                        docker exec $dockerInfo.ContainerId kill -0 $dockerInfo.Pid 2>$null
+                        if ($LASTEXITCODE -eq 0) {
+                            docker exec $dockerInfo.ContainerId kill -9 $dockerInfo.Pid 2>$null | Out-Null
+                            Start-Sleep -Milliseconds 500
+                        }
+                    } else {
+                        Write-Host "  Could not identify process PID inside container"
+                    }
+                    $stillUp = Find-DockerContainer $checkPort
+                    if ($stillUp) {
+                        Write-Host '  Result: Port still in use inside Docker'
+                    } else {
+                        Write-Host '  Result: Port is now FREE'
+                    }
+                } else {
+                    Write-Host ''
+                    Write-Host '  To kill this process, run:'
+                    Write-Host "    ./stop-server.cmd -Kill"
+                }
+                return
+            }
+        }
         Write-Host '  Status: FREE - port is available'
         return
     }
