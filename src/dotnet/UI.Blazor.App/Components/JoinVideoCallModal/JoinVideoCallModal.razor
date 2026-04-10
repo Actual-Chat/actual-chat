@@ -27,7 +27,13 @@
         <div @ref="_containerRef" class="c-video @(_isCameraStarting ? "camera-starting" : "")">
             <div class="video-frame">
                 <span class="plug-text">
-                    Camera is off
+                    @if (_isCameraStarting) {
+                        @:Camera is starting...
+                    } else if (_isCameraUnavailable) {
+                        @:Camera is unavailable
+                    } else {
+                        @:Camera is off
+                    }
                 </span>
                 <div class="video-loading">
                     <span class="spinner-icon-wrapper">
@@ -140,6 +146,7 @@
     private bool _isCameraDropdownOpen;
     private bool _isRecording;
     private bool _isCameraStarting;
+    private bool _isCameraUnavailable;
     private List<VideoDevice> _videoDevices = new();
     private VideoDevice? _selectedDevice;
     private Task<string> _getLastSelectedDeviceIdTask = null!;
@@ -225,6 +232,7 @@
                     await _jsRef.InvokeVoidAsync("toggleBlur", true);
             } else {
                 _isCameraStarting = false;
+                _isCameraUnavailable = true;
             }
         }
         StateHasChanged();
@@ -257,6 +265,7 @@
     [JSInvokable]
     public async Task OnFirstFrameRendered() {
         _isCameraStarting = false;
+        _isCameraUnavailable = false;
         await InvokeAsync(StateHasChanged);
     }
 
@@ -269,14 +278,17 @@
             await _jsRef.InvokeVoidAsync("stopPreview");
             _isVideoOn = false;
             _isCameraStarting = false;
+            _isCameraUnavailable = false;
         } else {
             _isCameraStarting = true;
+            _isCameraUnavailable = false;
             StateHasChanged();
             var success = await _jsRef.InvokeAsync<bool>("startPreview", _selectedDevice?.DeviceId);
             if (success) {
                 _isVideoOn = true;
             } else {
                 _isCameraStarting = false;
+                _isCameraUnavailable = true;
             }
         }
         StateHasChanged();
@@ -295,10 +307,19 @@
         await Hub.LocalSettings.LocalAppSettings().Update(
             s => s with { SelectedCameraDeviceId = device.DeviceId });
 
-        // Switch camera if preview is active
-        if (_isVideoOn && _jsRef is not null)
-            await _jsRef.InvokeAsync<bool>("switchCamera", device.DeviceId);
-
+        // Switch camera if preview is active (or was unavailable — retry with new device)
+        if ((_isVideoOn || _isCameraUnavailable) && _jsRef is not null) {
+            _isCameraStarting = true;
+            _isCameraUnavailable = false;
+            StateHasChanged();
+            var success = await _jsRef.InvokeAsync<bool>("switchCamera", device.DeviceId);
+            if (success) {
+                _isVideoOn = true;
+            } else {
+                _isCameraStarting = false;
+                _isCameraUnavailable = true;
+            }
+        }
         StateHasChanged();
     }
 

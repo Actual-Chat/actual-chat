@@ -17,6 +17,7 @@ export class JoinVideoCallModal {
     private readonly videoEl: HTMLVideoElement; // off-DOM, frame source only
     private readonly canvasEl: HTMLCanvasElement; // on-DOM, single display canvas
     private readonly canvasCtx: CanvasRenderingContext2D | null;
+    private readonly captureCanvas: HTMLCanvasElement;
     private track: MediaStreamTrack | null = null;
     private selectedDeviceId: string | null = null;
     private isRendering = false;
@@ -28,7 +29,6 @@ export class JoinVideoCallModal {
     private previewWorker: (VideoProcessingWorker & Disposable) | null = null;
     private isBlurActive = false;
     private blurFrameTimer: number | null = null;
-    private captureCanvas: HTMLCanvasElement;
     private captureCtx: CanvasRenderingContext2D;
     private firstFrameNotified = false;
 
@@ -133,17 +133,14 @@ export class JoinVideoCallModal {
 
     public async switchCamera(deviceId: string): Promise<boolean> {
         this.selectedDeviceId = deviceId;
-        if (this.track) {
-            const wasBlurActive = this.isBlurActive;
-            // Restart preview with new device (stopPreview cleans up blur)
-            const success = await this.startPreview(deviceId);
-            // Restart blur if it was active
-            if (success && wasBlurActive) {
-                await this.startBlurPreview();
-            }
-            return success;
+        const wasBlurActive = this.isBlurActive;
+        // Restart preview with new device (stopPreview cleans up blur)
+        const success = await this.startPreview(deviceId);
+        // Restart blur if it was active
+        if (success && wasBlurActive) {
+            await this.startBlurPreview();
         }
-        return true;
+        return success;
     }
 
     /**
