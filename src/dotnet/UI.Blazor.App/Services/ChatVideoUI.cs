@@ -66,10 +66,13 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             return null;
 
         var isScreencasting = await _isScreencasting.Use(cancellationToken).ConfigureAwait(false);
-        var errorMessage = await _errorMessage.Use(cancellationToken).ConfigureAwait(false);
         var mode = isScreencasting ? VideoRecorderMode.Screencast : VideoRecorderMode.Camera;
-        return new VideoStreamingState(chatId, mode, errorMessage);
+        return new VideoStreamingState(chatId, mode);
     }
+
+    [ComputeMethod]
+    public virtual async Task<string?> GetLastVideoRecorderError(CancellationToken cancellationToken = default)
+        => await _errorMessage.Use(cancellationToken).ConfigureAwait(false);
 
     [ComputeMethod]
     public virtual async Task<ChatId?> GetWatchingChatId(CancellationToken cancellationToken = default)
@@ -253,16 +256,6 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     }
 
     [ComputeMethod]
-    public virtual async Task<ApiArray<AuthorId>> GetVideoStreamingAuthorIds(ChatId chatId, CancellationToken cancellationToken = default)
-    {
-        var streams = await GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(false);
-        if (streams.Count == 0)
-            return default;
-
-        return streams.Select(s => s.AuthorId).Distinct().ToApiArray();
-    }
-
-    [ComputeMethod]
     public virtual async Task<bool> IsAnyoneVideoStreaming(ChatId chatId, CancellationToken cancellationToken = default)
     {
         var streams = await GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(false);
@@ -309,9 +302,4 @@ public sealed record VideoDevice(string DeviceId, string Label);
 
 public enum VideoRecorderMode { Camera, Screencast };
 
-public sealed record VideoStreamingState(ChatId ChatId, VideoRecorderMode Mode, string? ErrorMessage)
-{
-    public bool HasError => ErrorMessage != null;
-}
-
-public sealed record CameraRecorderSettings(string? DeviceId, bool IsBlurEnabled);
+public sealed record VideoStreamingState(ChatId ChatId, VideoRecorderMode Mode);

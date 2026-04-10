@@ -27,9 +27,9 @@
             <span>You</span>
         </div>
     }
-    @if (m.OwnStreamingState is { HasError: true } recordingState) {
+    @if (m.LastErrorMessage is {} errorMessage && errorMessage.Length > 0) {
         <div class="video-error">
-            <span>@(recordingState.ErrorMessage ?? "")</span>
+            <span>@errorMessage</span>
         </div>
     }
 </div>
@@ -61,8 +61,9 @@
             return Model.None;
 
         var streamingState = await ChatVideoUI.GetVideoStreamingState(chatId, cancellationToken).ConfigureAwait(false);
-        var remoteStreams = await ChatVideoUI.GetRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
-        return new Model(streamingState, remoteStreams.Length == 0);
+        var hasRemoteStreams = await ChatVideoUI.HasRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
+        var lastError = await ChatVideoUI.GetLastVideoRecorderError(cancellationToken).ConfigureAwait(false);
+        return new Model(streamingState, !hasRemoteStreams, lastError);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -82,7 +83,7 @@
 
     // Nested types
 
-    public sealed record Model(VideoStreamingState? OwnStreamingState, bool IsAloneOnStream) {
-        public static readonly Model None = new(null, true);
+    public sealed record Model(VideoStreamingState? OwnStreamingState, bool IsAloneOnStream, string? LastErrorMessage) {
+        public static readonly Model None = new(null, true, null);
     }
 }
