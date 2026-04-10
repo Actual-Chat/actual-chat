@@ -25,6 +25,7 @@
 //     DI.  TS uses a class with a handle() method.
 
 import { RpcSystemCalls, type RpcMessage } from "./rpc-message.js";
+import type { IRpcObject } from "./rpc-object.js";
 import type { RpcPeer } from "./rpc-peer.js";
 import type { RpcStream } from "./rpc-stream.js";
 import { resolveStreamRefs } from "./rpc-stream.js";
@@ -103,6 +104,24 @@ export class RpcSystemCallHandler {
       case RpcSystemCalls.ackEnd: {
         const sender = peer.sharedObjects.get(relatedId) as RpcStreamSender<unknown> | undefined;
         sender?.onAckEnd(args[0] as string);
+        break;
+      }
+      default: {
+        if (method === "$sys.Disconnect" || method?.startsWith("$sys.Disconnect")) {
+          // Server is telling us the listed remote object IDs have been torn down
+          // on its side (e.g. shared stream closed).  Propagate disconnect() to the
+          // matching remote objects so any pending consumers (for-await loops) exit
+          // cleanly instead of hanging.
+          const ids = args[0] as number[] | undefined;
+          if (Array.isArray(ids)) {
+            for (const id of ids) {
+              const obj = peer.remoteObjects.get(id) as IRpcObject | undefined;
+              if (obj && typeof obj.disconnect === "function") {
+                obj.disconnect();
+              }
+            }
+          }
+        }
         break;
       }
     }
