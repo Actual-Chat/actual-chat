@@ -362,7 +362,7 @@ public class StreamHub(IServiceProvider services) : Hub
         // See StreamServer.GetOrFetchRemoteAudio for rationale: Publish returns
         // memoizer.WriteTask and must not be awaited inline, or every remote peer
         // will block until the producer stops.
-        _ = store.Publish(streamId, (IAsyncEnumerable<VideoFrame>)rawRpcStream);
+        _ = BackgroundTask.Run(() => store.Publish(streamId, (IAsyncEnumerable<VideoFrame>)rawRpcStream), Log, "Error caching #{StreamId} locally", cancellationToken);
         return await store.Get(streamId, true, cancellationToken).ConfigureAwait(false);
     }
 

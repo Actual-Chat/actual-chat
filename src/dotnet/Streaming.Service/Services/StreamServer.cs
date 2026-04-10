@@ -120,7 +120,7 @@ public class StreamServer(IServiceProvider services) : IStreamServer
         // the speaker stops talking. The memoizer is registered in the store
         // synchronously before Publish returns, so the subsequent Get succeeds
         // immediately.
-        _ = store.Publish(streamId, (IAsyncEnumerable<byte[]>)rawRpcStream);
+        _ = BackgroundTask.Run(() => store.Publish(streamId, (IAsyncEnumerable<byte[]>)rawRpcStream), Log, "Error caching #{StreamId} locally", cancellationToken);
         stream = await store.Get(streamId, true, cancellationToken).ConfigureAwait(false);
         return stream == null ? null : AudioStreamingBackend.SkipTo(stream, skipTo, cancellationToken);
     }
