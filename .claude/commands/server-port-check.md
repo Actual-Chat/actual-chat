@@ -32,5 +32,5 @@ for arg in "$@"; do
     esac
 done
 
-pwsh -NoProfile -File "$PROJECT_PATH/scripts/Server-PortCheck.ps1" "${ARGS[@]}"
+pwsh -NoProfile -File "$PROJECT_PATH/scripts/ServerPorts.ps1" "${ARGS[@]}"
 ```
