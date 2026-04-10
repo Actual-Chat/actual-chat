@@ -89,7 +89,7 @@ export class RpcWebSocketConnection implements RpcConnection {
     }
 
     ws.onopen = () => {
-      console.log('[RpcConnection] WebSocket opened, binaryMode:', binaryMode);
+      console.log("[RpcConnection] WebSocket opened, binaryMode:", binaryMode);
       this._connected.resolve();
       this._flush();
     };
@@ -98,16 +98,16 @@ export class RpcWebSocketConnection implements RpcConnection {
       if (ev.data instanceof ArrayBuffer) {
         // Binary frame — V5 size-prefixed messages
         const frame = new Uint8Array(ev.data);
-        console.log('[RpcConnection] Binary message received, size:', frame.length, 'first bytes:', Array.from(frame.slice(0, 20)));
+        console.log("[RpcConnection] Binary message received, size:", frame.length, "first bytes:", Array.from(frame.slice(0, 20)));
         try {
           const messages = splitBinaryFrame(frame);
-          console.log('[RpcConnection] Parsed', messages.length, 'binary messages');
+          console.log("[RpcConnection] Parsed", messages.length, "binary messages");
           for (const { message, args } of messages) {
-            console.log('[RpcConnection] Binary msg:', message.Method, 'RelatedId:', message.RelatedId, 'args:', args.length);
+            console.log("[RpcConnection] Binary msg:", message.Method, "RelatedId:", message.RelatedId, "args:", args.length);
             this.messageReceived.trigger({ kind: "binary", message, args });
           }
         } catch (e) {
-          console.error('[RpcConnection] Failed to parse binary frame:', e);
+          console.error("[RpcConnection] Failed to parse binary frame:", e);
         }
       } else {
         // Text frame — JSON delimited messages
@@ -160,7 +160,7 @@ export class RpcWebSocketConnection implements RpcConnection {
     try {
       if (this._ws.readyState === WebSocketState.OPEN) {
         if (data instanceof Uint8Array) {
-          console.log('[RpcConnection] Sending binary, size:', data.length, 'first bytes:', Array.from(data.slice(0, 20)));
+          console.log("[RpcConnection] Sending binary, size:", data.length, "first bytes:", Array.from(data.slice(0, 20)));
         }
         this._ws.send(data);
       } else if (this._ws.readyState === WebSocketState.CONNECTING)

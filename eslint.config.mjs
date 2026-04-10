@@ -73,4 +73,38 @@ export default tseslint.config(
             prettier,
         },
     },
+    {
+        // Forked from /proj/ActualLab.Fusion/ts/packages/{core,rpc}/src/ (commit 42c5e4013).
+        // Keep these files close to upstream style so future merges stay cheap:
+        //   - upstream uses 2-space indent, double quotes
+        //   - upstream uses tseslint.configs.strict only, not strictTypeChecked/stylisticTypeChecked
+        // Do not auto-format these files to ActualChat style.
+        files: [
+            'src/nodejs/src/actuallab-core/**/*.ts',
+            'src/nodejs/src/actuallab-rpc/**/*.ts',
+        ],
+        rules: {
+            indent: ['error', 2, { SwitchCase: 1 }],
+            quotes: ['error', 'double', {
+                allowTemplateLiterals: true,
+                avoidEscape: true,
+            }],
+            '@typescript-eslint/no-explicit-any': 'off',
+            '@typescript-eslint/no-unnecessary-condition': 'off',
+            '@typescript-eslint/no-unnecessary-type-assertion': 'off',
+            '@typescript-eslint/no-unsafe-assignment': 'off',
+            '@typescript-eslint/no-unsafe-member-access': 'off',
+            '@typescript-eslint/no-unsafe-call': 'off',
+            '@typescript-eslint/no-unsafe-argument': 'off',
+            '@typescript-eslint/no-unsafe-return': 'off',
+            '@typescript-eslint/no-unsafe-function-type': 'off',
+            '@typescript-eslint/no-unnecessary-type-parameters': 'off',
+            '@typescript-eslint/no-this-alias': 'off',
+            '@typescript-eslint/array-type': 'off',
+            '@typescript-eslint/require-await': 'off',
+            '@typescript-eslint/no-empty-function': 'off',
+            '@typescript-eslint/consistent-generic-constructors': 'off',
+            '@typescript-eslint/class-literal-property-style': 'off',
+        },
+    },
 );
