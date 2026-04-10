@@ -77,9 +77,9 @@
     private void OnScreencastClick(bool enable) {
         var chat = Chat;
         if (!enable)
-            ChatVideoUI.SetRecordingChatId(null);
+            ChatVideoUI.StopStreaming();
         else
-            ChatVideoUI.SetScreencasting(chat.Id);
+            ChatVideoUI.StartScreenCasting(chat.Id);
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()

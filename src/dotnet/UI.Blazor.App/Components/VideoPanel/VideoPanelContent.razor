@@ -23,7 +23,7 @@
 
     if (m != Model.Loading && ownStreamingMode is null && !hasRemoteStreams && !_showConnecting) {
         // TODO(DF): move this logic to ChatVideoUI
-        ChatVideoUI.SetWatching(null);
+        ChatVideoUI.CloseVideoPanel();
     }
 
     var isOwnCameraStreaming = ownStreamingMode == VideoRecorderMode.Camera;
@@ -267,8 +267,8 @@
         if (State.Value.IsAudioRecording)
             _ = ChatAudioUI.SetRecordingChatId(null);
         _ = ChatAudioUI.SetListeningState(ChatId, false);
-        ChatVideoUI.SetRecordingChatId(null);
-        ChatVideoUI.SetWatching(null);
+        ChatVideoUI.StopStreaming();
+        ChatVideoUI.CloseVideoPanel();
     }
 
     private void OnToggleRecordingClick(bool enable) {
@@ -281,10 +281,10 @@
     private void OnVideoClick(bool enable) {
         if (!enable) {
             // Stop own video recording (keep panel open for remote streams)
-            ChatVideoUI.SetRecordingChatId(null);
+            ChatVideoUI.StopStreaming();
         } else if (ChatVideoUI.HasJoinedVideoCall(ChatId)) {
             // Already joined this call — resume without modal
-            ChatVideoUI.ResumeRecording(ChatId);
+            ChatVideoUI.ResumeVideoStreaming(ChatId);
         } else {
             // Open join/start modal
             ChatVideoUI.JoinVideoSession(ChatId);
@@ -294,10 +294,10 @@
     private void OnScreencastClick(bool enable) {
         if (!enable) {
             // Stop screencast
-            ChatVideoUI.SetRecordingChatId(null);
+            ChatVideoUI.StopStreaming();
         } else {
             // Start screencast (stops any active webcam recording)
-            ChatVideoUI.SetScreencasting(ChatId);
+            ChatVideoUI.StartScreenCasting(ChatId);
         }
     }
 
@@ -333,7 +333,7 @@
         _noStreamsTimedOut = true;
         var m = State.Value;
         if (m.RemoteStreams.Length == 0 && m.OwnStreamingMode is null) {
-            ChatVideoUI.SetWatching(null);
+            ChatVideoUI.CloseVideoPanel();
         }
         StateHasChanged();
     }

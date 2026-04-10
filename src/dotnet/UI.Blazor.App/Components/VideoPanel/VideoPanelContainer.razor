@@ -8,7 +8,7 @@
     // TODO(DF): move this logic to ChatVideoUI
     // Clear watching when navigating to a different chat
     if (_lastWatchingChatId is not null && chatId is not null && _lastWatchingChatId != chatId)
-        ChatVideoUI.SetWatching(null);
+        ChatVideoUI.CloseVideoPanel();
     _lastWatchingChatId = isWatching ? chatId : null;
 
     // Handle show/hide transitions based on watching state

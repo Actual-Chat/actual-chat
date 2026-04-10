@@ -66,6 +66,7 @@
     private ChatId _chatId = null!;
 
     private ChatUI ChatUI => Hub.ChatUI;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -89,7 +90,7 @@
 
     private void OnScreenShareClick()
     {
-        ChatVideoUI.SetScreencasting(_chatId);
-        _ = Hub.ChatAudioUI.SetListeningState(_chatId, true);
+        ChatVideoUI.StartScreenCasting(_chatId);
+        _ = ChatAudioUI.SetListeningState(_chatId, true);
     }
 }

@@ -43,10 +43,10 @@
     private void OnVideoClick(bool enable) {
         if (!enable) {
             // Recording → stop
-            ChatVideoUI.SetRecordingChatId(null);
+            ChatVideoUI.StopStreaming();
         } else if (ChatVideoUI.HasJoinedVideoCall(Chat.Id)) {
             // Previously recorded this session → resume without modal
-            ChatVideoUI.ResumeRecording(Chat.Id);
+            ChatVideoUI.ResumeVideoStreaming(Chat.Id);
         } else {
             // First time → open modal to confirm
             ChatVideoUI.JoinVideoSession(Chat.Id);

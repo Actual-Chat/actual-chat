@@ -72,10 +72,6 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     }
 
     [ComputeMethod]
-    public virtual async Task<ChatId?> GetRecordingChatId(CancellationToken cancellationToken = default)
-        => await _recordingChatId.Use(cancellationToken).ConfigureAwait(false);
-
-    [ComputeMethod]
     public virtual async Task<ChatId?> GetWatchingChatId(CancellationToken cancellationToken = default)
         => await _watchingChatId.Use(cancellationToken).ConfigureAwait(false);
 
@@ -85,30 +81,18 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     // State mutators
 
-    public void SetRecordingChatId(ChatId? chatId, string? cameraDeviceId = null, bool isBackgroundBlurEnabled = false)
+    public void StopStreaming()
     {
-        if (chatId is null) {
-            _recordingChatId.Value = null;
-            _isScreencasting.Value = false;
-            return;
-        }
-
-        _recordingChatId.Value = chatId;
-        _selectedCameraDeviceId.Value = cameraDeviceId;
-        _isBackgroundBlurEnabled.Value = isBackgroundBlurEnabled;
+        _recordingChatId.Value = null;
         _isScreencasting.Value = false;
-        _errorMessage.Value = null;
-        SetWatching(chatId);
     }
 
-    public void SetScreencasting(ChatId chatId)
+    public void StartScreenCasting(ChatId chatId)
     {
         _recordingChatId.Value = chatId;
-        _selectedCameraDeviceId.Value = null;
-        _isBackgroundBlurEnabled.Value = false;
         _isScreencasting.Value = true;
         _errorMessage.Value = null;
-        SetWatching(chatId);
+        OpenVideoPanel(chatId);
     }
 
     public void SetSelectedCamera(string? cameraDeviceId)
@@ -117,16 +101,11 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public void SetBackgroundBlur(bool enabled)
         => _isBackgroundBlurEnabled.Value = enabled;
 
-    public void SetWatching(ChatId? chatId)
-    {
-        if (_watchingChatId.Value == chatId)
-            return;
-        _watchingChatId.Value = chatId;
-        _isVideoPanelCollapsed.Value = false; // Reset collapsed state on watching change
-        // Ensure listening is on when starting to watch
-        if (chatId is not null)
-            _ = ChatAudioUI.SetListeningState(chatId, true);
-    }
+    public void CloseVideoPanel()
+        => SetWatching(null);
+
+    public void OpenVideoPanel(ChatId chatId)
+        => SetWatching(chatId);
 
     public bool HasJoinedVideoCall(ChatId chatId)
         => _watchingChatId.Value == chatId;
@@ -134,12 +113,12 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public void SetVideoPanelCollapsed(bool collapsed)
         => _isVideoPanelCollapsed.Value = collapsed;
 
-    public void ResumeRecording(ChatId chatId)
+    public void ResumeVideoStreaming(ChatId chatId)
     {
         // Resume recording without overwriting camera/blur settings preserved from the previous recording
         _recordingChatId.Value = chatId;
         _errorMessage.Value = null;
-        SetWatching(chatId);
+        OpenVideoPanel(chatId);
     }
 
     // JS callback handlers (called from VideoPanel)
@@ -216,7 +195,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             if (!model.IsConfirmed)
                 return;
 
-            SetRecordingChatId(chatId, model.SelectedDeviceId, model.IsBlurEnabled);
+            StartVideoStreaming(chatId, model.SelectedDeviceId, model.IsBlurEnabled);
         }
     }
 
@@ -301,17 +280,6 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     }
 
     [ComputeMethod]
-    public virtual async Task<bool> IsOwnVideoStreaming(ChatId chatId, CancellationToken cancellationToken = default)
-    {
-        var streams = await GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(false);
-        if (streams.Count == 0)
-            return false;
-
-        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        return ownAuthor != null && streams.Any(s => s.AuthorId == ownAuthor.Id);
-    }
-
-    [ComputeMethod]
     public virtual async Task<bool> HasRemoteStreams(ChatId chatId, CancellationToken cancellationToken = default)
     {
         var videoStreams = await GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(false);
@@ -324,6 +292,27 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     public ValueTask<bool> IsVideoStreamingEnabled(CancellationToken cancellationToken)
         => Features.IsVideoStreamingEnabled(cancellationToken);
+
+    private void SetWatching(ChatId? chatId)
+    {
+        if (_watchingChatId.Value == chatId)
+            return;
+        _watchingChatId.Value = chatId;
+        _isVideoPanelCollapsed.Value = false; // Reset collapsed state on watching change
+        // Ensure listening is on when starting to watch
+        if (chatId is not null)
+            _ = ChatAudioUI.SetListeningState(chatId, true);
+    }
+
+    private void StartVideoStreaming(ChatId chatId, string? cameraDeviceId = null, bool isBackgroundBlurEnabled = false)
+    {
+        _recordingChatId.Value = chatId;
+        _selectedCameraDeviceId.Value = cameraDeviceId;
+        _isBackgroundBlurEnabled.Value = isBackgroundBlurEnabled;
+        _isScreencasting.Value = false;
+        _errorMessage.Value = null;
+        OpenVideoPanel(chatId);
+    }
 }
 
 // ReSharper disable once ClassNeverInstantiated.Global — instantiated via JS interop deserialization

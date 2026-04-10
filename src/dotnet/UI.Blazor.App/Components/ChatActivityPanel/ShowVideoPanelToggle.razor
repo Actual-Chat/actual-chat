@@ -37,7 +37,7 @@
             var watchingChatId = await ChatVideoUI.GetWatchingChatId(CancellationToken.None).ConfigureAwait(false);
             if (watchingChatId != ChatId) {
                 if (watchingChatId is null)
-                    ChatVideoUI.SetWatching(ChatId);
+                    ChatVideoUI.OpenVideoPanel(ChatId);
                 else
                     return; // Watcher is already watching another chat
             }

@@ -110,7 +110,8 @@
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
         var isAnyoneTalking = await LiveStreamUI.IsAnyoneStreaming(chatId, cancellationToken).ConfigureAwait(false);
         var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chatId, cancellationToken).ConfigureAwait(false);
-        var isOwnVideoRecording = await ChatVideoUI.GetRecordingChatId(cancellationToken).ConfigureAwait(false) == chatId;
+        var ownStreamingState = await ChatVideoUI.GetVideoStreamingState(chat.Id, cancellationToken).ConfigureAwait(false);
+        var isOwnVideoRecording = ownStreamingState is not null;
         return new (chat, audioState, isAnyoneTalking, isAnyoneVideoStreaming, isOwnVideoRecording);
     }
 
@@ -123,7 +124,7 @@
         // Open video panel to see others' streams
         var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chatId, CancellationToken.None).ConfigureAwait(false);
         if (isAnyoneVideoStreaming)
-            ChatVideoUI.SetWatching(chatId);
+            ChatVideoUI.OpenVideoPanel(chatId);
     }
 
     private async Task OnHangUpClick(ChatId chatId) {
@@ -135,8 +136,8 @@
         if (audioState.IsRecording)
             StopRecording(chatId);
         // Stop video recording and watching
-        ChatVideoUI.SetRecordingChatId(null);
-        ChatVideoUI.SetWatching(null);
+        ChatVideoUI.StopStreaming();
+        ChatVideoUI.CloseVideoPanel();
         // Stop listening
         _ = ChatAudioUI.SetListeningState(chatId, false);
     }
