@@ -73,7 +73,15 @@ export class RpcSystemCallSender {
     this._send(conn, { Method: RpcSystemCalls.batch, RelatedId: localId }, [index, items]);
   }
 
-  end(conn: RpcConnection, localId: number, index: number, error: { Message: string } | null = null): void {
+  end(
+    conn: RpcConnection,
+    localId: number,
+    index: number,
+    // Always a non-null ExceptionInfo shape — the .NET struct deserializer
+    // cannot handle MessagePack nil here. See rpc-client-stream-sender.ts
+    // sendEnd() for the rationale and the expected "no error" value.
+    error: { TypeRef: string; Message: string } = { TypeRef: "", Message: "" },
+  ): void {
     this._send(conn, { Method: RpcSystemCalls.end, RelatedId: localId }, [index, error]);
   }
 

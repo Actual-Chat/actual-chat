@@ -110,7 +110,17 @@ export class RpcClientStreamSender<T> implements IRpcObject {
     this._ended = true;
     const conn = this.peer.connection;
     if (!conn) return;
-    const errorInfo = error ? { Message: error.message } : null;
+    // .NET `ExceptionInfo` is a readonly struct (non-nullable value type).
+    // Its MessagePack formatter can't deserialize MessagePack nil — it throws
+    // `typecode is null, struct not supported`. The on-the-wire "no error"
+    // shape is `default(ExceptionInfo)`, i.e. an empty map with PascalCase
+    // keys: { TypeRef: "", Message: "" } where TypeRef is itself serialized
+    // as its `AssemblyQualifiedName` string via `TypeRefMessagePackFormatter`.
+    // Always send this shape — a null here aborts argument deserialization
+    // on the server and tears down the whole $sys.End handler.
+    const errorInfo = error
+      ? { TypeRef: "System.Exception", Message: error.message }
+      : { TypeRef: "", Message: "" };
     this.peer.hub.systemCallSender.end(conn, this.id.localId, this._nextIndex, errorInfo);
   }
 
