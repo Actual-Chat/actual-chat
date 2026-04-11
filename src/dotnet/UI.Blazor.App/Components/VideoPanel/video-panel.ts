@@ -25,6 +25,7 @@ export class VideoPanel {
     private lastMouseX = 0;
     private lastMouseY = 0;
     private mouseDragging = false;
+    private lastMouseDragEndTime = 0;
     private pinching = false;
     private pinchInitialDist = 0;
     private pinchInitialScale = 0;
@@ -32,6 +33,7 @@ export class VideoPanel {
     private pinchContentY = 0;
     private lastPinchEndTime = 0;
     // Unified tap / double-tap state (tracked inside touch handlers, not separate listeners)
+    private tapTouchId = -1;
     private tapStartX = 0;
     private tapStartY = 0;
     private tapStartTime = 0;
@@ -123,8 +125,15 @@ export class VideoPanel {
             .pipe(
                 takeUntil(this.disposed$),
                 filter(e => {
-                    if (!this.isExpanded()) return false;
-                    if (Date.now() - this.lastTouchActionTime < 1000) return false;
+                    if (!this.isExpanded())
+                        return false;
+
+                    if (Date.now() - this.lastTouchActionTime < 1000)
+                        return false;
+
+                    if (Date.now() - this.lastMouseDragEndTime < 300)
+                        return false;
+
                     return this.isOnVideo(e.target as HTMLElement);
                 })
             )
@@ -155,7 +164,11 @@ export class VideoPanel {
             .pipe(takeUntil(this.disposed$), filter(e => e.pointerType === 'mouse' && this.mouseDragging))
             .subscribe(e => this.onMouseDrag(e));
 
-        const stopMouseDrag = () => this.mouseDragging = false;
+        const stopMouseDrag = () => {
+            if (this.mouseDragging)
+                this.lastMouseDragEndTime = Date.now();
+            this.mouseDragging = false;
+        };
         fromEvent<PointerEvent>(document, 'pointerup')
             .pipe(takeUntil(this.disposed$), filter(e => e.pointerType === 'mouse'))
             .subscribe(stopMouseDrag);
@@ -174,18 +187,33 @@ export class VideoPanel {
         fromEvent<TouchEvent>(document, 'touchmove', { passive: false } as AddEventListenerOptions)
             .pipe(
                 takeUntil(this.disposed$),
-                filter(() => this.dragging || this.pinching)
+                filter(() => this.isExpanded())
             )
             .subscribe(e => this.onTouchMove(e));
 
         fromEvent<TouchEvent>(document, 'touchend')
             .pipe(takeUntil(this.disposed$))
             .subscribe(e => this.onTouchEnd(e));
+
+        fromEvent<TouchEvent>(document, 'touchcancel')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(() => this.onTouchCancel());
     }
 
     // endregion
 
     // region: Touch handler — unified tap + drag + pinch
+
+    private onTouchCancel(): void {
+        this.dragging = false;
+        this.pinching = false;
+        this.tapTouchId = -1;
+        this.activeTouchIds.clear();
+        if (this.singleTapTimer) {
+            clearTimeout(this.singleTapTimer);
+            this.singleTapTimer = 0;
+        }
+    }
 
     private onTouchStart(e: TouchEvent): void {
         const target = e.target as HTMLElement;
@@ -200,6 +228,10 @@ export class VideoPanel {
         // ── Pinch (2 fingers on screencast) ──
         if (onScreencast && e.touches.length === 2) {
             e.preventDefault();
+            if (this.singleTapTimer) {
+                clearTimeout(this.singleTapTimer);
+                this.singleTapTimer = 0;
+            }
             this.dragging = false;
             this.pinching = true;
             const [t0, t1] = [e.touches[0], e.touches[1]];
@@ -221,6 +253,10 @@ export class VideoPanel {
             // Always preventDefault to block browser swipe-to-navigate in fullscreen
             e.preventDefault();
             if (this.zoomScale > 1) {
+                if (this.singleTapTimer) {
+                    clearTimeout(this.singleTapTimer);
+                    this.singleTapTimer = 0;
+                }
                 this.dragging = true;
                 this.lastTouchX = e.touches[0].clientX;
                 this.lastTouchY = e.touches[0].clientY;
@@ -229,6 +265,7 @@ export class VideoPanel {
 
         // ── Tap tracking (any 1-finger touch on video) ──
         if (onVideo && e.touches.length === 1) {
+            this.tapTouchId = e.touches[0].identifier;
             this.tapMoved = false;
             this.tapStartX = e.touches[0].clientX;
             this.tapStartY = e.touches[0].clientY;
@@ -237,10 +274,7 @@ export class VideoPanel {
     }
 
     private onTouchMove(e: TouchEvent): void {
-        if (!this.hasTrackedTouch(e)) return;
-        e.preventDefault();
-
-        // Track tap movement (even during drag, so we know it's not a tap)
+        // Track tap movement even when not dragging/pinching
         if (e.touches.length === 1) {
             const dx = e.touches[0].clientX - this.tapStartX;
             const dy = e.touches[0].clientY - this.tapStartY;
@@ -250,9 +284,20 @@ export class VideoPanel {
             this.tapMoved = true; // multi-touch = not a tap
         }
 
+        if (!this.hasTrackedTouch(e))
+            return;
+
+        if (!this.dragging && !this.pinching)
+            return;
+
+        e.preventDefault();
+
         if (this.pinching && e.touches.length >= 2) {
             const [t0, t1] = [e.touches[0], e.touches[1]];
             const dist = this.touchDistance(t0, t1);
+            if (this.pinchInitialDist <= 0)
+                return;
+
             const ratio = dist / this.pinchInitialDist;
             this.zoomScale = Math.max(MIN_SCALE, Math.min(this.maxScale, this.pinchInitialScale * ratio));
 
@@ -268,7 +313,9 @@ export class VideoPanel {
             this.applyTransform();
         } else if (this.dragging && e.touches.length === 1) {
             const container = this.getScreencastContainer();
-            if (!container) return;
+            if (!container)
+                return;
+
             const rect = container.getBoundingClientRect();
             const touch = e.touches[0];
             const dx = (touch.clientX - this.lastTouchX) / rect.width;
@@ -294,8 +341,10 @@ export class VideoPanel {
         if (this.dragging && e.touches.length === 0)
             this.dragging = false;
 
-        // ── Tap detection (all fingers lifted) ──
-        if (e.touches.length === 0 && e.changedTouches.length === 1) {
+        // ── Tap detection (all fingers lifted, same touch that started on video) ──
+        if (e.touches.length === 0 && e.changedTouches.length === 1
+            && e.changedTouches[0].identifier === this.tapTouchId) {
+            this.tapTouchId = -1;
             const elapsed = Date.now() - this.tapStartTime;
             if (!this.tapMoved && elapsed < TAP_MAX_DURATION && Date.now() - this.lastPinchEndTime > 500)
                 this.handleTap(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
@@ -370,7 +419,8 @@ export class VideoPanel {
     private onWheel(e: WheelEvent): void {
         e.preventDefault();
         const container = this.getScreencastContainer();
-        if (!container) return;
+        if (!container)
+            return;
 
         const rect = container.getBoundingClientRect();
         const screenNormX = (e.clientX - rect.left) / rect.width;
@@ -390,7 +440,9 @@ export class VideoPanel {
 
     private onMouseDrag(e: PointerEvent): void {
         const container = this.getScreencastContainer();
-        if (!container) return;
+        if (!container)
+            return;
+
         const rect = container.getBoundingClientRect();
         const dx = (e.clientX - this.lastMouseX) / rect.width;
         const dy = (e.clientY - this.lastMouseY) / rect.height;
@@ -408,9 +460,13 @@ export class VideoPanel {
 
     private hasTrackedTouch(e: TouchEvent): boolean {
         for (const t of Array.from(e.touches))
-            if (this.activeTouchIds.has(t.identifier)) return true;
+            if (this.activeTouchIds.has(t.identifier))
+                return true;
+
         for (const t of Array.from(e.changedTouches))
-            if (this.activeTouchIds.has(t.identifier)) return true;
+            if (this.activeTouchIds.has(t.identifier))
+                return true;
+
         return false;
     }
 
@@ -422,9 +478,12 @@ export class VideoPanel {
 
     private clampPan(): void {
         const container = this.getScreencastContainer();
-        if (!container) return;
+        if (!container)
+            return;
+
         const rect = container.getBoundingClientRect();
-        if (!rect.width || !rect.height) return;
+        if (!rect.width || !rect.height)
+            return;
 
         const cr = this.getContentRect(container);
         const cL = cr.offsetX / rect.width;
@@ -445,7 +504,8 @@ export class VideoPanel {
     private applyTransform(animate = false): void {
         const canvas = this.getScreencastCanvas();
         const container = this.getScreencastContainer();
-        if (!canvas || !container) return;
+        if (!canvas || !container)
+            return;
 
         if (animate) {
             canvas.style.transition = `transform ${ZOOM_TRANSITION_MS}ms ease-out`;
@@ -527,7 +587,9 @@ export class VideoPanel {
         const content = this.videoPanel.querySelector('.video-panel-content')!;
         let handled = false;
         const complete = () => {
-            if (handled) return;
+            if (handled)
+                return;
+
             handled = true;
             content.removeEventListener('animationend', complete);
             void this.blazorRef.invokeMethodAsync('CloseVideoPanel');
