@@ -6,6 +6,10 @@ public static partial class Constants
     {
         public static readonly TimeSpan CancellationDelay = TimeSpan.FromSeconds(5);
         public static readonly TimeSpan StreamExpirationDelay = TimeSpan.FromSeconds(30);
+        // Grace period between PushVideo ending and LiveVideoBackend.Unregister firing.
+        // Keeps the old stream discoverable so a reconnecting sender (possibly landing
+        // on a different frontend node) can auto-correlate it as ContinuationOf.
+        public static readonly TimeSpan UnregisterGracePeriod = TimeSpan.FromSeconds(3);
         public static readonly int RetentionBufferSize = 150; // ~5s at 30fps
         public static readonly int ReplayBufferSize = 90;   // ~3s at 30fps — bounded replay channel per consumer
         public static readonly int ConsumerBufferSize = 300; // ~10s at 30fps before slow consumer disconnect
@@ -14,7 +18,10 @@ public static partial class Constants
         public static readonly TimeSpan LatencyReportInterval = TimeSpan.FromSeconds(2);
         public static readonly float HighLatencyThresholdMs = 900f;
         public static readonly float LowLatencyThresholdMs = 300f;
-        public static readonly float SkipToLiveThresholdMs = 3000f; // Client-side threshold for re-requesting stream
+        public static readonly float SkipToLiveThresholdMs = 3000f; // Client-side threshold when audio-video-sync is NOT bound
+        // When audio-video-sync is active, lip-sync (target ±80ms AES) requires a much tighter
+        // drift budget — recovering from >500ms drift requires a visible skip anyway.
+        public static readonly float SyncedSkipToLiveThresholdMs = 500f;
         public static readonly TimeSpan QualityDecisionInterval = TimeSpan.FromSeconds(2);
         public static readonly TimeSpan QualityHysteresisWindow = TimeSpan.FromSeconds(5);
         public static readonly int LatencyHistorySize = 5; // ~10s at 2s intervals

@@ -80,13 +80,22 @@ public class StreamServer(IServiceProvider services) : IStreamServer
         Session session, string chatId,
         double clientStartOffset,
         VideoFormat format,
+        string? continuationOf,
         RpcStream<VideoFrame> frameStream,
         CancellationToken cancellationToken)
     {
         var chatIdTyped = ChatId.Parse(chatId);
 
         var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
-        var videoRecord = new VideoRecord(streamId, session, chatIdTyped, clientStartOffset, format);
+        var continuationOfId = StreamId.ParseNullable(continuationOf);
+        var videoRecord = new VideoRecord(
+            streamId,
+            session,
+            chatIdTyped,
+            clientStartOffset,
+            format,
+            StreamKind.Webcam,
+            continuationOfId);
         var newFrameStream = RpcStream.New(frameStream);
         Log.LogInformation("PushVideo: {VideoRecord}", videoRecord);
 

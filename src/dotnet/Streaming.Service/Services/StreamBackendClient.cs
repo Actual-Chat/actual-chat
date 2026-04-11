@@ -106,12 +106,15 @@ public sealed class StreamBackendClient : IStreamClient
         Session session, string chatId,
         double clientStartOffset,
         VideoFormat format,
+        string? continuationOf,
         IAsyncEnumerable<VideoFrame> frameStream,
         CancellationToken cancellationToken)
     {
         var chatIdTyped = ChatId.Parse(chatId);
         var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
-        var record = new VideoRecord(streamId, session, chatIdTyped, clientStartOffset, format);
+        var continuationOfId = StreamId.ParseNullable(continuationOf);
+        var record = new VideoRecord(
+            streamId, session, chatIdTyped, clientStartOffset, format, StreamKind.Webcam, continuationOfId);
         var rpcStream = RpcStream.New(frameStream);
         return VideoBackend.PushVideo(record, rpcStream, cancellationToken);
     }

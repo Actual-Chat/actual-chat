@@ -192,6 +192,34 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             Log.LogInformation("TIMING_ANCHOR: StreamId={StreamId}, ClockDelta={ClockDeltaMs:F0}ms (OK)",
                 record.StreamId, clockDelta.TotalMilliseconds);
 
+        // Server-side continuation auto-correlation:
+        // If the client didn't explicitly supply ContinuationOf, check whether this author
+        // has a recent active stream of the same kind in this chat. If so, the new stream
+        // is almost certainly a reconnect / reconfigure of that one. Old streams remain
+        // visible in LiveVideoBackend.List for a short grace period after they end (see
+        // the finally block below), which covers typical WS reconnect windows.
+        var continuationOf = record.ContinuationOf;
+        if (continuationOf is null) {
+            try {
+                var existingStreams = await LiveVideoBackend.List(record.ChatId, cancellationToken).ConfigureAwait(false);
+                var recentOwn = existingStreams
+                    .Where(s => s.AuthorId == author.Id
+                             && s.StreamKind == record.StreamKind
+                             && s.StreamId != record.StreamId)
+                    .OrderByDescending(s => s.StartedAt)
+                    .FirstOrDefault();
+                if (recentOwn is not null) {
+                    continuationOf = recentOwn.StreamId;
+                    Log.LogInformation(
+                        "PushVideoInternal: auto-detected continuation #{NewStreamId} <- #{OldStreamId}",
+                        record.StreamId, continuationOf);
+                }
+            }
+            catch (Exception e) when (e is not OperationCanceledException) {
+                Log.LogWarning(e, "PushVideoInternal: failed to auto-detect continuation; starting fresh");
+            }
+        }
+
         // Register stream for real-time signaling
         var streamInfo = new VideoStreamInfo(
             record.StreamId,
@@ -199,11 +227,23 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             author.Id,
             record.Format,
             beginsAt,
-            record.StreamKind);
+            record.StreamKind,
+            continuationOf);
 
         // Cross-service RPC call — properly shard-routed via ILiveVideoBackend
         await LiveVideoBackend.Register(record.ChatId, streamInfo, cancellationToken)
             .ConfigureAwait(false);
+
+        // When continuing a previous stream, unregister the old one now so viewers
+        // see a single active entry per author (with ContinuationOf tag) rather than
+        // a brief overlap. The old node's own finally-block Unregister is idempotent.
+        if (continuationOf is not null) {
+            _ = BackgroundTask.Run(
+                () => LiveVideoBackend.Unregister(record.ChatId, continuationOf, CancellationToken.None),
+                Log,
+                "Failed to unregister continuation source #{StreamId}",
+                CancellationToken.None);
+        }
 
         LatencyStore.RegisterStreamLatencyState(record.StreamId, record.ChatId, beginsAt, record.Format);
 
@@ -243,10 +283,20 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             await _videoStreams.Publish(record.StreamId, memoizer).ConfigureAwait(false);
         }
         finally {
-            // Unregister stream when it ends — cross-service RPC call
-            await LiveVideoBackend.Unregister(record.ChatId, record.StreamId, CancellationToken.None)
-                .ConfigureAwait(false);
-            // Latency state cleanup deferred to OnVideoStreamExpire — peers may still read buffered frames
+            // Unregister stream when it ends — after a short grace period so a reconnecting
+            // sender landing on a (possibly different) node can still find this stream in
+            // LiveVideoBackend.List and auto-correlate it as ContinuationOf. A continuation
+            // PushVideo will unregister this entry early on its own.
+            // Latency state cleanup deferred to OnVideoStreamExpire — peers may still read buffered frames.
+            _ = BackgroundTask.Run(
+                async () => {
+                    await Task.Delay(Constants.Video.UnregisterGracePeriod, CancellationToken.None).ConfigureAwait(false);
+                    await LiveVideoBackend.Unregister(record.ChatId, record.StreamId, CancellationToken.None)
+                        .ConfigureAwait(false);
+                },
+                Log,
+                "Failed to unregister stream #{StreamId}",
+                CancellationToken.None);
         }
     }
 

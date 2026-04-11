@@ -27,6 +27,9 @@ public interface IStreamClient
         string chatId,
         double clientStartOffset,
         VideoFormat format,
+        // Previous StreamId from the same sender session; null on first start.
+        // Threaded into VideoStreamInfo.ContinuationOf for viewer soft-rebind.
+        string? continuationOf,
         IAsyncEnumerable<VideoFrame> frameStream,
         CancellationToken cancellationToken);
 }

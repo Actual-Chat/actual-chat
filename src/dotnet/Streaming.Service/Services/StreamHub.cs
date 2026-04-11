@@ -326,7 +326,9 @@ public class StreamHub(IServiceProvider services) : Hub
         stopCts.CancelAfter(Constants.Chat.MaxEntryDuration + TimeSpan.FromSeconds(5));
         var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
         var format = new VideoFormat { Codec = codec, Width = width, Height = height, CodecSettings = codecSettings ?? "" };
-        var videoRecord = new VideoRecord(streamId, session, chatIdTyped, clientStartOffset, format, streamKind);
+        // SignalR legacy path — no continuation; continuation is a Fusion RPC feature.
+        var videoRecord = new VideoRecord(
+            streamId, session, chatIdTyped, clientStartOffset, format, streamKind, ContinuationOf: null);
         Log.LogInformation("PushVideo: {VideoRecord}, CodecSettings={CodecSettingsLen} chars", videoRecord, (codecSettings ?? "").Length);
 
         var frames = videoStream.SuppressCancellation(stopCts.Token);

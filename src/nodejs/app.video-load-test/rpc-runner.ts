@@ -67,7 +67,7 @@ export async function runRpcProducer(
         // PushVideo is a long-lived call — the server holds it open until the
         // frame stream ends. Fire-and-forget; log any rejection.
         void streamServer
-            .PushVideo('~', chatId, clientStartOffsetSec, format, sender.toRef())
+            .PushVideo('~', chatId, clientStartOffsetSec, format, null, sender.toRef())
             .catch((err: unknown) => {
                 if (!ctx.abort.aborted)
                     console.error(

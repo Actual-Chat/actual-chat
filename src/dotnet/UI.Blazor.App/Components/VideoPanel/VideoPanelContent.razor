@@ -115,13 +115,16 @@
                     </div>
                 }
                 @foreach (var streamInfo in m.RemoteStreams.Where(s => s.AuthorId != m.PreviousSpeakerAuthorId)) {
-                    <RemoteStreamPlayer @key="streamInfo.StreamId.Value" StreamInfo="@streamInfo" />
+                    @* Key on authorId + streamKind, not StreamId, so sender reconnect / codec switch
+                       keeps the same component instance and VideoTrackPlayer can soft-rebind the
+                       underlying decoder via OnParametersSetAsync instead of tearing down the tile. *@
+                    <RemoteStreamPlayer @key="GetStreamSlotKey(streamInfo)" StreamInfo="@streamInfo" />
                 }
             </div>
             <div class="c-sidebar">
                 <div class="c-sidebar-content">
                     @if (m.PreviousSpeakerStream is { } prevStream) {
-                        <RemoteStreamPlayer @key="prevStream.StreamId.Value" StreamInfo="@prevStream" />
+                        <RemoteStreamPlayer @key="GetStreamSlotKey(prevStream)" StreamInfo="@prevStream" />
                     }
                     <VideoStreamingPreview />
                 </div>
@@ -155,6 +158,12 @@
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ILogger Log => field ??= Hub.LogFor(GetType());
+
+    // Key RemoteStreamPlayer on (authorId, streamKind) rather than StreamId so that
+    // sender reconnects / codec switches / reconfigurations don't remount the tile.
+    // VideoTrackPlayer then soft-rebinds the underlying VideoPlayer via switchStream.
+    private static string GetStreamSlotKey(VideoStreamInfo streamInfo)
+        => $"{streamInfo.AuthorId.Value}/{(int)streamInfo.StreamKind}";
 
     private ElementReference Ref { get; set; }
     private DotNetObjectReference<VideoPanelContent> BlazorRef { get; set; } = null!;

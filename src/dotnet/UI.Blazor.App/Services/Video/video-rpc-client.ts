@@ -24,7 +24,7 @@ export interface VideoRpcPullClient {
 
 export interface VideoRpcPushClient {
   PushVideo(session: string, chatId: string, clientStartOffset: number,
-    format: VideoFormatDto, frameStreamRef: unknown): Promise<void>;
+    format: VideoFormatDto, continuationOf: string | null, frameStreamRef: unknown): Promise<void>;
 }
 
 /**

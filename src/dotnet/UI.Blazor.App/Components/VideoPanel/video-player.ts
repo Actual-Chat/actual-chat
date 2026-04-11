@@ -24,7 +24,10 @@ import {
 const { debugLog, warnLog, errorLog } = Log.get('VideoPlayer');
 
 // Skip-to-live: client detects high latency and re-requests stream from next keyframe
-const SKIP_TO_LIVE_THRESHOLD_MS = 3000; // Matches Constants.Video.SkipToLiveThresholdMs
+// Two thresholds: the synced one applies whenever audio-video-sync is bound for this author —
+// lip-sync cannot tolerate multi-second drift, so we skip much earlier.
+const SKIP_TO_LIVE_THRESHOLD_MS = 3000;        // Matches Constants.Video.SkipToLiveThresholdMs
+const SYNCED_SKIP_TO_LIVE_THRESHOLD_MS = 500;  // Matches Constants.Video.SyncedSkipToLiveThresholdMs
 
 // Graduated recovery thresholds — escalating response to growing latency
 const CATCHUP_GENTLE_MS = 300;        // Start gentle 1.05x catch-up
@@ -990,12 +993,38 @@ export class VideoPlayer {
             this.pullRetryCount = 0;
             this.playbackStartTime = 0;
             this.lastRenderedOffsetMs = 0;
-            const skipToMs = Math.max(0, ServerClock.now() - this.startedAtMs);
+            // Re-pull anchored on audio playback position (when synced) so the first
+            // post-reconnect frame lands in the lip-sync window, not at wall-clock live.
+            const skipToMs = this.computeRecoverySkipToMs();
             void this.startPull(this.streamId, skipToMs);
         });
 
         // Report initial playing state
         void this.reportPlaying(0, true);
+    }
+
+    /**
+     * Compute the skipToMs for a recovery pull (reconnect, retry, visibility-restore, skip-to-live).
+     * When audio-video-sync is bound for this author, we target the *audio playback position*
+     * (minus a small lead) so the first decoded frame lands within the lip-sync window. When
+     * audio sync is not bound (listener-only, or audio stream ended), fall back to wall-clock
+     * live edge — preserves existing behavior for non-synced playback.
+     */
+    private computeRecoverySkipToMs(leadMs = 50): number {
+        const audioState = AudioVideoSync.get(this.authorId);
+        if (audioState) {
+            const audioPlayingAtMs = AudioVideoSync.interpolatePlayingAt(audioState) * 1000;
+            const target = (audioState.recordedAtMs - this.startedAtMs) + audioPlayingAtMs - leadMs;
+            return Math.max(0, target);
+        }
+        return Math.max(0, ServerClock.now() - this.startedAtMs);
+    }
+
+    /** Threshold for skip-to-live: tighter when audio-synced (lip-sync budget). */
+    private get skipToLiveThresholdMs(): number {
+        return AudioVideoSync.get(this.authorId)
+            ? SYNCED_SKIP_TO_LIVE_THRESHOLD_MS
+            : SKIP_TO_LIVE_THRESHOLD_MS;
     }
 
     private requestKeyFrame(): void {
@@ -1045,11 +1074,12 @@ export class VideoPlayer {
         // Reset decode performance tracking — Chrome may have throttled the decoder while hidden
         this.codecSlowTickCount = 0;
 
-        // Dispose current pull and re-request from live offset (skip-to-live)
+        // Dispose current pull and re-request. When audio-synced, anchor on audio
+        // position; otherwise fall back to wall-clock live edge.
         this.pullAbortController?.abort();
         this.pullAbortController = null;
         this.pipelineLatencyMs = 0;
-        const skipToMs = Math.max(0, ServerClock.now() - this.startedAtMs);
+        const skipToMs = this.computeRecoverySkipToMs();
         warnLog?.log(
             `Tab restored: flushed ${pendingCount} pending frames, decoder reset, ` +
             `re-requesting stream from offset ${skipToMs.toFixed(0)}ms`);
@@ -1089,14 +1119,18 @@ export class VideoPlayer {
             // Stream completed normally
             if (!abortController.signal.aborted && this._isPlayingNow) {
                 this.pullRetryCount++;
-                const delay = Math.min(1000 * this.pullRetryCount, 5000);
+                // First retry: no delay (WS just came back, don't make the user wait).
+                // Subsequent retries: exponential backoff capped at 5s.
+                const delay = this.pullRetryCount <= 1
+                    ? 0
+                    : Math.min(1000 * (this.pullRetryCount - 1), 5000);
                 warnLog?.log(
                     `Pull stream completed while playing (retry #${this.pullRetryCount}, delay ${delay}ms)`);
                 this.pullRetryTimer = setTimeout(() => {
                     this.pullRetryTimer = null;
                     if (!this.isPlaying) return;
                     this.pullRetryCount = 0;
-                    const retrySkipToMs = ServerClock.now() - this.startedAtMs;
+                    const retrySkipToMs = this.computeRecoverySkipToMs();
                     void this.startPull(streamId, retrySkipToMs);
                 }, delay);
             }
@@ -1106,17 +1140,120 @@ export class VideoPlayer {
             warnLog?.log(`startPull [RPC] ERROR: ${message}`, stack);
             if (abortController.signal.aborted || !this._isPlayingNow) return;
             this.pullRetryCount++;
-            const delay = Math.min(1000 * this.pullRetryCount, 5000);
+            const delay = this.pullRetryCount <= 1
+                ? 0
+                : Math.min(1000 * (this.pullRetryCount - 1), 5000);
             warnLog?.log(
                 `Pull stream error (retry #${this.pullRetryCount}, delay ${delay}ms): ${message}`);
             this.pullRetryTimer = setTimeout(() => {
                 this.pullRetryTimer = null;
                 if (!this.isPlaying) return;
                 this.pullRetryCount = 0;
-                const retrySkipToMs = ServerClock.now() - this.startedAtMs;
+                const retrySkipToMs = this.computeRecoverySkipToMs();
                 void this.startPull(streamId, retrySkipToMs);
             }, delay);
         }
+    }
+
+    /**
+     * Soft-rebind to a new stream (sender reconnect, codec switch, long-outage continuation).
+     * Keeps the canvas, audio-video-sync binding, viewer registration, and — in the common
+     * case of same codec category — the decoder worker instance alive.
+     *
+     * Called by Blazor VideoTrackPlayer.OnParametersSetAsync when a new StreamInfo arrives
+     * for the same (authorId, streamKind) slot with a different StreamId.
+     */
+    public async switchStream(
+        streamId: string,
+        codec: string,
+        width: number,
+        height: number,
+        codecSettings: string,
+        startedAtMs: number,
+        continuationOf: string | null,
+    ): Promise<void> {
+        const oldStreamId = this.streamId;
+        const oldCodecCategory = this.codecCategory;
+        const newCodecCategory = VideoPlayer.getCodecCategory(this.mapCodecToWebCodecs(codec));
+        const codecChanged = oldCodecCategory !== '' && oldCodecCategory !== newCodecCategory;
+
+        warnLog?.log(
+            `switchStream: ${oldStreamId} → ${streamId}, continuationOf=${continuationOf ?? '(none)'}, ` +
+            `codec ${oldCodecCategory || '(none)'} → ${newCodecCategory}, codecChanged=${codecChanged}, ` +
+            `startedAtMs ${this.startedAtMs.toFixed(0)} → ${startedAtMs.toFixed(0)}`);
+
+        // 1) Cancel any in-flight pull.
+        this.pullAbortController?.abort();
+        this.pullAbortController = null;
+        if (this.pullRetryTimer) {
+            clearTimeout(this.pullRetryTimer);
+            this.pullRetryTimer = null;
+        }
+        this.pullRetryCount = 0;
+
+        // 2) Flush buffered decoded frames from the old stream. Their timestamps are
+        // relative to the old startedAtMs; once we update startedAtMs, the audio-sync
+        // math would misplace them, causing a stall. Accept a brief freeze on the last
+        // rendered frame until the new stream delivers its first keyframe.
+        for (const frame of this.pendingFrames) {
+            try { frame.close(); } catch { /* already closed */ }
+        }
+        this.pendingFrames = [];
+        this.bufferSize = 0;
+        this.lastDescription = null;
+        this.playbackStartTime = 0;
+        this.firstFrameTimestamp = 0;
+        this.pipelineLatencyMs = 0;
+        this.lastRenderedOffsetMs = 0;
+        this.jitterEstimateMs = 0;
+        this.jitterBufferMs = this.minJitterBufferMs;
+        this.lastFrameArrivalTime = 0;
+        this.lastFrameArrivalInterval = 0;
+        this.waitingForKeyframe = true;
+
+        // 3) Update identifiers and canvas size (canvas DOM element is reused).
+        this.streamId = streamId;
+        this.startedAtMs = startedAtMs;
+        this.renderKey = `vr-${streamId}`;
+        if (width && height) {
+            this.canvas.width = width;
+            this.canvas.height = height;
+        }
+
+        // 4) Decoder handling:
+        //    - Same codec category (webcam WS reconnect, resolution step): reset the
+        //      existing decoder worker. The first post-switch keyframe will deliver
+        //      a new description via the existing reconfigure path if SPS/PPS changed.
+        //    - Different codec category (codec switch): tear down and re-init entirely.
+        if (codecChanged) {
+            try {
+                this.decoderWorker?.dispose();
+            } catch { /* ignore */ }
+            this.decoderWorker = null;
+            if (this.decoderWorkerInstance) {
+                this.decoderWorkerInstance.terminate();
+                this.decoderWorkerInstance = null;
+            }
+            if (this.chunkInputChannel) {
+                try { void this.chunkInputChannel.writer.close(); } catch { /* ignore */ }
+                this.chunkInputChannel = null;
+            }
+            this.decoderConfig = null;
+            this.codecCategory = '';
+            await this.initDecoderWorker(codec, width, height, codecSettings);
+        } else if (this.decoderWorker) {
+            try {
+                await this.decoderWorker.resetDecoder();
+            } catch (e) {
+                warnLog?.log('switchStream: decoderWorker.resetDecoder() failed', e);
+            }
+        }
+
+        // 5) Kick off the new pull. Audio-anchored skipToMs lands us inside the
+        // lip-sync window on first decoded frame instead of at wall-clock live.
+        const skipToMs = this.computeRecoverySkipToMs();
+        warnLog?.log(`switchStream: starting new pull, skipToMs=${skipToMs.toFixed(0)}`);
+        void this.startPull(streamId, skipToMs);
     }
 
     private processRpcFrame(frame: VideoFrameDto): void {
@@ -1278,8 +1415,12 @@ export class VideoPlayer {
         if (performance.now() - this.lastSkipToLiveTime < 5000)
             return;
 
-        // Graduated recovery: escalating response to growing latency
-        if (latencyMs > DROP_TO_KEYFRAME_MS && latencyMs <= SKIP_TO_LIVE_THRESHOLD_MS) {
+        // Graduated recovery: escalating response to growing latency.
+        // When audio-synced, the skip threshold drops to 500ms (lip-sync budget).
+        // In that case the drop-oldest-frames phase is skipped — there's no room
+        // for graceful catch-up within a 500ms window, jump straight to skip-to-live.
+        const skipThreshold = this.skipToLiveThresholdMs;
+        if (latencyMs > DROP_TO_KEYFRAME_MS && latencyMs <= skipThreshold) {
             // Phase 2: Drop oldest frames to catch up quickly.
             // PendingFrame (decoded VideoFrame/ImageBitmap) lacks isKeyFrame metadata,
             // so we can't do keyframe-aware dropping — drop the oldest half instead.
@@ -1294,10 +1435,10 @@ export class VideoPlayer {
                 this.bufferSize = this.pendingFrames.length;
             }
         }
-        else if (latencyMs > SKIP_TO_LIVE_THRESHOLD_MS) {
-            // Phase 3: Nuclear — re-request stream from live offset
+        else if (latencyMs > skipThreshold) {
+            // Phase 3: Nuclear — re-request stream from live (or audio-anchored) offset
             warnLog?.log(
-                `SKIP_TO_LIVE: latency ${latencyMs.toFixed(0)}ms > ${SKIP_TO_LIVE_THRESHOLD_MS}ms, re-requesting stream`);
+                `SKIP_TO_LIVE: latency ${latencyMs.toFixed(0)}ms > ${skipThreshold}ms, re-requesting stream`);
 
             // Report the high latency to the server BEFORE resetting state,
             // so EvaluateQuality can detect that this peer is struggling and step down sender quality.
@@ -1329,7 +1470,7 @@ export class VideoPlayer {
             this.jitterBufferMs = this.minJitterBufferMs;
             this.lastFrameArrivalTime = 0;
             this.lastFrameArrivalInterval = 0;
-            const skipToMs = Math.max(0, ServerClock.now() - this.startedAtMs);
+            const skipToMs = this.computeRecoverySkipToMs();
             void this.startPull(this.streamId, skipToMs);
             return;
         }

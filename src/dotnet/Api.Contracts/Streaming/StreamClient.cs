@@ -95,6 +95,7 @@ public class StreamClient(IServiceProvider services) : IStreamClient
         string chatId,
         double clientStartOffset,
         VideoFormat format,
+        string? continuationOf,
         IAsyncEnumerable<VideoFrame> frameStream,
         CancellationToken cancellationToken)
     {
@@ -104,6 +105,7 @@ public class StreamClient(IServiceProvider services) : IStreamClient
             chatId,
             clientStartOffset,
             format,
+            continuationOf,
             rpcStream,
             cancellationToken);
     }

@@ -18,9 +18,12 @@ export const LiveVideoStreamsDef = defineRpcService('ILiveVideoStreams', {
 });
 
 // --- IStreamServer (video push + audio) ---
-// .NET: Task PushVideo(Session session, string chatId, double clientStartOffset, VideoFormat format, RpcStream<VideoFrame> frameStream, CancellationToken ct)
+// .NET: Task PushVideo(Session session, string chatId, double clientStartOffset, VideoFormat format,
+//                      string? continuationOf, RpcStream<VideoFrame> frameStream, CancellationToken ct)
+// continuationOf is the previous StreamId (.Value string) from the same sender session, or null on
+// first start. Propagated to VideoStreamInfo.ContinuationOf so viewers can soft-rebind decoders.
 export const StreamServerDef = defineRpcService('IStreamServer', {
-    PushVideo: { args: ['session', 'chatId', 'clientStartOffset', 'format', 'frameStream'] },
+    PushVideo: { args: ['session', 'chatId', 'clientStartOffset', 'format', 'continuationOf', 'frameStream'] },
 });
 
 // --- VideoFrame TypeScript interface ---

@@ -28,6 +28,9 @@ public interface IStreamServer : IRpcService
         string chatId,
         double clientStartOffset,
         VideoFormat format,
+        // Previous StreamId from the same sender session (reconnect, codec switch, reconfigure).
+        // When set, viewers receive VideoStreamInfo.ContinuationOf and can soft-rebind decoders.
+        string? continuationOf,
         RpcStream<VideoFrame> frameStream,
         CancellationToken cancellationToken);
 }

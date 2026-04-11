@@ -32,6 +32,8 @@
     private Timer? _viewerHeartbeatTimer;
     private bool _isDisposed;
     private bool _isViewerRegistered;
+    private StreamId? _currentJsStreamId;
+    private readonly SemaphoreSlim _switchLock = new(1, 1);
 
     private ILogger Log => field ??= Services.LogFor<VideoTrackPlayer>();
     private ILiveVideoStreams LiveVideoStreams => field ??= Services.GetRequiredService<ILiveVideoStreams>();
@@ -49,6 +51,54 @@
     public string FocusedClass { get; set; } = "";
 
     public Task WhenCompleted => _whenCompletedSource.Task;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+        // First render path: the JS player hasn't been created yet — let OnAfterRenderAsync handle it.
+        // Subsequent parameter changes: if StreamId differs from what's running in JS, soft-rebind.
+        if (_jsPlayerRef is null || _isDisposed)
+            return;
+        if (_currentJsStreamId is not null && _currentJsStreamId != StreamInfo.StreamId)
+            await SoftRebindAsync();
+    }
+
+    private async Task SoftRebindAsync()
+    {
+        await _switchLock.WaitAsync(_disposeCts.Token);
+        try {
+            if (_jsPlayerRef is null || _isDisposed)
+                return;
+            if (_currentJsStreamId == StreamInfo.StreamId)
+                return;
+
+            var continuationOf = StreamInfo.ContinuationOf?.Value;
+            var newStartedAtMs = StreamInfo.StartedAt.EpochOffset.TotalMilliseconds;
+            Log.LogInformation(
+                "[VideoTrackPlayer] SoftRebind: {OldStreamId} → {NewStreamId}, " +
+                "continuationOf={ContinuationOf}, startedAtMs={StartedAtMs}, codec={Codec}",
+                _currentJsStreamId, StreamInfo.StreamId, continuationOf ?? "(none)", newStartedAtMs, StreamInfo.Format.Codec);
+
+            _currentJsStreamId = StreamInfo.StreamId;
+            await _jsPlayerRef.InvokeVoidAsync(
+                "switchStream",
+                _disposeCts.Token,
+                StreamInfo.StreamId.Value,
+                StreamInfo.Format.Codec,
+                StreamInfo.Format.Width,
+                StreamInfo.Format.Height,
+                StreamInfo.Format.CodecSettings,
+                newStartedAtMs,
+                continuationOf);
+        }
+        catch (OperationCanceledException) { /* expected on dispose */ }
+        catch (Exception ex) {
+            Log.LogError(ex, "[VideoTrackPlayer] SoftRebind failed for {StreamId}", StreamInfo.StreamId);
+        }
+        finally {
+            _switchLock.Release();
+        }
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -91,6 +141,7 @@
                 format.Height,
                 format.CodecSettings,
                 startedAtMs);
+            _currentJsStreamId = StreamInfo.StreamId;
 
             await _jsPlayerRef.InvokeVoidAsync("start", _disposeCts.Token);
 
