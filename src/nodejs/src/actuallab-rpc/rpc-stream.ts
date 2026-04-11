@@ -34,13 +34,13 @@ export function parseStreamRef(value: unknown): RpcStreamRef | null {
     const obj = value as Record<string, unknown>;
     const serializedId = obj.SerializedId as unknown[];
     if (!Array.isArray(serializedId) || serializedId.length < 2) return null;
-    return {
-      hostId: String(serializedId[0]),
-      localId: Number(serializedId[1]),
-      ackPeriod: Number(obj.AckPeriod ?? 256),
-      ackAdvance: Number(obj.AckAdvance ?? 128),
-      allowReconnect: obj.AllowReconnect !== false,
-    };
+    const rawHostId = serializedId[0];
+    const hostId = String(rawHostId);
+    const localId = Number(serializedId[1]);
+    const ackPeriod = Number(obj.AckPeriod ?? 256);
+    const ackAdvance = Number(obj.AckAdvance ?? 128);
+    const allowReconnect = obj.AllowReconnect !== false;
+    return { hostId, localId, ackPeriod, ackAdvance, allowReconnect };
   }
   return null;
 }
@@ -87,7 +87,24 @@ export class RpcStream<T> implements AsyncIterable<T>, IRpcObject {
     if (this._disposed || this._completed) return;
 
     if (index > this._nextExpectedIndex) {
-      // Gap — request reset from the server
+      console.warn("[RpcStream] item index gap", {
+        localId: this.id.localId,
+        expected: this._nextExpectedIndex,
+        received: index,
+        allowReconnect: this.allowReconnect,
+      });
+      if (!this.allowReconnect) {
+        // Sending a reset ack on a non-reconnectable stream only produces a
+        // $sys.Disconnect from the server with a generic "Peer disconnected."
+        // error. Fail fast with a descriptive error instead so the consumer's
+        // retry loop (e.g. VideoPlayer.startPull) can re-pull cleanly.
+        this._completed = true;
+        this._completionError = new Error(
+          `Stream gap at index ${index} (expected ${this._nextExpectedIndex}); reconnect not allowed`,
+        );
+        this._notifyConsumer();
+        return;
+      }
       this._sendAck(this._nextExpectedIndex, true);
       return;
     }
@@ -108,6 +125,13 @@ export class RpcStream<T> implements AsyncIterable<T>, IRpcObject {
     if (this._disposed || this._completed) return;
 
     if (index > this._nextExpectedIndex) {
+      console.warn("[RpcStream] batch index gap", {
+        localId: this.id.localId,
+        expected: this._nextExpectedIndex,
+        received: index,
+        count: items.length,
+        allowReconnect: this.allowReconnect,
+      });
       this._sendAck(this._nextExpectedIndex, true);
       return;
     }
