@@ -298,11 +298,14 @@ export class VideoPlayer {
                 debugLog?.log('Decoder worker initialized (RPC mode)');
             }
 
-            // If we have codec settings or this is AV1, we don't need to wait for keyframe with description
-            const isAV1 = codecString.startsWith('av01');
-            if (codecSettings || isAV1) {
+            // If we have codec settings (SPS/PPS for H.264/HEVC) we don't need
+            // to wait for a keyframe with description — the description alone
+            // configures the decoder. Other codecs (incl. AV1) still wait for
+            // the first keyframe; VideoStreamFilter.Apply guarantees the first
+            // delivered frame after skipTo is a keyframe.
+            if (codecSettings) {
                 this.waitingForKeyframe = false;
-                debugLog?.log(`Not waiting for keyframe with description (codecSettings=${!!codecSettings}, isAV1=${isAV1})`);
+                debugLog?.log(`Not waiting for keyframe with description (codecSettings=true)`);
             }
         } catch (error) {
             errorLog?.log('Failed to initialize decoder worker:', error);
@@ -1078,12 +1081,7 @@ export class VideoPlayer {
             warnLog?.log(`startPull [RPC]: calling GetStream(~, ${streamId}, ${skipToTicks})`);
             const stream = await client.GetStream(session, streamId, skipToTicks);
             warnLog?.log(`startPull [RPC]: GetStream returned, starting iteration`);
-            let frameCount = 0;
             for await (const frame of stream) {
-                frameCount++;
-                if (frameCount <= 3 || frameCount % 100 === 0) {
-                    warnLog?.log(`startPull [RPC]: received frame #${frameCount}, keys=${Object.keys(frame).join(',')}`);
-                }
                 if (abortController.signal.aborted || !this._isPlayingNow) break;
                 this.pullRetryCount = 0;
                 this.processRpcFrame(frame);

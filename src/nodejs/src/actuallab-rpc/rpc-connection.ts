@@ -95,7 +95,7 @@ export class RpcWebSocketConnection implements RpcConnection {
 
     ws.onmessage = (ev) => {
       if (ev.data instanceof ArrayBuffer) {
-        // Binary frame — V5 size-prefixed messages
+        // Binary frame — V5 self-delimiting envelopes (one or more per WS frame)
         const frame = new Uint8Array(ev.data);
         try {
           const messages = splitBinaryFrame(frame);
@@ -105,6 +105,21 @@ export class RpcWebSocketConnection implements RpcConnection {
         } catch (e) {
           this.error.trigger(e);
         }
+      } else if (typeof Blob !== "undefined" && ev.data instanceof Blob && this.binaryMode) {
+        // Fallback: some Chromium builds deliver the first frames as Blob even
+        // after setting binaryType='arraybuffer'. Convert and route through
+        // the binary path so we don't silently drop them.
+        void ev.data.arrayBuffer().then((ab) => {
+          const frame = new Uint8Array(ab);
+          try {
+            const messages = splitBinaryFrame(frame);
+            for (const { message, args } of messages) {
+              this.messageReceived.trigger({ kind: "binary", message, args });
+            }
+          } catch (e) {
+            this.error.trigger(e);
+          }
+        });
       } else {
         // Text frame — JSON delimited messages
         const data = typeof ev.data === "string" ? ev.data : String(ev.data);
