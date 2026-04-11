@@ -223,14 +223,27 @@ export function deserializeBinaryMessage(
 
 /**
  * Splits a binary WebSocket frame into individual deserialized messages.
- * V5 with PersistsMessageSize=false: each WebSocket message is one RPC message.
+ * V5 envelopes are self-delimiting (header + method + argLen + argData), so
+ * multiple envelopes concatenated in a single WebSocket frame can be decoded
+ * by iterating with the bytesRead returned from deserializeBinaryMessage.
+ *
+ * This must stay symmetric with serializeBinaryFrame() (which concatenates
+ * multiple envelopes). The .NET server batches outbound RPC messages into a
+ * single WebSocket frame via WebSocketChannel/WriteDelayer, so any assumption
+ * that a frame is a single envelope silently drops every trailing message.
  */
 export function splitBinaryFrame(
   frame: Uint8Array,
 ): Array<{ message: RpcMessage; args: unknown[] }> {
-  // No size prefix — the entire frame is a single message
-  const { message, args } = deserializeBinaryMessage(frame, 0);
-  return [{ message, args }];
+  const results: Array<{ message: RpcMessage; args: unknown[] }> = [];
+  let offset = 0;
+  while (offset < frame.length) {
+    const { message, args, bytesRead } = deserializeBinaryMessage(frame, offset);
+    if (bytesRead <= 0) break; // defensive — avoid infinite loop on malformed data
+    results.push({ message, args });
+    offset += bytesRead;
+  }
+  return results;
 }
 
 /**
