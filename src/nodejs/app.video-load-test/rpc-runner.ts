@@ -64,8 +64,9 @@ export async function runRpcProducer(
         };
         const clientStartOffsetSec = Date.now() / 1000;
 
-        // PushVideo is a long-lived call — the server holds it open until the
-        // frame stream ends. Fire-and-forget; log any rejection.
+        // PushVideo is a long-lived call — the server holds it open until
+        // the frame stream ends. Fire-and-forget; surface any rejection so
+        // it's visible via the global unhandledRejection handler.
         void streamServer
             .PushVideo('~', chatId, clientStartOffsetSec, format, sender.toRef())
             .catch((err: unknown) => {
@@ -74,17 +75,24 @@ export async function runRpcProducer(
                         `[rpc producer chat=${chatIdx} prod=${prodIdx}] PushVideo rejected:`, err);
             });
 
-        const start = Date.now();
-        for (let i = 0; !ctx.abort.aborted; i++) {
-            await paceFrame(start, i);
-            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- aborted may flip during the await
-            if (ctx.abort.aborted) break;
-
-            const frame = generateFrame(i);
-            ctx.metrics.recordSent(chatIdx, prodIdx, frame.Offset);
-            sender.sendItem(frame);
+        // Drive the producer loop via writeFrom() so the sender waits for
+        // the server's initial $sys.Ack(0) before pumping items. Calling
+        // sendItem() directly races the PushVideo invocation — items can
+        // reach the server before the shared-stream handler is ready and
+        // get silently dropped. This matches the production browser pattern
+        // in workers/video-streaming.ts.
+        async function* frameSource(): AsyncIterable<VideoFrameDto> {
+            const start = Date.now();
+            for (let i = 0; !ctx.abort.aborted; i++) {
+                await paceFrame(start, i);
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- aborted may flip during the await
+                if (ctx.abort.aborted) break;
+                const frame = generateFrame(i);
+                ctx.metrics.recordSent(chatIdx, prodIdx, frame.Offset);
+                yield frame;
+            }
         }
-        sender.sendEnd();
+        await sender.writeFrom(frameSource());
     } catch (e) {
         if (!ctx.abort.aborted) {
             console.error(
@@ -145,8 +153,15 @@ export async function discoverStreams(
         const deadline = Date.now() + timeoutMs;
         const result: string[][] = chatIds.map(() => []);
         const pending = new Set<number>(chatIds.map((_, i) => i));
+        // Fail fast on repeated errors — a misconfigured call (wrong method
+        // name, wrong CallTypeId, server-side exception) would otherwise
+        // flood the server at 2 Hz until the outer timeout.
+        const MAX_CONSEC_ERRORS = 3;
+        let consecErrors = 0;
+        let lastError: unknown;
 
         while (pending.size > 0 && !ctx.abort.aborted) {
+            let hadError = false;
             for (const ci of [...pending]) {
                 try {
                     const streams = await client.List('~', chatIds[ci]);
@@ -154,12 +169,21 @@ export async function discoverStreams(
                         result[ci] = streams.map((s: VideoStreamInfoDto) => s.StreamId);
                         pending.delete(ci);
                     }
+                    consecErrors = 0;
                 } catch (e) {
+                    hadError = true;
+                    lastError = e;
                     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- aborted may flip during the await
                     if (!ctx.abort.aborted)
                         console.warn(
                             `[rpc discover chat=${chatIds[ci]}] ${(e as Error).message}`);
                 }
+            }
+            if (hadError) consecErrors++;
+            if (consecErrors >= MAX_CONSEC_ERRORS) {
+                throw new Error(
+                    `discoverStreams: ${consecErrors} consecutive errors — ` +
+                    `last: ${(lastError as Error | undefined)?.message ?? String(lastError)}`);
             }
             if (pending.size === 0) break;
             if (Date.now() > deadline)

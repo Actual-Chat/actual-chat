@@ -8,16 +8,30 @@
 import * as signalR from '@microsoft/signalr';
 import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
 import { decode as msgpackDecode } from '@msgpack/msgpack';
+import WsWebSocket from 'ws';
 
 import { FrameConfig, generateFrame, encodeFrameForSignalR, paceFrame } from './frame-gen.js';
 import type { Metrics } from './metrics.js';
+
+// signalr's HttpConnection tries to `require("ws")` at runtime. Under tsx /
+// ESM that require path is flaky — we inject a known-good constructor via
+// `IHttpConnectionOptions.WebSocket` so signalr doesn't need to resolve `ws`
+// itself. The subclass also forces `rejectUnauthorized: false` for the dev
+// cert on local.voxt.ai (the same bypass node-ws.ts applies to the RPC path).
+// NEVER lift this into production.
+const DevWebSocket = class extends WsWebSocket {
+    constructor(url: string, protocols?: string | string[]) {
+        super(url, protocols, { rejectUnauthorized: false });
+    }
+} as unknown as typeof globalThis.WebSocket;
 
 function buildConnection(hubUrl: string): signalR.HubConnection {
     return new signalR.HubConnectionBuilder()
         .withUrl(hubUrl, {
             skipNegotiation: true,
             transport: signalR.HttpTransportType.WebSockets,
-        })
+            WebSocket: DevWebSocket,
+        } as signalR.IHttpConnectionOptions)
         .withHubProtocol(new MessagePackHubProtocol())
         .configureLogging(signalR.LogLevel.Warning)
         .build();
@@ -45,6 +59,8 @@ export async function runSignalRProducer(
         // SignalR .send returns after the upload-stream setup completes (the
         // server method signature has an IAsyncEnumerable argument — .send
         // primes the stream and returns, then we push items into the Subject).
+        // Attach a catch so any rejection during/after shutdown doesn't end up
+        // as an unhandled rejection (the promise chain is otherwise orphaned).
         const sendPromise = connection.send(
             'PushVideo',
             ctx.sessionToken,
@@ -57,6 +73,11 @@ export async function runSignalRProducer(
             0, // 0 = Webcam
             subject,
         );
+        sendPromise.catch((err: unknown) => {
+            if (!ctx.abort.aborted)
+                console.error(
+                    `[signalr producer chat=${chatIdx} prod=${prodIdx}] send rejected: ${(err as Error).message}`);
+        });
         await sendPromise;
 
         const start = Date.now();
@@ -65,6 +86,9 @@ export async function runSignalRProducer(
                 await paceFrame(start, i);
                 // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- aborted may flip during the await
                 if (ctx.abort.aborted) break;
+                // Stop feeding the subject if the connection dropped mid-run;
+                // subsequent sendItem sends would all queue as rejections.
+                if (connection.state !== signalR.HubConnectionState.Connected) break;
 
                 const frame = generateFrame(i);
                 const bytes = encodeFrameForSignalR(frame);
@@ -73,7 +97,13 @@ export async function runSignalRProducer(
                 subject.next(bytes);
             }
         } finally {
-            subject.complete();
+            // Complete the subject while the connection is still up so
+            // signalr flushes a proper StreamCompletion message. Guarding
+            // avoids "not in Connected state" rejections from racing the
+            // outer connection.stop() in the finally block.
+            if (connection.state === signalR.HubConnectionState.Connected) {
+                try { subject.complete(); } catch { /* ignore */ }
+            }
         }
     } catch (e) {
         if (!ctx.abort.aborted) {
@@ -85,10 +115,14 @@ export async function runSignalRProducer(
     }
 }
 
+// SignalR consumer receives the byte[] that the server forwarded verbatim
+// (zero-copy via `frame.CachedSerializedBytes`), so the keys are whatever the
+// PRODUCER wrote. Our producer uses camelCase to match the server's hand-rolled
+// parser in StreamHub.cs — the consumer reads the same camelCase.
 interface VideoFramePayload {
-    Offset?: number;
-    Data?: Uint8Array;
-    IsKeyFrame?: boolean;
+    offset?: number;
+    data?: Uint8Array;
+    isKeyFrame?: boolean;
 }
 
 export async function runSignalRConsumer(
@@ -111,7 +145,7 @@ export async function runSignalRConsumer(
                     if (ctx.abort.aborted) return;
                     try {
                         const frame = msgpackDecode(frameBytes) as VideoFramePayload;
-                        const offsetTicks = frame.Offset ?? 0;
+                        const offsetTicks = frame.offset ?? 0;
                         ctx.metrics.recordReceived(
                             chatIdx, consumerIdx, streamIdx, offsetTicks, frameBytes.length);
                     } catch {

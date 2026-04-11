@@ -37,22 +37,51 @@ function newSessionId(): string {
 }
 
 export async function signIn(opts: SignInOptions): Promise<SignInResult> {
+    const t0 = Date.now();
+    const stage = (msg: string): void => {
+        console.log(`[auth t=${String(Date.now() - t0).padStart(5, ' ')}ms] ${msg}`);
+    };
+
     const sessionId = newSessionId();
     const hub = new RpcHub();
     const peer = new RpcClientPeer(hub, opts.rpcWsUrl, 'msgpack6');
     const wsFactory = createNodeWsFactory({ sessionId });
 
-    // Run the peer's reconnect loop in the background. It sends the handshake
-    // on connect; we wait for .connected to fire before making RPC calls.
+    stage(`Opening RPC peer ${opts.rpcWsUrl} (session=${sessionId.slice(0, 8)}…)`);
+
+    // Race the WebSocket-open event against a 10s deadline so we fail fast
+    // instead of hanging if the underlying WS never reports open. The RPC
+    // peer's own reconnect loop would otherwise retry silently forever.
     const whenConnected = peer.connected.whenNext();
+    const whenDeadline = new Promise<void>((_, reject) =>
+        setTimeout(() => reject(new Error('RPC peer did not connect within 10s')), 10_000));
     void peer.run(wsFactory);
-    await whenConnected;
+    try {
+        await Promise.race([whenConnected, whenDeadline]);
+    } catch (e) {
+        peer.close();
+        throw e;
+    }
+    stage('RPC WebSocket open, waiting for handshake');
+
+    // `connected` fires on WS-open, but `peer.run()` nulls `_connection` while
+    // the handshake is in flight. We don't have a direct "handshake complete"
+    // event — poll isConnected briefly so the next call has a live connection.
+    const handshakeDeadline = Date.now() + 5_000;
+    while (!peer.isConnected && Date.now() < handshakeDeadline) {
+        await new Promise((r) => setTimeout(r, 20));
+    }
+    if (!peer.isConnected) {
+        peer.close();
+        throw new Error('RPC handshake did not complete within 5s');
+    }
+    stage('RPC handshake complete');
 
     try {
         const emailAuth = hub.addClient(peer, EmailAuthDef) as unknown as EmailAuthClient;
         const secureTokens = hub.addClient(peer, SecureTokensDef) as unknown as SecureTokensClient;
 
-        console.log(`[auth] Signing in as ${opts.email} (session=${sessionId.slice(0, 8)}…)`);
+        stage(`Signing in as ${opts.email}`);
         const ok = await emailAuth.OnValidateTotp({
             Session: sessionId,
             Email: opts.email,
@@ -62,13 +91,14 @@ export async function signIn(opts: SignInOptions): Promise<SignInResult> {
             throw new Error(
                 `Sign-in failed for ${opts.email} (OTP=${opts.totp}). ` +
                 `Is the dev OTP bypass active on the server?`);
+        stage('OnValidateTotp returned true');
 
-        console.log('[auth] Session validated. Fetching secure token…');
+        stage('Calling CreateForSession');
         const secureToken = await secureTokens.CreateForSession(sessionId);
         if (!secureToken.Token)
             throw new Error('CreateForSession returned empty token.');
+        stage('Got secure token');
 
-        console.log('[auth] Got secure token.');
         return { sessionId, sessionToken: secureToken.Token };
     } finally {
         peer.close();

@@ -50,24 +50,37 @@ export function generateFrame(index: number): VideoFrameDto {
 
 /**
  * Serialize a VideoFrameDto to MessagePack bytes for the SignalR `PushVideo`
- * byte[] path. Key order and presence must match the server's
- * `[MessagePackObject(true)]` VideoFrame so deserialization populates every
- * property. `@msgpack/msgpack.encode` produces a map with the keys in the
- * insertion order of the object literal, which is what we rely on.
+ * byte[] path.
+ *
+ * **Important casing note**: the SignalR hub (`StreamHub.PushVideo`) parses
+ * each frame via a hand-rolled MessagePack reader in
+ * `StreamHub.DeserializeVideoFrame` (lines 415-466) that only recognizes
+ * **camelCase** keys (`offset`, `duration`, `isKeyFrame`, `data`, `width`,
+ * `height`, `description`, `codec`, `temporalLayerId`). PascalCase keys hit
+ * `default: reader.Skip()` so every field stays at its zero value; the
+ * resulting frames have `IsKeyFrame=false` and `Offset=0`, and the server's
+ * `VideoStreamFilter.Apply` rejects all of them, which is why consumers see
+ * `ended after 0 frames`.
+ *
+ * The Fusion RPC path (`IStreamServer.PushVideo` → `VideoFrame.cs` with
+ * `[MessagePackObject(true)]`) is the opposite — it expects **PascalCase**
+ * keys, and `rpc-runner.ts` handles that via `VideoFrameDto` directly.
+ * These are two different wire formats that both happen to target the same
+ * `VideoFrame` DTO on the server.
  */
 export function encodeFrameForSignalR(dto: VideoFrameDto): Uint8Array {
     const obj: Record<string, unknown> = {
-        Offset: dto.Offset,
-        Duration: dto.Duration,
-        Data: dto.Data,
+        offset: dto.Offset,
+        duration: dto.Duration,
+        data: dto.Data,
     };
     if (dto.IsKeyFrame) {
-        obj.IsKeyFrame = true;
-        if (dto.Width !== undefined) obj.Width = dto.Width;
-        if (dto.Height !== undefined) obj.Height = dto.Height;
+        obj.isKeyFrame = true;
+        if (dto.Width !== undefined) obj.width = dto.Width;
+        if (dto.Height !== undefined) obj.height = dto.Height;
     }
-    if (dto.Description) obj.Description = dto.Description;
-    if (dto.Codec) obj.Codec = dto.Codec;
+    if (dto.Description) obj.description = dto.Description;
+    if (dto.Codec) obj.codec = dto.Codec;
     return msgpackEncode(obj);
 }
 
