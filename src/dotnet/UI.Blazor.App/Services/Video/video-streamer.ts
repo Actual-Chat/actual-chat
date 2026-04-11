@@ -38,25 +38,29 @@ export function microsecondsToTicks(microseconds: number): number {
 
 /**
  * Encode a VideoStreamFrame as a MessagePack byte array.
- * This matches the server-side VideoFrameDto MessagePack format
- * with string keys (camelCase).
+ * Matches the server-side VideoFrame DTO (Api/Video/VideoFrame.cs) which uses
+ * [MessagePackObject(true)] — implicit PascalCase property-name keys.
+ * Mismatched casing causes MessagePack-CSharp to leave every property at its
+ * default value, so IsKeyFrame=false / Offset=0 for every frame and the server
+ * VideoStreamFilter skips the entire stream → receiver gets no data → black
+ * screen.
  */
 function encodeFrame(frame: VideoStreamFrame): Uint8Array {
     const obj: Record<string, unknown> = {
-        offset: frame.offset,
-        duration: frame.duration,
-        data: frame.data,
+        Offset: frame.offset,
+        Duration: frame.duration,
+        Data: frame.data,
     };
     if (frame.isKeyFrame) {
-        obj.isKeyFrame = true;
-        obj.width = frame.width;
-        obj.height = frame.height;
+        obj.IsKeyFrame = true;
+        obj.Width = frame.width;
+        obj.Height = frame.height;
     }
     if (frame.description) {
-        obj.description = frame.description;
+        obj.Description = frame.description;
     }
     if (frame.codec) {
-        obj.codec = frame.codec;
+        obj.Codec = frame.codec;
     }
     return encode(obj);
 }
