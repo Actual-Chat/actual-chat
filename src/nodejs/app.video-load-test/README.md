@@ -33,11 +33,29 @@ the TS client comparison.
 
 ```bash
 # From repo root
-npm install          # pulls in tsx, ws, @types/ws, @types/node
-npx tsx src/nodejs/app.video-load-test/index.ts                        # SignalR default
-npx tsx src/nodejs/app.video-load-test/index.ts -rpc                   # Fusion RPC
-npx tsx src/nodejs/app.video-load-test/index.ts -c:5 -s:3 -n:3 -d:15   # smaller/faster
+npm install                                      # pulls in tsx, ws, @types/ws, @types/node
+npm run test:video-load                          # SignalR default (10 chats × 6 × 6, 30s)
+npm run test:video-load -- -rpc                  # Fusion RPC
+npm run test:video-load -- -c:5 -s:3 -n:3 -d:15  # smaller/faster
 ```
+
+### Dev-cert TLS bypass
+
+`local.voxt.ai` runs with a self-signed / mkcert cert that Node's default CA
+bundle does not trust. The harness automatically sets
+`NODE_TLS_REJECT_UNAUTHORIZED=0` when the base URL matches a dev host
+(`local.voxt.ai`, `localhost`, `127.0.0.1`) and injects
+`rejectUnauthorized: false` into both the Fusion RPC `ws` connection
+(`node-ws.ts`) and the SignalR client (`signalr-runner.ts`
+`DevWebSocket`). You will see this line on every run:
+
+```
+[load-test] NODE_TLS_REJECT_UNAUTHORIZED=0 — dev cert bypass active
+```
+
+This is intentional and dev-only. The bypass is gated on the base URL —
+point `-u:` at anything else and TLS verification works normally. Never
+import any of these files into production code.
 
 CLI flags (mirror C# harness):
 

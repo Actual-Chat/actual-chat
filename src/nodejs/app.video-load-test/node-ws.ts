@@ -14,6 +14,10 @@ export type NodeWsFactory = (url: string) => WebSocketLike;
  * and adapts it to the `WebSocketLike` contract. Passes headers through the
  * request upgrade so the server's RPC middleware can resolve the session via
  * `TryGetSessionFromHeader` / `TryGetSessionFromCookie`.
+ *
+ * Forces `rejectUnauthorized: false` so the dev cert on `local.voxt.ai`
+ * (self-signed / mkcert) doesn't trip Node's default CA bundle. This is a
+ * dev-test-only harness — do not lift this adapter into production code.
  */
 export function createNodeWsFactory(opts: {
     sessionId?: string;
@@ -24,17 +28,22 @@ export function createNodeWsFactory(opts: {
     if (opts.cookie) headers['Cookie'] = opts.cookie;
 
     return (url: string): WebSocketLike => {
-        const ws = new WebSocket(url, { headers });
+        const ws = new WebSocket(url, {
+            headers,
+            rejectUnauthorized: false, // dev cert bypass — see file header
+        });
         // `ws` delivers binary payloads as Node Buffer by default. Forcing
         // arraybuffer keeps splitBinaryFrame / the browser code path happy.
         (ws as unknown as { binaryType: string }).binaryType = 'arraybuffer';
-        return wrap(ws);
+        return wrap(ws, url);
     };
 }
 
 /** Minimal shim — ws already exposes the w3c event setters, but typed as
- *  a Node EventTarget which TS can't narrow to our WebSocketLike directly. */
-function wrap(ws: WebSocket): WebSocketLike {
+ *  a Node EventTarget which TS can't narrow to our WebSocketLike directly.
+ *  `url` is captured only so error/close diagnostics can say which peer
+ *  they belong to when the harness opens many concurrent sockets. */
+function wrap(ws: WebSocket, url: string): WebSocketLike {
     const like: WebSocketLike = {
         get readyState() { return ws.readyState; },
         get binaryType() { return (ws as unknown as { binaryType: string }).binaryType; },
@@ -74,9 +83,21 @@ function wrap(ws: WebSocket): WebSocketLike {
         like.onmessage?.({ data: payload });
     });
     ws.on('close', (code: number, reason: Buffer) => {
+        // Abnormal closes (anything other than 1000 normal / 1005 no-status)
+        // usually mean TLS rejection, handshake failure, or server-side
+        // disconnect — surface them so the run doesn't hang silently.
+        if (code !== 1000 && code !== 1005) {
+            const reasonStr = reason.toString('utf8');
+            console.warn(
+                `[node-ws close] ${url} code=${code}` +
+                (reasonStr ? ` reason="${reasonStr}"` : ''));
+        }
         like.onclose?.({ code, reason: reason.toString('utf8') });
     });
-    ws.on('error', (err: Error) => like.onerror?.(err));
+    ws.on('error', (err: Error) => {
+        console.error(`[node-ws error] ${url}:`, err.message);
+        like.onerror?.(err);
+    });
 
     return like;
 }

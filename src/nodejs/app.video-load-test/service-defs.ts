@@ -48,9 +48,19 @@ export interface SecureTokensClient {
 // Wire (pull): "ILiveVideoStreams.GetStream:4" — (session, streamId, skipTo) + CT.
 // Wire (list): "ILiveVideoStreams.List:3" — (session, chatId) + CT.
 // skipTo is .NET TimeSpan ticks (int64).
+//
+// `List` is a [ComputeMethod] on the server. Fusion RPC rejects the call
+// unless the wire envelope carries CallTypeId = RpcCallTypeIds.Compute (= 1);
+// see RpcInboundContext.cs:48 which hard-matches CallType.Id and rejects
+// mismatches with a (confusingly rendered) `Invalid CallTypeId` error. The
+// base RpcHub._createClientMethod forwards this callTypeId into the outbound
+// message envelope — enough for the dispatch check to pass. We don't track
+// invalidation (no RpcOutboundComputeCall equivalent in TS), but for a
+// one-shot polling query the server-side `SendResult()` still fires so we
+// get the value back on $sys.Ok like any other call.
 export const LiveVideoStreamsDef = defineRpcService('ILiveVideoStreams', {
     GetStream: { args: ['session', 'streamId', 'skipTo'], returns: RpcType.stream },
-    List: { args: ['session', 'chatId'] },
+    List: { args: ['session', 'chatId'], callTypeId: 1 },
 });
 
 export interface VideoFrameDto {

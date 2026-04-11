@@ -15,6 +15,36 @@
 //   -d:SEC test duration (default 30)
 //   -rpc   use Fusion RPC transport (default: SignalR)
 
+// --- Dev-only TLS bypass -------------------------------------------------
+// local.voxt.ai uses a self-signed / mkcert dev cert that Node's default CA
+// bundle does not trust. Without this, Node's `ws` package refuses the TLS
+// handshake and the RPC sign-in hangs forever waiting for a WebSocket that
+// silently failed to open. We bypass TLS verification only for obviously-dev
+// hosts; anything else keeps normal verification.
+// NEVER enable this in production code — this process is a load-test harness
+// exclusively.
+const DEV_HOST_PATTERNS = ['local.voxt.ai', 'localhost', '127.0.0.1'];
+const _rawBase = process.argv.find((a) => a.startsWith('-u:') || a.startsWith('-url:'))
+    ?? process.argv.find((a) => a.startsWith('--url='))
+    ?? 'https://local.voxt.ai';
+const _baseForTls = _rawBase.replace(/^(-u:|-url:|--url=)/, '');
+if (_baseForTls.startsWith('http://') ||
+    DEV_HOST_PATTERNS.some((h) => _baseForTls.includes(h))) {
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+    console.warn('[load-test] NODE_TLS_REJECT_UNAUTHORIZED=0 — dev cert bypass active');
+}
+
+// --- Silent-error surfacing ----------------------------------------------
+// The RPC client's run loop swallows most connection errors into an
+// exponential backoff; without these, TLS / WS / dispatch failures hang
+// without any output. Print them so we can see what's wrong.
+process.on('unhandledRejection', (reason) => {
+    console.error('[unhandledRejection]', reason);
+});
+process.on('uncaughtException', (err) => {
+    console.error('[uncaughtException]', err);
+});
+
 import { signIn } from './auth.js';
 import { Metrics, printReport } from './metrics.js';
 import { runSignalRConsumer, runSignalRProducer } from './signalr-runner.js';
