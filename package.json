@@ -8,6 +8,8 @@
     "watch": "node build.mjs --watch",
     "font": "svgtofont --sources ./src/nodejs/icons --output ./src/nodejs/fonts/svgtofont",
     "test": "vitest run",
+    "test:video-load": "tsx src/nodejs/app.video-load-test/index.ts",
+    "typecheck:video-load": "tsc -p src/nodejs/app.video-load-test/tsconfig.json --noEmit",
     "lint": "eslint",
     "lint:fix": "eslint --fix"
   },
@@ -19,7 +21,9 @@
     "@types/dom-inputevent": "^1.0.9",
     "@types/dom-screen-wake-lock": "^1.0.3",
     "@types/dom-webcodecs": "^0.1.16",
+    "@types/node": "^22.9.0",
     "@types/swiftclick": "^1.2.29",
+    "@types/ws": "^8.5.13",
     "@typescript-eslint/eslint-plugin": "^8.42.0",
     "@typescript-eslint/parser": "^8.42.0",
     "@typescript/lib-dom": "npm:@types/web@^0.0.265",
@@ -39,10 +43,12 @@
     "sass-embedded": "^1.97.3",
     "svgtofont": "^6.4.0",
     "tailwindcss": "^3.2.4",
+    "tsx": "^4.19.2",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.42.0",
     "user-agent-data-types": "^0.4.2",
-    "vitest": "^4.1.1"
+    "vitest": "^4.1.1",
+    "ws": "^8.18.0"
   },
   "dependencies": {
     "@actual-chat/codec": "0.4.1",
