@@ -1,6 +1,25 @@
-// Fusion RPC producer / consumer harnesses. One RpcClientPeer per producer
-// and one per consumer — each opens its own WebSocket, mirroring the C# test's
-// one-connection-per-task pattern.
+// Fusion RPC producer / consumer harnesses.
+//
+// Connection model — mirrors the C# App.VideoLoadTest RPC path and the
+// production browser client (UI.Blazor.App/Services/Video/video-rpc-client.ts):
+// ONE shared `RpcClientPeer` multiplexes every producer and every consumer
+// over a single WebSocket. That's how Fusion RPC is designed to be used.
+//
+// Why not one peer per task (the C# SignalR path):
+//   At -c:10 -s:6 -n:6 that's 60 producers + 300 consumers = 360 separate
+//   WebSockets. Each WebSocket pulls in its own TLS write buffer, ws Sender
+//   framing, ws Receiver consume loop, msgpack Encoder/Decoder, RpcPeer
+//   dispatch chain, and — on the server side — a dedicated peer + session
+//   lookup + Hub fan-out. Profile at 300 pulls showed 71% idle, 6% in TLS
+//   `writeBuffer`, and the main thread starved for I/O — classic fan-out
+//   bottleneck. Sharing a peer collapses all of that into a single socket
+//   with multiplexed stream IDs (`peer.sharedObjects.nextId()` already
+//   hands out distinct IDs for every producer sender).
+//
+// The `RpcHarnessBundle` is built once in main() and handed to every
+// consumer/producer task. Clients are resolved off the same hub so there's
+// exactly one `StreamServerClient` and one `LiveVideoStreamsClient` shared
+// across the whole run.
 
 import { RpcHub, RpcClientPeer, RpcClientStreamSender } from '../src/actuallab-rpc/index.js';
 
@@ -26,35 +45,42 @@ export interface RpcRunContext {
     abort: AbortSignal;
 }
 
-interface PeerBundle {
+/** Shared RPC plumbing passed into every producer and consumer task. */
+export interface RpcHarnessBundle {
     hub: RpcHub;
     peer: RpcClientPeer;
+    streamServer: StreamServerClient;
+    liveVideoStreams: LiveVideoStreamsClient;
 }
 
-async function connectPeer(ctx: RpcRunContext): Promise<PeerBundle> {
+/** Build the single shared bundle used by the whole test run. */
+export async function createRpcHarnessBundle(
+    ctx: Omit<RpcRunContext, 'metrics'>,
+): Promise<RpcHarnessBundle> {
     const hub = new RpcHub();
     const peer = new RpcClientPeer(hub, ctx.rpcWsUrl, RPC_SERIALIZATION_FORMAT);
     const wsFactory = createNodeWsFactory({ sessionId: ctx.sessionId });
     const whenConnected = peer.connected.whenNext();
     void peer.run(wsFactory);
     await whenConnected;
-    return { hub, peer };
+    const streamServer = hub.addClient(peer, StreamServerDef) as unknown as StreamServerClient;
+    const liveVideoStreams = hub.addClient(peer, LiveVideoStreamsDef) as unknown as LiveVideoStreamsClient;
+    return { hub, peer, streamServer, liveVideoStreams };
 }
 
-function closePeer(bundle: PeerBundle): void {
+export function closeRpcHarnessBundle(bundle: RpcHarnessBundle): void {
     try { bundle.peer.close(); } catch { /* ignore */ }
 }
 
 export async function runRpcProducer(
+    bundle: RpcHarnessBundle,
     ctx: RpcRunContext,
     chatIdx: number,
     prodIdx: number,
     chatId: string,
 ): Promise<void> {
-    let bundle: PeerBundle | null = null;
     try {
-        bundle = await connectPeer(ctx);
-        const streamServer = bundle.hub.addClient(bundle.peer, StreamServerDef) as unknown as StreamServerClient;
+        const { streamServer } = bundle;
         const sender = new RpcClientStreamSender<VideoFrameDto>(bundle.peer);
         const format: VideoFormatDto = {
             Codec: FrameConfig.Codec,
@@ -98,23 +124,19 @@ export async function runRpcProducer(
             console.error(
                 `[rpc producer chat=${chatIdx} prod=${prodIdx}] ${(e as Error).message}`);
         }
-    } finally {
-        if (bundle) closePeer(bundle);
     }
 }
 
 export async function runRpcConsumer(
+    bundle: RpcHarnessBundle,
     ctx: RpcRunContext,
     chatIdx: number,
     consumerIdx: number,
     streamIdx: number,
     streamId: string,
 ): Promise<void> {
-    let bundle: PeerBundle | null = null;
     try {
-        bundle = await connectPeer(ctx);
-        const client = bundle.hub.addClient(bundle.peer, LiveVideoStreamsDef) as unknown as LiveVideoStreamsClient;
-        const stream = await client.GetStream('~', streamId, 0);
+        const stream = await bundle.liveVideoStreams.GetStream('~', streamId, 0);
 
         for await (const frame of stream) {
             if (ctx.abort.aborted) break;
@@ -129,8 +151,6 @@ export async function runRpcConsumer(
                 console.error(
                     `[rpc consumer chat=${chatIdx} cons=${consumerIdx} stream=${streamIdx}] ${msg}`);
         }
-    } finally {
-        if (bundle) closePeer(bundle);
     }
 }
 
@@ -141,14 +161,14 @@ export async function runRpcConsumer(
  * Computed.WhenInvalidated since the TS RPC client has no compute subscription).
  */
 export async function discoverStreams(
+    bundle: RpcHarnessBundle,
     ctx: Omit<RpcRunContext, 'metrics'>,
     chatIds: readonly string[],
     expected: number,
     timeoutMs: number,
 ): Promise<string[][]> {
-    const bundle = await connectPeer(ctx as RpcRunContext);
-    try {
-        const client = bundle.hub.addClient(bundle.peer, LiveVideoStreamsDef) as unknown as LiveVideoStreamsClient;
+    {
+        const client = bundle.liveVideoStreams;
 
         const deadline = Date.now() + timeoutMs;
         const result: string[][] = chatIds.map(() => []);
@@ -192,7 +212,5 @@ export async function discoverStreams(
             await new Promise<void>((r) => setTimeout(r, 500));
         }
         return result;
-    } finally {
-        closePeer(bundle);
     }
 }

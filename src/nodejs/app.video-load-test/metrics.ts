@@ -1,32 +1,82 @@
-// Metrics aggregation mirrored from the C# harness — per-frame latencies and
-// throughput are keyed by (chatIdx, consumerIdx, streamIdx) so the aggregate
-// report looks the same as the .NET one.
+// Hot-path-friendly metrics aggregation.
+//
+// Previous implementation kept four `Map<string, …>` instances and built
+// template-literal keys on every `recordReceived`/`recordSent` call. At
+// ~4.4k delivered frames/sec across 300 consumers that showed up in the
+// profile as ~1.6% self time + non-trivial GC pressure (the per-frame
+// string allocations). The storage layout here is a pair of typed arrays
+// indexed by a precomputed integer key, so the inner loop never allocates.
+//
+// Keys:
+//   sentIdx(chatIdx, prodIdx, frameIdx)
+//     = (chatIdx * streamsPerChat + prodIdx) * maxFramesPerStream + frameIdx
+//   consumerIdx(chatIdx, consIdx, streamIdx)
+//     = (chatIdx * consumersPerChat + consIdx) * streamsPerChat + streamIdx
+//
+// Frame index is recovered from VideoFrame.Offset / FrameDurationTicks on
+// the receive side, so producers don't have to thread an index through the
+// stream sender — only timing anchors are actually on the wire.
 
-export type SentKey = string; // "chat|prod|offset"
-export type ConsumerKey = string; // "chat|cons|stream"
-
-function sentKey(chatIdx: number, prodIdx: number, offsetTicks: number): SentKey {
-    return `${chatIdx}|${prodIdx}|${offsetTicks}`;
+export interface MetricsConfig {
+    chatCount: number;
+    streamsPerChat: number;
+    consumersPerChat: number;
+    /** Upper bound on frames a single producer will emit in this run.
+     *  Used to size the sent-timestamp typed array. */
+    maxFramesPerStream: number;
+    /** Ticks per frame (.NET TimeSpan ticks, 100 ns units). Used to
+     *  recover frameIdx from a frame's Offset on the receive side. */
+    frameDurationTicks: number;
+    /** Upper bound on frames a consumer will receive — sized slightly
+     *  larger than maxFramesPerStream to avoid boundary drops. */
+    maxLatencySamplesPerConsumer: number;
 }
 
-function consumerKey(chatIdx: number, consIdx: number, streamIdx: number): ConsumerKey {
-    return `${chatIdx}|${consIdx}|${streamIdx}`;
-}
+/** Sentinel for "this frame was never recorded as sent". */
+const NOT_SENT = 0;
 
 export class Metrics {
-    /** Per-frame send timestamps (wall-clock ms) tagged at producer. */
-    readonly sent = new Map<SentKey, number>();
-    /** Per-consumer frame count. */
-    readonly framesReceived = new Map<ConsumerKey, number>();
-    /** Per-consumer byte count (uses the MessagePack size for SignalR, or the
-     *  decoded Data.byteLength for RPC). Matches the C# accounting. */
-    readonly bytesReceived = new Map<ConsumerKey, number>();
-    /** Per-consumer latency samples in milliseconds. */
-    readonly latencies = new Map<ConsumerKey, number[]>();
+    private readonly cfg: MetricsConfig;
+
+    /** Flat Float64Array keyed by sentIdx → wall-clock send time (ms).
+     *  `NOT_SENT` (0) means no producer recorded a send for that slot. */
+    private readonly _sentAt: Float64Array;
+
+    /** Per-consumer frame counter — Uint32Array keyed by consumerIdx. */
+    private readonly _framesReceived: Uint32Array;
+    /** Per-consumer byte counter — Float64Array (sum may exceed 2^32). */
+    private readonly _bytesReceived: Float64Array;
+    /** Per-consumer latency sample ring buffers.
+     *  `_latencies[consumerIdx]` is a preallocated `Float64Array`,
+     *  `_latencyCounts[consumerIdx]` is how many samples are in it.
+     *  Once full the sample is dropped (typical runs stay well below). */
+    private readonly _latencies: Float64Array[];
+    private readonly _latencyCounts: Uint32Array;
+
+    constructor(cfg: MetricsConfig) {
+        this.cfg = cfg;
+        const totalStreams = cfg.chatCount * cfg.streamsPerChat;
+        const totalConsumers = cfg.chatCount * cfg.consumersPerChat * cfg.streamsPerChat;
+
+        this._sentAt = new Float64Array(totalStreams * cfg.maxFramesPerStream);
+        this._framesReceived = new Uint32Array(totalConsumers);
+        this._bytesReceived = new Float64Array(totalConsumers);
+        this._latencyCounts = new Uint32Array(totalConsumers);
+        this._latencies = new Array<Float64Array>(totalConsumers);
+        for (let i = 0; i < totalConsumers; i++)
+            this._latencies[i] = new Float64Array(cfg.maxLatencySamplesPerConsumer);
+    }
+
+    // --- Hot-path producer API ---
 
     recordSent(chatIdx: number, prodIdx: number, offsetTicks: number, now = Date.now()): void {
-        this.sent.set(sentKey(chatIdx, prodIdx, offsetTicks), now);
+        const frameIdx = (offsetTicks / this.cfg.frameDurationTicks) | 0;
+        const idx = (chatIdx * this.cfg.streamsPerChat + prodIdx) * this.cfg.maxFramesPerStream + frameIdx;
+        if (idx >= 0 && idx < this._sentAt.length)
+            this._sentAt[idx] = now;
     }
+
+    // --- Hot-path consumer API ---
 
     recordReceived(
         chatIdx: number,
@@ -35,31 +85,75 @@ export class Metrics {
         offsetTicks: number,
         byteSize: number,
     ): void {
-        const ck = consumerKey(chatIdx, consIdx, streamIdx);
-        this.framesReceived.set(ck, (this.framesReceived.get(ck) ?? 0) + 1);
-        this.bytesReceived.set(ck, (this.bytesReceived.get(ck) ?? 0) + byteSize);
+        const ci = (chatIdx * this.cfg.consumersPerChat + consIdx) * this.cfg.streamsPerChat + streamIdx;
+        this._framesReceived[ci] = this._framesReceived[ci] + 1;
+        this._bytesReceived[ci] = this._bytesReceived[ci] + byteSize;
 
-        const sk = sentKey(chatIdx, streamIdx, offsetTicks);
-        const sentAt = this.sent.get(sk);
-        if (sentAt !== undefined) {
-            const latencyMs = Date.now() - sentAt;
-            let bag = this.latencies.get(ck);
-            if (!bag) { bag = []; this.latencies.set(ck, bag); }
-            bag.push(latencyMs);
+        const frameIdx = (offsetTicks / this.cfg.frameDurationTicks) | 0;
+        const sentIdx = (chatIdx * this.cfg.streamsPerChat + streamIdx) * this.cfg.maxFramesPerStream + frameIdx;
+        if (sentIdx >= 0 && sentIdx < this._sentAt.length) {
+            const sentAt = this._sentAt[sentIdx];
+            if (sentAt !== NOT_SENT) {
+                const latencyMs = Date.now() - sentAt;
+                const count = this._latencyCounts[ci];
+                if (count < this._latencies[ci].length) {
+                    this._latencies[ci][count] = latencyMs;
+                    this._latencyCounts[ci] = count + 1;
+                }
+            }
         }
     }
 
-    initConsumer(chatIdx: number, consIdx: number, streamIdx: number): void {
-        const ck = consumerKey(chatIdx, consIdx, streamIdx);
-        this.framesReceived.set(ck, 0);
-        this.bytesReceived.set(ck, 0);
-        this.latencies.set(ck, []);
+    // --- Report-time read API (matches the old Map-based shape) ---
+
+    getFramesReceived(chatIdx: number, consIdx: number, streamIdx: number): number {
+        const ci = (chatIdx * this.cfg.consumersPerChat + consIdx) * this.cfg.streamsPerChat + streamIdx;
+        return this._framesReceived[ci];
+    }
+    getBytesReceived(chatIdx: number, consIdx: number, streamIdx: number): number {
+        const ci = (chatIdx * this.cfg.consumersPerChat + consIdx) * this.cfg.streamsPerChat + streamIdx;
+        return this._bytesReceived[ci];
+    }
+    /** Returns a non-owning view of the latency samples for this consumer. */
+    getLatencies(chatIdx: number, consIdx: number, streamIdx: number): Float64Array {
+        const ci = (chatIdx * this.cfg.consumersPerChat + consIdx) * this.cfg.streamsPerChat + streamIdx;
+        return this._latencies[ci].subarray(0, this._latencyCounts[ci]);
+    }
+    /** Aggregate counters for the whole run. */
+    totals(): { frames: number; bytes: number } {
+        let frames = 0;
+        let bytes = 0;
+        for (let i = 0; i < this._framesReceived.length; i++) {
+            frames += this._framesReceived[i];
+            bytes += this._bytesReceived[i];
+        }
+        return { frames, bytes };
+    }
+    /** Flat concatenation of all consumers' latency samples — used by the
+     *  aggregate report row. Allocates once at report time, not per frame. */
+    allLatencies(): Float64Array {
+        let total = 0;
+        for (const n of this._latencyCounts) total += n;
+        const out = new Float64Array(total);
+        let pos = 0;
+        for (let i = 0; i < this._latencies.length; i++) {
+            const n = this._latencyCounts[i];
+            out.set(this._latencies[i].subarray(0, n), pos);
+            pos += n;
+        }
+        return out;
     }
 }
 
-export function percentile(values: number[], p: number): number {
+/** Percentile on a numeric sample set. Accepts either a plain array or
+ *  a typed array — typed arrays are sorted in place via `.sort()`, so
+ *  pass a `.slice()` if you need to preserve the original order. */
+export function percentile(values: ArrayLike<number>, p: number): number {
     if (values.length === 0) return 0;
-    const sorted = values.slice().sort((a, b) => a - b);
+    // Clone to a fresh array to avoid mutating the caller's data.
+    // For very large sample counts we could sort in place, but at typical
+    // run sizes (< 30k samples) this is a single millisecond at most.
+    const sorted = Array.from(values).sort((a, b) => a - b);
     const index = Math.max(0, Math.ceil(p * sorted.length) - 1);
     return sorted[index];
 }
@@ -98,11 +192,10 @@ export function printReport(r: ReportInputs): void {
         for (let cons = 0; cons < r.consumersPerChat; cons++) {
             for (let si = 0; si < r.streamsPerChat; si++) {
                 if (si === cons) continue;
-                const ck = `${ci}|${cons}|${si}`;
-                chatFrames += r.metrics.framesReceived.get(ck) ?? 0;
-                chatBytes += r.metrics.bytesReceived.get(ck) ?? 0;
-                const bag = r.metrics.latencies.get(ck);
-                if (bag) chatLat.push(...bag);
+                chatFrames += r.metrics.getFramesReceived(ci, cons, si);
+                chatBytes += r.metrics.getBytesReceived(ci, cons, si);
+                const bag = r.metrics.getLatencies(ci, cons, si);
+                for (const v of bag) chatLat.push(v);
             }
         }
         const mbps = chatBytes / (1024 * 1024) / r.durationSec;
@@ -114,12 +207,8 @@ export function printReport(r: ReportInputs): void {
     }
 
     // Aggregate
-    let aggFrames = 0;
-    let aggBytes = 0;
-    const aggLat: number[] = [];
-    for (const v of r.metrics.framesReceived.values()) aggFrames += v;
-    for (const v of r.metrics.bytesReceived.values()) aggBytes += v;
-    for (const v of r.metrics.latencies.values()) aggLat.push(...v);
+    const { frames: aggFrames, bytes: aggBytes } = r.metrics.totals();
+    const aggLat = r.metrics.allLatencies();
 
     const aggMbps = aggBytes / (1024 * 1024) / r.durationSec;
     console.log();

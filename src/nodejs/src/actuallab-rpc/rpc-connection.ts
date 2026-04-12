@@ -22,10 +22,12 @@
 //   - IAsyncDisposable — .NET transports are disposable resources.  TS connections
 //     are closed via close() and garbage-collected.
 
+import { Encoder, Decoder } from "@msgpack/msgpack";
 import { PromiseSource, EventHandlerSet } from "../actuallab-core/index.js";
 import {
   splitFrame, serializeFrame,
   splitBinaryFrame, serializeBinaryFrame,
+  createBinaryEncoder,
 } from "./rpc-serialization.js";
 import type { RpcMessage } from "./rpc-message.js";
 
@@ -60,6 +62,11 @@ export interface RpcConnection {
   readonly whenConnected: Promise<void>;
   readonly messageReceived: EventHandlerSet<RpcReceivedMessage>;
   readonly closed: EventHandlerSet<{ code: number; reason: string }>;
+  /** Optional reusable msgpack encoder for outbound binary messages.
+   *  Callers passing this to `serializeBinaryMessage` skip the per-call
+   *  Encoder construction + resizeBuffer growth. Implementations that
+   *  don't support binary serialization can leave it undefined. */
+  readonly encoder?: Encoder;
   send(serializedMessage: string): void;
   sendBinary(data: Uint8Array): void;
   close(code?: number, reason?: string): void;
@@ -70,6 +77,22 @@ export class RpcWebSocketConnection implements RpcConnection {
   private _ws: WebSocketLike;
   private _sendBuffer: Array<string | Uint8Array> = [];
   private _connected = new PromiseSource<void>();
+
+  /** Per-connection msgpack encoder — reused across outbound messages to
+   *  amortise construction cost and to keep the internal write buffer at
+   *  its largest observed size (avoids repeated `resizeBuffer` growth on
+   *  large video frames). See serializeBinaryMessage() for details. */
+  private _encoder: Encoder = createBinaryEncoder();
+
+  /** Per-connection msgpack decoder — reused across inbound messages
+   *  rather than reconstructing one for every `decodeMulti` call. */
+  private _decoder: Decoder = new Decoder();
+
+  /** Exposed for callers who need to encode outbound binary messages
+   *  through this connection (e.g. `serializeBinaryMessage`). Safe to
+   *  pass to synchronous encode calls on the same event-loop turn. */
+  get encoder(): Encoder { return this._encoder; }
+  get decoder(): Decoder { return this._decoder; }
 
   readonly binaryMode: boolean;
   readonly messageReceived = new EventHandlerSet<RpcReceivedMessage>();
@@ -94,11 +117,25 @@ export class RpcWebSocketConnection implements RpcConnection {
     };
 
     ws.onmessage = (ev) => {
-      if (ev.data instanceof ArrayBuffer) {
-        // Binary frame — V5 self-delimiting envelopes (one or more per WS frame)
-        const frame = new Uint8Array(ev.data);
+      // Binary frame — V5 self-delimiting envelopes (one or more per WS frame).
+      //
+      // Accept BOTH `ArrayBuffer` (browser WebSocket when `binaryType` is
+      // 'arraybuffer') AND `Uint8Array`-shaped views (Node `ws` delivering a
+      // `Buffer`, which is a `Uint8Array` subclass). The node-ws adapter
+      // intentionally passes Buffer through without an ArrayBuffer copy —
+      // at 300 concurrent video streams that copy was ~100 MB/s of pure
+      // memcpy + allocation pressure. Matching `ArrayBuffer.isView` here
+      // keeps the zero-copy path alive all the way to `splitBinaryFrame`.
+      if (ev.data instanceof Uint8Array || ev.data instanceof ArrayBuffer) {
+        // Node `Buffer` is a `Uint8Array` subclass, so we can hand it to
+        // `splitBinaryFrame` directly with no view wrapping or copying.
+        // Browsers deliver `ArrayBuffer`, which needs a single zero-copy
+        // view wrap.
+        const frame = ev.data instanceof Uint8Array
+          ? ev.data
+          : new Uint8Array(ev.data);
         try {
-          const messages = splitBinaryFrame(frame);
+          const messages = splitBinaryFrame(frame, this._decoder);
           for (const { message, args } of messages) {
             this.messageReceived.trigger({ kind: "binary", message, args });
           }
@@ -112,7 +149,7 @@ export class RpcWebSocketConnection implements RpcConnection {
         void ev.data.arrayBuffer().then((ab) => {
           const frame = new Uint8Array(ab);
           try {
-            const messages = splitBinaryFrame(frame);
+            const messages = splitBinaryFrame(frame, this._decoder);
             for (const { message, args } of messages) {
               this.messageReceived.trigger({ kind: "binary", message, args });
             }

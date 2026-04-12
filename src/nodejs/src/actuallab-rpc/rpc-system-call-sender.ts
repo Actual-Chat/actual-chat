@@ -28,12 +28,59 @@ import { RpcSystemCalls, type RpcMessage } from "./rpc-message.js";
 import { serializeMessage, serializeBinaryMessage } from "./rpc-serialization.js";
 import type { RpcConnection } from "./rpc-connection.js";
 
-/** Sends system RPC messages — like .NET's RpcSystemCallSender. */
+/**
+ * Sends system RPC messages — like .NET's RpcSystemCallSender.
+ *
+ * Hot-path allocation notes: `item`, `batch`, `ack`, and `end` are called
+ * once per stream frame (or once per ack window). Naively building a fresh
+ * `{ Method, RelatedId }` envelope object plus a fresh two-element arg array
+ * on every call showed up as ~2-4% self time + non-trivial GC pressure in
+ * the 300-pull video-load-test profile.
+ *
+ * The sender itself is a per-Hub singleton and `_send`/`serializeBinaryMessage`
+ * are fully synchronous (no awaits, no re-entrancy on a single-threaded event
+ * loop), so we reuse a small pool of preallocated envelope + arg-array slots
+ * per hot method. Mutate fields just before the send call; the encoder reads
+ * them synchronously and produces a detached `Uint8Array` copy, after which
+ * the slot is free to be mutated again on the next call.
+ */
 export class RpcSystemCallSender {
+
+  // Reusable envelopes — one per hot-path method. Method field is set once
+  // in the field initializer and never changes; RelatedId is overwritten per
+  // call site. Safe because `_send` is fully synchronous and non-reentrant
+  // on a single-threaded event loop.
+  private readonly _itemEnv: RpcMessage = { Method: RpcSystemCalls.item, RelatedId: 0 };
+  private readonly _batchEnv: RpcMessage = { Method: RpcSystemCalls.batch, RelatedId: 0 };
+  private readonly _endEnv: RpcMessage = { Method: RpcSystemCalls.end, RelatedId: 0 };
+  private readonly _ackEnv: RpcMessage = { Method: RpcSystemCalls.ack, RelatedId: 0 };
+  private readonly _ackEndEnv: RpcMessage = { Method: RpcSystemCalls.ackEnd, RelatedId: 0 };
+
+  // Reusable two-slot arg arrays. Each hot method gets its own so we don't
+  // accidentally interleave on the same slot in nested call sites.
+  private readonly _itemArgs: [number, unknown] = [0, null];
+  private readonly _batchArgs: [number, unknown] = [0, null];
+  private readonly _endArgs: [number, { TypeRef: string; Message: string }] = [
+    0, { TypeRef: "", Message: "" },
+  ];
+  private readonly _ackArgs: [number, string] = [0, ""];
+  private readonly _ackEndArgs: [string] = [""];
+
+  // The .NET struct deserializer for ExceptionInfo cannot handle MessagePack
+  // nil, so sendEnd must pass a non-null object. See
+  // rpc-client-stream-sender.ts sendEnd() for the rationale. Shared sentinel
+  // is cheaper than reallocating the "no error" literal on every stream end.
+  private static readonly NO_ERROR: { TypeRef: string; Message: string } =
+    Object.freeze({ TypeRef: "", Message: "" }) as unknown as {
+      TypeRef: string; Message: string;
+    };
 
   private _send(conn: RpcConnection, envelope: RpcMessage, args?: unknown[]): void {
     if (conn.binaryMode) {
-      conn.sendBinary(serializeBinaryMessage(envelope, args));
+      // Pass the connection's reusable encoder into serializeBinaryMessage
+      // so we avoid constructing a fresh `@msgpack/msgpack.Encoder` (and
+      // re-growing its internal buffer) for every system call.
+      conn.sendBinary(serializeBinaryMessage(envelope, args, conn.encoder));
     } else {
       conn.send(serializeMessage(envelope, args));
     }
@@ -66,11 +113,20 @@ export class RpcSystemCallSender {
   }
 
   item(conn: RpcConnection, localId: number, index: number, item: unknown): void {
-    this._send(conn, { Method: RpcSystemCalls.item, RelatedId: localId }, [index, item]);
+    this._itemEnv.RelatedId = localId;
+    this._itemArgs[0] = index;
+    this._itemArgs[1] = item;
+    this._send(conn, this._itemEnv, this._itemArgs);
+    // Drop reference so a large item payload can be GC'd between sends.
+    this._itemArgs[1] = null;
   }
 
   batch(conn: RpcConnection, localId: number, index: number, items: unknown[]): void {
-    this._send(conn, { Method: RpcSystemCalls.batch, RelatedId: localId }, [index, items]);
+    this._batchEnv.RelatedId = localId;
+    this._batchArgs[0] = index;
+    this._batchArgs[1] = items;
+    this._send(conn, this._batchEnv, this._batchArgs);
+    this._batchArgs[1] = null;
   }
 
   end(
@@ -80,17 +136,25 @@ export class RpcSystemCallSender {
     // Always a non-null ExceptionInfo shape — the .NET struct deserializer
     // cannot handle MessagePack nil here. See rpc-client-stream-sender.ts
     // sendEnd() for the rationale and the expected "no error" value.
-    error: { TypeRef: string; Message: string } = { TypeRef: "", Message: "" },
+    error: { TypeRef: string; Message: string } = RpcSystemCallSender.NO_ERROR,
   ): void {
-    this._send(conn, { Method: RpcSystemCalls.end, RelatedId: localId }, [index, error]);
+    this._endEnv.RelatedId = localId;
+    this._endArgs[0] = index;
+    this._endArgs[1] = error;
+    this._send(conn, this._endEnv, this._endArgs);
   }
 
   ack(conn: RpcConnection, localId: number, nextIndex: number, hostId: string): void {
-    this._send(conn, { Method: RpcSystemCalls.ack, RelatedId: localId }, [nextIndex, hostId]);
+    this._ackEnv.RelatedId = localId;
+    this._ackArgs[0] = nextIndex;
+    this._ackArgs[1] = hostId;
+    this._send(conn, this._ackEnv, this._ackArgs);
   }
 
   ackEnd(conn: RpcConnection, localId: number, hostId: string): void {
-    this._send(conn, { Method: RpcSystemCalls.ackEnd, RelatedId: localId }, [hostId]);
+    this._ackEndEnv.RelatedId = localId;
+    this._ackEndArgs[0] = hostId;
+    this._send(conn, this._ackEndEnv, this._ackEndArgs);
   }
 
 }

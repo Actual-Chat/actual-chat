@@ -195,7 +195,9 @@ export abstract class RpcPeer {
 
     const envelope: RpcMessage = { Method: method, RelatedId: callId, CallType: options?.callTypeId ?? 0 };
     if (this.isBinaryMode) {
-      outboundCall.serializedBinaryMessage = serializeBinaryMessage(envelope, args);
+      // Pass the connection's reusable encoder so we don't construct a
+      // new `@msgpack/msgpack.Encoder` for every outbound call.
+      outboundCall.serializedBinaryMessage = serializeBinaryMessage(envelope, args, this._connection?.encoder);
     } else {
       outboundCall.serializedMessage = serializeMessage(envelope, args);
     }
@@ -244,7 +246,7 @@ export abstract class RpcPeer {
     if (this._connection === undefined) return; // silently drop
     const envelope: RpcMessage = { Method: method, RelatedId: 0 };
     if (this.isBinaryMode) {
-      this._connection.sendBinary(serializeBinaryMessage(envelope, args));
+      this._connection.sendBinary(serializeBinaryMessage(envelope, args, this._connection.encoder));
     } else {
       this._connection.send(serializeMessage(envelope, args));
     }

@@ -31,6 +31,9 @@ export function createNodeWsFactory(opts: {
         const ws = new WebSocket(url, {
             headers,
             rejectUnauthorized: false, // dev cert bypass — see file header
+            // Disable RFC 7692 permessage-deflate. Video frames are already
+            // high-entropy, so deflate buys nothing
+            perMessageDeflate: false,
         });
         // `ws` delivers binary payloads as Node Buffer by default. Forcing
         // arraybuffer keeps splitBinaryFrame / the browser code path happy.
@@ -64,21 +67,36 @@ function wrap(ws: WebSocket, url: string): WebSocketLike {
 
     ws.on('open', (ev: unknown) => like.onopen?.(ev));
     ws.on('message', (data: Buffer | ArrayBuffer | Buffer[]) => {
-        // Normalize to ArrayBuffer to match browser binary delivery shape.
-        let payload: ArrayBuffer | string;
+        // IMPORTANT: zero-copy delivery for binary frames.
+        //
+        // Node's `Buffer` already extends `Uint8Array`, so `ws` hands us a
+        // typed-array view that `RpcWebSocketConnection` and
+        // `splitBinaryFrame` can consume directly. An earlier version of
+        // this adapter called `toArrayBuffer(data)` on every message to
+        // "match the browser's ArrayBuffer delivery shape" — that
+        // allocated a fresh buffer and memcpy-ed every inbound frame. At
+        // 300 pulls × 30 fps × ~11 KB that was ~99 MB/sec of pure copy +
+        // GC pressure (visible in the profile as ~2% FastBuffer). Pass
+        // the Uint8Array view through instead; `rpc-connection.ts` handles
+        // `ArrayBuffer.isView` on the receive side.
+        let payload: Uint8Array | string;
         if (typeof data === 'string') {
             payload = data;
         } else if (Array.isArray(data)) {
+            // Fragmented binary frame — ws only does this for very large
+            // payloads. Concatenate into one Uint8Array so the receiver
+            // sees a single contiguous buffer.
             const total = data.reduce((n, b) => n + b.byteLength, 0);
             const out = new Uint8Array(total);
             let o = 0;
             for (const b of data) { out.set(b, o); o += b.byteLength; }
-            payload = toArrayBuffer(out);
+            payload = out;
         } else if (data instanceof ArrayBuffer) {
-            payload = data;
+            payload = new Uint8Array(data);
         } else {
-            // Node Buffer
-            payload = toArrayBuffer(data);
+            // Node Buffer — already a Uint8Array view over its ArrayBuffer,
+            // so pass it through directly. No allocation, no memcpy.
+            payload = data;
         }
         like.onmessage?.({ data: payload });
     });
@@ -100,13 +118,4 @@ function wrap(ws: WebSocket, url: string): WebSocketLike {
     });
 
     return like;
-}
-
-/** Copy a Uint8Array or Node Buffer into a fresh ArrayBuffer. Avoids the
- *  SharedArrayBuffer vs ArrayBuffer union that Node's types produce for
- *  `Buffer.prototype.buffer`. */
-function toArrayBuffer(view: Uint8Array): ArrayBuffer {
-    const out = new ArrayBuffer(view.byteLength);
-    new Uint8Array(out).set(view);
-    return out;
 }
