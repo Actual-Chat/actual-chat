@@ -47,8 +47,16 @@ process.on('uncaughtException', (err) => {
 
 import { signIn } from './auth.js';
 import { Metrics, printReport } from './metrics.js';
+import { FrameConfig } from './frame-gen.js';
 import { runSignalRConsumer, runSignalRProducer } from './signalr-runner.js';
-import { discoverStreams, runRpcConsumer, runRpcProducer } from './rpc-runner.js';
+import {
+    createRpcHarnessBundle,
+    closeRpcHarnessBundle,
+    discoverStreams,
+    runRpcConsumer,
+    runRpcProducer,
+    type RpcHarnessBundle,
+} from './rpc-runner.js';
 
 // Chat IDs copied verbatim from src/dotnet/App.VideoLoadTest/Program.cs — the
 // user created these once locally; do not regenerate per run.
@@ -75,25 +83,55 @@ interface CliArgs {
 }
 
 function parseArgs(argv: readonly string[]): CliArgs {
+    // Accept all four common forms for every flag so copy/paste and shell
+    // quirks (looking at you, PowerShell splitting `-c:5` into `-c:` and
+    // `5`) don't silently give us NaN configs:
+    //   -c:5      short-colon
+    //   -c=5      short-equals
+    //   -c 5      short-space   (two tokens)
+    //   --chats=5 long-equals
+    //   --chats 5 long-space
     const get = (short: string, long: string): string | undefined => {
-        const shortPrefix = `-${short}:`;
-        const longPrefix = `-${long}:`;
+        const prefixes = [
+            `-${short}:`, `-${short}=`,
+            `--${long}=`, `--${long}:`, `-${long}:`, `-${long}=`,
+        ];
         for (let i = argv.length - 1; i >= 0; i--) {
             const a = argv[i];
-            if (a.startsWith(shortPrefix)) return a.slice(shortPrefix.length);
-            if (a.startsWith(longPrefix)) return a.slice(longPrefix.length);
+            for (const prefix of prefixes) {
+                if (a.startsWith(prefix)) {
+                    const tail = a.slice(prefix.length);
+                    // Joined form: "-c:5" → "5". Bare prefix (PowerShell
+                    // splits on colon): "-c:" + next arg → "-c:" then "5".
+                    if (tail.length > 0) return tail;
+                    if (i + 1 < argv.length) return argv[i + 1];
+                    return undefined;
+                }
+            }
+            if (a === `-${short}` || a === `--${long}`) {
+                return i + 1 < argv.length ? argv[i + 1] : undefined;
+            }
         }
         return undefined;
+    };
+    const parseIntOr = (value: string | undefined, fallback: number, name: string): number => {
+        if (value === undefined) return fallback;
+        const n = parseInt(value, 10);
+        if (Number.isNaN(n)) {
+            console.error(`[load-test] Could not parse ${name}=${JSON.stringify(value)}; using default ${fallback}`);
+            return fallback;
+        }
+        return n;
     };
     const flag = (...names: string[]): boolean =>
         argv.some((a) => names.includes(a));
 
     return {
-        chatCount: parseInt(get('c', 'chats') ?? '10', 10),
-        streamsPerChat: parseInt(get('s', 'streams') ?? '6', 10),
-        consumersPerChat: parseInt(get('n', 'consumers') ?? '6', 10),
+        chatCount: parseIntOr(get('c', 'chats'), 10, '-c/--chats'),
+        streamsPerChat: parseIntOr(get('s', 'streams'), 6, '-s/--streams'),
+        consumersPerChat: parseIntOr(get('n', 'consumers'), 6, '-n/--consumers'),
         baseUrl: get('u', 'url') ?? 'https://local.voxt.ai',
-        durationSec: parseInt(get('d', 'duration') ?? '30', 10),
+        durationSec: parseIntOr(get('d', 'duration'), 30, '-d/--duration'),
         useRpc: flag('-rpc', '--rpc'),
     };
 }
@@ -127,7 +165,18 @@ async function main(): Promise<void> {
     });
 
     // --- Shared state ---
-    const metrics = new Metrics();
+    // Size the typed arrays with 50% headroom over the nominal 30 fps run so
+    // a producer that briefly runs ahead of schedule (or a slightly long test
+    // duration) never drops samples on the floor.
+    const nominalFramesPerStream = args.durationSec * 30;
+    const metrics = new Metrics({
+        chatCount: args.chatCount,
+        streamsPerChat: args.streamsPerChat,
+        consumersPerChat: args.consumersPerChat,
+        maxFramesPerStream: Math.ceil(nominalFramesPerStream * 1.5) + 64,
+        frameDurationTicks: FrameConfig.FrameDurationTicks,
+        maxLatencySamplesPerConsumer: Math.ceil(nominalFramesPerStream * 1.5) + 64,
+    });
     const abortController = new AbortController();
     const abort = abortController.signal;
 
@@ -136,6 +185,20 @@ async function main(): Promise<void> {
         abortController.abort();
     });
 
+    // --- Per-chat RPC harness bundles ---
+    // One shared `RpcClientPeer` / WebSocket per chat — mirrors how a real
+    // browser client would connect (each open chat room is its own logical
+    // peer). With 300 pulls on a single shared peer the server's per-peer
+    // outbound channel became the bottleneck (p50 ~5 s behind real time);
+    // splitting per chat gives the server N parallel peer loops to drain
+    // into, and gives libuv multiple sockets to batch reads from.
+    let rpcBundles: RpcHarnessBundle[] = [];
+    if (args.useRpc) {
+        rpcBundles = await Promise.all(
+            chatIds.map(() => createRpcHarnessBundle({ rpcWsUrl, sessionId, abort })),
+        );
+    }
+
     // --- Producers ---
     console.log(`Starting ${totalStreams} producers…`);
     const producerTasks: Promise<void>[] = [];
@@ -143,7 +206,7 @@ async function main(): Promise<void> {
         for (let pi = 0; pi < args.streamsPerChat; pi++) {
             producerTasks.push(
                 args.useRpc
-                    ? runRpcProducer({ rpcWsUrl, sessionId, metrics, abort }, ci, pi, chatIds[ci])
+                    ? runRpcProducer(rpcBundles[ci], { rpcWsUrl, sessionId, metrics, abort }, ci, pi, chatIds[ci])
                     : runSignalRProducer({ hubUrl, sessionToken, metrics, abort }, ci, pi, chatIds[ci]),
             );
         }
@@ -151,12 +214,18 @@ async function main(): Promise<void> {
 
     // --- Discover streams ---
     console.log('Waiting for streams to appear…');
+    // Discovery path is RPC-only; reuse chat 0's bundle if we have one,
+    // otherwise build a throwaway bundle just for discovery.
+    const discoveryBundle = rpcBundles[0]
+        ?? await createRpcHarnessBundle({ rpcWsUrl, sessionId, abort });
     const chatStreams = await discoverStreams(
+        discoveryBundle,
         { rpcWsUrl, sessionId, abort },
         chatIds,
         args.streamsPerChat,
         45_000,
     );
+    if (rpcBundles.length === 0) closeRpcHarnessBundle(discoveryBundle);
     console.log(`All ${totalStreams} streams discovered across ${args.chatCount} chats.`);
 
     // --- Consumers ---
@@ -167,11 +236,10 @@ async function main(): Promise<void> {
         for (let cons = 0; cons < args.consumersPerChat; cons++) {
             for (let si = 0; si < streams.length; si++) {
                 if (si === cons) continue; // consumer N skips stream N
-                metrics.initConsumer(ci, cons, si);
                 const streamId = streams[si];
                 consumerTasks.push(
                     args.useRpc
-                        ? runRpcConsumer({ rpcWsUrl, sessionId, metrics, abort }, ci, cons, si, streamId)
+                        ? runRpcConsumer(rpcBundles[ci], { rpcWsUrl, sessionId, metrics, abort }, ci, cons, si, streamId)
                         : runSignalRConsumer({ hubUrl, sessionToken, metrics, abort }, ci, cons, si, streamId),
                 );
             }
@@ -188,6 +256,8 @@ async function main(): Promise<void> {
     console.log('Stopping…');
     abortController.abort();
     await Promise.allSettled([...producerTasks, ...consumerTasks]);
+
+    for (const b of rpcBundles) closeRpcHarnessBundle(b);
 
     // --- Report ---
     printReport({

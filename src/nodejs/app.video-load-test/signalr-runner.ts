@@ -16,12 +16,20 @@ import type { Metrics } from './metrics.js';
 // signalr's HttpConnection tries to `require("ws")` at runtime. Under tsx /
 // ESM that require path is flaky — we inject a known-good constructor via
 // `IHttpConnectionOptions.WebSocket` so signalr doesn't need to resolve `ws`
-// itself. The subclass also forces `rejectUnauthorized: false` for the dev
-// cert on local.voxt.ai (the same bypass node-ws.ts applies to the RPC path).
+// itself. The subclass also:
+//   - forces `rejectUnauthorized: false` for the dev cert on local.voxt.ai
+//     (same bypass node-ws.ts applies to the RPC path);
+//   - disables RFC 7692 `permessage-deflate` because video frames are
+//     already high-entropy and the async zlib transform stream dominates
+//     the profile at high concurrency (see perf analysis — the RPC path
+//     had the same problem in node-ws.ts).
 // NEVER lift this into production.
 const DevWebSocket = class extends WsWebSocket {
     constructor(url: string, protocols?: string | string[]) {
-        super(url, protocols, { rejectUnauthorized: false });
+        super(url, protocols, {
+            rejectUnauthorized: false,
+            perMessageDeflate: false,
+        });
     }
 } as unknown as typeof globalThis.WebSocket;
 

@@ -1,3 +1,4 @@
+import Denque from "denque";
 import { PromiseSource } from "../actuallab-core/index.js";
 import type { RpcObjectId, IRpcObject } from "./rpc-object.js";
 import { RpcObjectKind } from "./rpc-object.js";
@@ -64,7 +65,13 @@ export class RpcStream<T> implements AsyncIterable<T>, IRpcObject {
   readonly ackPeriod: number;
   readonly ackAdvance: number;
 
-  private _buffer: T[] = [];
+  // Double-ended queue so consumption via `shift()` is O(1) and the
+  // backing store frees memory as items are drained. The previous
+  // `T[]` buffer kept every item for the life of the stream because
+  // the iterator tracked a read index instead of shifting — fine for
+  // short runs but a slow leak in the browser where a video call can
+  // last an hour.
+  private _buffer: Denque<T> = new Denque<T>();
   private _nextExpectedIndex = 0;
   private _consumerWaiting: PromiseSource<void> | null = null;
   private _completed = false;
@@ -178,9 +185,6 @@ export class RpcStream<T> implements AsyncIterable<T>, IRpcObject {
     if (this._iterating) throw new Error("RpcStream can only be iterated once.");
     this._iterating = true;
 
-    let bufferIndex = 0;
-    let _consumedIndex = 0;
-
     const self = this;
 
     return {
@@ -193,10 +197,10 @@ export class RpcStream<T> implements AsyncIterable<T>, IRpcObject {
 
         // Read from buffer or wait for new data
         while (true) {
-          if (bufferIndex < self._buffer.length) {
-            const value = self._buffer[bufferIndex]!;
-            bufferIndex++;
-            _consumedIndex++;
+          if (!self._buffer.isEmpty()) {
+            // shift() is O(1) on Denque and releases the slot so the
+            // ring buffer can be reclaimed as the consumer drains.
+            const value = self._buffer.shift()!;
             return { value, done: false };
           }
 
@@ -296,6 +300,13 @@ export function resolveStreamRefs(value: unknown, peer: RpcPeer): unknown {
   }
 
   if (typeof value === "object") {
+    // Short-circuit binary payloads. TypedArray views (Uint8Array, etc.)
+    // and raw ArrayBuffers are "objects" to `typeof`, but Object.keys()
+    // returns every numeric index as a "key" — so naive recursion here is
+    // O(byteLength) per frame. Binary views can never
+    // contain nested stream-ref strings by construction; skip them.
+    if (ArrayBuffer.isView(value) || value instanceof ArrayBuffer) return value;
+
     for (const key of Object.keys(value as Record<string, unknown>)) {
       (value as Record<string, unknown>)[key] = resolveStreamRefs(
         (value as Record<string, unknown>)[key], peer,
