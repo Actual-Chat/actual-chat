@@ -13,7 +13,7 @@ namespace ActualChat.Users.IntegrationTests;
 public class AppleSignInEmailSpoofTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private AppleTokenEndpointHandlerMock AppleTokenHandlerMock { get; }
+    private AppleTokenEndpointHandlerMock AppleTokenHandler { get; }
         = fixture.AppHost.Services.GetRequiredService<AppleTokenEndpointHandlerMock>();
     private IAccounts Accounts => AppHost.Services.GetRequiredService<IAccounts>();
     private ISessionTemporalsBackend SessionTemporals => AppHost.Services.GetRequiredService<ISessionTemporalsBackend>();
@@ -25,7 +25,7 @@ public class AppleSignInEmailSpoofTest(AppHostFixture fixture, ITestOutputHelper
         var realEmail = "attacker@gmail.com";
         var spoofedEmail = $"attacker{Constants.Team.EmailSuffix}";
         var appleUserId = UniqueNames.AppleId();
-        var code = AppleTokenHandlerMock.Setup(appleUserId, realEmail);
+        var code = AppleTokenHandler.Setup(appleUserId, realEmail);
 
         // act
         var account = await SignInWithApple(code, appleUserId, spoofedEmail);
@@ -48,7 +48,7 @@ public class AppleSignInEmailSpoofTest(AppHostFixture fixture, ITestOutputHelper
         var idTokenEmail = "real-user@icloud.com";
         var queryEmail = "impersonated@example.com";
         var appleUserId = UniqueNames.AppleId();
-        var code = AppleTokenHandlerMock.Setup(appleUserId, idTokenEmail);
+        var code = AppleTokenHandler.Setup(appleUserId, idTokenEmail);
 
         // act
         var account = await SignInWithApple(code, appleUserId, queryEmail);
@@ -68,7 +68,7 @@ public class AppleSignInEmailSpoofTest(AppHostFixture fixture, ITestOutputHelper
         var adminEmail = $"legit-admin{Constants.Team.EmailSuffix}";
         var queryEmail = "nobody@gmail.com";
         var appleUserId = UniqueNames.AppleId();
-        var code = AppleTokenHandlerMock.Setup(appleUserId, adminEmail);
+        var code = AppleTokenHandler.Setup(appleUserId, adminEmail);
 
         // act
         var account = await SignInWithApple(code, appleUserId, queryEmail);
@@ -87,8 +87,8 @@ public class AppleSignInEmailSpoofTest(AppHostFixture fixture, ITestOutputHelper
         var realAppleUserId = UniqueNames.AppleId("apple-real");
         var spoofedAppleUserId = UniqueNames.AppleId("apple-victim");
         var email = "user@gmail.com";
-        var code1 = AppleTokenHandlerMock.Setup(realAppleUserId, email);
-        var code2 = AppleTokenHandlerMock.Setup(realAppleUserId, email);
+        var code1 = AppleTokenHandler.Setup(realAppleUserId, email);
+        var code2 = AppleTokenHandler.Setup(realAppleUserId, email);
 
         // act
         var account1 = await SignInWithApple(code1, realAppleUserId, email);
