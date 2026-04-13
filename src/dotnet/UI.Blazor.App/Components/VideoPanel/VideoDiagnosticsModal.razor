@@ -44,13 +44,22 @@
                 @foreach (var s in m.Streams) {
                     <div class="diag-stream">
                         <div class="diag-stream-header">
-                            <span>@s.AuthorName</span>
-                            <span class="diag-stream-kind">@(s.Info.StreamKind == StreamKind.Screencast ? "Screen" : "Camera")</span>
-                            <span class="diag-dim">(@(s.Info.AuthorId + (s.IsOwn ? ", Own" : "")))</span>
+                            <span>@s.Info.StreamId</span>
+                            @if (s.IsOwn) {
+                                <span class="diag-stream-kind">Own</span>
+                            }
                         </div>
                         <div class="diag-row">
-                            <span class="diag-label">Stream</span>
-                            <span class="diag-value">@s.Info.StreamId</span>
+                            <span class="diag-label">Mode</span>
+                            <span class="diag-value">@(s.Info.StreamKind == StreamKind.Screencast ? "Screencast" : "Camera")</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Started</span>
+                            <span class="diag-value">@DateTimeConverter.ToLocalTime(s.Info.StartedAt).ToString("HH:mm:ss")</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Author</span>
+                            <span class="diag-value">@s.Author</span>
                         </div>
                         <div class="diag-row">
                             <span class="diag-label">Codec</span>
@@ -60,10 +69,7 @@
                             <span class="diag-label">Resolution</span>
                             <span class="diag-value">@(s.Info.Format.Width)×@(s.Info.Format.Height)</span>
                         </div>
-                        <div class="diag-row">
-                            <span class="diag-label">Started</span>
-                            <span class="diag-value">@DateTimeConverter.ToLocalTime(s.Info.StartedAt).ToString("HH:mm:ss")</span>
-                        </div>
+
                     </div>
                 }
             }
@@ -101,7 +107,7 @@
         for (var i = 0; i < activeStreams.Count; i++) {
             var info = activeStreams[i];
             var author = await Authors.Get(Session, chatId, info.AuthorId, cancellationToken);
-            streams[i] = new StreamEntry(info, author?.Avatar.Name ?? "", ownAuthor?.Id == info.AuthorId);
+            streams[i] = new StreamEntry(info, author?.Avatar.Name ?? info.AuthorId.Value, ownAuthor?.Id == info.AuthorId);
         }
 
         return new ComputedModel(ownStreamingState?.Mode, streams, memberCount);
@@ -114,7 +120,7 @@
         public ChatId ChatId { get; } = chatId;
     }
 
-    public sealed record StreamEntry(VideoStreamInfo Info, string AuthorName, bool IsOwn = false);
+    public sealed record StreamEntry(VideoStreamInfo Info, string Author, bool IsOwn = false);
 
     public sealed record ComputedModel(
         VideoRecorderMode? OwnStreamingMode,
