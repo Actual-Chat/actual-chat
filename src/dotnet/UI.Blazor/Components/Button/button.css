@@ -423,16 +423,13 @@ body.hoverable .btn-h.unhovered:hover {
 .btn-h i {
     @apply text-2xl leading-6;
 }
-.btn-h.btn-lg {
-    @apply h-10 w-10;
-}
 
 /* Header Button Sizes */
 .btn-h, .btn-h.btn-md {
     @apply w-6 h-6;
 }
 .btn-h.btn-lg {
-    @apply h-10 w-10;
+    @apply h-8 w-8;
 }
 .btn-h.btn-sm {
     @apply w-5 h-5;

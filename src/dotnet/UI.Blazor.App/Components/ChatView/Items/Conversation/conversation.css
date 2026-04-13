@@ -47,61 +47,12 @@
     @apply absolute -top-0.5;
     @apply text-title-1;
 }
-.conversation-header-short .c-ending,
-.conversation-header .c-ending {
-    @apply relative;
+.conversation-header-short .btn-h.btn-summary-toggle,
+.conversation-header .btn-h.btn-summary-toggle {
     @apply float-end;
-    @apply flex-none flex-x self-start gap-x-0.5;
-    @apply p-px;
     @apply rounded-full;
-    @apply overflow-hidden;
-    @apply text-cr-item-badge-selected-text text-caption-1 leading-4;
-    @apply cursor-pointer;
+    @apply text-cr-item-badge-selected-text text-title-1 leading-5;
 }
-.conversation-header .rotate-icon {
-    @apply rotate-180;
-    transition: transform 250ms ease-in-out;
-}
-
-.conversation-header-short .c-ending.loading-conversation::before,
-.conversation-header .c-ending.loading-conversation::before {
-    content: "";
-    position: absolute;
-    top: -2rem;
-    left: -2rem;
-    width: calc(100% + 4rem);
-    height: calc(100% + 4rem);
-    background: conic-gradient(
-        from 0deg,
-        var(--transparent),
-        var(--cr-item-badge-selected-text),
-        var(--transparent),
-        var(--cr-item-badge-selected-text)
-    );
-    animation: spin 1.5s linear infinite;
-    z-index: 0;
-}
-.conversation-header-short .c-ending .c-content,
-.conversation-header .c-ending .c-content {
-    @apply relative z-10;
-    @apply flex-x items-center gap-x-0.5;
-    @apply pl-0.5;
-    @apply rounded-full;
-}
-.conversation-header-short .c-ending.loading-conversation .c-content,
-.conversation-header .c-ending.loading-conversation .c-content {
-    @apply bg-01;
-}
-
-@keyframes spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
-}
-
 
 .conversation-message .c-summary .c-short {
     @apply block;
@@ -140,11 +91,18 @@
 .conversation-footer .c-author-list {
     @apply flex-x items-center gap-1 md:gap-2;
 }
+.conversation-footer-short .c-tool,
+.conversation-footer .c-tool {
+    @apply flex items-center;
+    @apply text-xxs leading-3 text-04;
+}
 .conversation-footer-short .c-time,
 .conversation-footer .c-time {
-    @apply flex items-center;
-    @apply h-6;
-    @apply text-caption-8 text-04;
+    @apply text-01;
+}
+.conversation-footer-short .c-count,
+.conversation-footer .c-count {
+    @apply text-03;
 }
 
 .conversation-message .c-long {
