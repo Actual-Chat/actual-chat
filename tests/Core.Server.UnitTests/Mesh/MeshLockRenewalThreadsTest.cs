@@ -41,7 +41,7 @@ public class MeshLockRenewalThreadsTest(ITestOutputHelper @out) : TestBase(@out)
         MeshLockOptions lockOptions,
         TimeSpan holdDuration)
     {
-        var services =  new ServiceCollection()
+        await using var services = new ServiceCollection()
             .AddFusion()
             .Services
             .AddSingleton(new MeshLockRenewalThreads(threadCount))

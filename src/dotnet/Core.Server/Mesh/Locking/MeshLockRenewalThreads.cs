@@ -6,14 +6,17 @@ namespace ActualChat.Mesh;
 /// under heavy async load. Multiple threads ensure renewals complete on time even
 /// when individual Redis/K8s calls are slow.
 /// </summary>
-public sealed class MeshLockRenewalThreads
+public sealed class MeshLockRenewalThreads : IDisposable
 {
     private readonly ConcurrentDictionary<MeshLockHolder, RenewalEntry> _entries = new();
     private readonly SemaphoreSlim _wakeSemaphore = new(0, 1);
+    private readonly CancellationTokenSource _cts = new();
+    private readonly Thread[] _threads;
 
     public MeshLockRenewalThreads(int threadCount)
     {
         var tMax = Math.Max(1, threadCount);
+        _threads = new Thread[tMax];
         for (var i = 0; i < tMax; i++) {
             var threadIndex = i;
             var thread = new Thread(() => Run(threadIndex)) {
@@ -21,8 +24,18 @@ public sealed class MeshLockRenewalThreads
                 Name = $"MeshLockRenewal-{i}",
                 Priority = ThreadPriority.AboveNormal,
             };
+            _threads[i] = thread;
             thread.Start();
         }
+    }
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        TryWakeUp();
+        foreach (var thread in _threads)
+            thread.Join(TimeSpan.FromSeconds(5));
+        _cts.Dispose();
     }
 
     public ThreadRegistration Register(MeshLockHolder holder)
@@ -55,7 +68,8 @@ public sealed class MeshLockRenewalThreads
 
     private void Run(int threadIndex)
     {
-        while (true) {
+        var ct = _cts.Token;
+        while (!ct.IsCancellationRequested) {
             var minSleepMs = 1000;
 
             foreach (var (holder, entry) in _entries.ToArray()) {
@@ -65,10 +79,10 @@ public sealed class MeshLockRenewalThreads
                         continue;
                     }
 
-                    var ct = holder.StopToken;
-                    if (ct.IsCancellationRequested) {
+                    var stopCt = holder.StopToken;
+                    if (stopCt.IsCancellationRequested) {
                         _entries.TryRemove(holder, out _);
-                        entry.ExpiredTcs.TrySetCanceled(ct);
+                        entry.ExpiredTcs.TrySetCanceled(stopCt);
                         continue;
                     }
 
@@ -88,14 +102,14 @@ public sealed class MeshLockRenewalThreads
                         continue; // Another thread already claimed it
 
                     // Re-check: holder may have been stopped between the earlier check and now
-                    if (ct.IsCancellationRequested) {
+                    if (stopCt.IsCancellationRequested) {
                         Volatile.Write(ref entry.ClaimedByThread, -1);
                         _entries.TryRemove(holder, out _);
-                        entry.ExpiredTcs.TrySetCanceled(ct);
+                        entry.ExpiredTcs.TrySetCanceled(stopCt);
                         continue;
                     }
                     try {
-                        var isHeld = holder.TryRenewBlocking(ct);
+                        var isHeld = holder.TryRenewBlocking(stopCt);
                         if (!isHeld) {
                             _entries.TryRemove(holder, out _);
                             entry.ExpiredTcs.TrySetResult();
@@ -150,7 +164,12 @@ public sealed class MeshLockRenewalThreads
                     }
                 }
             }
-            _ = _wakeSemaphore.Wait(Math.Max(10, minSleepMs));
+            try {
+                _wakeSemaphore.Wait(Math.Max(10, minSleepMs), ct);
+            }
+            catch (OperationCanceledException) {
+                // Disposal — exit loop
+            }
         }
     }
 
