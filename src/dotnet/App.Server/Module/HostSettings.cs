@@ -30,4 +30,5 @@ public sealed class HostSettings
     public int? ReadinessCpuLimit { get; set; }
     public string MeshLockSubspace { get; set; } = ""; // "?" means "make it random"
     public string MeshLockOptionsPreset { get; set; } = "";
+    public int MeshLockRenewalThreadCount { get; set; } = 2;
 }
