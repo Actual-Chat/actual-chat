@@ -11,6 +11,7 @@ namespace ActualChat.Streaming;
 public interface IStreamServer : IRpcService
 {
     Task<RpcStream<byte[]>?> GetAudio(string streamId, TimeSpan skipTo, CancellationToken cancellationToken);
+    Task<RpcStream<VideoFrame>?> GetVideo(string streamId, TimeSpan skipTo, CancellationToken cancellationToken);
     Task<RpcStream<TranscriptDiff>?> GetTranscript(string streamId, CancellationToken cancellationToken);
     Task ReportAudioLatency(TimeSpan latency, CancellationToken cancellationToken);
 
@@ -29,5 +30,15 @@ public interface IStreamServer : IRpcService
         double clientStartOffset,
         VideoFormat format,
         RpcStream<VideoFrame> frameStream,
+        CancellationToken cancellationToken);
+
+    Task RequestKeyFrame(string streamId, CancellationToken cancellationToken);
+
+    Task<double> ReportVideoLatency(
+        string streamId,
+        double streamOffsetMs,
+        double medianDecodeTimeMs,
+        int bufferDepth,
+        double bufferSpanMs,
         CancellationToken cancellationToken);
 }

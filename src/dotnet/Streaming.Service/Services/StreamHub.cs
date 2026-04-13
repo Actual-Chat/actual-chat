@@ -53,6 +53,7 @@ public class StreamHub(IServiceProvider services) : Hub
 
     // Video streaming method for JS client.
     // Each byte[] is a MessagePack-encoded VideoFrameDto.
+    [Obsolete("2026.04: Use IStreamServer.PushVideo via RPC")]
     public Task PushVideo(
         string sessionToken,
         string? chatId,
@@ -126,6 +127,7 @@ public class StreamHub(IServiceProvider services) : Hub
     }
 
     // PLI-equivalent: receiver requests a keyframe from the sender
+    [Obsolete("2026.04: Use IStreamServer.RequestKeyFrame via RPC")]
     public async Task RequestKeyFrame(string sessionToken, string streamId)
     {
         _ = GetSessionFromToken(sessionToken); // validate token
@@ -134,6 +136,7 @@ public class StreamHub(IServiceProvider services) : Hub
     }
 
     // Latency reporting for JS video clients — uses same ConnectionId as GetVideo
+    [Obsolete("2026.04: Use IStreamServer.ReportVideoLatency via RPC")]
     public async Task<double> ReportVideoLatency(
         string sessionToken,
         string streamId,
@@ -159,6 +162,7 @@ public class StreamHub(IServiceProvider services) : Hub
     }
 
     // Video pull method for JS client — streams video frames via SignalR
+    [Obsolete("2026.04: Use IStreamServer.GetVideo via RPC")]
     public async IAsyncEnumerable<byte[]> GetVideo(
         string sessionToken,
         string streamId,

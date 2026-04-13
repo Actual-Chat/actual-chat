@@ -99,7 +99,6 @@ export type LogScope =
     | 'VideoPlayer'
     | 'VideoRecorder'
     | 'VideoStreamingPreview'
-    | 'VideoStreamer'
     | 'VideoPipeline'
     | 'VideoEncoder'
     | 'VideoDecoder'
@@ -246,7 +245,6 @@ function reset(minLevels: Map<LogScope, LogLevel>, isProduction?: boolean): void
     // Video scopes — enabled for latency troubleshooting
     minLevels.set('VideoPlayer', LogLevel.Debug);
     minLevels.set('VideoPipeline', LogLevel.Debug);
-    minLevels.set('VideoStreamer', LogLevel.Debug);
     minLevels.set('VideoPanel', LogLevel.Debug);
     minLevels.set('AudioVideoSync', LogLevel.Debug);
 

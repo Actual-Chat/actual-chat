@@ -1,12 +1,10 @@
 import { Log } from 'logging';
-import { initVideoRpc, getVideoRpcClient, disconnectVideoRpc } from '../../Services/Video/video-rpc-client';
+import { initVideoRpc, getStreamServerClient, disconnectVideoRpc } from '../../Services/Video/video-rpc-client';
 import type { VideoFrameDto } from '../../Services/Video/video-rpc-service';
 import { fastRaf } from 'fast-raf';
 import { ServerClock } from 'server-clock';
 import { rpcClientServer, rpcNoWait } from 'rpc';
 import type { Disposable } from 'disposable';
-import { VideoStreamer } from '../../Services/Video/video-streamer';
-import { SessionTokens } from '../../../UI.Blazor/Services/Security/session-tokens';
 import { AudioVideoSync } from 'audio-video-sync';
 import { DocumentEvents } from 'event-handling';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
@@ -106,7 +104,6 @@ export class VideoPlayer {
     // guard — the value can flip to `false` via stop()/dispose() between awaits.
     private get _isPlayingNow(): boolean { return this.isPlaying; }
     private visibilitySubscription: Subscription | null = null;
-    private reconnectUnsubscribe: (() => void) | null = null;
 
     // Buffer chunks until we receive a keyframe with description
     private waitingForKeyframe = true;
@@ -1016,19 +1013,6 @@ export class VideoPlayer {
             }
         });
 
-        // Listen for VideoStreamer reconnect to re-establish pull after WebSocket drop
-        this.reconnectUnsubscribe = VideoStreamer.onReconnected(() => {
-            if (!this.isPlaying) return;
-            warnLog?.log(`VideoStreamer reconnected — re-pulling stream ${this.streamId}`);
-            this.pullAbortController?.abort();
-            this.pullAbortController = null;
-            this.pullRetryCount = 0;
-            this.playbackStartTime = 0;
-            this.lastRenderedOffsetMs = 0;
-            const skipToMs = Math.max(0, ServerClock.now() - this.startedAtMs);
-            void this.startPull(this.streamId, skipToMs);
-        });
-
         // Report initial playing state
         void this.reportPlaying(0, true);
     }
@@ -1039,13 +1023,9 @@ export class VideoPlayer {
             return;
         this.lastKeyFrameRequestTime = now;
 
-        const connection = VideoStreamer.connection;
-        const sessionToken = SessionTokens.current;
-        if (connection && sessionToken) {
-            warnLog?.log(`PLI: requesting keyframe for stream ${this.streamId}`);
-            connection.send('RequestKeyFrame', sessionToken, this.streamId)
-                .catch((e: unknown) => warnLog?.log('RequestKeyFrame error:', e));
-        }
+        warnLog?.log(`PLI: requesting keyframe for stream ${this.streamId}`);
+        getStreamServerClient().RequestKeyFrame(this.streamId)
+            .catch((e: unknown) => warnLog?.log('RequestKeyFrame error:', e));
     }
 
     private onVisibilityRestored(): void {
@@ -1105,16 +1085,14 @@ export class VideoPlayer {
 
         const rpcWsUrl = BrowserInit.getUrl('/rpc/ws').replace(/^http/, 'ws');
         initVideoRpc(rpcWsUrl);
-        const client = getVideoRpcClient();
-        // Fusion RPC resolves Session.Default ("~") to the actual session from the WebSocket connection context
-        const session = '~';
+        const client = getStreamServerClient();
         const skipToTicks = Math.round(skipToMs * 10000); // ms → .NET TimeSpan ticks (must be integer for MessagePack int64)
 
         warnLog?.log(`startPull [RPC]: stream=${streamId}, skipTo=${skipToMs}ms, skipToTicks=${skipToTicks}, retryCount=${this.pullRetryCount}, rpcUrl=${rpcWsUrl}`);
 
         try {
-            warnLog?.log(`startPull [RPC]: calling GetStream(~, ${streamId}, ${skipToTicks})`);
-            const stream = await client.GetStream(session, streamId, skipToTicks);
+            warnLog?.log(`startPull [RPC]: calling GetVideo(${streamId}, ${skipToTicks})`);
+            const stream = await client.GetVideo(streamId, skipToTicks);
             warnLog?.log(`startPull [RPC]: GetStream returned, starting iteration`);
             let pullFrameCount = 0;
 
@@ -1310,12 +1288,6 @@ export class VideoPlayer {
             this.visibilitySubscription = null;
         }
 
-        // Remove reconnect listener
-        if (this.reconnectUnsubscribe) {
-            this.reconnectUnsubscribe();
-            this.reconnectUnsubscribe = null;
-        }
-
         this.stopPull();
 
         // Close all pending frames
@@ -1414,12 +1386,8 @@ export class VideoPlayer {
 
             // Report the high latency to the server BEFORE resetting state,
             // so EvaluateQuality can detect that this peer is struggling and step down sender quality.
-            const connection = VideoStreamer.connection;
-            const sessionToken = SessionTokens.current;
-            if (connection && sessionToken) {
-                connection.invoke('ReportVideoLatency', sessionToken, this.streamId, streamOffsetMs)
-                    .catch(() => { /* best-effort */ });
-            }
+            getStreamServerClient().ReportVideoLatency(this.streamId, streamOffsetMs, -1, -1, -1)
+                .catch(() => { /* best-effort */ });
 
             this.pullAbortController?.abort();
             this.pullAbortController = null;
@@ -1448,9 +1416,6 @@ export class VideoPlayer {
         }
 
         // Collect decoder diagnostics and send enriched latency report
-        const connection = VideoStreamer.connection;
-        const sessionToken = SessionTokens.current;
-
         if (this.decoderWorker) {
             void this.decoderWorker.getStats().then(ds => {
                 const recvDelta = this.receivedFrameCount - this.lastDiagReceivedFrames;
@@ -1525,27 +1490,23 @@ export class VideoPlayer {
                 }
 
                 // Send enriched latency report with diagnostics + RTT measurement
-                if (connection) {
-                    const sendTime = performance.now();
-                    connection.invoke(
-                        'ReportVideoLatency',
-                        sessionToken,
-                        this.streamId,
-                        streamOffsetMs,
-                        ds.pureMedianDecodeTime >= 0 ? ds.pureMedianDecodeTime : ds.medianDecodeTime,
-                        this.pendingFrames.length,
-                        currentBufferSpanMs
-                    ).then(() => {
-                        this.updateRttEstimate(performance.now() - sendTime);
-                    }).catch((e: unknown) => {
-                        warnLog?.log('ReportVideoLatency invoke error:', e);
-                    });
-                }
+                const sendTime = performance.now();
+                getStreamServerClient().ReportVideoLatency(
+                    this.streamId,
+                    streamOffsetMs,
+                    ds.pureMedianDecodeTime >= 0 ? ds.pureMedianDecodeTime : ds.medianDecodeTime,
+                    this.pendingFrames.length,
+                    currentBufferSpanMs
+                ).then(() => {
+                    this.updateRttEstimate(performance.now() - sendTime);
+                }).catch((e: unknown) => {
+                    warnLog?.log('ReportVideoLatency invoke error:', e);
+                });
             });
-        } else if (connection) {
+        } else {
             // No decoder worker — send basic report without diagnostics + RTT measurement
             const sendTime = performance.now();
-            connection.invoke('ReportVideoLatency', sessionToken, this.streamId, streamOffsetMs)
+            getStreamServerClient().ReportVideoLatency(this.streamId, streamOffsetMs, -1, -1, -1)
                 .then(() => {
                     this.updateRttEstimate(performance.now() - sendTime);
                 }).catch((e: unknown) => {
