@@ -54,6 +54,7 @@
                         </HeaderButton>
                     </div>
                     @if (_isCameraDropdownOpen) {
+                        <div class="camera-dropdown-backdrop" @onclick="OnCameraDropdownToggle"></div>
                         <div class="camera-dropdown">
                             <div class="camera-dropdown-header">Select a camera</div>
                             @foreach (var device in _videoDevices) {

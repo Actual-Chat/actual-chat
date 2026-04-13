@@ -102,6 +102,9 @@
     @apply relative;
     @apply justify-self-end;
 }
+.join-video-call-modal .camera-dropdown-backdrop {
+    @apply fixed inset-0 z-40;
+}
 .join-video-call-modal .camera-dropdown {
     @apply absolute top-full left-1/2 z-50;
     @apply flex-y gap-0.5;
