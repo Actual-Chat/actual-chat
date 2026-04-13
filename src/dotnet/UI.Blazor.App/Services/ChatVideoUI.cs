@@ -14,6 +14,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 {
     // Centralized video state
     private readonly MutableState<ChatId?> _recordingChatId;
+    private readonly MutableState<ChatId?> _lastRecordingChatId;
     private readonly MutableState<string?> _selectedCameraDeviceId;
     private readonly MutableState<bool> _isBackgroundBlurEnabled;
     private readonly MutableState<string?> _errorMessage;
@@ -39,6 +40,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public ChatVideoUI(AppUIHub hub) : base(hub)
     {
         _recordingChatId = StateFactory.NewMutable((ChatId?)null);
+        _lastRecordingChatId = StateFactory.NewMutable((ChatId?)null);
         _selectedCameraDeviceId = StateFactory.NewMutable((string?)null);
         _isBackgroundBlurEnabled = StateFactory.NewMutable(false);
         _errorMessage = StateFactory.NewMutable((string?)null);
@@ -110,7 +112,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         => SetWatching(chatId);
 
     public bool HasJoinedVideoCall(ChatId chatId)
-        => _watchingChatId.Value == chatId;
+        => _watchingChatId.Value == chatId && _lastRecordingChatId.Value == chatId;
 
     public void SetVideoPanelCollapsed(bool collapsed)
         => _isVideoPanelCollapsed.Value = collapsed;
@@ -290,6 +292,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private void StartVideoStreaming(ChatId chatId, string? cameraDeviceId = null, bool isBackgroundBlurEnabled = false)
     {
         _recordingChatId.Value = chatId;
+        _lastRecordingChatId.Value = chatId;
         _selectedCameraDeviceId.Value = cameraDeviceId;
         _isBackgroundBlurEnabled.Value = isBackgroundBlurEnabled;
         _isScreencasting.Value = false;
