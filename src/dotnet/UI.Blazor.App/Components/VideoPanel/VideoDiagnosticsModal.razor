@@ -18,7 +18,7 @@
         <div class="diag-section">
             <div class="diag-section-header diag-clickable" @onclick="OnToggleOwnStreamingDetails">
                 Own Streaming
-                <span class="diag-expand-indicator">@(_showOwnStreamingDetails ? ">-<" : "<--->")</span>
+                <span class="diag-expand-indicator">@GetShowDetailsIndicator(_showOwnStreamingDetails)</span>
             </div>
             @if (m.OwnStreamingMode is { } mode) {
                 <div class="diag-row">
@@ -106,13 +106,20 @@
                 </div>
             } else {
                 @foreach (var s in m.Streams) {
+                    var sid = s.Info.StreamId.Value;
+                    var isExpanded = !s.IsOwn && _expandedStreams.Contains(sid);
                     <div class="diag-stream">
-                        <div class="diag-stream-header">
-                            <span>@s.Info.StreamId</span>
-                            @if (s.IsOwn) {
+                        @if (s.IsOwn) {
+                            <div class="diag-stream-header">
+                                <span>@s.Info.StreamId</span>
                                 <span class="diag-stream-kind">Own</span>
-                            }
-                        </div>
+                            </div>
+                        } else {
+                            <div class="diag-stream-header diag-clickable" @onclick="() => OnToggleStreamDetails(sid)">
+                                <span>@s.Info.StreamId</span>
+                                <span class="diag-expand-indicator">@GetShowDetailsIndicator(isExpanded)</span>
+                            </div>
+                        }
                         <div class="diag-row">
                             <span class="diag-label">Mode</span>
                             <span class="diag-value">@(s.Info.StreamKind == StreamKind.Screencast ? "Screencast" : "Camera")</span>
@@ -133,7 +140,70 @@
                             <span class="diag-label">Resolution</span>
                             <span class="diag-value">@(s.Info.Format.Width)×@(s.Info.Format.Height)</span>
                         </div>
-
+                        @if (isExpanded && _streamDiags.TryGetValue(sid, out var rd) && rd.ValueKind == JsonValueKind.Object) {
+                            <div class="diag-row">
+                                <span class="diag-label">Decode codec</span>
+                                <span class="diag-value">@GetStr(rd, "codec") (@GetStr(rd, "codecCategory"))</span>
+                            </div>
+                            @if (rd.TryGetProperty("decoderStats", out var ds) && ds.ValueKind == JsonValueKind.Object) {
+                                <div class="diag-row">
+                                    <span class="diag-label">Decode time</span>
+                                    <span class="diag-value">@(GetNum(ds, "medianDecodeTime").ToString("0.0"))ms (pure: @(GetNum(ds, "pureMedianDecodeTime").ToString("0.0"))ms)</span>
+                                </div>
+                                <div class="diag-row">
+                                    <span class="diag-label">Decode queue</span>
+                                    <span class="diag-value">@(GetNum(ds, "decodeQueueSize").ToString("0"))</span>
+                                </div>
+                                <div class="diag-row">
+                                    <span class="diag-label">Decoded</span>
+                                    <span class="diag-value">@(GetNum(ds, "decodedFrames").ToString("0")) dec, @(GetNum(ds, "droppedFrames").ToString("0")) drop, @(GetNum(ds, "backpressureDrops").ToString("0")) bp</span>
+                                </div>
+                                <div class="diag-row">
+                                    <span class="diag-label">Decoder HW</span>
+                                    <span class="diag-value">@GetStr(ds, "hardwareAcceleration")</span>
+                                </div>
+                                <div class="diag-row">
+                                    <span class="diag-label">Decoder res</span>
+                                    <span class="diag-value">@GetStr(ds, "resolution")</span>
+                                </div>
+                            }
+                            <div class="diag-row">
+                                <span class="diag-label">E2E latency</span>
+                                <span class="diag-value">@(GetNum(rd, "pipelineLatencyMs").ToString("0"))ms</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Jitter buf</span>
+                                <span class="diag-value">@(GetNum(rd, "jitterBufferMs").ToString("0"))ms (est: @(GetNum(rd, "jitterEstimateMs").ToString("0"))ms)</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">RTT</span>
+                                <span class="diag-value">@(GetNum(rd, "smoothedRttMs").ToString("0"))ms (grad: @(GetNum(rd, "rttGradientMs").ToString("0"))ms)</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Playback</span>
+                                <span class="diag-value">@(GetNum(rd, "playbackRate").ToString("0.00"))x, buf=@(GetNum(rd, "bufferSize").ToString("0"))</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Received</span>
+                                <span class="diag-value">@(GetNum(rd, "receivedFrameCount").ToString("0")) frm, @(GetNum(rd, "receivedKeyframeCount").ToString("0")) key, @(GetNum(rd, "renderFrameCount").ToString("0")) rend</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Skip-to-live</span>
+                                <span class="diag-value">@(GetNum(rd, "skipToLiveCount").ToString("0"))</span>
+                            </div>
+                            @if (GetNum(rd, "avDriftMs") is var drift && rd.TryGetProperty("avDriftMs", out var driftEl) && driftEl.ValueKind == JsonValueKind.Number) {
+                                <div class="diag-row">
+                                    <span class="diag-label">A/V drift</span>
+                                    <span class="diag-value">@(drift.ToString("0"))ms</span>
+                                </div>
+                            }
+                            @if (GetBool(rd, "qualityReductionRequested")) {
+                                <div class="diag-row">
+                                    <span class="diag-label">Quality</span>
+                                    <span class="diag-value">reduction requested (slow ticks: @(GetNum(rd, "codecSlowTickCount").ToString("0")))</span>
+                                </div>
+                            }
+                        }
                     </div>
                 }
             }
@@ -142,10 +212,13 @@
 </DialogFrame>
 
 @code {
-    private static readonly string JSCollectMethod = $"{BlazorUIAppModule.ImportName}.collectOwnStreamDiagnostics";
+    private static readonly string JSCollectOwnMethod = $"{BlazorUIAppModule.ImportName}.collectOwnStreamDiagnostics";
+    private static readonly string JSCollectRemoteMethod = $"{BlazorUIAppModule.ImportName}.collectRemoteStreamDiagnostics";
 
     private Timer? _pollTimer;
     private JsonElement? _ownDiag;
+    private readonly Dictionary<string, JsonElement> _streamDiags = new();
+    private readonly HashSet<string> _expandedStreams = new();
     private bool _isDisposed;
     private bool _showOwnStreamingDetails;
 
@@ -193,20 +266,43 @@
 
     private void OnToggleOwnStreamingDetails() {
         _showOwnStreamingDetails = !_showOwnStreamingDetails;
-        if (_showOwnStreamingDetails) {
-            _pollTimer ??= new Timer(_ => _ = PollJsDiagnostics(), null, TimeSpan.Zero, TimeSpan.FromMilliseconds(1500));
+        EnsurePollingState();
+        StateHasChanged();
+    }
+
+    private void OnToggleStreamDetails(string streamId) {
+        if (!_expandedStreams.Remove(streamId)) {
+            _expandedStreams.Add(streamId);
+        } else {
+            _streamDiags.Remove(streamId);
+        }
+        EnsurePollingState();
+        StateHasChanged();
+    }
+
+    private void EnsurePollingState() {
+        var needsPolling = _showOwnStreamingDetails || _expandedStreams.Count > 0;
+        if (needsPolling) {
+            _pollTimer ??= new Timer(_1 => _ = PollJsDiagnostics(), null, TimeSpan.Zero, TimeSpan.FromMilliseconds(1500));
         } else {
             _pollTimer?.Dispose();
             _pollTimer = null;
             _ownDiag = null;
         }
-        StateHasChanged();
     }
 
     private async Task PollJsDiagnostics() {
         if (_isDisposed) return;
         try {
-            _ownDiag = await JS.InvokeAsync<JsonElement>(JSCollectMethod);
+            if (_showOwnStreamingDetails)
+                _ownDiag = await JS.InvokeAsync<JsonElement>(JSCollectOwnMethod);
+
+            foreach (var streamId in _expandedStreams) {
+                var diag = await JS.InvokeAsync<JsonElement>(JSCollectRemoteMethod, streamId);
+                if (diag.ValueKind == JsonValueKind.Object)
+                    _streamDiags[streamId] = diag;
+            }
+
             await InvokeAsync(StateHasChanged);
         } catch {
             // Ignore errors during polling (component may be disposed)
@@ -227,6 +323,9 @@
             return "";
         return string.Join(", ", v.EnumerateArray().Select(x => x.GetString()));
     }
+
+    private string GetShowDetailsIndicator(bool show)
+        => show ? ">---<" : "<->";
 
     // Nested types
 

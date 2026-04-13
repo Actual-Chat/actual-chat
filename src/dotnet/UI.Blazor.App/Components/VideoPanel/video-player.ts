@@ -13,6 +13,36 @@ import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-ini
 import { Versioning } from 'versioning';
 import { type Subscription } from 'rxjs';
 import type { DecoderWorker } from '../../Services/Video/workers/decoder-worker-contract';
+import type { DecoderStats } from '../../Services/Video/webcodecs-decoder';
+
+// Global registry of active VideoPlayer instances for diagnostics
+const activePlayers = new Map<string, VideoPlayer>();
+export function getActivePlayers(): ReadonlyMap<string, VideoPlayer> {
+    return activePlayers;
+}
+
+export interface RemoteStreamDiagnostics {
+    streamId: string;
+    authorId: string;
+    codec: string;
+    codecCategory: string;
+    pipelineLatencyMs: number;
+    jitterBufferMs: number;
+    jitterEstimateMs: number;
+    smoothedRttMs: number;
+    rttGradientMs: number;
+    playbackRate: number;
+    bufferSize: number;
+    receivedFrameCount: number;
+    receivedKeyframeCount: number;
+    renderFrameCount: number;
+    skipToLiveCount: number;
+    waitingForKeyframe: boolean;
+    qualityReductionRequested: boolean;
+    codecSlowTickCount: number;
+    decoderStats: DecoderStats | null;
+    avDriftMs: number | null;
+}
 import type { DecoderConfig } from '../../Services/Video/webcodecs-decoder';
 import {
     supportsTransferableStreams,
@@ -117,6 +147,7 @@ export class VideoPlayer {
     private rebufferDelayMs = 0;         // After tab restore, delay rendering to let buffer accumulate
     private consecutiveEmptyRenders = 0; // Safety net: count consecutive RAFs with no frame rendered
     private lastHighLatencyLogTime = 0;  // Throttle high-latency FRAME_RECV logs
+    private skipToLiveCount = 0;          // Number of skip-to-live events
 
     // Adaptive jitter buffer — absorbs network jitter by delaying rendering
     private jitterBufferMs = 40;                   // Current target delay (ms)
@@ -197,6 +228,10 @@ export class VideoPlayer {
         debugLog?.log(
             `VideoPlayer created for stream ${streamId}, codec: ${codec}, size: ${width}x${height}, ` +
             `authorId=${authorId}, startedAtMs=${startedAtMs.toFixed(0)}`);
+
+        // Register in global diagnostics registry
+        activePlayers.set(streamId, this);
+        warnLog?.log(`VideoPlayer registry: added ${streamId}, active=${activePlayers.size}`);
 
         // Initialize decoder worker
         void this.initDecoderWorker(codec, width, height, codecSettings);
@@ -1160,10 +1195,54 @@ export class VideoPlayer {
         }
     }
 
+    public async getDiagnosticsAsync(): Promise<RemoteStreamDiagnostics> {
+        let decoderStats: DecoderStats | null = null;
+        if (this.decoderWorker) {
+            try { decoderStats = await this.decoderWorker.getStats(); } catch { /* ignore */ }
+        }
+
+        // Compute A/V drift
+        let avDriftMs: number | null = null;
+        const audioState = AudioVideoSync.get(this.authorId);
+        if (audioState) {
+            const audioPlayingAtMs = AudioVideoSync.interpolatePlayingAt(audioState) * 1000;
+            const targetVideoOffsetMs = (audioState.recordedAtMs - this.startedAtMs)
+                + audioPlayingAtMs - this.pipelineLatencyMs;
+            avDriftMs = Math.round(this.lastRenderedOffsetMs - targetVideoOffsetMs);
+        }
+
+        return {
+            streamId: this.streamId,
+            authorId: this.authorId,
+            codec: this.decoderConfig?.codec ?? 'unknown',
+            codecCategory: this.codecCategory,
+            pipelineLatencyMs: Math.round(this.pipelineLatencyMs),
+            jitterBufferMs: Math.round(this.jitterBufferMs),
+            jitterEstimateMs: Math.round(this.jitterEstimateMs),
+            smoothedRttMs: Math.round(this.smoothedRttMs),
+            rttGradientMs: Math.round(this.rttGradientMs),
+            playbackRate: this.playbackRate,
+            bufferSize: this.pendingFrames.length,
+            receivedFrameCount: this.receivedFrameCount,
+            receivedKeyframeCount: this.receivedKeyframeCount,
+            renderFrameCount: this.renderFrameCount,
+            skipToLiveCount: this.skipToLiveCount,
+            waitingForKeyframe: this.waitingForKeyframe,
+            qualityReductionRequested: this.qualityReductionRequested,
+            codecSlowTickCount: this.codecSlowTickCount,
+            decoderStats,
+            avDriftMs,
+        };
+    }
+
     public async stop(): Promise<void> {
         if (!this.isPlaying) return;
 
         warnLog?.log(`VideoPlayer stop() called for stream ${this.streamId}, rendered=${this.renderFrameCount} frames, received=${this.receivedFrameCount}`);
+
+        // Unregister from global diagnostics registry
+        activePlayers.delete(this.streamId);
+        warnLog?.log(`VideoPlayer registry: removed ${this.streamId}, active=${activePlayers.size}`);
 
         this.isPlaying = false;
         this.playbackStartTime = 0;
@@ -1286,8 +1365,9 @@ export class VideoPlayer {
         }
         else if (latencyMs > SKIP_TO_LIVE_THRESHOLD_MS) {
             // Phase 3: Nuclear — re-request stream from live offset
+            this.skipToLiveCount++;
             warnLog?.log(
-                `SKIP_TO_LIVE: latency ${latencyMs.toFixed(0)}ms > ${SKIP_TO_LIVE_THRESHOLD_MS}ms, re-requesting stream`);
+                `SKIP_TO_LIVE: latency ${latencyMs.toFixed(0)}ms > ${SKIP_TO_LIVE_THRESHOLD_MS}ms, re-requesting stream (count=${this.skipToLiveCount})`);
 
             // Report the high latency to the server BEFORE resetting state,
             // so EvaluateQuality can detect that this peer is struggling and step down sender quality.
