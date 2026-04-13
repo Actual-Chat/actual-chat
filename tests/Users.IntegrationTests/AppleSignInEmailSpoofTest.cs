@@ -15,6 +15,8 @@ public class AppleSignInEmailSpoofTest(AppHostFixture fixture, ITestOutputHelper
 {
     private AppleTokenEndpointHandlerMock AppleTokenHandlerMock { get; }
         = fixture.AppHost.Services.GetRequiredService<AppleTokenEndpointHandlerMock>();
+    private IAccounts Accounts => AppHost.Services.GetRequiredService<IAccounts>();
+    private ISessionTemporalsBackend SessionTemporals => AppHost.Services.GetRequiredService<ISessionTemporalsBackend>();
 
     [Fact]
     public async Task SpoofedAdminEmailShouldNotGrantAdmin()
@@ -122,16 +124,14 @@ public class AppleSignInEmailSpoofTest(AppHostFixture fixture, ITestOutputHelper
         response.StatusCode.Should().Be(HttpStatusCode.OK,
             $"sign-in should succeed (code exchange is mocked). Body: {responseBody}");
 
-        var sessionTemporals = AppHost.Services.GetRequiredService<ISessionTemporalsBackend>();
-        var signInError = await sessionTemporals.Get(
+        var signInError = await SessionTemporals.Get(
             session, Constants.SessionTemporals.SignInErrorKey, CancellationToken.None);
         Out.WriteLine($"SignInError: {signInError}");
         signInError.Should().BeNullOrEmpty("sign-in should not produce errors");
 
-        var accounts = AppHost.Services.GetRequiredService<IAccounts>();
         var ct = CancellationToken.None;
         var cAccount = await Computed
-            .Capture(() => accounts.GetOwn(session, ct), ct);
+            .Capture(() => Accounts.GetOwn(session, ct), ct);
         cAccount = await cAccount
             .When(x => !x.IsGuestOrNull(), ct)
             .WaitAsync(TimeSpan.FromSeconds(5), ct);
