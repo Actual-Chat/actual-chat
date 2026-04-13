@@ -72,3 +72,8 @@
 .diag-stream-kind {
     @apply text-xs font-medium px-1.5 py-0.5 rounded bg-03 text-02;
 }
+
+.diag-js-details {
+    @apply flex flex-col gap-0.5 mt-1 pl-3;
+    border-left: 2px solid var(--primary);
+}

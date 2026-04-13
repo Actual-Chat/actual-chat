@@ -32,61 +32,63 @@
                 </div>
             }
             @if (own is not null && own.Value.TryGetProperty("stream", out var stream) && stream.ValueKind == JsonValueKind.Object) {
-                <div class="diag-row">
-                    <span class="diag-label">Status</span>
-                    <span class="diag-value">@GetStr(stream, "status")</span>
-                </div>
-                <div class="diag-row">
-                    <span class="diag-label">Codec</span>
-                    <span class="diag-value">@GetStr(stream, "codec") (@GetStr(stream, "codecCategory"), @(GetBool(stream, "hardwareAccelerated") ? "HW" : "SW"))</span>
-                </div>
-                <div class="diag-row">
-                    <span class="diag-label">Input</span>
-                    <span class="diag-value">@GetStr(stream, "inputResolution") @@ @(GetNum(stream, "inputFramerate").ToString("0"))fps</span>
-                </div>
-                <div class="diag-row">
-                    <span class="diag-label">Output</span>
-                    <span class="diag-value">@GetStr(stream, "outputResolution")</span>
-                </div>
-                <div class="diag-row">
-                    <span class="diag-label">Bitrate</span>
-                    <span class="diag-value">@(GetNum(stream, "actualBitrateKbps").ToString("0")) kbps (cfg: @((GetNum(stream, "configuredBitrate") / 1000).ToString("0")) kbps)</span>
-                </div>
-                <div class="diag-row">
-                    <span class="diag-label">Encode time</span>
-                    <span class="diag-value">@(GetNum(stream, "medianEncodeTime").ToString("0.0"))ms (pure: @(GetNum(stream, "pureMedianEncodeTime").ToString("0.0"))ms)</span>
-                </div>
-                <div class="diag-row">
-                    <span class="diag-label">HW accel</span>
-                    <span class="diag-value">@GetStr(stream, "encoderHwAccel")</span>
-                </div>
-                <div class="diag-row">
-                    <span class="diag-label">Frames</span>
-                    <span class="diag-value">@(GetNum(stream, "encodedFrames").ToString("0")) enc, @(GetNum(stream, "droppedFrames").ToString("0")) drop, @(GetNum(stream, "keyFrames").ToString("0")) key</span>
-                </div>
-                <div class="diag-row">
-                    <span class="diag-label">Duration</span>
-                    <span class="diag-value">@(GetNum(stream, "duration").ToString("0"))s</span>
-                </div>
-                @if (GetStr(stream, "cameraLabel") is { Length: > 0 } cameraLabel) {
+                <div class="diag-js-details">
                     <div class="diag-row">
-                        <span class="diag-label">Camera</span>
-                        <span class="diag-value">@cameraLabel</span>
+                        <span class="diag-label">Status</span>
+                        <span class="diag-value">@GetStr(stream, "status")</span>
                     </div>
-                }
-                @if (GetBool(stream, "blurEnabled")) {
                     <div class="diag-row">
-                        <span class="diag-label">Blur</span>
-                        <span class="diag-value">@GetStr(stream, "segmentationBackend") (@(GetNum(stream, "segmentationAvgTime").ToString("0.0"))ms)</span>
+                        <span class="diag-label">Codec</span>
+                        <span class="diag-value">@GetStr(stream, "codec") (@GetStr(stream, "codecCategory"), @(GetBool(stream, "hardwareAccelerated") ? "HW" : "SW"))</span>
                     </div>
-                }
-                <div class="diag-row">
-                    <span class="diag-label">Encoders</span>
-                    <span class="diag-value">@GetStrArray(stream, "supportedEncoderCategories")</span>
-                </div>
-                <div class="diag-row">
-                    <span class="diag-label">SignalR</span>
-                    <span class="diag-value">@GetStr(own.Value, "signalRState")</span>
+                    <div class="diag-row">
+                        <span class="diag-label">Input</span>
+                        <span class="diag-value">@GetStr(stream, "inputResolution") @@ @(GetNum(stream, "inputFramerate").ToString("0"))fps</span>
+                    </div>
+                    <div class="diag-row">
+                        <span class="diag-label">Output</span>
+                        <span class="diag-value">@GetStr(stream, "outputResolution")</span>
+                    </div>
+                    <div class="diag-row">
+                        <span class="diag-label">Bitrate</span>
+                        <span class="diag-value">@(GetNum(stream, "actualBitrateKbps").ToString("0")) kbps (cfg: @((GetNum(stream, "configuredBitrate") / 1000).ToString("0")) kbps)</span>
+                    </div>
+                    <div class="diag-row">
+                        <span class="diag-label">Encode time</span>
+                        <span class="diag-value">@(GetNum(stream, "medianEncodeTime").ToString("0.0"))ms (pure: @(GetNum(stream, "pureMedianEncodeTime").ToString("0.0"))ms)</span>
+                    </div>
+                    <div class="diag-row">
+                        <span class="diag-label">HW accel</span>
+                        <span class="diag-value">@GetStr(stream, "encoderHwAccel")</span>
+                    </div>
+                    <div class="diag-row">
+                        <span class="diag-label">Frames</span>
+                        <span class="diag-value">@(GetNum(stream, "encodedFrames").ToString("0")) enc, @(GetNum(stream, "droppedFrames").ToString("0")) drop, @(GetNum(stream, "keyFrames").ToString("0")) key</span>
+                    </div>
+                    <div class="diag-row">
+                        <span class="diag-label">Duration</span>
+                        <span class="diag-value">@(GetNum(stream, "duration").ToString("0"))s</span>
+                    </div>
+                    @if (GetStr(stream, "cameraLabel") is { Length: > 0 } cameraLabel) {
+                        <div class="diag-row">
+                            <span class="diag-label">Camera</span>
+                            <span class="diag-value">@cameraLabel</span>
+                        </div>
+                    }
+                    @if (GetBool(stream, "blurEnabled")) {
+                        <div class="diag-row">
+                            <span class="diag-label">Blur</span>
+                            <span class="diag-value">@GetStr(stream, "segmentationBackend") (@(GetNum(stream, "segmentationAvgTime").ToString("0.0"))ms)</span>
+                        </div>
+                    }
+                    <div class="diag-row">
+                        <span class="diag-label">Encoders</span>
+                        <span class="diag-value">@GetStrArray(stream, "supportedEncoderCategories")</span>
+                    </div>
+                    <div class="diag-row">
+                        <span class="diag-label">SignalR</span>
+                        <span class="diag-value">@GetStr(own.Value, "signalRState")</span>
+                    </div>
                 </div>
             }
         </div>
@@ -141,68 +143,70 @@
                             <span class="diag-value">@(s.Info.Format.Width)×@(s.Info.Format.Height)</span>
                         </div>
                         @if (isExpanded && _streamDiags.TryGetValue(sid, out var rd) && rd.ValueKind == JsonValueKind.Object) {
-                            <div class="diag-row">
-                                <span class="diag-label">Decode codec</span>
-                                <span class="diag-value">@GetStr(rd, "codec") (@GetStr(rd, "codecCategory"))</span>
-                            </div>
-                            @if (rd.TryGetProperty("decoderStats", out var ds) && ds.ValueKind == JsonValueKind.Object) {
+                            <div class="diag-js-details">
                                 <div class="diag-row">
-                                    <span class="diag-label">Decode time</span>
-                                    <span class="diag-value">@(GetNum(ds, "medianDecodeTime").ToString("0.0"))ms (pure: @(GetNum(ds, "pureMedianDecodeTime").ToString("0.0"))ms)</span>
+                                    <span class="diag-label">Decode codec</span>
+                                    <span class="diag-value">@GetStr(rd, "codec") (@GetStr(rd, "codecCategory"))</span>
+                                </div>
+                                @if (rd.TryGetProperty("decoderStats", out var ds) && ds.ValueKind == JsonValueKind.Object) {
+                                    <div class="diag-row">
+                                        <span class="diag-label">Decode time</span>
+                                        <span class="diag-value">@(GetNum(ds, "medianDecodeTime").ToString("0.0"))ms (pure: @(GetNum(ds, "pureMedianDecodeTime").ToString("0.0"))ms)</span>
+                                    </div>
+                                    <div class="diag-row">
+                                        <span class="diag-label">Decode queue</span>
+                                        <span class="diag-value">@(GetNum(ds, "decodeQueueSize").ToString("0"))</span>
+                                    </div>
+                                    <div class="diag-row">
+                                        <span class="diag-label">Decoded</span>
+                                        <span class="diag-value">@(GetNum(ds, "decodedFrames").ToString("0")) dec, @(GetNum(ds, "droppedFrames").ToString("0")) drop, @(GetNum(ds, "backpressureDrops").ToString("0")) bp</span>
+                                    </div>
+                                    <div class="diag-row">
+                                        <span class="diag-label">Decoder HW</span>
+                                        <span class="diag-value">@GetStr(ds, "hardwareAcceleration")</span>
+                                    </div>
+                                    <div class="diag-row">
+                                        <span class="diag-label">Decoder res</span>
+                                        <span class="diag-value">@GetStr(ds, "resolution")</span>
+                                    </div>
+                                }
+                                <div class="diag-row">
+                                    <span class="diag-label">E2E latency</span>
+                                    <span class="diag-value">@(GetNum(rd, "pipelineLatencyMs").ToString("0"))ms</span>
                                 </div>
                                 <div class="diag-row">
-                                    <span class="diag-label">Decode queue</span>
-                                    <span class="diag-value">@(GetNum(ds, "decodeQueueSize").ToString("0"))</span>
+                                    <span class="diag-label">Jitter buf</span>
+                                    <span class="diag-value">@(GetNum(rd, "jitterBufferMs").ToString("0"))ms (est: @(GetNum(rd, "jitterEstimateMs").ToString("0"))ms)</span>
                                 </div>
                                 <div class="diag-row">
-                                    <span class="diag-label">Decoded</span>
-                                    <span class="diag-value">@(GetNum(ds, "decodedFrames").ToString("0")) dec, @(GetNum(ds, "droppedFrames").ToString("0")) drop, @(GetNum(ds, "backpressureDrops").ToString("0")) bp</span>
+                                    <span class="diag-label">RTT</span>
+                                    <span class="diag-value">@(GetNum(rd, "smoothedRttMs").ToString("0"))ms (grad: @(GetNum(rd, "rttGradientMs").ToString("0"))ms)</span>
                                 </div>
                                 <div class="diag-row">
-                                    <span class="diag-label">Decoder HW</span>
-                                    <span class="diag-value">@GetStr(ds, "hardwareAcceleration")</span>
+                                    <span class="diag-label">Playback</span>
+                                    <span class="diag-value">@(GetNum(rd, "playbackRate").ToString("0.00"))x, buf=@(GetNum(rd, "bufferSize").ToString("0"))</span>
                                 </div>
                                 <div class="diag-row">
-                                    <span class="diag-label">Decoder res</span>
-                                    <span class="diag-value">@GetStr(ds, "resolution")</span>
+                                    <span class="diag-label">Received</span>
+                                    <span class="diag-value">@(GetNum(rd, "receivedFrameCount").ToString("0")) frm, @(GetNum(rd, "receivedKeyframeCount").ToString("0")) key, @(GetNum(rd, "renderFrameCount").ToString("0")) rend</span>
                                 </div>
-                            }
-                            <div class="diag-row">
-                                <span class="diag-label">E2E latency</span>
-                                <span class="diag-value">@(GetNum(rd, "pipelineLatencyMs").ToString("0"))ms</span>
-                            </div>
-                            <div class="diag-row">
-                                <span class="diag-label">Jitter buf</span>
-                                <span class="diag-value">@(GetNum(rd, "jitterBufferMs").ToString("0"))ms (est: @(GetNum(rd, "jitterEstimateMs").ToString("0"))ms)</span>
-                            </div>
-                            <div class="diag-row">
-                                <span class="diag-label">RTT</span>
-                                <span class="diag-value">@(GetNum(rd, "smoothedRttMs").ToString("0"))ms (grad: @(GetNum(rd, "rttGradientMs").ToString("0"))ms)</span>
-                            </div>
-                            <div class="diag-row">
-                                <span class="diag-label">Playback</span>
-                                <span class="diag-value">@(GetNum(rd, "playbackRate").ToString("0.00"))x, buf=@(GetNum(rd, "bufferSize").ToString("0"))</span>
-                            </div>
-                            <div class="diag-row">
-                                <span class="diag-label">Received</span>
-                                <span class="diag-value">@(GetNum(rd, "receivedFrameCount").ToString("0")) frm, @(GetNum(rd, "receivedKeyframeCount").ToString("0")) key, @(GetNum(rd, "renderFrameCount").ToString("0")) rend</span>
-                            </div>
-                            <div class="diag-row">
-                                <span class="diag-label">Skip-to-live</span>
-                                <span class="diag-value">@(GetNum(rd, "skipToLiveCount").ToString("0"))</span>
-                            </div>
-                            @if (GetNum(rd, "avDriftMs") is var drift && rd.TryGetProperty("avDriftMs", out var driftEl) && driftEl.ValueKind == JsonValueKind.Number) {
                                 <div class="diag-row">
-                                    <span class="diag-label">A/V drift</span>
-                                    <span class="diag-value">@(drift.ToString("0"))ms</span>
+                                    <span class="diag-label">Skip-to-live</span>
+                                    <span class="diag-value">@(GetNum(rd, "skipToLiveCount").ToString("0"))</span>
                                 </div>
-                            }
-                            @if (GetBool(rd, "qualityReductionRequested")) {
-                                <div class="diag-row">
-                                    <span class="diag-label">Quality</span>
-                                    <span class="diag-value">reduction requested (slow ticks: @(GetNum(rd, "codecSlowTickCount").ToString("0")))</span>
-                                </div>
-                            }
+                                @if (GetNum(rd, "avDriftMs") is var drift && rd.TryGetProperty("avDriftMs", out var driftEl) && driftEl.ValueKind == JsonValueKind.Number) {
+                                    <div class="diag-row">
+                                        <span class="diag-label">A/V drift</span>
+                                        <span class="diag-value">@(drift.ToString("0"))ms</span>
+                                    </div>
+                                }
+                                @if (GetBool(rd, "qualityReductionRequested")) {
+                                    <div class="diag-row">
+                                        <span class="diag-label">Quality</span>
+                                        <span class="diag-value">reduction requested (slow ticks: @(GetNum(rd, "codecSlowTickCount").ToString("0")))</span>
+                                    </div>
+                                }
+                            </div>
                         }
                     </div>
                 }
