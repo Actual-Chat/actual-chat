@@ -66,14 +66,17 @@ const resamplerLoader = new ResamplerLoader();
 //     void resamplerLoader.load();
 
 const serverImpl: OpusEncoderWorker = {
-    create: async (artifactVersions: Map<string, string>, hubUrl: string, _timeout?: RpcTimeout): Promise<void> => {
+    create: async (artifactVersions: Map<string, string>, rpcWsUrl: string, _timeout?: RpcTimeout): Promise<void> => {
         if (state !== 'initial')
             return; // Already created
 
         debugLog?.log(`-> create`);
         Versioning.init(artifactVersions);
-        AudioStreamer.init(hubUrl);
+        AudioStreamer.init(rpcWsUrl);
         AudioStreamer.connectionStateChangedEvents.add(x => stateServer.onConnectionStateChanged(x, rpcNoWait));
+        // Notify initial connected state — must fire after listener is attached
+        if (AudioStreamer.isConnected)
+            void stateServer.onConnectionStateChanged(true, rpcNoWait);
 
         if (!systemEncoder && globalThis.AudioEncoder) {
             const configSupport = await AudioEncoder.isConfigSupported(systemCodecConfig);
@@ -128,8 +131,8 @@ const serverImpl: OpusEncoderWorker = {
         await stopRecording();
     },
 
-    ensureConnected: (quickReconnect: boolean, _noWait?: RpcNoWait): Promise<void> => {
-        return AudioStreamer.ensureConnected(quickReconnect);
+    ensureConnected: (_quickReconnect: boolean, _noWait?: RpcNoWait): Promise<void> => {
+        return AudioStreamer.ensureConnected();
     },
 
     disconnect: (_noWait?: RpcNoWait): Promise<void> => {

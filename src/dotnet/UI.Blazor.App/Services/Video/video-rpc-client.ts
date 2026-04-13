@@ -1,7 +1,7 @@
 // Video RPC client — connects to ILiveVideoStreams and IStreamServer via Fusion RPC WebSocket.
 
 import { RpcHub, RpcClientPeer, RpcClientStreamSender } from 'actuallab-rpc';
-import { StreamServerDef, type VideoFrameDto, type VideoFormatDto } from './video-rpc-service.js';
+import { StreamServerDef, type VideoFrameDto, type VideoFormatDto, type AudioFrameDto } from './video-rpc-service.js';
 
 let _hub: RpcHub | undefined;
 let _peer: RpcClientPeer | undefined;
@@ -20,6 +20,13 @@ export interface StreamServerClient {
         chatId: string,
         clientStartOffset: number,
         format: VideoFormatDto,
+        frameStreamRef: unknown): Promise<void>;
+    PushAudio(
+        session: string,
+        chatId: string,
+        repliedChatEntryId: string | null,
+        clientStartOffset: number,
+        preSkip: number,
         frameStreamRef: unknown): Promise<void>;
     RequestKeyFrame(streamId: string): Promise<void>;
     ReportVideoLatency(
@@ -69,7 +76,14 @@ export function createVideoFrameSender(): { sender: RpcClientStreamSender<VideoF
     return { sender, ref: sender.toRef() };
 }
 
-/** Disconnect the video RPC client. */
+/** Create a client-side stream sender for pushing audio frames to the server. */
+export function createAudioFrameSender(): { sender: RpcClientStreamSender<AudioFrameDto>; ref: unknown } {
+    const peer = ensurePeer();
+    const sender = new RpcClientStreamSender<AudioFrameDto>(peer);
+    return { sender, ref: sender.toRef() };
+}
+
+/** Disconnect the RPC client. */
 export function disconnectVideoRpc(): void {
     _peer?.close();
     _peer = undefined;

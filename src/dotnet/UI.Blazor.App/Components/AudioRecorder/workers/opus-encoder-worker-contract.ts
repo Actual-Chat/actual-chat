@@ -3,7 +3,7 @@ import { AudioDiagnosticsState } from '../audio-recorder';
 import { RpcNoWait, RpcTimeout } from 'rpc';
 
 export interface OpusEncoderWorker {
-    create(artifactVersions: Map<string, string>, hubUrl: string, timeout?: RpcTimeout): Promise<void>;
+    create(artifactVersions: Map<string, string>, rpcWsUrl: string, timeout?: RpcTimeout): Promise<void>;
     init(workletMessagePort: MessagePort, vadMessagePort: MessagePort): Promise<void>;
     start(chatId?: string, repliedChatEntryId?: string): Promise<void>;
     setSessionToken(sessionToken: string, noWait?: RpcNoWait): Promise<void>;

@@ -34,10 +34,11 @@ public class StreamHub(IServiceProvider services) : Hub
     private ILogger Log { get; } = services.LogFor<StreamHub>();
 
     // Currently unused
+    [Obsolete("2026.04: No clients connect to StreamHub anymore")]
     public static Task<string> Ping()
         => PongTask;
 
-    // The only method that is currently used by our JS client
+    [Obsolete("2026.04: Use IStreamServer.PushAudio via RPC")]
     public Task ProcessAudioChunks(
         string sessionToken, string? chatId, string? repliedChatEntryId,
         double clientStartOffset, int preSkip,
