@@ -1,0 +1,62 @@
+.video-diagnostics-modal {
+    @apply w-96;
+}
+
+.video-diagnostics-modal .dialog-body {
+    @apply flex flex-col gap-3 p-4;
+    font-size: 0.8125rem;
+}
+
+.diag-section {
+    @apply flex flex-col gap-1;
+}
+
+.diag-section-header {
+    @apply flex items-center gap-2 font-semibold text-03 pb-1 border-b border-separator;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.diag-badge {
+    @apply bg-primary text-white rounded-full px-1.5 text-xs font-medium;
+    min-width: 1.25rem;
+    text-align: center;
+}
+
+.diag-row {
+    @apply flex justify-between items-baseline gap-2;
+    line-height: 1.5;
+}
+
+.diag-label {
+    @apply text-03 shrink-0;
+    font-size: 0.75rem;
+}
+
+.diag-value {
+    @apply text-01 text-right truncate;
+    font-family: ui-monospace, 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 0.75rem;
+}
+
+.diag-dim {
+    @apply text-04;
+}
+
+.diag-stream {
+    @apply flex flex-col gap-0.5 py-2 rounded-lg bg-02;
+}
+
+.diag-stream + .diag-stream {
+    @apply mt-1;
+}
+
+.diag-stream-header {
+    @apply flex items-center gap-2 font-medium text-01;
+    font-size: 0.8125rem;
+}
+
+.diag-stream-kind {
+    @apply text-xs font-medium px-1.5 py-0.5 rounded bg-03 text-02;
+}

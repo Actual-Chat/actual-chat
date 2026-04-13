@@ -99,6 +99,11 @@
             <HeaderButton Class="settings-btn" Click="@OnVideoSettingsClick">
                 <i class="icon-settings text-lg"></i>
             </HeaderButton>
+            @if (m.AllowDiagnostics) {
+                <HeaderButton Class="btn-diagnostics" Tooltip="Diagnostics" Click="@OnDiagnosticsClick">
+                    <i class="icon-activity text-lg"></i>
+                </HeaderButton>
+            }
             @if (!ScreenSize.IsNarrow()) {
                 <HeaderButton Class="@("chat-btn " + chatBtnCls)" Click="@OnToggleChatVisibilityClick">
                     <i class="icon-message-ellipse text-lg"></i>
@@ -126,6 +131,11 @@
                     <VideoStreamingPreview ChatId="@ChatId" />
                 </div>
             </div>
+            @if (m.AllowDiagnostics) {
+                <HeaderButton Class="btn-diagnostics collapsed-video-btn" Tooltip="Diagnostics" Click="@OnDiagnosticsClick">
+                    <i class="icon-activity text-lg"></i>
+                </HeaderButton>
+            }
             <HeaderButton Class="expand-btn show-with-delay collapsed-video-btn" Click="@OnExpandClick">
                 <i class="icon-expand text-lg collapsed-video-panel"></i>
                 <i class="icon-collapse text-lg expanded-video-panel"></i>
@@ -154,6 +164,7 @@
 
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private IChats Chats => Hub.Chats;
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
     private ElementReference Ref { get; set; }
@@ -232,11 +243,12 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
+        var isAdmin = AccountUI.OwnAccount.Value.IsAdmin;
         var isRightPanelVisible = false;
         if (!ScreenSize.IsNarrow())
             isRightPanelVisible = await PanelsUI.Right.IsVisible.Use(cancellationToken);
 
-        var chat = await Hub.Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         var isCollapsed = await ChatVideoUI.GetIsVideoPanelCollapsed(cancellationToken).ConfigureAwait(false);
 
         // Get centralized video state (for recording status)
@@ -251,7 +263,7 @@
             : 0;
 
         if (activeStreams.Count == 0)
-            return new Model(isRightPanelVisible, [], ownStreamingMode, audioState.IsRecording, audioState.IsListening, 0, chat, isCollapsed);
+            return new Model(isRightPanelVisible, [], ownStreamingMode, audioState.IsRecording, audioState.IsListening, 0, chat, isCollapsed, AllowDiagnostics: isAdmin);
 
         var remoteStreams = await ChatVideoUI.GetRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
         var previousSpeakerId = await ChatVideoUI.GetPreviousFocusedSpeakerId(cancellationToken).ConfigureAwait(false);
@@ -260,7 +272,7 @@
             string.Join(", ", remoteStreams.Select(s => $"{s.StreamId}({s.Format.Codec})")),
             ownStreamingMode);
 
-        return new Model(isRightPanelVisible, remoteStreams, ownStreamingMode, audioState.IsRecording, audioState.IsListening, videoStreamMemberCount, chat, isCollapsed, previousSpeakerId);
+        return new Model(isRightPanelVisible, remoteStreams, ownStreamingMode, audioState.IsRecording, audioState.IsListening, videoStreamMemberCount, chat, isCollapsed, previousSpeakerId, isAdmin);
     }
 
     private void OnHangUpClick() {
@@ -310,6 +322,9 @@
         ChatVideoUI.ChangeVideoSessionSettings(ChatId);
     }
 
+    private void OnDiagnosticsClick()
+        => _ = Hub.ModalUI.Show(new VideoDiagnosticsModal.Model(ChatId));
+
     private Task OnSwitchCamera()
         => ChatVideoUI.SwitchCamera();
 
@@ -349,7 +364,8 @@
         int VideoStreamMemberCount,
         Chat? Chat,
         bool IsCollapsed = false,
-        AuthorId? PreviousSpeakerAuthorId = null
+        AuthorId? PreviousSpeakerAuthorId = null,
+        bool AllowDiagnostics = false
     ) {
         public VideoStreamInfo? PreviousSpeakerStream
             => PreviousSpeakerAuthorId is null ? null : RemoteStreams.FirstOrDefault(s => s.AuthorId == PreviousSpeakerAuthorId);

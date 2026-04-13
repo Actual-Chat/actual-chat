@@ -1,0 +1,126 @@
+@namespace ActualChat.UI.Blazor.App.Components.VideoPanel
+@using ActualChat.Streaming
+@inherits ComputedStateComponent<AppUIHub, VideoDiagnosticsModal.ComputedModel>
+@implements IModalView<VideoDiagnosticsModal.Model>
+@{
+    var m = State.Value;
+}
+
+<DialogFrame
+    Class="video-diagnostics-modal"
+    Title="Video Diagnostics"
+    HasCloseButton="true">
+    <Body>
+        @* Own streaming *@
+        <div class="diag-section">
+            <div class="diag-section-header">Own Streaming</div>
+            @if (m.OwnStreamingMode is { } mode) {
+                <div class="diag-row">
+                    <span class="diag-label">Mode</span>
+                    <span class="diag-value">@mode</span>
+                </div>
+            } else {
+                <div class="diag-row">
+                    <span class="diag-label">Status</span>
+                    <span class="diag-value diag-dim">Not streaming</span>
+                </div>
+            }
+        </div>
+
+        @* Active streams *@
+        <div class="diag-section">
+            <div class="diag-section-header">
+                Active Streams
+                <span class="diag-badge">@m.Streams.Length</span>
+                @if (m.MemberCount > 0) {
+                    <span class="diag-dim ml-2">(@m.MemberCount members)</span>
+                }
+            </div>
+            @if (m.Streams.Length == 0) {
+                <div class="diag-row">
+                    <span class="diag-dim">No active streams</span>
+                </div>
+            } else {
+                @foreach (var s in m.Streams) {
+                    <div class="diag-stream">
+                        <div class="diag-stream-header">
+                            <span>@s.AuthorName</span>
+                            <span class="diag-stream-kind">@(s.Info.StreamKind == StreamKind.Screencast ? "Screen" : "Camera")</span>
+                            <span class="diag-dim">(@(s.Info.AuthorId + (s.IsOwn ? ", Own" : "")))</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Stream</span>
+                            <span class="diag-value">@s.Info.StreamId</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Codec</span>
+                            <span class="diag-value">@s.Info.Format.Codec</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Resolution</span>
+                            <span class="diag-value">@(s.Info.Format.Width)×@(s.Info.Format.Height)</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Started</span>
+                            <span class="diag-value">@DateTimeConverter.ToLocalTime(s.Info.StartedAt).ToString("HH:mm:ss")</span>
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </Body>
+</DialogFrame>
+
+@code {
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private IAuthors Authors => Hub.Authors;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
+        => new() {
+            InitialValue = ComputedModel.Empty,
+            UpdateDelayer = FixedDelayer.NextTick,
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
+        var chatId = ModalModel.ChatId;
+
+        var ownStreamingState = await ChatVideoUI.GetVideoStreamingState(chatId, cancellationToken).ConfigureAwait(false);
+        var activeStreams = await ChatVideoUI.GetActiveVideoStreams(chatId, cancellationToken);
+        var memberCount = activeStreams.Count > 0
+            ? await ChatVideoUI.GetVideoStreamMemberCount(chatId, cancellationToken).ConfigureAwait(false)
+            : 0;
+
+        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken);
+
+        // Resolve author names
+        var streams = new StreamEntry[activeStreams.Count];
+        for (var i = 0; i < activeStreams.Count; i++) {
+            var info = activeStreams[i];
+            var author = await Authors.Get(Session, chatId, info.AuthorId, cancellationToken);
+            streams[i] = new StreamEntry(info, author?.Avatar.Name ?? "", ownAuthor?.Id == info.AuthorId);
+        }
+
+        return new ComputedModel(ownStreamingState?.Mode, streams, memberCount);
+    }
+
+    // Nested types
+
+    public sealed class Model(ChatId chatId)
+    {
+        public ChatId ChatId { get; } = chatId;
+    }
+
+    public sealed record StreamEntry(VideoStreamInfo Info, string AuthorName, bool IsOwn = false);
+
+    public sealed record ComputedModel(
+        VideoRecorderMode? OwnStreamingMode,
+        StreamEntry[] Streams,
+        int MemberCount
+    ) {
+        public static readonly ComputedModel Empty = new(null, [], 0);
+    }
+}

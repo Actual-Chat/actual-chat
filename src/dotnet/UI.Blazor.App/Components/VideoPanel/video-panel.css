@@ -98,6 +98,15 @@ body.wide .video-panel.expanded:has(.video-panel-chat) > .c-container {
     background: linear-gradient(0deg, rgba(255, 255, 255, 0.50) -46.21%, rgba(255, 255, 255, 0.10) 103.45%, rgba(255, 255, 255, 0.35) 103.45%);
     backdrop-filter: blur(8px);
 }
+.video-panel .btn-h.btn-diagnostics.collapsed-video-btn {
+    @apply absolute top-2 z-10;
+    @apply w-12 h-12;
+    @apply rounded-full;
+    @apply text-white text-lg;
+    left: 3.75rem;
+    background: linear-gradient(0deg, rgba(255, 255, 255, 0.50) -46.21%, rgba(255, 255, 255, 0.10) 103.45%, rgba(255, 255, 255, 0.35) 103.45%);
+    backdrop-filter: blur(8px);
+}
 .video-panel .btn-h.expand-btn.expanded-video-btn {
     @apply inset-auto;
     @apply relative;
