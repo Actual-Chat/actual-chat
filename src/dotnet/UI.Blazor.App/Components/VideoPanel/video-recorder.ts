@@ -5,6 +5,31 @@ import { detectSupportedCodecs, getDefaultCodec, getCodecCategory, type CodecInf
 
 const { debugLog, infoLog, warnLog, errorLog } = Log.get('VideoRecorder');
 
+export interface OwnStreamDiagnostics {
+    mode: string;
+    codec: string;
+    codecCategory: string;
+    hardwareAccelerated: boolean;
+    inputResolution: string;
+    inputFramerate: number;
+    outputResolution: string;
+    configuredBitrate: number;
+    actualBitrateKbps: number;
+    encodedFrames: number;
+    droppedFrames: number;
+    keyFrames: number;
+    medianEncodeTime: number;
+    pureMedianEncodeTime: number;
+    encoderHwAccel: string;
+    duration: number;
+    cameraLabel: string | null;
+    blurEnabled: boolean;
+    segmentationBackend: string | null;
+    segmentationAvgTime: number | null;
+    supportedEncoderCategories: string[];
+    status: string;
+}
+
 export interface VideoDevice {
     deviceId: string;
     label: string;
@@ -572,6 +597,49 @@ export class VideoRecorder {
         if (categories.has('vp9')) ordered.push('vp9');
         if (categories.has('h264')) ordered.push('h264');
         return ordered;
+    }
+
+    public getDiagnostics(): OwnStreamDiagnostics {
+        const rs = this.recordingService;
+        const pipeline = rs?.getPipeline();
+        const encoderStats = pipeline?.getEncoderStats();
+        const segStats = pipeline?.getSegmentationStats();
+        const state = rs?.getState();
+        const config = rs?.getConfig();
+        const inputTrack = rs?.getInputTrack();
+        const trackSettings = inputTrack?.getSettings();
+
+        const duration = state?.duration ?? 0;
+        const actualBitrateKbps = duration > 0 && encoderStats
+            ? (encoderStats.totalBytes * 8) / duration / 1000
+            : 0;
+
+        return {
+            mode: this.isScreencasting ? 'screen' : this.isRecording ? 'webcam' : 'none',
+            codec: config?.codecString ?? '',
+            codecCategory: config?.codecString ? getCodecCategory(config.codecString) : '',
+            hardwareAccelerated: config?.hardwareAccelerated ?? false,
+            inputResolution: trackSettings ? `${trackSettings.width ?? 0}x${trackSettings.height ?? 0}` : 'N/A',
+            inputFramerate: trackSettings?.frameRate ?? 0,
+            outputResolution: encoderStats
+                ? `${encoderStats.configuredWidth}x${encoderStats.configuredHeight}`
+                : 'N/A',
+            configuredBitrate: encoderStats?.configuredBitrate ?? 0,
+            actualBitrateKbps: Math.round(actualBitrateKbps),
+            encodedFrames: encoderStats?.encodedFrames ?? 0,
+            droppedFrames: encoderStats?.droppedFrames ?? 0,
+            keyFrames: encoderStats?.keyFrames ?? 0,
+            medianEncodeTime: encoderStats?.medianEncodeTime ?? 0,
+            pureMedianEncodeTime: encoderStats?.pureMedianEncodeTime ?? 0,
+            encoderHwAccel: encoderStats?.hardwareAcceleration ?? 'unknown',
+            duration,
+            cameraLabel: inputTrack?.label ?? null,
+            blurEnabled: this.isBlurEnabled,
+            segmentationBackend: segStats?.backend ?? null,
+            segmentationAvgTime: segStats?.averageTotalTime ?? null,
+            supportedEncoderCategories: this.supportedEncoderCategories,
+            status: state?.status ?? 'idle',
+        };
     }
 
     public dispose() {

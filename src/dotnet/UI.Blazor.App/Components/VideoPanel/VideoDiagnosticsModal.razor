@@ -1,9 +1,12 @@
 @namespace ActualChat.UI.Blazor.App.Components.VideoPanel
 @using ActualChat.Streaming
+@using ActualChat.UI.Blazor.App.Module
+@using System.Text.Json
 @inherits ComputedStateComponent<AppUIHub, VideoDiagnosticsModal.ComputedModel>
 @implements IModalView<VideoDiagnosticsModal.Model>
 @{
     var m = State.Value;
+    var own = _ownDiag;
 }
 
 <DialogFrame
@@ -13,7 +16,10 @@
     <Body>
         @* Own streaming *@
         <div class="diag-section">
-            <div class="diag-section-header">Own Streaming</div>
+            <div class="diag-section-header diag-clickable" @onclick="OnToggleOwnStreamingDetails">
+                Own Streaming
+                <span class="diag-expand-indicator">@(_showOwnStreamingDetails ? ">-<" : "<--->")</span>
+            </div>
             @if (m.OwnStreamingMode is { } mode) {
                 <div class="diag-row">
                     <span class="diag-label">Mode</span>
@@ -23,6 +29,64 @@
                 <div class="diag-row">
                     <span class="diag-label">Status</span>
                     <span class="diag-value diag-dim">Not streaming</span>
+                </div>
+            }
+            @if (own is not null && own.Value.TryGetProperty("stream", out var stream) && stream.ValueKind == JsonValueKind.Object) {
+                <div class="diag-row">
+                    <span class="diag-label">Status</span>
+                    <span class="diag-value">@GetStr(stream, "status")</span>
+                </div>
+                <div class="diag-row">
+                    <span class="diag-label">Codec</span>
+                    <span class="diag-value">@GetStr(stream, "codec") (@GetStr(stream, "codecCategory"), @(GetBool(stream, "hardwareAccelerated") ? "HW" : "SW"))</span>
+                </div>
+                <div class="diag-row">
+                    <span class="diag-label">Input</span>
+                    <span class="diag-value">@GetStr(stream, "inputResolution") @@ @(GetNum(stream, "inputFramerate").ToString("0"))fps</span>
+                </div>
+                <div class="diag-row">
+                    <span class="diag-label">Output</span>
+                    <span class="diag-value">@GetStr(stream, "outputResolution")</span>
+                </div>
+                <div class="diag-row">
+                    <span class="diag-label">Bitrate</span>
+                    <span class="diag-value">@(GetNum(stream, "actualBitrateKbps").ToString("0")) kbps (cfg: @((GetNum(stream, "configuredBitrate") / 1000).ToString("0")) kbps)</span>
+                </div>
+                <div class="diag-row">
+                    <span class="diag-label">Encode time</span>
+                    <span class="diag-value">@(GetNum(stream, "medianEncodeTime").ToString("0.0"))ms (pure: @(GetNum(stream, "pureMedianEncodeTime").ToString("0.0"))ms)</span>
+                </div>
+                <div class="diag-row">
+                    <span class="diag-label">HW accel</span>
+                    <span class="diag-value">@GetStr(stream, "encoderHwAccel")</span>
+                </div>
+                <div class="diag-row">
+                    <span class="diag-label">Frames</span>
+                    <span class="diag-value">@(GetNum(stream, "encodedFrames").ToString("0")) enc, @(GetNum(stream, "droppedFrames").ToString("0")) drop, @(GetNum(stream, "keyFrames").ToString("0")) key</span>
+                </div>
+                <div class="diag-row">
+                    <span class="diag-label">Duration</span>
+                    <span class="diag-value">@(GetNum(stream, "duration").ToString("0"))s</span>
+                </div>
+                @if (GetStr(stream, "cameraLabel") is { Length: > 0 } cameraLabel) {
+                    <div class="diag-row">
+                        <span class="diag-label">Camera</span>
+                        <span class="diag-value">@cameraLabel</span>
+                    </div>
+                }
+                @if (GetBool(stream, "blurEnabled")) {
+                    <div class="diag-row">
+                        <span class="diag-label">Blur</span>
+                        <span class="diag-value">@GetStr(stream, "segmentationBackend") (@(GetNum(stream, "segmentationAvgTime").ToString("0.0"))ms)</span>
+                    </div>
+                }
+                <div class="diag-row">
+                    <span class="diag-label">Encoders</span>
+                    <span class="diag-value">@GetStrArray(stream, "supportedEncoderCategories")</span>
+                </div>
+                <div class="diag-row">
+                    <span class="diag-label">SignalR</span>
+                    <span class="diag-value">@GetStr(own.Value, "signalRState")</span>
                 </div>
             }
         </div>
@@ -78,11 +142,25 @@
 </DialogFrame>
 
 @code {
+    private static readonly string JSCollectMethod = $"{BlazorUIAppModule.ImportName}.collectOwnStreamDiagnostics";
+
+    private Timer? _pollTimer;
+    private JsonElement? _ownDiag;
+    private bool _isDisposed;
+    private bool _showOwnStreamingDetails;
+
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private IAuthors Authors => Hub.Authors;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
+
+    public override async ValueTask DisposeAsync() {
+        _isDisposed = true;
+        if (_pollTimer is not null)
+            await _pollTimer.DisposeAsync();
+        await base.DisposeAsync();
+    }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {
@@ -111,6 +189,43 @@
         }
 
         return new ComputedModel(ownStreamingState?.Mode, streams, memberCount);
+    }
+
+    private void OnToggleOwnStreamingDetails() {
+        _showOwnStreamingDetails = !_showOwnStreamingDetails;
+        if (_showOwnStreamingDetails) {
+            _pollTimer ??= new Timer(_ => _ = PollJsDiagnostics(), null, TimeSpan.Zero, TimeSpan.FromMilliseconds(1500));
+        } else {
+            _pollTimer?.Dispose();
+            _pollTimer = null;
+            _ownDiag = null;
+        }
+        StateHasChanged();
+    }
+
+    private async Task PollJsDiagnostics() {
+        if (_isDisposed) return;
+        try {
+            _ownDiag = await JS.InvokeAsync<JsonElement>(JSCollectMethod);
+            await InvokeAsync(StateHasChanged);
+        } catch {
+            // Ignore errors during polling (component may be disposed)
+        }
+    }
+
+    private static string GetStr(JsonElement el, string prop)
+        => el.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
+
+    private static double GetNum(JsonElement el, string prop)
+        => el.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDouble() : 0;
+
+    private static bool GetBool(JsonElement el, string prop)
+        => el.TryGetProperty(prop, out var v) && v.ValueKind is JsonValueKind.True or JsonValueKind.False && v.GetBoolean();
+
+    private static string GetStrArray(JsonElement el, string prop) {
+        if (!el.TryGetProperty(prop, out var v) || v.ValueKind != JsonValueKind.Array)
+            return "";
+        return string.Join(", ", v.EnumerateArray().Select(x => x.GetString()));
     }
 
     // Nested types

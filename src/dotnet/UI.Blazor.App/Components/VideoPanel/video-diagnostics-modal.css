@@ -18,6 +18,18 @@
     letter-spacing: 0.05em;
 }
 
+.diag-clickable {
+    @apply cursor-pointer select-none;
+}
+.diag-clickable:hover {
+    @apply text-02;
+}
+
+.diag-expand-indicator {
+    @apply text-04 text-xs ml-auto;
+    @apply font-mono;
+}
+
 .diag-badge {
     @apply bg-primary text-white rounded-full px-1.5 text-xs font-medium;
     min-width: 1.25rem;
@@ -36,7 +48,7 @@
 
 .diag-value {
     @apply text-01 text-right truncate;
-    font-family: ui-monospace, 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    @apply font-mono;
     font-size: 0.75rem;
 }
 

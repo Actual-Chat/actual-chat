@@ -477,4 +477,8 @@ export class RecordingService extends EventTarget {
     getPipeline(): VideoPipeline /*| AV1VideoPipeline*/ | null {
         return this.pipeline;
     }
+
+    getConfig(): RecordingConfig {
+        return { ...this.config };
+    }
 }
