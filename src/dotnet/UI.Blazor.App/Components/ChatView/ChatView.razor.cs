@@ -470,11 +470,21 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         string? scrollToKey = navKey != null && mustScrollToEntry ? navKey : null;
         var scrollToKeyInTheMiddle = nav is { ShowInTheMiddle: true };
 
-        // On tab resume (itemVisibility cleared), scroll to NewMessagesLine if present
-        if (scrollToKey == null && itemVisibility.IsEmpty) {
-            var newMessagesLine = items.FirstOrDefault(i => i.Kind == ChatMessageKind.NewMessagesLine);
-            if (newMessagesLine != null) {
-                scrollToKey = newMessagesLine.Key.Value;
+        // When NewMessagesLine exists, prefer scrolling to the first unread message (item after it)
+        var newMessagesLineIndex = items.FirstIndexOf(i => i.Kind == ChatMessageKind.NewMessagesLine);
+        if (newMessagesLineIndex >= 0) {
+            var firstUnreadKey = newMessagesLineIndex + 1 < items.Count
+                ? items[newMessagesLineIndex + 1].Key.Value
+                : items[newMessagesLineIndex].Key.Value;
+
+            if (scrollToKey == null && itemVisibility.IsEmpty) {
+                // Tab resume: no explicit nav, viewport empty — scroll to first unread
+                scrollToKey = firstUnreadKey;
+                scrollToKeyInTheMiddle = true;
+            }
+            else if (scrollToKey != null && nav is { MustHighlight: false, ShouldRestoreViewPosition: true }) {
+                // Initial open: restoring view position — redirect to first unread instead
+                scrollToKey = firstUnreadKey;
                 scrollToKeyInTheMiddle = true;
             }
         }
