@@ -41,6 +41,8 @@
     private ElementReference Ref { get; set; }
     private IJSObjectReference? JSRef { get; set; }
 
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
+
     public override async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
@@ -56,10 +58,7 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken);
-        if (chatId is null)
-            return Model.None;
-
+        var chatId = ChatId;
         var streamingState = await ChatVideoUI.GetVideoStreamingState(chatId, cancellationToken).ConfigureAwait(false);
         var hasRemoteStreams = await ChatVideoUI.HasRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
         var lastError = await ChatVideoUI.GetLastVideoRecorderError(cancellationToken).ConfigureAwait(false);
@@ -73,13 +72,8 @@
         JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
     }
 
-    private void OnSettingsClick() {
-        var chatId = Hub.ChatUI.SelectedChatId.Value;
-        if (chatId is null)
-            return;
-
-        ChatVideoUI.ChangeVideoSessionSettings(chatId);
-    }
+    private void OnSettingsClick()
+        => ChatVideoUI.ChangeVideoSessionSettings(ChatId);
 
     // Nested types
 
