@@ -24,17 +24,9 @@
                 <div class="c-rules-text">No transcription, no anonymous</div>
             </div>
         }
-        <div @ref="_containerRef" class="c-video @(_isCameraStarting ? "camera-starting" : "")">
+        <div @ref="_containerRef" class="c-video @(_cameraState is CameraState.Starting ? "camera-starting" : "")">
             <div class="video-frame">
-                <span class="plug-text">
-                    @if (_isCameraStarting) {
-                        @:Camera is starting...
-                    } else if (_isCameraUnavailable) {
-                        @:Camera is unavailable
-                    } else {
-                        @:Camera is off
-                    }
-                </span>
+                <span class="plug-text">@GetPlugText(_cameraState)</span>
                 <div class="video-loading">
                     <span class="spinner-icon-wrapper">
                         <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
@@ -52,7 +44,7 @@
 
                 @* Camera pill with chevron + dropdown *@
                 <div class="camera-pill-wrapper">
-                    <div class="toolbar-pill @(_isVideoOn || _isCameraStarting ? "active" : "")">
+                    <div class="toolbar-pill @(_isVideoOn || _cameraState is CameraState.Starting ? "active" : "")">
                         <HeaderButton Class="pill-action" Click="OnVideoToggle">
                             <i class="icon-video text-2xl"></i>
                         </HeaderButton>
@@ -142,11 +134,10 @@
     private IJSObjectReference? _jsRef;
 
     private bool _isVideoOn;
+    private CameraState _cameraState = CameraState.Initializing;
     private bool _isBlurEnabled;
     private bool _isCameraDropdownOpen;
     private bool _isRecording;
-    private bool _isCameraStarting;
-    private bool _isCameraUnavailable;
     private List<VideoDevice> _videoDevices = new();
     private VideoDevice? _selectedDevice;
     private Task<string> _getLastSelectedDeviceIdTask = null!;
@@ -208,7 +199,7 @@
         if (_jsRef is null)
             return;
 
-        _isCameraStarting = true;
+        _cameraState = CameraState.Starting;
         StateHasChanged();
 
         if (IsSettingsMode) {
@@ -216,11 +207,12 @@
             var attached = await _jsRef.InvokeAsync<bool>("attachFromRecorder");
             if (attached) {
                 _isVideoOn = true;
+                _cameraState = CameraState.On;
                 // Start blur preview if blur is currently active
                 if (_isBlurEnabled)
                     await _jsRef.InvokeVoidAsync("toggleBlur", true);
             } else {
-                _isCameraStarting = false;
+                _cameraState = CameraState.Off;
             }
         } else {
             // Normal mode: acquire our own stream
@@ -228,11 +220,11 @@
             var success = await _jsRef.InvokeAsync<bool>("startPreview", deviceId);
             if (success) {
                 _isVideoOn = true;
+                _cameraState = CameraState.On;
                 if (_isBlurEnabled)
                     await _jsRef.InvokeVoidAsync("toggleBlur", true);
             } else {
-                _isCameraStarting = false;
-                _isCameraUnavailable = true;
+                _cameraState = CameraState.Unavailable;
             }
         }
         StateHasChanged();
@@ -264,8 +256,7 @@
 
     [JSInvokable]
     public async Task OnFirstFrameRendered() {
-        _isCameraStarting = false;
-        _isCameraUnavailable = false;
+        _cameraState = CameraState.On;
         await InvokeAsync(StateHasChanged);
     }
 
@@ -277,18 +268,16 @@
         if (_isVideoOn) {
             await _jsRef.InvokeVoidAsync("stopPreview");
             _isVideoOn = false;
-            _isCameraStarting = false;
-            _isCameraUnavailable = false;
+            _cameraState = CameraState.Off;
         } else {
-            _isCameraStarting = true;
-            _isCameraUnavailable = false;
+            _cameraState = CameraState.Starting;
             StateHasChanged();
             var success = await _jsRef.InvokeAsync<bool>("startPreview", _selectedDevice?.DeviceId);
             if (success) {
                 _isVideoOn = true;
+                _cameraState = CameraState.On;
             } else {
-                _isCameraStarting = false;
-                _isCameraUnavailable = true;
+                _cameraState = CameraState.Unavailable;
             }
         }
         StateHasChanged();
@@ -308,16 +297,15 @@
             s => s with { SelectedCameraDeviceId = device.DeviceId });
 
         // Switch camera if preview is active (or was unavailable — retry with new device)
-        if ((_isVideoOn || _isCameraUnavailable) && _jsRef is not null) {
-            _isCameraStarting = true;
-            _isCameraUnavailable = false;
+        if ((_isVideoOn || _cameraState is CameraState.Unavailable) && _jsRef is not null) {
+            _cameraState = CameraState.Starting;
             StateHasChanged();
             var success = await _jsRef.InvokeAsync<bool>("switchCamera", device.DeviceId);
             if (success) {
                 _isVideoOn = true;
+                _cameraState = CameraState.On;
             } else {
-                _isCameraStarting = false;
-                _isCameraUnavailable = true;
+                _cameraState = CameraState.Unavailable;
             }
         }
         StateHasChanged();
@@ -381,13 +369,22 @@
         => _isRecording ? "mic-btn recording" : "mic-btn";
 
     private string VideoWrapperBtnClass()
-        => _isVideoOn || _isCameraStarting ? "video-btn-on" : "video-btn-off";
+        => _isVideoOn || _cameraState is CameraState.Starting ? "video-btn-on" : "video-btn-off";
 
     private string BlurBtnClass()
         => _isBlurEnabled ? "blur-btn active" : "blur-btn";
 
+    private static string GetPlugText(CameraState cameraState) => cameraState switch {
+        CameraState.Initializing => "Initializing...",
+        CameraState.Off => "Camera is off",
+        CameraState.Starting => "Camera is starting...",
+        CameraState.Unavailable => "Camera is unavailable",
+        _ => ""
+    };
+
     // Nested types
 
+    public enum CameraState { Initializing, Off, Starting, On, Unavailable }
     public enum VideoCallMode { Join, Settings }
 
     public sealed class Model(Chat chat, VideoCallMode mode)
