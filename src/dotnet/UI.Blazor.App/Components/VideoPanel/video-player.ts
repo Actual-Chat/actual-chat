@@ -684,10 +684,14 @@ export class VideoPlayer {
             targetTimestamp = targetVideoOffsetMs * 1000;
 
             // When audio sync targets a time before this video stream started
-            // (e.g., new stream created after codec switch), snap to live edge
-            // to avoid permanent render starvation.
-            if (rawTargetVideoOffsetMs < 0 && this.pendingFrames.length > 0) {
-                targetTimestamp = this.pendingFrames[this.pendingFrames.length - 1].timestamp;
+            // (e.g., new stream created after codec switch), or far behind the
+            // buffered frames (stale audio state after SKIP_TO_LIVE), snap to
+            // live edge to avoid permanent render starvation.
+            if (this.pendingFrames.length > 0) {
+                const oldestBufferedMs = this.pendingFrames[0].timestamp / 1000;
+                if (rawTargetVideoOffsetMs < 0 || targetVideoOffsetMs < oldestBufferedMs - 2000) {
+                    targetTimestamp = this.pendingFrames[this.pendingFrames.length - 1].timestamp;
+                }
             }
 
             this.playbackStartTime = now;
