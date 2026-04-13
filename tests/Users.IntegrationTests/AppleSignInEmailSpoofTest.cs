@@ -22,22 +22,22 @@ public class AppleSignInEmailSpoofTest(AppHostFixture fixture, ITestOutputHelper
     public async Task SpoofedAdminEmailShouldNotGrantAdmin()
     {
         // arrange
-        var idTokenEmail = UniqueNames.Email("attacker", "gmail.com");
-        var queryEmail = UniqueNames.Email("attacker");
+        var realEmail = UniqueNames.Email("attacker", "gmail.com");
+        var claimedEmail = UniqueNames.Email("attacker");
         var appleUserId = UniqueNames.AppleId();
-        var code = AppleTokenHandler.Setup(appleUserId, idTokenEmail);
+        var code = AppleTokenHandler.Setup(appleUserId, realEmail);
 
         // act
-        var account = await SignInWithApple(code, appleUserId, queryEmail);
+        var account = await SignInWithApple(code, appleUserId, claimedEmail);
 
         // assert
         account.IsGuest.Should().BeFalse("user should be signed in");
         account.IsAdmin.Should().BeFalse(
             "spoofed @actual.chat email in query param must not grant admin; "
             + "email should come from Apple's id_token, not from the caller");
-        account.Email.Should().Be(idTokenEmail,
+        account.Email.Should().Be(realEmail,
             "persisted email should match id_token, not the caller-supplied query parameter");
-        account.Identities.GetEmails().Should().NotContain(queryEmail,
+        account.Identities.GetEmails().Should().NotContain(claimedEmail,
             "spoofed email should never appear in identity store");
     }
 
@@ -45,39 +45,39 @@ public class AppleSignInEmailSpoofTest(AppHostFixture fixture, ITestOutputHelper
     public async Task StoredEmailShouldMatchIdTokenNotQueryParam()
     {
         // arrange
-        var idTokenEmail = UniqueNames.Email("real-user", "icloud.com");
-        var queryEmail = UniqueNames.Email("impersonated", "example.com");
+        var realEmail = UniqueNames.Email("real-user", "icloud.com");
+        var claimedEmail = UniqueNames.Email("impersonated", "example.com");
         var appleUserId = UniqueNames.AppleId();
-        var code = AppleTokenHandler.Setup(appleUserId, idTokenEmail);
+        var code = AppleTokenHandler.Setup(appleUserId, realEmail);
 
         // act
-        var account = await SignInWithApple(code, appleUserId, queryEmail);
+        var account = await SignInWithApple(code, appleUserId, claimedEmail);
 
         // assert
         account.IsGuest.Should().BeFalse("user should be signed in");
-        account.Email.Should().Be(idTokenEmail,
+        account.Email.Should().Be(realEmail,
             "account email must come from Apple's id_token, not the query parameter");
-        account.Identities.GetEmails().Should().Contain(idTokenEmail);
-        account.Identities.GetEmails().Should().NotContain(queryEmail);
+        account.Identities.GetEmails().Should().Contain(realEmail);
+        account.Identities.GetEmails().Should().NotContain(claimedEmail);
     }
 
     [Fact]
     public async Task AdminEmailInIdTokenShouldGrantAdmin()
     {
         // arrange
-        var idTokenEmail = UniqueNames.Email("legit-admin");
-        var queryEmail = UniqueNames.Email("nobody", "gmail.com");
+        var realEmail = UniqueNames.Email("legit-admin");
+        var claimedEmail = UniqueNames.Email("nobody", "gmail.com");
         var appleUserId = UniqueNames.AppleId();
-        var code = AppleTokenHandler.Setup(appleUserId, idTokenEmail);
+        var code = AppleTokenHandler.Setup(appleUserId, realEmail);
 
         // act
-        var account = await SignInWithApple(code, appleUserId, queryEmail);
+        var account = await SignInWithApple(code, appleUserId, claimedEmail);
 
         // assert
         account.IsGuest.Should().BeFalse("user should be signed in");
         account.IsAdmin.Should().BeTrue(
             "legitimate @actual.chat email from Apple's id_token should grant admin");
-        account.Email.Should().Be(idTokenEmail);
+        account.Email.Should().Be(realEmail);
     }
 
     [Fact]
