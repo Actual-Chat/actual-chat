@@ -17,8 +17,13 @@
                     <div class="author-incut ai-extra">+@extraAuthorCount</div>
                 }
             </div>
-            <div class="c-time">
-                @timeTotal
+            <div class="c-info">
+                <div class="c-time c-tool">
+                    @timeTotal
+                </div>
+                <div class="c-count c-tool">
+                    @(MessageCount + " message".Pluralize(MessageCount))
+                </div>
             </div>
         </div>
         <HeaderButton Click="CopyToClipboardRequested">
@@ -33,6 +38,7 @@
     private MomentClockSet Clocks => Hub.Clocks;
 
     [Parameter] public IReadOnlyList<AuthorId> Authors { get; set; } = null!;
+    [Parameter] public int MessageCount { get; set; }
     [Parameter] public DateTime StartsAt { get; set; }
     [Parameter] public DateTime EndsAt { get; set; }
     [Parameter] public bool IsSeparated { get; set; }

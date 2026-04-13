@@ -20,6 +20,7 @@
                     ? createdAt.ToString("dddd")
                         : createdAt.ToString("MMM dd"); // this year
     var attachments = m is null ? [] : m.Attachments;
+    var messageCount = m!.MessageCount;
 }
 
 <div class="thread-message"
@@ -34,12 +35,12 @@
                 @TranslationFragments.TranslationMark(title.State)
             </span>
         </div>
-        <div class="c-right" @onclick="@OnGoToTheThread">
-            @if (!isLoading) {
-                <span class="c-message-count">@m!.MessageCount</span>
-            }
-            <i class="icon-chevron-right"></i>
-        </div>
+        <HeaderButton
+            Class="btn-go-to-thread"
+            Tooltip="Go to the thread"
+            Click="@OnGoToTheThread">
+            <i class="icon-arrow-right"></i>
+        </HeaderButton>
     </div>
     <div class="c-short">
         @description.Text
@@ -138,12 +139,17 @@
             }
         </div>
         <div class="c-info">
-            <span>@creationDate,</span><span> created by </span>
-            @if (isLoading) {
-                <string-skeleton firstWidth="4" secondWidth="8" height="4"/>
-            } else {
-                <span class="c-author-name">@m!.OwnerName</span>
-            }
+            <div class="c-created">
+                <span>@creationDate,</span><span> created by </span>
+                @if (isLoading) {
+                    <string-skeleton firstWidth="4" secondWidth="8" height="4"/>
+                } else {
+                    <span class="c-author-name">@m!.OwnerName</span>
+                }
+            </div>
+            <div class="c-count">
+                @(messageCount + " message".Pluralize((int)messageCount))
+            </div>
         </div>
         @if (!isLoading) {
             <HeaderButton Click="OnCopyToClipboardRequested">

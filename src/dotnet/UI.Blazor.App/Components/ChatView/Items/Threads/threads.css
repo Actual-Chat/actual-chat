@@ -20,15 +20,6 @@
     @apply absolute -top-0.5;
     @apply text-title-1;
 }
-.thread-message .c-title .c-right {
-    @apply flex-none flex-x gap-x-0.5;
-    @apply text-03 text-caption-1;
-    @apply cursor-pointer;
-}
-.touch-capable .thread-message .c-title .c-right:active,
-body.hoverable .thread-message .c-title .c-right:hover {
-    @apply text-01;
-}
 .thread-message .c-short {
     @apply text-caption-4;
 }
@@ -73,9 +64,19 @@ body.hoverable .thread-message .c-title .c-right:hover {
     @apply flex-x items-center gap-x-1;
 }
 .thread-message .c-footer .c-info {
-    @apply flex-1 flex-x gap-x-0.5;
-    @apply text-caption-6 text-03;
+    @apply flex-1 flex-y;
     @apply truncate;
+    @apply text-xxs leading-3;
+}
+.thread-message .c-footer .c-info .c-created {
+    @apply flex-1 flex-x gap-x-0.5;
+    @apply truncate;
+    @apply text-01;
+}
+.thread-message .c-footer .c-info .c-count {
+    @apply flex-1 flex-x gap-x-0.5;
+    @apply truncate;
+    @apply text-03;
 }
 .thread-message .c-footer .c-info .c-author-name {
     @apply truncate;

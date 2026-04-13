@@ -21,7 +21,7 @@
                 Title="@m.Title"
                 MessageCount="@messageCount"
                 StartsAt="@startsAt"
-                MessageCountClick="@ToggleShowMessage"/>
+                ConversationToggleClick="@ToggleShowMessage"/>
             <div class="c-short">
                 @TranslationFragments.TranslatedMarkupWithMark(m.Description)
                 @if (!_isOpen) {
@@ -53,6 +53,7 @@
     <ConversationMessageFooter
         CopyToClipboardRequested="@OnCopyToClipboardRequested"
         Authors="@conversation.AuthorIds"
+        MessageCount="@messageCount"
         StartsAt="@startsAt"
         EndsAt="@endsAt"/>
 </div>

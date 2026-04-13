@@ -2,17 +2,22 @@
 @{
     var cls = IsSeparated ? "conversation-header sticky" : "conversation-header-short";
     var startDate = GetStartDateString();
+    var tooltip = IsSeparated ? "Collapse summary" : "Expand summary";
 }
 
 <div class="@cls"
      data-menu="@(MenuRef.New<ConversationMenu>(Conversation.Id.Value, IsSeparated.ToString()))">
     <div class="bg-wrapper">
-        <div class="c-ending @_loadingCls" @onclick="OnMessageCountClick">
-            <div class="c-content">
-                <span class="c-message-count">@MessageCount</span>
-                <i class="icon-chevron-compact-down rotate-icon"></i>
-            </div>
-        </div>
+        <HeaderButton
+            Class="btn-summary-toggle"
+            Tooltip="@tooltip"
+            Click="@OnConversationToggleClick">
+            @if (IsSeparated) {
+                <i class="icon-collapse"></i>
+            } else {
+                <i class="icon-expand"></i>
+            }
+        </HeaderButton>
         <div class="c-title">
             <span class="c-tldr">
                 <i class="icon-tldr"></i>
@@ -34,13 +39,13 @@
     [Parameter] public int MessageCount { get; set; }
     [Parameter] public bool IsSeparated { get; set; }
     [Parameter] public DateTime StartsAt { get; set; }
-    [Parameter] public EventCallback MessageCountClick { get; set; }
+    [Parameter] public EventCallback ConversationToggleClick { get; set; }
 
-    private void OnMessageCountClick() {
+    private void OnConversationToggleClick() {
         _ = TuneUI.Play(Tune.ClickButton);
         _loadingCls = string.IsNullOrEmpty(_loadingCls) ? "loading-conversation" : "";
         StateHasChanged();
-        MessageCountClick.InvokeAsync();
+        ConversationToggleClick.InvokeAsync();
     }
 
     private string GetStartDateString() {
