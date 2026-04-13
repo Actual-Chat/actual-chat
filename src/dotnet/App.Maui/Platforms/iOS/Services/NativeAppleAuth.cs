@@ -1,13 +1,8 @@
-using ActualChat.Users;
-
 namespace ActualChat.App.Maui;
 
-public sealed class NativeAppleAuth
+public sealed class NativeAppleAuth(IServiceProvider services)
 {
-    private IServiceProvider Services { get; }
-
-    public NativeAppleAuth(IServiceProvider services)
-        => Services = services;
+    private IServiceProvider Services { get; } = services;
 
     public async Task SignIn(bool mustExist = false)
     {

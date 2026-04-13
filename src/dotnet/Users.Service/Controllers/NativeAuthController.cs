@@ -2,13 +2,13 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using ActualChat.Users.Module;
+using ActualLab.Fusion.Server;
 using AspNet.Security.OAuth.Apple;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using Microsoft.AspNetCore.Authentication.OAuth;
-using ActualLab.Fusion.Server;
 
 namespace ActualChat.Users.Controllers;
 
@@ -30,88 +30,104 @@ public sealed class NativeAuthController(IServiceProvider services) : Controller
         CancellationToken cancellationToken = default)
     {
         var session = HttpContext.GetSessionFromHeader();
-        userId.RequireNonEmpty();
-        code.RequireNonEmpty();
+        try {
+            userId.RequireNonEmpty();
+            code.RequireNonEmpty();
 
-        var authenticationHandlerProvider = Services.GetRequiredService<IAuthenticationHandlerProvider>();
-        var userSettings = Services.GetRequiredService<UsersSettings>();
-        var handler = await authenticationHandlerProvider
-            .GetHandlerAsync(HttpContext, AppleAuthenticationDefaults.AuthenticationScheme)
-            .ConfigureAwait(false);
-        if (handler is not AppleAuthenticationHandler appleAuthHandler)
-            throw StandardError.NotFound<AppleAuthenticationHandler>();
+            var authenticationHandlerProvider = Services.GetRequiredService<IAuthenticationHandlerProvider>();
+            var userSettings = Services.GetRequiredService<UsersSettings>();
+            var handler = await authenticationHandlerProvider
+                .GetHandlerAsync(HttpContext, AppleAuthenticationDefaults.AuthenticationScheme)
+                .ConfigureAwait(false);
+            if (handler is not AppleAuthenticationHandler appleAuthHandler)
+                throw StandardError.NotFound<AppleAuthenticationHandler>();
 
-        var options = appleAuthHandler.Options;
-        var context = new AppleGenerateClientSecretContext(HttpContext, appleAuthHandler.Scheme, options);
-        options.ClientId = userSettings.AppleAppId;
-        options.ClientSecret = await options.ClientSecretGenerator.GenerateAsync(context).ConfigureAwait(false);
+            var options = appleAuthHandler.Options;
+            var context = new AppleGenerateClientSecretContext(HttpContext, appleAuthHandler.Scheme, options);
+            options.ClientId = userSettings.AppleAppId;
+            options.ClientSecret = await options.ClientSecretGenerator.GenerateAsync(context).ConfigureAwait(false);
 
-        using var token = await ExchangeCode(code, options, cancellationToken).ConfigureAwait(false);
+            using var token = await ExchangeCode(code, options, cancellationToken).ConfigureAwait(false);
 
-        // Use sub and email from Apple's id_token (received server-to-server),
-        // NOT from caller-supplied query params which can be spoofed.
-        var (idTokenSub, idTokenEmail) = ParseAppleIdToken(token);
+            // Use sub and email from Apple's id_token (received server-to-server),
+            // NOT from caller-supplied query params which can be spoofed.
+            var (idTokenSub, idTokenEmail) = ParseAppleIdToken(token);
 
-        var identity = new ClaimsIdentity(options.ClaimsIssuer);
-        identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, idTokenSub));
-        if (!idTokenEmail.IsNullOrEmpty())
-            identity.AddClaim(new Claim(ClaimTypes.Email, idTokenEmail));
+            var identity = new ClaimsIdentity(options.ClaimsIssuer);
+            identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, idTokenSub));
+            if (!idTokenEmail.IsNullOrEmpty())
+                identity.AddClaim(new Claim(ClaimTypes.Email, idTokenEmail));
 
-        if (!name.IsNullOrEmpty()) {
-            var names = name.Split(' ');
-            switch (names.Length) {
+            if (!name.IsNullOrEmpty()) {
+                var names = name.Split(' ');
+                switch (names.Length) {
                 case 1: {
-                    identity.AddClaim(new Claim(ClaimTypes.GivenName, names[0]));
-                    break;
-                }
+                        identity.AddClaim(new Claim(ClaimTypes.GivenName, names[0]));
+                        break;
+                    }
                 case > 1: {
-                    var firstName = names[0];
-                    identity.AddClaim(new Claim(ClaimTypes.GivenName, firstName));
-                    var lastName = string.Join(' ', names.Skip(1));
-                    identity.AddClaim(new Claim(ClaimTypes.Surname, lastName!));
-                    break;
+                        var firstName = names[0];
+                        identity.AddClaim(new Claim(ClaimTypes.GivenName, firstName));
+                        var lastName = string.Join(' ', names.Skip(1));
+                        identity.AddClaim(new Claim(ClaimTypes.Surname, lastName!));
+                        break;
+                    }
                 }
             }
-        }
 
-        var principal = new ClaimsPrincipal(identity);
-        await UpdateAuthState(session, principal, mustExist, cancellationToken).ConfigureAwait(false);
+            var principal = new ClaimsPrincipal(identity);
+            await UpdateAuthState(session, principal, mustExist, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            Log.LogError(e, "SignInApple failed");
+            var setErrorCmd = new SessionTemporalsBackend_Set(
+                session, Constants.SessionTemporals.SignInErrorKey, "Sign-in with Apple failed. Please try again.");
+            await Commander.Run(setErrorCmd, true, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     [HttpGet("sign-in-google")]
     public async Task SignInGoogle(string code, bool mustExist = false, CancellationToken cancellationToken = default)
     {
         var session = HttpContext.GetSessionFromHeader();
-        // code = code.UrlDecode(); // Weird, but this is somehow necessary
-        code.RequireNonEmpty();
-        var schemeName = GoogleDefaults.AuthenticationScheme;
-        var options = Services
-            .GetRequiredService<IOptionsSnapshot<GoogleOptions>>()
-            .Get(schemeName);
+        try {
+            // code = code.UrlDecode(); // Weird, but this is somehow necessary
+            code.RequireNonEmpty();
+            var schemeName = GoogleDefaults.AuthenticationScheme;
+            var options = Services
+                .GetRequiredService<IOptionsSnapshot<GoogleOptions>>()
+                .Get(schemeName);
 
-        using var token = await ExchangeCode(code, options, cancellationToken).ConfigureAwait(false);
-        var request = new HttpRequestMessage(HttpMethod.Get, options.UserInformationEndpoint);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token.AccessToken);
-        var userResponse = await options.Backchannel.SendAsync(request, cancellationToken).ConfigureAwait(false);
-        if (!userResponse.IsSuccessStatusCode) {
-            var message =
-                $"An error occurred when retrieving Google user information ({userResponse.StatusCode}). "
-                + $"Please check if the authentication information is correct.";
-            throw StandardError.External(message);
+            using var token = await ExchangeCode(code, options, cancellationToken).ConfigureAwait(false);
+            var request = new HttpRequestMessage(HttpMethod.Get, options.UserInformationEndpoint);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token.AccessToken);
+            var userResponse = await options.Backchannel.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            if (!userResponse.IsSuccessStatusCode) {
+                var message =
+                    $"An error occurred when retrieving Google user information ({userResponse.StatusCode}). "
+                    + $"Please check if the authentication information is correct.";
+                throw StandardError.External(message);
+            }
+
+            // Build a principal from the Google user
+            var claimsIssuer = options.ClaimsIssuer ?? schemeName;
+            var identity = new ClaimsIdentity(claimsIssuer);
+            var json = await userResponse.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            using (var payload = JsonDocument.Parse(json)) {
+                var userData = payload.RootElement;
+                foreach (var action in options.ClaimActions)
+                    action.Run(userData, identity, claimsIssuer);
+            }
+
+            var principal = new ClaimsPrincipal(identity);
+            await UpdateAuthState(session, principal, mustExist, cancellationToken).ConfigureAwait(false);
         }
-
-        // Build a principal from the Google user
-        var claimsIssuer = options.ClaimsIssuer ?? schemeName;
-        var identity = new ClaimsIdentity(claimsIssuer);
-        var json = await userResponse.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        using (var payload = JsonDocument.Parse(json)) {
-            var userData = payload.RootElement;
-            foreach (var action in options.ClaimActions)
-                action.Run(userData, identity, claimsIssuer);
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            Log.LogError(e, "SignInGoogle failed");
+            var setErrorCmd = new SessionTemporalsBackend_Set(
+                session, Constants.SessionTemporals.SignInErrorKey, "Sign-in with Google failed. Please try again.");
+            await Commander.Run(setErrorCmd, true, cancellationToken).ConfigureAwait(false);
         }
-
-        var principal = new ClaimsPrincipal(identity);
-        await UpdateAuthState(session, principal, mustExist, cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods
