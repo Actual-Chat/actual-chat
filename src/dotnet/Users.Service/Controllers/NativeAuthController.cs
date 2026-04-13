@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using ActualChat.Users.Module;
@@ -46,10 +47,15 @@ public sealed class NativeAuthController(IServiceProvider services) : Controller
         options.ClientSecret = await options.ClientSecretGenerator.GenerateAsync(context).ConfigureAwait(false);
 
         using var token = await ExchangeCode(code, options, cancellationToken).ConfigureAwait(false);
+
+        // Use sub and email from Apple's id_token (received server-to-server),
+        // NOT from caller-supplied query params which can be spoofed.
+        var (idTokenSub, idTokenEmail) = ParseAppleIdToken(token);
+
         var identity = new ClaimsIdentity(options.ClaimsIssuer);
-        identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, userId));
-        if (!email.IsNullOrEmpty())
-            identity.AddClaim(new Claim(ClaimTypes.Email, email));
+        identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, idTokenSub));
+        if (!idTokenEmail.IsNullOrEmpty())
+            identity.AddClaim(new Claim(ClaimTypes.Email, idTokenEmail));
 
         if (!name.IsNullOrEmpty()) {
             var names = name.Split(' ');
@@ -167,6 +173,18 @@ public sealed class NativeAuthController(IServiceProvider services) : Controller
         finally {
             HttpContext.User = oldUser;
         }
+    }
+
+    private static (string Sub, string? Email) ParseAppleIdToken(OAuthTokenResponse token)
+    {
+        var idToken = token.Response!.RootElement.GetProperty("id_token").GetString()
+            ?? throw StandardError.External("Apple id_token is missing from token response.");
+
+        var jwt = new JwtSecurityToken(idToken);
+        var sub = jwt.Subject
+            ?? throw StandardError.External("Apple id_token is missing 'sub' claim.");
+        var email = jwt.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
+        return (sub, email);
     }
 
     private static async Task<string> Format(HttpResponseMessage response)
