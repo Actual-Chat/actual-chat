@@ -22,6 +22,12 @@ let lastLogTime = 0;
 export class AudioVideoSync {
     /** Called by AudioPlayer on every feeder state change, and from C# AudioTrackPlayer on MAUI */
     static update(authorId: string, playingAtSec: number, recordedAtMs: number, playbackState: string): void {
+        // Terminal states — clear sync data so video falls back to wall-clock timing
+        if (playbackState === 'ended') {
+            this.clear(authorId);
+            return;
+        }
+
         const state: AudioSyncState = {
             playingAtSec,
             capturedAt: performance.now(),
