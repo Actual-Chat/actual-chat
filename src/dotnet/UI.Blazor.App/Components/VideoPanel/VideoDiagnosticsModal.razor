@@ -13,6 +13,9 @@
     Class="video-diagnostics-modal"
     Title="Video Diagnostics"
     HasCloseButton="true">
+    <Buttons>
+        <Button Class="btn-modal" Click="@OnCopyClick">Copy</Button>
+    </Buttons>
     <Body>
         @* Own streaming *@
         <div class="diag-section">
@@ -270,6 +273,8 @@
 
     private void OnToggleOwnStreamingDetails() {
         _showOwnStreamingDetails = !_showOwnStreamingDetails;
+        if (!_showOwnStreamingDetails)
+            _ownDiag = null;
         EnsurePollingState();
         StateHasChanged();
     }
@@ -330,6 +335,61 @@
 
     private string GetShowDetailsIndicator(bool show)
         => show ? ">---<" : "<->";
+
+    private async Task OnCopyClick() {
+        var sb = new System.Text.StringBuilder();
+        var m = State.Value;
+
+        sb.AppendLine("=== Video Diagnostics ===");
+        sb.AppendLine();
+
+        // Own streaming
+        sb.AppendLine("-- Own Streaming --");
+        if (m.OwnStreamingMode is { } mode)
+            sb.AppendLine($"Mode: {mode}");
+        else
+            sb.AppendLine("Status: Not streaming");
+
+        if (_ownDiag is { } ownVal
+            && ownVal.TryGetProperty("stream", out var ownStream)
+            && ownStream.ValueKind == JsonValueKind.Object) {
+            AppendJson(sb, ownStream);
+            sb.AppendLine($"SignalR: {GetStr(ownVal, "signalRState")}");
+        }
+        sb.AppendLine();
+
+        // Streams
+        sb.AppendLine($"-- Active Streams ({m.Streams.Length}, {m.MemberCount} members) --");
+        foreach (var s in m.Streams) {
+            var sid = s.Info.StreamId.Value;
+            sb.AppendLine();
+            sb.AppendLine($"[{sid}] {s.Author}{(s.IsOwn ? " (Own)" : "")}");
+            sb.AppendLine($"  Kind: {(s.Info.StreamKind == StreamKind.Screencast ? "Screencast" : "Camera")}");
+            sb.AppendLine($"  Started: {DateTimeConverter.ToLocalTime(s.Info.StartedAt):HH:mm:ss}");
+            sb.AppendLine($"  Codec: {s.Info.Format.Codec}");
+            sb.AppendLine($"  Resolution: {s.Info.Format.Width}x{s.Info.Format.Height}");
+
+            if (_streamDiags.TryGetValue(sid, out var rd) && rd.ValueKind == JsonValueKind.Object) {
+                AppendJson(sb, rd, "  ");
+            }
+        }
+
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", sb.ToString());
+    }
+
+    private static void AppendJson(System.Text.StringBuilder sb, JsonElement el, string indent = "") {
+        foreach (var prop in el.EnumerateObject()) {
+            if (prop.Value.ValueKind == JsonValueKind.Object) {
+                sb.AppendLine($"{indent}{prop.Name}:");
+                AppendJson(sb, prop.Value, indent + "  ");
+            } else if (prop.Value.ValueKind == JsonValueKind.Array) {
+                var items = string.Join(", ", prop.Value.EnumerateArray().Select(x => x.ToString()));
+                sb.AppendLine($"{indent}{prop.Name}: [{items}]");
+            } else {
+                sb.AppendLine($"{indent}{prop.Name}: {prop.Value}");
+            }
+        }
+    }
 
     // Nested types
 

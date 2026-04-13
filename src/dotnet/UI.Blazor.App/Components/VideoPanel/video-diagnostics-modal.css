@@ -1,5 +1,5 @@
 .video-diagnostics-modal {
-    @apply w-96;
+    @apply w-112;
 }
 
 .video-diagnostics-modal .dialog-body {
