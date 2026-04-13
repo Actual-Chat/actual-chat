@@ -73,10 +73,23 @@ export class RpcClientStreamSender<T> implements IRpcObject {
     };
   }
 
+  /** Resolves when the server sends its initial $sys.Ack. */
+  whenStarted(): Promise<void> {
+    return this._started.promise;
+  }
+
   /** Called by system call handler when $sys.Ack is received from the server. */
-  onAck(_nextIndex: number, _hostId: string): void {
+  onAck(nextIndex: number, _hostId: string): void {
     if (!this._started.isCompleted) {
       this._started.resolve();
+    }
+    // Honor server's reset request: align our index to what the server expects.
+    // Items already sent with higher indexes were rejected; the server is telling
+    // us to resume from nextIndex.  We can't retransmit (no buffer), but aligning
+    // prevents the permanent gap-rejection loop — acceptable for live video where
+    // old frames are stale anyway.
+    if (nextIndex < this._nextIndex) {
+      this._nextIndex = nextIndex;
     }
   }
 

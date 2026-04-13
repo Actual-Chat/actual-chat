@@ -183,8 +183,12 @@ export class InternalVideoStream {
                 .PushVideo(RPC_SESSION_DEFAULT, this.ctx.chatId, clientStartOffset, format, sender.toRef())
                 .catch((err: unknown) => warnLog?.log('PushVideo rejected:', err));
 
-            // Pump frames. RpcClientStreamSender internally waits for the
-            // server's initial ack before its first `sendItem` leaves the wire.
+            // Wait for the server to register the inbound stream and send
+            // $sys.Ack before pumping.  Without this, items sent before
+            // registration are silently dropped, and the resulting index gap
+            // causes permanent rejection on the server side.
+            await sender.whenStarted();
+
             while (!this.isCompleted || !this.frames.isEmpty()) {
                 while (!this.frames.isEmpty()) {
                     const frame = this.frames.shift()!;
