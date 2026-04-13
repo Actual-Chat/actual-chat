@@ -5,6 +5,7 @@ namespace ActualChat.Streaming;
 
 public interface ILiveVideoStreams : IComputeService
 {
+    [Obsolete("2026.04: Use IStreamServer.GetVideo via RPC")]
     [LegacyName("GetVideo", "2.6.9999")]
     Task<RpcStream<VideoFrame>?> GetStream(
         Session session,

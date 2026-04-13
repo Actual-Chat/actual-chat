@@ -4,6 +4,7 @@ using ActualChat.Hosting;
 using ActualChat.Transcription;
 using ActualChat.Video;
 using ActualLab.Rpc;
+using ActualLab.Rpc.Infrastructure;
 
 namespace ActualChat.Streaming.Services;
 
@@ -13,6 +14,7 @@ public class StreamServer(IServiceProvider services) : IStreamServer
     private IAudioStreamingBackend Backend { get; } = services.GetRequiredService<IAudioStreamingBackend>();
     private IVideoStreamingBackend VideoBackend { get; } = services.GetRequiredService<IVideoStreamingBackend>();
     private RemoteAudioStreamCache RemoteAudioCache { get; } = services.GetRequiredService<RemoteAudioStreamCache>();
+    private MomentClockSet Clocks { get; } = services.Clocks();
     private ILogger Log { get; } = services.LogFor<StreamServer>();
 
     public async Task<RpcStream<byte[]>?> GetAudio(string streamId, TimeSpan skipTo, CancellationToken cancellationToken)
@@ -29,6 +31,16 @@ public class StreamServer(IServiceProvider services) : IStreamServer
         // Remote stream: fetch raw, cache locally, apply skipTo
         var cached = await GetOrFetchRemoteAudio(parsedStreamId, skipTo, cancellationToken).ConfigureAwait(false);
         return cached == null ? null : RpcStream.New(cached);
+    }
+
+    public async Task<RpcStream<VideoFrame>?> GetVideo(string streamId, TimeSpan skipTo, CancellationToken cancellationToken)
+    {
+        var parsedStreamId = StreamId.Parse(streamId);
+        var peerId = RpcInboundContext.Current?.Peer.Id.ToString() ?? "rpc-unknown";
+        var remoteStream = await VideoBackend.GetVideo(parsedStreamId, skipTo, peerId, cancellationToken).ConfigureAwait(false);
+        return remoteStream is null
+            ? null
+            : RpcStream.New(remoteStream, allowReconnect: false);
     }
 
     public async Task<RpcStream<TranscriptDiff>?> GetTranscript(string streamId, CancellationToken cancellationToken)
@@ -94,6 +106,29 @@ public class StreamServer(IServiceProvider services) : IStreamServer
         await VideoBackend.PushVideo(videoRecord, newFrameStream, stopCts.Token).ConfigureAwait(false);
     }
 
+    public async Task RequestKeyFrame(string streamId, CancellationToken cancellationToken)
+    {
+        var sid = StreamId.Parse(streamId);
+        await VideoBackend.RequestKeyFrame(sid, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<double> ReportVideoLatency(
+        string streamId,
+        double streamOffsetMs,
+        double medianDecodeTimeMs,
+        int bufferDepth,
+        double bufferSpanMs,
+        CancellationToken cancellationToken)
+    {
+        var parsedStreamId = StreamId.Parse(streamId);
+        var peerId = RpcInboundContext.Current?.Peer.Id.ToString() ?? "rpc-unknown";
+        await VideoBackend.ReportPeerLatency(
+            parsedStreamId, peerId, streamOffsetMs,
+            medianDecodeTimeMs, bufferDepth, bufferSpanMs,
+            cancellationToken).ConfigureAwait(false);
+
+        return Clocks.SystemClock.UtcNow.ToUnixTimeMilliseconds();
+    }
 
     // Private methods
 
