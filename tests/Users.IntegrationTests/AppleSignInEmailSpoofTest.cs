@@ -81,26 +81,27 @@ public class AppleSignInEmailSpoofTest(AppHostFixture fixture, ITestOutputHelper
     }
 
     [Fact]
-    public async Task SpoofedUserIdShouldUseIdTokenSub()
+    public async Task SpoofedUserIdShouldNotSignInAsVictim()
     {
-        // arrange
-        var realAppleUserId = UniqueNames.AppleId("apple-real");
-        var spoofedAppleUserId = UniqueNames.AppleId("apple-victim");
-        var email = "user@gmail.com";
-        var code1 = AppleTokenHandler.Setup(realAppleUserId, email);
-        var code2 = AppleTokenHandler.Setup(realAppleUserId, email);
+        // arrange – victim signs in normally, then attacker uses own valid code but spoofs victim's userId
+        var victimAppleUserId = UniqueNames.AppleId("apple-victim");
+        var attackerAppleUserId = UniqueNames.AppleId("apple-attacker");
+        var victimEmail = "victim@gmail.com";
+        var attackerEmail = "attacker@gmail.com";
+        var victimCode = AppleTokenHandler.Setup(victimAppleUserId, victimEmail);
+        var attackerCode = AppleTokenHandler.Setup(attackerAppleUserId, attackerEmail);
 
         // act
-        var account1 = await SignInWithApple(code1, realAppleUserId, email);
-        var account2 = await SignInWithApple(code2, spoofedAppleUserId, email);
+        var victimAccount = await SignInWithApple(victimCode, victimAppleUserId, victimEmail);
+        var attackerAccount = await SignInWithApple(attackerCode, victimAppleUserId, attackerEmail);
 
         // assert
-        account1.IsGuest.Should().BeFalse();
-        account2.IsGuest.Should().BeFalse();
-        account2.Id.Should().Be(account1.Id,
-            "identity should be keyed by id_token sub, not the caller-supplied userId");
-        account2.Identities.HasAppleIdentity(out var appleIdentity).Should().BeTrue();
-        appleIdentity.Value.Should().Be(realAppleUserId,
+        victimAccount.IsGuest.Should().BeFalse();
+        attackerAccount.IsGuest.Should().BeFalse();
+        attackerAccount.Id.Should().NotBe(victimAccount.Id,
+            "attacker must not gain access to victim's account by spoofing userId query param");
+        attackerAccount.Identities.HasAppleIdentity(out var appleIdentity).Should().BeTrue();
+        appleIdentity.Value.Should().Be(attackerAppleUserId,
             "stored Apple identity must use id_token sub, not the caller-supplied spoofed userId");
     }
 
