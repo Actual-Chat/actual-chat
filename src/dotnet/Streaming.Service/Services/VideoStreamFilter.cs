@@ -44,8 +44,17 @@ internal class VideoStreamFilter(
         var skipping = true; // Start in skip mode — wait for first keyframe
         var skippedCount = 0;
 
+        var yieldedCount = 0;
+        var firstFrameLogged = false;
         try {
             await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                // TEMP DIAG: log the very first frame the filter sees from the source
+                if (!firstFrameLogged) {
+                    log.LogWarning(
+                        "VideoStreamFilter: first frame from source — offset={Offset}, isKey={IsKey}, KF#{KF}, skipToActive={SkipToActive}",
+                        frame.Offset, frame.IsKeyFrame, frame.KeyFrameNumber, skipToActive);
+                    firstFrameLogged = true;
+                }
                 // 0. SkipTo filter — drop all frames before the requested offset (must land on keyframe)
                 if (skipToActive) {
                     if (frame.Offset < skipTo || !frame.IsKeyFrame) {
@@ -81,10 +90,17 @@ internal class VideoStreamFilter(
                     lastKeyFrameNumber = frame.KeyFrameNumber;
                     skipping = false;
                     skippedCount = 0;
+                    yieldedCount++;
+                    // TEMP DIAG: trace every keyframe through the filter pipeline
+                    log.LogWarning(
+                        "VideoStreamFilter: yielding keyframe KF#{KF} at offset {Offset}, dataLen={DataLen}",
+                        frame.KeyFrameNumber, frame.Offset, frame.Data?.Length ?? frame.CachedSerializedBytes?.Length ?? 0);
                     yield return frame;
                 }
-                else if (!skipping && frame.KeyFrameNumber == lastKeyFrameNumber)
+                else if (!skipping && frame.KeyFrameNumber == lastKeyFrameNumber) {
+                    yieldedCount++;
                     yield return frame;
+                }
                 else {
                     if (!skipping) {
                         skipping = true;
@@ -95,6 +111,22 @@ internal class VideoStreamFilter(
                     skippedCount++;
                 }
             }
+
+            // TEMP DIAG: did the source yield anything at all?
+            if (!firstFrameLogged)
+                log.LogWarning("VideoStreamFilter: source yielded ZERO frames — loop never entered");
+
+            // Source exhausted — if skipTo filter was never satisfied, the
+            // consumer gets an empty stream.  Log so we can correlate with
+            // the client-side "0 frames received" diagnostic.
+            if (skipToActive)
+                log.LogWarning(
+                    "VideoStreamFilter: source completed while SkipTo still active! " +
+                    "SkipTo={SkipTo}, skippedBySkipTo={Skipped} — consumer will receive 0 frames",
+                    skipTo, skipToFramesSkipped);
+            else if (yieldedCount == 0)
+                log.LogWarning(
+                    "VideoStreamFilter: source completed, yielded 0 frames (all filtered by quality/temporal/gap)");
         }
         finally {
             refreshCts.CancelAndDisposeSilently();

@@ -33,7 +33,15 @@ import type { RpcStreamSender } from "./rpc-stream-sender.js";
 
 /** Handles incoming system call messages — class-based equivalent of the former standalone function. */
 export class RpcSystemCallHandler {
+  private _loggedMethods = new Set<string>();
+
   handle(message: RpcMessage, args: unknown[], peer: RpcPeer): void {
+    // Log first occurrence of each system method to trace what the server sends
+    const sysMethod = message.Method ?? "";
+    if (!this._loggedMethods.has(sysMethod)) {
+      this._loggedMethods.add(sysMethod);
+      console.log(`[RpcSysHandler] first ${sysMethod} received, relatedId=${message.RelatedId ?? "none"}`);
+    }
     const method = message.Method;
     const relatedId = message.RelatedId ?? 0;
 
@@ -71,12 +79,18 @@ export class RpcSystemCallHandler {
       }
       case RpcSystemCalls.item: {
         const stream = peer.remoteObjects.get(relatedId) as RpcStream<unknown> | undefined;
-        if (stream) stream.onItem(args[0] as number, resolveStreamRefs(args[1], peer));
+        if (!stream) {
+          console.warn(`[RpcSysHandler] $sys.I: no stream for relatedId=${relatedId}, registered ids: [${[...peer.remoteObjects.keys()].join(",")}]`);
+        } else {
+          stream.onItem(args[0] as number, resolveStreamRefs(args[1], peer));
+        }
         break;
       }
       case RpcSystemCalls.batch: {
         const stream = peer.remoteObjects.get(relatedId) as RpcStream<unknown> | undefined;
-        if (stream) {
+        if (!stream) {
+          console.warn(`[RpcSysHandler] $sys.B: no stream for relatedId=${relatedId}`);
+        } else {
           const items = args[1] as unknown[];
           for (let i = 0; i < items.length; i++) items[i] = resolveStreamRefs(items[i]!, peer);
           stream.onBatch(args[0] as number, items);
@@ -85,7 +99,9 @@ export class RpcSystemCallHandler {
       }
       case RpcSystemCalls.end: {
         const stream = peer.remoteObjects.get(relatedId) as RpcStream<unknown> | undefined;
-        if (stream) {
+        if (!stream) {
+          console.warn(`[RpcSysHandler] $sys.End: no stream for relatedId=${relatedId}`);
+        } else if (stream) {
           // .NET ExceptionInfo is a struct — even for normal completion, it serializes
           // as a non-null object with empty fields (e.g. { "message": "", "typeRef": {...} }).
           // Check both PascalCase and camelCase, and treat empty messages as no error.

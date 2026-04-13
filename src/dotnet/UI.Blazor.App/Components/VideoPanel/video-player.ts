@@ -1,5 +1,5 @@
 import { Log } from 'logging';
-import { initVideoRpc, getVideoRpcClient } from '../../Services/Video/video-rpc-client';
+import { initVideoRpc, getVideoRpcClient, disconnectVideoRpc } from '../../Services/Video/video-rpc-client';
 import type { VideoFrameDto } from '../../Services/Video/video-rpc-service';
 import { fastRaf } from 'fast-raf';
 import { ServerClock } from 'server-clock';
@@ -1116,17 +1116,49 @@ export class VideoPlayer {
             warnLog?.log(`startPull [RPC]: calling GetStream(~, ${streamId}, ${skipToTicks})`);
             const stream = await client.GetStream(session, streamId, skipToTicks);
             warnLog?.log(`startPull [RPC]: GetStream returned, starting iteration`);
+            let pullFrameCount = 0;
+
+            // Timeout: if no frames arrive within 5 seconds of starting
+            // iteration, the RPC stream is likely stuck (server-side
+            // RpcSharedStream deadlock — ack sent but never processed).
+            // Tear down the RPC peer — this calls stream.disconnect(),
+            // which resolves the consumer's `next()` promise and breaks
+            // the for-await loop, letting the retry logic below fire.
+            const FIRST_FRAME_TIMEOUT_MS = 5000;
+            let firstFrameTimer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+                firstFrameTimer = null;
+                if (pullFrameCount === 0 && !abortController.signal.aborted) {
+                    warnLog?.log(`Pull stream timeout: no frames received in ${FIRST_FRAME_TIMEOUT_MS}ms, disconnecting RPC for retry`);
+                    disconnectVideoRpc();
+                }
+            }, FIRST_FRAME_TIMEOUT_MS);
+
             for await (const frame of stream) {
                 if (abortController.signal.aborted || !this._isPlayingNow) break;
+                if (firstFrameTimer !== null) {
+                    clearTimeout(firstFrameTimer);
+                    firstFrameTimer = null;
+                }
+                pullFrameCount++;
                 this.pullRetryCount = 0;
                 this.processRpcFrame(frame);
             }
+            if (firstFrameTimer !== null) {
+                clearTimeout(firstFrameTimer);
+                firstFrameTimer = null;
+            }
             // Stream completed normally
             if (!abortController.signal.aborted && this._isPlayingNow) {
+                if (pullFrameCount === 0) {
+                    warnLog?.log(
+                        `Pull stream completed with 0 frames — skipTo may exceed available data, retrying at live edge`);
+                }
                 this.pullRetryCount++;
-                const delay = Math.min(1000 * this.pullRetryCount, 5000);
+                const delay = pullFrameCount === 0
+                    ? Math.min(500 * this.pullRetryCount, 2000)  // faster retry on empty stream
+                    : Math.min(1000 * this.pullRetryCount, 5000);
                 warnLog?.log(
-                    `Pull stream completed while playing (retry #${this.pullRetryCount}, delay ${delay}ms)`);
+                    `Pull stream completed while playing (retry #${this.pullRetryCount}, delay ${delay}ms, received ${pullFrameCount} frames)`);
                 this.pullRetryTimer = setTimeout(() => {
                     this.pullRetryTimer = null;
                     if (!this.isPlaying) return;
@@ -1165,8 +1197,9 @@ export class VideoPlayer {
             this.receivedFrameCount++;
             if (isKeyFrame) {
                 this.receivedKeyframeCount++;
-                debugLog?.log(
-                    `Received keyframe #${this.receivedKeyframeCount}: offsetMs=${offsetMs.toFixed(0)}, ` +
+                // TEMP DIAG: warnLog so it always appears in console
+                warnLog?.log(
+                    `KEYFRAME received #${this.receivedKeyframeCount}: offsetMs=${offsetMs.toFixed(0)}, ` +
                     `dataLen=${data.length}, descLen=${description?.length ?? 0}`);
             } else if (this.receivedFrameCount % 100 === 1) {
                 debugLog?.log(

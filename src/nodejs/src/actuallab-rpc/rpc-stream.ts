@@ -93,6 +93,10 @@ export class RpcStream<T> implements AsyncIterable<T>, IRpcObject {
   onItem(index: number, item: T): void {
     if (this._disposed || this._completed) return;
 
+    if (index === 0) {
+      console.log(`[RpcStream] first item received, localId=${this.id.localId}`);
+    }
+
     if (index > this._nextExpectedIndex) {
       console.warn("[RpcStream] item index gap", {
         localId: this.id.localId,
@@ -156,6 +160,7 @@ export class RpcStream<T> implements AsyncIterable<T>, IRpcObject {
   /** Called by system call handler when the stream ends ($sys.End). */
   onEnd(index: number, error: Error | null): void {
     if (this._disposed || this._completed) return;
+    console.log(`[RpcStream] stream ended, localId=${this.id.localId}, index=${index}, error=${error?.message ?? "none"}`);
     this._completed = true;
     this._completionError = error;
     this._notifyConsumer();
@@ -192,6 +197,7 @@ export class RpcStream<T> implements AsyncIterable<T>, IRpcObject {
         // Lazy start: send initial ack on first next() call
         if (!self._started) {
           self._started = true;
+          console.log(`[RpcStream] sending initial ack for localId=${self.id.localId}, hostId=${self.id.hostId}`);
           self._sendAck(0, true);
         }
 
