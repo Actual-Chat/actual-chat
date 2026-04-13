@@ -1,5 +1,5 @@
-// Fusion RPC service definitions for video streaming.
-// These match the .NET ILiveVideoStreams and IStreamServer contracts.
+// Fusion RPC service definitions for streaming.
+// Matches the .NET IStreamServer contract.
 
 import { defineRpcService, RpcType } from 'actuallab-rpc';
 
@@ -7,6 +7,7 @@ import { defineRpcService, RpcType } from 'actuallab-rpc';
 export const StreamServerDef = defineRpcService('IStreamServer', {
     GetVideo: { args: ['streamId', 'skipTo'], returns: RpcType.stream },
     PushVideo: { args: ['session', 'chatId', 'clientStartOffset', 'format', 'frameStream'] },
+    PushAudio: { args: ['session', 'chatId', 'repliedChatEntryId', 'clientStartOffset', 'preSkip', 'frameStream'] },
     RequestKeyFrame: { args: ['streamId'] },
     ReportVideoLatency: { args: ['streamId', 'streamOffsetMs', 'medianDecodeTimeMs', 'bufferDepth', 'bufferSpanMs'] },
 });
@@ -36,4 +37,15 @@ export interface VideoFormatDto {
     Width: number;
     Height: number;
     CodecSettings: string;
+}
+
+// --- AudioFrame TypeScript interface ---
+// Matches .NET AudioFrame serialized via MessagePack with implicit string keys.
+// AudioFrame.cs is [MessagePackObject(true)] → PascalCase property names.
+// TimeSpan is serialized as int64 ticks (100ns units).
+export interface AudioFrameDto {
+    Data: Uint8Array;
+    Offset: number;       // TimeSpan ticks (int64)
+    Duration: number;     // TimeSpan ticks (int64)
+    IsKeyFrame: boolean;  // always true for audio
 }

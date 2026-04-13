@@ -338,11 +338,11 @@ export class OpusMediaRecorder implements RecorderStateServer {
             this.origin = baseUri;
         }
         debugLog?.log(`init(): call create on workers`);
-        const hubUrl = new URL('/api/hub/streams', this.origin).toString();
+        const rpcWsUrl = new URL('/rpc/ws', this.origin).toString().replace(/^http/, 'ws');
 
         await this.encoderWorker.create(
             Versioning.assetMap,
-            hubUrl,
+            rpcWsUrl,
             { type: 'rpc-timeout', timeoutMs: 5_000 });
         debugLog?.log(`init(): encoderWorker created`);
 

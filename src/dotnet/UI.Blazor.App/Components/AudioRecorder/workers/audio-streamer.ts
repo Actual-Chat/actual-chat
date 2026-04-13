@@ -1,4 +1,3 @@
-// TODO(AY): remove eslint-disables and fix errors
 /* eslint-disable */
 import { AUDIO_STREAMER as AS, AUDIO_ENCODER as AE } from '_constants';
 import Denque from 'denque';
@@ -6,9 +5,8 @@ import { Disposable } from 'disposable';
 import { EventHandlerSet } from 'event-handling';
 import { ObjectPool } from 'object-pool';
 import { delayAsync } from 'promises';
-import * as signalR from '@microsoft/signalr';
-import { HubConnectionState, IStreamResult } from '@microsoft/signalr';
-import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
+import { RpcHub, RpcClientPeer, RpcClientStreamSender } from 'actuallab-rpc';
+import { StreamServerDef, type AudioFrameDto } from '../../../Services/Video/video-rpc-service';
 import { ServerClock } from 'server-clock';
 import { WorkerConnectivityUI } from './worker-connectivity-ui';
 import { Log } from 'logging';
@@ -17,6 +15,15 @@ const { debugLog, infoLog, warnLog } = Log.get('AudioStreamer');
 const bufferPool: ObjectPool<ArrayBufferLike> = new ObjectPool<ArrayBufferLike>(
     () => new ArrayBuffer(AE.FRAME_BUFFER_BYTES)
 ).expandTo(20);
+
+/** Serialization format for Fusion RPC. */
+const RPC_SERIALIZATION_FORMAT = 'msgpack6';
+
+/** 20ms in .NET TimeSpan ticks (100ns units). */
+const FRAME_DURATION_TICKS = AE.FRAME_DURATION_MS * 10_000;
+
+/** Session.Default — resolved from the WebSocket connection context. */
+const RPC_SESSION_DEFAULT = '~';
 
 export class AudioStream implements Disposable {
     public static totalCount = 0;
@@ -31,7 +38,6 @@ export class AudioStream implements Disposable {
     public readonly whenDisposed: Promise<void>;
 
     constructor(
-        private readonly sessionToken: string,
         private readonly preSkip: number,
         private readonly chatId: string,
         private repliedChatEntryId?: string,
@@ -47,7 +53,6 @@ export class AudioStream implements Disposable {
     }
 
     public dispose() {
-        // dispose = "stop streaming as quickly as possible"
         if (this.isDisposed)
             return;
 
@@ -60,7 +65,6 @@ export class AudioStream implements Disposable {
     }
 
     public complete(): void {
-        // complete = "send everything and dispose"
         if (this.isCompleted)
             return;
 
@@ -80,7 +84,6 @@ export class AudioStream implements Disposable {
         if (source.byteLength <= buffer.byteLength)
             frame = new Uint8Array(buffer, 0, source.byteLength)
         else {
-            // bufferPool's buffer isn't big enough, so we allocate a "custom" one
             frame = new Uint8Array(source.byteLength);
             bufferPool.release(buffer);
         }
@@ -92,7 +95,7 @@ export class AudioStream implements Disposable {
         this.frames.push(frame);
         while (this.frames.length > AS.MAX_BUFFERED_FRAMES) {
             const oldFrame = this.frames.shift()!;
-            if (oldFrame.buffer.byteLength === AE.FRAME_BUFFER_BYTES) // It's our own buffer
+            if (oldFrame.buffer.byteLength === AE.FRAME_BUFFER_BYTES)
                 bufferPool.release(oldFrame.buffer);
         }
         this.frameAdded.trigger();
@@ -100,290 +103,150 @@ export class AudioStream implements Disposable {
 
     private async stream(): Promise<void> {
         if (this.streamAfter != null) {
-            // We want audio streams to go in order, otherwise the streams buffered
-            // while the client was disconnected may come out of order, and thus create
-            // out-of-order messages.
             await this.streamAfter;
             this.streamAfter = undefined;
         }
 
+        // Wait for initial frames before starting the stream
         while (!this.isCompleted && this.frames.length <= AS.DELAY_FRAMES)
             await this.frameAdded.whenNext();
 
-        let subject: signalR.Subject<Uint8Array[]> | null = null;
-        const framesToSend = new Array<Uint8Array>();
-        while (!this.isDisposed) {
-            try {
-                if (subject === null || !AudioStreamer.isConnected) {
-                    await AudioStreamer.ensureConnected();
-                    if (this.isDisposed)
-                        return;
-                    if (this.isCompleted && this.frames.length === 0)
-                        return; // Same as disposed, we don't want to send an empty stream in this case
+        if (this.isDisposed)
+            return;
+        if (this.isCompleted && this.frames.length === 0)
+            return;
 
-                    subject = new signalR.Subject<Uint8Array[]>();
-                    await AudioStreamer.connection.send(
-                        'ProcessAudioChunks',
-                        this.sessionToken, this.chatId, this.repliedChatEntryId,
-                        (this.firstFrameTimestamp ?? ServerClock.now()) / 1000, this.preSkip, subject);
-                    this.repliedChatEntryId = undefined; // We don't want to send a few "replies" in case we retry
-                }
-                while (AudioStreamer.isConnected && !this.isDisposed) {
-                    // Prepare framesToSend
-                    framesToSend.length = 0;
-                    while (framesToSend.length < AS.MAX_PACK_FRAMES) {
-                        const frame = this.frames.shift()
-                        if (frame !== undefined) {
-                            framesToSend.push(frame);
-                            continue;
-                        }
-                        if (this.isCompleted || framesToSend.length >= AS.MIN_PACK_FRAMES)
-                            break;
+        let sender: RpcClientStreamSender<AudioFrameDto> | null = null;
+        try {
+            await AudioStreamer.ensureConnected();
+            if (this.isDisposed)
+                return;
 
-                        await this.frameAdded.whenNext();
-                    }
+            const streamServer = AudioStreamer.streamServerClient!;
+            const peer = AudioStreamer.rpcPeer!;
 
-                    // Send framesToSend
-                    try {
-                        if (framesToSend.length !== 0) {
-                            debugLog?.log(`${this.name}.stream: sending ${framesToSend.length} frame(s)`);
-                            subject.next(framesToSend);
-                            // We don't want to send frames too quickly, otherwise streams may overlap
-                            await delayAsync(framesToSend.length * AE.FRAME_DURATION_MS / AS.MAX_SPEED);
-                        }
-                    }
-                    finally {
-                        if (framesToSend.length !== 0) {
-                            framesToSend.forEach(f => bufferPool.release(f.buffer))
-                            framesToSend.length = 0;
-                        }
-                    }
+            const clientStartOffset = (this.firstFrameTimestamp ?? ServerClock.now()) / 1000;
+            infoLog?.log(`${this.name}: PushAudio clientStartOffset=${clientStartOffset.toFixed(3)}s`);
 
-                    // Try complete streaming
-                    if (this.isCompleted && this.frames.length === 0) {
-                        debugLog?.log(`${this.name}.stream: completing`);
-                        subject.complete();
-                        this.dispose(); // No-op if already disposed
-                    }
+            sender = new RpcClientStreamSender<AudioFrameDto>(peer);
+
+            void streamServer
+                .PushAudio(RPC_SESSION_DEFAULT, this.chatId, this.repliedChatEntryId ?? null,
+                    clientStartOffset, this.preSkip, sender.toRef())
+                .catch((err: unknown) => warnLog?.log(`${this.name}: PushAudio rejected:`, err));
+
+            this.repliedChatEntryId = undefined;
+
+            await sender.whenStarted();
+
+            let frameIndex = 0;
+            while (!this.isDisposed) {
+                const frame = this.frames.shift();
+                if (frame) {
+                    sender.sendItem({
+                        Data: frame,
+                        Offset: frameIndex * FRAME_DURATION_TICKS,
+                        Duration: FRAME_DURATION_TICKS,
+                        IsKeyFrame: true,
+                    });
+                    frameIndex++;
+
+                    // Release buffer back to pool
+                    if (frame.buffer.byteLength === AE.FRAME_BUFFER_BYTES)
+                        bufferPool.release(frame.buffer);
+                } else if (this.isCompleted && this.frames.length === 0) {
+                    debugLog?.log(`${this.name}: stream completed, ${frameIndex} frames sent`);
+                    sender.sendEnd();
+                    this.dispose();
+                } else {
+                    await this.frameAdded.whenNext();
                 }
             }
-            catch (error) {
-                subject = null; // This triggers retry sending
-                warnLog?.log(`stream: error:`, error);
-                delayAsync(AS.STREAM_ERROR_DELAY * 1000);
-            }
+        } catch (error) {
+            warnLog?.log(`${this.name}: stream error:`, error);
+            try { sender?.sendEnd(error instanceof Error ? error : new Error(String(error))); }
+            catch { /* ignore */ }
+        } finally {
+            this.isDisposed = true;
         }
     }
 }
 
 export class AudioStreamer {
-    public static connection: signalR.HubConnection;
+    public static rpcHub: RpcHub | null = null;
+    public static rpcPeer: RpcClientPeer | null = null;
+    public static streamServerClient: {
+        PushAudio(session: string, chatId: string, repliedChatEntryId: string | null,
+            clientStartOffset: number, preSkip: number, frameStreamRef: unknown): Promise<void>;
+    } | null = null;
     public static readonly streams = new Array<AudioStream>();
     public static lastStream: AudioStream | null = null;
     public static connectionStateChangedEvents = new EventHandlerSet<boolean>()
 
-    public static init(hubUrl: string): void {
+    public static init(rpcWsUrl: string): void {
         if (this.isInitialized)
             return;
 
-        debugLog?.log(`init`, hubUrl);
-        debugBeginRandomDisconnects(AS.DEBUG.RANDOM_DISCONNECT_PERIOD_MS);
+        debugLog?.log(`init`, rpcWsUrl);
 
-        const c = new signalR.HubConnectionBuilder()
-            .withUrl(hubUrl, {
-                skipNegotiation: true,
-                transport: signalR.HttpTransportType.WebSockets,
-            })
-            .withAutomaticReconnect({
-                nextRetryDelayInMilliseconds: (ctx) => {
-                    if (WorkerConnectivityUI.justBecameConnected())
-                        return 0;
-                    if (!WorkerConnectivityUI.isConnected)
-                        return 60 * 60 * 1000; // 1 hour when offline
-
-                    // online policy: 10, 100, 500, 1000 ms, then stop
-                    const seq = [10, 100, 500, 1000];
-                    const idx = Math.min(ctx.previousRetryCount ?? 0, seq.length - 1);
-                    return seq[idx];
-                }
-            } as signalR.IRetryPolicy)
-            .withHubProtocol(new MessagePackHubProtocol())
-            .configureLogging(signalR.LogLevel.Information)
-            .build();
-        c.onreconnected(() => updateConnectionState());
-        c.onreconnecting(() => updateConnectionState());
-        c.onclose(() => updateConnectionState());
-        c['_launchStreams'] = _launchStreams.bind(c);
-        c.start();
-        this.connection = c;
-
-        // Network-aware reconnect: ensure we try fast when online event fires
-        WorkerConnectivityUI.isOnlineChanged.add((isOnline) => {
-            if (!isOnline)
-                return;
-
-            const state = AudioStreamer.connection?.state;
-            if (state !== HubConnectionState.Connected && state !== HubConnectionState.Reconnecting) {
-                debugLog?.log('online: ensuring SignalR connection ASAP');
-                void AudioStreamer.ensureConnected(true);
-            }
-        });
+        this.rpcHub = new RpcHub();
+        this.rpcPeer = new RpcClientPeer(this.rpcHub, rpcWsUrl, RPC_SERIALIZATION_FORMAT);
+        void this.rpcPeer.run();
+        this.streamServerClient = this.rpcHub.addClient(this.rpcPeer, StreamServerDef) as unknown as typeof this.streamServerClient;
     }
 
     public static get isInitialized(): boolean {
-        return this.connection != null;
+        return this.rpcPeer != null;
     }
 
     public static get isConnected(): boolean {
-        updateConnectionState();
-        return lastIsConnected;
+        // RPC peer is considered connected once initialized — the RPC framework
+        // handles reconnection transparently.
+        return this.rpcPeer != null;
     }
 
     public static async disconnect(): Promise<void> {
-        infoLog?.log(`disconnect:`, this.connection.state);
-        if (this.connection.state !== 'Disconnected')
-            await this.connection.stop();
+        infoLog?.log(`disconnect`);
+        this.rpcPeer?.close();
+        this.rpcPeer = null;
+        this.streamServerClient = null;
+        this.rpcHub = null;
+        updateConnectionState(false);
     }
 
-    public static async ensureConnected(quickReconnect = false): Promise<void> {
+    public static async ensureConnected(): Promise<void> {
         if (this.isConnected)
             return;
 
-        const c = this.connection;
-        infoLog?.log(`ensureConnected(${quickReconnect}): connection.state:`, c.state);
-        while (!this.isConnected) {
-            try {
-                // If we're offline, wait for the online event to avoid futile reconnect attempts
-                if (!WorkerConnectivityUI.isOnline) {
-                    warnLog?.log('ensureConnected: offline, waiting for WorkerConnectivityUI.isOnlineChanged...');
-                    await new Promise<void>(resolve => {
-                        WorkerConnectivityUI.isOnlineChanged.addJustOnce((isOnline) => {
-                            if (isOnline)
-                                resolve();
-                        });
-                    });
-                    // Use quick reconnect once we're back online
-                    quickReconnect = true;
-                }
-
-                if (c.state === HubConnectionState.Disconnecting)
-                    await c.stop();
-                if (c.state === HubConnectionState.Disconnected) {
-                    await c.start();
-                    continue;
-                }
-
-                // c.State === HubConnectionState.Connecting or Reconnecting
-                const maxConnectDuration = quickReconnect
-                    ? AS.MAX_QUICK_CONNECT_DURATION
-                    : AS.MAX_CONNECT_DURATION;
-                quickReconnect = false; // We use MAX_QUICK_CONNECT_DURATION just once
-                for (let t = 0; t < maxConnectDuration; t += 0.1) {
-                    await delayAsync(100);
-                    if (this.isConnected)
-                        return;
-                }
-
-                // And if the connection wasn't established, we reconnect
-                await c.stop();
-                await c.start();
-            }
-            catch (error) {
-                warnLog?.log(`ensureConnected: error:`, error);
-                delayAsync(AS.CONNECT_ERROR_DELAY * 1000);
-            }
+        // Wait for online if offline
+        if (!WorkerConnectivityUI.isOnline) {
+            warnLog?.log('ensureConnected: offline, waiting for online...');
+            await new Promise<void>(resolve => {
+                WorkerConnectivityUI.isOnlineChanged.addJustOnce((isOnline) => {
+                    if (isOnline)
+                        resolve();
+                });
+            });
         }
     }
 
     public static addStream(sessionToken: string, preSkip: number, chatId: string, repliedChatEntryId: string): AudioStream {
         let stream: AudioStream;
         if (this.streams.length < AS.MAX_STREAMS) {
-            stream = new AudioStream(sessionToken, preSkip, chatId, repliedChatEntryId, this.lastStream?.whenDisposed);
+            stream = new AudioStream(preSkip, chatId, repliedChatEntryId, this.lastStream?.whenDisposed);
             this.lastStream = stream;
             this.streams.push(stream)
         }
         else {
             // Fake stream that won't stream anything
-            stream = new AudioStream(sessionToken, preSkip, chatId, repliedChatEntryId, delayAsync(100));
+            stream = new AudioStream(preSkip, chatId, repliedChatEntryId, delayAsync(100));
             stream.dispose()
         }
         return stream;
     }
 }
 
-let lastIsConnected = false;
-function updateConnectionState(): void {
-    const isConnected = AudioStreamer.connection?.state === HubConnectionState.Connected;
-    if (lastIsConnected === isConnected)
-        return;
-
-    lastIsConnected = isConnected;
+function updateConnectionState(isConnected: boolean): void {
     infoLog?.log(`isConnected:`, isConnected);
     AudioStreamer.connectionStateChangedEvents.trigger(isConnected);
-}
-
-// Override HubConnection._launchStreams
-function _launchStreams(streams: IStreamResult<any>[], promiseQueue: Promise<void>): void {
-    if (streams.length === 0)
-        return;
-
-    // Synchronize stream data so they arrive in-order on the server
-    if (!promiseQueue)
-        promiseQueue = Promise.resolve();
-
-    // We want to iterate over the keys, since the keys are the stream ids
-    for (const streamId in streams) {
-        streams[streamId].subscribe({
-            complete: () => {
-                promiseQueue = promiseQueue.then(() => this._sendWithProtocol(this._createCompletionMessage(streamId)));
-            },
-            error: (err) => {
-                let message: string;
-                if (err instanceof Error) {
-                    message = err.message;
-                } else if (err?.toString) {
-                    message = err.toString();
-                } else {
-                    message = 'Unknown error';
-                }
-
-                const protocolMessage = this._protocol.writeMessage(this._createCompletionMessage(streamId, message));
-                promiseQueue = promiseQueue.then(() => this._sendMessage(protocolMessage));
-            },
-            next: (item) => {
-                const protocolMessage = this._protocol.writeMessage(this._createStreamItemMessage(streamId, item));
-                promiseQueue = promiseQueue.then(() => this._sendMessage(protocolMessage));
-            },
-        });
-    }
-}
-
-function debugBeginRandomDisconnects(periodMs: number) {
-    if (!periodMs || periodMs <= 0)
-        return;
-
-    const originalSend = WebSocket.prototype.send;
-    const sockets: WebSocket[] = [];
-
-    WebSocket.prototype.send = function(...args) {
-        if (!sockets.includes(this))
-            sockets.push(this);
-        return originalSend.call(this, ...args);
-    };
-
-    (async () => {
-        // noinspection InfiniteLoopJS
-        while (true) {
-            await delayAsync(periodMs * (1 + Math.random()) / 2);
-            if (sockets.length == 0)
-                continue;
-
-            warnLog?.log(`Killing ${sockets.length} WebSocket connection(s)...`);
-            try {
-                sockets.forEach(x => x.close(3666, 'KILLED!')); // 3666 is just an error code
-            }
-            catch { }
-            sockets.length = 0;
-        }
-    })();
 }
