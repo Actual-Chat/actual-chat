@@ -271,6 +271,13 @@ body.narrow .video-panel.expanded .remote-video-container.previous-speaker {
 .video-panel .remote-video-container.previous-speaker .video-participant-label {
     @apply hidden;
 }
+.video-panel .remote-video-container .video-participant-label {
+    @apply absolute bottom-1 left-1 z-10;
+    @apply flex items-center gap-1;
+    @apply px-1.5 py-0.5 rounded;
+    @apply text-xs text-white;
+    background: rgba(0, 0, 0, 0.5);
+}
 
 /* Remote video streams */
 .video-panel .remote-streams {

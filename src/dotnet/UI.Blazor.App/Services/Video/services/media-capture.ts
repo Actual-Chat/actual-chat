@@ -50,7 +50,7 @@ export class MediaCapture {
                     await new Promise(resolve => setTimeout(resolve, delayMs));
                     continue;
                 }
-                infoLog?.log(`${tag}: failed to capture camera stream. Error:`, JSON.stringify(e), (e as OverconstrainedError).constraint);
+                infoLog?.log(`${tag}: failed to capture camera stream. Error:`, JSON.stringify(e, ['name', 'message', 'constraint']));
                 throw e;
             }
         }

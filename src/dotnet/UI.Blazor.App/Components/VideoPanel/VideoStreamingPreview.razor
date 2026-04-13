@@ -22,11 +22,11 @@
         <HeaderButton Class="settings-btn" Click="@OnSettingsClick">
             <i class="icon-settings text-lg"></i>
         </HeaderButton>
-        <div class="video-participant-label">
-            <i class="icon-video"></i>
-            <span>You</span>
-        </div>
     }
+    <div class="video-participant-label">
+        <i class="icon-video"></i>
+        <span>You</span>
+    </div>
     @if (m.LastErrorMessage is {} errorMessage && errorMessage.Length > 0) {
         <div class="video-error">
             <span>@errorMessage</span>

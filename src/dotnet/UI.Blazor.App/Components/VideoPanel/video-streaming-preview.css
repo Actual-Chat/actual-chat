@@ -27,7 +27,11 @@ body.hoverable .video-streaming-preview .btn-h.settings-btn:hover {
 
 /* Participant labels */
 .video-streaming-preview .video-participant-label {
-    @apply hidden;
+    @apply absolute bottom-1 left-1;
+    @apply flex items-center gap-1;
+    @apply px-1.5 py-0.5 rounded;
+    @apply text-xs text-white;
+    background: rgba(0, 0, 0, 0.5);
 }
 .video-streaming-preview .video-participant-label i {
     @apply text-xs;
