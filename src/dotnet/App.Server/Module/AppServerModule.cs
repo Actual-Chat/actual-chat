@@ -208,6 +208,12 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             if (!hasKube)
                 services.AddSingleton(KubeInfo.GetLocal);
 
+        var renewalThreadCount = Settings.MeshLockRenewalThreadCount;
+        if (renewalThreadCount <= 0)
+            renewalThreadCount = Math.Max(2, Environment.ProcessorCount / 4);
+        Log.LogInformation("MeshLockRenewalThreads: {ThreadCount} thread(s)", renewalThreadCount);
+        services.AddSingleton(new MeshLockRenewalThreads(renewalThreadCount));
+
         services.AddSingleton<IMeshLocks>(c => {
             var subspace = Settings.MeshLockSubspace;
             if (subspace == "?")

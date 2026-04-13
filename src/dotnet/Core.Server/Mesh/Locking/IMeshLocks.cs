@@ -27,6 +27,7 @@ public interface IMeshLocksBackend : IMeshLocks
     ILogger? DebugLog { get; }
     ChaosMaker ChaosMaker { get; }
     IHostApplicationLifetime? HostLifetime { get; }
+    MeshLockRenewalThreads RenewalThreads { get; }
 
     // Methods MUST NOT auto-retry in case they can't reach the lock service
     /// <summary>
