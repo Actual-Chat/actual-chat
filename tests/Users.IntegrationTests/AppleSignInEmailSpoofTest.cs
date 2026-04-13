@@ -22,8 +22,8 @@ public class AppleSignInEmailSpoofTest(AppHostFixture fixture, ITestOutputHelper
     public async Task SpoofedAdminEmailShouldNotGrantAdmin()
     {
         // arrange
-        var realEmail = "attacker@gmail.com";
-        var spoofedEmail = $"attacker{Constants.Team.EmailSuffix}";
+        var realEmail = UniqueNames.Email("attacker", "gmail.com");
+        var spoofedEmail = UniqueNames.Email("attacker");
         var appleUserId = UniqueNames.AppleId();
         var code = AppleTokenHandler.Setup(appleUserId, realEmail);
 
@@ -45,8 +45,8 @@ public class AppleSignInEmailSpoofTest(AppHostFixture fixture, ITestOutputHelper
     public async Task StoredEmailShouldMatchIdTokenNotQueryParam()
     {
         // arrange
-        var idTokenEmail = "real-user@icloud.com";
-        var queryEmail = "impersonated@example.com";
+        var idTokenEmail = UniqueNames.Email("real-user", "icloud.com");
+        var queryEmail = UniqueNames.Email("impersonated", "example.com");
         var appleUserId = UniqueNames.AppleId();
         var code = AppleTokenHandler.Setup(appleUserId, idTokenEmail);
 
@@ -65,8 +65,8 @@ public class AppleSignInEmailSpoofTest(AppHostFixture fixture, ITestOutputHelper
     public async Task AdminEmailInIdTokenShouldGrantAdmin()
     {
         // arrange
-        var adminEmail = $"legit-admin{Constants.Team.EmailSuffix}";
-        var queryEmail = "nobody@gmail.com";
+        var adminEmail = UniqueNames.Email("legit-admin");
+        var queryEmail = UniqueNames.Email("nobody", "gmail.com");
         var appleUserId = UniqueNames.AppleId();
         var code = AppleTokenHandler.Setup(appleUserId, adminEmail);
 
@@ -86,8 +86,8 @@ public class AppleSignInEmailSpoofTest(AppHostFixture fixture, ITestOutputHelper
         // arrange – victim signs in normally, then attacker uses own valid code but spoofs victim's userId
         var victimAppleUserId = UniqueNames.AppleId("apple-victim");
         var attackerAppleUserId = UniqueNames.AppleId("apple-attacker");
-        var victimEmail = "victim@gmail.com";
-        var attackerEmail = "attacker@gmail.com";
+        var victimEmail = UniqueNames.Email("victim", "gmail.com");
+        var attackerEmail = UniqueNames.Email("attacker", "gmail.com");
         var victimCode = AppleTokenHandler.Setup(victimAppleUserId, victimEmail);
         var attackerCode = AppleTokenHandler.Setup(attackerAppleUserId, attackerEmail);
 
