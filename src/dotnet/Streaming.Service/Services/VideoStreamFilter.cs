@@ -10,6 +10,7 @@ namespace ActualChat.Streaming.Services;
 internal class VideoStreamFilter(
     Func<StreamId, string, int> getMaxTemporalLayer,
     Func<StreamId, CancellationToken, ValueTask<Computed<VideoQualityPreset>>> capturePreset,
+    Func<StreamId, CancellationToken, Task>? requestKeyFrame,
     ILogger log)
 {
     public async IAsyncEnumerable<VideoFrame> Apply(
@@ -43,6 +44,11 @@ internal class VideoStreamFilter(
         var lastKeyFrameNumber = -1L;
         var skipping = true; // Start in skip mode — wait for first keyframe
         var skippedCount = 0;
+
+        // Request a keyframe from the producer so we don't have to wait for the
+        // next natural keyframe interval (up to 3s for AV1).
+        if (skipToActive && requestKeyFrame != null)
+            _ = BackgroundTask.Run(() => requestKeyFrame(streamId, cancellationToken), cancellationToken);
 
         var yieldedCount = 0;
         var firstFrameLogged = false;
