@@ -81,7 +81,7 @@ public sealed class NativeAuthController(IServiceProvider services) : Controller
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
             Log.LogError(e, "SignInApple failed");
             var setErrorCmd = new SessionTemporalsBackend_Set(
-                session, Constants.SessionTemporals.SignInErrorKey, "Sign-in with Apple failed. Please try again.");
+                session, Constants.SessionTemporals.SignInErrorKey, "Unable to sign in with Apple.");
             await Commander.Run(setErrorCmd, true, cancellationToken).ConfigureAwait(false);
         }
     }
@@ -125,7 +125,7 @@ public sealed class NativeAuthController(IServiceProvider services) : Controller
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
             Log.LogError(e, "SignInGoogle failed");
             var setErrorCmd = new SessionTemporalsBackend_Set(
-                session, Constants.SessionTemporals.SignInErrorKey, "Sign-in with Google failed. Please try again.");
+                session, Constants.SessionTemporals.SignInErrorKey, "Unable to sign in with Google.");
             await Commander.Run(setErrorCmd, true, cancellationToken).ConfigureAwait(false);
         }
     }
