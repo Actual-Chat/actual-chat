@@ -129,11 +129,18 @@ export class RpcSystemCallHandler {
           // matching remote objects so any pending consumers (for-await loops) exit
           // cleanly instead of hanging.
           const ids = args[0] as number[] | undefined;
+          console.warn(`[RpcSysHandler] $sys.Disconnect: ids=[${ids?.join(",")}], remoteObjects=[${[...peer.remoteObjects.keys()].join(",")}], sharedObjects=[${[...peer.sharedObjects.keys()].join(",")}]`);
           if (Array.isArray(ids)) {
             for (const id of ids) {
-              const obj = peer.remoteObjects.get(id) as IRpcObject | undefined;
-              if (obj && typeof obj.disconnect === "function") {
-                obj.disconnect();
+              const remoteObj = peer.remoteObjects.get(id) as IRpcObject | undefined;
+              if (remoteObj && typeof remoteObj.disconnect === "function") {
+                remoteObj.disconnect();
+              }
+              // Also check shared objects — server may disconnect a client-to-server
+              // stream sender (e.g. audio stream) after pod restart or timeout.
+              const sharedObj = peer.sharedObjects.get(id) as IRpcObject | undefined;
+              if (sharedObj && typeof sharedObj.disconnect === "function") {
+                sharedObj.disconnect();
               }
             }
           }

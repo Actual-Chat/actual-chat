@@ -164,6 +164,7 @@ public class FilteredVideoStreamTest(ILogger log)
         var filter = new VideoStreamFilter(
             latencyStore.GetPeerMaxTemporalLayer,
             (sid, ct) => Computed.Capture(() => backend.GetQualityPreset(sid, ct), ct),
+            (id, token) => Task.CompletedTask, // No-op keyframe request callback for testing
             Log);
 
         var source = ToAsyncEnumerable(frames, cancellationToken);

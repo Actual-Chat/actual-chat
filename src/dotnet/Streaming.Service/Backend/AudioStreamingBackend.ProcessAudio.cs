@@ -111,9 +111,16 @@ public partial class AudioStreamingBackend
             await LiveBackend.Register(chatId, streamInfo, cancellationToken).ConfigureAwait(false);
         }
 
+        var publishFrameCount = 0;
         var audioStream = openSegment.Source
             .GetFrames(cancellationToken)
-            .Select(f => f.Data)
+            .Select(f => {
+                publishFrameCount++;
+                if (publishFrameCount <= 3 || publishFrameCount % 250 == 0)
+                    Log.LogWarning("ProcessAudio publish: frame #{Count} for stream #{StreamId}",
+                        publishFrameCount, openSegment.StreamId);
+                return f.Data;
+            })
             .Prepend(new ActualOpusStreamHeader(audio.CreatedAt, audio.Format).Serialize());
         var publishAudioTask = mustStreamVoice
             ? BackgroundTask.Run(
@@ -137,25 +144,41 @@ public partial class AudioStreamingBackend
             $"{nameof(TranscribeAudio)} failed",
             CancellationToken.None);
 
-        // TODO(AY): We should make sure the finalization happens no matter what (later)!
         // TODO(AK): Compensate failures during audio entry creation or saving audio blob (later)
 
         if (publishAudioTask != null)
             await publishAudioTask.ConfigureAwait(false);
 
-        // Close an open audio segment when the duration becomes available
-        await openSegment.Source.WhenDurationAvailable.ConfigureAwait(false);
-        openSegment.Close(openSegment.Source.Duration);
-        var closedSegment = await openSegment.ClosedSegment.ConfigureAwait(false);
-
+        // Close an open audio segment when the duration becomes available.
+        // Wrap in try/finally to ensure LiveBackend.Unregister always runs —
+        // WhenDurationAvailable can throw "Duration wasn't parsed" when the
+        // producer's RPC stream disconnects mid-recording, which would skip
+        // Unregister and leave a stale stream in the active list.
         MediaId? audioMediaId = null;
-        if (mustStreamVoice) {
-            // Unregister active stream from LiveBackend (use CancellationToken.None to ensure cleanup happens)
-            await LiveBackend.Unregister(chatId, openSegment.StreamId.Value, CancellationToken.None).ConfigureAwait(false);
-            // Save audio blob and create Media record - use CancellationToken.None to ensure cleanup
-            audioMediaId = await AudioSegmentSaver
-                .SaveAndCreateMedia(closedSegment, chatId, beginsAt, recordedAt, CancellationToken.None)
-                .ConfigureAwait(false);
+        try {
+            await openSegment.Source.WhenDurationAvailable.ConfigureAwait(false);
+            Log.LogInformation(
+                "ProcessAudio: stream #{StreamId} ended normally, publishedFrames={FrameCount}, duration={Duration:F1}s",
+                openSegment.StreamId, publishFrameCount, openSegment.Source.Duration.TotalSeconds);
+            openSegment.Close(openSegment.Source.Duration);
+            var closedSegment = await openSegment.ClosedSegment.ConfigureAwait(false);
+
+            if (mustStreamVoice) {
+                // Save audio blob and create Media record - use CancellationToken.None to ensure cleanup
+                audioMediaId = await AudioSegmentSaver
+                    .SaveAndCreateMedia(closedSegment, chatId, beginsAt, recordedAt, CancellationToken.None)
+                    .ConfigureAwait(false);
+            }
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e,
+                "ProcessAudio: stream #{StreamId} ended with error, publishedFrames={FrameCount}",
+                openSegment.StreamId, publishFrameCount);
+            throw;
+        }
+        finally {
+            if (mustStreamVoice)
+                await LiveBackend.Unregister(chatId, openSegment.StreamId.Value, CancellationToken.None).ConfigureAwait(false);
         }
         audioMediaIdTcs.TrySetResult(audioMediaId);
 

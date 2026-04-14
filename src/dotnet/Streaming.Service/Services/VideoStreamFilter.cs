@@ -7,7 +7,7 @@ namespace ActualChat.Streaming.Services;
 /// pause-aware filtering, and keyframe gap recovery.
 /// Extracted from VideoStreamingBackend for reuse in StreamHub (remote stream caching).
 /// </summary>
-internal class VideoStreamFilter(
+public class VideoStreamFilter(
     Func<StreamId, string, int> getMaxTemporalLayer,
     Func<StreamId, CancellationToken, ValueTask<Computed<VideoQualityPreset>>> capturePreset,
     Func<StreamId, CancellationToken, Task>? requestKeyFrame,
