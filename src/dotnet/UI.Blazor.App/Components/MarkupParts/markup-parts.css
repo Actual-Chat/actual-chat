@@ -52,6 +52,15 @@
     @apply hidden;
 }
 
+/* Emoji-only message */
+.emoji-message {
+    @apply inline-flex items-center justify-center;
+    @apply w-10 h-10;
+}
+.emoji-message .c-emoji {
+    @apply w-10 h-10;
+}
+
 .playable-text-markup {
     @apply whitespace-break-spaces;
     @apply select-text;

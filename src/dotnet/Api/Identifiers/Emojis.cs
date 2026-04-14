@@ -161,9 +161,15 @@ public static class Emojis
     public static readonly Dictionary<string, Emoji> ById
         = All.Concat(Legacy).DistinctBy(x => x.Id.Value).ToDictionary(x => x.Id.Value);
 
+    public static readonly Dictionary<string, Emoji> BySymbol
+        = All.Concat(Legacy).DistinctBy(x => x.Symbol).ToDictionary(x => x.Symbol);
+
     public static readonly IReadOnlyDictionary<EmojiGroup, Emoji[]> ByGroup
         = All.GroupBy(x => x.Group).ToDictionary(g => g.Key, g => g.ToArray());
 
     public static Emoji[] GetByGroup(EmojiGroup group)
         => ByGroup.TryGetValue(group, out var emojis) ? emojis : [];
+
+    public static Emoji? TryGetByIdOrSymbol(string text)
+        => ById.GetValueOrDefault(text) ?? BySymbol.GetValueOrDefault(text);
 }

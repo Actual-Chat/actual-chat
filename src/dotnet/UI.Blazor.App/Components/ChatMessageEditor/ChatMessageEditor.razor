@@ -23,6 +23,7 @@
 <OnUIEvent TEvent="@CancelChatMessageEditEvent" Handler="OnCancelChatMessageEditEvent" />
 <OnUIEvent TEvent="@AttachButtonClickEvent" Handler="OnAttachButtonClickEvent" />
 <OnUIEvent TEvent="@MentionButtonClickEvent" Handler="OnMentionButtonClickEvent" />
+<OnUIEvent TEvent="@EmojiButtonClickEvent" Handler="OnEmojiButtonClickEvent" />
 <div @ref="Ref" class="chat-message-editor has-safe-area-bottom">
     <input class="attachment-web-file-picker" type="file" multiple/>
     <MentionListManager @key="@MentionListManagerKey" SearchProvider="@ChatMarkupHub.MentionSearchProvider">
@@ -357,4 +358,28 @@
         => @event.EditorId == _editorId
             ? OnMentionButtonClick()
             : Task.CompletedTask;
+
+    private Task OnEmojiButtonClickEvent(EmojiButtonClickEvent @event, CancellationToken cancellationToken)
+        => @event.EditorId == _editorId
+            ? OnEmojiButtonClick()
+            : Task.CompletedTask;
+
+    private async Task OnEmojiButtonClick() {
+        var model = new EmojiModal.Model();
+        await (await ModalUI.Show(model).ConfigureAwait(true)).WhenClosed.ConfigureAwait(true);
+        if (model.SelectedEmoji is not { } emoji)
+            return;
+
+        var text = emoji.Id.Value;
+        _ = TuneUI.Play(Tune.SendMessage);
+        var relatedChatEntry = ChatEditorUI.RelatedEntryRef.Value;
+        await ChatEditorUI.HideRelatedEntry(false).ConfigureAwait(true);
+
+        SendMessageRequest cmd;
+        if (relatedChatEntry is { Kind: RelatedEntryKind.Reply })
+            cmd = SendMessageRequest.ReplyMessage(Chat.Id, relatedChatEntry.EntryId, text);
+        else
+            cmd = SendMessageRequest.NewMessage(Chat.Id, text);
+        await SendingMessages.Send(cmd, CancellationToken.None).ConfigureAwait(true);
+    }
 }

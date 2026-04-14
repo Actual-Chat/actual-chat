@@ -59,7 +59,10 @@ export class EmojiPreview {
             this.hidePreview();
         });
 
-        // Hide preview on any click (menu might close)
+        // Hide preview on any click/pointerdown (menu might close, element removed from DOM)
+        DocumentEvents.passive.pointerDown$.subscribe(() => {
+            this.hidePreview();
+        });
         DocumentEvents.passive.click$.subscribe(() => {
             this.hidePreview();
         });
@@ -140,6 +143,9 @@ export class EmojiPreview {
             }
         });
 
+        // Inline animate: swap static ↔ animated SVG on hover
+        this.initInlineAnimations();
+
         // Watch for reaction animation triggers
         this.initReactionAnimations();
 
@@ -165,6 +171,59 @@ export class EmojiPreview {
             const animatedUrls = svgNames.map(n => `${basePath}${n}-animated.svg`);
             void prefetchBatch(staticUrls).then(() => prefetchBatch(animatedUrls));
         }, { once: true });
+    }
+
+    private static initInlineAnimations(): void {
+        let currentInline: HTMLImageElement | null = null;
+
+        const findInlineEmoji = (target: HTMLElement | null): HTMLImageElement | null => {
+            let el: HTMLElement | null = target;
+            while (el) {
+                if (el instanceof HTMLImageElement && el.dataset.emojiInline)
+                    return el;
+                el = el.parentElement;
+            }
+            return null;
+        };
+
+        const startAnimate = (img: HTMLImageElement) => {
+            if (currentInline === img)
+                return;
+            stopAnimate();
+            currentInline = img;
+            const svgName = img.dataset.emojiInline;
+            if (svgName)
+                img.src = `/dist/images/emoji/${svgName}-animated.svg`;
+        };
+
+        const stopAnimate = () => {
+            if (!currentInline)
+                return;
+            const svgName = currentInline.dataset.emojiInline;
+            if (svgName)
+                currentInline.src = `/dist/images/emoji/${svgName}.svg`;
+            currentInline = null;
+        };
+
+        DocumentEvents.passive.pointerOver$.subscribe((e: PointerEvent) => {
+            if (e.pointerType === 'touch')
+                return;
+            const img = findInlineEmoji(e.target as HTMLElement);
+            if (img)
+                startAnimate(img);
+        });
+
+        fromEvent<PointerEvent>(document, 'pointerout', { passive: true }).subscribe((e: PointerEvent) => {
+            if (e.pointerType === 'touch')
+                return;
+            const img = findInlineEmoji(e.target as HTMLElement);
+            if (!img || img !== currentInline)
+                return;
+            const related = e.relatedTarget as HTMLElement | null;
+            if (related && img.contains(related))
+                return;
+            stopAnimate();
+        });
     }
 
     private static initReactionAnimations(): void {
@@ -277,6 +336,9 @@ export class EmojiPreview {
         this.cancelHoverTimeout();
         this.hoverTimeout = setTimeout(() => {
             this.hoverTimeout = null;
+            // Don't show preview if element was removed from DOM (menu closed, etc.)
+            if (!emojiEl.isConnected)
+                return;
             this.showPreview(emojiEl);
         }, HOVER_DELAY_MS);
         // Track target so pointerout can cancel correctly
@@ -304,7 +366,7 @@ export class EmojiPreview {
 
     private static showPreview(emojiEl: HTMLElement, isTouch = false): void {
         const svgName = emojiEl.dataset.emojiPreview;
-        if (!svgName)
+        if (!svgName || !emojiEl.isConnected)
             return;
 
         // Don't re-show if overlay already visible for this element

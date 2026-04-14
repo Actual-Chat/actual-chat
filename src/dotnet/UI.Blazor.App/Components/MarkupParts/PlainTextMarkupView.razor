@@ -4,7 +4,13 @@
     var m = State.Value;
 }
 
-@if (m.MustHighlight) {
+@if (m.Emoji is { } emoji) {
+    <span class="emoji-message">
+        <EmojiIcon Emoji="@emoji" Class="c-emoji" HasPreview="false" InlineAnimate="true"/>
+    </span>
+    @if (LastFragment != null)
+        @LastFragment
+} else if (m.MustHighlight) {
     <SearchMatchHighlighter
         Match="m.SearchMatch"
         PlainTextClass="plain-text-markup"
@@ -29,7 +35,7 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             t => new ComputedState<Model>.Options() {
-                InitialValue = new(Markup.Text, SearchMatch.Empty),
+                InitialValue = new(Markup.Text, Entry.Content, SearchMatch.Empty),
                 Category = GetStateCategory(t),
             });
 
@@ -37,12 +43,13 @@
         var entryId = Entry.Id;
         var markupText = Markup.Text;
         var searchMatch = await HighlightUI.GetMatch(entryId, markupText, cancellationToken).ConfigureAwait(false);
-        return new(markupText, searchMatch);
+        return new(markupText, Entry.Content, searchMatch);
     }
 
     // Nested types
 
-    public sealed record Model(string MarkupText, SearchMatch SearchMatch) {
+    public sealed record Model(string MarkupText, string EntryContent, SearchMatch SearchMatch) {
+        public Emoji? Emoji { get; } = Emojis.TryGetByIdOrSymbol(EntryContent.Trim());
         public bool MustHighlight => !SearchMatch.IsEmpty;
     }
 }
