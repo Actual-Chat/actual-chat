@@ -44,7 +44,7 @@ public readonly struct RpcHostBuilder
         Services.AddSingleton(c => new BackendServiceDefs(c));
         Services.AddSingleton(c => new RpcBackendHelpers(c));
         AddMeshServices();
-        AddRpcServer();
+        AddRpcServer(IsApiHost);
         AddRpcClient();
         AddRpcPeerFactory();
 
@@ -217,7 +217,7 @@ public readonly struct RpcHostBuilder
         Services.AddSingleton(c => new MeshWatcher(c));
     }
 
-    private void AddRpcServer()
+    private void AddRpcServer(bool isApiHost)
     {
         Fusion.AddWebServer();
 
@@ -225,7 +225,7 @@ public readonly struct RpcHostBuilder
         Services.ReplaceFactory<RpcWebSocketServerOptions>((_, oldFactory) => oldFactory.Invoke() with {
             ExposeBackend = true,
             ConfigureWebSocket = () => new WebSocketAcceptContext() {
-                DangerousEnableCompression = Constants.Rpc.Compression.IsServerSideEnabled,
+                DangerousEnableCompression = isApiHost && Constants.Rpc.Compression.IsServerSideEnabled,
             },
         });
 
