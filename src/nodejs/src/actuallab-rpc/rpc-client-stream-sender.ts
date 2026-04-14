@@ -86,7 +86,7 @@ export class RpcClientStreamSender<T> implements IRpcObject {
   }
 
   /** Called by system call handler when $sys.Ack is received from the server. */
-  onAck(nextIndex: number, _hostId: string): void {
+  onAck(_nextIndex: number, _hostId: string): void {
     if (!this._started.isCompleted) {
       this._started.resolve();
     }
