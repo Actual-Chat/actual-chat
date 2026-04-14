@@ -1,5 +1,6 @@
 using ActualChat.Streaming;
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
 using ActualLab.Resilience;
 
@@ -8,7 +9,9 @@ namespace ActualChat.UI.Blazor.App.Components.VideoPanel;
 public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized
 {
     private static readonly TimeSpan FocusDebounceDelay = TimeSpan.FromSeconds(1.5);
-    private const int MaxFocusHistory = 3;
+    private const int MaxFocusHistory = 4;
+    private const int MaxDisplaySlotsWide = 4; // focused + up to 3 on sidebar
+    private const int MaxDisplaySlotsNarrow = 3; // focused + up to 2 on sidebar
     private readonly TaskCompletionSource _whenInitializedSource = TaskCompletionSourceExt.New();
     private readonly MutableState<VideoPanelLayout> _layout;
     private readonly MutableState<ImmutableArray<AuthorId>> _focusedSpeakerIds;
@@ -81,7 +84,7 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
             // Screencast always takes focus (no debounce)
             if (screencastAuthorId is { } scAuthor) {
                 SetFocused(scAuthor);
-                _focusDebounceCts?.Cancel();
+                _focusDebounceCts?.CancelAsync();
                 _focusDebounceCts = null;
                 _pendingFocusCandidate = null;
                 continue;
@@ -89,14 +92,11 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
 
             UpdateActiveSpeakers(speakingWithVideo);
 
-            // Validate focused author is still among remote streams; fallback to first
+            // Ensure we have at least one focused candidate if remotes exist.
+            // BuildDisplayList handles filtering out disconnected authors.
             var ids = _focusedSpeakerIds.Value;
-            var currentFocus = ids.Length > 0 ? (AuthorId?)ids[0] : null;
-            if (currentFocus is { } cf && remoteAuthorIds.Length > 0 && !remoteAuthorIds.Any(a => a == cf))
-                _focusedSpeakerIds.Value = ids.RemoveAt(0);
-            ids = _focusedSpeakerIds.Value;
             if (ids.Length == 0 && remoteAuthorIds.Length > 0)
-                _focusedSpeakerIds.Value = ids.Insert(0, remoteAuthorIds[0]);
+                _focusedSpeakerIds.Value = ids.Add(remoteAuthorIds[0]);
         }
     }
 
@@ -123,7 +123,7 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
             .FirstOrDefault();
 
         var speakingWithVideo = audioStreamingAuthorIds
-            .Where(a => remoteVideoAuthorIds.Contains(a))
+            .Where(remoteVideoAuthorIds.Contains)
             .ToArray();
 
         return new ActiveSpeakerState(speakingWithVideo, remoteVideoAuthorIds.ToArray(), screencastAuthorId);
@@ -135,7 +135,8 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
         var focusedIds = await _focusedSpeakerIds.Use(cancellationToken).ConfigureAwait(false);
         var ownKind = await ChatVideoUI.GetOwnStreamKind(ChatId, cancellationToken).ConfigureAwait(false);
         var remoteStreams = await ChatVideoUI.GetRemoteStreams(ChatId, cancellationToken).ConfigureAwait(false);
-        return new LayoutInputs(focusedIds, ownKind, remoteStreams);
+        var screenSize = await Hub.BrowserInfo.ScreenSize.Use(cancellationToken).ConfigureAwait(false);
+        return new LayoutInputs(screenSize.IsNarrow(), ownKind, remoteStreams, focusedIds);
     }
 
     // Private methods
@@ -196,55 +197,90 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
         catch (OperationCanceledException) { }
     }
 
+    private static ImmutableArray<AuthorId> BuildDisplayList(
+        ImmutableArray<AuthorId> focusedIds,
+        VideoStreamInfo[] remoteStreams,
+        int maxDisplaySlots)
+    {
+        // Build set of active remote author IDs for fast lookup
+        var activeRemoteAuthors = remoteStreams.Select(s => s.AuthorId).ToHashSet();
+
+        // Start with focused authors that still have active streams
+        var display = new List<AuthorId>();
+        foreach (var id in focusedIds) {
+            if (activeRemoteAuthors.Contains(id))
+                display.Add(id);
+            if (display.Count >= maxDisplaySlots)
+                break;
+        }
+
+        // Fill remaining slots with other participants, ordered by StartedAt descending
+        if (display.Count < maxDisplaySlots) {
+            var displaySet = display.ToHashSet();
+            var others = remoteStreams
+                .Where(s => !displaySet.Contains(s.AuthorId))
+                .OrderByDescending(s => s.StartedAt)
+                .Select(s => s.AuthorId)
+                .Distinct();
+            foreach (var id in others) {
+                display.Add(id);
+                if (display.Count >= maxDisplaySlots)
+                    break;
+            }
+        }
+
+        return [..display];
+    }
+
     private static VideoPanelLayout BuildLayout(LayoutInputs inputs)
     {
-        var (focusedIds, ownKind, remoteStreams) = inputs;
+        var (isNarrow, ownKind, remoteStreams, focusedIds) = inputs;
         var hasRemote = remoteStreams.Length > 0;
         var hasOwn = ownKind is not null;
+
+        // Build ordered display list from focus history + active streams
+        var maxSlots = isNarrow ? MaxDisplaySlotsNarrow : MaxDisplaySlotsWide;
+        var displayList = BuildDisplayList(focusedIds, remoteStreams, maxSlots);
 
         // Own stream class
         var ownClass = !hasOwn ? ""
             : !hasRemote ? "item-focused"
             : "item-x item-0";
 
-        // Build author→item-index map from focus history
-        // index 0 = focused, 1+ = previous focused speakers
-        var authorItemMap = new Dictionary<AuthorId, int>();
-        for (var i = 0; i < focusedIds.Length; i++)
-            authorItemMap[focusedIds[i]] = i;
-
-        // Remote stream classes — only add entries with an assigned item class
+        // Map display list to stream → CSS class
+        // displayList[0] → "item-focused"
+        // displayList[1+] → "item-x item-{i}" (sidebar, offset by 1 when own takes item-0)
+        var sidebarOffset = hasOwn ? 1 : 0;
         var remoteClasses = new List<RemoteStreamPlayerClass>();
-        var hasFocused = false;
-        foreach (var stream in remoteStreams) {
-            if (!authorItemMap.TryGetValue(stream.AuthorId, out var index))
+        for (var i = 0; i < displayList.Length; i++) {
+            var authorId = displayList[i];
+            var stream = remoteStreams.FirstOrDefault(s => s.AuthorId == authorId);
+            if (stream is null)
                 continue;
-            var cls = index == 0 ? "item-focused" : $"item-x item-{index}";
-            if (index == 0)
-                hasFocused = true;
+
+            var cls = i == 0
+                ? "item-focused"
+                : $"item-x item-{i + sidebarOffset}";
             remoteClasses.Add(new RemoteStreamPlayerClass(stream.StreamId.Value, cls));
         }
-
-        // Fallback: if remote streams exist but none got focused, assign first
-        if (hasRemote && !hasFocused)
-            remoteClasses.Add(new RemoteStreamPlayerClass(remoteStreams[0].StreamId.Value, "item-focused"));
 
         return new VideoPanelLayout(ownClass, [..remoteClasses]);
     }
 
     // Nested types
 
-    protected sealed record ActiveSpeakerState(AuthorId[] SpeakingWithVideo, AuthorId[] RemoteVideoAuthorIds, AuthorId? ScreencastAuthorId = null)
+    protected sealed record ActiveSpeakerState(AuthorId[] SpeakingWithVideo, AuthorId[] RemoteVideoAuthorIds, AuthorId? ScreencastAuthorId)
     {
         public static readonly ActiveSpeakerState None = new([], [], null);
     }
 
     protected sealed record LayoutInputs(
-        ImmutableArray<AuthorId> FocusedSpeakerIds,
+        bool IsNarrowScreen,
         StreamKind? OwnStreamKind,
-        VideoStreamInfo[] RemoteStreams)
+        VideoStreamInfo[] RemoteStreams,
+        ImmutableArray<AuthorId> FocusedSpeakerIds)
     {
-        public static readonly LayoutInputs None = new([], null, []);
+        public static readonly LayoutInputs None = new(true, null, [], []);
     }
 }
 
