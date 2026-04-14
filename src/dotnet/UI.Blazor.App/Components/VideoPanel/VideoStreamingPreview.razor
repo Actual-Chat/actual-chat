@@ -1,10 +1,11 @@
 @namespace ActualChat.UI.Blazor.App.Components.VideoPanel
+@using ActualChat.Streaming
 @using ActualChat.UI.Blazor.App.Module
 @inherits ComputedStateComponent<AppUIHub, VideoStreamingPreview.Model>
 @{
     var m = State.Value;
-    var isRecording = m.OwnStreamingState?.Mode==VideoRecorderMode.Camera;
-    var isScreencasting = m.OwnStreamingState?.Mode==VideoRecorderMode.Screencast;
+    var isRecording = m.OwnStreamingState?.Kind == StreamKind.Webcam;
+    var isScreencasting = m.OwnStreamingState?.Kind == StreamKind.Screencast;
     var recordingCls = isRecording ? "recording" : "";
     var screencastCls = isScreencasting ? "screencast" : "";
 }

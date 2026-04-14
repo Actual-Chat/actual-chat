@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Streaming
 @inherits ComputedStateComponent<AppUIHub, bool>
 @{
     var isVideoOn = State.Value;
@@ -36,7 +37,7 @@
         var chatId = chat.Id;
 
         var ownStreamingState = await ChatVideoUI.GetVideoStreamingState(chatId, cancellationToken).ConfigureAwait(false);
-        var isOwnCameraStreaming = ownStreamingState?.Mode == VideoRecorderMode.Camera;
+        var isOwnCameraStreaming = ownStreamingState?.Kind == StreamKind.Webcam;
         return isOwnCameraStreaming;
     }
 

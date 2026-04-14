@@ -6,7 +6,7 @@
 @{
     var m = State.Value;
     var hasRemoteStreams = m.RemoteStreams.Length > 0;
-    var ownStreamingMode = m.OwnStreamingMode;
+    var ownStreamingMode = m.OwnStreamingKind;
 
     // Show "Connecting..." overlay when no remote streams and not recording;
     // after 5s timeout, auto-close the panel if streams haven't appeared
@@ -26,8 +26,8 @@
         ChatVideoUI.CloseVideoPanel();
     }
 
-    var isOwnCameraStreaming = ownStreamingMode == VideoRecorderMode.Camera;
-    var isOwnScreencasting = ownStreamingMode == VideoRecorderMode.Screencast;
+    var isOwnCameraStreaming = ownStreamingMode == StreamKind.Webcam;
+    var isOwnScreencasting = ownStreamingMode == StreamKind.Screencast;
     var recordingCls = isOwnCameraStreaming ? "recording" : "";
     var remoteStreamsCls = hasRemoteStreams || _showConnecting ? "has-remote-streams" : "";
     var firstOpenCls = _isFirstOpen ? "first-time-open" : "";
@@ -253,7 +253,7 @@
 
         // Get centralized video state (for recording status)
         var ownStreamingState = await ChatVideoUI.GetVideoStreamingState(chatId, cancellationToken).ConfigureAwait(false);
-        var ownStreamingMode = ownStreamingState?.Mode;
+        var ownStreamingMode = ownStreamingState?.Kind;
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
 
         // Get active video streams for this chat
@@ -347,7 +347,7 @@
         _showConnecting = false;
         _noStreamsTimedOut = true;
         var m = State.Value;
-        if (m.RemoteStreams.Length == 0 && m.OwnStreamingMode is null) {
+        if (m.RemoteStreams.Length == 0 && m.OwnStreamingKind is null) {
             ChatVideoUI.CloseVideoPanel();
         }
         StateHasChanged();
@@ -358,7 +358,7 @@
     public sealed record Model(
         bool IsRightPanelVisible,
         VideoStreamInfo[] RemoteStreams,
-        VideoRecorderMode? OwnStreamingMode,
+        StreamKind? OwnStreamingKind,
         bool IsAudioRecording,
         bool IsListening,
         int VideoStreamMemberCount,

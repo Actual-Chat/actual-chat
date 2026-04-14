@@ -51,7 +51,7 @@ public partial class ChatVideoUI
             .ConfigureAwait(false);
 
         VideoRecorder? recorder = null;
-        (VideoRecorderMode, ChatId)? activeChannel = null;
+        (StreamKind, ChatId)? activeChannel = null;
 
         try {
             await foreach (var (intent, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
@@ -260,18 +260,18 @@ public partial class ChatVideoUI
 
     protected abstract record RecordingIntent(ChatId ChatId)
     {
-        public abstract (VideoRecorderMode, ChatId) Channel { get; }
+        public abstract (StreamKind, ChatId) Channel { get; }
     }
 
     protected sealed record CameraRecordingIntent(ChatId ChatId, string? CameraDeviceId, bool BlurEnabled)
         : RecordingIntent(ChatId)
     {
-        public override (VideoRecorderMode, ChatId) Channel => (VideoRecorderMode.Camera, ChatId);
+        public override (StreamKind, ChatId) Channel => (StreamKind.Webcam, ChatId);
     }
 
     protected sealed record ScreencastIntent(ChatId ChatId) : RecordingIntent(ChatId)
     {
-        public override (VideoRecorderMode, ChatId) Channel => (VideoRecorderMode.Screencast, ChatId);
+        public override (StreamKind, ChatId) Channel => (StreamKind.Screencast, ChatId);
     }
 
     protected sealed record ActiveSpeakerState(ChatId? ChatId, AuthorId[] SpeakingWithVideo, AuthorId[] RemoteVideoAuthorIds, AuthorId? ScreencastAuthorId = null)

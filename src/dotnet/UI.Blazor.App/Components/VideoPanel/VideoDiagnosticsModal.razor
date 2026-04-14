@@ -23,10 +23,10 @@
                 Own Streaming
                 <span class="diag-expand-indicator">@GetShowDetailsIndicator(_showOwnStreamingDetails)</span>
             </div>
-            @if (m.OwnStreamingMode is { } mode) {
+            @if (m.OwnStreamingKind is { } kind) {
                 <div class="diag-row">
-                    <span class="diag-label">Mode</span>
-                    <span class="diag-value">@mode</span>
+                    <span class="diag-label">Kind</span>
+                    <span class="diag-value">@kind</span>
                 </div>
             } else {
                 <div class="diag-row">
@@ -126,8 +126,8 @@
                             </div>
                         }
                         <div class="diag-row">
-                            <span class="diag-label">Mode</span>
-                            <span class="diag-value">@(s.Info.StreamKind == StreamKind.Screencast ? "Screencast" : "Camera")</span>
+                            <span class="diag-label">Kind</span>
+                            <span class="diag-value">@s.Info.StreamKind</span>
                         </div>
                         <div class="diag-row">
                             <span class="diag-label">Started</span>
@@ -268,7 +268,7 @@
             streams[i] = new StreamEntry(info, author?.Avatar.Name ?? info.AuthorId.Value, ownAuthor?.Id == info.AuthorId);
         }
 
-        return new ComputedModel(ownStreamingState?.Mode, streams, memberCount);
+        return new ComputedModel(ownStreamingState?.Kind, streams, memberCount);
     }
 
     private void OnToggleOwnStreamingDetails() {
@@ -345,8 +345,8 @@
 
         // Own streaming
         sb.AppendLine("-- Own Streaming --");
-        if (m.OwnStreamingMode is { } mode)
-            sb.AppendLine($"Mode: {mode}");
+        if (m.OwnStreamingKind is { } kind)
+            sb.AppendLine($"Kind: {kind}");
         else
             sb.AppendLine("Status: Not streaming");
 
@@ -401,7 +401,7 @@
     public sealed record StreamEntry(VideoStreamInfo Info, string Author, bool IsOwn = false);
 
     public sealed record ComputedModel(
-        VideoRecorderMode? OwnStreamingMode,
+        StreamKind? OwnStreamingKind,
         StreamEntry[] Streams,
         int MemberCount
     ) {

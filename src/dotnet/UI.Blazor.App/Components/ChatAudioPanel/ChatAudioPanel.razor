@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Streaming
 @inherits ComputedStateComponent<AppUIHub, ChatAudioPanel.Model>
 @{
     var m = State.Value;
@@ -6,8 +7,8 @@
     var isListening = audioState?.IsListening == true;
     var isRecording = audioState?.IsRecording == true;
     var allowVideo = m.IsVideoFeatureEnabled;
-    var isOwnCameraStreaming = m.OwnStreamingMode == VideoRecorderMode.Camera;
-    var isOwnScreencasting = m.OwnStreamingMode == VideoRecorderMode.Screencast;
+    var isOwnCameraStreaming = m.OwnStreamingMode == StreamKind.Webcam;
+    var isOwnScreencasting = m.OwnStreamingMode == StreamKind.Screencast;
     var isAnyoneVideoStreaming = m.IsAnyoneVideoStreaming;
     var showHeader = allowVideo
         && (isListening || isOwnCameraStreaming)
@@ -100,11 +101,11 @@
             audioState,
             isVideoFeatureEnabled,
             isAnyoneVideoStreaming,
-            ownStreamingState?.Mode);
+            ownStreamingState?.Kind);
 
     }
 
     // Nested classes
 
-    public sealed record Model(ChatAudioState? AudioState, bool IsVideoFeatureEnabled, bool IsAnyoneVideoStreaming, VideoRecorderMode? OwnStreamingMode);
+    public sealed record Model(ChatAudioState? AudioState, bool IsVideoFeatureEnabled, bool IsAnyoneVideoStreaming, StreamKind? OwnStreamingMode);
 }

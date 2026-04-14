@@ -68,7 +68,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             return null;
 
         var isScreencasting = await _isScreencasting.Use(cancellationToken).ConfigureAwait(false);
-        var mode = isScreencasting ? VideoRecorderMode.Screencast : VideoRecorderMode.Camera;
+        var mode = isScreencasting ? StreamKind.Screencast : StreamKind.Webcam;
         return new VideoStreamingState(chatId, mode);
     }
 
@@ -303,6 +303,4 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 // ReSharper disable once ClassNeverInstantiated.Global — instantiated via JS interop deserialization
 public sealed record VideoDevice(string DeviceId, string Label);
 
-public enum VideoRecorderMode { Camera, Screencast };
-
-public sealed record VideoStreamingState(ChatId ChatId, VideoRecorderMode Mode);
+public sealed record VideoStreamingState(ChatId ChatId, StreamKind Kind);
