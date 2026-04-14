@@ -42,6 +42,7 @@
     private ElementReference Ref { get; set; }
     private IJSObjectReference? JSRef { get; set; }
 
+    [CascadingParameter] public VideoPanelContentLayout Layout { get; set; } = null!;
     [Parameter, EditorRequired] public ChatId ChatId { get; set; }
 
     public override async ValueTask DisposeAsync() {

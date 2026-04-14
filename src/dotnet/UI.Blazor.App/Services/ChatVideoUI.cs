@@ -26,12 +26,6 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     // UI-only: hides video panel without affecting watching/recording state
     private readonly MutableState<bool> _isVideoPanelCollapsed;
 
-    // Active speaker focus state
-    private readonly MutableState<AuthorId?> _focusedSpeakerId;
-    private readonly MutableState<AuthorId?> _previousFocusedSpeakerId;
-    private CancellationTokenSource? _focusDebounceCts;
-    private AuthorId? _pendingFocusCandidate;
-
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
@@ -47,8 +41,6 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         _isScreencasting = StateFactory.NewMutable(false);
         _watchingChatId = StateFactory.NewMutable((ChatId?)null);
         _isVideoPanelCollapsed = StateFactory.NewMutable(false);
-        _focusedSpeakerId = StateFactory.NewMutable((AuthorId?)null);
-        _previousFocusedSpeakerId = StateFactory.NewMutable((AuthorId?)null);
     }
 
     void INotifyInitialized.Initialized()
@@ -213,16 +205,6 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             SetBackgroundBlur(model.IsBlurEnabled);
         }
     }
-
-    // Active speaker focus
-
-    [ComputeMethod]
-    public virtual async Task<AuthorId?> GetFocusedSpeakerId(CancellationToken cancellationToken = default)
-        => await _focusedSpeakerId.Use(cancellationToken).ConfigureAwait(false);
-
-    [ComputeMethod]
-    public virtual async Task<AuthorId?> GetPreviousFocusedSpeakerId(CancellationToken cancellationToken = default)
-        => await _previousFocusedSpeakerId.Use(cancellationToken).ConfigureAwait(false);
 
     [ComputeMethod]
     public virtual async Task<ApiArray<VideoStreamInfo>> GetActiveVideoStreams(ChatId chatId, CancellationToken cancellationToken = default)

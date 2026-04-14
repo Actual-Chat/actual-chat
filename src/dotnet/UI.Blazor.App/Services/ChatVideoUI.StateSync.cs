@@ -1,4 +1,3 @@
-using ActualChat.Streaming;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Resilience;
 
@@ -6,13 +5,10 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public partial class ChatVideoUI
 {
-    private static readonly TimeSpan FocusDebounceDelay = TimeSpan.FromSeconds(1.5);
-
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(true);
         var baseChains = new[] {
-            AsyncChain.From(SyncFocusedSpeaker),
             AsyncChain.From(SyncRecordingLifecycle),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
@@ -124,139 +120,6 @@ public partial class ChatVideoUI
         }
     }
 
-    // Active speaker focus
-
-    private async Task SyncFocusedSpeaker(CancellationToken cancellationToken)
-    {
-        var prevChatId = (ChatId?)null;
-        var cState = await Computed
-            .Capture(() => GetActiveSpeakerState(cancellationToken), cancellationToken)
-            .ConfigureAwait(false);
-
-        await foreach (var (state, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
-            var (chatId, speakingWithVideo, remoteAuthorIds, screencastAuthorId) = state;
-
-            if (chatId != prevChatId) {
-                ClearFocus();
-                prevChatId = chatId;
-            }
-
-            if (chatId is null)
-                continue;
-
-            // Screencast always takes focus (no debounce)
-            if (screencastAuthorId is not null) {
-                var oldFocus = _focusedSpeakerId.Value;
-                if (oldFocus != screencastAuthorId) {
-                    if (oldFocus != null)
-                        _previousFocusedSpeakerId.Value = oldFocus;
-                    _focusedSpeakerId.Value = screencastAuthorId;
-                }
-                _focusDebounceCts?.Cancel();
-                _focusDebounceCts = null;
-                _pendingFocusCandidate = null;
-                continue;
-            }
-
-            UpdateActiveSpeakers(speakingWithVideo);
-
-            // Validate focused author is still among remote streams; fallback to first
-            var currentFocus = _focusedSpeakerId.Value;
-            if (currentFocus != null && remoteAuthorIds.Length > 0 && !remoteAuthorIds.Contains(currentFocus))
-                _focusedSpeakerId.Value = null;
-            if (_focusedSpeakerId.Value is null && remoteAuthorIds.Length > 0)
-                _focusedSpeakerId.Value = remoteAuthorIds[0];
-        }
-    }
-
-    [ComputeMethod]
-    protected virtual async Task<ActiveSpeakerState> GetActiveSpeakerState(CancellationToken cancellationToken)
-    {
-        var isVideoEnabled = await IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
-        if (!isVideoEnabled)
-            return ActiveSpeakerState.None;
-
-        var chatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
-        if (chatId is null)
-            return ActiveSpeakerState.None;
-
-        var audioStreamingAuthorIds = await Hub.LiveStreamUI
-            .GetStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
-        var videoStreams = await GetActiveVideoStreams(chatId, cancellationToken)
-            .ConfigureAwait(false);
-
-        // Filter out own author
-        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var remoteVideoAuthorIds = videoStreams
-            .Select(s => s.AuthorId)
-            .Where(a => ownAuthor?.Id != a)
-            .ToHashSet();
-
-        // Check for screencast among remote streams (not own)
-        var screencastAuthorId = videoStreams
-            .Where(s => s.StreamKind == StreamKind.Screencast && ownAuthor?.Id != s.AuthorId)
-            .Select(s => (AuthorId?)s.AuthorId)
-            .FirstOrDefault();
-
-        var speakingWithVideo = audioStreamingAuthorIds
-            .Where(a => remoteVideoAuthorIds.Contains(a))
-            .ToArray();
-
-        return new ActiveSpeakerState(chatId, speakingWithVideo, remoteVideoAuthorIds.ToArray(), screencastAuthorId);
-    }
-
-    // Private methods
-
-    private void UpdateActiveSpeakers(AuthorId[] speakingWithVideo)
-    {
-        var current = _focusedSpeakerId.Value;
-        if (current != null && speakingWithVideo.Any(a => a == current)) {
-            // Current focus is still speaking — keep it, cancel any pending switch
-            _focusDebounceCts?.Cancel();
-            _focusDebounceCts = null;
-            _pendingFocusCandidate = null;
-            return;
-        }
-
-        // No candidates — keep last focus
-        if (speakingWithVideo.Length == 0)
-            return;
-
-        var candidate = speakingWithVideo[0];
-
-        // Already debouncing this candidate
-        if (_pendingFocusCandidate == candidate)
-            return;
-
-        // New candidate — start debounce
-        _pendingFocusCandidate = candidate;
-        _focusDebounceCts?.Cancel();
-        _focusDebounceCts = new CancellationTokenSource();
-        _ = DebouncedFocusSwitch(candidate, _focusDebounceCts.Token);
-    }
-
-    private void ClearFocus()
-    {
-        _focusDebounceCts?.Cancel();
-        _focusDebounceCts = null;
-        _pendingFocusCandidate = null;
-        _focusedSpeakerId.Value = null;
-        _previousFocusedSpeakerId.Value = null;
-    }
-
-    private async Task DebouncedFocusSwitch(AuthorId newSpeaker, CancellationToken cancellationToken)
-    {
-        try {
-            await Task.Delay(FocusDebounceDelay, cancellationToken).ConfigureAwait(false);
-            var oldFocus = _focusedSpeakerId.Value;
-            if (oldFocus != null && oldFocus != newSpeaker)
-                _previousFocusedSpeakerId.Value = oldFocus;
-            _focusedSpeakerId.Value = newSpeaker;
-            _pendingFocusCandidate = null;
-        }
-        catch (OperationCanceledException) { }
-    }
-
     // Nested types
 
     protected abstract record RecordingIntent(ChatId ChatId);
@@ -265,9 +128,4 @@ public partial class ChatVideoUI
         : RecordingIntent(ChatId);
 
     protected sealed record ScreencastIntent(ChatId ChatId) : RecordingIntent(ChatId);
-
-    protected sealed record ActiveSpeakerState(ChatId? ChatId, AuthorId[] SpeakingWithVideo, AuthorId[] RemoteVideoAuthorIds, AuthorId? ScreencastAuthorId = null)
-    {
-        public static readonly ActiveSpeakerState None = new(null, [], []);
-    }
 }
