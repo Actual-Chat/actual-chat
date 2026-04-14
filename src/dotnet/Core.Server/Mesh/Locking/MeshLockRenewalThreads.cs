@@ -72,7 +72,9 @@ public sealed class MeshLockRenewalThreads : IDisposable
         while (!ct.IsCancellationRequested) {
             var minSleepMs = 1000;
 
-            foreach (var (holder, entry) in _entries.ToArray()) {
+            // No ToArray() needed: ConcurrentDictionary enumeration is thread-safe,
+            // and each entry is independently claimed via CAS, so mid-iteration changes are harmless.
+            foreach (var (holder, entry) in _entries) {
                 try {
                     if (entry.ExpiredTcs.Task.IsCompleted) {
                         _entries.TryRemove(holder, out _);
@@ -100,6 +102,13 @@ public sealed class MeshLockRenewalThreads : IDisposable
                     // Try to claim this entry for renewal (atomic, prevents double-processing)
                     if (Interlocked.CompareExchange(ref entry.ClaimedByThread, threadIndex, -1) != -1)
                         continue; // Another thread already claimed it
+
+                    // Re-check: another thread may have already renewed while we waited
+                    var nowAfterClaim = holder.Clock.Now;
+                    if (entry.NextRenewalAt > nowAfterClaim) {
+                        Volatile.Write(ref entry.ClaimedByThread, -1);
+                        continue;
+                    }
 
                     // Re-check: holder may have been stopped between the earlier check and now
                     if (stopCt.IsCancellationRequested) {

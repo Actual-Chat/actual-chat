@@ -8,20 +8,22 @@ namespace ActualChat.Core.Server.UnitTests.Mesh;
 public class MeshLockRenewalThreadsTest(ITestOutputHelper @out) : TestBase(@out)
 {
     /// <summary>
-    /// 6 locks, each renewal takes 500ms, renewal period = 1.5s.
-    /// 1 thread: cycle = 6 × 500ms = 3s > 1.5s → renewals can't keep up, locks expire.
-    /// 3 threads: cycle = 6 × 500ms / 3 = 1s &lt; 1.5s → all locks survive.
+    /// 6 locks, each renewal takes 1500ms, expiration = 10s, renewal period = 3s.
+    /// Effective deadline = 10s - 1s safety margin = 9s.
+    /// 1 thread: cycle = 3s wait + 6 × 1.5s = 12s > 9s → last locks expire.
+    /// 3 threads: cycle = 3s wait + 2 × 1.5s = 6s &lt; 9s → all locks survive.
+    /// Larger expiration (10s vs 5s) provides slack for CI agent pauses.
     /// </summary>
-    [Fact(Timeout = 30_000)]
+    [Fact(Timeout = 60_000)]
     public async Task MultipleThreadsPreventExpiry()
     {
         const int lockCount = 6;
-        var renewalDelay = TimeSpan.FromMilliseconds(500);
-        var expirationPeriod = TimeSpan.FromSeconds(5);
+        var renewalDelay = TimeSpan.FromMilliseconds(1500);
+        var expirationPeriod = TimeSpan.FromSeconds(10);
         var lockOptions = new MeshLockOptions(expirationPeriod: (float)expirationPeriod.TotalSeconds) {
-            RenewalPeriodRatio = 0.3f, // 1.5s renewal period
+            RenewalPeriodRatio = 0.3f, // 3s renewal period
         };
-        var holdDuration = expirationPeriod * 2; // Hold for 10s — well beyond expiration if not renewed
+        var holdDuration = expirationPeriod * 2; // Hold for 20s — well beyond expiration if not renewed
 
         // --- Single thread: expect at least one lock to expire ---
         var singleThreadExpired = await RunWithThreadCount(1, lockCount, renewalDelay, lockOptions, holdDuration);
