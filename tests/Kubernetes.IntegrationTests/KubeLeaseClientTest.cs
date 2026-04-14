@@ -64,7 +64,11 @@ public class KubeLeaseClientTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     protected override async Task DisposeAsync()
-        => await base.DisposeAsync();
+    {
+        if (Services is IAsyncDisposable asyncDisposable)
+            await asyncDisposable.DisposeAsync();
+        await base.DisposeAsync();
+    }
 
     [Fact(Skip = "For manual testing only with local docker-desktop k8s")]
     public async Task KubeLeaseClient_Crud_Works()
