@@ -41,7 +41,7 @@ public static partial class Constants
 
         public static class Compression
         {
-            public const bool IsServerSideEnabled = true;
+            public const bool IsServerSideEnabled = false;
             public const bool IsClientSideEnabled = true;
         }
     }
