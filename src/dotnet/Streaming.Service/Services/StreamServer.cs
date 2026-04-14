@@ -23,12 +23,8 @@ public class StreamServer(IServiceProvider services) : IStreamServer
         var isLocal = parsedStreamId.NodeRef == MeshWatcher.ThisNode.Ref;
 
         if (isLocal) {
-            // Local stream: use backend directly
-            var source = await Backend.GetAudio(parsedStreamId, skipTo, cancellationToken).ConfigureAwait(false);
-            return source == null ? null : new RpcStream<byte[]>(source) {
-                AckPeriod = Constants.Audio.StreamAckPeriod,
-                AckAdvance = Constants.Audio.StreamAckAdvance,
-            };
+            // Local stream: return backend's RpcStream directly (already has ack settings)
+            return await Backend.GetAudio(parsedStreamId, skipTo, cancellationToken).ConfigureAwait(false);
         }
 
         // Remote stream: fetch raw, cache locally, apply skipTo
