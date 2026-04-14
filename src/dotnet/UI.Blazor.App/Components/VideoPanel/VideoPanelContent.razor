@@ -252,8 +252,7 @@
         var isCollapsed = await ChatVideoUI.GetIsVideoPanelCollapsed(cancellationToken).ConfigureAwait(false);
 
         // Get centralized video state (for recording status)
-        var ownStreamingState = await ChatVideoUI.GetVideoStreamingState(chatId, cancellationToken).ConfigureAwait(false);
-        var ownStreamingMode = ownStreamingState?.Kind;
+        var ownStreamingMode = await ChatVideoUI.GetOwnStreamKind(chatId, cancellationToken).ConfigureAwait(false);
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
 
         // Get active video streams for this chat

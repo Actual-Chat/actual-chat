@@ -110,8 +110,8 @@
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
         var isAnyoneTalking = await LiveStreamUI.IsAnyoneStreaming(chatId, cancellationToken).ConfigureAwait(false);
         var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chatId, cancellationToken).ConfigureAwait(false);
-        var ownStreamingState = await ChatVideoUI.GetVideoStreamingState(chat.Id, cancellationToken).ConfigureAwait(false);
-        var isOwnVideoRecording = ownStreamingState is not null;
+        var ownStreamKind = await ChatVideoUI.GetOwnStreamKind(chat.Id, cancellationToken).ConfigureAwait(false);
+        var isOwnVideoRecording = ownStreamKind is not null;
         return new (chat, audioState, isAnyoneTalking, isAnyoneVideoStreaming, isOwnVideoRecording);
     }
 

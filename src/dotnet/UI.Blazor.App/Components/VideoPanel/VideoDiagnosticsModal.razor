@@ -252,7 +252,7 @@
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var chatId = ModalModel.ChatId;
 
-        var ownStreamingState = await ChatVideoUI.GetVideoStreamingState(chatId, cancellationToken).ConfigureAwait(false);
+        var ownStreamKind = await ChatVideoUI.GetOwnStreamKind(chatId, cancellationToken).ConfigureAwait(false);
         var activeStreams = await ChatVideoUI.GetActiveVideoStreams(chatId, cancellationToken);
         var memberCount = activeStreams.Count > 0
             ? await ChatVideoUI.GetVideoStreamMemberCount(chatId, cancellationToken).ConfigureAwait(false)
@@ -268,7 +268,7 @@
             streams[i] = new StreamEntry(info, author?.Avatar.Name ?? info.AuthorId.Value, ownAuthor?.Id == info.AuthorId);
         }
 
-        return new ComputedModel(ownStreamingState?.Kind, streams, memberCount);
+        return new ComputedModel(ownStreamKind, streams, memberCount);
     }
 
     private void OnToggleOwnStreamingDetails() {

@@ -36,8 +36,8 @@
         var chat = Chat;
         var chatId = chat.Id;
 
-        var ownStreamingState = await ChatVideoUI.GetVideoStreamingState(chatId, cancellationToken).ConfigureAwait(false);
-        var isOwnCameraStreaming = ownStreamingState?.Kind == StreamKind.Webcam;
+        var ownStreamKind = await ChatVideoUI.GetOwnStreamKind(chatId, cancellationToken).ConfigureAwait(false);
+        var isOwnCameraStreaming = ownStreamKind == StreamKind.Webcam;
         return isOwnCameraStreaming;
     }
 

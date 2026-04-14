@@ -4,8 +4,8 @@
 @inherits ComputedStateComponent<AppUIHub, VideoStreamingPreview.Model>
 @{
     var m = State.Value;
-    var isRecording = m.OwnStreamingState?.Kind == StreamKind.Webcam;
-    var isScreencasting = m.OwnStreamingState?.Kind == StreamKind.Screencast;
+    var isRecording = m.OwnStreamKind == StreamKind.Webcam;
+    var isScreencasting = m.OwnStreamKind == StreamKind.Screencast;
     var recordingCls = isRecording ? "recording" : "";
     var screencastCls = isScreencasting ? "screencast" : "";
 }
@@ -60,10 +60,10 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
-        var streamingState = await ChatVideoUI.GetVideoStreamingState(chatId, cancellationToken).ConfigureAwait(false);
+        var ownStreamKind = await ChatVideoUI.GetOwnStreamKind(chatId, cancellationToken).ConfigureAwait(false);
         var hasRemoteStreams = await ChatVideoUI.HasRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
         var lastError = await ChatVideoUI.GetLastVideoRecorderError(cancellationToken).ConfigureAwait(false);
-        return new Model(streamingState, !hasRemoteStreams, lastError);
+        return new Model(ownStreamKind, !hasRemoteStreams, lastError);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -78,7 +78,7 @@
 
     // Nested types
 
-    public sealed record Model(VideoStreamingState? OwnStreamingState, bool IsAloneOnStream, string? LastErrorMessage) {
+    public sealed record Model(StreamKind? OwnStreamKind, bool IsAloneOnStream, string? LastErrorMessage) {
         public static readonly Model None = new(null, true, null);
     }
 }

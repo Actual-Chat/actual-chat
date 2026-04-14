@@ -670,8 +670,8 @@ public partial class ChatAudioUI
 
         while (!cancellationToken.IsCancellationRequested) {
             // If own video is streaming for this chat, treat as activity — don't countdown
-            var ownStreamingState = await Hub.ChatVideoUI.GetVideoStreamingState(chatId, cancellationToken).ConfigureAwait(false);
-            if (ownStreamingState is not null) {
+            var ownStreamKind = await Hub.ChatVideoUI.GetOwnStreamKind(chatId, cancellationToken).ConfigureAwait(false);
+            if (ownStreamKind is not null) {
                 lastTranscribedAt = Clocks.ServerClock.Now;
                 yield return null; // No countdown
                 await Task.Delay(options.CheckPeriod, cancellationToken).ConfigureAwait(false);
