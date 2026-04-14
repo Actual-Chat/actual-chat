@@ -90,15 +90,15 @@ export class RpcClientStreamSender<T> implements IRpcObject {
     if (!this._started.isCompleted) {
       this._started.resolve();
     }
-    // The server sends periodic Ack(nextIndex) as a progress acknowledgment —
-    // it does NOT mean "reset to nextIndex". Only reset if the server
-    // explicitly requests it via a non-default hostId (mustReset=true on the
-    // server side). Progress acks have hostId=default (empty Guid).
-    //
-    // Previously, this code unconditionally reset _nextIndex when
-    // nextIndex < _nextIndex, causing the sender to re-send items from
-    // the acked position with NEW data — corrupting the stream and
-    // eventually triggering a server-side stream end.
+    // .NET RpcSharedStream uses acks for flow control (sends up to
+    // ackAdvance items beyond the acked position) and supports rewind
+    // on mustReset. We intentionally skip both:
+    // - Flow control: real-time media streams (audio/video) can't
+    //   back-pressure — frames must be sent at capture rate or dropped.
+    // - Rewind/reset: there's no send buffer to replay from; reconnect
+    //   is not supported for client-to-server streams.
+    // Previously, resetting _nextIndex on progress acks caused stream
+    // corruption (re-sent indices with new data).
   }
 
   /** Called by system call handler when $sys.AckEnd is received from the server. */

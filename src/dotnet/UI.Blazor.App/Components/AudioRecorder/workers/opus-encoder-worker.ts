@@ -215,7 +215,7 @@ function ensureAudioStream(): void {
         lastRecoveryAt = now;
         warnLog?.log(`ensureAudioStream: stream disposed, recreating for recovery`);
         const preSkip = encoder?.preSkip ?? AE.DEFAULT_PRE_SKIP;
-        audioStream = AudioStreamer.addStream(lastSessionToken, preSkip, lastStartArguments.chatId, '');
+        audioStream = AudioStreamer.addStream(preSkip, lastStartArguments.chatId, '');
     } else {
         audioStream = null;
     }
@@ -245,7 +245,7 @@ async function startRecording(): Promise<void> {
 
     systemEncoder?.configure(systemCodecConfig);
     const preSkip = encoder?.preSkip ?? AE.DEFAULT_PRE_SKIP;
-    audioStream = AudioStreamer.addStream(lastSessionToken, preSkip, chatId, repliedChatEntryId);
+    audioStream = AudioStreamer.addStream(preSkip, chatId, repliedChatEntryId);
     // TODO(AK): fix eslint error
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
     processQueue('in');

@@ -130,6 +130,14 @@ export class RpcStream<T> implements AsyncIterable<T>, IRpcObject {
 
     if (index > this._nextExpectedIndex) {
       console.warn(`[RpcStream] batch index gap: localId=${this.id.localId}, expected=${this._nextExpectedIndex}, received=${index}`);
+      if (!this.allowReconnect) {
+        this._completed = true;
+        this._completionError = new Error(
+          `Stream gap at index ${index} (expected ${this._nextExpectedIndex}); reconnect not allowed`,
+        );
+        this._notifyConsumer();
+        return;
+      }
       this._sendAck(this._nextExpectedIndex, true);
       return;
     }

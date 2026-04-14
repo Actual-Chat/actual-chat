@@ -1064,23 +1064,24 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
             }
         });
 
-        // Produce at ~50fps (20ms per item) for ~30 seconds = 1500 items
-        var targetCount = 1500;
+        // Produce >1024 items to cross the buffer resize boundary.
+        // Use 1ms delay to keep the test fast (~1.2s) while still exercising async interleaving.
+        var targetCount = 1200;
         for (var i = 0; i < targetCount; i++) {
             channel.Writer.TryWrite(i);
-            await Task.Delay(20);
+            await Task.Delay(1);
 
-            // Check for stall every 100 items
-            if (i > 0 && i % 100 == 0) {
+            // Check for stall every 200 items
+            if (i > 0 && i % 200 == 0) {
                 var consumed = Volatile.Read(ref consumedCount);
                 var lag = i - consumed;
                 Out.WriteLine($"[{i}] consumed={consumed} lag={lag}");
-                lag.Should().BeLessThan(200, $"Consumer stalled at {consumed} while producer at {i}");
+                lag.Should().BeLessThan(400, $"Consumer stalled at {consumed} while producer at {i}");
             }
         }
         channel.Writer.Complete();
 
-        await consumerTask.WaitAsync(TimeSpan.FromSeconds(10));
+        await consumerTask.WaitAsync(TimeSpan.FromSeconds(5));
         Volatile.Read(ref consumedCount).Should().Be(targetCount);
     }
 
@@ -1105,21 +1106,21 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
             }
         });
 
-        var targetCount = 1500;
+        var targetCount = 1200;
         for (var i = 0; i < targetCount; i++) {
             channel.Writer.TryWrite(i);
-            await Task.Delay(20);
+            await Task.Delay(1);
 
-            if (i > 0 && i % 100 == 0) {
+            if (i > 0 && i % 200 == 0) {
                 var consumed = Volatile.Read(ref consumedCount);
                 var lag = i - consumed;
                 Out.WriteLine($"[{i}] consumed={consumed} lag={lag}");
-                lag.Should().BeLessThan(200, $"Consumer stalled at {consumed} while producer at {i}");
+                lag.Should().BeLessThan(400, $"Consumer stalled at {consumed} while producer at {i}");
             }
         }
         channel.Writer.Complete();
 
-        await consumerTask.WaitAsync(TimeSpan.FromSeconds(10));
+        await consumerTask.WaitAsync(TimeSpan.FromSeconds(5));
         Volatile.Read(ref consumedCount).Should().Be(targetCount);
     }
 

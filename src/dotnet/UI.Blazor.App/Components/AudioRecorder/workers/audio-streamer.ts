@@ -211,9 +211,7 @@ export class AudioStreamer {
     }
 
     public static get isConnected(): boolean {
-        // RPC peer is considered connected once initialized — the RPC framework
-        // handles reconnection transparently.
-        return this.rpcPeer != null;
+        return this.rpcPeer?.isConnected ?? false;
     }
 
     public static async disconnect(): Promise<void> {
@@ -241,7 +239,7 @@ export class AudioStreamer {
         }
     }
 
-    public static addStream(sessionToken: string, preSkip: number, chatId: string, repliedChatEntryId: string): AudioStream {
+    public static addStream(preSkip: number, chatId: string, repliedChatEntryId: string): AudioStream {
         let stream: AudioStream;
         if (this.streams.length < AS.MAX_STREAMS) {
             stream = new AudioStream(preSkip, chatId, repliedChatEntryId, this.lastStream?.whenDisposed);
