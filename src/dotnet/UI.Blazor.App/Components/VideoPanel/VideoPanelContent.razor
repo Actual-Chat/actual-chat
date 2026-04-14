@@ -42,8 +42,8 @@
         _lastChat = mChat;
 }
 
-    <div @ref="Ref" class="video-panel @firstOpenCls @recordingCls @remoteStreamsCls @expandedCls @collapsedCls">
-      <div class="c-container">
+<div @ref="Ref" class="video-panel @firstOpenCls @recordingCls @remoteStreamsCls @expandedCls @collapsedCls">
+    <div class="c-container">
         @* Header for expanded video *@
         <div class="video-panel-toolbar video-panel-header">
             <HeaderButton Class="expand-btn show-with-delay expanded-video-btn" Click="@OnExpandClick">
@@ -109,27 +109,18 @@
                 </HeaderButton>
             }
         </div>
-        <div class="video-panel-content">
-            <div class="remote-streams">
-                @if (_showConnecting) {
-                    <UITimer Period="@TimeSpan.FromSeconds(5)" IsRecurring="false" Tick="OnConnectingTimeout" />
-                    <div class="connecting-overlay">
-                        <div class="connecting-spinner"></div>
-                        <span>Connecting...</span>
-                    </div>
-                }
-                @foreach (var streamInfo in m.RemoteStreams.Where(s => s.AuthorId != m.PreviousSpeakerAuthorId)) {
-                    <RemoteStreamPlayer @key="streamInfo.StreamId.Value" StreamInfo="@streamInfo" />
-                }
-            </div>
-            <div class="c-sidebar">
-                <div class="c-sidebar-content">
-                    @if (m.PreviousSpeakerStream is { } prevStream) {
-                        <RemoteStreamPlayer @key="prevStream.StreamId.Value" StreamInfo="@prevStream" />
-                    }
-                    <VideoStreamingPreview ChatId="@ChatId" />
+        <VideoPanelContentLayout ChatId="@ChatId">
+            @if (_showConnecting) {
+                <UITimer Period="@TimeSpan.FromSeconds(5)" IsRecurring="false" Tick="OnConnectingTimeout" />
+                <div class="connecting-overlay">
+                    <div class="connecting-spinner"></div>
+                    <span>Connecting...</span>
                 </div>
-            </div>
+            }
+            @foreach (var streamInfo in m.RemoteStreams) {
+                <RemoteStreamPlayer @key="streamInfo.StreamId.Value" StreamInfo="@streamInfo" />
+            }
+            <VideoStreamingPreview ChatId="@ChatId" />
             @if (m.AllowDiagnostics) {
                 <HeaderButton Class="btn-diagnostics collapsed-video-btn" Tooltip="Diagnostics" Click="@OnDiagnosticsClick">
                     <i class="icon-activity text-lg"></i>
@@ -139,15 +130,15 @@
                 <i class="icon-expand text-lg collapsed-video-panel"></i>
                 <i class="icon-collapse text-lg expanded-video-panel"></i>
             </HeaderButton>
-        </div>
+        </VideoPanelContentLayout>
         @if (_isExpanded && _isChatVisible && !ScreenSize.IsNarrow() && _lastChat is { } chat) {
             <div class="video-panel-chat upload-drag-drop-host">
                 <ChatView @key="@chat.Id.Value" ChatId="@chat.Id"/>
                 <ChatMessageEditor @key="@("vp-editor-" + chat.Id.Value)" Chat="@chat"/>
             </div>
         }
-      </div>
     </div>
+</div>
 
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoPanel.create";
@@ -261,13 +252,12 @@
             return new Model([], ownStreamingKind, audioState.IsRecording, 0, chat, isCollapsed, AllowDiagnostics: isAdmin);
 
         var remoteStreams = await ChatVideoUI.GetRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
-        var previousSpeakerId = await ChatVideoUI.GetPreviousFocusedSpeakerId(cancellationToken).ConfigureAwait(false);
 
         Log.LogWarning("[VideoPanelContent] ComputeState: remoteStreams=[{Streams}], isRecording={IsRecording}",
             string.Join(", ", remoteStreams.Select(s => $"{s.StreamId}({s.Format.Codec})")),
             ownStreamingKind);
 
-        return new Model(remoteStreams, ownStreamingKind, audioState.IsRecording, videoStreamMemberCount, chat, isCollapsed, previousSpeakerId, isAdmin);
+        return new Model(remoteStreams, ownStreamingKind, audioState.IsRecording, videoStreamMemberCount, chat, isCollapsed, isAdmin);
     }
 
     private void OnHangUpClick() {
@@ -357,11 +347,8 @@
         int VideoStreamMemberCount,
         Chat? Chat,
         bool IsCollapsed = false,
-        AuthorId? PreviousSpeakerAuthorId = null,
         bool AllowDiagnostics = false
     ) {
-        public VideoStreamInfo? PreviousSpeakerStream
-            => PreviousSpeakerAuthorId is null ? null : RemoteStreams.FirstOrDefault(s => s.AuthorId == PreviousSpeakerAuthorId);
         public static readonly Model Loading = new([], null, false, 0, null, false);
     }
 }
