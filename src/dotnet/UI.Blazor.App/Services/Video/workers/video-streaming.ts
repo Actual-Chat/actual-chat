@@ -15,7 +15,7 @@ import {
     StreamServerDef,
     type VideoFormatDto,
     type VideoFrameDto,
-} from '../video-rpc-service';
+} from '../streaming-rpc-service';
 
 const { debugLog, infoLog, warnLog, errorLog } = Log.get('VideoPipeline');
 

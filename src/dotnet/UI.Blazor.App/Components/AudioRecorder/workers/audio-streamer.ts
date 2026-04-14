@@ -6,7 +6,7 @@ import { EventHandlerSet } from 'event-handling';
 import { ObjectPool } from 'object-pool';
 import { delayAsync } from 'promises';
 import { RpcHub, RpcClientPeer, RpcClientStreamSender } from 'actuallab-rpc';
-import { StreamServerDef, type AudioFrameDto } from '../../../Services/Video/video-rpc-service';
+import { StreamServerDef, type AudioFrameDto } from '../../../Services/Video/streaming-rpc-service';
 import { ServerClock } from 'server-clock';
 import { WorkerConnectivityUI } from './worker-connectivity-ui';
 import { Log } from 'logging';

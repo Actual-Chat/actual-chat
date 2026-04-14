@@ -1,7 +1,7 @@
-// Video RPC client — connects to ILiveVideoStreams and IStreamServer via Fusion RPC WebSocket.
+// Streaming RPC client — connects to IStreamServer via Fusion RPC WebSocket.
 
 import { RpcHub, RpcClientPeer, RpcClientStreamSender } from 'actuallab-rpc';
-import { StreamServerDef, type VideoFrameDto, type VideoFormatDto, type AudioFrameDto } from './video-rpc-service.js';
+import { StreamServerDef, type VideoFrameDto, type VideoFormatDto, type AudioFrameDto } from './streaming-rpc-service.js';
 
 let _hub: RpcHub | undefined;
 let _peer: RpcClientPeer | undefined;
