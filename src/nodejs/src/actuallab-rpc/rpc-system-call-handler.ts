@@ -71,14 +71,18 @@ export class RpcSystemCallHandler {
       }
       case RpcSystemCalls.item: {
         const stream = peer.remoteObjects.get(relatedId) as RpcStream<unknown> | undefined;
-        if (stream) {
+        if (!stream) {
+          console.warn(`[RpcSysHandler] $sys.I: no stream for relatedId=${relatedId}`);
+        } else {
           stream.onItem(args[0] as number, resolveStreamRefs(args[1], peer));
         }
         break;
       }
       case RpcSystemCalls.batch: {
         const stream = peer.remoteObjects.get(relatedId) as RpcStream<unknown> | undefined;
-        if (stream) {
+        if (!stream) {
+          console.warn(`[RpcSysHandler] $sys.B: no stream for relatedId=${relatedId}`);
+        } else {
           const items = args[1] as unknown[];
           for (let i = 0; i < items.length; i++) items[i] = resolveStreamRefs(items[i]!, peer);
           stream.onBatch(args[0] as number, items);
@@ -87,7 +91,9 @@ export class RpcSystemCallHandler {
       }
       case RpcSystemCalls.end: {
         const stream = peer.remoteObjects.get(relatedId) as RpcStream<unknown> | undefined;
-        if (stream) {
+        if (!stream) {
+          console.warn(`[RpcSysHandler] $sys.End: no stream for relatedId=${relatedId}`);
+        } else {
           // .NET ExceptionInfo is a struct — even for normal completion, it serializes
           // as a non-null object with empty fields (e.g. { "message": "", "typeRef": {...} }).
           // Check both PascalCase and camelCase, and treat empty messages as no error.

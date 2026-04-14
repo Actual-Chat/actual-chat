@@ -62,6 +62,7 @@ export function deserializeMessage(raw: string): { message: RpcMessage; args: un
     try {
       return JSON.parse(s) as unknown;
     } catch {
+      console.warn(`[RpcSerialization] failed to parse arg as JSON: ${s.substring(0, 100)}`);
       return s; // Return raw string if not valid JSON
     }
   });
@@ -138,6 +139,7 @@ function writeVarUintInto(out: Uint8Array, pos: number, value: number): number {
 function readVarUint(data: Uint8Array, offset: number): { value: number; bytesRead: number } {
   let value = 0, shift = 0, bytesRead = 0;
   do {
+    if (offset + bytesRead >= data.length) break;
     const byte = data[offset + bytesRead];
     value |= (byte & 0x7F) << shift;
     bytesRead++;
