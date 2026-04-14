@@ -15,6 +15,7 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
     private readonly TaskCompletionSource _whenInitializedSource = TaskCompletionSourceExt.New();
     private readonly MutableState<VideoPanelLayout> _layout;
     private readonly MutableState<ImmutableArray<AuthorId>> _focusedSpeakerIds;
+    private readonly Lock _trackFocusLock = new Lock();
     private CancellationTokenSource? _focusDebounceCts;
     private AuthorId? _pendingFocusCandidate;
 
@@ -45,7 +46,7 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
     {
         await _whenInitializedSource.Task.ConfigureAwait(false);
         var baseChains = new[] {
-            AsyncChain.From(SyncFocusedSpeaker),
+            AsyncChain.From(TrackFocusedSpeaker),
             AsyncChain.From(CalculateLayout),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
@@ -72,31 +73,26 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
         }
     }
 
-    private async Task SyncFocusedSpeaker(CancellationToken cancellationToken)
+    private async Task TrackFocusedSpeaker(CancellationToken cancellationToken)
     {
         var cState = await Computed
             .Capture(() => GetActiveSpeakerState(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
 
         await foreach (var (state, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
-            var (speakingWithVideo, remoteAuthorIds, screencastAuthorId) = state;
+            var (speakersWithVideo, screencastAuthorId) = state;
+            lock (_trackFocusLock) {
+                // Screencast always takes focus (no debounce)
+                if (screencastAuthorId is { } scAuthor) {
+                    SetFocused(scAuthor);
+                    _focusDebounceCts?.CancelAsync();
+                    _focusDebounceCts = null;
+                    _pendingFocusCandidate = null;
+                    continue;
+                }
 
-            // Screencast always takes focus (no debounce)
-            if (screencastAuthorId is { } scAuthor) {
-                SetFocused(scAuthor);
-                _focusDebounceCts?.CancelAsync();
-                _focusDebounceCts = null;
-                _pendingFocusCandidate = null;
-                continue;
+                UpdateFocusedSpeakers(speakersWithVideo);
             }
-
-            UpdateActiveSpeakers(speakingWithVideo);
-
-            // Ensure we have at least one focused candidate if remotes exist.
-            // BuildDisplayList handles filtering out disconnected authors.
-            var ids = _focusedSpeakerIds.Value;
-            if (ids.Length == 0 && remoteAuthorIds.Length > 0)
-                _focusedSpeakerIds.Value = ids.Add(remoteAuthorIds[0]);
         }
     }
 
@@ -106,19 +102,16 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
         var chatId = ChatId;
         var audioStreamingAuthorIds = await Hub.LiveStreamUI
             .GetStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
-        var videoStreams = await ChatVideoUI.GetActiveVideoStreams(chatId, cancellationToken)
+        var removeVideoStreams = await ChatVideoUI.GetActiveVideoStreams(chatId, cancellationToken)
             .ConfigureAwait(false);
 
-        // Filter out own author
-        var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var remoteVideoAuthorIds = videoStreams
+        var remoteVideoAuthorIds = removeVideoStreams
             .Select(s => s.AuthorId)
-            .Where(a => ownAuthor?.Id != a)
             .ToHashSet();
 
         // Check for screencast among remote streams (not own)
-        var screencastAuthorId = videoStreams
-            .Where(s => s.StreamKind == StreamKind.Screencast && ownAuthor?.Id != s.AuthorId)
+        var screencastAuthorId = removeVideoStreams
+            .Where(s => s.StreamKind == StreamKind.Screencast)
             .Select(s => (AuthorId?)s.AuthorId)
             .FirstOrDefault();
 
@@ -126,7 +119,7 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
             .Where(remoteVideoAuthorIds.Contains)
             .ToArray();
 
-        return new ActiveSpeakerState(speakingWithVideo, remoteVideoAuthorIds.ToArray(), screencastAuthorId);
+        return new ActiveSpeakerState(speakingWithVideo, screencastAuthorId);
     }
 
     [ComputeMethod]
@@ -143,26 +136,32 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
 
     private void SetFocused(AuthorId newFocused)
     {
-        var ids = _focusedSpeakerIds.Value;
-        if (ids.Length > 0 && ids[0] == newFocused)
-            return;
+        lock (_trackFocusLock) {
+            var ids = _focusedSpeakerIds.Value;
+            if (ids.Length > 0 && ids[0] == newFocused)
+                return;
 
-        // Remove if already in history, then prepend
-        ids = ids.Remove(newFocused);
-        ids = ids.Insert(0, newFocused);
+            // Remove if already in history, then prepend
+            ids = ids.Remove(newFocused);
+            ids = ids.Insert(0, newFocused);
 
-        // Trim to max length
-        if (ids.Length > MaxFocusHistory)
-            ids = ids.RemoveRange(MaxFocusHistory, ids.Length - MaxFocusHistory);
+            // Trim to max length
+            if (ids.Length > MaxFocusHistory)
+                ids = ids.RemoveRange(MaxFocusHistory, ids.Length - MaxFocusHistory);
 
-        _focusedSpeakerIds.Value = ids;
+            _focusedSpeakerIds.Value = ids;
+        }
     }
 
-    private void UpdateActiveSpeakers(AuthorId[] speakingWithVideo)
+    private void UpdateFocusedSpeakers(AuthorId[] speakersWithVideo)
     {
+        // No candidates — keep last focus
+        if (speakersWithVideo.Length == 0)
+            return;
+
         var ids = _focusedSpeakerIds.Value;
         var current = ids.Length > 0 ? (AuthorId?)ids[0] : null;
-        if (current != null && speakingWithVideo.Any(a => a == current)) {
+        if (current != null && speakersWithVideo.Any(a => a == current)) {
             // Current focus is still speaking — keep it, cancel any pending switch
             _focusDebounceCts?.Cancel();
             _focusDebounceCts = null;
@@ -170,11 +169,13 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
             return;
         }
 
-        // No candidates — keep last focus
-        if (speakingWithVideo.Length == 0)
-            return;
+        var candidate = speakersWithVideo[0];
 
-        var candidate = speakingWithVideo[0];
+        // No focus yet — take first speaker immediately
+        if (ids.Length == 0) {
+            SetFocused(candidate);
+            return;
+        }
 
         // Already debouncing this candidate
         if (_pendingFocusCandidate == candidate)
@@ -184,10 +185,10 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
         _pendingFocusCandidate = candidate;
         _focusDebounceCts?.Cancel();
         _focusDebounceCts = new CancellationTokenSource();
-        _ = DebouncedFocusSwitch(candidate, _focusDebounceCts.Token);
+        _ = DebouncedSetFocused(candidate, _focusDebounceCts.Token);
     }
 
-    private async Task DebouncedFocusSwitch(AuthorId newSpeaker, CancellationToken cancellationToken)
+    private async Task DebouncedSetFocused(AuthorId newSpeaker, CancellationToken cancellationToken)
     {
         try {
             await Task.Delay(FocusDebounceDelay, cancellationToken).ConfigureAwait(false);
@@ -268,9 +269,9 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
 
     // Nested types
 
-    protected sealed record ActiveSpeakerState(AuthorId[] SpeakingWithVideo, AuthorId[] RemoteVideoAuthorIds, AuthorId? ScreencastAuthorId)
+    protected sealed record ActiveSpeakerState(AuthorId[] SpeakersWithVideo, AuthorId? ScreencastAuthorId)
     {
-        public static readonly ActiveSpeakerState None = new([], [], null);
+        public static readonly ActiveSpeakerState None = new([], null);
     }
 
     protected sealed record LayoutInputs(
