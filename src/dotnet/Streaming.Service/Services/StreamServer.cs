@@ -25,12 +25,18 @@ public class StreamServer(IServiceProvider services) : IStreamServer
         if (isLocal) {
             // Local stream: use backend directly
             var source = await Backend.GetAudio(parsedStreamId, skipTo, cancellationToken).ConfigureAwait(false);
-            return source == null ? null : RpcStream.New(source);
+            return source == null ? null : new RpcStream<byte[]>(source) {
+                AckPeriod = Constants.Audio.StreamAckPeriod,
+                AckAdvance = Constants.Audio.StreamAckAdvance,
+            };
         }
 
         // Remote stream: fetch raw, cache locally, apply skipTo
         var cached = await GetOrFetchRemoteAudio(parsedStreamId, skipTo, cancellationToken).ConfigureAwait(false);
-        return cached == null ? null : RpcStream.New(cached);
+        return cached == null ? null : new RpcStream<byte[]>(cached) {
+            AckPeriod = Constants.Audio.StreamAckPeriod,
+            AckAdvance = Constants.Audio.StreamAckAdvance,
+        };
     }
 
     public async Task<RpcStream<VideoFrame>?> GetVideo(string streamId, TimeSpan skipTo, CancellationToken cancellationToken)
@@ -40,7 +46,11 @@ public class StreamServer(IServiceProvider services) : IStreamServer
         var remoteStream = await VideoBackend.GetVideo(parsedStreamId, skipTo, peerId, cancellationToken).ConfigureAwait(false);
         return remoteStream is null
             ? null
-            : RpcStream.New(remoteStream, allowReconnect: false);
+            : new RpcStream<VideoFrame>(remoteStream) {
+                AllowReconnect = false,
+                AckPeriod = Constants.Video.StreamAckPeriod,
+                AckAdvance = Constants.Video.StreamAckAdvance,
+            };
     }
 
     public async Task<RpcStream<TranscriptDiff>?> GetTranscript(string streamId, CancellationToken cancellationToken)
@@ -61,7 +71,10 @@ public class StreamServer(IServiceProvider services) : IStreamServer
         var diffStream = diffs
             .SuppressException<TranscriptDiff, RpcReconnectFailedException>(cancellationToken)
             .SuppressCancellation(cancellationToken);
-        return RpcStream.New(diffStream);
+        return new RpcStream<TranscriptDiff>(diffStream) {
+            AckPeriod = Constants.Audio.StreamAckPeriod,
+            AckAdvance = Constants.Audio.StreamAckAdvance,
+        };
     }
 
     public Task ReportAudioLatency(TimeSpan latency, CancellationToken cancellationToken)

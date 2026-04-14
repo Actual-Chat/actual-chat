@@ -58,7 +58,10 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             (sid, ct) => Computed.Capture(() => GetQualityPreset(sid, ct), ct),
             (sid, ct) => RequestKeyFrame(sid, ct),
             Log);
-        return RpcStream.New(filter.Apply(streamId, peerId, skipTo, stream, cancellationToken));
+        return new RpcStream<VideoFrame>(filter.Apply(streamId, peerId, skipTo, stream, cancellationToken)) {
+            AckPeriod = Constants.Video.StreamAckPeriod,
+            AckAdvance = Constants.Video.StreamAckAdvance,
+        };
     }
 
     public virtual async Task<RpcStream<VideoFrame>?> GetVideoRaw(StreamId streamId, CancellationToken cancellationToken)
@@ -69,7 +72,10 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             Log.LogWarning("GetVideoRaw: #{StreamId} not found in StreamStore", streamId);
             return null;
         }
-        return RpcStream.New(stream);
+        return new RpcStream<VideoFrame>(stream) {
+            AckPeriod = Constants.Video.StreamAckPeriod,
+            AckAdvance = Constants.Video.StreamAckAdvance,
+        };
     }
 
     public virtual async Task PushVideo(

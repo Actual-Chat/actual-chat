@@ -48,7 +48,11 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         }
 
         var stream = ToLiveAsyncEnumerable(key, muxer.Output, cancellationToken);
-        return RpcStream.New(stream, allowReconnect: false);
+        return new RpcStream<LiveStreamItem>(stream) {
+            AllowReconnect = false,
+            AckPeriod = Constants.Audio.StreamAckPeriod,
+            AckAdvance = Constants.Audio.StreamAckAdvance,
+        };
     }
 
     public async Task ChangeSettings(
@@ -86,7 +90,11 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         }
 
         var stream = ToReplayAsyncEnumerable(key, muxer.Output, cancellationToken);
-        return RpcStream.New(stream, allowReconnect: false);
+        return new RpcStream<LiveStreamItem>(stream) {
+            AllowReconnect = false,
+            AckPeriod = Constants.Audio.StreamAckPeriod,
+            AckAdvance = Constants.Audio.StreamAckAdvance,
+        };
     }
 
     // Private methods

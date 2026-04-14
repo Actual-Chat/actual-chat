@@ -69,7 +69,10 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
             return null;
 
         stream = SkipTo(stream, skipTo, cancellationToken);
-        return RpcStream.New(stream);
+        return new RpcStream<byte[]>(stream) {
+            AckPeriod = Constants.Audio.StreamAckPeriod,
+            AckAdvance = Constants.Audio.StreamAckAdvance,
+        };
     }
 
     public virtual async Task<RpcStream<TranscriptDiff>?> GetTranscript(StreamId streamId, CancellationToken cancellationToken)
@@ -77,7 +80,10 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
         DebugLog?.LogDebug("GetTranscript: #{StreamId}", streamId);
         var stream = await _transcriptStreams.Get(streamId, false, cancellationToken).ConfigureAwait(false);
         if (stream != null)
-            return RpcStream.New(stream);
+            return new RpcStream<TranscriptDiff>(stream) {
+                AckPeriod = Constants.Audio.StreamAckPeriod,
+                AckAdvance = Constants.Audio.StreamAckAdvance,
+            };
 
         var language = streamId.Language;
         if (language == null)
@@ -86,7 +92,10 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
         var originalStreamId = StreamId.New(streamId.NodeRef, streamId.LocalId);
         if (!_translatingStreams.TryAdd(streamId, originalStreamId)) {
             stream = await _transcriptStreams.Get(streamId, true, cancellationToken).ConfigureAwait(false);
-            return RpcStream.New(stream!); // Already translating
+            return new RpcStream<TranscriptDiff>(stream!) { // Already translating
+                AckPeriod = Constants.Audio.StreamAckPeriod,
+                AckAdvance = Constants.Audio.StreamAckAdvance,
+            };
         }
 
         DebugLog?.LogDebug("GetTranscript: #{StreamId} - Translate stream", streamId);
@@ -99,7 +108,10 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
         DebugLog?.LogDebug("GetTranscript: #{StreamId} - Return stream", streamId);
         return stream == null
             ? null
-            : RpcStream.New(stream);
+            : new RpcStream<TranscriptDiff>(stream) {
+                AckPeriod = Constants.Audio.StreamAckPeriod,
+                AckAdvance = Constants.Audio.StreamAckAdvance,
+            };
     }
 
     public async Task PushTranscript(StreamId streamId, RpcStream<TranscriptDiff> diffStream, CancellationToken cancellationToken)
