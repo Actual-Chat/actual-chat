@@ -6,7 +6,7 @@
 @{
     var m = State.Value;
     var hasRemoteStreams = m.RemoteStreams.Length > 0;
-    var ownStreamingMode = m.OwnStreamingKind;
+    var ownStreamingKind = m.OwnStreamingKind;
 
     // Show "Connecting..." overlay when no remote streams and not recording;
     // after 5s timeout, auto-close the panel if streams haven't appeared
@@ -14,20 +14,20 @@
         _showConnecting = false;
         _noStreamsTimedOut = false;
         _hadRemoteStreams = true;
-    } else if (ownStreamingMode is not null && !_hadRemoteStreams && !_noStreamsTimedOut) {
+    } else if (ownStreamingKind is not null && !_hadRemoteStreams && !_noStreamsTimedOut) {
         // Recording solo, never had remote peers — show preview, not "Connecting..."
         _showConnecting = false;
     } else if (!_noStreamsTimedOut && _hadRemoteStreams) {
         _showConnecting = true;
     }
 
-    if (m != Model.Loading && ownStreamingMode is null && !hasRemoteStreams && !_showConnecting) {
+    if (m != Model.Loading && ownStreamingKind is null && !hasRemoteStreams && !_showConnecting) {
         // TODO(DF): move this logic to ChatVideoUI
         ChatVideoUI.CloseVideoPanel();
     }
 
-    var isOwnCameraStreaming = ownStreamingMode == StreamKind.Webcam;
-    var isOwnScreencasting = ownStreamingMode == StreamKind.Screencast;
+    var isOwnCameraStreaming = ownStreamingKind == StreamKind.Webcam;
+    var isOwnScreencasting = ownStreamingKind == StreamKind.Screencast;
     var recordingCls = isOwnCameraStreaming ? "recording" : "";
     var remoteStreamsCls = hasRemoteStreams || _showConnecting ? "has-remote-streams" : "";
     var firstOpenCls = _isFirstOpen ? "first-time-open" : "";
@@ -112,7 +112,7 @@
         <div class="video-panel-content">
             <div class="remote-streams">
                 @if (_showConnecting) {
-                    <UITimer Period="TimeSpan.FromSeconds(5)" IsRecurring="false" Tick="OnConnectingTimeout" />
+                    <UITimer Period="@TimeSpan.FromSeconds(5)" IsRecurring="false" Tick="OnConnectingTimeout" />
                     <div class="connecting-overlay">
                         <div class="connecting-spinner"></div>
                         <span>Connecting...</span>
@@ -248,7 +248,7 @@
         var isCollapsed = await ChatVideoUI.GetIsVideoPanelCollapsed(cancellationToken).ConfigureAwait(false);
 
         // Get centralized video state (for recording status)
-        var ownStreamingMode = await ChatVideoUI.GetOwnStreamKind(chatId, cancellationToken).ConfigureAwait(false);
+        var ownStreamingKind = await ChatVideoUI.GetOwnStreamKind(chatId, cancellationToken).ConfigureAwait(false);
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
 
         // Get active video streams for this chat
@@ -258,16 +258,16 @@
             : 0;
 
         if (activeStreams.Count == 0)
-            return new Model([], ownStreamingMode, audioState.IsRecording, audioState.IsListening, 0, chat, isCollapsed, AllowDiagnostics: isAdmin);
+            return new Model([], ownStreamingKind, audioState.IsRecording, 0, chat, isCollapsed, AllowDiagnostics: isAdmin);
 
         var remoteStreams = await ChatVideoUI.GetRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
         var previousSpeakerId = await ChatVideoUI.GetPreviousFocusedSpeakerId(cancellationToken).ConfigureAwait(false);
 
         Log.LogWarning("[VideoPanelContent] ComputeState: remoteStreams=[{Streams}], isRecording={IsRecording}",
             string.Join(", ", remoteStreams.Select(s => $"{s.StreamId}({s.Format.Codec})")),
-            ownStreamingMode);
+            ownStreamingKind);
 
-        return new Model(remoteStreams, ownStreamingMode, audioState.IsRecording, audioState.IsListening, videoStreamMemberCount, chat, isCollapsed, previousSpeakerId, isAdmin);
+        return new Model(remoteStreams, ownStreamingKind, audioState.IsRecording, videoStreamMemberCount, chat, isCollapsed, previousSpeakerId, isAdmin);
     }
 
     private void OnHangUpClick() {
@@ -354,7 +354,6 @@
         VideoStreamInfo[] RemoteStreams,
         StreamKind? OwnStreamingKind,
         bool IsAudioRecording,
-        bool IsListening,
         int VideoStreamMemberCount,
         Chat? Chat,
         bool IsCollapsed = false,
@@ -363,6 +362,6 @@
     ) {
         public VideoStreamInfo? PreviousSpeakerStream
             => PreviousSpeakerAuthorId is null ? null : RemoteStreams.FirstOrDefault(s => s.AuthorId == PreviousSpeakerAuthorId);
-        public static readonly Model Loading = new([], null, false, false, 0, null, false);
+        public static readonly Model Loading = new([], null, false, 0, null, false);
     }
 }
