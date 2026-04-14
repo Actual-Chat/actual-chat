@@ -274,7 +274,7 @@ export class RpcStream<T> implements AsyncIterable<T>, IRpcObject {
       // stream is rejected with $sys.Disconnect.  Mirror the .NET client behavior
       // and send the empty Guid for normal progress acks.
       const hostId = mustReset ? this.id.hostId : RpcStream._emptyGuid;
-      if (nextIndex <= 3 || nextIndex % 30 === 0)
+      if (nextIndex <= 3 || nextIndex % 250 === 0)
         console.log(`[RpcStream] ack localId=${this.id.localId} nextIndex=${nextIndex} mustReset=${mustReset}`);
       this.peer.hub.systemCallSender.ack(conn, this.id.localId, nextIndex, hostId);
     } else {

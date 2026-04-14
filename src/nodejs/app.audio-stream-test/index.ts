@@ -106,13 +106,12 @@ const FRAME_SIZE_BYTES = 80;
 
 function generateAudioFrame(index: number): AudioFrameDto {
     const data = new Uint8Array(FRAME_SIZE_BYTES);
-    // Write frame index into first 4 bytes for identification
-    data[0] = (index >> 24) & 0xFF;
-    data[1] = (index >> 16) & 0xFF;
-    data[2] = (index >> 8) & 0xFF;
-    data[3] = index & 0xFF;
+    // Write producer wall-clock timestamp into first 8 bytes for latency measurement
+    const now = Date.now();
+    const view = new DataView(data.buffer, data.byteOffset, 8);
+    view.setFloat64(0, now, true);
     // Fill rest with pseudo-random data
-    for (let i = 4; i < FRAME_SIZE_BYTES; i++)
+    for (let i = 8; i < FRAME_SIZE_BYTES; i++)
         data[i] = (index * 7 + i * 13) & 0xFF;
     return {
         Data: data,
@@ -120,6 +119,12 @@ function generateAudioFrame(index: number): AudioFrameDto {
         Duration: FRAME_DURATION_TICKS,
         IsKeyFrame: true,
     };
+}
+
+function readProducerTimestamp(data: Uint8Array): number {
+    if (data.byteLength < 8) return 0;
+    const view = new DataView(data.buffer, data.byteOffset, 8);
+    return view.getFloat64(0, true);
 }
 
 // --- CLI args ---
@@ -203,23 +208,28 @@ async function main(): Promise<void> {
     let producerFrameCount = 0;
     const producerStart = Date.now();
 
-    async function* audioFrameSource(): AsyncIterable<AudioFrameDto> {
-        for (let i = 0; !abort.aborted; i++) {
-            // Pace at 50 fps (20ms per frame)
-            const targetMs = producerStart + i * 20;
-            const now = Date.now();
-            if (targetMs > now)
-                await new Promise(r => setTimeout(r, targetMs - now));
-            if (abort.aborted) break;
+    // Don't use writeFrom — it awaits _started, causing the generator to
+    // accumulate a backlog of past-due frames. Instead, wait for start first,
+    // then send one frame per setTimeout tick (real hardware-rate pacing).
+    await sender.whenStarted();
+    const producerTask = new Promise<void>((resolve) => {
+        let i = 0;
+        const tick = () => {
+            if (abort.aborted) {
+                sender.sendEnd();
+                resolve();
+                return;
+            }
             const frame = generateAudioFrame(i);
-            producerFrameCount++;
-            if (producerFrameCount <= 3 || producerFrameCount % 250 === 0)
-                console.log(`[producer] frame #${producerFrameCount}, offset=${frame.Offset}`);
-            yield frame;
-        }
-    }
-
-    const producerTask = sender.writeFrom(audioFrameSource());
+            sender.sendItem(frame);
+            i++;
+            producerFrameCount = i;
+            if (i <= 3 || i % 250 === 0)
+                console.log(`[producer] frame #${i}, offset=${frame.Offset}`);
+            setTimeout(tick, 20);
+        };
+        tick();
+    });
 
     // --- Wait for stream to appear ---
     console.log('[discovery] Waiting for stream to appear...');
@@ -268,8 +278,14 @@ async function main(): Promise<void> {
                 if (gapMs > maxGapMs) maxGapMs = gapMs;
                 lastConsumerFrameAt = now;
 
+                // Measure end-to-end latency from producer timestamp embedded in frame data
+                const frameData = (frame as any) instanceof Uint8Array ? frame as Uint8Array : (frame as any).Data as Uint8Array | undefined;
+                const producerTs = frameData ? readProducerTimestamp(frameData) : 0;
+                const e2eLatency = producerTs > 0 ? now - producerTs : -1;
+
                 if (consumerFrameCount <= 3 || consumerFrameCount % 250 === 0)
-                    console.log(`[consumer] frame #${consumerFrameCount}, bytes=${(frame as any).byteLength ?? (frame as any).Data?.byteLength ?? '?'}`);
+                    console.log(`[consumer] frame #${consumerFrameCount}, e2e=${e2eLatency}ms`);
+
             }
             console.log('[consumer] Stream ended');
         } catch (e) {
@@ -282,10 +298,11 @@ async function main(): Promise<void> {
     const statusInterval = setInterval(() => {
         if (abort.aborted) return;
         const elapsed = ((Date.now() - producerStart) / 1000).toFixed(1);
+        const lag = producerFrameCount - consumerFrameCount;
         console.log(
             `[status ${elapsed}s] producer=${producerFrameCount} consumer=${consumerFrameCount} ` +
-            `gap=${maxGapMs}ms gaps>1s=${gapCount}`);
-    }, 5000);
+            `lag=${lag} gap=${maxGapMs}ms gaps>1s=${gapCount}`);
+    }, 2000);
 
     // --- Run for duration ---
     await new Promise<void>(resolve => {
