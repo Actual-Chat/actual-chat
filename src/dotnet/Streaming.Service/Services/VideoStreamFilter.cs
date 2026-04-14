@@ -51,16 +51,8 @@ public class VideoStreamFilter(
             _ = BackgroundTask.Run(() => requestKeyFrame(streamId, cancellationToken), cancellationToken);
 
         var yieldedCount = 0;
-        var firstFrameLogged = false;
         try {
             await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-                // TEMP DIAG: log the very first frame the filter sees from the source
-                if (!firstFrameLogged) {
-                    log.LogWarning(
-                        "VideoStreamFilter: first frame from source — offset={Offset}, isKey={IsKey}, KF#{KF}, skipToActive={SkipToActive}",
-                        frame.Offset, frame.IsKeyFrame, frame.KeyFrameNumber, skipToActive);
-                    firstFrameLogged = true;
-                }
                 // 0. SkipTo filter — drop all frames before the requested offset (must land on keyframe)
                 if (skipToActive) {
                     if (frame.Offset < skipTo || !frame.IsKeyFrame) {
@@ -97,10 +89,6 @@ public class VideoStreamFilter(
                     skipping = false;
                     skippedCount = 0;
                     yieldedCount++;
-                    // TEMP DIAG: trace every keyframe through the filter pipeline
-                    log.LogWarning(
-                        "VideoStreamFilter: yielding keyframe KF#{KF} at offset {Offset}, dataLen={DataLen}",
-                        frame.KeyFrameNumber, frame.Offset, frame.Data?.Length ?? frame.CachedSerializedBytes?.Length ?? 0);
                     yield return frame;
                 }
                 else if (!skipping && frame.KeyFrameNumber == lastKeyFrameNumber) {
@@ -117,10 +105,6 @@ public class VideoStreamFilter(
                     skippedCount++;
                 }
             }
-
-            // TEMP DIAG: did the source yield anything at all?
-            if (!firstFrameLogged)
-                log.LogWarning("VideoStreamFilter: source yielded ZERO frames — loop never entered");
 
             // Source exhausted — if skipTo filter was never satisfied, the
             // consumer gets an empty stream.  Log so we can correlate with

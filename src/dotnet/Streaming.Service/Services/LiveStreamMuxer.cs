@@ -142,9 +142,6 @@ public sealed class LiveStreamMuxer : WorkerBase
                 };
                 await _output.Writer.WriteAsync(audioFrame, cancellationToken).ConfigureAwait(false);
                 frameCount++;
-                if (frameCount <= 3 || frameCount % 250 == 0)
-                    Log.LogWarning("ProcessStream #{StreamIndex}: frame #{FrameCount}, dataLen={DataLen}",
-                        streamIndex, frameCount, data.Length);
             }
 
             // Emit stream end

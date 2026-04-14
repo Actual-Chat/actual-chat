@@ -173,7 +173,6 @@ export abstract class RpcPeer {
 
     conn.messageReceived.add((raw) => this._handleMessage(raw));
     conn.closed.add((ev) => {
-      console.warn(`[RpcPeer] connection closed: code=${ev.code}, reason=${ev.reason}, sharedObjects=[${[...this.sharedObjects.keys()].join(",")}]`);
       this._connection = undefined;
       this._stopKeepAlive();
       this.disconnected.trigger(ev);

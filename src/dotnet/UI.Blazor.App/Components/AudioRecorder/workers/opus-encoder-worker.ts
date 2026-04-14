@@ -355,8 +355,6 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
 
             lastFrameProcessedAt = Date.now();
             encodedFrameCount++;
-            if (encodedFrameCount <= 3 || encodedFrameCount % 250 === 0)
-                warnLog?.log(`processQueue: encoded frame #${encodedFrameCount}, queueLen=${queue.length}, hasStream=${audioStream !== null}, state=${state}`);
             chunkTimeOffset += 20;
         }
     }

@@ -145,7 +145,6 @@ export class AudioStream implements Disposable {
             warnLog?.log(`${this.name}: sender started, peerConnected=${AudioStreamer.rpcPeer?.isConnected}`);
 
             let frameIndex = 0;
-            let lastSendAt = Date.now();
             while (!this.isDisposed) {
                 // Detect server disconnect (e.g. pod restart)
                 if (sender.isEnded) {
@@ -162,10 +161,6 @@ export class AudioStream implements Disposable {
                         IsKeyFrame: true,
                     });
                     frameIndex++;
-                    lastSendAt = Date.now();
-
-                    if (frameIndex <= 3 || frameIndex % 250 === 0)
-                        warnLog?.log(`${this.name}: sent frame #${frameIndex}, queued=${this.frames.length}, peerConn=${!!AudioStreamer.rpcPeer?.connection}`);
 
                     // Release buffer back to pool
                     if (frame.buffer.byteLength === AE.FRAME_BUFFER_BYTES)
@@ -175,9 +170,6 @@ export class AudioStream implements Disposable {
                     sender.sendEnd();
                     this.dispose();
                 } else {
-                    const stallMs = Date.now() - lastSendAt;
-                    if (stallMs > 5000)
-                        warnLog?.log(`${this.name}: no frames for ${stallMs}ms, queued=${this.frames.length}, completed=${this.isCompleted}, disposed=${this.isDisposed}`);
                     await this.frameAdded.whenNext();
                 }
             }

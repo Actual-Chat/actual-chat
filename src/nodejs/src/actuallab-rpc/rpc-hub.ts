@@ -199,10 +199,8 @@ export class RpcHub {
         const result = await outboundCall.result.promise;
         const ref = parseStreamRef(result);
         if (!ref) throw new Error(`Expected stream reference, got: ${JSON.stringify(result)}`);
-        console.log(`[RpcHub] stream method '${wireName}' returned ref: localId=${ref.localId}, hostId=${ref.hostId}, ackPeriod=${ref.ackPeriod}, ackAdvance=${ref.ackAdvance}`);
         const stream = new RpcStream(ref, peer);
         peer.remoteObjects.register(stream);
-        console.log(`[RpcHub] stream registered in remoteObjects, id=${stream.id.localId}, remoteObjects keys: [${[...peer.remoteObjects.keys()].join(",")}]`);
         return stream;
       };
     }

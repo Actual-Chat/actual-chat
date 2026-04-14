@@ -262,18 +262,12 @@ export class AudioPlayer implements Resettable {
         resetMediaSessionDebounced();
     }
 
-    private _jsFrameCount = 0;
-
     /** Called by Blazor without awaiting the result, so a call can be in the middle of appendAudio  */
     public frame(bytes: Uint8Array): void {
         if (this.playbackState === 'ended')
             return;
         if (this.contextRef && !this.contextRef.isReady)
             return; // Skip frames when audio context isn't running (e.g. broken/suspended)
-
-        this._jsFrameCount++;
-        if (this._jsFrameCount <= 3 || this._jsFrameCount % 250 === 0)
-            warnLog?.log(`#${this.internalId}.frame: count=${this._jsFrameCount}, bytes=${bytes.length}`);
 
         // @ts-expect-error TODO(AY): fix ts error
         void decoderWorker.frame(this.internalId, bytes.buffer, bytes.byteOffset, bytes.length, rpcNoWait);
@@ -284,7 +278,7 @@ export class AudioPlayer implements Resettable {
         if (this.playbackState === 'ended')
             return;
 
-        warnLog?.log(`#${this.internalId}.end, mustAbort:`, mustAbort, `totalFrames=${this._jsFrameCount}`);
+        warnLog?.log(`#${this.internalId}.end, mustAbort:`, mustAbort);
 
         // Wait for context to be ready
         if (this.contextRef && !this.contextRef.isReady) {
