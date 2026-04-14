@@ -10,15 +10,15 @@ body.wide .video-panel.expanded .video-streaming-preview .call-video {
 .video-streaming-preview.screencast .call-video {
     transform: none;
 }
-.video-streaming-preview .btn-h.settings-btn {
-    @apply absolute top-0.5 right-0.5;
+.video-streaming-preview .btn-h.btn-settings {
+    @apply absolute top-1 right-1;
     @apply text-white text-lg;
 }
-body.hoverable .video-streaming-preview .btn-h.settings-btn:hover {
+body.hoverable .video-streaming-preview .btn-h.btn-settings:hover {
     @apply text-white;
     @apply opacity-80;
 }
-.video-panel.expanded .video-streaming-preview .btn-h.settings-btn {
+.video-panel.expanded .video-streaming-preview .btn-h.btn-settings {
     @apply hidden;
 }
 
