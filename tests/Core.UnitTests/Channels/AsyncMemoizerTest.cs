@@ -1046,6 +1046,83 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         memoizer.Dispose();
     }
 
+    [Fact]
+    public async Task Unbounded_LiveConsumer_Over1024Items_NoStall()
+    {
+        // Reproduces the audio streaming stall: slow producer + live consumer + >1024 items
+        // The buffer resizes at 16, 32, ..., 1024, 2048. If the Write task misses a signal
+        // during resize, the consumer stalls.
+        var channel = Channel.CreateUnbounded<int>();
+        var memoizer = channel.Reader.ReadAllAsync().Memoize();
+
+        var consumedCount = 0;
+        var consumerTask = Task.Run(async () => {
+            var count = 0;
+            await foreach (var item in memoizer.Replay()) {
+                count++;
+                Interlocked.Exchange(ref consumedCount, count);
+            }
+        });
+
+        // Produce at ~50fps (20ms per item) for ~30 seconds = 1500 items
+        var targetCount = 1500;
+        for (var i = 0; i < targetCount; i++) {
+            channel.Writer.TryWrite(i);
+            await Task.Delay(20);
+
+            // Check for stall every 100 items
+            if (i > 0 && i % 100 == 0) {
+                var consumed = Volatile.Read(ref consumedCount);
+                var lag = i - consumed;
+                Out.WriteLine($"[{i}] consumed={consumed} lag={lag}");
+                lag.Should().BeLessThan(200, $"Consumer stalled at {consumed} while producer at {i}");
+            }
+        }
+        channel.Writer.Complete();
+
+        await consumerTask.WaitAsync(TimeSpan.FromSeconds(10));
+        Volatile.Read(ref consumedCount).Should().Be(targetCount);
+    }
+
+    [Fact]
+    public async Task Unbounded_TwoLayerMemoizer_NoStall()
+    {
+        // Reproduces the audio pipeline: source → Memoizer1 → Replay → Memoizer2 → Replay → consumer
+        var channel = Channel.CreateUnbounded<int>();
+
+        // Layer 1: memoize the source
+        var memoizer1 = channel.Reader.ReadAllAsync().Memoize();
+
+        // Layer 2: memoize a Replay of layer 1 (like StreamStore.Publish does)
+        var memoizer2 = memoizer1.Replay().Memoize();
+
+        var consumedCount = 0;
+        var consumerTask = Task.Run(async () => {
+            var count = 0;
+            await foreach (var item in memoizer2.Replay()) {
+                count++;
+                Interlocked.Exchange(ref consumedCount, count);
+            }
+        });
+
+        var targetCount = 1500;
+        for (var i = 0; i < targetCount; i++) {
+            channel.Writer.TryWrite(i);
+            await Task.Delay(20);
+
+            if (i > 0 && i % 100 == 0) {
+                var consumed = Volatile.Read(ref consumedCount);
+                var lag = i - consumed;
+                Out.WriteLine($"[{i}] consumed={consumed} lag={lag}");
+                lag.Should().BeLessThan(200, $"Consumer stalled at {consumed} while producer at {i}");
+            }
+        }
+        channel.Writer.Complete();
+
+        await consumerTask.WaitAsync(TimeSpan.FromSeconds(10));
+        Volatile.Read(ref consumedCount).Should().Be(targetCount);
+    }
+
     // === Helpers ===
 
     private static async Task SpinWaitForBuffered<T>(AsyncMemoizer<T> memoizer, int expectedCount, int timeoutMs = 5000)
