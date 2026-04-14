@@ -1,7 +1,7 @@
 // Fusion RPC producer / consumer harnesses.
 //
 // Connection model — mirrors the C# App.VideoLoadTest RPC path and the
-// production browser client (UI.Blazor.App/Services/Video/video-rpc-client.ts):
+// production browser client (UI.Blazor.App/Services/Video/streaming-rpc-client.ts):
 // ONE shared `RpcClientPeer` multiplexes every producer and every consumer
 // over a single WebSocket. That's how Fusion RPC is designed to be used.
 //
