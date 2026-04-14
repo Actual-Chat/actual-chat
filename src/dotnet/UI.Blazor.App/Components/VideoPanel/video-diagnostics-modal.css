@@ -1,7 +1,10 @@
-.video-diagnostics-modal {
+.body.wide .video-diagnostics-modal {
     @apply w-112;
 }
-
+body.narrow .video-diagnostics-modal.narrow-view__modal__position-stretch {
+    padding-top: var(--safe-area-top);
+    padding-bottom: calc(1rem + var(--safe-area-bottom));
+}
 .video-diagnostics-modal .dialog-body {
     @apply flex flex-col gap-3 p-4;
     font-size: 0.8125rem;
