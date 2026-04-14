@@ -60,42 +60,6 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
             .ConfigureAwait(false);
     }
 
-    private async Task CalculateLayout(CancellationToken cancellationToken)
-    {
-        var cState = await Computed
-            .Capture(() => GetLayoutInputs(cancellationToken), cancellationToken)
-            .ConfigureAwait(false);
-
-        await foreach (var (inputs, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
-            var layout = BuildLayout(inputs);
-            if (layout != _layout.Value)
-                _layout.Value = layout;
-        }
-    }
-
-    private async Task TrackFocusedSpeaker(CancellationToken cancellationToken)
-    {
-        var cState = await Computed
-            .Capture(() => GetActiveSpeakerState(cancellationToken), cancellationToken)
-            .ConfigureAwait(false);
-
-        await foreach (var (state, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
-            var (speakersWithVideo, screencastAuthorId) = state;
-            lock (_trackFocusLock) {
-                // Screencast always takes focus (no debounce)
-                if (screencastAuthorId is { } scAuthor) {
-                    SetFocused(scAuthor);
-                    _focusDebounceCts?.CancelAsync();
-                    _focusDebounceCts = null;
-                    _pendingFocusCandidate = null;
-                    continue;
-                }
-
-                UpdateFocusedSpeakers(speakersWithVideo);
-            }
-        }
-    }
-
     [ComputeMethod]
     protected virtual async Task<ActiveSpeakerState> GetActiveSpeakerState(CancellationToken cancellationToken)
     {
@@ -133,6 +97,42 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
     }
 
     // Private methods
+
+    private async Task TrackFocusedSpeaker(CancellationToken cancellationToken)
+    {
+        var cState = await Computed
+            .Capture(() => GetActiveSpeakerState(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+
+        await foreach (var (state, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
+            var (speakersWithVideo, screencastAuthorId) = state;
+            lock (_trackFocusLock) {
+                // Screencast always takes focus (no debounce)
+                if (screencastAuthorId is { } scAuthor) {
+                    SetFocused(scAuthor);
+                    _focusDebounceCts?.CancelAsync();
+                    _focusDebounceCts = null;
+                    _pendingFocusCandidate = null;
+                    continue;
+                }
+
+                UpdateFocusedSpeakers(speakersWithVideo);
+            }
+        }
+    }
+
+    private async Task CalculateLayout(CancellationToken cancellationToken)
+    {
+        var cState = await Computed
+            .Capture(() => GetLayoutInputs(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+
+        await foreach (var (inputs, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
+            var layout = BuildLayout(inputs);
+            if (layout != _layout.Value)
+                _layout.Value = layout;
+        }
+    }
 
     private void SetFocused(AuthorId newFocused)
     {
