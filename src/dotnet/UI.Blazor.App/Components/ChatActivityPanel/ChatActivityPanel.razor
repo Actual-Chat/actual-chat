@@ -6,7 +6,7 @@
     if (m is null)
         return;
 
-    var isVisible = m.IsAnyoneTalking || m.IsAnyoneVideoStreaming || m.IsListening || m.IsRecordingHere;
+    var isVisible = m.IsAnyoneTalking || m.IsAnyoneVideoStreaming || m.IsListening || m.IsRecordingHere || m.IsWatchingHere;
     if (!isVisible)
         return;
 
@@ -14,6 +14,7 @@
     var iconSize = ScreenSize.IsNarrow() ? 6 : 8;
     var isListening = m.IsListening;
     var isRecordingHere = m.IsRecordingHere;
+    var isWatchingHere = m.IsWatchingHere;
     var isVideoRecordingHere = m.IsOwnVideoRecording;
     var isParticipating = isListening || isRecordingHere || isVideoRecordingHere;
     var isActive = m.IsAnyoneTalking;
@@ -59,7 +60,7 @@
                 TooltipPosition="FloatingPosition.Bottom">
                 @joinButtonText
             </Button>
-        } else if (isRecordingHere || isVideoRecordingHere) {
+        } else if (isRecordingHere || isVideoRecordingHere || isWatchingHere) {
             <HeaderButton
                 Class="talking"
                 StopPropagation="true"
@@ -112,7 +113,9 @@
         var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chatId, cancellationToken).ConfigureAwait(false);
         var ownStreamKind = await ChatVideoUI.GetOwnStreamKind(chat.Id, cancellationToken).ConfigureAwait(false);
         var isOwnVideoRecording = ownStreamKind is not null;
-        return new (chat, audioState, isAnyoneTalking, isAnyoneVideoStreaming, isOwnVideoRecording);
+        var watchingChatId = await ChatVideoUI.GetWatchingChatId(cancellationToken).ConfigureAwait(false);
+        var isWatchingHere = chatId == watchingChatId;
+        return new (chat, audioState, isAnyoneTalking, isAnyoneVideoStreaming, isOwnVideoRecording, isWatchingHere);
     }
 
     private async Task OnJoinClick(ChatId chatId) {
@@ -180,7 +183,8 @@
         ChatAudioState AudioState,
         bool IsAnyoneTalking,
         bool IsAnyoneVideoStreaming,
-        bool IsOwnVideoRecording = false) {
+        bool IsOwnVideoRecording,
+        bool IsWatchingHere) {
         public bool IsListening => AudioState.IsListening;
         public bool IsRecordingHere => AudioState.IsRecording;
     }
