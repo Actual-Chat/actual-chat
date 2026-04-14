@@ -33,6 +33,8 @@ public class UserPresences(IServiceProvider services) : IUserPresences
             return; // It just spawns other commands, so nothing to do here
 
         var (session, isActive) = command;
+        if (!session.IsValid())
+            return; // The client has no session yet (e.g. reconnecting without a session cookie)
 
         var sessionInfo = await Accounts.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
         if (sessionInfo != null && SystemNow - sessionInfo.LastSeenAt > SessionUpdatePeriod) {
