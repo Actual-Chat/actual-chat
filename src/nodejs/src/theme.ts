@@ -60,6 +60,7 @@ export class Theme {
             classList.remove(oldClass);
             classList.add(newClass);
         }
+        updateColorSchemeMeta(this.currentTheme);
 
         this.info = createThemeInfo();
         if (mustNotify)
@@ -74,6 +75,22 @@ function createThemeInfo(): ThemeInfo {
         currentTheme: Theme.currentTheme,
         colors: getColors(),
     }
+}
+
+function updateColorSchemeMeta(theme: string): void {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!document?.head)
+        return;
+
+    const content = theme === 'dark' ? 'dark' : 'light';
+    let meta = document.head.querySelector<HTMLMetaElement>("meta[name='color-scheme']");
+    if (!meta) {
+        meta = document.createElement('meta');
+        meta.name = 'color-scheme';
+        document.head.appendChild(meta);
+    }
+    if (meta.content !== content)
+        meta.content = content;
 }
 
 function detectDefaultTheme() {
