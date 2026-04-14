@@ -366,7 +366,12 @@ export abstract class RpcPeer {
   private _startKeepAlive(): void {
     this._keepAliveTimer = setInterval(() => {
       if (this._connection !== undefined) {
-        this._hub.systemCallSender.keepAlive(this._connection, this.outbound.activeCallIds());
+        // Send remote object IDs so the server's SharedObjectTracker keeps them alive.
+        // Must NOT send outbound call IDs — those are a different ID namespace and would
+        // cause the server to send $sys.Disconnect for IDs it doesn't recognize, which
+        // the client may misinterpret as a disconnect of its own shared objects (e.g.
+        // RpcClientStreamSender) when the IDs collide numerically.
+        this._hub.systemCallSender.keepAlive(this._connection, [...this.remoteObjects.keys()]);
       }
     }, 15_000);
   }

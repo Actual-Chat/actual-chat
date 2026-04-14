@@ -9,6 +9,7 @@
     "font": "svgtofont --sources ./src/nodejs/icons --output ./src/nodejs/fonts/svgtofont",
     "test": "vitest run",
     "test:video-load": "tsx src/nodejs/app.video-load-test/index.ts",
+    "test:audio-stream": "tsx src/nodejs/app.audio-stream-test/index.ts",
     "typecheck:video-load": "tsc -p src/nodejs/app.video-load-test/tsconfig.json --noEmit",
     "lint": "eslint",
     "lint:fix": "eslint --fix"
