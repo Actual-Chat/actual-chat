@@ -34,6 +34,7 @@ export class RpcClientStreamSender<T> implements IRpcObject {
 
   private _nextIndex = 0;
   private _ended = false;
+  private _disconnectedByServer = false;
   private _started = new PromiseSource<void>();
 
   constructor(
@@ -73,6 +74,12 @@ export class RpcClientStreamSender<T> implements IRpcObject {
     };
   }
 
+  /** Whether this sender has been ended (completed, errored, or disconnected). */
+  get isEnded(): boolean { return this._ended; }
+
+  /** Whether this sender was disconnected by the server (e.g. pod restart). */
+  get isDisconnectedByServer(): boolean { return this._disconnectedByServer; }
+
   /** Resolves when the server sends its initial $sys.Ack. */
   whenStarted(): Promise<void> {
     return this._started.promise;
@@ -101,9 +108,17 @@ export class RpcClientStreamSender<T> implements IRpcObject {
 
   /** Send a single item to the server. */
   sendItem(item: T): void {
-    if (this._ended) return;
+    if (this._ended) {
+      if (this._nextIndex % 250 === 0 || this._nextIndex < 3)
+        console.warn(`[RpcClientStreamSender] sendItem: sender already ended, dropping item #${this._nextIndex}`);
+      return;
+    }
     const conn = this.peer.connection;
-    if (!conn) return;
+    if (!conn) {
+      if (this._nextIndex % 250 === 0 || this._nextIndex < 3)
+        console.warn(`[RpcClientStreamSender] sendItem: no connection, dropping item #${this._nextIndex}`);
+      return;
+    }
     this.peer.hub.systemCallSender.item(conn, this.id.localId, this._nextIndex, item);
     this._nextIndex++;
   }
@@ -166,7 +181,9 @@ export class RpcClientStreamSender<T> implements IRpcObject {
   }
 
   disconnect(): void {
+    console.warn(`[RpcClientStreamSender] disconnect: ended=${this._ended}, nextIndex=${this._nextIndex}`);
     this._ended = true;
+    this._disconnectedByServer = true;
     if (!this._started.isCompleted) {
       this._started.resolve();
     }

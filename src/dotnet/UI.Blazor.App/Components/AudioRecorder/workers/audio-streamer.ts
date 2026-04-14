@@ -121,9 +121,13 @@ export class AudioStream implements Disposable {
             await AudioStreamer.ensureConnected();
             if (this.isDisposed)
                 return;
+            if (!AudioStreamer.rpcPeer || !AudioStreamer.streamServerClient) {
+                warnLog?.log(`${this.name}: peer not connected, skipping stream`);
+                return;
+            }
 
-            const streamServer = AudioStreamer.streamServerClient!;
-            const peer = AudioStreamer.rpcPeer!;
+            const streamServer = AudioStreamer.streamServerClient;
+            const peer = AudioStreamer.rpcPeer;
 
             const clientStartOffset = (this.firstFrameTimestamp ?? ServerClock.now()) / 1000;
             infoLog?.log(`${this.name}: PushAudio clientStartOffset=${clientStartOffset.toFixed(3)}s`);
@@ -138,9 +142,17 @@ export class AudioStream implements Disposable {
             this.repliedChatEntryId = undefined;
 
             await sender.whenStarted();
+            warnLog?.log(`${this.name}: sender started, peerConnected=${AudioStreamer.rpcPeer?.isConnected}`);
 
             let frameIndex = 0;
+            let lastSendAt = Date.now();
             while (!this.isDisposed) {
+                // Detect server disconnect (e.g. pod restart)
+                if (sender.isEnded) {
+                    warnLog?.log(`${this.name}: sender ended (disconnectedByServer=${sender.isDisconnectedByServer}), ${frameIndex} frames sent`);
+                    break;
+                }
+
                 const frame = this.frames.shift();
                 if (frame) {
                     sender.sendItem({
@@ -150,15 +162,22 @@ export class AudioStream implements Disposable {
                         IsKeyFrame: true,
                     });
                     frameIndex++;
+                    lastSendAt = Date.now();
+
+                    if (frameIndex <= 3 || frameIndex % 250 === 0)
+                        warnLog?.log(`${this.name}: sent frame #${frameIndex}, queued=${this.frames.length}, peerConn=${!!AudioStreamer.rpcPeer?.connection}`);
 
                     // Release buffer back to pool
                     if (frame.buffer.byteLength === AE.FRAME_BUFFER_BYTES)
                         bufferPool.release(frame.buffer);
                 } else if (this.isCompleted && this.frames.length === 0) {
-                    debugLog?.log(`${this.name}: stream completed, ${frameIndex} frames sent`);
+                    warnLog?.log(`${this.name}: stream completed, ${frameIndex} frames sent`);
                     sender.sendEnd();
                     this.dispose();
                 } else {
+                    const stallMs = Date.now() - lastSendAt;
+                    if (stallMs > 5000)
+                        warnLog?.log(`${this.name}: no frames for ${stallMs}ms, queued=${this.frames.length}, completed=${this.isCompleted}, disposed=${this.isDisposed}`);
                     await this.frameAdded.whenNext();
                 }
             }
@@ -167,7 +186,7 @@ export class AudioStream implements Disposable {
             try { sender?.sendEnd(error instanceof Error ? error : new Error(String(error))); }
             catch { /* ignore */ }
         } finally {
-            this.isDisposed = true;
+            this.dispose();
         }
     }
 }

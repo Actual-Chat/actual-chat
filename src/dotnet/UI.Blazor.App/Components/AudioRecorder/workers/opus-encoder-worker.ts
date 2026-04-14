@@ -60,6 +60,7 @@ let lastSessionToken = '';
 let chunkTimeOffset = 0;
 let lastFrameProcessedAt = 0;
 let audioStream: AudioStream | null = null;
+let encodedFrameCount = 0;
 
 const resamplerLoader = new ResamplerLoader();
 // if (DeviceInfo.isFirefox)
@@ -166,7 +167,7 @@ const serverImpl: OpusEncoderWorker = {
         if (isVoiceDetected === nextIsVoiceDetected)
             return;
 
-        debugLog?.log(`onVoiceActivityChange:`, change);
+        warnLog?.log(`onVoiceActivityChange: ${change.kind}, isVoiceDetected=${nextIsVoiceDetected}, state=${state}`);
         isVoiceDetected = nextIsVoiceDetected;
         if (state !== 'encoding')
             return;
@@ -193,6 +194,33 @@ function onSystemEncoderError(error: DOMException): void {
     errorLog?.log(`onSystemEncoderError:`, error, state)
 }
 
+/** Check if audioStream died (e.g. server disconnect) and recreate if voice still active. */
+let lastRecoveryAt = 0;
+const RECOVERY_MIN_INTERVAL_MS = 2000;
+function ensureAudioStream(): void {
+    if (!audioStream?.isDisposed)
+        return;
+
+    // Don't retry if peer not connected or too soon after last recovery
+    if (!AudioStreamer.isConnected) {
+        audioStream = null;
+        return;
+    }
+
+    const now = Date.now();
+    if (now - lastRecoveryAt < RECOVERY_MIN_INTERVAL_MS)
+        return; // Throttle — stream will be recreated on next frame
+
+    if (state === 'encoding' && isVoiceDetected && lastStartArguments) {
+        lastRecoveryAt = now;
+        warnLog?.log(`ensureAudioStream: stream disposed, recreating for recovery`);
+        const preSkip = encoder?.preSkip ?? AE.DEFAULT_PRE_SKIP;
+        audioStream = AudioStreamer.addStream(lastSessionToken, preSkip, lastStartArguments.chatId, '');
+    } else {
+        audioStream = null;
+    }
+}
+
 function onSystemEncoderChunk(output: EncodedAudioChunk, metadata: EncodedAudioChunkMetadata): void {
     const timestamp  = output.timestamp;
     while (encodedAudioFrames.length && encodedAudioFrames.peekFront()!.timestamp <= timestamp) {
@@ -201,6 +229,7 @@ function onSystemEncoderChunk(output: EncodedAudioChunk, metadata: EncodedAudioC
         void encoderWorklet.releaseBuffer(frame, rpcNoWait);
     }
 
+    ensureAudioStream();
     audioStream?.addFrame(output, true);
 }
 
@@ -223,6 +252,7 @@ async function startRecording(): Promise<void> {
 }
 
 async function stopRecording(): Promise<void> {
+    warnLog?.log(`stopRecording: encodedFrames=${encodedFrameCount}, hasStream=${audioStream !== null}, state=${state}`);
     // TODO(AK): fix eslint error
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
     processQueue('out');
@@ -236,6 +266,7 @@ async function stopRecording(): Promise<void> {
     await vadWorker?.reset();
     clearQueue();
     chunkTimeOffset = 0;
+    encodedFrameCount = 0;
 }
 
 async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void> {
@@ -317,11 +348,15 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
                 // Emscripten interop requires Uint8Array or ArrayBuffer, so we need to pass Float32Array as Uint8Array
                 // @ts-expect-error TODO: fix error
                 const frameView = encoder.encode(new Uint8Array(samples.buffer, 0, samples.length * 4));
+                ensureAudioStream();
                 audioStream?.addFrame(frameView);
                 void encoderWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
             }
 
             lastFrameProcessedAt = Date.now();
+            encodedFrameCount++;
+            if (encodedFrameCount <= 3 || encodedFrameCount % 250 === 0)
+                warnLog?.log(`processQueue: encoded frame #${encodedFrameCount}, queueLen=${queue.length}, hasStream=${audioStream !== null}, state=${state}`);
             chunkTimeOffset += 20;
         }
     }
