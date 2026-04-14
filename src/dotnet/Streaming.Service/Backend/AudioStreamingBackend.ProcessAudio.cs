@@ -112,13 +112,16 @@ public partial class AudioStreamingBackend
         }
 
         var publishFrameCount = 0;
+        var publishStartedAt = Clocks.CpuClock.Now;
         var audioStream = openSegment.Source
             .GetFrames(cancellationToken)
             .Select(f => {
                 publishFrameCount++;
-                if (publishFrameCount <= 3 || publishFrameCount % 250 == 0)
-                    Log.LogWarning("ProcessAudio publish: frame #{Count} for stream #{StreamId}",
-                        publishFrameCount, openSegment.StreamId);
+                if (publishFrameCount <= 3 || publishFrameCount % 50 == 0) {
+                    var elapsed = (Clocks.CpuClock.Now - publishStartedAt).TotalSeconds;
+                    Log.LogWarning("ProcessAudio publish: frame #{Count} at {Elapsed:F1}s for stream #{StreamId}",
+                        publishFrameCount, elapsed, openSegment.StreamId);
+                }
                 return f.Data;
             })
             .Prepend(new ActualOpusStreamHeader(audio.CreatedAt, audio.Format).Serialize());
