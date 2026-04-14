@@ -32,7 +32,7 @@ body.narrow .video-panel.expanded {
         var(--safe-area-bottom)
         var(--safe-area-left);
 }
-body.wide .video-panel.rp-visible.expanded,
+body.wide.side-nav-right-open .video-panel.expanded,
 body.wide .video-panel.expanded {
     @apply max-w-none max-h-none;
     @apply bg-03;
@@ -54,14 +54,14 @@ body.narrow .video-panel {
 body.wide .video-panel {
     @apply min-h-112 max-h-112;
 }
-body.wide .video-panel:not(.rp-visible):not(.expanded) {
+body.wide:not(.side-nav-right-open) .video-panel:not(.expanded) {
     @apply min-h-0 max-w-none mx-auto;
     @apply h-auto;
     aspect-ratio: 16/9;
     max-height: 66.67dvh;
     width: min(100%, calc(66.67dvh * 16 / 9));
 }
-body.wide .video-panel.rp-visible {
+body.wide.side-nav-right-open .video-panel {
     @apply min-h-96 max-h-96;
 }
 .video-panel > .c-container {
