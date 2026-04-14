@@ -3,24 +3,16 @@
 @inherits ComputedStateComponent<AppUIHub, RemoteStreamPlayer.Model>
 @{
     var m = State.Value;
-    _rendered = m;
-    var focusedCls = m.Accent switch {
-        RemoteStreamFocus.Focused => "focused",
-            RemoteStreamFocus.PreviousSpeaker => "previous-speaker",
-            _ => ""
-    };
 }
 
-<VideoTrackPlayer StreamInfo="@StreamInfo" AuthorName="@m.AuthorName" FocusedClass="@focusedCls" />
+<VideoTrackPlayer StreamInfo="@StreamInfo" AuthorName="@m.AuthorName" FocusedClass="@Class" />
 
 @code {
-    private Model? _rendered;
-
     private IAuthors Authors => Hub.Authors;
 
-    [CascadingParameter] public VideoPanelContentLayout Layout { get; set; } = null!;
     [Parameter, EditorRequired]
     public VideoStreamInfo StreamInfo { get; set; } = null!;
+    [Parameter] public string Class { get; set; } = "";
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -36,25 +28,12 @@
         var author = await Authors.Get(Session, StreamInfo.ChatId, authorId, cancellationToken);
         var authorName = author?.Avatar.Name ?? "";
 
-        var focusedAuthorId = await Layout.GetFocusedSpeakerId(cancellationToken).ConfigureAwait(false);
-
-        var isFocused = authorId == focusedAuthorId;
-        if (isFocused)
-            return new Model(authorName, RemoteStreamFocus.Focused);
-
-        var previousFocusedAuthorId = await Layout.GetPreviousFocusedSpeakerId(cancellationToken).ConfigureAwait(false);
-        var isPreviousSpeaker = authorId == previousFocusedAuthorId && !isFocused;
-        return new Model(authorName, isPreviousSpeaker ? RemoteStreamFocus.PreviousSpeaker : RemoteStreamFocus.None);
+        return new Model(authorName);
     }
-
-    protected override bool ShouldRender()
-        => _rendered is null || _rendered != State.Value;
 
     // Nested types
 
-    public enum RemoteStreamFocus { None, Focused, PreviousSpeaker };
-
-    public sealed record Model(string AuthorName, RemoteStreamFocus Accent) {
-        public static readonly Model None = new("", RemoteStreamFocus.None);
+    public sealed record Model(string AuthorName) {
+        public static readonly Model None = new("");
     }
 }

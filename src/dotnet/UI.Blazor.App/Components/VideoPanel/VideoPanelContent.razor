@@ -40,6 +40,7 @@
     var collapsedCls = m.IsCollapsed ? "collapsed" : "";
     if (m.Chat is { } mChat)
         _lastChat = mChat;
+    var layout = m.Layout;
 }
 
 <div @ref="Ref" class="video-panel @firstOpenCls @recordingCls @remoteStreamsCls @expandedCls @collapsedCls">
@@ -109,7 +110,7 @@
                 </HeaderButton>
             }
         </div>
-        <VideoPanelContentLayout ChatId="@ChatId">
+        <div class="video-panel-content @(layout.LayoutClass)">
             @if (_showConnecting) {
                 <UITimer Period="@TimeSpan.FromSeconds(5)" IsRecurring="false" Tick="OnConnectingTimeout" />
                 <div class="connecting-overlay">
@@ -118,9 +119,10 @@
                 </div>
             }
             @foreach (var streamInfo in m.RemoteStreams) {
-                <RemoteStreamPlayer @key="streamInfo.StreamId.Value" StreamInfo="@streamInfo" />
+                var remoteStreamCls = layout.GetRemoteStreamPlayerClass(streamInfo.StreamId);
+                <RemoteStreamPlayer @key="streamInfo.StreamId.Value" StreamInfo="@streamInfo" Class="@remoteStreamCls" />
             }
-            <VideoStreamingPreview ChatId="@ChatId" />
+            <VideoStreamingPreview ChatId="@ChatId" Class="@(layout.OwnStreamingPreviewClass)" />
             @if (m.AllowDiagnostics) {
                 <HeaderButton Class="btn-diagnostics collapsed-video-btn" Tooltip="Diagnostics" Click="@OnDiagnosticsClick">
                     <i class="icon-activity text-lg"></i>
@@ -130,7 +132,7 @@
                 <i class="icon-expand text-lg collapsed-video-panel"></i>
                 <i class="icon-collapse text-lg expanded-video-panel"></i>
             </HeaderButton>
-        </VideoPanelContentLayout>
+        </div
         @if (_isExpanded && _isChatVisible && !ScreenSize.IsNarrow() && _lastChat is { } chat) {
             <div class="video-panel-chat upload-drag-drop-host">
                 <ChatView @key="@chat.Id.Value" ChatId="@chat.Id"/>
@@ -151,6 +153,7 @@
     private bool _showConnecting;
     private bool _hadRemoteStreams;
     private bool _shouldStartClosing;
+    private VideoPanelLayoutCalculator? _layoutCalculator;
 
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
@@ -233,6 +236,10 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
+        if (_layoutCalculator is null || _layoutCalculator.ChatId != chatId)
+            _layoutCalculator = new VideoPanelLayoutCalculator(Hub, chatId);
+        var layout = await _layoutCalculator.GetLayout(cancellationToken).ConfigureAwait(false);
+
         var isAdmin = AccountUI.OwnAccount.Value.IsAdmin;
 
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
@@ -249,7 +256,7 @@
             : 0;
 
         if (activeStreams.Count == 0)
-            return new Model([], ownStreamingKind, audioState.IsRecording, 0, chat, isCollapsed, AllowDiagnostics: isAdmin);
+            return new Model(layout, [], ownStreamingKind, audioState.IsRecording, 0, chat, isCollapsed, AllowDiagnostics: isAdmin);
 
         var remoteStreams = await ChatVideoUI.GetRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
 
@@ -257,7 +264,7 @@
             string.Join(", ", remoteStreams.Select(s => $"{s.StreamId}({s.Format.Codec})")),
             ownStreamingKind);
 
-        return new Model(remoteStreams, ownStreamingKind, audioState.IsRecording, videoStreamMemberCount, chat, isCollapsed, isAdmin);
+        return new Model(layout, remoteStreams, ownStreamingKind, audioState.IsRecording, videoStreamMemberCount, chat, isCollapsed, isAdmin);
     }
 
     private void OnHangUpClick() {
@@ -341,6 +348,7 @@
     // Nested types
 
     public sealed record Model(
+        VideoPanelLayout Layout,
         VideoStreamInfo[] RemoteStreams,
         StreamKind? OwnStreamingKind,
         bool IsAudioRecording,
@@ -349,6 +357,6 @@
         bool IsCollapsed = false,
         bool AllowDiagnostics = false
     ) {
-        public static readonly Model Loading = new([], null, false, 0, null, false);
+        public static readonly Model Loading = new(VideoPanelLayout.New, [], null, false, 0, null, false);
     }
 }

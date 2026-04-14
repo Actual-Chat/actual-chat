@@ -10,7 +10,7 @@
     var screencastCls = isScreencasting ? "screencast" : "";
 }
 
-<div @ref="Ref" class="video-streaming-preview @recordingCls @screencastCls">
+<div @ref="Ref" class="video-streaming-preview @Class @recordingCls @screencastCls">
     <canvas
         class="call-video"
         @onclick="@(isRecording && !m.IsAloneOnStream ? OnSettingsClick : null!)"></canvas>
@@ -42,8 +42,8 @@
     private ElementReference Ref { get; set; }
     private IJSObjectReference? JSRef { get; set; }
 
-    [CascadingParameter] public VideoPanelContentLayout Layout { get; set; } = null!;
     [Parameter, EditorRequired] public ChatId ChatId { get; set; }
+    [Parameter] public string Class { get; set; } = "";
 
     public override async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
