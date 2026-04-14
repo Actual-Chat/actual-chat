@@ -141,7 +141,7 @@
                 break;
             }
 
-            if (chat.Rules.IsOwner())
+            if (chat.Rules.IsOwner() || chat.Id.Kind == ChatKind.Peer)
                 break;
 
             if (ownAuthor == null) {

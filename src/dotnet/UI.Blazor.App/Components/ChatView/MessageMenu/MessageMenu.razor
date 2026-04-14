@@ -11,6 +11,7 @@
         ClickedCode="@m.Code"
         IsOwnEntry="m.IsOwnEntry"
         IsOwner="m.IsOwner"
+        IsPeerChat="m.IsPeerChat"
         CanWrite="m.CanWrite"
         IsSystem="m.IsSystem">
     </MessageMenuContent>
@@ -86,6 +87,7 @@
                 ChatEntry = chatEntry,
                 CanWrite = rules.CanWrite(),
                 IsOwner = rules.IsOwner(),
+                IsPeerChat = chatEntry.ChatId.Kind == ChatKind.Peer,
                 IsOwnEntry = requestAuthor != null && requestAuthor.Id == chatEntry.AuthorId,
             };
             return new Model { Message = messageModel };
@@ -122,6 +124,7 @@
         public bool IsOwnEntry { get; init; }
         public bool CanWrite { get; init; }
         public bool IsOwner { get; init; }
+        public bool IsPeerChat { get; init; }
         public ChatEntry ChatEntry { get; init; } = null!;
     }
 
