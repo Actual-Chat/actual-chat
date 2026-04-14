@@ -1,0 +1,44 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@implements IModalView<EmojiModal.Model>
+@inherits ComponentBase<AppUIHub>
+
+<DialogFrame
+    Class="emoji-modal"
+    Title="Emoji"
+    HasCloseButton="true"
+    NarrowViewSettings="DialogFrameNarrowViewSettings.Bottom">
+    <Body>
+        <div class="c-grid">
+            @foreach (var group in Enum.GetValues<EmojiGroup>()) {
+                <div @key="group" class="c-group">
+                    <div class="c-group-title">@group</div>
+                    <div class="c-group-items">
+                        @foreach (var emoji in Emojis.GetByGroup(group)) {
+                            <button @key="emoji"
+                                class="c-item"
+                                @onclick="@(() => OnEmojiClick(emoji))">
+                                <EmojiIcon Emoji="@emoji" Class="c-emoji" HasPreview="true"/>
+                            </button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </Body>
+</DialogFrame>
+
+@code {
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private void OnEmojiClick(Emoji emoji) {
+        ModalModel.SelectedEmoji = emoji;
+        Modal.Close();
+    }
+
+    // Nested types
+
+    public sealed class Model {
+        public Emoji? SelectedEmoji { get; set; }
+    }
+}

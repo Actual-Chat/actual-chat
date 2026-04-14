@@ -145,11 +145,16 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                         lastTextEntryText = $"Thread '{lastThreadChat.Title}'";
                 }
                 else {
-                    var chatMarkupHub = ChatMarkupHubFactory[chatId];
-                    var markup = await chatMarkupHub
-                        .GetMarkup(lastTextEntry, MarkupConsumer.ChatListItemText, cancellationToken)
-                        .ConfigureAwait(false);
-                    lastTextEntryText = markup.ToReadableText(MarkupConsumer.ChatListItemText);
+                    var emoji = Emojis.TryGetByIdOrSymbol(lastTextEntry.Content.Trim());
+                    if (emoji != null)
+                        lastTextEntryText = emoji.Symbol;
+                    else {
+                        var chatMarkupHub = ChatMarkupHubFactory[chatId];
+                        var markup = await chatMarkupHub
+                            .GetMarkup(lastTextEntry, MarkupConsumer.ChatListItemText, cancellationToken)
+                            .ConfigureAwait(false);
+                        lastTextEntryText = markup.ToReadableText(MarkupConsumer.ChatListItemText);
+                    }
                 }
             }
 
