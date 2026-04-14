@@ -1179,10 +1179,6 @@ export class VideoPlayer {
             this.receivedFrameCount++;
             if (isKeyFrame) {
                 this.receivedKeyframeCount++;
-                // TEMP DIAG: warnLog so it always appears in console
-                warnLog?.log(
-                    `KEYFRAME received #${this.receivedKeyframeCount}: offsetMs=${offsetMs.toFixed(0)}, ` +
-                    `dataLen=${data.length}, descLen=${description?.length ?? 0}`);
             } else if (this.receivedFrameCount % 100 === 1) {
                 debugLog?.log(
                     `processRpcFrame #${this.receivedFrameCount}: offsetMs=${offsetMs.toFixed(0)}, ` +

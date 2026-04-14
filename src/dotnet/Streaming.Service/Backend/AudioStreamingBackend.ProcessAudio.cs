@@ -111,19 +111,9 @@ public partial class AudioStreamingBackend
             await LiveBackend.Register(chatId, streamInfo, cancellationToken).ConfigureAwait(false);
         }
 
-        var publishFrameCount = 0;
-        var publishStartedAt = Clocks.CpuClock.Now;
         var audioStream = openSegment.Source
             .GetFrames(cancellationToken)
-            .Select(f => {
-                publishFrameCount++;
-                if (publishFrameCount <= 3 || publishFrameCount % 50 == 0) {
-                    var elapsed = (Clocks.CpuClock.Now - publishStartedAt).TotalSeconds;
-                    Log.LogWarning("ProcessAudio publish: frame #{Count} at {Elapsed:F1}s for stream #{StreamId}",
-                        publishFrameCount, elapsed, openSegment.StreamId);
-                }
-                return f.Data;
-            })
+            .Select(f => f.Data)
             .Prepend(new ActualOpusStreamHeader(audio.CreatedAt, audio.Format).Serialize());
         var publishAudioTask = mustStreamVoice
             ? BackgroundTask.Run(
@@ -161,8 +151,8 @@ public partial class AudioStreamingBackend
         try {
             await openSegment.Source.WhenDurationAvailable.ConfigureAwait(false);
             Log.LogInformation(
-                "ProcessAudio: stream #{StreamId} ended normally, publishedFrames={FrameCount}, duration={Duration:F1}s",
-                openSegment.StreamId, publishFrameCount, openSegment.Source.Duration.TotalSeconds);
+                "ProcessAudio: stream #{StreamId} ended normally, duration={Duration:F1}s",
+                openSegment.StreamId, openSegment.Source.Duration.TotalSeconds);
             openSegment.Close(openSegment.Source.Duration);
             var closedSegment = await openSegment.ClosedSegment.ConfigureAwait(false);
 
@@ -175,8 +165,8 @@ public partial class AudioStreamingBackend
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e,
-                "ProcessAudio: stream #{StreamId} ended with error, publishedFrames={FrameCount}",
-                openSegment.StreamId, publishFrameCount);
+                "ProcessAudio: stream #{StreamId} ended with error",
+                openSegment.StreamId);
             throw;
         }
         finally {

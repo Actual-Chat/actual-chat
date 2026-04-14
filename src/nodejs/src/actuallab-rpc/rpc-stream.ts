@@ -91,23 +91,11 @@ export class RpcStream<T> implements AsyncIterable<T>, IRpcObject {
 
   /** Called by system call handler when a single item arrives ($sys.I). */
   onItem(index: number, item: T): void {
-    if (this._disposed || this._completed) {
-      if (index % 100 === 0 || this._disposed || this._completed)
-        console.warn(`[RpcStream] onItem DROPPED: index=${index}, disposed=${this._disposed}, completed=${this._completed}`);
+    if (this._disposed || this._completed)
       return;
-    }
-
-    if (index === 0) {
-      console.log(`[RpcStream] first item received, localId=${this.id.localId}`);
-    }
 
     if (index > this._nextExpectedIndex) {
-      console.warn("[RpcStream] item index gap", {
-        localId: this.id.localId,
-        expected: this._nextExpectedIndex,
-        received: index,
-        allowReconnect: this.allowReconnect,
-      });
+      console.warn(`[RpcStream] item index gap: localId=${this.id.localId}, expected=${this._nextExpectedIndex}, received=${index}`);
       if (!this.allowReconnect) {
         // Sending a reset ack on a non-reconnectable stream only produces a
         // $sys.Disconnect from the server with a generic "Peer disconnected."
@@ -137,19 +125,11 @@ export class RpcStream<T> implements AsyncIterable<T>, IRpcObject {
 
   /** Called by system call handler when a batch arrives ($sys.B). */
   onBatch(index: number, items: T[]): void {
-    if (this._disposed || this._completed) {
-      console.warn(`[RpcStream] onBatch DROPPED: index=${index}, count=${items.length}, disposed=${this._disposed}, completed=${this._completed}`);
+    if (this._disposed || this._completed)
       return;
-    }
 
     if (index > this._nextExpectedIndex) {
-      console.warn("[RpcStream] batch index gap", {
-        localId: this.id.localId,
-        expected: this._nextExpectedIndex,
-        received: index,
-        count: items.length,
-        allowReconnect: this.allowReconnect,
-      });
+      console.warn(`[RpcStream] batch index gap: localId=${this.id.localId}, expected=${this._nextExpectedIndex}, received=${index}`);
       this._sendAck(this._nextExpectedIndex, true);
       return;
     }
@@ -167,7 +147,6 @@ export class RpcStream<T> implements AsyncIterable<T>, IRpcObject {
   /** Called by system call handler when the stream ends ($sys.End). */
   onEnd(index: number, error: Error | null): void {
     if (this._disposed || this._completed) return;
-    console.warn(`[RpcStream] stream ended, localId=${this.id.localId}, index=${index}, error=${error?.message ?? "none"}, buffered=${this._buffer.length}, nextExpected=${this._nextExpectedIndex}`);
     this._completed = true;
     this._completionError = error;
     this._notifyConsumer();
@@ -204,7 +183,6 @@ export class RpcStream<T> implements AsyncIterable<T>, IRpcObject {
         // Lazy start: send initial ack on first next() call
         if (!self._started) {
           self._started = true;
-          console.log(`[RpcStream] sending initial ack for localId=${self.id.localId}, hostId=${self.id.hostId}`);
           self._sendAck(0, true);
         }
 
@@ -274,11 +252,7 @@ export class RpcStream<T> implements AsyncIterable<T>, IRpcObject {
       // stream is rejected with $sys.Disconnect.  Mirror the .NET client behavior
       // and send the empty Guid for normal progress acks.
       const hostId = mustReset ? this.id.hostId : RpcStream._emptyGuid;
-      if (nextIndex <= 3 || nextIndex % 250 === 0)
-        console.log(`[RpcStream] ack localId=${this.id.localId} nextIndex=${nextIndex} mustReset=${mustReset}`);
       this.peer.hub.systemCallSender.ack(conn, this.id.localId, nextIndex, hostId);
-    } else {
-      console.warn(`[RpcStream] ack SKIPPED (no connection) localId=${this.id.localId} nextIndex=${nextIndex}`);
     }
   }
 

@@ -23,7 +23,6 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private double _recordedAtMs;
     private bool _reportSyncToJs;
 
-    private int _frameCount;
     private IServiceProvider Services { get; }
 
     private IMediaMetadataUI MediaMetadataUI => field ??= Services.GetRequiredService<IMediaMetadataUI>();
@@ -143,11 +142,6 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             }
 
             _playDuration += frame.Duration;
-            _frameCount++;
-            if (_frameCount <= 3 || _frameCount % 250 == 0)
-                Log.LogWarning(
-                    "[AudioTrackPlayer #{Id}] ProcessMediaFrame: frame #{Count}, offset={Offset}, bufferLowCompleted={Low}",
-                    _id, _frameCount, frame.Offset, _whenBufferLowSource.Task.IsCompleted);
             await _playbackEngine.PushFrame(frame, cancellationToken).ConfigureAwait(false);
             await _whenBufferLowSource.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
         }

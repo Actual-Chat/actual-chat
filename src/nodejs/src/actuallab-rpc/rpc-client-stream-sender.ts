@@ -109,17 +109,11 @@ export class RpcClientStreamSender<T> implements IRpcObject {
 
   /** Send a single item to the server. */
   sendItem(item: T): void {
-    if (this._ended) {
-      if (this._nextIndex % 250 === 0 || this._nextIndex < 3)
-        console.warn(`[RpcClientStreamSender] sendItem: sender already ended, dropping item #${this._nextIndex}`);
+    if (this._ended)
       return;
-    }
     const conn = this.peer.connection;
-    if (!conn) {
-      if (this._nextIndex % 250 === 0 || this._nextIndex < 3)
-        console.warn(`[RpcClientStreamSender] sendItem: no connection, dropping item #${this._nextIndex}`);
+    if (!conn)
       return;
-    }
     this.peer.hub.systemCallSender.item(conn, this.id.localId, this._nextIndex, item);
     this._nextIndex++;
   }
@@ -182,7 +176,6 @@ export class RpcClientStreamSender<T> implements IRpcObject {
   }
 
   disconnect(): void {
-    console.warn(`[RpcClientStreamSender] disconnect: ended=${this._ended}, nextIndex=${this._nextIndex}`);
     this._ended = true;
     this._disconnectedByServer = true;
     if (!this._started.isCompleted) {
