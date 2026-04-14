@@ -10,7 +10,7 @@
     var screencastCls = isScreencasting ? "screencast" : "";
 }
 
-<div @ref="Ref" class="video-streaming-preview @Class @recordingCls @screencastCls">
+<div @ref="Ref" class="video-track-player video-streaming-preview @Class @recordingCls @screencastCls">
     <canvas
         class="call-video"
         @onclick="@(isRecording && !m.IsAloneOnStream ? OnSettingsClick : null!)"></canvas>
