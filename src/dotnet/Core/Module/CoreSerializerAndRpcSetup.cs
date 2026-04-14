@@ -14,37 +14,49 @@ public static class CoreSerializerAndRpcSetup
 
     public static void Configure(bool isServer)
     {
-        RpcSerializationFormat.All = ImmutableList.Create(
-            RpcSerializationFormat.SystemJsonV5,
-            RpcSerializationFormat.SystemJsonV5NP, // Used by the TS RPC client (f=json5np)
-            RpcSerializationFormat.MemoryPackV5,
-            RpcSerializationFormat.MemoryPackV5C,
-            RpcSerializationFormat.MemoryPackV6,
-            RpcSerializationFormat.MemoryPackV6C,
-            RpcSerializationFormat.MessagePackV6,
-            RpcSerializationFormat.MessagePackV6C);
+        var useMessagePack = false;
+#if USE_MESSAGEPACK
+        useMessagePack = true;
+#endif
+        if (!isServer)
+            useMessagePack = false; // Disable MessagePack on the client for now
+
+        if (isServer)
+            RpcSerializationFormat.All = ImmutableList.Create(
+                RpcSerializationFormat.SystemJsonV5,
+                RpcSerializationFormat.SystemJsonV5NP, // Used by the TS RPC client (f=json5np)
+                RpcSerializationFormat.MemoryPackV5,
+                RpcSerializationFormat.MemoryPackV5C,
+                RpcSerializationFormat.MemoryPackV6,
+                RpcSerializationFormat.MemoryPackV6C,
+                RpcSerializationFormat.MessagePackV6,
+                RpcSerializationFormat.MessagePackV6C); // We use MessagePack for efficient binary serialization of media streams
+        else
+            RpcSerializationFormat.All = ImmutableList.Create(
+                RpcSerializationFormat.SystemJsonV5,
+                RpcSerializationFormat.SystemJsonV5NP, // Used by the TS RPC client (f=json5np)
+                RpcSerializationFormat.MemoryPackV5,
+                RpcSerializationFormat.MemoryPackV5C,
+                RpcSerializationFormat.MemoryPackV6,
+                RpcSerializationFormat.MemoryPackV6C); // TODO(AK): MessagePack serialization does not work for all types yet
 
         RpcSerializationFormatResolver.Default
 #if DEBUG
-            = new(GetFullRpcSerializationFormat().Key);
+            = new(GetFullRpcSerializationFormat(useMessagePack).Key);
 #else
-            = new((isServer ? GetFullRpcSerializationFormat() : GetCompactRpcSerializationFormat()).Key);
+            = new((isServer ? GetFullRpcSerializationFormat(useMessagePack) : GetCompactRpcSerializationFormat(useMessagePack)).Key);
 #endif
     }
 
     // Private methods
 
-    private static RpcSerializationFormat GetFullRpcSerializationFormat()
-#if USE_MESSAGEPACK
-        => RpcSerializationFormat.MessagePackV6;
-#else
-        => RpcSerializationFormat.MemoryPackV6;
-#endif
+    private static RpcSerializationFormat GetFullRpcSerializationFormat(bool useMessagePack = false)
+        => useMessagePack
+            ? RpcSerializationFormat.MessagePackV6
+            : RpcSerializationFormat.MemoryPackV6;
 
-    private static RpcSerializationFormat GetCompactRpcSerializationFormat()
-#if USE_MESSAGEPACK
-        => RpcSerializationFormat.MessagePackV6C;
-#else
-        => RpcSerializationFormat.MemoryPackV6C;
-#endif
+    private static RpcSerializationFormat GetCompactRpcSerializationFormat(bool useMessagePack = false)
+        => useMessagePack
+            ? RpcSerializationFormat.MessagePackV6C
+            : RpcSerializationFormat.MemoryPackV6C;
 }
