@@ -77,7 +77,11 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         var remoteStream = await VideoStreamingBackend.GetVideo(streamId, skipTo, peerId, cancellationToken).ConfigureAwait(false);
         return remoteStream is null
             ? null
-            : RpcStream.New(remoteStream, allowReconnect: false);
+            : new RpcStream<VideoFrame>(remoteStream) {
+                AllowReconnect = false,
+                AckPeriod = Constants.Video.StreamAckPeriod,
+                AckAdvance = Constants.Video.StreamAckAdvance,
+            };
     }
 
     // [ComputeMethod]
