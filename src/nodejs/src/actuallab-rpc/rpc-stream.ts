@@ -91,7 +91,11 @@ export class RpcStream<T> implements AsyncIterable<T>, IRpcObject {
 
   /** Called by system call handler when a single item arrives ($sys.I). */
   onItem(index: number, item: T): void {
-    if (this._disposed || this._completed) return;
+    if (this._disposed || this._completed) {
+      if (index % 100 === 0 || this._disposed || this._completed)
+        console.warn(`[RpcStream] onItem DROPPED: index=${index}, disposed=${this._disposed}, completed=${this._completed}`);
+      return;
+    }
 
     if (index === 0) {
       console.log(`[RpcStream] first item received, localId=${this.id.localId}`);
@@ -133,7 +137,10 @@ export class RpcStream<T> implements AsyncIterable<T>, IRpcObject {
 
   /** Called by system call handler when a batch arrives ($sys.B). */
   onBatch(index: number, items: T[]): void {
-    if (this._disposed || this._completed) return;
+    if (this._disposed || this._completed) {
+      console.warn(`[RpcStream] onBatch DROPPED: index=${index}, count=${items.length}, disposed=${this._disposed}, completed=${this._completed}`);
+      return;
+    }
 
     if (index > this._nextExpectedIndex) {
       console.warn("[RpcStream] batch index gap", {
@@ -160,7 +167,7 @@ export class RpcStream<T> implements AsyncIterable<T>, IRpcObject {
   /** Called by system call handler when the stream ends ($sys.End). */
   onEnd(index: number, error: Error | null): void {
     if (this._disposed || this._completed) return;
-    console.log(`[RpcStream] stream ended, localId=${this.id.localId}, index=${index}, error=${error?.message ?? "none"}`);
+    console.warn(`[RpcStream] stream ended, localId=${this.id.localId}, index=${index}, error=${error?.message ?? "none"}, buffered=${this._buffer.length}, nextExpected=${this._nextExpectedIndex}`);
     this._completed = true;
     this._completionError = error;
     this._notifyConsumer();

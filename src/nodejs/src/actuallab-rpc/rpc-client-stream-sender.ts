@@ -90,14 +90,15 @@ export class RpcClientStreamSender<T> implements IRpcObject {
     if (!this._started.isCompleted) {
       this._started.resolve();
     }
-    // Honor server's reset request: align our index to what the server expects.
-    // Items already sent with higher indexes were rejected; the server is telling
-    // us to resume from nextIndex.  We can't retransmit (no buffer), but aligning
-    // prevents the permanent gap-rejection loop — acceptable for live video where
-    // old frames are stale anyway.
-    if (nextIndex < this._nextIndex) {
-      this._nextIndex = nextIndex;
-    }
+    // The server sends periodic Ack(nextIndex) as a progress acknowledgment —
+    // it does NOT mean "reset to nextIndex". Only reset if the server
+    // explicitly requests it via a non-default hostId (mustReset=true on the
+    // server side). Progress acks have hostId=default (empty Guid).
+    //
+    // Previously, this code unconditionally reset _nextIndex when
+    // nextIndex < _nextIndex, causing the sender to re-send items from
+    // the acked position with NEW data — corrupting the stream and
+    // eventually triggering a server-side stream end.
   }
 
   /** Called by system call handler when $sys.AckEnd is received from the server. */

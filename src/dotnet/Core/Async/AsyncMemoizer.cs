@@ -259,7 +259,6 @@ public sealed class AsyncMemoizer<T> : AsyncMemoizer, IAsyncMemoizer<T>
         var closedTargets = new HashSet<ChannelWriter<T>>();
         long lastVersion = -1;
         var lastEndIndex = 0L;
-
         while (true) {
             // Wait for new data or new target registration
             var currentVersion = Volatile.Read(ref _version);
