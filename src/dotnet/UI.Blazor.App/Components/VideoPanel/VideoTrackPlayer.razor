@@ -8,7 +8,7 @@
 @{
     var streamKindCls = StreamInfo.StreamKind == StreamKind.Screencast ? "screencast" : "";
 }
-<div class="remote-video-container @FocusedClass @streamKindCls">
+<div class="video-track-player remote-video-container @FocusedClass @streamKindCls">
     <canvas @ref="CanvasRef" class="remote-video" data-stream-id="@StreamInfo.StreamId.Value" data-author-id="@StreamInfo.AuthorId.Value"></canvas>
     @if (!string.IsNullOrEmpty(AuthorName)) {
         <div class="video-participant-label">

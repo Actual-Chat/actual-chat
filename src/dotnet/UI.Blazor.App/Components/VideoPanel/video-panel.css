@@ -237,72 +237,62 @@ body.hoverable .btn-h.expand-btn:hover {
     @apply hidden;
 }
 
-.video-panel .remote-video-container {
+/* ── Item-based layout ── */
+
+/* Canvas inside video-track-player: fill container */
+.video-track-player canvas {
     @apply absolute inset-0;
-    @apply opacity-0;
-    @apply pointer-events-none;
-    transition: opacity 0.3s ease, transform 0.4s ease;
-}
-.video-panel .remote-video-container.focused {
-    @apply opacity-100;
-    @apply pointer-events-auto;
-}
-.video-panel.expanded .remote-video-container.focused canvas.remote-video {
+    @apply w-full h-full;
+    @apply bg-black;
     @apply object-cover;
 }
-.video-panel.expanded .remote-video-container.focused.screencast {
-    @apply overflow-hidden;
-}
-.video-panel.expanded .remote-video-container.focused.screencast canvas.remote-video {
+.video-panel.expanded .video-track-player.screencast canvas {
     @apply object-contain;
 }
-/* Previous speaker overlay — small PiP above local preview */
-.video-panel .remote-video-container.previous-speaker {
-    @apply z-20 inset-auto right-1 bottom-[10.5rem];
-    @apply w-40 h-40;
-    @apply rounded-lg overflow-hidden;
-    @apply opacity-100;
-    @apply pointer-events-auto;
-    @apply border-2 border-separator;
-    transform-origin: bottom right;
-    transition: opacity 0.3s ease, transform 0.4s ease;
-}
-body.narrow .video-panel .remote-video-container.previous-speaker {
-    @apply bottom-22;
-    @apply w-20 h-20;
-}
-body.narrow .video-panel.expanded .remote-video-container.previous-speaker {
-    @apply w-20 h-20;
-}
-.video-panel.expanded .remote-video-container.previous-speaker {
-    @apply bottom-20 right-48;
-}
-.video-panel .remote-video-container.previous-speaker .video-participant-label {
+
+/* Hidden video-track-players (no item-* class) — out of flow */
+.video-panel-content .video-track-player:not([class*="item-"]) {
     @apply hidden;
 }
-.video-panel .remote-video-container .video-participant-label {
+
+/* Focused item: absolute overlay, full content area */
+.video-panel-content .video-track-player.item-focused {
+    @apply absolute inset-0;
+    @apply w-full h-full;
+    @apply rounded-none border-0;
+}
+.video-panel.expanded .video-track-player.item-focused.screencast {
+    @apply overflow-hidden;
+}
+
+/* Sidebar items: flex children with order, PiP size */
+.video-panel-content .video-track-player.item-x {
+    @apply relative;
+    @apply z-20;
+    @apply w-20 h-20;
+    @apply rounded-lg overflow-hidden;
+    @apply border-2 border-separator;
+}
+body.wide .video-panel-content .video-track-player.item-x {
+    @apply w-40 h-40;
+}
+.item-0 { order: 0; }
+.item-1 { order: 1; }
+.item-2 { order: 2; }
+
+/* Participant label */
+.video-panel .video-track-player .video-participant-label {
     @apply absolute bottom-1 left-1 z-10;
     @apply flex items-center gap-1;
     @apply px-1.5 py-0.5 rounded;
     @apply text-xs text-white;
     background: rgba(0, 0, 0, 0.5);
 }
-
-/* Remote video streams */
-.video-panel .remote-streams {
-    @apply relative;
-    @apply w-full h-full;
-    @apply overflow-hidden;
-}
-.video-panel .remote-streams:empty {
+body.narrow .video-panel-content .video-track-player.item-x .video-participant-label {
     @apply hidden;
 }
-body.wide .video-panel.expanded .remote-streams {
-    @apply rounded-lg;
-}
-body.wide .video-panel.expanded:has(.video-panel-chat) .remote-streams {
-    width: calc(100% - var(--video-panel-chat-width) - 0.5rem);
-}
+
+/* Connecting overlay */
 .video-panel .connecting-overlay {
     @apply absolute inset-0;
     @apply flex flex-col items-center justify-center gap-2;
@@ -319,26 +309,6 @@ body.wide .video-panel.expanded:has(.video-panel-chat) .remote-streams {
 }
 @keyframes spin {
     to { transform: rotate(360deg); }
-}
-.video-panel.has-remote-streams .video-streaming-preview {
-    @apply relative z-10;
-    @apply w-20 h-20;
-    @apply rounded-lg border-2 border-white;
-    @apply overflow-hidden;
-    @apply cursor-pointer;
-}
-body.wide .video-panel.has-remote-streams .video-streaming-preview {
-    @apply w-40 h-40;
-}
-.video-panel .remote-streams canvas.remote-video {
-    @apply w-full h-full;
-    @apply bg-black;
-    @apply text-white;
-    @apply pointer-events-auto;
-    @apply object-cover;
-}
-.video-panel .remote-streams .previous-speaker canvas.remote-video {
-    @apply object-cover;
 }
 .video-panel .chat-btn {
     @apply absolute right-4;
@@ -443,65 +413,17 @@ body.wide .video-panel.has-remote-streams .video-streaming-preview {
     }
 }
 
-/* ── Video panel sidebar (previous speaker + local preview) ── */
-.video-panel .video-panel-content {
-    @apply flex-x;
+/* ── Sidebar layout: flex column-reverse, items stack bottom-to-top ── */
+.video-panel-content.video-panel-layout__sidebar {
+    @apply flex flex-col-reverse items-end justify-start;
+    @apply gap-1;
+    @apply p-1;
+}
+.video-panel.expanded .video-panel-content.video-panel-layout__sidebar {
+    @apply gap-2 p-4 pb-20;
 }
 .video-panel.expanded:has(.video-panel-chat) .video-panel-content {
     width: calc(100% - var(--video-panel-chat-width) - 0.5rem);
-}
-.video-panel .video-panel-content > .remote-streams {
-    @apply relative flex-1 min-w-0;
-}
-.video-panel .video-panel-content > .c-sidebar {
-    @apply absolute bottom-1 right-1;
-}
-.video-panel.expanded .video-panel-content > .c-sidebar {
-    @apply bottom-20 right-4;
-}
-@media (orientation: landscape) {
-    body.narrow .video-panel.expanded .video-panel-content > .c-sidebar {
-        @apply bottom-4;
-    }
-}
-.video-panel.expanded:has(.video-panel-chat) .video-panel-content > .c-sidebar {
-    @apply bottom-20;
-}
-.video-panel .video-panel-content .c-sidebar-content {
-    @apply flex-y items-end gap-1;
-}
-.video-panel.expanded .video-panel-content .c-sidebar-content {
-    @apply flex-x items-end;
-}
-.video-panel .video-panel-content .c-sidebar-content > .remote-video-container.previous-speaker {
-    @apply relative inset-auto;
-    @apply w-20 h-20;
-    @apply rounded-lg border-2 border-separator;
-    @apply overflow-hidden;
-    @apply opacity-100;
-    @apply pointer-events-auto;
-}
-body.wide .video-panel .video-panel-content .c-sidebar-content > .remote-video-container.previous-speaker {
-    @apply w-40 h-40;
-}
-.video-panel .video-panel-content .c-sidebar-content > .remote-video-container.previous-speaker canvas.remote-video {
-    @apply w-full h-full;
-    @apply object-cover;
-}
-.video-panel .video-panel-content .c-sidebar-content > .video-streaming-preview {
-    @apply relative;
-}
-/* No remote streams — preview fills the whole c-content */
-.video-panel:not(.has-remote-streams) .video-panel-content > .c-sidebar {
-    @apply static;
-    @apply w-full h-full;
-}
-.video-panel:not(.has-remote-streams) .video-panel-content .c-sidebar-content {
-    @apply w-full h-full;
-}
-.video-panel:not(.has-remote-streams) .video-panel-content .c-sidebar-content > .video-streaming-preview {
-    @apply w-full h-full;
-    @apply rounded-none border-0;
 }
 
 @keyframes smoothHideVideoPanelContent {

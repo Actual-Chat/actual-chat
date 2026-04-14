@@ -236,8 +236,10 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
-        if (_layoutCalculator is null || _layoutCalculator.ChatId != chatId)
-            _layoutCalculator = new VideoPanelLayoutCalculator(Hub, chatId);
+        if (_layoutCalculator is null || _layoutCalculator.ChatId != chatId) {
+            _layoutCalculator = Hub.Services.GetRequiredService<VideoPanelLayoutCalculator>();
+            _layoutCalculator.Initialize(chatId);
+        }
         var layout = await _layoutCalculator.GetLayout(cancellationToken).ConfigureAwait(false);
 
         var isAdmin = AccountUI.OwnAccount.Value.IsAdmin;
