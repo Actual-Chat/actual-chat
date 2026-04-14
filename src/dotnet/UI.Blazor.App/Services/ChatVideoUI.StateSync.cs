@@ -39,7 +39,7 @@ public partial class ChatVideoUI
 
         var cameraDeviceId = await _selectedCameraDeviceId.Use(cancellationToken).ConfigureAwait(false);
         var blurEnabled = await _isBackgroundBlurEnabled.Use(cancellationToken).ConfigureAwait(false);
-        return new CameraRecordingIntent(chatId, cameraDeviceId, blurEnabled);
+        return new WebcamRecordingIntent(chatId, cameraDeviceId, blurEnabled);
     }
 
     // Recording lifecycle
@@ -51,15 +51,16 @@ public partial class ChatVideoUI
             .ConfigureAwait(false);
 
         VideoRecorder? recorder = null;
-        (StreamKind, ChatId)? activeChannel = null;
+        (Type, ChatId)? activeKey = null;
 
         try {
             await foreach (var (intent, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
-                if (intent is null || intent.Channel != activeChannel) {
+                var intentKey = intent is null ? ((Type, ChatId)?)null : (intent.GetType(), intent.ChatId);
+                if (intentKey != activeKey) {
                     if (recorder is not null) {
                         await CompleteRecording(recorder, cancellationToken).ConfigureAwait(false);
                         recorder = null;
-                        activeChannel = null;
+                        activeKey = null;
                     }
                 }
                 if (intent is null)
@@ -77,22 +78,22 @@ public partial class ChatVideoUI
 
                         if (intent is ScreencastIntent screencastIntent) {
                             await recorder.StartScreencast(screencastIntent.ChatId, cancellationToken).ConfigureAwait(false);
-                        } else if (intent is CameraRecordingIntent cameraIntent) {
-                            await recorder.SetSelectedCamera(cameraIntent.CameraDeviceId ?? "", cancellationToken).ConfigureAwait(false);
-                            await recorder.SetBlurEnabled(cameraIntent.BlurEnabled, cancellationToken).ConfigureAwait(false);
-                            await recorder.StartRecording(cameraIntent.ChatId, cancellationToken).ConfigureAwait(false);
+                        } else if (intent is WebcamRecordingIntent webcamIntent) {
+                            await recorder.SetSelectedCamera(webcamIntent.CameraDeviceId ?? "", cancellationToken).ConfigureAwait(false);
+                            await recorder.SetBlurEnabled(webcamIntent.BlurEnabled, cancellationToken).ConfigureAwait(false);
+                            await recorder.StartRecording(webcamIntent.ChatId, cancellationToken).ConfigureAwait(false);
                         }
                         else
                             throw new InvalidOperationException($"Unexpected recording intent: {intent}");
 
-                        activeChannel = intent.Channel;
+                        activeKey = intentKey;
                     }
                     catch (Exception e) when (e is not OperationCanceledException) {
                         OnRecordingError("Failed to start recording");
                         Log.LogWarning(e, "SyncRecordingLifecycle: failed to start recording");
                     }
                 }
-                else if (intent is CameraRecordingIntent cameraIntent) {
+                else if (intent is WebcamRecordingIntent cameraIntent) {
                     // Camera recording should be updated
                     try {
                         await recorder.SwitchCamera(cameraIntent.CameraDeviceId ?? "", cancellationToken).ConfigureAwait(false);
@@ -258,21 +259,12 @@ public partial class ChatVideoUI
 
     // Nested types
 
-    protected abstract record RecordingIntent(ChatId ChatId)
-    {
-        public abstract (StreamKind, ChatId) Channel { get; }
-    }
+    protected abstract record RecordingIntent(ChatId ChatId);
 
-    protected sealed record CameraRecordingIntent(ChatId ChatId, string? CameraDeviceId, bool BlurEnabled)
-        : RecordingIntent(ChatId)
-    {
-        public override (StreamKind, ChatId) Channel => (StreamKind.Webcam, ChatId);
-    }
+    protected sealed record WebcamRecordingIntent(ChatId ChatId, string? CameraDeviceId, bool BlurEnabled)
+        : RecordingIntent(ChatId);
 
-    protected sealed record ScreencastIntent(ChatId ChatId) : RecordingIntent(ChatId)
-    {
-        public override (StreamKind, ChatId) Channel => (StreamKind.Screencast, ChatId);
-    }
+    protected sealed record ScreencastIntent(ChatId ChatId) : RecordingIntent(ChatId);
 
     protected sealed record ActiveSpeakerState(ChatId? ChatId, AuthorId[] SpeakingWithVideo, AuthorId[] RemoteVideoAuthorIds, AuthorId? ScreencastAuthorId = null)
     {
