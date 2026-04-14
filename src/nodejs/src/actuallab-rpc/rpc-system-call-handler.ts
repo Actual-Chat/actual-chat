@@ -82,7 +82,7 @@ export class RpcSystemCallHandler {
         const stream = peer.remoteObjects.get(relatedId) as RpcStream<unknown> | undefined;
         if (!stream) {
           console.warn(`[RpcSysHandler] $sys.B: no stream for relatedId=${relatedId}`);
-        } else {
+        } else if (Array.isArray(args[1])) {
           const items = args[1] as unknown[];
           for (let i = 0; i < items.length; i++) items[i] = resolveStreamRefs(items[i]!, peer);
           stream.onBatch(args[0] as number, items);
