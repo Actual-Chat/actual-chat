@@ -197,35 +197,37 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
         catch (OperationCanceledException) { }
     }
 
-    private static ImmutableArray<AuthorId> BuildDisplayList(
-        ImmutableArray<AuthorId> focusedIds,
+    private static ImmutableArray<VideoStreamInfo> BuildDisplayList(
         VideoStreamInfo[] remoteStreams,
+        ImmutableArray<AuthorId> focusedIds,
         int maxDisplaySlots)
     {
-        // Build set of active remote author IDs for fast lookup
-        var activeRemoteAuthors = remoteStreams.Select(s => s.AuthorId).ToHashSet();
+        // Build lookup from AuthorId → stream for fast access
+        var streamByAuthor = remoteStreams.ToDictionary(s => s.AuthorId);
 
         // Start with focused authors that still have active streams
-        var display = new List<AuthorId>();
+        var display = new List<VideoStreamInfo>();
+        var seen = new HashSet<AuthorId>();
         foreach (var id in focusedIds) {
-            if (activeRemoteAuthors.Contains(id))
-                display.Add(id);
+            if (streamByAuthor.TryGetValue(id, out var stream)) {
+                display.Add(stream);
+                seen.Add(id);
+            }
             if (display.Count >= maxDisplaySlots)
                 break;
         }
 
         // Fill remaining slots with other participants, ordered by StartedAt descending
         if (display.Count < maxDisplaySlots) {
-            var displaySet = display.ToHashSet();
             var others = remoteStreams
-                .Where(s => !displaySet.Contains(s.AuthorId))
-                .OrderByDescending(s => s.StartedAt)
-                .Select(s => s.AuthorId)
-                .Distinct();
-            foreach (var id in others) {
-                display.Add(id);
-                if (display.Count >= maxDisplaySlots)
-                    break;
+                .Where(s => !seen.Contains(s.AuthorId))
+                .OrderByDescending(s => s.StartedAt);
+            foreach (var stream in others) {
+                if (seen.Add(stream.AuthorId)) {
+                    display.Add(stream);
+                    if (display.Count >= maxDisplaySlots)
+                        break;
+                }
             }
         }
 
@@ -240,7 +242,7 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
 
         // Build ordered display list from focus history + active streams
         var maxSlots = isNarrow ? MaxDisplaySlotsNarrow : MaxDisplaySlotsWide;
-        var displayList = BuildDisplayList(focusedIds, remoteStreams, maxSlots);
+        var displayList = BuildDisplayList(remoteStreams, focusedIds, maxSlots);
 
         // Own stream class
         var ownClass = !hasOwn ? ""
@@ -248,19 +250,16 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
             : "item-x item-0";
 
         // Map display list to stream → CSS class
-        // displayList[0] → "item-focused"
-        // displayList[1+] → "item-x item-{i}" (sidebar, offset by 1 when own takes item-0)
-        var sidebarOffset = hasOwn ? 1 : 0;
         var remoteClasses = new List<RemoteStreamPlayerClass>();
-        for (var i = 0; i < displayList.Length; i++) {
-            var authorId = displayList[i];
-            var stream = remoteStreams.FirstOrDefault(s => s.AuthorId == authorId);
-            if (stream is null)
-                continue;
-
-            var cls = i == 0
-                ? "item-focused"
-                : $"item-x item-{i + sidebarOffset}";
+        var focusedStream = displayList.FirstOrDefault();
+        // displayList[0] → "item-focused"
+        if (focusedStream is not null)
+            remoteClasses.Add(new RemoteStreamPlayerClass(focusedStream.StreamId.Value, "item-focused"));
+        // displayList[1+] → "item-x item-{i}" (sidebar, offset by 1 when own takes item-0)
+        var i = hasOwn ? 1 : 0;
+        foreach (var stream in displayList.Skip(1)) {
+            var cls = $"item-x item-{i}";
+            i++;
             remoteClasses.Add(new RemoteStreamPlayerClass(stream.StreamId.Value, cls));
         }
 
