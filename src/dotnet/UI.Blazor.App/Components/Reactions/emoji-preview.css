@@ -56,3 +56,26 @@
     75% { transform: scale(1); opacity: 1; }
     100% { transform: scale(0.15); opacity: 0; }
 }
+
+/* Emoji message sent animation */
+.emoji-message-animate {
+    @apply fixed z-[10000];
+    @apply flex items-center justify-center;
+    @apply w-24 h-24;
+    @apply pointer-events-none;
+    @apply overflow-visible;
+    animation: emoji-message-pop 2.5s ease-out forwards;
+}
+.emoji-message-animate::before {
+    @apply content-empty;
+    @apply absolute inset-0 z-minus;
+    @apply rounded-full;
+    background: radial-gradient(circle, var(--background-01) 20%, transparent 55%);
+    transform: translate(var(--offset-x, 0), var(--offset-y, 0));
+}
+@keyframes emoji-message-pop {
+    0% { transform: scale(0.3); opacity: 0; }
+    10% { transform: scale(1); opacity: 1; }
+    80% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(0.3); opacity: 0; }
+}

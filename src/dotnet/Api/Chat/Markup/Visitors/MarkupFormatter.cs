@@ -98,17 +98,24 @@ public abstract record MarkupFormatterBase : MarkupVisitorWithState<StringBuilde
 
 public sealed record MarkupFormatter(
     Func<MentionMarkup, string> MentionFormatter,
-    bool ShowStyleTokens = true
+    bool ShowStyleTokens = true,
+    Func<UrlMarkup, string>? UrlFormatter = null
     ) : MarkupFormatterBase
 {
     public static readonly MarkupFormatter Default = new();
     public static readonly MarkupFormatter Readable = new(MentionMarkup.NameOrNotAvailableFormatter);
     public static readonly MarkupFormatter ReadableUnstyled = Readable with { ShowStyleTokens = false };
+    public static readonly MarkupFormatter ReadableUnstyledForQuote = ReadableUnstyled with {
+        UrlFormatter = FormatUrlForQuote,
+    };
 
     public MarkupFormatter() : this(MentionMarkup.DefaultFormatter, true) { }
     public MarkupFormatter(bool showStyleTokens) : this(MentionMarkup.DefaultFormatter, showStyleTokens) { }
 
     // Protected methods
+
+    protected override void VisitUrl(UrlMarkup markup, ref StringBuilder state)
+        => state.Append(UrlFormatter?.Invoke(markup) ?? markup.Format());
 
     protected override void VisitMention(MentionMarkup markup, ref StringBuilder state)
         => state.Append(MentionFormatter.Invoke(markup));
@@ -121,4 +128,12 @@ public sealed record MarkupFormatter(
         if (ShowStyleTokens)
             state.Append(markup.StyleToken);
     }
+
+    // Private methods
+
+    private static string FormatUrlForQuote(UrlMarkup markup)
+        => markup.Kind is UrlMarkupKind.Www
+            && markup.Url.EndsWith(".gif", StringComparison.OrdinalIgnoreCase)
+            ? "GIF"
+            : markup.Format();
 }

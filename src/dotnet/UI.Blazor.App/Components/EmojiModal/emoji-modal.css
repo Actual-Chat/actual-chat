@@ -90,21 +90,20 @@ body.hoverable .emoji-modal .c-gif-item:hover {
     @apply w-full;
     @apply rounded-lg;
 }
-.emoji-modal .c-gif-loading,
-.emoji-modal .c-gif-empty {
-    @apply flex items-center justify-center;
-    @apply h-32 w-full;
-    @apply text-03;
-    columns: 1;
-    column-span: all;
-}
-.emoji-modal .c-gif-load-more {
+.emoji-modal .c-gif-status {
     @apply py-2;
+    @apply opacity-0;
     @apply rounded-lg;
     @apply text-text-1 text-03;
-    @apply cursor-pointer;
-    column-span: all;
+    @apply text-center;
+    animation: gif-status-fade-in 0s ease-in 1s forwards;
 }
-body.hoverable .emoji-modal .c-gif-load-more:hover {
+button.c-gif-status {
+    @apply cursor-pointer;
+}
+body.hoverable .emoji-modal button.c-gif-status:hover {
     @apply text-01;
+}
+@keyframes gif-status-fade-in {
+    to { opacity: 1; }
 }

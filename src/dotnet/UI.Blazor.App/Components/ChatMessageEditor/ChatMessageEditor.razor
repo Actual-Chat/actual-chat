@@ -361,17 +361,19 @@
 
     private Task OnEmojiButtonClickEvent(EmojiButtonClickEvent @event, CancellationToken cancellationToken)
         => @event.EditorId == _editorId
-            ? OnEmojiButtonClick()
+            ? OnEmojiButtonClick(@event.TabId)
             : Task.CompletedTask;
 
-    private async Task OnEmojiButtonClick() {
-        var model = new EmojiModal.Model();
+    private async Task OnEmojiButtonClick(string tabId = "emoji") {
+        var model = new EmojiModal.Model { InitialTabId = tabId };
         await (await ModalUI.Show(model).ConfigureAwait(true)).WhenClosed.ConfigureAwait(true);
 
         string? text = null;
-        if (model.SelectedEmoji is { } emoji)
+        if (model.SelectedEmoji is { } emoji) {
             text = emoji.Id.Value;
-        else if (!model.SelectedGifUrl.IsNullOrEmpty())
+            if (EmojiIcon.SvgNames.TryGetValue(emoji, out var svgName))
+                await JS.InvokeVoidAsync("EmojiPreview.setPendingMessageEmoji", svgName).ConfigureAwait(true);
+        } else if (!model.SelectedGifUrl.IsNullOrEmpty())
             text = model.SelectedGifUrl;
 
         if (text.IsNullOrEmpty())
