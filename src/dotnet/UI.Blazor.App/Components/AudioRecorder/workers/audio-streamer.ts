@@ -5,7 +5,8 @@ import { Disposable } from 'disposable';
 import { EventHandlerSet } from 'event-handling';
 import { ObjectPool } from 'object-pool';
 import { delayAsync } from 'promises';
-import { RpcHub, RpcClientPeer, RpcClientStreamSender } from 'actuallab-rpc';
+import { RpcHub, RpcClientPeer } from 'actuallab-rpc';
+import { RpcLiveStreamSender } from 'rpc-live-stream-sender';
 import { StreamServerDef, type AudioFrameDto } from '../../../Services/Video/streaming-rpc-service';
 import { ServerClock } from 'server-clock';
 import { WorkerConnectivityUI } from './worker-connectivity-ui';
@@ -116,7 +117,7 @@ export class AudioStream implements Disposable {
         if (this.isCompleted && this.frames.length === 0)
             return;
 
-        let sender: RpcClientStreamSender<AudioFrameDto> | null = null;
+        let sender: RpcLiveStreamSender<AudioFrameDto> | null = null;
         try {
             await AudioStreamer.ensureConnected();
             if (this.isDisposed)
@@ -132,7 +133,7 @@ export class AudioStream implements Disposable {
             const clientStartOffset = (this.firstFrameTimestamp ?? ServerClock.now()) / 1000;
             infoLog?.log(`${this.name}: PushAudio clientStartOffset=${clientStartOffset.toFixed(3)}s`);
 
-            sender = new RpcClientStreamSender<AudioFrameDto>(peer);
+            sender = new RpcLiveStreamSender<AudioFrameDto>(peer);
 
             void streamServer
                 .PushAudio(RPC_SESSION_DEFAULT, this.chatId, this.repliedChatEntryId ?? null,

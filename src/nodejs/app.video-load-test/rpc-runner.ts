@@ -21,7 +21,8 @@
 // exactly one `StreamServerClient` and one `LiveVideoStreamsClient` shared
 // across the whole run.
 
-import { RpcHub, RpcClientPeer, RpcClientStreamSender } from '../src/actuallab-rpc/index.js';
+import { RpcHub, RpcClientPeer } from '../src/actuallab-rpc';
+import { RpcLiveStreamSender } from '../src/rpc-live-stream-sender.js';
 
 import { createNodeWsFactory } from './node-ws.js';
 import { FrameConfig, generateFrame, paceFrame } from './frame-gen.js';
@@ -81,7 +82,7 @@ export async function runRpcProducer(
 ): Promise<void> {
     try {
         const { streamServer } = bundle;
-        const sender = new RpcClientStreamSender<VideoFrameDto>(bundle.peer);
+        const sender = new RpcLiveStreamSender<VideoFrameDto>(bundle.peer);
         const format: VideoFormatDto = {
             Codec: FrameConfig.Codec,
             Width: FrameConfig.Width,

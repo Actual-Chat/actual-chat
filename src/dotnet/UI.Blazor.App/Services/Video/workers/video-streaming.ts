@@ -2,7 +2,7 @@
  * In-worker video streaming over Fusion RPC binary transport.
  *
  * Sends encoded frames to the server via `IStreamServer.PushVideo`, using an
- * `RpcClientStreamSender<VideoFrameDto>` to stream typed frame objects. The
+ * `RpcLiveStreamSender<VideoFrameDto>` to stream typed frame objects. The
  * server keeps its SignalR `StreamHub.PushVideo` endpoint for backward
  * compatibility with older clients, but this worker no longer touches it.
  */
@@ -10,7 +10,8 @@
 import Denque from 'denque';
 import { EventHandlerSet } from 'event-handling';
 import { Log } from 'logging';
-import { RpcHub, RpcClientPeer, RpcClientStreamSender } from 'actuallab-rpc';
+import { RpcHub, RpcClientPeer } from 'actuallab-rpc';
+import { RpcLiveStreamSender } from 'rpc-live-stream-sender';
 import {
     StreamServerDef,
     type VideoFormatDto,
@@ -151,7 +152,7 @@ export class InternalVideoStream {
     }
 
     private async stream(streamAfter?: Promise<void>): Promise<void> {
-        let sender: RpcClientStreamSender<VideoFrameDto> | null = null;
+        let sender: RpcLiveStreamSender<VideoFrameDto> | null = null;
         try {
             if (streamAfter) await streamAfter;
             if (!this.ctx.processing) return;
@@ -168,7 +169,7 @@ export class InternalVideoStream {
             infoLog?.log(`PushVideo: codec=${this.config.codec}, ` +
                 `${this.config.width}x${this.config.height}, settings=${this.config.codecSettings.length} chars`);
 
-            sender = new RpcClientStreamSender<VideoFrameDto>(peer);
+            sender = new RpcLiveStreamSender<VideoFrameDto>(peer);
             const format: VideoFormatDto = {
                 Codec: this.config.codec,
                 Width: this.config.width,

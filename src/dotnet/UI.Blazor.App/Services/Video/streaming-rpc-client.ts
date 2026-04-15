@@ -1,6 +1,7 @@
 // Streaming RPC client — connects to IStreamServer via Fusion RPC WebSocket.
 
-import { RpcHub, RpcClientPeer, RpcClientStreamSender } from 'actuallab-rpc';
+import { RpcHub, RpcClientPeer } from 'actuallab-rpc';
+import { RpcLiveStreamSender } from 'rpc-live-stream-sender';
 import { StreamServerDef, type VideoFrameDto, type VideoFormatDto, type AudioFrameDto } from './streaming-rpc-service.js';
 
 let _hub: RpcHub | undefined;
@@ -70,16 +71,16 @@ export function getStreamServerClient(): StreamServerClient {
  * Returns the sender (call writeFrom/sendItem) and its ref object (pass as RPC
  * method argument — the binary serializer encodes it as a MessagePack map).
  */
-export function createVideoFrameSender(): { sender: RpcClientStreamSender<VideoFrameDto>; ref: unknown } {
+export function createVideoFrameSender(): { sender: RpcLiveStreamSender<VideoFrameDto>; ref: unknown } {
     const peer = ensurePeer();
-    const sender = new RpcClientStreamSender<VideoFrameDto>(peer);
+    const sender = new RpcLiveStreamSender<VideoFrameDto>(peer);
     return { sender, ref: sender.toRef() };
 }
 
 /** Create a client-side stream sender for pushing audio frames to the server. */
-export function createAudioFrameSender(): { sender: RpcClientStreamSender<AudioFrameDto>; ref: unknown } {
+export function createAudioFrameSender(): { sender: RpcLiveStreamSender<AudioFrameDto>; ref: unknown } {
     const peer = ensurePeer();
-    const sender = new RpcClientStreamSender<AudioFrameDto>(peer);
+    const sender = new RpcLiveStreamSender<AudioFrameDto>(peer);
     return { sender, ref: sender.toRef() };
 }
 
