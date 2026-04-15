@@ -367,10 +367,16 @@
     private async Task OnEmojiButtonClick() {
         var model = new EmojiModal.Model();
         await (await ModalUI.Show(model).ConfigureAwait(true)).WhenClosed.ConfigureAwait(true);
-        if (model.SelectedEmoji is not { } emoji)
+
+        string? text = null;
+        if (model.SelectedEmoji is { } emoji)
+            text = emoji.Id.Value;
+        else if (!model.SelectedGifUrl.IsNullOrEmpty())
+            text = model.SelectedGifUrl;
+
+        if (text.IsNullOrEmpty())
             return;
 
-        var text = emoji.Id.Value;
         _ = TuneUI.Play(Tune.SendMessage);
         var relatedChatEntry = ChatEditorUI.RelatedEntryRef.Value;
         await ChatEditorUI.HideRelatedEntry(false).ConfigureAwait(true);

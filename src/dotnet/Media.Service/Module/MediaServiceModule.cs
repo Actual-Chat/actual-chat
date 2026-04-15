@@ -31,6 +31,10 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
         rpcHost.AddBackend<IUploadsBackend, UploadsBackend>();
         services.AddSingleton<IMediaSaver, MediaSaver>();
 
+        // GIFs
+        rpcHost.AddApi<IGifs, Gifs>();
+        services.AddHttpClient(Gifs.HttpClientName);
+
         if (isBackendClient)
             return;
 

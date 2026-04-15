@@ -13,4 +13,5 @@ public sealed class MediaSettings
     public string[] CrawlingDomainDenylist { get; set; } = [];
     public string[] CrawlingHostAllowList { get; set; } = [];
     public TimeSpan LinkPreviewUpdatePeriod { get; set; } = TimeSpan.FromDays(1);
+    public string KlipyApiKey { get; set; } = "";
 }
