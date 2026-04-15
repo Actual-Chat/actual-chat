@@ -1,7 +1,6 @@
 // Streaming RPC client — connects to IStreamServer via Fusion RPC WebSocket.
 
-import { RpcHub, RpcClientPeer } from 'actuallab-rpc';
-import { RpcLiveStreamSender } from 'rpc-live-stream-sender';
+import { RpcHub, RpcClientPeer, RpcStream } from 'actuallab-rpc';
 import { StreamServerDef, type VideoFrameDto, type VideoFormatDto, type AudioFrameDto } from './streaming-rpc-service.js';
 
 let _hub: RpcHub | undefined;
@@ -67,33 +66,29 @@ export function getStreamServerClient(): StreamServerClient {
 }
 
 /**
- * Create a client-side stream sender for pushing video frames to the server.
- * Returns the sender (call writeFrom/sendItem) and its ref object (pass as RPC
- * method argument — the binary serializer encodes it as a MessagePack map).
+ * Create a client-side RPC stream for pushing video frames to the server.
+ * Real-time mode: isRealTime=true, allowReconnect=false, ackPeriod=5, ackAdvance=31.
+ *
+ * Usage: pass `source` (an AsyncIterable of frames), then call `stream.toRef(peer)`
+ * to get the ref for the RPC method argument. `toRef` registers the sender and
+ * starts pumping automatically.
  */
-export function createVideoFrameSender(): { sender: RpcLiveStreamSender<VideoFrameDto>; ref: unknown } {
+export function createVideoStream(source: AsyncIterable<VideoFrameDto>): { stream: RpcStream<VideoFrameDto>; ref: unknown } {
     const peer = ensurePeer();
-    const sender = new RpcLiveStreamSender<VideoFrameDto>(
-        peer,
-        undefined,
-        undefined,
-        true,   // allowReconnect
-        true,   // isRealtime — no buffering for video
-    );
-    return { sender, ref: sender.toRef() };
+    const stream = new RpcStream<VideoFrameDto>(source, {
+        isRealTime: true, allowReconnect: false, ackPeriod: 5, ackAdvance: 31,
+    });
+    return { stream, ref: stream.toRef(peer) };
 }
 
-/** Create a client-side stream sender for pushing audio frames to the server. */
-export function createAudioFrameSender(): { sender: RpcLiveStreamSender<AudioFrameDto>; ref: unknown } {
+/**
+ * Create a client-side RPC stream for pushing audio frames to the server.
+ * Non-real-time with default parameters.
+ */
+export function createAudioStream(source: AsyncIterable<AudioFrameDto>): { stream: RpcStream<AudioFrameDto>; ref: unknown } {
     const peer = ensurePeer();
-    const sender = new RpcLiveStreamSender<AudioFrameDto>(
-        peer,
-        undefined,
-        undefined,
-        true,   // allowReconnect
-        false,  // isRealtime — buffer for transcription
-    );
-    return { sender, ref: sender.toRef() };
+    const stream = new RpcStream<AudioFrameDto>(source);
+    return { stream, ref: stream.toRef(peer) };
 }
 
 /** Disconnect the RPC client. */

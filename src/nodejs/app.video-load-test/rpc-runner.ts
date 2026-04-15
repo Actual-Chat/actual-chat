@@ -21,8 +21,7 @@
 // exactly one `StreamServerClient` and one `LiveVideoStreamsClient` shared
 // across the whole run.
 
-import { RpcHub, RpcClientPeer } from '../src/actuallab-rpc';
-import { RpcLiveStreamSender } from '../src/rpc-live-stream-sender.js';
+import { RpcHub, RpcClientPeer, RpcStream } from '../src/actuallab-rpc';
 
 import { createNodeWsFactory } from './node-ws.js';
 import { FrameConfig, generateFrame, paceFrame } from './frame-gen.js';
@@ -82,7 +81,6 @@ export async function runRpcProducer(
 ): Promise<void> {
     try {
         const { streamServer } = bundle;
-        const sender = new RpcLiveStreamSender<VideoFrameDto>(bundle.peer);
         const format: VideoFormatDto = {
             Codec: FrameConfig.Codec,
             Width: FrameConfig.Width,
@@ -91,24 +89,9 @@ export async function runRpcProducer(
         };
         const clientStartOffsetSec = Date.now() / 1000;
 
-        // PushVideo is a long-lived call — the server holds it open until
-        // the frame stream ends. Fire-and-forget; surface any rejection so
-        // it's visible via the global unhandledRejection handler.
-        void streamServer
-            .PushVideo('~', chatId, clientStartOffsetSec, format, sender.toRef())
-            .catch((err: unknown) => {
-                if (!ctx.abort.aborted)
-                    console.error(
-                        `[rpc producer chat=${chatIdx} prod=${prodIdx}] PushVideo rejected:`, err);
-            });
-
-        // Drive the producer loop via writeFrom() so the sender waits for
-        // the server's initial $sys.Ack(0) before pumping items. Calling
-        // sendItem() directly races the PushVideo invocation — items can
-        // reach the server before the shared-stream handler is ready and
-        // get silently dropped. This matches the production browser pattern
-        // in workers/video-streaming.ts.
-        async function* frameSource(): AsyncIterable<VideoFrameDto> {
+        // Real-time video stream: isRealTime=true, allowReconnect=false, ackPeriod=5, ackAdvance=31.
+        // toRef() creates the sender, registers it, and starts pumping in the background.
+        const stream = new RpcStream<VideoFrameDto>((async function* () {
             const start = Date.now();
             for (let i = 0; !ctx.abort.aborted; i++) {
                 await paceFrame(start, i);
@@ -118,8 +101,20 @@ export async function runRpcProducer(
                 ctx.metrics.recordSent(chatIdx, prodIdx, frame.Offset);
                 yield frame;
             }
-        }
-        await sender.writeFrom(frameSource());
+        })(), { isRealTime: true, allowReconnect: false, ackPeriod: 5, ackAdvance: 31 });
+
+        // PushVideo is a long-lived call — the server holds it open until
+        // the frame stream ends. Fire-and-forget; surface any rejection so
+        // it's visible via the global unhandledRejection handler.
+        void streamServer
+            .PushVideo('~', chatId, clientStartOffsetSec, format, stream.toRef(bundle.peer))
+            .catch((err: unknown) => {
+                if (!ctx.abort.aborted)
+                    console.error(
+                        `[rpc producer chat=${chatIdx} prod=${prodIdx}] PushVideo rejected:`, err);
+            });
+
+        await stream.whenSent;
     } catch (e) {
         if (!ctx.abort.aborted) {
             console.error(

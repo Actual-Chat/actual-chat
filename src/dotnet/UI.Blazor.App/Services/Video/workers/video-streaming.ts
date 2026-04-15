@@ -2,7 +2,7 @@
  * In-worker video streaming over Fusion RPC binary transport.
  *
  * Sends encoded frames to the server via `IStreamServer.PushVideo`, using an
- * `RpcLiveStreamSender<VideoFrameDto>` to stream typed frame objects. The
+ * `RpcStreamSender<VideoFrameDto>` to stream typed frame objects. The
  * server keeps its SignalR `StreamHub.PushVideo` endpoint for backward
  * compatibility with older clients, but this worker no longer touches it.
  */
@@ -10,8 +10,7 @@
 import Denque from 'denque';
 import { EventHandlerSet } from 'event-handling';
 import { Log } from 'logging';
-import { RpcHub, RpcClientPeer } from 'actuallab-rpc';
-import { RpcLiveStreamSender } from 'rpc-live-stream-sender';
+import { RpcHub, RpcClientPeer, RpcStream } from 'actuallab-rpc';
 import {
     StreamServerDef,
     type VideoFormatDto,
@@ -152,7 +151,6 @@ export class InternalVideoStream {
     }
 
     private async stream(streamAfter?: Promise<void>): Promise<void> {
-        let sender: RpcLiveStreamSender<VideoFrameDto> | null = null;
         try {
             if (streamAfter) await streamAfter;
             if (!this.ctx.processing) return;
@@ -169,13 +167,6 @@ export class InternalVideoStream {
             infoLog?.log(`PushVideo: codec=${this.config.codec}, ` +
                 `${this.config.width}x${this.config.height}, settings=${this.config.codecSettings.length} chars`);
 
-            sender = new RpcLiveStreamSender<VideoFrameDto>(
-                peer,
-                undefined,
-                undefined,
-                true,   // allowReconnect
-                true,   // isRealtime — no buffering for video
-            );
             const format: VideoFormatDto = {
                 Codec: this.config.codec,
                 Width: this.config.width,
@@ -183,39 +174,31 @@ export class InternalVideoStream {
                 CodecSettings: this.config.codecSettings,
             };
 
+            // Real-time video stream: isRealTime=true, allowReconnect=false, ackPeriod=5, ackAdvance=31.
+            // toRef() creates the sender, registers it, and starts pumping in the background.
+            const self = this;
+            const stream = new RpcStream<VideoFrameDto>((async function* () {
+                while (!self.isCompleted || !self.frames.isEmpty()) {
+                    while (!self.frames.isEmpty()) {
+                        yield frameToDto(self.frames.shift()!);
+                    }
+                    if (!self.isCompleted) {
+                        await self.frameAdded.whenNextVoid();
+                    }
+                }
+            })(), { isRealTime: true, allowReconnect: false, ackPeriod: 5, ackAdvance: 31 });
+
             // Fire-and-forget: server awaits the frameStream completion. Any
             // rejection is logged but shouldn't cancel the pump loop since the
             // sender owns the lifetime of the stream.
             void streamServer
-                .PushVideo(RPC_SESSION_DEFAULT, this.ctx.chatId, clientStartOffset, format, sender.toRef())
+                .PushVideo(RPC_SESSION_DEFAULT, this.ctx.chatId, clientStartOffset, format, stream.toRef(peer))
                 .catch((err: unknown) => warnLog?.log('PushVideo rejected:', err));
 
-            // Wait for the server to register the inbound stream and send
-            // $sys.Ack before pumping.  Without this, items sent before
-            // registration are silently dropped, and the resulting index gap
-            // causes permanent rejection on the server side.
-            await sender.whenStarted();
-
-            while (!this.isCompleted || !this.frames.isEmpty()) {
-                // Detect sender disconnect (e.g. server pod restart)
-                if (sender.isEnded) {
-                    warnLog?.log(`Sender ended mid-stream (disconnectedByServer=${sender.isDisconnectedByServer})`);
-                    break;
-                }
-                while (!this.frames.isEmpty()) {
-                    const frame = this.frames.shift()!;
-                    sender.sendItem(frameToDto(frame));
-                }
-                if (!this.isCompleted) {
-                    await this.frameAdded.whenNextVoid();
-                }
-            }
-
-            sender.sendEnd();
+            // Wait for the pump to complete (writeFrom was started by toRef)
+            await stream.whenSent;
         } catch (error) {
             errorLog?.log('VideoStream error:', error);
-            try { sender?.sendEnd(error instanceof Error ? error : new Error(String(error))); }
-            catch { /* ignore */ }
         } finally {
             this.isDisposed = true;
         }

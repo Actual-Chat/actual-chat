@@ -94,7 +94,7 @@ import { deserializeMessage } from './rpc-serialization.js';
 import type { RpcHub } from './rpc-hub.js';
 import { RpcRemoteObjectTracker } from './rpc-remote-object-tracker.js';
 import { RpcSharedObjectTracker } from './rpc-shared-object-tracker.js';
-import { RpcStreamSender } from './rpc-stream-sender.js';
+import { RpcStream } from './rpc-stream.js';
 import { RpcSerializationFormat, RpcSerializationFormatResolver } from './rpc-serialization-format.js';
 
 /** WebSocket close code sent by the server when the client's serialization format is unsupported. */
@@ -395,16 +395,17 @@ export abstract class RpcPeer {
                         methodDef?.stream === true &&
                         this._connection !== undefined
                     ) {
-                        // Stream method — create sender, send reference, pump items
-                        const sender = new RpcStreamSender(this);
-                        this.sharedObjects.register(sender);
+                        // Stream method — wrap result in RpcStream if needed,
+                        // then let toRef() create the sender, register it, and start pumping.
+                        const stream = result instanceof RpcStream
+                            ? result as RpcStream<unknown>
+                            : new RpcStream<unknown>(result as AsyncIterable<unknown>);
                         this._hub.systemCallSender.ok(
                             this._connection,
                             this.format,
                             relatedId,
-                            sender.toRef()
+                            stream.toRef(this)
                         );
-                        void sender.writeFrom(result as AsyncIterable<unknown>);
                     } else if (!isNoWait && this._connection !== undefined) {
                         this._hub.systemCallSender.ok(
                             this._connection,

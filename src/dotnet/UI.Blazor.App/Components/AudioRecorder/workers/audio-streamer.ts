@@ -5,8 +5,7 @@ import { Disposable } from 'disposable';
 import { EventHandlerSet } from 'event-handling';
 import { ObjectPool } from 'object-pool';
 import { delayAsync } from 'promises';
-import { RpcHub, RpcClientPeer } from 'actuallab-rpc';
-import { RpcLiveStreamSender } from 'rpc-live-stream-sender';
+import { RpcHub, RpcClientPeer, RpcStream } from 'actuallab-rpc';
 import { StreamServerDef, type AudioFrameDto } from '../../../Services/Video/streaming-rpc-service';
 import { ServerClock } from 'server-clock';
 import { WorkerConnectivityUI } from './worker-connectivity-ui';
@@ -117,7 +116,6 @@ export class AudioStream implements Disposable {
         if (this.isCompleted && this.frames.length === 0)
             return;
 
-        let sender: RpcLiveStreamSender<AudioFrameDto> | null = null;
         try {
             await AudioStreamer.ensureConnected();
             if (this.isDisposed)
@@ -133,57 +131,43 @@ export class AudioStream implements Disposable {
             const clientStartOffset = (this.firstFrameTimestamp ?? ServerClock.now()) / 1000;
             infoLog?.log(`${this.name}: PushAudio clientStartOffset=${clientStartOffset.toFixed(3)}s`);
 
-            sender = new RpcLiveStreamSender<AudioFrameDto>(
-                peer,
-                undefined,
-                undefined,
-                true,   // allowReconnect
-                false,  // isRealtime — buffer for transcription
-            );
+            // Non-real-time audio stream with default params.
+            // toRef() creates the sender, registers it, and starts pumping in the background.
+            const self = this;
+            let frameIndex = 0;
+            const stream = new RpcStream<AudioFrameDto>((async function* () {
+                while (!self.isDisposed) {
+                    const frame = self.frames.shift();
+                    if (frame) {
+                        yield {
+                            Data: frame,
+                            Offset: frameIndex * FRAME_DURATION_TICKS,
+                            Duration: FRAME_DURATION_TICKS,
+                            IsKeyFrame: true,
+                        };
+                        frameIndex++;
+                        // Release buffer back to pool
+                        if (frame.buffer.byteLength === AE.FRAME_BUFFER_BYTES)
+                            bufferPool.release(frame.buffer);
+                    } else if (self.isCompleted && self.frames.length === 0) {
+                        warnLog?.log(`${self.name}: stream completed, ${frameIndex} frames sent`);
+                        return;
+                    } else {
+                        await self.frameAdded.whenNext();
+                    }
+                }
+            })());
 
             void streamServer
                 .PushAudio(RPC_SESSION_DEFAULT, this.chatId, this.repliedChatEntryId ?? null,
-                    clientStartOffset, this.preSkip, sender.toRef())
+                    clientStartOffset, this.preSkip, stream.toRef(peer))
                 .catch((err: unknown) => warnLog?.log(`${this.name}: PushAudio rejected:`, err));
 
             this.repliedChatEntryId = undefined;
 
-            await sender.whenStarted();
-            warnLog?.log(`${this.name}: sender started, peerConnected=${AudioStreamer.rpcPeer?.isConnected}`);
-
-            let frameIndex = 0;
-            while (!this.isDisposed) {
-                // Detect server disconnect (e.g. pod restart)
-                if (sender.isEnded) {
-                    warnLog?.log(`${this.name}: sender ended (disconnectedByServer=${sender.isDisconnectedByServer}), ${frameIndex} frames sent`);
-                    break;
-                }
-
-                const frame = this.frames.shift();
-                if (frame) {
-                    sender.sendItem({
-                        Data: frame,
-                        Offset: frameIndex * FRAME_DURATION_TICKS,
-                        Duration: FRAME_DURATION_TICKS,
-                        IsKeyFrame: true,
-                    });
-                    frameIndex++;
-
-                    // Release buffer back to pool
-                    if (frame.buffer.byteLength === AE.FRAME_BUFFER_BYTES)
-                        bufferPool.release(frame.buffer);
-                } else if (this.isCompleted && this.frames.length === 0) {
-                    warnLog?.log(`${this.name}: stream completed, ${frameIndex} frames sent`);
-                    sender.sendEnd();
-                    this.dispose();
-                } else {
-                    await this.frameAdded.whenNext();
-                }
-            }
+            await stream.whenSent;
         } catch (error) {
             warnLog?.log(`${this.name}: stream error:`, error);
-            try { sender?.sendEnd(error instanceof Error ? error : new Error(String(error))); }
-            catch { /* ignore */ }
         } finally {
             this.dispose();
         }
