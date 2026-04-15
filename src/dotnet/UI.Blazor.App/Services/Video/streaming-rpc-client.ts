@@ -77,6 +77,7 @@ export function createVideoStream(source: AsyncIterable<VideoFrameDto>): { strea
     const peer = ensurePeer();
     const stream = new RpcStream<VideoFrameDto>(source, {
         isRealTime: true, allowReconnect: false, ackPeriod: 5, ackAdvance: 31,
+        canSkipTo: (frame) => frame.IsKeyFrame,
     });
     return { stream, ref: stream.toRef(peer) };
 }
