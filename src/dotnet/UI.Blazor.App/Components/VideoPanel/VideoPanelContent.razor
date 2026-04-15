@@ -18,7 +18,15 @@
         // Recording solo, never had remote peers — show preview, not "Connecting..."
         _showConnecting = false;
     } else if (!_noStreamsTimedOut && _hadRemoteStreams) {
-        _showConnecting = true;
+        // Check if streams disappeared because sender stopped intentionally
+        if (ChatVideoUI.ConsumeRemoteStreamEndedIntentionally()) {
+            // Intentional end — skip "Connecting...", let panel close immediately
+            _hadRemoteStreams = false;
+            _showConnecting = false;
+        } else {
+            // Unexpected disconnect — show "Connecting..." so recovered stream can replace it
+            _showConnecting = true;
+        }
     }
 
     if (m != Model.Loading && ownStreamingKind is null && !hasRemoteStreams && !_showConnecting) {

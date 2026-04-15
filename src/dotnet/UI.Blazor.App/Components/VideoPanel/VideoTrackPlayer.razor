@@ -115,6 +115,8 @@
     public void OnEnded(string? errorMessage)
     {
         Log.LogWarning("[VideoTrackPlayer #{StreamId}] OnEnded: {Error}", StreamInfo.StreamId, errorMessage ?? "(no error)");
+        if (errorMessage is null)
+            Hub.ChatVideoUI.NotifyRemoteStreamEndedIntentionally();
         _whenCompletedSource.TrySetResult();
     }
 

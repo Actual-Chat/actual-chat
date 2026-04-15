@@ -23,6 +23,10 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     // Tracks which chat the user is currently watching video in (in-memory, resets on reload)
     private readonly MutableState<ChatId?> _watchingChatId;
 
+    // Signals that a remote stream ended intentionally (sender stopped, not connection error).
+    // Read by VideoPanelContent to skip "Connecting..." overlay on intentional end.
+    private volatile bool _remoteStreamEndedIntentionally;
+
     // UI-only: hides video panel without affecting watching/recording state
     private readonly MutableState<bool> _isVideoPanelCollapsed;
 
@@ -117,6 +121,19 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         // Resume recording without overwriting camera/blur settings preserved from the previous recording
         _recordingChatId.Value = chatId;
         OpenVideoPanel(chatId);
+    }
+
+    // Remote stream end signaling
+
+    public void NotifyRemoteStreamEndedIntentionally()
+        => _remoteStreamEndedIntentionally = true;
+
+    public bool ConsumeRemoteStreamEndedIntentionally()
+    {
+        if (!_remoteStreamEndedIntentionally)
+            return false;
+        _remoteStreamEndedIntentionally = false;
+        return true;
     }
 
     // JS callback handlers (called from VideoPanel)
