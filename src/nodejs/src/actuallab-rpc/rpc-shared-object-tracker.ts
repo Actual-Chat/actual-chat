@@ -24,6 +24,23 @@ export class RpcSharedObjectTracker {
     this._objects.delete(obj.id.localId);
   }
 
+  /** Reconnect objects with allowReconnect=true, disconnect others. */
+  reconnectOrDisconnect(): void {
+    for (const obj of this._objects.values()) {
+      if (obj.allowReconnect) {
+        obj.reconnect();
+      } else {
+        obj.disconnect();
+      }
+    }
+    // Remove disconnected objects (those with allowReconnect=false)
+    for (const [id, obj] of this._objects) {
+      if (!obj.allowReconnect) {
+        this._objects.delete(id);
+      }
+    }
+  }
+
   disconnectAll(): void {
     for (const obj of this._objects.values()) {
       obj.disconnect();

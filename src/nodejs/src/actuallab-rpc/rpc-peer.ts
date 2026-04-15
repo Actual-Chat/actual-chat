@@ -556,6 +556,13 @@ export class RpcClientPeer extends RpcPeer {
       this.remoteObjects.reconnectAll();
     }
 
+    // Handle shared objects (client→server stream senders) on reconnect
+    if (_isPeerChanged) {
+      this.sharedObjects.disconnectAll();
+    } else {
+      this.sharedObjects.reconnectOrDisconnect();
+    }
+
     // Re-send existing tracker calls (self-invalidate stage-3 compute calls)
     const trackerCalls = [...this.outbound.values()];
     for (const call of trackerCalls) {
@@ -563,9 +570,19 @@ export class RpcClientPeer extends RpcPeer {
         // Stage-3 compute call: self-invalidate, forcing fresh recompute
         call.onDisconnect();
         this.outbound.remove(call.callId);
+      } else if (call.noResendOnReconnect) {
+        if (_isPeerChanged) {
+          // Peer changed — stream is dead, reject the call
+          call.result.reject(new Error("Peer changed — streaming call ended."));
+          this.outbound.remove(call.callId);
+        }
+        // Same peer — stream survived reconnect, don't re-send
       } else {
         // Regular call or in-flight compute call: re-send
-        conn.send(call.serializedMessage);
+        if (this.isBinaryMode && call.serializedBinaryMessage)
+          conn.sendBinary(call.serializedBinaryMessage);
+        else
+          conn.send(call.serializedMessage);
       }
     }
 
