@@ -13,4 +13,10 @@ public static class MarkupConsumerExt
             MarkupConsumer.ReactionNotification => 30,
             _ => null,
         };
+
+    public static IMarkupFormatter? GetFormatter(this MarkupConsumer consumer)
+        => consumer switch {
+            MarkupConsumer.QuoteView or MarkupConsumer.ChatListItemText => MarkupFormatter.ReadableUnstyledForQuote,
+            _ => null,
+        };
 }

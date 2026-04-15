@@ -7,6 +7,7 @@ import { ServiceWorker } from 'service-worker';
 import { BrowserInit } from '../../dotnet/UI.Blazor/Services/BrowserInit/browser-init';
 
 globalThis.ServerClock = ServerClock;
+globalThis.EmojiPreview = EmojiPreview;
 DeviceInfo.updateBodyClasses();
 Interactive.init();
 Gestures.init();

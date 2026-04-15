@@ -10,6 +10,7 @@ const { debugLog } = getLogs('EmojiPreview');
 const LONG_PRESS_DELAY_MS = 300;
 const HOVER_DELAY_MS = 500;
 const CONTAINER_SIZE_REM = 12;
+const MESSAGE_EMOJI_SIZE_REM = 6;
 const TOUCH_OFFSET_REM = 5;
 const TOUCH_MOVE_TOLERANCE_PX = 10;
 
@@ -23,6 +24,7 @@ export class EmojiPreview {
     private static longPressTriggered = false;
     private static touchStartX = 0;
     private static touchStartY = 0;
+    private static pendingMessageEmojiSvg: string | null = null;
 
     public static init(): void {
         debugLog?.log('EmojiPreview.init');
@@ -226,20 +228,27 @@ export class EmojiPreview {
         });
     }
 
+    public static setPendingMessageEmoji(svgName: string): void {
+        this.pendingMessageEmojiSvg = svgName;
+        debugLog?.log('setPendingMessageEmoji:', svgName);
+    }
+
     private static initReactionAnimations(): void {
         const observer = new MutationObserver((mutations) => {
             for (const mutation of mutations) {
                 if (mutation.type === 'childList') {
                     for (const node of mutation.addedNodes) {
-                        if (node instanceof HTMLElement)
+                        if (node instanceof HTMLElement) {
                             this.processAnimateElements(node);
+                            this.processPendingEmojiMessage(node);
+                        }
                     }
                 }
                 if (mutation.type === 'attributes'
                     && mutation.attributeName === 'data-emoji-animate'
                     && mutation.target instanceof HTMLElement
                     && mutation.target.dataset.emojiAnimate)
-                    this.animateReaction(mutation.target);
+                    this.animateOverlay(mutation.target, 'data-emoji-animate', CONTAINER_SIZE_REM, 'emoji-reaction-animate');
             }
         });
         observer.observe(document.body, {
@@ -252,17 +261,38 @@ export class EmojiPreview {
 
     private static processAnimateElements(root: HTMLElement): void {
         if (root.dataset.emojiAnimate)
-            this.animateReaction(root);
+            this.animateOverlay(root, 'data-emoji-animate', CONTAINER_SIZE_REM, 'emoji-reaction-animate');
         root.querySelectorAll<HTMLElement>('[data-emoji-animate]')
-            .forEach(el => this.animateReaction(el));
+            .forEach(el => this.animateOverlay(el, 'data-emoji-animate', CONTAINER_SIZE_REM, 'emoji-reaction-animate'));
     }
 
-    private static animateReaction(el: HTMLElement): void {
-        const svgName = el.dataset.emojiAnimate;
+    private static processPendingEmojiMessage(root: HTMLElement): void {
+        if (!this.pendingMessageEmojiSvg)
+            return;
+
+        let emojiEl: HTMLElement | null = null;
+        if (root.classList.contains('emoji-message'))
+            emojiEl = root;
+        else {
+            const all = root.querySelectorAll<HTMLElement>('.emoji-message');
+            if (all.length > 0)
+                emojiEl = all[all.length - 1];
+        }
+        if (!emojiEl)
+            return;
+
+        const svgName = this.pendingMessageEmojiSvg;
+        this.pendingMessageEmojiSvg = null;
+        emojiEl.dataset.emojiMessageAnimate = svgName;
+        this.animateOverlay(emojiEl, 'data-emoji-message-animate', MESSAGE_EMOJI_SIZE_REM, 'emoji-message-animate');
+    }
+
+    private static animateOverlay(el: HTMLElement, attr: string, sizeRem: number, className: string): void {
+        const svgName = el.getAttribute(attr);
         if (!svgName)
             return;
 
-        el.removeAttribute('data-emoji-animate');
+        el.removeAttribute(attr);
 
         // Double-RAF: first frame lets layout settle (new reaction row, message height change),
         // second frame lets scroll adjustments complete (chat auto-scroll).
@@ -274,7 +304,7 @@ export class EmojiPreview {
         requestAnimationFrame(() => fastRaf({
             read: () => {
                 const remToPx = parseFloat(getComputedStyle(document.documentElement).fontSize);
-                containerSizePx = CONTAINER_SIZE_REM * remToPx;
+                containerSizePx = sizeRem * remToPx;
 
                 const rect = el.getBoundingClientRect();
                 centerX = rect.left + rect.width / 2;
@@ -298,7 +328,7 @@ export class EmojiPreview {
             },
             write: () => {
                 const overlay = document.createElement('div');
-                overlay.className = 'emoji-reaction-animate';
+                overlay.className = className;
 
                 const img = document.createElement('img');
                 img.src = `/dist/images/emoji/${svgName}-animated.svg`;
@@ -317,9 +347,13 @@ export class EmojiPreview {
                 }
 
                 document.body.appendChild(overlay);
-                overlay.addEventListener('animationend', () => overlay.remove());
+                el.classList.add('emoji-animating');
+                overlay.addEventListener('animationend', () => {
+                    overlay.remove();
+                    el.classList.remove('emoji-animating');
+                });
 
-                debugLog?.log('animateReaction:', svgName);
+                debugLog?.log('animateOverlay:', className, svgName);
             },
         }));
     }

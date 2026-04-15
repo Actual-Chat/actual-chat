@@ -22,6 +22,11 @@
         Click="@(() => OnEmojiClick())">
     </MenuEntry>
     <MenuEntry
+        Icon="icon-gif"
+        Text="Add GIF"
+        Click="@(() => OnGifClick())">
+    </MenuEntry>
+    <MenuEntry
         Icon="icon-file"
         Text="Attach File"
         Click="@(() => OnAttachClick())">
@@ -49,5 +54,10 @@
     private async Task OnEmojiClick() {
         await WhenClosed.ConfigureAwait(false);
         _ = UIEventHub.Publish(new EmojiButtonClickEvent(EditorId));
+    }
+
+    private async Task OnGifClick() {
+        await WhenClosed.ConfigureAwait(false);
+        _ = UIEventHub.Publish(new EmojiButtonClickEvent(EditorId, "gif"));
     }
 }

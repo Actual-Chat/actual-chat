@@ -67,6 +67,9 @@
 .emoji-message .c-emoji {
     @apply w-10 h-10;
 }
+.emoji-message.emoji-animating .c-emoji {
+    @apply opacity-0;
+}
 
 .playable-text-markup {
     @apply whitespace-break-spaces;

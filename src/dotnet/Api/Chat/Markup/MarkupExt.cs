@@ -12,11 +12,11 @@ public static partial class MarkupExt
     private static readonly Regex WhitespaceRegex = WhitespaceRegexFactory();
 
     public static string ToReadableText(this Markup markup, MarkupConsumer consumer)
-        => markup.ToReadableText(consumer.GetTrimLength());
+        => markup.ToReadableText(consumer.GetTrimLength(), consumer.GetFormatter());
 
-    public static string ToReadableText(this Markup markup, int? maxLength)
+    public static string ToReadableText(this Markup markup, int? maxLength, IMarkupFormatter? formatter = null)
     {
-        var text = markup.ToReadableText();
+        var text = markup.ToReadableText(formatter);
         if (maxLength is not { } vMaxLength || text.Length <= vMaxLength)
             return text;
 
@@ -24,9 +24,9 @@ public static partial class MarkupExt
         return text;
     }
 
-    public static string ToReadableText(this Markup markup)
+    public static string ToReadableText(this Markup markup, IMarkupFormatter? formatter = null)
     {
-        var text = MarkupFormatter.ReadableUnstyled.Format(markup);
+        var text = (formatter ?? MarkupFormatter.ReadableUnstyled).Format(markup);
         text = WhitespaceRegex.Replace(text, " ").Trim();
         return text;
     }
