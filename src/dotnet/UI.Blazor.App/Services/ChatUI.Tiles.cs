@@ -107,6 +107,9 @@ public partial class ChatUI
         using (Computed.BeginIsolation())
             chatIdRange = await Chats.GetIdRange(Session, chatId, cancellationToken).ConfigureAwait(false);
 
+        if (chatRangeMetaList.Count == 0)
+            return ChatItems.Empty;
+
         List<Range<long>> idTiles;
         bool hasMoreBefore, hasMoreAfter;
         while (!TryGetIdTilesToLoad(dataQuery, chatRangeMetaList, out idTiles, out hasMoreBefore, out hasMoreAfter)) {
@@ -265,6 +268,13 @@ public partial class ChatUI
             out bool hasMoreBefore1,
             out bool hasMoreAfter1)
         {
+            if (chatRangeMeta1.Count == 0) {
+                idTiles1 = [];
+                hasMoreBefore1 = false;
+                hasMoreAfter1 = false;
+                return true;
+            }
+
             var hasPreviousIdTile = chatRangeMeta1[0].PreviousIdTileStart.HasValue;
             var hasNextIdTile = chatRangeMeta1[^1].NextIdTileStart.HasValue;
             var entryIdRanges = chatRangeMeta1
