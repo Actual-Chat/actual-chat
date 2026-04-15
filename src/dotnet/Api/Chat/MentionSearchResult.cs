@@ -2,7 +2,7 @@ using ActualChat.Search;
 
 namespace ActualChat.Chat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true, AllowPrivate = true)]
 public partial class MentionSearchResult : SearchResult
 {
     [DataMember, MemoryPackOrder(2)]

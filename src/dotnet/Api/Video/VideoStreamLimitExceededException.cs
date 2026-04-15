@@ -1,14 +1,22 @@
 namespace ActualChat.Video;
 
+#pragma warning disable SYSLIB0051 // Type or member is obsolete
+
 public class VideoStreamLimitExceededException : Exception
 {
-    public ChatId ChatId { get; }
-    public int CurrentCount { get; }
+    public VideoStreamLimitExceededException()
+        : this((string?)null)
+    { }
 
-    public VideoStreamLimitExceededException(ChatId chatId, int currentCount)
-        : base($"Video stream limit reached for chat '{chatId}': {currentCount}/{Constants.Video.MaxWebcamStreamsPerChat} webcam streams active.")
-    {
-        ChatId = chatId;
-        CurrentCount = currentCount;
-    }
+    public VideoStreamLimitExceededException(ChatId chatId)
+        : this($"Video stream limit reached for chat #{chatId}.")
+    { }
+
+    public VideoStreamLimitExceededException(string? message)
+        : base(message ?? "Video stream limit reached.")
+    { }
+
+    public VideoStreamLimitExceededException(string? message, Exception? innerException)
+        : base(message, innerException)
+    { }
 }

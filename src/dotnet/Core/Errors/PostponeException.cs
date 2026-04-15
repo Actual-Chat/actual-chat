@@ -16,5 +16,4 @@ public class PostponeException : Exception, INotAnError // Must not be ITransien
     public PostponeException() : base(DefaultMessage) { }
     public PostponeException(string? message) : base(message ?? DefaultMessage) { }
     public PostponeException(string? message, Exception? innerException) : base(message ?? DefaultMessage, innerException) { }
-    protected PostponeException(SerializationInfo info, StreamingContext context) : base(info, context) { }
 }

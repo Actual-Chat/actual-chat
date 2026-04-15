@@ -12,5 +12,4 @@ public class WrongShardException : Exception // Must not be ITransientException!
     public WrongShardException() : base(DefaultMessage) { }
     public WrongShardException(string? message) : base(message ?? DefaultMessage) { }
     public WrongShardException(string? message, Exception? innerException) : base(message ?? DefaultMessage, innerException) { }
-    protected WrongShardException(SerializationInfo info, StreamingContext context) : base(info, context) { }
 }

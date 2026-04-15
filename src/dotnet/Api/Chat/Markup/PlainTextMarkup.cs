@@ -8,7 +8,7 @@ namespace ActualChat.Chat;
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed class PlainTextMarkup(string text) : TextMarkup(text)
 {
-    public static new readonly PlainTextMarkup Empty = new("");
+    public static readonly PlainTextMarkup Empty = new("");
 
     public override TextMarkupKind Kind => TextMarkupKind.Plain;
 

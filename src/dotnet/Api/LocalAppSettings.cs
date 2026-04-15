@@ -16,10 +16,4 @@ public partial record LocalAppSettings : StoredSettings, IHasKvasKey<LocalAppSet
     public bool IsLogViewerEnabledOrDefault => IsLogViewerEnabled ?? true;
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsBackgroundBlurEnabledOrDefault => IsBackgroundBlurEnabled ?? false;
-
-    /// <summary>
-    /// Returns <see cref="IsBackgroundBlurEnabled"/> with a platform-aware default:
-    /// enabled on desktop, disabled on mobile.
-    /// </summary>
-    public bool GetIsBackgroundBlurEnabled(bool isMobile) => IsBackgroundBlurEnabled ?? !isMobile;
 }

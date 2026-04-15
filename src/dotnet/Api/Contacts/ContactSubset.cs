@@ -8,7 +8,7 @@ public enum ContactSubsetKind { All, Chats, Place }
 /// <summary>
 /// Specifies a subset of contacts to retrieve.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true, AllowPrivate = true)]
 public partial class ContactSubset
 {
     [property: DataMember, MemoryPackOrder(0)] public ContactSubsetKind Kind { get; }

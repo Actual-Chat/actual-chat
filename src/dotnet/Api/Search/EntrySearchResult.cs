@@ -3,7 +3,7 @@ namespace ActualChat.Search;
 /// <summary>
 /// Represents a chat entry match from a search query.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true, AllowPrivate = true)]
 public partial class EntrySearchResult : SearchResult
 {
     [DataMember, MemoryPackOrder(2)]

@@ -8,7 +8,7 @@ namespace ActualChat.Chat;
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed class PreformattedTextMarkup(string text) : TextMarkup(text)
 {
-    public static new readonly PreformattedTextMarkup Empty = new("");
+    public static readonly PreformattedTextMarkup Empty = new("");
 
     public override TextMarkupKind Kind => TextMarkupKind.Preformatted;
 

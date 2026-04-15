@@ -3,7 +3,7 @@
 /// <summary>
 /// Represents a contact match from a search query.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true, AllowPrivate = true)]
 public partial class ContactSearchResult : SearchResult
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]

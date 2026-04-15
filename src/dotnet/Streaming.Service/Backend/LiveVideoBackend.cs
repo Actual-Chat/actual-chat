@@ -95,7 +95,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
             var webcamCount = existingStreams.Values
                 .Count(s => s.StreamKind == StreamKind.Webcam && s.StreamId != streamInfo.StreamId);
             if (webcamCount >= Constants.Video.MaxWebcamStreamsPerChat)
-                throw new VideoStreamLimitExceededException(chatId, webcamCount);
+                throw new VideoStreamLimitExceededException(chatId);
         }
 
         Log.LogWarning("RegisterActiveStream({ChatId}): #{StreamId}, AuthorId={AuthorId}, StreamKind={StreamKind}",

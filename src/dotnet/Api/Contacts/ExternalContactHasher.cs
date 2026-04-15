@@ -24,7 +24,7 @@ public sealed class ExternalContactHasher
             .ToBase64HashString(HashAlgorithm.SHA256Xor);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true, AllowPrivate = true)]
 internal sealed partial record HashedExternalContact
 {
     [DataMember, MemoryPackOrder(0)] public ExternalContactId Id { get; init; } = null!;

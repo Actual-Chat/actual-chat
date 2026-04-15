@@ -13,8 +13,7 @@ public class TranscriptionException : Exception
         : base(code.IsNullOrEmpty() ? message : $"[{code}] {message}")
         => Code = code;
 
-    public TranscriptionException() : base() { }
+    public TranscriptionException() { }
     public TranscriptionException(string? message) : base(message) { }
     public TranscriptionException(string? message, Exception? innerException) : base(message, innerException) { }
-    protected TranscriptionException(SerializationInfo info, StreamingContext context) : base(info, context) { }
 }
