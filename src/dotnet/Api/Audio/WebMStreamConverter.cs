@@ -303,7 +303,8 @@ public sealed class WebMStreamConverter(MomentClockSet clocks, ILogger log) : IA
             },
             SampleRate = (int) audio.SamplingFrequency,
             CodecSettings = Convert.ToBase64String(rawHeader),
-            PreSkip = (int)(trackEntry.CodecDelay ?? 0),
+            // WebM CodecDelay is in nanoseconds; PreSkip is in samples at SamplingFrequency.
+            PreSkip = (int)((trackEntry.CodecDelay ?? 0) * audio.SamplingFrequency / 1_000_000_000UL),
         };
     }
 }
