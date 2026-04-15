@@ -108,8 +108,9 @@ export class RpcLiveStreamSender<T> implements IRpcObject {
     // on mustReset. We intentionally skip both:
     // - Flow control: real-time media streams (audio/video) can't
     //   back-pressure — frames must be sent at capture rate or dropped.
-    // - Rewind/reset: there's no send buffer to replay from; reconnect
-    //   is not supported for client-to-server streams.
+    // - Rewind/reset: non-realtime senders buffer items in _reconnectBuffer
+    //   and flush them on reconnect; realtime senders drop frames during
+    //   disconnect. Neither needs server-driven rewind via ack index.
     // Previously, resetting _nextIndex on progress acks caused stream
     // corruption (re-sent indices with new data).
     }

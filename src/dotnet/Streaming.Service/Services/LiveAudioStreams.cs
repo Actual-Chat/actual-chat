@@ -112,10 +112,15 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         finally {
             // Only remove if the muxer in the dictionary is still the one we started with.
             // A new GetStream call may have replaced it; removing the replacement would be wrong.
-            if (_liveMuxers.TryGetValue(key, out var current) && ReferenceEquals(current, originalMuxer)) {
-                _liveMuxers.TryRemove(key, out _);
-                await originalMuxer.DisposeAsync().ConfigureAwait(false);
+            // Use lock to avoid TOCTOU race with GetStream (which also holds _lock).
+            bool shouldDispose;
+            lock (_lock) {
+                shouldDispose = _liveMuxers.TryGetValue(key, out var current)
+                    && ReferenceEquals(current, originalMuxer)
+                    && _liveMuxers.TryRemove(key, out _);
             }
+            if (shouldDispose)
+                await originalMuxer.DisposeAsync().ConfigureAwait(false);
         }
     }
 
@@ -131,10 +136,14 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
                 yield return item;
         }
         finally {
-            if (_replayMuxers.TryGetValue(key, out var current) && ReferenceEquals(current, originalMuxer)) {
-                _replayMuxers.TryRemove(key, out _);
-                await originalMuxer.DisposeAsync().ConfigureAwait(false);
+            bool shouldDispose;
+            lock (_lock) {
+                shouldDispose = _replayMuxers.TryGetValue(key, out var current)
+                    && ReferenceEquals(current, originalMuxer)
+                    && _replayMuxers.TryRemove(key, out _);
             }
+            if (shouldDispose)
+                await originalMuxer.DisposeAsync().ConfigureAwait(false);
         }
     }
 }

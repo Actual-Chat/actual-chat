@@ -98,6 +98,17 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
                 throw new VideoStreamLimitExceededException(chatId);
         }
 
+        // Evict stale streams from the same author + kind (e.g. after client reconnect creates a new stream)
+        foreach (var (key, existing) in existingStreams) {
+            if (existing.AuthorId == streamInfo.AuthorId
+                && existing.StreamKind == streamInfo.StreamKind
+                && existing.StreamId != streamInfo.StreamId) {
+                Log.LogWarning("Register: evicting stale stream {OldStreamId} for author {AuthorId} (replaced by {NewStreamId})",
+                    existing.StreamId, streamInfo.AuthorId, streamInfo.StreamId);
+                await StreamsStore.RemoveField(chatId, key).ConfigureAwait(false);
+            }
+        }
+
         Log.LogWarning("RegisterActiveStream({ChatId}): #{StreamId}, AuthorId={AuthorId}, StreamKind={StreamKind}",
             chatId, streamInfo.StreamId, streamInfo.AuthorId, streamInfo.StreamKind);
         var success = await StreamsStore.SetField(chatId, streamInfo.StreamId.Value, streamInfo).ConfigureAwait(false);
