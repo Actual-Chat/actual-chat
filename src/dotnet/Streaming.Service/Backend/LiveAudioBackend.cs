@@ -63,6 +63,17 @@ public class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
     public virtual async Task Register(ChatId chatId, LiveStreamInfo streamInfo, CancellationToken cancellationToken)
     {
         BumpChatEntry(chatId);
+
+        // Evict stale streams from the same author (e.g. after client reconnect creates a new stream)
+        var existing = await ReadStreamsFromRedis(chatId).ConfigureAwait(false);
+        foreach (var (key, info) in existing) {
+            if (info.AuthorId == streamInfo.AuthorId && info.StreamId != streamInfo.StreamId) {
+                Log.LogWarning("Register: evicting stale stream {OldStreamId} for author {AuthorId} (replaced by {NewStreamId})",
+                    info.StreamId, streamInfo.AuthorId, streamInfo.StreamId);
+                await StreamsStore.RemoveField(chatId, key).ConfigureAwait(false);
+            }
+        }
+
         var success = await StreamsStore.SetField(chatId, streamInfo.StreamId, streamInfo).ConfigureAwait(false);
         if (success)
             InvalidateListStreams(chatId);

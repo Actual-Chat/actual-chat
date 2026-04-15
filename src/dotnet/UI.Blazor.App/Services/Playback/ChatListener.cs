@@ -124,7 +124,7 @@ public sealed class ChatListener : ChatPlayer
             catch (Exception e) {
                 Log.LogWarning(e, "Error processing stream #{StreamId}", streamInfo.StreamId);
             }
-        }, CancellationToken.None);
+        }, cancellationToken);
     }
 
     private AudioSource CreateAudioSource(
