@@ -122,6 +122,8 @@ export interface RpcCallOptions {
   outboundCallFactory?: (id: number, method: string) => RpcOutboundCall;
   /** AbortSignal for caller-initiated cancellation. */
   signal?: AbortSignal;
+  /** If true, this call won't be re-sent on same-peer reconnect (for streaming calls). */
+  noResendOnReconnect?: boolean;
 }
 
 /** Data extracted from an inbound $sys.Handshake message. */
@@ -189,9 +191,10 @@ export abstract class RpcPeer {
 
   call(method: string, args?: unknown[], options?: RpcCallOptions): RpcOutboundCall {
     const callId = this.outbound.nextId();
+    const noResend = options?.noResendOnReconnect ?? false;
     const outboundCall = options?.outboundCallFactory
       ? options.outboundCallFactory(callId, method)
-      : new RpcOutboundCall(callId, method);
+      : new RpcOutboundCall(callId, method, noResend);
 
     const envelope: RpcMessage = { Method: method, RelatedId: callId, CallType: options?.callTypeId ?? 0 };
     if (this.isBinaryMode) {
