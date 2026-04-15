@@ -72,6 +72,10 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         => await _watchingChatId.Use(cancellationToken).ConfigureAwait(false);
 
     [ComputeMethod]
+    public virtual async Task<bool> IsWatching(ChatId chatId, CancellationToken cancellationToken = default)
+        => await GetWatchingChatId(cancellationToken).ConfigureAwait(false) == chatId;
+
+    [ComputeMethod]
     public virtual async Task<bool> GetIsVideoPanelCollapsed(CancellationToken cancellationToken = default)
         => await _isVideoPanelCollapsed.Use(cancellationToken).ConfigureAwait(false);
 
