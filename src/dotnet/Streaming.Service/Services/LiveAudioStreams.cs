@@ -47,7 +47,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
             _liveMuxers[key] = muxer;
         }
 
-        var stream = ToLiveAsyncEnumerable(key, muxer.Output, cancellationToken);
+        var stream = ToLiveAsyncEnumerable(key, muxer, muxer.Output, cancellationToken);
         return new RpcStream<LiveStreamItem>(stream) {
             AllowReconnect = false,
             AckPeriod = Constants.Audio.StreamAckPeriod,
@@ -89,7 +89,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
             _replayMuxers[key] = muxer;
         }
 
-        var stream = ToReplayAsyncEnumerable(key, muxer.Output, cancellationToken);
+        var stream = ToReplayAsyncEnumerable(key, muxer, muxer.Output, cancellationToken);
         return new RpcStream<LiveStreamItem>(stream) {
             AllowReconnect = false,
             AckPeriod = Constants.Audio.StreamAckPeriod,
@@ -101,6 +101,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
 
     private async IAsyncEnumerable<LiveStreamItem> ToLiveAsyncEnumerable(
         (Session, ChatId) key,
+        LiveStreamMuxer expectedMuxer,
         ChannelReader<LiveStreamItem> reader,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -109,13 +110,18 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
                 yield return item;
         }
         finally {
-            if (_liveMuxers.TryRemove(key, out var muxer))
-                await muxer.DisposeAsync().ConfigureAwait(false);
+            // Only remove if we are still the registered muxer — a replacement
+            // may already have been installed by a concurrent GetStream() call.
+            if (_liveMuxers.TryGetValue(key, out var current) && ReferenceEquals(current, expectedMuxer)) {
+                if (_liveMuxers.TryRemove(key, out var muxer))
+                    await muxer.DisposeAsync().ConfigureAwait(false);
+            }
         }
     }
 
     private async IAsyncEnumerable<LiveStreamItem> ToReplayAsyncEnumerable(
         (Session, ChatId) key,
+        ReplayStreamMuxer expectedMuxer,
         ChannelReader<LiveStreamItem> reader,
         [EnumeratorCancellation]
         CancellationToken cancellationToken)
@@ -125,8 +131,10 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
                 yield return item;
         }
         finally {
-            if (_replayMuxers.TryRemove(key, out var muxer))
-                await muxer.DisposeAsync().ConfigureAwait(false);
+            if (_replayMuxers.TryGetValue(key, out var current) && ReferenceEquals(current, expectedMuxer)) {
+                if (_replayMuxers.TryRemove(key, out var muxer))
+                    await muxer.DisposeAsync().ConfigureAwait(false);
+            }
         }
     }
 }
