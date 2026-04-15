@@ -169,7 +169,13 @@ export class InternalVideoStream {
             infoLog?.log(`PushVideo: codec=${this.config.codec}, ` +
                 `${this.config.width}x${this.config.height}, settings=${this.config.codecSettings.length} chars`);
 
-            sender = new RpcLiveStreamSender<VideoFrameDto>(peer);
+            sender = new RpcLiveStreamSender<VideoFrameDto>(
+                peer,
+                undefined,
+                undefined,
+                true,   // allowReconnect
+                true,   // isRealtime — no buffering for video
+            );
             const format: VideoFormatDto = {
                 Codec: this.config.codec,
                 Width: this.config.width,

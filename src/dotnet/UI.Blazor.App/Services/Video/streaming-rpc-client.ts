@@ -73,14 +73,26 @@ export function getStreamServerClient(): StreamServerClient {
  */
 export function createVideoFrameSender(): { sender: RpcLiveStreamSender<VideoFrameDto>; ref: unknown } {
     const peer = ensurePeer();
-    const sender = new RpcLiveStreamSender<VideoFrameDto>(peer);
+    const sender = new RpcLiveStreamSender<VideoFrameDto>(
+        peer,
+        undefined,
+        undefined,
+        true,   // allowReconnect
+        true,   // isRealtime — no buffering for video
+    );
     return { sender, ref: sender.toRef() };
 }
 
 /** Create a client-side stream sender for pushing audio frames to the server. */
 export function createAudioFrameSender(): { sender: RpcLiveStreamSender<AudioFrameDto>; ref: unknown } {
     const peer = ensurePeer();
-    const sender = new RpcLiveStreamSender<AudioFrameDto>(peer);
+    const sender = new RpcLiveStreamSender<AudioFrameDto>(
+        peer,
+        undefined,
+        undefined,
+        true,   // allowReconnect
+        false,  // isRealtime — buffer for transcription
+    );
     return { sender, ref: sender.toRef() };
 }
 

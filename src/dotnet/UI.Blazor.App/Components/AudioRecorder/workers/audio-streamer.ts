@@ -133,7 +133,13 @@ export class AudioStream implements Disposable {
             const clientStartOffset = (this.firstFrameTimestamp ?? ServerClock.now()) / 1000;
             infoLog?.log(`${this.name}: PushAudio clientStartOffset=${clientStartOffset.toFixed(3)}s`);
 
-            sender = new RpcLiveStreamSender<AudioFrameDto>(peer);
+            sender = new RpcLiveStreamSender<AudioFrameDto>(
+                peer,
+                undefined,
+                undefined,
+                true,   // allowReconnect
+                false,  // isRealtime — buffer for transcription
+            );
 
             void streamServer
                 .PushAudio(RPC_SESSION_DEFAULT, this.chatId, this.repliedChatEntryId ?? null,
