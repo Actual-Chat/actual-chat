@@ -31,9 +31,20 @@ public class AndroidAudioFocusHelper : IDisposable
 
         // Chooses the implementation based on API level
         // API 31 (Android 12) introduced SetCommunicationDevice
-        _deviceRouter = OperatingSystem.IsAndroidVersionAtLeast(12)
-           ? new ModernAudioDeviceRouter(_audioManager, log)
-           : new LegacyAudioDeviceRouter(_audioManager, context, log);
+        _deviceRouter = CreateDeviceRouter(_audioManager, context, log);
+    }
+
+    private static IAudioDeviceRouter CreateDeviceRouter(AudioManager audioManager, Context context, ILogger log)
+    {
+        if (OperatingSystem.IsAndroidVersionAtLeast(12))
+            try {
+                return new ModernAudioDeviceRouter(audioManager, log);
+            }
+            catch (Exception e) {
+                log.LogError(e, "Failed to create ModernAudioDeviceRouter, falling back to LegacyAudioDeviceRouter");
+            }
+
+        return new LegacyAudioDeviceRouter(audioManager, context, log);
     }
 
     public void Dispose()
@@ -184,7 +195,7 @@ public class AndroidAudioFocusHelper : IDisposable
             _log = log;
 
             // Register listener for device changes
-            _listener = new CommunicationDeviceListener(this);
+            _listener = new CommunicationDeviceListener(audioManager, log);
             _audioManager.AddOnCommunicationDeviceChangedListener(
                 Platform.AppContext.MainExecutor!,
                 _listener);
@@ -268,14 +279,6 @@ public class AndroidAudioFocusHelper : IDisposable
             _listener = null;
         }
 
-        private class CommunicationDeviceListener(ModernAudioDeviceRouter parent) : Java.Lang.Object,
-            AudioManager.IOnCommunicationDeviceChangedListener
-        {
-            public void OnCommunicationDeviceChanged(AudioDeviceInfo? device)
-                => parent._log.LogInformation(
-                    "Communication device changed callback: {Type}, current: {Current}",
-                    device?.Type, parent._audioManager.CommunicationDevice?.Type);
-        }
     }
 
     // Legacy Implementation (API 28-30)
