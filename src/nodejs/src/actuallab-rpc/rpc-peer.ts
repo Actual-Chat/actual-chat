@@ -127,27 +127,16 @@ export interface RpcCallOptions {
 
 /**
  * Detect if any call argument is a stream sender ref (the shape produced by
- * RpcStreamSender.toRef() or RpcStream.toRef()). Calls carrying sender refs
- * must NOT be re-sent on reconnect — the sender handles its own lifecycle:
- *   - allowReconnect=true: sender survived, continues pumping / flushes buffer
- *   - allowReconnect=false: sender disconnected, recovery creates new stream
- * Re-sending would create a duplicate server-side processing task.
+ * RpcStream.toRef()). Calls carrying sender refs must NOT be re-sent on
+ * reconnect — the sender handles its own lifecycle. Re-sending creates
+ * duplicate server-side processing tasks.
  */
 function hasStreamSenderRef(args?: unknown[]): boolean {
     if (!args) return false;
     for (const arg of args) {
         if (typeof arg === 'object' && arg !== null) {
             const obj = arg as Record<string, unknown>;
-            if (Array.isArray(obj.SerializedId)
-                && typeof obj.AckPeriod === 'number'
-                && typeof obj.AckAdvance === 'number') {
-                return true;
-            }
-        }
-        // Also check text format: "hostId,localId,ackPeriod,ackAdvance[,...]"
-        if (typeof arg === 'string') {
-            const parts = arg.split(',');
-            if (parts.length >= 4 && !isNaN(Number(parts[2])) && !isNaN(Number(parts[3])))
+            if (Array.isArray(obj.SerializedId) && typeof obj.AckPeriod === 'number')
                 return true;
         }
     }
@@ -679,15 +668,13 @@ export class RpcClientPeer extends RpcPeer {
                 this.outbound.remove(call.callId);
             } else if (call.noResendOnReconnect) {
                 // Streaming call (PushAudio/PushVideo) — never re-send on reconnect.
-                // The sender object handles its own lifecycle:
-                //   - allowReconnect=true: sender survived, flushes buffered frames
+                // The sender handles its own lifecycle via reconnectOrDisconnect():
+                //   - allowReconnect=true: sender survived, writeFrom() keeps pumping
                 //   - allowReconnect=false: sender disconnected, recovery creates new stream
-                // Re-sending would create a duplicate server-side processing task
-                // (the original root cause of audio duplication).
-                if (_isPeerChanged) {
-                    call.result.reject(new Error('Peer changed — streaming call ended.'));
-                    this.outbound.remove(call.callId);
-                }
+                // The call promise is fire-and-forget (.catch logs only), so rejecting
+                // it just cleans up the tracker — no functional impact on streaming.
+                call.result.reject(new Error('Streaming call ended on reconnect.'));
+                this.outbound.remove(call.callId);
             } else {
                 // Regular call or in-flight compute call: re-send
                 this._sendWireData(call.serializedWireData);
