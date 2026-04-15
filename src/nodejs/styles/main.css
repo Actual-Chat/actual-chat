@@ -142,6 +142,11 @@ body.narrow {
     background-color: var(--background-04);
     touch-action: none;
 }
+/* Let fullscreen video panel reach the viewport edges under device cutouts */
+body:has(.video-panel.expanded) .safe-area-left::after,
+body:has(.video-panel.expanded) .safe-area-right::after {
+    display: none;
+}
 .safe-area-bottom-overlay {
     @apply absolute bottom-0 left-0 right-0;
     pointer-events: none;

@@ -1,4 +1,5 @@
 import { fromEvent, Subject, takeUntil, filter } from 'rxjs';
+import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 
 const MIN_SCALE = 1;
 const MAX_SCALE_MOBILE = 4;
@@ -559,6 +560,9 @@ export class VideoPanel {
         if (!this.videoPanel.classList.contains('expanded')) {
             this.videoPanel.classList.add('expanded');
             document.body.appendChild(this.videoPanel);
+            // Freeze narrow/wide state so rotating the device while fullscreen
+            // doesn't reflow the hidden app layout underneath (e.g. left panel appearing).
+            ScreenSize.freeze();
             void this.blazorRef.invokeMethodAsync('OnExpanded');
         } else {
             this.collapse();
@@ -572,6 +576,8 @@ export class VideoPanel {
         this.resetZoom();
         this.videoPanel.classList.remove('expanded', 'toolbar-hidden');
         this.parentElement?.appendChild(this.videoPanel);
+        // Resume ScreenSize updates; re-sync body classes to the current orientation.
+        ScreenSize.unfreeze();
         void this.blazorRef.invokeMethodAsync('OnCollapsed');
     }
 

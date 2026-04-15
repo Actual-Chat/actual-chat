@@ -26,6 +26,7 @@ export class ScreenSize {
     public static change$ = new Subject<Size>();
     public static size$: Observable<Size>;
     public static event$ = new Subject<Event | null>();
+    private static isFrozen = false;
 
     public static init() {
         this.hoverMeasureDiv = document.createElement('div');
@@ -67,11 +68,25 @@ export class ScreenSize {
         this.event$.next(event);
     }
 
+    public static freeze(): void {
+        this.isFrozen = true;
+    }
+
+    public static unfreeze(): void {
+        if (!this.isFrozen)
+            return;
+        this.isFrozen = false;
+        this.measureAndUpdate();
+    }
+
     private static measureAndUpdate(): Size {
         // eslint-disable-next-line prefer-const
         let [size, isHoverable] = this.measure();
         if (size == 'Small') // We're always non-hoverable in narrow mode
             isHoverable = false;
+
+        if (this.isFrozen)
+            return this.size;
 
         if (size != this.size || isHoverable != this.isHoverable) {
             debugLog?.log(`measureAndUpdate: new size:`, size, ', isHoverable:', isHoverable);

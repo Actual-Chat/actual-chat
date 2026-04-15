@@ -26,11 +26,23 @@ body.narrow .video-panel.expanded {
     @apply max-w-none max-h-none;
     @apply p-0;
     @apply rounded-none;
+    /* Safe-area insets applied to toolbar/sidebar but NOT to the focused video */
+    --vp-safe-top: 0px;
+    --vp-safe-right: 0px;
+    --vp-safe-bottom: 0px;
+    --vp-safe-left: 0px;
     padding:
         var(--safe-area-top)
         var(--safe-area-right)
         var(--safe-area-bottom)
         var(--safe-area-left);
+}
+body.device-mobile.narrow .video-panel.expanded {
+    @apply p-0;
+    --vp-safe-top: var(--safe-area-top);
+    --vp-safe-right: var(--safe-area-right);
+    --vp-safe-bottom: var(--safe-area-bottom);
+    --vp-safe-left: var(--safe-area-left);
 }
 body.wide.side-nav-right-open .video-panel.expanded,
 body.wide .video-panel.expanded {
@@ -143,8 +155,8 @@ body.wide .video-panel.expanded:has(.video-panel-chat) > .c-container {
     @apply absolute;
     @apply items-center justify-between;
     @apply h-16;
-    left: var(--safe-area-left);
-    right: var(--safe-area-right);
+    left: var(--vp-safe-left);
+    right: var(--vp-safe-right);
 }
 body.wide .video-panel.expanded .video-panel-footer {
     @apply justify-center gap-4;
@@ -170,10 +182,38 @@ body.wide .video-panel.expanded .video-panel-footer {
     @apply pointer-events-none;
 }
 .video-panel.expanded .video-panel-header {
-    @apply top-0;
+    top: var(--vp-safe-top);
+}
+body.device-mobile.narrow .video-panel.expanded .video-panel-header {
+    @apply pt-0;
 }
 .video-panel.expanded .video-panel-footer {
-    @apply bottom-0;
+    bottom: var(--vp-safe-bottom);
+}
+body.device-mobile.narrow .video-panel.expanded .video-panel-content.video-panel-layout__sidebar {
+    /* Right inset matches toolbars (--vp-safe-right). Bottom inset depends on orientation:
+       portrait — sit above footer (footer height 4rem + 1rem gap);
+       landscape — align with footer bottom. */
+    padding:
+        var(--vp-safe-top)
+        calc(var(--vp-safe-right) + 1rem)
+        calc(var(--vp-safe-bottom) + 4rem + 1rem)
+        var(--vp-safe-left);
+}
+@media (orientation: landscape) {
+    body.device-mobile.narrow .video-panel.expanded .video-panel-content.video-panel-layout__sidebar {
+        padding-bottom: calc(var(--vp-safe-bottom) + 1rem)
+    }
+}
+
+body.device-mobile.narrow .video-panel.expanded .video-track-player.item-focused .video-participant-label {
+    left: calc(var(--vp-safe-left) + 1rem);
+    bottom: 1rem;
+}
+@media (orientation: landscape) {
+    body.device-mobile.narrow .video-panel.expanded .video-track-player.item-focused .video-participant-label {
+        left: 1rem;
+    }
 }
 .video-panel.expanded:has(.video-panel-chat:not(.chat-hidden)) .video-panel-toolbar {
     right: calc(var(--video-panel-chat-width) + 0.5rem);
