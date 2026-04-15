@@ -23,10 +23,10 @@ export function parseStreamRef(value: unknown): RpcStreamRef | null {
     if (typeof value === 'string') {
         const parts = value.split(',');
         if (parts.length < 4 || parts.length > 6) return null;
-        const hostId = parts[0]!;
-        const localId = parseInt(parts[1]!, 10);
-        const ackPeriod = parseInt(parts[2]!, 10);
-        const ackAdvance = parseInt(parts[3]!, 10);
+        const hostId = parts[0];
+        const localId = parseInt(parts[1], 10);
+        const ackPeriod = parseInt(parts[2], 10);
+        const ackAdvance = parseInt(parts[3], 10);
         if (isNaN(localId) || isNaN(ackPeriod) || isNaN(ackAdvance))
             return null;
         const allowReconnect = parts.length < 5 || parts[4] !== '0';
@@ -192,7 +192,7 @@ export class RpcStream<T> implements AsyncIterable<T>, IRpcObject {
             throw new Error('RpcStream can only be iterated once.');
         this._iterating = true;
 
-        const self = this;
+        const self = this; // eslint-disable-line @typescript-eslint/no-this-alias -- needed: iterator methods are not arrow functions
 
         return {
             async next(): Promise<IteratorResult<T>> {
@@ -203,7 +203,7 @@ export class RpcStream<T> implements AsyncIterable<T>, IRpcObject {
                 }
 
                 // Read from buffer or wait for new data
-                while (true) {
+                while (true) { // eslint-disable-line @typescript-eslint/no-unnecessary-condition
                     if (!self._buffer.isEmpty()) {
                         // shift() is O(1) on Denque and releases the slot so the
                         // ring buffer can be reclaimed as the consumer drains.
@@ -213,7 +213,7 @@ export class RpcStream<T> implements AsyncIterable<T>, IRpcObject {
 
                     if (self._completed) {
                         if (self._completionError) throw self._completionError;
-                        return { value: undefined as any, done: true };
+                        return { value: undefined, done: true } as IteratorResult<T>;
                     }
 
                     // Wait for more data
@@ -222,10 +222,11 @@ export class RpcStream<T> implements AsyncIterable<T>, IRpcObject {
                 }
             },
 
+            // eslint-disable-next-line @typescript-eslint/require-await
             async return(): Promise<IteratorResult<T>> {
                 self._sendAckEnd();
                 self.dispose();
-                return { value: undefined as any, done: true };
+                return { value: undefined, done: true } as IteratorResult<T>;
             },
         };
     }

@@ -243,21 +243,20 @@ export abstract class RpcPeer {
         // Wire up caller-initiated cancellation → sends $sys.Cancel to remote peer
         const signal = options?.signal;
         if (signal !== undefined) {
-            const peer = this;
             const hub = this._hub;
             const tracker = this.outbound;
             const onAbort = () => {
                 if (tracker.remove(callId) !== undefined) {
                     outboundCall.result.reject(new Error('Call cancelled.'));
                     outboundCall.onDisconnect();
-                    if (peer._connection !== undefined)
-                        hub.systemCallSender.cancel(peer._connection, peer.format, callId);
+                    if (this._connection !== undefined)
+                        hub.systemCallSender.cancel(this._connection, this.format, callId);
                 } else {
-                    const idx = peer._pendingSends.findIndex(
+                    const idx = this._pendingSends.findIndex(
                         c => c.callId === callId
                     );
                     if (idx !== -1) {
-                        peer._pendingSends.splice(idx, 1);
+                        this._pendingSends.splice(idx, 1);
                         outboundCall.result.reject(
                             new Error('Call cancelled.')
                         );
@@ -375,6 +374,7 @@ export abstract class RpcPeer {
 
         // Dispatch to the hub's service host
         const serviceHost = this._hub.serviceHost;
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (serviceHost !== undefined) {
             void (async () => {
                 try {
@@ -568,7 +568,7 @@ export class RpcClientPeer extends RpcPeer {
                         reject(new Error('Connection failed'))
                     )
                 );
-                closedRejection.catch(() => {}); // prevent unhandled rejection when conn closes normally
+                closedRejection.catch(() => {}); // eslint-disable-line @typescript-eslint/no-empty-function -- prevent unhandled rejection
                 await Promise.race([conn.whenConnected, closedRejection]);
 
                 // Send our handshake, then wait for the server's response.
@@ -614,7 +614,7 @@ export class RpcClientPeer extends RpcPeer {
             }
 
             this._connectionKind = RpcPeerConnectionKind.Disconnected;
-            if (this._disposed) break;
+            if (this._disposed) break; // eslint-disable-line @typescript-eslint/no-unnecessary-condition -- mutated during await
 
             // Server rejected our serialization format — stop reconnecting and notify listeners
             if (lastCloseCode === RPC_CLOSE_CODE_UNSUPPORTED_FORMAT) {

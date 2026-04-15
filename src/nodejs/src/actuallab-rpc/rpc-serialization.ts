@@ -162,7 +162,7 @@ function readVarUint(
         bytesRead = 0;
     do {
         if (offset + bytesRead >= data.length) break;
-        const byte = data[offset + bytesRead]!;
+        const byte = data[offset + bytesRead];
         value |= (byte & 0x7f) << shift;
         bytesRead++;
         if ((byte & 0x80) === 0) break;
@@ -280,7 +280,7 @@ export function deserializeBinaryMessage(
     let pos = offset;
 
     // Byte 0: upper 3 bits = CallTypeId, lower 5 bits = HeaderCount
-    const byte0 = data[pos++]!;
+    const byte0 = data[pos++];
     const callTypeId = (byte0 >> 5) & 0x7;
     const headerCount = byte0 & 0x1f;
 
@@ -303,7 +303,7 @@ export function deserializeBinaryMessage(
     if (headerCount > 0) {
         for (let h = 0; h < headerCount; h++) {
             // L1Memory: 1-byte length prefix + key bytes
-            const keyLen = data[pos++]!;
+            const keyLen = data[pos++];
             pos += keyLen;
             // LVarSpan: VarUint length + value bytes
             const valLen = readVarUint(data, pos);
@@ -351,8 +351,8 @@ export function deserializeBinaryMessage(
 export function splitBinaryFrame(
     frame: Uint8Array,
     decoder: Decoder = defaultBinaryDecoder
-): Array<{ message: RpcMessage; args: unknown[] }> {
-    const results: Array<{ message: RpcMessage; args: unknown[] }> = [];
+): { message: RpcMessage; args: unknown[] }[] {
+    const results: { message: RpcMessage; args: unknown[] }[] = [];
     let offset = 0;
     while (offset < frame.length) {
         const { message, args, bytesRead } = deserializeBinaryMessage(
@@ -460,7 +460,7 @@ export function deserializeCompactBinaryMessage(
     let pos = offset;
 
     // Byte 0: upper 3 bits = CallTypeId, lower 5 bits = HeaderCount
-    const byte0 = data[pos++]!;
+    const byte0 = data[pos++];
     const callTypeId = (byte0 >> 5) & 0x7;
     const headerCount = byte0 & 0x1f;
 
@@ -482,7 +482,7 @@ export function deserializeCompactBinaryMessage(
     // Skip headers (if any)
     if (headerCount > 0) {
         for (let h = 0; h < headerCount; h++) {
-            const keyLen = data[pos++]!;
+            const keyLen = data[pos++];
             pos += keyLen;
             const valLen = readVarUint(data, pos);
             pos += valLen.bytesRead + valLen.value;
@@ -516,8 +516,8 @@ export function splitCompactBinaryFrame(
     frame: Uint8Array,
     registry?: RpcMethodRegistry,
     decoder: Decoder = defaultBinaryDecoder
-): Array<{ message: RpcMessage; args: unknown[] }> {
-    const results: Array<{ message: RpcMessage; args: unknown[] }> = [];
+): { message: RpcMessage; args: unknown[] }[] {
+    const results: { message: RpcMessage; args: unknown[] }[] = [];
     let offset = 0;
     while (offset < frame.length) {
         const { message, args, bytesRead } =

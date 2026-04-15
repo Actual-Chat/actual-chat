@@ -143,7 +143,7 @@ export class RpcStreamSender<T> implements IRpcObject {
 
         const iterator = source[Symbol.asyncIterator]();
         try {
-            while (true) {
+            while (true) { // eslint-disable-line @typescript-eslint/no-unnecessary-condition
                 const next = await iterator.next();
                 if (next.done || this._ended) break;
 
@@ -159,7 +159,7 @@ export class RpcStreamSender<T> implements IRpcObject {
                 if (!this.isRealTime) {
                     // Normal mode: wait for ACK before sending
                     await this._waitForAckBudget();
-                    if (this._ended) return;
+                    if (this._ended) return; // eslint-disable-line @typescript-eslint/no-unnecessary-condition -- mutated during await
                     this.sendItem(item);
                     continue;
                 }
@@ -171,7 +171,7 @@ export class RpcStreamSender<T> implements IRpcObject {
                 let sourceExhausted = false;
 
                 while (this._nextIndex >= this._lastAckedIndex + this.ackAdvance) {
-                    if (this._ended) return;
+                    if (this._ended) return; // eslint-disable-line @typescript-eslint/no-unnecessary-condition -- mutated during await
                     const n = await iterator.next();
                     if (n.done) {
                         sourceExhausted = true;
@@ -182,14 +182,14 @@ export class RpcStreamSender<T> implements IRpcObject {
                     }
                 }
 
-                if (this._ended) return;
+                if (this._ended) return; // eslint-disable-line @typescript-eslint/no-unnecessary-condition -- mutated during await
 
                 if (latestSkipTarget !== undefined) {
                     this.sendItem(latestSkipTarget);
                 }
 
                 if (sourceExhausted) {
-                    if (!this._ended) this.sendEnd();
+                    if (!this._ended) this.sendEnd(); // eslint-disable-line @typescript-eslint/no-unnecessary-condition -- mutated during await
                     return;
                 }
             }

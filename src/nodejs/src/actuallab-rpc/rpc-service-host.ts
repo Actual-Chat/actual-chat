@@ -51,7 +51,7 @@ export class RpcServiceHost {
     register(def: RpcServiceDef, impl: RpcServiceImpl): void {
         for (const methodDef of def.methods.values()) {
             const fn = impl[methodDef.name];
-            if (!fn) continue;
+            if (!fn) continue; // eslint-disable-line @typescript-eslint/no-unnecessary-condition
             this._methods.set(wireMethodName(methodDef), {
                 def: methodDef,
                 fn,

@@ -25,6 +25,7 @@
 //     RpcServiceDef.  .NET determines this via the service interface hierarchy
 //     (IComputeService marker interface).
 
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
 const METHODS_META = Symbol.for('actuallab.methods');
 const SERVICE_META = Symbol.for('actuallab.service');
 

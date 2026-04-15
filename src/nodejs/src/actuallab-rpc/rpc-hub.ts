@@ -48,6 +48,9 @@ import { RpcStream, parseStreamRef, resolveStreamRefs } from './rpc-stream.js';
 import { RpcMethodRegistry } from './rpc-method-registry.js';
 import { RpcSystemCalls } from './rpc-message.js';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyConstructor = abstract new (...args: any[]) => any;
+
 /** Central RPC coordinator — manages peers, services, and configuration. */
 export class RpcHub {
     readonly hubId: string;
@@ -105,14 +108,14 @@ export class RpcHub {
 
     /** Register a service with optional server method wrapping for custom call types. */
     addService(
-        defOrContract: RpcServiceDef | (abstract new (...args: any[]) => any),
+        defOrContract: RpcServiceDef | AnyConstructor,
         impl: RpcServiceImpl
     ): void {
         const def = this._resolveServiceDef(defOrContract);
         const wrappedImpl: RpcServiceImpl = {};
         for (const methodDef of def.methods.values()) {
             const fn = impl[methodDef.name];
-            if (!fn) continue;
+            if (!fn) continue; // eslint-disable-line @typescript-eslint/no-unnecessary-condition
             wrappedImpl[methodDef.name] =
                 methodDef.callTypeId !== 0
                     ? this._wrapServerMethod(methodDef, fn, impl as object)
@@ -123,15 +126,16 @@ export class RpcHub {
     }
 
     /** Create a typed client proxy for a service on a remote peer. */
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
     addClient<T extends object>(
         peer: RpcPeer,
-        defOrContract: RpcServiceDef | (abstract new (...args: any[]) => any)
+        defOrContract: RpcServiceDef | AnyConstructor
     ): T {
         const def = this._resolveServiceDef(defOrContract);
         this.registry.registerService(def.name, def.methods);
 
         // Group methods by clean name, indexed by argCount for overload resolution
-        const overloads = new Map<string, Map<number, Function>>();
+        const overloads = new Map<string, Map<number, (...args: unknown[]) => unknown>>();
         for (const methodDef of def.methods.values()) {
             let byArgCount = overloads.get(methodDef.name);
             if (!byArgCount) {
@@ -145,10 +149,11 @@ export class RpcHub {
         }
 
         // Build final proxy methods — single overload: use directly; multiple: resolve by args.length
-        const methods = new Map<string, Function>();
+        const methods = new Map<string, (...args: unknown[]) => unknown>();
         for (const [name, byArgCount] of overloads) {
             if (byArgCount.size === 1) {
-                methods.set(name, byArgCount.values().next().value!);
+                const [singleMethod] = byArgCount.values();
+                methods.set(name, singleMethod);
             } else {
                 methods.set(name, (...args: unknown[]) => {
                     const fn = byArgCount.get(args.length);
@@ -174,7 +179,7 @@ export class RpcHub {
 
     /** Build an RpcServiceDef from decorator metadata on a contract class. Override in FusionHub for compute support. */
     protected _buildServiceDef(
-        cls: abstract new (...args: any[]) => any
+        cls: AnyConstructor
     ): RpcServiceDef {
         const svcMeta = getServiceMeta(cls);
         if (svcMeta === undefined)
@@ -202,7 +207,7 @@ export class RpcHub {
 
     /** Resolve a service def from either a plain RpcServiceDef or a contract class. */
     protected _resolveServiceDef(
-        defOrContract: RpcServiceDef | (abstract new (...args: any[]) => any)
+        defOrContract: RpcServiceDef | AnyConstructor
     ): RpcServiceDef {
         if (typeof defOrContract === 'function')
             return this._buildServiceDef(defOrContract);
