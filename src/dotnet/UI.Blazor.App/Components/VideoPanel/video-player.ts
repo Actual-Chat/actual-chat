@@ -1131,23 +1131,27 @@ export class VideoPlayer {
             }
             // Stream completed normally
             if (!abortController.signal.aborted && this._isPlayingNow) {
-                if (pullFrameCount === 0) {
+                if (pullFrameCount > 0) {
+                    // Normal completion with frames — sender intentionally ended the stream
+                    warnLog?.log(
+                        `Pull stream completed normally after ${pullFrameCount} frames — treating as intentional end`);
+                    void this.reportEnded();
+                } else {
+                    // Empty stream — skipTo may exceed available data, retry
                     warnLog?.log(
                         `Pull stream completed with 0 frames — skipTo may exceed available data, retrying at live edge`);
+                    this.pullRetryCount++;
+                    const delay = Math.min(500 * this.pullRetryCount, 2000);
+                    warnLog?.log(
+                        `Pull stream retry #${this.pullRetryCount}, delay ${delay}ms`);
+                    this.pullRetryTimer = setTimeout(() => {
+                        this.pullRetryTimer = null;
+                        if (!this.isPlaying) return;
+                        this.pullRetryCount = 0;
+                        const retrySkipToMs = ServerClock.now() - this.startedAtMs;
+                        void this.startPull(streamId, retrySkipToMs);
+                    }, delay);
                 }
-                this.pullRetryCount++;
-                const delay = pullFrameCount === 0
-                    ? Math.min(500 * this.pullRetryCount, 2000)  // faster retry on empty stream
-                    : Math.min(1000 * this.pullRetryCount, 5000);
-                warnLog?.log(
-                    `Pull stream completed while playing (retry #${this.pullRetryCount}, delay ${delay}ms, received ${pullFrameCount} frames)`);
-                this.pullRetryTimer = setTimeout(() => {
-                    this.pullRetryTimer = null;
-                    if (!this.isPlaying) return;
-                    this.pullRetryCount = 0;
-                    const retrySkipToMs = ServerClock.now() - this.startedAtMs;
-                    void this.startPull(streamId, retrySkipToMs);
-                }, delay);
             }
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);

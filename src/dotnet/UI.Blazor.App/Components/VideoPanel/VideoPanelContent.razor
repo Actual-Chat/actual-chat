@@ -17,6 +17,9 @@
     } else if (ownStreamingKind is not null && !_hadRemoteStreams && !_noStreamsTimedOut) {
         // Recording solo, never had remote peers — show preview, not "Connecting..."
         _showConnecting = false;
+    } else if (ChatVideoUI.ConsumeRemoteStreamEndedIntentionally()) {
+        // Remote stream ended normally (sender hung up) — don't show "Connecting..."
+        _showConnecting = false;
     } else if (!_noStreamsTimedOut && _hadRemoteStreams) {
         _showConnecting = true;
     }

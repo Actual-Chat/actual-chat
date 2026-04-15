@@ -26,6 +26,10 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     // UI-only: hides video panel without affecting watching/recording state
     private readonly MutableState<bool> _isVideoPanelCollapsed;
 
+    // Set when a remote stream completes normally (sender intentionally ended).
+    // Consumed by VideoPanelContent to suppress "Connecting..." overlay.
+    private volatile int _remoteStreamEndedIntentionally;
+
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
@@ -111,6 +115,18 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     public void SetVideoPanelCollapsed(bool collapsed)
         => _isVideoPanelCollapsed.Value = collapsed;
+
+    /// <summary>
+    /// Called by VideoTrackPlayer when a remote stream ends normally (no error).
+    /// </summary>
+    public void NotifyRemoteStreamEndedIntentionally()
+        => Interlocked.Exchange(ref _remoteStreamEndedIntentionally, 1);
+
+    /// <summary>
+    /// Atomically reads and resets the intentional-end flag.
+    /// </summary>
+    public bool ConsumeRemoteStreamEndedIntentionally()
+        => Interlocked.Exchange(ref _remoteStreamEndedIntentionally, 0) != 0;
 
     public void ResumeVideoStreaming(ChatId chatId)
     {

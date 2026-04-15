@@ -197,6 +197,11 @@ export class InternalVideoStream {
             await sender.whenStarted();
 
             while (!this.isCompleted || !this.frames.isEmpty()) {
+                // Detect sender disconnect (e.g. server pod restart)
+                if (sender.isEnded) {
+                    warnLog?.log(`Sender ended mid-stream (disconnectedByServer=${sender.isDisconnectedByServer})`);
+                    break;
+                }
                 while (!this.frames.isEmpty()) {
                     const frame = this.frames.shift()!;
                     sender.sendItem(frameToDto(frame));
