@@ -38,7 +38,8 @@
     var videoBtnCls = isOwnCameraStreaming ? "on" : "";
     var screencastBtnCls = isOwnScreencasting ? "on" : "";
     var expandedPanelRecBtnCls = $"rec-btn {audioRecordingCls}";
-    var chatBtnCls = _isChatVisible ? "on" : "";
+    var isChatVisible = _isChatVisible ?? GetDefaultChatVisibility();
+    var chatBtnCls = isChatVisible ? "on" : "";
     var expandedCls = _isExpanded ? "expanded" : "";
     var collapsedCls = m.IsCollapsed ? "collapsed" : "";
     if (m.Chat is { } mChat)
@@ -136,7 +137,7 @@
                 <i class="icon-collapse text-lg expanded-video-panel"></i>
             </HeaderButton>
         </div
-        @if (_isExpanded && _isChatVisible && !ScreenSize.IsNarrow() && _lastChat is { } chat) {
+        @if (_isExpanded && isChatVisible && !ScreenSize.IsNarrow() && _lastChat is { } chat) {
             <div class="video-panel-chat upload-drag-drop-host">
                 <ChatView @key="@chat.Id.Value" ChatId="@chat.Id"/>
                 <ChatMessageEditor @key="@("vp-editor-" + chat.Id.Value)" Chat="@chat"/>
@@ -150,7 +151,7 @@
 
     private bool _isFirstOpen = true;
     private bool _isExpanded;
-    private bool _isChatVisible = true;
+    private bool? _isChatVisible;
     private Chat? _lastChat;
     private bool _noStreamsTimedOut;
     private bool _showConnecting;
@@ -326,7 +327,7 @@
         => ChatVideoUI.SwitchCamera();
 
     private void OnToggleChatVisibilityClick() {
-        _isChatVisible = !_isChatVisible;
+        _isChatVisible = !(_isChatVisible ?? GetDefaultChatVisibility());
         StateHasChanged();
     }
 
@@ -339,6 +340,9 @@
         await Task.Delay(1000);
         _isFirstOpen = false;
     }
+
+    private bool GetDefaultChatVisibility()
+        => ScreenSize.IsWide() && !Hub.BrowserInfo.IsMobile;
 
     private void OnConnectingTimeout() {
         _showConnecting = false;
