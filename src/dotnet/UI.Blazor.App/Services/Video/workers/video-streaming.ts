@@ -196,6 +196,11 @@ export class InternalVideoStream {
             await sender.whenStarted();
 
             while (!this.isCompleted || !this.frames.isEmpty()) {
+                // Detect server-side disconnect (timeout, pod restart, $sys.Disconnect)
+                if (sender.isEnded) {
+                    warnLog?.log(`Sender ended during pump (disconnectedByServer=${String(sender.isDisconnectedByServer)}), stopping stream`);
+                    break;
+                }
                 while (!this.frames.isEmpty()) {
                     const frame = this.frames.shift()!;
                     sender.sendItem(frameToDto(frame));

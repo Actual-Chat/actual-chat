@@ -562,6 +562,12 @@ function deliverChunkToStream(
         frame.description = storedDescriptionBytes;
     }
 
+    // Detect disposed stream (disconnect recovery) and clear for recreation
+    if (videoStream?.isDisposed) {
+        warnLog?.log('Video stream disposed (disconnect recovery), recreating');
+        videoStream = null;
+    }
+
     if (!videoStream) {
         const isAV1 = encoderConfig!.codec.startsWith('av01');
         const canCreateStream = codecSettings ?? (isAV1 && isKeyFrame);
