@@ -873,7 +873,7 @@ export const serverImpl: VideoProcessingWorker = {
         // Also await lastVideoStream if it's a different instance (e.g. codec switch created
         // a new stream while the old one was still draining). Without this, rpcPeer.close()
         // kills the connection before $sys.End is sent → "Connection is closed prematurely".
-        if (lastVideoStream && lastVideoStream !== videoStream) {
+        if (lastVideoStream) {
             lastVideoStream.complete();
             try { await lastVideoStream.whenDisposed; } catch { /* ignore */ }
             lastVideoStream = null;
