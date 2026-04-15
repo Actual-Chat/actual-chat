@@ -24,18 +24,6 @@ export class RpcSharedObjectTracker {
         this._objects.delete(obj.id.localId);
     }
 
-    /** Reconnect objects with allowReconnect=true, disconnect others.
-     *  disconnect() calls unregister() which removes the object from the map. */
-    reconnectOrDisconnect(): void {
-        for (const obj of this._objects.values()) {
-            if (obj.allowReconnect) {
-                obj.reconnect();
-            } else {
-                obj.disconnect();
-            }
-        }
-    }
-
     disconnectAll(): void {
         for (const obj of this._objects.values()) {
             obj.disconnect();
