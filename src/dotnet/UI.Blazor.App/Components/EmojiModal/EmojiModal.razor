@@ -4,41 +4,139 @@
 
 <DialogFrame
     Class="emoji-modal"
-    Title="Emoji"
     HasCloseButton="true"
+    HasHeader="false"
     NarrowViewSettings="DialogFrameNarrowViewSettings.Bottom">
     <Body>
-        <div class="c-grid">
-            @foreach (var group in Enum.GetValues<EmojiGroup>()) {
-                <div @key="group" class="c-group">
-                    <div class="c-group-title">@group</div>
-                    <div class="c-group-items">
-                        @foreach (var emoji in Emojis.GetByGroup(group)) {
-                            <button @key="emoji"
-                                class="c-item"
-                                @onclick="@(() => OnEmojiClick(emoji))">
-                                <EmojiIcon Emoji="@emoji" Class="c-emoji" HasPreview="true"/>
-                            </button>
+        <TabPanel BottomHill="true" TabsClass="emoji-modal-tabs">
+            <Tab Id="emoji" Title="Emoji" Order="0">
+                <div class="c-grid">
+                    @foreach (var group in Enum.GetValues<EmojiGroup>()) {
+                        <div @key="group" class="c-group">
+                            <div class="c-group-title">@group</div>
+                            <div class="c-group-items">
+                                @foreach (var emoji in Emojis.GetByGroup(group)) {
+                                    <button @key="emoji"
+                                        class="c-item"
+                                        @onclick="@(() => OnEmojiClick(emoji))">
+                                        <EmojiIcon Emoji="@emoji" Class="c-emoji" HasPreview="true"/>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </Tab>
+            <Tab Id="gif" Title="GIF" Order="1">
+                <div class="c-gif-tab">
+                    <SearchBox Placeholder="Search GIFs..." TextChanged="@OnGifSearch"/>
+                    <div class="c-gif-grid">
+                        @if (_isLoading && _gifItems.Count == 0) {
+                            <div class="c-gif-loading">
+                                <span class="c-loading-text">Loading...</span>
+                            </div>
+                        } else if (_gifItems.Count == 0) {
+                            <div class="c-gif-empty">
+                                <span class="c-empty-text">No GIFs found</span>
+                            </div>
+                        } else {
+                            @foreach (var gif in _gifItems) {
+                                <button @key="gif.Slug"
+                                        class="c-gif-item"
+                                        @onclick="@(() => OnGifClick(gif))">
+                                    <img class="c-gif-img"
+                                         src="@gif.PreviewUrl"
+                                         alt=""
+                                         loading="lazy"/>
+                                </button>
+                            }
+
                         }
                     </div>
+                    @if (_hasNext) {
+                        <button class="c-gif-load-more" @onclick="@LoadMoreGifs">
+                            @(_isLoading ? "Loading..." : "Load more")
+                        </button>
+                    }
                 </div>
-            }
-        </div>
+            </Tab>
+        </TabPanel>
     </Body>
 </DialogFrame>
 
 @code {
+    private readonly List<GifItem> _gifItems = new();
+    private CancellationTokenSource? _searchCts;
+    private string _searchQuery = "";
+    private int _page = 1;
+    private bool _hasNext;
+    private bool _isLoading;
+    private bool _gifsLoaded;
+
+    private IGifs Gifs => Hub.Gifs;
+
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender && !_gifsLoaded)
+            await LoadGifs().ConfigureAwait(true);
+    }
 
     private void OnEmojiClick(Emoji emoji) {
         ModalModel.SelectedEmoji = emoji;
         Modal.Close();
     }
 
+    private void OnGifClick(GifItem gif) {
+        ModalModel.SelectedGifUrl = gif.Url;
+        Modal.Close();
+    }
+
+    private async Task OnGifSearch(string query) {
+        _searchQuery = query.Trim();
+        _page = 1;
+        _gifItems.Clear();
+        _hasNext = false;
+        _searchCts?.Cancel();
+        _searchCts = new CancellationTokenSource();
+
+        try {
+            await Task.Delay(300, _searchCts.Token).ConfigureAwait(true);
+            await LoadGifs().ConfigureAwait(true);
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private async Task LoadMoreGifs() {
+        _page++;
+        await LoadGifs().ConfigureAwait(true);
+    }
+
+    private async Task LoadGifs() {
+        _isLoading = true;
+        _gifsLoaded = true;
+        StateHasChanged();
+        try {
+            var result = _searchQuery.IsNullOrEmpty()
+                ? await Gifs.GetTrending(_page, CancellationToken.None).ConfigureAwait(true)
+                : await Gifs.Search(_searchQuery, _page, CancellationToken.None).ConfigureAwait(true);
+            _gifItems.AddRange(result.Items);
+            _hasNext = result.HasNext;
+        }
+        catch (Exception) {
+            // Ignore - UI shows empty state
+        }
+        finally {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
     // Nested types
 
     public sealed class Model {
         public Emoji? SelectedEmoji { get; set; }
+        public string? SelectedGifUrl { get; set; }
     }
 }

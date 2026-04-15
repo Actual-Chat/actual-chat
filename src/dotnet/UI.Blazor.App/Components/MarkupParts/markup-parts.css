@@ -40,6 +40,13 @@
     @apply cursor-pointer no-underline hover:underline text-primary;
 }
 
+/* GIF image in message */
+.gif-message {
+    @apply block;
+    @apply max-w-64 md:max-w-96 max-h-64 md:max-h-80;
+    @apply rounded-lg;
+}
+
 .plain-text-markup {
     @apply whitespace-break-spaces;
     word-break: break-word;

@@ -1,7 +1,36 @@
+.emoji-modal.modal-frame {
+    @apply pb-2;
+}
+body.wide .modal-frame.emoji-modal {
+    min-height: min(calc(var(--vh, 1dvh) * 75), 40rem);
+    height: min(calc(var(--vh, 1dvh) * 75), 40rem);
+}
+body.narrow .modal-frame.emoji-modal,
+body.device-ios .modal-frame.emoji-modal,
+body.device-android .modal-frame.emoji-modal {
+    min-height: calc(var(--vh, 1dvh) * 75);
+    height: calc(var(--vh, 1dvh) * 75);
+}
 .emoji-modal .dialog-body {
+    @apply flex-y;
+    @apply overflow-hidden;
+}
+.emoji-modal .tab-panel {
+    @apply overflow-hidden;
+}
+.emoji-modal .tab {
     @apply overflow-y-auto;
     scrollbar-width: none;
 }
+
+/* ── Tabs ── */
+
+.emoji-modal-tabs {
+    @apply mb-0 pb-0;
+}
+
+/* ── Emoji tab ── */
+
 .emoji-modal .c-grid {
     @apply flex-y gap-3;
     @apply p-2;
@@ -15,11 +44,11 @@
 }
 .emoji-modal .c-group-items {
     @apply grid gap-1;
-    grid-template-columns: repeat(auto-fill, minmax(2.5rem, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(3rem, 1fr));
 }
 .emoji-modal .c-item {
     @apply flex items-center justify-center;
-    @apply w-10 h-10;
+    @apply w-12 h-12;
     @apply rounded-lg;
     @apply cursor-pointer;
 }
@@ -28,5 +57,54 @@ body.hoverable .emoji-modal .c-item:hover,
     @apply bg-hover;
 }
 .emoji-modal .c-emoji {
-    @apply w-7 h-7;
+    @apply w-9 h-9;
+}
+
+/* ── GIF tab ── */
+
+.emoji-modal .c-gif-tab {
+    @apply flex-y;
+}
+.emoji-modal .c-gif-tab .search-box {
+    @apply flex-none;
+    @apply mx-2 mt-2;
+}
+.emoji-modal .c-gif-grid {
+    @apply p-2;
+    columns: 2;
+    column-gap: 0.25rem;
+}
+.emoji-modal .c-gif-item {
+    @apply block;
+    @apply w-full;
+    @apply mb-1;
+    @apply rounded-lg;
+    @apply overflow-hidden;
+    @apply cursor-pointer;
+    break-inside: avoid;
+}
+body.hoverable .emoji-modal .c-gif-item:hover {
+    @apply opacity-80;
+}
+.emoji-modal .c-gif-img {
+    @apply w-full;
+    @apply rounded-lg;
+}
+.emoji-modal .c-gif-loading,
+.emoji-modal .c-gif-empty {
+    @apply flex items-center justify-center;
+    @apply h-32 w-full;
+    @apply text-03;
+    columns: 1;
+    column-span: all;
+}
+.emoji-modal .c-gif-load-more {
+    @apply py-2;
+    @apply rounded-lg;
+    @apply text-text-1 text-03;
+    @apply cursor-pointer;
+    column-span: all;
+}
+body.hoverable .emoji-modal .c-gif-load-more:hover {
+    @apply text-01;
 }

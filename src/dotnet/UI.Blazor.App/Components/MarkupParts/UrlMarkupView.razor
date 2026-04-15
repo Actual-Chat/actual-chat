@@ -4,6 +4,11 @@
     var url = Markup.Url;
 }
 
+@if (_isGifImage) {
+    <img class="gif-message" src="@url" alt="" loading="lazy"/>
+    return;
+}
+
 @if (Markup.Kind is UrlMarkupKind.Email) {
     @* NOTE(DF): Do not use target="_blank" for emails. It crashes Android app. *@
     <a class="@cls" href="@_hrefUrl"
@@ -40,12 +45,15 @@
     private string _hrefUrl = "";
     private LocalUrl? _localUrl;
     private LinkRenderMode _linkRenderMode = LinkRenderMode.Default;
+    private bool _isGifImage;
 
     private LinkPreviewUI LinkPreviewUI => Hub.LinkPreviewUI;
 
     protected override async Task OnParametersSetAsync() {
         var url = Markup.Url;
         _hrefUrl = url;
+        _isGifImage = Markup.Kind is UrlMarkupKind.Www
+            && url.EndsWith(".gif", StringComparison.OrdinalIgnoreCase);
         switch (Markup.Kind) {
             case UrlMarkupKind.Www:
                 var isRenderedAsLocal = await LinkPreviewUI.IsRenderedAsLocal(url, CancellationToken.None);
