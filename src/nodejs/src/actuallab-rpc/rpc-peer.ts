@@ -121,6 +121,31 @@ export interface RpcCallOptions {
     outboundCallFactory?: (id: number, method: string) => RpcOutboundCall;
     /** AbortSignal for caller-initiated cancellation. */
     signal?: AbortSignal;
+    /** If true, this call won't be re-sent on same-peer reconnect (for streaming calls). */
+    noResendOnReconnect?: boolean;
+}
+
+/** Detect if any argument is a reconnectable stream sender ref (AllowReconnect=true). */
+function hasReconnectableStreamSenderRef(args?: unknown[]): boolean {
+    if (!args) return false;
+    for (const arg of args) {
+        if (typeof arg === 'object' && arg !== null) {
+            const obj = arg as Record<string, unknown>;
+            if (Array.isArray(obj.SerializedId)
+                && typeof obj.AckPeriod === 'number'
+                && typeof obj.AckAdvance === 'number'
+                && obj.AllowReconnect === true) {
+                return true;
+            }
+        }
+        // Also check text format: "hostId,localId,ackPeriod,ackAdvance,1,..."
+        if (typeof arg === 'string') {
+            const parts = arg.split(',');
+            if (parts.length >= 5 && parts[4] === '1')
+                return true;
+        }
+    }
+    return false;
 }
 
 /** Data extracted from an inbound $sys.Handshake message. */
@@ -197,9 +222,10 @@ export abstract class RpcPeer {
         options?: RpcCallOptions
     ): RpcOutboundCall {
         const callId = this.outbound.nextId();
+        const noResend = options?.noResendOnReconnect ?? hasReconnectableStreamSenderRef(args);
         const outboundCall = options?.outboundCallFactory
             ? options.outboundCallFactory(callId, method)
-            : new RpcOutboundCall(callId, method);
+            : new RpcOutboundCall(callId, method, noResend);
 
         const envelope: RpcMessage = {
             Method: method,
@@ -631,6 +657,13 @@ export class RpcClientPeer extends RpcPeer {
             this.remoteObjects.reconnectAll();
         }
 
+        // Handle shared objects (client→server stream senders) on reconnect
+        if (_isPeerChanged) {
+            this.sharedObjects.disconnectAll();
+        } else {
+            this.sharedObjects.reconnectOrDisconnect();
+        }
+
         // Re-send existing tracker calls (self-invalidate stage-3 compute calls)
         const trackerCalls = [...this.outbound.values()];
         for (const call of trackerCalls) {
@@ -638,6 +671,13 @@ export class RpcClientPeer extends RpcPeer {
                 // Stage-3 compute call: self-invalidate, forcing fresh recompute
                 call.onDisconnect();
                 this.outbound.remove(call.callId);
+            } else if (call.noResendOnReconnect) {
+                if (_isPeerChanged) {
+                    // Peer changed — stream is dead, reject the call
+                    call.result.reject(new Error('Peer changed — streaming call ended.'));
+                    this.outbound.remove(call.callId);
+                }
+                // Same peer — stream survived reconnect, don't re-send
             } else {
                 // Regular call or in-flight compute call: re-send
                 this._sendWireData(call.serializedWireData);

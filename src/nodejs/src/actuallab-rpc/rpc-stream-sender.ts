@@ -1,3 +1,4 @@
+import Denque from 'denque';
 import { PromiseSource } from '../actuallab-core/index.js';
 import type { RpcObjectId, IRpcObject } from './rpc-object.js';
 import { RpcObjectKind } from './rpc-object.js';
@@ -7,6 +8,8 @@ import type { RpcPeer } from './rpc-peer.js';
 const DEFAULT_ACK_PERIOD = 256;
 /** Default ack advance for server-side streams. */
 const DEFAULT_ACK_ADVANCE = 128;
+/** Max items buffered during disconnect for non-realtime reconnectable streams. */
+const DEFAULT_RECONNECT_BUFFER_CAP = 3000;
 
 /**
  * Server-side RPC stream producer — sends items to a remote consumer via
@@ -38,6 +41,8 @@ export class RpcStreamSender<T> implements IRpcObject {
     private _lastAckedIndex = 0;
     private _ackWaiting: PromiseSource<void> | null = null;
     private _resetRequested = false;
+    private readonly _reconnectBuffer: Denque<{ index: number; item: T }>;
+    private readonly _reconnectBufferCap: number;
 
     constructor(
         peer: RpcPeer,
@@ -55,7 +60,12 @@ export class RpcStreamSender<T> implements IRpcObject {
         this.peer = peer;
         this.ackPeriod = ackPeriod;
         this.ackAdvance = ackAdvance;
+        this._reconnectBufferCap = DEFAULT_RECONNECT_BUFFER_CAP;
+        this._reconnectBuffer = new Denque();
     }
+
+    /** Whether this sender has been ended (completed, errored, or disconnected). */
+    get isEnded(): boolean { return this._ended; }
 
     /** Returns the stream reference string for the $sys.Ok response. */
     toRef(): string {
@@ -93,11 +103,20 @@ export class RpcStreamSender<T> implements IRpcObject {
         this.peer.sharedObjects.unregister(this);
     }
 
-    /** Send a single item to the client. */
+    /** Send a single item to the client. Buffers during disconnect for non-realtime reconnectable streams. */
     sendItem(item: T): void {
         if (this._ended) return;
         const conn = this.peer.connection;
-        if (!conn) return;
+        if (!conn) {
+            // Non-realtime reconnectable: buffer for flush on reconnect
+            if (!this.isRealTime && this.allowReconnect) {
+                this._reconnectBuffer.push({ index: this._nextIndex, item });
+                this._nextIndex++;
+                while (this._reconnectBuffer.length > this._reconnectBufferCap)
+                    this._reconnectBuffer.shift();
+            }
+            return;
+        }
         this.peer.hub.systemCallSender.item(
             conn,
             this.peer.format,
@@ -108,11 +127,21 @@ export class RpcStreamSender<T> implements IRpcObject {
         this._nextIndex++;
     }
 
-    /** Send a batch of items to the client. */
+    /** Send a batch of items to the client. Buffers during disconnect for non-realtime reconnectable streams. */
     sendBatch(items: T[]): void {
         if (this._ended || items.length === 0) return;
         const conn = this.peer.connection;
-        if (!conn) return;
+        if (!conn) {
+            if (!this.isRealTime && this.allowReconnect) {
+                for (const item of items) {
+                    this._reconnectBuffer.push({ index: this._nextIndex, item });
+                    this._nextIndex++;
+                }
+                while (this._reconnectBuffer.length > this._reconnectBufferCap)
+                    this._reconnectBuffer.shift();
+            }
+            return;
+        }
         this.peer.hub.systemCallSender.batch(
             conn,
             this.peer.format,
@@ -127,6 +156,7 @@ export class RpcStreamSender<T> implements IRpcObject {
     sendEnd(error?: Error | null): void {
         if (this._ended) return;
         this._ended = true;
+        this._reconnectBuffer.clear();
         const conn = this.peer.connection;
         if (!conn) return;
         // .NET ExceptionInfo is a non-nullable value type, so we must always
@@ -243,17 +273,32 @@ export class RpcStreamSender<T> implements IRpcObject {
     // -- IRpcObject --
 
     reconnect(): void {
-        // Server-side streams don't support reconnection — the client
-        // creates a new stream on reconnect.
+        if (!this.allowReconnect) return;
+        // Flush buffered items (non-realtime only; realtime has empty buffer)
+        this._flushReconnectBuffer();
     }
 
     disconnect(): void {
         this._ended = true;
+        this._reconnectBuffer.clear();
         if (!this._started.isCompleted) {
             // Resolve (not reject) — writeFrom() will see _ended=true and exit cleanly.
             // Rejecting would cause unhandled rejections when writeFrom() is void-called.
             this._started.resolve();
         }
         this.peer.sharedObjects.unregister(this);
+    }
+
+    // -- Private --
+
+    private _flushReconnectBuffer(): void {
+        if (this._reconnectBuffer.length === 0) return;
+        const conn = this.peer.connection;
+        if (!conn) return;
+        while (this._reconnectBuffer.length > 0) {
+            const entry = this._reconnectBuffer.shift()!;
+            this.peer.hub.systemCallSender.item(
+                conn, this.peer.format, this.id.localId, entry.index, entry.item);
+        }
     }
 }
