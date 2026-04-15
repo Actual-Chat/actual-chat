@@ -134,6 +134,23 @@ export interface RemoteHandshake {
   Index?: number;
 }
 
+/** Detect if any argument is a reconnectable stream sender ref (AllowReconnect=true). */
+function hasReconnectableStreamSenderRef(args?: unknown[]): boolean {
+  if (!args) return false;
+  for (const arg of args) {
+    if (typeof arg === "object" && arg !== null) {
+      const obj = arg as Record<string, unknown>;
+      if (Array.isArray(obj.SerializedId)
+        && typeof obj.AckPeriod === "number"
+        && typeof obj.AckAdvance === "number"
+        && obj.AllowReconnect === true) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 /** Base class for RPC peers — handles bidirectional message dispatch. */
 export abstract class RpcPeer {
   /** Routing/addressing key — used as key in hub.peers (URL for clients, "server://{uuid}" for servers). */
@@ -191,7 +208,7 @@ export abstract class RpcPeer {
 
   call(method: string, args?: unknown[], options?: RpcCallOptions): RpcOutboundCall {
     const callId = this.outbound.nextId();
-    const noResend = options?.noResendOnReconnect ?? false;
+    const noResend = options?.noResendOnReconnect ?? hasReconnectableStreamSenderRef(args);
     const outboundCall = options?.outboundCallFactory
       ? options.outboundCallFactory(callId, method)
       : new RpcOutboundCall(callId, method, noResend);
