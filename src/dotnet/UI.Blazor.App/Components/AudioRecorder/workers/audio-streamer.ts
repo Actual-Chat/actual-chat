@@ -202,6 +202,8 @@ export class AudioStreamer {
 
         this.rpcHub = new RpcHub();
         this.rpcPeer = new RpcClientPeer(this.rpcHub, rpcWsUrl, RPC_SERIALIZATION_FORMAT);
+        this.rpcPeer.connected.add(() => updateConnectionState(true));
+        this.rpcPeer.disconnected.add(() => updateConnectionState(false));
         void this.rpcPeer.run();
         this.streamServerClient = this.rpcHub.addClient(this.rpcPeer, StreamServerDef) as unknown as typeof this.streamServerClient;
     }
