@@ -125,23 +125,29 @@ export interface RpcCallOptions {
     noResendOnReconnect?: boolean;
 }
 
-/** Detect if any argument is a reconnectable stream sender ref (AllowReconnect=true). */
-function hasReconnectableStreamSenderRef(args?: unknown[]): boolean {
+/**
+ * Detect if any call argument is a stream sender ref (the shape produced by
+ * RpcStreamSender.toRef() or RpcStream.toRef()). Calls carrying sender refs
+ * must NOT be re-sent on reconnect — the sender handles its own lifecycle:
+ *   - allowReconnect=true: sender survived, continues pumping / flushes buffer
+ *   - allowReconnect=false: sender disconnected, recovery creates new stream
+ * Re-sending would create a duplicate server-side processing task.
+ */
+function hasStreamSenderRef(args?: unknown[]): boolean {
     if (!args) return false;
     for (const arg of args) {
         if (typeof arg === 'object' && arg !== null) {
             const obj = arg as Record<string, unknown>;
             if (Array.isArray(obj.SerializedId)
                 && typeof obj.AckPeriod === 'number'
-                && typeof obj.AckAdvance === 'number'
-                && obj.AllowReconnect === true) {
+                && typeof obj.AckAdvance === 'number') {
                 return true;
             }
         }
-        // Also check text format: "hostId,localId,ackPeriod,ackAdvance,1,..."
+        // Also check text format: "hostId,localId,ackPeriod,ackAdvance[,...]"
         if (typeof arg === 'string') {
             const parts = arg.split(',');
-            if (parts.length >= 5 && parts[4] === '1')
+            if (parts.length >= 4 && !isNaN(Number(parts[2])) && !isNaN(Number(parts[3])))
                 return true;
         }
     }
@@ -222,7 +228,7 @@ export abstract class RpcPeer {
         options?: RpcCallOptions
     ): RpcOutboundCall {
         const callId = this.outbound.nextId();
-        const noResend = options?.noResendOnReconnect ?? hasReconnectableStreamSenderRef(args);
+        const noResend = options?.noResendOnReconnect ?? hasStreamSenderRef(args);
         const outboundCall = options?.outboundCallFactory
             ? options.outboundCallFactory(callId, method)
             : new RpcOutboundCall(callId, method, noResend);
@@ -672,12 +678,16 @@ export class RpcClientPeer extends RpcPeer {
                 call.onDisconnect();
                 this.outbound.remove(call.callId);
             } else if (call.noResendOnReconnect) {
+                // Streaming call (PushAudio/PushVideo) — never re-send on reconnect.
+                // The sender object handles its own lifecycle:
+                //   - allowReconnect=true: sender survived, flushes buffered frames
+                //   - allowReconnect=false: sender disconnected, recovery creates new stream
+                // Re-sending would create a duplicate server-side processing task
+                // (the original root cause of audio duplication).
                 if (_isPeerChanged) {
-                    // Peer changed — stream is dead, reject the call
                     call.result.reject(new Error('Peer changed — streaming call ended.'));
                     this.outbound.remove(call.callId);
                 }
-                // Same peer — stream survived reconnect, don't re-send
             } else {
                 // Regular call or in-flight compute call: re-send
                 this._sendWireData(call.serializedWireData);

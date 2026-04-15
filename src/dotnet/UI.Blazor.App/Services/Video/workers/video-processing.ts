@@ -870,6 +870,14 @@ export const serverImpl: VideoProcessingWorker = {
             try { await videoStream.whenDisposed; } catch { /* ignore */ }
             videoStream = null;
         }
+        // Also await lastVideoStream if it's a different instance (e.g. codec switch created
+        // a new stream while the old one was still draining). Without this, rpcPeer.close()
+        // kills the connection before $sys.End is sent → "Connection is closed prematurely".
+        if (lastVideoStream && lastVideoStream !== videoStream) {
+            lastVideoStream.complete();
+            try { await lastVideoStream.whenDisposed; } catch { /* ignore */ }
+            lastVideoStream = null;
+        }
         if (streamCtx.rpcPeer) { try { streamCtx.rpcPeer.close(); } catch { /* ignore */ } streamCtx.rpcPeer = null; streamCtx.rpcHub = null; streamCtx.rpcStreamServer = null; }
         if (segInitialized) { try { outputGpuBuffer.destroy(); } catch { /* ignore */ } try { smoothedMaskBuffer.destroy(); } catch { /* ignore */ } }
 

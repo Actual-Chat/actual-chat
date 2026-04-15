@@ -58,12 +58,17 @@ export class RpcOutboundCall {
      *  Subclasses (e.g. compute calls) override to false to stay in tracker for invalidation. */
     readonly removeOnOk: boolean = true;
 
+    /** If true, this call won't be re-sent on same-peer reconnect.
+     *  Auto-set for calls carrying stream sender refs (PushAudio/PushVideo). */
+    readonly noResendOnReconnect: boolean;
+
     /** The serialized wire data — stored for re-sending on reconnect. */
     serializedWireData: string | Uint8Array = '';
 
-    constructor(callId: number, method: string) {
+    constructor(callId: number, method: string, noResendOnReconnect = false) {
         this.callId = callId;
         this.method = method;
+        this.noResendOnReconnect = noResendOnReconnect;
     }
 
     /** Called when the connection is lost. Subclasses can override to resolve invalidation promises. */
