@@ -157,8 +157,9 @@ export class RpcStreamSender<T> implements IRpcObject {
 
         const iterator = source[Symbol.asyncIterator]();
         try {
-            while (true) { // eslint-disable-line @typescript-eslint/no-unnecessary-condition
+            for (;;) {
                 const next = await iterator.next();
+                 
                 if (next.done || this._ended) break;
 
                 const item = next.value;
@@ -181,7 +182,8 @@ export class RpcStreamSender<T> implements IRpcObject {
                 if (!this.isRealTime) {
                     // Normal mode: wait for ACK before sending
                     await this._waitForAckBudget();
-                    if (this._ended) return; // eslint-disable-line @typescript-eslint/no-unnecessary-condition -- mutated during await
+                    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- _ended can change during await
+                    if (this._ended) return;
                     this.sendItem(item);
                     continue;
                 }
@@ -193,7 +195,8 @@ export class RpcStreamSender<T> implements IRpcObject {
                 let sourceExhausted = false;
 
                 while (this._nextIndex >= this._lastAckedIndex + this.ackAdvance) {
-                    if (this._ended) return; // eslint-disable-line @typescript-eslint/no-unnecessary-condition -- mutated during await
+                    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- _ended can change during await
+                    if (this._ended) return;
                     const n = await iterator.next();
                     if (n.done) {
                         sourceExhausted = true;
@@ -204,17 +207,20 @@ export class RpcStreamSender<T> implements IRpcObject {
                     }
                 }
 
-                if (this._ended) return; // eslint-disable-line @typescript-eslint/no-unnecessary-condition -- mutated during await
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- _ended can change during await
+                if (this._ended) return;
 
                 if (latestSkipTarget !== undefined) {
                     this.sendItem(latestSkipTarget);
                 }
 
                 if (sourceExhausted) {
-                    if (!this._ended) this.sendEnd(); // eslint-disable-line @typescript-eslint/no-unnecessary-condition -- mutated during await
+                    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- _ended can change during await
+                    if (!this._ended) this.sendEnd();
                     return;
                 }
             }
+             
             if (!this._ended) {
                 this.sendEnd();
             }

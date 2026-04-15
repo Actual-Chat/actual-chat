@@ -41,15 +41,12 @@ import {
 import { RpcServiceHost, type RpcServiceImpl } from './rpc-service-host.js';
 import type { RpcServiceDef, RpcMethodDef } from './rpc-service-def.js';
 import { wireMethodName, RpcType } from './rpc-service-def.js';
-import { getServiceMeta, getMethodsMeta } from './rpc-decorators.js';
+import { getServiceMeta, getMethodsMeta, type AnyConstructor } from './rpc-decorators.js';
 import { RpcSystemCallSender } from './rpc-system-call-sender.js';
 import { RpcSystemCallHandler } from './rpc-system-call-handler.js';
 import { RpcStream, parseStreamRef, resolveStreamRefs } from './rpc-stream.js';
 import { RpcMethodRegistry } from './rpc-method-registry.js';
 import { RpcSystemCalls } from './rpc-message.js';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyConstructor = abstract new (...args: any[]) => any;
 
 /** Central RPC coordinator — manages peers, services, and configuration. */
 export class RpcHub {
@@ -108,14 +105,14 @@ export class RpcHub {
 
     /** Register a service with optional server method wrapping for custom call types. */
     addService(
-        defOrContract: RpcServiceDef | AnyConstructor,
+        defOrContract: RpcServiceDef | (AnyConstructor),
         impl: RpcServiceImpl
     ): void {
         const def = this._resolveServiceDef(defOrContract);
         const wrappedImpl: RpcServiceImpl = {};
         for (const methodDef of def.methods.values()) {
             const fn = impl[methodDef.name];
-            if (!fn) continue; // eslint-disable-line @typescript-eslint/no-unnecessary-condition
+            if (!fn) continue;
             wrappedImpl[methodDef.name] =
                 methodDef.callTypeId !== 0
                     ? this._wrapServerMethod(methodDef, fn, impl as object)
@@ -126,20 +123,22 @@ export class RpcHub {
     }
 
     /** Create a typed client proxy for a service on a remote peer. */
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- T is used for caller-specified proxy type
     addClient<T extends object>(
         peer: RpcPeer,
-        defOrContract: RpcServiceDef | AnyConstructor
+        defOrContract: RpcServiceDef | (AnyConstructor)
     ): T {
         const def = this._resolveServiceDef(defOrContract);
         this.registry.registerService(def.name, def.methods);
 
+        type RpcClientFn = (...args: unknown[]) => unknown;
+
         // Group methods by clean name, indexed by argCount for overload resolution
-        const overloads = new Map<string, Map<number, (...args: unknown[]) => unknown>>();
+        const overloads = new Map<string, Map<number, RpcClientFn>>();
         for (const methodDef of def.methods.values()) {
             let byArgCount = overloads.get(methodDef.name);
             if (!byArgCount) {
-                byArgCount = new Map();
+                byArgCount = new Map<number, RpcClientFn>();
                 overloads.set(methodDef.name, byArgCount);
             }
             byArgCount.set(
@@ -149,11 +148,11 @@ export class RpcHub {
         }
 
         // Build final proxy methods — single overload: use directly; multiple: resolve by args.length
-        const methods = new Map<string, (...args: unknown[]) => unknown>();
+        const methods = new Map<string, RpcClientFn>();
         for (const [name, byArgCount] of overloads) {
             if (byArgCount.size === 1) {
-                const [singleMethod] = byArgCount.values();
-                methods.set(name, singleMethod);
+                const [[, singleFn]] = byArgCount;
+                methods.set(name, singleFn);
             } else {
                 methods.set(name, (...args: unknown[]) => {
                     const fn = byArgCount.get(args.length);
@@ -207,7 +206,7 @@ export class RpcHub {
 
     /** Resolve a service def from either a plain RpcServiceDef or a contract class. */
     protected _resolveServiceDef(
-        defOrContract: RpcServiceDef | AnyConstructor
+        defOrContract: RpcServiceDef | (AnyConstructor)
     ): RpcServiceDef {
         if (typeof defOrContract === 'function')
             return this._buildServiceDef(defOrContract);

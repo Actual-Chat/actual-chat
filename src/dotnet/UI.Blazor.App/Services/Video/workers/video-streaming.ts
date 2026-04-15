@@ -176,6 +176,7 @@ export class InternalVideoStream {
 
             // Real-time video stream: isRealTime=true, allowReconnect=false, ackPeriod=5, ackAdvance=31.
             // toRef() creates the sender, registers it, and starts pumping in the background.
+            // eslint-disable-next-line @typescript-eslint/no-this-alias -- async generator function* can't be arrow
             const self = this;
             const stream = new RpcStream<VideoFrameDto>((async function* () {
                 while (!self.isCompleted || !self.frames.isEmpty()) {
@@ -186,7 +187,10 @@ export class InternalVideoStream {
                         await self.frameAdded.whenNextVoid();
                     }
                 }
-            })(), { isRealTime: true, allowReconnect: false, ackPeriod: 5, ackAdvance: 31 });
+            })(), {
+                isRealTime: true, allowReconnect: false, ackPeriod: 5, ackAdvance: 31,
+                canSkipTo: (frame) => frame.IsKeyFrame,
+            });
 
             // Fire-and-forget: server awaits the frameStream completion. Any
             // rejection is logged but shouldn't cancel the pump loop since the
