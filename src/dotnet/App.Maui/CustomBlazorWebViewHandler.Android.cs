@@ -31,6 +31,17 @@ public partial class CustomBlazorWebViewHandler
         settings.MixedContentMode = MixedContentHandling.AlwaysAllow;
         settings.CacheMode = CacheModes.Default;
         settings.TextZoom = 100;
+        // Disable WebView's algorithmic dark theme: the app controls its own
+        // theme via CSS, otherwise a light theme gets inverted when the system
+        // is in dark mode. API 33+ uses AlgorithmicDarkeningAllowed; earlier
+        // versions use the now-deprecated ForceDark.
+        if (OperatingSystem.IsAndroidVersionAtLeast(33))
+            settings.AlgorithmicDarkeningAllowed = false;
+        else if (OperatingSystem.IsAndroidVersionAtLeast(29)) {
+#pragma warning disable CA1422
+            settings.ForceDark = ForceDarkMode.Off;
+#pragma warning restore CA1422
+        }
 
         // Prevent native scrolling so DOM can handle resizing via interactive-widget=resizes-content
         webView.VerticalScrollBarEnabled = false;

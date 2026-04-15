@@ -12,5 +12,9 @@
     <item name="android:statusBarColor">@color/colorPrimaryDark</item>
     <item name="android:navigationBarColor">@color/colorPrimaryDark</item>
     <item name="android:gravity">center</item>
+    <!-- Theme is controlled by the app (Theme.set in theme.ts); disallow the
+         system's algorithmic force-dark from inverting light web content when
+         the system is in dark mode. -->
+    <item name="android:forceDarkAllowed">false</item>
   </style>
 </resources>
