@@ -1,3 +1,4 @@
+import Denque from "denque";
 import { PromiseSource } from "../actuallab-core/index.js";
 import type { RpcObjectId, IRpcObject } from "./rpc-object.js";
 import { RpcObjectKind } from "./rpc-object.js";
@@ -7,6 +8,8 @@ import type { RpcPeer } from "./rpc-peer.js";
 const DEFAULT_ACK_PERIOD = 256;
 /** Default ack advance for client-to-server streams. */
 const DEFAULT_ACK_ADVANCE = 128;
+/** Default reconnect buffer capacity for non-realtime streams. */
+const DEFAULT_RECONNECT_BUFFER_CAP = 3000;
 
 /**
  * Client-side RPC stream producer — sends items to the server via
@@ -28,6 +31,7 @@ export class RpcClientStreamSender<T> implements IRpcObject {
   readonly id: RpcObjectId;
   readonly kind = RpcObjectKind.Local;
   readonly allowReconnect: boolean;
+  readonly isRealtime: boolean;
   readonly peer: RpcPeer;
   readonly ackPeriod: number;
   readonly ackAdvance: number;
@@ -36,19 +40,26 @@ export class RpcClientStreamSender<T> implements IRpcObject {
   private _ended = false;
   private _disconnectedByServer = false;
   private _started = new PromiseSource<void>();
+  private readonly _reconnectBuffer: Denque<{ index: number; item: T }> | null;
+  private readonly _reconnectBufferCap: number;
 
   constructor(
     peer: RpcPeer,
     ackPeriod = DEFAULT_ACK_PERIOD,
     ackAdvance = DEFAULT_ACK_ADVANCE,
-    allowReconnect = false
+    allowReconnect = false,
+    isRealtime = false,
+    reconnectBufferCap = DEFAULT_RECONNECT_BUFFER_CAP
   ) {
     const localId = peer.sharedObjects.nextId();
     this.id = { hostId: peer.hub.hubId, localId };
     this.allowReconnect = allowReconnect;
+    this.isRealtime = isRealtime;
     this.peer = peer;
     this.ackPeriod = ackPeriod;
     this.ackAdvance = ackAdvance;
+    this._reconnectBufferCap = reconnectBufferCap;
+    this._reconnectBuffer = (!isRealtime && allowReconnect) ? new Denque<{ index: number; item: T }>() : null;
 
     // Register so system call handler can route $sys.Ack/$sys.AckEnd to us
     peer.sharedObjects.register(this);
@@ -112,8 +123,17 @@ export class RpcClientStreamSender<T> implements IRpcObject {
     if (this._ended)
       return;
     const conn = this.peer.connection;
-    if (!conn)
+    if (!conn) {
+      if (this._reconnectBuffer) {
+        this._reconnectBuffer.push({ index: this._nextIndex, item });
+        this._nextIndex++;
+        // Drop oldest items if over capacity
+        while (this._reconnectBuffer.length > this._reconnectBufferCap) {
+          this._reconnectBuffer.shift();
+        }
+      }
       return;
+    }
     this.peer.hub.systemCallSender.item(conn, this.id.localId, this._nextIndex, item);
     this._nextIndex++;
   }
@@ -122,7 +142,19 @@ export class RpcClientStreamSender<T> implements IRpcObject {
   sendBatch(items: T[]): void {
     if (this._ended || items.length === 0) return;
     const conn = this.peer.connection;
-    if (!conn) return;
+    if (!conn) {
+      if (this._reconnectBuffer) {
+        for (const item of items) {
+          this._reconnectBuffer.push({ index: this._nextIndex, item });
+          this._nextIndex++;
+        }
+        // Drop oldest items if over capacity
+        while (this._reconnectBuffer.length > this._reconnectBufferCap) {
+          this._reconnectBuffer.shift();
+        }
+      }
+      return;
+    }
     this.peer.hub.systemCallSender.batch(conn, this.id.localId, this._nextIndex, items);
     this._nextIndex += items.length;
   }
@@ -130,6 +162,7 @@ export class RpcClientStreamSender<T> implements IRpcObject {
   /** Signal stream completion to the server. */
   sendEnd(error?: Error | null): void {
     if (this._ended) return;
+    this._reconnectBuffer?.clear();
     this._ended = true;
     const conn = this.peer.connection;
     if (!conn) return;
@@ -172,15 +205,30 @@ export class RpcClientStreamSender<T> implements IRpcObject {
   // -- IRpcObject --
 
   reconnect(): void {
-    // Client-to-server streams don't support reconnection
+    if (!this.allowReconnect) return;
+    if (this.isRealtime) return; // No buffer to flush for realtime streams
+    this._flushReconnectBuffer();
   }
 
   disconnect(): void {
+    this._reconnectBuffer?.clear();
     this._ended = true;
     this._disconnectedByServer = true;
     if (!this._started.isCompleted) {
       this._started.resolve();
     }
     this.peer.sharedObjects.unregister(this);
+  }
+
+  // -- Private --
+
+  private _flushReconnectBuffer(): void {
+    if (!this._reconnectBuffer) return;
+    const conn = this.peer.connection;
+    if (!conn) return;
+    while (this._reconnectBuffer.length > 0) {
+      const entry = this._reconnectBuffer.shift()!;
+      this.peer.hub.systemCallSender.item(conn, this.id.localId, entry.index, entry.item);
+    }
   }
 }
