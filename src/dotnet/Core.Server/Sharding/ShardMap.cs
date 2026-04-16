@@ -9,7 +9,7 @@ namespace ActualChat.Sharding;
 public sealed class ShardMap(ShardScheme shardScheme, MeshNode[] nodes)
     : ShardMap<MeshNode>(shardScheme.ShardCount, nodes, Builder)
 {
-    public static readonly ShardMapBuilder Builder = ShardMapBuilder.Rendezvous with {
+    public static readonly ShardMapBuilder Builder = ShardMapBuilder.Maglev with {
         NodeHashSequenceProvider = static node => ((MeshNode)node).GetHashes<int>(),
     };
 
