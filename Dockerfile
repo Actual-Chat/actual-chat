@@ -9,7 +9,9 @@ ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 \
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 \
     DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
-RUN apt update && apt install -y ffmpeg postgresql-client && apt clean
+RUN sed -i 's|http://archive.ubuntu.com|https://archive.ubuntu.com|g' /etc/apt/sources.list.d/ubuntu.sources \
+    && sed -i 's|http://security.ubuntu.com|https://security.ubuntu.com|g' /etc/apt/sources.list.d/ubuntu.sources \
+    && apt update && apt install -y ffmpeg postgresql-client && apt clean
 WORKDIR /app
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0.202 AS dotnet-restore
@@ -24,7 +26,9 @@ ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 \
     NUGET_CERT_REVOCATION_MODE=offline
 
-RUN apt update \
+RUN sed -i 's|http://archive.ubuntu.com|https://archive.ubuntu.com|g' /etc/apt/sources.list.d/ubuntu.sources \
+    && sed -i 's|http://security.ubuntu.com|https://security.ubuntu.com|g' /etc/apt/sources.list.d/ubuntu.sources \
+    && apt update \
     && apt install -y --no-install-recommends python3 python3-pip libatomic1 \
     && rm -rf /var/lib/apt/lists/*
 
