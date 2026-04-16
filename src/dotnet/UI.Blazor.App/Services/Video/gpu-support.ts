@@ -1,6 +1,6 @@
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { debugLog } = Log.get('VideoSegmentation');
+const { debugLog } = getLogs('VideoSegmentation');
 
 /**
  * GPU Backend Detection and Support

@@ -1,7 +1,7 @@
 ﻿import { APP_NAME, PROD_HOST } from '_constants';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { infoLog } = Log.get('Share');
+const { infoLog } = getLogs('Share');
 
 export class Share {
 

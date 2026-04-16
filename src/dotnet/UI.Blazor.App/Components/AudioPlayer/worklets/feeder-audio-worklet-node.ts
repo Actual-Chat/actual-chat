@@ -6,9 +6,9 @@ import {
 } from './feeder-audio-worklet-contract';
 import { ResolvedPromise } from 'promises';
 import { rpcClientServer, RpcNoWait } from 'rpc';
-import { Log } from 'logging';
+import { Log, getLogs } from 'logging';
 
-const { logScope, errorLog } = Log.get('FeederNode');
+const { logScope, errorLog } = getLogs('FeederNode');
 
 /** Part of the feeder that lives in main global scope. It's the counterpart of FeederAudioWorkletProcessor */
 export class FeederAudioWorkletNode extends AudioWorkletNode {

@@ -16,10 +16,10 @@ import kotlin from 'highlight.js/lib/languages/kotlin';
 import c from 'highlight.js/lib/languages/c';
 import cpp from 'highlight.js/lib/languages/cpp';
 import csharp from 'highlight.js/lib/languages/csharp';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { Theme, ThemeInfo } from 'theme';
 
-const { errorLog } = Log.get('CodeBlockMarkupView');
+const { errorLog } = getLogs('CodeBlockMarkupView');
 
 export function highlightCode(pre: HTMLPreElement, languageName: string, code: string) {
     try {

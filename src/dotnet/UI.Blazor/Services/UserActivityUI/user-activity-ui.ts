@@ -1,8 +1,8 @@
 import { DocumentEvents } from 'event-handling';
 import { delayAsync, throttle } from 'promises';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { debugLog } = Log.get('UserActivityUI');
+const { debugLog } = getLogs('UserActivityUI');
 
 const PostInteractionActivityPeriodMs = 30_000;
 

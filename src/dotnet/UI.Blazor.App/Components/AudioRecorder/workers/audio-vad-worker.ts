@@ -18,11 +18,11 @@ import { OpusEncoderWorker } from './opus-encoder-worker-contract';
 import { RecorderStateServer } from '../opus-media-recorder-contracts';
 // @ts-expect-error intentional import of non-existent file
 import OnnxModel from './vad_batched.ort';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { ResamplerLoader } from './resampler-loader';
 import { AudioRingBuffer } from '../audio-ring-buffer';
 
-const { logScope, debugLog, infoLog, warnLog, errorLog } = Log.get('AudioVadWorker');
+const { logScope, debugLog, infoLog, warnLog, errorLog } = getLogs('AudioVadWorker');
 
 const worker = globalThis as unknown as Worker;
 const queue = new Denque<ArrayBuffer>();

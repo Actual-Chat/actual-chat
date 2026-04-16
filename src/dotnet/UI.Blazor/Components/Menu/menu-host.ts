@@ -17,11 +17,11 @@ import { nextTick } from 'timeout';
 import { Vector2D } from 'math';
 import Escapist from '../../Services/Escapist/escapist';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { unselect } from 'keyboard';
 import { Tune, TuneUI } from '../../Services/TuneUI/tune-ui';
 
-const {  logScope, debugLog } = Log.get('MenuHost');
+const {  logScope, debugLog } = getLogs('MenuHost');
 // TODO: remove eslint ignores and fix errors
 enum MenuTrigger {
     None = 0,

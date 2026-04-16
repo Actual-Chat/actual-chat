@@ -2,9 +2,9 @@
 // TODO(AY): review eslint suppressions
 import { PromiseSourceWithTimeout } from 'promises';
 import { Disposable } from 'disposable';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { debugLog, warnLog, errorLog } = Log.get('Rpc');
+const { debugLog, warnLog, errorLog } = getLogs('Rpc');
 
 export type RpcNoWait = symbol;
 export const rpcNoWait : RpcNoWait = Symbol('RpcNoWait');

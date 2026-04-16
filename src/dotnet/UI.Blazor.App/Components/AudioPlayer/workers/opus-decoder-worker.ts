@@ -10,9 +10,9 @@ import { OpusDecoderWorker } from './opus-decoder-worker-contract';
 import { RpcNoWait, rpcServer, RpcTimeout } from 'rpc';
 import { retry } from 'promises';
 import { Versioning } from 'versioning';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { logScope, debugLog, errorLog } = Log.get('OpusDecoderWorker');
+const { logScope, debugLog, errorLog } = getLogs('OpusDecoderWorker');
 
 
 // TODO: create wrapper around module for all workers

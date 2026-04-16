@@ -1,6 +1,6 @@
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { debugLog, warnLog } = Log.get('Versioning');
+const { debugLog, warnLog } = getLogs('Versioning');
 
 interface ImportMap {
     imports: Record<string, string>;

@@ -4,11 +4,11 @@
  */
 
 import { rpcClientServer } from 'rpc';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import type { VideoProcessingWorkerCallbacks } from './video-processing-worker-contract';
 import { serverImpl, setCallbacks } from './video-processing';
 
-const { infoLog } = Log.get('VideoPipeline');
+const { infoLog } = getLogs('VideoPipeline');
 
 const callbacks = rpcClientServer<VideoProcessingWorkerCallbacks>(
     'VideoProcessingWorker',

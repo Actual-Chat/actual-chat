@@ -1,11 +1,11 @@
 import { delayAsync, PromiseSource } from 'promises';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
 import { SoundPlayer } from './sound-player';
 import { Interactive } from 'interactive';
 import { BrowserInfo } from '../BrowserInfo/browser-info';
 
-const { logScope, debugLog, warnLog, errorLog } = Log.get('TuneUI');
+const { logScope, debugLog, warnLog, errorLog } = getLogs('TuneUI');
 
 // !!! keep in sync with TuneUI.cs
 export enum Tune {

@@ -1,6 +1,6 @@
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { debugLog } = Log.get('FocusUI');
+const { debugLog } = getLogs('FocusUI');
 
 export class FocusUI {
     public static focus(targetRef: HTMLElement): void {

@@ -1,7 +1,7 @@
 import { DeviceInfo } from 'device-info';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { warnLog } = Log.get('WebAuth');
+const { warnLog } = getLogs('WebAuth');
 const encode = encodeURIComponent;
 
 export class WebAuth {

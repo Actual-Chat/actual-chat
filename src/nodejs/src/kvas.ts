@@ -1,7 +1,7 @@
 import { UseStore, createStore, get, entries, set, del, getMany, setMany, delMany, clear } from 'idb-keyval';
-import { Log } from 'logging';
+import { Log, getLogs } from 'logging';
 
-const { debugLog } = Log.get('Kvas');
+const { debugLog } = getLogs('Kvas');
 
 export class Kvas {
     private readonly store: UseStore;

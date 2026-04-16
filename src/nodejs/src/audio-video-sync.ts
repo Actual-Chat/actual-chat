@@ -1,6 +1,6 @@
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { debugLog } = Log.get('AudioVideoSync');
+const { debugLog } = getLogs('AudioVideoSync');
 
 /** Playback state from the audio feeder worklet */
 export type AudioPlaybackState = 'playing' | 'paused' | 'ended' | 'starving';

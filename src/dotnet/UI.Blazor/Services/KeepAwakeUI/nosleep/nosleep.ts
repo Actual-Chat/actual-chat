@@ -1,10 +1,10 @@
 // TODO: fix eslint errors
 /* eslint-disable @typescript-eslint/use-unknown-in-catch-callback-variable,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call */
 import { mp4, webm } from './media';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { APP_NAME } from '_constants';
 
-const { debugLog, warnLog, errorLog } = Log.get('NoSleep');
+const { debugLog, warnLog, errorLog } = getLogs('NoSleep');
 // Detect iOS browsers < version 10
 const isOldIOS = () =>
     typeof navigator !== 'undefined' &&

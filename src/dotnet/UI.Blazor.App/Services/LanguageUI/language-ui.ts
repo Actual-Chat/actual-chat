@@ -1,6 +1,6 @@
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { debugLog } = Log.get('LanguageUI');
+const { debugLog } = getLogs('LanguageUI');
 
 export class LanguageUI {
     public static getLanguages() {

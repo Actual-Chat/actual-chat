@@ -1,10 +1,10 @@
 import { Observable } from 'rxjs';
 import { ResolvedPromise } from 'promises';
 import { EventHandlerSet } from 'event-handling';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { BrowserInfo } from '../../dotnet/UI.Blazor/Services/BrowserInfo/browser-info';
 
-const { debugLog } = Log.get('Interactive');
+const { debugLog } = getLogs('Interactive');
 
 export class Interactive {
     private static _isInitialized = false;

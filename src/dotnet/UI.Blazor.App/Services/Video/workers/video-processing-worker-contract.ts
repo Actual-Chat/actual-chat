@@ -10,9 +10,9 @@
 
 import { RpcNoWait, RpcTimeout } from 'rpc';
 import type { EncoderConfig, EncoderStats } from '../webcodecs-encoder';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { debugLog, warnLog } = Log.get('VideoSegmentation');
+const { debugLog, warnLog } = getLogs('VideoSegmentation');
 
 // ─── Segmentation config types ──────────────────────────────────────────────
 

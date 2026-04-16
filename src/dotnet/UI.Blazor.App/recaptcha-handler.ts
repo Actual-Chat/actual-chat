@@ -1,6 +1,6 @@
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { warnLog } = Log.get('RecaptchaHandler');
+const { warnLog } = getLogs('RecaptchaHandler');
 
 export class RecaptchaHandler {
     public static observer: MutationObserver;

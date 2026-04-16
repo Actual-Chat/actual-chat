@@ -9,10 +9,10 @@ import { ScreenSize } from '../../dotnet/UI.Blazor/Services/ScreenSize/screen-si
 import { Timeout } from 'timeout';
 import { Tune, TuneName, TuneUI } from '../../dotnet/UI.Blazor/Services/TuneUI/tune-ui';
 import { Vector2D } from 'math';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { BrowserInfo } from '../../dotnet/UI.Blazor/Services/BrowserInfo/browser-info';
 
-const { debugLog } = Log.get('Gestures');
+const { debugLog } = getLogs('Gestures');
 
 export type GestureEvent = PointerEvent | MouseEvent | TouchEvent | WheelEvent;
 

@@ -1,8 +1,8 @@
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { Versioning } from 'versioning';
 import { BrowserInfo } from '../../dotnet/UI.Blazor/Services/BrowserInfo/browser-info';
 
-const { warnLog } = Log.get('ServiceWorker');
+const { warnLog } = getLogs('ServiceWorker');
 
 export class ServiceWorker {
     public static async init(): Promise<void> {

@@ -1,12 +1,12 @@
 // TODO: Fix ESLint errors
 /* eslint-disable @typescript-eslint/no-misused-promises, @typescript-eslint/no-deprecated */
 import { Subject, takeUntil } from 'rxjs';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { Disposable } from 'disposable';
 import { DocumentEvents, preventDefaultForEvent } from 'event-handling';
 import { getOrInheritData } from 'dom-helpers';
 
-const { debugLog } = Log.get('SelectionHost');
+const { debugLog } = getLogs('SelectionHost');
 
 export class SelectionHost implements Disposable {
     private readonly disposed$ = new Subject<void>();

@@ -21,9 +21,9 @@ import { RecorderStateServer } from '../opus-media-recorder-contracts';
 import { AudioDiagnosticsState } from '../audio-recorder';
 import { ResamplerLoader } from './resampler-loader';
 import { WorkerConnectivityUI } from './worker-connectivity-ui';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { logScope, debugLog, infoLog, warnLog, errorLog } = Log.get('OpusEncoderWorker');
+const { logScope, debugLog, infoLog, warnLog, errorLog } = getLogs('OpusEncoderWorker');
 
 interface TimestampedAudioFrame {
     frame: ArrayBuffer;

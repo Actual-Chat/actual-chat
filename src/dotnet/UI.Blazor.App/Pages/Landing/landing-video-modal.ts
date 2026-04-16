@@ -2,10 +2,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars,@typescript-eslint/no-unnecessary-condition */
 import { fromEvent, Subject, takeUntil } from 'rxjs';
 
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { setTimeout } from 'timerQueue';
 
-const { debugLog } = Log.get('Landing');
+const { debugLog } = getLogs('Landing');
 
 export class LandingVideoModal {
     private readonly disposed$ = new Subject<void>();

@@ -5,13 +5,13 @@ import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-inf
 import { AudioPlayer } from '../AudioPlayer/audio-player';
 import { recordingAudioContextSource } from '../../Services/audio-context-source';
 import { VoiceActivityChange } from './workers/audio-vad-contract';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { throttle } from 'promises';
 import { WebMicrophonePermissionHandler } from './web-microphone-permission-handler';
 import { RecorderStateHub } from './recorder-state-hub';
 import { Subscription } from 'rxjs';
 
-const { debugLog, warnLog, errorLog } = Log.get('AudioRecorder');
+const { debugLog, warnLog, errorLog } = getLogs('AudioRecorder');
 
 export class AudioDiagnosticsState {
     public isPlayerInitialized?: boolean;

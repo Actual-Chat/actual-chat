@@ -1,8 +1,8 @@
 import { EventHandlerSet } from 'event-handling';
 import { delayAsync, PromiseSource, PromiseSourceWithTimeout } from 'promises';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { infoLog, warnLog, errorLog } = Log.get('ConnectivityUI');
+const { infoLog, warnLog, errorLog } = getLogs('ConnectivityUI');
 
 export class ConnectivityUI {
     private static _isOnline = true;

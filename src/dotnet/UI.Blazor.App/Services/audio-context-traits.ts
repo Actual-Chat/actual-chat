@@ -1,12 +1,12 @@
 // TODO: remove eslint-disables and fix errors
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
 import { createWebRtcAecStream, isWebRtcAecRequired } from './web-rtc-aec';
 import { Disposable } from 'disposable';
 import { resetMediaSessionMetadata, AppAudioContext } from './audio-context-source';
 
-const { debugLog, errorLog } = Log.get('AudioContextTraits');
+const { debugLog, errorLog } = getLogs('AudioContextTraits');
 
 // Trait Interfaces
 

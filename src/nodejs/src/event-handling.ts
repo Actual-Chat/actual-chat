@@ -1,10 +1,10 @@
 import { fromEvent, Observable } from 'rxjs';
 import { Disposable } from 'disposable';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { Timeout } from 'timeout';
 import { PromiseSource, TimedOut } from 'promises';
 
-const { debugLog, errorLog } = Log.get('event-handling');
+const { debugLog, errorLog } = getLogs('EventHandling');
 
 export class EventHandler<T> implements Disposable {
     constructor(

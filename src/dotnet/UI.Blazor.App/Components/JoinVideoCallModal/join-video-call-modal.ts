@@ -1,4 +1,4 @@
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { rpcClientServer, rpcNoWait } from 'rpc';
 import type { Disposable } from 'disposable';
 import { getActiveRecorder } from '../VideoPanel/video-recorder';
@@ -9,7 +9,7 @@ import { MediaCapture } from '../../Services/Video/services/media-capture';
 import { Versioning } from 'versioning';
 import { fastRaf } from 'fast-raf';
 
-const { infoLog, errorLog } = Log.get('VideoRecorder');
+const { infoLog, errorLog } = getLogs('VideoRecorder');
 
 export class JoinVideoCallModal {
     private blazorRef: DotNet.DotNetObject;

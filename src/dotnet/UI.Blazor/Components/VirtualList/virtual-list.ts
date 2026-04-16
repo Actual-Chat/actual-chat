@@ -10,7 +10,7 @@ import { VirtualListStatistics } from './ts/virtual-list-statistics';
 import { Pivot } from './ts/pivot';
 import { DotNet } from '@microsoft/dotnet-js-interop';
 
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { fastRaf, fastReadRaf } from 'fast-raf';
 import { DeviceInfo } from 'device-info';
 import { clamp } from 'math';
@@ -18,7 +18,7 @@ import { BrowserInfo } from '../../Services/BrowserInfo/browser-info';
 import { DocumentEvents } from 'event-handling';
 import { type Subscription } from 'rxjs';
 
-const { warnLog, debugLog } = Log.get('VirtualList');
+const { warnLog, debugLog } = getLogs('VirtualList');
 
 const UpdateViewportInterval = 64;
 const UpdateItemVisibilityInterval = 250;

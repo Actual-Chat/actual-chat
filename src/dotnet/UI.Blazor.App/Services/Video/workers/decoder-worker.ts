@@ -11,9 +11,9 @@ import type { DecoderWorker, DecoderWorkerCallbacks, RawChunkMessage } from './d
 import { type DecoderConfig, type DecoderStats, WebCodecsDecoder } from '../webcodecs-decoder';
 import type { EncodedChunkData } from '../webcodecs-encoder';
 import { extractHVCC } from '../hevc-parser';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { debugLog, infoLog, warnLog, errorLog } = Log.get('VideoDecoder');
+const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoDecoder');
 
 // Worker state
 let decoder: WebCodecsDecoder | null = null;

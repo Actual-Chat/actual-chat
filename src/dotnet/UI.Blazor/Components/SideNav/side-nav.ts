@@ -6,12 +6,12 @@ import { DocumentEvents, tryPreventDefaultForEvent } from 'event-handling';
 import { fromEvent } from 'rxjs';
 import { Gesture, Gestures } from 'gestures';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { unselect } from 'keyboard';
 import { BrowserInfo } from '../../Services/BrowserInfo/browser-info';
 import { fastRaf, fastReadRaf, fastWriteRaf } from 'fast-raf';
 
-const { debugLog } = Log.get('SideNav');
+const { debugLog } = getLogs('SideNav');
 
 const Deceleration = 0.1; // 1 = full width/second^2
 const PullBoundary = 0.333; // 33% of the screen width

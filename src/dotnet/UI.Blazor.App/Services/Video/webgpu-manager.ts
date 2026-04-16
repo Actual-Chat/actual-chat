@@ -1,6 +1,6 @@
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { warnLog } = Log.get('VideoSegmentation');
+const { warnLog } = getLogs('VideoSegmentation');
 
 /**
  * Centralized WebGPU device ownership shared between ONNX Runtime, tensor utilities,

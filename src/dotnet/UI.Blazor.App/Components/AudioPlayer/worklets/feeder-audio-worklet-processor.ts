@@ -13,11 +13,11 @@ import {
 import { rpcClientServer, rpcNoWait, RpcNoWait } from 'rpc';
 import { Disposable } from 'disposable';
 import { ResolvedPromise } from 'promises';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { BufferHandler } from '../workers/opus-decoder-worker-contract';
 import { AudioRingBuffer } from '../../AudioRecorder/audio-ring-buffer';
 
-const { logScope, debugLog, warnLog } = Log.get('FeederProcessor');
+const { logScope, debugLog, warnLog } = getLogs('FeederProcessor');
 
 /** Part of the feeder that lives in [AudioWorkletGlobalScope]{@link https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletGlobalScope} */
 class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements FeederAudioWorklet {

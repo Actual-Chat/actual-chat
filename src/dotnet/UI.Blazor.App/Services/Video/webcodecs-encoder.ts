@@ -3,11 +3,11 @@
  * Encodes video frames to H.264 chunks with statistics tracking
  */
 
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
 import Denque from 'denque';
 
-const { infoLog, errorLog } = Log.get('VideoEncoder');
+const { infoLog, errorLog } = getLogs('VideoEncoder');
 
 // WebCodecs SVC metadata (svc.temporalLayerId) is not yet in TS typings
 function extractTemporalLayerId(metadata: EncodedVideoChunkMetadata | undefined): number | undefined {

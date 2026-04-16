@@ -11,10 +11,10 @@ import ortWasm from './ort-wasm-simd.wasm'
 // import ortMjs from 'onnxruntime-web/dist/ort-wasm-simd-threaded.mjs'
 import { WebRtcVad } from '@actual-chat/webrtc-vad';
 import { VoiceActivityChange, VoiceActivityDetector, NO_VOICE_ACTIVITY } from './audio-vad-contract';
-// import { Log } from 'logging';
+// import { getLogs } from 'logging';
 import { Versioning } from 'versioning';
 
-// const { debugLog } = Log.get('AudioVadWorker');
+// const { debugLog } = getLogs('AudioVadWorker');
 
 export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector {
     protected readonly probEMA = new RunningEMA(0.5, 5); // 32ms*5 ~ 150ms

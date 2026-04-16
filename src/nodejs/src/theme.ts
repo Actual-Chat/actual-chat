@@ -1,7 +1,7 @@
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { EventHandlerSet } from 'event-handling';
 
-const { debugLog } = Log.get('Theme');
+const { debugLog } = getLogs('Theme');
 
 const storage = window.localStorage as Storage | null;
 const storageKey = 'ui.theme'

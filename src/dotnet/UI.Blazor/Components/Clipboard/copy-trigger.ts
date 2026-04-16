@@ -1,7 +1,7 @@
 import { fromEvent, Subject, takeUntil, switchMap, tap, delay } from 'rxjs';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { errorLog } = Log.get('CopyTrigger');
+const { errorLog } = getLogs('CopyTrigger');
 
 export class CopyTrigger {
     private readonly triggerElementRef: HTMLElement;

@@ -9,10 +9,10 @@ import { detectGPUBackends } from '../gpu-support';
 import type { SegmentationConfig } from '../workers/video-processing-worker-contract';
 import { createDefaultSegmentationConfig, createAdaptiveSegmentationConfig } from '../workers/video-processing-worker-contract';
 import { MediaCapture } from './media-capture';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
 
-const { infoLog, warnLog, errorLog } = Log.get('VideoPipeline');
+const { infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
 
 export interface RecordingConfig {
   mode: 'webcam' | 'screen';

@@ -1,10 +1,10 @@
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { AudioPlayer } from '../Components/AudioPlayer/audio-player';
 import { opusMediaRecorder } from '../Components/AudioRecorder/opus-media-recorder';
 import { audioContextSource, recordingAudioContextSource } from './audio-context-source';
 import { ResolvedPromise } from 'promises';
 
-const { infoLog, warnLog } = Log.get('AudioInfo');
+const { infoLog, warnLog } = getLogs('AudioInfo');
 
 export type BackgroundActivityState = 'Foreground' | 'BackgroundIdle' | 'BackgroundActive';
 

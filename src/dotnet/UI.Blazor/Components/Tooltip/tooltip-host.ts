@@ -11,9 +11,9 @@ import {
     offset,
     arrow,
 } from '@floating-ui/dom';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { errorLog } = Log.get('TooltipHost');
+const { errorLog } = getLogs('TooltipHost');
 
 export class TooltipHost implements Disposable {
     private readonly disposed$: Subject<void> = new Subject<void>();

@@ -19,9 +19,9 @@
  * on pre-cleared buffers.
  */
 
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { infoLog, warnLog } = Log.get('VideoSegmentation');
+const { infoLog, warnLog } = getLogs('VideoSegmentation');
 
 // ── WGSL Compute Shader (packed byte output) ────────────────────────────────
 

@@ -1,11 +1,11 @@
 // TODO: Fix ESLint errors
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-unnecessary-condition */
 import { DeviceInfo } from 'device-info';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { PromiseSource } from 'promises';
 import { Disposable } from 'disposable';
 
-const { infoLog, errorLog } = Log.get('WebRtcAec');
+const { infoLog, errorLog } = getLogs('WebRtcAec');
 
 /**
  * @file Chromium doesn't apply echoCancellation to web audio pipeline.

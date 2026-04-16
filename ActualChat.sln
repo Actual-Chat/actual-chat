@@ -174,7 +174,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6F6D1942-E72
 		src\nodejs\src\interactive.ts = src\nodejs\src\interactive.ts
 		src\nodejs\src\keyboard.ts = src\nodejs\src\keyboard.ts
 		src\nodejs\src\kvas.ts = src\nodejs\src\kvas.ts
-		src\nodejs\src\logging-init.ts = src\nodejs\src\logging-init.ts
 		src\nodejs\src\logging.ts = src\nodejs\src\logging.ts
 		src\nodejs\src\math.ts = src\nodejs\src\math.ts
 		src\nodejs\src\object-pool.ts = src\nodejs\src\object-pool.ts

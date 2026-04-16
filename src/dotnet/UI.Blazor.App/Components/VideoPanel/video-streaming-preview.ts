@@ -1,7 +1,7 @@
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { getActiveRecorder, type VideoRecorder } from './video-recorder';
 
-const { infoLog } = Log.get('VideoStreamingPreview');
+const { infoLog } = getLogs('VideoStreamingPreview');
 
 export class VideoStreamingPreview {
     private readonly element: HTMLElement;

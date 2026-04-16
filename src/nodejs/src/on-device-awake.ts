@@ -1,9 +1,9 @@
 import { Observable } from 'rxjs';
 import { DocumentEvents, EventHandlerSet } from 'event-handling';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { Versioning } from 'versioning';
 
-const { debugLog, infoLog, errorLog } = Log.get('OnDeviceAwake');
+const { debugLog, infoLog, errorLog } = getLogs('OnDeviceAwake');
 
 export class OnDeviceAwake {
     private static _totalSleepDurationMs = 0;

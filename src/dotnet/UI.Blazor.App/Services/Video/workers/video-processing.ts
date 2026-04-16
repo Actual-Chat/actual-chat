@@ -4,7 +4,7 @@
  */
 
 import { rpcNoWait } from 'rpc';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
 import Denque from 'denque';
 import * as ort from 'onnxruntime-web';
@@ -44,7 +44,7 @@ declare class MediaStreamTrackProcessor<T = VideoFrame> {
     readable: ReadableStream<T>;
 }
 
-const { debugLog, infoLog, warnLog, errorLog } = Log.get('VideoPipeline');
+const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
 
 // ─── Callbacks (set by worker entry after RPC init) ─────────────────────────
 

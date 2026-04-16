@@ -1,9 +1,9 @@
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
 import { RecordingService, type RecordingConfig, type RecordingState } from '../../Services/Video/services/recording-service';
 import { detectSupportedCodecs, getDefaultCodec, getCodecCategory, type CodecInfo } from '../../Services/Video/codec-support';
 
-const { debugLog, infoLog, warnLog, errorLog } = Log.get('VideoRecorder');
+const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoRecorder');
 
 export interface OwnStreamDiagnostics {
     mode: string;

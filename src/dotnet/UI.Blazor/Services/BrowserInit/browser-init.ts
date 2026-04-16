@@ -4,12 +4,12 @@ import { ConnectivityUI } from '../ConnectivityUI/connectivity-ui';
 import { EventHandlerSet } from 'event-handling';
 import { delayAsync, PromiseSource } from 'promises';
 import { AppKind, BrowserInfo, HostKind } from '../BrowserInfo/browser-info';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { FirebaseApp, initializeApp } from 'firebase/app';
 import { Analytics, getAnalytics, setAnalyticsCollectionEnabled } from 'firebase/analytics';
 import { Versioning } from 'versioning';
 
-const { debugLog, infoLog, warnLog, errorLog } = Log.get('BrowserInit');
+const { debugLog, infoLog, warnLog, errorLog } = getLogs('BrowserInit');
 const IsAnalyticsEnabledSetting = 'isAnalyticsEnabled';
 
 const sessionStorage = globalThis?.sessionStorage;

@@ -5,11 +5,11 @@ import { getOrInheritData } from 'dom-helpers';
 import { throttle } from 'promises';
 import { preventDefaultForEvent } from 'event-handling';
 import { UndoStack } from './undo-stack';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 import { fastRaf } from 'fast-raf';
 
-const { debugLog, errorLog } = Log.get('MarkupEditor');
+const { debugLog, errorLog } = getLogs('MarkupEditor');
 
 const MentionListId = '@';
 const ZeroWidthSpace = '\u200b';

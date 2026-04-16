@@ -3,11 +3,11 @@
 import { fromEvent, Subject, takeUntil } from 'rxjs';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { hasModifierKey } from 'keyboard';
 import { preventDefaultForEvent } from 'event-handling';
 
-const { debugLog } = Log.get('Landing');
+const { debugLog } = getLogs('Landing');
 
 export class Landing {
     private readonly disposed$ = new Subject<void>();

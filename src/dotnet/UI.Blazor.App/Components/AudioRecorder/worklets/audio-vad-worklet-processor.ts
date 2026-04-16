@@ -9,9 +9,9 @@ import { AudioRingBuffer } from '../audio-ring-buffer';
 import { AudioVadWorker } from '../workers/audio-vad-worker-contract';
 import { AudioVadWorklet } from './audio-vad-worklet-contract';
 import { AudioDiagnosticsState } from '../audio-recorder';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { logScope, warnLog } = Log.get('AudioVadWorkletProcessor');
+const { logScope, warnLog } = getLogs('AudioVadWorkletProcessor');
 
 export interface AudioVadProcessorOptions {
     sampleRate: number;

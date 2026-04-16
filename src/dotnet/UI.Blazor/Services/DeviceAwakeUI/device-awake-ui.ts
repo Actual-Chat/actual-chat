@@ -1,7 +1,7 @@
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { OnDeviceAwake } from 'on-device-awake';
 
-const { errorLog } = Log.get('DeviceAwakeUI');
+const { errorLog } = getLogs('DeviceAwakeUI');
 
 export class DeviceAwakeUI {
     private static backendRef: DotNet.DotNetObject;

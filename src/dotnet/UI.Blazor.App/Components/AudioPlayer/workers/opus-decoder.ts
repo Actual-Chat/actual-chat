@@ -12,10 +12,10 @@ import { AsyncProcessor } from 'async-processor';
 import { rpcClient, rpcClientServer, RpcNoWait, rpcNoWait } from 'rpc';
 import { FeederAudioWorklet } from '../worklets/feeder-audio-worklet-contract';
 import { ObjectPool } from 'object-pool';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { BufferHandler } from './opus-decoder-worker-contract';
 
-const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusDecoder');
+const { logScope, debugLog, warnLog, errorLog } = getLogs('OpusDecoder');
 const enableFrequentDebugLog = false;
 
 /// #if MEM_LEAK_DETECTION

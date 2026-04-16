@@ -1,7 +1,7 @@
 import Heap from 'heap-js';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { errorLog } = Log.get('TimerQueue');
+const { errorLog } = getLogs('TimerQueue');
 
 export class TimerQueueTimer {
     constructor(

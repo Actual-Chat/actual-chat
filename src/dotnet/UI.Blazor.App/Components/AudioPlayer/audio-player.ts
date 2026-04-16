@@ -13,7 +13,7 @@ import { OpusDecoderWorker } from './workers/opus-decoder-worker-contract';
 import { catchErrors, PromiseSource } from 'promises';
 import { rpcClient, rpcNoWait } from 'rpc';
 import { Versioning } from 'versioning';
-import { Log } from 'logging';
+import { Log, getLogs } from 'logging';
 import { ObjectPool } from 'object-pool';
 import { Resettable } from 'resettable';
 import { AudioInitializer } from '../../Services/audio-initializer';
@@ -21,7 +21,7 @@ import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-inf
 import { AudioVideoSync } from 'audio-video-sync';
 import { ServerClock } from 'server-clock';
 
-const { logScope, debugLog, warnLog } = Log.get('AudioPlayer');
+const { logScope, debugLog, warnLog } = getLogs('AudioPlayer');
 
 const EnableFrequentDebugLog = false;
 

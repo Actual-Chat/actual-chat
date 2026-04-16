@@ -1,12 +1,12 @@
 import { NoSleep } from './nosleep/nosleep';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { DocumentEvents } from 'event-handling';
 import { filter, exhaustMap, tap, concatMap } from 'rxjs';
 import { getOrInheritData } from 'dom-helpers';
 import { BrowserInfo } from '../BrowserInfo/browser-info';
 import { DeviceInfo } from 'device-info';
 
-const { debugLog, errorLog } = Log.get('KeepAwakeUI');
+const { debugLog, errorLog } = getLogs('KeepAwakeUI');
 
 const noSleep = new NoSleep();
 

@@ -12,10 +12,10 @@ import { preventDefaultForEvent } from 'event-handling';
 import { MarkupEditor } from '../MarkupEditor/markup-editor';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 import { localSettings } from '../../../UI.Blazor/Services/Settings/local-settings';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { AttachmentWebFilePicker, AttachmentWebFilePickerBackend, PickFileResult } from './attachment-web-file-picker';
 
-const { debugLog, warnLog } = Log.get('MessageEditor');
+const { debugLog, warnLog } = getLogs('MessageEditor');
 
 export type PanelMode = 'Normal' | 'Narrow';
 

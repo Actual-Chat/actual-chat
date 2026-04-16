@@ -1,8 +1,8 @@
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { OnDeviceAwake } from 'on-device-awake';
 import { SvgCache } from '../../Components/Avatar/svg-cache';
 
-const { infoLog } = Log.get('DebugUI');
+const { infoLog } = getLogs('DebugUI');
 
 interface BlazorEventDescriptor {
     eventName: string;

@@ -18,7 +18,7 @@ import { OpusEncoderProcessorOptions } from './worklets/opus-encoder-worklet-pro
 import { AudioInitializer } from '../../Services/audio-initializer';
 import { AudioDiagnosticsState } from './audio-recorder';
 import { RecorderStateServer } from './opus-media-recorder-contracts';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { Interactive } from 'interactive';
 import { DeviceInfo } from 'device-info';
 import { AudioVadProcessorOptions } from './worklets/audio-vad-worklet-processor';
@@ -49,7 +49,7 @@ import { ServerClock } from 'server-clock';
                                    └─────────────┘
  */
 
-const { logScope, infoLog, debugLog, warnLog, errorLog } = Log.get('OpusMediaRecorder');
+const { logScope, infoLog, debugLog, warnLog, errorLog } = getLogs('OpusMediaRecorder');
 
 /** Trait that manages the recording pipeline (VAD + encoder worklets) */
 class RecordingPipelineTrait implements AudioContextTrait {

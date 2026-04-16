@@ -1,11 +1,11 @@
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { delayAsync, OperationCancelledError, PromiseSource } from 'promises';
 import { BrowserInit } from '../BrowserInit/browser-init';
 import { SessionTokens } from '../Security/session-tokens';
 import { ConnectivityUI } from '../ConnectivityUI/connectivity-ui';
 import { IFileUpload, IUploadStreamSource } from './web-uploads';
 
-const { debugLog, warnLog, errorLog } = Log.get('FileUpload');
+const { debugLog, warnLog, errorLog } = getLogs('FileUpload');
 
 type ProgressReporter = (progressPercent: number) => void;
 

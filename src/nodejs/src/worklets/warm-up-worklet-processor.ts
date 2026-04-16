@@ -1,7 +1,7 @@
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { timerQueue } from 'timerQueue';
 
-const { warnLog } = Log.get('WarmUpAudioWorkletProcessor');
+const { warnLog } = getLogs('WarmUpAudioWorkletProcessor');
 
 /**
  * Produces silence. We use the worklet to warm up a browser's audio pipeline.

@@ -1,5 +1,6 @@
-import { Log } from 'logging';
-const { debugLog } = Log.get('InertialScroll');
+import { getLogs } from 'logging';
+
+const { debugLog } = getLogs('InertialScroll');
 
 export class InertialScroll {
     private overflowBackup: string;

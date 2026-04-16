@@ -1,4 +1,4 @@
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { initVideoRpc, getStreamServerClient, disconnectVideoRpc } from '../../Services/Video/streaming-rpc-client';
 import type { VideoFrameDto } from '../../Services/Video/streaming-rpc-service';
 import { fastRaf } from 'fast-raf';
@@ -49,7 +49,7 @@ import {
     type StreamEndpoints,
 } from '../../Services/Video/workers/stream-channel';
 
-const { debugLog, warnLog, errorLog } = Log.get('VideoPlayer');
+const { debugLog, warnLog, errorLog } = getLogs('VideoPlayer');
 
 // Skip-to-live: client detects high latency and re-requests stream from next keyframe
 const SKIP_TO_LIVE_THRESHOLD_MS = 3000; // Matches Constants.Video.SkipToLiveThresholdMs

@@ -3,8 +3,9 @@
 import { fromEvent, Subject, takeUntil } from 'rxjs';
 import { stopEvent } from 'event-handling';
 
-import { Log } from 'logging';
-const { debugLog } = Log.get('LandingLeftMenu');
+import { getLogs } from 'logging';
+
+const { debugLog } = getLogs('LandingLeftMenu');
 
 export class LandingLeftMenu {
     private readonly disposed$ = new Subject<void>();

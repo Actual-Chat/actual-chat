@@ -1,7 +1,7 @@
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { OperationCancelledError, cancelled, type Cancelled, PromiseSource, delayAsync } from 'promises';
 
-const { warnLog } = Log.get('ResilientStream');
+const { warnLog } = getLogs('ResilientStream');
 
 // --- Retry delay sequences ---
 

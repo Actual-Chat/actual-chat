@@ -5,9 +5,9 @@
 
 import * as ort from 'onnxruntime-web';
 import { WebGPUManager } from './webgpu-manager.js';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { warnLog } = Log.get('VideoSegmentation');
+const { warnLog } = getLogs('VideoSegmentation');
 
 // WebGPU state (shared through WebGPUManager)
 let device: GPUDevice | null = null;

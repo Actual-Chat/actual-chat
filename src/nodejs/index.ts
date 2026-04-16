@@ -8,8 +8,9 @@ import './styles/index.css';
 import { register } from 'swiper/element/bundle';
 register();
 
-// Logging init
-import 'logging-init';
+// Logging init — touching the module triggers @actuallab/core's
+// initLogging() (lazy on first Log.get) and registers the global controller.
+import 'logging';
 // FontSize & Theme init
 import { FontSizes } from 'font-sizes';
 import { Theme } from 'theme';

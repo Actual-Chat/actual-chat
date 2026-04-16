@@ -23,13 +23,13 @@ import type {
     VideoProcessingStats,
 } from '../workers/video-processing-worker-contract';
 import { Versioning } from 'versioning';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { SessionTokens } from '../../../../UI.Blazor/Services/Security/session-tokens';
 import { ServerClock } from 'server-clock';
 import type { Subscription } from 'rxjs';
 import { RecorderStateHub } from '../../../Components/AudioRecorder/recorder-state-hub';
 
-const { debugLog, infoLog, warnLog, errorLog } = Log.get('VideoPipeline');
+const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
 
 export interface PipelineConfig {
     encoderConfig: EncoderConfig;

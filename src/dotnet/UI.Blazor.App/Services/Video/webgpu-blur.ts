@@ -7,9 +7,9 @@ import {
     ensureStagingReady,
     startReadbackWithCallback,
 } from './webgpu-yuv-converter.js';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { infoLog, warnLog } = Log.get('VideoSegmentation');
+const { infoLog, warnLog } = getLogs('VideoSegmentation');
 
 let device: GPUDevice | null = null;
 let sampler: GPUSampler;

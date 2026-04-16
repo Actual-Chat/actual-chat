@@ -1,7 +1,7 @@
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { EventHandlerSet } from 'event-handling';
 
-const { debugLog, errorLog } = Log.get('DelayedInvoker');
+const { debugLog, errorLog } = getLogs('DelayedInvoker');
 
 export class DelayedInvoker {
     private callbacks: (() => void | Promise<void>)[] = [];

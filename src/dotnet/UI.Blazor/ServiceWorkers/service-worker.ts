@@ -6,10 +6,10 @@ import { registerRoute, Route } from 'workbox-routing';
 import { CacheFirst } from 'workbox-strategies';
 import { ExpirationPlugin } from 'workbox-expiration';
 import { CacheableResponsePlugin } from 'workbox-cacheable-response';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { stopEvent } from 'event-handling';
 
-const { debugLog, infoLog } = Log.get('ServiceWorker');
+const { debugLog, infoLog } = getLogs('ServiceWorker');
 // @ts-expect-error intentional
 self.__WB_DISABLE_DEV_LOGS = true; // disable workbox dev logs
 

@@ -4,9 +4,9 @@
  */
 
 import type { EncodedChunkData } from './webcodecs-encoder';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { infoLog, warnLog, errorLog } = Log.get('VideoDecoder');
+const { infoLog, warnLog, errorLog } = getLogs('VideoDecoder');
 
 export interface DecoderConfig {
   codec: string;

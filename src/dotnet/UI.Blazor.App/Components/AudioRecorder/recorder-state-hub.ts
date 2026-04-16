@@ -3,9 +3,9 @@
 import { Observable, Subject } from 'rxjs';
 import { debounce, PromiseSource } from 'promises';
 import { RecorderState } from './opus-media-recorder-contracts';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { debugLog } = Log.get('AudioRecorder');
+const { debugLog } = getLogs('AudioRecorder');
 
 const RecordingFailedInterval = 500;
 

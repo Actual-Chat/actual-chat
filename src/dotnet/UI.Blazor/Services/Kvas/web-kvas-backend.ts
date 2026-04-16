@@ -2,9 +2,9 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { BrowserInit } from '../BrowserInit/browser-init';
 import { Kvas } from 'kvas';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { warnLog } = Log.get('KvasBackend');
+const { warnLog } = getLogs('KvasBackend');
 
 export class WebKvasBackend {
     private readonly _whenInitialized: Promise<void>;

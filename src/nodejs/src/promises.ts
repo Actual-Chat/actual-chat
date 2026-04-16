@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-type-parameters,@typescript-eslint/no-explicit-any */
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { PreciseTimeout, Timeout } from 'timeout';
 import { Disposable } from 'disposable';
 
-const { logScope, debugLog, warnLog, errorLog } = Log.get('promises');
+const { logScope, debugLog, warnLog, errorLog } = getLogs('promises');
 
 export class TimedOut {
     public static readonly instance: TimedOut = new TimedOut();

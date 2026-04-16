@@ -3,9 +3,9 @@
  * Frame resize, YUV conversion, and H.264 codec description utilities.
  */
 
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { infoLog, warnLog } = Log.get('VideoPipeline');
+const { infoLog, warnLog } = getLogs('VideoPipeline');
 
 /** Detect if description bytes are in avcC (H.264 decoder configuration record) format. */
 export function isAvcCDescription(desc: ArrayBuffer): boolean {

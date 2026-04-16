@@ -10,9 +10,9 @@ import { AudioDiagnosticsState } from '../audio-recorder';
 import { OpusEncoderWorklet } from './opus-encoder-worklet-contract';
 import { OpusEncoderWorker } from '../workers/opus-encoder-worker-contract';
 import { RecorderStateServer } from '../opus-media-recorder-contracts';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusEncoderWorkletProcessor');
+const { logScope, debugLog, warnLog, errorLog } = getLogs('OpusEncoderWorkletProcessor');
 
 export interface OpusEncoderProcessorOptions {
     timeSlice: number;

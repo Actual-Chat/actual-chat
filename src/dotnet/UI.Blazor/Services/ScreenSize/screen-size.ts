@@ -8,9 +8,9 @@ import {
     Observable,
     Subject,
 } from 'rxjs';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { debugLog, errorLog } = Log.get('ScreenSize');
+const { debugLog, errorLog } = getLogs('ScreenSize');
 
 export type Size = 'Unknown' | 'Small' | 'Medium' | 'Large' | 'ExtraLarge' | 'ExtraLarge2';
 

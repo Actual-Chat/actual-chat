@@ -1,9 +1,9 @@
 /* eslint-disable */
 import { PromiseSource } from 'promises';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { BrowserInfo } from '../BrowserInfo/browser-info';
 
-const { infoLog } = Log.get('History');
+const { infoLog } = getLogs('History');
 
 export class History {
     private static backendRef: DotNet.DotNetObject = null!;

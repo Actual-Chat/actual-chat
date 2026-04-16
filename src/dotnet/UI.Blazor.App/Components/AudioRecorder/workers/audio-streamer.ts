@@ -9,9 +9,9 @@ import { RpcHub, RpcClientPeer, RpcStream } from 'actuallab-rpc';
 import { StreamServerDef, type AudioFrameDto } from '../../../Services/Video/streaming-rpc-service';
 import { ServerClock } from 'server-clock';
 import { WorkerConnectivityUI } from './worker-connectivity-ui';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { debugLog, infoLog, warnLog } = Log.get('AudioStreamer');
+const { debugLog, infoLog, warnLog } = getLogs('AudioStreamer');
 const bufferPool: ObjectPool<ArrayBufferLike> = new ObjectPool<ArrayBufferLike>(
     () => new ArrayBuffer(AE.FRAME_BUFFER_BYTES)
 ).expandTo(20);

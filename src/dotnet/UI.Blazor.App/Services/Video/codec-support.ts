@@ -3,10 +3,10 @@
  * Detects which video codecs are supported by the browser
  */
 
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
 
-const { debugLog, warnLog, errorLog } = Log.get('VideoPipeline');
+const { debugLog, warnLog, errorLog } = getLogs('VideoPipeline');
 
 export interface CodecInfo {
     name: string;

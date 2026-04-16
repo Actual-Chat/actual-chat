@@ -1,7 +1,6 @@
 import { arrow, computePosition, flip, offset, Placement, shift, autoUpdate } from '@floating-ui/dom';
 import { Subject, debounceTime, startWith, takeUntil, fromEvent } from 'rxjs';
-import { Log } from 'logging';
-
+import { getLogs } from 'logging';
 interface BubbleModel {
     bubbleRef: string;
     triggerElement: HTMLElement;
@@ -15,7 +14,7 @@ interface BubbleModel {
     total?: number;
 }
 
-const { debugLog, warnLog } = Log.get('BubbleHost');
+const { debugLog, warnLog } = getLogs('BubbleHost');
 
 export class BubbleHost {
     private readonly mutationObserver: MutationObserver;

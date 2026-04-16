@@ -9,7 +9,7 @@
 
 import Denque from 'denque';
 import { EventHandlerSet } from 'event-handling';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { RpcHub, RpcClientPeer, RpcStream } from 'actuallab-rpc';
 import {
     StreamServerDef,
@@ -17,7 +17,7 @@ import {
     type VideoFrameDto,
 } from '../streaming-rpc-service';
 
-const { debugLog, infoLog, warnLog, errorLog } = Log.get('VideoPipeline');
+const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
 
 /** Serialization format for Fusion RPC push. Matches the pull side. */
 const RPC_SERIALIZATION_FORMAT = 'msgpack6';

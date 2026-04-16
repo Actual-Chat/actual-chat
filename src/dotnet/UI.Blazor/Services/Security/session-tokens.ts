@@ -1,8 +1,8 @@
 import { EventHandlerSet } from 'event-handling';
 import { opusMediaRecorder } from '../../../UI.Blazor.App/Components/AudioRecorder/opus-media-recorder';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { debugLog } = Log.get('SessionTokens');
+const { debugLog } = getLogs('SessionTokens');
 
 export class SessionTokens {
     public static readonly headerName = 'Session';

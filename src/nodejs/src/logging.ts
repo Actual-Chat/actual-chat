@@ -1,135 +1,236 @@
-import { initLogging, LogLevel, LogScope } from 'logging-init';
-import 'logging-init';
+// Single source of truth for app-wide TypeScript logging.
+//
+// Re-exports the underlying API from @actuallab/core (synced into
+// ./actuallab-core/) and adds the app's typed scope union plus per-scope
+// defaults.  Use getLogs() at call sites:
+//
+//   import { getLogs } from 'logging';
+//   const { debugLog, warnLog } = getLogs('AudioPlayer');
+//
+// Runtime overrides are still available via the dev-console controller:
+//   logLevels.override('AudioPlayer', 1)        // Debug
+//   logLevels.overrideAll('Audio', 1)           // every scope starting with 'Audio'
+//   logLevels.dump()                            // table of every known scope
+//   logLevels.reset()                           // back to package defaults
+//
+// To force a scope to Debug for development, change its entry in `defaults`
+// below — that's the package-default; user overrides via logLevels.override
+// take precedence and persist in sessionStorage.
 
-export { LogLevel } from './logging-init';
-export type { LogScope } from './logging-init';
+import {
+    createLogProvider,
+    Log,
+    LogLevel,
+} from 'actuallab-core';
 
-export interface LogRef {
-    target : unknown;
-    id : number;
-}
+export { Log, LogLevel } from './actuallab-core/index.js';
+export type { LogRef, LogScopeFns } from './actuallab-core/index.js';
 
-interface SetItem {
-    ref : LogRef;
-    touchedAt : number;
-}
+// All known app-level log scopes.  No prefix — scopes are flat strings.
+// (The 'rpc.' prefix used by @actuallab/rpc keeps its scopes from clashing
+// with anything declared here.)
+export type LogScope =
+    | 'default'
+    // Library
+    | 'AsyncProcessor'
+    | 'BrowserInfo'
+    | 'BrowserInit'
+    | 'BubbleHost'
+    | 'ConnectivityUI'
+    | 'DelayedInvoker'
+    | 'FileUpload'
+    | 'EmojiPreview'
+    | 'EventHandling'
+    | 'Gestures'
+    | 'InertialScroll'
+    | 'NoSleep'
+    | 'History'
+    | 'Interactive'
+    | 'Kvas'
+    | 'KvasBackend'
+    | 'MenuHost'
+    | 'ModalHost'
+    | 'OnDeviceAwake'
+    | 'promises'
+    | 'ResilientStream'
+    | 'Rpc'
+    | 'RecaptchaHandler'
+    | 'ScreenSize'
+    | 'ServiceWorker'
+    | 'SessionTokens'
+    | 'TimerQueue'
+    | 'UndoStack'
+    | 'Versioning'
+    | 'VirtualList'
+    // XxxUI
+    | 'DebugUI'
+    | 'DeviceAwakeUI'
+    | 'FocusUI'
+    | 'InteractiveUI'
+    | 'KeepAwakeUI'
+    | 'LanguageUI'
+    | 'NotificationUI'
+    | 'TuneUI'
+    | 'UserActivityUI'
+    | 'VibrationUI'
+    | 'Share'
+    // Audio
+    | 'AudioContextRef'
+    | 'AudioContextSource'
+    | 'AudioContextTraits'
+    | 'AudioInfo'
+    // Audio playback
+    | 'AudioPlayer'
+    | 'FallbackPlayback'
+    | 'OpusDecoder'
+    | 'OpusDecoderWorker'
+    | 'FeederNode'
+    | 'FeederProcessor'
+    | 'SoundsPlayer'
+    // Audio recording
+    | 'AudioRecorder'
+    | 'AudioStreamer'
+    | 'OpusMediaRecorder'
+    | 'AudioVadWorker'
+    | 'AudioVadWorkletProcessor'
+    | 'OpusEncoderWorkletProcessor'
+    | 'OpusEncoderWorker'
+    | 'WarmUpAudioWorkletProcessor'
+    | 'WebRtcAec'
+    // Isolated components
+    | 'Attachments'
+    | 'ChatMessageEditor'
+    | 'CodeBlockMarkupView'
+    | 'CopyTrigger'
+    | 'FontSizes'
+    | 'Landing'
+    | 'LandingLeftMenu'
+    | 'MarkupEditor'
+    | 'MessageEditor'
+    | 'SearchPanel'
+    | 'SideNav'
+    | 'SelectionHost'
+    | 'TextBox'
+    | 'Theme'
+    | 'TooltipHost'
+    | 'UserInterface'
+    | 'VideoPanel'
+    | 'AudioVideoSync'
+    | 'VideoPlayer'
+    | 'VideoRecorder'
+    | 'VideoStreamingPreview'
+    | 'VideoPipeline'
+    | 'VideoEncoder'
+    | 'VideoDecoder'
+    | 'VideoSegmentation'
+    | 'VisualMediaViewer'
+    | 'WebAuth'
+    | 'WebFileProvider';
 
-interface LogRefData {
-    __logRefId?: number;
-}
+// Per-scope defaults.  Most are Warn (quiet by default); video scopes are
+// Debug for ongoing latency troubleshooting (preserved from the previous
+// logging-init.ts reset() block).
+const defaults: Record<LogScope, LogLevel> = {
+    default: LogLevel.Warn,
+    // Library
+    AsyncProcessor: LogLevel.Warn,
+    BrowserInfo: LogLevel.Warn,
+    BrowserInit: LogLevel.Warn,
+    BubbleHost: LogLevel.Warn,
+    ConnectivityUI: LogLevel.Warn,
+    DelayedInvoker: LogLevel.Warn,
+    FileUpload: LogLevel.Warn,
+    EmojiPreview: LogLevel.Warn,
+    EventHandling: LogLevel.Warn,
+    Gestures: LogLevel.Warn,
+    InertialScroll: LogLevel.Warn,
+    NoSleep: LogLevel.Warn,
+    History: LogLevel.Warn,
+    Interactive: LogLevel.Warn,
+    Kvas: LogLevel.Warn,
+    KvasBackend: LogLevel.Warn,
+    MenuHost: LogLevel.Warn,
+    ModalHost: LogLevel.Warn,
+    OnDeviceAwake: LogLevel.Warn,
+    promises: LogLevel.Warn,
+    ResilientStream: LogLevel.Warn,
+    Rpc: LogLevel.Warn,
+    RecaptchaHandler: LogLevel.Warn,
+    ScreenSize: LogLevel.Warn,
+    ServiceWorker: LogLevel.Warn,
+    SessionTokens: LogLevel.Warn,
+    TimerQueue: LogLevel.Warn,
+    UndoStack: LogLevel.Warn,
+    Versioning: LogLevel.Warn,
+    VirtualList: LogLevel.Warn,
+    // XxxUI
+    DebugUI: LogLevel.Warn,
+    DeviceAwakeUI: LogLevel.Warn,
+    FocusUI: LogLevel.Warn,
+    InteractiveUI: LogLevel.Warn,
+    KeepAwakeUI: LogLevel.Warn,
+    LanguageUI: LogLevel.Warn,
+    NotificationUI: LogLevel.Warn,
+    TuneUI: LogLevel.Warn,
+    UserActivityUI: LogLevel.Warn,
+    VibrationUI: LogLevel.Warn,
+    Share: LogLevel.Warn,
+    // Audio
+    AudioContextRef: LogLevel.Warn,
+    AudioContextSource: LogLevel.Warn,
+    AudioContextTraits: LogLevel.Warn,
+    AudioInfo: LogLevel.Warn,
+    // Audio playback
+    AudioPlayer: LogLevel.Warn,
+    FallbackPlayback: LogLevel.Warn,
+    OpusDecoder: LogLevel.Warn,
+    OpusDecoderWorker: LogLevel.Warn,
+    FeederNode: LogLevel.Warn,
+    FeederProcessor: LogLevel.Warn,
+    SoundsPlayer: LogLevel.Warn,
+    // Audio recording
+    AudioRecorder: LogLevel.Warn,
+    AudioStreamer: LogLevel.Warn,
+    OpusMediaRecorder: LogLevel.Warn,
+    AudioVadWorker: LogLevel.Warn,
+    AudioVadWorkletProcessor: LogLevel.Warn,
+    OpusEncoderWorkletProcessor: LogLevel.Warn,
+    OpusEncoderWorker: LogLevel.Warn,
+    WarmUpAudioWorkletProcessor: LogLevel.Warn,
+    WebRtcAec: LogLevel.Warn,
+    // Isolated components
+    Attachments: LogLevel.Warn,
+    ChatMessageEditor: LogLevel.Warn,
+    CodeBlockMarkupView: LogLevel.Warn,
+    CopyTrigger: LogLevel.Warn,
+    FontSizes: LogLevel.Warn,
+    Landing: LogLevel.Warn,
+    LandingLeftMenu: LogLevel.Warn,
+    MarkupEditor: LogLevel.Warn,
+    MessageEditor: LogLevel.Warn,
+    SearchPanel: LogLevel.Warn,
+    SideNav: LogLevel.Warn,
+    SelectionHost: LogLevel.Warn,
+    TextBox: LogLevel.Warn,
+    Theme: LogLevel.Warn,
+    TooltipHost: LogLevel.Warn,
+    UserInterface: LogLevel.Warn,
+    // Video — Debug for latency troubleshooting (preserved from old reset())
+    VideoPanel: LogLevel.Debug,
+    AudioVideoSync: LogLevel.Debug,
+    VideoPlayer: LogLevel.Debug,
+    VideoRecorder: LogLevel.Warn,
+    VideoStreamingPreview: LogLevel.Warn,
+    VideoPipeline: LogLevel.Debug,
+    VideoEncoder: LogLevel.Warn,
+    VideoDecoder: LogLevel.Warn,
+    VideoSegmentation: LogLevel.Warn,
+    VisualMediaViewer: LogLevel.Warn,
+    WebAuth: LogLevel.Warn,
+    WebFileProvider: LogLevel.Warn,
+};
 
-class LogRefSet {
-    items : SetItem[];
-    capacity : number;
-    idSeed : number;
+export const getLogs = createLogProvider<LogScope>('', defaults);
 
-    constructor(capacity : number) {
-        this.idSeed = 0;
-        this.capacity = capacity;
-        this.items = [];
-    }
-
-    public ref(data: object) : LogRef {
-        const itemIndex = this.items.findIndex(el => el.ref.target === data);
-        if (itemIndex >= 0) {
-            const existentItem = this.items[itemIndex];
-            existentItem.touchedAt = Date.now();
-            return existentItem.ref;
-        }
-        else {
-            const id = (data as LogRefData).__logRefId ?? this.idSeed++;
-            const newRef = { target: data, id };
-            (data as LogRefData).__logRefId = id;
-            if (this.items.length >= this.capacity)
-                this.removeOldest();
-            const newItem = { ref : newRef, touchedAt : Date.now() };
-            this.items.push(newItem);
-            return newRef;
-        }
-    }
-
-    private removeOldest() {
-        let indexToEliminate = 0;
-        let itemToEliminate = this.items[0];
-        for (let i = 1; i < this.items.length; i++) {
-            const item = this.items[i];
-            if (item.touchedAt < itemToEliminate.touchedAt) {
-                itemToEliminate = item;
-                indexToEliminate = i;
-            }
-        }
-        this.items.splice(indexToEliminate, 1);
-        // clear log ref target to prevent memory leaks
-        // and keep string representation of the target for tracing
-        const ref = itemToEliminate.ref;
-        ref.target = ref.target?.toString();
-    }
-}
-
-export class Log {
-    private static isInitialized = false;
-    private static logRefs : LogRefSet = new LogRefSet(10);
-    public static readonly minLevels: Map<LogScope, LogLevel> = new Map<LogScope, LogLevel>();
-    public static defaultMinLevel = LogLevel.Info;
-    public log: (...data: unknown[]) => void;
-    public trace: (...data: unknown[]) => void;
-
-    constructor(
-        public readonly scope: LogScope,
-        public readonly level: LogLevel,
-    ) {
-        const prefix = `[${scope}]`;
-        switch (level) {
-        case LogLevel.Debug:
-            this.log = (...data: unknown[]) => console.debug(prefix, ...data);
-            break;
-        case LogLevel.Info:
-            this.log = (...data: unknown[]) => console.log(prefix, ...data);
-            break;
-        case LogLevel.Warn:
-            this.log = (...data: unknown[]) => console.warn(prefix, ...data);
-            break;
-        case LogLevel.Error:
-            this.log = (...data: unknown[]) => console.error(prefix, ...data);
-            break;
-        case LogLevel.None:
-            throw new Error('LogLevel.None cannot be used here');
-        }
-        this.trace = (...data: unknown[]) => console.trace(prefix, ...data);
-    }
-
-    public static loggerFactory = (scope: LogScope, level: LogLevel) => new Log(scope, level);
-
-    public static get(scope: LogScope) {
-        if (!this.isInitialized) {
-            this.isInitialized = true;
-            initLogging();
-        }
-
-        const minLevels = this.minLevels;
-        const minLevel = minLevels.get(scope)
-            ?? minLevels.get('default')
-            ?? this.defaultMinLevel;
-
-        const getLogger = (level: LogLevel) => level >= minLevel ? this.loggerFactory(scope, level) : null;
-
-        return {
-            logScope: scope,
-            debugLog: getLogger(LogLevel.Debug),
-            infoLog: getLogger(LogLevel.Info),
-            warnLog: getLogger(LogLevel.Warn),
-            errorLog: getLogger(LogLevel.Error),
-        };
-    }
-
-    public static ref(data: object | null | undefined) : object | null | undefined {
-        if (!data)
-            return data;
-        return this.logRefs.ref(data);
-    }
-
-    public assert(predicate?: boolean, ...data: unknown[]): void {
-        if (!predicate)
-            this.log(data);
-    }
-}
+// `Log` is referenced statically, so make sure logging is initialized.
+void Log.get('default');

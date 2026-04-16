@@ -1,9 +1,9 @@
 import { Disposable } from 'disposable';
 import { Subject, takeUntil, debounceTime, fromEvent } from 'rxjs';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { setupMobileKeyboardHandler } from 'dom-helpers';
 
-const { debugLog } = Log.get('TextBox');
+const { debugLog } = getLogs('TextBox');
 
 export class TextBox implements Disposable {
     private disposed$: Subject<void> = new Subject<void>();

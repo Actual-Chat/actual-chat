@@ -9,12 +9,12 @@ import { Observable, Subject } from 'rxjs';
 import { Versioning } from 'versioning';
 import { BrowserInfo } from '../../UI.Blazor/Services/BrowserInfo/browser-info';
 import { AudioContextTrait, AttachedAudioContextTrait, DestinationFallbackTrait, DemandInteractiveUI } from './audio-context-traits';
-import { Log } from 'logging';
+import { Log, getLogs } from 'logging';
 import { AudioInitializer, BackgroundActivityState } from './audio-initializer';
 import { Disposable } from 'disposable';
 import { DeviceInfo } from 'device-info';
 
-const { logScope, infoLog, debugLog, warnLog } = Log.get('AudioContextSource');
+const { logScope, infoLog, debugLog, warnLog } = getLogs('AudioContextSource');
 
 const MaintainCyclePeriodMs = 3000;
 const MaxResumeTimeMs = 2000;

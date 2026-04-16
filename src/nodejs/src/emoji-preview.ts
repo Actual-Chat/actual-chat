@@ -1,11 +1,11 @@
 import { DocumentEvents } from 'event-handling';
 import { Timeout } from 'timeout';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { fromEvent } from 'rxjs';
 import { fastRaf } from 'fast-raf';
 import { Tune, TuneUI } from '../../dotnet/UI.Blazor/Services/TuneUI/tune-ui';
 
-const { debugLog } = Log.get('EmojiPreview');
+const { debugLog } = getLogs('EmojiPreview');
 
 const LONG_PRESS_DELAY_MS = 300;
 const HOVER_DELAY_MS = 500;

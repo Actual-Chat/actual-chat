@@ -2,9 +2,9 @@ import { tryQueryPermissionState } from 'permissions';
 import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
 import { DeviceInfo } from 'device-info';
 import { OpusMediaRecorder } from './opus-media-recorder';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { debugLog, errorLog } = Log.get('AudioRecorder');
+const { debugLog, errorLog } = getLogs('AudioRecorder');
 export class WebMicrophonePermissionHandler {
 
     /** Called from Blazor  */

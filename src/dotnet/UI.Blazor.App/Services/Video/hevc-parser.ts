@@ -4,9 +4,9 @@
  * according to ISO/IEC 14496-15
  */
 
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { infoLog, warnLog, errorLog } = Log.get('VideoDecoder');
+const { infoLog, warnLog, errorLog } = getLogs('VideoDecoder');
 
 export interface HEVCParameterSets {
   vps: Uint8Array[];  // Video Parameter Sets (NAL type 32)

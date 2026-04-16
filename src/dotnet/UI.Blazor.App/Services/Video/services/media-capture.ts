@@ -1,6 +1,6 @@
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { infoLog } = Log.get('VideoRecorder');
+const { infoLog } = getLogs('VideoRecorder');
 
 export interface CameraCaptureOptions {
     deviceId?: string;

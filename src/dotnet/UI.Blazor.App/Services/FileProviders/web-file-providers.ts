@@ -1,13 +1,13 @@
 import { deleteFileHandle, getFileHandle, saveFileHandle } from './file-handle-storage';
 import { grantFileUploadPermissionsInvoker, requestFileHandlePermission, GetFilePermissionsRequest } from './file-handle-permissions';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { PromiseSource } from 'promises';
 import { v4 as uuidv4 } from 'uuid';
 import { NullableJSObjectReference } from 'UI.Blazor/JSRuntime/nullable-js-object-reference';
 import { AttachmentWebFilePickerRegistry } from '../../Components/ChatMessageEditor/attachment-web-file-picker';
 import type { IUploadStreamSource } from '../../../UI.Blazor/Services/FileUploads/web-uploads';
 
-const { errorLog } = Log.get('WebFileProvider');
+const { errorLog } = getLogs('WebFileProvider');
 
 interface CreateWebFileProviderResult {
     previewUrl: string;

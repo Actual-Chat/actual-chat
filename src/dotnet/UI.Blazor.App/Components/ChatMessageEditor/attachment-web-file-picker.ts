@@ -1,10 +1,10 @@
 // TODO: Fix ESLint errors
 /* eslint-disable @typescript-eslint/no-misused-promises, @typescript-eslint/no-unused-vars */
 import { Tune, TuneUI } from '../../../UI.Blazor/Services/TuneUI/tune-ui';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { fromEvent, Subject, takeUntil } from 'rxjs';
 
-const { errorLog } = Log.get('Attachments');
+const { errorLog } = getLogs('Attachments');
 
 function hasShowOpenFilePicker(
     win: Window

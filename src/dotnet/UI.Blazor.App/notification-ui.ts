@@ -1,11 +1,11 @@
 // TODO: remove eslint-disable and fix errors
 /* eslint-disable @typescript-eslint/no-floating-promises,@typescript-eslint/prefer-promise-reject-errors,@typescript-eslint/no-misused-promises,@typescript-eslint/require-await,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-assignment */
 import { getMessaging, getToken, deleteToken, GetTokenOptions, onMessage } from 'firebase/messaging';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { HostKind } from '../UI.Blazor/Services/BrowserInfo/browser-info';
 import { BrowserInit } from '../UI.Blazor/Services/BrowserInit/browser-init';
 
-const { debugLog, warnLog, errorLog } = Log.get('NotificationUI');
+const { debugLog, warnLog, errorLog } = getLogs('NotificationUI');
 
 export class NotificationUI {
     private static backendRef?: DotNet.DotNetObject;

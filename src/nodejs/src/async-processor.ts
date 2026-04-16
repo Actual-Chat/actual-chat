@@ -1,8 +1,8 @@
 import Denque from 'denque';
 import { PromiseSource } from 'promises';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 
-const { debugLog, errorLog } = Log.get('AsyncProcessor');
+const { debugLog, errorLog } = getLogs('AsyncProcessor');
 
 export class AsyncProcessor<T> {
     private readonly queue = new Denque<T>();

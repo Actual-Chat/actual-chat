@@ -1,10 +1,10 @@
 import { PromiseSource, PromiseSourceWithTimeout } from 'promises';
 import { audioContextSource, AppAudioContext, AudioContextAction } from '../../../UI.Blazor.App/Services/audio-context-source';
 import { DestinationFallbackTrait } from '../../../UI.Blazor.App/Services/audio-context-traits';
-import { Log } from 'logging';
+import { getLogs } from 'logging';
 import { AUDIO_PLAY as AP } from '_constants';
 
-const { debugLog, warnLog } = Log.get('SoundsPlayer');
+const { debugLog, warnLog } = getLogs('SoundsPlayer');
 const DEFAULT_COOLDOWN = 3; // 3s
 const SILENCE_URL = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
 
