@@ -631,7 +631,7 @@ jobs:
     name: Deploy ios app package to apple app store for ${{ github.ref_name }}
     # release branch can build for both dev and prod envs while other branches can build only for dev env
     if: ${{ needs.calc-pkg-params.outputs.MUST_BUILD_PACKAGE == 'true' }}
-    runs-on: macos-15
+    runs-on: macos-26
     needs:
       - build-ios-pkg
       - calc-pkg-params
