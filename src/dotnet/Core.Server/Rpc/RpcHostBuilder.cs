@@ -1,3 +1,4 @@
+using System.Net.WebSockets;
 using ActualChat.Hosting;
 using ActualChat.Rpc.Internal;
 using ActualLab.Fusion.Server;
@@ -6,6 +7,7 @@ using ActualLab.Rpc;
 using ActualLab.Rpc.Clients;
 using ActualLab.Rpc.Middlewares;
 using ActualLab.Rpc.Server;
+using ActualLab.Rpc.WebSockets;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -282,6 +284,12 @@ public readonly struct RpcHostBuilder
             return oldFactory.Invoke() with {
                 ConnectionUriResolver = helpers.GetConnectionUri,
                 UseAutoFrameDelayerFactory = isApiHost, // Only for API host!
+                WebSocketOwnerFactory = static peer => {
+                    var ws = new ClientWebSocket();
+                    // Explicitly disable permessage-deflate for backend RPC connections
+                    ws.Options.DangerousDeflateOptions = null;
+                    return new WebSocketOwner(peer.Ref.ToString(), ws, peer.Hub.Services);
+                },
             };
         });
 
