@@ -125,10 +125,15 @@ export class WebCodecsEncoder {
         //   (VAD-reduced path, static screencast). Without this, retention can hold
         //   no keyframe and late-joining receivers can't start decoding.
         const nowMs = performance.now();
+        // Seed the wall-clock baseline on first encode so the first keyframe is
+        // also bounded by maxKeyFrameIntervalMs. Without this the cap only kicks
+        // in after the first frame-count-triggered keyframe, leaving startup
+        // unbounded when capture is slow.
+        if (this.lastKeyFrameTimeMs === 0)
+            this.lastKeyFrameTimeMs = nowMs;
         const shouldBeKeyFrame = forceKeyFrame
             || (this.frameCount - this.lastKeyFrame >= this.config.keyframeInterval)
             || (this.config.maxKeyFrameIntervalMs != null
-                && this.lastKeyFrameTimeMs > 0
                 && nowMs - this.lastKeyFrameTimeMs >= this.config.maxKeyFrameIntervalMs);
 
         if (shouldBeKeyFrame) {
