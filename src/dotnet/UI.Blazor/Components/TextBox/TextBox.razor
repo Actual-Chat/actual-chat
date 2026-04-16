@@ -39,13 +39,13 @@
     }
 </div>
 @if (showClearButton) {
-    <ButtonRound
-        Class="btn-xs btn-transparent text-box-btn"
+    <HeaderButton
+        Class="btn-sm text-box-btn"
         Click="@OnClearClick"
         data-tooltip="Clear"
         data-tooltip-position="@(FloatingPosition.Top.ToPositionString())">
-        <i class="icon-close text-xl"></i>
-    </ButtonRound>
+        <i class="icon-close"></i>
+    </HeaderButton>
 }
 
 @code {

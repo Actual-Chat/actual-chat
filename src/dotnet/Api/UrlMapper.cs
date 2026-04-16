@@ -21,6 +21,12 @@ public sealed partial class UrlMapper
     private static readonly char[] UriPathEndChar = ['#', '?'];
     private static readonly string[] ExtensionsToExclude = [".gif"];
 
+    // Trusted hosts whose GIFs we auto-render as <img>. Anything else falls back to
+    // a plain link to avoid turning arbitrary URLs into tracking pixels.
+    private static readonly HashSet<string> TrustedGifHosts = new(StringComparer.OrdinalIgnoreCase) {
+        "static.klipy.com",
+    };
+
     private readonly string _baseUrlWithoutBackslash;
 
     public Uri BaseUri { get; }
@@ -69,6 +75,14 @@ public sealed partial class UrlMapper
 
     public static bool IsAbsolute(string url)
         => IsAbsoluteUrlRegex.IsMatch(url);
+
+    // True if `url` is a https GIF on an allowlisted host (rendered as <img> via image proxy).
+    public static bool IsTrustedGifUrl(string url)
+        => !url.IsNullOrEmpty()
+            && url.EndsWith(".gif", StringComparison.OrdinalIgnoreCase)
+            && Uri.TryCreate(url, UriKind.Absolute, out var uri)
+            && uri.Scheme == Uri.UriSchemeHttps
+            && TrustedGifHosts.Contains(uri.Host);
 
     public static string GetWebSocketUrl(string url)
     {
@@ -155,6 +169,18 @@ public sealed partial class UrlMapper
         var sMaxWidth = maxWidth?.Format();
         var sMaxHeight = maxHeight?.Format();
         return $"{ImageProxyBaseUrl}{sMaxWidth}x{sMaxHeight}/{imageUrl}";
+    }
+
+    // Returns absolute URL routed through the image proxy in passthrough mode (no resize).
+    // Used for GIFs where animation must be preserved — willnorris/imageproxy treats "0"
+    // as "no transformation", so the original bytes are streamed as-is.
+    // Returns "" if image proxy is not available — caller should fall back to a plain link.
+    public string GifProxyUrl(string gifUrl)
+    {
+        if (!HasImageProxy || gifUrl.IsNullOrEmpty())
+            return "";
+
+        return $"{ImageProxyBaseUrl}0/{gifUrl}";
     }
 
     // Returns absolute URL

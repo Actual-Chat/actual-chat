@@ -69,25 +69,31 @@ body.hoverable .emoji-modal .c-item:hover,
     @apply flex-none;
     @apply mx-2 mt-2;
 }
+/* Two independent flex columns instead of CSS multi-column.
+   Multi-column rebalances ALL items when content changes, which makes the user's
+   hover target shuffle to a different GIF mid-click. With independent columns,
+   items keep their slot and new pages strictly append at the bottom of each column. */
 .emoji-modal .c-gif-grid {
+    @apply flex items-start gap-1;
     @apply p-2;
-    columns: 2;
-    column-gap: 0.25rem;
+}
+.emoji-modal .c-gif-col {
+    @apply flex-1 flex-y gap-1;
+    @apply min-w-0;
 }
 .emoji-modal .c-gif-item {
     @apply block;
     @apply w-full;
-    @apply mb-1;
     @apply rounded-lg;
     @apply overflow-hidden;
     @apply cursor-pointer;
-    break-inside: avoid;
 }
 body.hoverable .emoji-modal .c-gif-item:hover {
     @apply opacity-80;
 }
 .emoji-modal .c-gif-img {
-    @apply w-full;
+    @apply block;
+    @apply w-full h-auto;
     @apply rounded-lg;
 }
 .emoji-modal .c-gif-status {
