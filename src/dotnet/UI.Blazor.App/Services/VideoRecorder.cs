@@ -184,11 +184,10 @@ public sealed class VideoRecorder : IAsyncDisposable
                     preset.Level, preset.Width, preset.Height, preset.Bitrate, preset.IsKeyFrameRequested);
                 // Only reconfigure when the server actually changes the preset.
                 // On the first iteration we know nothing about network/CPU yet, so the
-                // default "High" preset is noise — seed lastAppliedPreset silently and
-                // keep the resolution we started with. Reconfiguring here would churn
-                // the encoder (reconfigure recreates the RPC stream and mints a new
-                // StreamId, so receiver PLIs get lost) and override screencast's
-                // user-picked resolution.
+                // default "High" preset is noise — seed lastAppliedPreset silently.
+                // Applies to both webcam and screencast: every stream adapts to
+                // server-driven quality decisions; the startup noise is filtered by
+                // the "first iteration" seed, not by StreamKind.
                 if (lastAppliedPreset == null)
                     lastAppliedPreset = preset;
                 else {
@@ -196,7 +195,7 @@ public sealed class VideoRecorder : IAsyncDisposable
                         || lastAppliedPreset.Width != preset.Width
                         || lastAppliedPreset.Height != preset.Height
                         || lastAppliedPreset.Bitrate != preset.Bitrate;
-                    if (qualityChanged && Kind != StreamKind.Screencast) {
+                    if (qualityChanged) {
                         await _jsRef.InvokeVoidAsync("reconfigure", cancellationToken,
                             preset.Level.ToString(), preset.Width, preset.Height, preset.Bitrate).ConfigureAwait(false);
                         lastAppliedPreset = preset;
