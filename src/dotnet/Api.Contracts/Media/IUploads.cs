@@ -53,7 +53,7 @@ public sealed partial record Uploads_ConvertToMediaRef(
     [property: DataMember, MemoryPackOrder(1)] UploadId UploadId
 ) : ISessionCommand<MediaRef>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Uploads_StartProcessUpload(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
