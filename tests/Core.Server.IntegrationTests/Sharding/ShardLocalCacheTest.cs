@@ -252,10 +252,64 @@ public class ShardLocalCacheTest(ITestOutputHelper @out)
         await cts.CancelAsync();
         await evictionTask.SilentAwait(false);
 
-        // assert — evicted entries should no longer be in cache
+        // assert — redistribution must leave at least one entry stale,
+        // and evicted entries must no longer be in cache
         WriteLine($"Populated: {populatedKeys.Count}, Evicted: {evictedKeys.Count}");
+        evictedKeys.Should().NotBeEmpty("shard redistribution should leave some entries stale");
         foreach (var key in evictedKeys)
             cache.GetLocal(key).Should().BeNull();
+    }
+
+    [Fact(Timeout = 30_000)]
+    public async Task ConcurrentGetOrAddDoesNotLeakValues()
+    {
+        // arrange
+        await using var host = await NewAppHost();
+        var shardOwner = host.Services.ShardOwner(ShardScheme.TestBackend);
+
+        var factoryCallCount = 0;
+        var evictedCount = 0;
+        var cache = new ShardLocalCache<string, DisposableValue>(
+            shardOwner,
+            (_, _) => {
+                Interlocked.Increment(ref factoryCallCount);
+                return new DisposableValue(() => Interlocked.Increment(ref evictedCount));
+            });
+
+        // Pre-resolve ownership once — keeps the race to the inner GetOrAdd logic only.
+        await cache.GetOrAdd("race-key", addDependency: false, CancellationToken.None);
+        cache.TryRemove("race-key", out _);
+        factoryCallCount = 0;
+        evictedCount = 0;
+
+        // act — many threads race on the same key. Use dedicated threads + a barrier
+        // to maximise contention without starving the thread pool.
+        const int concurrency = 32;
+        using var barrier = new Barrier(concurrency);
+        var results = new DisposableValue[concurrency];
+        var threads = new Thread[concurrency];
+        for (var i = 0; i < concurrency; i++) {
+            var idx = i;
+            threads[i] = new Thread(() => {
+                barrier.SignalAndWait();
+                results[idx] = cache.GetOrAdd("race-key", addDependency: false, CancellationToken.None)
+                    .AsTask().GetAwaiter().GetResult();
+            });
+            threads[i].Start();
+        }
+        foreach (var t in threads)
+            t.Join();
+
+        WriteLine($"factoryCallCount={factoryCallCount}, evictedCount={evictedCount}, distinct={results.Distinct().Count()}");
+
+        // assert — every caller must observe the single winning instance
+        results.Distinct().Should().HaveCount(1,
+            "every caller must get the entry that ends up in the cache");
+
+        // every factory-created loser must have been evicted to prevent leaks
+        // winners: exactly 1 (currently in the cache); losers: factoryCallCount - 1
+        evictedCount.Should().Be(factoryCallCount - 1,
+            "losing values from racing factory invocations must be evicted");
     }
 
     // Nested types

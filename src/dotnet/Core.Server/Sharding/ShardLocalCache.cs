@@ -31,14 +31,11 @@ public sealed class ShardLocalCache<TKey, TValue>
     {
         var ownership = _shardOwner.RequireShardOwnership(key, addDependency, cancellationToken);
         return ownership.IsCompleted
-            ? GetOrAdd(key, ownership.Result)
+            ? new ValueTask<TValue>(GetOrAdd(key, ownership.Result))
             : CompleteAsync(key, ownership);
 
         async ValueTask<TValue> CompleteAsync(TKey k, ValueTask<ShardOwnership> ownershipTask)
-        {
-            var o = await ownershipTask.ConfigureAwait(false);
-            return GetOrAdd(k, o).Result;
-        }
+            => GetOrAdd(k, await ownershipTask.ConfigureAwait(false));
     }
 
     public TValue? GetLocal(TKey key)
@@ -77,18 +74,40 @@ public sealed class ShardLocalCache<TKey, TValue>
 
     // Private methods
 
-    private ValueTask<TValue> GetOrAdd(TKey key, ShardOwnership ownership)
+    private TValue GetOrAdd(TKey key, ShardOwnership ownership)
     {
-        if (_entries.TryGetValue(key, out var entry) && ReferenceEquals(entry.Ownership, ownership))
-            return new(entry.Value);
+        // CAS retry loop: concurrent callers may race here, and only one write to _entries
+        // must win per (key, ownership). We use TryAdd / TryUpdate (optimistic) so that
+        // the dictionary slot is updated only if it still matches what we observed.
+        // A losing CAS means another thread produced a winning entry — we dispose our
+        // unused value and retry from the top, where we'll either (a) see the winner with
+        // matching ownership and return its value, or (b) see a still-stale entry and try
+        // to replace it again.
+        while (true) {
+            if (_entries.TryGetValue(key, out var entry)) {
+                if (ReferenceEquals(entry.Ownership, ownership))
+                    return entry.Value;
 
-        // Stale or missing — evict old entry if present, create new
-        if (entry != null)
-            EvictEntry(key, entry);
+                // Stale — try to replace atomically
+                var newValue = _factory(key, ownership);
+                var newEntry = new Entry(newValue, ownership);
+                if (_entries.TryUpdate(key, newEntry, entry)) {
+                    EvictValue(key, entry.Value);
+                    return newValue;
+                }
+                // Lost the race — discard freshly-made value and retry
+                EvictValue(key, newValue);
+                continue;
+            }
 
-        var value = _factory(key, ownership);
-        _entries[key] = new Entry(value, ownership);
-        return new(value);
+            var addedValue = _factory(key, ownership);
+            var addedEntry = new Entry(addedValue, ownership);
+            if (_entries.TryAdd(key, addedEntry))
+                return addedValue;
+
+            // Lost the race — discard and retry
+            EvictValue(key, addedValue);
+        }
     }
 
     private void EvictEntry(TKey key, Entry entry)
