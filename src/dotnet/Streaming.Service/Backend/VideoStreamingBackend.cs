@@ -56,7 +56,6 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         var filter = new VideoStreamFilter(
             LatencyStore.GetPeerMaxTemporalLayer,
             (sid, ct) => Computed.Capture(() => GetQualityPreset(sid, ct), ct),
-            (sid, ct) => RequestKeyFrame(sid, ct),
             Log);
         return new RpcStream<VideoFrame>(filter.Apply(streamId, peerId, skipTo, stream, cancellationToken)) {
             AckPeriod = Constants.Video.StreamAckPeriod,
