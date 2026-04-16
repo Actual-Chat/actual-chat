@@ -18,11 +18,11 @@ public abstract class ThrottledFlow : Flow<string>
     // Persisted state
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
-    public int SuccessCount { get; protected set; }
+    public int SuccessCount { get; set; }
     [DataMember(Order = 2), MemoryPackOrder(2)]
-    public int FailCount { get; protected set; }
+    public int FailCount { get; set; }
     [DataMember(Order = 1), MemoryPackOrder(1)]
-    public Moment NextRunAt { get; protected set; }
+    public Moment NextRunAt { get; set; }
 
     // Overridable methods
 

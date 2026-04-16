@@ -1,6 +1,5 @@
 using System.Buffers;
 using ActualChat.Queues.Internal;
-using ActualLab.IO;
 using ActualLab.Locking;
 using NATS.Client.Core;
 using NATS.Client.JetStream;
@@ -10,11 +9,16 @@ namespace ActualChat.Queues.Nats;
 
 public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options, NatsQueues, INatsJSMsg<IMemoryOwner<byte>>>
 {
-    private const byte FormatVersion = 2;
+    // Wire format:
+    // - v2: 1-byte version + MemoryPack-encoded uuid + TypeDecorating(MemoryPack)-encoded command
+    // - v3: 1-byte version + MessagePack-encoded uuid + TypeDecorating(MessagePack)-encoded command
+    // We always write v3, but still read v2 to drain in-flight messages from older publishers.
+    private const byte FormatVersion = 3;
     private static readonly byte[] FormatVersionBytes = [FormatVersion];
-    private static readonly IByteSerializer Serializer = MemoryPackByteSerializer.Default;
-    private static readonly IByteSerializer TypeDecoratingSerializer
-        = new TypeDecoratingByteSerializer(MemoryPackByteSerializer.Default);
+    private static readonly IByteSerializer SerializerV2 = MemoryPackByteSerializer.Default;
+    private static readonly IByteSerializer SerializerV3 = MessagePackByteSerializer.Default;
+    private static readonly IByteSerializer TypeDecoratingSerializerV2 = MemoryPackByteSerializer.DefaultTypeDecorating;
+    private static readonly IByteSerializer TypeDecoratingSerializerV3 = MessagePackByteSerializer.DefaultTypeDecorating;
 
     private readonly AsyncLockSet<int> _getStreamLocks = new();
     private readonly AsyncLockSet<int> _getConsumerLock = new();
@@ -426,25 +430,22 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
             throw StandardError.Internal("No data to deserialize.");
 
         var dataMemory = data.Memory;
-        var dataSpan = dataMemory.Span;
-        var formatVersion = dataSpan[0];
-
-        switch (formatVersion) {
-        case 2: {
-            var uuid = (string)Serializer.Read(dataMemory[1..], typeof(string), out var ulidLength)!;
-            var command = (ICommand)TypeDecoratingSerializer.Read(dataMemory[(1 + ulidLength)..], typeof(ICommand), out _)!;
-            return QueuedCommand.NewUntyped(command, uuid, message.Headers?.AsReadOnly(), queues);
-        }
-        default:
-            throw StandardError.Internal($"Unsupported format version: {formatVersion}.");
-        }
+        var formatVersion = dataMemory.Span[0];
+        var (serializer, typeDecoratingSerializer) = formatVersion switch {
+            2 => (SerializerV2, TypeDecoratingSerializerV2),
+            3 => (SerializerV3, TypeDecoratingSerializerV3),
+            _ => throw StandardError.Internal($"Unsupported format version: {formatVersion}."),
+        };
+        var uuid = (string)serializer.Read(dataMemory[1..], typeof(string), out var uuidLength)!;
+        var command = (ICommand)typeDecoratingSerializer.Read(dataMemory[(1 + uuidLength)..], typeof(ICommand), out _)!;
+        return QueuedCommand.NewUntyped(command, uuid, message.Headers?.AsReadOnly(), queues);
     }
 
     private static void Serialize(ArrayPoolBuffer<byte> buffer, QueuedCommand queuedCommand)
     {
         var command = queuedCommand.UntypedCommand;
         buffer.Write(FormatVersionBytes);
-        Serializer.Write(buffer, queuedCommand.Uuid, typeof(string));
-        TypeDecoratingSerializer.Write(buffer, command, command.GetType()); // Command itself
+        SerializerV3.Write(buffer, queuedCommand.Uuid, typeof(string));
+        TypeDecoratingSerializerV3.Write(buffer, command, command.GetType()); // Command itself
     }
 }

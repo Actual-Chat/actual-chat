@@ -27,12 +27,13 @@
     <NoWarn>$(NoWarn);1701;1702;CS8604</NoWarn>
     <!-- CA1034: Do not nest type -->
     <!-- CA1822: Member can be marked as static -->
+    <!-- CA1849: Task.Wait() / Task.Result synchronously blocks -->
     <!-- CA1859: Use a concrete type instead of interface for improved performance -->
     <!-- CA1861: Prefer 'static readonly' fields over constant array arguments -->
     <!-- CA2007: Consider calling ConfigureAwait on the awaited task -->
     <!-- CA2016: Forward the CancellationToken parameter to methods that take one -->
     <!-- CA2025: Do not pass 'IDisposable' instances into unawaited tasks -->
-    <NoWarn>$(NoWarn);CA1034;CA1822;CA1859;CA1861;CA2007;CA2016;CA2025</NoWarn>
+    <NoWarn>$(NoWarn);CA1034;CA1822;CA1849;CA1859;CA1861;CA2007;CA2016;CA2025</NoWarn>
     <!-- MA0004: Use Task.ConfigureAwait(false) -->
     <NoWarn>$(NoWarn);MA0004</NoWarn>
     <!-- RCS1090: Call 'ConfigureAwait(false)' -->

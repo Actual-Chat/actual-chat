@@ -1,5 +1,4 @@
 using ActualChat.Audio;
-using ActualChat.Chat;
 using ActualChat.Live;
 using ActualChat.Testing.Host;
 using ActualChat.Video;
@@ -13,6 +12,7 @@ public class LiveBackendRedisStateTest(AppHostFixture fixture, ITestOutputHelper
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private RedisDb<StreamingContext> RedisDb => AppHost.Services.GetRequiredService<RedisDb<StreamingContext>>();
+    private IByteSerializer RedisHashStoreSerialalizer => MessagePackByteSerializer.Default;
 
     // --- Audio ---
 
@@ -343,7 +343,7 @@ public class LiveBackendRedisStateTest(AppHostFixture fixture, ITestOutputHelper
         var result = new Dictionary<string, TValue>(entries.Length, StringComparer.Ordinal);
         foreach (var entry in entries) {
             var field = entry.Name.ToString();
-            var value = MemoryPackSerializer.Deserialize<TValue>((byte[])entry.Value!);
+            var value = (TValue?)RedisHashStoreSerialalizer.Read((byte[])entry.Value!, typeof(TValue), out _);
             if (value != null)
                 result[field] = value;
         }

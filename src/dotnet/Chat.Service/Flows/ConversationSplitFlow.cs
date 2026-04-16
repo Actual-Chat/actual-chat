@@ -22,17 +22,17 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
     // Flow state
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
-    public ExtractorState? ExtractorState { get; private set; }
+    public ExtractorState? ExtractorState { get; set; }
     [DataMember(Order = 1), MemoryPackOrder(1)]
-    public long LastLid { get; private set; }
+    public long LastLid { get; set; }
     [DataMember(Order = 2), MemoryPackOrder(2)]
-    public Moment LastRunAt { get; private set; }
+    public Moment LastRunAt { get; set; }
     [DataMember(Order = 3), MemoryPackOrder(3)]
-    public Moment LastSummaryAt { get; private set; }
+    public Moment LastSummaryAt { get; set; }
     [DataMember(Order = 4), MemoryPackOrder(4)]
-    public Range<long>[] LastSummaryRanges { get; private set; } = [];
+    public Range<long>[] LastSummaryRanges { get; set; } = [];
     [DataMember(Order = 5), MemoryPackOrder(5)]
-    public FlowReadiness LastReadiness { get; private set; }
+    public FlowReadiness LastReadiness { get; set; }
 
     private async ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken)
     {

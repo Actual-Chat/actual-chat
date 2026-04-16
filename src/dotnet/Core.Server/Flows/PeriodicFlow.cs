@@ -9,11 +9,11 @@ public abstract class PeriodicFlow : Flow<string>
 
     // Persisted state
     [DataMember(Order = 0), MemoryPackOrder(0)]
-    public int RunCount { get; protected set; }
+    public int RunCount { get; set; }
     [DataMember(Order = 1), MemoryPackOrder(1)]
-    public Moment LastRunAt { get; protected set; }
+    public Moment LastRunAt { get; set; }
     [DataMember(Order = 2), MemoryPackOrder(2)]
-    public FlowReadiness LastReadiness { get; protected set; }
+    public FlowReadiness LastReadiness { get; set; }
 
     // Overridable methods
 

@@ -24,6 +24,11 @@ public sealed class ExternalContactHasher
             .ToBase64HashString(HashAlgorithm.SHA256Xor);
 }
 
+// IMPORTANT: Do NOT remove MemoryPack support from this type.
+// Its hash is content-addressed via MemoryPack bytes (see ExternalContactHasher.Compute).
+// Switching the serializer would invalidate every previously stored hash and trigger
+// a full re-detection pass for all external contacts.
+// This type is backend-only, so the MemoryPack dependency does not leak to clients.
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true, AllowPrivate = true)]
 internal sealed partial record HashedExternalContact
 {

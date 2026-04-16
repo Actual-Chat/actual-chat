@@ -4,7 +4,7 @@ using ActualChat.Flows;
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
 
 [Flow(DelayQuanta = 0)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial class FailingThrottledUpdateFlow : ThrottledUpdateFlow
 {
     /// <summary>

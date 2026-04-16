@@ -4,7 +4,7 @@ using StreamingContext = ActualChat.Streaming.Db.StreamingContext;
 namespace ActualChat.Streaming;
 
 /// <summary>
-/// A thin wrapper around a Redis Hash that stores MemoryPack-serialized values
+/// A thin wrapper around a Redis Hash that stores MessagePack-serialized values
 /// keyed by <c>{prefix}:{chatId}</c>.
 /// Each mutation refreshes the key's TTL so the hash self-expires when the chat becomes inactive.
 /// </summary>
@@ -12,21 +12,26 @@ internal sealed class RedisHashStore<TValue>(
     RedisDb<StreamingContext> redisDb,
     string keyPrefix,
     TimeSpan ttl,
-    ILogger log)
+    ILogger? log = null)
 {
+    private ILogger? Log { get; } = log;
+
+    public IByteSerializer Serializer { get; init; } = MessagePackByteSerializer.Default;
+
     /// <summary>Sets or overwrites a field in the hash and refreshes the TTL.</summary>
     public async Task<bool> SetField(ChatId chatId, string field, TValue value)
     {
         try {
             var db = await redisDb.Database.Get().ConfigureAwait(false);
             var key = GetKey(chatId);
-            var bytes = MemoryPackSerializer.Serialize(value);
+            using var buffer = Serializer.Write(value, typeof(TValue));
+            var bytes = buffer.WrittenSpan.ToArray();
             await db.HashSetAsync(key, field, bytes).ConfigureAwait(false);
             await db.KeyExpireAsync(key, ttl).ConfigureAwait(false);
             return true;
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            log.LogWarning(e, "Redis SetField failed for {KeyPrefix}:{ChatId}/{Field}", keyPrefix, chatId, field);
+            Log?.LogWarning(e, "Redis SetField failed for {KeyPrefix}:{ChatId}/{Field}", keyPrefix, chatId, field);
             return false;
         }
     }
@@ -42,7 +47,7 @@ internal sealed class RedisHashStore<TValue>(
             return deleted;
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            log.LogWarning(e, "Redis RemoveField failed for {KeyPrefix}:{ChatId}/{Field}", keyPrefix, chatId, field);
+            Log?.LogWarning(e, "Redis RemoveField failed for {KeyPrefix}:{ChatId}/{Field}", keyPrefix, chatId, field);
             return false;
         }
     }
@@ -57,12 +62,12 @@ internal sealed class RedisHashStore<TValue>(
         foreach (var entry in entries) {
             var field = entry.Name.ToString();
             try {
-                var value = MemoryPackSerializer.Deserialize<TValue>((byte[])entry.Value!);
+                var value = (TValue?)Serializer.Read((byte[])entry.Value!, typeof(TValue), out _);
                 if (value != null)
                     result[field] = value;
             }
             catch (Exception e) when (e is not OperationCanceledException) {
-                log.LogWarning(e, "Redis deserialization failed for {KeyPrefix}:{ChatId}/{Field}, skipping stale entry",
+                Log?.LogWarning(e, "Redis deserialization failed for {KeyPrefix}:{ChatId}/{Field}, skipping stale entry",
                     keyPrefix, chatId, field);
             }
         }
@@ -77,7 +82,7 @@ internal sealed class RedisHashStore<TValue>(
             await db.KeyDeleteAsync(GetKey(chatId)).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            log.LogWarning(e, "Redis DeleteKey failed for {KeyPrefix}:{ChatId}", keyPrefix, chatId);
+            Log?.LogWarning(e, "Redis DeleteKey failed for {KeyPrefix}:{ChatId}", keyPrefix, chatId);
         }
     }
 

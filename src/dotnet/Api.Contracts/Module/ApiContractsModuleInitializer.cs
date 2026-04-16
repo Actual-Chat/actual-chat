@@ -13,6 +13,9 @@ internal static class ApiContractsModuleInitializer
     {
         // This type initializer sets all super-early defaults
 
+        // Default binary serializer
+        ByteSerializer.Default = MessagePackByteSerializer.Default;
+
         // Session.Factory & Validator
 #pragma warning disable CA2000
         Session.Factory = DefaultSessionFactory.New(new RandomStringGenerator(24, Alphabet.AlphaNumericDash.Symbols));
@@ -35,8 +38,6 @@ internal static class ApiContractsModuleInitializer
         // Rpc - API version
         RpcDefaults.ApiVersion = RpcDefaults.BackendVersion = ApiConstants.Version;
 #if false
-        // Default binary serializer
-        ByteSerializer.Default = MessagePackByteSerializer.Default;
         // Default caching settings
         ComputedOptions.ClientDefault = ComputedOptions.ClientDefault with {
             CacheMode = RemoteComputedCacheMode.NoCache,

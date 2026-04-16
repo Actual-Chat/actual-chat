@@ -5,15 +5,15 @@ using ActualLab.Rpc;
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
 
 [Flow(ResumeTimeout = 60, DataVersion = 2)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class TimerFlow : Flow<Unit>
 {
     private static bool _threwRerouteException;
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
-    public int RemainingCount { get; private set; }
+    public int RemainingCount { get; set; }
     [DataMember(Order = 1), MemoryPackOrder(1)]
-    public TimeSpan Period { get; private set; }
+    public TimeSpan Period { get; set; }
 
     protected override ValueTask Init(CancellationToken cancellationToken)
     {

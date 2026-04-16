@@ -60,12 +60,7 @@ public class KvasSerializer : ByteSerializerBase
         object? value,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type)
     {
-#if USE_MESSAGEPACK_IN_KVAS
         bufferWriter.Write(MessagePackHeader);
         MessagePackSerializer.Write(bufferWriter, value, type);
-#else
-        bufferWriter.Write(MemoryPackHeader);
-        MemoryPackSerializer.Write(bufferWriter, value, type);
-#endif
     }
 }

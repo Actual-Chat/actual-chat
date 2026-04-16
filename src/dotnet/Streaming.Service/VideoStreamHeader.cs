@@ -22,7 +22,4 @@ public partial class VideoStreamHeader(
 
     [DataMember, MemoryPackOrder(4)]
     public StreamId? AudioStreamId { get; init; } = audioStreamId;
-
-    public byte[] Serialize()
-        => MemoryPackSerializer.Serialize(this);
 }

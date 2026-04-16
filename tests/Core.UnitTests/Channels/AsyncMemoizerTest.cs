@@ -1006,7 +1006,7 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
 
         // Read all items from the channel and verify none are null
         var items = new List<object>();
-        while (await channel.Reader.WaitToReadAsync().ConfigureAwait(false))
+        while (await channel.Reader.WaitToReadAsync())
         while (channel.Reader.TryRead(out var item))
             items.Add(item);
 

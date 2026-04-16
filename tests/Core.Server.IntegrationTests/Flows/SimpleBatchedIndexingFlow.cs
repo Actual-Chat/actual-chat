@@ -2,7 +2,7 @@ using ActualChat.Flows;
 
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class SimpleBatchedIndexingFlow : BatchedIndexingFlow<SimpleItem, ChatId>
 {
     public const int BatchSizeOverride = 3;

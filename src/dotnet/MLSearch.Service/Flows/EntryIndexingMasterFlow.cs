@@ -9,7 +9,7 @@ public partial class EntryIndexingMasterFlow
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
 
     [DataMember(Order = 5), MemoryPackOrder(5)]
-    public long MaxVersion { get; private set; }
+    public long MaxVersion { get; set; }
 
     protected override ValueTask Init(CancellationToken cancellationToken)
     {
