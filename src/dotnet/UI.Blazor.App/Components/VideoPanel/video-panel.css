@@ -132,10 +132,27 @@ body.wide .video-panel.expanded:has(.video-panel-chat) > .c-container {
 }
 .video-panel .video-panel-header .c-center {
     @apply flex-y items-center justify-center;
-    @apply h-12;
-    @apply px-2;
-    @apply rounded-2xl;
+    @apply min-h-12 max-w-48;
+    @apply px-8 py-1;
+    @apply rounded-none;
     @apply text-caption-1 text-white;
+    @apply overflow-hidden;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.60);
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        var(--black-10) 35%,
+        var(--black-10) 65%,
+        transparent 100%
+    );
+}
+.video-panel .video-panel-header .c-center .c-member-name {
+    @apply text-text-1 font-semibold leading-tight;
+    @apply max-w-full;
+    @apply truncate;
+}
+.video-panel .video-panel-header .c-center .c-member-count {
+    @apply font-normal leading-tight text-white;
 }
 .video-panel .video-panel-footer {
     @apply pb-4;
@@ -196,15 +213,6 @@ body.device-mobile.narrow .video-panel.expanded .video-panel-content.video-panel
     }
 }
 
-body.device-mobile.narrow .video-panel.expanded .video-track-player.item-focused .video-participant-label {
-    left: calc(var(--vp-safe-left) + 1rem);
-    bottom: 1rem;
-}
-@media (orientation: landscape) {
-    body.device-mobile.narrow .video-panel.expanded .video-track-player.item-focused .video-participant-label {
-        left: 1rem;
-    }
-}
 .video-panel.expanded:has(.video-panel-chat:not(.chat-hidden)) .video-panel-toolbar {
     right: calc(var(--video-panel-chat-width) + 0.5rem);
 }
@@ -374,6 +382,10 @@ body.wide .video-panel-content .video-track-player.item-x {
     text-overflow: ellipsis;
 }
 body.narrow .video-panel-content .video-track-player.item-x .video-participant-label {
+    @apply hidden;
+}
+/* Focused video shows the participant name in the header (.c-center), hide the in-video label */
+.video-panel.expanded .video-track-player.item-focused .video-participant-label {
     @apply hidden;
 }
 

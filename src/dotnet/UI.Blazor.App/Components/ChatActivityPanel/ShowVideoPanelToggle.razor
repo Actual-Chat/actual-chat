@@ -9,7 +9,7 @@
     StopPropagation="true"
     PreventDefault="true"
     Click="@(() => OnToggleVideoPanel(!isVisible))">
-    @if (isVisible) {
+    @if (!isVisible) {
         <i class="icon-video-expand"></i>
     } else {
         <i class="icon-video-collapse"></i>
