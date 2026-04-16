@@ -25,7 +25,9 @@
 }
 
 @if (_chatIdToRender is not null) {
-    <VideoPanelContent ChatId="@_chatIdToRender" IsClosing="@_isClosing" OnClosed="@OnContentClosed" />
+    <ErrorBarrier Name="VideoPanel" Kind="ErrorBarrierKind.Medium">
+        <VideoPanelContent ChatId="@_chatIdToRender" IsClosing="@_isClosing" OnClosed="@OnContentClosed" />
+    </ErrorBarrier>
 }
 
 @code {
@@ -35,6 +37,7 @@
     private ChatId? _lastWatchingChatId;
 
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private IChats Chats => Hub.Chats;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
@@ -50,6 +53,11 @@
         var chatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken);
         if (chatId is null)
             return new Model(null, false);
+
+        // Ensure have access to the chat.
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat is null)
+            return new Model(null, false); // If not, do not show the video panel.
 
         var watchingChatId = await ChatVideoUI.GetWatchingChatId(cancellationToken).ConfigureAwait(false);
         var isWatching = watchingChatId == chatId;

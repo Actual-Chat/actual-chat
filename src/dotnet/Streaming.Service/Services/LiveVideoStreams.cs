@@ -18,7 +18,9 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         CancellationToken cancellationToken)
     {
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
-        chatRules.Require(ChatPermissions.Read);
+        if (!chatRules.Has(ChatPermissions.Read))
+            return [];
+
         var result = await Backend.List(chatId, cancellationToken).ConfigureAwait(false);
         Log.LogWarning("ListActiveStreams(session, {ChatId}): returning {Count} streams", chatId, result.Count);
         return result;
@@ -31,7 +33,9 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         CancellationToken cancellationToken)
     {
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
-        chatRules.Require(ChatPermissions.Read);
+        if (!chatRules.Has(ChatPermissions.Read))
+            return 0;
+
         return await Backend.GetVideoStreamMemberCount(chatId, cancellationToken).ConfigureAwait(false);
     }
 
