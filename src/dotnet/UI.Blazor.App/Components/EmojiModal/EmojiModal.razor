@@ -1,5 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @implements IModalView<EmojiModal.Model>
+@implements IDisposable
 @inherits ComponentBase<AppUIHub>
 
 <DialogFrame
@@ -29,17 +30,26 @@
             </Tab>
             <Tab Id="gif" Title="GIF" Order="1">
                 <div class="c-gif-tab">
-                    <SearchBox Placeholder="Search GIFs..." TextChanged="@OnGifSearch"/>
+                    <SearchBox Placeholder="Search GIFs..." ClearButton="true" TextChanged="@OnGifSearch"/>
                     <div class="c-gif-grid">
-                        @foreach (var gif in _gifItems) {
-                            <button @key="gif.Slug"
-                                    class="c-gif-item"
-                                    @onclick="@(() => OnGifClick(gif))">
-                                <img class="c-gif-img"
-                                     src="@gif.PreviewUrl"
-                                     alt=""
-                                     loading="lazy"/>
-                            </button>
+                        @* Round-robin into two independent columns by index parity.
+                           Stable: item N always lands in the same column regardless of how many pages loaded.
+                           New pages append strictly at the bottom of each column. *@
+                        @for (var col = 0; col < 2; col++) {
+                            var columnIndex = col;
+                            <div @key="@columnIndex" class="c-gif-col">
+                                @foreach (var gif in EnumerateColumn(columnIndex)) {
+                                    <button @key="gif.Slug"
+                                            class="c-gif-item"
+                                            @onclick="@(() => OnGifClick(gif))">
+                                        <img class="c-gif-img"
+                                             src="@gif.PreviewUrl"
+                                             alt=""
+                                             loading="lazy"
+                                             style="@GetAspectRatioStyle(gif)"/>
+                                    </button>
+                                }
+                            </div>
                         }
                     </div>
                     @if (_isLoading) {
@@ -57,10 +67,12 @@
 
 @code {
     private readonly List<GifItem> _gifItems = new();
+    private readonly CancellationTokenSource _disposeCts = new();
     private CancellationTokenSource? _searchCts;
     private TabPanel? _tabPanel;
     private string _searchQuery = "";
     private int _page = 1;
+    private int _searchVersion;
     private bool _hasNext;
     private bool _isLoading;
     private bool _gifsLoaded;
@@ -95,49 +107,106 @@
         _page = 1;
         _gifItems.Clear();
         _hasNext = false;
-        _searchCts?.Cancel();
-        _searchCts = new CancellationTokenSource();
+        _showEmpty = false;
+        SwapSearchCts();
+        var ct = _searchCts!.Token; // capture before await — _searchCts can be swapped again
 
         try {
-            await Task.Delay(300, _searchCts.Token).ConfigureAwait(true);
+            await Task.Delay(300, ct).ConfigureAwait(true);
             await LoadGifs().ConfigureAwait(true);
         }
         catch (OperationCanceledException) { }
     }
 
     private async Task LoadMoreGifs() {
+        if (_isLoading)
+            return; // guard against double-click while a request is in flight
         _page++;
         await LoadGifs().ConfigureAwait(true);
     }
 
     private async Task LoadGifs() {
+        // Snapshot per-request state. Anything mutated after `await` must be guarded by
+        // `version == _searchVersion` to avoid a stale RPC reply corrupting the active result set.
+        var version = ++_searchVersion;
+        var query = _searchQuery;
+        var page = _page;
+        var ct = _searchCts?.Token ?? _disposeCts.Token;
+
         _isLoading = true;
         _showEmpty = false;
         _gifsLoaded = true;
-        StateHasChanged();
+        SafeStateHasChanged();
+
         try {
-            var result = _searchQuery.IsNullOrEmpty()
-                ? await Gifs.GetTrending(_page, CancellationToken.None).ConfigureAwait(true)
-                : await Gifs.Search(_searchQuery, _page, CancellationToken.None).ConfigureAwait(true);
+            var result = query.IsNullOrEmpty()
+                ? await Gifs.GetTrending(page, ct).ConfigureAwait(true)
+                : await Gifs.Search(query, page, ct).ConfigureAwait(true);
+            if (version != _searchVersion)
+                return;
             var existingSlugs = _gifItems.Select(g => g.Slug).ToHashSet(StringComparer.Ordinal);
             _gifItems.AddRange(result.Items.Where(g => existingSlugs.Add(g.Slug)));
             _hasNext = result.HasNext;
         }
+        catch (OperationCanceledException) {
+            // Superseded by a newer request (or modal disposed) — leave _isLoading as-is;
+            // the new request already set it to true (or the component is gone).
+            return;
+        }
         catch (Exception) {
-            // Ignore - UI shows empty state
+            if (version != _searchVersion)
+                return;
+            // Real error — fall through to the empty-state block.
         }
-        finally {
-            _isLoading = false;
-            StateHasChanged();
-        }
-        if (_gifItems.Count == 0 && _searchCts is { } cts) {
+
+        _isLoading = false;
+        SafeStateHasChanged();
+
+        // Defer empty/error state by 500ms to avoid flicker if user is still typing.
+        if (_gifItems.Count == 0) {
             try {
-                await Task.Delay(500, cts.Token).ConfigureAwait(true);
-                _showEmpty = true;
-                StateHasChanged();
+                await Task.Delay(500, ct).ConfigureAwait(true);
+                if (version == _searchVersion) {
+                    _showEmpty = true;
+                    SafeStateHasChanged();
+                }
             }
             catch (OperationCanceledException) { }
         }
+    }
+
+    private void SwapSearchCts() {
+        var old = _searchCts;
+        _searchCts = CancellationTokenSource.CreateLinkedTokenSource(_disposeCts.Token);
+        if (old is null)
+            return;
+        try { old.Cancel(); }
+        catch (ObjectDisposedException) { }
+        old.Dispose();
+    }
+
+    private void SafeStateHasChanged() {
+        if (_disposeCts.IsCancellationRequested)
+            return;
+        try { StateHasChanged(); }
+        catch (ObjectDisposedException) { }
+    }
+
+    private IEnumerable<GifItem> EnumerateColumn(int column)
+        => _gifItems.Where((_, i) => i % 2 == column);
+
+    private static string GetAspectRatioStyle(GifItem gif)
+        => gif.PreviewWidth > 0 && gif.PreviewHeight > 0
+            ? $"aspect-ratio: {gif.PreviewWidth} / {gif.PreviewHeight}"
+            : "aspect-ratio: 1 / 1";
+
+    public void Dispose() {
+        if (!_disposeCts.IsCancellationRequested) {
+            try { _disposeCts.Cancel(); }
+            catch (ObjectDisposedException) { }
+        }
+        _disposeCts.Dispose();
+        _searchCts?.Dispose();
     }
 
     // Nested types

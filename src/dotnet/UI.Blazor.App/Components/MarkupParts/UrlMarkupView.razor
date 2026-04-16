@@ -5,7 +5,7 @@
 }
 
 @if (_isGifImage) {
-    <img class="gif-message" src="@url" alt="" loading="lazy"/>
+    <img class="gif-message" src="@_gifSrc" alt="" loading="lazy"/>
     return;
 }
 
@@ -46,14 +46,24 @@
     private LocalUrl? _localUrl;
     private LinkRenderMode _linkRenderMode = LinkRenderMode.Default;
     private bool _isGifImage;
+    private string _gifSrc = "";
 
     private LinkPreviewUI LinkPreviewUI => Hub.LinkPreviewUI;
 
     protected override async Task OnParametersSetAsync() {
         var url = Markup.Url;
         _hrefUrl = url;
-        _isGifImage = Markup.Kind is UrlMarkupKind.Www
-            && url.EndsWith(".gif", StringComparison.OrdinalIgnoreCase);
+        _isGifImage = false;
+        _gifSrc = "";
+        if (Markup.Kind is UrlMarkupKind.Www && UrlMapper.IsTrustedGifUrl(url)) {
+            // Route through imageproxy: hides viewer IP from origin, caches, validates content-type.
+            // Falls back to plain link if proxy isn't available in this deployment.
+            var proxied = UrlMapper.GifProxyUrl(url);
+            if (!proxied.IsNullOrEmpty()) {
+                _isGifImage = true;
+                _gifSrc = proxied;
+            }
+        }
         switch (Markup.Kind) {
             case UrlMarkupKind.Www:
                 var isRenderedAsLocal = await LinkPreviewUI.IsRenderedAsLocal(url, CancellationToken.None);

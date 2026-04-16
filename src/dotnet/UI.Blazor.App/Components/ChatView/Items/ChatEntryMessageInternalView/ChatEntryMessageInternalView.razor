@@ -7,7 +7,9 @@
     var message = Message;
     var markup = m.Markup;
     var entry = m.Entry;
-    var isEmojiOnly = Emojis.TryGetByIdOrSymbol(entry.Content.Trim()) != null;
+    var trimmedContent = entry.Content.Trim();
+    var isEmojiOnly = Emojis.TryGetByIdOrSymbol(trimmedContent) != null;
+    var isGifOnly = UrlMapper.IsTrustedGifUrl(trimmedContent);
     var oldTranslation = _rendered?.Translation ?? m.Translation;
     var oldIsStreaming = _rendered?.Streaming.IsStreaming ?? m.Streaming.IsStreaming;
     var oldRetainedText = _rendered?.Streaming.RetainedText;
@@ -61,7 +63,7 @@
     };
 }
 <div @ref="Ref" class="chat-message-markup @translationCls @streamingCls">
-    @if (!isEmojiOnly && message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign)) {
+    @if (!isEmojiOnly && !isGifOnly && message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign)) {
         <ChatEntryKindView IsTranscribed="@entry.HasAudio"/>
     }
     @if (m.IsStreaming) {

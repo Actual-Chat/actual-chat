@@ -12,6 +12,15 @@
             TextChanged="OnInput">
         </TextInput>
         <i class="icon-search text-2xl search-icon"></i>
+        @if (ClearButton && !_text.IsNullOrEmpty()) {
+            <HeaderButton
+                Class="btn-sm text-box-btn"
+                Click="@OnClearClick"
+                data-tooltip="Clear"
+                data-tooltip-position="@(FloatingPosition.Top.ToPositionString())">
+                <i class="icon-close"></i>
+            </HeaderButton>
+        }
         @if (ShowCloseButton) {
             <HeaderButton Click="Close" Class="c-close-btn">
                 <i class="icon-close text-2xl"></i>
@@ -22,11 +31,13 @@
 
 @code {
     private TextInput? _inputRef;
+    private string _text = "";
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public int? MaxLength { get; set; }
     [Parameter] public string Placeholder { get; set; } = "Search...";
     [Parameter] public bool ShowCloseButton { get; set; }
+    [Parameter] public bool ClearButton { get; set; }
     [Parameter] public EventCallback OnCloseClick { get; set; }
     [Parameter] public EventCallback<string> TextChanged { get; set; }
 
@@ -41,6 +52,13 @@
         OnCloseClick.InvokeAsync();
     }
 
-    private Task OnInput(string text)
-        => TextChanged.InvokeAsync(text);
+    private Task OnInput(string text) {
+        _text = text;
+        return TextChanged.InvokeAsync(text);
+    }
+
+    private async Task OnClearClick() {
+        if (_inputRef is not null)
+            await _inputRef.Clear();
+    }
 }

@@ -40,6 +40,12 @@
 .search-box input:focus {
     @apply border border-primary;
 }
+/* Optional clear button (ClearButton="true") — shares look with TextBox's text-box-btn,
+   but TextBox's positioning (top-3.5) is tuned for its taller layout, so re-center for h-10 input. */
+.search-box .btn-h.text-box-btn {
+    @apply bottom-2.5;
+}
+
 .search-box.icon-alight-right i {
     @apply right-0;
 }
