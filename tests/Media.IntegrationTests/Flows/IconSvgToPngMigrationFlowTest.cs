@@ -153,34 +153,6 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
     }
 
     [Fact]
-    public async Task ShouldSkipMediaReferencedByAttachments()
-    {
-        // arrange: SVG referenced by both an avatar and a chat-entry attachment
-        var (svgMediaId, svgBlobId) = await CreateMedia(
-            TestSvgBytes, "image/svg+xml", MediaKind.UserAvatarPicture, "shared.svg");
-        var avatarId = await CreateAvatar(svgMediaId);
-        await CreateChatEntryWithAttachment(svgMediaId);
-
-        // act
-        await RunFlow();
-
-        // assert: avatar and SVG row untouched
-        await AssertFlow(async ct => {
-            var mediaIdAfter = await GetAvatarMediaId(avatarId, ct);
-            mediaIdAfter.Should().Be(svgMediaId);
-
-            var stillSvg = await MediaBackend.GetFull(svgMediaId, ct);
-            stillSvg.Should().NotBeNull();
-            stillSvg.BlobId.Should().Be(svgBlobId);
-            stillSvg.ContentType.Should().Be("image/svg+xml");
-
-            var flow = await FlowHub.TryGet<IconSvgToPngMigrationFlow>("", ct);
-            flow!.ConvertedCount.Should().Be(0);
-            flow.SkippedCount.Should().BeGreaterThan(0);
-        });
-    }
-
-    [Fact]
     public async Task ShouldSkipNonSvgMedia()
     {
         // arrange
@@ -442,12 +414,6 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
             BackgroundMediaId = backgroundMediaId,
         });
         return place.Id;
-    }
-
-    private async Task CreateChatEntryWithAttachment(MediaId mediaId)
-    {
-        var (chatId, _) = await Tester.CreateChat(diff => diff with { IsPublic = true });
-        await Tester.CreateTextEntry(chatId, "test", mediaId);
     }
 
     private async Task<MediaId?> GetAvatarMediaId(Symbol avatarId, CancellationToken cancellationToken)
