@@ -56,9 +56,14 @@
                 <i class="icon-collapse text-lg expanded-video-panel"></i>
             </HeaderButton>
 
-            @if (m.VideoStreamMemberCount > 0) {
+            @if (m.VideoStreamMemberCount > 0 || !string.IsNullOrEmpty(m.FocusedParticipantName)) {
                 <div class="c-center">
-                    <div class="c-member-count">@m.VideoStreamMemberCount members</div>
+                    @if (!string.IsNullOrEmpty(m.FocusedParticipantName)) {
+                        <div class="c-member-name">@m.FocusedParticipantName</div>
+                    }
+                    @if (m.VideoStreamMemberCount > 0) {
+                        <div class="c-member-count">@m.VideoStreamMemberCount members</div>
+                    }
                 </div>
             }
 
@@ -174,6 +179,7 @@
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private IChats Chats => Hub.Chats;
+    private IAuthors Authors => Hub.Authors;
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
     private ElementReference Ref { get; set; }
@@ -279,12 +285,37 @@
 
         var remoteStreams = await ChatVideoUI.GetRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
 
+        // Name of the currently focused participant — shown above the member count in the header.
+        var focusedName = await GetFocusedParticipantName(chatId, layout, remoteStreams, cancellationToken).ConfigureAwait(false);
+
         Log.LogWarning("[VideoPanelContent] ComputeState: remoteStreams=[{Streams}], isOwnRecording={IsOwnRecording}, isOwnScreencasting={IsOwnScreencasting}",
             string.Join(", ", remoteStreams.Select(s => $"{s.StreamId}({s.Format.Codec})")),
             isOwnRecording,
             isOwnScreencasting);
 
-        return new Model(layout, remoteStreams, isOwnRecording, isOwnScreencasting, audioState.IsRecording, videoStreamMemberCount, chat, isCollapsed, isAdmin);
+        return new Model(layout, remoteStreams, isOwnRecording, isOwnScreencasting, audioState.IsRecording, videoStreamMemberCount, chat, isCollapsed, isAdmin, focusedName);
+    }
+
+    private async Task<string?> GetFocusedParticipantName(
+        ChatId chatId,
+        VideoPanelLayout layout,
+        VideoStreamInfo[] remoteStreams,
+        CancellationToken cancellationToken)
+    {
+        const string focusedCls = "item-focused";
+        if (layout.OwnStreamingPreviewClass.Contains(focusedCls))
+            return "You";
+
+        var focused = layout.RemoteStreamPlayerClasses.FirstOrDefault(c => c.Class.Contains(focusedCls));
+        if (focused is null)
+            return null;
+
+        var focusedStream = remoteStreams.FirstOrDefault(s => s.StreamId.Value == focused.StreamId);
+        if (focusedStream is null)
+            return null;
+
+        var author = await Authors.Get(Session, chatId, focusedStream.AuthorId, cancellationToken).ConfigureAwait(false);
+        return author?.Avatar.Name;
     }
 
     private void OnHangUpClick() {
@@ -379,7 +410,8 @@
         int VideoStreamMemberCount,
         Chat? Chat,
         bool IsCollapsed = false,
-        bool AllowDiagnostics = false
+        bool AllowDiagnostics = false,
+        string? FocusedParticipantName = null
     ) {
         public static readonly Model Loading = new(VideoPanelLayout.New, [], false, false, false, 0, null, false);
     }
