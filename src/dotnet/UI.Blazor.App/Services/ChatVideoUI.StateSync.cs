@@ -1,3 +1,4 @@
+using ActualChat.Streaming;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Resilience;
 
@@ -9,7 +10,8 @@ public partial class ChatVideoUI
     {
         await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(true);
         var baseChains = new[] {
-            AsyncChain.From(SyncRecordingLifecycle),
+            AsyncChain.From(SyncWebcamLifecycle),
+            AsyncChain.From(SyncScreencastLifecycle),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
         await (
@@ -23,80 +25,92 @@ public partial class ChatVideoUI
     }
 
     [ComputeMethod]
-    protected virtual async Task<RecordingIntent?> GetRecordingIntent(CancellationToken cancellationToken)
+    protected virtual async Task<WebcamRecordingIntent?> GetWebcamIntent(CancellationToken cancellationToken)
     {
         var chatId = await _recordingChatId.Use(cancellationToken).ConfigureAwait(false);
         if (chatId is null)
             return null;
-
-        var isScreencasting = await _isScreencasting.Use(cancellationToken).ConfigureAwait(false);
-        if (isScreencasting)
-            return new ScreencastIntent(chatId);
 
         var cameraDeviceId = await _selectedCameraDeviceId.Use(cancellationToken).ConfigureAwait(false);
         var blurEnabled = await _isBackgroundBlurEnabled.Use(cancellationToken).ConfigureAwait(false);
         return new WebcamRecordingIntent(chatId, cameraDeviceId, blurEnabled);
     }
 
-    // Recording lifecycle
+    [ComputeMethod]
+    protected virtual async Task<ScreencastIntent?> GetScreencastIntent(CancellationToken cancellationToken)
+    {
+        var chatId = await _screencastChatId.Use(cancellationToken).ConfigureAwait(false);
+        return chatId is null ? null : new ScreencastIntent(chatId);
+    }
 
-    private async Task SyncRecordingLifecycle(CancellationToken cancellationToken)
+    // Recording lifecycles
+
+    private Task SyncWebcamLifecycle(CancellationToken cancellationToken)
+        => RunRecorderLifecycle(
+            kind: StreamKind.Webcam,
+            captureIntent: () => GetWebcamIntent(cancellationToken),
+            startRecorder: (recorder, intent, ct) => StartWebcam(recorder, (WebcamRecordingIntent)intent, ct),
+            updateRecorder: (recorder, intent, ct) => UpdateWebcam(recorder, (WebcamRecordingIntent)intent, ct),
+            cancellationToken);
+
+    private Task SyncScreencastLifecycle(CancellationToken cancellationToken)
+        => RunRecorderLifecycle(
+            kind: StreamKind.Screencast,
+            captureIntent: () => GetScreencastIntent(cancellationToken),
+            startRecorder: (recorder, intent, ct) => recorder.StartScreencast(intent.ChatId, ct),
+            updateRecorder: null,
+            cancellationToken);
+
+    private async Task RunRecorderLifecycle<TIntent>(
+        StreamKind kind,
+        Func<Task<TIntent?>> captureIntent,
+        Func<VideoRecorder, TIntent, CancellationToken, Task> startRecorder,
+        Func<VideoRecorder, TIntent, CancellationToken, Task>? updateRecorder,
+        CancellationToken cancellationToken)
+        where TIntent : RecordingIntent
     {
         var cState = await Computed
-            .Capture(() => GetRecordingIntent(cancellationToken), cancellationToken)
+            .Capture(captureIntent, cancellationToken)
             .ConfigureAwait(false);
 
         VideoRecorder? recorder = null;
-        (Type, ChatId)? activeKey = null;
+        ChatId? activeChatId = null;
 
         try {
             await foreach (var (intent, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
-                var intentKey = intent is null ? ((Type, ChatId)?)null : (intent.GetType(), intent.ChatId);
-                if (intentKey != activeKey) {
+                var intentChatId = intent?.ChatId;
+                if (intentChatId != activeChatId) {
                     if (recorder is not null) {
                         await CompleteRecording(recorder, cancellationToken).ConfigureAwait(false);
                         recorder = null;
-                        activeKey = null;
+                        activeChatId = null;
                     }
                 }
                 if (intent is null)
                     continue;
 
                 if (recorder is null) {
-                    // Recording should start
                     try {
-                        _errorMessage.Value = null; // Clear any previous error
-                        recorder = await VideoRecorder.Create(Hub).ConfigureAwait(false);
-                        // Ensure server clock is synced before recording (TIMING_ANCHOR accuracy)
+                        _errorMessage.Value = null;
+                        recorder = await VideoRecorder.Create(Hub, kind).ConfigureAwait(false);
                         var serverTimeSync = Hub.Services.GetService<ServerTimeSync>();
                         if (serverTimeSync != null)
                             await serverTimeSync.EnsureSynced(cancellationToken).ConfigureAwait(false);
-
-                        if (intent is ScreencastIntent screencastIntent) {
-                            await recorder.StartScreencast(screencastIntent.ChatId, cancellationToken).ConfigureAwait(false);
-                        } else if (intent is WebcamRecordingIntent webcamIntent) {
-                            await recorder.SetSelectedCamera(webcamIntent.CameraDeviceId ?? "", cancellationToken).ConfigureAwait(false);
-                            await recorder.SetBlurEnabled(webcamIntent.BlurEnabled, cancellationToken).ConfigureAwait(false);
-                            await recorder.StartRecording(webcamIntent.ChatId, cancellationToken).ConfigureAwait(false);
-                        }
-                        else
-                            throw new InvalidOperationException($"Unexpected recording intent: {intent}");
-
-                        activeKey = intentKey;
+                        await startRecorder(recorder, intent, cancellationToken).ConfigureAwait(false);
+                        activeChatId = intent.ChatId;
                     }
                     catch (Exception e) when (e is not OperationCanceledException) {
-                        OnRecordingError("Failed to start recording");
-                        Log.LogWarning(e, "SyncRecordingLifecycle: failed to start recording");
+                        OnRecordingError("Failed to start recording", kind);
+                        Log.LogWarning(e, "{Kind} lifecycle: failed to start recording", kind);
+                        recorder = null;
                     }
                 }
-                else if (intent is WebcamRecordingIntent cameraIntent) {
-                    // Camera recording should be updated
+                else if (updateRecorder is not null) {
                     try {
-                        await recorder.SwitchCamera(cameraIntent.CameraDeviceId ?? "", cancellationToken).ConfigureAwait(false);
-                        await recorder.ToggleBlur(cameraIntent.BlurEnabled, cancellationToken).ConfigureAwait(false);
+                        await updateRecorder(recorder, intent, cancellationToken).ConfigureAwait(false);
                     }
                     catch (Exception e) when (e is not OperationCanceledException) {
-                        Log.LogWarning(e, "SyncRecordingLifecycle: failed to update camera streaming settings");
+                        Log.LogWarning(e, "{Kind} lifecycle: failed to update settings", kind);
                     }
                 }
             }
@@ -106,7 +120,6 @@ public partial class ChatVideoUI
             if (recorder is not null)
                 await CompleteRecording(recorder, CancellationToken.None).ConfigureAwait(false);
         }
-        return;
 
         static async Task CompleteRecording(VideoRecorder recorder, CancellationToken cancellationToken)
         {
@@ -118,6 +131,19 @@ public partial class ChatVideoUI
             await recorder.WhenStopped.WaitAsync(cancellationToken1).ConfigureAwait(false);
             await recorder.DisposeAsync().AsTask().WaitAsync(cancellationToken1).ConfigureAwait(false);
         }
+    }
+
+    private static async Task StartWebcam(VideoRecorder recorder, WebcamRecordingIntent intent, CancellationToken ct)
+    {
+        await recorder.SetSelectedCamera(intent.CameraDeviceId ?? "", ct).ConfigureAwait(false);
+        await recorder.SetBlurEnabled(intent.BlurEnabled, ct).ConfigureAwait(false);
+        await recorder.StartRecording(intent.ChatId, ct).ConfigureAwait(false);
+    }
+
+    private static async Task UpdateWebcam(VideoRecorder recorder, WebcamRecordingIntent intent, CancellationToken ct)
+    {
+        await recorder.SwitchCamera(intent.CameraDeviceId ?? "", ct).ConfigureAwait(false);
+        await recorder.ToggleBlur(intent.BlurEnabled, ct).ConfigureAwait(false);
     }
 
     // Nested types

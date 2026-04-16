@@ -6,7 +6,7 @@ import { defineRpcService, RpcType } from 'actuallab-rpc';
 // --- IStreamServer (stream push/pull + control) ---
 export const StreamServerDef = defineRpcService('IStreamServer', {
     GetVideo: { args: ['streamId', 'skipTo'], returns: RpcType.stream },
-    PushVideo: { args: ['session', 'chatId', 'clientStartOffset', 'format', 'frameStream'] },
+    PushVideo: { args: ['session', 'chatId', 'clientStartOffset', 'format', 'frameStream', 'streamKind'] },
     PushAudio: { args: ['session', 'chatId', 'repliedChatEntryId', 'clientStartOffset', 'preSkip', 'frameStream'] },
     RequestKeyFrame: { args: ['streamId'] },
     ReportVideoLatency: { args: ['streamId', 'streamOffsetMs', 'medianDecodeTimeMs', 'bufferDepth', 'bufferSpanMs'] },

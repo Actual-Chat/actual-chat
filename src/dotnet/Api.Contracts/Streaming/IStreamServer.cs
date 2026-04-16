@@ -30,6 +30,7 @@ public interface IStreamServer : IRpcService
         double clientStartOffset,
         VideoFormat format,
         RpcStream<VideoFrame> frameStream,
+        StreamKind streamKind,
         CancellationToken cancellationToken);
 
     Task RequestKeyFrame(string streamId, CancellationToken cancellationToken);

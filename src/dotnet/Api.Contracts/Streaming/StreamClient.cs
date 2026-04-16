@@ -96,6 +96,7 @@ public class StreamClient(IServiceProvider services) : IStreamClient
         double clientStartOffset,
         VideoFormat format,
         IAsyncEnumerable<VideoFrame> frameStream,
+        StreamKind streamKind,
         CancellationToken cancellationToken)
     {
         var rpcStream = RpcStream.New(frameStream);
@@ -105,6 +106,7 @@ public class StreamClient(IServiceProvider services) : IStreamClient
             clientStartOffset,
             format,
             rpcStream,
+            streamKind,
             cancellationToken);
     }
 }

@@ -107,7 +107,7 @@ export async function runRpcProducer(
         // the frame stream ends. Fire-and-forget; surface any rejection so
         // it's visible via the global unhandledRejection handler.
         void streamServer
-            .PushVideo('~', chatId, clientStartOffsetSec, format, stream.toRef(bundle.peer))
+            .PushVideo('~', chatId, clientStartOffsetSec, format, stream.toRef(bundle.peer), 0 /* StreamKind.Webcam */)
             .catch((err: unknown) => {
                 if (!ctx.abort.aborted)
                     console.error(

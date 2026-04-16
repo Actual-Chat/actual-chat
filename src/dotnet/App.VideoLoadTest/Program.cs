@@ -399,7 +399,7 @@ async Task RunProducerRpc(int chatIdx, int prodIdx, CancellationToken ct)
         var frameStream = RpcStream.New(PushFramesRpc(chatIdx, prodIdx, ct));
         await streamServer!.PushVideo(
             session, chatIds[chatIdx].Value, clientStartOffset,
-            format, frameStream, ct);
+            format, frameStream, StreamKind.Webcam, ct);
         try { await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, ct); }
         catch (OperationCanceledException) { }
     }

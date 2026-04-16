@@ -12,13 +12,14 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// </summary>
 public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized
 {
-    // Centralized video state
-    private readonly MutableState<ChatId?> _recordingChatId;
+    // Centralized video state — webcam and screencast are tracked independently
+    // so an author can stream both at the same time.
+    private readonly MutableState<ChatId?> _recordingChatId;        // webcam target chat
+    private readonly MutableState<ChatId?> _screencastChatId;       // screencast target chat
     private readonly MutableState<ChatId?> _lastRecordingChatId;
     private readonly MutableState<string?> _selectedCameraDeviceId;
     private readonly MutableState<bool> _isBackgroundBlurEnabled;
     private readonly MutableState<string?> _errorMessage;
-    private readonly MutableState<bool> _isScreencasting;
 
     // Tracks which chat the user is currently watching video in (in-memory, resets on reload)
     private readonly MutableState<ChatId?> _watchingChatId;
@@ -38,11 +39,11 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public ChatVideoUI(AppUIHub hub) : base(hub)
     {
         _recordingChatId = StateFactory.NewMutable((ChatId?)null);
+        _screencastChatId = StateFactory.NewMutable((ChatId?)null);
         _lastRecordingChatId = StateFactory.NewMutable((ChatId?)null);
         _selectedCameraDeviceId = StateFactory.NewMutable((string?)null);
         _isBackgroundBlurEnabled = StateFactory.NewMutable(false);
         _errorMessage = StateFactory.NewMutable((string?)null);
-        _isScreencasting = StateFactory.NewMutable(false);
         _watchingChatId = StateFactory.NewMutable((ChatId?)null);
         _isVideoPanelCollapsed = StateFactory.NewMutable(false);
     }
@@ -52,6 +53,11 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     // Core state accessors
 
+    /// <summary>
+    /// Primary stream kind for a single-value UI surface. Screencast takes precedence
+    /// when both are active. Prefer <see cref="IsOwnRecording"/> / <see cref="IsOwnScreencasting"/>
+    /// for independent checks.
+    /// </summary>
     [ComputeMethod]
     public virtual async Task<StreamKind?> GetOwnStreamKind(ChatId chatId, CancellationToken cancellationToken = default)
     {
@@ -59,12 +65,33 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         if (!isVideoEnabled)
             return null;
 
-        var recordingChatId = await _recordingChatId.Use(cancellationToken).ConfigureAwait(false);
-        if (recordingChatId != chatId)
-            return null;
+        if (await IsOwnScreencasting(chatId, cancellationToken).ConfigureAwait(false))
+            return StreamKind.Screencast;
+        if (await IsOwnRecording(chatId, cancellationToken).ConfigureAwait(false))
+            return StreamKind.Webcam;
+        return null;
+    }
 
-        var isScreencasting = await _isScreencasting.Use(cancellationToken).ConfigureAwait(false);
-        return isScreencasting ? StreamKind.Screencast : StreamKind.Webcam;
+    [ComputeMethod]
+    public virtual async Task<bool> IsOwnRecording(ChatId chatId, CancellationToken cancellationToken = default)
+    {
+        var isVideoEnabled = await IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
+        if (!isVideoEnabled)
+            return false;
+
+        var recordingChatId = await _recordingChatId.Use(cancellationToken).ConfigureAwait(false);
+        return recordingChatId == chatId;
+    }
+
+    [ComputeMethod]
+    public virtual async Task<bool> IsOwnScreencasting(ChatId chatId, CancellationToken cancellationToken = default)
+    {
+        var isVideoEnabled = await IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
+        if (!isVideoEnabled)
+            return false;
+
+        var screencastChatId = await _screencastChatId.Use(cancellationToken).ConfigureAwait(false);
+        return screencastChatId == chatId;
     }
 
     [ComputeMethod]
@@ -85,16 +112,32 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     // State mutators
 
+    /// <summary>
+    /// Stops all of the current user's outgoing streams (webcam + screencast).
+    /// Used on hang-up.
+    /// </summary>
     public void StopStreaming()
     {
         _recordingChatId.Value = null;
-        _isScreencasting.Value = false;
+        _screencastChatId.Value = null;
     }
+
+    /// <summary>
+    /// Stops the webcam stream only. Screencast (if any) keeps running.
+    /// </summary>
+    public void StopRecording()
+        => _recordingChatId.Value = null;
+
+    /// <summary>
+    /// Stops the screencast stream only. Webcam (if any) keeps running.
+    /// </summary>
+    public void StopScreenCasting()
+        => _screencastChatId.Value = null;
 
     public void StartScreenCasting(ChatId chatId)
     {
-        _recordingChatId.Value = chatId;
-        _isScreencasting.Value = true;
+        // Additive: does not stop webcam.
+        _screencastChatId.Value = chatId;
         OpenVideoPanel(chatId);
     }
 
@@ -137,17 +180,25 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     // JS callback handlers (called from VideoPanel)
 
-    public void OnRecordingStarted(ChatId chatId)
+    public void OnRecordingStarted(ChatId chatId, StreamKind kind)
     {
     }
 
-    public void OnRecordingStopped()
-        => StopStreaming();
+    public void OnRecordingStopped(StreamKind kind)
+    {
+        if (kind == StreamKind.Screencast)
+            StopScreenCasting();
+        else
+            StopRecording();
+    }
 
-    public void OnRecordingError(string error)
+    public void OnRecordingError(string error, StreamKind kind)
     {
         _errorMessage.Value = error;
-        StopStreaming();
+        if (kind == StreamKind.Screencast)
+            StopScreenCasting();
+        else
+            StopRecording();
         // Don't close the video panel. User stays watching remote streams, can retry or hang up
     }
 
@@ -296,7 +347,6 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         _lastRecordingChatId.Value = chatId;
         _selectedCameraDeviceId.Value = cameraDeviceId;
         _isBackgroundBlurEnabled.Value = isBackgroundBlurEnabled;
-        _isScreencasting.Value = false;
         OpenVideoPanel(chatId);
     }
 }

@@ -97,9 +97,9 @@ export interface LiveVideoStreamsClient {
 }
 
 // --- IStreamServer (push) ---
-// Wire: "IStreamServer.PushVideo:6" — (session, chatId, clientStartOffset, format, frameStream) + CT.
+// Wire: "IStreamServer.PushVideo:7" — (session, chatId, clientStartOffset, format, frameStream, streamKind) + CT.
 export const StreamServerDef = defineRpcService('IStreamServer', {
-    PushVideo: { args: ['session', 'chatId', 'clientStartOffset', 'format', 'frameStream'] },
+    PushVideo: { args: ['session', 'chatId', 'clientStartOffset', 'format', 'frameStream', 'streamKind'] },
 });
 
 export interface StreamServerClient {
@@ -109,5 +109,6 @@ export interface StreamServerClient {
         clientStartOffset: number,
         format: VideoFormatDto,
         frameStreamRef: unknown,
+        streamKind: number,
     ): Promise<void>;
 }

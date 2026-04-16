@@ -4,13 +4,13 @@
 @inherits ComputedStateComponent<AppUIHub, VideoStreamingPreview.Model>
 @{
     var m = State.Value;
-    var isRecording = m.OwnStreamKind == StreamKind.Webcam;
-    var isScreencasting = m.OwnStreamKind == StreamKind.Screencast;
+    // Self-preview always reflects the webcam; screencast has no self-preview
+    // (per product decision — the user can see their shared screen already).
+    var isRecording = m.IsOwnRecording;
     var recordingCls = isRecording ? "recording" : "";
-    var screencastCls = isScreencasting ? "screencast" : "";
 }
 
-<div @ref="Ref" class="video-track-player video-streaming-preview @Class @recordingCls @screencastCls">
+<div @ref="Ref" class="video-track-player video-streaming-preview @Class @recordingCls">
     <canvas
         class="call-video"
         @onclick="@(isRecording && !m.IsAloneOnStream ? OnSettingsClick : null!)"></canvas>
@@ -61,10 +61,10 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
-        var ownStreamKind = await ChatVideoUI.GetOwnStreamKind(chatId, cancellationToken).ConfigureAwait(false);
+        var isOwnRecording = await ChatVideoUI.IsOwnRecording(chatId, cancellationToken).ConfigureAwait(false);
         var hasRemoteStreams = await ChatVideoUI.HasRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
         var lastError = await ChatVideoUI.GetLastVideoRecorderError(cancellationToken).ConfigureAwait(false);
-        return new Model(ownStreamKind, !hasRemoteStreams, lastError);
+        return new Model(isOwnRecording, !hasRemoteStreams, lastError);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -79,7 +79,7 @@
 
     // Nested types
 
-    public sealed record Model(StreamKind? OwnStreamKind, bool IsAloneOnStream, string? LastErrorMessage) {
-        public static readonly Model None = new(null, true, null);
+    public sealed record Model(bool IsOwnRecording, bool IsAloneOnStream, string? LastErrorMessage) {
+        public static readonly Model None = new(false, true, null);
     }
 }

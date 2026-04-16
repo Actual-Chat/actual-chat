@@ -45,10 +45,20 @@ export interface VideoDevice {
     label: string;
 }
 
-// Module-level singleton so the modal and preview can find the active recorder
-let activeRecorderInstance: VideoRecorder | null = null;
-export function getActiveRecorder(): VideoRecorder | null {
-    return activeRecorderInstance;
+// Module-level registry keyed by StreamKind so a user can simultaneously
+// stream webcam (kind=0) and screencast (kind=1). Callers that want the
+// webcam-specific recorder (preview, modal, diagnostics) pass kind=0
+// (the default).
+const StreamKindWebcam = 0;
+const StreamKindScreencast = 1;
+const activeRecorders = new Map<number, VideoRecorder>();
+
+export function getActiveRecorder(kind: number = StreamKindWebcam): VideoRecorder | null {
+    return activeRecorders.get(kind) ?? null;
+}
+
+export function getAllActiveRecorders(): VideoRecorder[] {
+    return [...activeRecorders.values()];
 }
 
 interface Size {
@@ -62,6 +72,8 @@ export class VideoRecorder {
     private recordingService: RecordingService | null = null;
     private isRecording = false;
     private isScreencasting = false;
+    // StreamKind this instance is currently registered under (null when idle).
+    private registeredKind: number | null = null;
     private previewTrack: MediaStreamTrack | null = null;
     private selectedCameraDeviceId: string | null = null;
     private chatId = '';
@@ -312,7 +324,7 @@ export class VideoRecorder {
             });
 
             this.isRecording = true;
-            activeRecorderInstance = this; // eslint-disable-line @typescript-eslint/no-this-alias
+            this.register(StreamKindWebcam);
 
             // Notify Blazor that recording started successfully
             await this.blazorRef.invokeMethodAsync('OnRecordingStarted');
@@ -401,7 +413,7 @@ export class VideoRecorder {
 
             this.isRecording = true;
             this.isScreencasting = true;
-            activeRecorderInstance = this; // eslint-disable-line @typescript-eslint/no-this-alias
+            this.register(StreamKindScreencast);
 
             await this.blazorRef.invokeMethodAsync('OnRecordingStarted');
             infoLog?.log('Screencast started');
@@ -426,7 +438,7 @@ export class VideoRecorder {
             this.cleanupPreviewTrack();
             this.isRecording = false;
             this.isScreencasting = false;
-            if (activeRecorderInstance === this) activeRecorderInstance = null;
+            this.unregister();
 
             // Notify Blazor
             await this.blazorRef.invokeMethodAsync('OnRecordingStopped');
@@ -554,6 +566,18 @@ export class VideoRecorder {
         return recordingService;
     }
 
+    private register(kind: number): void {
+        this.registeredKind = kind;
+        activeRecorders.set(kind, this);
+    }
+
+    private unregister(): void {
+        if (this.registeredKind !== null && activeRecorders.get(this.registeredKind) === this) {
+            activeRecorders.delete(this.registeredKind);
+        }
+        this.registeredKind = null;
+    }
+
     private cleanupPreviewTrack(): void {
         if (this.previewTrack) {
             // For screencast, don't stop the track — it's shared with the pipeline.
@@ -667,7 +691,7 @@ export class VideoRecorder {
         if (this.disposed)
             return;
         this.disposed = true;
-        if (activeRecorderInstance === this) activeRecorderInstance = null;
+        this.unregister();
 
         this.cleanupPreviewTrack();
 

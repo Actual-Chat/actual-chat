@@ -21,6 +21,7 @@ public sealed class VideoRecorder : IAsyncDisposable
     private bool _isBlurEnabled;
 
     private AppUIHub Hub { get; }
+    private StreamKind Kind { get; }
     private Session Session => Hub.Session;
     private IJSRuntime JS => Hub.JS;
     private IAuthors Authors => Hub.Authors;
@@ -30,22 +31,23 @@ public sealed class VideoRecorder : IAsyncDisposable
 
     public Task WhenStopped => _whenStoppedTaskCompletionSource.Task;
 
-    public static async Task<VideoRecorder> Create(AppUIHub hub)
+    public static async Task<VideoRecorder> Create(AppUIHub hub, StreamKind kind = StreamKind.Webcam)
     {
-        var videoRecorder = new VideoRecorder(hub);
+        var videoRecorder = new VideoRecorder(hub, kind);
         await videoRecorder.Initialize().ConfigureAwait(false);
         return videoRecorder;
     }
 
-    private VideoRecorder(AppUIHub hub)
+    private VideoRecorder(AppUIHub hub, StreamKind kind)
     {
         Hub = hub;
+        Kind = kind;
         _maintenanceTask = RunMaintenance(_whenStartedTaskCompletionSource.Task, _maintenanceCts.Token);
     }
 
     private async Task Initialize()
     {
-        var blazorCallbacks = new RecorderCallbacks(ChatVideoUI, this);
+        var blazorCallbacks = new RecorderCallbacks(ChatVideoUI, this, Kind);
         _blazorCallbacksRef = DotNetObjectReference.Create(blazorCallbacks);
         var jsMethod = $"{BlazorUIAppModule.ImportName}.VideoRecorder.create";
         _jsRef = await JS.InvokeAsync<IJSObjectReference>(jsMethod, CancellationToken.None, _blazorCallbacksRef).ConfigureAwait(false);
@@ -158,7 +160,7 @@ public sealed class VideoRecorder : IAsyncDisposable
 
             for (var i = 0; i < 30; i++) { // poll up to 15s
                 var streams = await ChatVideoUI.GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(false);
-                var ownStream = streams.FirstOrDefault(s => s.AuthorId == ownAuthor.Id);
+                var ownStream = streams.FirstOrDefault(s => s.AuthorId == ownAuthor.Id && s.StreamKind == Kind);
                 if (ownStream != default) {
                     ownStreamId = ownStream.StreamId;
                     break;
@@ -188,7 +190,11 @@ public sealed class VideoRecorder : IAsyncDisposable
                     || lastAppliedPreset.Width != preset.Width
                     || lastAppliedPreset.Height != preset.Height
                     || lastAppliedPreset.Bitrate != preset.Bitrate;
-                if (qualityChanged) {
+                // Screencast streams at the resolution the user picked (getDisplayMedia).
+                // Server-side adaptive presets are a webcam-bandwidth concept; applying them
+                // to a screencast would churn the encoder (each reconfigure tears down the
+                // current RPC stream and starts a new StreamId, so receiver PLIs get lost).
+                if (qualityChanged && Kind != StreamKind.Screencast) {
                     await _jsRef.InvokeVoidAsync("reconfigure", cancellationToken,
                         preset.Level.ToString(), preset.Width, preset.Height, preset.Bitrate).ConfigureAwait(false);
                     lastAppliedPreset = preset;
@@ -263,7 +269,7 @@ public sealed class VideoRecorder : IAsyncDisposable
 
     // Nested types
 
-    private sealed class RecorderCallbacks(ChatVideoUI owner, VideoRecorder videoRecorder)
+    private sealed class RecorderCallbacks(ChatVideoUI owner, VideoRecorder videoRecorder, StreamKind kind)
     {
         [JSInvokable]
         public void OnRecordingStarted()
@@ -271,20 +277,20 @@ public sealed class VideoRecorder : IAsyncDisposable
             videoRecorder.OnRecordingStarted();
             var startRequest = videoRecorder.GetStartRequest();
             var chatId = startRequest.Item1;
-            owner.OnRecordingStarted(chatId);
+            owner.OnRecordingStarted(chatId, kind);
         }
 
         [JSInvokable]
         public void OnRecordingStopped() {
             videoRecorder.OnRecordingStopped();
-            owner.OnRecordingStopped();
+            owner.OnRecordingStopped(kind);
         }
 
         [JSInvokable]
         public void OnRecordingError(string error)
         {
             videoRecorder.OnRecordingError();
-            owner.OnRecordingError(error);
+            owner.OnRecordingError(error, kind);
         }
     }
 }

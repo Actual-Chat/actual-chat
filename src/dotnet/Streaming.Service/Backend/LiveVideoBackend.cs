@@ -82,11 +82,15 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         // Read existing streams once — needed for both screencast and webcam checks
         var existingStreams = await SafeGetAll(StreamsStore, chatId).ConfigureAwait(false);
 
-        // Enforce single screencaster per chat
+        // Enforce single screencaster per chat — but allow the same author to replace
+        // their own prior screencast (mints a new StreamId on every reconnect / pipeline
+        // restart; the stale one gets evicted by the same-author/same-kind loop below).
         if (streamInfo.StreamKind == StreamKind.Screencast) {
-            var hasExistingScreencast = existingStreams.Values
-                .Any(s => s.StreamKind == StreamKind.Screencast && s.StreamId != streamInfo.StreamId);
-            if (hasExistingScreencast)
+            var hasForeignScreencast = existingStreams.Values
+                .Any(s => s.StreamKind == StreamKind.Screencast
+                    && s.AuthorId != streamInfo.AuthorId
+                    && s.StreamId != streamInfo.StreamId);
+            if (hasForeignScreencast)
                 throw new InvalidOperationException("Another screencast is already active in this chat.");
         }
 

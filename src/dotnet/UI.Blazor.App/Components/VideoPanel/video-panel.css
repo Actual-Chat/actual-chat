@@ -290,9 +290,22 @@ body.hoverable .btn-h.expand-btn:hover {
     @apply object-contain;
 }
 
-/* Hidden video-track-players (no item-* class) — out of flow */
-.video-panel-content .video-track-player:not([class*="item-"]) {
+/* Hidden video-track-players (no item-* or pip-overlay class) — out of flow */
+.video-panel-content .video-track-player:not([class*="item-"]):not(.pip-overlay) {
     @apply hidden;
+}
+
+/* PiP overlay: author's webcam rendered on top of their own screencast tile */
+.video-panel-content .video-track-player.pip-overlay {
+    @apply absolute;
+    @apply top-3 right-3;
+    @apply w-32 h-32;
+    @apply rounded-lg overflow-hidden;
+    @apply border-2 border-separator;
+    @apply z-30;
+}
+body.wide .video-panel-content .video-track-player.pip-overlay {
+    @apply w-48 h-48;
 }
 
 /* Focused item: absolute overlay, full content area */

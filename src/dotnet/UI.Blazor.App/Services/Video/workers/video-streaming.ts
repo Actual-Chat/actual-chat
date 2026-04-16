@@ -57,7 +57,7 @@ export interface StreamingContext {
     /** Lazily-constructed `IStreamServer` RPC client. */
     rpcStreamServer: {
         PushVideo(session: string, chatId: string, clientStartOffset: number,
-            format: VideoFormatDto, frameStreamRef: unknown): Promise<void>;
+            format: VideoFormatDto, frameStreamRef: unknown, streamKind: number): Promise<void>;
     } | null;
 }
 
@@ -104,7 +104,7 @@ export function ensureRpcPush(ctx: StreamingContext): void {
     }
     ctx.rpcStreamServer ??= ctx.rpcHub.addClient(ctx.rpcPeer, StreamServerDef) as unknown as {
         PushVideo(session: string, chatId: string, clientStartOffset: number,
-            format: VideoFormatDto, frameStreamRef: unknown): Promise<void>;
+            format: VideoFormatDto, frameStreamRef: unknown, streamKind: number): Promise<void>;
     };
 }
 
@@ -196,7 +196,7 @@ export class InternalVideoStream {
             // rejection is logged but shouldn't cancel the pump loop since the
             // sender owns the lifetime of the stream.
             void streamServer
-                .PushVideo(RPC_SESSION_DEFAULT, this.ctx.chatId, clientStartOffset, format, stream.toRef(peer))
+                .PushVideo(RPC_SESSION_DEFAULT, this.ctx.chatId, clientStartOffset, format, stream.toRef(peer), this.ctx.streamKind)
                 .catch((err: unknown) => warnLog?.log('PushVideo rejected:', err));
 
             // Wait for the pump to complete (writeFrom was started by toRef)
