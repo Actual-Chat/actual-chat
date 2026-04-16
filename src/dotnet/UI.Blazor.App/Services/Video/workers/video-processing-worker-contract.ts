@@ -146,9 +146,24 @@ export interface VideoProcessingConfig {
     previewOnly?: boolean;
 }
 
+export interface OrientationStats {
+    firstDisplayWidth: number;
+    firstDisplayHeight: number;
+    firstCodedWidth: number;
+    firstCodedHeight: number;
+    firstRotation: number | null;
+    lastRotation: number | null;
+    configuredWidth: number;
+    configuredHeight: number;
+    needsRotation: boolean;
+    rotationDetection: 'none' | 'dimensions' | 'coded' | 'metadata';
+    framesSeen: number;
+}
+
 export interface VideoProcessingStats {
     encoder: EncoderStats;
     segmentation: SegmentationStats | null;
+    orientation: OrientationStats | null;
 }
 
 export interface VideoProcessingWorker {

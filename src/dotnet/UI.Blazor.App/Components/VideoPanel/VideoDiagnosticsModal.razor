@@ -93,6 +93,32 @@
                         <span class="diag-label">SignalR</span>
                         <span class="diag-value">@GetStr(own.Value, "signalRState")</span>
                     </div>
+                    @if (stream.TryGetProperty("orientation", out var orient) && orient.ValueKind == JsonValueKind.Object) {
+                        <div class="diag-row">
+                            <span class="diag-label">Display</span>
+                            <span class="diag-value">@GetStr(orient, "firstDisplayResolution")</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Coded</span>
+                            <span class="diag-value">@GetStr(orient, "firstCodedResolution")</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Config</span>
+                            <span class="diag-value">@GetStr(orient, "configuredResolution")</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Rotation</span>
+                            <span class="diag-value">@GetStr(orient, "firstRotation") → @GetStr(orient, "lastRotation")</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Detection</span>
+                            <span class="diag-value">@GetStr(orient, "rotationDetection") (@(GetBool(orient, "needsRotation") ? "rot: yes" : "rot: no"))</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Frames seen</span>
+                            <span class="diag-value">@(GetNum(orient, "framesSeen").ToString("0"))</span>
+                        </div>
+                    }
                 </div>
             }
         </div>
@@ -356,6 +382,17 @@
             && ownStream.ValueKind == JsonValueKind.Object) {
             AppendJson(sb, ownStream);
             sb.AppendLine($"SignalR: {GetStr(ownVal, "signalRState")}");
+
+            if (ownStream.TryGetProperty("orientation", out var orient) && orient.ValueKind == JsonValueKind.Object) {
+                sb.AppendLine();
+                sb.AppendLine("-- Orientation --");
+                sb.AppendLine($"Display: {GetStr(orient, "firstDisplayResolution")}");
+                sb.AppendLine($"Coded: {GetStr(orient, "firstCodedResolution")}");
+                sb.AppendLine($"Config: {GetStr(orient, "configuredResolution")}");
+                sb.AppendLine($"Rotation: {GetStr(orient, "firstRotation")} → {GetStr(orient, "lastRotation")}");
+                sb.AppendLine($"Detection: {GetStr(orient, "rotationDetection")} (rot: {(GetBool(orient, "needsRotation") ? "yes" : "no")})");
+                sb.AppendLine($"Frames seen: {GetNum(orient, "framesSeen"):0}");
+            }
         }
         sb.AppendLine();
 

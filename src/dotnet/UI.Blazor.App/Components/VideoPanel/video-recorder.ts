@@ -28,6 +28,16 @@ export interface OwnStreamDiagnostics {
     segmentationAvgTime: number | null;
     supportedEncoderCategories: string[];
     status: string;
+    orientation: {
+        firstDisplayResolution: string;
+        firstCodedResolution: string;
+        firstRotation: string;
+        lastRotation: string;
+        configuredResolution: string;
+        needsRotation: boolean;
+        rotationDetection: string;
+        framesSeen: number;
+    } | null;
 }
 
 export interface VideoDevice {
@@ -604,6 +614,7 @@ export class VideoRecorder {
         const pipeline = rs?.getPipeline();
         const encoderStats = pipeline?.getEncoderStats();
         const segStats = pipeline?.getSegmentationStats();
+        const orientStats = pipeline?.getOrientationStats();
         const state = rs?.getState();
         const config = rs?.getConfig();
         const inputTrack = rs?.getInputTrack();
@@ -639,6 +650,16 @@ export class VideoRecorder {
             segmentationAvgTime: segStats?.averageTotalTime ?? null,
             supportedEncoderCategories: this.supportedEncoderCategories,
             status: state?.status ?? 'idle',
+            orientation: orientStats ? {
+                firstDisplayResolution: `${orientStats.firstDisplayWidth}x${orientStats.firstDisplayHeight}`,
+                firstCodedResolution: `${orientStats.firstCodedWidth}x${orientStats.firstCodedHeight}`,
+                firstRotation: orientStats.firstRotation !== null ? `${orientStats.firstRotation}°` : 'N/A',
+                lastRotation: orientStats.lastRotation !== null ? `${orientStats.lastRotation}°` : 'N/A',
+                configuredResolution: `${orientStats.configuredWidth}x${orientStats.configuredHeight}`,
+                needsRotation: orientStats.needsRotation,
+                rotationDetection: orientStats.rotationDetection,
+                framesSeen: orientStats.framesSeen,
+            } : null,
         };
     }
 

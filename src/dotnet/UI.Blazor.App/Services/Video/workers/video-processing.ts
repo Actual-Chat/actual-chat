@@ -10,7 +10,7 @@ import Denque from 'denque';
 import * as ort from 'onnxruntime-web';
 
 import { type EncoderConfig, type EncodedChunkData, WebCodecsEncoder } from '../webcodecs-encoder';
-import type { SegmentationConfig, SegmentationStats, ModelConfig, VideoProcessingConfig, VideoProcessingWorker, VideoProcessingWorkerCallbacks, VideoProcessingStats } from './video-processing-worker-contract';
+import type { SegmentationConfig, SegmentationStats, ModelConfig, VideoProcessingConfig, VideoProcessingWorker, VideoProcessingWorkerCallbacks, VideoProcessingStats, OrientationStats } from './video-processing-worker-contract';
 import { getModelConfig } from './video-processing-worker-contract';
 import {
     initTensorWebGPU,
@@ -143,6 +143,7 @@ let streamingEnabled = false;
 let processing = false;
 let dimensionsReconciled = false;
 let needsRotation = false;
+let orientationStats: OrientationStats | null = null;
 let vadSpeaking = true;
 let vadRemoteStreamCount = 0;
 let vadReducedFrameIntervalMs = 1000 / 5;
@@ -615,15 +616,15 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
                 rawFrame.close(); continue;
             }
 
+            const frameRotation = rawFrame.rotation ?? null;
+
             if (!dimensionsReconciled) {
                 dimensionsReconciled = true;
                 const frameW = rawFrame.displayWidth;
                 const frameH = rawFrame.displayHeight;
                 const codedW = rawFrame.codedWidth;
                 const codedH = rawFrame.codedHeight;
-                const frameRotation = 'N/A';
-                //const frameRotation = (rawFrame as any).rotation ?? 'N/A';
-                warnLog?.log(`DIMENSIONS: display=${frameW}x${frameH}, coded=${codedW}x${codedH}, config=${encoderConfig.width}x${encoderConfig.height}, rotation=${frameRotation}`);
+                warnLog?.log(`DIMENSIONS: display=${frameW}x${frameH}, coded=${codedW}x${codedH}, config=${encoderConfig.width}x${encoderConfig.height}, rotation=${frameRotation ?? 'N/A'}`);
                 // Detect rotation: display dims are transposed vs encoder config
                 // (MSTP gives raw sensor dims as displayWidth/Height)
                 const isRotated = frameW === encoderConfig.height && frameH === encoderConfig.width
@@ -632,9 +633,11 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
                 // buffer stays in sensor orientation (landscape) — coded dims reveal true pixel layout
                 const isRotatedByCoded = !isRotated
                     && codedW === frameH && codedH === frameW && codedW !== frameW;
+                let detection: OrientationStats['rotationDetection'] = 'none';
                 if (isRotated || isRotatedByCoded) {
                     warnLog?.log(`Frame ${frameW}x${frameH} (coded: ${codedW}x${codedH}) is rotated vs config ${encoderConfig.width}x${encoderConfig.height}`);
                     needsRotation = true;
+                    detection = isRotated ? 'dimensions' : 'coded';
                     // Keep encoder config at portrait dimensions — resizeFrame() rotate90 will
                     // rotate landscape frames into portrait before encoding
                 } else if (frameW !== encoderConfig.width || frameH !== encoderConfig.height) {
@@ -654,6 +657,19 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
                         debugLog?.log(`Display dimensions ${frameW}x${frameH} larger than config ${encoderConfig.width}x${encoderConfig.height}, resize canvas will downscale`);
                     }
                 }
+                // Record rotation metadata even when no other detector fires — useful for diagnostics
+                if (detection === 'none' && frameRotation !== null && frameRotation % 180 !== 0)
+                    detection = 'metadata';
+                orientationStats = {
+                    firstDisplayWidth: frameW, firstDisplayHeight: frameH,
+                    firstCodedWidth: codedW, firstCodedHeight: codedH,
+                    firstRotation: frameRotation, lastRotation: frameRotation,
+                    configuredWidth: encoderConfig.width, configuredHeight: encoderConfig.height,
+                    needsRotation, rotationDetection: detection, framesSeen: 1,
+                };
+            } else if (orientationStats) {
+                orientationStats.framesSeen++;
+                orientationStats.lastRotation = frameRotation;
             }
 
             const frame = rawFrame;
@@ -698,6 +714,7 @@ export const serverImpl: VideoProcessingWorker = {
             streamCtx.processing = true;
             dimensionsReconciled = false;
             needsRotation = false;
+            orientationStats = null;
 
             const inputReader = frameInputStream.getReader();
             streamReadLoopPromise = streamReadLoop(inputReader);
@@ -736,6 +753,7 @@ export const serverImpl: VideoProcessingWorker = {
             streamCtx.processing = true;
             dimensionsReconciled = false;
             needsRotation = false;
+            orientationStats = null;
 
             const processor = new MediaStreamTrackProcessor({ track });
             const inputReader = processor.readable.getReader();
@@ -886,7 +904,7 @@ export const serverImpl: VideoProcessingWorker = {
         segInitialized = false; blurEnabled = false; resizeCanvas = null; resizeCtx = null;
         startTimestamp = undefined; lastLoggedFormat = '(unset)'; loggedI420Error = false;
         backpressureDrops = 0; backpressureTotalFrames = 0; lastBackpressureCheckTime = 0; backpressureNotified = false;
-        dimensionsReconciled = false; needsRotation = false; vadSpeaking = true; vadRemoteStreamCount = 0; vadLastPassedFrameTime = 0;
+        dimensionsReconciled = false; needsRotation = false; orientationStats = null; vadSpeaking = true; vadRemoteStreamCount = 0; vadLastPassedFrameTime = 0;
         segFrameCounter = 0; hasValidMask = false; loggedBlurFormat = false; processingFrame = false; frameSequence = 0;
         segProcessedFrames = 0; segTotalInferenceTime = 0; segTotalBlurTime = 0; segTotalProcessingTime = 0; segDroppedFrames = 0;
         videoStream = null; lastVideoStream = null; pendingStreamFrames = [];
@@ -909,7 +927,7 @@ export const serverImpl: VideoProcessingWorker = {
             averageTotalTime: segProcessedFrames > 0 ? segTotalProcessingTime / segProcessedFrames : 0,
             droppedFrames: segDroppedFrames, backend: segConfig?.backend ?? 'unknown',
         } : null;
-        return { encoder: encoderStats, segmentation: segStats };
+        return { encoder: encoderStats, segmentation: segStats, orientation: orientationStats ? { ...orientationStats } : null };
     },
 
     // eslint-disable-next-line @typescript-eslint/require-await

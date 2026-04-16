@@ -15,7 +15,7 @@ import { supportsTransferableStreams } from '../workers/stream-channel';
 
 import { BrowserInit } from '../../../../UI.Blazor/Services/BrowserInit/browser-init';
 import type { EncoderConfig, EncoderStats } from '../webcodecs-encoder';
-import type { SegmentationConfig, SegmentationStats } from '../workers/video-processing-worker-contract';
+import type { SegmentationConfig, SegmentationStats, OrientationStats } from '../workers/video-processing-worker-contract';
 import type {
     VideoProcessingWorker,
     VideoProcessingWorkerCallbacks,
@@ -70,6 +70,7 @@ export interface IVideoPipeline {
     setPreviewCallback(callback: ((frame: VideoFrame) => void) | null): void;
     getEncoderStats(): EncoderStats;
     getSegmentationStats(): SegmentationStats | null;
+    getOrientationStats(): OrientationStats | null;
     pauseEncoding(): void;
     resumeEncoding(): void;
     forceKeyFrame(): Promise<void>;
@@ -116,6 +117,7 @@ export class VideoPipeline implements IVideoPipeline {
             hardwareAcceleration: 'unknown',
         },
         segmentation: null,
+        orientation: null,
     };
     private statsInterval: number | null = null;
     private diagnosticsInterval: number | null = null;
@@ -443,6 +445,10 @@ export class VideoPipeline implements IVideoPipeline {
 
     getSegmentationStats(): SegmentationStats | null {
         return this.currentStats.segmentation ? { ...this.currentStats.segmentation } : null;
+    }
+
+    getOrientationStats(): OrientationStats | null {
+        return this.currentStats.orientation ? { ...this.currentStats.orientation } : null;
     }
 
     setPreviewCallback(callback: ((frame: VideoFrame) => void) | null): void {
