@@ -11,8 +11,7 @@ body.wide .video-panel.expanded .video-streaming-preview .call-video {
     transform: none;
 }
 .video-streaming-preview .btn-h.btn-settings {
-    @apply absolute top-1 right-1;
-    @apply text-white text-lg;
+    @apply absolute top-2 right-2;
 }
 body.hoverable .video-streaming-preview .btn-h.btn-settings:hover {
     @apply text-white;

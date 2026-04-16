@@ -9,6 +9,7 @@
     var streamKindCls = StreamInfo.StreamKind == StreamKind.Screencast ? "screencast" : "";
 }
 <div class="video-track-player remote-video-container @FocusedClass @streamKindCls">
+    <canvas @ref="BgCanvasRef" class="remote-video-bg" aria-hidden="true"></canvas>
     <canvas @ref="CanvasRef" class="remote-video" data-stream-id="@StreamInfo.StreamId.Value" data-author-id="@StreamInfo.AuthorId.Value"></canvas>
     @if (!string.IsNullOrEmpty(AuthorName)) {
         <div class="video-participant-label">
@@ -37,6 +38,7 @@
     private ILiveVideoStreams LiveVideoStreams => field ??= Services.GetRequiredService<ILiveVideoStreams>();
 
     private ElementReference CanvasRef { get; set; }
+    private ElementReference BgCanvasRef { get; set; }
     private DotNetObjectReference<VideoTrackPlayer>? BlazorRef { get; set; }
 
     [Parameter, EditorRequired]
@@ -90,7 +92,8 @@
                 format.Width,
                 format.Height,
                 format.CodecSettings,
-                startedAtMs);
+                startedAtMs,
+                BgCanvasRef);
 
             await _jsPlayerRef.InvokeVoidAsync("start", _disposeCts.Token);
 

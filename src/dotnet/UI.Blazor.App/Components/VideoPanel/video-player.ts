@@ -90,6 +90,9 @@ export class VideoPlayer {
     private authorId: string;
     private canvas: HTMLCanvasElement;
     private canvasCtx: CanvasRenderingContext2D | null = null;
+    private bgCanvas: HTMLCanvasElement | null = null;
+    private bgCanvasCtx: CanvasRenderingContext2D | null = null;
+    private static readonly BG_CANVAS_WIDTH = 64;
 
     // Decoder worker (off-main-thread decoding)
     private decoderWorkerInstance: Worker | null = null;
@@ -194,9 +197,10 @@ export class VideoPlayer {
         width: number,
         height: number,
         codecSettings: string,
-        startedAtMs: number
+        startedAtMs: number,
+        bgCanvas?: HTMLCanvasElement
     ): VideoPlayer {
-        return new VideoPlayer(blazorRef, streamId, authorId, codec, width, height, codecSettings, canvas, startedAtMs);
+        return new VideoPlayer(blazorRef, streamId, authorId, codec, width, height, codecSettings, canvas, startedAtMs, bgCanvas);
     }
 
     constructor(
@@ -208,7 +212,8 @@ export class VideoPlayer {
         height: number,
         codecSettings: string,
         canvas: HTMLCanvasElement,
-        startedAtMs: number
+        startedAtMs: number,
+        bgCanvas?: HTMLCanvasElement
     ) {
         this.blazorRef = blazorRef;
         this.streamId = streamId;
@@ -216,6 +221,10 @@ export class VideoPlayer {
         this.startedAtMs = startedAtMs;
         this.canvas = canvas;
         this.canvasCtx = canvas.getContext('2d');
+        if (bgCanvas) {
+            this.bgCanvas = bgCanvas;
+            this.bgCanvasCtx = bgCanvas.getContext('2d');
+        }
         this.renderKey = `vr-${streamId}`;
         this.isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
         this.useStreams = supportsTransferableStreams();
@@ -845,9 +854,24 @@ export class VideoPlayer {
                 debugLog?.log(`Canvas resized to ${pf.displayWidth}x${pf.displayHeight}`);
             }
             this.canvasCtx.drawImage(pf.drawable as CanvasImageSource, 0, 0);
+            this.drawBgFrame(pf);
         } catch (error) {
             errorLog?.log('Error rendering frame:', error);
         }
+    }
+
+    // Draws a low-resolution copy of the frame into the background canvas.
+    // The bg canvas is shown (scaled + blurred) only when the container is focused,
+    // providing a blurred fill behind the letterboxed (object-fit: contain) main canvas.
+    private drawBgFrame(pf: PendingFrame): void {
+        if (!this.bgCanvas || !this.bgCanvasCtx) return;
+        const bgW = VideoPlayer.BG_CANVAS_WIDTH;
+        const bgH = Math.max(1, Math.round(bgW * pf.displayHeight / Math.max(1, pf.displayWidth)));
+        if (this.bgCanvas.width !== bgW || this.bgCanvas.height !== bgH) {
+            this.bgCanvas.width = bgW;
+            this.bgCanvas.height = bgH;
+        }
+        this.bgCanvasCtx.drawImage(pf.drawable as CanvasImageSource, 0, 0, bgW, bgH);
     }
 
     private updateBufferState(): void {
