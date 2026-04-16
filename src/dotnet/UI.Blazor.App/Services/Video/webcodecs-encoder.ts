@@ -24,7 +24,20 @@ export interface EncoderConfig {
   height: number;
   bitrate: number;
   framerate: number;
+  /**
+   * Primary keyframe trigger — emit a keyframe every N encoded frames.
+   * Encoder-natural knob (controls GOP size in frames for bandwidth planning).
+   */
   keyframeInterval: number;
+  /**
+   * Wall-clock keyframe floor — guarantees a keyframe is emitted at least every
+   * N ms regardless of input frame rate. Needed because `keyframeInterval` is
+   * frame-count-based: if encoder.encode() is called slowly (VAD-reduced path,
+   * static screencast with low capture framerate), the frame-count trigger can
+   * drift to 10s+ wall time. Leaving this undefined keeps frame-count-only
+   * behavior.
+   */
+  maxKeyFrameIntervalMs?: number;
   latencyMode: 'realtime' | 'quality';
   hardwareAcceleration: 'prefer-hardware' | 'prefer-software' | 'no-preference';
   scalabilityMode?: string; // Scalability mode like 'L1T1', 'L1T2', 'L1T3'
@@ -64,6 +77,7 @@ export class WebCodecsEncoder {
     private droppedFrames = 0;
     private keyFrameCount = 0;
     private lastKeyFrame = 0;
+    private lastKeyFrameTimeMs = 0;
     private totalBytes = 0;
     private encodeTimeHistory = new Denque<number>();
     private encodeStartTimes = new Denque<number>();
@@ -105,11 +119,21 @@ export class WebCodecsEncoder {
         this.encodeQueueAtStart.push(this.encoder.encodeQueueSize);
 
         // Determine if this should be a keyframe
-        const shouldBeKeyFrame = forceKeyFrame ||
-      (this.frameCount - this.lastKeyFrame >= this.config.keyframeInterval);
+        // - forceKeyFrame: PLI from receiver or pipeline event
+        // - frame-count trigger: encoder-natural GOP size
+        // - wall-clock floor: guarantees a keyframe even if encoder is called slowly
+        //   (VAD-reduced path, static screencast). Without this, retention can hold
+        //   no keyframe and late-joining receivers can't start decoding.
+        const nowMs = performance.now();
+        const shouldBeKeyFrame = forceKeyFrame
+            || (this.frameCount - this.lastKeyFrame >= this.config.keyframeInterval)
+            || (this.config.maxKeyFrameIntervalMs != null
+                && this.lastKeyFrameTimeMs > 0
+                && nowMs - this.lastKeyFrameTimeMs >= this.config.maxKeyFrameIntervalMs);
 
         if (shouldBeKeyFrame) {
             this.lastKeyFrame = this.frameCount;
+            this.lastKeyFrameTimeMs = nowMs;
             infoLog?.log(`Keyframe #${this.keyFrameCount + 1} at frame ${this.frameCount}`);
         }
 
@@ -345,6 +369,7 @@ export class WebCodecsEncoder {
         this.droppedFrames = 0;
         this.keyFrameCount = 0;
         this.lastKeyFrame = 0;
+        this.lastKeyFrameTimeMs = 0;
         this.totalBytes = 0;
         this.encodeTimeHistory = new Denque<number>();
         this.encodeStartTimes = new Denque<number>();

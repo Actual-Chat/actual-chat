@@ -377,6 +377,10 @@ export class RecordingService extends EventTarget {
                 keyframeInterval: this.config.mode === 'screen'
                     ? this.config.framerate * 2   // ~2s for screencast
                     : this.config.framerate * 3,  // ~3s for webcam
+                // Wall-clock floor — guarantees a keyframe even when frames arrive slowly
+                // (VAD-reduced path, static screencast). Paired with server-side fast-join
+                // (VideoStreamFilter) so late joiners always find a keyframe in retention.
+                maxKeyFrameIntervalMs: this.config.mode === 'screen' ? 2000 : 3000,
                 latencyMode: 'realtime',
                 hardwareAcceleration: this.config.hardwareAccelerated ? 'prefer-hardware' : 'no-preference',
                 scalabilityMode: scalabilityMode

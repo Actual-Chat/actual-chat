@@ -182,22 +182,25 @@ public sealed class VideoRecorder : IAsyncDisposable
             await foreach (var (preset, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
                 Log.LogInformation("SubscribeToQualityRequests: received preset {Level} ({Width}x{Height} @ {Bitrate}bps), keyframe={KeyFrame}",
                     preset.Level, preset.Width, preset.Height, preset.Bitrate, preset.IsKeyFrameRequested);
-                // Only reconfigure the encoder when resolution/bitrate/level actually changed.
-                // PLI-only presets (same level + KeyFrameRequested) should not trigger reconfigure,
-                // because reconfigure resets HW encoder rate control and causes oversized keyframes.
-                var qualityChanged = lastAppliedPreset == null
-                    || lastAppliedPreset.Level != preset.Level
-                    || lastAppliedPreset.Width != preset.Width
-                    || lastAppliedPreset.Height != preset.Height
-                    || lastAppliedPreset.Bitrate != preset.Bitrate;
-                // Screencast streams at the resolution the user picked (getDisplayMedia).
-                // Server-side adaptive presets are a webcam-bandwidth concept; applying them
-                // to a screencast would churn the encoder (each reconfigure tears down the
-                // current RPC stream and starts a new StreamId, so receiver PLIs get lost).
-                if (qualityChanged && Kind != StreamKind.Screencast) {
-                    await _jsRef.InvokeVoidAsync("reconfigure", cancellationToken,
-                        preset.Level.ToString(), preset.Width, preset.Height, preset.Bitrate).ConfigureAwait(false);
+                // Only reconfigure when the server actually changes the preset.
+                // On the first iteration we know nothing about network/CPU yet, so the
+                // default "High" preset is noise — seed lastAppliedPreset silently and
+                // keep the resolution we started with. Reconfiguring here would churn
+                // the encoder (reconfigure recreates the RPC stream and mints a new
+                // StreamId, so receiver PLIs get lost) and override screencast's
+                // user-picked resolution.
+                if (lastAppliedPreset == null)
                     lastAppliedPreset = preset;
+                else {
+                    var qualityChanged = lastAppliedPreset.Level != preset.Level
+                        || lastAppliedPreset.Width != preset.Width
+                        || lastAppliedPreset.Height != preset.Height
+                        || lastAppliedPreset.Bitrate != preset.Bitrate;
+                    if (qualityChanged && Kind != StreamKind.Screencast) {
+                        await _jsRef.InvokeVoidAsync("reconfigure", cancellationToken,
+                            preset.Level.ToString(), preset.Width, preset.Height, preset.Bitrate).ConfigureAwait(false);
+                        lastAppliedPreset = preset;
+                    }
                 }
                 if (preset.IsKeyFrameRequested)
                     await _jsRef.InvokeVoidAsync("forceKeyFrame", cancellationToken).ConfigureAwait(false);

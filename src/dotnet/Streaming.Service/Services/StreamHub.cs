@@ -217,7 +217,6 @@ public class StreamHub(IServiceProvider services) : Hub
                     var filter = new VideoStreamFilter(
                         LocalLatencyStore.GetPeerMaxTemporalLayer,
                         (sid, ct) => Computed.Capture(() => VideoStreamingBackend.GetQualityPreset(sid, ct), ct),
-                        (sid, ct) => VideoStreamingBackend.RequestKeyFrame(sid, ct),
                         Log);
                     videoStream = filter.Apply(parsedStreamId, peerId, skipTo, rawStream, pullCts.Token);
                 }
