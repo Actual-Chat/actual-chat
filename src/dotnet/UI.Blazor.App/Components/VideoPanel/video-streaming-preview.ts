@@ -4,9 +4,13 @@ import { getActiveRecorder, type VideoRecorder } from './video-recorder';
 const { infoLog } = getLogs('VideoStreamingPreview');
 
 export class VideoStreamingPreview {
+    private static readonly BG_CANVAS_WIDTH = 64;
+
     private readonly element: HTMLElement;
     private readonly canvas: HTMLCanvasElement;
     private readonly canvasCtx: CanvasRenderingContext2D;
+    private readonly bgCanvas: HTMLCanvasElement | null;
+    private readonly bgCanvasCtx: CanvasRenderingContext2D | null;
     private animationFrameId: number | null = null;
     private attachedRecorder: VideoRecorder | null = null;
     private video: HTMLVideoElement | null = null;
@@ -20,6 +24,8 @@ export class VideoStreamingPreview {
         this.element = element;
         this.canvas = this.element.querySelector('.call-video')!;
         this.canvasCtx = this.canvas.getContext('2d')!;
+        this.bgCanvas = this.element.querySelector('.remote-video-bg');
+        this.bgCanvasCtx = this.bgCanvas?.getContext('2d') ?? null;
 
         // Start the render loop — it will auto-attach/detach to the active recorder
         this.animationFrameId = requestAnimationFrame(() => this.renderLoop());
@@ -72,6 +78,21 @@ export class VideoStreamingPreview {
         }
 
         this.canvasCtx.drawImage(this.video, 0, 0);
+        this.drawBgFrame(this.video, videoWidth, videoHeight);
+    }
+
+    // Draws a low-resolution copy of the frame into the background canvas.
+    // The bg canvas is shown (scaled + blurred) only when the container is focused.
+    private drawBgFrame(source: CanvasImageSource, width: number, height: number): void {
+        if (!this.bgCanvas || !this.bgCanvasCtx)
+            return;
+        const bgW = VideoStreamingPreview.BG_CANVAS_WIDTH;
+        const bgH = Math.max(1, Math.round(bgW * height / Math.max(1, width)));
+        if (this.bgCanvas.width !== bgW || this.bgCanvas.height !== bgH) {
+            this.bgCanvas.width = bgW;
+            this.bgCanvas.height = bgH;
+        }
+        this.bgCanvasCtx.drawImage(source, 0, 0, bgW, bgH);
     }
 
     private attach(recorder: VideoRecorder): void {
@@ -105,6 +126,7 @@ export class VideoStreamingPreview {
             if (!this.element.classList.contains('has-video'))
                 this.element.classList.add('has-video');
             this.canvasCtx.drawImage(frame, 0, 0);
+            this.drawBgFrame(frame, frame.displayWidth, frame.displayHeight);
         };
 
         // Apply screencast class based on recorder mode

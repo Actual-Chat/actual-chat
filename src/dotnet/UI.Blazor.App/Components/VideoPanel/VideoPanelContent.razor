@@ -51,7 +51,7 @@
     <div class="c-container">
         @* Header for expanded video *@
         <div class="video-panel-toolbar video-panel-header">
-            <HeaderButton Class="expand-btn show-with-delay expanded-video-btn" Click="@OnExpandClick">
+            <HeaderButton Class="btn-video-panel expand-btn show-with-delay expanded-video-btn" Click="@OnExpandClick">
                 <i class="icon-expand text-lg collapsed-video-panel"></i>
                 <i class="icon-collapse text-lg expanded-video-panel"></i>
             </HeaderButton>
@@ -75,15 +75,15 @@
         @* Footer for mobile full-screen video *@
         <div class="video-panel-toolbar video-panel-footer">
             @if (ScreenSize.IsNarrow()) {
-                <HeaderButton Click="@OnSwitchCamera">
+                <HeaderButton Click="@OnSwitchCamera" Class="btn-video-panel">
                     <i class="icon-camera-switch text-lg"></i>
                 </HeaderButton>
             }
-            <HeaderButton Click="@(() => OnVideoClick(!isOwnCameraStreaming))" Class="@videoBtnCls">
+            <HeaderButton Click="@(() => OnVideoClick(!isOwnCameraStreaming))" Class="@("btn-video-panel " + videoBtnCls)">
                 <i class="icon-video text-lg"></i>
             </HeaderButton>
             @if (!ScreenSize.IsNarrow()) {
-                <HeaderButton Click="@(() => OnScreencastClick(!isOwnScreencasting))" Class="@screencastBtnCls">
+                <HeaderButton Click="@(() => OnScreencastClick(!isOwnScreencasting))" Class="@("btn-video-panel " + screencastBtnCls)">
                     <i class="icon-screen-share text-lg"></i>
                 </HeaderButton>
             }
@@ -97,19 +97,19 @@
                     <i class="icon-recorder-right-half right"></i>
                 }
             </HeaderButton>
-            <HeaderButton Click="OnVoiceSettingsClick">
+            <HeaderButton Click="OnVoiceSettingsClick" Class="btn-video-panel">
                 <i class="icon-options-2 text-lg"></i>
             </HeaderButton>
-            <HeaderButton Class="settings-btn" Click="@OnVideoSettingsClick">
+            <HeaderButton Click="@OnVideoSettingsClick" Class="btn-video-panel settings-btn">
                 <i class="icon-settings text-lg"></i>
             </HeaderButton>
             @if (m.AllowDiagnostics) {
-                <HeaderButton Class="btn-diagnostics" Tooltip="Diagnostics" Click="@OnDiagnosticsClick">
+                <HeaderButton Tooltip="Diagnostics" Click="@OnDiagnosticsClick" Class="btn-video-panel btn-diagnostics">
                     <i class="icon-activity text-lg"></i>
                 </HeaderButton>
             }
             @if (!ScreenSize.IsNarrow()) {
-                <HeaderButton Class="@("chat-btn " + chatBtnCls)" Click="@OnToggleChatVisibilityClick">
+                <HeaderButton Click="@OnToggleChatVisibilityClick" Class="@("btn-video-panel chat-btn " + chatBtnCls)">
                     <i class="icon-message-ellipse text-lg"></i>
                 </HeaderButton>
             }
@@ -140,11 +140,11 @@
             }
             <VideoStreamingPreview ChatId="@ChatId" Class="@(layout.OwnStreamingPreviewClass)" />
             @if (m.AllowDiagnostics) {
-                <HeaderButton Class="btn-diagnostics collapsed-video-btn" Tooltip="Diagnostics" Click="@OnDiagnosticsClick">
+                <HeaderButton Class="btn-video-panel btn-diagnostics collapsed-video-btn" Tooltip="Diagnostics" Click="@OnDiagnosticsClick">
                     <i class="icon-activity text-lg"></i>
                 </HeaderButton>
             }
-            <HeaderButton Class="expand-btn show-with-delay collapsed-video-btn" Click="@OnExpandClick">
+            <HeaderButton Class="btn-video-panel expand-btn show-with-delay collapsed-video-btn" Click="@OnExpandClick">
                 <i class="icon-expand text-lg collapsed-video-panel"></i>
                 <i class="icon-collapse text-lg expanded-video-panel"></i>
             </HeaderButton>

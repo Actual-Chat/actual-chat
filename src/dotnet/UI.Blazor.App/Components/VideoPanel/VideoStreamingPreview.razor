@@ -11,6 +11,7 @@
 }
 
 <div @ref="Ref" class="video-track-player video-streaming-preview @Class @recordingCls">
+    <canvas class="remote-video-bg" aria-hidden="true"></canvas>
     <canvas
         class="call-video"
         @onclick="@(isRecording && !m.IsAloneOnStream ? OnSettingsClick : null!)"></canvas>
@@ -20,7 +21,7 @@
         </span>
     </div>
     @if (isRecording && m.IsAloneOnStream) {
-        <HeaderButton Class="btn-settings" Click="@OnSettingsClick">
+        <HeaderButton Class="btn-settings btn-video-panel" Click="@OnSettingsClick">
             <i class="icon-settings text-lg"></i>
         </HeaderButton>
     }

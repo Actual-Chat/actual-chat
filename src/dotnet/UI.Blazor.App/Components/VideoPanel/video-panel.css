@@ -104,20 +104,10 @@ body.wide .video-panel.expanded:has(.video-panel-chat) > .c-container {
 }
 .video-panel .btn-h.expand-btn {
     @apply absolute top-2 left-2 z-10;
-    @apply w-12 h-12;
-    @apply rounded-full;
-    @apply text-white text-lg;
-    background: linear-gradient(0deg, rgba(255, 255, 255, 0.50) -46.21%, rgba(255, 255, 255, 0.10) 103.45%, rgba(255, 255, 255, 0.35) 103.45%);
-    backdrop-filter: blur(8px);
 }
 .video-panel .btn-h.btn-diagnostics.collapsed-video-btn {
     @apply absolute top-2 z-10;
-    @apply w-12 h-12;
-    @apply rounded-full;
-    @apply text-white text-lg;
     left: 3.75rem;
-    background: linear-gradient(0deg, rgba(255, 255, 255, 0.50) -46.21%, rgba(255, 255, 255, 0.10) 103.45%, rgba(255, 255, 255, 0.35) 103.45%);
-    backdrop-filter: blur(8px);
 }
 .video-panel .btn-h.expand-btn.expanded-video-btn {
     @apply inset-auto;
@@ -218,14 +208,23 @@ body.device-mobile.narrow .video-panel.expanded .video-track-player.item-focused
 .video-panel.expanded:has(.video-panel-chat:not(.chat-hidden)) .video-panel-toolbar {
     right: calc(var(--video-panel-chat-width) + 0.5rem);
 }
-.video-panel .video-panel-toolbar > * {
-    @apply text-white;
-    background: linear-gradient(0deg, rgba(255, 255, 255, 0.50) -46.21%, rgba(255, 255, 255, 0.10) 103.45%, rgba(255, 255, 255, 0.35) 103.45%);
-    backdrop-filter: blur(8px);
-}
+.btn-video-panel.btn,
+.btn-video-panel.btn-h,
 .video-panel .video-panel-toolbar > button {
     @apply w-12 h-12;
-    @apply rounded-full;
+    @apply rounded-full border border-[var(--white-10)];
+    @apply text-white;
+    background: linear-gradient(
+        160deg,
+        rgba(0, 0, 0, 0.28) 0%,
+        rgba(0, 0, 0, 0.18) 100%
+    );
+    box-shadow:
+        0 1px 4px rgba(0, 0, 0, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(10px) brightness(1.1);
+    -webkit-backdrop-filter: blur(10px) brightness(1.1);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.60);
 }
 body.hoverable .video-panel .video-panel-toolbar > button:hover,
 .touch-capable .video-panel .video-panel-toolbar > button:active {
@@ -290,6 +289,25 @@ body.hoverable .btn-h.expand-btn:hover {
     @apply object-contain;
 }
 
+/* Blurred background canvas — only visible inside focused container,
+   fills the container behind the letterboxed main canvas. */
+.video-track-player canvas.remote-video-bg {
+    @apply hidden;
+    @apply bg-transparent;
+}
+.video-track-player.item-focused canvas.remote-video-bg {
+    @apply z-0;
+    @apply block;
+    @apply object-cover;
+    filter: blur(24px) saturate(1.3);
+    transform: scale(1.15);
+}
+.video-track-player.item-focused canvas:not(.remote-video-bg) {
+    @apply bg-transparent;
+    @apply object-contain;
+    z-index: 1;
+}
+
 /* Hidden video-track-players (no item-* or pip-overlay class) — out of flow */
 .video-panel-content .video-track-player:not([class*="item-"]):not(.pip-overlay) {
     @apply hidden;
@@ -313,6 +331,10 @@ body.wide .video-panel-content .video-track-player.pip-overlay {
     @apply absolute inset-0;
     @apply w-full h-full;
     @apply rounded-none border-0;
+    @apply overflow-hidden;
+}
+body.wide .video-panel-content .video-track-player.item-focused {
+    @apply rounded-lg;
 }
 .video-panel.expanded .video-track-player.item-focused.screencast {
     @apply overflow-hidden;
@@ -345,6 +367,11 @@ body.wide .video-panel-content .video-track-player.item-x {
     @apply px-1.5 py-0.5 rounded;
     @apply text-xs text-white;
     background: rgba(0, 0, 0, 0.5);
+}
+.video-panel .video-track-player .video-participant-label > span {
+    @apply overflow-hidden whitespace-nowrap;
+    max-width: 16ch;
+    text-overflow: ellipsis;
 }
 body.narrow .video-panel-content .video-track-player.item-x .video-participant-label {
     @apply hidden;
