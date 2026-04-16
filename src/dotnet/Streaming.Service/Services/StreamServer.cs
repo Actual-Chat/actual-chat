@@ -112,7 +112,10 @@ public class StreamServer(IServiceProvider services) : IStreamServer
         var newFrameStream = RpcStream.New(frameStream);
         Log.LogInformation("PushVideo: {VideoRecord}", videoRecord);
 
-        using var stopCts = new CancellationTokenSource(Constants.Chat.MaxEntryDuration + TimeSpan.FromSeconds(5));
+        // Live video calls: cap at Constants.Video.MaxLiveDuration (8h) rather than
+        // the 3-min chat-entry duration. Every StreamKind (Webcam/Screencast) is a
+        // live stream; there is no voice-message-style video path.
+        using var stopCts = new CancellationTokenSource(Constants.Video.MaxLiveDuration);
         await VideoBackend.PushVideo(videoRecord, newFrameStream, stopCts.Token).ConfigureAwait(false);
     }
 

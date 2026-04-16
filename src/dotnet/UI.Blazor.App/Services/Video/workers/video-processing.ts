@@ -529,6 +529,24 @@ function deliverChunkToStream(
     descriptionBytes?: ArrayBuffer,
     temporalLayerId?: number
 ): void {
+    // Detect sender disconnect BEFORE normalizing timestamps.
+    //
+    // With Fusion 12.3.25 + allowReconnect=true on the PushVideo RpcStream, same-peer
+    // WS reconnects no longer dispose the sender — Fusion's $sys.Reconnect + real-time
+    // resume (skip-to-next-keyframe via canSkipTo) handle continuity transparently.
+    //
+    // isDisposed therefore only fires on peer-change (sharedObjects.disconnectAll →
+    // AbortSignal → source generator exits → stream.whenSent resolves → finally
+    // { isDisposed = true }) or after the server-side MaxLiveDuration CTS. In both
+    // cases the next PushVideo call targets a new server instance / new chat entry,
+    // so the first frame must start a fresh timing anchor at offset 0 — otherwise
+    // the viewer sees offsetMs≈past-stream-length and stalls.
+    if (videoStream?.isDisposed) {
+        warnLog?.log('VideoStream disposed (peer-change) — will recreate on next keyframe');
+        videoStream = null;
+        firstEncodedTimestamp = null;
+    }
+
     const chunkData = new Uint8Array(chunkBytes);
     firstEncodedTimestamp ??= timestamp;
     const normalizedTimestamp = timestamp - firstEncodedTimestamp;
@@ -563,22 +581,6 @@ function deliverChunkToStream(
         frame.description = storedDescriptionBytes;
     }
 
-    // Detect sender disconnect and recreate the stream.
-    //
-    // With Fusion 12.3.25 fixes + allowReconnect=true on the PushVideo RpcStream, a same-peer
-    // WS reconnect no longer disposes the sender — Fusion's $sys.Reconnect + real-time resume
-    // (skip-to-next-keyframe via canSkipTo) handle continuity transparently.
-    //
-    // The only remaining trigger for isDisposed here is a peer-change: sharedObjects.disconnectAll()
-    // fires, the sender's AbortSignal is aborted, the source generator exits, stream.whenSent
-    // resolves, and InternalVideoStream.stream() hits its finally { isDisposed = true }. We then
-    // recreate a fresh InternalVideoStream at the next keyframe, which creates a new PushVideo
-    // call against the new server instance.
-    if (videoStream?.isDisposed) {
-        warnLog?.log('VideoStream disposed (peer-change) — will recreate on next keyframe');
-        videoStream = null;
-    }
-
     if (!videoStream) {
         const isAV1 = encoderConfig!.codec.startsWith('av01');
         const canCreateStream = codecSettings ?? (isAV1 && isKeyFrame);
@@ -588,7 +590,6 @@ function deliverChunkToStream(
             videoStream = new InternalVideoStream(
                 { codec: encoderConfig!.codec, width: encoderConfig!.width, height: encoderConfig!.height, codecSettings: settings },
                 streamCtx,
-                () => { firstEncodedTimestamp = null; },
                 lastVideoStream?.whenDisposed,
             );
             lastVideoStream = videoStream;

@@ -6,6 +6,7 @@ public static partial class Constants
     {
         public static readonly TimeSpan CancellationDelay = TimeSpan.FromSeconds(5);
         public static readonly TimeSpan StreamExpirationDelay = TimeSpan.FromSeconds(30);
+        public static readonly TimeSpan MaxLiveDuration = TimeSpan.FromHours(8);
 
         // RPC stream flow control for video (30fps, 33ms frames).
         // Tuned for up to ~1s RTT: ackAdvance > ackPeriod + fps × RTT.

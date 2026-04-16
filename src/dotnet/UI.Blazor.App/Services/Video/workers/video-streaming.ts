@@ -124,7 +124,6 @@ export class InternalVideoStream {
     constructor(
         private readonly config: { codec: string; width: number; height: number; codecSettings: string },
         private readonly ctx: StreamingContext,
-        private readonly onReconnect?: () => void,
         streamAfter?: Promise<void>,
     ) {
         this.whenDisposed = this.stream(streamAfter);
@@ -158,8 +157,6 @@ export class InternalVideoStream {
             ensureRpcPush(this.ctx);
             const streamServer = this.ctx.rpcStreamServer!;
             const peer = this.ctx.rpcPeer!;
-
-            this.onReconnect?.();
 
             const clientStartOffset = serverClockNow(this.ctx) / 1000;
             warnLog?.log(`TIMING_ANCHOR: clientStartOffset=${clientStartOffset.toFixed(3)}s`);
