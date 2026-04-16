@@ -90,10 +90,11 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
     protected virtual async Task<LayoutInputs> GetLayoutInputs(CancellationToken cancellationToken)
     {
         var focusedIds = await _focusedSpeakerIds.Use(cancellationToken).ConfigureAwait(false);
-        var ownKind = await ChatVideoUI.GetOwnStreamKind(ChatId, cancellationToken).ConfigureAwait(false);
+        // Own-preview slot reflects the webcam only — screencast has no self-preview.
+        var isOwnRecording = await ChatVideoUI.IsOwnRecording(ChatId, cancellationToken).ConfigureAwait(false);
         var remoteStreams = await ChatVideoUI.GetRemoteStreams(ChatId, cancellationToken).ConfigureAwait(false);
         var screenSize = await Hub.BrowserInfo.ScreenSize.Use(cancellationToken).ConfigureAwait(false);
-        return new LayoutInputs(screenSize.IsNarrow(), ownKind, remoteStreams, focusedIds);
+        return new LayoutInputs(screenSize.IsNarrow(), isOwnRecording, remoteStreams, focusedIds);
     }
 
     // Private methods
@@ -198,42 +199,43 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
         catch (OperationCanceledException) { }
     }
 
-    private static ImmutableArray<VideoStreamInfo> BuildDisplayList(
+    /// <summary>
+    /// Groups streams by author into a primary-plus-PiP pair: if an author has both
+    /// a screencast and a webcam stream active, the screencast is the primary tile
+    /// and the webcam is its PiP overlay. An author with only one kind has a null PiP.
+    /// </summary>
+    private static ImmutableArray<AuthorStreamGroup> BuildDisplayList(
         VideoStreamInfo[] remoteStreams,
         ImmutableArray<AuthorId> focusedIds,
         int maxDisplaySlots)
     {
-        // Build lookup from AuthorId → stream for fast access.
-        // An author may have multiple concurrent streams (camera + screencast, or
-        // transient overlap during stream restart) — prefer screencast, then newest.
-        var streamByAuthor = remoteStreams
+        // Build per-author grouping. An author may have multiple concurrent streams
+        // (screencast + webcam, or transient overlap during stream restart). The
+        // group pairs a primary stream with an optional PiP overlay — screencast
+        // wins as primary, webcam becomes the PiP. This replaces the earlier
+        // single-stream-per-author dictionary that crashed on duplicate keys.
+        var groups = remoteStreams
             .GroupBy(s => s.AuthorId)
-            .ToDictionary(
-                g => g.Key,
-                g => g.OrderByDescending(s => s.StreamKind == StreamKind.Screencast)
-                      .ThenByDescending(s => s.StartedAt)
-                      .First());
+            .ToDictionary(g => g.Key, g => AuthorStreamGroup.From(g));
 
-        // Start with focused authors that still have active streams
-        var display = new List<VideoStreamInfo>();
+        var display = new List<AuthorStreamGroup>();
         var seen = new HashSet<AuthorId>();
         foreach (var id in focusedIds) {
-            if (streamByAuthor.TryGetValue(id, out var stream)) {
-                display.Add(stream);
+            if (groups.TryGetValue(id, out var group)) {
+                display.Add(group);
                 seen.Add(id);
             }
             if (display.Count >= maxDisplaySlots)
                 break;
         }
 
-        // Fill remaining slots with other participants, ordered by StartedAt descending
         if (display.Count < maxDisplaySlots) {
-            var others = remoteStreams
-                .Where(s => !seen.Contains(s.AuthorId))
-                .OrderByDescending(s => s.StartedAt);
-            foreach (var stream in others) {
-                if (seen.Add(stream.AuthorId)) {
-                    display.Add(stream);
+            var others = groups.Values
+                .Where(g => !seen.Contains(g.Primary.AuthorId))
+                .OrderByDescending(g => g.Primary.StartedAt);
+            foreach (var group in others) {
+                if (seen.Add(group.Primary.AuthorId)) {
+                    display.Add(group);
                     if (display.Count >= maxDisplaySlots)
                         break;
                 }
@@ -243,11 +245,32 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
         return [..display];
     }
 
+    /// <summary>
+    /// Primary stream (screencast if available) plus optional PiP overlay (webcam
+    /// belonging to the same author, when the author is dual-streaming).
+    /// </summary>
+    public sealed record AuthorStreamGroup(VideoStreamInfo Primary, VideoStreamInfo? Pip)
+    {
+        public static AuthorStreamGroup From(IEnumerable<VideoStreamInfo> authorStreams)
+        {
+            VideoStreamInfo? screencast = null;
+            VideoStreamInfo? webcam = null;
+            foreach (var s in authorStreams) {
+                if (s.StreamKind == StreamKind.Screencast)
+                    screencast = s;
+                else
+                    webcam = s;
+            }
+            return screencast is not null
+                ? new AuthorStreamGroup(screencast, webcam)
+                : new AuthorStreamGroup(webcam!, null);
+        }
+    }
+
     private static VideoPanelLayout BuildLayout(LayoutInputs inputs)
     {
-        var (isNarrow, ownKind, remoteStreams, focusedIds) = inputs;
+        var (isNarrow, hasOwn, remoteStreams, focusedIds) = inputs;
         var hasRemote = remoteStreams.Length > 0;
-        var hasOwn = ownKind is not null;
 
         // Build ordered display list from focus history + active streams
         var maxSlots = isNarrow ? MaxDisplaySlotsNarrow : MaxDisplaySlotsWide;
@@ -258,21 +281,26 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
             : !hasRemote ? "item-focused"
             : "item-x item-0";
 
-        // Map display list to stream → CSS class
+        // Map display list to stream → CSS class; hide PiP-overlay streams from the
+        // main tile grid (they render inside their primary's tile).
         var remoteClasses = new List<RemoteStreamPlayerClass>();
-        var focusedStream = displayList.FirstOrDefault();
-        // displayList[0] → "item-focused"
-        if (focusedStream is not null)
-            remoteClasses.Add(new RemoteStreamPlayerClass(focusedStream.StreamId.Value, "item-focused"));
-        // displayList[1+] → "item-x item-{i}" (sidebar, offset by 1 when own takes item-0)
+        var pipPairs = new List<PipPair>();
+        var focusedGroup = displayList.FirstOrDefault();
+        if (focusedGroup is not null) {
+            remoteClasses.Add(new RemoteStreamPlayerClass(focusedGroup.Primary.StreamId.Value, "item-focused"));
+            if (focusedGroup.Pip is { } pip)
+                pipPairs.Add(new PipPair(focusedGroup.Primary.StreamId.Value, pip));
+        }
         var i = hasOwn ? 1 : 0;
-        foreach (var stream in displayList.Skip(1)) {
+        foreach (var group in displayList.Skip(1)) {
             var cls = $"item-x item-{i}";
             i++;
-            remoteClasses.Add(new RemoteStreamPlayerClass(stream.StreamId.Value, cls));
+            remoteClasses.Add(new RemoteStreamPlayerClass(group.Primary.StreamId.Value, cls));
+            if (group.Pip is { } pip)
+                pipPairs.Add(new PipPair(group.Primary.StreamId.Value, pip));
         }
 
-        return new VideoPanelLayout(ownClass, [..remoteClasses]);
+        return new VideoPanelLayout(ownClass, [..remoteClasses], [..pipPairs]);
     }
 
     // Nested types
@@ -284,23 +312,31 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
 
     protected sealed record LayoutInputs(
         bool IsNarrowScreen,
-        StreamKind? OwnStreamKind,
+        bool HasOwnWebcamPreview,
         VideoStreamInfo[] RemoteStreams,
         ImmutableArray<AuthorId> FocusedSpeakerIds)
     {
-        public static readonly LayoutInputs None = new(true, null, [], []);
+        public static readonly LayoutInputs None = new(true, false, [], []);
     }
 }
 
 public record RemoteStreamPlayerClass(string StreamId, string Class);
 
-public record VideoPanelLayout(string OwnStreamingPreviewClass, ImmutableArray<RemoteStreamPlayerClass> RemoteStreamPlayerClasses)
+public record PipPair(string PrimaryStreamId, VideoStreamInfo Pip);
+
+public record VideoPanelLayout(
+    string OwnStreamingPreviewClass,
+    ImmutableArray<RemoteStreamPlayerClass> RemoteStreamPlayerClasses,
+    ImmutableArray<PipPair> PipPairs)
 {
-    public static readonly VideoPanelLayout New = new("", []);
+    public static readonly VideoPanelLayout New = new("", [], []);
 
     public string LayoutClass
         => "video-panel-layout__sidebar";
 
     public string GetRemoteStreamPlayerClass(StreamId streamId)
         => RemoteStreamPlayerClasses.FirstOrDefault(c => c.StreamId == streamId.Value)?.Class ?? "";
+
+    public VideoStreamInfo? GetPipStreamFor(StreamId primaryStreamId)
+        => PipPairs.FirstOrDefault(p => p.PrimaryStreamId == primaryStreamId.Value)?.Pip;
 }

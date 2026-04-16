@@ -28,5 +28,6 @@ public interface IStreamClient
         double clientStartOffset,
         VideoFormat format,
         IAsyncEnumerable<VideoFrame> frameStream,
+        StreamKind streamKind,
         CancellationToken cancellationToken);
 }
