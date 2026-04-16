@@ -3,6 +3,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "build:Debug": "tsc --noEmit && node build.mjs",
+    "build:Verify": "tsc --noEmit && eslint && node build.mjs",
     "build:Release": "tsc --noEmit && eslint && node build.mjs --production",
     "bundle-report": "node build.mjs --production --analyze",
     "watch": "node build.mjs --watch",
