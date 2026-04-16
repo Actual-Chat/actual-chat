@@ -203,8 +203,16 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
         ImmutableArray<AuthorId> focusedIds,
         int maxDisplaySlots)
     {
-        // Build lookup from AuthorId → stream for fast access
-        var streamByAuthor = remoteStreams.ToDictionary(s => s.AuthorId);
+        // Build lookup from AuthorId → stream for fast access.
+        // An author may have multiple concurrent streams (camera + screencast, or
+        // transient overlap during stream restart) — prefer screencast, then newest.
+        var streamByAuthor = remoteStreams
+            .GroupBy(s => s.AuthorId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderByDescending(s => s.StreamKind == StreamKind.Screencast)
+                      .ThenByDescending(s => s.StartedAt)
+                      .First());
 
         // Start with focused authors that still have active streams
         var display = new List<VideoStreamInfo>();
