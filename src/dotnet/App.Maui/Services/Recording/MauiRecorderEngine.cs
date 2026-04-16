@@ -298,32 +298,74 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         ChatEntryId? repliedChatEntryId,
         int preSkip,
         TimeSpan preRollDuration,
-        IAsyncEnumerable<IMemoryOwner<byte>> packetStream,
+        ChannelReader<IMemoryOwner<byte>> packetReader,
         CancellationToken cancellationToken)
     {
+        // Mirrors the TS AudioStream.stream() retry loop: PushAudio is configured with
+        // RpcRemoteExecutionMode.AwaitForConnection | AllowReconnect (see IStreamServer.cs),
+        // so same-peer WS reconnects resume transparently via $sys.Reconnect. On peer-change
+        // the sender is disposed and PushAudio throws; we create a new PushAudio call (a new
+        // server-side chat entry) and continue draining the channel from where we stopped.
+        //
+        // The channel itself is the capture-side buffer — packets produced while disconnected
+        // sit in it (BoundedChannelFullMode.Wait applies backpressure to the encoder), and
+        // the next iteration picks them up. Frames that were in the stream sender's
+        // un-ACKed window at peer-change are lost (the old server-side entry ends there);
+        // everything in the channel is preserved.
         var serverClock = Clocks.ServerClock;
-        double clientStartOffset = serverClock.Now.EpochOffset.TotalSeconds - preRollDuration.TotalSeconds;
         var session = _hub.Session;
 
-        var frameStream = packetStream
-            .Select((packet, i) => {
-                using var _ = packet;
-                return new AudioFrame {
-                    Data = packet.Memory.ToArray(),
-                    Offset = TimeSpan.FromMilliseconds(i * Constants.Audio.OpusFrameDurationMs),
-                    Duration = Constants.Audio.OpusFrameDuration,
-                };
-            })
-            .SuppressCancellation(cancellationToken);
+        while (!cancellationToken.IsCancellationRequested) {
+            // Per-call state: each iteration is a fresh PushAudio = fresh chat entry,
+            // so packetIndex (→ frame Offset) and clientStartOffset reset.
+            var packetIndex = 0;
+            var clientStartOffset = serverClock.Now.EpochOffset.TotalSeconds - preRollDuration.TotalSeconds;
 
-        await StreamClient.PushAudio(
-            session,
-            chatId.Value,
-            repliedChatEntryId?.Value,
-            clientStartOffset,
-            preSkip,
-            frameStream,
-            cancellationToken).ConfigureAwait(false);
+            async IAsyncEnumerable<AudioFrame> BuildFrames(
+                [EnumeratorCancellation] CancellationToken callCancellationToken = default)
+            {
+                while (await packetReader.WaitToReadAsync(callCancellationToken).ConfigureAwait(false)) {
+                    while (packetReader.TryRead(out var packet)) {
+                        using var _ = packet;
+                        yield return new AudioFrame {
+                            Data = packet.Memory.ToArray(),
+                            Offset = TimeSpan.FromMilliseconds(packetIndex * Constants.Audio.OpusFrameDurationMs),
+                            Duration = Constants.Audio.OpusFrameDuration,
+                        };
+                        packetIndex++;
+                    }
+                }
+            }
+
+            var frameStream = BuildFrames().SuppressCancellation(cancellationToken);
+            try {
+                await StreamClient.PushAudio(
+                    session,
+                    chatId.Value,
+                    repliedChatEntryId?.Value,
+                    clientStartOffset,
+                    preSkip,
+                    frameStream,
+                    cancellationToken).ConfigureAwait(false);
+                // Natural completion: channel writer was completed (CompleteAudioStream),
+                // reader drained, BuildFrames returned, PushAudio finished cleanly.
+                return;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+                throw;
+            }
+            catch (Exception e) when (!cancellationToken.IsCancellationRequested) {
+                // Peer change (RpcException "reconnected to a different peer and AllowResend is
+                // not set") or any other transient failure — retry with a fresh call.
+                // The channel still holds whatever packets weren't yet consumed, and the encoder
+                // keeps writing new ones.
+                Log.LogWarning(e, "PushAudio call ended ({SentFrames} frames), retrying with a new call", packetIndex);
+                repliedChatEntryId = null; // Only the initial segment carries the reply target.
+                // Short delay to avoid tight-looping on a persistent failure; the recording CT
+                // cancels this delay when the user stops recording.
+                await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken).ConfigureAwait(false);
+            }
+        }
     }
 
     private async Task<ChannelWriter<IMemoryOwner<byte>>?> CreateAudioStream(TimeSpan preRollDuration, CancellationToken cancellationToken)
@@ -353,7 +395,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             });
 
         // TODO(AK): Specify PreSkip
-        _sendTask = SendAudio(chatId, repliedChatEntryId, 0, preRollDuration, stream.Reader.ReadAllAsync(cancellationToken), cancellationToken);
+        _sendTask = SendAudio(chatId, repliedChatEntryId, 0, preRollDuration, stream.Reader, cancellationToken);
         lock (_sync) {
             _currentStream = stream;
             _repliedChatEntryId = null; // Clear so it's only used once

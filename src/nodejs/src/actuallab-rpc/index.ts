@@ -40,6 +40,7 @@ export type {
 } from './rpc-service-def.js';
 export {
     RpcType,
+    RpcRemoteExecutionMode,
     defineRpcService,
     wireMethodName,
 } from './rpc-service-def.js';
@@ -51,13 +52,16 @@ export {
     RpcInboundCallTracker,
 } from './rpc-call-tracker.js';
 
+export { RpcCallStage } from './rpc-call-stage.js';
+export { IncreasingSeqCompressor } from './increasing-seq-compressor.js';
+
 export { RpcSystemCallHandler } from './rpc-system-call-handler.js';
 export { RpcSystemCallSender } from './rpc-system-call-sender.js';
 
 export type { RpcObjectId, IRpcObject } from './rpc-object.js';
 export { RpcObjectKind } from './rpc-object.js';
 export { RpcStream, parseStreamRef, resolveStreamRefs } from './rpc-stream.js';
-export type { RpcStreamRef, RpcStreamOptions } from './rpc-stream.js';
+export type { RpcStreamRef, RpcStreamOptions, RpcStreamSource } from './rpc-stream.js';
 export { RpcStreamSender } from './rpc-stream-sender.js';
 export { RpcRemoteObjectTracker } from './rpc-remote-object-tracker.js';
 export { RpcSharedObjectTracker } from './rpc-shared-object-tracker.js';

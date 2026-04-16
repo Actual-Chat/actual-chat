@@ -96,6 +96,8 @@ import { RpcRemoteObjectTracker } from './rpc-remote-object-tracker.js';
 import { RpcSharedObjectTracker } from './rpc-shared-object-tracker.js';
 import { RpcStream } from './rpc-stream.js';
 import { RpcSerializationFormat, RpcSerializationFormatResolver } from './rpc-serialization-format.js';
+import { IncreasingSeqCompressor } from './increasing-seq-compressor.js';
+import { base64Decode, base64Encode } from './base64.js';
 
 /** WebSocket close code sent by the server when the client's serialization format is unsupported. */
 export const RPC_CLOSE_CODE_UNSUPPORTED_FORMAT = 4001;
@@ -121,26 +123,8 @@ export interface RpcCallOptions {
     outboundCallFactory?: (id: number, method: string) => RpcOutboundCall;
     /** AbortSignal for caller-initiated cancellation. */
     signal?: AbortSignal;
-    /** If true, this call won't be re-sent on same-peer reconnect (for streaming calls). */
-    noResendOnReconnect?: boolean;
-}
-
-/**
- * Detect if any call argument is a stream sender ref (the shape produced by
- * RpcStream.toRef()). Calls carrying sender refs must NOT be re-sent on
- * reconnect — the sender handles its own lifecycle. Re-sending creates
- * duplicate server-side processing tasks.
- */
-function hasStreamSenderRef(args?: unknown[]): boolean {
-    if (!args) return false;
-    for (const arg of args) {
-        if (typeof arg === 'object' && arg !== null) {
-            const obj = arg as Record<string, unknown>;
-            if (Array.isArray(obj.SerializedId) && typeof obj.AckPeriod === 'number')
-                return true;
-        }
-    }
-    return false;
+    /** Bitfield of RpcRemoteExecutionMode flags (default: 7 = Default). */
+    remoteExecutionMode?: number;
 }
 
 /** Data extracted from an inbound $sys.Handshake message. */
@@ -206,9 +190,19 @@ export abstract class RpcPeer {
         });
     }
 
-    /** The serialization format used by this peer. Override in subclasses. */
+    /**
+     * The serialization format used by this peer for outgoing messages.
+     * If not set explicitly, defaults to the resolver's default (JSON /
+     * json5np). Subclasses can pre-assign in their constructor.
+     */
+    private _format: RpcSerializationFormat | undefined;
+
     get format(): RpcSerializationFormat {
-        return RpcSerializationFormatResolver.Default.defaultFormat;
+        return this._format ?? RpcSerializationFormatResolver.Default.defaultFormat;
+    }
+
+    set format(value: RpcSerializationFormat) {
+        this._format = value;
     }
 
     call(
@@ -217,10 +211,9 @@ export abstract class RpcPeer {
         options?: RpcCallOptions
     ): RpcOutboundCall {
         const callId = this.outbound.nextId();
-        const noResend = options?.noResendOnReconnect ?? hasStreamSenderRef(args);
         const outboundCall = options?.outboundCallFactory
             ? options.outboundCallFactory(callId, method)
-            : new RpcOutboundCall(callId, method, noResend);
+            : new RpcOutboundCall(callId, method, options?.remoteExecutionMode ?? 7);
 
         const envelope: RpcMessage = {
             Method: method,
@@ -342,8 +335,21 @@ export abstract class RpcPeer {
 
         // Handshake — dispatch to subclass handler
         if (method === RpcSystemCalls.handshake) {
-            const handshake = args[0] as RemoteHandshake | undefined;
-            if (handshake !== undefined) this._onHandshakeReceived(handshake);
+            const raw = args[0];
+            if (raw !== undefined) {
+                // .NET's RpcHandshake is [MessagePackObject(Key)] — serialized
+                // as a 5-element array in msgpack. In JSON it's an object with
+                // named properties. Normalize both shapes here.
+                const handshake = Array.isArray(raw)
+                    ? {
+                        RemotePeerId: raw[0] as string | undefined,
+                        RemoteHubId: raw[2] as string | undefined,
+                        ProtocolVersion: raw[3] as number | undefined,
+                        Index: raw[4] as number | undefined,
+                    }
+                    : raw as RemoteHandshake;
+                this._onHandshakeReceived(handshake);
+            }
             return;
         }
 
@@ -463,6 +469,12 @@ export class RpcClientPeer extends RpcPeer {
     private _connectionKind = RpcPeerConnectionKind.Disconnected;
     private _tryIndex = 0;
     private _handshakeIndex = 0;
+    /** Index from the MOST RECENTLY RECEIVED server handshake — sent back
+     *  to the server in `$sys.Reconnect:3` so the server can verify we're
+     *  talking about the current connection. Mirrors .NET's
+     *  `connectionState.Handshake.Index` path in
+     *  `RpcOutboundCallTracker.TryReconnect`. */
+    private _remoteHandshakeIndex = 0;
     private _lastRemoteHubId: string | undefined;
     private _pendingHandshake: PromiseSource<RemoteHandshake> | undefined;
     private _reconnectsAt = 0;
@@ -494,32 +506,29 @@ export class RpcClientPeer extends RpcPeer {
         this.reconnectsAtChanged.trigger();
     }
 
-    private _format: RpcSerializationFormat;
-
     constructor(hub: RpcHub, url: string, serializationFormat?: string) {
         super(url, hub);
         this.clientId = guidToBase64Url(this.id);
         const resolver = RpcSerializationFormatResolver.Default;
         this.serializationFormat =
             serializationFormat ?? resolver.defaultFormatKey;
-        this._format = resolver.get(this.serializationFormat);
-    }
-
-    override get format(): RpcSerializationFormat {
-        return this._format;
+        this.format = resolver.get(this.serializationFormat);
     }
 
     get connectionKind(): RpcPeerConnectionKind {
         return this._connectionKind;
     }
 
-    /** One-shot connection for tests — no reconnection loop, no handshake. */
-    connectWith(conn: RpcConnection): void {
-        // Set up new connection and re-send outbound calls (treat as peer change —
-        // no handshake exchange to determine same-peer, so stage-3 compute calls
-        // are self-invalidated while regular in-flight calls are re-sent).
+    /** One-shot connection for tests — no reconnection loop, no handshake.
+     *  @param isPeerChanged Whether to treat this as a peer-identity change
+     *  (default `true` — no handshake was exchanged, so stage-3 compute calls
+     *  self-invalidate and remote/shared objects are disposed). Pass `false`
+     *  to simulate a same-peer reconnect in tests. */
+    connectWith(conn: RpcConnection, isPeerChanged = true): void {
         this.setupConnection(conn);
-        this._reconnect(true);
+        // Fire-and-forget — tests that need the reconcile to complete await
+        // a short delay after connect/reconnect.
+        void this._reconnect(isPeerChanged);
     }
 
     /** Start the reconnection loop — runs until disposed. */
@@ -581,6 +590,9 @@ export class RpcClientPeer extends RpcPeer {
                 ]);
                 this._pendingHandshake = undefined;
 
+                // Record the server's handshake index for $sys.Reconnect.
+                this._remoteHandshakeIndex = remoteHandshake.Index ?? 0;
+
                 // Peer change detection (like .NET's RpcHandshake.GetPeerChangeKind)
                 const remoteHubId = remoteHandshake.RemoteHubId;
                 let isPeerChanged = false;
@@ -601,7 +613,7 @@ export class RpcClientPeer extends RpcPeer {
                 this._connection = conn;
                 this._connectionKind = RpcPeerConnectionKind.Connected;
                 this._tryIndex = 0;
-                this._reconnect(isPeerChanged);
+                await this._reconnect(isPeerChanged);
 
                 // Wait until disconnected
                 await new Promise<void>(r => conn.closed.add(() => r()));
@@ -635,54 +647,164 @@ export class RpcClientPeer extends RpcPeer {
         }
     }
 
-    /** Re-send outbound calls after reconnection + flush pending sends.
-     *  Stage-3 compute calls are always self-invalidated: without $sys.Reconnect
-     *  protocol, the server's invalidation tracking is lost on disconnect, and
-     *  re-sending would get a duplicate $sys.Ok that is ignored (PromiseSource
-     *  already resolved). Self-invalidation forces a fresh recompute that
-     *  establishes new invalidation tracking on the new connection.
-     *  Regular in-flight calls are re-sent transparently. */
-    private _reconnect(_isPeerChanged: boolean): void {
+    /**
+     * Reconcile outbound calls after reconnection, then flush pending sends.
+     *
+     * On peer change (different server hubId) or with binary wire format —
+     * we blind-resend every eligible call.
+     *
+     * On a same-peer reconnect with JSON transport, first call
+     * `$sys.Reconnect` to ask the server which call IDs it no longer
+     * recognizes (e.g. inbound tracker was cleared, or the call never
+     * reached the server). Only those get resent; the rest stay in the
+     * tracker awaiting their $sys.Ok. This prevents duplicate server-side
+     * invocation of in-flight streaming calls on every transient
+     * reconnect — mirrors .NET `RpcOutboundCallTracker.Reconnect` at
+     * src/ActualLab.Rpc/Infrastructure/RpcCallTrackers.cs:209-279.
+     *
+     * Stage-3 compute calls (result already resolved, awaiting invalidation)
+     * are always self-invalidated — TS doesn't track compute-call stages
+     * across reconnect, so the safest behavior is to force a fresh compute.
+     */
+    private async _reconnect(isPeerChanged: boolean): Promise<void> {
         if (this._connection === undefined) return;
 
-        // Handle remote objects on reconnect
-        if (_isPeerChanged) {
+        // Handle remote and shared objects on reconnect.
+        // On peer change, the remote server is gone — both remote objects
+        // (proxies registered here for server-owned objects) and shared objects
+        // (e.g. RpcStreamSender instances this peer owns and is pushing to the
+        // server) must be disposed: the new server has no corresponding entries,
+        // so they would hang forever waiting for ACKs that never arrive.
+        // Mirrors .NET RpcPeer.Reset (src/ActualLab.Rpc/RpcPeer.cs:430-440).
+        if (isPeerChanged) {
             this.remoteObjects.disconnectAll();
+            this.sharedObjects.disconnectAll();
         } else {
             this.remoteObjects.reconnectAll();
         }
 
-        // Handle shared objects (client→server stream senders) on reconnect
-        if (_isPeerChanged) {
-            this.sharedObjects.disconnectAll();
-        } else {
-            this.sharedObjects.reconnectOrDisconnect();
-        }
-
-        // Re-send existing tracker calls (self-invalidate stage-3 compute calls)
-        const trackerCalls = [...this.outbound.values()];
-        for (const call of trackerCalls) {
-            if (!call.removeOnOk && call.result.isCompleted) {
-                // Stage-3 compute call: self-invalidate, forcing fresh recompute
+        // Filter calls by RemoteExecutionMode (same logic as before).
+        const eligible: RpcOutboundCall[] = [];
+        for (const call of [...this.outbound.values()]) {
+            const mode = call.remoteExecutionMode;
+            if (!(mode & 2)) {
+                if (!call.result.isCompleted)
+                    call.result.reject(new Error(
+                        'Outbound call failed: disconnected and AllowReconnect is not set.'));
                 call.onDisconnect();
                 this.outbound.remove(call.callId);
-            } else if (call.noResendOnReconnect) {
-                // Streaming call (PushAudio/PushVideo) — never re-send on reconnect.
-                // The sender handles its own lifecycle via reconnectOrDisconnect():
-                //   - allowReconnect=true: sender survived, writeFrom() keeps pumping
-                //   - allowReconnect=false: sender disconnected, recovery creates new stream
-                // The call promise is fire-and-forget (.catch logs only), so rejecting
-                // it just cleans up the tracker — no functional impact on streaming.
-                call.result.reject(new Error('Streaming call ended on reconnect.'));
-                this.outbound.remove(call.callId);
-            } else {
-                // Regular call or in-flight compute call: re-send
-                this._sendWireData(call.serializedWireData);
+                continue;
             }
+            if (isPeerChanged && !(mode & 4)) {
+                if (!call.result.isCompleted)
+                    call.result.reject(new Error(
+                        'Outbound call failed: reconnected to a different peer and AllowResend is not set.'));
+                call.onDisconnect();
+                this.outbound.remove(call.callId);
+                continue;
+            }
+            eligible.push(call);
+        }
+
+        // Reconcile with the server on same-peer reconnects. On peer change
+        // we skip the round-trip (the new peer knows nothing) and blind-resend.
+        //
+        // Wire format: the `completedStages` dict uses plain JS-object shape
+        // with string keys and base64-encoded `Uint8Array` values. This is
+        // JSON-compatible with .NET's `System.Text.Json` serialization of
+        // `Dictionary<int, byte[]>` and also works for TS-to-TS msgpack
+        // (serializes as map<str, str>). Full .NET-msgpack interop for
+        // $sys.Reconnect — which uses `map<int, bin>` — is a future
+        // enhancement; the JSON path covers ActualChat's primary use case.
+        let unknownIds: Set<number> | null = null;
+        if (!isPeerChanged && eligible.length > 0) {
+            unknownIds = await this._reconcileReconnect(eligible);
+        }
+
+        for (const call of eligible) {
+            if (!call.removeOnOk && call.result.isCompleted) {
+                // Stage-3 compute call: always self-invalidate to force a
+                // fresh recompute — TS has no cross-reconnect compute-state
+                // tracking (unlike .NET's Reliable reconnection).
+                call.onDisconnect();
+                this.outbound.remove(call.callId);
+                continue;
+            }
+            if (unknownIds !== null && !unknownIds.has(call.callId)) {
+                // Server reports this call is still in flight on its side —
+                // skip the resend. The pending result promise continues to
+                // await the original call's $sys.Ok.
+                continue;
+            }
+            this._sendWireData(call.serializedWireData);
         }
 
         // Flush calls buffered while disconnected
         this._flushPendingSends();
+    }
+
+    /**
+     * Ask the server which call IDs in `eligible` it no longer recognizes
+     * via `$sys.Reconnect:3`. Returns the set of call IDs that need to be
+     * resent. On any failure, falls back to "resend everything".
+     *
+     * Wire format of the `completedStages` argument is chosen per wire format:
+     *   - JSON (json5np): plain object `{"<stage>": "<base64-of-bytes>"}` —
+     *     matches .NET `System.Text.Json`'s default for `Dictionary<int, byte[]>`.
+     *   - MessagePack (msgpack6/msgpack6c): `Map<number, Uint8Array>` —
+     *     the patched encoder (see `./msgpack-map-patch.ts`) writes this as a
+     *     native msgpack `map<int, bin>`, matching .NET MessagePack-CSharp's
+     *     default for `Dictionary<int, byte[]>`.
+     */
+    private async _reconcileReconnect(eligible: RpcOutboundCall[]): Promise<Set<number>> {
+        try {
+            // Group by completedStage, sort IDs, compress per-stage.
+            const byStage = new Map<number, number[]>();
+            for (const call of eligible) {
+                const stage = call.getReconnectStage(false);
+                if (stage === null) continue;
+                let arr = byStage.get(stage);
+                if (!arr) { arr = []; byStage.set(stage, arr); }
+                arr.push(call.callId);
+            }
+            if (byStage.size === 0) {
+                // Nothing to reconcile — fall back to resend-all.
+                return new Set(eligible.map(c => c.callId));
+            }
+
+            const isBinary = this.format.isBinary;
+            const stagesArg: Map<number, Uint8Array> | Record<string, string> = isBinary
+                ? new Map<number, Uint8Array>()
+                : {};
+            for (const [stage, ids] of byStage) {
+                ids.sort((a, b) => a - b);
+                const bytes = IncreasingSeqCompressor.serialize(ids);
+                if (isBinary) {
+                    (stagesArg as Map<number, Uint8Array>).set(stage, bytes);
+                } else {
+                    (stagesArg as Record<string, string>)[String(stage)] = base64Encode(bytes);
+                }
+            }
+
+            // Send $sys.Reconnect via the regular call path so the server's
+            // $sys.Ok reply resolves a PromiseSource we can await. The
+            // first arg is the server's OWN handshake index (captured from
+            // the remote handshake we just received), not ours — this
+            // matches .NET's protocol, where the server validates
+            // `ownHandshake.Index == handshakeIndex`.
+            const reconnectCall = this.call(
+                RpcSystemCalls.reconnect,
+                [this._remoteHandshakeIndex, stagesArg],
+                { remoteExecutionMode: 1 /* AwaitForConnection only; must not itself reconnect */ },
+            );
+            const result = await reconnectCall.result.promise;
+            const bytes = _toBytes(result);
+            if (bytes === null) return new Set(eligible.map(c => c.callId));
+            return new Set(IncreasingSeqCompressor.deserialize(bytes));
+        } catch {
+            // Reconciliation failed — resend everything.
+            return new Set(eligible.map(c => c.callId));
+        }
     }
 
     protected override _onHandshakeReceived(handshake: RemoteHandshake): void {
@@ -704,6 +826,12 @@ export class RpcServerPeer extends RpcPeer {
     /** Accept an incoming connection — sets up message handling and handshake response. */
     accept(conn: RpcConnection): void {
         this.setupConnection(conn);
+        // When the client connection drops, clean up shared objects (stream senders).
+        // Server peers don't reconnect — once the connection is gone, senders must be
+        // terminated so their source iterators release resources promptly.
+        conn.closed.add(() => {
+            this.sharedObjects.disconnectAll();
+        });
     }
 
     protected override _onHandshakeReceived(_handshake: RemoteHandshake): void {
@@ -748,4 +876,13 @@ function guidToBase64Url(uuid: string): string {
         .replace(/\+/g, '-')
         .replace(/\//g, '_')
         .replace(/=+$/, '');
+}
+
+/** Coerce a `$sys.Ok` result carrying a byte[] into a Uint8Array. */
+function _toBytes(value: unknown): Uint8Array | null {
+    if (value instanceof Uint8Array) return value;
+    if (typeof value === 'string') {
+        try { return base64Decode(value); } catch { return null; }
+    }
+    return null;
 }

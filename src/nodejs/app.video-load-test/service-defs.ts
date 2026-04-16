@@ -4,7 +4,7 @@
 // `streaming-rpc-service.ts` — we duplicate them here so the test has zero dependencies
 // on the Blazor app's source tree and can be built stand-alone.
 
-import { defineRpcService, RpcType } from '../src/actuallab-rpc/index.js';
+import { defineRpcService, RpcRemoteExecutionMode, RpcType } from '../src/actuallab-rpc/index.js';
 
 // --- IEmailAuth (commander-backed sign-in) ---
 // Server method:
@@ -98,8 +98,12 @@ export interface LiveVideoStreamsClient {
 
 // --- IStreamServer (push) ---
 // Wire: "IStreamServer.PushVideo:7" — (session, chatId, clientStartOffset, format, frameStream, streamKind) + CT.
+// Must match the [RpcMethod] mode on IStreamServer.cs.
 export const StreamServerDef = defineRpcService('IStreamServer', {
-    PushVideo: { args: ['session', 'chatId', 'clientStartOffset', 'format', 'frameStream', 'streamKind'] },
+    PushVideo: {
+        args: ['session', 'chatId', 'clientStartOffset', 'format', 'frameStream', 'streamKind'],
+        remoteExecutionMode: RpcRemoteExecutionMode.AwaitForConnection | RpcRemoteExecutionMode.AllowReconnect,
+    },
 });
 
 export interface StreamServerClient {

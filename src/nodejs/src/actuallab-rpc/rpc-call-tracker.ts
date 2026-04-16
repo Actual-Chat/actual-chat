@@ -47,28 +47,54 @@
 //     thread-safe result setting.  TS is single-threaded; no locking needed.
 
 import { PromiseSource } from '../actuallab-core/index.js';
+import { RpcCallStage } from './rpc-call-stage.js';
+import { RpcRemoteExecutionMode } from './rpc-service-def.js';
 
 /** Tracks a pending outbound RPC call. */
 export class RpcOutboundCall {
     readonly callId: number;
     readonly method: string;
     readonly result = new PromiseSource<unknown>();
+    /** Bitfield of RpcRemoteExecutionMode flags controlling reconnect/resend behavior. */
+    readonly remoteExecutionMode: number;
 
     /** Whether to remove this call from the tracker on $sys.Ok. Default: true.
      *  Subclasses (e.g. compute calls) override to false to stay in tracker for invalidation. */
     readonly removeOnOk: boolean = true;
 
-    /** If true, this call won't be re-sent on same-peer reconnect.
-     *  Auto-set for calls carrying stream sender refs (PushAudio/PushVideo). */
-    readonly noResendOnReconnect: boolean;
-
     /** The serialized wire data — stored for re-sending on reconnect. */
     serializedWireData: string | Uint8Array = '';
 
-    constructor(callId: number, method: string, noResendOnReconnect = false) {
+    /**
+     * Bitfield of {@link RpcCallStage} flags indicating how far this call
+     * has progressed. Used by the `$sys.Reconnect` protocol to tell the
+     * remote peer which calls are still pending its attention.
+     *
+     * - 0: brand new, no result yet (the peer is expected to be actively processing).
+     * - `ResultReady` (1): `$sys.Ok` received for this call.
+     * - `Invalidated` (3): result was invalidated (compute calls only).
+     * - `Unregistered` (0x1000): removed from the tracker.
+     */
+    completedStage = 0;
+
+    constructor(callId: number, method: string, remoteExecutionMode = 7) {
         this.callId = callId;
         this.method = method;
-        this.noResendOnReconnect = noResendOnReconnect;
+        this.remoteExecutionMode = remoteExecutionMode;
+    }
+
+    /**
+     * Returns the stage to report to the remote peer via `$sys.Reconnect`,
+     * or `null` if this call should not be reconciled and must be aborted.
+     *
+     * Mirrors .NET `RpcOutboundCall.GetReconnectStage` at
+     * src/ActualLab.Rpc/Infrastructure/RpcOutboundCall.cs.
+     */
+    getReconnectStage(isPeerChanged: boolean): number | null {
+        const mode = this.remoteExecutionMode;
+        if (!(mode & RpcRemoteExecutionMode.AllowReconnect)) return null;
+        if (isPeerChanged && !(mode & RpcRemoteExecutionMode.AllowResend)) return null;
+        return this.completedStage;
     }
 
     /** Called when the connection is lost. Subclasses can override to resolve invalidation promises. */
@@ -100,7 +126,10 @@ export class RpcOutboundCallTracker {
 
     remove(callId: number): RpcOutboundCall | undefined {
         const call = this._calls.get(callId);
-        if (call !== undefined) this._calls.delete(callId);
+        if (call !== undefined) {
+            this._calls.delete(callId);
+            call.completedStage |= RpcCallStage.Unregistered;
+        }
         return call;
     }
 

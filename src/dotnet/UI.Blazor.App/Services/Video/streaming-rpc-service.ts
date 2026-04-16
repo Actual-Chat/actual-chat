@@ -1,13 +1,20 @@
 // Fusion RPC service definitions for streaming.
 // Matches the .NET IStreamServer contract.
 
-import { defineRpcService, RpcType } from 'actuallab-rpc';
+import { defineRpcService, RpcRemoteExecutionMode, RpcType } from 'actuallab-rpc';
+
+// Streaming push calls: fire-and-forget.  AwaitForConnection lets us wait for the WS to
+// come up before initial send; AllowReconnect makes the $sys.Reconnect protocol skip the
+// call on same-peer reconnect (server still has the handler, stream resumes via ACK).
+// We deliberately DO NOT set AllowResend: on peer change the call + stream fail, and
+// the caller recreates them.  Mirror of [RpcMethod] on IStreamServer in .NET.
+const StreamPushMode = RpcRemoteExecutionMode.AwaitForConnection | RpcRemoteExecutionMode.AllowReconnect;
 
 // --- IStreamServer (stream push/pull + control) ---
 export const StreamServerDef = defineRpcService('IStreamServer', {
     GetVideo: { args: ['streamId', 'skipTo'], returns: RpcType.stream },
-    PushVideo: { args: ['session', 'chatId', 'clientStartOffset', 'format', 'frameStream', 'streamKind'] },
-    PushAudio: { args: ['session', 'chatId', 'repliedChatEntryId', 'clientStartOffset', 'preSkip', 'frameStream'] },
+    PushVideo: { args: ['session', 'chatId', 'clientStartOffset', 'format', 'frameStream', 'streamKind'], remoteExecutionMode: StreamPushMode },
+    PushAudio: { args: ['session', 'chatId', 'repliedChatEntryId', 'clientStartOffset', 'preSkip', 'frameStream'], remoteExecutionMode: StreamPushMode },
     RequestKeyFrame: { args: ['streamId'] },
     ReportVideoLatency: { args: ['streamId', 'streamOffsetMs', 'medianDecodeTimeMs', 'bufferDepth', 'bufferSpanMs'] },
 });

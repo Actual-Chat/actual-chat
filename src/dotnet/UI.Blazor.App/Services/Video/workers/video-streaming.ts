@@ -174,23 +174,34 @@ export class InternalVideoStream {
                 CodecSettings: this.config.codecSettings,
             };
 
-            // Real-time video stream: isRealTime=true, allowReconnect=false, ackPeriod=5, ackAdvance=31.
+            // Real-time video stream: isRealTime=true, allowReconnect=true, ackPeriod=5, ackAdvance=31.
+            // With allowReconnect=true, a same-peer WS reconnect keeps the sender alive and the
+            // real-time-skip-to-keyframe logic in Fusion's RpcSharedStream/Sender drives resume via
+            // $sys.Ack(MustReset=true). On peer-change the sender is disposed via
+            // sharedObjects.disconnectAll(); the outer video-processing.ts detects
+            // videoStream.isDisposed and creates a fresh InternalVideoStream at the next keyframe.
+            //
+            // Termination is driven by iterator.return() — Fusion's RpcStreamSender.disconnect()
+            // calls it on the generator, which unwinds any try/finally blocks and exits. Mirrors
+            // .NET's IAsyncEnumerable/CancellationToken pattern in MauiRecorderEngine.SendAudio.
             // toRef() creates the sender, registers it, and starts pumping in the background.
             // eslint-disable-next-line @typescript-eslint/no-this-alias -- async generator function* can't be arrow
             const self = this;
-            const stream = new RpcStream<VideoFrameDto>((async function* () {
-                while (!self.isCompleted || !self.frames.isEmpty()) {
-                    while (!self.frames.isEmpty()) {
-                        yield frameToDto(self.frames.shift()!);
-                    }
-                    if (!self.isCompleted) {
+            const stream = new RpcStream<VideoFrameDto>(
+                (async function* () {
+                    for (;;) {
+                        while (!self.frames.isEmpty()) {
+                            yield frameToDto(self.frames.shift()!);
+                        }
+                        if (self.isCompleted) return;
                         await self.frameAdded.whenNextVoid();
                     }
-                }
-            })(), {
-                isRealTime: true, allowReconnect: false, ackPeriod: 5, ackAdvance: 31,
-                canSkipTo: (frame) => frame.IsKeyFrame,
-            });
+                })(),
+                {
+                    isRealTime: true, allowReconnect: true, ackPeriod: 5, ackAdvance: 31,
+                    canSkipTo: (frame) => frame.IsKeyFrame,
+                },
+            );
 
             // Fire-and-forget: server awaits the frameStream completion. Any
             // rejection is logged but shouldn't cancel the pump loop since the

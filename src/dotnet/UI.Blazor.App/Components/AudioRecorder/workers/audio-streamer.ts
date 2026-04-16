@@ -116,56 +116,88 @@ export class AudioStream implements Disposable {
         if (this.isCompleted && this.frames.length === 0)
             return;
 
+        // Retry loop for peer-change recovery:
+        //
+        // PushAudio is configured with RpcRemoteExecutionMode.AwaitForConnection | AllowReconnect,
+        // and the RpcStream has allowReconnect=true (default). On a same-peer WS reconnect, Fusion
+        // transparently resumes the stream via $sys.Reconnect + $sys.Ack(MustReset=true) — the
+        // sender stays alive, no iteration of this loop happens.
+        //
+        // On peer-change, sharedObjects.disconnectAll() disposes the sender; it calls
+        // iterator.return() on the generator, which unwinds try/finally (freeing the in-flight
+        // frame buffer) and exits. whenSent resolves. We then loop: create a brand-new PushAudio
+        // call (and thus a new server-side chat entry) carrying whatever frames accumulated in
+        // `this.frames` during the reconnect, plus any future frames up to completion. This is
+        // the "send unsent as a new stream on peer-change" contract.
+        //
+        // Natural termination (source returned after `isCompleted && frames empty`) also resolves
+        // whenSent; the loop guard handles that case.
+        const self = this;
         try {
-            await AudioStreamer.ensureConnected();
-            if (this.isDisposed)
-                return;
-            if (!AudioStreamer.rpcPeer || !AudioStreamer.streamServerClient) {
-                warnLog?.log(`${this.name}: peer not connected, skipping stream`);
-                return;
-            }
+            while (!this.isDisposed) {
+                if (this.isCompleted && this.frames.length === 0)
+                    return;
 
-            const streamServer = AudioStreamer.streamServerClient;
-            const peer = AudioStreamer.rpcPeer;
-
-            const clientStartOffset = (this.firstFrameTimestamp ?? ServerClock.now()) / 1000;
-            infoLog?.log(`${this.name}: PushAudio clientStartOffset=${clientStartOffset.toFixed(3)}s`);
-
-            // Non-real-time audio stream with default params.
-            // toRef() creates the sender, registers it, and starts pumping in the background.
-            const self = this;
-            let frameIndex = 0;
-            const stream = new RpcStream<AudioFrameDto>((async function* () {
-                while (!self.isDisposed) {
-                    const frame = self.frames.shift();
-                    if (frame) {
-                        yield {
-                            Data: frame,
-                            Offset: frameIndex * FRAME_DURATION_TICKS,
-                            Duration: FRAME_DURATION_TICKS,
-                            IsKeyFrame: true,
-                        };
-                        frameIndex++;
-                        // Release buffer back to pool
-                        if (frame.buffer.byteLength === AE.FRAME_BUFFER_BYTES)
-                            bufferPool.release(frame.buffer);
-                    } else if (self.isCompleted && self.frames.length === 0) {
-                        warnLog?.log(`${self.name}: stream completed, ${frameIndex} frames sent`);
-                        return;
-                    } else {
-                        await self.frameAdded.whenNext();
-                    }
+                await AudioStreamer.ensureConnected();
+                if (this.isDisposed)
+                    return;
+                if (!AudioStreamer.rpcPeer || !AudioStreamer.streamServerClient) {
+                    warnLog?.log(`${this.name}: peer not connected, skipping stream`);
+                    return;
                 }
-            })());
 
-            void streamServer
-                .PushAudio(RPC_SESSION_DEFAULT, this.chatId, this.repliedChatEntryId ?? null,
-                    clientStartOffset, this.preSkip, stream.toRef(peer))
-                .catch((err: unknown) => warnLog?.log(`${this.name}: PushAudio rejected:`, err));
+                const streamServer = AudioStreamer.streamServerClient;
+                const peer = AudioStreamer.rpcPeer;
 
-            this.repliedChatEntryId = undefined;
+                // frameIndex and clientStartOffset are per-PushAudio (per chat entry on the
+                // server); each retry iteration is a fresh entry, so both reset.
+                let frameIndex = 0;
+                const clientStartOffset = (this.firstFrameTimestamp ?? ServerClock.now()) / 1000;
+                infoLog?.log(`${this.name}: PushAudio clientStartOffset=${clientStartOffset.toFixed(3)}s`);
 
-            await stream.whenSent;
+                // Plain AsyncIterable — matches .NET MauiRecorderEngine.SendAudio's IAsyncEnumerable
+                // pattern. Termination is driven by iterator.return() from RpcStreamSender.disconnect()
+                // (peer-change or final stop); the try/finally below ensures the pooled buffer is
+                // returned even if the generator is force-closed during a yield.
+                const stream = new RpcStream<AudioFrameDto>(
+                    (async function* () {
+                        for (;;) {
+                            const frame = self.frames.shift();
+                            if (frame) {
+                                try {
+                                    yield {
+                                        Data: frame,
+                                        Offset: frameIndex * FRAME_DURATION_TICKS,
+                                        Duration: FRAME_DURATION_TICKS,
+                                        IsKeyFrame: true,
+                                    };
+                                    frameIndex++;
+                                } finally {
+                                    // Release pooled buffer even on iterator.return()/throw
+                                    if (frame.buffer.byteLength === AE.FRAME_BUFFER_BYTES)
+                                        bufferPool.release(frame.buffer);
+                                }
+                            } else if (self.isCompleted && self.frames.length === 0) {
+                                warnLog?.log(`${self.name}: stream completed, ${frameIndex} frames sent`);
+                                return;
+                            } else {
+                                await self.frameAdded.whenNext();
+                            }
+                        }
+                    })(),
+                );
+
+                void streamServer
+                    .PushAudio(RPC_SESSION_DEFAULT, this.chatId, this.repliedChatEntryId ?? null,
+                        clientStartOffset, this.preSkip, stream.toRef(peer))
+                    .catch((err: unknown) => warnLog?.log(`${this.name}: PushAudio rejected:`, err));
+
+                // repliedChatEntryId is only meaningful for the very first segment of the
+                // recording; subsequent peer-change-induced segments must not re-reply.
+                this.repliedChatEntryId = undefined;
+
+                await stream.whenSent;
+            }
         } catch (error) {
             warnLog?.log(`${this.name}: stream error:`, error);
         } finally {

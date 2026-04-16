@@ -563,9 +563,19 @@ function deliverChunkToStream(
         frame.description = storedDescriptionBytes;
     }
 
-    // Detect sender disconnect and recreate the stream
+    // Detect sender disconnect and recreate the stream.
+    //
+    // With Fusion 12.3.25 fixes + allowReconnect=true on the PushVideo RpcStream, a same-peer
+    // WS reconnect no longer disposes the sender — Fusion's $sys.Reconnect + real-time resume
+    // (skip-to-next-keyframe via canSkipTo) handle continuity transparently.
+    //
+    // The only remaining trigger for isDisposed here is a peer-change: sharedObjects.disconnectAll()
+    // fires, the sender's AbortSignal is aborted, the source generator exits, stream.whenSent
+    // resolves, and InternalVideoStream.stream() hits its finally { isDisposed = true }. We then
+    // recreate a fresh InternalVideoStream at the next keyframe, which creates a new PushVideo
+    // call against the new server instance.
     if (videoStream?.isDisposed) {
-        warnLog?.log('VideoStream disposed (server disconnect?) — will recreate on next keyframe');
+        warnLog?.log('VideoStream disposed (peer-change) — will recreate on next keyframe');
         videoStream = null;
     }
 
