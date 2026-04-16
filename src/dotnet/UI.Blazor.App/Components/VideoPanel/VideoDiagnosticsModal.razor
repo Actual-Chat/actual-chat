@@ -20,9 +20,15 @@
     <Body>
         @* Own streaming *@
         <div class="diag-section">
-            <div class="diag-section-header diag-clickable" @onclick="OnToggleOwnStreamingDetails">
+            @{
+                var isStreaming = m.OwnStreamingKind is {};
+                var onClickHandler = isStreaming ? OnToggleOwnStreamingDetails : (Action)(() => { });
+            }
+            <div class="diag-section-header @(isStreaming ? "diag-clickable" : "")" @onclick="@onClickHandler">
                 Own Streaming
-                <span class="diag-expand-indicator">@GetShowDetailsIndicator(_showOwnStreamingDetails)</span>
+                @if (isStreaming) {
+                    <span class="diag-expand-indicator">@GetShowDetailsIndicator(_showOwnStreamingDetails)</span>
+                }
             </div>
             @if (m.OwnStreamingKind is { } kind) {
                 <div class="diag-row">
@@ -144,7 +150,7 @@
                         @if (s.IsOwn) {
                             <div class="diag-stream-header">
                                 <span>@s.Info.StreamId</span>
-                                <span class="diag-stream-kind">Own</span>
+                                <span class="diag-stream-kind ml-auto">Own</span>
                             </div>
                         } else {
                             <div class="diag-stream-header diag-clickable" @onclick="() => OnToggleStreamDetails(sid)">
