@@ -6,6 +6,7 @@ namespace ActualChat.Users;
 public class UserPresences(IServiceProvider services) : IUserPresences
 {
     private static readonly TimeSpan SessionUpdatePeriod = TimeSpan.FromHours(1);
+    private static readonly TimeSpan PresenceChangeDelay = TimeSpan.FromSeconds(0.25);
 
     private IUserPresencesBackend Backend { get; } = services.GetRequiredService<IUserPresencesBackend>();
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
@@ -17,14 +18,41 @@ public class UserPresences(IServiceProvider services) : IUserPresences
     public virtual async Task<Presence> Get(UserId userId, CancellationToken cancellationToken)
     {
         if (Constants.User.Sherlock.UserId.Equals(userId))
-            return Presence.Online; // TODO: check if ML search is configured and running.
+            return Presence.Online;
 
-        return await Backend.Get(userId, cancellationToken).ConfigureAwait(false);
+        var now = SystemNow;
+        var lastCheckIn = await GetLastCheckIn(userId, cancellationToken).ConfigureAwait(false);
+        if (!lastCheckIn.IsValue(out var lastCheckInValue))
+            return Presence.Unknown;
+
+        var checkInRecency = now - lastCheckInValue;
+        if (checkInRecency > Constants.Presence.OfflineTimeout)
+            return Presence.Offline;
+
+        var computed = Computed.GetCurrent();
+        if (checkInRecency > Constants.Presence.AwayTimeout) {
+            computed.Invalidate(Constants.Presence.OfflineTimeout - checkInRecency + PresenceChangeDelay);
+            return Presence.Away;
+        }
+
+        computed.Invalidate(Constants.Presence.AwayTimeout - checkInRecency + PresenceChangeDelay);
+        return Presence.Online;
     }
 
     // [ComputeMethod]
     public virtual async Task<ApiNullable8<Moment>> GetLastCheckIn(UserId userId, CancellationToken cancellationToken)
-        => await Backend.GetLastCheckIn(userId, cancellationToken).ConfigureAwait(false);
+    {
+        try {
+            return await Backend
+                .GetLastCheckIn(userId, cancellationToken)
+                .WaitAsync(ServerConstants.Backend.Timeout, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (TimeoutException) {
+            Computed.GetCurrent().Invalidate(ServerConstants.Backend.RetryDelay);
+            return ApiNullable8<Moment>.Null;
+        }
+    }
 
     // [CommandHandler]
     public virtual async Task OnCheckIn(UserPresences_CheckIn command, CancellationToken cancellationToken)

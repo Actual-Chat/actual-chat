@@ -1630,5 +1630,7 @@ Global
 	EndGlobalSection
 	GlobalSection(RiderSharedRunConfigurations) = postSolution
 		File = .claude\worktrees\chat-entry-refactoring\.run\App.Server.run.xml
+		File = .claude\worktrees\chat-entry-refactoring\.run\App.Maui.run.xml
+		File = .claude\worktrees\chat-entry-refactoring\.run\App.Server (AY).run.xml
 	EndGlobalSection
 EndGlobal
