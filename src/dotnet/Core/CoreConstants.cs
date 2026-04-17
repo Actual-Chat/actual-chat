@@ -31,6 +31,11 @@ public static partial class CoreConstants
         public static readonly int TargetQueueSize = 16;
     }
 
+    public static class DelayedDisposer
+    {
+        public static readonly TimeSpan MinWait = TimeSpan.FromMilliseconds(50);
+    }
+
     public static class MessageProcessor
     {
         public static readonly int QueueSize = 128;

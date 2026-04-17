@@ -1,3 +1,6 @@
+using System.Buffers;
+using ActualLab.Collections;
+
 namespace ActualChat.Video;
 
 [DataContract, MemoryPackable, MessagePackObject(true)]
@@ -54,10 +57,25 @@ public partial class VideoFrame : MediaFrame
     public long KeyFrameNumber { get; set; }
 
     /// <summary>
-    /// Cached serialized bytes for zero-copy forwarding. Set once during deserialization
-    /// in StreamHub.ToVideoFrames(). Do not mutate after initial assignment.
-    /// Filters must only drop frames (not mutate them), or cached bytes become stale.
+    /// Cached serialized bytes for zero-copy forwarding and serialize-once fan-out.
+    /// Set once during deserialization (StreamHub) or first RPC serialization (CachingVideoFrameByteSerializer).
+    /// Subsequent consumers reuse cached bytes. Do not mutate after initial assignment.
+    /// Backed by pooled <see cref="SerializedDataOwner"/> when set by caching serializer, freed on Dispose.
     /// </summary>
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public byte[]? CachedSerializedBytes { get; set; }
+    public ReadOnlyMemory<byte> SerializedData { get; set; }
+
+    /// <summary>
+    /// Pooled buffer backing <see cref="SerializedData"/>.
+    /// Returned to ArrayPool on Dispose.
+    /// </summary>
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public IMemoryOwner<byte>? SerializedDataOwner { get; set; }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+            SerializedDataOwner?.Dispose();
+        base.Dispose(disposing);
+    }
 }

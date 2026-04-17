@@ -36,6 +36,10 @@ public static partial class Constants
         public static readonly float ThroughputOverDeliveryRatio = 2.5f; // Step down when actual > 250% of target
         public static readonly int ThroughputStepDownConsecutiveChecks = 2; // Require 2 consecutive low checks
 
+        // Pooled buffer lifecycle — delay before returning evicted frame's Data to ArrayPool.
+        // Must exceed max consumer lag; in realtime streaming no consumer is >10s behind.
+        public static readonly TimeSpan FrameDataReturnDelay = TimeSpan.FromSeconds(15);
+
         // PLI rate limiting
         public static readonly TimeSpan KeyFrameRequestCooldown = TimeSpan.FromSeconds(5);
 

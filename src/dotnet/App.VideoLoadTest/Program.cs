@@ -441,7 +441,7 @@ async Task RunConsumerRpc(int chatIdx, int consumerIdx, int streamIdx, StreamId 
 
             var receiveTs = Stopwatch.GetTimestamp();
             var key = (chatIdx, consumerIdx, streamIdx);
-            var frameSize = frame.CachedSerializedBytes?.Length ?? frame.Data.Length;
+            var frameSize = !frame.SerializedData.IsEmpty ? frame.SerializedData.Length : frame.Data.Length;
             framesReceived.AddOrUpdate(key, 1, (_, v) => v + 1);
             bytesReceived.AddOrUpdate(key, frameSize, (_, v) => v + frameSize);
 
@@ -476,7 +476,7 @@ async Task RunConsumerRpcBackend(int chatIdx, int consumerIdx, int streamIdx, St
 
             var receiveTs = Stopwatch.GetTimestamp();
             var key = (chatIdx, consumerIdx, streamIdx);
-            var frameSize = frame.CachedSerializedBytes?.Length ?? frame.Data.Length;
+            var frameSize = !frame.SerializedData.IsEmpty ? frame.SerializedData.Length : frame.Data.Length;
             framesReceived.AddOrUpdate(key, 1, (_, v) => v + 1);
             bytesReceived.AddOrUpdate(key, frameSize, (_, v) => v + frameSize);
 
