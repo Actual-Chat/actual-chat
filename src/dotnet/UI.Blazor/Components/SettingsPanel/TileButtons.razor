@@ -54,7 +54,7 @@
             .ConfigureAwait(false);
         var defaultAvatarId = userAvatarSettings.DefaultAvatarId;
         if (defaultAvatarId.IsEmpty)
-            defaultAvatarId = userAvatarSettings.AvatarIds.FirstOrDefault();
+            defaultAvatarId = userAvatarSettings.AvatarIds.GetOrDefault(0);
         return Avatar?.Id == defaultAvatarId;
     }
 }

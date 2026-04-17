@@ -65,19 +65,20 @@ Comprehensive serialization tests have been written for all serializable types. 
 ### Test patterns used
 
 - **Structural equality types**: `value.AssertPassesThroughAllSerializers()` - simple round-trip + equality check
-- **Reference equality types**: `value.PassThroughAllSerializers(Out)` + field-by-field assertions (for types with arrays, collections, or `ReferenceEquals`-based equality)
-- **Types with broken MessagePack**: Individual serializer tests excluding MessagePack (e.g., `ChatEntryLanguage` has mixed MessagePack key types)
-- **Types with private legacy properties**: Individual JSON + MemoryPack serializer tests (e.g., `UserAvatarSettings.LegacyAvatarIds`)
+- **Reference equality types**: `value.AssertPassesThroughAllSerializers(action, Out)` + field-by-field assertions (for types with arrays, collections, or `ReferenceEquals`-based equality)
 
 ### Source fixes made during Phase 1
 
 - `src/dotnet/Chat.Contracts/TextEntry.cs` - Added `[Newtonsoft.Json.JsonConstructor]` attribute to resolve constructor ambiguity for Newtonsoft.Json deserialization.
 
-### Known issues discovered
+### Known issues — resolved
 
-1. **`ChatEntryLanguage`** has mixed MessagePack key types (string + int keys on the same type), causing `MessagePackDynamicObjectResolverException`. This cascades to `ChatLanguageTile` which contains it.
-2. **`UserAvatarSettings.AvatarIds`** and **`UserBubbleSettings.ReadBubbles`** are serialized through private `LegacyXxx` properties that MessagePack can't see. These need to be refactored or have custom formatters.
-3. Some types use `ApiNullable8` MemoryPack bridge for `Moment?` fields (e.g., `ChatEntry`, `Notification`) - these need attention during migration.
+1. ~~**`ChatEntryLanguage`** has mixed MessagePack key types~~ — no longer an issue. `[MessagePackObject(true)]` (keyAsPropertyName) ignores `MemoryPackOrder` and uses property names as keys, so there's no key-type mix. Tests now exercise the full serializer suite.
+2. ~~**`UserAvatarSettings.AvatarIds`** and **`UserBubbleSettings.ReadBubbles`** serialized through private `LegacyXxx` properties~~ — refactored: both types now expose `ApiArray<Symbol>` as public `[DataMember, MemoryPackOrder(0)]` properties. Wire-compatible with old MemoryPack data (same type at same order); MessagePack now roundtrips correctly via `ApiArrayMessagePackFormatter<Symbol>`.
+
+### Design patterns to preserve (not bugs)
+
+- **`ApiNullable8<T>` MemoryPack bridge** (e.g., `ChatEntry.MemoryPackEndsAt`, `Notification.MemoryPackHandledAt`, `Upload.MemoryPackLength`, `Device.MemoryPackAccessedAt`, `LegacyChatEntry.MemoryPack*`, `ChatEntryAudio.MemoryPack*`, `ChatRangeMeta.MemoryPack*`, `ChatEntryRangeMeta.MemoryPack*`): a private `ApiNullable8<T>` property with `[MemoryPackInclude, MemoryPackOrder(N), IgnoreMember]` shadows a public `Nullable<T>` property with `[MemoryPackIgnore]`. MemoryPack serializes the private 8-byte bridge; MessagePack serializes the public `Nullable<T>` natively. Both serializers roundtrip correctly. When/if MemoryPack is removed in Phase 3, drop the private bridges and keep the public `Nullable<T>` properties.
 
 ## Phase 2: Add `[MessagePackObject]` Attributes (TODO)
 

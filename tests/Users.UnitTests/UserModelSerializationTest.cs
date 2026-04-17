@@ -70,24 +70,10 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             AvatarIds = ["avatar-1", "avatar-2"],
             DefaultAvatarId = "avatar-1",
         };
-        // AvatarIds is serialized through private LegacyAvatarIds, so test JSON serializers individually
-        var sj = SystemJsonSerialized.New(settings);
-        Out.WriteLine($"SystemJsonSerialized: {sj.Data}");
-        var s1 = SystemJsonSerialized.New<UserAvatarSettings>(sj.Data).Value;
-        s1.AvatarIds.Count.Should().Be(2);
-        s1.DefaultAvatarId.Should().Be(settings.DefaultAvatarId);
-
-        var nj = NewtonsoftJsonSerialized.New(settings);
-        Out.WriteLine($"NewtonsoftJsonSerialized: {nj.Data}");
-        var s2 = NewtonsoftJsonSerialized.New<UserAvatarSettings>(nj.Data).Value;
-        s2.AvatarIds.Count.Should().Be(2);
-        s2.DefaultAvatarId.Should().Be(settings.DefaultAvatarId);
-
-        var mp = MemoryPackSerialized.New(settings);
-        Out.WriteLine($"MemoryPackSerialized: {mp.Data.AsByteString()}");
-        var s3 = MemoryPackSerialized.New<UserAvatarSettings>(mp.Data).Value;
-        s3.AvatarIds.Count.Should().Be(2);
-        s3.DefaultAvatarId.Should().Be(settings.DefaultAvatarId);
+        settings.AssertPassesThroughAllSerializers(v => {
+            v.AvatarIds.Should().Equal(settings.AvatarIds);
+            v.DefaultAvatarId.Should().Be(settings.DefaultAvatarId);
+        }, Out);
     }
 
     [Fact]
@@ -97,24 +83,10 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             ReadBubbles = ["bubble-1", "bubble-2"],
             Origin = "https://actual.chat",
         };
-        // ReadBubbles is serialized through private LegacyReadBubbles, so test JSON serializers individually
-        var sj = SystemJsonSerialized.New(settings);
-        Out.WriteLine($"SystemJsonSerialized: {sj.Data}");
-        var s1 = SystemJsonSerialized.New<UserBubbleSettings>(sj.Data).Value;
-        s1.ReadBubbles.Count.Should().Be(2);
-        s1.Origin.Should().Be(settings.Origin);
-
-        var nj = NewtonsoftJsonSerialized.New(settings);
-        Out.WriteLine($"NewtonsoftJsonSerialized: {nj.Data}");
-        var s2 = NewtonsoftJsonSerialized.New<UserBubbleSettings>(nj.Data).Value;
-        s2.ReadBubbles.Count.Should().Be(2);
-        s2.Origin.Should().Be(settings.Origin);
-
-        var mp = MemoryPackSerialized.New(settings);
-        Out.WriteLine($"MemoryPackSerialized: {mp.Data.AsByteString()}");
-        var s3 = MemoryPackSerialized.New<UserBubbleSettings>(mp.Data).Value;
-        s3.ReadBubbles.Count.Should().Be(2);
-        s3.Origin.Should().Be(settings.Origin);
+        settings.AssertPassesThroughAllSerializers(v => {
+            v.ReadBubbles.Should().Equal(settings.ReadBubbles);
+            v.Origin.Should().Be(settings.Origin);
+        }, Out);
     }
 
     [Fact]

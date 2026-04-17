@@ -245,14 +245,12 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             ModifiedAt = DateTime.UtcNow,
         };
 
-        // MessagePack fails due to mixed key types on ChatEntryLanguage - will be fixed during migration
-        var s1 = lang.PassThroughSystemJsonSerializer(Out);
-        s1.Id.Should().Be(lang.Id);
-        var s2 = lang.PassThroughNewtonsoftJsonSerializer(Out);
-        s2.Id.Should().Be(lang.Id);
-        var s3 = lang.PassThroughMemoryPackByteSerializer(Out);
-        s3.Id.Should().Be(lang.Id);
-        s3.Languages.Should().BeEquivalentTo(lang.Languages);
+        lang.AssertPassesThroughAllSerializers(v => {
+            v.Id.Should().Be(lang.Id);
+            v.Languages.Should().BeEquivalentTo(lang.Languages);
+            v.CreatedAt.Should().Be(lang.CreatedAt);
+            v.ModifiedAt.Should().Be(lang.ModifiedAt);
+        }, Out);
     }
 
     [Fact]
@@ -264,14 +262,11 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             new Range<long>(0, 100),
             [new ChatEntryLanguage(entryId, 1) { Languages = [Languages.English] }]);
 
-        // MessagePack fails due to mixed key types on ChatEntryLanguage - will be fixed during migration
-        var s1 = tile.PassThroughSystemJsonSerializer(Out);
-        s1.IdTileRange.Should().Be(tile.IdTileRange);
-        var s2 = tile.PassThroughNewtonsoftJsonSerializer(Out);
-        s2.IdTileRange.Should().Be(tile.IdTileRange);
-        var s3 = tile.PassThroughMemoryPackByteSerializer(Out);
-        s3.IdTileRange.Should().Be(tile.IdTileRange);
-        s3.Entries.Length.Should().Be(tile.Entries.Length);
+        tile.AssertPassesThroughAllSerializers(v => {
+            v.IdTileRange.Should().Be(tile.IdTileRange);
+            v.Entries.Length.Should().Be(tile.Entries.Length);
+            v.Entries[0].Id.Should().Be(tile.Entries[0].Id);
+        }, Out);
     }
 
     [Fact]

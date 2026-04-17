@@ -49,10 +49,18 @@ Each AotSource has two parts:
 ### App.AotHelper
 
 Console app that:
-- **Generate mode** (`-g [project-root]`): discovers Blazor components (`ComponentBase` descendants), `IComputeService` API interfaces, and `[MemoryPackable]` serializable types across all ActualChat assemblies. Outputs `XxxAotSource.g.cs` files into each target project.
+- **Generate mode** (`-g [project-root]`): discovers Blazor components (`ComponentBase` descendants), `IComputeService` API interfaces, and `[MemoryPackable]` serializable types across all ActualChat assemblies. Outputs `XxxAotSource.g.cs` files into each target project. Run via `run-aot-type-generator.cmd` at the project root.
 - **Test mode** (no args): validates all registered types can be loaded, instantiated, and reflected upon. Uses `IAotTester` implementations (`ComponentTester`, `ApiTester`, `SerializableTester`).
 
 The App.AotHelper project itself is configured for Native AOT publishing (`PublishAot=true` in Release) to serve as a smoke test.
+
+### MessagePack formatter discovery
+
+For each serializable root type in a target assembly, `MessagePackFormatterDiscovery` walks the full reachable type graph — array elements, `Nullable<T>` underlying types, generic arguments, base type, generic interface arguments, and serialized properties/fields — and collects every concrete MessagePack formatter needed to deserialize that graph:
+- `[MessagePackFormatter(typeof(X))]` attributes are read directly; if `X` is an open generic with one parameter, it is also closed over the decorated type (catches e.g. `StringIdentifierMessagePackFormatter<ChatId>` for all ~30 identifier types).
+- Each reachable type is resolved via `DefaultMessagePackResolver.Instance.GetFormatter<T>()` (invoked via reflection) to obtain the concrete formatter that MessagePack would pick at runtime. This catches `GenericEnumFormatter<TEnum>`, `ArrayFormatter<T>`, `NullableFormatter<T>`, `InterfaceImmutableDictionaryFormatter<K,V>`, `UnitMessagePackFormatter`, `ApiArrayMessagePackFormatter<T>`, and so on.
+
+Formatters are filtered to the `MessagePack.*`, `ActualLab.*`, `ActualChat.*` assembly prefixes (runtime-emitted formatters from `DynamicObjectResolver+` cannot be named by AQN) and emitted into the per-assembly `XxxAotSource.g.cs` as `CodeKeeper.Keep("<AQN>")` calls. Walking bases + generic interface arguments is required to reach types that appear only in a command's declared interface (e.g. `Unit` in `ISessionCommand<Unit>`).
 
 ### System.Text.Json source generation
 
@@ -84,11 +92,9 @@ Instead, STJ AOT compatibility is achieved via `CodeKeeper.Keep(string)` calls t
 
 3. **WindowsAppIconBadge**: `CreateBadgeUpdaterForApplication` fails without AppxManifest.xml in unpackaged mode. Non-blocking FCE.
 
-4. **MemoryPack formatter**: `InterfaceImmutableDictionaryFormatter<string, ChatId>` missing parameterless constructor. Non-blocking FCE, kept via `CodeKeeper.Keep<T>()`.
+4. **MissingTemplateException**: A few opaque "Template is missing" errors from `Internal.Runtime.TypeLoader` — no stack traces available to diagnose. Non-blocking.
 
-5. **MissingTemplateException**: A few opaque "Template is missing" errors from `Internal.Runtime.TypeLoader` — no stack traces available to diagnose. Non-blocking.
-
-6. **Binary size**: ~120MB native executable (Windows x64). No size optimization done yet.
+5. **Binary size**: ~120MB native executable (Windows x64). No size optimization done yet.
 
 ### Remaining STJ converter types to keep
 
@@ -115,7 +121,10 @@ When new types are used in JS interop, their STJ converters may need manual `Cod
 |------|---------|
 | `src/dotnet/App.AotHelper/` | AOT validation console app |
 | `src/dotnet/App.AotHelper/AotTypeGenerator.cs` | Discovers and generates AotSource files |
+| `src/dotnet/App.AotHelper/MessagePackFormatterDiscovery.cs` | Walks serializable type graphs to emit MessagePack formatter AQN keeps |
+| `src/dotnet/App.AotHelper/StjConverterDiscovery.cs` | Walks JS-interop type graphs to emit STJ internal converter AQN keeps |
 | `src/dotnet/App.AotHelper/Testers/` | IAotTester implementations |
+| `run-aot-type-generator.cmd` | Builds + runs `App.AotHelper -g` |
 | `src/dotnet/Core/Aot/AotTypes.cs` | Central registry of IAotSource instances |
 | `src/dotnet/Core/Aot/AotJsonContexts.cs` | Registry of JsonSerializerContext instances |
 | `src/dotnet/Core/Aot/IAotSource.cs` | Interface for type sources |

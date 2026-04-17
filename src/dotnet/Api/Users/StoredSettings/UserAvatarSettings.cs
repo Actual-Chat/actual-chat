@@ -8,15 +8,7 @@ namespace ActualChat.Users;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record UserAvatarSettings : StoredSettings, IHasKvasKey<UserAvatarSettings>
 {
-    [DataMember, MemoryPackOrder(0), MemoryPackInclude]
-    private ApiArray<Symbol> LegacyAvatarIds {
-        get => AvatarIds.ToApiArray();
-        init => AvatarIds = value.ToList();
-    }
-
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public IReadOnlyList<Symbol> AvatarIds { get; init; } = [];
-
+    [DataMember, MemoryPackOrder(0)] public ApiArray<Symbol> AvatarIds { get; init; } = [];
     [DataMember, MemoryPackOrder(1)] public Symbol DefaultAvatarId { get; init; }
 
     public UserAvatarSettings WithAvatarId(Symbol avatarId)

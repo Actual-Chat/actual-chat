@@ -10,15 +10,7 @@ public sealed partial record UserBubbleSettings : StoredSettings, IHasOrigin
 {
     public const string KvasKey = nameof(UserBubbleSettings);
 
-    [DataMember, MemoryPackOrder(0), MemoryPackInclude]
-    private ApiArray<Symbol> LegacyReadBubbles {
-        get => ReadBubbles.ToApiArray();
-        init => ReadBubbles = value.ToList();
-    }
-
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public IReadOnlyList<Symbol> ReadBubbles { get; init; } = [];
-
+    [DataMember, MemoryPackOrder(0)] public ApiArray<Symbol> ReadBubbles { get; init; } = [];
     [DataMember, MemoryPackOrder(1)] public string Origin { get; init; } = "";
 
     public UserBubbleSettings WithRead(params string[] bubbleRefs)
@@ -29,13 +21,13 @@ public sealed partial record UserBubbleSettings : StoredSettings, IHasOrigin
         var newReadBubbles = ReadBubbles
             .Concat(bubbleRefs.Select(x => (Symbol)x))
             .Distinct()
-            .ToList();
+            .ToApiArray();
         return this with { ReadBubbles = newReadBubbles };
     }
 
     public UserBubbleSettings WithoutRead(string bubbleRef)
     {
-        var newReadBubbles = ReadBubbles.Where(x => x.Value != bubbleRef).ToList();
+        var newReadBubbles = ReadBubbles.Where(x => x.Value != bubbleRef).ToApiArray();
         return newReadBubbles.Count == ReadBubbles.Count ? this : this with { ReadBubbles = newReadBubbles };
     }
 
