@@ -68,7 +68,7 @@
             }
 
             <HeaderButton
-                Class="talking"
+                Class="btn-video-panel talking"
                 StopPropagation="true"
                 PreventDefault="true"
                 Click="@OnHangUpClick"
@@ -84,7 +84,7 @@
                     <i class="icon-camera-switch text-lg"></i>
                 </HeaderButton>
             }
-            <HeaderButton Click="@(() => OnVideoClick(!isOwnCameraStreaming))" Class="@("btn-video-panel " + videoBtnCls)">
+            <HeaderButton Click="@(() => OnVideoClick(!isOwnCameraStreaming))" Class="@("btn-video-panel btn-video-toggle " + videoBtnCls)">
                 <i class="icon-video text-lg"></i>
             </HeaderButton>
             @if (!ScreenSize.IsNarrow()) {
@@ -92,7 +92,7 @@
                     <i class="icon-screen-share text-lg"></i>
                 </HeaderButton>
             }
-            <HeaderButton Click="@(() => OnToggleRecordingClick(!m.IsAudioRecording))" Class="@expandedPanelRecBtnCls">
+            <HeaderButton Click="@(() => OnToggleRecordingClick(!m.IsAudioRecording))" Class="@("btn-video-panel " + expandedPanelRecBtnCls)">
                 @if (m.IsAudioRecording) {
                     <active-recording-svg
                         size="8"
