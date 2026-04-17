@@ -51,9 +51,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.BackendStatusTest>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Banners>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatActivities>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatActivityBanner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatActivityPanel>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatActivitySubHeader>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatActivityPanelNarrowScreenWrapper>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatAudioPanel>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatBotWaitingMessage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatCopyBanner>();
@@ -153,6 +152,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.EmailStep>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.EmailVerificationModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.EmojiIcon>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.EmojiModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.EmptyChatContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.EmptySearchChatContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ExternalImageTest>();
@@ -170,6 +170,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.FoundUserListItem>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.GrantFileUploadsSubHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.HasContextMenuBubble>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ImageCropPicker>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.InaccessiblePlace>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IncomingCallModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IncomingCallModalHeader>();
@@ -260,6 +261,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PhoneStep>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PhoneVerificationModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PhotoTroubleshooterModal>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PicCropModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceAliasRequiredValidationMessage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceInfo.PlaceInfo>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceInfo.PlaceInfoMembersTab>();
@@ -328,7 +330,9 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ShareExternallyButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ShareLinkBadge>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ShareModal>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ShowVideoPanelToggle>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.StatusBadge>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.StopListeningCountdownButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.StreamingEntryBadge>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.SubHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.SummarizationTutorialStep>();
@@ -355,7 +359,9 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.UploadAttachmentItem>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.UploadPlug>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VerificationStatus>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoPanel.VideoRecorder>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoPanel.RemoteStreamPlayer>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoPanel.VideoDiagnosticsModal>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoPanel.VideoStreamingPreview>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoPanel.VideoTrackPlayer>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoToggle>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VisualMediaAttachment>();
@@ -441,7 +447,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.DocsPrivacyContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.DocsTermsContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.ReconnectBanner>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.VideoPanel>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.VideoPanelContainer>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.VideoPanelContent>();
     }
 
     public (Type, AotTypeKind)[] ListTypes()
@@ -482,9 +489,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.BackendStatusTest), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Banners), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatActivities), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatActivityBanner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatActivityPanel), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatActivitySubHeader), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatActivityPanelNarrowScreenWrapper), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatAudioPanel), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatBotWaitingMessage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatCopyBanner), AotTypeKind.Component),
@@ -584,6 +590,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.EmailStep), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.EmailVerificationModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.EmojiIcon), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.EmojiModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.EmptyChatContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.EmptySearchChatContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ExternalImageTest), AotTypeKind.Component),
@@ -601,6 +608,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.FoundUserListItem), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.GrantFileUploadsSubHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.HasContextMenuBubble), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ImageCropPicker), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.InaccessiblePlace), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.IncomingCallModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.IncomingCallModalHeader), AotTypeKind.Component),
@@ -691,6 +699,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.PhoneStep), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PhoneVerificationModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PhotoTroubleshooterModal), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.PicCropModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceAliasRequiredValidationMessage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceInfo.PlaceInfo), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceInfo.PlaceInfoMembersTab), AotTypeKind.Component),
@@ -759,7 +768,9 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ShareExternallyButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ShareLinkBadge), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ShareModal), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ShowVideoPanelToggle), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.StatusBadge), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.StopListeningCountdownButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.StreamingEntryBadge), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.SubHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.SummarizationTutorialStep), AotTypeKind.Component),
@@ -786,7 +797,9 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.UploadAttachmentItem), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.UploadPlug), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VerificationStatus), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.VideoPanel.VideoRecorder), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.VideoPanel.RemoteStreamPlayer), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.VideoPanel.VideoDiagnosticsModal), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.VideoPanel.VideoStreamingPreview), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VideoPanel.VideoTrackPlayer), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VideoToggle), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VisualMediaAttachment), AotTypeKind.Component),
@@ -872,6 +885,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Components.DocsPrivacyContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.DocsTermsContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.ReconnectBanner), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.Components.VideoPanel), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.Components.VideoPanelContainer), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.Components.VideoPanelContent), AotTypeKind.Component),
         ];
 }
