@@ -8,6 +8,11 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0.202
 ARG TZ=Etc/UTC
 ENV TZ="$TZ"
 
+# Swap archive.ubuntu.com for a faster mirror (archive.ubuntu.com geo-routes to
+# slow nodes from some networks, capping apt throughput to ~30 KB/s).
+RUN sed -i 's|http://archive.ubuntu.com/ubuntu|http://mirrors.edge.kernel.org/ubuntu|g; s|http://security.ubuntu.com/ubuntu|http://mirrors.edge.kernel.org/ubuntu|g' \
+    /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+
 # Install Node.js 20
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get install -y nodejs
