@@ -385,6 +385,7 @@ public partial class ChatAudioUI
     {
         var serverClock = Clocks.ServerClock;
         var cpuClock = Clocks.CpuClock;
+        var watcherStartedAt = serverClock.Now;
         var mustStop = true;
         try {
             while (!cancellationToken.IsCancellationRequested) {
@@ -447,8 +448,13 @@ public partial class ChatAudioUI
                     continue;
                 }
 
+                // Clamp: GetLastActivityServerTime may return a cached value from a prior
+                // listening session (ConsolidationDelay prevents immediate recomputation),
+                // so never use a timestamp older than when this watcher started.
+                var effectiveActivityTime = Moment.Max(lastActivityTime.Value, watcherStartedAt);
+
                 // Idle — compute stop time
-                var stopAt = lastActivityTime.Value + options.IdleTimeout;
+                var stopAt = effectiveActivityTime + options.IdleTimeout;
                 var remaining = (stopAt - serverClock.Now).Positive();
                 if (remaining <= Epsilon)
                     return; // Must stop listening
