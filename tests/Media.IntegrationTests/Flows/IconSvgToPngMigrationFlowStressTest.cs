@@ -47,7 +47,7 @@ public class IconSvgToPngMigrationFlowStressTest(AppHostFixture fixture, ITestOu
 
         for (var i = 0; i < countPerPhase; i++) {
             avatarSvgIds[i] = await CreateSvgMedia($"avatar-{i}.svg");
-            avatarIds[i] = await CreateAvatar(account.Id, avatarSvgIds[i]);
+            avatarIds[i] = await CreateAvatar(avatarSvgIds[i]);
 
             chatSvgIds[i] = await CreateSvgMedia($"chat-{i}.svg");
             (chatIds[i], _) = await Tester.CreateChat(diff => diff with {
@@ -95,18 +95,16 @@ public class IconSvgToPngMigrationFlowStressTest(AppHostFixture fixture, ITestOu
         return mediaId;
     }
 
-    private async Task<Symbol> CreateAvatar(UserId userId, MediaId mediaId)
+    private async Task<Symbol> CreateAvatar(MediaId mediaId)
     {
         var command = new Avatars_Change(
             Tester.Session,
             Symbol.Empty,
             null,
-            new Change<AvatarFull> {
-                Create = new AvatarFull(userId) {
-                    Name = "test",
-                    MediaId = mediaId,
-                },
-            });
+            Change.Create(new AvatarDiff {
+                Name = "test",
+                MediaId = mediaId,
+            }));
         var avatar = await Commander.Call(command, true, CancellationToken.None);
         return avatar.Id;
     }

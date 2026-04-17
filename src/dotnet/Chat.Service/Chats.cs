@@ -1,7 +1,6 @@
 using ActualChat.Contacts;
 using ActualChat.Hosting;
 using ActualChat.Transcription;
-using ActualLab.Rpc.Infrastructure;
 
 namespace ActualChat.Chat;
 
@@ -628,11 +627,10 @@ public partial class Chats(IServiceProvider services) : IChats
             .Where(a => a != null)
             .FirstOrDefault(a => a!.Name == Avatar.GuestName);
         if (guestAvatar == null) {
-            var createAvatarCommand = new Avatars_Change(session, Symbol.Empty, null, new Change<AvatarFull> {
-                Create = new AvatarFull(account.Id) {
-                    Name = "Guest",
-                }.WithMissingPropertiesFrom(account.Avatar),
-            });
+            var diff = AvatarDiff.FromFull(
+                new AvatarFull(account.Id) { Name = "Guest" }
+                    .WithMissingPropertiesFrom(account.Avatar));
+            var createAvatarCommand = new Avatars_Change(session, Symbol.Empty, null, Change.Create(diff));
             var newAvatar = await Commander.Call(createAvatarCommand, true, cancellationToken).ConfigureAwait(false);
             guestAvatar = newAvatar;
         }

@@ -123,13 +123,9 @@
             _ = UICommander.Run(LocalCommand.New(static () => throw StandardError.NotFound<Avatar>()));
             return;
         }
-        avatar = avatar.WithPicture(_form.Picture) with {
-            Name = _form.Name,
-            Bio = _form.Bio,
-        };
-        var command = new Avatars_Change(Session, avatarId, avatar.Version, new Change<AvatarFull>() {
-            Update = avatar,
-        });
+        var updated = avatar.WithPicture(_form.Picture) with { Name = _form.Name, Bio = _form.Bio };
+        var diff = DiffEngine.Diff<AvatarFull, AvatarDiff>(avatar, updated);
+        var command = new Avatars_Change(Session, avatarId, null, Change.Update(diff));
         var (_, error) = await UICommander.Run(command);
         if (error != null)
             return;
@@ -174,9 +170,7 @@
         => CloseModal();
 
     private async Task OnDeleteAvatarClick() {
-        var command = new Avatars_Change(Session, ModalModel.AvatarId, null, new() {
-            Remove = true,
-        });
+        var command = new Avatars_Change(Session, ModalModel.AvatarId, null, Change.Remove<AvatarDiff>());
         await UICommander.Run(command);
         Modal.Close();
     }

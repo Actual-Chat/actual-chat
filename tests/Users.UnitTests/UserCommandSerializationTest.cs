@@ -88,8 +88,8 @@ public class UserCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     [Fact]
     public void Avatars_Change_Create()
     {
-        var avatar = new AvatarFull(TestUserId, Symbol.Empty) { Name = "New Avatar" };
-        var cmd = new Avatars_Change(TestSession, Symbol.Empty, null, Change.Create(avatar));
+        var cmd = new Avatars_Change(TestSession, Symbol.Empty, null,
+            Change.Create(new AvatarDiff { Name = "New Avatar" }));
         cmd.AssertPassesThroughAllSerializers(
             (deserialized, original) => {
                 deserialized.Session.Should().Be(original.Session);
@@ -200,8 +200,8 @@ public class UserCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     [Fact]
     public void AvatarsBackend_Change_Basic()
     {
-        var avatar = new AvatarFull(TestUserId, "avatar-1") { Name = "Test" };
-        var cmd = new AvatarsBackend_Change("avatar-1", null, Change.Create(avatar));
+        var cmd = new AvatarsBackend_Change("avatar-1", null,
+            Change.Create(new AvatarDiff { Name = "Test", UserId = TestUserId }));
         cmd.AssertPassesThroughAllSerializers(
             (deserialized, original) => {
                 deserialized.AvatarId.Should().Be(original.AvatarId);

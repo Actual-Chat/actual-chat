@@ -69,9 +69,9 @@
         if (Chat != null)
             throw StandardError.Constraint("Avatars can be added only on account page.");
 
-        var command = new Avatars_Change(Session, Symbol.Empty, null, new Change<AvatarFull>() {
-            Create = new AvatarFull(Account.Id).WithMissingPropertiesFrom(Account.Avatar),
-        });
+        var command = new Avatars_Change(Session, Symbol.Empty, null,
+            Change.Create(AvatarDiff.FromFull(
+                new AvatarFull(Account.Id).WithMissingPropertiesFrom(Account.Avatar))));
         var (avatar, error) = await UICommander.Run(command);
         if (error != null)
             return;

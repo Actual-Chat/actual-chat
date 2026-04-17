@@ -244,46 +244,32 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             _ => Task.CompletedTask,
         };
 
-    // Avatar repoint uses strict optimistic concurrency because Change.Update passes
-    // all fields — ExpectedVersion=null would clobber a racing Avatars_Change. On
-    // VersionMismatchException we re-read and retry up to RepointMaxAttempts. If the
-    // MediaId was concurrently changed to anything but our SVG (user picked a new
-    // picture), we respect it. Exceeding the retry budget throws and bumps FailedCount.
-    private const int RepointMaxAttempts = 5;
-
+    // Avatar repoint uses AvatarDiff to update only the MediaId field.
+    // This avoids version conflicts entirely — no retry logic needed.
+    // If the MediaId was concurrently changed (e.g. user uploaded a new picture), we respect it.
     private async Task RepointAvatar(UsedMedia item, MediaId newMediaId, CancellationToken cancellationToken)
     {
-        for (var attempt = 1; attempt <= RepointMaxAttempts; attempt++) {
-            // Read directly — AvatarsBackend's resolver cache may miss avatars
-            // created via non-backend paths.
-            var db = await UsersDbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-            await using var _ = db.ConfigureAwait(false);
-            var dbAvatar = await db.Avatars
-                .FirstOrDefaultAsync(x => x.Id == item.EntityId, cancellationToken)
-                .ConfigureAwait(false);
-            if (dbAvatar is null) {
-                Console.Log($"Avatar {item.EntityId} disappeared before repoint; repoint skipped");
-                return;
-            }
-            // Concurrent writer already repointed the avatar (e.g. user uploaded a new picture) — respect it.
-            if (dbAvatar.MediaId != item.MediaId.Value) {
-                Console.Log($"Avatar {item.EntityId} was concurrently changed to '{dbAvatar.MediaId}'; repoint skipped");
-                return;
-            }
-            var updated = dbAvatar.ToModel() with { MediaId = newMediaId };
-            try {
-                await Commander.Call(
-                    new AvatarsBackend_Change(item.EntityId, dbAvatar.Version, Change.Update(updated)),
-                    true, cancellationToken).ConfigureAwait(false);
-                return;
-            }
-            catch (VersionMismatchException) {
-                Console.Log($"Avatar {item.EntityId} version conflict on attempt {attempt}/{RepointMaxAttempts}, retrying");
-            }
+        // Read directly — AvatarsBackend's resolver cache may miss avatars
+        // created via non-backend paths.
+        var db = await UsersDbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = db.ConfigureAwait(false);
+        var dbAvatar = await db.Avatars
+            .FirstOrDefaultAsync(x => x.Id == item.EntityId, cancellationToken)
+            .ConfigureAwait(false);
+        if (dbAvatar is null) {
+            Console.Log($"Avatar {item.EntityId} disappeared before repoint; repoint skipped");
+            return;
         }
-        throw StandardError.Internal(
-            $"Avatar {item.EntityId} repoint failed after {RepointMaxAttempts} version conflicts — "
-            + "avatar was left pointing at the original SVG; NEEDS DEV ATTENTION.");
+        // Concurrent writer already repointed the avatar (e.g. user uploaded a new picture) — respect it.
+        if (dbAvatar.MediaId != item.MediaId.Value) {
+            Console.Log($"Avatar {item.EntityId} was concurrently changed to '{dbAvatar.MediaId}'; repoint skipped");
+            return;
+        }
+        // Diff-based update: only changes MediaId, no version conflicts
+        await Commander.Call(
+            new AvatarsBackend_Change(item.EntityId, null,
+                Change.Update(new AvatarDiff { MediaId = newMediaId })),
+            true, cancellationToken).ConfigureAwait(false);
     }
 
     private Task RepointChat(UsedMedia item, MediaId newMediaId, CancellationToken cancellationToken)

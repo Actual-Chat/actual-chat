@@ -190,7 +190,7 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
             Tester.Session,
             Symbol.Empty,
             null,
-            Change.Create(new AvatarFull(ownAccount.Id) {
+            Change.Create(new AvatarDiff {
                 Name = "Bob with Picture",
                 MediaId = mediaId,
             })));
