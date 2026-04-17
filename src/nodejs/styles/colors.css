@@ -65,6 +65,7 @@
     --blue-50-20: #007AFF33;
     --blue-50-10: #007AFF1A;
     --blue-50-05: #007AFF0D;
+    --blue-80-50: #7CBBFF80;
     --blue-80-20: #7CBBFF33;
 
     --frost-99: #ECFCFF;
@@ -104,16 +105,19 @@
     --magenta-10: #350013;
 
     --magenta-20-20: #5D06261A;
+    --magenta-30-50: #9F0B4180;
     --magenta-40-10: #C80E511A;
     --magenta-40-20: #C80E5133;
     --magenta-50-05: #FF005C0D;
     --magenta-50-10: #FF005C1A;
     --magenta-50-20: #FF005C33;
+    --magenta-50-50: #FF005C80;
     --magenta-60-20: #FF388033;
     --magenta-60-10: #FF38801A;
     --magenta-70-10: #FF649C1A;
     --magenta-70-20: #FF649C33;
     --magenta-80-10: #FF94BA1A;
+    --magenta-80-50: #FF94BA80;
     --magenta-90-20: #FFC9DC33;
     --magenta-90-10: #FFC9DC1A;
 
@@ -241,12 +245,16 @@
 
     --white: #FFFFFF;
     --black: #000000;
+    --black-90: #000000E6;
+    --black-80: #000000CC;
+    --black-60: #00000099;
+    --black-50: #00000080;
+    --black-40: #00000066;
+    --black-30: #0000004F;
+    --black-20: #00000033;
     --black-10: #0000001A;
     --black-05: #0000000D;
-    --black-50: #00000080;
-    --black-60: #00000099;
-    --black-80: #000000CC;
-    --black-90: #000000E6;
+
     --white-90: #FFFFFFE6;
     --white-80: #FFFFFFCC;
     --white-60: #FFFFFF99;

@@ -1,6 +1,7 @@
+@using ActualChat.UI.Blazor.App.Module
 @namespace ActualChat.UI.Blazor.App.Components
 @implements IModalView<EmojiModal.Model>
-@implements IDisposable
+@implements IAsyncDisposable
 @inherits ComponentBase<AppUIHub>
 
 <DialogFrame
@@ -9,7 +10,7 @@
     HasHeader="false"
     NarrowViewSettings="DialogFrameNarrowViewSettings.Bottom">
     <Body>
-        <TabPanel @ref="_tabPanel" BottomHill="true" TabsClass="emoji-modal-tabs">
+        <TabPanel @ref="_tabPanel" BottomHill="true" TabsClass="emoji-modal-tabs" SelectedTabIdChanged="@OnTabChanged">
             <Tab Id="emoji" Title="Emoji" Order="0">
                 <div class="c-grid">
                     @foreach (var group in Enum.GetValues<EmojiGroup>()) {
@@ -52,12 +53,9 @@
                             </div>
                         }
                     </div>
-                    @if (_isLoading) {
-                        <div class="c-gif-status">Loading...</div>
-                    } else if (_gifItems.Count == 0 && _showEmpty) {
+                    <div @ref="_sentinelRef" class="c-gif-sentinel"></div>
+                    @if (_gifItems.Count == 0 && _showEmpty) {
                         <div class="c-gif-status">No GIFs found</div>
-                    } else if (_hasNext && _gifItems.Count > 0) {
-                        <button class="c-gif-status" @onclick="@LoadMoreGifs">Load more</button>
                     }
                 </div>
             </Tab>
@@ -66,10 +64,15 @@
 </DialogFrame>
 
 @code {
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.EmojiModal.create";
+
     private readonly List<GifItem> _gifItems = new();
     private readonly CancellationTokenSource _disposeCts = new();
     private CancellationTokenSource? _searchCts;
     private TabPanel? _tabPanel;
+    private ElementReference _sentinelRef;
+    private IJSObjectReference? _jsRef;
+    private DotNetObjectReference<EmojiModal>? _blazorRef;
     private string _searchQuery = "";
     private int _page = 1;
     private int _searchVersion;
@@ -90,7 +93,22 @@
             if (!_gifsLoaded)
                 await LoadGifs().ConfigureAwait(true);
         }
+        await TryInitObserver().ConfigureAwait(true);
     }
+
+    private async Task TryInitObserver() {
+        if (_jsRef != null || !_gifsLoaded)
+            return;
+        _blazorRef = DotNetObjectReference.Create(this);
+        _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _sentinelRef, _blazorRef)
+            .ConfigureAwait(true);
+    }
+
+    [JSInvokable]
+    public Task OnSentinelVisible()
+        => _hasNext ? LoadMoreGifs() : Task.CompletedTask;
+
+    private Task OnTabChanged(string? _) => Task.CompletedTask;
 
     private void OnEmojiClick(Emoji emoji) {
         ModalModel.SelectedEmoji = emoji;
@@ -200,13 +218,17 @@
             ? $"aspect-ratio: {gif.PreviewWidth} / {gif.PreviewHeight}"
             : "aspect-ratio: 1 / 1";
 
-    public void Dispose() {
+    public async ValueTask DisposeAsync() {
         if (!_disposeCts.IsCancellationRequested) {
             try { _disposeCts.Cancel(); }
             catch (ObjectDisposedException) { }
         }
         _disposeCts.Dispose();
         _searchCts?.Dispose();
+        await _jsRef.DisposeSilentlyAsync("dispose");
+        _jsRef = null;
+        _blazorRef.DisposeSilently();
+        _blazorRef = null;
     }
 
     // Nested types

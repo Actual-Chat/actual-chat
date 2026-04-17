@@ -22,6 +22,9 @@ body.device-android .modal-frame.emoji-modal {
     @apply overflow-y-auto;
     scrollbar-width: none;
 }
+.emoji-modal .tab::-webkit-scrollbar {
+    display: none;
+}
 
 /* ── Tabs ── */
 
@@ -87,6 +90,7 @@ body.hoverable .emoji-modal .c-item:hover,
     @apply rounded-lg;
     @apply overflow-hidden;
     @apply cursor-pointer;
+    animation: gif-skeleton-pulse 2s ease-in-out infinite;
 }
 body.hoverable .emoji-modal .c-gif-item:hover {
     @apply opacity-80;
@@ -96,6 +100,17 @@ body.hoverable .emoji-modal .c-gif-item:hover {
     @apply w-full h-auto;
     @apply rounded-lg;
 }
+@keyframes gif-skeleton-pulse {
+    0%, 100% {
+        background-color: var(--skeleton);
+    }
+    50% {
+        background-color: color-mix(in srgb, var(--skeleton) 30%, var(--modal-background))
+    }
+}
+.emoji-modal .c-gif-sentinel {
+    @apply h-px;
+}
 .emoji-modal .c-gif-status {
     @apply py-2;
     @apply opacity-0;
@@ -103,12 +118,6 @@ body.hoverable .emoji-modal .c-gif-item:hover {
     @apply text-text-1 text-03;
     @apply text-center;
     animation: gif-status-fade-in 0s ease-in 1s forwards;
-}
-button.c-gif-status {
-    @apply cursor-pointer;
-}
-body.hoverable .emoji-modal button.c-gif-status:hover {
-    @apply text-01;
 }
 @keyframes gif-status-fade-in {
     to { opacity: 1; }

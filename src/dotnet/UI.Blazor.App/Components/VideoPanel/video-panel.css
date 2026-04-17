@@ -217,22 +217,58 @@ body.device-mobile.narrow .video-panel.expanded .video-panel-content.video-panel
     right: calc(var(--video-panel-chat-width) + 0.5rem);
 }
 .btn-video-panel.btn,
-.btn-video-panel.btn-h,
-.video-panel .video-panel-toolbar > button {
-    @apply w-12 h-12;
-    @apply rounded-full border border-[var(--white-10)];
+.btn-video-panel.btn-h {
+    @apply w-10 h-10;
+    @apply rounded-full border-none;
     @apply text-white;
-    background: linear-gradient(
-        160deg,
-        rgba(0, 0, 0, 0.28) 0%,
-        rgba(0, 0, 0, 0.18) 100%
-    );
-    box-shadow:
-        0 1px 4px rgba(0, 0, 0, 0.35),
-        inset 0 1px 0 rgba(255, 255, 255, 0.25);
-    backdrop-filter: blur(10px) brightness(1.1);
-    -webkit-backdrop-filter: blur(10px) brightness(1.1);
+    background: linear-gradient(180deg, var(--black-10) -20.83%, var(--black-30) 100%);
+    backdrop-filter: blur(2px);
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.60);
+}
+.btn-video-panel.btn::before,
+.btn-video-panel.btn-h::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1.5px;
+    background: conic-gradient(
+        from 330deg,
+        var(--white-50) 0deg,
+        var(--white-30) 90deg,
+        var(--white-10) 180deg,
+        var(--white-30) 270deg,
+        var(--white-50) 360deg
+    );
+    -webkit-mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+.btn-video-panel.btn-h.btn-video-toggle.on,
+.btn-video-panel.btn-h.chat-btn.on {
+    background: var(--blue-50-50);
+    color: var(--blue-95);
+}
+.btn-video-panel.btn-h.talking {
+    background: var(--magenta-30-50);
+    color: var(--magenta-95);
+}
+.btn-video-panel.btn-h.talking::before {
+    background: conic-gradient(
+        from 330deg,
+        var(--magenta-80) 0deg,
+        var(--magenta-80) 90deg,
+        var(--magenta-80) 180deg,
+        var(--magenta-80) 270deg,
+        var(--magenta-80) 360deg
+    );
+}
+.video-panel-footer .btn-video-panel.btn,
+.video-panel-footer .btn-video-panel.btn-h {
+    @apply w-12 h-12;
 }
 body.hoverable .video-panel .video-panel-toolbar > button:hover,
 .touch-capable .video-panel .video-panel-toolbar > button:active {
@@ -256,20 +292,16 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
 .video-panel .video-panel-footer > button.rec-btn i.left {
     @apply -mr-0.5;
 }
-.video-panel .video-panel-footer > button.on {
-    @apply outline-2 -outline-offset-1 outline-primary;
-    @apply text-primary;
-    outline-style: solid;
+.btn-video-panel.btn-h.on::before {
+    background: conic-gradient(
+        from 330deg,
+        var(--blue-80) 0deg,
+        var(--blue-80) 90deg,
+        var(--blue-80) 180deg,
+        var(--blue-80) 270deg,
+        var(--blue-80) 360deg
+    );
 }
-body.hoverable .video-panel .video-panel-footer > button.on:hover,
-.touch-capable .video-panel .video-panel-footer > button.on:active {
-    @apply outline-[var(--blue-50-50)];
-    @apply text-[var(--blue-50-50)];
-}
-.video-panel .video-panel-header > button.talking {
-    @apply text-[var(--danger-light)];
-}
-
 body.hoverable .btn-h.expand-btn:hover {
     @apply text-white;
     @apply opacity-80;
