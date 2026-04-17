@@ -176,12 +176,11 @@ export class JoinVideoCallModal {
         const recorder = getActiveRecorder();
         if (!recorder) return false;
 
-        const previewStream = recorder.getPreviewStream();
-        if (!previewStream) return false;
+        const previewTrack = recorder.getPreviewTrack();
+        if (previewTrack?.readyState !== 'live') return false;
 
         // Clone the track so we can stop it independently
-        const originalTrack = previewStream.getVideoTracks()[0];
-        this.track = originalTrack.clone();
+        this.track = previewTrack.clone();
         this.attachedFromRecorder = true;
 
         // Pause the recorder's own preview rendering
