@@ -229,13 +229,13 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
             if (author.IsAnonymous) {
                 if (author.AvatarId.IsEmpty) {
                     // Creating a random avatar for anonymous authors w/o pre-selected avatar
-                    var changeCommand = new AvatarsBackend_Change(Symbol.Empty, null, new Change<AvatarFull> {
-                        Create = new AvatarFull(userId) {
+                    var changeCommand = new AvatarsBackend_Change(Symbol.Empty, null,
+                        Change.Create(new AvatarDiff {
                             Name = RandomNameGenerator.Default.Generate(),
                             Bio = "Someone anonymous",
+                            UserId = userId,
                             IsAnonymous = true,
-                        },
-                    });
+                        }));
                     var avatar = await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
                     author = author with { AvatarId = avatar.Id };
                 }

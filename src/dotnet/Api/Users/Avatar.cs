@@ -67,3 +67,37 @@ public partial record Avatar(
     public virtual bool Equals(Avatar? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+public sealed partial record AvatarDiff : RecordDiff
+{
+    [DataMember, MemoryPackOrder(0)] public string? Name { get; init; }
+    [DataMember, MemoryPackOrder(1)] public string? Bio { get; init; }
+    [DataMember, MemoryPackOrder(2)] public MediaId? MediaId { get; init; }
+    [DataMember, MemoryPackOrder(3)] public string? PictureUrl { get; init; }
+    [DataMember, MemoryPackOrder(4)] public string? AvatarKey { get; init; }
+    [DataMember, MemoryPackOrder(5)] public UserId? UserId { get; init; }
+    [DataMember, MemoryPackOrder(6)] public bool? IsAnonymous { get; init; }
+
+    public static AvatarDiff FromFull(AvatarFull avatar)
+        => new() {
+            Name = avatar.Name,
+            Bio = avatar.Bio,
+            MediaId = avatar.MediaId,
+            PictureUrl = avatar.PictureUrl,
+            AvatarKey = avatar.AvatarKey,
+            UserId = avatar.UserId,
+            IsAnonymous = avatar.IsAnonymous,
+        };
+
+    public AvatarDiff WithMissingPropertiesFrom(AvatarFull other)
+        => new() {
+            Name = Name ?? other.Name,
+            Bio = Bio ?? other.Bio,
+            MediaId = MediaId ?? other.MediaId,
+            PictureUrl = PictureUrl ?? other.PictureUrl,
+            AvatarKey = AvatarKey ?? other.AvatarKey,
+            UserId = UserId ?? other.UserId,
+            IsAnonymous = IsAnonymous ?? other.IsAnonymous,
+        };
+}

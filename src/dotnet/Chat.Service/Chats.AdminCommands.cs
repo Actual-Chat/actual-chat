@@ -1,7 +1,6 @@
 using System.Text.RegularExpressions;
 using ActualChat.Contacts;
 using ActualChat.Hosting;
-using ActualChat.Kvas;
 using ActualChat.Text;
 
 namespace ActualChat.Chat;
@@ -148,13 +147,12 @@ public partial class Chats
         var name = $"Robo {RandomNameGenerator.Default.Generate()}";
         var seed = userId.Value.GetHashCode();
         var pictureUrl = $"https://api.dicebear.com/7.x/bottts/svg?seed={seed}";
-        var changeAvatarCommand = new Avatars_Change(callerSession, Symbol.Empty, null, new Change<AvatarFull> {
-            Create = new AvatarFull(botAccount.Id) {
+        var changeAvatarCommand = new Avatars_Change(callerSession, Symbol.Empty, null,
+            Change.Create(new AvatarDiff {
                 Name = name,
                 Bio = $"I'm just a {name} test bot",
                 PictureUrl = pictureUrl,
-            },
-        });
+            }));
         var avatar = await Commander.Call(changeAvatarCommand, cancellationToken).ConfigureAwait(false);
 
         // Set default avatar

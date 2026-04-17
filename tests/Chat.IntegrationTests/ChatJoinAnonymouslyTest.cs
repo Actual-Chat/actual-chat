@@ -1,5 +1,4 @@
 using ActualChat.Testing.Host;
-using ActualChat.Users;
 
 namespace ActualChat.Chat.IntegrationTests;
 
@@ -35,7 +34,7 @@ public class ChatJoinAnonymouslyTest(ChatCollection.AppHostFixture fixture, ITes
         var avatars = tester.AppServices.GetRequiredService<IAvatars>();
         var avatar = await avatars.GetOwn(session, author.AvatarId, default);
         avatar.Should().NotBeNull();
-        avatar!.IsAnonymous.Should().BeTrue();
+        avatar.IsAnonymous.Should().BeTrue();
     }
 
     [Theory]
@@ -74,7 +73,7 @@ public class ChatJoinAnonymouslyTest(ChatCollection.AppHostFixture fixture, ITes
         var avatars = tester.AppServices.GetRequiredService<IAvatars>();
         var avatar = await avatars.GetOwn(session, author.AvatarId, default);
         avatar.Should().NotBeNull();
-        avatar!.IsAnonymous.Should().BeTrue();
+        avatar.IsAnonymous.Should().BeTrue();
     }
 
     [Fact]
@@ -118,12 +117,12 @@ public class ChatJoinAnonymouslyTest(ChatCollection.AppHostFixture fixture, ITes
         var account = await accounts.GetOwn(session, default);
         account.IsGuest.Should().BeFalse();
 
-        var command = new Avatars_Change(session, Symbol.Empty, null, new Change<AvatarFull>() {
-            Create = new AvatarFull(account.Id) {
-                IsAnonymous = true,
+        var command = new AvatarsBackend_Change(Symbol.Empty, null,
+            Change.Create(new AvatarDiff {
                 Name = "Anonymous Bob",
-            },
-        });
+                UserId = account.Id,
+                IsAnonymous = true,
+            }));
         var anonymousAvatar = await tester.Commander.Call(command);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
@@ -140,15 +139,12 @@ public class ChatJoinAnonymouslyTest(ChatCollection.AppHostFixture fixture, ITes
         var session = tester.Session;
         var accounts = tester.AppServices.GetRequiredService<IAccounts>();
         var account = await accounts.GetOwn(session, default);
-        var command = new Avatars_Change(session,
-            Symbol.Empty,
-            null,
-            new Change<AvatarFull> {
-                Create = new AvatarFull(account.Id) {
-                    IsAnonymous = true,
-                    Name = RandomNameGenerator.Default.Generate(),
-                },
-            });
+        var command = new AvatarsBackend_Change(Symbol.Empty, null,
+            Change.Create(new AvatarDiff {
+                Name = RandomNameGenerator.Default.Generate(),
+                UserId = account.Id,
+                IsAnonymous = true,
+            }));
         return await tester.Commander.Call(command).ConfigureAwait(false);
     }
 }

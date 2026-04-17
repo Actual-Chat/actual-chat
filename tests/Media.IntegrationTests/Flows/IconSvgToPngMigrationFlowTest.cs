@@ -379,12 +379,10 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
             Tester.Session,
             Symbol.Empty,
             null,
-            new Change<AvatarFull> {
-                Create = new AvatarFull(_account.Id) {
-                    Name = "test",
-                    MediaId = mediaId,
-                },
-            });
+            Change.Create(new AvatarDiff {
+                Name = "test",
+                MediaId = mediaId,
+            }));
         var avatar = await Commander.Call(command, true, CancellationToken.None);
         return avatar.Id;
     }

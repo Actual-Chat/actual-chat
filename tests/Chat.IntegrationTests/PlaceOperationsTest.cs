@@ -814,7 +814,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
             return await commander1.Call(new Avatars_Change(session1,
                 Symbol.Empty,
                 null,
-                Change.Create(new AvatarFull(account.Id) {
+                Change.Create(new AvatarDiff {
                     Name = name
                 })));
         }

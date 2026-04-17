@@ -152,11 +152,11 @@
 
     private async Task OnAnonymousSelected(Avatar anonymous) {
         var account = await Accounts.GetOwn(Session, default);
-        var command = new Avatars_Change(Session, Symbol.Empty, null, new Change<AvatarFull>() {
-            Create = new AvatarFull(account.Id) {
+        var diff = AvatarDiff.FromFull(
+            new AvatarFull(account.Id) {
                 IsAnonymous = true,
-            }.WithMissingPropertiesFrom(anonymous),
-        });
+            }.WithMissingPropertiesFrom(anonymous));
+        var command = new Avatars_Change(Session, Symbol.Empty, null, Change.Create(diff));
         var (avatar, error) = await UICommander.Run(command);
         if (error != null)
             return;

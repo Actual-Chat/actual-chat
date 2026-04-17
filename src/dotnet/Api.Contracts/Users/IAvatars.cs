@@ -24,6 +24,19 @@ public sealed partial record Avatars_Change(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] Symbol AvatarId,
     [property: DataMember, MemoryPackOrder(2)] long? ExpectedVersion,
+    [property: DataMember, MemoryPackOrder(3)] Change<AvatarDiff> Change
+) : ISessionCommand<AvatarFull>, IApiCommand;
+
+/// <summary>
+/// Legacy command using full AvatarFull for backward compatibility with old mobile clients.
+/// Same wire layout as the pre-diff Avatars_Change.
+/// </summary>
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Avatars_FullChange(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] Symbol AvatarId,
+    [property: DataMember, MemoryPackOrder(2)] long? ExpectedVersion,
     [property: DataMember, MemoryPackOrder(3)] Change<AvatarFull> Change
 ) : ISessionCommand<AvatarFull>, IApiCommand;
 

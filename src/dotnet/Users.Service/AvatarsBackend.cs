@@ -13,6 +13,8 @@ public class AvatarsBackend(IServiceProvider services) : DbServiceBase<UsersDbCo
         = services.GetRequiredService<IDbEntityResolver<string, DbAvatar>>();
     private IMediaBackend MediaBackend { get; }
         = services.GetRequiredService<IMediaBackend>();
+    private DiffEngine DiffEngine { get; }
+        = services.GetRequiredService<DiffEngine>();
 
     // [ComputeMethod]
     public virtual async Task<AvatarFull?> Get(Symbol avatarId, CancellationToken cancellationToken)
@@ -48,9 +50,11 @@ public class AvatarsBackend(IServiceProvider services) : DbServiceBase<UsersDbCo
         await using var __ = dbContext.ConfigureAwait(false);
 
         AvatarFull? existingAvatar = null;
-        if (change.IsCreate(out var avatar)) {
-            avatar = avatar with {
-                Id = DbAvatar.IdGenerator.Next(),
+        AvatarFull avatar;
+        if (change.IsCreate(out var diff)) {
+            avatar = DiffEngine.Patch(
+                new AvatarFull(diff.UserId.Require(), DbAvatar.IdGenerator.Next()),
+                diff) with {
                 Version = VersionGenerator.NextVersion(),
             };
             var dbAvatar = new DbAvatar(avatar);
@@ -63,9 +67,9 @@ public class AvatarsBackend(IServiceProvider services) : DbServiceBase<UsersDbCo
                 .ConfigureAwait(false);
             existingAvatar = dbAvatar.ToModel();
 
-            if (change.IsUpdate(out avatar)) {
-                avatar = avatar with {
-                    Version = VersionGenerator.NextVersion(avatar.Version),
+            if (change.IsUpdate(out diff)) {
+                avatar = DiffEngine.Patch(existingAvatar, diff) with {
+                    Version = VersionGenerator.NextVersion(existingAvatar.Version),
                 };
                 dbAvatar.UpdateFrom(avatar);
             }

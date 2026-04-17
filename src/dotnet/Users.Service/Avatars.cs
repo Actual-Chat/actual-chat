@@ -1,4 +1,4 @@
-﻿using ActualChat.Kvas;
+using ActualChat.Kvas;
 
 namespace ActualChat.Users;
 
@@ -51,19 +51,18 @@ public class Avatars(IServiceProvider services) : IAvatars
         command.Change.RequireValid();
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (change.IsCreate(out var avatar)) {
-            // Create: fill in all missing properties
-            change = new Change<AvatarFull>() {
-                Create = avatar.WithMissingPropertiesFrom(account.Avatar),
-            };
+        if (change.IsCreate(out var diff)) {
+            // Create: fill in missing properties from account avatar
+            var accountAvatar = new AvatarFull(account.Id).WithMissingPropertiesFrom(account.Avatar);
+            diff = diff.WithMissingPropertiesFrom(accountAvatar);
+            change = new Change<AvatarDiff> { Create = diff };
         }
-        else {
+        else
             // Update or remove: ensure the avatar exists & belongs to the current user
             await GetOwn(session, avatarId, cancellationToken).Require().ConfigureAwait(false);
-        }
 
         var changeCommand = new AvatarsBackend_Change(avatarId, expectedVersion, change);
-        avatar = await Commander.Call(changeCommand, cancellationToken).ConfigureAwait(false);
+        var avatar = await Commander.Call(changeCommand, cancellationToken).ConfigureAwait(false);
 
         if (avatar.IsAnonymous)
             return avatar; // We don't account anonymous avatars in the list
@@ -98,7 +97,7 @@ public class Avatars(IServiceProvider services) : IAvatars
     internal static async Task UpdateAvatarList(
         UserSettingsUI userSettingsUI,
         Symbol avatarId,
-        Change<AvatarFull> change)
+        Change<AvatarDiff> change)
     {
         // We don't cancel anything from here
         CancellationToken cancellationToken = default;

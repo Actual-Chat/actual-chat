@@ -177,14 +177,13 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
             avatarPictureUrl = userInfo.AvatarPictureUrl.NullIfEmpty() ??
                 $"https://api.dicebear.com/7.x/bottts/svg?seed={userId.Value.GetDjb2HashCode()}";
 
-        var changeAvatarCommand = new Avatars_Change(session, Symbol.Empty, null, new Change<AvatarFull> {
-            Create = new AvatarFull(account.Id) {
+        var changeAvatarCommand = new Avatars_Change(session, Symbol.Empty, null,
+            Change.Create(new AvatarDiff {
                 Name = userInfo.AvatarNameOrDefault,
                 Bio = avatarBio,
                 MediaId = avatarMediaId,
                 PictureUrl = avatarPictureUrl,
-            },
-        });
+            }));
         var avatar = await commander.Call(changeAvatarCommand, cancellationToken).ConfigureAwait(false);
 
         // Set this avatar as the default one
@@ -226,13 +225,12 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
 
         //using var dbContext = dbInitializer.CreateDbContext(true);
         log.LogInformation("Updating Sherlock Avatar");
-        var avatarFull = new AvatarFull(account.Id, avatar.Id).WithMissingPropertiesFrom(avatar);
-        avatarFull = avatarFull with {
-            Bio = Constants.User.Sherlock.Name,
-            MediaId = Constants.User.Sherlock.MediaId,
-            PictureUrl = "",
-        };
-        var changeAvatarCommand = new AvatarsBackend_Change(avatar.Id, avatar.Version, Change.Update(avatarFull));
+        var changeAvatarCommand = new AvatarsBackend_Change(avatar.Id, avatar.Version,
+            Change.Update(new AvatarDiff {
+                Bio = Constants.User.Sherlock.Name,
+                MediaId = Constants.User.Sherlock.MediaId,
+                PictureUrl = "",
+            }));
         var commander = services.Commander();
         await commander.Call(changeAvatarCommand, cancellationToken).ConfigureAwait(false);
     }

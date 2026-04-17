@@ -79,9 +79,9 @@
             return;
         }
 
-        var createAvatarCommand = new Avatars_Change(Session, Symbol.Empty, null, new Change<AvatarFull> {
-            Create = new AvatarFull(account.Id).WithMissingPropertiesFrom(account.Avatar),
-        });
+        var createAvatarCommand = new Avatars_Change(Session, Symbol.Empty, null,
+            Change.Create(AvatarDiff.FromFull(
+                new AvatarFull(account.Id).WithMissingPropertiesFrom(account.Avatar))));
         var (newAvatar, error) = await UICommander.Run(createAvatarCommand);
         if (error != null)
             return;
@@ -107,16 +107,10 @@
             account.Version);
         await UICommander.Run(updateAccountCommand);
 
-        var avatar = await Avatars.GetOwn(Session, _model.AvatarId, default).Require();
-        var updateAvatarCommand = new Avatars_Change(
-            Session,
-            _model.AvatarId,
-            avatar.Version,
-            new Change<AvatarFull> {
-                Update = avatar.WithPicture(_model.Picture) with {
-                    Name = _model.Name.Trim(),
-                },
-            });
+        var avatar = await Avatars.GetOwn(Session, _model.AvatarId, default);
+        var updated = avatar!.WithPicture(_model.Picture) with { Name = _model.Name.Trim() };
+        var diff = DiffEngine.Diff<AvatarFull, AvatarDiff>(avatar, updated);
+        var updateAvatarCommand = new Avatars_Change(Session, _model.AvatarId, null, Change.Update(diff));
         var (_, error) = await UICommander.Run(updateAvatarCommand);
         return error is null;
     }
