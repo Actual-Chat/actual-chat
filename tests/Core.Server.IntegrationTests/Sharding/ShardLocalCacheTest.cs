@@ -32,7 +32,7 @@ public class ShardLocalCacheTest(ITestOutputHelper @out)
     }
 
     [Fact(Timeout = 30_000)]
-    public async Task GetLocalReturnsExistingEntry()
+    public async Task TryGetReturnsExistingEntry()
     {
         // arrange
         await using var host = await NewAppHost();
@@ -42,9 +42,10 @@ public class ShardLocalCacheTest(ITestOutputHelper @out)
             (key, _) => $"value-{key}");
 
         // act & assert
-        cache.GetLocal("test-key").Should().BeNull();
+        cache.TryGet("test-key", out _).Should().BeFalse();
         await cache.GetOrAdd("test-key", addDependency: false, CancellationToken.None);
-        cache.GetLocal("test-key").Should().Be("value-test-key");
+        cache.TryGet("test-key", out var value).Should().BeTrue();
+        value.Should().Be("value-test-key");
     }
 
     [Fact(Timeout = 30_000)]
@@ -58,7 +59,7 @@ public class ShardLocalCacheTest(ITestOutputHelper @out)
         var cache = new ShardLocalCache<string, string>(
             shardOwner,
             (key, _) => $"value-{key}",
-            onRemove: (key, _) => evictedKeys.Add(key));
+            disposer: (key, _) => evictedKeys.Add(key));
 
         await cache.GetOrAdd("test-key", addDependency: false, CancellationToken.None);
 
@@ -69,7 +70,7 @@ public class ShardLocalCacheTest(ITestOutputHelper @out)
         removed.Should().BeTrue();
         value.Should().Be("value-test-key");
         evictedKeys.Should().Equal(["test-key"]);
-        cache.GetLocal("test-key").Should().BeNull();
+        cache.TryGet("test-key", out _).Should().BeFalse();
     }
 
     [Fact(Timeout = 30_000)]
@@ -83,7 +84,7 @@ public class ShardLocalCacheTest(ITestOutputHelper @out)
         var cache = new ShardLocalCache<string, string>(
             shardOwner,
             (key, _) => $"value-{key}",
-            onRemove: (key, _) => evictedKeys.Add(key));
+            disposer: (key, _) => evictedKeys.Add(key));
 
         await cache.GetOrAdd("key-a", addDependency: false, CancellationToken.None);
         await cache.GetOrAdd("key-b", addDependency: false, CancellationToken.None);
@@ -93,8 +94,8 @@ public class ShardLocalCacheTest(ITestOutputHelper @out)
 
         // assert
         evictedKeys.Should().HaveCount(2);
-        cache.GetLocal("key-a").Should().BeNull();
-        cache.GetLocal("key-b").Should().BeNull();
+        cache.TryGet("key-a", out _).Should().BeFalse();
+        cache.TryGet("key-b", out _).Should().BeFalse();
     }
 
     [Fact(Timeout = 30_000)]
@@ -119,27 +120,28 @@ public class ShardLocalCacheTest(ITestOutputHelper @out)
     }
 
     [Fact(Timeout = 30_000)]
-    public async Task OnEvictAndDisposableAreBothCalled()
+    public async Task DisposerReplacesBuiltInDispose()
     {
         // arrange
         await using var host = await NewAppHost();
         var shardOwner = host.Services.ShardOwner(ShardScheme.TestBackend);
 
-        var onEvictCalled = false;
-        var disposed = false;
+        var disposerCalled = false;
+        var builtInDisposed = false;
         var cache = new ShardLocalCache<string, DisposableValue>(
             shardOwner,
-            (_, _) => new DisposableValue(() => disposed = true),
-            onRemove: (_, _) => onEvictCalled = true);
+            (_, _) => new DisposableValue(() => builtInDisposed = true),
+            disposer: (_, _) => disposerCalled = true);
 
         await cache.GetOrAdd("test-key", addDependency: false, CancellationToken.None);
 
         // act
         cache.TryRemove("test-key", out _);
 
-        // assert
-        onEvictCalled.Should().BeTrue();
-        disposed.Should().BeTrue();
+        // assert — an explicit disposer takes over cleanup; the built-in
+        // IDisposable.Dispose() fallback is skipped.
+        disposerCalled.Should().BeTrue();
+        builtInDisposed.Should().BeFalse();
     }
 
     [Fact(Timeout = 60_000)]
@@ -157,7 +159,7 @@ public class ShardLocalCacheTest(ITestOutputHelper @out)
                 Interlocked.Increment(ref factoryCallCount);
                 return $"value-{key}-v{factoryCallCount}";
             },
-            onRemove: (_, value) => evictedValues.Add(value));
+            disposer: (_, value) => evictedValues.Add(value));
 
         // Populate cache entry — GetOrAdd waits for ownership
         var key = "stale-test-key";
@@ -214,7 +216,7 @@ public class ShardLocalCacheTest(ITestOutputHelper @out)
         var cache = new ShardLocalCache<string, string>(
             o1,
             (key, _) => $"value-{key}",
-            onRemove: (key, _) => evictedKeys.Add(key));
+            disposer: (key, _) => evictedKeys.Add(key));
 
         // Populate entries across multiple shards
         var populatedKeys = new List<string>();
@@ -256,7 +258,7 @@ public class ShardLocalCacheTest(ITestOutputHelper @out)
         WriteLine($"Populated: {populatedKeys.Count}, Evicted: {evictedKeys.Count}");
         evictedKeys.Should().NotBeEmpty("shard redistribution should leave some entries stale");
         foreach (var key in evictedKeys)
-            cache.GetLocal(key).Should().BeNull();
+            cache.TryGet(key, out _).Should().BeFalse();
     }
 
     [Fact(Timeout = 30_000)]

@@ -1,3 +1,5 @@
+using ActualLab.Rpc;
+
 namespace ActualChat.Sharding;
 
 /// <summary>
@@ -9,7 +11,7 @@ namespace ActualChat.Sharding;
 public sealed class ShardLocalCache<TKey, TValue>(
     ShardOwner shardOwner,
     Func<TKey, ShardOwnership, TValue> factory,
-    Action<TKey, TValue>? onRemove = null)
+    Action<TKey, TValue>? disposer = null)
     where TKey : notnull
 {
     private readonly ConcurrentDictionary<TKey, Entry> _entries = new();
@@ -18,7 +20,7 @@ public sealed class ShardLocalCache<TKey, TValue>(
     {
         var ownershipTask = shardOwner.RequireShardOwnership(key, addDependency, cancellationToken);
         return ownershipTask.IsCompletedSuccessfully
-            ? new ValueTask<TValue>(GetOrAdd(key, ownershipTask.Result))
+            ? new ValueTask<TValue>(GetOrAddImpl(key, ownershipTask.Result))
             : CompleteAsync(this, key, ownershipTask);
 
         static async ValueTask<TValue> CompleteAsync(
@@ -27,12 +29,30 @@ public sealed class ShardLocalCache<TKey, TValue>(
             ValueTask<ShardOwnership> ownershipTask)
         {
             var shardOwnership = await ownershipTask.ConfigureAwait(false);
-            return self.GetOrAdd(key, shardOwnership);
+            return self.GetOrAddImpl(key, shardOwnership);
         }
     }
 
-    public TValue? GetLocal(TKey key)
-        => _entries.TryGetValue(key, out var entry) ? entry.Value : default;
+    public TValue GetOrAdd(TKey key, ShardOwnership shardOwnership)
+    {
+        if (!ReferenceEquals(shardOwnership.ShardOwner, shardOwner))
+            throw new ArgumentOutOfRangeException(nameof(shardOwnership), "ShardOwner mismatch.");
+        if (shardOwnership.LockToken.IsCancellationRequested)
+            throw new RpcRerouteException("Shard ownership is already lost.");
+
+        return GetOrAddImpl(key, shardOwnership);
+    }
+
+    public bool TryGet(TKey key, [MaybeNullWhen(false)] out TValue value)
+    {
+        if (!_entries.TryGetValue(key, out var entry) || entry.Ownership.LockToken.IsCancellationRequested) {
+            value = default;
+            return false;
+        }
+
+        value = entry.Value;
+        return true;
+    }
 
     public bool TryRemove(TKey key, out TValue? value)
     {
@@ -42,7 +62,7 @@ public sealed class ShardLocalCache<TKey, TValue>(
         }
 
         value = entry.Value;
-        AfterRemove(key, entry.Value);
+        Dispose(key, entry.Value);
         return true;
     }
 
@@ -72,7 +92,7 @@ public sealed class ShardLocalCache<TKey, TValue>(
 
     // Private methods
 
-    private TValue GetOrAdd(TKey key, ShardOwnership ownership)
+    private TValue GetOrAddImpl(TKey key, ShardOwnership shardOwnership)
     {
         // CAS retry loop: concurrent callers may race here, and only one write to _entries
         // must win per (key, ownership). We use TryAdd / TryUpdate (optimistic) so that
@@ -83,41 +103,42 @@ public sealed class ShardLocalCache<TKey, TValue>(
         // to replace it again.
         while (true) {
             if (_entries.TryGetValue(key, out var entry)) {
-                if (ReferenceEquals(entry.Ownership, ownership))
+                if (ReferenceEquals(entry.Ownership, shardOwnership))
                     return entry.Value;
 
                 // Stale — try to replace atomically
-                var newValue = factory.Invoke(key, ownership);
-                var newEntry = new Entry(newValue, ownership);
+                var newValue = factory.Invoke(key, shardOwnership);
+                var newEntry = new Entry(newValue, shardOwnership);
                 if (_entries.TryUpdate(key, newEntry, entry)) {
-                    AfterRemove(key, entry.Value);
+                    Dispose(key, entry.Value);
                     return newValue;
                 }
                 // Lost the race — discard freshly-made value and retry
-                AfterRemove(key, newValue);
+                Dispose(key, newValue);
                 continue;
             }
 
-            var addedValue = factory.Invoke(key, ownership);
-            var addedEntry = new Entry(addedValue, ownership);
+            var addedValue = factory.Invoke(key, shardOwnership);
+            var addedEntry = new Entry(addedValue, shardOwnership);
             if (_entries.TryAdd(key, addedEntry))
                 return addedValue;
 
             // Lost the race — discard and retry
-            AfterRemove(key, addedValue);
+            Dispose(key, addedValue);
         }
     }
 
     private void Remove(TKey key, Entry entry)
     {
         if (_entries.TryRemove(key, entry))
-            AfterRemove(key, entry.Value);
+            Dispose(key, entry.Value);
     }
 
-    private void AfterRemove(TKey key, TValue value)
+    private void Dispose(TKey key, TValue value)
     {
-        onRemove?.Invoke(key, value);
-        if (value is IAsyncDisposable ad)
+        if (disposer is not null)
+            disposer.Invoke(key, value);
+        else if (value is IAsyncDisposable ad)
             _ = ad.DisposeAsync();
         else if (value is IDisposable d)
             d.Dispose();
