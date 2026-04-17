@@ -50,10 +50,10 @@ public readonly struct ResolvedMeshRef
         return string.Concat("@", shardRefPrefix, nodeRef, isLocalSuffix, stateSuffix);
     }
 
-    public Task WhenChanged(CancellationToken cancellationToken = default)
+    public async Task WhenChanged(CancellationToken cancellationToken = default)
     {
         var self = this;
-        return Owner.MeshState.Computed.When(_ => self.IsChanged(), cancellationToken);
+        await Owner.MeshState.WhenUnsafe(_ => self.IsChanged(), cancellationToken).ConfigureAwait(false);
     }
 
     public bool IsChanged()

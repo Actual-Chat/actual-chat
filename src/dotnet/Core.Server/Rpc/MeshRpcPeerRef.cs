@@ -40,9 +40,17 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
             var shardIndex = ShardRef.GetShardIndex();
             var shardOwner = Resolved.Owner.ShardOwners[ShardRef.Scheme];
             ShardState = shardOwner.States[shardIndex];
-            if (ShardState.Value.MustOwn) {
+
+            // Only treat this peer-ref as locally executing if mesh state already
+            // maps the shard to this node. ShardState.Value.MustOwn alone is not
+            // enough: ShardOwner.States start with the placeholder MustOwn=true
+            // until PushShardState settles them, so using it here would spuriously
+            // start MarkChangedWhenShardOwnershipEnds for remote peer refs and
+            // fire RouteState.MarkChanged() the moment the placeholder flips.
+            var isLocal = Resolved.Node == Owner.ThisNode;
+            if (isLocal && ShardState.Value.MustOwn) {
                 RouteState.LocalExecutionAwaiter = GetLocalExecutionAwaiter(RouteState);
-                _ = MarkChangedWhenShardOwnershipEnds(RouteState.ChangedToken);
+                _ = MarkChangedWhenShardOwnershipEnds();
             }
             _ = MarkChangedWhenResolvedChanged();
         }
@@ -53,14 +61,21 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
 
     private async Task MarkChangedWhenResolvedChanged()
     {
-        await Task.Yield();
-        await Resolved.WhenChanged().ConfigureAwait(false);
-        RouteState?.MarkChanged();
+        var routeState = RouteState!;
+        var cancellationToken = routeState.ChangedToken;
+        try {
+            await Resolved.WhenChanged(cancellationToken).ConfigureAwait(false);
+        }
+        finally {
+            if (!cancellationToken.IsCancellationRequested)
+                routeState.MarkChanged();
+        }
     }
 
-    private async Task MarkChangedWhenShardOwnershipEnds(CancellationToken cancellationToken)
+    private async Task MarkChangedWhenShardOwnershipEnds()
     {
-        await Task.Yield();
+        var routeState = RouteState!;
+        var cancellationToken = routeState.ChangedToken;
         try {
             var cShardState = await ShardState!
                 .WhenUnsafe(static x => x.Ownership is not null || !x.MustOwn, cancellationToken)
@@ -68,11 +83,9 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
             if (cShardState.Value.Ownership is not null) // Got ownership -> await when it ends
                 await cShardState.WhenInvalidated(cancellationToken).ConfigureAwait(false);
         }
-        catch {
-            // Intended
-        }
         finally {
-            RouteState?.MarkChanged();
+            if (!cancellationToken.IsCancellationRequested)
+                routeState.MarkChanged();
         }
     }
 
