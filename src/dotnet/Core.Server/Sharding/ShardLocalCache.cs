@@ -6,36 +6,29 @@ namespace ActualChat.Sharding;
 /// so compute methods automatically get shard dependency, and stale entries from
 /// previous ownership epochs are evicted on access or by a periodic sweep.
 /// </summary>
-public sealed class ShardLocalCache<TKey, TValue>
+public sealed class ShardLocalCache<TKey, TValue>(
+    ShardOwner shardOwner,
+    Func<TKey, ShardOwnership, TValue> factory,
+    Action<TKey, TValue>? onRemove = null)
     where TKey : notnull
 {
     private readonly ConcurrentDictionary<TKey, Entry> _entries = new();
-    private readonly ShardOwner _shardOwner;
-    private readonly Func<TKey, ShardOwnership, TValue> _factory;
-    private readonly Action<TKey, TValue>? _onEvict;
-    private readonly TimeSpan _evictionInterval;
-
-    public ShardLocalCache(
-        ShardOwner shardOwner,
-        Func<TKey, ShardOwnership, TValue> factory,
-        Action<TKey, TValue>? onEvict = null,
-        TimeSpan? evictionInterval = null)
-    {
-        _shardOwner = shardOwner;
-        _factory = factory;
-        _onEvict = onEvict;
-        _evictionInterval = evictionInterval ?? TimeSpan.FromSeconds(30);
-    }
 
     public ValueTask<TValue> GetOrAdd(TKey key, bool addDependency, CancellationToken cancellationToken)
     {
-        var ownership = _shardOwner.RequireShardOwnership(key, addDependency, cancellationToken);
-        return ownership.IsCompleted
-            ? new ValueTask<TValue>(GetOrAdd(key, ownership.Result))
-            : CompleteAsync(key, ownership);
+        var ownershipTask = shardOwner.RequireShardOwnership(key, addDependency, cancellationToken);
+        return ownershipTask.IsCompletedSuccessfully
+            ? new ValueTask<TValue>(GetOrAdd(key, ownershipTask.Result))
+            : CompleteAsync(this, key, ownershipTask);
 
-        async ValueTask<TValue> CompleteAsync(TKey k, ValueTask<ShardOwnership> ownershipTask)
-            => GetOrAdd(k, await ownershipTask.ConfigureAwait(false));
+        static async ValueTask<TValue> CompleteAsync(
+            ShardLocalCache<TKey, TValue> self,
+            TKey key,
+            ValueTask<ShardOwnership> ownershipTask)
+        {
+            var shardOwnership = await ownershipTask.ConfigureAwait(false);
+            return self.GetOrAdd(key, shardOwnership);
+        }
     }
 
     public TValue? GetLocal(TKey key)
@@ -43,33 +36,38 @@ public sealed class ShardLocalCache<TKey, TValue>
 
     public bool TryRemove(TKey key, out TValue? value)
     {
-        if (_entries.TryRemove(key, out var entry)) {
-            value = entry.Value;
-            EvictValue(key, entry.Value);
-            return true;
+        if (!_entries.TryRemove(key, out var entry)) {
+            value = default;
+            return false;
         }
-        value = default;
-        return false;
+
+        value = entry.Value;
+        AfterRemove(key, entry.Value);
+        return true;
+    }
+
+    public async Task Maintain(TimeSpan cleanupPeriod, CancellationToken cancellationToken)
+    {
+        while (true) {
+            await Task.Delay(cleanupPeriod, cancellationToken).SilentAwait(false);
+            if (cancellationToken.IsCancellationRequested)
+                return;
+
+            ClearStale();
+        }
+    }
+
+    public void ClearStale()
+    {
+        foreach (var (key, entry) in _entries)
+            if (entry.Ownership.LockToken.IsCancellationRequested)
+                Remove(key, entry);
     }
 
     public void Clear()
     {
         foreach (var (key, entry) in _entries)
-            if (_entries.TryRemove(KeyValuePair.Create(key, entry)))
-                EvictValue(key, entry.Value);
-    }
-
-    public async Task RunEvictionLoop(CancellationToken cancellationToken)
-    {
-        while (!cancellationToken.IsCancellationRequested) {
-            await Task.Delay(_evictionInterval, cancellationToken).SilentAwait(false);
-            if (cancellationToken.IsCancellationRequested)
-                break;
-
-            foreach (var (key, entry) in _entries)
-                if (entry.Ownership.LockToken.IsCancellationRequested)
-                    EvictEntry(key, entry);
-        }
+            Remove(key, entry);
     }
 
     // Private methods
@@ -89,38 +87,36 @@ public sealed class ShardLocalCache<TKey, TValue>
                     return entry.Value;
 
                 // Stale — try to replace atomically
-                var newValue = _factory(key, ownership);
+                var newValue = factory.Invoke(key, ownership);
                 var newEntry = new Entry(newValue, ownership);
                 if (_entries.TryUpdate(key, newEntry, entry)) {
-                    EvictValue(key, entry.Value);
+                    AfterRemove(key, entry.Value);
                     return newValue;
                 }
                 // Lost the race — discard freshly-made value and retry
-                EvictValue(key, newValue);
+                AfterRemove(key, newValue);
                 continue;
             }
 
-            var addedValue = _factory(key, ownership);
+            var addedValue = factory.Invoke(key, ownership);
             var addedEntry = new Entry(addedValue, ownership);
             if (_entries.TryAdd(key, addedEntry))
                 return addedValue;
 
             // Lost the race — discard and retry
-            EvictValue(key, addedValue);
+            AfterRemove(key, addedValue);
         }
     }
 
-    private void EvictEntry(TKey key, Entry entry)
+    private void Remove(TKey key, Entry entry)
     {
-        if (!_entries.TryRemove(KeyValuePair.Create(key, entry)))
-            return; // Already replaced by a fresh entry or removed by another thread
-
-        EvictValue(key, entry.Value);
+        if (_entries.TryRemove(key, entry))
+            AfterRemove(key, entry.Value);
     }
 
-    private void EvictValue(TKey key, TValue value)
+    private void AfterRemove(TKey key, TValue value)
     {
-        _onEvict?.Invoke(key, value);
+        onRemove?.Invoke(key, value);
         if (value is IAsyncDisposable ad)
             _ = ad.DisposeAsync();
         else if (value is IDisposable d)
