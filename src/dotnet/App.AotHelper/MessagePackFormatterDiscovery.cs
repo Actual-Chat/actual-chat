@@ -85,7 +85,19 @@ public static class MessagePackFormatterDiscovery
             }
         }
 
-        // 4. Walk serialized members (properties + fields).
+        // 4. Walk base type + interfaces. Command/result types are typically declared as
+        //    `record Foo(...) : ISessionCommand<TResult>`, where TResult (e.g. Unit) is only
+        //    reachable via the interface's generic arguments. Member walks miss those.
+        if (type.BaseType != null)
+            Walk(type.BaseType, visited, formatterAqns);
+        foreach (var iface in type.GetInterfaces()) {
+            if (!iface.IsGenericType)
+                continue;
+            foreach (var arg in iface.GetGenericArguments())
+                Walk(arg, visited, formatterAqns);
+        }
+
+        // 5. Walk serialized members (properties + fields).
         foreach (var prop in type.GetProperties(BindingFlags.Public | BindingFlags.Instance)) {
             if (IsIgnored(prop))
                 continue;

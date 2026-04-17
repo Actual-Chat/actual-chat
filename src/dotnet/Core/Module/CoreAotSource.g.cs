@@ -39,6 +39,7 @@ internal partial class CoreAotSource : IAotSource
 
         // MessagePack formatter types for serializable root types (auto-discovered)
         CodeKeeper.Keep("ActualLab.Fusion.Internal.SessionMessagePackFormatter, ActualLab.Fusion, Version=12.3.25.16053, Culture=neutral, PublicKeyToken=7c239217ec78b545");
+        CodeKeeper.Keep("ActualLab.Serialization.Internal.UnitMessagePackFormatter, ActualLab.Core, Version=12.3.25.16053, Culture=neutral, PublicKeyToken=7c239217ec78b545");
         CodeKeeper.Keep("ActualLab.Text.Internal.SymbolMessagePackFormatter, ActualLab.Core, Version=12.3.25.16053, Culture=neutral, PublicKeyToken=7c239217ec78b545");
         CodeKeeper.Keep("ActualLab.Time.Internal.MomentMessagePackFormatter, ActualLab.Core, Version=12.3.25.16053, Culture=neutral, PublicKeyToken=7c239217ec78b545");
         CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Hashing_HashStringFormatter1, MessagePack.Resolvers.DynamicObjectResolver, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null");
