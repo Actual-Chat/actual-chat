@@ -48,6 +48,7 @@ public class WebClientTester : IWebClientTester
     public IAuthorsBackend AuthorsBackend => field ??= AppServices.GetRequiredService<IAuthorsBackend>();
     public IAccounts Accounts => field ??= AppServices.GetRequiredService<IAccounts>();
     public IAccountsBackend AccountsBackend => field ??= AppServices.GetRequiredService<IAccountsBackend>();
+    public IAvatars Avatars => field ??= AppServices.GetRequiredService<IAvatars>();
     public IChats Chats => field ??= AppServices.GetRequiredService<IChats>();
     public ITranslations Translations => field ??= AppServices.GetRequiredService<ITranslations>();
     public IPlaces Places => field ??= AppServices.GetRequiredService<IPlaces>();
