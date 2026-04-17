@@ -1,6 +1,3 @@
-.video-streaming-preview:not(.has-video) {
-    display: none;
-}
 .video-streaming-preview .call-video {
     transform: scaleX(-1);
 }
