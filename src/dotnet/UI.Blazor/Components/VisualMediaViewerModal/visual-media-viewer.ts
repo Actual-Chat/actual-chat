@@ -1,7 +1,7 @@
 import { fromEvent, Subject, takeUntil } from 'rxjs';
 import { clearTimeout, setTimeout } from 'timerQueue';
 import { Swiper } from 'swiper';
-import { debounce, throttle } from 'promises';
+import { debounce } from 'promises';
 
 // TODO(Andrey) fix eslint errors
 interface SwiperElement extends HTMLElement {
@@ -94,7 +94,6 @@ export class VisualMediaViewer {
         this.swiper.on('slideChange', async () => {
             // eslint-disable-next-line
             this.onSlideChange(this.swiper);
-            this.onUserActivityThrottled();
             await this.safeCenterThumb();
         });
 
@@ -132,19 +131,6 @@ export class VisualMediaViewer {
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: PointerEvent) => this.onClick(event));
 
-        fromEvent(this.overlay, 'youtubeplayeronstatechange')
-            .pipe(takeUntil(this.disposed$))
-            .subscribe((event: CustomEvent<YT.OnStateChangeEvent>) => this.onYouTubePlayerStateChange(event));
-
-        fromEvent<PointerEvent>(document, 'pointermove')
-            .pipe(takeUntil(this.disposed$))
-            .subscribe(ev => {
-                if (ev.pointerType !== 'mouse') {
-                    return;
-                }
-                this.onUserActivityThrottled();
-            });
-
         fromEvent(this.header, 'transitionend')
             .pipe(takeUntil(this.disposed$))
             .subscribe(() => this.onHideTransitionEnd());
@@ -155,7 +141,8 @@ export class VisualMediaViewer {
                 .subscribe(() => this.onHideTransitionEnd());
         }
 
-        this.setHideTimeout();
+        // Auto-hide after 3s if the user doesn't interact
+        this.setInitialHideTimeout();
         this.updateVideoPlayback();
     }
 
@@ -171,6 +158,11 @@ export class VisualMediaViewer {
         });
         // Notify that external media playback stopped when modal closes
         void this.blazorRef.invokeMethodAsync('OnVideoPlaybackStopped');
+
+        if (this.hideTimeoutId !== null) {
+            clearTimeout(this.hideTimeoutId);
+            this.hideTimeoutId = null;
+        }
 
         this.disposed$.next();
         this.disposed$.complete();
@@ -297,35 +289,36 @@ export class VisualMediaViewer {
         videoWrapper.style.setProperty('--footer-height', `${footerHeight}px`);
     }
 
-    private setHideTimeout() {
-        if (this.hideTimeoutId !== null)
-            clearTimeout(this.hideTimeoutId);
+    private setInitialHideTimeout() {
+        const cancelEvents = ['click', 'pointerdown'] as const;
+        const cancel = () => {
+            if (this.hideTimeoutId !== null) {
+                clearTimeout(this.hideTimeoutId);
+                this.hideTimeoutId = null;
+            }
+            for (const ev of cancelEvents)
+                this.overlay.removeEventListener(ev, cancel, true);
+        };
+
+        for (const ev of cancelEvents)
+            this.overlay.addEventListener(ev, cancel, { capture: true, once: true });
 
         this.hideTimeoutId = window.setTimeout(() => {
+            this.hideTimeoutId = null;
+            cancel();
             void this.hideHeaderAndFooter();
-        }, 5000);
-    }
-
-    private onUserActivityThrottled = throttle(() =>
-        this.onUserActivity(), 500, 'delayHead');
-
-    private onUserActivity() {
-        void this.showHeaderAndFooter();
+        }, 3000);
     }
 
     private async showHeaderAndFooter() {
-        if (this.hideBlocked || this.isHiding) {
+        if (this.hideBlocked || this.isHiding)
             return;
-        }
 
-        if (this.isHeaderAndFooterVisible) {
-            this.setHideTimeout();
+        if (this.isHeaderAndFooterVisible)
             return;
-        }
 
-        if (Date.now() < this.hideLockedUntil) {
+        if (Date.now() < this.hideLockedUntil)
             return;
-        }
 
         const footer = this.footer;
         const header = this.header;
@@ -365,8 +358,6 @@ export class VisualMediaViewer {
                 this.thumbs.update();
             }, 50);
         }
-
-        this.setHideTimeout();
     }
 
     private async hideHeaderAndFooter() {
@@ -468,10 +459,8 @@ export class VisualMediaViewer {
 
         const target = event.target as HTMLElement;
         const clickOnControl = target.closest('.video-control');
-        if (clickOnControl) {
-            void this.showHeaderAndFooter();
-            return;
-        }
+        if (clickOnControl)
+            return; // let video controls handle their own clicks
 
         if (target.classList.contains('media-swiper')) {
             // click on prev / next buttons
@@ -480,20 +469,8 @@ export class VisualMediaViewer {
             // click outside image/video
             void this.blazorRef.invokeMethodAsync('Close');
         } else {
-            // click on image/video
+            // click on image/video — toggle tools visibility
             this.toggleHeaderAndFooterVisibility();
-        }
-    }
-
-    private onYouTubePlayerStateChange(event: CustomEvent<YT.OnStateChangeEvent>): void {
-        switch (event.detail.data) {
-        case YT.PlayerState.PAUSED:
-        case YT.PlayerState.ENDED:
-            void this.showHeaderAndFooter();
-            break;
-        case YT.PlayerState.PLAYING:
-            void this.hideHeaderAndFooter();
-            break;
         }
     }
 
@@ -695,7 +672,6 @@ export class VisualMediaViewer {
             this.isDraggingThumb = true;
             line2?.classList.add('thumb-active');
             document.body.classList.add('no-select');
-            void this.showHeaderAndFooter();
         };
 
         const onPointerMove = (e: PointerEvent) => {
@@ -724,7 +700,6 @@ export class VisualMediaViewer {
             }, 50);
 
             document.body.classList.remove('no-select');
-            void this.showHeaderAndFooter();
         };
 
         const progressContainer = progressBar.closest('.c-line-2')!;
