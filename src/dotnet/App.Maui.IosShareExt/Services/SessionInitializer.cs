@@ -12,8 +12,8 @@ public class SessionInitializer(TrueSessionResolver trueSessionResolver, ILogger
 
     protected override Task OnRun(CancellationToken cancellationToken)
         => AsyncChain.From(SetSession)
-            .LogError(log)
-            .RetryForever(RetryDelaySeq.Fixed(1))
+            .Log(LogLevel.Debug, log)
+            .RetryForever(RetryDelaySeq.Fixed(1), log)
             .RunIsolated(cancellationToken);
 
     private async Task SetSession(CancellationToken cancellationToken)

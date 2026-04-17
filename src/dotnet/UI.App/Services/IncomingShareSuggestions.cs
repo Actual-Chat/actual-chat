@@ -41,7 +41,7 @@ public abstract class IncomingShareSuggestions(IServiceProvider services) : Work
 
     protected override Task OnRun(CancellationToken cancellationToken)
         => AsyncChain.From(ProcessQueue)
-            .LogError(Log)
+            .Log(LogLevel.Debug, Log)
             .RetryForever(RetryDelaySeq.Exp(0.1, 5), Log)
             .RunIsolated(cancellationToken);
 

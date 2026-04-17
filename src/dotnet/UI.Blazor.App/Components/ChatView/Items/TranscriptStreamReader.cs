@@ -20,8 +20,8 @@ public class TranscriptStreamReader(ChatEntryId id, AppUIHub hub) : WorkerBase
 
     protected override Task OnRun(CancellationToken cancellationToken)
         => AsyncChain.From(ProcessStreamingState)
-            .LogError(Log)
-            .RetryForever(RetryDelaySeq.Exp(3, 60))
+            .Log(LogLevel.Debug, Log)
+            .RetryForever(RetryDelaySeq.Exp(3, 60), Log)
             .CycleForever()
             .RunIsolated(cancellationToken);
 
