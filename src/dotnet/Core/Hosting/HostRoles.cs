@@ -37,8 +37,10 @@ public static class HostRoles
                     }
 
                     // Api roles
-                    if (roles.Contains(HostRole.OneApiServer))
+                    if (roles.Contains(HostRole.OneApiServer)) {
                         roles.Add(HostRole.Api);
+                        roles.Add(HostRole.StreamingBackend);
+                    }
                     if (roles.Contains(HostRole.Api))
                         roles.Add(HostRole.BlazorHost);
 
