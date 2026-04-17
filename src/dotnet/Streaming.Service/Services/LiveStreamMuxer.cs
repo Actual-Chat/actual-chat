@@ -204,10 +204,8 @@ public sealed class LiveStreamMuxer : WorkerBase
         }
         finally {
             // Remove author tracking only if we're still the active stream.
-            // If a newer stream already replaced us, TryRemove returns the newer state
-            // and the StreamId won't match — that's fine, we leave it.
-            if (_authorStreams.TryRemove(authorId, out var removed) && removed.StreamId != streamId)
-                _authorStreams.TryAdd(authorId, removed); // Put back — wasn't ours
+            if (_authorStreams.TryGetValue(authorId, out var current) && current.StreamId == streamId)
+                _authorStreams.TryRemove(authorId, out _);
 
             streamCts.Dispose();
         }
@@ -225,7 +223,8 @@ public sealed class LiveStreamMuxer : WorkerBase
                     Log.LogWarning(
                         "Author {AuthorId}: stream {NewStreamId} (beginsAt={NewBeginsAt}) replaces {OldStreamId} (beginsAt={OldBeginsAt})",
                         authorId, streamId, beginsAt, existing.StreamId, existing.BeginsAt);
-                    existing.Cts?.Cancel();
+                    try { existing.Cts?.Cancel(); }
+                    catch (ObjectDisposedException) { }
                     return new AuthorStreamState(streamId, beginsAt, streamCts);
                 }
                 // Existing stream is fresher — cancel ourselves

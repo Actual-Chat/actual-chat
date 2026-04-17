@@ -36,7 +36,7 @@ public class StreamClient(IServiceProvider services) : IStreamClient
             header.CreatedAt,
             header.Format,
             dataStream,
-            TimeSpan.Zero,
+            skipTo,
             AudioSourceLog,
             cancellationToken);
     }

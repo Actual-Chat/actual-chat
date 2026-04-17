@@ -55,7 +55,7 @@ public sealed class StreamBackendClient : IStreamClient
             header.CreatedAt,
             header.Format,
             dataStream,
-            TimeSpan.Zero,
+            skipTo,
             AudioSourceLog,
             cancellationToken);
     }
