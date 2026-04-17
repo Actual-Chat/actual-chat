@@ -67,10 +67,21 @@ body.hoverable .emoji-modal .c-item:hover,
 
 .emoji-modal .c-gif-tab {
     @apply flex-y;
+    @apply h-full;
+    @apply overflow-hidden;
+}
+.emoji-modal .c-gif-scroll {
+    @apply flex-1 flex-y;
+    @apply min-h-0;
+    @apply overflow-y-auto;
+    scrollbar-width: none;
+}
+.emoji-modal .c-gif-scroll::-webkit-scrollbar {
+    display: none;
 }
 .emoji-modal .c-gif-tab .search-box {
     @apply flex-none;
-    @apply mx-2 mt-2;
+    @apply m-2;
 }
 /* Two independent flex columns instead of CSS multi-column.
    Multi-column rebalances ALL items when content changes, which makes the user's
@@ -78,7 +89,7 @@ body.hoverable .emoji-modal .c-item:hover,
    items keep their slot and new pages strictly append at the bottom of each column. */
 .emoji-modal .c-gif-grid {
     @apply flex items-start gap-1;
-    @apply p-2;
+    @apply px-2;
 }
 .emoji-modal .c-gif-col {
     @apply flex-1 flex-y gap-1;
