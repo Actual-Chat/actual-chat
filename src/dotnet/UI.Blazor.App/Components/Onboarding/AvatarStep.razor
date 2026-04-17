@@ -1,5 +1,4 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using System.ComponentModel.DataAnnotations
 @using ActualChat.Media
 @using ActualChat.UI.Blazor.Components.FileUpload
 @using ActualLab.Generators
@@ -74,7 +73,7 @@
         _model.Name = account.Name;
 
         if (!account.Avatar.Id.IsEmpty) {
-            _model.OriginalAvatar = await Avatars.GetOwn(Session, account.Avatar.Id, default);
+            _model.OriginalAvatar = await Avatars.GetOwn(Session, account.Avatar.Id, CancellationToken.None).Require();
             _model.Picture = account.Avatar.Picture!;
             _model.AvatarId = account.Avatar.Id;
             return;
@@ -109,7 +108,7 @@
             account.Version);
         await UICommander.Run(updateAccountCommand);
 
-        var updated = _model.OriginalAvatar!.WithPicture(_model.Picture) with { Name = _model.Name.Trim() };
+        var updated = _model.OriginalAvatar.WithPicture(_model.Picture) with { Name = _model.Name.Trim() };
         var diff = DiffEngine.Diff<AvatarFull, AvatarDiff>(_model.OriginalAvatar, updated);
         var updateAvatarCommand = new Avatars_Change(Session, _model.AvatarId, null, Change.Update(diff));
         var (_, error) = await UICommander.Run(updateAvatarCommand);
@@ -128,6 +127,6 @@
         [Required, Display(Name = "Name")] public string Name { get; set; } = "";
         public Symbol AvatarId { get; set; } = "";
         public Picture Picture { get; set; } = null!;
-        public AvatarFull? OriginalAvatar { get; set; }
+        public AvatarFull OriginalAvatar { get; set; } = null!;
     }
 }
