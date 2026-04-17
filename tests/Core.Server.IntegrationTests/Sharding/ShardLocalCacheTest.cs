@@ -58,7 +58,7 @@ public class ShardLocalCacheTest(ITestOutputHelper @out)
         var cache = new ShardLocalCache<string, string>(
             shardOwner,
             (key, _) => $"value-{key}",
-            onEvict: (key, _) => evictedKeys.Add(key));
+            onRemove: (key, _) => evictedKeys.Add(key));
 
         await cache.GetOrAdd("test-key", addDependency: false, CancellationToken.None);
 
@@ -83,7 +83,7 @@ public class ShardLocalCacheTest(ITestOutputHelper @out)
         var cache = new ShardLocalCache<string, string>(
             shardOwner,
             (key, _) => $"value-{key}",
-            onEvict: (key, _) => evictedKeys.Add(key));
+            onRemove: (key, _) => evictedKeys.Add(key));
 
         await cache.GetOrAdd("key-a", addDependency: false, CancellationToken.None);
         await cache.GetOrAdd("key-b", addDependency: false, CancellationToken.None);
@@ -130,7 +130,7 @@ public class ShardLocalCacheTest(ITestOutputHelper @out)
         var cache = new ShardLocalCache<string, DisposableValue>(
             shardOwner,
             (_, _) => new DisposableValue(() => disposed = true),
-            onEvict: (_, _) => onEvictCalled = true);
+            onRemove: (_, _) => onEvictCalled = true);
 
         await cache.GetOrAdd("test-key", addDependency: false, CancellationToken.None);
 
@@ -157,7 +157,7 @@ public class ShardLocalCacheTest(ITestOutputHelper @out)
                 Interlocked.Increment(ref factoryCallCount);
                 return $"value-{key}-v{factoryCallCount}";
             },
-            onEvict: (_, value) => evictedValues.Add(value));
+            onRemove: (_, value) => evictedValues.Add(value));
 
         // Populate cache entry — GetOrAdd waits for ownership
         var key = "stale-test-key";
@@ -214,8 +214,7 @@ public class ShardLocalCacheTest(ITestOutputHelper @out)
         var cache = new ShardLocalCache<string, string>(
             o1,
             (key, _) => $"value-{key}",
-            onEvict: (key, _) => evictedKeys.Add(key),
-            evictionInterval: TimeSpan.FromMilliseconds(100));
+            onRemove: (key, _) => evictedKeys.Add(key));
 
         // Populate entries across multiple shards
         var populatedKeys = new List<string>();
@@ -233,7 +232,7 @@ public class ShardLocalCacheTest(ITestOutputHelper @out)
 
         // Start eviction loop
         using var cts = new CancellationTokenSource();
-        var evictionTask = cache.RunEvictionLoop(cts.Token);
+        var evictionTask = cache.Maintain(TimeSpan.FromMilliseconds(100), cts.Token);
 
         // Start second host to trigger shard ownership changes
         await using var h2 = await NewAppHost(o => o with { MustInitializeDb = false });
