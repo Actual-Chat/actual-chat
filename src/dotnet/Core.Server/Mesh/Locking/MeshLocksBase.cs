@@ -32,7 +32,7 @@ public abstract class MeshLocksBase : IMeshLocksBackend
     ILogger? IMeshLocksBackend.DebugLog => DebugLog;
     ChaosMaker IMeshLocksBackend.ChaosMaker => ChaosMaker;
     IHostApplicationLifetime? IMeshLocksBackend.HostLifetime => HostLifetime;
-    public MeshLockRenewalThreads RenewalThreads => field ??= Services.GetRequiredService<MeshLockRenewalThreads>();
+    public MeshLockRenewer Renewer => field ??= Services.GetRequiredService<MeshLockRenewer>();
 
     protected MeshLocksBase(IServiceProvider services)
     {

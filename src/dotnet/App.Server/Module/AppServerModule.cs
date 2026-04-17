@@ -13,9 +13,7 @@ using ActualChat.Redis;
 using ActualChat.Redis.Module;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App;
-using ActualChat.UI.Blazor.App.Pages;
 using ActualChat.UI.Blazor.App.Services;
-using ActualChat.UI.Blazor.Components;
 using ActualLab.CommandR.Diagnostics;
 using ActualLab.Fusion.Diagnostics;
 using ActualChat.Authentication;
@@ -208,11 +206,11 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             if (!hasKube)
                 services.AddSingleton(KubeInfo.GetLocal);
 
-        var renewalThreadCount = Settings.MeshLockRenewalThreadCount;
-        if (renewalThreadCount <= 0)
-            renewalThreadCount = Math.Max(2, Environment.ProcessorCount / 4);
-        Log.LogInformation("MeshLockRenewalThreads: {ThreadCount} thread(s)", renewalThreadCount);
-        services.AddSingleton(new MeshLockRenewalThreads(renewalThreadCount));
+        var renewerThreadCount = Settings.MeshLockRenewerThreadCount;
+        if (renewerThreadCount < 1)
+            renewerThreadCount = Math.Max(2, Environment.ProcessorCount / 4);
+        Log.LogInformation("MeshLockRenewer: using {ThreadCount} thread(s)", renewerThreadCount);
+        services.AddSingleton(new MeshLockRenewer(renewerThreadCount));
 
         services.AddSingleton<IMeshLocks>(c => {
             var subspace = Settings.MeshLockSubspace;

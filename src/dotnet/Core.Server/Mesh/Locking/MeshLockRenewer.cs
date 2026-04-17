@@ -6,22 +6,23 @@ namespace ActualChat.Mesh;
 /// under heavy async load. Multiple threads ensure renewals complete on time even
 /// when individual Redis/K8s calls are slow.
 /// </summary>
-public sealed class MeshLockRenewalThreads : IDisposable
+public sealed class MeshLockRenewer : IDisposable
 {
     private readonly ConcurrentDictionary<MeshLockHolder, RenewalEntry> _entries = new();
     private readonly SemaphoreSlim _wakeSemaphore = new(0, 1);
     private readonly CancellationTokenSource _cts = new();
     private readonly Thread[] _threads;
 
-    public MeshLockRenewalThreads(int threadCount)
+    public MeshLockRenewer(int threadCount)
     {
-        var tMax = Math.Max(1, threadCount);
-        _threads = new Thread[tMax];
-        for (var i = 0; i < tMax; i++) {
+        ArgumentOutOfRangeException.ThrowIfLessThan(threadCount, 1);
+
+        _threads = new Thread[threadCount];
+        for (var i = 0; i < threadCount; i++) {
             var threadIndex = i;
-            var thread = new Thread(() => Run(threadIndex)) {
+            var thread = new Thread(() => ThreadStart(threadIndex)) {
                 IsBackground = true,
-                Name = $"MeshLockRenewal-{i}",
+                Name = $"MeshLockRenewer-{i}",
                 Priority = ThreadPriority.AboveNormal,
             };
             _threads[i] = thread;
@@ -50,6 +51,8 @@ public sealed class MeshLockRenewalThreads : IDisposable
         return new ThreadRegistration(this, holder, entry.ExpiredTcs.Task, wakeOnStop);
     }
 
+    // Private methods
+
     private void Unregister(MeshLockHolder holder)
     {
         if (_entries.TryRemove(holder, out var entry))
@@ -66,7 +69,7 @@ public sealed class MeshLockRenewalThreads : IDisposable
         }
     }
 
-    private void Run(int threadIndex)
+    private void ThreadStart(int threadIndex)
     {
         var ct = _cts.Token;
         while (!ct.IsCancellationRequested) {
@@ -182,14 +185,17 @@ public sealed class MeshLockRenewalThreads : IDisposable
         }
     }
 
+    // Nested types
+
     public readonly struct ThreadRegistration : IDisposable
     {
-        private readonly MeshLockRenewalThreads _threads;
+        private readonly MeshLockRenewer _threads;
         private readonly MeshLockHolder _holder;
         private readonly Task _expiredTask;
         private readonly CancellationTokenRegistration _wakeOnStop;
+
         internal ThreadRegistration(
-            MeshLockRenewalThreads threads,
+            MeshLockRenewer threads,
             MeshLockHolder holder,
             Task expiredTask,
             CancellationTokenRegistration wakeOnStop)
@@ -208,14 +214,16 @@ public sealed class MeshLockRenewalThreads : IDisposable
         {
             // Use Task.WhenAny instead of WaitAsync to avoid issues with
             // CancellationTokenSource disposal breaking WaitAsync's internal registration
-            var cancelTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            await using var ctr = cancellationToken.Register(
-                static state => ((TaskCompletionSource)state!).TrySetResult(),
-                cancelTcs);
+            var cancelSource = AsyncTaskMethodBuilderExt.New();
+            var registration = cancellationToken.Register(
+                static state => ((AsyncTaskMethodBuilder)state!).TrySetResult(),
+                cancelSource);
+            await using var _ = registration.ConfigureAwait(false);
+
             if (cancellationToken.IsCancellationRequested)
                 return false;
 
-            var completedTask = await Task.WhenAny(_expiredTask, cancelTcs.Task).ConfigureAwait(false);
+            var completedTask = await Task.WhenAny(_expiredTask, cancelSource.Task).ConfigureAwait(false);
             return completedTask == _expiredTask && _expiredTask.IsCompletedSuccessfully;
         }
 

@@ -91,10 +91,10 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
             }, CancellationToken.None);
 
         // Register with shared renewal threads — dedicated OS threads for all locks
-        using var registration = _backend.RenewalThreads.Register(this);
-        var isExpired = await registration.WhenExpired(cancellationToken);
+        using var registration = _backend.Renewer.Register(this);
+        var isExpired = await registration.WhenExpired(cancellationToken).ConfigureAwait(false);
         if (!isExpired)
-            return; // normal shutdown
+            return; // Normal shutdown
 
         // Lock expired during renewal
         lock (Lock)

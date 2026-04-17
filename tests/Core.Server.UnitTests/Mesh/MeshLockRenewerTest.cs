@@ -5,7 +5,7 @@ namespace ActualChat.Core.Server.UnitTests.Mesh;
 /// TryRenewBlocking calls are slow. With 1 thread, N locks × delay > renewal period
 /// causes expiration. With enough threads, renewals complete in time.
 /// </summary>
-public class MeshLockRenewalThreadsTest(ITestOutputHelper @out) : TestBase(@out)
+public class MeshLockRenewerTest(ITestOutputHelper @out) : TestBase(@out)
 {
     /// <summary>
     /// 6 locks, each renewal takes 1500ms, expiration = 10s, renewal period = 3s.
@@ -46,7 +46,7 @@ public class MeshLockRenewalThreadsTest(ITestOutputHelper @out) : TestBase(@out)
         await using var services = new ServiceCollection()
             .AddFusion()
             .Services
-            .AddSingleton(new MeshLockRenewalThreads(threadCount))
+            .AddSingleton(new MeshLockRenewer(threadCount))
             .BuildServiceProvider();
 
         var fakeLocks = new SlowMeshLocks(services, renewalDelay) {
