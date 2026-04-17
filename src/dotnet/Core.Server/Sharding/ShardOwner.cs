@@ -264,8 +264,6 @@ public sealed class ShardOwner : WorkerBase, IHasServices
 
     public sealed class ShardState
     {
-        private readonly AsyncState<ShardState> _asyncState;
-
         public ShardOwner ShardOwner { get; }
         public int ShardIndex { get; }
         public bool IsFinal { get; }
@@ -281,7 +279,6 @@ public sealed class ShardOwner : WorkerBase, IHasServices
             MustOwn = true;
             Ownership = null;
             OwnershipStatus = ShardOwnershipStatus.MappedToThisNode;
-            _asyncState = new AsyncState<ShardState>(this);
         }
 
         internal ShardState(ShardState prevState, bool mustOwn, MeshLockHolder? lockHolder = null)
@@ -299,7 +296,6 @@ public sealed class ShardOwner : WorkerBase, IHasServices
                 Ownership = new ShardOwnership(this, lockHolder);
             }
             Version = prevState.Version + 1;
-            _asyncState = prevState._asyncState.TrySetNext(this);
         }
 
         internal ShardState(ShardState prevState)
@@ -312,42 +308,6 @@ public sealed class ShardOwner : WorkerBase, IHasServices
                 ? ShardOwnershipStatus.MappedToThisNode
                 : ShardOwnershipStatus.MappedToOtherNode;
             Version = prevState.Version + 1;
-            _asyncState = prevState._asyncState.TrySetNext(this);
-        }
-
-        public async Task<ShardState> WhenNext(CancellationToken cancellationToken = default)
-        {
-            var asyncState = await _asyncState.WhenNext(cancellationToken).ConfigureAwait(false);
-            return asyncState.Value;
-        }
-
-        public async Task<ShardState> When(Func<ShardState, bool> predicate, CancellationToken cancellationToken = default)
-        {
-            var asyncState = await _asyncState.When(predicate, cancellationToken).ConfigureAwait(false);
-            return asyncState.Value;
-        }
-
-        public ValueTask<ShardOwnership> RequireShardOwnership(CancellationToken cancellationToken = default)
-        {
-            switch (OwnershipStatus) {
-            case ShardOwnershipStatus.OwnedByThisNode:
-                return new(Ownership!);
-            case ShardOwnershipStatus.MappedToThisNode:
-                return CompleteAsync();
-            case ShardOwnershipStatus.MappedToOtherNode:
-                throw RpcRerouteException.MustReroute("the shard isn't mapped to this node");
-            default:
-                throw StandardError.Internal($"Invalid ShardOwnershipStatus value: {OwnershipStatus}.");
-            }
-
-            async ValueTask<ShardOwnership> CompleteAsync() {
-                var asyncState = await _asyncState
-                    .When(x => x.Ownership is not null || !x.MustOwn, cancellationToken)
-                    .ConfigureAwait(false);
-                if (asyncState.Value.Ownership is { } ownership)
-                    return ownership;
-                throw RpcRerouteException.MustReroute("the shard isn't mapped to this node");
-            }
         }
     }
 }

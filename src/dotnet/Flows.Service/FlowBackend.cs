@@ -14,14 +14,13 @@ namespace ActualChat.Flows;
 /// <summary>
 /// Backend service implementation for managing flow state persistence and resumption.
 /// </summary>
-public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
+public class FlowBackend(IServiceProvider services) : ShardedDbServiceBase<FlowsDbContext>(services), IFlowBackend
 {
     private readonly AsyncLockSet<FlowId> _resumeLocks = new(LockReentryMode.CheckedPass);
-    private readonly ILruCache<FlowId, IFlowData?> _cache = new ConcurrentLruCache<FlowId, IFlowData?>(1024);
 
     // Services
     private FlowHub FlowHub => field ??= Services.FlowHub();
-    private IDbEntityResolver<string, DbFlow> EntityResolver { get; }
+    private IDbEntityResolver<string, DbFlow> EntityResolver { get; } = services.DbEntityResolver<string, DbFlow>();
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Flows);
 
     // Properties
@@ -30,35 +29,12 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
         RetryOn = (e, transiency) => e is not RpcRerouteException && transiency is not Transiency.Terminal,
     };
 
-    public FlowBackend(IServiceProvider services) : base(services)
-    {
-        EntityResolver = services.DbEntityResolver<string, DbFlow>();
-        var stopToken = ShardOwner.StopToken;
-        foreach (var shardIndex in ShardScheme.ShardIndexes) {
-            var shardState = ShardOwner.States[shardIndex].Value;
-            // Start the cleaner task for shardIndex, which cleans it on any ownership state change
-            _ = Task.Run(async () => {
-                while (true) {
-                    shardState = await shardState.WhenNext(stopToken).ConfigureAwait(false);
-                    _cache.Clear();
-                }
-            }, CancellationToken.None);
-        }
-    }
-
     // [ComputeMethod]
     public virtual async Task<IFlowData?> TryGetData(FlowId flowId, CancellationToken cancellationToken)
     {
         var flowDef = FlowHub.Defs.ByName[flowId.Name];
-
-        // Check the in-memory cache first
-        if (_cache.TryGetValue(flowId, out var flowData))
-            return flowData;
-
-        // Read the ground truth
         var dbFlow = await EntityResolver.Get(flowId.Value, cancellationToken).ConfigureAwait(false);
-        flowData = dbFlow?.ToFlowData(flowDef.Type, flowId);
-        return _cache[flowId] = flowData;  // Update the in-memory cache
+        return dbFlow?.ToFlowData(flowDef.Type, flowId);
     }
 
     // Regular RPC method!
@@ -150,7 +126,6 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
 
         flowId.Require();
         var flow = command.Flow;
-        var flowDef = FlowHub.Defs.ByName[flowId.Name];
         if (flow?.GetType() == typeof(Flow))
             throw StandardError.Internal("Flow.GetType() == typeof(Flow), i.e., the command is routed to another host.");
 
@@ -207,9 +182,6 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
         // See AddCompletionHandler below.
         context.Operation.MustStore(false);
         context.Operation.AddCompletionHandler(scope => {
-            // Update cache to avoid the DB hit in TryGet
-            _cache[flowId] = dbFlow?.ToFlowData(flowDef.Type, flowId);
-            // Invalidate TryGetData cache
             using (Invalidation.Begin())
                 _ = TryGetData(flowId, default);
             return Task.CompletedTask;

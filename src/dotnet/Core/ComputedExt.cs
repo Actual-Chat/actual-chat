@@ -1,6 +1,5 @@
 using ActualLab.Fusion.Internal;
 using ActualLab.Fusion.Operations.Internal;
-using Errors = ActualLab.Fusion.Internal.Errors;
 
 namespace ActualChat;
 
@@ -9,7 +8,12 @@ public static class ComputedExt
     private static readonly ConcurrentDictionary<(Type, string), PropertyInfo?> PropertyCache = new();
     private static readonly ConcurrentDictionary<(Type, string), FieldInfo?> FieldCache = new();
 
-    // Debug dump
+    public static IState<T>? GetState<T>(this Computed<T> computed)
+    {
+        var untypedState = (computed as IStateBoundComputed)?.State;
+        // If untypedState is not null, it can only be IState<T>, coz we've got Computed<T>
+        return Unsafe.As<IState<T>?>(untypedState);
+    }
 
     public static string DebugDump(this Computed computed, int maxDepth = 0)
     {
@@ -39,6 +43,8 @@ public static class ComputedExt
             }
         }
     }
+
+    // Private methods
 
     private static PropertyInfo? GetProperty(Type type, string name)
         => PropertyCache.GetOrAdd((type, name), static state => {

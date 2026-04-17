@@ -6,6 +6,7 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
 {
     public readonly MeshRpcPeerRefs Owner;
     public readonly ResolvedMeshRef Resolved;
+    public readonly IState<ShardOwner.ShardState>? ShardState;
     public readonly int Version;
 
     // Computed properties
@@ -38,11 +39,10 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
 
             var shardIndex = ShardRef.GetShardIndex();
             var shardOwner = Resolved.Owner.ShardOwners[ShardRef.Scheme];
-            var cShardState = shardOwner.States[shardIndex].Computed;
-            var shardState = cShardState.Value;
-            if (shardState.MustOwn) {
-                RouteState.LocalExecutionAwaiter = GetLocalExecutionAwaiter(RouteState, cShardState);
-                _ = MarkChangedWhenShardOwnershipEnds(shardState, RouteState.ChangedToken);
+            ShardState = shardOwner.States[shardIndex];
+            if (ShardState.Value.MustOwn) {
+                RouteState.LocalExecutionAwaiter = GetLocalExecutionAwaiter(RouteState);
+                _ = MarkChangedWhenShardOwnershipEnds(RouteState.ChangedToken);
             }
             _ = MarkChangedWhenResolvedChanged();
         }
@@ -58,14 +58,15 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
         RouteState?.MarkChanged();
     }
 
-    private async Task MarkChangedWhenShardOwnershipEnds(
-        ShardOwner.ShardState shardState,
-        CancellationToken cancellationToken)
+    private async Task MarkChangedWhenShardOwnershipEnds(CancellationToken cancellationToken)
     {
         await Task.Yield();
         try {
-            shardState = await shardState.When(x => x.Ownership is not null, cancellationToken).ConfigureAwait(false);
-            await shardState.WhenNext(cancellationToken).ConfigureAwait(false);
+            var cShardState = await ShardState!
+                .WhenUnsafe(static x => x.Ownership is not null || !x.MustOwn, cancellationToken)
+                .ConfigureAwait(false);
+            if (cShardState.Value.Ownership is not null) // Got ownership -> await when it ends
+                await cShardState.WhenInvalidated(cancellationToken).ConfigureAwait(false);
         }
         catch {
             // Intended
@@ -75,14 +76,14 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
         }
     }
 
-    private static Func<bool, CancellationToken, ValueTask> GetLocalExecutionAwaiter(
-        RpcRouteState routeState,
-        Computed<ShardOwner.ShardState> cShardState)
+    private Func<bool, CancellationToken, ValueTask> GetLocalExecutionAwaiter(RpcRouteState routeState)
         => async (addDependency, cancellationToken) => {
             try {
-                await cShardState.Value.RequireShardOwnership(cancellationToken).ConfigureAwait(false);
+                var cShardStateWhenOwns = await ShardState!
+                    .RequireShardOwnership(cancellationToken)
+                    .ConfigureAwait(false);
                 if (addDependency && Computed.Current is { } cCurrent)
-                    ComputedImpl.AddDependency(cCurrent, cShardState);
+                    ComputedImpl.AddDependency(cCurrent, cShardStateWhenOwns);
             }
             catch (RpcRerouteException) {
                 routeState.MarkChanged();
