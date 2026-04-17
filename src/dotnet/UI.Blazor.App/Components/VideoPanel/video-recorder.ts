@@ -184,14 +184,6 @@ export class VideoRecorder {
     }
 
     /**
-     * Get the preview stream (wraps previewTrack) for sharing with the settings modal.
-     */
-    public getPreviewStream(): MediaStream | null {
-        if (this.previewTrack?.readyState !== 'live') return null;
-        return new MediaStream([this.previewTrack]);
-    }
-
-    /**
      * Get the raw preview track for rendering by VideoStreamingPreview.
      */
     public getPreviewTrack(): MediaStreamTrack | null {
