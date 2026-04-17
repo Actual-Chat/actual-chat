@@ -1,4 +1,5 @@
 using System.Buffers;
+using ActualChat.Audio;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
@@ -8,5 +9,5 @@ public interface IAudioCodec
     IAsyncEnumerable<IMemoryOwner<byte>> Encode(IAsyncEnumerable<IMemoryOwner<float>> lpcmFrames, CancellationToken cancellationToken = default);
 
     // Decodes Opus packets into 16kHz mono float PCM frames
-    IAsyncEnumerable<IMemoryOwner<float>> Decode(IAsyncEnumerable<IMemoryOwner<byte>> opusPackets, CancellationToken cancellationToken = default);
+    IAsyncEnumerable<IMemoryOwner<float>> Decode(IAsyncEnumerable<AudioFrame> opusPackets, CancellationToken cancellationToken = default);
 }

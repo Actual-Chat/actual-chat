@@ -1,3 +1,5 @@
+using ActualChat.Audio;
+
 namespace ActualChat.MediaPlayback;
 
 public interface IAudioPlaybackEngine : IAsyncDisposable
@@ -6,5 +8,5 @@ public interface IAudioPlaybackEngine : IAsyncDisposable
     Task Pause(CancellationToken cancellationToken);
     Task Resume(CancellationToken cancellationToken);
     Task End(bool mustAbort, CancellationToken cancellationToken);
-    ValueTask PushFrame(MediaFrame frame, CancellationToken cancellationToken);
+    ValueTask PushFrame(AudioFrame frame, CancellationToken cancellationToken);
 }

@@ -136,7 +136,7 @@ public class ActualOpusStreamConverter(MomentClockSet clocks, ILogger log) : IAu
         AudioFrame? lastFrame = null;
         await foreach (var frame in source.GetFrames(cancellationToken).ConfigureAwait(false)) {
             lastFrame = frame;
-            position += WriteFrame(frame.Data, buffer.Span[position..]);
+            position += WriteFrame(frame.Data.Span, buffer.Span[position..]);
             framesInChunk++;
 
             if (framesInChunk >= FramesPerChunk) {
@@ -150,7 +150,7 @@ public class ActualOpusStreamConverter(MomentClockSet clocks, ILogger log) : IAu
 
         yield break;
 
-        int WriteFrame(byte[] frame, Span<byte> span)
+        int WriteFrame(ReadOnlySpan<byte> frame, Span<byte> span)
         {
             ushort length = (ushort)frame.Length;
             BinaryPrimitives.WriteUInt16BigEndian(span, length);

@@ -1,4 +1,5 @@
 using System.Buffers;
+using ActualChat.Audio;
 using ActualChat.UI.Blazor.App.Components;
 
 #if WINDOWS || ANDROID
@@ -95,7 +96,7 @@ public sealed class OpusAudioCodec : IAudioCodec
     }
 
     public IAsyncEnumerable<IMemoryOwner<float>> Decode(
-        IAsyncEnumerable<IMemoryOwner<byte>> opusPackets,
+        IAsyncEnumerable<AudioFrame> opusPackets,
         CancellationToken cancellationToken = default)
     {
 #if IOS
@@ -114,16 +115,16 @@ public sealed class OpusAudioCodec : IAudioCodec
                         Constants.Audio.PlaybackSampleRate,
                         Constants.Audio.Channels);
 
-                    await foreach (var owner in opusPackets.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-                        using var _ = owner;
-                        var packetMem = owner.Memory;
+                    await foreach (var frame in opusPackets.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                        // TODO(AK): Dispose frame when IDisposable will be implemented
+                        var packetMem = frame.Data;
 
                         var pcmOwner = ArrayPools.SharedFloatPool.LeaseArrayOwner(Constants.Audio.PcmFrameLength);
                         int samples;
                         try {
                             var packetSpan = packetMem.Span;
                             var pcmSpan = pcmOwner.Span;
-                            samples = decoder.Decode(packetSpan,
+                            samples = decoder.Decode(packetSpan.AsSpanUnsafe(),
                                 packetSpan.Length,
                                 pcmSpan,
                                 Constants.Audio.PcmFrameLength,

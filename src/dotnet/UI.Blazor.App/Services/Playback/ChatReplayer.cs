@@ -87,7 +87,7 @@ public sealed class ChatReplayer : ChatPlayer
         Playback playback,
         LiveStreamInfo streamInfo,
         TimeSpan playsAt,
-        IAsyncEnumerable<byte[]> audioFrames,
+        IAsyncEnumerable<ReadOnlyMemory<byte>> audioFrames,
         double speed,
         CpuTimestamp playbackStartedAt,
         TimeSpan sleepDurationAtStart,
@@ -178,7 +178,7 @@ public sealed class ChatReplayer : ChatPlayer
 
     private AudioSource CreateAudioSource(
         LiveStreamInfo streamInfo,
-        IAsyncEnumerable<byte[]> audioFrames,
+        IAsyncEnumerable<ReadOnlyMemory<byte>> audioFrames,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {

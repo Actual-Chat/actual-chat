@@ -7,7 +7,7 @@
 public sealed partial class LiveAudioFrame : LiveStreamItem
 {
     [DataMember(Order = 1), MemoryPackOrder(1)]
-    public byte[] Data { get; init; } = [];
+    public ReadOnlyMemory<byte> Data { get; init; }
 
     /// <summary>
     /// Frame offset from start of the audio stream (populated from AudioFrame.Offset).

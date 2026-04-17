@@ -101,7 +101,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                 }
                 _ = _jsRef
                     .ToLogging("testPlayer", Log)
-                    .InvokeVoidAsync("frame", _cts.Token, frame.Data);
+                    .InvokeVoidAsync("frame", _cts.Token, frame.Data.ToArray());
             }
             if (!_cts.Token.IsCancellationRequested)
                 await _jsRef.InvokeVoidAsync("end", _cts.Token);

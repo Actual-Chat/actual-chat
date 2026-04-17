@@ -13,13 +13,13 @@ public sealed class LiveStreamDemuxer(
     : WorkerBase(stopTokenSource)
 {
     private static bool DebugMode => Constants.DebugMode.LiveStreaming;
-    private readonly ConcurrentDictionary<int, Channel<byte[]>> _streams = new();
+    private readonly ConcurrentDictionary<int, Channel<ReadOnlyMemory<byte>>> _streams = new();
 
     private IAsyncEnumerable<LiveStreamItem> Input { get; } = input;
     private ILogger? Log { get; } = log;
     private ILogger? DebugLog { get; } = DebugMode ? log : null;
 
-    public event Action<LiveStreamInfo, TimeSpan, IAsyncEnumerable<byte[]>>? StreamStarted;
+    public event Action<LiveStreamInfo, TimeSpan, IAsyncEnumerable<ReadOnlyMemory<byte>>>? StreamStarted;
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
@@ -39,7 +39,7 @@ public sealed class LiveStreamDemuxer(
                         continue;
                     }
                     DebugLog?.LogDebug("StreamStart N{StreamIndex}: stream #{StreamId}", start.StreamIndex, start.StreamInfo.StreamId);
-                    startChannel = Channel.CreateUnbounded<byte[]>(ChannelExt.UnboundedPipeOptions);
+                    startChannel = Channel.CreateUnbounded<ReadOnlyMemory<byte>>(ChannelExt.UnboundedPipeOptions);
                     _streams[start.StreamIndex] = startChannel;
 
                     // Note: We don't use StopToken here because the audio frames should remain
@@ -86,8 +86,8 @@ public sealed class LiveStreamDemuxer(
         _streams.Clear();
     }
 
-    private static async IAsyncEnumerable<byte[]> ToAsyncEnumerable(
-        ChannelReader<byte[]> reader,
+    private static async IAsyncEnumerable<ReadOnlyMemory<byte>> ToAsyncEnumerable(
+        ChannelReader<ReadOnlyMemory<byte>> reader,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await foreach (var item in reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))

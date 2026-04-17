@@ -174,7 +174,7 @@ public sealed class WebMStreamConverter(MomentClockSet clocks, ILogger log) : IA
                 TrackNumber = 1,
                 TimeCode = offsetMs,
                 IsKeyFrame = true,
-                Data = frame.Data,
+                Data = frame.Data.ToArray(),
             };
             position += WriteModel(block, buffer.Span[position..]);
             offsetMs += 20;
@@ -264,11 +264,11 @@ public sealed class WebMStreamConverter(MomentClockSet clocks, ILogger log) : IA
                         TimeSpan.TicksPerMillisecond * (clusterOffsetMs + block.TimeCode));
                     var duration = frameOffset - blockOffset;
                     if (duration == TimeSpan.Zero)
-                        duration = simpleBlock.Data!.Length < 100
+                        duration = (simpleBlock.Data?.Length ?? 0) < 100
                             ? TimeSpan.FromMilliseconds(Constants.Audio.OpusFrameDurationMs)
                             : TimeSpan.FromMilliseconds(3 * Constants.Audio.OpusFrameDurationMs);
                     var mediaFrame = new AudioFrame {
-                            Data = simpleBlock.Data!,
+                            Data = simpleBlock.Data ?? [],
                             Offset = frameOffset,
                             Duration = duration,
                         };

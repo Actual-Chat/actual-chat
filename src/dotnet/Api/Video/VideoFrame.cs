@@ -28,9 +28,10 @@ public partial class VideoFrame : MediaFrame
 
     /// <summary>
     /// Codec-specific data (SPS/PPS for H.264). Only present on keyframes.
+    /// ReadOnlyMemory&lt;byte&gt; for zero-copy slicing and reduced GC pressure.
     /// </summary>
     [DataMember(Order = 6), MemoryPackOrder(6)]
-    public byte[]? Description { get; init; }
+    public ReadOnlyMemory<byte> Description { get; init; }
 
     /// <summary>
     /// Codec identifier (e.g., "avc1" for H.264). Only present on keyframes.

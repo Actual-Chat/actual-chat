@@ -441,7 +441,7 @@ async Task RunConsumerRpc(int chatIdx, int consumerIdx, int streamIdx, StreamId 
 
             var receiveTs = Stopwatch.GetTimestamp();
             var key = (chatIdx, consumerIdx, streamIdx);
-            var frameSize = frame.Data?.Length ?? frame.CachedSerializedBytes?.Length ?? 0;
+            var frameSize = frame.CachedSerializedBytes?.Length ?? frame.Data.Length;
             framesReceived.AddOrUpdate(key, 1, (_, v) => v + 1);
             bytesReceived.AddOrUpdate(key, frameSize, (_, v) => v + frameSize);
 
@@ -476,7 +476,7 @@ async Task RunConsumerRpcBackend(int chatIdx, int consumerIdx, int streamIdx, St
 
             var receiveTs = Stopwatch.GetTimestamp();
             var key = (chatIdx, consumerIdx, streamIdx);
-            var frameSize = frame.Data?.Length ?? frame.CachedSerializedBytes?.Length ?? 0;
+            var frameSize = frame.CachedSerializedBytes?.Length ?? frame.Data.Length;
             framesReceived.AddOrUpdate(key, 1, (_, v) => v + 1);
             bytesReceived.AddOrUpdate(key, frameSize, (_, v) => v + frameSize);
 
@@ -566,7 +566,7 @@ VideoFrame GenerateFrame(int index)
         Duration = frameDuration,
         Width = isKeyFrame ? FrameWidth : 0,
         Height = isKeyFrame ? FrameHeight : 0,
-        Description = isKeyFrame ? [0x00, 0x00, 0x00, 0x01, 0x67] : null,
+        Description = isKeyFrame ? new byte[] { 0x00, 0x00, 0x00, 0x01, 0x67 } : default,
         Codec = isKeyFrame ? Codec : null,
     };
 }
@@ -578,7 +578,7 @@ static byte[] SerializeVideoFrame(VideoFrame frame)
 
     var fieldCount = 3;
     if (frame.IsKeyFrame) fieldCount += 3;
-    if (frame.Description != null) fieldCount++;
+    if (!frame.Description.IsEmpty) fieldCount++;
     if (frame.Codec != null) fieldCount++;
 
     writer.WriteMapHeader(fieldCount);
@@ -587,7 +587,7 @@ static byte[] SerializeVideoFrame(VideoFrame frame)
     writer.Write("duration");
     writer.Write(frame.Duration.Ticks);
     writer.Write("data");
-    writer.Write(frame.Data);
+    writer.Write(frame.Data.Span);
 
     if (frame.IsKeyFrame) {
         writer.Write("isKeyFrame");
@@ -597,9 +597,9 @@ static byte[] SerializeVideoFrame(VideoFrame frame)
         writer.Write("height");
         writer.Write(frame.Height);
     }
-    if (frame.Description != null) {
+    if (!frame.Description.IsEmpty) {
         writer.Write("description");
-        writer.Write(frame.Description);
+        writer.Write(frame.Description.Span);
     }
     if (frame.Codec != null) {
         writer.Write("codec");
@@ -643,7 +643,7 @@ static VideoFrame? DeserializeVideoFrame(byte[] bytes)
             Duration = new TimeSpan(duration),
             Width = width,
             Height = height,
-            Description = description,
+            Description = description ?? default,
             Codec = codec,
         };
     }

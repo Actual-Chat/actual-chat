@@ -20,7 +20,7 @@ public sealed class LiveStreamProcessor : WorkerBase
     public ChatId ChatId { get; }
     public LiveStreamSettings Settings { get; }
 
-    public event Action<LiveStreamInfo, TimeSpan, IAsyncEnumerable<byte[]>>? StreamStarted;
+    public event Action<LiveStreamInfo, TimeSpan, IAsyncEnumerable<ReadOnlyMemory<byte>>>? StreamStarted;
 
     public LiveStreamProcessor(IServiceProvider services,
         Session session,

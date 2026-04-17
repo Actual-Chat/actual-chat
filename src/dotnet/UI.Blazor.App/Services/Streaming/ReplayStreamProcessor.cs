@@ -18,7 +18,7 @@ public sealed class ReplayStreamProcessor : WorkerBase
     public TimeSpan RewindOffset { get; }
     public double Speed { get; }
 
-    public event Action<LiveStreamInfo, TimeSpan, IAsyncEnumerable<byte[]>>? StreamStarted;
+    public event Action<LiveStreamInfo, TimeSpan, IAsyncEnumerable<ReadOnlyMemory<byte>>>? StreamStarted;
 
     public ReplayStreamProcessor(
         IServiceProvider services,

@@ -122,13 +122,13 @@ public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
                     Format = AudioSource.DefaultFormat,
                 },
             },
-            new LiveAudioFrame { StreamIndex = 1, Data = [1, 2, 3, 4] },
-            new LiveAudioFrame { StreamIndex = 1, Data = [5, 6, 7, 8] },
+            new LiveAudioFrame { StreamIndex = 1, Data = new byte[]{1, 2, 3, 4} },
+            new LiveAudioFrame { StreamIndex = 1, Data = new byte[]{5, 6, 7, 8} },
             new LiveStreamEnd { StreamIndex = 1 },
         };
 
         var streamStartedEvents = new List<int>();
-        var receivedFrames = new List<byte[]>();
+        var receivedFrames = new List<ReadOnlyMemory<byte>>();
         var frameCollectionTcs = TaskCompletionSourceExt.New();
 
         // Create RpcStream from test items
@@ -161,13 +161,13 @@ public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
             streamStartedEvents.Count, receivedFrames.Count);
         streamStartedEvents.Should().ContainSingle().Which.Should().Be(1);
         receivedFrames.Should().HaveCount(2);
-        receivedFrames[0].Should().BeEquivalentTo(new byte[] { 1, 2, 3, 4 });
-        receivedFrames[1].Should().BeEquivalentTo(new byte[] { 5, 6, 7, 8 });
+        receivedFrames[0].ToArray().Should().BeEquivalentTo(new byte[] { 1, 2, 3, 4 });
+        receivedFrames[1].ToArray().Should().BeEquivalentTo(new byte[] { 5, 6, 7, 8 });
     }
 
     private static async Task CollectFrames(
-        IAsyncEnumerable<byte[]> audioFrames,
-        List<byte[]> receivedFrames,
+        IAsyncEnumerable<ReadOnlyMemory<byte>> audioFrames,
+        List<ReadOnlyMemory<byte>> receivedFrames,
         TaskCompletionSource frameCollectionTcs,
         ILogger log)
     {

@@ -13,7 +13,7 @@ namespace ActualChat.Media;
 public abstract partial class MediaFrame
 {
     [DataMember(Order = 0), MemoryPackOrder(0), Key("data")]
-    public byte[] Data { get; init; } = [];
+    public ReadOnlyMemory<byte> Data { get; init; }
 
     [DataMember(Order = 1), MemoryPackOrder(1), Key("offset")]
     public abstract TimeSpan Offset { get; init; }

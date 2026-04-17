@@ -19,7 +19,7 @@ internal sealed class WindowsAudioPlaybackEngine(
     IServiceProvider services
     ) : IAudioPlaybackEngine
 {
-    private readonly Channel<IMemoryOwner<byte>> _packetChannel = Channel.CreateUnbounded<IMemoryOwner<byte>>(new UnboundedChannelOptions {
+    private readonly Channel<ActualChat.Audio.AudioFrame> _packetChannel = Channel.CreateUnbounded<ActualChat.Audio.AudioFrame>(new UnboundedChannelOptions {
         SingleReader = true,
         SingleWriter = true,
         AllowSynchronousContinuations = false,
@@ -143,14 +143,14 @@ internal sealed class WindowsAudioPlaybackEngine(
         return Task.CompletedTask;
     }
 
-    public ValueTask PushFrame(MediaFrame frame, CancellationToken cancellationToken)
+    public ValueTask PushFrame(ActualChat.Audio.AudioFrame frame, CancellationToken cancellationToken)
     {
         // Enqueue opus packet
         var data = frame.Data;
         if (data.Length == 0)
             return ValueTask.CompletedTask;
 
-        _packetChannel.Writer.TryWrite(new ByteArrayMemoryOwner(data));
+        _packetChannel.Writer.TryWrite(frame);
         return ValueTask.CompletedTask;
     }
 
