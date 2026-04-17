@@ -195,6 +195,7 @@ public sealed class ReplayStreamMuxer : WorkerBase
                 var audioFrame = new LiveAudioFrame {
                     StreamIndex = streamIndex,
                     Data = frame.Data,
+                    Offset = frame.Offset,
                 };
                 await _output.Writer.WriteAsync(audioFrame, cancellationToken).ConfigureAwait(false);
                 frameCount++;

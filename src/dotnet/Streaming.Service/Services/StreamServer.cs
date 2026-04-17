@@ -17,7 +17,7 @@ public class StreamServer(IServiceProvider services) : IStreamServer
     private MomentClockSet Clocks { get; } = services.Clocks();
     private ILogger Log { get; } = services.LogFor<StreamServer>();
 
-    public async Task<RpcStream<byte[]>?> GetAudio(string streamId, TimeSpan skipTo, CancellationToken cancellationToken)
+    public async Task<RpcStream<AudioFrame>?> GetAudio(string streamId, TimeSpan skipTo, CancellationToken cancellationToken)
     {
         var parsedStreamId = StreamId.Parse(streamId);
         var isLocal = parsedStreamId.NodeRef == MeshWatcher.ThisNode.Ref;
@@ -29,7 +29,7 @@ public class StreamServer(IServiceProvider services) : IStreamServer
 
         // Remote stream: fetch raw, cache locally, apply skipTo
         var cached = await GetOrFetchRemoteAudio(parsedStreamId, skipTo, cancellationToken).ConfigureAwait(false);
-        return cached == null ? null : new RpcStream<byte[]>(cached) {
+        return cached == null ? null : new RpcStream<AudioFrame>(cached) {
             AckPeriod = Constants.Audio.StreamAckPeriod,
             AckAdvance = Constants.Audio.StreamAckAdvance,
         };
@@ -145,7 +145,7 @@ public class StreamServer(IServiceProvider services) : IStreamServer
 
     // Private methods
 
-    private async Task<IAsyncEnumerable<byte[]>?> GetOrFetchRemoteAudio(
+    private async Task<IAsyncEnumerable<AudioFrame>?> GetOrFetchRemoteAudio(
         StreamId streamId, TimeSpan skipTo, CancellationToken cancellationToken)
     {
         var store = RemoteAudioCache.Store;
@@ -168,7 +168,7 @@ public class StreamServer(IServiceProvider services) : IStreamServer
         // the speaker stops talking. The memoizer is registered in the store
         // synchronously before Publish returns, so the subsequent Get succeeds
         // immediately.
-        _ = BackgroundTask.Run(() => store.Publish(streamId, (IAsyncEnumerable<byte[]>)rawRpcStream), Log, "Error caching #{StreamId} locally", cancellationToken);
+        _ = BackgroundTask.Run(() => store.Publish(streamId, (IAsyncEnumerable<AudioFrame>)rawRpcStream), Log, "Error caching #{StreamId} locally", cancellationToken);
         stream = await store.Get(streamId, true, cancellationToken).ConfigureAwait(false);
         return stream == null ? null : AudioStreamingBackend.SkipTo(stream, skipTo, cancellationToken);
     }

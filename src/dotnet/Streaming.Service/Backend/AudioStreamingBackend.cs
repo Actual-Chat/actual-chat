@@ -13,7 +13,7 @@ namespace ActualChat.Streaming;
 /// </summary>
 public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
 {
-    private readonly StreamStore<byte[]> _audioStreams;
+    private readonly StreamStore<AudioFrame> _audioStreams;
     private readonly StreamStore<TranscriptDiff> _transcriptStreams;
     private readonly ConcurrentDictionary<StreamId, StreamId> _translatingStreams = new();
 
@@ -34,7 +34,6 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     private MomentClockSet Clocks => field ??= Services.Clocks();
     private IHostApplicationLifetime HostLifetime => field ??= Services.HostLifetime();
     private ILiveAudioBackend LiveBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
-    private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
 
     public AudioStreamingBackend(IServiceProvider services)
     {
@@ -42,7 +41,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
         AudioSettings = services.GetRequiredService<AudioSettings>();
 
         var typeFullName = GetType().FullName;
-        _audioStreams = new StreamStore<byte[]> {
+        _audioStreams = new StreamStore<AudioFrame> {
             StreamIdValidator = ValidateStreamId,
             StreamCount = AppMeters.AudioStreamCount,
             ExpirationDelay = AudioSettings.StreamExpirationDelay,
@@ -62,14 +61,14 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
         _transcriptStreams.Dispose();
     }
 
-    public virtual async Task<RpcStream<byte[]>?> GetAudio(StreamId streamId, TimeSpan skipTo, CancellationToken cancellationToken)
+    public virtual async Task<RpcStream<AudioFrame>?> GetAudio(StreamId streamId, TimeSpan skipTo, CancellationToken cancellationToken)
     {
         var stream = await _audioStreams.Get(streamId, cancellationToken).ConfigureAwait(false);
         if (stream == null)
             return null;
 
         stream = SkipTo(stream, skipTo, cancellationToken);
-        return new RpcStream<byte[]>(stream) {
+        return new RpcStream<AudioFrame>(stream) {
             AckPeriod = Constants.Audio.StreamAckPeriod,
             AckAdvance = Constants.Audio.StreamAckAdvance,
         };
@@ -132,21 +131,21 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
                 $"Wrong mesh node: expected {ThisNode.Ref}, but got {streamId.NodeRef}.");
     }
 
-    internal static IAsyncEnumerable<byte[]> SkipTo(
-        IAsyncEnumerable<byte[]> stream,
+    internal static IAsyncEnumerable<AudioFrame> SkipTo(
+        IAsyncEnumerable<AudioFrame> stream,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
-        // This method assumes there are 20ms packets!
-        // And the first packet is the header
         if (skipTo <= TimeSpan.Zero)
             return stream;
 
-        var skipToFrameN = (int)skipTo.TotalMilliseconds / 20;
-        var (headerDataTask, dataStream) = stream.SplitHead(cancellationToken);
+        // First frame is the header (Offset < 0), always keep it.
+        // Skip data frames whose Offset is before skipTo.
+        // We can call SplitHead as the stream is stored at unbounded StreamStore
+        var (headerTask, dataStream) = stream.SplitHead(cancellationToken);
         return dataStream
-            .SkipWhile((_, i) => i < skipToFrameN)
-            .PrependOne(headerDataTask);
+            .SkipWhile(f => f.Offset < skipTo)
+            .PrependOne(headerTask);
     }
 
 }

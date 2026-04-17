@@ -12,7 +12,7 @@ namespace ActualChat.Streaming;
 [BackendService(nameof(HostRole.StreamingBackend), ServiceMode.Distributed)]
 public interface IAudioStreamingBackend : IRpcService, IBackendService
 {
-    Task<RpcStream<byte[]>?> GetAudio(
+    Task<RpcStream<AudioFrame>?> GetAudio(
         StreamId streamId,
         TimeSpan skipTo,
         CancellationToken cancellationToken);
