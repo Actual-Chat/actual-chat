@@ -6,30 +6,19 @@ namespace ActualChat.Sharding;
 /// so compute methods automatically get shard dependency, and stale entries from
 /// previous ownership epochs are evicted on access or by a periodic sweep.
 /// </summary>
-public sealed class ShardLocalCache<TKey, TValue>
+public sealed class ShardLocalCache<TKey, TValue>(
+    ShardOwner shardOwner,
+    Func<TKey, ShardOwnership, TValue> factory,
+    Action<TKey, TValue>? onEvict = null,
+    TimeSpan? evictionInterval = null)
     where TKey : notnull
 {
     private readonly ConcurrentDictionary<TKey, Entry> _entries = new();
-    private readonly ShardOwner _shardOwner;
-    private readonly Func<TKey, ShardOwnership, TValue> _factory;
-    private readonly Action<TKey, TValue>? _onEvict;
-    private readonly TimeSpan _evictionInterval;
-
-    public ShardLocalCache(
-        ShardOwner shardOwner,
-        Func<TKey, ShardOwnership, TValue> factory,
-        Action<TKey, TValue>? onEvict = null,
-        TimeSpan? evictionInterval = null)
-    {
-        _shardOwner = shardOwner;
-        _factory = factory;
-        _onEvict = onEvict;
-        _evictionInterval = evictionInterval ?? TimeSpan.FromSeconds(30);
-    }
+    private readonly TimeSpan _evictionInterval = evictionInterval ?? TimeSpan.FromSeconds(30);
 
     public ValueTask<TValue> GetOrAdd(TKey key, bool addDependency, CancellationToken cancellationToken)
     {
-        var ownership = _shardOwner.RequireShardOwnership(key, addDependency, cancellationToken);
+        var ownership = shardOwner.RequireShardOwnership(key, addDependency, cancellationToken);
         return ownership.IsCompleted
             ? new ValueTask<TValue>(GetOrAdd(key, ownership.Result))
             : CompleteAsync(key, ownership);
@@ -89,7 +78,7 @@ public sealed class ShardLocalCache<TKey, TValue>
                     return entry.Value;
 
                 // Stale — try to replace atomically
-                var newValue = _factory(key, ownership);
+                var newValue = factory(key, ownership);
                 var newEntry = new Entry(newValue, ownership);
                 if (_entries.TryUpdate(key, newEntry, entry)) {
                     EvictValue(key, entry.Value);
@@ -100,7 +89,7 @@ public sealed class ShardLocalCache<TKey, TValue>
                 continue;
             }
 
-            var addedValue = _factory(key, ownership);
+            var addedValue = factory(key, ownership);
             var addedEntry = new Entry(addedValue, ownership);
             if (_entries.TryAdd(key, addedEntry))
                 return addedValue;
@@ -120,7 +109,7 @@ public sealed class ShardLocalCache<TKey, TValue>
 
     private void EvictValue(TKey key, TValue value)
     {
-        _onEvict?.Invoke(key, value);
+        onEvict?.Invoke(key, value);
         if (value is IAsyncDisposable ad)
             _ = ad.DisposeAsync();
         else if (value is IDisposable d)
