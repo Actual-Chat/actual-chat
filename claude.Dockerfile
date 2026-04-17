@@ -2,7 +2,7 @@
 # Supports: ActualLab.Fusion, ActualLab.Fusion.Samples, ActualChat
 # Includes: .NET 10 SDK, .NET 9 SDK, Node.js 20, Claude Code CLI
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0.201
+FROM mcr.microsoft.com/dotnet/sdk:10.0.202
 
 # Timezone setup
 ARG TZ=Etc/UTC
@@ -111,7 +111,7 @@ RUN npm install -g chrome-devtools-mcp
 
 # Install Claude Code CLI (native installer, auto-update disabled at runtime)
 ENV DISABLE_AUTOUPDATER=1
-RUN curl -fsSL https://claude.ai/install.sh | bash -s -- 2.1.109
+RUN curl -fsSL https://claude.ai/install.sh | bash -s -- 2.1.112
 
 # Default working directory (overridden by -w flag in docker run)
 WORKDIR /proj
