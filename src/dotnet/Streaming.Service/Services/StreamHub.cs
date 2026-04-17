@@ -109,7 +109,7 @@ public class StreamHub(IServiceProvider services) : Hub
                     continue;
                 }
 
-                frame.CachedSerializedBytes = frameBytes; // Cache for zero-copy forwarding
+                frame.SerializedData = frameBytes; // Cache for zero-copy forwarding
                 StreamingMeters.VideoFrameSizeBytes.Record(frameBytes.Length);
                 StreamingMeters.VideoFramesReceived.Add(1);
                 StreamingMeters.VideoBytesReceived.Add(frameBytes.Length);
@@ -245,8 +245,8 @@ public class StreamHub(IServiceProvider services) : Hub
                 frameCount++;
 
                 byte[] bytes;
-                if (frame.CachedSerializedBytes != null)
-                    bytes = frame.CachedSerializedBytes;
+                if (!frame.SerializedData.IsEmpty)
+                    bytes = frame.SerializedData.ToArray();
                 else {
                     var tsBeforeSerialize = Stopwatch.GetTimestamp();
                     bytes = SerializeVideoFrame(frame);
@@ -452,8 +452,8 @@ public class StreamHub(IServiceProvider services) : Hub
                         height = reader.ReadInt32();
                         break;
                     case "data":
-                        // Store data for cross-pod RPC fallback (CachedSerializedBytes is [IgnoreMember]).
-                        // In-process path still uses CachedSerializedBytes for zero-copy fan-out.
+                        // Store data for cross-pod RPC fallback (SerializedData is [IgnoreMember]).
+                        // In-process path still uses SerializedData for zero-copy fan-out.
                         data = reader.ReadBytes()?.ToArray();
                         break;
                     case "description":

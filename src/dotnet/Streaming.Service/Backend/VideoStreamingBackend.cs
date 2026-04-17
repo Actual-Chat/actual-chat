@@ -224,7 +224,8 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                     frame.KeyFrameNumber = keyFrameNumber;
 
                     // Track throughput for quality adaptation (same node, direct call)
-                    LatencyStore.RecordFrameBytes(record.StreamId, frame.CachedSerializedBytes?.Length ?? frame.Data.Length);
+                    LatencyStore.RecordFrameBytes(record.StreamId,
+                        !frame.SerializedData.IsEmpty ? frame.SerializedData.Length : frame.Data.Length);
 
                     if (lastHeartbeat.Elapsed >= heartbeatInterval) {
                         lastHeartbeat = CpuTimestamp.Now;
@@ -237,8 +238,11 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                 }
             }
 
+            await using var disposer = new DelayedDisposer<VideoFrame>(Constants.Video.FrameDataReturnDelay);
+            _ = disposer.Run();
             var memoizer = ProcessFrames(videoFrames).Memoize(
                 Constants.Video.RetentionBufferSize,
+                onRemove: disposer.Add,
                 cancellationToken);
             await _videoStreams.Publish(record.StreamId, memoizer).ConfigureAwait(false);
         }

@@ -14,8 +14,8 @@ internal static class ApiContractsModuleInitializer
     {
         AotTypes.AddSource(new ApiContractsAotSource());
 
-        // Default binary serializer
-        ByteSerializer.Default = MessagePackByteSerializer.Default;
+        // Default binary serializer — wrapped with caching for serialize-once fan-out
+        ByteSerializer.Default = new ActualChat.Video.CachingVideoFrameByteSerializer(MessagePackByteSerializer.Default);
 
         // Session.Factory & Validator
 #pragma warning disable CA2000

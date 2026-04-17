@@ -35,6 +35,7 @@ public sealed class AsyncMemoizer<T> : WorkerBase, IAsyncMemoizer<T>
 {
     private IAsyncEnumerator<T>? _source;
     private readonly int _capacity;
+    private readonly Action<T>? _onRemove; // invoked when an item is evicted from the head or on Dispose
 
     // Shared head: sentinel whose .Next is the oldest readable item.
     // In bounded mode, _head advances forward when capacity is exceeded.
@@ -48,15 +49,24 @@ public sealed class AsyncMemoizer<T> : WorkerBase, IAsyncMemoizer<T>
     public bool IsCompleted => Completion != null;
 
     public AsyncMemoizer(IAsyncEnumerable<T> source, CancellationToken cancellationToken = default)
-        : this(source, int.MaxValue, cancellationToken)
+        : this(source, int.MaxValue, null, cancellationToken)
     { }
 
     public AsyncMemoizer(IAsyncEnumerable<T> source, int capacity, CancellationToken cancellationToken = default)
+        : this(source, capacity, null, cancellationToken)
+    { }
+
+    public AsyncMemoizer(
+        IAsyncEnumerable<T> source,
+        int capacity,
+        Action<T>? onRemove,
+        CancellationToken cancellationToken = default)
         : base(cancellationToken.CreateLinkedTokenSource())
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(capacity);
 
         _capacity = capacity;
+        _onRemove = onRemove;
         _source = source.GetAsyncEnumerator(StopToken);
         _tail = _head = new Node(default!, 0); // Sentinel
         this.Start();
@@ -65,6 +75,10 @@ public sealed class AsyncMemoizer<T> : WorkerBase, IAsyncMemoizer<T>
     protected override async Task DisposeAsyncCore()
     {
         await base.DisposeAsyncCore().ConfigureAwait(false);
+        if (_onRemove != null) {
+            for (var node = _head.Next; node != null; node = node.Next)
+                _onRemove.Invoke(node.Value);
+        }
         var sentinel = new Node(default!, _tail.Index, AsyncMemoizer.SuccessfulCompletion);
         sentinel.SetResult();
         _tail = _head = sentinel;
@@ -181,6 +195,7 @@ public sealed class AsyncMemoizer<T> : WorkerBase, IAsyncMemoizer<T>
                 if (nextHead == null)
                     break;
 
+                _onRemove?.Invoke(nextHead.Value);
                 _head = nextHead;
             }
         }
