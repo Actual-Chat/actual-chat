@@ -1,7 +1,9 @@
 using System.Buffers;
+using ActualChat.Audio;
 using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor.App.Components;
 using Android.Media;
+using AudioFormat = Android.Media.AudioFormat;
 using AudioSource = ActualChat.Audio.AudioSource;
 using Encoding = Android.Media.Encoding;
 
@@ -15,7 +17,7 @@ internal sealed class AndroidAudioPlaybackEngine(
     IServiceProvider services
     ) : ProcessorBase, IAudioPlaybackEngine
 {
-    private readonly Channel<IMemoryOwner<byte>> _frames = Channel.CreateUnbounded<IMemoryOwner<byte>>(new UnboundedChannelOptions {
+    private readonly Channel<AudioFrame> _frames = Channel.CreateUnbounded<AudioFrame>(new UnboundedChannelOptions {
         SingleReader = true,
         SingleWriter = true,
         AllowSynchronousContinuations = false,
@@ -199,13 +201,13 @@ internal sealed class AndroidAudioPlaybackEngine(
         return Task.CompletedTask;
     }
 
-    public ValueTask PushFrame(MediaFrame frame, CancellationToken cancellationToken)
+    public ValueTask PushFrame(AudioFrame frame, CancellationToken cancellationToken)
     {
         var data = frame.Data;
         if (data.Length == 0)
             return ValueTask.CompletedTask;
 
-        _frames.Writer.TryWrite(new ByteArrayMemoryOwner(data));
+        _frames.Writer.TryWrite(frame);
         return ValueTask.CompletedTask;
     }
 

@@ -14,8 +14,7 @@ public class AudioSourceTest(ILogger log)
         var audio = await GetAudio("file.webm");
         var offset = TimeSpan.Zero;
         await foreach (var frame in audio.GetFrames(default)) {
-            frame.Data.Should().NotBeNull();
-            frame.Data.Should().NotBeEmpty();
+            frame.Data.IsEmpty.Should().BeFalse();
             frame.Offset.Should().BeGreaterThanOrEqualTo(offset);
             offset = frame.Offset > offset
                 ? frame.Offset
@@ -31,8 +30,7 @@ public class AudioSourceTest(ILogger log)
         var audio = await GetAudio("large-file.webm");
         var offset = TimeSpan.Zero;
         await foreach (var frame in audio.GetFrames(default)) {
-            frame.Data.Should().NotBeNull();
-            frame.Data.Should().NotBeEmpty();
+            frame.Data.IsEmpty.Should().BeFalse();
             frame.Offset.Should().BeGreaterThanOrEqualTo(offset);
             frame.Offset.Should().BeLessThan(offset.Add(TimeSpan.FromMilliseconds(150)));
             offset = frame.Offset > offset
@@ -47,8 +45,7 @@ public class AudioSourceTest(ILogger log)
         var audio = await GetAudio("file.webm", TimeSpan.FromSeconds(5));
         var offset = TimeSpan.Zero;
         await foreach (var frame in audio.GetFrames(default)) {
-            frame.Data.Should().NotBeNull();
-            frame.Data.Should().NotBeEmpty();
+            frame.Data.IsEmpty.Should().BeFalse();
             frame.Offset.Should().BeGreaterThanOrEqualTo(offset);
             offset = frame.Offset > offset
                 ? frame.Offset
@@ -66,8 +63,7 @@ public class AudioSourceTest(ILogger log)
         var audio = await GetAudio("0002.webm", TimeSpan.FromSeconds(45));
         var offset = TimeSpan.Zero;
         await foreach (var frame in audio.GetFrames(default)) {
-            frame.Data.Should().NotBeNull();
-            frame.Data.Should().NotBeEmpty();
+            frame.Data.IsEmpty.Should().BeFalse();
             frame.Offset.Should().BeGreaterThanOrEqualTo(offset);
             frame.Offset.Should().BeLessThan(offset.Add(TimeSpan.FromMilliseconds(150)));
             offset = frame.Offset > offset

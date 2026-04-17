@@ -1,3 +1,4 @@
+using ActualChat.Audio;
 using ActualChat.Hosting;
 using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor.App.Services;
@@ -141,7 +142,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             }
 
             _playDuration += frame.Duration;
-            await _playbackEngine.PushFrame(frame, cancellationToken).ConfigureAwait(false);
+            await _playbackEngine.PushFrame((AudioFrame)frame, cancellationToken).ConfigureAwait(false);
             await _whenBufferLowSource.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
         }
         catch (TimeoutException e) {

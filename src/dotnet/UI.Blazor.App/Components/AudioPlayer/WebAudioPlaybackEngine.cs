@@ -80,12 +80,12 @@ public sealed class WebAudioPlaybackEngine(
         _ = _jsRef.InvokeVoidAsync("end", CancellationToken.None, mustAbort);
     }
 
-    public ValueTask PushFrame(MediaFrame frame, CancellationToken cancellationToken)
+    public ValueTask PushFrame(AudioFrame frame, CancellationToken cancellationToken)
     {
         if (_jsRef == null)
             throw StandardError.StateTransition(GetType(), "Can't process media frame before initialization.");
 
-        var chunk = frame.Data;
+        var chunk = frame.Data.ToArray(); // JS interop requires byte[] (System.Text.Json)
         _ = _jsRef.InvokeVoidAsync("frame", cancellationToken, chunk);
 
         return ValueTask.CompletedTask;

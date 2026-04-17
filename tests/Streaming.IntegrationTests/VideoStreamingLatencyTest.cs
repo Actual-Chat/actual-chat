@@ -421,7 +421,7 @@ public class VideoStreamingLatencyTest(AppHostFixture fixture, ITestOutputHelper
 
         var fieldCount = 3; // offset, duration, data — always present
         if (frame.IsKeyFrame) fieldCount += 3; // isKeyFrame, width, height
-        if (frame.Description != null) fieldCount++;
+        if (!frame.Description.IsEmpty) fieldCount++;
         if (frame.Codec != null) fieldCount++;
 
         writer.WriteMapHeader(fieldCount);
@@ -431,7 +431,7 @@ public class VideoStreamingLatencyTest(AppHostFixture fixture, ITestOutputHelper
         writer.Write("duration");
         writer.Write(frame.Duration.Ticks);
         writer.Write("data");
-        writer.Write(frame.Data);
+        writer.Write(frame.Data.Span);
 
         if (frame.IsKeyFrame) {
             writer.Write("isKeyFrame");
@@ -441,9 +441,9 @@ public class VideoStreamingLatencyTest(AppHostFixture fixture, ITestOutputHelper
             writer.Write("height");
             writer.Write(frame.Height);
         }
-        if (frame.Description != null) {
+        if (!frame.Description.IsEmpty) {
             writer.Write("description");
-            writer.Write(frame.Description);
+            writer.Write(frame.Description.Span);
         }
         if (frame.Codec != null) {
             writer.Write("codec");
@@ -508,7 +508,7 @@ public class VideoStreamingLatencyTest(AppHostFixture fixture, ITestOutputHelper
                 Duration = new TimeSpan(duration),
                 Width = width,
                 Height = height,
-                Description = description,
+                Description = description ?? default,
                 Codec = codec,
             };
         }
@@ -534,7 +534,7 @@ public class VideoStreamingLatencyTest(AppHostFixture fixture, ITestOutputHelper
             Duration = FrameDuration,
             Width = isKeyFrame ? FrameWidth : 0,
             Height = isKeyFrame ? FrameHeight : 0,
-            Description = isKeyFrame ? new byte[] { 0x00, 0x00, 0x00, 0x01, 0x67 } : null, // Fake SPS NAL
+            Description = isKeyFrame ? new byte[] { 0x00, 0x00, 0x00, 0x01, 0x67 } : default, // Fake SPS NAL
             Codec = isKeyFrame ? Codec : null,
         };
     }

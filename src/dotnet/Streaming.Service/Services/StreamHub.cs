@@ -477,7 +477,7 @@ public class StreamHub(IServiceProvider services) : Hub
                 Duration = new TimeSpan(duration),
                 Width = width != 0 ? width : fallbackWidth,
                 Height = height != 0 ? height : fallbackHeight,
-                Description = description,
+                Description = description ?? default,
                 Codec = isKeyFrame ? (codec ?? fallbackCodec) : codec,
                 TemporalLayerId = temporalLayerId,
             };
@@ -494,7 +494,7 @@ public class StreamHub(IServiceProvider services) : Hub
 
         var fieldCount = 3; // offset, duration, data
         if (frame.IsKeyFrame) fieldCount += 3; // isKeyFrame, width, height
-        if (frame.Description != null) fieldCount++;
+        if (!frame.Description.IsEmpty) fieldCount++;
         if (frame.Codec != null) fieldCount++;
         if (frame.TemporalLayerId > 0) fieldCount++;
 
@@ -505,7 +505,7 @@ public class StreamHub(IServiceProvider services) : Hub
         writer.Write("duration");
         writer.Write(frame.Duration.Ticks);
         writer.Write("data");
-        writer.Write(frame.Data);
+        writer.Write(frame.Data.Span);
 
         if (frame.IsKeyFrame) {
             writer.Write("isKeyFrame");
@@ -515,9 +515,9 @@ public class StreamHub(IServiceProvider services) : Hub
             writer.Write("height");
             writer.Write(frame.Height);
         }
-        if (frame.Description != null) {
+        if (!frame.Description.IsEmpty) {
             writer.Write("description");
-            writer.Write(frame.Description);
+            writer.Write(frame.Description.Span);
         }
         if (frame.Codec != null) {
             writer.Write("codec");

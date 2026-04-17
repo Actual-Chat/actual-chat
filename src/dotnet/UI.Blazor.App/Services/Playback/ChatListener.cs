@@ -65,7 +65,7 @@ public sealed class ChatListener : ChatPlayer
         Playback playback,
         PlayState state,
         LiveStreamInfo streamInfo,
-        IAsyncEnumerable<byte[]> audioFrames,
+        IAsyncEnumerable<ReadOnlyMemory<byte>> audioFrames,
         CancellationToken cancellationToken)
     {
         _ = BackgroundTask.Run(async () => {
@@ -129,7 +129,7 @@ public sealed class ChatListener : ChatPlayer
 
     private AudioSource CreateAudioSource(
         LiveStreamInfo streamInfo,
-        IAsyncEnumerable<byte[]> audioFrames,
+        IAsyncEnumerable<ReadOnlyMemory<byte>> audioFrames,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {

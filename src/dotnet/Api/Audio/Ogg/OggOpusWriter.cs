@@ -117,7 +117,7 @@ public ref struct OggOpusWriter(OggOpusWriter.State state, Span<byte> span)
 
 
         foreach (var audioFrame in audioFrames)
-            _spanWriter.Write(audioFrame.Data);
+            _spanWriter.Write(audioFrame.Data.Span);
 
         var crc = OggCRC32.Get(0, _spanWriter.Span[..Position]);
         _spanWriter.Write(crc, checksumPosition, isLittleEndian: true);

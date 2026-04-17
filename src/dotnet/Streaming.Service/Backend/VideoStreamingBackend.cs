@@ -229,7 +229,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                     frame.KeyFrameNumber = keyFrameNumber;
 
                     // Track throughput for quality adaptation (same node, direct call)
-                    LatencyStore.RecordFrameBytes(record.StreamId, frame.CachedSerializedBytes?.Length ?? frame.Data?.Length ?? 0);
+                    LatencyStore.RecordFrameBytes(record.StreamId, frame.CachedSerializedBytes?.Length ?? frame.Data.Length);
 
                     if (lastHeartbeat.Elapsed >= heartbeatInterval) {
                         lastHeartbeat = CpuTimestamp.Now;

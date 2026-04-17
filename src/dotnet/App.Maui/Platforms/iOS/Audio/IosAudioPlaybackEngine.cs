@@ -68,7 +68,7 @@ public class IosAudioPlaybackEngine(
     public ValueTask PushFrame(MediaFrame frame, CancellationToken cancellationToken)
     {
         DebugLog?.LogTrace("#{PlayerId}.PushFrame", playerId);
-        var data = _decoder.Decode(frame.Data);
+        var data = _decoder.Decode(frame.Data.ToArray());
         return _voicePlayer.Feed(data, cancellationToken);
     }
 
