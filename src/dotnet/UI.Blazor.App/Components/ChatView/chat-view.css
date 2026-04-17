@@ -83,7 +83,8 @@ body.hoverable .chat-message-author-name:hover {
     @apply text-03 text-caption-8;
 }
 .forwarded-message .forwarded-chat-header-title {
-    @apply max-h-6 truncate;
+    @apply flex-none;
+    @apply max-h-6;
 }
 .forwarded-message .forwarded-chat-header-name {
     @apply max-h-6;

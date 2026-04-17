@@ -1,22 +1,17 @@
 export class EmojiModal {
     private observer: IntersectionObserver | null = null;
 
-    static create(sentinel: HTMLElement, blazorRef: DotNet.DotNetObject): EmojiModal | null {
-        if (!(sentinel instanceof HTMLElement))
-            return null;
-
-        const scrollContainer = sentinel.closest('.tab');
-        if (!scrollContainer)
-            return null;
-
-        return new EmojiModal(sentinel, scrollContainer, blazorRef);
+    static create(sentinel: HTMLElement, blazorRef: DotNet.DotNetObject): EmojiModal {
+        return new EmojiModal(sentinel, blazorRef);
     }
 
     constructor(
         sentinel: HTMLElement,
-        scrollContainer: Element,
         private readonly blazorRef: DotNet.DotNetObject,
     ) {
+        const scrollContainer = sentinel.closest('.c-gif-scroll');
+        if (!scrollContainer)
+            return;
         this.observer = new IntersectionObserver(
             entries => {
                 for (const entry of entries) {
