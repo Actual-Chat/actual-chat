@@ -1,11 +1,13 @@
 using ActualChat.Attributes;
 using ActualChat.Hosting;
+using ActualChat.Sharding;
 using ActualChat.Video;
 using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
 
 [BackendService(nameof(HostRole.StreamingBackend), ServiceMode.Distributed)]
+[BackendShardScheme(nameof(ShardScheme.StreamingBackend))]
 public interface IVideoStreamingBackend : IComputeService, IRpcService, IBackendService
 {
     Task<RpcStream<VideoFrame>?> GetVideo(StreamId streamId, TimeSpan skipTo, string peerId, CancellationToken cancellationToken);

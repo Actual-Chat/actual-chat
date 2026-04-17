@@ -24,6 +24,7 @@ public sealed class ShardScheme(
     // Backend shard schemes
     public static readonly ShardScheme FlowsBackend = new(nameof(FlowsBackend), N, HostRole.FlowsBackend);
     public static readonly ShardScheme MediaBackend = new(nameof(MediaBackend), N, HostRole.MediaBackend);
+    public static readonly ShardScheme StreamingBackend = new(nameof(StreamingBackend), N, HostRole.StreamingBackend);
     public static readonly ShardScheme LiveBackend = new(nameof(LiveBackend), N, HostRole.LiveBackend);
     public static readonly ShardScheme ChatBackend = new(nameof(ChatBackend), N, HostRole.ChatBackend);
     public static readonly ShardScheme ContactsBackend = new(nameof(ContactsBackend), N, HostRole.ContactsBackend);
@@ -42,6 +43,7 @@ public sealed class ShardScheme(
         { Queue.Id, Queue },
         { SlowQueue.Id, SlowQueue },
         { MediaBackend.Id, MediaBackend },
+        { StreamingBackend.Id, StreamingBackend },
         { LiveBackend.Id, LiveBackend },
         { ChatBackend.Id, ChatBackend },
         { ContactsBackend.Id, ContactsBackend },
