@@ -1,4 +1,3 @@
-@using System.ComponentModel.DataAnnotations
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComponentBase<AppUIHub>
 @implements IModalView<OwnAvatarEditorModal.Model>
@@ -95,9 +94,9 @@
 
     protected override async Task OnParametersSetAsync() {
         _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
-        var avatar = await Avatars.GetOwn(Session, ModalModel.AvatarId, default);
+        _form.OriginalAvatar = await Avatars.GetOwn(Session, ModalModel.AvatarId, default);
 
-        _isAnonymous = avatar?.IsAnonymous ?? false;
+        _isAnonymous = _form.OriginalAvatar?.IsAnonymous ?? false;
         var account = await Accounts.GetOwn(Session, default);
         var isDefault = ModalModel.AvatarId == account.Avatar.Id;
         var isActive = false;
@@ -106,10 +105,10 @@
             isActive = ModalModel.AvatarId == (author?.AvatarId ?? Symbol.Empty);
         }
 
-        _form.Picture = avatar?.Picture;
+        _form.Picture = _form.OriginalAvatar?.Picture;
 
-        _form.Name = avatar?.Name ?? "";
-        _form.Bio = avatar?.Bio ?? "";
+        _form.Name = _form.OriginalAvatar?.Name ?? "";
+        _form.Bio = _form.OriginalAvatar?.Bio ?? "";
         _form.IsDefault = isDefault;
         _form.IsActive = isActive;
         _form.Title = ModalModel.Title;
@@ -118,19 +117,18 @@
 
     private async Task OnSave() {
         var (avatarId, chatId, _) = ModalModel;
-        var avatar = await Avatars.GetOwn(Session, avatarId, default);
-        if (avatar == null) {
+        if (_form.OriginalAvatar == null) {
             _ = UICommander.Run(LocalCommand.New(static () => throw StandardError.NotFound<Avatar>()));
             return;
         }
-        var updated = avatar.WithPicture(_form.Picture) with { Name = _form.Name, Bio = _form.Bio };
-        var diff = DiffEngine.Diff<AvatarFull, AvatarDiff>(avatar, updated);
+        var updated = _form.OriginalAvatar.WithPicture(_form.Picture) with { Name = _form.Name, Bio = _form.Bio };
+        var diff = DiffEngine.Diff<AvatarFull, AvatarDiff>(_form.OriginalAvatar, updated);
         var command = new Avatars_Change(Session, avatarId, null, Change.Update(diff));
         var (_, error) = await UICommander.Run(command);
         if (error != null)
             return;
 
-        if (!avatar.IsAnonymous) {
+        if (!_form.OriginalAvatar.IsAnonymous) {
             if (_form is { IsDefault: true, Base.IsDefault: false })
                 await SetDefaultAvatar(_form.IsDefault ? avatarId : default);
             if (chatId is not null && _form is { IsActive: true, Base.IsActive: false })
@@ -195,6 +193,7 @@
         public string IsActiveFieldId { get; set; } = "";
         public string Title { get; set; } = "";
         public Picture? Picture { get; set; }
+        public AvatarFull? OriginalAvatar { get; set; }
     }
 
     // Nested types

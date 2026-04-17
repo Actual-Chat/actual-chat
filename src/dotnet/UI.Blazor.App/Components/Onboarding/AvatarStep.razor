@@ -74,6 +74,7 @@
         _model.Name = account.Name;
 
         if (!account.Avatar.Id.IsEmpty) {
+            _model.OriginalAvatar = await Avatars.GetOwn(Session, account.Avatar.Id, default);
             _model.Picture = account.Avatar.Picture!;
             _model.AvatarId = account.Avatar.Id;
             return;
@@ -86,6 +87,7 @@
         if (error != null)
             return;
 
+        _model.OriginalAvatar = newAvatar;
         _model.AvatarId = newAvatar.Id;
         _model.Picture = newAvatar.Picture! with { ExternalUrl = account.Avatar.PictureUrl };
         var setDefaultAvatarCommand = new Avatars_SetDefault(Session, newAvatar.Id);
@@ -107,9 +109,8 @@
             account.Version);
         await UICommander.Run(updateAccountCommand);
 
-        var avatar = await Avatars.GetOwn(Session, _model.AvatarId, default);
-        var updated = avatar!.WithPicture(_model.Picture) with { Name = _model.Name.Trim() };
-        var diff = DiffEngine.Diff<AvatarFull, AvatarDiff>(avatar, updated);
+        var updated = _model.OriginalAvatar!.WithPicture(_model.Picture) with { Name = _model.Name.Trim() };
+        var diff = DiffEngine.Diff<AvatarFull, AvatarDiff>(_model.OriginalAvatar, updated);
         var updateAvatarCommand = new Avatars_Change(Session, _model.AvatarId, null, Change.Update(diff));
         var (_, error) = await UICommander.Run(updateAvatarCommand);
         return error is null;
@@ -127,5 +128,6 @@
         [Required, Display(Name = "Name")] public string Name { get; set; } = "";
         public Symbol AvatarId { get; set; } = "";
         public Picture Picture { get; set; } = null!;
+        public AvatarFull? OriginalAvatar { get; set; }
     }
 }
