@@ -126,7 +126,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             else if (mustListen)
                 activeChats = activeChats.With(new ActiveChat(chatId, true, false, now, now), true);
             return activeChats;
-        }).ConfigureAwait(false);
+        });
     }
 
     public ValueTask ClearListeningChats()
