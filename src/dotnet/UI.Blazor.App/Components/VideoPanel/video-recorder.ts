@@ -563,7 +563,19 @@ export class VideoRecorder {
         recordingService.addEventListener('error', ((event: CustomEvent<Error>) => {
             this.onRecorderError(event.detail);
         }) as EventListener);
+        recordingService.addEventListener('encoder-failure', ((event: CustomEvent<string>) => {
+            this.onEncoderCodecFailed(event.detail);
+        }) as EventListener);
         return recordingService;
+    }
+
+    /** Remove failed encoder codec so updateSupportedDecoderCodecs won't pick it again */
+    private onEncoderCodecFailed(category: string): void {
+        const idx = this.supportedEncoderCategories.indexOf(category);
+        if (idx >= 0) {
+            this.supportedEncoderCategories.splice(idx, 1);
+            warnLog?.log(`Excluded encoder codec '${category}' after failure. Remaining: [${this.supportedEncoderCategories.join(', ')}]`);
+        }
     }
 
     private register(kind: number): void {

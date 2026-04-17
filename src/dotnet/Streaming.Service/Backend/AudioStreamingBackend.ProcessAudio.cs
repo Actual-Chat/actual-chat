@@ -111,10 +111,13 @@ public partial class AudioStreamingBackend
             await LiveBackend.Register(chatId, streamInfo, cancellationToken).ConfigureAwait(false);
         }
 
+        var headerFrame = new AudioFrame {
+            Data = new ActualOpusStreamHeader(audio.CreatedAt, audio.Format).Serialize(),
+            Offset = TimeSpan.FromMilliseconds(-1), // Header marker
+        };
         var audioStream = openSegment.Source
             .GetFrames(cancellationToken)
-            .Select(f => f.Data)
-            .Prepend(new ActualOpusStreamHeader(audio.CreatedAt, audio.Format).Serialize());
+            .Prepend(headerFrame);
         var publishAudioTask = mustStreamVoice
             ? BackgroundTask.Run(
                 () => _audioStreams.Publish(openSegment.StreamId, audioStream),

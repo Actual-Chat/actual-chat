@@ -1,3 +1,4 @@
+using ActualChat.Audio;
 using ActualChat.Live;
 using ActualLab.Rpc;
 
@@ -5,6 +6,7 @@ namespace ActualChat.Streaming.Services;
 
 /// <summary>
 /// Watches for active streams via ILiveAudioBackend computed List and multiplexes audio into a single output channel.
+/// Per-author merge: when two streams overlap for the same author (e.g. reconnection), keeps the fresher stream.
 /// </summary>
 public sealed class LiveStreamMuxer : WorkerBase
 {
@@ -13,6 +15,10 @@ public sealed class LiveStreamMuxer : WorkerBase
     private readonly Channel<LiveStreamItem> _output;
     private volatile LiveStreamSettings _settings;
     private int _nextStreamIndex;
+
+    // Per-author stream tracking for overlap detection and dedup.
+    // Each author has at most one "active" stream; stale streams are cancelled.
+    private readonly ConcurrentDictionary<AuthorId, AuthorStreamState> _authorStreams = new();
 
     public LiveStreamSettings Settings => _settings;
 
@@ -78,7 +84,9 @@ public sealed class LiveStreamMuxer : WorkerBase
                                 continue; // Already processing this stream
 
                             var streamIndex = Interlocked.Increment(ref _nextStreamIndex);
-                            Log.LogInformation("Starting stream #{StreamIndex} for stream #{StreamId}", streamIndex, streamInfo.StreamId);
+                            Log.LogDebug(
+                                "Starting stream #{StreamIndex} for {AuthorId} stream #{StreamId}",
+                                streamIndex, streamInfo.AuthorId, streamInfo.StreamId);
                             var streamTask = ProcessStream(streamInfo, streamIndex, cancellationToken);
                             streamTasks[streamInfo.StreamId] = streamTask;
                         }
@@ -113,10 +121,16 @@ public sealed class LiveStreamMuxer : WorkerBase
     private async Task ProcessStream(LiveStreamInfo streamInfo, int streamIndex, CancellationToken cancellationToken)
     {
         var frameCount = 0;
+        var authorId = streamInfo.AuthorId;
+        var streamId = streamInfo.StreamId;
+
+        // Register this stream and get a per-stream CTS (cancelled if a fresher stream takes over)
+        var streamCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         try {
-            var streamId = streamInfo.StreamId;
+            RegisterAuthorStream(authorId, streamId, streamInfo.BeginsAt, streamCts);
+
             var rpcStream = await StreamServer
-                .GetAudio(streamId, TimeSpan.Zero, cancellationToken)
+                .GetAudio(streamId, TimeSpan.Zero, streamCts.Token)
                 .ConfigureAwait(false);
             if (rpcStream == null) {
                 Log.LogWarning("ProcessStream: Stream #{StreamId} not found", streamId);
@@ -128,44 +142,140 @@ public sealed class LiveStreamMuxer : WorkerBase
                 StreamIndex = streamIndex,
                 StreamInfo = streamInfo,
             };
-            await _output.Writer.WriteAsync(startItem, cancellationToken).ConfigureAwait(false);
-            Log.LogDebug("Emitted StreamStart for stream #{StreamIndex}", streamIndex);
+            await _output.Writer.WriteAsync(startItem, streamCts.Token).ConfigureAwait(false);
 
-            // Emit audio frames
-            var audioStream = ((IAsyncEnumerable<byte[]>)rpcStream)
-                .SuppressException<byte[], RpcReconnectFailedException>(cancellationToken)
-                .SuppressCancellation(cancellationToken);
-            await foreach (var data in audioStream.ConfigureAwait(false)) {
+            // Emit audio frames with per-author overlap filtering
+            var audioStream = ((IAsyncEnumerable<AudioFrame>)rpcStream)
+                .SuppressException<AudioFrame, RpcReconnectFailedException>(streamCts.Token)
+                .SuppressCancellation(streamCts.Token);
+            await foreach (var frame in audioStream.ConfigureAwait(false)) {
+                // Early exit if superseded by a fresher stream
+                if (streamCts.IsCancellationRequested)
+                    break;
+
+                if (!ShouldEmitFrame(authorId, streamId, frame))
+                    continue;
+
                 var audioFrame = new LiveAudioFrame {
                     StreamIndex = streamIndex,
-                    Data = data,
+                    Data = frame.Data,
+                    Offset = frame.Offset,
                 };
-                await _output.Writer.WriteAsync(audioFrame, cancellationToken).ConfigureAwait(false);
+                await _output.Writer.WriteAsync(audioFrame, streamCts.Token).ConfigureAwait(false);
                 frameCount++;
+
+                UpdateLastEmittedOffset(authorId, streamId, frame.Offset);
             }
 
             // Emit stream end
             var endItem = new LiveStreamEnd { StreamIndex = streamIndex };
             await _output.Writer.WriteAsync(endItem, cancellationToken).ConfigureAwait(false);
-            Log.LogInformation("Stream #{StreamIndex} completed, {FrameCount} frames emitted", streamIndex, frameCount);
+            Log.LogInformation(
+                "Stream #{StreamIndex} for {AuthorId} completed, {FrameCount} frames emitted",
+                streamIndex, authorId, frameCount);
+        }
+        catch (OperationCanceledException) when (streamCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested) {
+            // Cancelled because a fresher stream replaced us — not an error
+            Log.LogInformation(
+                "Stream #{StreamIndex} for {AuthorId} superseded by fresher stream after {FrameCount} frames",
+                streamIndex, authorId, frameCount);
 
-            // TODO(AK): delay stream task until it consumed by all readers - 3-5s
+            // Emit end marker so downstream cleans up
+            try {
+                var endItem = new LiveStreamEnd { StreamIndex = streamIndex };
+                await _output.Writer.WriteAsync(endItem, cancellationToken).ConfigureAwait(false);
+            }
+            catch { /* Ignore */ }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
             Log.LogDebug("Stream #{StreamIndex} cancelled after {FrameCount} frames", streamIndex, frameCount);
         }
         catch (Exception e) {
-            Log.LogWarning(e, "Error processing stream #{StreamIndex} for stream #{StreamId}, {FrameCount} frames emitted",
-                streamIndex, streamInfo.StreamId, frameCount);
+            Log.LogWarning(e,
+                "Error processing stream #{StreamIndex} for {AuthorId} #{StreamId}, {FrameCount} frames emitted",
+                streamIndex, authorId, streamId, frameCount);
 
             // Still emit end marker on error
             try {
                 var endItem = new LiveStreamEnd { StreamIndex = streamIndex };
                 await _output.Writer.WriteAsync(endItem, cancellationToken).ConfigureAwait(false);
             }
-            catch {
-                // Ignore
-            }
+            catch { /* Ignore */ }
         }
+        finally {
+            // Remove author tracking only if we're still the active stream.
+            // If a newer stream already replaced us, TryRemove returns the newer state
+            // and the StreamId won't match — that's fine, we leave it.
+            if (_authorStreams.TryRemove(authorId, out var removed) && removed.StreamId != streamId)
+                _authorStreams.TryAdd(authorId, removed); // Put back — wasn't ours
+
+            streamCts.Dispose();
+        }
+    }
+
+    // Per-author stream management
+
+    private void RegisterAuthorStream(AuthorId authorId, string streamId, Moment beginsAt, CancellationTokenSource streamCts)
+        => _authorStreams.AddOrUpdate(
+            authorId,
+            _ => new AuthorStreamState(streamId, beginsAt, streamCts),
+            (_, existing) => {
+                if (beginsAt >= existing.BeginsAt) {
+                    // New stream is fresher — cancel the old one
+                    Log.LogWarning(
+                        "Author {AuthorId}: stream {NewStreamId} (beginsAt={NewBeginsAt}) replaces {OldStreamId} (beginsAt={OldBeginsAt})",
+                        authorId, streamId, beginsAt, existing.StreamId, existing.BeginsAt);
+                    existing.Cts?.Cancel();
+                    return new AuthorStreamState(streamId, beginsAt, streamCts);
+                }
+                // Existing stream is fresher — cancel ourselves
+                Log.LogWarning(
+                    "Author {AuthorId}: stream {NewStreamId} (beginsAt={NewBeginsAt}) is stale, keeping {OldStreamId} (beginsAt={OldBeginsAt})",
+                    authorId, streamId, beginsAt, existing.StreamId, existing.BeginsAt);
+                streamCts.Cancel();
+                return existing;
+            });
+
+    private bool ShouldEmitFrame(AuthorId authorId, string streamId, AudioFrame frame)
+    {
+        if (!_authorStreams.TryGetValue(authorId, out var state))
+            return true; // No tracking — emit (shouldn't normally happen)
+
+        if (state.StreamId == streamId)
+            return true; // We're the active stream — emit
+
+        // We're NOT the active stream. Check for overlap.
+        // If the active stream has already emitted frames beyond our offset, we're stale.
+        lock (state)
+            if (state.LastEmittedOffset > TimeSpan.Zero && frame.Offset <= state.LastEmittedOffset)
+                return false; // Overlap — drop
+
+        // No overlap detected yet — could be a sequential segment, emit for now.
+        // But if we were supposed to be cancelled, streamCts handles that.
+        return true;
+    }
+
+    private void UpdateLastEmittedOffset(AuthorId authorId, string streamId, TimeSpan offset)
+    {
+        if (offset < TimeSpan.Zero)
+            return; // Don't track header frames
+
+        if (!_authorStreams.TryGetValue(authorId, out var state) || state.StreamId != streamId)
+            return; // Not the active stream anymore
+
+        lock (state)
+            if (offset > state.LastEmittedOffset)
+                state.LastEmittedOffset = offset;
+    }
+
+    // Nested types
+
+    private sealed class AuthorStreamState(string streamId, Moment beginsAt, CancellationTokenSource? cts)
+    {
+        public string StreamId { get; } = streamId;
+        public Moment BeginsAt { get; } = beginsAt;
+        public CancellationTokenSource? Cts { get; } = cts;
+        // Guarded by lock(this) — only the active stream updates this
+        public TimeSpan LastEmittedOffset { get; set; }
     }
 }

@@ -231,6 +231,7 @@ export class RecordingService extends EventTarget {
                     return;
                 }
                 warnLog?.log(`Encoder failed for ${category}, falling back to H264`);
+                this.dispatchEvent(new CustomEvent('encoder-failure', { detail: category }));
                 void this.switchCodec('h264');
             };
 

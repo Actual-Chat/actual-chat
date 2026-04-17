@@ -32,15 +32,13 @@ public sealed class RemoteVideoStreamCache : IDisposable
 /// </summary>
 public sealed class RemoteAudioStreamCache : IDisposable
 {
-    public StreamStore<byte[]> Store { get; }
+    public StreamStore<AudioFrame> Store { get; }
 
     public RemoteAudioStreamCache(IServiceProvider services)
-    {
-        Store = new StreamStore<byte[]> {
+        => Store = new StreamStore<AudioFrame> {
             ExpirationDelay = services.GetRequiredService<AudioSettings>().StreamExpirationDelay,
             Log = services.LogFor($"{GetType().FullName}.Store"),
         };
-    }
 
     public void Dispose()
         => Store.Dispose();
