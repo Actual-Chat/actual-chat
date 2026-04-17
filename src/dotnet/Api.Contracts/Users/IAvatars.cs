@@ -27,7 +27,6 @@ public sealed partial record Avatars_Change(
     [property: DataMember, MemoryPackOrder(3)] Change<AvatarDiff> Change
 ) : ISessionCommand<AvatarFull>, IApiCommand;
 
-
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Avatars_SetDefault(

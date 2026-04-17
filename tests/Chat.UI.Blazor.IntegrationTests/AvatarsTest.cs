@@ -35,11 +35,11 @@ public class AvatarsTest(ChatAppHostFixture fixture, ITestOutputHelper @out)
     {
         // arrange
         await Tester.SignInAsUniqueBob();
-        var avatar = await Commander.Call(new Avatars_Change(Session, Symbol.Empty, null,
+        var avatar = await Tester.Commander.Call(new Avatars_Change(Session, Symbol.Empty, null,
             Change.Create(new AvatarDiff { Name = "Original", Bio = "Original bio" })));
 
         // act
-        var updated = await Commander.Call(new Avatars_Change(Session, avatar.Id, null,
+        var updated = await Tester.Commander.Call(new Avatars_Change(Session, avatar.Id, null,
             Change.Update(new AvatarDiff { Name = "Updated" })));
 
         // assert
@@ -57,13 +57,13 @@ public class AvatarsTest(ChatAppHostFixture fixture, ITestOutputHelper @out)
     {
         // arrange
         await Tester.SignInAsUniqueBob();
-        var avatar = await Commander.Call(new Avatars_Change(Session, Symbol.Empty, null,
+        var avatar = await Tester.Commander.Call(new Avatars_Change(Session, Symbol.Empty, null,
             Change.Create(new AvatarDiff { Name = "Original" })));
         await Commander.Call(new AvatarsBackend_Change(avatar.Id, null,
             Change.Update(new AvatarDiff { Bio = "Modified by migration" })));
 
         // act
-        var updated = await Commander.Call(new Avatars_Change(Session, avatar.Id, null,
+        var updated = await Tester.Commander.Call(new Avatars_Change(Session, avatar.Id, null,
             Change.Update(new AvatarDiff { Name = "Updated name" })));
 
         // assert

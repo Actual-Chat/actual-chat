@@ -4,6 +4,8 @@ namespace ActualChat.Users;
 /// Legacy IAvatars implementation for backward compatibility with old mobile clients
 /// that send Avatars_FullChange (Change&lt;AvatarFull&gt;).
 /// Converts to diff-based Avatars_Change and delegates to the real IAvatars service.
+/// Note: old clients still send ExpectedVersion and FromFull sets all diff properties,
+/// so they may still get VersionMismatchException on concurrent updates.
 /// Remove once all clients are migrated.
 /// </summary>
 #pragma warning disable CS0618 // Obsolete
