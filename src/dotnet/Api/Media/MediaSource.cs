@@ -31,7 +31,10 @@ public abstract class MediaSource<TFormat, TFrame> : IMediaSource
         CreatedAt = createdAt;
         Format = format;
         DurationTaskSource = AsyncTaskMethodBuilderExt.New<TimeSpan>();
-        MemoizedFrames = IterateThrough(frameStream, cancellationToken).Memoize(cancellationToken);
+        // onRemove disposes frames (returns pooled serialization buffers to ArrayPool).
+        // Unbounded memoizer — onRemove only fires on Dispose(), when all consumers are done.
+        MemoizedFrames = IterateThrough(frameStream, cancellationToken)
+            .Memoize(static f => f.Dispose(), cancellationToken);
         Log = log;
     }
 

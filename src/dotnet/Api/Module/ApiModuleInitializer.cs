@@ -1,5 +1,8 @@
 using ActualChat.Aot;
 using ActualChat.Internal;
+using ActualLab.Serialization.Internal;
+using MessagePack;
+using MessagePack.Resolvers;
 
 namespace ActualChat.Module;
 
@@ -17,6 +20,14 @@ public static class ApiModuleInitializer
         // This is super important: TypeRef and some other types that were formerly using Symbol
         // are stored in our DB, and this option enables their legacy serialization mode.
         StringAsSymbolMemoryPackFormatterAttribute.IsEnabled = true;
+
+        // Prepend a MessagePack resolver that supplies a caching formatter for VideoFrame —
+        // enables serialize-once fan-out via VideoFrame.SerializedData. Scoped to VideoFrame only.
+        // Must run before any VideoFrame is resolved (module initializer timing guarantees this).
+        DefaultMessagePackResolver.Resolvers = new IFormatterResolver[] {
+            ActualChat.Video.CachingVideoFrameResolver.Instance,
+            StandardResolver.Instance,
+        };
 
         // Custom MemoryPack formatters
 

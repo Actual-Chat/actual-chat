@@ -12,9 +12,11 @@ namespace ActualChat.Media;
 [Union(1, typeof(Video.VideoFrame))]
 public abstract partial class MediaFrame : IDisposable
 {
-    // ReadOnlyMemory<byte> for zero-copy slicing and reduced GC pressure
+    // ReadOnlyMemory<byte> for zero-copy slicing and reduced GC pressure.
+    // Setter (rather than init) allows CachingVideoFrameFormatter.Deserialize to re-point
+    // Data at a slice of SerializedData after caching, eliminating duplicate storage.
     [DataMember(Order = 0), MemoryPackOrder(0), Key("data")]
-    public ReadOnlyMemory<byte> Data { get; init; }
+    public ReadOnlyMemory<byte> Data { get; set; }
 
     [DataMember(Order = 1), MemoryPackOrder(1), Key("offset")]
     public abstract TimeSpan Offset { get; init; }
