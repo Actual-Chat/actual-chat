@@ -12,7 +12,7 @@ namespace ActualChat.Core.Benchmarks;
 /// </summary>
 [MemoryDiagnoser]
 [ThreadingDiagnoser]
-[SimpleJob]
+[MediumRunJob]
 public class AsyncMemoizerBenchmarks
 {
     public enum MemoizerKind { Old, New }
