@@ -1,11 +1,13 @@
 using System.Threading.Channels;
+using ActualChat.Internal;
 using BenchmarkDotNet.Attributes;
-
 
 namespace ActualChat.Core.Benchmarks;
 
 /// <summary>
 /// Benchmarks for AsyncMemoizer per-frame allocation and throughput.
+/// Compares the new linked-list <see cref="AsyncMemoizer{T}"/> against the legacy
+/// push-based <see cref="OldAsyncMemoizer{T}"/> across various reader counts.
 /// Run: dotnet run -c Release --project tests/Core.Benchmarks
 /// </summary>
 [MemoryDiagnoser]
@@ -13,6 +15,11 @@ namespace ActualChat.Core.Benchmarks;
 [SimpleJob]
 public class AsyncMemoizerBenchmarks
 {
+    public enum MemoizerKind { Old, New }
+
+    [Params(MemoizerKind.Old, MemoizerKind.New)]
+    public MemoizerKind Kind { get; set; }
+
     [Params(0, 1, 10, 100)]
     public int ConsumerCount { get; set; }
 
@@ -23,30 +30,26 @@ public class AsyncMemoizerBenchmarks
         const int capacity = 150; // matches video pipeline
 
         var source = Channel.CreateUnbounded<int>();
-        var memoizer = source.Memoize(capacity);
+        IAsyncMemoizer<int> memoizer = Kind switch {
+            MemoizerKind.Old => new OldAsyncMemoizer<int>(source.Reader.ReadAllAsync(), capacity),
+            MemoizerKind.New => new AsyncMemoizer<int>(source.Reader.ReadAllAsync(), capacity),
+            _ => throw new ArgumentOutOfRangeException(),
+        };
 
-        // Start consumers
         var consumers = new Task[ConsumerCount];
         for (var i = 0; i < ConsumerCount; i++)
             consumers[i] = Task.Run(async () => {
                 await foreach (var _ in memoizer.Replay(90)) { }
             });
 
-        // Give consumers time to register
-        if (ConsumerCount > 0)
-            await Task.Delay(10);
-
-        // Produce frames
         for (var i = 0; i < frameCount; i++)
             source.Writer.TryWrite(i);
         source.Writer.Complete();
 
         if (ConsumerCount > 0)
             await Task.WhenAll(consumers);
-        else
-            await memoizer.WriteTask;
 
-        memoizer.Dispose();
+        await memoizer.DisposeAsync();
     }
 
     [Benchmark]
@@ -55,17 +58,17 @@ public class AsyncMemoizerBenchmarks
         const int frameCount = 10_000;
 
         var source = Channel.CreateUnbounded<int>();
-        var memoizer = source.Memoize();
+        IAsyncMemoizer<int> memoizer = Kind switch {
+            MemoizerKind.Old => new OldAsyncMemoizer<int>(source.Reader.ReadAllAsync(), default),
+            MemoizerKind.New => new AsyncMemoizer<int>(source.Reader.ReadAllAsync(), default),
+            _ => throw new ArgumentOutOfRangeException(),
+        };
 
-        // Start consumers
         var consumers = new Task[ConsumerCount];
         for (var i = 0; i < ConsumerCount; i++)
             consumers[i] = Task.Run(async () => {
                 await foreach (var _ in memoizer.Replay()) { }
             });
-
-        if (ConsumerCount > 0)
-            await Task.Delay(10);
 
         for (var i = 0; i < frameCount; i++)
             source.Writer.TryWrite(i);
@@ -73,9 +76,7 @@ public class AsyncMemoizerBenchmarks
 
         if (ConsumerCount > 0)
             await Task.WhenAll(consumers);
-        else
-            await memoizer.WriteTask;
 
-        memoizer.Dispose();
+        await memoizer.DisposeAsync();
     }
 }

@@ -1,7 +1,55 @@
+using ActualChat.Internal;
+
 namespace ActualChat.Core.UnitTests.Channels;
 
-public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
+/// <summary>Shared tests run against <see cref="AsyncMemoizer{T}"/>.</summary>
+public class AsyncMemoizerTest(ITestOutputHelper @out) : AsyncMemoizerTestBase(@out)
 {
+    protected override bool IsItemDropInstant => false;
+
+    protected override IAsyncMemoizer<T> Memoize<T>(
+        IAsyncEnumerable<T> source,
+        int capacity = int.MaxValue,
+        CancellationToken cancellationToken = default)
+        => new AsyncMemoizer<T>(source, capacity, cancellationToken);
+}
+
+/// <summary>Shared tests run against the legacy <see cref="OldAsyncMemoizer{T}"/>.</summary>
+public class OldAsyncMemoizerTest(ITestOutputHelper @out) : AsyncMemoizerTestBase(@out)
+{
+    protected override bool IsItemDropInstant => true;
+
+    protected override IAsyncMemoizer<T> Memoize<T>(
+        IAsyncEnumerable<T> source,
+        int capacity = int.MaxValue,
+        CancellationToken cancellationToken = default)
+        => new OldAsyncMemoizer<T>(source, capacity, cancellationToken);
+}
+
+/// <summary>
+/// Common tests for <see cref="IAsyncMemoizer{T}"/> implementations. Subclasses at
+/// the top of this file supply the factory and declare whether item drops happen
+/// instantly when bounded capacity overflows (old impl) or lazily once lagging
+/// consumers release their local pointers (new impl).
+/// </summary>
+public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@out)
+{
+    /// <summary>Construct the memoizer under test.</summary>
+    protected abstract IAsyncMemoizer<T> Memoize<T>(
+        IAsyncEnumerable<T> source,
+        int capacity = int.MaxValue,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// True when overflowing bounded capacity physically evicts items from the buffer
+    /// immediately (old impl's ring buffer). False when evicted items are kept alive
+    /// by any lagging consumer that still holds a reference (new impl's linked list).
+    /// </summary>
+    protected abstract bool IsItemDropInstant { get; }
+
+    protected IAsyncMemoizer<T> Memoize<T>(Channel<T> channel, int capacity = int.MaxValue, CancellationToken ct = default)
+        => Memoize(channel.Reader.ReadAllAsync(ct), capacity, ct);
+
     // === Basic tests (bounded) ===
 
     [Fact]
@@ -9,11 +57,11 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
     {
         var source = Channel.CreateUnbounded<int>();
         source.Writer.Complete();
-        var memoizer = source.Memoize(8);
+        await using var memoizer = Memoize(source, 8);
 
         var items = await memoizer.Replay().ToListAsync();
         items.Should().BeEmpty();
-        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
+        await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5));
         memoizer.IsCompleted.Should().BeTrue();
         memoizer.Completion.Should().BeOfType<ChannelClosedException>();
     }
@@ -24,7 +72,7 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         var source = Channel.CreateUnbounded<int>();
         source.Writer.TryWrite(1);
         source.Writer.Complete();
-        var memoizer = source.Memoize(8);
+        await using var memoizer = Memoize(source, 8);
 
         var items = await memoizer.Replay().ToListAsync();
         items.Should().Equal(1);
@@ -37,7 +85,7 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         for (var i = 1; i <= 5; i++)
             source.Writer.TryWrite(i);
         source.Writer.Complete();
-        var memoizer = source.Memoize(8);
+        await using var memoizer = Memoize(source, 8);
 
         var items = await memoizer.Replay().ToListAsync();
         items.Should().Equal(1, 2, 3, 4, 5);
@@ -50,9 +98,9 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         for (var i = 1; i <= 10; i++)
             source.Writer.TryWrite(i);
         source.Writer.Complete();
-        var memoizer = source.Memoize(4);
+        await using var memoizer = Memoize(source, 4);
 
-        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
+        await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5));
         memoizer.IsCompleted.Should().BeTrue();
 
         var items = await memoizer.Replay().ToListAsync();
@@ -66,7 +114,7 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         for (var i = 1; i <= 5; i++)
             source.Writer.TryWrite(i);
         source.Writer.Complete();
-        var memoizer = source.Memoize(16);
+        await using var memoizer = Memoize(source, 16);
 
         var items1 = await memoizer.Replay().ToListAsync();
         var items2 = await memoizer.Replay().ToListAsync();
@@ -82,9 +130,9 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         for (var i = 1; i <= 5; i++)
             source.Writer.TryWrite(i);
         source.Writer.Complete();
-        var memoizer = source.Memoize(16);
+        await using var memoizer = Memoize(source, 16);
 
-        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
+        await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5));
 
         var items = await memoizer.Replay(0).ToListAsync();
         items.Should().BeEmpty();
@@ -97,9 +145,9 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         for (var i = 1; i <= 10; i++)
             source.Writer.TryWrite(i);
         source.Writer.Complete();
-        var memoizer = source.Memoize(16);
+        await using var memoizer = Memoize(source, 16);
 
-        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
+        await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5));
 
         var items = await memoizer.Replay(3).ToListAsync();
         items.Should().Equal(8, 9, 10);
@@ -112,9 +160,9 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         for (var i = 1; i <= 3; i++)
             source.Writer.TryWrite(i);
         source.Writer.Complete();
-        var memoizer = source.Memoize(8);
+        await using var memoizer = Memoize(source, 8);
 
-        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
+        await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5));
 
         var items = await memoizer.Replay(100).ToListAsync();
         items.Should().Equal(1, 2, 3);
@@ -124,8 +172,7 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
     public async Task ErrorCompletion()
     {
         var error = new InvalidOperationException("test error");
-        var source = CreateFailingSource(new[] { 1, 2, 3 }, error);
-        var memoizer = source.Memoize(8);
+        await using var memoizer = Memoize(CreateFailingSource(new[] { 1, 2, 3 }, error), 8);
 
         var items = new List<int>();
         var caughtError = await Assert.ThrowsAsync<InvalidOperationException>(async () => {
@@ -136,8 +183,12 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         caughtError.Should().BeSameAs(error);
         items.Should().Equal(1, 2, 3);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => memoizer.ReadTask.WaitAsync(TimeSpan.FromSeconds(5)));
+        // WhenRunning may or may not propagate the exception depending on the impl
+        // (new impl's single Read task rethrows; old impl's Write sub-task completes
+        // normally even when Read faulted). Waiting for it is enough — the memoizer
+        // should report the error via Completion either way.
+        try { await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5)); }
+        catch (InvalidOperationException) { }
 
         memoizer.IsCompleted.Should().BeTrue();
         memoizer.Completion.Should().BeSameAs(error);
@@ -150,29 +201,29 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         source.Writer.TryWrite(1);
         source.Writer.TryWrite(2);
         source.Writer.Complete();
-        var memoizer = source.Memoize(8);
+        await using var memoizer = Memoize(source, 8);
 
         var items = await memoizer.Replay().ToListAsync();
         items.Should().Equal(1, 2);
 
-        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
+        await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5));
         memoizer.IsCompleted.Should().BeTrue();
         memoizer.Completion.Should().BeOfType<ChannelClosedException>();
     }
 
     [Fact]
-    public async Task Dispose_ReturnsBuffer()
+    public async Task Dispose_IsSafeToCallTwice()
     {
         var source = Channel.CreateUnbounded<int>();
         source.Writer.TryWrite(1);
         source.Writer.Complete();
-        var memoizer = source.Memoize(8);
+        var memoizer = Memoize(source, 8);
 
         await memoizer.Replay().ToListAsync();
-        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
 
-        memoizer.Dispose();
-        memoizer.Dispose(); // double dispose safe
+        // DisposeAsync awaits WhenRunning internally — no need for an explicit wait.
+        await memoizer.DisposeAsync();
+        await memoizer.DisposeAsync(); // double dispose safe
     }
 
     [Fact]
@@ -182,9 +233,9 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         for (var i = 1; i <= 10; i++)
             source.Writer.TryWrite(i);
         source.Writer.Complete();
-        var memoizer = source.Memoize(3);
+        await using var memoizer = Memoize(source, 3);
 
-        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
+        await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5));
 
         var items = await memoizer.Replay().ToListAsync();
         items.Should().Equal(8, 9, 10);
@@ -193,8 +244,7 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public async Task Memoize_FromAsyncEnumerable()
     {
-        var source = new[] { 1, 2, 3 }.ToAsyncEnumerable();
-        var memoizer = source.Memoize(8);
+        await using var memoizer = Memoize(new[] { 1, 2, 3 }.ToAsyncEnumerable(), 8);
 
         var items = await memoizer.Replay().ToListAsync();
         items.Should().Equal(1, 2, 3);
@@ -207,9 +257,9 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         for (var i = 1; i <= 5; i++)
             source.Writer.TryWrite(i);
         source.Writer.Complete();
-        var memoizer = source.Memoize(8);
+        await using var memoizer = Memoize(source, 8);
 
-        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
+        await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5));
 
         for (var r = 0; r < 3; r++) {
             var items = await memoizer.Replay().ToListAsync();
@@ -221,7 +271,7 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
     public async Task LiveConsumer_GetsItemsAsTheyArePushed()
     {
         var source = Channel.CreateUnbounded<int>();
-        var memoizer = source.Memoize(16);
+        await using var memoizer = Memoize(source, 16);
 
         var consumerTask = Task.Run(async () => await memoizer.Replay().ToListAsync());
 
@@ -240,14 +290,9 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
     public async Task ErrorCompletion_LateReplay()
     {
         var error = new InvalidOperationException("test error");
-        var source = CreateFailingSource(new[] { 1, 2 }, error);
-        var memoizer = source.Memoize(8);
+        await using var memoizer = Memoize(CreateFailingSource(new[] { 1, 2 }, error), 8);
 
-        try { await memoizer.ReadTask.WaitAsync(TimeSpan.FromSeconds(5)); }
-        catch (InvalidOperationException) { }
-
-        // WriteTask completes normally after Read task failure closes _newTargets channel
-        try { await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5)); }
+        try { await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5)); }
         catch (InvalidOperationException) { }
 
         var items = new List<int>();
@@ -267,9 +312,9 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         for (var i = 1; i <= 5; i++)
             source.Writer.TryWrite(i);
         source.Writer.Complete();
-        var memoizer = source.Memoize(1);
+        await using var memoizer = Memoize(source, 1);
 
-        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
+        await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5));
 
         var items = await memoizer.Replay().ToListAsync();
         items.Should().Equal(5);
@@ -279,7 +324,7 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
     public async Task TwoLiveConsumers_BothGetAllItems()
     {
         var source = Channel.CreateUnbounded<int>();
-        var memoizer = source.Memoize(16);
+        await using var memoizer = Memoize(source, 16);
 
         var consumer1 = Task.Run(async () => await memoizer.Replay().ToListAsync());
         var consumer2 = Task.Run(async () => await memoizer.Replay().ToListAsync());
@@ -302,7 +347,7 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
     public async Task SecondConsumer_JoinsAfterSomeItems()
     {
         var source = Channel.CreateUnbounded<int>();
-        var memoizer = source.Memoize(16);
+        await using var memoizer = Memoize(source, 16);
 
         var consumer1 = Task.Run(async () => await memoizer.Replay().ToListAsync());
         await Task.Yield();
@@ -333,46 +378,22 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         for (var i = 1; i <= 5; i++)
             source.Writer.TryWrite(i);
         source.Writer.Complete();
-        var memoizer = source.Memoize(16);
+        await using var memoizer = Memoize(source, 16);
 
-        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
+        await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5));
 
-        // tailSize=2 after completion: gets last 2 items
         var items = await memoizer.Replay(2).ToListAsync();
         items.Should().Equal(4, 5);
     }
 
-    [Fact]
-    public async Task TailSize_Zero_WithLiveConsumer()
-    {
-        var source = Channel.CreateUnbounded<int>();
-        var memoizer = source.Memoize(16);
-
-        for (var i = 1; i <= 5; i++)
-            source.Writer.TryWrite(i);
-        await SpinWaitForBuffered(memoizer, 5);
-
-        // Register replay target directly to avoid race between Task.Run startup and item writes
-        var replayChannel = Channel.CreateUnbounded<int>(new UnboundedChannelOptions { SingleReader = true });
-        await memoizer.AddReplayTarget(replayChannel.Writer, 0);
-
-        source.Writer.TryWrite(6);
-        source.Writer.TryWrite(7);
-        source.Writer.Complete();
-
-        var items = await replayChannel.Reader.ReadAllAsync().ToListAsync()
-            .AsTask().WaitAsync(TimeSpan.FromSeconds(5));
-        items.Should().Equal(6, 7);
-    }
-
-    // === Unbounded mode tests (from AsyncMemoizer v1 patterns) ===
+    // === Unbounded mode tests ===
 
     [Fact]
     public async Task Unbounded_EmptyStream()
     {
         var source = Channel.CreateUnbounded<int>();
         source.Writer.Complete();
-        var memoizer = source.Memoize();
+        await using var memoizer = Memoize(source);
 
         var items = await memoizer.Replay().ToListAsync();
         items.Should().BeEmpty();
@@ -386,9 +407,9 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         for (var i = 1; i <= 100; i++)
             source.Writer.TryWrite(i);
         source.Writer.Complete();
-        var memoizer = source.Memoize();
+        await using var memoizer = Memoize(source);
 
-        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
+        await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5));
 
         var items = await memoizer.Replay().ToListAsync();
         items.Should().Equal(Enumerable.Range(1, 100));
@@ -397,8 +418,7 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public async Task Unbounded_MultipleReplays()
     {
-        var source = new[] { 1, 2, 3, 4, 5 }.ToAsyncEnumerable();
-        var memoizer = source.Memoize();
+        await using var memoizer = Memoize(new[] { 1, 2, 3, 4, 5 }.ToAsyncEnumerable());
 
         var items1 = await memoizer.Replay().ToListAsync();
         var items2 = await memoizer.Replay().ToListAsync();
@@ -411,7 +431,7 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
     public async Task Unbounded_LiveConsumer()
     {
         var channel = Channel.CreateUnbounded<int>();
-        var memoizer = channel.Memoize();
+        await using var memoizer = Memoize(channel);
 
         var consumerTask = Task.Run(async () => await memoizer.Replay().ToListAsync());
         await Task.Yield();
@@ -429,8 +449,7 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
     public async Task Unbounded_ErrorCompletion()
     {
         var error = new InvalidOperationException("test error");
-        var source = CreateFailingSource(new[] { 1, 2, 3 }, error);
-        var memoizer = source.Memoize();
+        await using var memoizer = Memoize(CreateFailingSource(new[] { 1, 2, 3 }, error));
 
         var items = new List<int>();
         await Assert.ThrowsAsync<InvalidOperationException>(async () => {
@@ -446,15 +465,14 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public async Task Unbounded_GrowsBeyondInitialCapacity()
     {
-        // Initial buffer is 16, push way more to force growing
-        var count = 1000;
+        const int count = 1000;
         var source = Channel.CreateUnbounded<int>();
         for (var i = 0; i < count; i++)
             source.Writer.TryWrite(i);
         source.Writer.Complete();
-        var memoizer = source.Memoize();
+        await using var memoizer = Memoize(source);
 
-        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
+        await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5));
 
         var items = await memoizer.Replay().ToListAsync();
         items.Should().Equal(Enumerable.Range(0, count));
@@ -463,11 +481,10 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public async Task Unbounded_CompletedEmptyChannel_Stress()
     {
-        // From AsyncMemoizer v1 test
         var tasks = Enumerable.Range(0, 100).Select(async _ => {
             var source = Channel.CreateUnbounded<int>();
             source.Writer.Complete();
-            var memoizer = source.Memoize();
+            await using var memoizer = Memoize(source);
             var target = Channel.CreateUnbounded<int>();
             await memoizer.AddReplayTarget(target, int.MaxValue)
                 .WaitAsync(TimeSpan.FromSeconds(5));
@@ -481,10 +498,8 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public async Task Unbounded_BasicRange()
     {
-        // From AsyncMemoizer v1 BasicTest
         for (var count = 0; count <= 50; count++) {
-            var source = Enumerable.Range(0, count).ToAsyncEnumerable();
-            var memoizer = source.Memoize();
+            await using var memoizer = Memoize(Enumerable.Range(0, count).ToAsyncEnumerable());
 
             var items1 = await memoizer.Replay().ToListAsync();
             var items2 = await memoizer.Replay().ToListAsync();
@@ -494,31 +509,14 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         }
     }
 
-    [Fact]
-    public async Task Unbounded_Dispose_ReturnsAllBuffers()
-    {
-        var source = Channel.CreateUnbounded<int>();
-        // Push enough to force multiple growths (initial=16, then 32, 64, ...)
-        for (var i = 0; i < 200; i++)
-            source.Writer.TryWrite(i);
-        source.Writer.Complete();
-        var memoizer = source.Memoize();
-
-        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
-
-        // Should not throw
-        memoizer.Dispose();
-        memoizer.Dispose();
-    }
-
     // === Sliding window tests ===
 
     [Fact]
     public async Task Sliding_BasicReplay()
     {
         var items = Enumerable.Range(0, 5).ToArray();
-        var memoizer = items.ToAsyncEnumerable().Memoize(10);
-        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
+        await using var memoizer = Memoize(items.ToAsyncEnumerable(), 10);
+        await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5));
 
         var replayed = await memoizer.Replay().ToListAsync();
         replayed.Should().Equal(items);
@@ -528,8 +526,8 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
     public async Task Sliding_WindowTrims()
     {
         var items = Enumerable.Range(0, 20).ToArray();
-        var memoizer = items.ToAsyncEnumerable().Memoize(8);
-        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
+        await using var memoizer = Memoize(items.ToAsyncEnumerable(), 8);
+        await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5));
 
         var replayed = await memoizer.Replay().ToListAsync();
         replayed.Should().HaveCount(8);
@@ -540,8 +538,8 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
     public async Task Sliding_ExactCapacity()
     {
         var items = Enumerable.Range(0, 10).ToArray();
-        var memoizer = items.ToAsyncEnumerable().Memoize(10);
-        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
+        await using var memoizer = Memoize(items.ToAsyncEnumerable(), 10);
+        await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5));
 
         var replayed = await memoizer.Replay().ToListAsync();
         replayed.Should().Equal(items);
@@ -551,9 +549,8 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
     public async Task Sliding_MultipleConsumers()
     {
         var source = Channel.CreateUnbounded<int>();
-        var memoizer = source.Memoize(100);
+        await using var memoizer = Memoize(source, 100);
 
-        // Start consumers before writes (like TwoLiveConsumers which passes)
         var consumer1 = Task.Run(async () => await memoizer.Replay().ToListAsync());
         var consumer2 = Task.Run(async () => await memoizer.Replay().ToListAsync());
         await Task.Yield();
@@ -574,8 +571,8 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
     public async Task Sliding_LateJoinerGetsOnlyBuffer()
     {
         var items = Enumerable.Range(0, 100).ToArray();
-        var memoizer = items.ToAsyncEnumerable().Memoize(10);
-        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
+        await using var memoizer = Memoize(items.ToAsyncEnumerable(), 10);
+        await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5));
 
         var replayed = await memoizer.Replay().ToListAsync();
         replayed.Should().HaveCount(10);
@@ -586,7 +583,7 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
     public async Task Sliding_LiveConsumerGetsAllItems()
     {
         var source = Channel.CreateUnbounded<int>();
-        var memoizer = source.Memoize(100);
+        await using var memoizer = Memoize(source, 100);
 
         var allItems = new List<int>();
         var consumerTask = Task.Run(async () => {
@@ -612,20 +609,20 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         var source = Channel.CreateUnbounded<int>();
         source.Writer.TryWrite(1);
         source.Writer.Complete();
-        var memoizer = source.Memoize(10);
+        await using var memoizer = Memoize(source, 10);
 
         var result = await memoizer.Replay().ToListAsync();
         result.Should().Equal(1);
 
-        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
+        await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5));
         memoizer.IsCompleted.Should().BeTrue();
     }
 
     [Fact]
     public async Task Sliding_EmptySource()
     {
-        var memoizer = AsyncEnumerable.Empty<int>().Memoize(10);
-        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
+        await using var memoizer = Memoize(AsyncEnumerable.Empty<int>(), 10);
+        await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5));
 
         var replayed = await memoizer.Replay().ToListAsync();
         replayed.Should().BeEmpty();
@@ -635,8 +632,8 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
     public async Task Sliding_CapacityOne()
     {
         var items = Enumerable.Range(0, 50).ToArray();
-        var memoizer = items.ToAsyncEnumerable().Memoize(1);
-        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
+        await using var memoizer = Memoize(items.ToAsyncEnumerable(), 1);
+        await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5));
 
         var replayed = await memoizer.Replay().ToListAsync();
         replayed.Should().Equal(49);
@@ -649,7 +646,7 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
     {
         var source = Channel.CreateUnbounded<int>();
         source.Writer.TryWrite(1);
-        var memoizer = source.Memoize(10);
+        await using var memoizer = Memoize(source, 10);
 
         await SpinWaitForBuffered(memoizer, 1);
 
@@ -674,44 +671,33 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public async Task Cancellation_CompletesWriteTask()
     {
-        // Regression test: cancelling the source token must cause WriteTask to complete.
-        // Previously, OperationCanceledException skipped Complete(), leaving WriteTask
-        // hanging forever — causing memory leaks (zombie memoizers never disposed).
         using var cts = new CancellationTokenSource();
         var source = Channel.CreateUnbounded<int>();
         source.Writer.TryWrite(1);
         source.Writer.TryWrite(2);
-        var memoizer = source.Memoize(10, cts.Token);
+        await using var memoizer = Memoize(source, 10, cts.Token);
 
         await SpinWaitForBuffered(memoizer, 2);
 
-        // Cancel the source — simulates video call disconnect
         await cts.CancelAsync();
 
-        // Both tasks must complete promptly
-        await memoizer.ReadTask.WaitAsync(TimeSpan.FromSeconds(5)).SuppressCancellationAwait(false);
-        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
+        await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5));
         memoizer.IsCompleted.Should().BeTrue();
-
-        // Dispose must succeed without hanging
-        memoizer.Dispose();
     }
 
     [Fact]
     public async Task Cancellation_LateJoinerCanReplayBufferedItems()
     {
-        // When source token is cancelled, write pipeline must still complete and
-        // a late consumer should be able to replay all items already cached.
         using var cts = new CancellationTokenSource();
         var source = Channel.CreateUnbounded<int>();
         for (var i = 1; i <= 5; i++)
             source.Writer.TryWrite(i);
 
-        var memoizer = source.Memoize(10, cts.Token);
+        await using var memoizer = Memoize(source, 10, cts.Token);
         await SpinWaitForBuffered(memoizer, 5);
 
         await cts.CancelAsync();
-        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
+        await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5));
 
         var replayed = await memoizer.Replay()
             .ToListAsync()
@@ -719,341 +705,89 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
             .WaitAsync(TimeSpan.FromSeconds(2));
 
         replayed.Should().Equal(1, 2, 3, 4, 5);
-        memoizer.Dispose();
     }
 
-    [Fact]
-    public async Task BoundedReplay_SlowConsumerSkipsEvictedItems()
-    {
-        // A slow consumer blocks while new items overflow the bounded ring buffer.
-        // The Write task skips evicted items (StartIndex advances past them).
-        // The consumer sees: initial tail items, then a gap, then items still in the ring.
-        var source = Channel.CreateUnbounded<int>();
-        var memoizer = source.Memoize(10); // ring buffer capacity = 10
-
-        // Push initial items
-        for (var i = 1; i <= 5; i++)
-            source.Writer.TryWrite(i);
-        await SpinWaitForBuffered(memoizer, 5);
-
-        // Start a replay — consumer will block after first item
-        var firstItem = new TaskCompletionSource<int>();
-        var gate = new TaskCompletionSource();
-        var items = new List<int>();
-        var replayTask = Task.Run(async () => {
-            await foreach (var item in memoizer.Replay()) {
-                if (!firstItem.Task.IsCompleted) {
-                    firstItem.SetResult(item);
-                    await gate.Task.ConfigureAwait(false); // Block consumer after first read
-                }
-                items.Add(item);
-            }
-        });
-
-        // Wait for consumer to read first item and block
-        await firstItem.Task.WaitAsync(TimeSpan.FromSeconds(5));
-
-        // Overflow the ring buffer while consumer is blocked (capacity=10, write 50 items)
-        for (var i = 6; i <= 50; i++)
-            source.Writer.TryWrite(i);
-        await SpinWaitForBuffered(memoizer, 50);
-
-        // Complete source and unblock consumer
-        source.Writer.Complete();
-        gate.SetResult();
-        await replayTask.WaitAsync(TimeSpan.FromSeconds(5));
-
-        // Consumer should have the first item + only the ring buffer tail
-        items.First().Should().Be(1, "first item was read before blocking");
-        items.Last().Should().Be(50, "most recent item should be present");
-        items.Should().HaveCountLessThan(50, "some items should be skipped due to ring eviction");
-    }
-
-    // === Issue: Unbounded mode retains references in old buffers ===
-
-    [Fact]
-    public async Task Unbounded_OldBufferRetainsReferences()
-    {
-        // When unbounded memoizer grows its buffer, old items are copied to the new buffer,
-        // but the old buffer (in _oldBuffersHead) still holds references to those items.
-        // For reference types, this prevents GC of items that have been logically evicted.
-        var source = Channel.CreateUnbounded<object>();
-        var memoizer = source.Memoize(cancellationToken: CancellationToken.None);
-        // Initial buffer size is 16 — write 20 items to trigger growth.
-        // Item creation is in a non-async helper to avoid async state machine
-        // fields retaining the last object reference during GC.
-        var weakRefs = PopulateChannelWithTrackedObjects(source, 20);
-        await SpinWaitForBuffered(memoizer, 20);
-
-        // Complete and dispose — this returns buffers to pool with clearOnReturn
-        source.Writer.Complete();
-        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
-        memoizer.Dispose();
-
-        // Force GC
-        GC.Collect(2, GCCollectionMode.Forced, true);
-        GC.WaitForPendingFinalizers();
-        GC.Collect(2, GCCollectionMode.Forced, true);
-
-        // After dispose, all items should be collectable
-        var aliveCount = weakRefs.Count(wr => wr.IsAlive);
-        aliveCount.Should().Be(0,
-            "all items should be GC'd after dispose — old buffers must clear references");
-    }
-
-    [Fact]
-    public async Task Unbounded_OldBufferClearsReferencesOnDispose()
-    {
-        // Old buffer references are NOT cleared on growth (concurrent readers need them).
-        // They are cleared when returned to the pool in Dispose().
-        var source = Channel.CreateUnbounded<object>();
-        var memoizer = source.Memoize(cancellationToken: CancellationToken.None);
-
-        // Write 20 items to trigger growth from initial 16 → 32.
-        // Item creation is in a non-async helper to avoid async state machine
-        // fields retaining the object reference during GC.
-        var earlyWeakRef = WriteEarlyItemAndGetWeakRef(source);
-        for (var i = 1; i < 20; i++)
-            source.Writer.TryWrite(new object());
-        await SpinWaitForBuffered(memoizer, 20);
-
-        // The item is still held by the active buffer (memoizer keeps all items in unbounded mode)
-        GC.Collect(2, GCCollectionMode.Forced, true);
-        GC.WaitForPendingFinalizers();
-        earlyWeakRef.IsAlive.Should().BeTrue("item is still in the active buffer");
-
-        source.Writer.Complete();
-        memoizer.Dispose();
-
-        // After dispose, the item should be collectable
-        GC.Collect(2, GCCollectionMode.Forced, true);
-        GC.WaitForPendingFinalizers();
-        GC.Collect(2, GCCollectionMode.Forced, true);
-        earlyWeakRef.IsAlive.Should().BeFalse("item should be GC'd after dispose");
-    }
-
-    // === Issue: Dispose doesn't await Read/Write tasks ===
-
-    [Fact]
-    public async Task Dispose_WhileWriteTaskStillRunning()
-    {
-        // Dispose returns buffers to ArrayPool immediately, but the Write task
-        // may still be reading from _snapshot.Buffer. This test checks if the
-        // Write task accesses the buffer after Dispose returns it to the pool.
-        var gate = new TaskCompletionSource();
-        async IAsyncEnumerable<int> SlowSource([EnumeratorCancellation] CancellationToken ct = default)
-        {
-            yield return 1;
-            await gate.Task.WaitAsync(ct).ConfigureAwait(false);
-            yield return 2;
-        }
-
-        var memoizer = SlowSource().Memoize(10);
-        await SpinWaitForBuffered(memoizer, 1);
-
-        // Start a consumer that will be mid-read
-        var items = new List<int>();
-        var replayTask = Task.Run(async () => {
-            await foreach (var item in memoizer.Replay())
-                items.Add(item);
-        });
-
-        // Let consumer receive first item
-        await Task.Delay(50);
-
-        // Release second item and immediately dispose
-        gate.SetResult();
-        await memoizer.ReadTask.WaitAsync(TimeSpan.FromSeconds(5));
-
-        // Dispose while Write task may still be distributing to consumer
-        memoizer.Dispose();
-
-        // The Write task should still complete cleanly
-        // (currently it may access a returned buffer — this documents the issue)
-        var writeCompleted = memoizer.WriteTask.Wait(TimeSpan.FromSeconds(2));
-        writeCompleted.Should().BeTrue("Write task should complete even after Dispose");
-    }
-
-    // === Issue: AddReplayTarget completion race ===
+    // === AddReplayTarget completion races ===
 
     [Fact]
     public async Task AddReplayTarget_SourceCompletesWhileRegistering()
     {
-        // Race condition: source completes between the first CopyTo in AddReplayTarget
-        // and the channel being registered in _newTargets. The fallback path
-        // (await WriteTask + re-copy) must properly propagate completion.
         for (var attempt = 0; attempt < 50; attempt++) {
             var source = Channel.CreateUnbounded<int>();
             for (var i = 1; i <= 5; i++)
                 source.Writer.TryWrite(i);
 
-            var memoizer = source.Memoize(10);
+            await using var memoizer = Memoize(source, 10);
             await SpinWaitForBuffered(memoizer, 5);
 
-            // Complete source right before starting replay — creates a race
-            // between AddReplayTarget's snapshot.CopyTo and the completion propagation
             source.Writer.Complete();
 
-            // Replay must get all items AND see completion (not hang)
             var items = await memoizer.Replay()
                 .ToListAsync()
                 .AsTask()
                 .WaitAsync(TimeSpan.FromSeconds(2));
 
             items.Should().Equal(1, 2, 3, 4, 5);
-            memoizer.Dispose();
         }
     }
 
     [Fact]
     public async Task AddReplayTarget_LateJoinerAfterCompletion()
     {
-        // A consumer joining after the source has fully completed must
-        // receive all buffered items and see completion.
         var source = Channel.CreateUnbounded<int>();
         for (var i = 1; i <= 3; i++)
             source.Writer.TryWrite(i);
         source.Writer.Complete();
 
-        var memoizer = source.Memoize(10);
-        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(5));
+        await using var memoizer = Memoize(source, 10);
+        await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5));
 
-        // Source fully completed — late joiner should still work
         var items = await memoizer.Replay()
             .ToListAsync()
             .AsTask()
             .WaitAsync(TimeSpan.FromSeconds(2));
 
         items.Should().Equal(1, 2, 3);
-        memoizer.Dispose();
     }
 
-    // === Regression: concurrent read during buffer growth must not yield nulls ===
+    // === AddReplayTarget fan-out ===
 
     [Fact]
-    public async Task Unbounded_ReplayDuringGrowth_NoNulls()
+    public async Task AddReplayTarget_AllTargetsGetAllItems()
     {
-        // Reproduces NRE from AudioSourceExt.Concat:55 —
-        // AddReplayTarget captures a snapshot referencing buffer B1,
-        // then WriteItem grows the buffer and Array.Clear(B1) nulls out
-        // items that the snapshot reader is still iterating over.
-        const int initialItems = 14; // just under initial capacity (16)
-        const int growthItems = 50;  // enough to trigger multiple growths
-
-        var source = Channel.CreateUnbounded<object>();
-
-        // Write items up to just below initial buffer capacity
-        for (var i = 0; i < initialItems; i++)
-            source.Writer.TryWrite(new object());
-
-        var memoizer = source.Memoize(cancellationToken: CancellationToken.None);
-        await SpinWaitForBuffered(memoizer, initialItems);
-
-        // Start a replay — this captures a snapshot pointing at the current buffer
-        var replayTask = Task.Run(async () => {
-            var items = new List<object>();
-            await foreach (var item in memoizer.Replay().ConfigureAwait(false)) {
-                item.Should().NotBeNull("snapshot reader must not see nulled-out buffer slots");
-                items.Add(item);
-                if (items.Count >= initialItems + growthItems)
-                    break;
-            }
-            return items;
-        });
-
-        // Give replay a moment to start reading from the snapshot
-        await Task.Delay(50);
-
-        // Now pump more items to trigger buffer growth (16 → 32 → 64 → ...)
-        for (var i = 0; i < growthItems; i++)
-            source.Writer.TryWrite(new object());
-
-        var result = await replayTask.WaitAsync(TimeSpan.FromSeconds(10));
-        result.Should().HaveCount(initialItems + growthItems);
-        result.Should().NotContainNulls("all items must survive buffer growth");
-
-        source.Writer.Complete();
-        memoizer.Dispose();
-    }
-
-    [Fact]
-    public async Task Unbounded_AddReplayTargetDuringGrowth_NoNulls()
-    {
-        // Variant: AddReplayTarget is called right as buffer grows,
-        // so CopyTo iterates the old-buffer snapshot.
-        const int totalItems = 100; // forces growth from 16 → 32 → 64 → 128
-        var gate = new TaskCompletionSource();
-
-        async IAsyncEnumerable<object> SlowSource([EnumeratorCancellation] CancellationToken ct = default)
-        {
-            for (var i = 0; i < 15; i++) // fill near capacity
-                yield return new object();
-            await gate.Task.WaitAsync(ct).ConfigureAwait(false);
-            for (var i = 15; i < totalItems; i++) // trigger growth
-                yield return new object();
-        }
-
-        var memoizer = SlowSource().Memoize(cancellationToken: CancellationToken.None);
-        await SpinWaitForBuffered(memoizer, 15);
-
-        // Capture snapshot via AddReplayTarget while buffer is at near-capacity
-        var channel = Channel.CreateUnbounded<object>(new UnboundedChannelOptions { SingleReader = true });
-        await memoizer.AddReplayTarget(channel, int.MaxValue);
-
-        // Release the gate — source will push items that trigger growth
-        gate.SetResult();
-        await memoizer.WriteTask.WaitAsync(TimeSpan.FromSeconds(10));
-
-        // Read all items from the channel and verify none are null
-        var items = new List<object>();
-        while (await channel.Reader.WaitToReadAsync())
-        while (channel.Reader.TryRead(out var item))
-            items.Add(item);
-
-        items.Should().HaveCount(totalItems);
-        items.Should().NotContainNulls("items copied via AddReplayTarget must survive buffer growth");
-
-        memoizer.Dispose();
-    }
-
-    // === Push-based fan-out behavior tests ===
-
-    [Fact]
-    public async Task PushFanOut_AllConsumersEventuallyGetAllItems()
-    {
-        // The Write task fans out sequentially, so a slow consumer's WriteAsync
-        // temporarily delays delivery to subsequent consumers. All eventually receive all items.
         var source = Channel.CreateUnbounded<int>();
-        var memoizer = source.Memoize(1000);
+        await using var memoizer = Memoize(source, 1000);
 
-        var channels = new Channel<int>[5];
-        for (var i = 0; i < channels.Length; i++) {
-            channels[i] = Channel.CreateUnbounded<int>(new UnboundedChannelOptions { SingleReader = true });
-            await memoizer.AddReplayTarget(channels[i].Writer, 0);
+        const int targetCount = 5;
+        var channels = new Channel<int>[targetCount];
+        var registerTasks = new Task[targetCount];
+        for (var i = 0; i < targetCount; i++) {
+            var ch = Channel.CreateUnbounded<int>(new UnboundedChannelOptions { SingleReader = true });
+            channels[i] = ch;
+            registerTasks[i] = memoizer.AddReplayTarget(ch.Writer, 0);
         }
+
+        // For pull-based impls the register-tasks never finish until the source completes,
+        // so we only wait for them at the end.
+        await Task.Delay(50);
 
         for (var i = 1; i <= 100; i++)
             source.Writer.TryWrite(i);
         source.Writer.Complete();
 
-        // All consumers should eventually get all items
         foreach (var ch in channels) {
             var items = await ch.Reader.ReadAllAsync().ToListAsync()
                 .AsTask().WaitAsync(TimeSpan.FromSeconds(5));
             items.Should().Equal(Enumerable.Range(1, 100));
         }
-
-        memoizer.Dispose();
+        await Task.WhenAll(registerTasks).WaitAsync(TimeSpan.FromSeconds(5));
     }
 
     [Fact]
-    public async Task Unbounded_LiveConsumer_Over1024Items_NoStall()
+    public async Task LiveConsumer_Over1024Items_NoStall()
     {
-        // Reproduces the audio streaming stall: slow producer + live consumer + >1024 items
-        // The buffer resizes at 16, 32, ..., 1024, 2048. If the Write task misses a signal
-        // during resize, the consumer stalls.
         var channel = Channel.CreateUnbounded<int>();
-        var memoizer = channel.Reader.ReadAllAsync().Memoize();
+        await using var memoizer = Memoize(channel.Reader.ReadAllAsync());
 
         var consumedCount = 0;
         var consumerTask = Task.Run(async () => {
@@ -1064,14 +798,11 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
             }
         });
 
-        // Produce >1024 items to cross the buffer resize boundary.
-        // Use 1ms delay to keep the test fast (~1.2s) while still exercising async interleaving.
-        var targetCount = 1200;
+        const int targetCount = 1200;
         for (var i = 0; i < targetCount; i++) {
             channel.Writer.TryWrite(i);
             await Task.Delay(1);
 
-            // Check for stall every 200 items
             if (i > 0 && i % 200 == 0) {
                 var consumed = Volatile.Read(ref consumedCount);
                 var lag = i - consumed;
@@ -1086,16 +817,11 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
-    public async Task Unbounded_TwoLayerMemoizer_NoStall()
+    public async Task TwoLayerMemoizer_NoStall()
     {
-        // Reproduces the audio pipeline: source → Memoizer1 → Replay → Memoizer2 → Replay → consumer
         var channel = Channel.CreateUnbounded<int>();
-
-        // Layer 1: memoize the source
-        var memoizer1 = channel.Reader.ReadAllAsync().Memoize();
-
-        // Layer 2: memoize a Replay of layer 1 (like StreamStore.Publish does)
-        var memoizer2 = memoizer1.Replay().Memoize();
+        await using var memoizer1 = Memoize(channel.Reader.ReadAllAsync());
+        await using var memoizer2 = Memoize(memoizer1.Replay());
 
         var consumedCount = 0;
         var consumerTask = Task.Run(async () => {
@@ -1106,7 +832,7 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
             }
         });
 
-        var targetCount = 1200;
+        const int targetCount = 1200;
         for (var i = 0; i < targetCount; i++) {
             channel.Writer.TryWrite(i);
             await Task.Delay(1);
@@ -1124,21 +850,262 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         Volatile.Read(ref consumedCount).Should().Be(targetCount);
     }
 
-    // === Helpers ===
+    // === Bounded capacity overflow + slow consumer ===
+    // IsItemDropInstant=true  (old): the ring buffer physically overwrites evicted items;
+    //     the consumer sees whatever remained in the ring when it resumed, with a gap.
+    // IsItemDropInstant=false (new): the consumer holds evicted nodes alive via its local
+    //     pointer and sees every item produced (the stall just delays delivery).
+    // Either way, a *new* late-joiner sees only the current buffer (last capacity items).
 
-    private static async Task SpinWaitForBuffered<T>(AsyncMemoizer<T> memoizer, int expectedCount, int timeoutMs = 5000)
+    [Fact]
+    public async Task BoundedReplay_SlowConsumerUnderCapacityOverflow()
     {
-        var sw = Stopwatch.StartNew();
-        while (sw.ElapsedMilliseconds < timeoutMs) {
-            if (memoizer.BufferedCount >= expectedCount)
-                return;
-            await Task.Yield();
+        var source = Channel.CreateUnbounded<int>();
+        await using var memoizer = Memoize(source, 10);
+
+        for (var i = 1; i <= 5; i++)
+            source.Writer.TryWrite(i);
+        await SpinWaitForBuffered(memoizer, 5);
+
+        var firstItem = new TaskCompletionSource<int>();
+        var gate = new TaskCompletionSource();
+        var items = new List<int>();
+        var replayTask = Task.Run(async () => {
+            await foreach (var item in memoizer.Replay()) {
+                if (!firstItem.Task.IsCompleted) {
+                    firstItem.SetResult(item);
+                    await gate.Task.ConfigureAwait(false);
+                }
+                items.Add(item);
+            }
+        });
+
+        await firstItem.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        for (var i = 6; i <= 50; i++)
+            source.Writer.TryWrite(i);
+
+        // BufferedCount semantics differ: instant-drop tracks total writes;
+        // lazy-drop caps at capacity.
+        await SpinWaitForBuffered(memoizer, IsItemDropInstant ? 50 : 10);
+
+        source.Writer.Complete();
+        gate.SetResult();
+        await replayTask.WaitAsync(TimeSpan.FromSeconds(5));
+
+        if (IsItemDropInstant) {
+            items.First().Should().Be(1, "first item was read before blocking");
+            items.Last().Should().Be(50, "most recent item should be present");
+            items.Should().HaveCountLessThan(50, "some items should be skipped due to ring eviction");
         }
-        throw new TimeoutException($"Timed out waiting for {expectedCount} buffered items, got {memoizer.BufferedCount}");
+        else {
+            items.Should().Equal(Enumerable.Range(1, 50));
+        }
+
+        // A new late joiner sees only what's currently buffered — identical for both modes.
+        var lateItems = await memoizer.Replay()
+            .ToListAsync()
+            .AsTask()
+            .WaitAsync(TimeSpan.FromSeconds(5));
+        lateItems.Should().Equal(Enumerable.Range(41, 10));
     }
 
+    // === TailSize = 0 with a live consumer ===
+
+    [Fact]
+    public async Task TailSize_Zero_WithLiveConsumer()
+    {
+        var source = Channel.CreateUnbounded<int>();
+        await using var memoizer = Memoize(source, 16);
+
+        for (var i = 1; i <= 5; i++)
+            source.Writer.TryWrite(i);
+        await SpinWaitForBuffered(memoizer, 5);
+
+        var replayChannel = Channel.CreateUnbounded<int>(new UnboundedChannelOptions { SingleReader = true });
+        var copyTask = Task.Run(() => memoizer.AddReplayTarget(replayChannel.Writer, 0));
+
+        // Give AddReplayTarget a moment to register / reach its first await.
+        await Task.Delay(100);
+
+        source.Writer.TryWrite(6);
+        source.Writer.TryWrite(7);
+        source.Writer.Complete();
+
+        var items = await replayChannel.Reader.ReadAllAsync().ToListAsync()
+            .AsTask().WaitAsync(TimeSpan.FromSeconds(5));
+        await copyTask.WaitAsync(TimeSpan.FromSeconds(5));
+        items.Should().Equal(6, 7);
+    }
+
+    // === DisposeAsync releases buffered items for GC ===
+
+    [Fact]
+    public async Task Dispose_ReleasesBufferedItems()
+    {
+        var (memoizer, weakRefs) = await SetupAndDispose();
+
+        var aliveCount = 0;
+        for (var attempt = 0; attempt < 5; attempt++) {
+            GC.Collect(2, GCCollectionMode.Forced, true);
+            GC.WaitForPendingFinalizers();
+            GC.Collect(2, GCCollectionMode.Forced, true);
+            aliveCount = weakRefs.Count(wr => wr.IsAlive);
+            if (aliveCount == 0)
+                break;
+            await Task.Delay(50);
+        }
+
+        aliveCount.Should().Be(0, "all items should be GC'd after DisposeAsync");
+        GC.KeepAlive(memoizer);
+        return;
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        async Task<(IAsyncMemoizer<object> Memoizer, List<WeakReference> WeakRefs)> SetupAndDispose()
+        {
+            var source = Channel.CreateUnbounded<object>();
+            var weakRefs = PopulateChannelWithTrackedObjects(source, 20);
+            var m = Memoize(source);
+            await SpinWaitForBuffered(m, 20);
+
+            source.Writer.Complete();
+            await m.DisposeAsync();
+            return (m, weakRefs);
+        }
+    }
+
+    [Fact]
+    public async Task ItemsHeldUntilDispose()
+    {
+        var source = Channel.CreateUnbounded<object>();
+        var earlyWeakRef = WriteEarlyItemAndGetWeakRef(source);
+        for (var i = 1; i < 20; i++)
+            source.Writer.TryWrite(new object());
+        var memoizer = Memoize(source);
+        await SpinWaitForBuffered(memoizer, 20);
+
+        GC.Collect(2, GCCollectionMode.Forced, true);
+        GC.WaitForPendingFinalizers();
+        earlyWeakRef.IsAlive.Should().BeTrue("item is still buffered");
+
+        source.Writer.Complete();
+        await memoizer.DisposeAsync();
+
+        GC.Collect(2, GCCollectionMode.Forced, true);
+        GC.WaitForPendingFinalizers();
+        GC.Collect(2, GCCollectionMode.Forced, true);
+        earlyWeakRef.IsAlive.Should().BeFalse("item should be GC'd after DisposeAsync");
+    }
+
+    // === In-flight iterations survive DisposeAsync ===
+
+    [Fact]
+    public async Task Dispose_WhileConsumerStillIterating()
+    {
+        var gate = new TaskCompletionSource();
+        async IAsyncEnumerable<int> SlowSource([EnumeratorCancellation] CancellationToken ct = default)
+        {
+            yield return 1;
+            await gate.Task.WaitAsync(ct).ConfigureAwait(false);
+            yield return 2;
+        }
+
+        var memoizer = Memoize(SlowSource(), 10);
+        await SpinWaitForBuffered(memoizer, 1);
+
+        var items = new List<int>();
+        var replayTask = Task.Run(async () => {
+            await foreach (var item in memoizer.Replay())
+                items.Add(item);
+        });
+
+        await Task.Delay(50);
+
+        gate.SetResult();
+        await memoizer.DisposeAsync();
+
+        var consumerCompleted = replayTask.Wait(TimeSpan.FromSeconds(2));
+        consumerCompleted.Should().BeTrue("consumer should complete even after DisposeAsync");
+        items.Should().Equal(1, 2);
+    }
+
+    // === No nulls during concurrent heavy appends ===
+
+    [Fact]
+    public async Task ReplayDuringHeavyAppends_NoNulls()
+    {
+        const int initialItems = 14;
+        const int extraItems = 50;
+
+        var source = Channel.CreateUnbounded<object>();
+        for (var i = 0; i < initialItems; i++)
+            source.Writer.TryWrite(new object());
+
+        await using var memoizer = Memoize(source);
+        await SpinWaitForBuffered(memoizer, initialItems);
+
+        var replayTask = Task.Run(async () => {
+            var collected = new List<object>();
+            await foreach (var item in memoizer.Replay().ConfigureAwait(false)) {
+                item.Should().NotBeNull();
+                collected.Add(item);
+                if (collected.Count >= initialItems + extraItems)
+                    break;
+            }
+            return collected;
+        });
+
+        await Task.Delay(50);
+
+        for (var i = 0; i < extraItems; i++)
+            source.Writer.TryWrite(new object());
+
+        var result = await replayTask.WaitAsync(TimeSpan.FromSeconds(10));
+        result.Should().HaveCount(initialItems + extraItems);
+        result.Should().NotContainNulls();
+
+        source.Writer.Complete();
+    }
+
+    [Fact]
+    public async Task AddReplayTargetDuringHeavyAppends_NoNulls()
+    {
+        const int totalItems = 100;
+        var gate = new TaskCompletionSource();
+
+        async IAsyncEnumerable<object> SlowSource([EnumeratorCancellation] CancellationToken ct = default)
+        {
+            for (var i = 0; i < 15; i++)
+                yield return new object();
+            await gate.Task.WaitAsync(ct).ConfigureAwait(false);
+            for (var i = 15; i < totalItems; i++)
+                yield return new object();
+        }
+
+        await using var memoizer = Memoize(SlowSource());
+        await SpinWaitForBuffered(memoizer, 15);
+
+        var channel = Channel.CreateUnbounded<object>(new UnboundedChannelOptions { SingleReader = true });
+        var copyTask = Task.Run(() => memoizer.AddReplayTarget(channel, int.MaxValue));
+        await Task.Delay(50);
+
+        gate.SetResult();
+
+        var items = new List<object>();
+        while (await channel.Reader.WaitToReadAsync())
+        while (channel.Reader.TryRead(out var item))
+            items.Add(item);
+
+        await copyTask.WaitAsync(TimeSpan.FromSeconds(10));
+
+        items.Should().HaveCount(totalItems);
+        items.Should().NotContainNulls();
+    }
+
+    // === Helpers ===
+
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static WeakReference WriteEarlyItemAndGetWeakRef(Channel<object> channel)
+    protected static WeakReference WriteEarlyItemAndGetWeakRef(Channel<object> channel)
     {
         var item = new object();
         var weakRef = new WeakReference(item);
@@ -1147,7 +1114,7 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static List<WeakReference> PopulateChannelWithTrackedObjects(Channel<object> channel, int count)
+    protected static List<WeakReference> PopulateChannelWithTrackedObjects(Channel<object> channel, int count)
     {
         var weakRefs = new List<WeakReference>();
         for (var i = 0; i < count; i++) {
@@ -1158,7 +1125,18 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         return weakRefs;
     }
 
-    private static async IAsyncEnumerable<T> CreateFailingSource<T>(
+    protected static async Task SpinWaitForBuffered<T>(IAsyncMemoizer<T> memoizer, int expectedCount, int timeoutMs = 5000)
+    {
+        var sw = Stopwatch.StartNew();
+        while (sw.ElapsedMilliseconds < timeoutMs) {
+            if (memoizer.BufferedCount >= expectedCount)
+                return;
+            await Task.Yield();
+        }
+        throw new TimeoutException($"Timed out waiting for {expectedCount} buffered items, got {memoizer.BufferedCount}");
+    }
+
+    protected static async IAsyncEnumerable<T> CreateFailingSource<T>(
         T[] items,
         Exception error,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)

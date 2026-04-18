@@ -1,4 +1,3 @@
-using System.Buffers;
 using ActualChat.Diagnostics;
 using ActualChat.Streaming.Services;
 using ActualChat.Video;
@@ -9,9 +8,6 @@ namespace ActualChat.Streaming;
 
 public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 {
-    // Dedicated pool to avoid SharedArrayPool.Trim() contention under GC pressure
-    private static readonly ArrayPool<VideoFrame> VideoFramePool = ArrayPool<VideoFrame>.Create();
-
     private readonly StreamStore<VideoFrame> _videoStreams;
 
     private MeshNode ThisNode => field ??= Services.MeshWatcher().ThisNode;
@@ -111,12 +107,11 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 
         // Check if this stream is paused by the priority evaluator (cross-service RPC to ChatId shard)
         // Skip pause check for remote-cached streams that have no ChatId
-        if (latencyState.ChatId is not null) {
-            var isPaused = await LiveVideoBackend.ShouldPause(latencyState.ChatId, streamId, cancellationToken)
-                .ConfigureAwait(false);
-            if (isPaused)
-                return VideoQualityPreset.Paused;
-        }
+        var isPaused = await LiveVideoBackend
+            .ShouldPause(latencyState.ChatId, streamId, cancellationToken)
+            .ConfigureAwait(false);
+        if (isPaused)
+            return VideoQualityPreset.Paused;
 
         var preset = await latencyState.QualityPreset.Use(cancellationToken).ConfigureAwait(false);
 
@@ -244,7 +239,6 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 
             var memoizer = ProcessFrames(videoFrames).Memoize(
                 Constants.Video.RetentionBufferSize,
-                VideoFramePool,
                 cancellationToken);
             await _videoStreams.Publish(record.StreamId, memoizer).ConfigureAwait(false);
         }

@@ -22,7 +22,7 @@ namespace ActualChat.Chat;
 public class TranslationsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), ITranslationsBackend
 {
     private static readonly TimeSpan TranslateThrottleDelay = TimeSpan.FromMilliseconds(500);
-    private readonly ConcurrentDictionary<StreamId, FuncWorker> _activePublishers = new ();
+    private readonly ConcurrentDictionary<StreamId, FuncWorker> _activePublishers = new();
 
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
     private IDbEntityResolver<string, DbTranslation> EntityResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbTranslation>>();
@@ -419,7 +419,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         var stopToken = stopTokenSource.Token;
         var transcriptStream = transcript
             .SuppressException<TranscriptDiff, RpcReconnectFailedException>(stopToken)
-            .Memoize(NonPoolingArrayPool<TranscriptDiff>.Instance, stopToken);
+            .Memoize(stopToken);
 
         var worker = _activePublishers.GetOrAdd(translatedStreamId,
             static (_, state) => {

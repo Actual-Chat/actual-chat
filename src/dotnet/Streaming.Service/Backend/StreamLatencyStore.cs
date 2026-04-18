@@ -124,10 +124,15 @@ public sealed class StreamLatencyStore(IServiceProvider services)
         }
     }
 
-    public sealed class StreamLatencyState(ChatId chatId, Moment startedAt, VideoFormat format, StateFactory stateFactory, ILogger log)
+    public sealed class StreamLatencyState(
+        ChatId chatId,
+        Moment startedAt,
+        VideoFormat format,
+        StateFactory stateFactory,
+        ILogger log)
     {
-        private readonly ILogger Log = log;
-        private readonly ILogger? DebugLog = log.IfEnabled(LogLevel.Debug);
+        private ILogger Log { get; } = log;
+        private ILogger? DebugLog { get; } = log.IfEnabled(LogLevel.Debug);
 
         public ChatId ChatId { get; } = chatId;
         public Moment StartedAt { get; } = startedAt;
@@ -155,7 +160,6 @@ public sealed class StreamLatencyStore(IServiceProvider services)
         private CpuTimestamp _lastByteReceivedAt = CpuTimestamp.Now;
         private int _consecutiveLowThroughputChecks;
         private int _consecutiveHighThroughputChecks;
-
 
         public int GetPeerMaxTemporalLayer(string peerId)
             => _peers.TryGetValue(peerId, out var state) ? state.MaxTemporalLayer : int.MaxValue;

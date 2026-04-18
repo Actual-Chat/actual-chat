@@ -55,44 +55,24 @@ public static partial class ChannelExt
     public static AsyncMemoizer<T> Memoize<T>(
         this Channel<T> source,
         CancellationToken cancellationToken = default)
-        => new(source.Reader.ReadAllAsync(cancellationToken), int.MaxValue, ArrayPool<T>.Shared, cancellationToken);
-    public static AsyncMemoizer<T> Memoize<T>(
-        this Channel<T> source,
-        ArrayPool<T> pool,
-        CancellationToken cancellationToken = default)
-        => new(source.Reader.ReadAllAsync(cancellationToken), int.MaxValue, pool, cancellationToken);
+        => new(source.Reader.ReadAllAsync(cancellationToken), int.MaxValue, cancellationToken);
+
     public static AsyncMemoizer<T> Memoize<T>(
         this Channel<T> source,
         int capacity,
         CancellationToken cancellationToken = default)
-        => new(source.Reader.ReadAllAsync(cancellationToken), capacity, ArrayPool<T>.Shared, cancellationToken);
-    public static AsyncMemoizer<T> Memoize<T>(
-        this Channel<T> source,
-        int capacity,
-        ArrayPool<T> pool,
-        CancellationToken cancellationToken = default)
-        => new (source.Reader.ReadAllAsync(cancellationToken), capacity, pool, cancellationToken);
+        => new(source.Reader.ReadAllAsync(cancellationToken), capacity, cancellationToken);
 
     public static AsyncMemoizer<T> Memoize<T>(
         this ChannelReader<T> source,
         CancellationToken cancellationToken = default)
-        => new(source.ReadAllAsync(cancellationToken), int.MaxValue, ArrayPool<T>.Shared, cancellationToken);
-    public static AsyncMemoizer<T> Memoize<T>(
-        this ChannelReader<T> source,
-        ArrayPool<T> pool,
-        CancellationToken cancellationToken = default)
-        => new(source.ReadAllAsync(cancellationToken), int.MaxValue, pool, cancellationToken);
+        => new(source.ReadAllAsync(cancellationToken), int.MaxValue, cancellationToken);
+
     public static AsyncMemoizer<T> Memoize<T>(
         this ChannelReader<T> source,
         int capacity,
         CancellationToken cancellationToken = default)
-        => new(source.ReadAllAsync(cancellationToken), capacity, ArrayPool<T>.Shared, cancellationToken);
-    public static AsyncMemoizer<T> Memoize<T>(
-        this ChannelReader<T> source,
-        int capacity,
-        ArrayPool<T> pool,
-        CancellationToken cancellationToken = default)
-        => new(source.ReadAllAsync(cancellationToken), capacity, pool, cancellationToken);
+        => new(source.ReadAllAsync(cancellationToken), capacity, cancellationToken);
 
     // ReadOrNone & other helpers
 
