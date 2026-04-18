@@ -73,17 +73,17 @@ public class StreamStore<TItem> : ProcessorBase
 
         Log?.LogInformation("Publish(#{StreamId}): stream registered", streamId);
 
-        var writeTask = memoizer.WriteTask;
+        var whenMemoizerRunning = memoizer.WhenRunning ?? Task.CompletedTask;
         _ = BackgroundTask.Run(async () => {
             var bumpExpirationPeriod = ExpirationDelay / 2;
             while (true) {
                 await Task.Delay(bumpExpirationPeriod).SilentAwait(false);
                 entry.BumpExpiresAt(ExpirationDelay);
-                if (writeTask.IsCompleted)
+                if (whenMemoizerRunning.IsCompleted)
                     return;
             }
         }, CancellationToken.None);
-        return writeTask;
+        return whenMemoizerRunning;
     }
 
     // Protected methods
