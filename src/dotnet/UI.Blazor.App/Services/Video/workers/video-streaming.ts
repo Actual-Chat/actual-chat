@@ -10,17 +10,11 @@
 import Denque from 'denque';
 import { EventHandlerSet } from 'event-handling';
 import { getLogs } from 'logging';
-import { RpcHub, RpcClientPeer, RpcStream } from 'actuallab-rpc';
-import {
-    StreamServerDef,
-    type VideoFormatDto,
-    type VideoFrameDto,
-} from '../streaming-rpc-service';
+import { RpcStream } from 'actuallab-rpc';
+import { Api, streamingApi,
+    type StreamServerClient, type VideoFormatDto, type VideoFrameDto } from 'api';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
-
-/** Serialization format for Fusion RPC push. Matches the pull side. */
-const RPC_SERIALIZATION_FORMAT = 'msgpack6';
 
 /** Session token used by PushVideo — `'~'` = Session.Default, resolved from the
  *  WebSocket connection context (same trick as the pull side GetStream call). */
@@ -48,17 +42,12 @@ export interface StreamingContext {
     serverClockOffsetMs: number;
     streamKind: number; // 0 = Webcam, 1 = Screencast
     processing: boolean;
-    /** Fusion RPC WebSocket URL. */
+    /** Fusion RPC WebSocket URL. Mirrored into `Api.hub.defaultPeerUrl` on first
+     *  push via {@link ensureRpcPush}. */
     rpcWsUrl: string | null;
-    /** Lazily-constructed RPC hub (worker-local). */
-    rpcHub: RpcHub | null;
-    /** Lazily-constructed RPC client peer (worker-local). */
-    rpcPeer: RpcClientPeer | null;
-    /** Lazily-constructed `IStreamServer` RPC client. */
-    rpcStreamServer: {
-        PushVideo(session: string, chatId: string, clientStartOffset: number,
-            format: VideoFormatDto, frameStreamRef: unknown, streamKind: number): Promise<void>;
-    } | null;
+    /** Lazily-constructed `IStreamServer` RPC client, bound to the hub's
+     *  default peer. */
+    rpcStreamServer: StreamServerClient | null;
 }
 
 export function serverClockNow(ctx: StreamingContext): number {
@@ -88,24 +77,17 @@ function frameToDto(frame: VideoStreamFrame): VideoFrameDto {
 }
 
 /**
- * Lazily initialise the Fusion RPC push peer for the worker context. The hub,
- * peer and `IStreamServer` client are cached on the `StreamingContext` so every
- * `InternalVideoStream` instance shares the same WebSocket for the life of the
- * worker.
+ * Lazily initialise the Fusion RPC push peer for the worker context by
+ * configuring the shared `Api.hub`'s default peer. The `IStreamServer` client
+ * is cached on the `StreamingContext` so every `InternalVideoStream` instance
+ * shares the same WebSocket for the life of the worker.
  */
 export function ensureRpcPush(ctx: StreamingContext): void {
-    if (ctx.rpcPeer && ctx.rpcStreamServer) return;
+    if (ctx.rpcStreamServer) return;
     if (!ctx.rpcWsUrl)
         throw new Error('Fusion RPC push: rpcWsUrl is not set');
-    ctx.rpcHub ??= new RpcHub(); // hubId must be a UUID; RpcHub() assigns one
-    if (!ctx.rpcPeer) {
-        ctx.rpcPeer = new RpcClientPeer(ctx.rpcHub, ctx.rpcWsUrl, RPC_SERIALIZATION_FORMAT);
-        void ctx.rpcPeer.run();
-    }
-    ctx.rpcStreamServer ??= ctx.rpcHub.addClient(ctx.rpcPeer, StreamServerDef) as unknown as {
-        PushVideo(session: string, chatId: string, clientStartOffset: number,
-            format: VideoFormatDto, frameStreamRef: unknown, streamKind: number): Promise<void>;
-    };
+    Api.init(ctx.rpcWsUrl, streamingApi);
+    ctx.rpcStreamServer = streamingApi.streamServer;
 }
 
 /**
@@ -156,7 +138,7 @@ export class InternalVideoStream {
 
             ensureRpcPush(this.ctx);
             const streamServer = this.ctx.rpcStreamServer!;
-            const peer = this.ctx.rpcPeer!;
+            const peer = Api.peer;
 
             const clientStartOffset = serverClockNow(this.ctx) / 1000;
             warnLog?.log(`TIMING_ANCHOR: clientStartOffset=${clientStartOffset.toFixed(3)}s`);

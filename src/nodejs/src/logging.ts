@@ -32,6 +32,7 @@ export type { LogRef, LogScopeFns } from './actuallab-core/index.js';
 export type LogScope =
     | 'default'
     // Library
+    | 'Api'
     | 'AsyncProcessor'
     | 'BrowserInfo'
     | 'BrowserInit'
@@ -133,6 +134,7 @@ export type LogScope =
 const defaults: Record<LogScope, LogLevel> = {
     default: LogLevel.Warn,
     // Library
+    Api: LogLevel.Warn,
     AsyncProcessor: LogLevel.Warn,
     BrowserInfo: LogLevel.Warn,
     BrowserInit: LogLevel.Warn,

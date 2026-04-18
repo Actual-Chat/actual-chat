@@ -7,7 +7,7 @@
 //      same identity across their individual connections.
 
 import { randomUUID } from 'node:crypto';
-import { RpcHub, RpcClientPeer } from '../src/actuallab-rpc/index.js';
+import { RpcHub, RpcClientPeer, RpcPeerRefBuilder } from '../src/actuallab-rpc/index.js';
 
 import { createNodeWsFactory } from './node-ws.js';
 import {
@@ -44,8 +44,10 @@ export async function signIn(opts: SignInOptions): Promise<SignInResult> {
 
     const sessionId = newSessionId();
     const hub = new RpcHub();
-    const peer = new RpcClientPeer(hub, opts.rpcWsUrl, 'msgpack6');
-    const wsFactory = createNodeWsFactory({ sessionId });
+    const url = RpcPeerRefBuilder.forClient(opts.rpcWsUrl, 'msgpack6');
+    // mustStart=false — set the Node-specific webSocketFactory before start.
+    const peer = hub.getClientPeer(url, (h, r) => new RpcClientPeer(h, r, false));
+    peer.webSocketFactory = createNodeWsFactory({ sessionId });
 
     stage(`Opening RPC peer ${opts.rpcWsUrl} (session=${sessionId.slice(0, 8)}…)`);
 
@@ -55,7 +57,7 @@ export async function signIn(opts: SignInOptions): Promise<SignInResult> {
     const whenConnected = peer.connected.whenNext();
     const whenDeadline = new Promise<void>((_, reject) =>
         setTimeout(() => reject(new Error('RPC peer did not connect within 10s')), 10_000));
-    void peer.run(wsFactory);
+    peer.start();
     try {
         await Promise.race([whenConnected, whenDeadline]);
     } catch (e) {

@@ -1,8 +1,8 @@
 // Fusion RPC service definitions needed by the load test.
 // These mirror the C# IEmailAuth / ISecureTokens / ILiveVideoStreams / IStreamServer
-// contracts. The existing UI.Blazor.App defines ILiveVideoStreams / IStreamServer in
-// `streaming-rpc-service.ts` — we duplicate them here so the test has zero dependencies
-// on the Blazor app's source tree and can be built stand-alone.
+// contracts. ILiveVideoStreams / IStreamServer already live in
+// `../src/api/streaming-service.ts` — we duplicate them here so the test has zero
+// dependencies on the shared api tree and can be built stand-alone.
 
 import { defineRpcService, RpcRemoteExecutionMode, RpcType } from '../src/actuallab-rpc/index.js';
 

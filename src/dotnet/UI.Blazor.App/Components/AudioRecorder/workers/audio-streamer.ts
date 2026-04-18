@@ -5,8 +5,9 @@ import { Disposable } from 'disposable';
 import { EventHandlerSet } from 'event-handling';
 import { ObjectPool } from 'object-pool';
 import { delayAsync } from 'promises';
-import { RpcHub, RpcClientPeer, RpcStream } from 'actuallab-rpc';
-import { StreamServerDef, type AudioFrameDto } from '../../../Services/Video/streaming-rpc-service';
+import { RpcClientPeer, RpcStream } from 'actuallab-rpc';
+import { Api, streamingApi,
+    type ApiModule, type AudioFrameDto, type StreamServerClient } from 'api';
 import { ServerClock } from 'server-clock';
 import { WorkerConnectivityUI } from './worker-connectivity-ui';
 import { getLogs } from 'logging';
@@ -15,9 +16,6 @@ const { debugLog, infoLog, warnLog } = getLogs('AudioStreamer');
 const bufferPool: ObjectPool<ArrayBufferLike> = new ObjectPool<ArrayBufferLike>(
     () => new ArrayBuffer(AE.FRAME_BUFFER_BYTES)
 ).expandTo(20);
-
-/** Serialization format for Fusion RPC. */
-const RPC_SERIALIZATION_FORMAT = 'msgpack6';
 
 /** 20ms in .NET TimeSpan ticks (100ns units). */
 const FRAME_DURATION_TICKS = AE.FRAME_DURATION_MS * 10_000;
@@ -207,32 +205,51 @@ export class AudioStream implements Disposable {
 }
 
 export class AudioStreamer {
-    public static rpcHub: RpcHub | null = null;
-    public static rpcPeer: RpcClientPeer | null = null;
-    public static streamServerClient: {
-        PushAudio(session: string, chatId: string, repliedChatEntryId: string | null,
-            clientStartOffset: number, preSkip: number, frameStreamRef: unknown): Promise<void>;
-    } | null = null;
+    public static streamServerClient: StreamServerClient | null = null;
     public static readonly streams = new Array<AudioStream>();
     public static lastStream: AudioStream | null = null;
     public static connectionStateChangedEvents = new EventHandlerSet<boolean>()
 
+    /** The shared peer. Available after `init()`; undefined before/after teardown. */
+    public static get rpcPeer(): RpcClientPeer | undefined {
+        if (!this._initialized) return undefined;
+        const url = Api.hub.defaultPeerUrl;
+        return url !== undefined && Api.hub.peers.has(url) ? Api.peer : undefined;
+    }
+
+    private static _initialized = false;
+
+    /** Api module that installs a `defaultPeerFactory` wiring connect/disconnect
+     *  handlers to `updateConnectionState` before the reconnect loop starts —
+     *  otherwise the first connect event can fire before listeners are attached. */
+    private static readonly _connectionStateApi: ApiModule = {
+        deps: [streamingApi],
+        register(hub) {
+            hub.defaultPeerFactory = (h, r) => {
+                const peer = new RpcClientPeer(h, r, false);
+                peer.connected.add(() => updateConnectionState(true));
+                peer.disconnected.add(() => updateConnectionState(false));
+                peer.start();
+                return peer;
+            };
+        },
+    };
+
     public static init(rpcWsUrl: string): void {
-        if (this.isInitialized)
+        if (this._initialized)
             return;
 
         debugLog?.log(`init`, rpcWsUrl);
 
-        this.rpcHub = new RpcHub();
-        this.rpcPeer = new RpcClientPeer(this.rpcHub, rpcWsUrl, RPC_SERIALIZATION_FORMAT);
-        this.rpcPeer.connected.add(() => updateConnectionState(true));
-        this.rpcPeer.disconnected.add(() => updateConnectionState(false));
-        void this.rpcPeer.run();
-        this.streamServerClient = this.rpcHub.addClient(this.rpcPeer, StreamServerDef) as unknown as typeof this.streamServerClient;
+        Api.init(rpcWsUrl, this._connectionStateApi);
+        this._initialized = true;
+        // Materialise the peer now so its connection/disconnection handlers
+        // are wired before anyone calls `ensureConnected`.
+        this.streamServerClient = streamingApi.streamServer;
     }
 
     public static get isInitialized(): boolean {
-        return this.rpcPeer != null;
+        return this._initialized;
     }
 
     public static get isConnected(): boolean {
@@ -241,10 +258,9 @@ export class AudioStreamer {
 
     public static async disconnect(): Promise<void> {
         infoLog?.log(`disconnect`);
-        this.rpcPeer?.close();
-        this.rpcPeer = null;
+        if (this._initialized && Api.hub.defaultPeerUrl !== undefined)
+            Api.hub.removePeer(Api.hub.defaultPeerUrl);
         this.streamServerClient = null;
-        this.rpcHub = null;
         updateConnectionState(false);
     }
 

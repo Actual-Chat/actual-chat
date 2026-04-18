@@ -34,6 +34,7 @@ import {
     type VideoStreamFrame, type StreamingContext,
     microsecondsToTicks, InternalVideoStream,
 } from './video-streaming';
+import { Api } from 'api';
 
 // Import the ONNX model so esbuild copies it to dist/assets/onnx/
 import SegmentationModelUrl from './selfie_segmentation_olive_webgpu.onnx';
@@ -109,8 +110,6 @@ const streamCtx: StreamingContext = {
     streamKind: 0,
     processing: false,
     rpcWsUrl: null,
-    rpcHub: null,
-    rpcPeer: null,
     rpcStreamServer: null,
 };
 let videoStream: InternalVideoStream | null = null;
@@ -900,14 +899,17 @@ export const serverImpl: VideoProcessingWorker = {
             videoStream = null;
         }
         // Also await lastVideoStream if it's a different instance (e.g. codec switch created
-        // a new stream while the old one was still draining). Without this, rpcPeer.close()
+        // a new stream while the old one was still draining). Without this, closing the peer
         // kills the connection before $sys.End is sent → "Connection is closed prematurely".
         if (lastVideoStream) {
             lastVideoStream.complete();
             try { await lastVideoStream.whenDisposed; } catch { /* ignore */ }
             lastVideoStream = null;
         }
-        if (streamCtx.rpcPeer) { try { streamCtx.rpcPeer.close(); } catch { /* ignore */ } streamCtx.rpcPeer = null; streamCtx.rpcHub = null; streamCtx.rpcStreamServer = null; }
+        if (Api.hub.defaultPeerUrl !== undefined) {
+            try { Api.hub.removePeer(Api.hub.defaultPeerUrl); } catch { /* ignore */ }
+        }
+        streamCtx.rpcStreamServer = null;
         if (segInitialized) { try { outputGpuBuffer.destroy(); } catch { /* ignore */ } try { smoothedMaskBuffer.destroy(); } catch { /* ignore */ } }
 
         // Reset all state

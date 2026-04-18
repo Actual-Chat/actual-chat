@@ -93,7 +93,7 @@ public abstract class ConnectivityUI : UIWorkerBase<UIHub>
         while (!cancellationToken.IsCancellationRequested) {
             var peer = Peer!;
             var connectionState = peer.ConnectionState;
-            var isConnected = connectionState.Value.Handshake is not null;
+            var isConnected = connectionState.Value.IsConnected();
             _isConnected.Set(isConnected);
             if (isConnected != _jsIsConnected) {
                 await JS.InvokeVoidAsync(JSSetConnectedMethod, CancellationToken.None, isConnected).ConfigureAwait(false);

@@ -243,8 +243,8 @@ export class RpcSystemCallHandler {
         }
 
         const responseBytes = IncreasingSeqCompressor.serialize(unknownIds);
-        const responseValue = peer.format.isBinary ? responseBytes : base64Encode(responseBytes);
-        peer.hub.systemCallSender.ok(peer.connection, peer.format, relatedId, responseValue);
+        const responseValue = peer.serializationFormat.isBinary ? responseBytes : base64Encode(responseBytes);
+        peer.hub.systemCallSender.ok(peer.connection, peer.serializationFormat, relatedId, responseValue);
     }
 }
 

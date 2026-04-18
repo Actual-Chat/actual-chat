@@ -1,6 +1,6 @@
 import { getLogs } from 'logging';
 import { initVideoRpc, getStreamServerClient, disconnectVideoRpc } from '../../Services/Video/streaming-rpc-client';
-import type { VideoFrameDto } from '../../Services/Video/streaming-rpc-service';
+import type { VideoFrameDto } from 'api';
 import { fastRaf } from 'fast-raf';
 import { ServerClock } from 'server-clock';
 import { rpcClientServer, rpcNoWait } from 'rpc';

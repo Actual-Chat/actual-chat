@@ -1,68 +1,20 @@
-// Streaming RPC client — connects to IStreamServer via Fusion RPC WebSocket.
+// Streaming RPC client — thin UI-side wrapper over the shared Api + streamingApi.
 
-import { RpcHub, RpcClientPeer, RpcStream } from 'actuallab-rpc';
-import { StreamServerDef, type VideoFrameDto, type VideoFormatDto, type AudioFrameDto } from './streaming-rpc-service.js';
-
-let _hub: RpcHub | undefined;
-let _peer: RpcClientPeer | undefined;
-let _streamServerClient: StreamServerClient | undefined;
-let _baseUrl: string | undefined;
-
-/** Serialization format — binary MessagePack for efficient video frame transport. */
-const SERIALIZATION_FORMAT = 'msgpack6';
-
-// --- IStreamServer (stream push/pull + control) ---
-
-export interface StreamServerClient {
-    GetVideo(streamId: string, skipToTicks: number): Promise<AsyncIterable<VideoFrameDto>>;
-    PushVideo(
-        session: string,
-        chatId: string,
-        clientStartOffset: number,
-        format: VideoFormatDto,
-        frameStreamRef: unknown): Promise<void>;
-    PushAudio(
-        session: string,
-        chatId: string,
-        repliedChatEntryId: string | null,
-        clientStartOffset: number,
-        preSkip: number,
-        frameStreamRef: unknown): Promise<void>;
-    RequestKeyFrame(streamId: string): Promise<void>;
-    ReportVideoLatency(
-        streamId: string,
-        streamOffsetMs: number,
-        medianDecodeTimeMs: number,
-        bufferDepth: number,
-        bufferSpanMs: number): Promise<number>;
-}
+import { RpcStream } from 'actuallab-rpc';
+import { Api, streamingApi,
+    type StreamServerClient, type VideoFrameDto, type AudioFrameDto } from 'api';
 
 /**
- * Initialize the video RPC client.
+ * Initialize the video RPC client by configuring the shared Api.hub. Idempotent.
  * @param rpcWsUrl Full WebSocket URL for the RPC endpoint, e.g. "wss://local.voxt.ai/rpc/ws"
  */
 export function initVideoRpc(rpcWsUrl: string): void {
-    _baseUrl = rpcWsUrl;
-}
-
-function ensurePeer(): RpcClientPeer {
-    if (!_peer) {
-        if (!_baseUrl)
-            throw new Error('Video RPC not initialized. Call initVideoRpc(url) first.');
-        _hub = new RpcHub(); // hubId must be a UUID for binary MessagePack GuidFormatter
-        _peer = new RpcClientPeer(_hub, _baseUrl, SERIALIZATION_FORMAT);
-        void _peer.run();
-    }
-    return _peer;
+    Api.init(rpcWsUrl, streamingApi);
 }
 
 /** Get the IStreamServer RPC client (stream push/pull + control). */
 export function getStreamServerClient(): StreamServerClient {
-    if (!_streamServerClient) {
-        const peer = ensurePeer();
-        _streamServerClient = _hub!.addClient(peer, StreamServerDef) as unknown as StreamServerClient;
-    }
-    return _streamServerClient;
+    return streamingApi.streamServer;
 }
 
 /**
@@ -74,7 +26,7 @@ export function getStreamServerClient(): StreamServerClient {
  * starts pumping automatically.
  */
 export function createVideoStream(source: AsyncIterable<VideoFrameDto>): { stream: RpcStream<VideoFrameDto>; ref: unknown } {
-    const peer = ensurePeer();
+    const peer = Api.peer;
     const stream = new RpcStream<VideoFrameDto>(source, {
         isRealTime: true, allowReconnect: false, ackPeriod: 5, ackAdvance: 31,
         canSkipTo: (frame) => frame.IsKeyFrame,
@@ -87,15 +39,16 @@ export function createVideoStream(source: AsyncIterable<VideoFrameDto>): { strea
  * Non-real-time with default parameters.
  */
 export function createAudioStream(source: AsyncIterable<AudioFrameDto>): { stream: RpcStream<AudioFrameDto>; ref: unknown } {
-    const peer = ensurePeer();
+    const peer = Api.peer;
     const stream = new RpcStream<AudioFrameDto>(source);
     return { stream, ref: stream.toRef(peer) };
 }
 
-/** Disconnect the RPC client. */
+/** Disconnect the RPC client — closes the shared hub's default peer.
+ *  The next `getStreamServerClient()` / `createVideoStream` / `createAudioStream`
+ *  call will recreate the peer via the hub's default factory (URL set by
+ *  {@link initVideoRpc}). */
 export function disconnectVideoRpc(): void {
-    _peer?.close();
-    _peer = undefined;
-    _streamServerClient = undefined;
-    _hub = undefined;
+    if (Api.hub.defaultPeerUrl !== undefined)
+        Api.hub.removePeer(Api.hub.defaultPeerUrl);
 }
