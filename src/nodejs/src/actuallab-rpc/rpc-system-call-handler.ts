@@ -99,7 +99,10 @@ export class RpcSystemCallHandler {
             break;
         }
         case RpcSystemCalls.keepAlive: {
-            // Remote keep-alive — nothing to do, just acknowledges the connection is alive
+            // Remote keep-alive — mark the peer as "alive" so the peer's
+            // watchdog doesn't force-close the connection. Mirrors .NET
+            // `RpcObjectTrackers.KeepAlive` which sets `LastKeepAliveAt`.
+            peer.notifyKeepAliveReceived();
             break;
         }
         case RpcSystemCalls.item: {

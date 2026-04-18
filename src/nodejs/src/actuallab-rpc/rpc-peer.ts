@@ -105,6 +105,14 @@ export const RPC_CLOSE_CODE_UNSUPPORTED_FORMAT = 4001;
 /** Maximum time to wait for the server's handshake response after opening the socket. */
 export const HANDSHAKE_TIMEOUT_MS = 10_000;
 
+/** Outbound `$sys.KeepAlive` send period. Mirrors .NET `RpcLimits.KeepAlivePeriod`. */
+export const KEEP_ALIVE_PERIOD_MS = 15_000;
+/** If no inbound `$sys.KeepAlive` has been seen for this long, the peer's
+ *  watchdog force-closes the WebSocket (so the reconnect loop can take over
+ *  and the UI sees a real `Disconnected` state). Mirrors .NET
+ *  `RpcLimits.KeepAliveTimeout` (~3-4 missed keepalives). */
+export const KEEP_ALIVE_TIMEOUT_MS = 55_000;
+
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('RpcPeer');
 
 /** Builds the WebSocket connection URL for an RpcClientPeer. */
@@ -179,6 +187,14 @@ export abstract class RpcPeer {
     protected _connectionState: RpcConnectionState = RpcConnectionState.Disconnected;
     protected _pendingSends: RpcOutboundCall[] = [];
     private _keepAliveTimer: ReturnType<typeof setInterval> | undefined;
+    private _keepAliveWatchdog: ReturnType<typeof setTimeout> | undefined;
+    /** Wall-clock time of the last inbound `$sys.KeepAlive`, or 0 if none yet
+     *  for the current connection. Useful for diagnostics. */
+    private _lastKeepAliveAt = 0;
+    /** Outbound keep-alive send period (per-peer override for tests). */
+    keepAlivePeriodMs: number = KEEP_ALIVE_PERIOD_MS;
+    /** Inbound keep-alive silence tolerance (per-peer override for tests). */
+    keepAliveTimeoutMs: number = KEEP_ALIVE_TIMEOUT_MS;
 
     protected constructor(hub: RpcHub, ref: string) {
         this.hub = hub;
@@ -200,6 +216,10 @@ export abstract class RpcPeer {
     protected _setConnectionState(value: RpcConnectionState): void {
         if (this._connectionState === value) return;
         this._connectionState = value;
+        if (value === RpcConnectionState.Connected)
+            this._armKeepAliveWatchdog();
+        else if (value === RpcConnectionState.Disconnected)
+            this._disarmKeepAliveWatchdog();
         this.connectionStateChanged.trigger(value);
     }
 
@@ -224,20 +244,19 @@ export abstract class RpcPeer {
         conn.messageReceived.add(raw => this._handleMessage(raw));
         conn.closed.add(ev => {
             this._connection = undefined;
-            this._stopKeepAlive();
             // Mirrors RpcPeer.cs:524-526 — log disconnect with reason if present.
             if (ev.reason)
                 infoLog?.log(`'${this.ref}': Disconnected: ${ev.reason} (code=${ev.code})`);
             else
                 infoLog?.log(`'${this.ref}': Disconnected`);
+            // Flipping state to Disconnected tears down the keep-alive watchdog.
             this._setConnectionState(RpcConnectionState.Disconnected);
         });
 
         void conn.whenConnected.then(() => {
-            // Mirrors RpcPeer.cs:520 — "WS open" (the state transition to
-            // `Connected` happens after the handshake, not here).
+            // The state transition to `Connected` happens after the handshake —
+            // that's where keep-alive arming happens too.
             infoLog?.log(`'${this.ref}': WS open`);
-            this._startKeepAlive();
         });
     }
 
@@ -331,7 +350,8 @@ export abstract class RpcPeer {
     close(): void {
         // Mirrors RpcPeer.cs:397 — "Stopping".
         infoLog?.log(`'${this.ref}': Stopping`);
-        this._stopKeepAlive();
+        // `_setConnectionState(Disconnected)` below will tear down the keep-alive
+        // watchdog + send timer.
         this.remoteObjects.disconnectAll();
         this.sharedObjects.disconnectAll();
         for (const call of this._pendingSends) {
@@ -498,8 +518,15 @@ export abstract class RpcPeer {
         })();
     }
 
-    private _startKeepAlive(): void {
-        this._keepAliveTimer = setInterval(() => {
+    /** Start sending `$sys.KeepAlive` pings and arm the silence watchdog.
+     *  Called when the peer transitions into `Connected` (after handshake).
+     *  Each inbound `$sys.KeepAlive` re-arms the watchdog; if it fires, the
+     *  WebSocket is force-closed so the normal disconnect path runs
+     *  (`conn.closed` → `connectionState = Disconnected` → UI).
+     *  Mirrors .NET `RpcObjectTrackers.Maintain`'s `KeepAliveTimeout` branch. */
+    private _armKeepAliveWatchdog(): void {
+        // Start the send timer once per connected session.
+        this._keepAliveTimer ??= setInterval(() => {
             if (this._connection !== undefined) {
                 // Send remote object IDs so the server's SharedObjectTracker keeps them alive.
                 // Must NOT send outbound call IDs — those are a different ID namespace and would
@@ -510,14 +537,38 @@ export abstract class RpcPeer {
                     ...this.remoteObjects.keys(),
                 ]);
             }
-        }, 15_000);
+        }, this.keepAlivePeriodMs);
+        // (Re)arm the silence watchdog.
+        if (this._keepAliveWatchdog !== undefined)
+            clearTimeout(this._keepAliveWatchdog);
+        this._keepAliveWatchdog = setTimeout(() => {
+            this._keepAliveWatchdog = undefined;
+            if (this._connection === undefined) return;
+            warnLog?.log(
+                `'${this.ref}': no keep-alive for ${this.keepAliveTimeoutMs}ms — force-closing connection`);
+            this._connection.close();
+        }, this.keepAliveTimeoutMs);
     }
 
-    private _stopKeepAlive(): void {
+    /** Stop sending keep-alives and clear the silence watchdog. Called when
+     *  the peer transitions into `Disconnected`. */
+    private _disarmKeepAliveWatchdog(): void {
         if (this._keepAliveTimer !== undefined) {
             clearInterval(this._keepAliveTimer);
             this._keepAliveTimer = undefined;
         }
+        if (this._keepAliveWatchdog !== undefined) {
+            clearTimeout(this._keepAliveWatchdog);
+            this._keepAliveWatchdog = undefined;
+        }
+    }
+
+    /** Called by `RpcSystemCallHandler` when a `$sys.KeepAlive` message
+     *  arrives — records the timestamp and re-arms the silence watchdog. */
+    notifyKeepAliveReceived(): void {
+        this._lastKeepAliveAt = Date.now();
+        if (this._keepAliveWatchdog !== undefined)
+            this._armKeepAliveWatchdog();
     }
 }
 
