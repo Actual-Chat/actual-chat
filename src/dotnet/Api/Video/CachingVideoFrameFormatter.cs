@@ -5,44 +5,29 @@ using MessagePack.Formatters;
 
 namespace ActualChat.Video;
 
-internal static class VideoFramePools
-{
-    // ArrayPool<byte> for VideoFrame.SerializedData buffers.
-    //
-    // Uses ArrayPool<byte>.Shared. Tried a dedicated ConfigurableArrayPool with
-    // maxArraysPerBucket=128 to cap memory footprint; that caused:
-    //  - p99 latency spikes to 386 ms (was 50 ms)
-    //  - 1.4% frame drops
-    //  - 6× more Gen2 GCs (DestroyScout.Finalize CPU 4.6 s → 27.5 s)
-    // because the 128-array cap was far below the working set (~9000 concurrent
-    // retained frames at 30 fps × 60 producer streams × 5 s retention). Arrays
-    // overflowed the bucket every burst and were reallocated each rent.
-    //
-    // SharedArrayPool uses per-thread + per-core strong-ref buckets plus weak-ref
-    // overflow, which tracks bursty working sets well and trims under GC pressure.
-    // The ~500 MB apparent post-test retention is normal pool behavior, not a leak —
-    // in production those arrays get reused across continuous sessions.
-    public static readonly ArrayPool<byte> BytePool = ArrayPool<byte>.Shared;
-}
-
 /// <summary>
 /// MessagePack formatter for <see cref="VideoFrame"/> that enables serialize-once fan-out.
 /// Hand-written — bypasses the auto-generated formatter to eliminate per-frame Gen0 allocation
-/// (the inner formatter's separate <c>byte[]</c> for <see cref="VideoFrame.Data"/>) and the
-/// dynamic-IL machinery behind it (<c>DynamicResolver+DestroyScout.Finalize</c>).
+/// of a separate <c>byte[]</c> for <see cref="VideoFrame.Data"/> and the dynamic-IL machinery
+/// behind the default formatter.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Serialize:</b> if <see cref="VideoFrame.SerializedData"/> is populated, the cached bytes are
-/// written via <see cref="MessagePackWriter.WriteRaw(ReadOnlySpan{byte})"/> (zero serialization).
-/// On cache miss the frame is encoded into a pooled <see cref="ArrayPoolBuffer{T}"/>, the result
-/// is cached on the frame, and then written raw.
+/// <b>Serialize:</b> if <see cref="VideoFrame.SerializedData"/> is populated, the cached bytes
+/// are written via <see cref="MessagePackWriter.WriteRaw(ReadOnlySpan{byte})"/> — zero-cost.
+/// On cache miss the frame is encoded into a pooled <see cref="ArrayPoolBuffer{T}"/> scratch
+/// buffer, the final bytes are copied to a plain <c>byte[]</c> held by the frame, the scratch
+/// buffer is released back to the pool.
 /// </para>
 /// <para>
-/// <b>Deserialize:</b> the raw MessagePack bytes for the frame are copied into one pooled
-/// <see cref="ArrayPoolBuffer{T}"/>. The frame is then parsed out of that copy, so
-/// <see cref="VideoFrame.Data"/> and <see cref="VideoFrame.Description"/> are direct slices into
-/// the same pooled buffer — no separately-allocated <c>byte[]</c> for the payload.
+/// <b>Deserialize:</b> the raw MessagePack bytes for the frame are copied into a plain
+/// <c>byte[]</c> owned by the frame. The frame is parsed out of that copy, so
+/// <see cref="VideoFrame.Data"/> and <see cref="VideoFrame.Description"/> are slices into the
+/// same <c>byte[]</c>. Lifetime is purely GC-driven: the array lives as long as any consumer
+/// holds the frame. No pooling, no Dispose, no use-after-free race with lagging consumers —
+/// which the new linked-list <see cref="AsyncMemoizer{T}"/> exposed: a slow consumer pins
+/// nodes past the producer's head, and any pooled-buffer-returned-too-early scheme corrupts
+/// their reads.
 /// </para>
 /// <para>
 /// Scoped to <see cref="VideoFrame"/> only via <see cref="CachingVideoFrameResolver"/>.
@@ -50,10 +35,9 @@ internal static class VideoFramePools
 /// element to this formatter, so <see cref="VideoFrame"/>[] batches hit the cache too.
 /// </para>
 /// <para>
-/// Wire format (must match what the default source-gen formatter would produce): a
-/// 9-entry MessagePack map with PascalCase string keys — Data (bin), Offset (int64 ticks),
-/// Duration (int64 ticks), IsKeyFrame (bool), Width (int32), Height (int32),
-/// Description (bin or nil), Codec (str or nil), TemporalLayerId (int32).
+/// Wire format: a 9-entry MessagePack map with PascalCase string keys — Data (bin),
+/// Offset (int64 ticks), Duration (int64 ticks), IsKeyFrame (bool), Width (int32),
+/// Height (int32), Description (bin or nil), Codec (str or nil), TemporalLayerId (int32).
 /// </para>
 /// </remarks>
 public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFrame>
@@ -91,27 +75,20 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
         var slice = reader.Sequence.Slice(startPos, reader.Position);
         var len = (int)slice.Length;
 
-        // One pooled buffer holds the raw MessagePack bytes; Data/Description slice into it.
-        // Dedicated BytePool avoids polluting SharedArrayPool with ~500 MB of video-only buffers.
-        var buffer = new ArrayPoolBuffer<byte>(VideoFramePools.BytePool, len, mustClear: false);
-        slice.CopyTo(buffer.GetSpan(len));
-        buffer.Advance(len);
-
-        try {
-            return ParseFrame(buffer);
-        }
-        catch {
-            buffer.Dispose();
-            throw;
-        }
+        // Plain GC-managed byte[] — not pooled. Exact size (no bucket rounding slack).
+        // Lifetime = "as long as any VideoFrame consumer still holds a reference", handled
+        // entirely by GC. Data/Description slice into this same array.
+        var bytes = new byte[len];
+        slice.CopyTo(bytes);
+        return ParseFrame(bytes);
     }
 
     // --- private ---
 
-    private static VideoFrame ParseFrame(ArrayPoolBuffer<byte> buffer)
+    private static VideoFrame ParseFrame(byte[] bytes)
     {
-        var copyReader = new MessagePackReader(buffer.WrittenMemory);
-        var mapLen = copyReader.ReadMapHeader();
+        var reader = new MessagePackReader(bytes);
+        var mapLen = reader.ReadMapHeader();
 
         long offsetTicks = 0, durationTicks = 0;
         var isKey = false;
@@ -123,53 +100,52 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
         string? codec = null;
 
         for (var i = 0; i < mapLen; i++) {
-            var key = copyReader.ReadString();
+            var key = reader.ReadString();
             switch (key) {
                 case "Data":
-                    dataSlice = ReadBinSlice(ref copyReader);
+                    dataSlice = ReadBinSlice(ref reader);
                     break;
                 case "Offset":
-                    offsetTicks = copyReader.ReadInt64();
+                    offsetTicks = reader.ReadInt64();
                     break;
                 case "Duration":
-                    durationTicks = copyReader.ReadInt64();
+                    durationTicks = reader.ReadInt64();
                     break;
                 case "IsKeyFrame":
-                    isKey = copyReader.ReadBoolean();
+                    isKey = reader.ReadBoolean();
                     break;
                 case "Width":
-                    width = copyReader.ReadInt32();
+                    width = reader.ReadInt32();
                     break;
                 case "Height":
-                    height = copyReader.ReadInt32();
+                    height = reader.ReadInt32();
                     break;
                 case "Description":
-                    descriptionSlice = copyReader.TryReadNil() ? default : ReadBinSlice(ref copyReader);
+                    descriptionSlice = reader.TryReadNil() ? default : ReadBinSlice(ref reader);
                     break;
                 case "Codec":
-                    codec = copyReader.TryReadNil() ? null : copyReader.ReadString();
+                    codec = reader.TryReadNil() ? null : reader.ReadString();
                     break;
                 case "TemporalLayerId":
-                    temporalLayerId = copyReader.ReadInt32();
+                    temporalLayerId = reader.ReadInt32();
                     break;
                 default:
                     // Forward-compat: tolerate unknown fields.
-                    copyReader.Skip();
+                    reader.Skip();
                     break;
             }
         }
 
         return new VideoFrame(isKey) {
-            Data = dataSlice,                       // slice of pooled buffer
+            Data = dataSlice,                       // slice of bytes
             Offset = new TimeSpan(offsetTicks),
             Duration = new TimeSpan(durationTicks),
             Width = width,
             Height = height,
-            Description = descriptionSlice,         // slice of pooled buffer (may be empty)
+            Description = descriptionSlice,         // slice of bytes (may be empty)
             Codec = codec,
             TemporalLayerId = temporalLayerId,
-            SerializedDataOwner = buffer,
-            SerializedData = buffer.WrittenMemory,
+            SerializedData = bytes,
         };
     }
 
@@ -185,25 +161,22 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
         if (!frame.SerializedData.IsEmpty)
             return;
 
-        var pooled = new ArrayPoolBuffer<byte>(
-            VideoFramePools.BytePool, frame.Data.Length + 256, mustClear: false);
+        // Scratch pooled buffer during serialize, final bytes live on a plain byte[].
+        var scratch = new ArrayPoolBuffer<byte>(frame.Data.Length + 256, mustClear: false);
+        byte[] bytes;
         try {
-            var scratch = new MessagePackWriter(pooled);
-            WriteFrame(ref scratch, frame);
-            scratch.Flush();
+            var writer = new MessagePackWriter(scratch);
+            WriteFrame(ref writer, frame);
+            writer.Flush();
+            bytes = scratch.WrittenSpan.ToArray();
         }
-        catch {
-            pooled.Dispose();
-            throw;
+        finally {
+            scratch.Dispose();
         }
 
-        // First writer wins — if another thread raced us, discard ours.
-        if (frame.SerializedData.IsEmpty) {
-            frame.SerializedDataOwner = pooled;
-            frame.SerializedData = pooled.WrittenMemory;
-        }
-        else
-            pooled.Dispose();
+        // First writer wins — if another thread raced us, use theirs.
+        if (frame.SerializedData.IsEmpty)
+            frame.SerializedData = bytes;
     }
 
     private static void WriteFrame(ref MessagePackWriter writer, VideoFrame v)

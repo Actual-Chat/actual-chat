@@ -37,7 +37,6 @@ public class CachingVideoFrameByteSerializerTest(ITestOutputHelper @out) : TestB
         Serializer.Write(buffer, frame, typeof(VideoFrame));
 
         frame.SerializedData.IsEmpty.Should().BeFalse("first Serialize should populate the cache");
-        frame.SerializedDataOwner.Should().NotBeNull();
 
         // Second Serialize must emit cached bytes verbatim
         var buffer2 = new ArrayPoolBuffer<byte>(1024, mustClear: false);
@@ -55,7 +54,6 @@ public class CachingVideoFrameByteSerializerTest(ITestOutputHelper @out) : TestB
 
         var decoded = (VideoFrame)Serializer.Read(buffer.WrittenMemory, typeof(VideoFrame), out _)!;
         decoded.SerializedData.IsEmpty.Should().BeFalse("Deserialize should populate the cache");
-        decoded.SerializedDataOwner.Should().NotBeNull();
 
         // Re-serializing decoded should use the cached bytes (zero allocation on happy path)
         var buffer2 = new ArrayPoolBuffer<byte>(1024, mustClear: false);
@@ -105,7 +103,7 @@ public class CachingVideoFrameByteSerializerTest(ITestOutputHelper @out) : TestB
     public void Deserialize_DataIsAliasedToSerializedData()
     {
         // Regression guard: after deserialize, VideoFrame.Data must NOT be a separately
-        // allocated byte[] — it must slice into SerializedData's pooled buffer.
+        // allocated byte[] — it must slice into SerializedData's backing array.
         // Holding two copies of 10 KB per frame was ~544 MB in the allocation profiler.
         var source = MakeFrame(isKey: true, index: 99);
         var buffer = new ArrayPoolBuffer<byte>(4096, mustClear: false);
@@ -120,7 +118,7 @@ public class CachingVideoFrameByteSerializerTest(ITestOutputHelper @out) : TestB
         MemoryMarshal.TryGetArray(decoded.SerializedData, out var cachedSeg).Should().BeTrue();
         MemoryMarshal.TryGetArray(decoded.Data, out var dataSeg).Should().BeTrue();
         dataSeg.Array.Should().BeSameAs(cachedSeg.Array,
-            "Data must slice into the SerializedData pooled buffer, not a separate byte[]");
+            "Data must slice into the SerializedData backing array, not a separate byte[]");
         dataSeg.Offset.Should().BeGreaterThan(cachedSeg.Offset);
         (dataSeg.Offset + dataSeg.Count).Should().BeLessThanOrEqualTo(cachedSeg.Offset + cachedSeg.Count);
     }

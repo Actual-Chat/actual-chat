@@ -238,11 +238,12 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                 }
             }
 
-            await using var disposer = new DelayedDisposer<VideoFrame>(Constants.Video.FrameDataReturnDelay);
-            _ = disposer.Run();
+            // No DelayedDisposer: VideoFrame.SerializedData is a plain GC-managed byte[],
+            // released automatically when all consumers (including lagging ones via the
+            // new AsyncMemoizer's linked list) release their references. Using a pooled
+            // buffer + disposer raced with slow consumers in the new memoizer.
             var memoizer = ProcessFrames(videoFrames).Memoize(
                 Constants.Video.RetentionBufferSize,
-                onRemove: disposer.Add,
                 cancellationToken);
             await _videoStreams.Publish(record.StreamId, memoizer).ConfigureAwait(false);
         }
