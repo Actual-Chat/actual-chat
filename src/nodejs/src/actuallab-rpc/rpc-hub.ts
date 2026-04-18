@@ -39,6 +39,7 @@ import {
     type RpcPeer,
     type RpcCallOptions,
 } from './rpc-peer.js';
+import { RpcClientPeerReconnectDelayer } from './rpc-client-peer-reconnect-delayer.js';
 import { RpcServiceHost, type RpcServiceImpl } from './rpc-service-host.js';
 import type { RpcServiceDef, RpcMethodDef } from './rpc-service-def.js';
 import { wireMethodName, RpcType, RpcRemoteExecutionMode } from './rpc-service-def.js';
@@ -68,6 +69,10 @@ export class RpcHub {
     /** Method registry for compact format hash ↔ name resolution.
      *  Created lazily, populated by addService/addClient. */
     readonly registry = new RpcMethodRegistry();
+
+    /** Shared reconnect delayer used by every client peer in this hub. Swap in
+     *  a custom subclass (e.g. app-level signal-gated) before peers start. */
+    reconnectDelayer: RpcClientPeerReconnectDelayer = new RpcClientPeerReconnectDelayer();
 
     /** URL used by {@link defaultPeer} to resolve / create the default client
      *  peer. Must be set before the first {@link defaultPeer} access. */

@@ -5,7 +5,7 @@ import { Disposable } from 'disposable';
 import { EventHandlerSet } from 'event-handling';
 import { ObjectPool } from 'object-pool';
 import { delayAsync } from 'promises';
-import { RpcClientPeer, RpcStream } from 'actuallab-rpc';
+import { RpcClientPeer, RpcConnectionState, RpcStream } from 'actuallab-rpc';
 import { Api, streamingApi,
     type ApiModule, type AudioFrameDto, type StreamServerClient } from 'api';
 import { ServerClock } from 'server-clock';
@@ -227,21 +227,25 @@ export class AudioStreamer {
         register(hub) {
             hub.defaultPeerFactory = (h, r) => {
                 const peer = new RpcClientPeer(h, r, false);
-                peer.connected.add(() => updateConnectionState(true));
-                peer.disconnected.add(() => updateConnectionState(false));
+                peer.connectionStateChanged.add(state =>
+                    updateConnectionState(state === RpcConnectionState.Connected));
                 peer.start();
                 return peer;
             };
         },
     };
 
-    public static init(rpcWsUrl: string): void {
+    public static init(apiUrl: string): void {
         if (this._initialized)
             return;
 
-        debugLog?.log(`init`, rpcWsUrl);
+        debugLog?.log(`init`, apiUrl);
 
-        Api.init(rpcWsUrl, this._connectionStateApi);
+        Api.init(apiUrl, this._connectionStateApi);
+        Api.bindDotNetRpcConnected(WorkerConnectivityUI);
+        // Audio streamer always wants the peer up — held for the worker's
+        // lifetime. The .NET-connected side still gates actual attempts.
+        Api.requireConnection('AudioStreamer');
         this._initialized = true;
         // Materialise the peer now so its connection/disconnection handlers
         // are wired before anyone calls `ensureConnected`.
@@ -260,6 +264,7 @@ export class AudioStreamer {
         infoLog?.log(`disconnect`);
         if (this._initialized && Api.hub.defaultPeerUrl !== undefined)
             Api.hub.removePeer(Api.hub.defaultPeerUrl);
+        Api.releaseConnection('AudioStreamer');
         this.streamServerClient = null;
         updateConnectionState(false);
     }

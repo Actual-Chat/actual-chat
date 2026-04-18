@@ -39,7 +39,7 @@ import {
 const RPC_SERIALIZATION_FORMAT = 'msgpack6';
 
 export interface RpcRunContext {
-    rpcWsUrl: string;
+    apiUrl: string;
     sessionId: string;
     metrics: Metrics;
     abort: AbortSignal;
@@ -58,11 +58,11 @@ export async function createRpcHarnessBundle(
     ctx: Omit<RpcRunContext, 'metrics'>,
 ): Promise<RpcHarnessBundle> {
     const hub = new RpcHub();
-    const url = RpcPeerRefBuilder.forClient(ctx.rpcWsUrl, RPC_SERIALIZATION_FORMAT);
+    const url = RpcPeerRefBuilder.forClient(ctx.apiUrl, RPC_SERIALIZATION_FORMAT);
     // mustStart=false — set the Node-specific webSocketFactory before start.
     const peer = hub.getClientPeer(url, (h, r) => new RpcClientPeer(h, r, false));
     peer.webSocketFactory = createNodeWsFactory({ sessionId: ctx.sessionId });
-    const whenConnected = peer.connected.whenNext();
+    const whenConnected = peer.whenConnected();
     peer.start();
     await whenConnected;
     const streamServer = hub.addClient(peer, StreamServerDef) as unknown as StreamServerClient;

@@ -1,13 +1,12 @@
 import { getLogs } from 'logging';
 import { initVideoRpc, getStreamServerClient, disconnectVideoRpc } from '../../Services/Video/streaming-rpc-client';
-import type { VideoFrameDto } from 'api';
+import { Api, type VideoFrameDto } from 'api';
 import { fastRaf } from 'fast-raf';
 import { ServerClock } from 'server-clock';
 import { rpcClientServer, rpcNoWait } from 'rpc';
 import type { Disposable } from 'disposable';
 import { AudioVideoSync } from 'audio-video-sync';
 import { DocumentEvents } from 'event-handling';
-import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
 import { Versioning } from 'versioning';
 import { type Subscription } from 'rxjs';
 import type { DecoderWorker } from '../../Services/Video/workers/decoder-worker-contract';
@@ -1031,6 +1030,9 @@ export class VideoPlayer {
         if (this.isPlaying) return;
 
         this.isPlaying = true;
+        // Per-instance scope — refcounts across concurrent players so one
+        // stopping doesn't park the peer that other players still need.
+        Api.requireConnection(`VideoPlayer:${this.streamId}`);
         debugLog?.log(`VideoPlayer started for stream ${this.streamId}`);
 
         // Listen for tab visibility restore to avoid frame burst after backgrounding
@@ -1111,12 +1113,11 @@ export class VideoPlayer {
         const abortController = new AbortController();
         this.pullAbortController = abortController;
 
-        const rpcWsUrl = BrowserInit.getUrl('/rpc/ws').replace(/^http/, 'ws');
-        initVideoRpc(rpcWsUrl);
+        initVideoRpc();
         const client = getStreamServerClient();
         const skipToTicks = Math.round(skipToMs * 10000); // ms → .NET TimeSpan ticks (must be integer for MessagePack int64)
 
-        warnLog?.log(`startPull [RPC]: stream=${streamId}, skipTo=${skipToMs}ms, skipToTicks=${skipToTicks}, retryCount=${this.pullRetryCount}, rpcUrl=${rpcWsUrl}`);
+        warnLog?.log(`startPull [RPC]: stream=${streamId}, skipTo=${skipToMs}ms, skipToTicks=${skipToTicks}, retryCount=${this.pullRetryCount}`);
 
         try {
             warnLog?.log(`startPull [RPC]: calling GetVideo(${streamId}, ${skipToTicks})`);
@@ -1294,6 +1295,7 @@ export class VideoPlayer {
         warnLog?.log(`VideoPlayer registry: removed ${this.streamId}, active=${activePlayers.size}`);
 
         this.isPlaying = false;
+        Api.releaseConnection(`VideoPlayer:${this.streamId}`);
         this.playbackStartTime = 0;
         this.lastRenderedOffsetMs = 0;
         this.renderFrameCount = 0;

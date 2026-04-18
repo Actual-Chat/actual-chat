@@ -136,7 +136,7 @@ export interface VideoProcessingConfig {
     /** Streaming configuration — Fusion RPC push via `IStreamServer.PushVideo`. */
     streaming: {
         /** Fusion RPC WebSocket URL, e.g. `wss://host/rpc/ws`. */
-        rpcWsUrl: string;
+        apiUrl: string;
         sessionToken: string;
         chatId: string;
         serverClockOffsetMs: number;
@@ -183,6 +183,10 @@ export interface VideoProcessingWorker {
 
     updateSessionToken(token: string): Promise<void>;
     updateServerClockOffset(offsetMs: number): Promise<void>;
+    /** Main thread pushes `ConnectivityUI.isOnline` / `isConnected` / `isBlazorServer`
+     *  into the worker so its `WorkerConnectivityUI` mirror drives the worker's
+     *  `Api.isDotNetRpcConnected` gate. Mirrors the audio path. */
+    onConnectivityUpdate(isOnline: boolean, isConnected: boolean, isBlazorServer: boolean, noWait?: RpcNoWait): Promise<void>;
 }
 
 export interface VideoProcessingWorkerCallbacks {

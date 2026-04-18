@@ -9,11 +9,12 @@
  *   - Recording UI lifecycle
  */
 
-import { rpcClientServer } from 'rpc';
+import { rpcClientServer, rpcNoWait } from 'rpc';
 import type { Disposable } from 'disposable';
 import { supportsTransferableStreams } from '../workers/stream-channel';
 
 import { BrowserInit } from '../../../../UI.Blazor/Services/BrowserInit/browser-init';
+import { ConnectivityUI } from '../../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
 import type { EncoderConfig, EncoderStats } from '../webcodecs-encoder';
 import type { SegmentationConfig, SegmentationStats, OrientationStats } from '../workers/video-processing-worker-contract';
 import type {
@@ -182,6 +183,20 @@ export class VideoPipeline implements IVideoPipeline {
                 },
             } as VideoProcessingWorkerCallbacks,
         );
+
+        // Mirror `ConnectivityUI` → worker's `WorkerConnectivityUI` → Api
+        // so the worker's peer honors `isDotNetRpcConnected`. Same pattern as
+        // `opus-media-recorder` uses for the audio worker.
+        const pushConnectivity = (): void => {
+            void this.worker.onConnectivityUpdate(
+                ConnectivityUI.isOnline,
+                ConnectivityUI.isConnected,
+                ConnectivityUI.isBlazorServer,
+                rpcNoWait);
+        };
+        ConnectivityUI.isOnlineChanged.add(pushConnectivity);
+        ConnectivityUI.isConnectedChanged.add(pushConnectivity);
+        void ConnectivityUI.whenReady.then(pushConnectivity);
     }
 
     public async start(inputStream: MediaStream): Promise<void> {
@@ -193,11 +208,11 @@ export class VideoPipeline implements IVideoPipeline {
         // Build worker config
         // Fusion RPC WebSocket URL — worker pushes frames via
         // `IStreamServer.PushVideo` over this connection.
-        const rpcWsUrl = BrowserInit.getUrl('/rpc/ws').replace(/^http/, 'ws');
+        const apiUrl = BrowserInit.getUrl('/rpc/ws').replace(/^http/, 'ws');
         const workerConfig: VideoProcessingConfig = {
             encoder: this.config.encoderConfig,
             streaming: {
-                rpcWsUrl,
+                apiUrl,
                 sessionToken: SessionTokens.current,
                 chatId: this.config.streaming?.chatId ?? '',
                 serverClockOffsetMs: ServerClock.offsetMs,

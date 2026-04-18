@@ -45,11 +45,11 @@ export class RpcSystemCallHandler {
 
         switch (method) {
         case RpcSystemCalls.ok: {
-            const call = peer.outbound.get(relatedId);
+            const call = peer.outboundCalls.get(relatedId);
             if (call !== undefined) {
                 call.completedStage |= RpcCallStage.ResultReady;
                 if (call.removeOnOk) {
-                    peer.outbound.remove(relatedId);
+                    peer.outboundCalls.remove(relatedId);
                 }
                 call.result.resolve(args[0]);
             }
@@ -70,7 +70,7 @@ export class RpcSystemCallHandler {
             break;
         }
         case RpcSystemCalls.error: {
-            const call = peer.outbound.remove(relatedId);
+            const call = peer.outboundCalls.remove(relatedId);
             if (call !== undefined) {
                 const errorInfo = args[0] as
                         | Record<string, unknown>
@@ -95,7 +95,7 @@ export class RpcSystemCallHandler {
             // from the inbound tracker.  Full cancellation propagation (aborting
             // the running service handler) is not yet implemented; this just
             // unregisters the call so we don't send a response for it.
-            peer.inbound.remove(relatedId);
+            peer.inboundCalls.remove(relatedId);
             break;
         }
         case RpcSystemCalls.keepAlive: {
@@ -229,7 +229,7 @@ export class RpcSystemCallHandler {
                     if (bytes === null) continue;
                     const callIds = IncreasingSeqCompressor.deserialize(bytes);
                     for (const callId of callIds) {
-                        if (peer.inbound.get(callId) === undefined) {
+                        if (peer.inboundCalls.get(callId) === undefined) {
                             unknownSet.add(callId);
                         }
                     }

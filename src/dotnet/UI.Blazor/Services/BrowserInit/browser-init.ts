@@ -8,6 +8,7 @@ import { getLogs } from 'logging';
 import { FirebaseApp, initializeApp } from 'firebase/app';
 import { Analytics, getAnalytics, setAnalyticsCollectionEnabled } from 'firebase/analytics';
 import { Versioning } from 'versioning';
+import { Api } from 'api';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('BrowserInit');
 const IsAnalyticsEnabledSetting = 'isAnalyticsEnabled';
@@ -45,6 +46,8 @@ export class BrowserInit {
             this.apiVersion = apiVersion;
             const documentBaseUri = new URL(document.baseURI);
             this.baseUri = supportedHosts.includes(documentBaseUri.host) ? `${documentBaseUri.protocol}//${documentBaseUri.host}` : baseUri;
+            // Publish the WS API URL so `Api.init(undefined, ...)` on main thread picks it up.
+            Api.url = this.getUrl('/rpc/ws').replace(/^http/, 'ws');
             this.sessionHash = sessionHash;
             this.initWindowId();
             this.initClipboardHandlers(clipboardInteropRef);

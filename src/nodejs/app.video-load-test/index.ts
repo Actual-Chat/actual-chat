@@ -146,7 +146,7 @@ async function main(): Promise<void> {
     const chatIds = DEFAULT_CHAT_IDS.slice(0, args.chatCount);
 
     const hubUrl = `${args.baseUrl}/api/hub/streams`;
-    const rpcWsUrl = `${args.baseUrl.replace(/^http/, 'ws')}/rpc/ws`;
+    const apiUrl = `${args.baseUrl.replace(/^http/, 'ws')}/rpc/ws`;
     const mode = args.useRpc ? 'Fusion RPC' : 'SignalR';
     const totalStreams = args.chatCount * args.streamsPerChat;
     const pullsPerChat = args.consumersPerChat * (args.streamsPerChat - 1);
@@ -159,7 +159,7 @@ async function main(): Promise<void> {
 
     // --- Authentication ---
     const { sessionId, sessionToken } = await signIn({
-        rpcWsUrl,
+        apiUrl,
         email: 'test-videoload@actual.chat',
         totp: 111111,
     });
@@ -195,7 +195,7 @@ async function main(): Promise<void> {
     let rpcBundles: RpcHarnessBundle[] = [];
     if (args.useRpc) {
         rpcBundles = await Promise.all(
-            chatIds.map(() => createRpcHarnessBundle({ rpcWsUrl, sessionId, abort })),
+            chatIds.map(() => createRpcHarnessBundle({ apiUrl, sessionId, abort })),
         );
     }
 
@@ -206,7 +206,7 @@ async function main(): Promise<void> {
         for (let pi = 0; pi < args.streamsPerChat; pi++) {
             producerTasks.push(
                 args.useRpc
-                    ? runRpcProducer(rpcBundles[ci], { rpcWsUrl, sessionId, metrics, abort }, ci, pi, chatIds[ci])
+                    ? runRpcProducer(rpcBundles[ci], { apiUrl, sessionId, metrics, abort }, ci, pi, chatIds[ci])
                     : runSignalRProducer({ hubUrl, sessionToken, metrics, abort }, ci, pi, chatIds[ci]),
             );
         }
@@ -217,10 +217,10 @@ async function main(): Promise<void> {
     // Discovery path is RPC-only; reuse chat 0's bundle if we have one,
     // otherwise build a throwaway bundle just for discovery.
     const discoveryBundle = rpcBundles[0]
-        ?? await createRpcHarnessBundle({ rpcWsUrl, sessionId, abort });
+        ?? await createRpcHarnessBundle({ apiUrl, sessionId, abort });
     const chatStreams = await discoverStreams(
         discoveryBundle,
-        { rpcWsUrl, sessionId, abort },
+        { apiUrl, sessionId, abort },
         chatIds,
         args.streamsPerChat,
         45_000,
@@ -239,7 +239,7 @@ async function main(): Promise<void> {
                 const streamId = streams[si];
                 consumerTasks.push(
                     args.useRpc
-                        ? runRpcConsumer(rpcBundles[ci], { rpcWsUrl, sessionId, metrics, abort }, ci, cons, si, streamId)
+                        ? runRpcConsumer(rpcBundles[ci], { apiUrl, sessionId, metrics, abort }, ci, cons, si, streamId)
                         : runSignalRConsumer({ hubUrl, sessionToken, metrics, abort }, ci, cons, si, streamId),
                 );
             }

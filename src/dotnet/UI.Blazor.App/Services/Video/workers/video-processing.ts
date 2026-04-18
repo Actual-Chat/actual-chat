@@ -35,6 +35,7 @@ import {
     microsecondsToTicks, InternalVideoStream,
 } from './video-streaming';
 import { Api } from 'api';
+import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
 
 // Import the ONNX model so esbuild copies it to dist/assets/onnx/
 import SegmentationModelUrl from './selfie_segmentation_olive_webgpu.onnx';
@@ -109,7 +110,7 @@ const streamCtx: StreamingContext = {
     serverClockOffsetMs: 0,
     streamKind: 0,
     processing: false,
-    rpcWsUrl: null,
+    apiUrl: null,
     rpcStreamServer: null,
 };
 let videoStream: InternalVideoStream | null = null;
@@ -126,11 +127,14 @@ function applyStreamingConfig(config: VideoProcessingConfig): void {
     streamCtx.chatId = s.chatId;
     streamCtx.serverClockOffsetMs = s.serverClockOffsetMs;
     streamCtx.streamKind = s.streamKind ?? 0;
-    streamCtx.rpcWsUrl = s.rpcWsUrl;
+    streamCtx.apiUrl = s.apiUrl;
     streamingEnabled = true;
+    // Declare our intent to keep a connection up while we capture.
+    // Actual attempts are still gated by `Api.isDotNetRpcConnected`.
+    Api.requireConnection('VideoCapture');
 
-    if (!streamCtx.rpcWsUrl)
-        warnLog?.log('streaming enabled but rpcWsUrl is empty — push will fail at stream creation');
+    if (!streamCtx.apiUrl)
+        warnLog?.log('streaming enabled but apiUrl is empty — push will fail at stream creation');
 }
 let pendingStreamFrames: VideoStreamFrame[] = [];
 let codecSettings: string | null = null;
@@ -909,6 +913,7 @@ export const serverImpl: VideoProcessingWorker = {
         if (Api.hub.defaultPeerUrl !== undefined) {
             try { Api.hub.removePeer(Api.hub.defaultPeerUrl); } catch { /* ignore */ }
         }
+        Api.releaseConnection('VideoCapture');
         streamCtx.rpcStreamServer = null;
         if (segInitialized) { try { outputGpuBuffer.destroy(); } catch { /* ignore */ } try { smoothedMaskBuffer.destroy(); } catch { /* ignore */ } }
 
@@ -948,4 +953,9 @@ export const serverImpl: VideoProcessingWorker = {
 
     // eslint-disable-next-line @typescript-eslint/require-await
     updateServerClockOffset: async (offsetMs): Promise<void> => { streamCtx.serverClockOffsetMs = offsetMs; },
+
+    // eslint-disable-next-line @typescript-eslint/require-await
+    onConnectivityUpdate: async (isOnline, isConnected, isBlazorServer): Promise<void> => {
+        WorkerConnectivityUI.update(isOnline, isConnected, isBlazorServer);
+    },
 };
