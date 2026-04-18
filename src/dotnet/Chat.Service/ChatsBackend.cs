@@ -2425,8 +2425,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     private async Task<bool> HasActivatedInvite(UserId userId, ChatId chatId, CancellationToken cancellationToken)
     {
-        var settings = await ServerKvasBackend
-            .GetUserClient(userId)
+        var settings = await ServerKvasBackend.ForUser(userId)
             .Get<ChatInviteSettings>(ChatInviteSettings.GetKey(chatId), cancellationToken)
             .ConfigureAwait(false);
         if (settings is not { ActivationKey: { Length: > 0 } activationKey })

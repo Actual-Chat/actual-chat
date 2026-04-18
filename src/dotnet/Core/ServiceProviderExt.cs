@@ -37,10 +37,6 @@ public static class ServiceProviderExt
             : FakeTemporals.Instance;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static IServerSettings ServerSettings(this IServiceProvider services)
-        => services.GetRequiredService<IServerSettings>();
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static KeyedFactory<TService, TKey> KeyedFactory<
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TService,
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TKey>

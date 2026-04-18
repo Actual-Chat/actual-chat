@@ -7,11 +7,13 @@ public static class KvasExt
     public static KvasSerializer Serializer { get; set; } = KvasSerializer.Default;
     public static readonly string MigratedKey = "@Migrated";
 
-    // Get, Set, Remove w/ <T>
+    // AccessorFor
 
-    public static KvasAccessor<T> For<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>(
+    public static KvasAccessor<T> AccessorFor<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>(
         this IKvas kvas) where T : class, IHasKvasKey<T>, new()
         => new (kvas, T.KvasKey);
+
+    // Get, Set, Remove w/ <T>
 
     public static async ValueTask<T?> Get<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
@@ -101,9 +103,6 @@ public static class KvasExt
             return new PrefixedKvas(kvp.Upstream, $"{prefix}.{kvp.Prefix}");
         return new PrefixedKvas(kvas, prefix);
     }
-
-    public static IKvas<TScope> WithScope<TScope>(this IKvas kvas)
-        => new ScopedKvasProxy<TScope>(kvas);
 
     // BatchingKvas
     public static async ValueTask<(string, T)[]> ListAllEntries<

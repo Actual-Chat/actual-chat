@@ -161,7 +161,6 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
 
         // UserSettings, ServerSettings and ServerKvas
         rpcHost.AddLocalApi<IUserSettings, UserSettings>();
-        rpcHost.AddLocalApi<IServerSettings, ServerSettings>();
         rpcHost.AddLocalApi<IServerKvas, ServerKvas>(); // Used by Authors, Avatars -> Chats, etc.
         rpcHost.AddBackend<IServerKvasBackend, ServerKvasBackend>();
 

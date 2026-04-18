@@ -76,7 +76,6 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         // Users
         fusion.AddClient<ISessionTemporals>();
         fusion.AddClient<IUserSettings>();
-        fusion.AddClient<IServerSettings>();
         fusion.AddClient<IServerKvas>();
         fusion.AddClient<IAccounts>();
         fusion.AddClient<IAvatars>();

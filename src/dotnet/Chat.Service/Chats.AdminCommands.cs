@@ -156,7 +156,7 @@ public partial class Chats
         var avatar = await Commander.Call(changeAvatarCommand, cancellationToken).ConfigureAwait(false);
 
         // Set default avatar
-        var userKvas = ServerKvasBackend.GetUserClient(botAccount);
+        var userKvas = ServerKvasBackend.ForUser(botAccount);
         var userAvatarSettings = new UserAvatarSettings() {
             DefaultAvatarId = avatar.Id,
             AvatarIds = [avatar.Id],

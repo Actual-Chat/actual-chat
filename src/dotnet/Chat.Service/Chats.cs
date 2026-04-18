@@ -792,7 +792,7 @@ public partial class Chats(IServiceProvider services) : IChats
 
         async Task<bool> UpdateChatUserSettings(UserId userId)
         {
-            var userKvas = ServerKvasBackend.GetUserClient(userId);
+            var userKvas = ServerKvasBackend.ForUser(userId);
             var chatUserSettings = await userKvas.ChatUserSettings(sourceChatId).Get(cancellationToken).ConfigureAwait(false);
             if (chatUserSettings == ChatUserSettings.Default)
                 return false;

@@ -50,7 +50,7 @@ public class TestAgentSignInTest(AppHostFixture fixture, ITestOutputHelper @out)
         var (account, _) = await SignInAsTestAgent();
 
         var serverKvasBackend = AppHost.Services.GetRequiredService<IServerKvasBackend>();
-        var kvas = serverKvasBackend.GetUserClient(account.Id);
+        var kvas = serverKvasBackend.ForUser(account.Id);
         var appSettings = await kvas.UserAppSettings().Get(default);
         appSettings.AreExperimentalFeaturesEnabled.Should().BeTrue();
         appSettings.IsIncompleteUIEnabled.Should().BeTrue();

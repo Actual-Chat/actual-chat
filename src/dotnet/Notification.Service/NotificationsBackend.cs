@@ -666,7 +666,7 @@ public class NotificationsBackend(IServiceProvider services)
 
         var notificationModes = await userIds
             .Select(async userId => {
-                var kvas = ServerKvasBackend.GetUserClient(userId);
+                var kvas = ServerKvasBackend.ForUser(userId);
                 var notificationMode = await kvas.ChatUserSettings(chatId).Get(x => x.NotificationMode, cancellationToken).ConfigureAwait(false);
                 return (UserId: userId, NotificationMode: notificationMode);
             })

@@ -123,7 +123,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         var userId = Constants.User.Admin.UserId;
         await flowHub.Get<DigestFlow>(userId.Value);
 
-        var kvas = serverKvasBackend.GetUserClient(userId);
+        var kvas = serverKvasBackend.ForUser(userId);
         await kvas.UserEmailsSettings()
             .Update(x => x with {
                 DigestTime = DateTime.Now.TimeOfDay.Add(new TimeSpan(0, 0, 10)),

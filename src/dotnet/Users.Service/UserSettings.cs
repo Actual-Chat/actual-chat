@@ -59,7 +59,7 @@ public class UserSettings : IUserSettings
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         return !account.IsGuest
-            ? ServerKvasBackendExt.GetUserPrefix(account.Id)
+            ? UserScopedKvasBackend.GetUserPrefix(account.Id)
             : null;
     }
 
@@ -67,7 +67,7 @@ public class UserSettings : IUserSettings
     {
         var sessionInfo = await Accounts.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
         var guestId = sessionInfo.GetGuestId();
-        return guestId is null ? null : ServerKvasBackendExt.GetUserPrefix(guestId);
+        return guestId is null ? null : UserScopedKvasBackend.GetUserPrefix(guestId);
     }
 
     private StoredSettings? Deserialize(byte[]? data, string key)

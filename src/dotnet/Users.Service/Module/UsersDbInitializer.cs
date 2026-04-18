@@ -188,7 +188,7 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
 
         // Set this avatar as the default one
         var serverKvasBackend = Services.GetRequiredService<IServerKvasBackend>();
-        var userKvas = serverKvasBackend.GetUserClient(account);
+        var userKvas = serverKvasBackend.ForUser(account);
         var userAvatarSettings = new UserAvatarSettings() {
             DefaultAvatarId = avatar.Id,
             AvatarIds = [avatar.Id],

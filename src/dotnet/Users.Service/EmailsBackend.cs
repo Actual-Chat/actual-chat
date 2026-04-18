@@ -94,7 +94,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
         const int takeChats = 5;
         var totalUnreadCount = 0;
         var unreadChats = new List<DigestParameters.DigestChat>();
-        var userSettings = ServerKvasBackend.GetUserClient(account.Id);
+        var userSettings = ServerKvasBackend.ForUser(account.Id);
         var now = Clocks.SystemClock.Now;
         var contactIds = await ContactsBackend
             .ListIdsForSearch(account.Id, ContactSubset.All(), true, cancellationToken)

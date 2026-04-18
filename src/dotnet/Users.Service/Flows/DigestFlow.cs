@@ -36,7 +36,7 @@ public partial class DigestFlow : PeriodicFlow
             return $"Can't find TimeZoneInfo for time zone: {account.TimeZone}";
 
         var serverKvasBackend = Services.GetRequiredService<IServerKvasBackend>();
-        var kvas = serverKvasBackend.GetUserClient(userId);
+        var kvas = serverKvasBackend.ForUser(userId);
         var userEmailsSettings = await kvas.UserEmailsSettings().Get(cancellationToken).ConfigureAwait(false);
         if (!userEmailsSettings.IsDigestEnabled)
             return "Digest is disabled for this account";

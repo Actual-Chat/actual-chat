@@ -51,7 +51,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         }
 
         // Adding Avatar
-        var kvas = ServerKvasBackend.GetUserClient(account);
+        var kvas = ServerKvasBackend.ForUser(account);
         var userAvatarSettings = await kvas.UserAvatarSettings().Get(cancellationToken).ConfigureAwait(false);
         var avatarId = userAvatarSettings.DefaultAvatarId;
         if (avatarId.IsEmpty) // Default avatar isn't selected - let's pick the first one
@@ -255,7 +255,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
             // Auto-enable early access settings for test agent accounts
             if (identities.GetEmails().Any(Constants.Auth.TestAgent.IsTestAgentEmail)) {
-                var kvas = ServerKvasBackend.GetUserClient(userId);
+                var kvas = ServerKvasBackend.ForUser(userId);
                 await kvas.UserAppSettings().Set(new UserAppSettings {
                     AreExperimentalFeaturesEnabled = true,
                     IsIncompleteUIEnabled = true,
