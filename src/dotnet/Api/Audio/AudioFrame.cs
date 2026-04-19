@@ -14,11 +14,12 @@ public partial class AudioFrame : MediaFrame
 
     /// <summary>
     /// Cached serialized bytes for zero-copy forwarding and serialize-once fan-out.
-    /// Set once during deserialization (<see cref="CachingAudioFrameFormatter"/>) or first
-    /// RPC serialization. Subsequent consumers reuse cached bytes. Do not mutate after
-    /// initial assignment. Backed by a plain GC-managed <c>byte[]</c>; <see cref="MediaFrame.Data"/>
-    /// is a slice into the same array, so references live as long as any consumer holds
-    /// this frame — no Dispose dance, no use-after-free race.
+    /// Populated at ingress by <see cref="CachingAudioFrameFormatter"/>.<c>Deserialize</c>
+    /// (single-writer: the RPC read loop of the producer's peer). Fan-out consumers read
+    /// only — the memoizer's <c>TrySetResult</c> establishes the happens-before edge that
+    /// makes the write visible. Do not add writers outside the ingress path.
+    /// Backed by a plain GC-managed <c>byte[]</c>; <see cref="MediaFrame.Data"/> is a slice
+    /// into the same array, so the array lives as long as any consumer holds this frame.
     /// </summary>
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     internal ReadOnlyMemory<byte> SerializedData { get; set; }

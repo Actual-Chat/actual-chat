@@ -1,8 +1,7 @@
 {
+  "// note": "Server / Concurrent / RetainVM come from App.Server.csproj MSBuild props. Keep GC tunables that have no MSBuild counterpart here.",
   "configProperties": {
-    "System.GC.Server": true,
-    "System.GC.Concurrent": true,
-    "System.GC.RetainVM": true,
+    "// HighMemoryPercent": "Only trim the heap aggressively when working-set exceeds 90% of the limit. Raise toward 95 if the pod memory limit is close to peak RSS (risk: OOM-kill). Lower if you want faster memory return at the cost of more GC work.",
     "System.GC.HighMemoryPercent": 90
   }
 }

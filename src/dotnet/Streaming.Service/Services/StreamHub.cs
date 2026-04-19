@@ -109,7 +109,9 @@ public class StreamHub(IServiceProvider services) : Hub
                     continue;
                 }
 
-                frame.SerializedData = frameBytes; // Cache for zero-copy forwarding
+                // Note: frameBytes use SignalR's lowercase wire schema; cannot be cached in
+                // VideoFrame.SerializedData (which CachingVideoFrameFormatter assumes is the
+                // PascalCase RPC schema — WriteRaw-ing the wrong format corrupts RPC fan-out).
                 StreamingMeters.VideoFrameSizeBytes.Record(frameBytes.Length);
                 StreamingMeters.VideoFramesReceived.Add(1);
                 StreamingMeters.VideoBytesReceived.Add(frameBytes.Length);
@@ -244,15 +246,12 @@ public class StreamHub(IServiceProvider services) : Hub
             await foreach (var frame in SuppressClientStreamCancellation(videoStream, parsedStreamId, peerId, pullCts.Token).ConfigureAwait(false)) {
                 frameCount++;
 
-                byte[] bytes;
-                if (!frame.SerializedData.IsEmpty)
-                    bytes = frame.SerializedData.ToArray();
-                else {
-                    var tsBeforeSerialize = Stopwatch.GetTimestamp();
-                    bytes = SerializeVideoFrame(frame);
-                    var serializeUs = Stopwatch.GetElapsedTime(tsBeforeSerialize).TotalMicroseconds;
-                    StreamingMeters.VideoFrameSerializeDuration.Record(serializeUs);
-                }
+                // Always re-serialize: frame.SerializedData (when populated) holds the
+                // PascalCase RPC wire format, which is not compatible with SignalR clients.
+                var tsBeforeSerialize = Stopwatch.GetTimestamp();
+                var bytes = SerializeVideoFrame(frame);
+                var serializeUs = Stopwatch.GetElapsedTime(tsBeforeSerialize).TotalMicroseconds;
+                StreamingMeters.VideoFrameSerializeDuration.Record(serializeUs);
                 StreamingMeters.VideoFramesSent.Add(1);
                 StreamingMeters.VideoBytesSent.Add(bytes.Length);
                 yield return bytes;
