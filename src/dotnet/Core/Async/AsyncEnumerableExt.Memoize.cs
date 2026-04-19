@@ -12,17 +12,4 @@ public static partial class AsyncEnumerableExt
         int capacity,
         CancellationToken cancellationToken = default)
         => new(source, capacity, cancellationToken);
-
-    public static AsyncMemoizer<T> Memoize<T>(
-        this IAsyncEnumerable<T> source,
-        int capacity,
-        Action<T>? onRemove,
-        CancellationToken cancellationToken = default)
-        => new(source, capacity, onRemove, cancellationToken);
-
-    public static AsyncMemoizer<T> Memoize<T>(
-        this IAsyncEnumerable<T> source,
-        Action<T>? onRemove,
-        CancellationToken cancellationToken = default)
-        => new(source, int.MaxValue, onRemove, cancellationToken);
 }
