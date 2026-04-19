@@ -410,8 +410,9 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             return;
 
         stream.Writer.TryComplete();
-        while (stream.Reader.TryRead(out var frame))
-            frame.Dispose();
+        while (stream.Reader.TryRead(out _)) {
+            // Drain remaining frames so GC can reclaim them; AudioFrame is no longer IDisposable.
+        }
     }
 
     // Separate class to handle the complex audio processing logic
