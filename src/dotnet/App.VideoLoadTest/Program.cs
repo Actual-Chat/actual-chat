@@ -502,27 +502,20 @@ async Task RunOrchestrator()
 void PrintAggregateReport()
 {
     var resultsDir = Path.Combine("tmp", "load-test");
-    var total = originalChatCount * consumersPerChat * (streamsPerChat - 1);
-
-    WriteLine();
-    WriteLine("=== VIDEO LOAD TEST RESULTS ===");
-    WriteLine($"Duration: {durationSec}s, Chats: {originalChatCount}, Streams/chat: {streamsPerChat}, Consumers/chat: {consumersPerChat}");
-    WriteLine($"Total streams: {originalChatCount * streamsPerChat}, Total pulls: {total}");
-    WriteLine();
-    WriteLine("--- Per-Chat Summary ---");
-    WriteLine($"{"Chat",-6} {"Frames",-10} {"MB/s",-8} {"p50ms",-8} {"p95ms",-8} {"p99ms",-8}");
 
     var aggSamples = new List<double>();
     var aggFrames = 0L;
     var aggBytes = 0L;
     var aggFirstFrameDelays = new List<double>();
     var missingChats = new List<int>();
+    var totalPulls = 0;      // computed from actual perPull entries
+    var perChatRows = new List<(int ci, long frames, long bytes, List<double> samples)>();
 
+    // Pass 1: read all files, compute actual totals.
     for (var ci = 0; ci < originalChatCount; ci++) {
         var path = Path.Combine(resultsDir, $"chat-{ci}.json");
         if (!File.Exists(path)) {
             missingChats.Add(ci);
-            WriteLine($"{ci,-6} (missing result file)");
             continue;
         }
         using var doc = JsonDocument.Parse(File.ReadAllBytes(path));
@@ -531,6 +524,7 @@ void PrintAggregateReport()
         var chatFrames = 0L;
         var chatBytes = 0L;
         foreach (var pull in root.GetProperty("perPull").EnumerateArray()) {
+            totalPulls++;
             chatFrames += pull.GetProperty("frames").GetInt64();
             chatBytes += pull.GetProperty("bytes").GetInt64();
             if (pull.TryGetProperty("firstFrameMs", out var ff) && ff.GetDouble() >= 0)
@@ -540,15 +534,29 @@ void PrintAggregateReport()
         foreach (var s in root.GetProperty("latencyMsSamples").EnumerateArray())
             chatSamples.Add(s.GetDouble());
 
+        perChatRows.Add((ci, chatFrames, chatBytes, chatSamples));
+        aggFrames += chatFrames;
+        aggBytes += chatBytes;
+        aggSamples.AddRange(chatSamples);
+    }
+
+    // Pass 2: print header + per-chat rows + aggregate.
+    WriteLine();
+    WriteLine("=== VIDEO LOAD TEST RESULTS ===");
+    WriteLine($"Duration: {durationSec}s, Chats: {originalChatCount}, Streams/chat: {streamsPerChat}, Consumers/chat: {consumersPerChat}");
+    WriteLine($"Total streams: {originalChatCount * streamsPerChat}, Total pulls: {totalPulls}");
+    WriteLine();
+    WriteLine("--- Per-Chat Summary ---");
+    WriteLine($"{"Chat",-6} {"Frames",-10} {"MB/s",-8} {"p50ms",-8} {"p95ms",-8} {"p99ms",-8}");
+    foreach (var (ci, chatFrames, chatBytes, chatSamples) in perChatRows) {
         var mbps = chatBytes / (1024.0 * 1024.0) / durationSec;
         WriteLine($"{ci,-6} {chatFrames,-10} {mbps,-8:F2} " +
                   $"{Percentile(chatSamples, 0.50),-8:F1} " +
                   $"{Percentile(chatSamples, 0.95),-8:F1} " +
                   $"{Percentile(chatSamples, 0.99),-8:F1}");
-        aggFrames += chatFrames;
-        aggBytes += chatBytes;
-        aggSamples.AddRange(chatSamples);
     }
+    foreach (var ci in missingChats)
+        WriteLine($"{ci,-6} (missing result file)");
 
     var aggMbps = aggBytes / (1024.0 * 1024.0) / durationSec;
     WriteLine();
@@ -565,14 +573,14 @@ void PrintAggregateReport()
         WriteLine("Latency: no samples collected across workers.");
 
     if (aggFirstFrameDelays.Count > 0) {
-        var noFirst = total - aggFirstFrameDelays.Count;
+        var noFirst = totalPulls - aggFirstFrameDelays.Count;
         WriteLine($"First-frame delay: p50={Percentile(aggFirstFrameDelays, 0.50):F0}ms, " +
                   $"p95={Percentile(aggFirstFrameDelays, 0.95):F0}ms, " +
                   $"p99={Percentile(aggFirstFrameDelays, 0.99):F0}ms " +
-                  $"(got first frame: {aggFirstFrameDelays.Count}/{total}, silent: {noFirst})");
+                  $"(got first frame: {aggFirstFrameDelays.Count}/{totalPulls}, silent: {noFirst})");
     }
 
-    var expectedTotal = (int)(durationSec * 30) * total;
+    var expectedTotal = (int)(durationSec * 30) * totalPulls;
     WriteLine($"Expected ~{expectedTotal} total frames, got {aggFrames} ({100.0 * aggFrames / Math.Max(1, expectedTotal):F1}%)");
     if (missingChats.Count > 0)
         WriteLine($"WARNING: missing results for chats: {string.Join(",", missingChats)}");
@@ -778,7 +786,7 @@ async Task RunConsumerRpc(int chatIdx, int consumerIdx, int streamIdx, StreamId 
 
             var receiveTs = Stopwatch.GetTimestamp();
             var key = (chatIdx, consumerIdx, streamIdx);
-            var frameSize = !frame.SerializedData.IsEmpty ? frame.SerializedData.Length : frame.Data.Length;
+            var frameSize = frame.Data.Length + 20;
             framesReceived.AddOrUpdate(key, 1, (_, v) => v + 1);
             bytesReceived.AddOrUpdate(key, frameSize, (_, v) => v + frameSize);
             firstFrameTimestamps.TryAdd(key, receiveTs);
@@ -815,7 +823,7 @@ async Task RunConsumerRpcBackend(int chatIdx, int consumerIdx, int streamIdx, St
 
             var receiveTs = Stopwatch.GetTimestamp();
             var key = (chatIdx, consumerIdx, streamIdx);
-            var frameSize = !frame.SerializedData.IsEmpty ? frame.SerializedData.Length : frame.Data.Length;
+            var frameSize = frame.Data.Length + 20;
             framesReceived.AddOrUpdate(key, 1, (_, v) => v + 1);
             bytesReceived.AddOrUpdate(key, frameSize, (_, v) => v + frameSize);
             firstFrameTimestamps.TryAdd(key, receiveTs);

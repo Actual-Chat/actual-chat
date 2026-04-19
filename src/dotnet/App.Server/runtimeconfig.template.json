@@ -1,0 +1,8 @@
+{
+  "configProperties": {
+    "System.GC.Server": true,
+    "System.GC.Concurrent": true,
+    "System.GC.RetainVM": true,
+    "System.GC.HighMemoryPercent": 90
+  }
+}

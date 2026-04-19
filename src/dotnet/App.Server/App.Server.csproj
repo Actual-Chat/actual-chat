@@ -10,6 +10,11 @@
   <!-- Runtime properties -->
   <PropertyGroup>
     <ServerGarbageCollection>true</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
+    <!-- Retain allocated VM between collections so Gen2/Trim does not walk
+         and release memory back to the OS — reduces SharedArrayPool trim
+         stalls that we saw dominate p99 latency under high fan-out. -->
+    <RetainVMGarbageCollection>true</RetainVMGarbageCollection>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(RunConfiguration)' == 'Debug' " />
