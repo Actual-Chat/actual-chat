@@ -21,13 +21,15 @@ public static class ApiModuleInitializer
         // are stored in our DB, and this option enables their legacy serialization mode.
         StringAsSymbolMemoryPackFormatterAttribute.IsEnabled = true;
 
-        // Prepend a MessagePack resolver that supplies a caching formatter for VideoFrame —
-        // enables serialize-once fan-out via VideoFrame.SerializedData. Scoped to VideoFrame only.
-        // Must run before any VideoFrame is resolved (module initializer timing guarantees this).
-        DefaultMessagePackResolver.Resolvers = new IFormatterResolver[] {
+        // Prepend MessagePack resolvers that supply caching formatters for VideoFrame and
+        // AudioFrame — enables serialize-once fan-out via the frame's SerializedData.
+        // Scoped to VideoFrame / AudioFrame only. Must run before the first frame is resolved
+        // (module-initializer timing guarantees this).
+        DefaultMessagePackResolver.Resolvers = [
             ActualChat.Video.CachingVideoFrameResolver.Instance,
+            ActualChat.Audio.CachingAudioFrameResolver.Instance,
             StandardResolver.Instance,
-        };
+        ];
 
         // Custom MemoryPack formatters
 

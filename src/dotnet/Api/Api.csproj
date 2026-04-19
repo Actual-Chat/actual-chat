@@ -26,6 +26,10 @@
     <InternalsVisibleTo Include="$(RootNamespace).Transcription.IntegrationTests$(AssemblyPublicKey)" />
     <InternalsVisibleTo Include="$(RootNamespace).Users.UnitTests$(AssemblyPublicKey)" />
     <InternalsVisibleTo Include="$(RootNamespace).Users.IntegrationTests$(AssemblyPublicKey)" />
+    <!-- Streaming.Service uses internal VideoFrame.SerializedData / AudioFrame.SerializedData
+         for zero-copy forwarding and serialize-once fan-out. -->
+    <InternalsVisibleTo Include="$(RootNamespace).Streaming.Service$(AssemblyPublicKey)" />
+    <InternalsVisibleTo Include="$(RootNamespace).Streaming.UnitTests$(AssemblyPublicKey)" />
   </ItemGroup>
 
   <ItemGroup>
