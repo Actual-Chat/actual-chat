@@ -31,8 +31,6 @@ public abstract class MediaSource<TFormat, TFrame> : IMediaSource
         CreatedAt = createdAt;
         Format = format;
         DurationTaskSource = AsyncTaskMethodBuilderExt.New<TimeSpan>();
-        // MediaFrame.Dispose() is a no-op in the current design — the memoizer holds
-        // frames until GC reclaims them, so no eviction callback is needed.
         MemoizedFrames = IterateThrough(frameStream, cancellationToken)
             .Memoize(cancellationToken);
         Log = log;

@@ -10,24 +10,16 @@ namespace ActualChat.Media;
 [MemoryPackUnion(1, typeof(Video.VideoFrame))]
 [Union(0, typeof(AudioFrame))]
 [Union(1, typeof(Video.VideoFrame))]
-public abstract partial class MediaFrame : IDisposable
+public abstract partial class MediaFrame
 {
     // ReadOnlyMemory<byte> for zero-copy slicing and reduced GC pressure.
-    [DataMember(Order = 0), MemoryPackOrder(0), Key("data")]
+    [DataMember(Order = 0), MemoryPackOrder(0)]
     public ReadOnlyMemory<byte> Data { get; init; }
 
-    [DataMember(Order = 1), MemoryPackOrder(1), Key("offset")]
+    [DataMember(Order = 1), MemoryPackOrder(1)]
     public abstract TimeSpan Offset { get; init; }
-    [DataMember(Order = 2), MemoryPackOrder(2), Key("duration")]
+    [DataMember(Order = 2), MemoryPackOrder(2)]
     public abstract TimeSpan Duration { get; init; }
-    [DataMember(Order = 3), MemoryPackOrder(3), Key("isKeyFrame")]
+    [DataMember(Order = 3), MemoryPackOrder(3)]
     public abstract bool IsKeyFrame { get; init; }
-
-    public void Dispose()
-    {
-        Dispose(true);
-        GC.SuppressFinalize(this);
-    }
-
-    protected virtual void Dispose(bool disposing) { }
 }
