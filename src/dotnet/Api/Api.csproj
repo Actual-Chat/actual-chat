@@ -30,6 +30,7 @@
          for zero-copy forwarding and serialize-once fan-out. -->
     <InternalsVisibleTo Include="$(RootNamespace).Streaming.Service$(AssemblyPublicKey)" />
     <InternalsVisibleTo Include="$(RootNamespace).Streaming.UnitTests$(AssemblyPublicKey)" />
+    <InternalsVisibleTo Include="$(RootNamespace).App.VideoLoadTest$(AssemblyPublicKey)" />
   </ItemGroup>
 
   <ItemGroup>

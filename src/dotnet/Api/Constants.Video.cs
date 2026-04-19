@@ -12,8 +12,8 @@ public static partial class Constants
         // Tuned for up to ~1s RTT: ackAdvance > ackPeriod + fps × RTT.
         public const int StreamAckPeriod = 64;
         public const int StreamAckAdvance = 192;
-        public static readonly int RetentionBufferSize = 150; // ~5s at 30fps
-        public static readonly int ReplayBufferSize = 90;   // ~3s at 30fps — bounded replay channel per consumer
+        public static readonly int RetentionBufferSize = 60; // ~2s at 30fps — bounds live server heap
+        public static readonly int ReplayBufferSize = 30;   // ~1s at 30fps — bounded replay channel per consumer
         public static readonly int ConsumerBufferSize = 300; // ~10s at 30fps before slow consumer disconnect
 
         // Latency measurement & quality adaptation
