@@ -238,10 +238,9 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                 }
             }
 
-            // No DelayedDisposer: VideoFrame.SerializedData is a plain GC-managed byte[],
-            // released automatically when all consumers (including lagging ones via the
-            // new AsyncMemoizer's linked list) release their references. Using a pooled
-            // buffer + disposer raced with slow consumers in the new memoizer.
+            // VideoFrame.SerializedData is a plain GC-managed byte[], released automatically
+            // when all consumers (including lagging ones via the linked-list AsyncMemoizer)
+            // release their references — no eviction callback / pooled-buffer lifecycle needed.
             var memoizer = ProcessFrames(videoFrames).Memoize(
                 Constants.Video.RetentionBufferSize,
                 cancellationToken);
