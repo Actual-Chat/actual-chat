@@ -14,6 +14,9 @@ internal static class ApiContractsModuleInitializer
     {
         AotTypes.AddSource(new ApiContractsAotSource());
 
+        // Default binary serializer
+        ByteSerializer.Default = MessagePackByteSerializer.Default;
+
         // Session.Factory & Validator
 #pragma warning disable CA2000
         Session.Factory = DefaultSessionFactory.New(new RandomStringGenerator(24, Alphabet.AlphaNumericDash.Symbols));
