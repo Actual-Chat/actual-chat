@@ -1,6 +1,5 @@
 using ActualChat.Hosting;
 using ActualLab.Rpc;
-using ActualLab.Rpc.Infrastructure;
 
 namespace ActualChat;
 
@@ -13,6 +12,6 @@ public static class RpcHubExt
             return Task.CompletedTask;
 
         var peer = rpcHub.GetClientPeer(RpcPeerRef.Default);
-        return peer.ConnectionState.WhenConnected(cancellationToken);
+        return peer.WhenConnected(cancellationToken);
     }
 }
