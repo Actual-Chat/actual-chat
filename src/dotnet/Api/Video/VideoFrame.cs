@@ -62,5 +62,5 @@ public partial class VideoFrame : MediaFrame
     /// this frame — no Dispose dance, no use-after-free race.
     /// </summary>
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public ReadOnlyMemory<byte> SerializedData { get; set; }
+    internal ReadOnlyMemory<byte> SerializedData { get; set; }
 }
