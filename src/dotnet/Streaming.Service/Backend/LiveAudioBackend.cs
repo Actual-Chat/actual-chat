@@ -10,7 +10,8 @@ namespace ActualChat.Streaming;
 /// </summary>
 public class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
 {
-    private static readonly TimeSpan StreamTtl = Constants.Audio.MaxStreamDuration + TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan MinInvDelay = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan StreamTtl = Constants.Audio.MaxStreamDuration;
     private static readonly TimeSpan HashTtl = TimeSpan.FromHours(1);
 
     private readonly RedisMultiHashMap<LiveStreamInfo> _streams;
@@ -25,7 +26,6 @@ public class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
         var redisDb = services.GetRequiredService<RedisDb<StreamingContext>>();
         _streams = new RedisMultiHashMap<LiveStreamInfo>(redisDb, "live-audio:streams", Log) {
             HashTtl = HashTtl,
-            DefaultFieldTtl = StreamTtl,
         };
         _listRawPrimer = new LockingComputeMethodPrimer<ChatId, ApiArray<LiveStreamInfo>>(ListRaw);
     }
@@ -43,6 +43,14 @@ public class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
 
     public virtual async Task Register(ChatId chatId, LiveStreamInfo streamInfo, CancellationToken cancellationToken)
     {
+        var now = Clocks.SystemClock.Now;
+        var ttl = streamInfo.BeginsAt + StreamTtl - now;
+        if (ttl <= TimeSpan.Zero) {
+            Log.LogWarning("Register: ignoring already-expired stream {StreamId} for author {AuthorId} (BeginsAt = {BeginsAt})",
+                streamInfo.StreamId, streamInfo.AuthorId, streamInfo.BeginsAt);
+            return;
+        }
+
         using var _ = Computed.BeginIsolation();
         using var primer = await _listRawPrimer.LockAndPrepare(chatId, cancellationToken).ConfigureAwait(false);
 
@@ -61,7 +69,7 @@ public class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
                 next.Add(info);
         }
         next.Add(streamInfo);
-        await _streams.Set(chatId.Value, streamInfo.StreamId, streamInfo).ConfigureAwait(false);
+        await _streams.Set(chatId.Value, streamInfo.StreamId, streamInfo, ttl).ConfigureAwait(false);
         await primer.Prime(new ApiArray<LiveStreamInfo>(next), cancellationToken).ConfigureAwait(false);
     }
 
@@ -113,9 +121,12 @@ public class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
                 result.TryAdd(streamInfo.StreamId, streamInfo);
             }
 
-        // Write recovered entries to Redis for future restarts
-        foreach (var info in result.Values)
-            await _streams.Set(chatId.Value, info.StreamId, info).ConfigureAwait(false);
+        // Drop already-expired entries, then persist the rest
+        result.RemoveAll((_, info) => info.BeginsAt + StreamTtl <= now);
+        foreach (var streamInfo in result.Values) {
+            var ttl = streamInfo.BeginsAt + StreamTtl - now;
+            await _streams.Set(chatId.Value, streamInfo.StreamId, streamInfo, ttl).ConfigureAwait(false);
+        }
 
         return WithAutoInvalidation(result.Values.ToApiArray());
 
@@ -126,9 +137,8 @@ public class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
                 return streams;
 
             var minBeginsAt = streams.Min(x => x.BeginsAt);
-            var delay = minBeginsAt + StreamTtl + TimeSpan.FromSeconds(5) - now;
-            if (delay > TimeSpan.Zero)
-                Computed.GetCurrent().Invalidate(delay);
+            var delay = (minBeginsAt + StreamTtl - now + MinInvDelay).Clamp(MinInvDelay, StreamTtl);
+            Computed.GetCurrent().Invalidate(delay);
             return streams;
         }
     }

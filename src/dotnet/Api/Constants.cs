@@ -311,7 +311,7 @@ public static partial class Constants
         public static readonly TimeSpan ListeningDuration = TimeSpan.FromSeconds(60);
         public static readonly TimeSpan RecordingDuration = TimeSpan.FromSeconds(30);
         public static readonly TimeSpan MaxRealtimeStreamDrift = TimeSpan.FromSeconds(3);
-        public static readonly TimeSpan MaxStreamDuration = TimeSpan.FromMinutes(2);
+        public static readonly TimeSpan MaxStreamDuration = TimeSpan.FromMinutes(3);
 
         // RPC stream flow control for audio (50fps, 20ms frames).
         // Tuned for up to ~1s RTT: ackAdvance > ackPeriod + fps × RTT.
