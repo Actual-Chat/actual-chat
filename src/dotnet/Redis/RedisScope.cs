@@ -13,8 +13,8 @@ public sealed class RedisScope<TValue>(RedisDb redisDb, string? keyPrefix = null
     private RedisDb RedisDb { get; } = redisDb.WithKeyPrefix(keyPrefix ?? "");
     private ILogger? Log { get; } = log;
 
-    public TimeSpan? DefaultTtl { get; init; }
     public RedisSerializer Serializer { get; init; } = RedisSerializer.Default;
+    public TimeSpan? DefaultTtl { get; init; }
 
     public async Task Set(string key, TValue value, TimeSpan? ttl = null)
     {
