@@ -10,7 +10,8 @@ namespace ActualChat.Streaming;
 /// </summary>
 public class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
 {
-    private static readonly TimeSpan HashTtl = Constants.Audio.MaxStreamDuration * 5; // Ok to keep it a bit longer
+    private static readonly TimeSpan StreamTtl = Constants.Audio.MaxStreamDuration * 2; // Ok to keep it a bit longer
+    private static readonly TimeSpan HashTtl = TimeSpan.FromHours(1);
 
     private RedisMultiHashMap<LiveStreamInfo> Streams { get; }
     private LockingComputeMethodPrimer<ChatId, ApiArray<LiveStreamInfo>> ListRawPrimer { get; }
@@ -24,6 +25,7 @@ public class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
         var redisDb = services.GetRequiredService<RedisDb<StreamingContext>>();
         Streams = new RedisMultiHashMap<LiveStreamInfo>(redisDb, "live-audio:streams", Log) {
             HashTtl = HashTtl,
+            DefaultFieldTtl = StreamTtl,
         };
         ListRawPrimer = new LockingComputeMethodPrimer<ChatId, ApiArray<LiveStreamInfo>>(ListRaw);
     }
