@@ -2,6 +2,7 @@ using ActualChat.Testing.Host;
 
 namespace ActualChat.Users.IntegrationTests;
 
+[Trait("Category", "Slow")]
 public class SessionTemporalsTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(SessionTemporalsTest)}", TestAppHostOptions.Default, @out)
 {

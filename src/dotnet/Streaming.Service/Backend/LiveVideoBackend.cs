@@ -11,9 +11,9 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     private static readonly TimeSpan ChatStateTtl = TimeSpan.FromMinutes(5);
 
     private readonly ConcurrentDictionary<ChatId, ExpiringEntry<ChatId, ChatState>> _chatStates = new();
-
-    private RedisMultiHashMap<VideoStreamInfo> Streams { get; }
-    private RedisMultiHashMap<VideoStreamMemberInfo> Members { get; }
+    private readonly LockingComputeMethodPrimer<ChatId, ApiArray<VideoStreamInfo>> _listRawPrimer;
+    private readonly RedisMultiHashMap<VideoStreamInfo> _streams;
+    private readonly RedisMultiHashMap<VideoStreamMemberInfo> _members;
 
     private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
     private MomentClock SystemClock => Clocks.SystemClock;
@@ -23,12 +23,13 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     {
         var redisDb = services.GetRequiredService<RedisDb<StreamingContext>>();
         var log = services.LogFor(GetType());
-        Streams = new RedisMultiHashMap<VideoStreamInfo>(redisDb, "live-video:streams", log) {
+        _streams = new RedisMultiHashMap<VideoStreamInfo>(redisDb, "live-video:streams", log) {
             HashTtl = RedisTtl,
         };
-        Members = new RedisMultiHashMap<VideoStreamMemberInfo>(redisDb, "live-video:members", log) {
+        _members = new RedisMultiHashMap<VideoStreamMemberInfo>(redisDb, "live-video:members", log) {
             HashTtl = RedisTtl,
         };
+        _listRawPrimer = new LockingComputeMethodPrimer<ChatId, ApiArray<VideoStreamInfo>>(ListRaw);
     }
 
     // [ComputeMethod]
@@ -40,15 +41,14 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         // Throws RpcRerouteException if the call landed on a node not mapped to this shard.
         await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
 
-        var streams = await SafeGetAll(Streams, chatId).ConfigureAwait(false);
+        var streams = await ListRaw(chatId, cancellationToken).ConfigureAwait(false);
         if (streams.Count == 0)
             return default;
 
         var meshState = MeshWatcher.State.Value;
-        var liveStreams = streams.Values
+        return streams
             .WhereAlive(meshState, static info => info.StreamId)
-            .ToList();
-        return new(liveStreams);
+            .ToApiArray();
     }
 
     // [ComputeMethod]
@@ -56,7 +56,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     {
         await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
 
-        var allMembers = await SafeGetAll(Members, chatId).ConfigureAwait(false);
+        var allMembers = await SafeGetAll(_members, chatId).ConfigureAwait(false);
         var (activeMembers, _) = FilterStaleMembers(chatId, allMembers);
         return activeMembers.Count;
     }
@@ -65,14 +65,23 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     {
         BumpChatEntry(chatId);
 
-        // Read existing streams once — needed for both screencast and webcam checks
-        var existingStreams = await SafeGetAll(Streams, chatId).ConfigureAwait(false);
+        using var isolation = Computed.BeginIsolation();
+        using var primer = await _listRawPrimer.LockAndPrepare(chatId, cancellationToken).ConfigureAwait(false);
+
+        var prev = await List(chatId, cancellationToken).ConfigureAwait(false);
+
+        // Heartbeat fast path: caller re-registers the same stream on an interval to
+        // keep the chat state alive. If an identical entry already exists (record
+        // value equality), skip the Redis write + primer.Prime to avoid unnecessary
+        // invalidation cycles that would churn all bound RPC subscribers.
+        if (prev.Any(s => s == streamInfo))
+            return;
 
         // Enforce single screencaster per chat — but allow the same author to replace
         // their own prior screencast (mints a new StreamId on every reconnect / pipeline
         // restart; the stale one gets evicted by the same-author/same-kind loop below).
         if (streamInfo.StreamKind == StreamKind.Screencast) {
-            var hasForeignScreencast = existingStreams.Values
+            var hasForeignScreencast = prev
                 .Any(s => s.StreamKind == StreamKind.Screencast
                     && s.AuthorId != streamInfo.AuthorId
                     && s.StreamId != streamInfo.StreamId);
@@ -82,39 +91,53 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
 
         // Enforce webcam stream cap
         if (streamInfo.StreamKind == StreamKind.Webcam) {
-            var webcamCount = existingStreams.Values
+            var webcamCount = prev
                 .Count(s => s.StreamKind == StreamKind.Webcam && s.StreamId != streamInfo.StreamId);
             if (webcamCount >= Constants.Video.MaxWebcamStreamsPerChat)
                 throw new VideoStreamLimitExceededException(chatId);
         }
 
-        // Evict stale streams from the same author + kind (e.g. after client reconnect creates a new stream)
-        foreach (var (key, existing) in existingStreams) {
+        var next = new List<VideoStreamInfo>(prev.Count + 1);
+        foreach (var existing in prev) {
+            if (existing.StreamId == streamInfo.StreamId)
+                continue;
+
             if (existing.AuthorId == streamInfo.AuthorId
-                && existing.StreamKind == streamInfo.StreamKind
-                && existing.StreamId != streamInfo.StreamId) {
+                && existing.StreamKind == streamInfo.StreamKind) {
                 Log.LogWarning("Register: evicting stale stream {OldStreamId} for author {AuthorId} (replaced by {NewStreamId})",
                     existing.StreamId, streamInfo.AuthorId, streamInfo.StreamId);
-                await Streams.Remove(chatId.Value,key).ConfigureAwait(false);
+                await _streams.Remove(chatId.Value, existing.StreamId.Value).ConfigureAwait(false);
             }
+            else
+                next.Add(existing);
         }
+        next.Add(streamInfo);
 
         Log.LogWarning("RegisterActiveStream({ChatId}): #{StreamId}, AuthorId={AuthorId}, StreamKind={StreamKind}",
             chatId, streamInfo.StreamId, streamInfo.AuthorId, streamInfo.StreamKind);
-        await Streams.Set(chatId.Value, streamInfo.StreamId.Value, streamInfo).ConfigureAwait(false);
-        InvalidateListActiveStreams(chatId);
+        await _streams.Set(chatId.Value, streamInfo.StreamId.Value, streamInfo).ConfigureAwait(false);
+        await primer.Prime(new ApiArray<VideoStreamInfo>(next), cancellationToken).ConfigureAwait(false);
+
         _ = BackgroundTask.Run(() => EvaluateStreamPriority(chatId, CancellationToken.None), CancellationToken.None);
     }
 
     public virtual async Task Unregister(ChatId chatId, StreamId streamId, CancellationToken cancellationToken)
     {
         BumpChatEntry(chatId);
+
+        using var isolation = Computed.BeginIsolation();
+        using var primer = await _listRawPrimer.LockAndPrepare(chatId, cancellationToken).ConfigureAwait(false);
+
+        var prev = await List(chatId, cancellationToken).ConfigureAwait(false);
+        var next = prev.Where(info => info.StreamId != streamId).ToApiArray();
+        if (next.Count == prev.Count)
+            return;
+
         Log.LogWarning("UnregisterActiveStream({ChatId}): #{StreamId}", chatId, streamId);
-        var removed = await Streams.Remove(chatId.Value,streamId.Value).ConfigureAwait(false);
-        if (removed) {
-            InvalidateListActiveStreams(chatId);
-            _ = BackgroundTask.Run(() => EvaluateStreamPriority(chatId, CancellationToken.None), CancellationToken.None);
-        }
+        await _streams.Remove(chatId.Value, streamId.Value).ConfigureAwait(false);
+        await primer.Prime(next, cancellationToken).ConfigureAwait(false);
+
+        _ = BackgroundTask.Run(() => EvaluateStreamPriority(chatId, CancellationToken.None), CancellationToken.None);
     }
 
     // [ComputeMethod]
@@ -122,7 +145,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     {
         await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
 
-        var allMembers = await SafeGetAll(Members, chatId).ConfigureAwait(false);
+        var allMembers = await SafeGetAll(_members, chatId).ConfigureAwait(false);
         var (activeMembers, _) = FilterStaleMembers(chatId, allMembers);
         var chatState = GetChatState(chatId);
         chatState.RecomputeCodecs(activeMembers);
@@ -141,8 +164,8 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     public virtual async Task RegisterMember(ChatId chatId, string sessionId, ApiArray<string> supportedDecoderCodecs, CancellationToken cancellationToken)
     {
         var memberInfo = new VideoStreamMemberInfo(supportedDecoderCodecs, SystemClock.Now);
-        await Members.Set(chatId.Value, sessionId, memberInfo).ConfigureAwait(false);
-        var allMembers = await SafeGetAll(Members, chatId).ConfigureAwait(false);
+        await _members.Set(chatId.Value, sessionId, memberInfo).ConfigureAwait(false);
+        var allMembers = await SafeGetAll(_members, chatId).ConfigureAwait(false);
         var (activeMembers, staleKeys) = FilterStaleMembers(chatId, allMembers);
 
         Log.LogDebug("RegisterVideoStreamMember({ChatId}): session={SessionId}, codecs=[{Codecs}], active={Active}, stale={Stale}",
@@ -156,15 +179,27 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
 
     public virtual async Task UnregisterMember(ChatId chatId, string sessionId, CancellationToken cancellationToken)
     {
-        var removed = await Members.Remove(chatId.Value,sessionId).ConfigureAwait(false);
+        var removed = await _members.Remove(chatId.Value,sessionId).ConfigureAwait(false);
         if (removed) {
-            var allMembers = await SafeGetAll(Members, chatId).ConfigureAwait(false);
+            var allMembers = await SafeGetAll(_members, chatId).ConfigureAwait(false);
             var (activeMembers, _) = FilterStaleMembers(chatId, allMembers);
             var chatState = GetChatState(chatId);
             chatState.RecomputeCodecs(activeMembers);
             InvalidateGetVideoStreamMemberCount(chatId);
             InvalidateGetSupportedDecoderCodecs(chatId);
         }
+    }
+
+    // Protected methods
+
+    [ComputeMethod]
+    protected virtual async Task<ApiArray<VideoStreamInfo>> ListRaw(ChatId chatId, CancellationToken cancellationToken)
+    {
+        if (_listRawPrimer.TryUsePrimed(chatId, out var primed))
+            return primed;
+
+        var streams = await SafeGetAll(_streams, chatId).ConfigureAwait(false);
+        return streams.Values.ToApiArray();
     }
 
     // Private methods
@@ -206,12 +241,12 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     {
         try {
             foreach (var sessionId in staleSessionIds)
-                await Members.Remove(chatId.Value,sessionId).ConfigureAwait(false);
+                await _members.Remove(chatId.Value,sessionId).ConfigureAwait(false);
 
             Log.LogDebug("CleanupStaleMembers({ChatId}): removed {Count} stale member(s)", chatId, staleSessionIds.Count);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogWarning(e, "CleanupStaleMembers({ChatId}): failed to remove stale members", chatId);
+            Log.LogWarning(e, "CleanupStaleMembers({ChatId}): failed to remove stale _members", chatId);
         }
     }
 
@@ -248,8 +283,8 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     private async ValueTask OnChatStateExpired(ExpiringEntry<ChatId, ChatState> entry)
     {
         Log.LogDebug("OnChatStateExpired({ChatId}): cleaning up Redis", entry.Key);
-        await Streams.RemoveHashMap(entry.Key.Value).ConfigureAwait(false);
-        await Members.RemoveHashMap(entry.Key.Value).ConfigureAwait(false);
+        await _streams.RemoveHashMap(entry.Key.Value).ConfigureAwait(false);
+        await _members.RemoveHashMap(entry.Key.Value).ConfigureAwait(false);
         InvalidateListActiveStreams(entry.Key);
         InvalidateGetVideoStreamMemberCount(entry.Key);
         InvalidateGetSupportedDecoderCodecs(entry.Key);
@@ -264,7 +299,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     private void InvalidateListActiveStreams(ChatId chatId)
     {
         using (Invalidation.Begin())
-            _ = List(chatId, default);
+            _ = ListRaw(chatId, default);
     }
 
     private void InvalidateGetVideoStreamMemberCount(ChatId chatId)
