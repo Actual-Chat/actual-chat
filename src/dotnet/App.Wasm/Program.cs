@@ -1,5 +1,6 @@
 using ActualChat.Audio.WebM;
 using ActualChat.Hosting;
+using ActualChat.Module;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Diagnostics;
 // Keep it: it lets <Project Sdk="Microsoft.NET.Sdk.Razor"> compile

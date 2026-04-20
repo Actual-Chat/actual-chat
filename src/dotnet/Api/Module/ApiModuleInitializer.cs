@@ -1,8 +1,5 @@
 using ActualChat.Aot;
 using ActualChat.Internal;
-using ActualLab.Serialization.Internal;
-using MessagePack;
-using MessagePack.Resolvers;
 
 namespace ActualChat.Module;
 
@@ -23,13 +20,12 @@ public static class ApiModuleInitializer
 
         // Prepend MessagePack resolvers that supply caching formatters for VideoFrame and
         // AudioFrame — enables serialize-once fan-out via the frame's SerializedData.
-        // Scoped to VideoFrame / AudioFrame only. Must run before the first frame is resolved
-        // (module-initializer timing guarantees this).
-        DefaultMessagePackResolver.Resolvers = [
-            ActualChat.Video.CachingVideoFrameResolver.Instance,
-            ActualChat.Audio.CachingAudioFrameResolver.Instance,
-            StandardResolver.Instance,
-        ];
+        CoreSerializerAndRpcSetup.AddPrependResolver(ActualChat.Video.CachingVideoFrameResolver.Instance);
+        CoreSerializerAndRpcSetup.AddPrependResolver(ActualChat.Audio.CachingAudioFrameResolver.Instance);
+        // NOTE: MessagePack source generator currently crashes on this assembly
+        // (IndexOutOfRangeException, see MessagePack-CSharp issue #2133), so no
+        // GeneratedMessagePackResolver exists here to register. The analyzer is left
+        // enabled so that when the upstream fix ships, the registration line can be added.
 
         // Custom MemoryPack formatters
 

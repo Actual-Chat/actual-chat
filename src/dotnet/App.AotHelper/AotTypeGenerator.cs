@@ -42,7 +42,7 @@ public static class AotTypeGenerator
             "BlazorUIAppAotSource",
             "ActualChat.UI.Blazor.App.Module",
             "UI.Blazor.App/Module/BlazorUIAppAotSource.g.cs",
-            [AotTypeKind.Component]),
+            [AotTypeKind.Component, AotTypeKind.Serializable]),
     ];
 
     public static int Generate(string? projectRoot)
