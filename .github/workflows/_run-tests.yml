@@ -49,10 +49,10 @@ jobs:
       NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
     services:
       redis:
-        image: redis:7.2-alpine3.19
-        # Set health checks to wait until redis has started
+        image: valkey/valkey:9.0.3-alpine3.23
+        # Set health checks to wait until valkey has started
         options: >-
-          --health-cmd "redis-cli ping"
+          --health-cmd "valkey-cli ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -147,11 +147,11 @@ jobs:
       - name: Show max connections
         run: PGPASSWORD=postgres psql -h localhost -U postgres -c 'SHOW max_connections;'
 
-      - name: Flush Redis data
+      - name: Flush Valkey data
         run: |
-          docker exec ${{ job.services.redis.id }} redis-cli flushall
-          echo "Redis data has been cleared"
-          docker exec ${{ job.services.redis.id }} redis-cli keys "*" | head -n 10
+          docker exec ${{ job.services.redis.id }} valkey-cli flushall
+          echo "Valkey data has been cleared"
+          docker exec ${{ job.services.redis.id }} valkey-cli keys "*" | head -n 10
 
       - name: Checkout
         uses: actions/checkout@v4

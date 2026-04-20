@@ -5,11 +5,11 @@ include:
   - ./services/opensearch/docker-compose.yaml
 services:
   redis:
-    image: "redis:7.4.1-alpine3.20"
+    image: "valkey/valkey:9.0.3-alpine3.23"
     ports:
      - "6379:6379"
     healthcheck:
-      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+      test: [ "CMD", "valkey-cli", "--raw", "incr", "ping" ]
   postgres:
     image: "postgres:14.0-alpine3.14"
     environment:
