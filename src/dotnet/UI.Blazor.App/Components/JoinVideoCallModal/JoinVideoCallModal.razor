@@ -60,9 +60,8 @@
                             <div class="camera-dropdown-header">Select a camera</div>
                             @foreach (var device in _videoDevices) {
                                 var isSelected = device == _selectedDevice;
-                                var isDisabled = IsSettingsMode;
-                                <div class="camera-dropdown-item @(isDisabled ? "disabled" : "")"
-                                     @onclick="@(isDisabled ? (Func<Task>)(() => Task.CompletedTask) : () => OnCameraSelected(device))">
+                                <div class="camera-dropdown-item"
+                                     @onclick="@(() => OnCameraSelected(device))">
                                     @if (isSelected) {
                                         <i class="icon-checkmark-simple text-primary text-lg"></i>
                                     } else {
@@ -115,7 +114,7 @@
                     }
                 </ButtonRound>
 
-                <ButtonRound Click="@OnSwitchCamera" IsDisabled="@IsSettingsMode">
+                <ButtonRound Click="@OnSwitchCamera">
                     <i class="icon-camera-switch text-2xl"></i>
                 </ButtonRound>
             </div>
@@ -317,6 +316,27 @@
 
         await Hub.LocalSettings.LocalAppSettings().Update(
             s => s with { SelectedCameraDeviceId = device.DeviceId });
+
+        if (IsSettingsMode) {
+            // Settings mode: push selection into the live recorder and re-attach to
+            // the new preview stream once the recorder has switched cameras.
+            if (_jsRef is null)
+                return;
+            _cameraState = CameraState.Starting;
+            StateHasChanged();
+            ChatVideoUI.SetSelectedCamera(device.DeviceId);
+            var success = await _jsRef.InvokeAsync<bool>("reattachFromRecorder", device.DeviceId);
+            if (success) {
+                _isVideoOn = true;
+                _cameraState = CameraState.On;
+                if (_isBlurEnabled)
+                    await _jsRef.InvokeVoidAsync("toggleBlur", true);
+            } else {
+                _cameraState = CameraState.Unavailable;
+            }
+            StateHasChanged();
+            return;
+        }
 
         // Switch camera if preview is active (or was unavailable — retry with new device)
         if ((_isVideoOn || _cameraState is CameraState.Unavailable) && _jsRef is not null) {

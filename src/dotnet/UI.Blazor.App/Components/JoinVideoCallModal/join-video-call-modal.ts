@@ -139,6 +139,50 @@ export class JoinVideoCallModal {
     }
 
     /**
+     * Drop the current cloned preview track and re-attach to the recorder's
+     * new preview track once it becomes live. Used in Settings mode after the
+     * recorder is asked to switch cameras — the old previewTrack is stopped
+     * by the recorder during the restart, so we need to pick up the new one.
+     *
+     * Passing `expectedDeviceId` avoids a race: C# state sync propagates to the
+     * recorder asynchronously, so the old previewTrack may still be live when
+     * this method starts polling. We wait until the recorder's selected device
+     * matches the expected one (updated at the very start of the switch, before
+     * the pipeline tear-down) so we don't attach to a soon-to-be-stopped track.
+     */
+    public async reattachFromRecorder(expectedDeviceId?: string): Promise<boolean> {
+        // Stop the current cloned track (without resuming recorder rendering —
+        // we'll immediately re-attach, so the VideoPanel canvas stays paused).
+        await this.stopBlurPreview();
+        this.renderer.stop();
+        if (this.track) {
+            this.track.stop();
+            this.track = null;
+        }
+        this.videoFrame.classList.remove('has-video');
+        this.attachedFromRecorder = false;
+
+        // Poll until the recorder reports the expected device AND has a live
+        // preview track, then attach.
+        const maxWaitMs = 5000;
+        const pollIntervalMs = 100;
+        const start = performance.now();
+        while (performance.now() - start < maxWaitMs) {
+            const recorder = getActiveRecorder();
+            const pt = recorder?.getPreviewTrack();
+            const deviceOk = !expectedDeviceId
+                || recorder?.getPreviewDeviceId() === expectedDeviceId;
+            if (deviceOk && pt?.readyState === 'live') {
+                if (this.attachFromRecorder())
+                    return true;
+            }
+            await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+        }
+        errorLog?.log('reattachFromRecorder: timed out waiting for new preview track');
+        return false;
+    }
+
+    /**
      * Detach from the recorder's stream without stopping the recorder.
      */
     public detachFromRecorder(): void {
