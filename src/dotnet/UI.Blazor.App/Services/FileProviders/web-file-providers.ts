@@ -161,6 +161,72 @@ export class WebFileProvider implements IUploadStreamSource {
         return new Uint8Array(await chunk.arrayBuffer());
     }
 
+    public async replaceBlob(maxDimension: number, quality: number): Promise<ImageResizeResult> {
+        const blob = this.getBlob();
+        const bitmap = await createImageBitmap(blob);
+        const { width: origW, height: origH } = bitmap;
+
+        let width = origW;
+        let height = origH;
+        if (width > maxDimension || height > maxDimension) {
+            if (width >= height) {
+                height = Math.round(height * maxDimension / width);
+                width = maxDimension;
+            } else {
+                width = Math.round(width * maxDimension / height);
+                height = maxDimension;
+            }
+        }
+
+        const canvas = new OffscreenCanvas(width, height);
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(bitmap, 0, 0, width, height);
+        bitmap.close();
+
+        const mimeType = blob.type === 'image/png' ? 'image/png' : 'image/jpeg';
+        const newBlob = await canvas.convertToBlob({ type: mimeType, quality });
+
+        this.revokePreviewUrl();
+        this.resolvedFile = newBlob;
+
+        return { size: newBlob.size, width, height };
+    }
+
+    public async estimateResizedSizes(presets: ImageResizePreset[]): Promise<ImageResizeResult[]> {
+        const blob = this.getBlob();
+        const bitmap = await createImageBitmap(blob);
+        const { width: origW, height: origH } = bitmap;
+        const mimeType = blob.type === 'image/png' ? 'image/png' : 'image/jpeg';
+        const quality = 0.85;
+        const results: ImageResizeResult[] = [];
+
+        for (const preset of presets) {
+            if (preset.maxDimension <= 0 || (origW <= preset.maxDimension && origH <= preset.maxDimension)) {
+                results.push({ size: blob.size, width: origW, height: origH });
+                continue;
+            }
+
+            let width = origW;
+            let height = origH;
+            if (width >= height) {
+                height = Math.round(height * preset.maxDimension / width);
+                width = preset.maxDimension;
+            } else {
+                width = Math.round(width * preset.maxDimension / height);
+                height = preset.maxDimension;
+            }
+
+            const canvas = new OffscreenCanvas(width, height);
+            const ctx = canvas.getContext('2d')!;
+            ctx.drawImage(bitmap, 0, 0, width, height);
+            const resizedBlob = await canvas.convertToBlob({ type: mimeType, quality });
+            results.push({ size: resizedBlob.size, width, height });
+        }
+
+        bitmap.close();
+        return results;
+    }
+
     public async clearForRemoving() : Promise<void>
     {
         this.revokePreviewUrl();
@@ -186,4 +252,14 @@ export class WebFileProvider implements IUploadStreamSource {
         URL.revokeObjectURL(this.previewUrl);
         this.previewUrl = null;
     }
+}
+
+export interface ImageResizePreset {
+    maxDimension: number;
+}
+
+export interface ImageResizeResult {
+    size: number;
+    width: number;
+    height: number;
 }

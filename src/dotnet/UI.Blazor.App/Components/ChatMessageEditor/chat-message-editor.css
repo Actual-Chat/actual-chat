@@ -324,6 +324,32 @@ body.narrow .attachment-list-wrapper > .c-btn-group {
     @apply items-center;
 }
 
+/* Image quality selector */
+.image-quality-selector {
+    @apply flex-x gap-x-1.5;
+    @apply px-1 py-1;
+}
+.quality-chip {
+    @apply flex-y items-center gap-x-1;
+    @apply px-3 py-1;
+    @apply rounded-lg;
+    @apply border border-separator;
+    @apply bg-01;
+    @apply text-xs text-02;
+    @apply cursor-pointer;
+    @apply select-none;
+    flex: 1 1 auto;
+    transition: all 150ms ease-in-out;
+}
+.quality-chip.selected {
+    @apply border-primary;
+    @apply bg-primary;
+    @apply text-white;
+}
+.quality-chip .quality-size {
+    @apply text-xxs opacity-70;
+}
+
 .attachment-list-btn.btn {
     @apply flex-none;
     @apply min-h-6 max-h-6;

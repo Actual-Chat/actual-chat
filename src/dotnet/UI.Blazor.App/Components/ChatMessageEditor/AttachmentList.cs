@@ -20,6 +20,15 @@ public class AttachmentList : IAttachmentList
         RaiseChanged();
     }
 
+    public void Replace(Attachment oldAttachment, Attachment newAttachment)
+    {
+        var index = _attachments.IndexOf(oldAttachment);
+        if (index < 0)
+            throw StandardError.Internal("Attachment not found.");
+        _attachments = _attachments.SetItem(index, newAttachment);
+        RaiseChanged();
+    }
+
     public async Task Remove(Attachment attachment) {
         EnsureBelongsToList(attachment);
         _attachments = _attachments.Remove(attachment);

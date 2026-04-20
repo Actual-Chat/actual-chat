@@ -1,0 +1,82 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+@if (IsVisible) {
+    <div class="image-quality-selector">
+        @foreach (var option in _options) {
+            var isSelected = option.Preset == SelectedPreset;
+            <button class="quality-chip @(isSelected ? "selected" : "")"
+                    @onclick="() => SelectPreset(option.Preset)">
+                <span class="quality-label">@option.Label</span>
+                @if (option.EstimatedSize > 0) {
+                    <span class="quality-size">@FormatSize(option.EstimatedSize)</span>
+                }
+            </button>
+        }
+    </div>
+}
+
+@code {
+    private QualityOption[] _options = [];
+    private CancellationTokenSource? _estimateCts;
+
+    [Parameter, EditorRequired] public Attachment Attachment { get; set; } = null!;
+
+    public bool IsVisible => Attachment is { IsResizableImage: true, IsUploadPending: true };
+    public ImageQualityPreset SelectedPreset { get; private set; } = ImageQualityPreset.Original;
+
+    protected override void OnParametersSet() {
+        if (IsVisible && _options.Length == 0)
+            _ = EstimateSizes();
+    }
+
+    private async Task EstimateSizes() {
+        _estimateCts?.Cancel();
+        _estimateCts = new CancellationTokenSource();
+
+        _options = [
+            new(ImageQualityPreset.Original, "Original", Attachment.Length),
+            new(ImageQualityPreset.Medium, "Medium", 0),
+            new(ImageQualityPreset.Small, "Small", 0),
+        ];
+        StateHasChanged();
+
+        if (Attachment.FileProvider is not WebFileProvider webFileProvider)
+            return;
+
+        try {
+            var presets = new ImageResizePreset[] {
+                new(0),
+                new((int)ImageQualityPreset.Medium),
+                new((int)ImageQualityPreset.Small),
+            };
+            var results = await webFileProvider.EstimateResizedSizes(presets);
+            if (_estimateCts.IsCancellationRequested)
+                return;
+
+            _options = [
+                new(ImageQualityPreset.Original, "Original", results[0].Size),
+                new(ImageQualityPreset.Medium, $"Medium ({results[1].Width}×{results[1].Height})", results[1].Size),
+                new(ImageQualityPreset.Small, $"Small ({results[2].Width}×{results[2].Height})", results[2].Size),
+            ];
+            // Hide presets that don't actually reduce size.
+            _options = _options.Where(o =>
+                o.Preset == ImageQualityPreset.Original || o.EstimatedSize < _options[0].EstimatedSize * 0.9
+            ).ToArray();
+            StateHasChanged();
+        }
+        catch {
+            // Estimation failed — show original only.
+        }
+    }
+
+    private void SelectPreset(ImageQualityPreset preset)
+        => SelectedPreset = preset;
+
+    private static string FormatSize(long bytes) => bytes switch {
+        < 1024 => $"{bytes} B",
+        < 1024 * 1024 => $"{bytes / 1024.0:F0} KB",
+        _ => $"{bytes / (1024.0 * 1024.0):F1} MB",
+    };
+
+    private record QualityOption(ImageQualityPreset Preset, string Label, long EstimatedSize);
+}

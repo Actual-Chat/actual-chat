@@ -18,6 +18,13 @@
         <HeaderButton Class="remove-all-btn" Click="_ => Clear()">
             <i class="icon-trash03 text-xl text-danger"></i>
         </HeaderButton>
+        @{
+            var singleResizable = attachments.Count == 1 ? attachments.Items.FirstOrDefault(a => a.IsUploadPending) : null;
+        }
+        @if (singleResizable != null) {
+            <ImageQualitySelector @ref="_qualitySelector"
+                Attachment="@singleResizable"/>
+        }
         <ul class="attachment-list custom-scrollbar-x">
             @foreach (var attachment in attachments.Items) {
                 <AttachmentItem
@@ -42,10 +49,12 @@
 
 @code {
     private AttachmentListHolder? _holder;
+    private ImageQualitySelector? _qualitySelector;
 
     [Parameter] public EventCallback OnSendClick { get; set; }
     [Parameter] public EventCallback OnAddClick { get; set; }
     [Parameter] public AttachmentListHolder AttachmentListHolder { get; set; } = null!;
+    [Parameter] public FileAttachments? FileAttachments { get; set; }
 
     private AttachmentList Attachments => _holder!.Attachments;
 
@@ -77,4 +86,7 @@
 
     private Task OnRestartClick(Attachment attachment)
         => Attachments.Restart(attachment);
+
+    public ImageQualityPreset GetSelectedQuality()
+        => _qualitySelector?.SelectedPreset ?? ImageQualityPreset.Original;
 }

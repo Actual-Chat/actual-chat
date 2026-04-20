@@ -2,6 +2,16 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
+/// <summary>
+/// Quality preset for image resizing before upload.
+/// </summary>
+public enum ImageQualityPreset
+{
+    Original = 0,
+    Medium = 1280,
+    Small = 640,
+}
+
 public record Attachment(string FileName, string FileType, long Length, Size Size)
 {
     public AttachmentId Id { get; init; } = AttachmentId.New();
@@ -14,6 +24,9 @@ public record Attachment(string FileName, string FileType, long Length, Size Siz
 
     public bool IsSupportedImage => MediaTypeExt.IsSupportedImage(FileType);
     public bool IsSupportedVideo => MediaTypeExt.IsSupportedVideo(FileType);
+    public bool IsResizableImage => IsSupportedImage && !MediaTypeExt.IsGif(FileType) && !MediaTypeExt.IsSvg(FileType);
+    public bool IsUploadPending { get; init; }
+    public ImageQualityPreset SelectedQuality { get; init; } = ImageQualityPreset.Original;
 
     public string DemandUploadSessionId()
         => !UploadSessionId.IsNullOrEmpty() ? UploadSessionId : throw new InvalidOperationException("Upload session not assigned");

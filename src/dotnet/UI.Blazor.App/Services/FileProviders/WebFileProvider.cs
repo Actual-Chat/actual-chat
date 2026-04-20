@@ -11,7 +11,7 @@ public partial class WebFileProvider : IFileProvider
     [IgnoreMember] private IServiceProvider? _services;
 
     [DataMember, MemoryPackOrder(0), Key(0)]
-    public FileMetadata Metadata { get; init; } = new ();
+    public FileMetadata Metadata { get; set; } = new ();
     [DataMember, MemoryPackOrder(1), Key(1)]
     public string FileHandleDbKey { get; set; } = "";
 
@@ -96,6 +96,20 @@ public partial class WebFileProvider : IFileProvider
     public Task WhenFileStreamReady()
         => DemandWebFileProviderInternal().WhenFileStreamReady();
 
+    public async Task<ImageResizeResult> ResizeImage(int maxDimension, double quality = 0.85)
+    {
+        var result = await DemandWebFileProviderInternal().ReplaceBlob(maxDimension, quality).ConfigureAwait(false);
+        Metadata = new FileMetadata {
+            FileName = Metadata.FileName,
+            FileType = Metadata.FileType,
+            Length = result.Size,
+        };
+        return result;
+    }
+
+    public Task<ImageResizeResult[]> EstimateResizedSizes(ImageResizePreset[] presets)
+        => DemandWebFileProviderInternal().EstimateResizedSizes(presets).AsTask();
+
     public UploadSource GetUploadSource()
     {
         var @internal = DemandWebFileProviderInternal();
@@ -123,6 +137,8 @@ public interface IWebFileProviderInternal : IAsyncDisposable
     Task WhenFileStreamReady();
     Task ClearForRemoving();
     WebUploadStreamSource GetUploadStreamSource();
+    ValueTask<ImageResizeResult> ReplaceBlob(int maxDimension, double quality);
+    ValueTask<ImageResizeResult[]> EstimateResizedSizes(ImageResizePreset[] presets);
 }
 
 public class WebFileProviderInternal : IWebFileProviderInternal
@@ -170,6 +186,12 @@ public class WebFileProviderInternal : IWebFileProviderInternal
     public ValueTask<string> SaveFileHandleToDb()
         => _jsRef.InvokeAsync<string>("saveFileHandleToDb", _cancellationToken);
 
+    public ValueTask<ImageResizeResult> ReplaceBlob(int maxDimension, double quality)
+        => _jsRef.InvokeAsync<ImageResizeResult>("replaceBlob", _cancellationToken, maxDimension, quality);
+
+    public ValueTask<ImageResizeResult[]> EstimateResizedSizes(ImageResizePreset[] presets)
+        => _jsRef.InvokeAsync<ImageResizeResult[]>("estimateResizedSizes", _cancellationToken, presets);
+
     public async Task WhenFileStreamReady()
     {
         var granted = await WhenUserConsentGranted().ConfigureAwait(false);
@@ -210,9 +232,25 @@ public class NoFileAccessWebFileProviderInternal(IJSRuntime jsRuntime, string fi
     public Task WhenFileStreamReady()
         => throw new NotSupportedException();
 
+    public ValueTask<ImageResizeResult> ReplaceBlob(int maxDimension, double quality)
+        => throw new NotSupportedException();
+
+    public ValueTask<ImageResizeResult[]> EstimateResizedSizes(ImageResizePreset[] presets)
+        => throw new NotSupportedException();
+
     public ValueTask DisposeAsync()
         => ValueTask.CompletedTask;
 }
+
+/// <summary>
+/// Result of an image resize or size estimation operation.
+/// </summary>
+public record struct ImageResizeResult(long Size, int Width, int Height);
+
+/// <summary>
+/// A preset for image resize estimation.
+/// </summary>
+public record struct ImageResizePreset(int MaxDimension);
 
 internal static class WebFileProviders
 {

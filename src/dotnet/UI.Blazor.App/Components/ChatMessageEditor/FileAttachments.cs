@@ -134,12 +134,62 @@ public class FileAttachments : UIServiceBase<AppUIHub>
             UICommander.ShowError("Failed to add file attachment.");
             return false;
         }
+        // Defer upload for single resizable images to allow quality selection.
+        if (attachment.IsResizableImage && list.Count == 0) {
+            attachment = attachment with { IsUploadPending = true };
+            list.Add(attachment);
+            return true;
+        }
+        // Start any pending uploads (as Original) for existing attachments before adding new ones.
+        await ApplyQualityAndStartUploads(list, ImageQualityPreset.Original);
         // NOTE: Start upload immediately after adding attachments.
+        attachment = await StartUpload(attachment, list);
+        list.Add(attachment);
+        return true;
+    }
+
+    public async Task ConfirmImageQuality(AttachmentList list, Attachment attachment, ImageQualityPreset preset)
+    {
+        if (!attachment.IsUploadPending)
+            return;
+
+        if (preset != ImageQualityPreset.Original && attachment.FileProvider is WebFileProvider webFileProvider) {
+            var maxDimension = (int)preset;
+            var result = await webFileProvider.ResizeImage(maxDimension).ConfigureAwait(true);
+            var newAttachment = attachment with {
+                Length = result.Size,
+                Size = new Size(result.Width, result.Height),
+                IsUploadPending = false,
+                SelectedQuality = preset,
+            };
+            list.Replace(attachment, newAttachment);
+            attachment = newAttachment;
+        }
+        else {
+            var newAttachment = attachment with {
+                IsUploadPending = false,
+                SelectedQuality = preset,
+            };
+            list.Replace(attachment, newAttachment);
+            attachment = newAttachment;
+        }
+
+        attachment = await StartUpload(attachment, list);
+        list.Replace(list.Items.First(a => a.Id == attachment.Id), attachment);
+    }
+
+    public async Task ApplyQualityAndStartUploads(AttachmentList list, ImageQualityPreset preset)
+    {
+        foreach (var a in list.Items.Where(a => a.IsUploadPending).ToList())
+            await ConfirmImageQuality(list, a, preset);
+    }
+
+    private async Task<Attachment> StartUpload(Attachment attachment, AttachmentList list)
+    {
         attachment = await AttachmentsController.InitUploadSession(attachment, list.MediaScope);
         AttachmentsState.Register(attachment);
         AttachmentsController.ResumeUpload(attachment);
-        list.Add(attachment);
-        return true;
+        return attachment;
     }
 
     private async Task<Attachment> CreateAttachment(IFileProvider fileProvider)
