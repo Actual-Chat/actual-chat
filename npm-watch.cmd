@@ -1,9 +1,10 @@
 :<<BATCH
-    call "./npm-install.cmd"
+    REM call "./npm-install.cmd"
     npm run watch
 
     exit /b
 BATCH
 
 #!/bin/sh
-"./npm-install.cmd" && npm run watch
+# "./npm-install.cmd" && npm run watch
+npm run watch
