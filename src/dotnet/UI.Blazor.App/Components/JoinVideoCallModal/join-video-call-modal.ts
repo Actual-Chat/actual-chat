@@ -1,8 +1,8 @@
 import { getLogs } from 'logging';
-import { getActiveRecorder } from '../VideoPanel/video-recorder';
 import { MediaCapture } from '../../Services/Video/services/media-capture';
 import { CanvasVideoRenderer } from '../../Services/Video/services/canvas-video-renderer';
 import { BlurPreviewSession } from '../../Services/Video/services/blur-preview-session';
+import { RecorderPreviewView } from '../../Services/Video/services/recorder-preview-view';
 
 const { infoLog, errorLog } = getLogs('VideoRecorder');
 
@@ -14,9 +14,14 @@ export class JoinVideoCallModal {
     private track: MediaStreamTrack | null = null;
     private selectedDeviceId: string | null = null;
     private lastTrackStoppedAt = 0;
-    private attachedFromRecorder = false;
 
-    // Blur preview state
+    // Settings-mode preview: follows the active recorder via the shared view so
+    // the modal and VideoPanel's self-preview both render the same pipeline
+    // without coordinating directly with each other.
+    private recorderView: RecorderPreviewView | null = null;
+
+    // Blur preview state (Join mode only — Settings mode gets blurred frames
+    // directly from the recorder's pipeline via RecorderPreviewView).
     private blurSession: BlurPreviewSession | null = null;
     private isBlurActive = false;
 
@@ -37,6 +42,8 @@ export class JoinVideoCallModal {
             },
         });
     }
+
+    // ---------- Join mode: own stream ---------------------------------------
 
     public async startPreview(deviceId?: string): Promise<boolean> {
         await this.stopPreview();
@@ -113,107 +120,33 @@ export class JoinVideoCallModal {
         return this.selectedDeviceId;
     }
 
+    // ---------- Settings mode: follow the active recorder -------------------
+
     /**
-     * Attach to the active recorder's preview stream instead of acquiring a new one.
-     * Returns true if successfully attached, false if no active recorder.
+     * Attach the modal's canvas to the currently-active recorder via the shared
+     * RecorderPreviewView. Re-attachment on camera switch is automatic — the
+     * view watches the recorder and swaps tracks as they change.
      */
-    public attachFromRecorder(): boolean {
-        const recorder = getActiveRecorder();
-        if (!recorder) return false;
-
-        const previewTrack = recorder.getPreviewTrack();
-        if (previewTrack?.readyState !== 'live') return false;
-
-        // Clone the track so we can stop it independently
-        this.track = previewTrack.clone();
-        this.attachedFromRecorder = true;
-
-        // Pause the recorder's own preview rendering
-        recorder.pausePreviewRendering();
-
-        this.videoFrame.classList.add('has-video');
-
-        this.renderer.start(this.track);
-        infoLog?.log('Attached to active recorder preview stream');
-        return true;
+    public attachToRecorder(): void {
+        if (this.recorderView) return;
+        this.recorderView = RecorderPreviewView.create({
+            canvas: this.canvasEl,
+            rafKey: 'join-video-preview',
+            onAttach: () => this.videoFrame.classList.add('has-video'),
+            onDetach: () => this.videoFrame.classList.remove('has-video'),
+            onFirstFrame: () => void this.blazorRef.invokeMethodAsync('OnFirstFrameRendered'),
+        });
     }
 
-    /**
-     * Drop the current cloned preview track and re-attach to the recorder's
-     * new preview track once it becomes live. Used in Settings mode after the
-     * recorder is asked to switch cameras — the old previewTrack is stopped
-     * by the recorder during the restart, so we need to pick up the new one.
-     *
-     * Passing `expectedDeviceId` avoids a race: C# state sync propagates to the
-     * recorder asynchronously, so the old previewTrack may still be live when
-     * this method starts polling. We wait until the recorder's selected device
-     * matches the expected one (updated at the very start of the switch, before
-     * the pipeline tear-down) so we don't attach to a soon-to-be-stopped track.
-     */
-    public async reattachFromRecorder(expectedDeviceId?: string): Promise<boolean> {
-        // Stop the current cloned track (without resuming recorder rendering —
-        // we'll immediately re-attach, so the VideoPanel canvas stays paused).
-        await this.stopBlurPreview();
-        this.renderer.stop();
-        if (this.track) {
-            this.track.stop();
-            this.track = null;
-        }
-        this.videoFrame.classList.remove('has-video');
-        this.attachedFromRecorder = false;
-
-        // Poll until the recorder reports the expected device AND has a live
-        // preview track, then attach.
-        const maxWaitMs = 5000;
-        const pollIntervalMs = 100;
-        const start = performance.now();
-        while (performance.now() - start < maxWaitMs) {
-            const recorder = getActiveRecorder();
-            const pt = recorder?.getPreviewTrack();
-            const deviceOk = !expectedDeviceId
-                || recorder?.getPreviewDeviceId() === expectedDeviceId;
-            if (deviceOk && pt?.readyState === 'live') {
-                if (this.attachFromRecorder())
-                    return true;
-            }
-            await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
-        }
-        errorLog?.log('reattachFromRecorder: timed out waiting for new preview track');
-        return false;
-    }
+    // ---------- Blur (Join mode only) ---------------------------------------
 
     /**
-     * Detach from the recorder's stream without stopping the recorder.
-     */
-    public detachFromRecorder(): void {
-        if (!this.attachedFromRecorder) return;
-
-        // Stop blur preview first
-        void this.stopBlurPreview();
-        this.renderer.stop();
-
-        // Stop only our cloned track
-        if (this.track) {
-            this.track.stop();
-            this.track = null;
-        }
-
-        this.videoFrame.classList.remove('has-video');
-
-        // Resume the recorder's own preview rendering
-        const recorder = getActiveRecorder();
-        if (recorder) recorder.resumePreviewRendering();
-
-        this.attachedFromRecorder = false;
-        infoLog?.log('Detached from recorder preview stream');
-    }
-
-    /**
-     * Toggle blur preview on/off.
-     * When enabled, starts a segmentation worker to process camera frames
-     * and renders the blurred output to the same canvas.
+     * Toggle blur preview on/off in Join (own-stream) mode. In Settings mode
+     * blur is controlled by the recorder; the view picks up blurred frames from
+     * its pipeline automatically — no local segmentation worker needed.
      */
     public async toggleBlur(enabled: boolean): Promise<void> {
+        if (this.recorderView) return; // Settings mode — no-op.
         if (enabled && !this.isBlurActive) {
             await this.startBlurPreview();
         } else if (!enabled && this.isBlurActive) {
@@ -250,12 +183,15 @@ export class JoinVideoCallModal {
         }
     }
 
+    // ---------- Teardown ----------------------------------------------------
+
     public dispose(): void {
-        if (this.attachedFromRecorder) {
-            this.detachFromRecorder();
-        } else {
-            void this.stopBlurPreview();
-            void this.stopPreview();
+        if (this.recorderView) {
+            this.recorderView.dispose();
+            this.recorderView = null;
+            return;
         }
+        void this.stopBlurPreview();
+        void this.stopPreview();
     }
 }

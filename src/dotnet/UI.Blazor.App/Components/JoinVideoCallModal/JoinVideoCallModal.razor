@@ -24,10 +24,15 @@
                 <div class="c-rules-text">No transcription, no anonymous</div>
             </div>
         }
-        <div @ref="_containerRef" class="c-video @(_cameraState is CameraState.Starting ? "camera-starting" : "")">
+        @{
+            var effectiveCameraState = IsSettingsMode && !string.IsNullOrEmpty(m.LastRecorderError)
+                ? CameraState.Unavailable
+                : _cameraState;
+        }
+        <div @ref="_containerRef" class="c-video @(effectiveCameraState is CameraState.Starting ? "camera-starting" : "")">
             <div class="video-frame">
                 <canvas class="camera-preview"></canvas>
-                <span class="plug-text">@GetPlugText(_cameraState)</span>
+                <span class="plug-text">@GetPlugText(effectiveCameraState)</span>
                 <div class="video-loading">
                     <span class="spinner-icon-wrapper">
                         <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
@@ -169,18 +174,23 @@
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {
-            InitialValue = new(false),
+            InitialValue = new(false, null),
             UpdateDelayer = FixedDelayer.NextTick,
             Category = GetStateCategory(GetType()),
         };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var chat = ModalModel.Chat;
-        if (IsSettingsMode)
-            return new ComputedModel(false);
+        if (IsSettingsMode) {
+            // Show "Camera is unavailable" when the live recorder reports an error
+            // (e.g. ghost camera). The recorder clears the error on a successful
+            // switch so the state recovers automatically.
+            var lastError = await ChatVideoUI.GetLastVideoRecorderError(cancellationToken).ConfigureAwait(false);
+            return new ComputedModel(false, lastError);
+        }
 
         var hasRemoteStreams = await ChatVideoUI.HasRemoteStreams(chat.Id, cancellationToken).ConfigureAwait(false);
-        return new(hasRemoteStreams);
+        return new(hasRemoteStreams, null);
     }
 
     protected override async Task OnInitializedAsync() {
@@ -227,8 +237,11 @@
                 IsSettingsMode, _selectedDevice?.DeviceId ?? "(default)");
             bool success;
             if (IsSettingsMode) {
-                // Settings mode: attach to the active recorder's preview stream
-                success = await _jsRef.InvokeAsync<bool>("attachFromRecorder");
+                // Settings mode: follow the active recorder via the shared preview
+                // view. Camera switches and blur toggles reach us through the
+                // recorder's own state — no local stream, no local blur session.
+                // `OnFirstFrameRendered` below flips _cameraState to On.
+                success = await _jsRef.InvokeAsync<bool>("attachToRecorder");
             } else {
                 // Normal mode: acquire our own stream
                 success = await _jsRef.InvokeAsync<bool>("startPreview", _selectedDevice?.DeviceId);
@@ -318,23 +331,13 @@
             s => s with { SelectedCameraDeviceId = device.DeviceId });
 
         if (IsSettingsMode) {
-            // Settings mode: push selection into the live recorder and re-attach to
-            // the new preview stream once the recorder has switched cameras.
-            if (_jsRef is null)
-                return;
+            // Settings mode: push selection into the live recorder. The shared
+            // RecorderPreviewView watches the recorder's preview track and
+            // auto-detaches/re-attaches as the pipeline restarts. The modal
+            // flips back to On via OnFirstFrameRendered when the new frame lands.
             _cameraState = CameraState.Starting;
             StateHasChanged();
             ChatVideoUI.SetSelectedCamera(device.DeviceId);
-            var success = await _jsRef.InvokeAsync<bool>("reattachFromRecorder", device.DeviceId);
-            if (success) {
-                _isVideoOn = true;
-                _cameraState = CameraState.On;
-                if (_isBlurEnabled)
-                    await _jsRef.InvokeVoidAsync("toggleBlur", true);
-            } else {
-                _cameraState = CameraState.Unavailable;
-            }
-            StateHasChanged();
             return;
         }
 
@@ -366,10 +369,12 @@
         _isBlurEnabled = !_isBlurEnabled;
         await Hub.LocalSettings.LocalAppSettings().Update(
             s => s with { IsBackgroundBlurEnabled = _isBlurEnabled });
-        // Update live blur state so VideoPanel can react during an active call
+        // Update live blur state so VideoPanel can react during an active call.
+        // In Settings mode this alone is enough — the recorder's pipeline starts
+        // producing blurred frames and the shared RecorderPreviewView draws them.
         ChatVideoUI.SetBackgroundBlur(_isBlurEnabled);
-        // Update blur preview in the modal
-        if (_jsRef is not null && _isVideoOn)
+        // Join mode: drive the modal's local BlurPreviewSession over its own stream.
+        if (!IsSettingsMode && _jsRef is not null && _isVideoOn)
             await _jsRef.InvokeVoidAsync("toggleBlur", _isBlurEnabled);
     }
 
@@ -455,5 +460,5 @@
         public bool IsBlurEnabled { get; set; }
     }
 
-    public sealed record ComputedModel(bool ShowActiveSessionInfo);
+    public sealed record ComputedModel(bool ShowActiveSessionInfo, string? LastRecorderError);
 }

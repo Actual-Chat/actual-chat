@@ -1,0 +1,179 @@
+/**
+ * RecorderPreviewView
+ *
+ * Follows the currently active VideoRecorder's preview output and draws it to a
+ * caller-owned canvas. Encapsulates the "watch the active recorder, reattach on
+ * camera switch" render loop so multiple UI surfaces (VideoPanel's self-preview,
+ * JoinVideoCallModal in Settings mode) can each render the recorder feed
+ * independently without coordinating with one another.
+ *
+ * Handles both rendering paths:
+ *  - Raw preview track (when blur is off) via a CanvasVideoRenderer;
+ *  - Blurred VideoFrames (when blur is on) via `recorder.addPreviewFrameListener`.
+ *
+ * Does NOT toggle caller-specific UI classes (`.starting`, `.has-video`, etc.) —
+ * callers do that themselves via the onAttach / onDetach / onFirstFrame hooks.
+ */
+
+import { getLogs } from 'logging';
+import { getActiveRecorder, type VideoRecorder, type PreviewFrameListener } from '../../../Components/VideoPanel/video-recorder';
+import { CanvasVideoRenderer } from './canvas-video-renderer';
+import { CanvasTarget } from './canvas-target';
+
+const { infoLog } = getLogs('VideoRecorder');
+
+export interface RecorderPreviewViewOptions {
+    /** Main canvas where the preview (raw or blurred) is drawn. */
+    canvas: HTMLCanvasElement;
+    /** Optional low-resolution background canvas (e.g. for a focused-view blur backdrop). */
+    bgCanvas?: HTMLCanvasElement;
+    /** Unique per-instance key for fastRaf scheduling. */
+    rafKey: string;
+    /** Which recorder kind to follow. Defaults to webcam (0). */
+    streamKind?: number;
+    /** Called when we attach to a recorder with a live preview track. */
+    onAttach?: (recorder: VideoRecorder) => void;
+    /** Called when we detach (track gone, recorder gone). */
+    onDetach?: () => void;
+    /** Called once per attach, after the first frame reaches the canvas. */
+    onFirstFrame?: () => void;
+}
+
+/** Background canvas is rendered at a fixed small width; height scales with aspect. */
+const BG_CANVAS_WIDTH = 64;
+
+export class RecorderPreviewView {
+    private readonly options: RecorderPreviewViewOptions;
+    private readonly canvasTarget: CanvasTarget;
+    private readonly bgCanvasTarget: CanvasTarget | null;
+    private readonly streamKind: number;
+
+    private renderer: CanvasVideoRenderer | null = null;
+    private attachedRecorder: VideoRecorder | null = null;
+    private attachedTrack: MediaStreamTrack | null = null;
+    private unsubscribeFrames: (() => void) | null = null;
+    private firstFrameFired = false;
+    private animationFrameId: number | null = null;
+    private disposed = false;
+
+    static create(options: RecorderPreviewViewOptions): RecorderPreviewView {
+        return new RecorderPreviewView(options);
+    }
+
+    constructor(options: RecorderPreviewViewOptions) {
+        this.options = options;
+        this.canvasTarget = new CanvasTarget(options.canvas);
+        this.bgCanvasTarget = options.bgCanvas ? new CanvasTarget(options.bgCanvas) : null;
+        this.streamKind = options.streamKind ?? 0;
+        this.animationFrameId = requestAnimationFrame(() => this.tick());
+    }
+
+    /** True when currently attached to a recorder with a live track. */
+    public isAttached(): boolean {
+        return this.attachedRecorder !== null;
+    }
+
+    public dispose(): void {
+        if (this.disposed) return;
+        this.disposed = true;
+
+        if (this.animationFrameId !== null) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
+
+        this.detach();
+    }
+
+    private tick(): void {
+        if (this.disposed) return;
+
+        const recorder = getActiveRecorder(this.streamKind);
+        const track = recorder?.getPreviewTrack() ?? null;
+        const trackLive = track?.readyState === 'live';
+
+        if (recorder && trackLive && track !== this.attachedTrack) {
+            // New live track — (re-)attach. Handles both initial attach and
+            // camera switch (recorder swaps the track while the same recorder
+            // instance stays registered).
+            this.attach(recorder, track);
+        } else if (this.attachedRecorder && (!recorder || !trackLive)) {
+            // Recorder gone or its track became invalid — detach and wait for a
+            // new live track to appear (e.g. after the pipeline restarts).
+            this.detach();
+        }
+
+        // Raw-track rendering must pause while blur is driving the canvas via
+        // preview-frame dispatches; otherwise the raw frames would flicker over
+        // the blurred output.
+        if (this.attachedRecorder && this.renderer)
+            this.renderer.paused = this.attachedRecorder.isBlurActive();
+
+        this.animationFrameId = requestAnimationFrame(() => this.tick());
+    }
+
+    private attach(recorder: VideoRecorder, track: MediaStreamTrack): void {
+        this.detach();
+        this.attachedRecorder = recorder;
+        this.attachedTrack = track;
+        this.firstFrameFired = false;
+
+        infoLog?.log('Attached to active recorder');
+
+        this.renderer = new CanvasVideoRenderer({
+            canvas: this.canvasTarget.element,
+            rafKey: this.options.rafKey,
+            onFirstFrame: () => this.fireFirstFrame(),
+            onAfterDraw: (video) => this.drawBgFrame(video, video.videoWidth, video.videoHeight),
+        });
+        this.renderer.start(track);
+
+        const blurListener: PreviewFrameListener = (frame: VideoFrame) => {
+            this.canvasTarget.draw(frame, frame.displayWidth, frame.displayHeight);
+            this.drawBgFrame(frame, frame.displayWidth, frame.displayHeight);
+            this.fireFirstFrame();
+        };
+        this.unsubscribeFrames = recorder.addPreviewFrameListener(blurListener);
+
+        this.options.onAttach?.(recorder);
+    }
+
+    private detach(): void {
+        if (!this.attachedRecorder) return;
+
+        infoLog?.log('Detached from recorder');
+
+        if (this.unsubscribeFrames) {
+            this.unsubscribeFrames();
+            this.unsubscribeFrames = null;
+        }
+        this.attachedRecorder = null;
+        this.attachedTrack = null;
+
+        if (this.renderer) {
+            this.renderer.dispose();
+            this.renderer = null;
+        }
+
+        // Wipe stale frames so a failed re-attach doesn't leave the last good
+        // frame on-screen while the new pipeline spins up (or after a teardown).
+        this.canvasTarget.clear();
+        this.bgCanvasTarget?.clear();
+
+        this.firstFrameFired = false;
+        this.options.onDetach?.();
+    }
+
+    private fireFirstFrame(): void {
+        if (this.firstFrameFired) return;
+        this.firstFrameFired = true;
+        this.options.onFirstFrame?.();
+    }
+
+    private drawBgFrame(source: CanvasImageSource, width: number, height: number): void {
+        if (!this.bgCanvasTarget) return;
+        const bgW = BG_CANVAS_WIDTH;
+        const bgH = Math.max(1, Math.round(bgW * height / Math.max(1, width)));
+        this.bgCanvasTarget.draw(source, bgW, bgH);
+    }
+}

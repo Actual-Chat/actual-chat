@@ -66,6 +66,11 @@ interface Size {
     height: number;
 }
 
+/**
+ * See {@link VideoRecorder.addPreviewFrameListener} for the listener contract.
+ */
+export type PreviewFrameListener = (frame: VideoFrame) => void;
+
 export class VideoRecorder {
     private blazorRef: DotNet.DotNetObject;
     // Video recording service (using video-pipeline)
@@ -90,13 +95,15 @@ export class VideoRecorder {
     private lastStatus = '';
     private cameraWidth = 0;
     private cameraHeight = 0;
-    private previewPaused = false;
     // Cached encoder capabilities (detected at recording start)
     private supportedEncoderCategories: string[] = [];
     private supportedCodecs: CodecInfo[] = [];
 
-    /** External callback for blur preview frames — set by VideoStreamingPreview */
-    public onPreviewFrame: ((frame: VideoFrame) => void) | null = null;
+    // Blur preview frame subscribers. When blur is active, the pipeline produces
+    // `VideoFrame`s that we dispatch to every listener before the frame is closed
+    // by the pipeline. Listeners MUST consume the frame synchronously (draw it to
+    // a canvas before returning); they must NOT close it and must NOT retain it.
+    private previewFrameListeners = new Set<PreviewFrameListener>();
 
     static create(blazorRef: DotNet.DotNetObject, kind: number): VideoRecorder {
         return new VideoRecorder(blazorRef, kind);
@@ -236,24 +243,19 @@ export class VideoRecorder {
     }
 
     /**
-     * Whether preview rendering is paused (modal is open).
+     * Subscribe to blur preview frames produced by the recorder's pipeline.
+     * The returned function unsubscribes the listener.
+     *
+     * Listener contract:
+     *  - called synchronously from the pipeline, once per produced frame;
+     *  - MUST consume the frame within the callback (e.g. `ctx.drawImage(frame, ...)`);
+     *  - MUST NOT call `frame.close()` (ownership stays with the pipeline);
+     *  - MUST NOT retain the frame (the pipeline closes it after dispatch);
+     *  - only fires while `isBlurActive()` is true.
      */
-    public isPreviewPaused(): boolean {
-        return this.previewPaused;
-    }
-
-    /**
-     * Pause the preview rendering (so only the modal draws while it's open).
-     */
-    public pausePreviewRendering(): void {
-        this.previewPaused = true;
-    }
-
-    /**
-     * Resume the preview rendering.
-     */
-    public resumePreviewRendering(): void {
-        this.previewPaused = false;
+    public addPreviewFrameListener(cb: PreviewFrameListener): () => void {
+        this.previewFrameListeners.add(cb);
+        return () => this.previewFrameListeners.delete(cb);
     }
 
     /**
@@ -334,10 +336,18 @@ export class VideoRecorder {
             // Subscribe to VAD for adaptive framerate
             this.recordingService.getPipeline()?.subscribeToVad();
 
-            // Set preview callback so blurred frames are forwarded to the external handler
+            // Fan out blur preview frames to every subscriber. Each listener draws
+            // synchronously; the pipeline closes the frame immediately after this
+            // callback returns (see `video-pipeline.ts`).
             this.recordingService.setPreviewCallback((frame: VideoFrame) => {
-                if (this.isBlurEnabled && this.onPreviewFrame)
-                    this.onPreviewFrame(frame);
+                if (!this.isBlurEnabled) return;
+                for (const listener of this.previewFrameListeners) {
+                    try {
+                        listener(frame);
+                    } catch (e) {
+                        warnLog?.log('preview frame listener threw', e);
+                    }
+                }
             });
 
             this.isRecording = true;
@@ -723,6 +733,10 @@ export class VideoRecorder {
         this.disposed = true;
         this.unregister();
 
+        // Drop listeners before tearing down the pipeline so no in-flight
+        // preview callback reaches a listener after we're gone.
+        this.previewFrameListeners.clear();
+
         this.cleanupPreviewTrack();
 
         // Stop recording service
@@ -731,7 +745,6 @@ export class VideoRecorder {
             this.recordingService = null;
         }
 
-        this.onPreviewFrame = null;
         this.isRecording = false;
         this.isScreencasting = false;
     }
