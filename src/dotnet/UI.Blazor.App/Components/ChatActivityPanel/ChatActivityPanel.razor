@@ -15,15 +15,15 @@
     var isListening = m.IsListening;
     var isRecordingHere = m.IsRecordingHere;
     var isWatchingHere = m.IsWatchingHere;
-    var isVideoRecordingHere = m.IsOwnVideoRecording;
-    var isParticipating = isListening || isRecordingHere || isVideoRecordingHere;
+    var isOwnVideoStreaming = m.IsOwnVideoStreaming;
+    var isParticipating = isListening || isRecordingHere || isOwnVideoStreaming;
     var isActive = m.IsAnyoneTalking;
     var showVideoIcon = m.IsAnyoneVideoStreaming && !m.IsAnyoneTalking;
     var iconMode = showVideoIcon ? "video" : "audio";
     var tooltip = isListening ? "Listening..." : "Listen";
     var cls = isListening ? " listening" : "";
     var joinButtonText = "Join muted";
-    var showVideoPanelToggle = m.IsAnyoneVideoStreaming && isParticipating;
+    var showVideoPanelToggle = m.IsAnyoneVideoStreaming || isOwnVideoStreaming;
 }
 
 <div @ref="Ref"
@@ -50,7 +50,7 @@
         @if (showVideoPanelToggle) {
             <ShowVideoPanelToggle ChatId="@chat.Id"/>
         }
-        @if (!isListening && !isRecordingHere && !isVideoRecordingHere) {
+        @if (!isListening && !isRecordingHere && !isOwnVideoStreaming) {
             <Button
                 Class="btn-sm btn-transparent unhovered not-listening"
                 StopPropagation="true"
@@ -60,7 +60,7 @@
                 TooltipPosition="FloatingPosition.Bottom">
                 @joinButtonText
             </Button>
-        } else if (isRecordingHere || isVideoRecordingHere || isWatchingHere) {
+        } else if (isRecordingHere || isOwnVideoStreaming || isWatchingHere) {
             <HeaderButton
                 Class="talking"
                 StopPropagation="true"
@@ -112,10 +112,10 @@
         var isAnyoneTalking = await LiveStreamUI.IsAnyoneStreaming(chatId, cancellationToken).ConfigureAwait(false);
         var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chatId, cancellationToken).ConfigureAwait(false);
         var ownStreamKind = await ChatVideoUI.GetOwnStreamKind(chat.Id, cancellationToken).ConfigureAwait(false);
-        var isOwnVideoRecording = ownStreamKind is not null;
+        var isOwnVideoStreaming = ownStreamKind is not null;
         var watchingChatId = await ChatVideoUI.GetWatchingChatId(cancellationToken).ConfigureAwait(false);
         var isWatchingHere = chatId == watchingChatId;
-        return new (chat, audioState, isAnyoneTalking, isAnyoneVideoStreaming, isOwnVideoRecording, isWatchingHere);
+        return new (chat, audioState, isAnyoneTalking, isAnyoneVideoStreaming, isOwnVideoStreaming, isWatchingHere);
     }
 
     private async Task OnJoinClick(ChatId chatId) {
@@ -183,7 +183,7 @@
         ChatAudioState AudioState,
         bool IsAnyoneTalking,
         bool IsAnyoneVideoStreaming,
-        bool IsOwnVideoRecording,
+        bool IsOwnVideoStreaming,
         bool IsWatchingHere) {
         public bool IsListening => AudioState.IsListening;
         public bool IsRecordingHere => AudioState.IsRecording;
