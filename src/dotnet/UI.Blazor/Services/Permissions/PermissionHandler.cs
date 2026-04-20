@@ -24,8 +24,8 @@ public abstract class PermissionHandler : UIWorkerBase<UIHub>
     }
 
     public ValueTask<bool> CheckOrRequest(CancellationToken cancellationToken = default)
-        => CheckOrRequest(true, cancellationToken);
-    public async ValueTask<bool> CheckOrRequest(bool mustRequest, CancellationToken cancellationToken = default)
+        => CheckOrRequest(true, true, cancellationToken);
+    public async ValueTask<bool> CheckOrRequest(bool mustRequest, bool mustTroubleshoot, CancellationToken cancellationToken = default)
     {
         if (_cached.Value == true)
             return true;
@@ -49,7 +49,7 @@ public abstract class PermissionHandler : UIWorkerBase<UIHub>
 
             Log.LogDebug("Request");
             var maybeGranted = await Request(cancellationToken).ConfigureAwait(true);
-            if (!maybeGranted)
+            if (!maybeGranted && mustTroubleshoot)
                 await Troubleshoot(cancellationToken).ConfigureAwait(true);
 
             Log.LogDebug("Post-request check");

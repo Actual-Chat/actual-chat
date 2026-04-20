@@ -133,7 +133,7 @@
         if (m.RequestNotificationsPermission)
             requests.Add(() => m.NotificationsPermission.Request());
         if (m.RequestContactsPermission)
-            requests.Add(() => m.ContactsPermission.CheckOrRequest().AsTask());
+            requests.Add(() => m.ContactsPermission.CheckOrRequest(mustRequest: true, mustTroubleshoot: false).AsTask());
 
         for (var i = 0; i < requests.Count; i++) {
             if (i != 0)
