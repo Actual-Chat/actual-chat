@@ -13,8 +13,8 @@ public class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
     private static readonly TimeSpan StreamTtl = Constants.Audio.MaxStreamDuration * 2; // Ok to keep it a bit longer
     private static readonly TimeSpan HashTtl = TimeSpan.FromHours(1);
 
-    private RedisMultiHashMap<LiveStreamInfo> Streams { get; }
-    private LockingComputeMethodPrimer<ChatId, ApiArray<LiveStreamInfo>> ListRawPrimer { get; }
+    private readonly RedisMultiHashMap<LiveStreamInfo> _streams;
+    private readonly LockingComputeMethodPrimer<ChatId, ApiArray<LiveStreamInfo>> _listRawPrimer;
 
     private IChatsBackend ChatsBackend { get; }
 
@@ -23,11 +23,11 @@ public class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
     {
         ChatsBackend = services.GetRequiredService<IChatsBackend>();
         var redisDb = services.GetRequiredService<RedisDb<StreamingContext>>();
-        Streams = new RedisMultiHashMap<LiveStreamInfo>(redisDb, "live-audio:streams", Log) {
+        _streams = new RedisMultiHashMap<LiveStreamInfo>(redisDb, "live-audio:streams", Log) {
             HashTtl = HashTtl,
             DefaultFieldTtl = StreamTtl,
         };
-        ListRawPrimer = new LockingComputeMethodPrimer<ChatId, ApiArray<LiveStreamInfo>>(ListRaw);
+        _listRawPrimer = new LockingComputeMethodPrimer<ChatId, ApiArray<LiveStreamInfo>>(ListRaw);
     }
 
     // [ComputeMethod]
@@ -44,7 +44,7 @@ public class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
     public virtual async Task Register(ChatId chatId, LiveStreamInfo streamInfo, CancellationToken cancellationToken)
     {
         using var _ = Computed.BeginIsolation();
-        using var primer = await ListRawPrimer.LockAndPrepare(chatId, cancellationToken).ConfigureAwait(false);
+        using var primer = await _listRawPrimer.LockAndPrepare(chatId, cancellationToken).ConfigureAwait(false);
 
         var prev = await List(chatId, cancellationToken).ConfigureAwait(false);
         var next = new List<LiveStreamInfo>(prev.Count + 1);
@@ -55,27 +55,27 @@ public class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
             if (info.AuthorId == streamInfo.AuthorId) {
                 Log.LogWarning("Register: evicting stale stream {OldStreamId} for author {AuthorId} (replaced by {NewStreamId})",
                     info.StreamId, streamInfo.AuthorId, streamInfo.StreamId);
-                await Streams.Remove(chatId.Value, info.StreamId).ConfigureAwait(false);
+                await _streams.Remove(chatId.Value, info.StreamId).ConfigureAwait(false);
             }
             else
                 next.Add(info);
         }
         next.Add(streamInfo);
-        await Streams.Set(chatId.Value, streamInfo.StreamId, streamInfo).ConfigureAwait(false);
+        await _streams.Set(chatId.Value, streamInfo.StreamId, streamInfo).ConfigureAwait(false);
         await primer.Prime(new ApiArray<LiveStreamInfo>(next), cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task Unregister(ChatId chatId, string streamId, CancellationToken cancellationToken)
     {
         using var _ = Computed.BeginIsolation();
-        using var primer = await ListRawPrimer.LockAndPrepare(chatId, cancellationToken).ConfigureAwait(false);
+        using var primer = await _listRawPrimer.LockAndPrepare(chatId, cancellationToken).ConfigureAwait(false);
 
         var prev = await List(chatId, cancellationToken).ConfigureAwait(false);
         var next = prev.Where(info => info.StreamId != streamId).ToApiArray();
         if (next.Count == prev.Count)
             return;
 
-        await Streams.Remove(chatId.Value, streamId).ConfigureAwait(false);
+        await _streams.Remove(chatId.Value, streamId).ConfigureAwait(false);
         await primer.Prime(next, cancellationToken).ConfigureAwait(false);
     }
 
@@ -84,11 +84,11 @@ public class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
     [ComputeMethod]
     protected virtual async Task<ApiArray<LiveStreamInfo>> ListRaw(ChatId chatId, CancellationToken cancellationToken)
     {
-        if (ListRawPrimer.TryUsePrimed(chatId, out var primed))
+        if (_listRawPrimer.TryUsePrimed(chatId, out var primed))
             return primed;
 
         try {
-            var map = await Streams.GetHashMap(chatId.Value).ConfigureAwait(false);
+            var map = await _streams.GetHashMap(chatId.Value).ConfigureAwait(false);
             map.RemoveAll(static (_, v) => v is null);
             return map.Values.ToApiArray()!;
         }
@@ -114,7 +114,7 @@ public class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
 
         // Write recovered entries to Redis for future restarts
         foreach (var info in result.Values)
-            await Streams.Set(chatId.Value, info.StreamId, info).ConfigureAwait(false);
+            await _streams.Set(chatId.Value, info.StreamId, info).ConfigureAwait(false);
 
         return new ApiArray<LiveStreamInfo>(result.Values);
     }
