@@ -88,6 +88,7 @@ public class SessionTemporalsTest(ITestOutputHelper @out)
         // Exactly at limit should work
         var maxKey = new string('k', SessionTemporalsBackend.MaxKeyLength);
         await commander.Call(new SessionTemporalsBackend_Set(session, maxKey, "v"));
+
     }
 
     [Fact(Timeout = 60_000)]
