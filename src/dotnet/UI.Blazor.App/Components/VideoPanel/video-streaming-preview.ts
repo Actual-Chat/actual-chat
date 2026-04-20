@@ -38,15 +38,24 @@ export class VideoStreamingPreview {
             return;
 
         const recorder = getActiveRecorder();
+        const previewPaused = !!recorder?.isPreviewPaused();
         const track = recorder?.getPreviewTrack() ?? null;
         const trackLive = track?.readyState === 'live';
 
-        if (recorder && trackLive && track !== this.attachedTrack) {
-            // New live track — (re-)attach to start rendering it.
-            this.attach(recorder, track);
-        } else if (this.attachedRecorder && (!recorder || !trackLive)) {
-            // Recorder gone or its track became invalid — detach.
-            this.detach();
+        // When another consumer (e.g. JoinVideoCallModal) owns the preview we
+        // skip attach/detach: the recorder's track goes null/ended briefly
+        // during a modal-driven camera switch, and reacting to that here would
+        // wipe the last frame and flash the spinner behind the modal. Once the
+        // modal resumes preview rendering, the next iteration will re-attach
+        // to whatever the recorder is producing by then.
+        if (!previewPaused) {
+            if (recorder && trackLive && track !== this.attachedTrack) {
+                // New live track — (re-)attach to start rendering it.
+                this.attach(recorder, track);
+            } else if (this.attachedRecorder && (!recorder || !trackLive)) {
+                // Recorder gone or its track became invalid — detach.
+                this.detach();
+            }
         }
 
         // Sync pause/blur state from recorder to renderer
@@ -58,9 +67,12 @@ export class VideoStreamingPreview {
         // `.starting` drives the loading spinner: visible whenever we have a recorder that
         // still intends to produce video (not in the interrupted state) and we haven't yet
         // rendered the first frame (no `.has-video`). Blazor clears the error message before
-        // any switch so the spinner doesn't coexist with the red error overlay.
+        // any switch so the spinner doesn't coexist with the red error overlay. We also
+        // suppress it when preview is paused — the modal is driving the preview, so a
+        // spinner here would be misleading and would flash during a camera switch.
         const wantsStarting = recorder != null
             && !recorder.isRecordingInterrupted()
+            && !previewPaused
             && !this.element.classList.contains('has-video');
         this.element.classList.toggle('starting', wantsStarting);
 
