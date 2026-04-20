@@ -22,10 +22,15 @@ public static class ApiModuleInitializer
         // AudioFrame — enables serialize-once fan-out via the frame's SerializedData.
         CoreSerializerAndRpcSetup.AddPrependResolver(ActualChat.Video.CachingVideoFrameResolver.Instance);
         CoreSerializerAndRpcSetup.AddPrependResolver(ActualChat.Audio.CachingAudioFrameResolver.Instance);
-        // NOTE: MessagePack source generator currently crashes on this assembly
-        // (IndexOutOfRangeException, see MessagePack-CSharp issue #2133), so no
-        // GeneratedMessagePackResolver exists here to register. The analyzer is left
-        // enabled so that when the upstream fix ships, the registration line can be added.
+        // NOTE: MessagePack source generator currently crashes on this assembly with
+        // IndexOutOfRangeException (distinct from the #2133 StackOverflow worked around
+        // in Core.csproj — that one is self-referencing generic constraints, this one
+        // is somewhere in the 109 [MessagePackObject] files and not yet pinned). The
+        // SG emits partial output before crashing, so we leave it enabled; no
+        // GeneratedMessagePackResolver.Instance is generated to register here.
+        // Under JIT, StandardResolver's dynamic IL emit covers Api types; under
+        // NativeAOT these types will need a workaround once the SG crash is fixed
+        // or a bisected repro is filed upstream.
 
         // Custom MemoryPack formatters
 
