@@ -127,10 +127,12 @@
     </FormBlock>
     </Body>
     <Buttons>
-        <Button Class="btn-modal" Click="@(_ => Modal.Close())">Cancel</Button>
-        <Button Class="btn-modal btn-primary"
-                Click="@OnJoinClick"
-                IsDisabled="@IsSubmitDisabled">@SubmitButtonText</Button>
+        @if (IsSettingsMode) {
+            <Button Class="btn-modal btn-primary" Click="@(_ => Modal.Close())">Close</Button>
+        } else {
+            <Button Class="btn-modal" Click="@(_ => Modal.Close())">Cancel</Button>
+            <Button Class="btn-modal btn-primary" Click="@OnJoinClick">@SubmitButtonText</Button>
+        }
     </Buttons>
 </DialogFrame>
 
@@ -158,7 +160,6 @@
     private AudioRecorder AudioRecorder => Hub.AudioRecorder;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private bool IsSettingsMode => ModalModel.Mode is VideoCallMode.Settings;
-    private ILogger Log => field ??= Hub.LogFor(GetType());
 
     private string Title => IsSettingsMode ? "Video Settings"
         : State.Value.ShowActiveSessionInfo ? "Join the video"
@@ -167,10 +168,6 @@
     private string SubmitButtonText => IsSettingsMode ? "Apply"
         : State.Value.ShowActiveSessionInfo ? "Join"
         : "Start";
-
-    // Disable submit while the camera is being acquired. If the user turned
-    // video off intentionally (CameraState.Off), submit stays enabled.
-    private bool IsSubmitDisabled => _cameraState is CameraState.Starting or CameraState.Initializing;
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {
@@ -233,8 +230,6 @@
             if (_jsRef is null)
                 return;
 
-            Log.LogInformation("StartPreview: isSettingsMode={IsSettingsMode}, deviceId={DeviceId}",
-                IsSettingsMode, _selectedDevice?.DeviceId ?? "(default)");
             bool success;
             if (IsSettingsMode) {
                 // Settings mode: follow the active recorder via the shared preview
@@ -256,14 +251,12 @@
                 } else {
                     _cameraState = IsSettingsMode ? CameraState.Off : CameraState.Unavailable;
                 }
-                Log.LogInformation("StartPreview: done, success={Success}, state={State}", success, _cameraState);
                 StateHasChanged();
             });
         }
     }
 
     public override async ValueTask DisposeAsync() {
-        Log.LogInformation("DisposeAsync: cameraState={State}, hasJsRef={HasJsRef}", _cameraState, _jsRef is not null);
         if (_jsRef is not null) {
             await _jsRef.InvokeVoidAsync("dispose");
             await _jsRef.DisposeAsync();
@@ -289,7 +282,6 @@
 
     [JSInvokable]
     public async Task OnFirstFrameRendered() {
-        Log.LogInformation("OnFirstFrameRendered");
         _cameraState = CameraState.On;
         await InvokeAsync(StateHasChanged);
     }
@@ -379,8 +371,6 @@
     }
 
     private Task OnJoinClick() {
-        Log.LogInformation("OnJoinClick: cameraState={State}, deviceId={DeviceId}",
-            _cameraState, _selectedDevice?.DeviceId ?? "(none)");
         if (!IsSettingsMode) {
             // Ideally we'd query `getActualDeviceId` from JS — the browser can pick a
             // different camera than what was originally requested (e.g. front camera when
