@@ -13,6 +13,11 @@ export class VideoStreamingPreview {
     private readonly bgCanvas: CanvasTarget | null;
     private animationFrameId: number | null = null;
     private attachedRecorder: VideoRecorder | null = null;
+    // The preview track captured on the last attach. Compared to the recorder's
+    // current track each frame so we re-attach when the recorder restarts its
+    // pipeline (e.g. on a successful camera switch) and detach when it clears
+    // the track (e.g. on a failed switch).
+    private attachedTrack: MediaStreamTrack | null = null;
     private renderer: CanvasVideoRenderer | null = null;
     private disposed = false;
 
@@ -33,12 +38,14 @@ export class VideoStreamingPreview {
             return;
 
         const recorder = getActiveRecorder();
+        const track = recorder?.getPreviewTrack() ?? null;
+        const trackLive = track?.readyState === 'live';
 
-        if (recorder && recorder !== this.attachedRecorder) {
-            // New recorder appeared — attach
-            this.attach(recorder);
-        } else if (!recorder && this.attachedRecorder) {
-            // Recorder gone — detach
+        if (recorder && trackLive && track !== this.attachedTrack) {
+            // New live track — (re-)attach to start rendering it.
+            this.attach(recorder, track);
+        } else if (this.attachedRecorder && (!recorder || !trackLive)) {
+            // Recorder gone or its track became invalid — detach.
             this.detach();
         }
 
@@ -47,6 +54,15 @@ export class VideoStreamingPreview {
             this.renderer.paused = this.attachedRecorder.isPreviewPaused()
                 || this.attachedRecorder.isBlurActive();
         }
+
+        // `.starting` drives the loading spinner: visible whenever we have a recorder that
+        // still intends to produce video (not in the interrupted state) and we haven't yet
+        // rendered the first frame (no `.has-video`). Blazor clears the error message before
+        // any switch so the spinner doesn't coexist with the red error overlay.
+        const wantsStarting = recorder != null
+            && !recorder.isRecordingInterrupted()
+            && !this.element.classList.contains('has-video');
+        this.element.classList.toggle('starting', wantsStarting);
 
         this.animationFrameId = requestAnimationFrame(() => this.renderLoop());
     }
@@ -60,16 +76,10 @@ export class VideoStreamingPreview {
         this.bgCanvas.draw(source, bgW, bgH);
     }
 
-    private attach(recorder: VideoRecorder): void {
+    private attach(recorder: VideoRecorder, track: MediaStreamTrack): void {
         this.detach();
         this.attachedRecorder = recorder;
-
-        const track = recorder.getPreviewTrack();
-        if (track?.readyState !== 'live') {
-            infoLog?.log('Recorder has no live preview track yet');
-            this.attachedRecorder = null;
-            return;
-        }
+        this.attachedTrack = track;
 
         infoLog?.log('Attached to active recorder');
 
@@ -102,6 +112,9 @@ export class VideoStreamingPreview {
     private markHasVideo(): void {
         if (!this.element.classList.contains('has-video'))
             this.element.classList.add('has-video');
+        // Drop the starting state immediately so the spinner doesn't flicker
+        // for one frame before the renderLoop re-evaluates.
+        this.element.classList.remove('starting');
     }
 
     private detach(): void {
@@ -115,6 +128,7 @@ export class VideoStreamingPreview {
             this.attachedRecorder.onPreviewFrame = null;
 
         this.attachedRecorder = null;
+        this.attachedTrack = null;
 
         // Clean up renderer
         if (this.renderer) {
@@ -122,8 +136,13 @@ export class VideoStreamingPreview {
             this.renderer = null;
         }
 
+        // Wipe stale frames so a failed re-attach doesn't leave the last good frame on-screen
+        this.canvas.clear();
+        this.bgCanvas?.clear();
+
         this.element.classList.remove('has-video');
         this.element.classList.remove('screencast');
+        // `.starting` is re-evaluated by renderLoop; no need to clear it here.
     }
 
     public dispose(): void {

@@ -18,14 +18,18 @@ body.hoverable .video-streaming-preview .btn-h.btn-settings:hover {
     @apply hidden;
 }
 
-/* Loading spinner — shown while camera is starting */
+/* Loading spinner — JS (video-streaming-preview.ts) toggles `.starting` in the
+   render loop whenever a recorder is present, not interrupted, and the first
+   frame hasn't landed yet. */
 .video-streaming-preview .video-loading {
     @apply absolute inset-0;
-    @apply flex items-center justify-center;
+    @apply items-center justify-center;
     @apply bg-black;
-}
-.video-streaming-preview.has-video .video-loading {
     @apply hidden;
+}
+/* Loading spinner — shown while camera is starting */
+.video-streaming-preview.starting .video-loading {
+    @apply flex;
 }
 
 /* Error display */

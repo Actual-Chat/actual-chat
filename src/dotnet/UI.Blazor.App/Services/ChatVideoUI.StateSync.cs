@@ -140,8 +140,12 @@ public partial class ChatVideoUI
         await recorder.StartRecording(intent.ChatId, ct).ConfigureAwait(false);
     }
 
-    private static async Task UpdateWebcam(VideoRecorder recorder, WebcamRecordingIntent intent, CancellationToken ct)
+    private async Task UpdateWebcam(VideoRecorder recorder, WebcamRecordingIntent intent, CancellationToken ct)
     {
+        // Clear any stale error so VideoStreamingPreview shows the loading spinner
+        // (via the .starting class driven by !hasError) instead of the previous
+        // failure message while the new camera is being acquired.
+        _errorMessage.Value = null;
         await recorder.SwitchCamera(intent.CameraDeviceId ?? "", ct).ConfigureAwait(false);
         await recorder.ToggleBlur(intent.BlurEnabled, ct).ConfigureAwait(false);
     }
