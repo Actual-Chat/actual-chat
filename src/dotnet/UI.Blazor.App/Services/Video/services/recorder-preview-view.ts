@@ -31,6 +31,14 @@ export interface RecorderPreviewViewOptions {
     rafKey: string;
     /** Which recorder kind to follow. Defaults to webcam (0). */
     streamKind?: number;
+    /**
+     * Whether to freeze this view while the recorder reports preview paused
+     * (e.g. when JoinVideoCallModal's Settings mode takes over rendering).
+     * The view keeping the last frame visible instead of detaching avoids
+     * wiping the canvas and flashing the spinner. Defaults to true; the
+     * consumer that actually drives the pause should pass false.
+     */
+    respectPauseFlag?: boolean;
     /** Called when we attach to a recorder with a live preview track. */
     onAttach?: (recorder: VideoRecorder) => void;
     /** Called when we detach (track gone, recorder gone). */
@@ -47,6 +55,7 @@ export class RecorderPreviewView {
     private readonly canvasTarget: CanvasTarget;
     private readonly bgCanvasTarget: CanvasTarget | null;
     private readonly streamKind: number;
+    private readonly respectPauseFlag: boolean;
 
     private renderer: CanvasVideoRenderer | null = null;
     private attachedRecorder: VideoRecorder | null = null;
@@ -65,6 +74,7 @@ export class RecorderPreviewView {
         this.canvasTarget = new CanvasTarget(options.canvas);
         this.bgCanvasTarget = options.bgCanvas ? new CanvasTarget(options.bgCanvas) : null;
         this.streamKind = options.streamKind ?? 0;
+        this.respectPauseFlag = options.respectPauseFlag !== false;
         this.animationFrameId = requestAnimationFrame(() => this.tick());
     }
 
@@ -89,25 +99,31 @@ export class RecorderPreviewView {
         if (this.disposed) return;
 
         const recorder = getActiveRecorder(this.streamKind);
+        const paused = this.respectPauseFlag && !!recorder?.isPreviewPaused();
         const track = recorder?.getPreviewTrack() ?? null;
         const trackLive = track?.readyState === 'live';
 
-        if (recorder && trackLive && track !== this.attachedTrack) {
-            // New live track — (re-)attach. Handles both initial attach and
-            // camera switch (recorder swaps the track while the same recorder
-            // instance stays registered).
-            this.attach(recorder, track);
-        } else if (this.attachedRecorder && (!recorder || !trackLive)) {
-            // Recorder gone or its track became invalid — detach and wait for a
-            // new live track to appear (e.g. after the pipeline restarts).
-            this.detach();
+        // While paused, skip attach/detach so the canvas keeps the last frame
+        // intact — detaching would `canvasTarget.clear()` and flash the spinner
+        // even though another consumer is driving rendering.
+        if (!paused) {
+            if (recorder && trackLive && track !== this.attachedTrack) {
+                // New live track — (re-)attach. Handles both initial attach and
+                // camera switch (recorder swaps the track while the same recorder
+                // instance stays registered).
+                this.attach(recorder, track);
+            } else if (this.attachedRecorder && (!recorder || !trackLive)) {
+                // Recorder gone or its track became invalid — detach and wait for a
+                // new live track to appear (e.g. after the pipeline restarts).
+                this.detach();
+            }
         }
 
         // Raw-track rendering must pause while blur is driving the canvas via
         // preview-frame dispatches; otherwise the raw frames would flicker over
-        // the blurred output.
+        // the blurred output. Also pause while preview is externally paused.
         if (this.attachedRecorder && this.renderer)
-            this.renderer.paused = this.attachedRecorder.isBlurActive();
+            this.renderer.paused = paused || this.attachedRecorder.isBlurActive();
 
         this.animationFrameId = requestAnimationFrame(() => this.tick());
     }
@@ -129,6 +145,11 @@ export class RecorderPreviewView {
         this.renderer.start(track);
 
         const blurListener: PreviewFrameListener = (frame: VideoFrame) => {
+            // Skip drawing while another consumer owns the canvas — otherwise
+            // blurred frames from the recorder pipeline would overwrite the
+            // modal's own rendering.
+            if (this.respectPauseFlag && recorder.isPreviewPaused())
+                return;
             this.canvasTarget.draw(frame, frame.displayWidth, frame.displayHeight);
             this.drawBgFrame(frame, frame.displayWidth, frame.displayHeight);
             this.fireFirstFrame();
