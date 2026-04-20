@@ -175,7 +175,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
 
     private async Task<DigestParameters.DigestChat?> BuildDigestChat(ChatId chatId, DateTime now, long unreadCount, CancellationToken cancellationToken)
     {
-        var from = now + TimeSpan.FromDays(-1);
+        var minBeginsAt = now + TimeSpan.FromDays(-1);
         var chat = await ChatsBackend
             .Get(chatId, cancellationToken)
             .ConfigureAwait(false);
@@ -186,9 +186,9 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
             return default;
 
         var messages = await ChatsBackend
-            .ListEntries(chatId, from, cancellationToken)
+            .ListEntries(chatId, minBeginsAt, cancellationToken)
             .ConfigureAwait(false);
-        if (messages.Length == 0)
+        if (!messages.Any())
             return default;
 
         var nonSystemMessages = messages.Where(x => !x.IsSystemEntry).ToList();

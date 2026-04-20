@@ -328,7 +328,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             for (var maxLidExclusive = id.LocalId; maxLidExclusive >= 0; maxLidExclusive -= Settings.Translation.ContextMessageCount) {
                 var minLid = (maxLidExclusive - Settings.Translation.ContextMessageCount).Clamp(0, long.MaxValue);
                 var idRange = new Range<long>(minLid, maxLidExclusive);
-                var foundEntries = await ChatsBackend.GetEntries(id.ChatId, idRange, false, cancellationToken).ConfigureAwait(false);
+                var foundEntries = await ChatsBackend.ListEntries(id.ChatId, idRange, false, cancellationToken).ConfigureAwait(false);
                 foreach (var entry in foundEntries.Where(e => e.LocalId < maxLidExclusive))
                     yield return entry;
             }

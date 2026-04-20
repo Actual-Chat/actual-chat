@@ -794,27 +794,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             .ToArray();
     }
 
-    // Not a [ComputeMethod]!
-    public async Task<ChatEntry[]> ListEntries(
-        ChatId chatId,
-        Moment from,
-        CancellationToken cancellationToken)
-    {
-        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var dbEntries = await dbContext.ChatEntries
-            .Where(x => x.ChatId == chatId.Value
-                && x.Kind == 0
-                && x.BeginsAt >= from.ToDateTime())
-            .OrderBy(x => x.LocalId)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-        return dbEntries
-            .Select(x => x.ToModel())
-            .ToArray();
-    }
-
     // [CommandHandler]
     public virtual async Task<Chat> OnChange(
         ChatsBackend_Change command,

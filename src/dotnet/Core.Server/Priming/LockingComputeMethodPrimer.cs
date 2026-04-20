@@ -18,7 +18,7 @@ public sealed class LockingComputeMethodPrimer<TKey, TValue>(
     private const int StateDisposed = 2;
 
     private readonly Func<TKey, CancellationToken, Task<TValue>> _caller = caller;
-    private readonly ConcurrentDictionary<TKey, Reservation> _reservations
+    private readonly ConcurrentDictionary<TKey, Primer> _reservations
         = new(keyComparer ?? EqualityComparer<TKey>.Default);
 
     public LockingComputeMethodPrimer(
@@ -35,11 +35,11 @@ public sealed class LockingComputeMethodPrimer<TKey, TValue>(
             keyComparer)
     { }
 
-    public async ValueTask<Reservation> LockAndReserve(TKey key, CancellationToken cancellationToken = default)
+    public async ValueTask<Primer> LockAndPrepare(TKey key, CancellationToken cancellationToken = default)
     {
         var releaser = await locks.Lock(key, cancellationToken).ConfigureAwait(false);
         try {
-            var reservation = new Reservation(this, key, releaser);
+            var reservation = new Primer(this, key, releaser);
             _reservations[key] = reservation;
             return reservation;
         }
@@ -61,10 +61,10 @@ public sealed class LockingComputeMethodPrimer<TKey, TValue>(
     // Nested types
 
     /// <summary>
-    /// A single stash slot reserved via <see cref="LockAndReserve"/>. Holds the per-key lock
+    /// A single stash slot reserved via <see cref="LockingComputeMethodPrimer{TKey,TValue}.LockAndPrepare"/>. Holds the per-key lock
     /// until disposed; also holds the stashed value (if any).
     /// </summary>
-    public sealed class Reservation : IDisposable
+    public sealed class Primer : IDisposable
     {
         private AsyncLockSet<TKey>.Releaser _releaser;
         private int _state;
@@ -74,7 +74,7 @@ public sealed class LockingComputeMethodPrimer<TKey, TValue>(
         public TKey Key { get; }
         public bool HasValue => Volatile.Read(ref _state) == StateHasValue;
 
-        internal Reservation(LockingComputeMethodPrimer<TKey, TValue> owner, TKey key, AsyncLockSet<TKey>.Releaser releaser)
+        internal Primer(LockingComputeMethodPrimer<TKey, TValue> owner, TKey key, AsyncLockSet<TKey>.Releaser releaser)
         {
             Owner = owner;
             Key = key;
@@ -96,7 +96,7 @@ public sealed class LockingComputeMethodPrimer<TKey, TValue>(
             _value = value;
             if (Interlocked.CompareExchange(ref _state, StateHasValue, StateEmpty) == StateDisposed) {
                 _value = default;
-                throw new ObjectDisposedException(nameof(Reservation));
+                throw new ObjectDisposedException(nameof(Primer));
             }
 
             // Invalidate existing value

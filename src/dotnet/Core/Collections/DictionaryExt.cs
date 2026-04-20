@@ -55,4 +55,25 @@ public static class DictionaryExt
 
     public static void Set(this IDictionary<string, object> dict, string key, object value)
         => dict[key] = value;
+
+    /// <summary>
+    /// Removes all entries for which <paramref name="predicate"/> returns <c>true</c>.
+    /// Returns the number of removed entries.
+    /// </summary>
+    public static int RemoveAll<TKey, TValue>(this Dictionary<TKey, TValue> dict, Func<TKey, TValue, bool> predicate)
+        where TKey : notnull
+    {
+        var toRemove = ArrayBuffer<TKey>.Lease(false);
+        try {
+            foreach (var (key, value) in dict)
+                if (predicate(key, value))
+                    toRemove.Add(key);
+            foreach (var key in toRemove)
+                dict.Remove(key);
+            return toRemove.Count;
+        }
+        finally {
+            toRemove.Release();
+        }
+    }
 }

@@ -12,7 +12,7 @@ public class LockingComputeMethodPrimerTest(ITestOutputHelper @out) : TestBase(@
     {
         var primer = new LockingComputeMethodPrimer<string, int>(NoopCaller);
 
-        using var r = await primer.LockAndReserve("a");
+        using var r = await primer.LockAndPrepare("a");
         r.Key.Should().Be("a");
         r.HasValue.Should().BeFalse();
         primer.GetReservationCount().Should().Be(1);
@@ -44,7 +44,7 @@ public class LockingComputeMethodPrimerTest(ITestOutputHelper @out) : TestBase(@
                 return Task.FromResult(consumed);
             });
 
-        using var r = await primer.LockAndReserve("a");
+        using var r = await primer.LockAndPrepare("a");
         await r.Prime(42);
         consumed.Should().Be(42);
         // Caller consumed during Prime, so the slot is back to Empty
@@ -56,7 +56,7 @@ public class LockingComputeMethodPrimerTest(ITestOutputHelper @out) : TestBase(@
     {
         var primer = new LockingComputeMethodPrimer<string, int>(NoopCaller, LockReentryMode.Unchecked);
 
-        var r = await primer.LockAndReserve("k");
+        var r = await primer.LockAndPrepare("k");
         primer.GetReservationCount().Should().Be(1);
         r.Dispose();
         primer.GetReservationCount().Should().Be(0);
@@ -64,7 +64,7 @@ public class LockingComputeMethodPrimerTest(ITestOutputHelper @out) : TestBase(@
         r.Dispose();
         primer.GetReservationCount().Should().Be(0);
 
-        using var r2 = await primer.LockAndReserve("k").AsTask().WaitAsync(TimeSpan.FromSeconds(1));
+        using var r2 = await primer.LockAndPrepare("k").AsTask().WaitAsync(TimeSpan.FromSeconds(1));
         r2.Key.Should().Be("k");
     }
 
@@ -73,13 +73,13 @@ public class LockingComputeMethodPrimerTest(ITestOutputHelper @out) : TestBase(@
     {
         var primer = new LockingComputeMethodPrimer<string, int>(NoopCaller, LockReentryMode.Unchecked);
 
-        var r1 = await primer.LockAndReserve("k");
+        var r1 = await primer.LockAndPrepare("k");
         await r1.Prime(7);
         primer.TryUsePrimed("k", out var v).Should().BeTrue();
         v.Should().Be(7);
         r1.Dispose();
 
-        using var r2 = await primer.LockAndReserve("k");
+        using var r2 = await primer.LockAndPrepare("k");
         primer.GetReservationCount().Should().Be(1);
         r1.Dispose(); // Second dispose on stale r1 must not touch r2's slot
         primer.GetReservationCount().Should().Be(1);
@@ -90,7 +90,7 @@ public class LockingComputeMethodPrimerTest(ITestOutputHelper @out) : TestBase(@
     {
         var primer = new LockingComputeMethodPrimer<string, int>(NoopCaller);
 
-        var r = await primer.LockAndReserve("a");
+        var r = await primer.LockAndPrepare("a");
         r.Dispose();
         await Assert.ThrowsAsync<ObjectDisposedException>(async () => await r.Prime(1));
     }
@@ -106,9 +106,9 @@ public class LockingComputeMethodPrimerTest(ITestOutputHelper @out) : TestBase(@
     public async Task PerKeyLockSerializesReserves()
     {
         var primer = new LockingComputeMethodPrimer<string, int>(NoopCaller, LockReentryMode.Unchecked);
-        var r1 = await primer.LockAndReserve("k");
+        var r1 = await primer.LockAndPrepare("k");
 
-        var second = primer.LockAndReserve("k").AsTask();
+        var second = primer.LockAndPrepare("k").AsTask();
         await Task.Delay(50);
         second.IsCompleted.Should().BeFalse();
 
@@ -122,8 +122,8 @@ public class LockingComputeMethodPrimerTest(ITestOutputHelper @out) : TestBase(@
     public async Task DifferentKeysDoNotBlock()
     {
         var primer = new LockingComputeMethodPrimer<string, int>(NoopCaller, LockReentryMode.Unchecked);
-        using var r1 = await primer.LockAndReserve("a");
-        using var r2 = await primer.LockAndReserve("b").AsTask().WaitAsync(TimeSpan.FromSeconds(1));
+        using var r1 = await primer.LockAndPrepare("a");
+        using var r2 = await primer.LockAndPrepare("b").AsTask().WaitAsync(TimeSpan.FromSeconds(1));
         primer.GetReservationCount().Should().Be(2);
     }
 
@@ -133,7 +133,7 @@ public class LockingComputeMethodPrimerTest(ITestOutputHelper @out) : TestBase(@
         var locks = new AsyncLockSet<string>(LockReentryMode.Unchecked);
         var primer = new LockingComputeMethodPrimer<string, int>(NoopCaller, locks);
 
-        using var r = await primer.LockAndReserve("a");
+        using var r = await primer.LockAndPrepare("a");
         await r.Prime(5);
         primer.TryUsePrimed("a", out var v).Should().BeTrue();
         v.Should().Be(5);

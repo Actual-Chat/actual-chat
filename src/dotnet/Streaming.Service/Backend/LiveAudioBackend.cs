@@ -1,4 +1,5 @@
 using ActualChat.Live;
+using ActualChat.Redis;
 using ActualLab.Redis;
 using StreamingContext = ActualChat.Streaming.Db.StreamingContext;
 
@@ -9,119 +10,94 @@ namespace ActualChat.Streaming;
 /// </summary>
 public class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
 {
-    private static readonly TimeSpan RedisTtl = TimeSpan.FromHours(1);
-    private static readonly TimeSpan ChatEntryTtl = Constants.Audio.MaxStreamDuration * 2;
+    private static readonly TimeSpan HashTtl = Constants.Audio.MaxStreamDuration * 5; // Ok to keep it a bit longer
 
-    private readonly ConcurrentDictionary<ChatId, ExpiringEntry<ChatId, Unit>> _activeChatEntries = new();
+    private RedisMultiHashMap<LiveStreamInfo> Streams { get; }
+    private LockingComputeMethodPrimer<ChatId, ApiArray<LiveStreamInfo>> ListRawPrimer { get; }
 
     private IChatsBackend ChatsBackend { get; }
-    private MeshWatcher MeshWatcher => field ??= Services.MeshWatcher();
-    private RedisHashStore<LiveStreamInfo> StreamsStore { get; }
-    private MomentClock Clock { get; }
 
     public LiveAudioBackend(IServiceProvider services)
         : base(services, ShardScheme.LiveBackend)
     {
-        Clock = services.Clocks().SystemClock;
         ChatsBackend = services.GetRequiredService<IChatsBackend>();
         var redisDb = services.GetRequiredService<RedisDb<StreamingContext>>();
-        StreamsStore = new RedisHashStore<LiveStreamInfo>(redisDb, "live-audio:streams", RedisTtl, Log);
+        Streams = new RedisMultiHashMap<LiveStreamInfo>(redisDb, "live-audio:streams", Log) {
+            HashTtl = HashTtl,
+        };
+        ListRawPrimer = new LockingComputeMethodPrimer<ChatId, ApiArray<LiveStreamInfo>>(ListRaw);
     }
 
     // [ComputeMethod]
     public virtual async Task<ApiArray<LiveStreamInfo>> List(ChatId chatId, CancellationToken cancellationToken)
     {
-        // Adds a dependency on this node's shard ownership state for chatId.
-        // Invalidates this computed on any ownership transition (gain/loss/handover),
-        // so bound RPC clients get pushed invalidations and reroute to the new owner.
-        // Throws RpcRerouteException if the call landed on a node not mapped to this shard.
-        await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
-
-        var streams = await ReadStreamsFromRedis(chatId).ConfigureAwait(false);
+        var streams = await ListRaw(chatId, cancellationToken).ConfigureAwait(false);
         if (streams.Count == 0)
             return default;
 
         var meshState = await MeshWatcher.State.Use(cancellationToken).ConfigureAwait(false);
-        var liveStreams = new List<LiveStreamInfo>(streams.Count);
-        List<string>? deadStreamIds = null;
-        foreach (var (key, info) in streams) {
-            var streamId = StreamId.Parse(info.StreamId);
-            var node = meshState[streamId.NodeRef];
-            if (node is { State: MeshNodeState.Online })
-                liveStreams.Add(info);
-            else {
-                deadStreamIds ??= new();
-                deadStreamIds.Add(key);
-            }
-        }
-        if (deadStreamIds != null)
-            _ = BackgroundTask.Run(() => CleanupDeadStreams(chatId, deadStreamIds), CancellationToken.None);
-
-        return new(liveStreams);
+        return streams.WhereAlive(meshState, static info => StreamId.Parse(info.StreamId)).ToApiArray();
     }
 
     public virtual async Task Register(ChatId chatId, LiveStreamInfo streamInfo, CancellationToken cancellationToken)
     {
-        BumpChatEntry(chatId);
+        using var _ = Computed.BeginIsolation();
+        using var primer = await ListRawPrimer.LockAndPrepare(chatId, cancellationToken).ConfigureAwait(false);
 
-        // Evict stale streams from the same author (e.g. after client reconnect creates a new stream)
-        var existing = await ReadStreamsFromRedis(chatId).ConfigureAwait(false);
-        foreach (var (key, info) in existing) {
-            if (info.AuthorId == streamInfo.AuthorId && info.StreamId != streamInfo.StreamId) {
+        var prev = await List(chatId, cancellationToken).ConfigureAwait(false);
+        var next = new List<LiveStreamInfo>(prev.Count + 1);
+        foreach (var info in prev) {
+            if (info.StreamId == streamInfo.StreamId)
+                continue;
+
+            if (info.AuthorId == streamInfo.AuthorId) {
                 Log.LogWarning("Register: evicting stale stream {OldStreamId} for author {AuthorId} (replaced by {NewStreamId})",
                     info.StreamId, streamInfo.AuthorId, streamInfo.StreamId);
-                await StreamsStore.RemoveField(chatId, key).ConfigureAwait(false);
+                await Streams.Remove(chatId.Value, info.StreamId).ConfigureAwait(false);
             }
+            else
+                next.Add(info);
         }
-
-        var success = await StreamsStore.SetField(chatId, streamInfo.StreamId, streamInfo).ConfigureAwait(false);
-        if (success)
-            InvalidateListStreams(chatId);
+        next.Add(streamInfo);
+        await Streams.Set(chatId.Value, streamInfo.StreamId, streamInfo).ConfigureAwait(false);
+        await primer.Prime(new ApiArray<LiveStreamInfo>(next), cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task Unregister(ChatId chatId, string streamId, CancellationToken cancellationToken)
     {
-        BumpChatEntry(chatId);
-        var removed = await StreamsStore.RemoveField(chatId, streamId).ConfigureAwait(false);
-        if (removed)
-            InvalidateListStreams(chatId);
+        using var _ = Computed.BeginIsolation();
+        using var primer = await ListRawPrimer.LockAndPrepare(chatId, cancellationToken).ConfigureAwait(false);
+
+        var prev = await List(chatId, cancellationToken).ConfigureAwait(false);
+        var next = prev.Where(info => info.StreamId != streamId).ToApiArray();
+        if (next.Count == prev.Count)
+            return;
+
+        await Streams.Remove(chatId.Value, streamId).ConfigureAwait(false);
+        await primer.Prime(next, cancellationToken).ConfigureAwait(false);
     }
 
-    // Private methods
+    // Protected methods
 
-    private void BumpChatEntry(ChatId chatId)
+    [ComputeMethod]
+    protected virtual async Task<ApiArray<LiveStreamInfo>> ListRaw(ChatId chatId, CancellationToken cancellationToken)
     {
-        var entry = _activeChatEntries.GetOrAdd(chatId, static (id, self) => {
-            var e = ExpiringEntry.New(self._activeChatEntries, id, Unit.Default);
-            e.SetDisposer(self.OnChatEntryExpired);
-            e.BumpExpiresAt(ChatEntryTtl);
-            e.BeginExpire();
-            return e;
-        }, this);
-        entry.BumpExpiresAt(ChatEntryTtl);
-    }
+        if (ListRawPrimer.TryUsePrimed(chatId, out var primed))
+            return primed;
 
-    private async ValueTask OnChatEntryExpired(ExpiringEntry<ChatId, Unit> entry)
-    {
-        Log.LogDebug("OnChatEntryExpired({ChatId}): cleaning up Redis", entry.Key);
-        await StreamsStore.DeleteKey(entry.Key).ConfigureAwait(false);
-        InvalidateListStreams(entry.Key);
-    }
-
-    private async Task<Dictionary<string, LiveStreamInfo>> ReadStreamsFromRedis(ChatId chatId)
-    {
         try {
-            return await StreamsStore.GetAll(chatId).ConfigureAwait(false);
+            var map = await Streams.GetHashMap(chatId.Value).ConfigureAwait(false);
+            map.RemoveAll(static (_, v) => v is null);
+            return map.Values.ToApiArray()!;
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogWarning(e, "Failed to read audio streams from Redis for chat {ChatId}, falling back to ChatsBackend", chatId);
+            Log.LogWarning(e, "Failed to read streams from Redis for chat #{ChatId}, falling back to ChatsBackend", chatId);
         }
 
         // Fallback: reconstruct from ChatsBackend.ListEntries
         var result = new Dictionary<string, LiveStreamInfo>(StringComparer.Ordinal);
-        var minBeginsAt = Clock.Now - Constants.Chat.MaxEntryDuration;
-        var entries = await ChatsBackend.ListEntries(chatId, minBeginsAt, default).ConfigureAwait(false);
-
+        var minBeginsAt = Clocks.SystemClock.Now - Constants.Chat.MaxEntryDuration;
+        var entries = await ChatsBackend.ListEntries(chatId, minBeginsAt, cancellationToken).ConfigureAwait(false);
         foreach (var entry in entries)
             if (entry.Audio is { StreamId.Length: > 0 } liveAudio
                 && !MediaId.TryParse(liveAudio.StreamId, out _)) {
@@ -135,26 +111,9 @@ public class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
             }
 
         // Write recovered entries to Redis for future restarts
-        foreach (var (streamId, info) in result)
-            await StreamsStore.SetField(chatId, streamId, info).ConfigureAwait(false);
+        foreach (var info in result.Values)
+            await Streams.Set(chatId.Value, info.StreamId, info).ConfigureAwait(false);
 
-        return result;
-    }
-
-    private async Task CleanupDeadStreams(ChatId chatId, List<string> deadStreamIds)
-    {
-        try {
-            foreach (var id in deadStreamIds)
-                await StreamsStore.RemoveField(chatId, id).ConfigureAwait(false);
-        }
-        catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogWarning(e, "CleanupDeadStreams({ChatId}): failed to remove stale streams", chatId);
-        }
-    }
-
-    private void InvalidateListStreams(ChatId chatId)
-    {
-        using (Invalidation.Begin())
-            _ = List(chatId, default);
+        return new ApiArray<LiveStreamInfo>(result.Values);
     }
 }

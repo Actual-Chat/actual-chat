@@ -338,7 +338,7 @@ public class LiveBackendRedisStateTest(AppHostFixture fixture, ITestOutputHelper
     private async Task<Dictionary<string, TValue>> ReadRedisHash<TValue>(string keyPrefix, ChatId chatId)
     {
         var db = await RedisDb.Database.Get().ConfigureAwait(false);
-        var key = $"{keyPrefix}:{chatId}";
+        var key = $"{keyPrefix}{RedisDb.KeyDelimiter}{chatId}";
         var entries = await db.HashGetAllAsync(key).ConfigureAwait(false);
         var result = new Dictionary<string, TValue>(entries.Length, StringComparer.Ordinal);
         foreach (var entry in entries) {

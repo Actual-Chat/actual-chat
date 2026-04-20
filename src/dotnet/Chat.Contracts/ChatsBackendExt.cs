@@ -71,7 +71,7 @@ public static class ChatsBackendExt
         return tile.Entries.SingleOrDefault(e => e.LocalId == entryId.LocalId);
     }
 
-    public static async ValueTask<IReadOnlyList<ChatEntry>> GetEntries(
+    public static async ValueTask<IReadOnlyList<ChatEntry>> ListEntries(
         this IChatsBackend chatsBackend,
         IEnumerable<ChatEntryId> entryIds,
         bool includeRemoved = false,
@@ -112,7 +112,7 @@ public static class ChatsBackendExt
         return entries;
     }
 
-    public static async Task<IReadOnlyList<ChatEntry>> GetEntries(
+    public static async Task<IReadOnlyList<ChatEntry>> ListEntries(
         this IChatsBackend chatsBackend,
         ChatId chatId,
         Range<long> idRange,
@@ -129,6 +129,50 @@ public static class ChatsBackendExt
             .ConfigureAwait(false);
 
         return tiles.SelectMany(t => t.Entries).ToList();
+    }
+
+    public static async Task<IReadOnlyList<ChatEntry>> ListEntries(
+        this IChatsBackend chatsBackend,
+        ChatId chatId,
+        Moment minBeginsAt,
+        CancellationToken cancellationToken = default)
+    {
+        // We don't want callers of this method to be dependent on whatever it fetches
+        using var _ = Computed.BeginIsolation();
+
+        var idRange = await chatsBackend.GetIdRange(chatId, true, cancellationToken).ConfigureAwait(false);
+        if (idRange.Size() <= 0)
+            return [];
+
+        // BeginsAt is roughly monotone in LocalId but not strictly — concurrent authors can cause
+        // a few seconds of disorder, so we stop only once a tile's whole BeginsAt range is
+        // comfortably before `from`.
+        var maxBeginsAtDisorder = TimeSpan.FromSeconds(15);
+        var cutoff = minBeginsAt - maxBeginsAtDisorder;
+        var tileLayer = Constants.Chat.ServerIdTileStack.FirstLayer;
+        var result = new List<ChatEntry>();
+        for (var idTile = tileLayer.GetTile(idRange.End - 1); idTile.End > idRange.Start; idTile = idTile.Prev()) {
+            var tile = await chatsBackend
+                .GetTile(chatId, idTile.Range, true, cancellationToken)
+                .ConfigureAwait(false);
+            var tileEntries = tile.Entries;
+            if (tileEntries.Length == 0)
+                continue;
+
+            for (var i = tileEntries.Length - 1; i >= 0; i--) {
+                var entry = tile.Entries[i];
+                if (entry.BeginsAt >= minBeginsAt)
+                    result.Add(entry);
+            }
+
+            if (tile.BeginsAtRange.End <= cutoff)
+                break;
+        }
+
+        // We visit tiles high→low and walk each tile's entries high→low, so `result` is
+        // already in strictly descending LocalId order — just reverse instead of sorting.
+        result.Reverse();
+        return result.ToArray();
     }
 
     public static async IAsyncEnumerable<ChatEntry> ReadEntries(

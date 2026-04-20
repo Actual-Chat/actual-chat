@@ -26,7 +26,7 @@ public class PrimedComputeService : IComputeService
 
     public async Task Set(string key, int value, CancellationToken cancellationToken = default)
     {
-        using var r = await Primer.LockAndReserve(key, cancellationToken).ConfigureAwait(false);
+        using var r = await Primer.LockAndPrepare(key, cancellationToken).ConfigureAwait(false);
         _storage[key] = value;
         await r.Prime(value, cancellationToken).ConfigureAwait(false);
     }
