@@ -10,7 +10,7 @@ namespace ActualChat.Streaming;
 /// </summary>
 public class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
 {
-    private static readonly TimeSpan StreamTtl = Constants.Audio.MaxStreamDuration * 2; // Ok to keep it a bit longer
+    private static readonly TimeSpan StreamTtl = Constants.Audio.MaxStreamDuration + TimeSpan.FromSeconds(1);
     private static readonly TimeSpan HashTtl = TimeSpan.FromHours(1);
 
     private readonly RedisMultiHashMap<LiveStreamInfo> _streams;
@@ -84,22 +84,23 @@ public class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
     [ComputeMethod]
     protected virtual async Task<ApiArray<LiveStreamInfo>> ListRaw(ChatId chatId, CancellationToken cancellationToken)
     {
+        var now = Clocks.SystemClock.Now;
         if (_listRawPrimer.TryUsePrimed(chatId, out var primed))
-            return primed;
+            return WithAutoInvalidation(primed);
 
         try {
             var map = await _streams.GetHashMap(chatId.Value).ConfigureAwait(false);
             map.RemoveAll(static (_, v) => v is null);
-            return map.Values.ToApiArray()!;
+            return WithAutoInvalidation(map.Values.ToApiArray()!);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "Failed to read streams from Redis for chat #{ChatId}, falling back to ChatsBackend", chatId);
         }
 
         // Fallback: reconstruct from ChatsBackend.ListEntries
+        var cutoff = now - Constants.Chat.MaxEntryDuration;
+        var entries = await ChatsBackend.ListEntries(chatId, cutoff, cancellationToken).ConfigureAwait(false);
         var result = new Dictionary<string, LiveStreamInfo>(StringComparer.Ordinal);
-        var minBeginsAt = Clocks.SystemClock.Now - Constants.Chat.MaxEntryDuration;
-        var entries = await ChatsBackend.ListEntries(chatId, minBeginsAt, cancellationToken).ConfigureAwait(false);
         foreach (var entry in entries)
             if (entry.Audio is { StreamId.Length: > 0 } liveAudio
                 && !MediaId.TryParse(liveAudio.StreamId, out _)) {
@@ -116,6 +117,19 @@ public class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
         foreach (var info in result.Values)
             await _streams.Set(chatId.Value, info.StreamId, info).ConfigureAwait(false);
 
-        return new ApiArray<LiveStreamInfo>(result.Values);
+        return WithAutoInvalidation(result.Values.ToApiArray());
+
+        // Invalidates the current computed at (min BeginsAt) + StreamTtl + 1s,
+        // so expired stream entries get refreshed even without external triggers.
+        ApiArray<LiveStreamInfo> WithAutoInvalidation(ApiArray<LiveStreamInfo> streams) {
+            if (streams.Count == 0)
+                return streams;
+
+            var minBeginsAt = streams.Min(x => x.BeginsAt);
+            var delay = minBeginsAt + StreamTtl + TimeSpan.FromSeconds(5) - now;
+            if (delay > TimeSpan.Zero)
+                Computed.GetCurrent().Invalidate(delay);
+            return streams;
+        }
     }
 }
