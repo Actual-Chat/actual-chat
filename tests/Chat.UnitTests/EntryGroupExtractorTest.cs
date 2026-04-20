@@ -175,7 +175,7 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
         {
             new(2, "Entry 1", _authorId, DateTime.Now, null, false, null, false),
             new(3, "Reply to Entry 1", _authorId, DateTime.Now.AddSeconds(10), null, false, 1, false),
-            new(4, "Late Reply", _authorId, DateTime.Now.AddMinutes(5), null, false, null, false),
+            new(4, "Late Reply", _authorId, DateTime.Now.AddMinutes(10), null, false, null, false),
         };
 
         var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), log);
