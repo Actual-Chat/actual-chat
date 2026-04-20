@@ -1,6 +1,5 @@
 using ActualChat.Audio;
 using ActualChat.Diagnostics;
-using ActualChat.Kvas;
 using ActualChat.Streaming.Services;
 using ActualChat.Transcription;
 using ActualLab.Rpc;

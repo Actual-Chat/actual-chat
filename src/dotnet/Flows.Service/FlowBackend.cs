@@ -14,13 +14,14 @@ namespace ActualChat.Flows;
 /// <summary>
 /// Backend service implementation for managing flow state persistence and resumption.
 /// </summary>
-public class FlowBackend(IServiceProvider services) : ShardedDbServiceBase<FlowsDbContext>(services), IFlowBackend
+public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
 {
     private readonly AsyncLockSet<FlowId> _resumeLocks = new(LockReentryMode.CheckedPass);
+    private readonly VersionedComputeMethodPrimer<FlowId, long, IFlowData?> _flowDataPrimer;
 
     // Services
     private FlowHub FlowHub => field ??= Services.FlowHub();
-    private IDbEntityResolver<string, DbFlow> EntityResolver { get; } = services.DbEntityResolver<string, DbFlow>();
+    private IDbEntityResolver<string, DbFlow> EntityResolver { get; }
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Flows);
 
     // Properties
@@ -29,9 +30,18 @@ public class FlowBackend(IServiceProvider services) : ShardedDbServiceBase<Flows
         RetryOn = (e, transiency) => e is not RpcRerouteException && transiency is not Transiency.Terminal,
     };
 
+    public FlowBackend(IServiceProvider services) : base(services)
+    {
+        EntityResolver = services.DbEntityResolver<string, DbFlow>();
+        _flowDataPrimer = new VersionedComputeMethodPrimer<FlowId, long, IFlowData?>(TryGetData);
+    }
+
     // [ComputeMethod]
     public virtual async Task<IFlowData?> TryGetData(FlowId flowId, CancellationToken cancellationToken)
     {
+        if (_flowDataPrimer.TryUsePrimed(flowId, out var primed))
+            return primed;
+
         var flowDef = FlowHub.Defs.ByName[flowId.Name];
         var dbFlow = await EntityResolver.Get(flowId.Value, cancellationToken).ConfigureAwait(false);
         return dbFlow?.ToFlowData(flowDef.Type, flowId);
@@ -181,10 +191,20 @@ public class FlowBackend(IServiceProvider services) : ShardedDbServiceBase<Flows
         // coz invalidation must be handled by the local node only.
         // See AddCompletionHandler below.
         context.Operation.MustStore(false);
-        context.Operation.AddCompletionHandler(scope => {
-            using (Invalidation.Begin())
-                _ = TryGetData(flowId, default);
-            return Task.CompletedTask;
+        context.Operation.AddCompletionHandler(async scope => {
+            if (scope.IsCommitted != true)
+                return;
+            if (dbFlow is null)
+                return; // We don't prime removed flows
+
+            // Hand off the freshly stored value to TryGetData's next recompute,
+            // so the invalidation triggered here doesn't require a follow-up DB read.
+            // The version guard protects against out-of-order completion handlers — if a
+            // newer store's handler already primed, ours is a no-op (and skips invalidation).
+            var flowDef = FlowHub.Defs.ByName[flowId.Name];
+            var flowData = dbFlow.ToFlowData(flowDef.Type, flowId);
+            var version = dbFlow.Version;
+            await _flowDataPrimer.Prime(flowId, version, flowData, CancellationToken.None).ConfigureAwait(false);
         });
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
