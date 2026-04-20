@@ -18,7 +18,7 @@
     @apply ordinary-header;
     @apply absolute top-0 z-20;
     @apply w-full;
-    @apply bg-[var(--black-80)];
+    @apply bg-[var(--black)];
     @apply md:shadow-md;
     min-height: calc(3.5rem + var(--safe-area-top));
     max-height: calc(3.5rem + var(--safe-area-top));
@@ -73,7 +73,7 @@ body.hoverable .image-viewer-header .btn-h:hover {
     @apply absolute bottom-0;
     @apply flex-x justify-center items-center;
     @apply h-14 w-full;
-    @apply bg-[var(--black-80)];
+    @apply bg-[var(--black)];
     @apply md:shadow-md-top;
     padding-bottom: var(--safe-area-bottom);
     padding-left: var(--safe-area-left);
@@ -150,27 +150,23 @@ swiper-container::part(button-prev) {
     @apply max-h-full;
 }
 .video-wrapper .video-control {
-    @apply absolute z-10 left-0 right-0 bottom-0;
+    @apply absolute z-10 left-0 right-0;
     @apply flex-y items-center gap-x-2;
+    @apply bg-[var(--black)];
+    bottom: var(--safe-area-bottom);
     padding-left: calc(1rem + var(--safe-area-left));
     padding-right: calc(1rem + var(--safe-area-right));
-    padding-bottom: var(--safe-area-bottom);
-    background: linear-gradient(
-        to right,
-        var(--black-60) 0%,
-        var(--black-80) 10%,
-        var(--black-90) 20% 80%,
-        var(--black-80) 90%,
-        var(--black-60) 100%);
-    backdrop-filter: blur(2px);
     transition: opacity 300ms ease-in-out 150ms;
 }
 .video-wrapper .video-control.hide-control {
     opacity: 0;
     pointer-events: none;
 }
-.video-wrapper .video-control:not(.single-attachment) {
-    bottom: var(--footer-height);
+.image-viewer-modal:has(.image-viewer-footer) .video-wrapper .video-control {
+    bottom: calc(3.5rem + var(--safe-area-bottom));
+}
+.image-viewer-modal:has(.show-to-hide):has(.image-viewer-footer) .video-wrapper .video-control {
+    bottom: var(--safe-area-bottom);
 }
 .image-viewer-modal:has(.show-to-hide) .video-wrapper .video-control {
     opacity: 0;
@@ -198,8 +194,8 @@ swiper-container::part(button-prev) {
     @apply always-white;
 }
 .video-wrapper .video-control .c-line-1 {
-    @apply relative flex-1 flex-x items-center justify-center gap-x-4;
-    @apply w-full min-h-10;
+    @apply relative flex-1 flex-x items-end justify-center gap-x-4;
+    @apply w-full min-h-8;
 }
 .video-control .c-line-1 .play-btn.is-playing .play-icon {
     @apply hidden;
@@ -217,7 +213,7 @@ swiper-container::part(button-prev) {
 .video-wrapper .video-control .c-line-2 {
     @apply relative;
     @apply flex-x items-center;
-    @apply w-full min-h-6;
+    @apply w-full min-h-8;
 }
 .video-wrapper .video-control progress {
     @apply relative;
