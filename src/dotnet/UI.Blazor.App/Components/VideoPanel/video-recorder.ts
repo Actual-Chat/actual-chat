@@ -48,7 +48,7 @@ export interface VideoDevice {
 // Module-level registry keyed by StreamKind so a user can simultaneously
 // stream webcam (kind=0) and screencast (kind=1). Callers that want the
 // webcam-specific recorder (preview, modal, diagnostics) pass kind=0
-// (the default).
+// (the default). Kinds match the C# StreamKind enum values.
 const StreamKindWebcam = 0;
 const StreamKindScreencast = 1;
 const activeRecorders = new Map<number, VideoRecorder>();
@@ -71,8 +71,15 @@ export class VideoRecorder {
     // Video recording service (using video-pipeline)
     private recordingService: RecordingService | null = null;
     private isRecording = false;
+    // True when we were asked to record but currently have no active pipeline
+    // (e.g. the user switched to a camera that failed to start). The next
+    // switchCamera call restarts from this state.
+    private isInterrupted = false;
     private isScreencasting = false;
-    // StreamKind this instance is currently registered under (null when idle).
+    // StreamKind this instance is registered under. Set in the constructor and
+    // cleared on dispose (we register immediately so VideoStreamingPreview can
+    // see the recorder during the pipeline startup phase, not only after the
+    // first frame lands).
     private registeredKind: number | null = null;
     private previewTrack: MediaStreamTrack | null = null;
     private selectedCameraDeviceId: string | null = null;
@@ -91,8 +98,8 @@ export class VideoRecorder {
     /** External callback for blur preview frames — set by VideoStreamingPreview */
     public onPreviewFrame: ((frame: VideoFrame) => void) | null = null;
 
-    static create(blazorRef: DotNet.DotNetObject): VideoRecorder {
-        return new VideoRecorder(blazorRef);
+    static create(blazorRef: DotNet.DotNetObject, kind: number): VideoRecorder {
+        return new VideoRecorder(blazorRef, kind);
     }
 
     static async enumerateDevices(): Promise<VideoDevice[]> {
@@ -116,8 +123,9 @@ export class VideoRecorder {
         }
     }
 
-    constructor(blazorRef: DotNet.DotNetObject) {
+    constructor(blazorRef: DotNet.DotNetObject, kind: number) {
         this.blazorRef = blazorRef;
+        this.register(kind);
     }
 
     /**
@@ -130,29 +138,37 @@ export class VideoRecorder {
 
     /**
      * Switch camera during active recording by stopping and restarting with the new device.
+     *
+     * If the new camera fails to start (e.g. a ghost device registered in the OS but not
+     * delivering frames), startRecording's error path leaves us in the interrupted state
+     * (`isInterrupted = true`, `recordingService = null`). The Blazor side no longer
+     * tears the panel down on OnRecordingError, so the user can simply click switch
+     * camera again — the next call will fall through the stop branch (pipeline is
+     * already null) and try startRecording with the new device.
      */
     public async switchCamera(deviceId: string): Promise<void> {
         this.selectedCameraDeviceId = deviceId;
         infoLog?.log('Switching camera to:', deviceId);
 
-        if (!this.isRecording || !this.recordingService) {
-            infoLog?.log('Not recording — camera will be used on next start');
+        // Never asked to record yet — just remember the device for the next start
+        if (!this.chatId) {
+            infoLog?.log('Not yet recording — camera will be used on next start');
             return;
         }
 
-        try {
-            // Tear down current recording silently (no Blazor notification)
+        // Tear down the current pipeline if one exists
+        if (this.recordingService) {
             this.cleanupPreviewTrack();
-            await this.recordingService.stop();
+            try {
+                await this.recordingService.stop();
+            } catch (e) {
+                warnLog?.log('Stop during switch failed:', e);
+            }
             this.recordingService = null;
             this.isRecording = false;
-
-            // Restart with the new camera
-            await this.startRecording(this.chatId);
-        } catch (error) {
-            errorLog?.log('Failed to switch camera:', error);
-            await this.blazorRef.invokeMethodAsync('OnRecordingError', String(error));
         }
+
+        await this.startRecording(this.chatId);
     }
 
     /**
@@ -212,6 +228,14 @@ export class VideoRecorder {
     }
 
     /**
+     * Whether recording was requested but the current pipeline failed to start.
+     * A subsequent switchCamera call will try to start fresh with the new device.
+     */
+    public isRecordingInterrupted(): boolean {
+        return this.isInterrupted;
+    }
+
+    /**
      * Whether preview rendering is paused (modal is open).
      */
     public isPreviewPaused(): boolean {
@@ -242,6 +266,7 @@ export class VideoRecorder {
             return;
         }
 
+        this.isInterrupted = false;
         infoLog?.log('Starting video recording...');
 
         try {
@@ -316,15 +341,16 @@ export class VideoRecorder {
             });
 
             this.isRecording = true;
-            this.register(StreamKindWebcam);
 
             // Notify Blazor that recording started successfully
             await this.blazorRef.invokeMethodAsync('OnRecordingStarted');
 
             infoLog?.log('Video recording started');
         } catch (error) {
+            this.isInterrupted = true;
             errorLog?.log('Failed to start recording:', error);
-            await this.blazorRef.invokeMethodAsync('OnRecordingError', String(error));
+            const message = error instanceof Error ? error.message : String(error);
+            await this.blazorRef.invokeMethodAsync('OnRecordingError', message);
         }
     }
 
@@ -405,13 +431,13 @@ export class VideoRecorder {
 
             this.isRecording = true;
             this.isScreencasting = true;
-            this.register(StreamKindScreencast);
 
             await this.blazorRef.invokeMethodAsync('OnRecordingStarted');
             infoLog?.log('Screencast started');
         } catch (error) {
             errorLog?.log('Failed to start screencast:', error);
-            await this.blazorRef.invokeMethodAsync('OnRecordingError', String(error));
+            const message = error instanceof Error ? error.message : String(error);
+            await this.blazorRef.invokeMethodAsync('OnRecordingError', message);
         }
     }
 

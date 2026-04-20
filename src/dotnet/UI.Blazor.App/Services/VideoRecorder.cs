@@ -50,7 +50,9 @@ public sealed class VideoRecorder : IAsyncDisposable
         var blazorCallbacks = new RecorderCallbacks(ChatVideoUI, this, Kind);
         _blazorCallbacksRef = DotNetObjectReference.Create(blazorCallbacks);
         var jsMethod = $"{BlazorUIAppModule.ImportName}.VideoRecorder.create";
-        _jsRef = await JS.InvokeAsync<IJSObjectReference>(jsMethod, CancellationToken.None, _blazorCallbacksRef).ConfigureAwait(false);
+        _jsRef = await JS
+            .InvokeAsync<IJSObjectReference>(jsMethod, CancellationToken.None, _blazorCallbacksRef, (int)Kind)
+            .ConfigureAwait(false);
     }
 
     // Recording lifecycle

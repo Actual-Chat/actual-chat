@@ -23,4 +23,12 @@ export class CanvasTarget {
         }
         this.ctx.drawImage(source, 0, 0, width, height);
     }
+
+    /**
+     * Wipe all pixels so the canvas shows transparent (letting the container background show
+     * through). Call when detaching — otherwise the last-drawn frame stays visible.
+     */
+    clear(): void {
+        this.ctx.clearRect(0, 0, this.element.width, this.element.height);
+    }
 }

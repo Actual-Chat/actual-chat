@@ -181,8 +181,9 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     // JS callback handlers (called from VideoPanel)
 
     public void OnRecordingStarted(ChatId chatId, StreamKind kind)
-    {
-    }
+        // Clear any previous error (e.g. the user cycled past a failing camera
+        // and landed on a working one) so VideoStreamingPreview drops the overlay.
+        => _errorMessage.Value = null;
 
     public void OnRecordingStopped(StreamKind kind)
     {
@@ -193,14 +194,10 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     }
 
     public void OnRecordingError(string error, StreamKind kind)
-    {
-        _errorMessage.Value = error;
-        if (kind == StreamKind.Screencast)
-            StopScreenCasting();
-        else
-            StopRecording();
-        // Don't close the video panel. User stays watching remote streams, can retry or hang up
-    }
+        // Keep the recording session alive: the user can cycle cameras to recover
+        // (see VideoRecorder.switchCamera — it restarts from the interrupted state).
+        // VideoStreamingPreview shows the message via GetLastVideoRecorderError.
+        => _errorMessage.Value = error;
 
     // Device enumeration
 
