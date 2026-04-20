@@ -1,4 +1,5 @@
 import { getLogs } from 'logging';
+import { getActiveRecorder } from '../VideoPanel/video-recorder';
 import { MediaCapture } from '../../Services/Video/services/media-capture';
 import { CanvasVideoRenderer } from '../../Services/Video/services/canvas-video-renderer';
 import { BlurPreviewSession } from '../../Services/Video/services/blur-preview-session';
@@ -129,9 +130,15 @@ export class JoinVideoCallModal {
      */
     public attachToRecorder(): void {
         if (this.recorderView) return;
+        // Freeze the VideoPanel's self-preview while we own the canvas — its
+        // RecorderPreviewView respects the recorder's pause flag and will
+        // resume automatically once we clear it in dispose().
+        getActiveRecorder()?.pausePreviewRendering();
         this.recorderView = RecorderPreviewView.create({
             canvas: this.canvasEl,
             rafKey: 'join-video-preview',
+            // This view is the one driving the preview; don't pause ourselves.
+            respectPauseFlag: false,
             onAttach: () => this.videoFrame.classList.add('has-video'),
             onDetach: () => this.videoFrame.classList.remove('has-video'),
             onFirstFrame: () => void this.blazorRef.invokeMethodAsync('OnFirstFrameRendered'),
@@ -189,6 +196,8 @@ export class JoinVideoCallModal {
         if (this.recorderView) {
             this.recorderView.dispose();
             this.recorderView = null;
+            // Let the VideoPanel's self-preview resume tracking the recorder.
+            getActiveRecorder()?.resumePreviewRendering();
             return;
         }
         void this.stopBlurPreview();
