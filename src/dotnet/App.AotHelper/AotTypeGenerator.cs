@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using ActualChat.Aot;
 using Microsoft.AspNetCore.Components;
 using static System.Console;
@@ -7,6 +8,31 @@ namespace ActualChat.App.AotHelper;
 
 public static class AotTypeGenerator
 {
+    /// <summary>
+    /// If <c>true</c>, emitted <c>CodeKeeper.Keep("&lt;AQN&gt;")</c> calls use the full
+    /// assembly-qualified name (including <c>Version=..., Culture=..., PublicKeyToken=...</c>
+    /// for every referenced assembly). If <c>false</c> (default), the version/culture/token
+    /// are stripped and each assembly reference becomes a simple name (e.g.
+    /// <c>"Ns.Type, MyAssembly"</c>).
+    /// <para>
+    /// Short form is accepted by <see cref="Type.GetType(string)"/> and is picked up by
+    /// ILC's trimmer dataflow analysis — it cuts the generated <c>*AotSource.g.cs</c> files
+    /// down dramatically. The long form is only needed if two strongly-named assemblies
+    /// share the same simple name, which isn't our situation.
+    /// </para>
+    /// </summary>
+    public static readonly bool UseVersionedAqns = false;
+
+    // Matches `, Version=..., Culture=..., PublicKeyToken=...` anywhere in an AQN, including
+    // inside nested `[[...]]` generic-arg AQNs. The three properties always appear in this
+    // order per the CLR AQN format.
+    private static readonly Regex AsmQualifierRegex = new(
+        @",\s*Version=[^,\]]+,\s*Culture=[^,\]]+,\s*PublicKeyToken=[^,\]]+",
+        RegexOptions.Compiled);
+
+    private static string NormalizeAqn(string aqn)
+        => UseVersionedAqns ? aqn : AsmQualifierRegex.Replace(aqn, "");
+
     // Assemblies to scan for components and APIs
     private static readonly string[] AssemblyNames = [
         "ActualChat.Core",
@@ -361,13 +387,13 @@ public static class AotTypeGenerator
                 sb.AppendLine();
                 sb.AppendLine("        // MessagePack formatter types for serializable root types (auto-discovered)");
                 foreach (var aqn in mpFormatterAqns)
-                    sb.AppendLine($"        CodeKeeper.Keep(\"{EscapeString(aqn)}\");");
+                    sb.AppendLine($"        CodeKeeper.Keep(\"{EscapeString(NormalizeAqn(aqn))}\");");
             }
             if (stjConverterAqns is { Count: > 0 }) {
                 sb.AppendLine();
                 sb.AppendLine("        // STJ internal converter types for JS interop (auto-discovered)");
                 foreach (var aqn in stjConverterAqns)
-                    sb.AppendLine($"        CodeKeeper.Keep(\"{EscapeString(aqn)}\");");
+                    sb.AppendLine($"        CodeKeeper.Keep(\"{EscapeString(NormalizeAqn(aqn))}\");");
             }
         }
         sb.AppendLine("    }");
