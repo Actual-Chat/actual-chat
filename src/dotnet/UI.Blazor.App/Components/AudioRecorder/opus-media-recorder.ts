@@ -34,7 +34,7 @@ import { ServerClock } from 'server-clock';
 │ └───┘ │  └────────────┘         │             │isVoiceFound         │
 │       │                         │ ┌───────────▼────────────┐        │
 │       │ ┌───────────────┐       │ │              web worker│        │    ┌───────┐
-│       └─►Encoder worklet├───────┼─►                        ├────────┼───►│SignalR│
+│       └─►Encoder worklet├───────┼─►                        ├────────┼───►│  RPC  │
 │         └───────────────┘       │ │ Encoder worker         │        │    └───────┘
 │               Audio thread      │ └────────────────────────┘        │
 └─────────────────────────────────┘              ▲                    │

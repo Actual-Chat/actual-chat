@@ -171,8 +171,6 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
         }
 
         // Single-writer by design — SerializedData is populated at ingress (RPC receive loop).
-        // This path only fires if a producer pushes via the obsolete SignalR StreamHub, which
-        // no live client uses. Keep the check for defensive purposes.
         if (frame.SerializedData.IsEmpty)
             frame.SerializedData = bytes;
     }

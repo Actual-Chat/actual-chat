@@ -95,10 +95,6 @@
                         <span class="diag-label">Encoders</span>
                         <span class="diag-value">@GetStrArray(stream, "supportedEncoderCategories")</span>
                     </div>
-                    <div class="diag-row">
-                        <span class="diag-label">SignalR</span>
-                        <span class="diag-value">@GetStr(own.Value, "signalRState")</span>
-                    </div>
                     @if (stream.TryGetProperty("orientation", out var orient) && orient.ValueKind == JsonValueKind.Object) {
                         <div class="diag-row">
                             <span class="diag-label">Display</span>
@@ -387,7 +383,6 @@
             && ownVal.TryGetProperty("stream", out var ownStream)
             && ownStream.ValueKind == JsonValueKind.Object) {
             AppendJson(sb, ownStream);
-            sb.AppendLine($"SignalR: {GetStr(ownVal, "signalRState")}");
 
             if (ownStream.TryGetProperty("orientation", out var orient) && orient.ValueKind == JsonValueKind.Object) {
                 sb.AppendLine();

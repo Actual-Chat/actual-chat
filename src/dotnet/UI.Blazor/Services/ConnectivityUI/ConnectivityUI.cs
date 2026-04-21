@@ -6,7 +6,7 @@ namespace ActualChat.UI.Blazor.Services;
 
 /// <summary>
 /// Provides a unified online/offline signal for the app.
-/// Used by ReconnectUI (RPC) and AudioStreamer (SignalR) to skip reconnects
+/// Used by ReconnectUI (RPC) and AudioStreamer to skip reconnects
 /// while offline and reconnect immediately when online.
 /// </summary>
 public abstract class ConnectivityUI : UIWorkerBase<UIHub>

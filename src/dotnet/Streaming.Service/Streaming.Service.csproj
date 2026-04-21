@@ -3,7 +3,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Db\Db.csproj" />
     <ProjectReference Include="..\Redis\Redis.csproj" />
-    <ProjectReference Include="..\SignalR.Client\SignalR.Client.csproj" />
     <ProjectReference Include="..\Chat.Contracts\Chat.Contracts.csproj" />
     <ProjectReference Include="..\Media.Contracts\Media.Contracts.csproj" />
     <ProjectReference Include="..\Streaming.Contracts\Streaming.Contracts.csproj" />

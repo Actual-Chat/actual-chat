@@ -18,7 +18,6 @@ public static partial class CoreConstants
         }
 
         // Core components
-        public static readonly bool SignalR = false;
         public static readonly bool StoredState = false;
         public static readonly bool SyncedState = false;
         public static readonly bool MessageProcessor = false;
