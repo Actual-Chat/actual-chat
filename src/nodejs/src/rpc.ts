@@ -112,6 +112,10 @@ export function completeRpc(result: RpcResult): void {
 }
 
 export function isTransferable(x: unknown): x is Transferable {
+    // Fast reject for primitives — hot path passes strings/numbers often.
+    const t = typeof x;
+    if (t !== 'object' || x === null)
+        return false;
     if (x instanceof ArrayBuffer)
         return true;
     if (x instanceof MessagePort)
@@ -161,6 +165,25 @@ function getTransferables(args: unknown[]): Transferable[] | undefined {
             result.push(value);
     }
     return result;
+}
+
+/**
+ * Direct noWait send — skips Proxy.get, proxyMethodCache lookup, RpcCall ctor.
+ * Use in hot paths (per audio/video frame). Caller must pass transferables explicitly
+ * (or undefined for none) — no automatic scan. Message shape matches rpcServer's
+ * envelope, so rpcServer handles it transparently.
+ */
+export function rpcSendNoWait(
+    port: MessagePort | Worker,
+    method: string,
+    args: unknown[],
+    transferables?: Transferable[],
+): void {
+    const envelope = { id: nextRpcPromiseId++, method, args, noWait: true };
+    if (transferables)
+        port.postMessage(envelope, transferables);
+    else
+        port.postMessage(envelope);
 }
 
 export function rpcServer(
@@ -267,6 +290,22 @@ export function rpcClient<TService extends object>(
             result = (...args: unknown[]): RpcPromise<unknown> => {
                 if (isDisposed)
                     throw new Error(`${name}.call: already disposed.`);
+
+                // Fast-path for noWait calls: avoid RpcCall allocation, RpcPromise creation,
+                // and the RpcCall ctor's trailing-arg scan. This path fires per audio/video
+                // frame, so per-call allocations add up.
+                const argCount = args.length;
+                if (argCount > 0 && args[argCount - 1] === rpcNoWait) {
+                    args.pop();
+                    const envelope = { id: nextRpcPromiseId++, method, args, noWait: true };
+                    const transferables = getTransferables(args);
+                    debugLog?.log(`${name}.call:`, envelope, ', transfer:', transferables);
+                    if (transferables)
+                        messagePort.postMessage(envelope, transferables);
+                    else
+                        messagePort.postMessage(envelope);
+                    return RpcPromise.Void;
+                }
 
                 const rpcCall = new RpcCall(nextRpcPromiseId++, method, args, timeoutMs);
                 const rpcPromise = rpcCall.noWait ? RpcPromise.Void : new RpcPromise<unknown>(rpcCall.id);

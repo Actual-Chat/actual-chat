@@ -11,7 +11,7 @@ import { Disposable } from 'disposable';
 import { FeederAudioWorkletNode } from './worklets/feeder-audio-worklet-node';
 import { OpusDecoderWorker } from './workers/opus-decoder-worker-contract';
 import { catchErrors, PromiseSource } from 'promises';
-import { rpcClient, rpcNoWait } from 'rpc';
+import { rpcClient, rpcNoWait, rpcSendNoWait } from 'rpc';
 import { Versioning } from 'versioning';
 import { Log, getLogs } from 'logging';
 import { ObjectPool } from 'object-pool';
@@ -269,8 +269,14 @@ export class AudioPlayer implements Resettable {
         if (this.contextRef && !this.contextRef.isReady)
             return; // Skip frames when audio context isn't running (e.g. broken/suspended)
 
-        // @ts-expect-error TODO(AY): fix ts error
-        void decoderWorker.frame(this.internalId, bytes.buffer, bytes.byteOffset, bytes.length, rpcNoWait);
+        // Hot path — called ~50×/s per player via Blazor interop. Bypass the rpcClient Proxy
+        // and go straight to the worker's postMessage to avoid per-call allocations.
+        const buf = bytes.buffer as ArrayBuffer;
+        rpcSendNoWait(
+            decoderWorkerInstance!,
+            'frame',
+            [this.internalId, buf, bytes.byteOffset, bytes.length],
+            [buf]);
     }
 
     /** Called by Blazor */
