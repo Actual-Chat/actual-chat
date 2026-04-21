@@ -196,6 +196,7 @@ export class ChatMessageEditor {
                     fromEvent(this.attachmentListElement, 'wheel')
                         .pipe(takeUntil(this.disposed$))
                         .subscribe((event: WheelEvent) => this.onHorizontalScroll(event));
+                    this.initDragScroll(this.attachmentListElement);
                 }
             });
             m.removedNodes.forEach(element => {
@@ -208,6 +209,38 @@ export class ChatMessageEditor {
             });
         })
     };
+
+    private initDragScroll(el: HTMLElement) {
+        let isDown = false;
+        let startX = 0;
+        let scrollLeft = 0;
+
+        const onMouseDown = (e: MouseEvent) => {
+            // Only left button, skip if clicking a button
+            if (e.button !== 0 || (e.target as HTMLElement).closest('button'))
+                return;
+            isDown = true;
+            startX = e.pageX - el.offsetLeft;
+            scrollLeft = el.scrollLeft;
+            el.style.cursor = 'grabbing';
+        };
+        const onMouseMove = (e: MouseEvent) => {
+            if (!isDown)
+                return;
+            e.preventDefault();
+            const x = e.pageX - el.offsetLeft;
+            el.scrollLeft = scrollLeft - (x - startX);
+        };
+        const onMouseUp = () => {
+            isDown = false;
+            el.style.cursor = '';
+        };
+
+        el.addEventListener('mousedown', onMouseDown);
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+        el.style.cursor = 'grab';
+    }
 
     private onHorizontalScroll = ((event: WheelEvent) => {
         preventDefaultForEvent(event);

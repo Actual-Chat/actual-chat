@@ -340,11 +340,17 @@ body.narrow .attachment-list-wrapper > .c-btn-group {
     @apply rounded-lg;
     @apply border border-separator;
     @apply bg-[var(--black-05)];
-    @apply text-xs text-white;
+    @apply text-xs text-01;
     @apply cursor-pointer;
     @apply select-none;
     flex: 1 1 auto;
     transition: all 150ms ease-in-out;
+}
+body.narrow .quality-chip {
+    @apply text-white;
+}
+body.hoverable .quality-chip:hover {
+    @apply brightness-125;
 }
 .quality-chip.selected {
     @apply border-primary;
@@ -353,18 +359,7 @@ body.narrow .attachment-list-wrapper > .c-btn-group {
     @apply text-xxs opacity-70;
 }
 
-/* Pending quality selection: original aspect ratio */
-.attachment-wrapper.pending-quality .attachment-item {
-    max-width: 50vw;
-}
-.attachment-wrapper.pending-quality .attachment-item > img {
-    @apply h-24 w-auto max-w-[50vw];
-    @apply object-cover;
-}
-.attachment-wrapper.pending-quality .attachment-filename {
-    @apply hidden;
-}
-.attachment-wrapper.pending-quality.selected {
+.attachment-wrapper.selected {
     @apply outline-2 outline-primary;
     outline-offset: 0;
     outline-style: solid;
@@ -432,7 +427,7 @@ body.narrow .attachment-wrapper.last-element {
 .attachment-item {
     @apply relative;
     @apply flex-none flex-y justify-center gap-x-1;
-    @apply h-34 w-34;
+    @apply h-24 w-auto max-w-48;
     @apply mt-auto;
     @apply rounded-t-lg;
     @apply overflow-hidden;
@@ -441,11 +436,7 @@ body.narrow .attachment-wrapper.last-element {
     @apply rounded-lg;
 }
 .attachment-item > img, .attachment-item > video {
-    @apply h-34;
     @apply object-cover;
-}
-body.narrow .attachment-item {
-    @apply h-24 w-auto;
 }
 body.narrow .narrow-panel .attachment-item {
     @apply h-10 w-10;

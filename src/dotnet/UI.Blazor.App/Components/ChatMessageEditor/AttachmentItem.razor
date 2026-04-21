@@ -24,9 +24,8 @@
     var uploadStyle = $"width: {progressValue}%;";
     var isUploading = progress.IsInProgress;
     var wrapperClass = "attachment-wrapper"
-        + (attachment.IsUploadPending ? " pending-quality" : "")
         + (IsSelected ? " selected" : "");
-    var itemStyle = attachment.IsUploadPending && attachment.Width > 0 && attachment.Height > 0
+    var itemStyle = attachment.Width > 0 && attachment.Height > 0
         ? $"aspect-ratio: {attachment.Width} / {attachment.Height};"
         : "";
 }
@@ -37,7 +36,7 @@
                 <i class="icon-trash03 text-2xl font-thin"></i>
             </ButtonSquare>
             @if (attachment.IsSupportedImage || m.HasCustomPreview) {
-                <img src="@previewUrl" alt="Attachment" class="@plugClass"/>
+                <img src="@previewUrl" alt="Attachment" class="@plugClass" draggable="false"/>
             } else if (attachment.IsSupportedVideo) {
                 <video preload="metadata" class="@plugClass">
                     <source src="@previewUrl#t=0.5"/>
