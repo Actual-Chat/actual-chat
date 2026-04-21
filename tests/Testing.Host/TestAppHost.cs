@@ -33,9 +33,14 @@ public class TestAppHost : AppHost
     {
         WriteLine("disposing");
         try {
-            await base.DisposeAsync(disposing);
+            // Purge BEFORE base.DisposeAsync — queue processors must still be alive
+            // to perform the purge. And AWAIT it: leftover fire-and-forget purges from
+            // a finished test could race with the next test's NewAppHost and drain
+            // the new host's in-flight FlowResumeEvents (same-class tests share a
+            // NATS stream via the stable CoreSettings.Instance prefix).
             if (disposing)
-                _ = Services.Queues().Purge();
+                await Services.Queues().Purge();
+            await base.DisposeAsync(disposing);
         }
         catch (Exception) {
             // Intended
