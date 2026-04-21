@@ -56,6 +56,15 @@ export class VideoStreamingPreview {
         this.spinnerRafId = requestAnimationFrame(() => this.updateStarting());
     }
 
+    /**
+     * Pause/resume rendering of the recorder's preview on this surface. While
+     * paused the last rendered frame stays on the canvas. Used by Blazor when
+     * Settings-mode JoinVideoCallModal is about to take over the preview.
+     */
+    public setPaused(paused: boolean): void {
+        this.view.paused = paused;
+    }
+
     public dispose(): void {
         if (this.disposed) return;
         this.disposed = true;

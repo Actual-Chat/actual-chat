@@ -31,6 +31,14 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     // Consumed by VideoPanelContent to suppress "Connecting..." overlay.
     private volatile int _remoteStreamEndedIntentionally;
 
+    /// <summary>
+    /// Raised to ask <see cref="VideoStreamingPreview"/> consumers to pause (true) /
+    /// resume (false) their local preview rendering while something else owns the
+    /// preview canvas — e.g. the Settings-mode JoinVideoCallModal. Fires on the
+    /// Blazor dispatcher; subscribers can call into JS synchronously from the handler.
+    /// </summary>
+    public event Action<bool>? SuspendOwnStreamingPreview;
+
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
@@ -264,9 +272,19 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             if (chat is null)
                 return;
 
-            var model = new JoinVideoCallModal.Model(chat, JoinVideoCallModal.VideoCallMode.Settings);
-            var modeRef = await ModalUI.Show(model, CancellationToken.None).ConfigureAwait(true);
-            await modeRef.WhenClosed.ConfigureAwait(true);
+            // Freeze the VideoPanel's self-preview before the modal even opens so
+            // its canvas doesn't keep rendering into the frame the modal is about
+            // to take over. `finally` makes sure we always resume, even if Show
+            // throws or the modal never opens.
+            SuspendOwnStreamingPreview?.Invoke(true);
+            try {
+                var model = new JoinVideoCallModal.Model(chat, JoinVideoCallModal.VideoCallMode.Settings);
+                var modeRef = await ModalUI.Show(model, CancellationToken.None).ConfigureAwait(true);
+                await modeRef.WhenClosed.ConfigureAwait(true);
+            }
+            finally {
+                SuspendOwnStreamingPreview?.Invoke(false);
+            }
         }
     }
 

@@ -105,12 +105,6 @@ export class VideoRecorder {
     // a canvas before returning); they must NOT close it and must NOT retain it.
     private previewFrameListeners = new Set<PreviewFrameListener>();
 
-    // When true, RecorderPreviewView instances configured to respect this flag
-    // freeze their current frame instead of tracking the recorder. Used when a
-    // modal (JoinVideoCallModal in Settings mode) takes over preview rendering
-    // so the VideoPanel's self-preview doesn't double-render alongside it.
-    private previewPaused = false;
-
     static create(blazorRef: DotNet.DotNetObject, kind: number): VideoRecorder {
         return new VideoRecorder(blazorRef, kind);
     }
@@ -262,21 +256,6 @@ export class VideoRecorder {
     public addPreviewFrameListener(cb: PreviewFrameListener): () => void {
         this.previewFrameListeners.add(cb);
         return () => this.previewFrameListeners.delete(cb);
-    }
-
-    /** Whether preview rendering is paused (another consumer owns the canvas). */
-    public isPreviewPaused(): boolean {
-        return this.previewPaused;
-    }
-
-    /** Pause preview rendering for consumers that respect the flag. */
-    public pausePreviewRendering(): void {
-        this.previewPaused = true;
-    }
-
-    /** Resume preview rendering. */
-    public resumePreviewRendering(): void {
-        this.previewPaused = false;
     }
 
     /**
