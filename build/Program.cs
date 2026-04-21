@@ -250,7 +250,7 @@ internal static class Program
 
         Target(Targets.UnitTests, () => RunTests("FullyQualifiedName~UnitTests", 15 * 60));
 
-        Target(Targets.IntegrationTests,  () => RunTests("FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.PlaywrightTests&Category!~Slow&Category!~Nightly", 30 * 60));
+        Target(Targets.IntegrationTests,  () => RunTests("FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.PlaywrightTests&Category!~Slow&Category!~Nightly", 5 * 60));
 
         Target(Targets.SlowTests,  () => RunTests("FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.PlaywrightTests&Category~Slow", 30 * 60));
 

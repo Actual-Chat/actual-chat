@@ -10,21 +10,23 @@ public class DigestFlowTest(ITestOutputHelper @out)
     [Fact]
     public async Task MigrationFlow_Should_Start_DigestFlow()
     {
+        using var cts = NewTestCts();
+        var ct = cts.Token;
         await using var h = await NewAppHost();
 
         var flowHub = h.Services.FlowHub();
-        await flowHub.Get<MigrationFlow>(""); // We need to manually start it in this test
+        await flowHub.Get<MigrationFlow>("", ct); // We need to manually start it in this test
         var userId = Constants.User.Admin.UserId;
 
         // MigrationFlow should start AccountMigrationFlow
-        await ComputedTest.When(async ct => {
-            var flow = await flowHub.TryGet<AccountMigrationFlow>("", ct);
+        await ComputedTest.When(async innerCt => {
+            var flow = await flowHub.TryGet<AccountMigrationFlow>("", innerCt);
             flow.Should().NotBeNull();
         }, TimeSpan.FromSeconds(30));
 
         // AccountMigrationFlow should start DigestFlow(admin)
-        await ComputedTest.When(async ct => {
-            var flow = await flowHub.TryGet<DigestFlow>(userId.Value, ct);
+        await ComputedTest.When(async innerCt => {
+            var flow = await flowHub.TryGet<DigestFlow>(userId.Value, innerCt);
             flow.Should().NotBeNull();
         }, TimeSpan.FromSeconds(30));
     }
@@ -32,15 +34,17 @@ public class DigestFlowTest(ITestOutputHelper @out)
     [Fact]
     public async Task ShouldStopFlowIfUserHasNoTimeZone()
     {
+        using var cts = NewTestCts();
+        var ct = cts.Token;
         await using var h = await NewAppHost();
 
         var flowHub = h.Services.FlowHub();
 
         var userId = Constants.User.Admin.UserId.Value;
-        var f0 = await flowHub.Get<DigestFlow>(userId);
+        var f0 = await flowHub.Get<DigestFlow>(userId, ct);
 
-        await ComputedTest.When(async ct => {
-            var flow = await flowHub.TryGet<DigestFlow>(f0.Id.Arguments, ct);
+        await ComputedTest.When(async innerCt => {
+            var flow = await flowHub.TryGet<DigestFlow>(f0.Id.Arguments, innerCt);
             flow.Should().NotBeNull();
             flow.LastReadiness.IsSuspended.Should().BeTrue();
         }, TimeSpan.FromSeconds(30));
@@ -49,6 +53,8 @@ public class DigestFlowTest(ITestOutputHelper @out)
     [Fact]
     public async Task ShouldRunDigestFlowOnTimeZoneUpdate()
     {
+        using var cts = NewTestCts();
+        var ct = cts.Token;
         await using var h = await NewAppHost();
 
         var flowHub = h.Services.FlowHub();
@@ -56,9 +62,9 @@ public class DigestFlowTest(ITestOutputHelper @out)
         var accountsBackend = h.Services.GetRequiredService<IAccountsBackend>();
 
         var userId = Constants.User.Admin.UserId;
-        await flowHub.Get<DigestFlow>(userId.Value);
+        await flowHub.Get<DigestFlow>(userId.Value, ct);
 
-        var account = await accountsBackend.Get(userId, CancellationToken.None).Require();
+        var account = await accountsBackend.Get(userId, ct).Require();
         var email = ActualChat.Email.Parse($"admin{Constants.Team.EmailSuffix}");
         var updateCmd = new AccountsBackend_Update(
             account
@@ -66,10 +72,10 @@ public class DigestFlowTest(ITestOutputHelper @out)
                 TimeZone = "America/New_York",
             },
             null);
-        await commander.Call(updateCmd, true);
+        await commander.Call(updateCmd, true, ct);
 
-        await ComputedTest.When(async ct => {
-            var flow = await flowHub.TryGet<DigestFlow>(userId.Value, ct);
+        await ComputedTest.When(async innerCt => {
+            var flow = await flowHub.TryGet<DigestFlow>(userId.Value, innerCt);
             flow.Should().NotBeNull();
             flow.LastReadiness.IsSuspended.Should().BeFalse();
         }, TimeSpan.FromSeconds(30));
@@ -78,6 +84,8 @@ public class DigestFlowTest(ITestOutputHelper @out)
     [Fact]
     public async Task ShouldWaitTillDigestTime()
     {
+        using var cts = NewTestCts();
+        var ct = cts.Token;
         await using var h = await NewAppHost();
 
         var flowHub = h.Services.FlowHub();
@@ -85,9 +93,9 @@ public class DigestFlowTest(ITestOutputHelper @out)
         var accountsBackend = h.Services.GetRequiredService<IAccountsBackend>();
 
         var userId = Constants.User.Admin.UserId;
-        await flowHub.Get<DigestFlow>(userId.Value);
+        await flowHub.Get<DigestFlow>(userId.Value, ct);
 
-        var account = await accountsBackend.Get(userId, default).Require();
+        var account = await accountsBackend.Get(userId, ct).Require();
         var email = ActualChat.Email.Parse($"admin{Constants.Team.EmailSuffix}");
         var updateCmd = new AccountsBackend_Update(
             account
@@ -95,10 +103,10 @@ public class DigestFlowTest(ITestOutputHelper @out)
                 TimeZone = "America/New_York",
             },
             null);
-        await commander.Call(updateCmd, true);
+        await commander.Call(updateCmd, true, ct);
 
-        await ComputedTest.When(async ct => {
-            var flow = await flowHub.TryGet<DigestFlow>(userId.Value, ct);
+        await ComputedTest.When(async innerCt => {
+            var flow = await flowHub.TryGet<DigestFlow>(userId.Value, innerCt);
             flow.Should().NotBeNull();
             flow.LastReadiness.IsSuspended.Should().BeFalse();
         }, TimeSpan.FromSeconds(30));
@@ -107,6 +115,8 @@ public class DigestFlowTest(ITestOutputHelper @out)
     [Fact]
     public async Task ShouldQueueDigest()
     {
+        using var cts = NewTestCts();
+        var ct = cts.Token;
         var emailsBackend = new Mock<IEmailsBackend>(MockBehavior.Loose);
 
         await using var h = await NewAppHost(options => options with  {
@@ -121,14 +131,14 @@ public class DigestFlowTest(ITestOutputHelper @out)
         var serverKvasBackend = h.Services.GetRequiredService<IServerKvasBackend>();
 
         var userId = Constants.User.Admin.UserId;
-        await flowHub.Get<DigestFlow>(userId.Value);
+        await flowHub.Get<DigestFlow>(userId.Value, ct);
 
         var kvas = serverKvasBackend.ForUser(userId);
         await kvas.UserEmailsSettings()
             .Update(x => x with {
                 DigestTime = DateTime.Now.TimeOfDay.Add(new TimeSpan(0, 0, 10)),
-            });
-        var account = await accountsBackend.Get(userId, default).Require();
+            }, ct);
+        var account = await accountsBackend.Get(userId, ct).Require();
         var email = ActualChat.Email.Parse($"admin{Constants.Team.EmailSuffix}");
         var updateCmd = new AccountsBackend_Update(
             account
@@ -136,10 +146,10 @@ public class DigestFlowTest(ITestOutputHelper @out)
                 TimeZone = TimeZoneInfo.Local.Id,
             },
             null);
-        await commander.Call(updateCmd, true);
+        await commander.Call(updateCmd, true, ct);
 
-        await ComputedTest.When(async ct => {
-            var flow = await flowHub.TryGet<DigestFlow>(userId.Value, ct);
+        await ComputedTest.When(async innerCt => {
+            var flow = await flowHub.TryGet<DigestFlow>(userId.Value, innerCt);
             flow.Should().NotBeNull();
             flow.RunCount.Should().BeGreaterThan(0);
         }, TimeSpan.FromSeconds(30));

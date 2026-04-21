@@ -7,6 +7,8 @@ public abstract class AppHostTestBase(
     ILogger? log = null
     ) : TestBase(@out, log)
 {
+    public static TimeSpan DefaultTestTimeout { get; set; } = TimeSpan.FromMinutes(2);
+
     protected TestAppHostOptions AppHostOptions { get; init; }
         = (appHostOptions ?? TestAppHostOptions.Default).With(instanceName, @out);
 
@@ -21,4 +23,10 @@ public abstract class AppHostTestBase(
         var appHost = await TestAppHostFactory.NewAppHost(options);
         return appHost;
     }
+
+    // Returns a CTS that cancels after DefaultTestTimeout — wraps test bodies so that
+    // a hung await fails with TaskCanceledException in seconds instead of silently
+    // running until the outer --blame-hang-timeout.
+    protected CancellationTokenSource NewTestCts(TimeSpan? timeout = null)
+        => new(timeout ?? DefaultTestTimeout);
 }

@@ -40,7 +40,13 @@ public class TestAppHost : AppHost
             // NATS stream via the stable CoreSettings.Instance prefix).
             if (disposing)
                 await Services.Queues().PurgeWithTimeout(TimeSpan.FromSeconds(10), WriteLine);
-            await base.DisposeAsync(disposing);
+            // Bound base dispose: StopAsync on IHost can hang if a shard/worker ignores
+            // its stop token. Without this, a wedged background task makes `await using var h`
+            // never return and the test appears silent until the outer blame-hang-timeout.
+            await base.DisposeAsync(disposing).WaitAsync(TimeSpan.FromSeconds(20));
+        }
+        catch (TimeoutException) {
+            WriteLine("base.DisposeAsync TIMED OUT after 20s — abandoning");
         }
         catch (Exception) {
             // Intended
