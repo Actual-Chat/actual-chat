@@ -214,10 +214,6 @@
   <ItemGroup Condition="'$(Configuration)' == 'Release' and !$(UseNativeAot)">
     <PublishReadyToRunExclude Include="PhoneNumbers.dll" />
   </ItemGroup>
-  <PropertyGroup Condition="'$(Configuration)' == 'Release' and !$(UseNativeAot)">
-    <!-- Workaround for ReadyToRunOptimizationData: -->
-    <PublishReadyToRunCrossgen2ExtraArgs>--embed-pgo-data;--mibc:$(MSBuildThisFileDirectory)_Profiling\merged.mibc</PublishReadyToRunCrossgen2ExtraArgs>
-  </PropertyGroup>
 
   <!-- Trimming: trimmer root assemblies apply to both R2R/Mono trimming and Native AOT.
        Under NAOT, CodeKeeper keeps reflection-referenced types but ILC still needs every
@@ -490,6 +486,16 @@
     <IlcDisableReflection>false</IlcDisableReflection>
     <NativeDebugSymbols>false</NativeDebugSymbols>
     <StripSymbols>false</StripSymbols>
+    <!-- merged.mibc must be scoped to Windows — Android has its own PGO path via <AndroidMibcProfile>
+       items (consumed by Xamarin.Android's pipeline, not crossgen2). Feeding the Windows-derived
+       `merged.mibc` to android-arm64 crossgen2 triggers
+         "Failed to load type 'MemoryPack.Formatters.MemoryPackableFormatter`1<T>'
+          from assembly 'MemoryPack.Core'"
+       in InstrumentationDataTableNode.PgoValueEmitter.TypeToInt, because generic
+       instantiations recorded from Windows runs can't be re-resolved by the android-arm64
+       crossgen2 runtime pack (symptomatic of the same runtime-pack gap as dotnet/sdk#54013
+       but on the R2R path instead of NAOT). -->
+    <!-- <PublishReadyToRunCrossgen2ExtraArgs>&#45;&#45;embed-pgo-data;&#45;&#45;mibc:$(MSBuildThisFileDirectory)_Profiling\merged.mibc</PublishReadyToRunCrossgen2ExtraArgs> -->
   </PropertyGroup>
   <!-- Windows: Release (Native AOT) -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release' and $(UseNativeAot)">
