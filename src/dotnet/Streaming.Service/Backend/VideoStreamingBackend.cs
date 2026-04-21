@@ -172,6 +172,9 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         IAsyncEnumerable<VideoFrame> videoFrames,
         CancellationToken cancellationToken)
     {
+        using var watchdogCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cancellationToken = watchdogCts.Token;
+
         var beginsAt = default(Moment) + TimeSpan.FromSeconds(record.ClientStartOffset);
         var rules = await Chats.GetRules(record.Session, record.ChatId, cancellationToken)
             .ConfigureAwait(false);
@@ -217,9 +220,15 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             var keyFrameNumber = 0L;
             var lastHeartbeat = CpuTimestamp.Now;
             var heartbeatInterval = TimeSpan.FromMinutes(2.5); // Half of LiveVideoBackend.ChatStateTtl
+            var silenceTimeout = Constants.Video.FrameSilenceTimeout;
             async IAsyncEnumerable<VideoFrame> ProcessFrames(IAsyncEnumerable<VideoFrame> source)
             {
+                // Frame-silence watchdog: cancels watchdogCts if no frame arrives within silenceTimeout.
+                // Each frame resets the deadline; CancellationTokenSource reuses a single internal timer.
+                watchdogCts.CancelAfter(silenceTimeout);
                 await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                    watchdogCts.CancelAfter(silenceTimeout);
+
                     if (frame.IsKeyFrame)
                         keyFrameNumber++;
                     frame.KeyFrameNumber = keyFrameNumber;

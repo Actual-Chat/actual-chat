@@ -8,6 +8,10 @@ public static partial class Constants
         public static readonly TimeSpan StreamExpirationDelay = TimeSpan.FromSeconds(30);
         public static readonly TimeSpan MaxLiveDuration = TimeSpan.FromHours(8);
 
+        // Watchdog: cancel PushVideo handler if no frame arrives within this window.
+        // At 30 fps, any gap longer than this means the producer is effectively dead.
+        public static readonly TimeSpan FrameSilenceTimeout = TimeSpan.FromSeconds(3);
+
         // RPC stream flow control for video (30fps, 33ms frames).
         // Tuned for up to ~1s RTT: ackAdvance > ackPeriod + fps × RTT.
         public const int StreamAckPeriod = 64;

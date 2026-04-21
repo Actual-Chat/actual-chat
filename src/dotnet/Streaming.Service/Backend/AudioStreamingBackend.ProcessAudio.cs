@@ -53,6 +53,10 @@ public partial class AudioStreamingBackend
         IAsyncEnumerable<AudioFrame> frames,
         CancellationToken cancellationToken)
     {
+        using var watchdogCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cancellationToken = watchdogCts.Token;
+        frames = WithFrameSilenceWatchdog(record.StreamId.Value, Constants.Audio.FrameSilenceTimeout, frames, watchdogCts, cancellationToken);
+
         var session = record.Session;
         var chatId = record.ChatId;
         // Use client's server-synced clock (same as video) for consistent A/V timing.
@@ -186,6 +190,23 @@ public partial class AudioStreamingBackend
         if (transcribeResult is not null) {
             // Launch re-transcribe after text and audio entries have been finalized.
             await RetranscribeTextEntry(transcribeResult.Value.Item1, transcribeResult.Value.Item2).SilentAwait();
+        }
+    }
+
+    private static async IAsyncEnumerable<AudioFrame> WithFrameSilenceWatchdog(
+        string streamId,
+        TimeSpan silenceTimeout,
+        IAsyncEnumerable<AudioFrame> source,
+        CancellationTokenSource watchdogCts,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        _ = streamId; // reserved for diagnostics
+        // Frame-silence watchdog: cancels watchdogCts if no frame arrives within silenceTimeout.
+        // Each frame resets the deadline; CancellationTokenSource reuses a single internal timer.
+        watchdogCts.CancelAfter(silenceTimeout);
+        await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+            watchdogCts.CancelAfter(silenceTimeout);
+            yield return frame;
         }
     }
 

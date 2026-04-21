@@ -313,6 +313,10 @@ public static partial class Constants
         public static readonly TimeSpan MaxRealtimeStreamDrift = TimeSpan.FromSeconds(3);
         public static readonly TimeSpan MaxStreamDuration = TimeSpan.FromMinutes(3);
 
+        // Watchdog: cancel ProcessAudio handler if no frame arrives within this window.
+        // Opus frames are 20 ms; 2 s of silence means the producer is pathologically stalled.
+        public static readonly TimeSpan FrameSilenceTimeout = TimeSpan.FromSeconds(2);
+
         // RPC stream flow control for audio (50fps, 20ms frames).
         // Tuned for up to ~1s RTT: ackAdvance > ackPeriod + fps × RTT.
         public const int StreamAckPeriod = 64;

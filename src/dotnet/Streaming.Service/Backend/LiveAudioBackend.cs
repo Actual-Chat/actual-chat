@@ -14,7 +14,7 @@ public partial class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
 {
     private static readonly TimeSpan MinInvDelay = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan StreamTtl = Constants.Audio.MaxStreamDuration;
-    private static readonly TimeSpan KeyTtl = TimeSpan.FromHours(1);
+    private static readonly TimeSpan KeyTtl = TimeSpan.FromMinutes(5);
 
     private readonly RedisScope<State> _redisScope;
     private readonly AsyncLockSet<ChatId> _changeLocks = new(LockReentryMode.CheckedFail);
