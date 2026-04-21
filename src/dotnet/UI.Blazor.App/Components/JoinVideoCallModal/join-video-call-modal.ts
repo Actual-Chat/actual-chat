@@ -9,7 +9,7 @@ import { MediaCapture } from '../../Services/Video/services/media-capture';
 import { Versioning } from 'versioning';
 import { fastRaf } from 'fast-raf';
 
-const { infoLog, errorLog } = getLogs('VideoRecorder');
+const { infoLog, warnLog, errorLog } = getLogs('JoinVideoCallModal');
 
 export class JoinVideoCallModal {
     private blazorRef: DotNet.DotNetObject;
@@ -31,6 +31,7 @@ export class JoinVideoCallModal {
     private blurFrameTimer: number | null = null;
     private captureCtx: CanvasRenderingContext2D;
     private firstFrameNotified = false;
+    private disposed = false;
 
     static create(container: HTMLElement, blazorRef: DotNet.DotNetObject): JoinVideoCallModal {
         return new JoinVideoCallModal(container, blazorRef);
@@ -57,6 +58,7 @@ export class JoinVideoCallModal {
     }
 
     public async startPreview(deviceId?: string): Promise<boolean> {
+        infoLog?.log(`startPreview: deviceId=${deviceId ?? '(default)'}`);
         await this.stopPreview();
 
         // Browser needs time to release camera hardware after track.stop().
@@ -68,11 +70,24 @@ export class JoinVideoCallModal {
                 await new Promise(resolve => setTimeout(resolve, delay));
         }
 
+        if (this.disposed)
+            return false;
+
         try {
-            this.track = await MediaCapture.captureCameraStream({
+            const track = await MediaCapture.captureCameraStream({
                 deviceId: deviceId,
                 maxRetries: 3,
             });
+            // If the modal was closed while getUserMedia was in flight, stop the
+            // freshly-acquired track immediately — otherwise it holds the camera
+            // hardware and the next getUserMedia fails with NotReadableError.
+            if (this.disposed) {
+                warnLog?.log('startPreview: disposed during getUserMedia — stopping track');
+                track.stop();
+                this.lastTrackStoppedAt = performance.now();
+                return false;
+            }
+            this.track = track;
 
             // Capture the actual device ID the browser chose (important when no
             // explicit device was requested — ensures recording uses the same camera)
@@ -132,6 +147,7 @@ export class JoinVideoCallModal {
     }
 
     public async switchCamera(deviceId: string): Promise<boolean> {
+        infoLog?.log(`switchCamera: deviceId=${deviceId}`);
         this.selectedDeviceId = deviceId;
         const wasBlurActive = this.isBlurActive;
         // Restart preview with new device (stopPreview cleans up blur)
@@ -256,7 +272,7 @@ export class JoinVideoCallModal {
                 this.canvasCtx.drawImage(this.videoEl, 0, 0);
 
                 // Notify Blazor on first frame
-                if (!this.firstFrameNotified) {
+                if (!this.firstFrameNotified && !this.disposed) {
                     this.firstFrameNotified = true;
                     void this.blazorRef.invokeMethodAsync('OnFirstFrameRendered');
                 }
@@ -366,6 +382,8 @@ export class JoinVideoCallModal {
     }
 
     public dispose(): void {
+        infoLog?.log(`dispose: trackState=${this.track?.readyState ?? '(null)'}`);
+        this.disposed = true;
         if (this.attachedFromRecorder) {
             this.detachFromRecorder();
         } else {
