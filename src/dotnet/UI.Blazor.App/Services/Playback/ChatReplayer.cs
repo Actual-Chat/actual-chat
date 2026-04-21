@@ -1,6 +1,7 @@
 using ActualChat.Audio;
 using ActualChat.Live;
 using ActualChat.MediaPlayback;
+using ActualChat.UI.Blazor.App.Components;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -57,6 +58,31 @@ public sealed class ChatReplayer : ChatPlayer
         }
 
         Operation = $"replaying in \"{chat.Title}\"";
+
+        // TS-pull mode — see ChatListener.Play for caveats. Replay has no
+        // WaitUntilReadyToPlay pacing in this path; the server-side replay
+        // stream paces item delivery, so the TS renderer plays as frames
+        // arrive.
+        if (Hub.AudioSettings.UseTsAudioPull) {
+            var bridge = Hub.Services.GetRequiredService<TsAudioPullBridge>();
+            // Replay is historical playback — no self-echo concern for the
+            // current user, but honour the same ListenOwnAudio debug flag as
+            // the live path for consistency.
+            var ownAuthorId = Constants.DebugMode.ListenOwnAudio
+                ? (AuthorId?)null
+                : (await Hub.Authors.GetOwn(Session, ChatId, cancellationToken).ConfigureAwait(false))?.Id;
+            await using var handle = await bridge
+                .StartReplay(Session, ChatId, minPlayAt, rewindOffset, speed, ownAuthorId, cancellationToken)
+                .ConfigureAwait(false);
+            try {
+                await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+                // Expected
+            }
+            return;
+        }
+
         var processor = new ReplayStreamProcessor(
             Hub.Services, Session, ChatId, minPlayAt, rewindOffset, speed,
             cancellationToken.CreateLinkedTokenSource());

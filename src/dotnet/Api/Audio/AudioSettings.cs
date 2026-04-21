@@ -13,4 +13,15 @@ public sealed class AudioSettings
     public TimeSpan RecordingBeepInterval { get; init; } = TimeSpan.FromMinutes(1);
     public TimeSpan RecordingAggressiveBeepInterval { get; init; } = TimeSpan.FromSeconds(10);
     public TimeSpan StreamExpirationDelay { get; init; } = TimeSpan.FromSeconds(10);
+
+    /// <summary>
+    /// When true, ChatListener/ChatReplayer delegate audio playback to the
+    /// TS-side pull path (blazorApp.LiveAudioPullBridge) — bypassing the .NET
+    /// AudioTrackPlayer frame pump and its Blazor-interop hot path.
+    /// Default false: existing .NET-pull behavior is preserved. TS-pull mode
+    /// currently skips audio focus / notification sounds / CanContinuePlayback
+    /// / sleep-drift handling; enable only for perf validation until those
+    /// policies are ported to TS.
+    /// </summary>
+    public bool UseTsAudioPull { get; init; } = true;
 }

@@ -11,7 +11,9 @@
     "test": "vitest run",
     "test:video-load": "tsx src/nodejs/app.video-load-test/index.ts",
     "test:audio-stream": "tsx src/nodejs/app.audio-stream-test/index.ts",
+    "test:audio-pull": "tsx src/nodejs/app.audio-pull-test/index.ts",
     "typecheck:video-load": "tsc -p src/nodejs/app.video-load-test/tsconfig.json --noEmit",
+    "typecheck:audio-pull": "tsc -p src/nodejs/app.audio-pull-test/tsconfig.json --noEmit",
     "lint": "eslint",
     "lint:fix": "eslint --fix"
   },

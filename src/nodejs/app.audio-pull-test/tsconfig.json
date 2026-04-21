@@ -1,0 +1,48 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "es2022",
+    "moduleResolution": "node",
+    "lib": ["esnext", "dom", "dom.iterable"],
+    "types": ["node"],
+    "strict": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "noImplicitAny": false,
+    "strictNullChecks": true,
+    "resolveJsonModule": true,
+    "experimentalDecorators": true,
+    "allowJs": true,
+    "checkJs": false,
+    "baseUrl": ".",
+    "paths": {
+      "actuallab-core": ["../src/actuallab-core/index.ts"],
+      "actuallab-rpc": ["../src/actuallab-rpc/index.ts"],
+      "logging": ["../src/logging.ts"],
+      "promises": ["../src/promises.ts"],
+      "disposable": ["../src/disposable.ts"],
+      "resilient-stream": ["../src/resilient-stream.ts"],
+      "math": ["../src/math.ts"],
+      "resettable": ["../src/resettable.ts"],
+      "object-pool": ["../src/object-pool.ts"],
+      "async-processor": ["../src/async-processor.ts"]
+    }
+  },
+  "include": [
+    "*.ts",
+    "../app.video-load-test/auth.ts",
+    "../app.video-load-test/node-ws.ts",
+    "../src/actuallab-core/**/*.ts",
+    "../src/actuallab-rpc/**/*.ts",
+    "../src/audio/**/*.ts",
+    "../src/api/api.ts",
+    "../src/api/core-api.ts",
+    "../src/api/live-audio-streams-api.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

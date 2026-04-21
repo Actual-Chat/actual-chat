@@ -1,6 +1,7 @@
 using ActualChat.Audio;
 using ActualChat.Live;
 using ActualChat.MediaPlayback;
+using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -43,6 +44,34 @@ public sealed class ChatListener : ChatPlayer
 
         Operation = $"listening in \"{chat.Title}\"";
         DebugLog?.LogDebug("Play: {ChatId}, {StartedAt}", ChatId, minPlayAt);
+
+        // TS-pull mode — delegate the full pipeline (pull + demux + parse +
+        // render) to the TypeScript side. Bypasses .NET AudioTrackPlayer +
+        // Blazor interop on the frame path. Lacks some orchestration (audio
+        // focus sync, notification sounds on new message, sleep-drift
+        // compensation, CanContinuePlayback) — those run only in the legacy
+        // path below until ported to TS.
+        if (Hub.AudioSettings.UseTsAudioPull) {
+            // Look up the user's authorId in this chat so TS side can drop the
+            // user's own sub-stream (prevents self-echo while listening).
+            // Mirrors the `!ListenOwnAudio` branch in OnStreamStarted below.
+            var ownAuthorId = Constants.DebugMode.ListenOwnAudio
+                ? (AuthorId?)null
+                : (await Authors.GetOwn(Session, ChatId, cancellationToken).ConfigureAwait(false))?.Id;
+            var bridge = Hub.Services.GetRequiredService<TsAudioPullBridge>();
+            await using var handle = await bridge
+                .StartListen(Session, ChatId, ownAuthorId, cancellationToken)
+                .ConfigureAwait(false);
+            // Park until cancellation — TS side owns playback lifetime; stop
+            // propagates via the handle's CancellationToken registration.
+            try {
+                await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+                // Expected
+            }
+            return;
+        }
 
         var state = new PlayState {
             SyncedSleepDuration = SleepDuration.Value,

@@ -83,6 +83,8 @@ export type LogScope =
     // Audio playback
     | 'AudioPlayer'
     | 'FallbackPlayback'
+    | 'LiveAudioPull'
+    | 'LiveStreamDemuxer'
     | 'OpusDecoder'
     | 'OpusDecoderWorker'
     | 'FeederNode'
@@ -185,6 +187,8 @@ const defaults: Record<LogScope, LogLevel> = {
     // Audio playback
     AudioPlayer: LogLevel.Warn,
     FallbackPlayback: LogLevel.Warn,
+    LiveAudioPull: LogLevel.Debug,
+    LiveStreamDemuxer: LogLevel.Debug,
     OpusDecoder: LogLevel.Warn,
     OpusDecoderWorker: LogLevel.Warn,
     FeederNode: LogLevel.Warn,

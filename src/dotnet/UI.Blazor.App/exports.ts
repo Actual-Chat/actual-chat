@@ -52,6 +52,7 @@ export * from './notification-ui';
 export * from './recaptcha-handler';
 
 export * from './Components/AudioPlayer/audio-player';
+export { LiveAudioPullBridge } from './Components/AudioPlayer/live-audio-pull-consumer';
 export { AudioVideoSync } from 'audio-video-sync';
 export * from './Components/AudioRecorder/audio-recorder';
 export * from './Components/AudioRecorder/web-microphone-permission-handler';
