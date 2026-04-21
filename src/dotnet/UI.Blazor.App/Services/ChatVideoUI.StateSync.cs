@@ -82,6 +82,8 @@ public partial class ChatVideoUI
                 if (intentChatId != activeChatId) {
                     if (recorder is not null) {
                         await CompleteRecording(recorder, cancellationToken).ConfigureAwait(false);
+                        if (kind == StreamKind.Webcam && ActiveWebcamRecorder == recorder)
+                            ActiveWebcamRecorder = null;
                         recorder = null;
                         activeChatId = null;
                     }
@@ -93,6 +95,8 @@ public partial class ChatVideoUI
                     try {
                         _errorMessage.Value = null;
                         recorder = await VideoRecorder.Create(Hub, kind).ConfigureAwait(false);
+                        if (kind == StreamKind.Webcam)
+                            ActiveWebcamRecorder = recorder;
                         var serverTimeSync = Hub.Services.GetService<ServerTimeSync>();
                         if (serverTimeSync != null)
                             await serverTimeSync.EnsureSynced(cancellationToken).ConfigureAwait(false);
@@ -103,6 +107,8 @@ public partial class ChatVideoUI
                         OnRecordingError("Failed to start recording", kind);
                         Log.LogWarning(e, "{Kind} lifecycle: failed to start recording", kind);
                         recorder = null;
+                        if (kind == StreamKind.Webcam)
+                            ActiveWebcamRecorder = null;
                     }
                 }
                 else if (updateRecorder is not null) {
@@ -119,6 +125,8 @@ public partial class ChatVideoUI
             // TODO(DF): to think how to properly handle cancellation
             if (recorder is not null)
                 await CompleteRecording(recorder, CancellationToken.None).ConfigureAwait(false);
+            if (kind == StreamKind.Webcam && ActiveWebcamRecorder == recorder)
+                ActiveWebcamRecorder = null;
         }
 
         static async Task CompleteRecording(VideoRecorder recorder, CancellationToken cancellationToken)

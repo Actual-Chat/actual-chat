@@ -76,6 +76,11 @@ export class VideoRecorder {
     private registeredKind: number | null = null;
     private previewTrack: MediaStreamTrack | null = null;
     private selectedCameraDeviceId: string | null = null;
+    // One-shot: applied by the next startRecording, then cleared. Used by
+    // switchFacing to request a camera by facingMode ('user'/'environment')
+    // instead of a fixed deviceId — so the browser picks the primary lens for
+    // that facing (avoids cycling main/ultrawide/tele on multi-lens phones).
+    private pendingFacingMode: 'user' | 'environment' | null = null;
     private chatId = '';
     private isBlurEnabled = false;
     private blurToggleChain: Promise<void> = Promise.resolve();
@@ -126,6 +131,39 @@ export class VideoRecorder {
     public setSelectedCamera(deviceId: string): void {
         this.selectedCameraDeviceId = deviceId;
         infoLog?.log('Selected camera device:', deviceId);
+    }
+
+    /**
+     * Flip between front and back cameras during active recording. Uses
+     * `facingMode: exact` so the browser picks the primary lens for that facing
+     * (avoids cycling main/ultrawide/tele on multi-lens phones). Returns false
+     * if no opposite-facing camera is available on this device.
+     */
+    public async switchFacing(): Promise<boolean> {
+        if (!this.isRecording || !this.recordingService) {
+            infoLog?.log('switchFacing: not recording');
+            return false;
+        }
+        const current = this.recordingService.getInputTrack()?.getSettings().facingMode ?? null;
+        const target: 'user' | 'environment' = current === 'environment' ? 'user' : 'environment';
+        infoLog?.log(`switchFacing: ${current ?? '(unknown)'} -> ${target}`);
+
+        try {
+            this.cleanupPreviewTrack();
+            await this.recordingService.stop();
+            this.recordingService = null;
+            this.isRecording = false;
+            this.pendingFacingMode = target;
+            await this.startRecording(this.chatId);
+            // If startRecording failed, pendingFacingMode was consumed by the config
+            // but we never acquired a track — callers can still retry with switchCamera.
+            return this.isRecording;
+        } catch (error) {
+            errorLog?.log('switchFacing failed:', error);
+            this.pendingFacingMode = null;
+            await this.blazorRef.invokeMethodAsync('OnRecordingError', String(error));
+            return false;
+        }
     }
 
     /**
@@ -286,7 +324,9 @@ export class VideoRecorder {
                 height: targetSize.height,
                 bitrate: targetBitrate,
                 framerate: targetFramerate,
-                cameraDeviceId: this.selectedCameraDeviceId ?? undefined,
+                cameraDeviceId: this.pendingFacingMode ? undefined : (this.selectedCameraDeviceId ?? undefined),
+                cameraFacingMode: this.pendingFacingMode ?? undefined,
+                preferHighRes: this.pendingFacingMode != null, // main-lens bias when switching facing
                 backgroundBlur: {
                     enabled: this.isBlurEnabled,
                 },
@@ -309,10 +349,23 @@ export class VideoRecorder {
             this.previewTrack = this.recordingService.getInputTrack()
             // Store actual camera resolution for capping reconfigure requests
             const trackSettings = this.previewTrack!.getSettings();
-            infoLog?.log(`Track resolution: ${trackSettings.width}x${trackSettings.height}`);
+            infoLog?.log(`Track resolution: ${trackSettings.width}x${trackSettings.height}, facingMode=${trackSettings.facingMode ?? '(none)'}`);
             this.cameraWidth = trackSettings.width ?? config.width;
             this.cameraHeight = trackSettings.height ?? config.height;
             infoLog?.log(`Camera resolution: ${this.cameraWidth}x${this.cameraHeight}`);
+            // If we started via facingMode, remember the deviceId the browser
+            // picked — future switchCamera(deviceId) calls need it to no-op
+            // correctly when the target matches.
+            if (trackSettings.deviceId)
+                this.selectedCameraDeviceId = trackSettings.deviceId;
+            this.pendingFacingMode = null;
+
+            // Let Blazor resolve per-camera display prefs (mirror) from current
+            // deviceId + facingMode. Fire-and-forget — purely cosmetic.
+            void this.blazorRef.invokeMethodAsync(
+                'OnTrackSettings',
+                trackSettings.deviceId ?? null,
+                trackSettings.facingMode ?? null);
 
             // Subscribe to VAD for adaptive framerate
             this.recordingService.getPipeline()?.subscribeToVad();

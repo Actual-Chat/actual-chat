@@ -1,5 +1,4 @@
 @namespace ActualChat.UI.Blazor.App.Components.VideoPanel
-@using ActualChat.Streaming
 @using ActualChat.UI.Blazor.App.Module
 @inherits ComputedStateComponent<AppUIHub, VideoStreamingPreview.Model>
 @{
@@ -8,9 +7,10 @@
     // (per product decision — the user can see their shared screen already).
     var isRecording = m.IsOwnRecording;
     var recordingCls = isRecording ? "recording" : "";
+    var mirrorCls = m.IsCameraMirrored ? "" : "no-mirror";
 }
 
-<div @ref="Ref" class="video-track-player video-streaming-preview @Class @recordingCls">
+<div @ref="Ref" class="video-track-player video-streaming-preview @Class @recordingCls @mirrorCls">
     <canvas class="remote-video-bg" aria-hidden="true"></canvas>
     <canvas
         class="call-video"
@@ -65,7 +65,8 @@
         var isOwnRecording = await ChatVideoUI.IsOwnRecording(chatId, cancellationToken).ConfigureAwait(false);
         var hasRemoteStreams = await ChatVideoUI.HasRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
         var lastError = await ChatVideoUI.GetLastVideoRecorderError(cancellationToken).ConfigureAwait(false);
-        return new Model(isOwnRecording, !hasRemoteStreams, lastError);
+        var isMirrored = await ChatVideoUI.GetIsCameraMirrored(cancellationToken).ConfigureAwait(false);
+        return new Model(isOwnRecording, !hasRemoteStreams, lastError, isMirrored);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -80,7 +81,7 @@
 
     // Nested types
 
-    public sealed record Model(bool IsOwnRecording, bool IsAloneOnStream, string? LastErrorMessage) {
-        public static readonly Model None = new(false, true, null);
+    public sealed record Model(bool IsOwnRecording, bool IsAloneOnStream, string? LastErrorMessage, bool IsCameraMirrored) {
+        public static readonly Model None = new(false, true, null, true);
     }
 }

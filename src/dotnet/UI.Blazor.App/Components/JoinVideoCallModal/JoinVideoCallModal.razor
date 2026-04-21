@@ -91,16 +91,19 @@
                         <i class="icon-mic-off text-2xl"></i>
                     }
                 </ButtonRound>
+
+                @* Mirror toggle *@
+                <ButtonRound Class="@MirrorBtnClass()" Click="@OnMirrorToggle" Tooltip="Mirror preview">
+                    <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M12 3v18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="2 2"/>
+                        <path d="M8 9l-3 3 3 3V9z" fill="currentColor"/>
+                        <path d="M16 9l3 3-3 3V9z" fill="currentColor"/>
+                    </svg>
+                </ButtonRound>
             </div>
         } else {
             @* Mobile toolbar *@
             <div class="c-toolbar">
-                @* @if (_enableIncompleteUI) { *@
-                @*     <ButtonRound Class="@BlurBtnClass()" Click="@OnBlurToggle"> *@
-                @*         <i class="icon-blur-person text-2xl"></i> *@
-                @*     </ButtonRound> *@
-                @* } *@
-
                 <ButtonRound Class="@VideoWrapperBtnClass()" Click="@OnVideoToggle">
                     <i class="icon-video text-2xl"></i>
                 </ButtonRound>
@@ -116,6 +119,15 @@
 
                 <ButtonRound Click="@OnSwitchCamera" IsDisabled="@IsSettingsMode">
                     <i class="icon-camera-switch text-2xl"></i>
+                </ButtonRound>
+
+                @* Mirror toggle *@
+                <ButtonRound Class="@MirrorBtnClass()" Click="@OnMirrorToggle" Tooltip="Mirror preview">
+                    <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M12 3v18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="2 2"/>
+                        <path d="M8 9l-3 3 3 3V9z" fill="currentColor"/>
+                        <path d="M16 9l3 3-3 3V9z" fill="currentColor"/>
+                    </svg>
                 </ButtonRound>
             </div>
         }
@@ -139,11 +151,14 @@
     private bool _isVideoOn;
     private CameraState _cameraState = CameraState.Initializing;
     private bool _isBlurEnabled;
+    private bool _isCameraMirrored = true;
     private bool _isCameraDropdownOpen;
     private bool _isRecording;
     private List<VideoDevice> _videoDevices = new();
     private VideoDevice? _selectedDevice;
     private Task<string> _getLastSelectedDeviceIdTask = null!;
+    private string? _currentDeviceId;
+    private string? _currentFacingMode;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -240,6 +255,7 @@
                     _cameraState = CameraState.On;
                     if (_isBlurEnabled && _jsRef is not null)
                         await _jsRef.InvokeVoidAsync("toggleBlur", true);
+                    await ApplyMirrorForCurrentCamera();
                 } else {
                     _cameraState = IsSettingsMode ? CameraState.Off : CameraState.Unavailable;
                 }
@@ -247,6 +263,19 @@
                 StateHasChanged();
             });
         }
+    }
+
+    private async Task ApplyMirrorForCurrentCamera() {
+        if (_jsRef is null)
+            return;
+        var info = await _jsRef.InvokeAsync<CameraInfo?>("getCurrentCameraInfo");
+        _currentDeviceId = info?.DeviceId;
+        _currentFacingMode = info?.FacingMode;
+        var settings = await LocalSettings.LocalAppSettings().Get();
+        _isCameraMirrored = settings
+            .ResolveIsCameraMirrored(_currentDeviceId, _currentFacingMode, Hub.BrowserInfo.IsMobile);
+        ChatVideoUI.SetCameraMirrored(_isCameraMirrored);
+        await _jsRef.InvokeVoidAsync("setMirrored", _isCameraMirrored);
     }
 
     public override async ValueTask DisposeAsync() {
@@ -297,6 +326,7 @@
             if (success) {
                 _isVideoOn = true;
                 _cameraState = CameraState.On;
+                await ApplyMirrorForCurrentCamera();
             } else {
                 _cameraState = CameraState.Unavailable;
             }
@@ -325,6 +355,7 @@
             if (success) {
                 _isVideoOn = true;
                 _cameraState = CameraState.On;
+                await ApplyMirrorForCurrentCamera();
             } else {
                 _cameraState = CameraState.Unavailable;
             }
@@ -332,7 +363,36 @@
         StateHasChanged();
     }
 
-    private async Task OnSwitchCamera() {
+    private Task OnSwitchCamera()
+        // Shared mobile-first logic: on phones try flipping front/back by facingMode
+        // (picks the primary lens per facing); otherwise cycle enumerated deviceIds.
+        // The active-call panel uses the same helper via ChatVideoUI.SwitchCamera.
+        => ChatVideoUI.ExecuteCameraSwitchAsync(
+            Hub.BrowserInfo.IsMobile,
+            _currentFacingMode,
+            flipFacing: TryFlipFacingInModal,
+            cycleDevice: CycleCamera);
+
+    private async Task<bool> TryFlipFacingInModal() {
+        if (_jsRef is null || !_isVideoOn)
+            return false;
+        _cameraState = CameraState.Starting;
+        StateHasChanged();
+        var success = await _jsRef.InvokeAsync<bool>("switchFacing");
+        if (success) {
+            var actualId = await _jsRef.InvokeAsync<string?>("getActualDeviceId");
+            if (!string.IsNullOrEmpty(actualId))
+                _selectedDevice = _videoDevices.FirstOrDefault(d => d.DeviceId == actualId) ?? _selectedDevice;
+            _cameraState = CameraState.On;
+            await ApplyMirrorForCurrentCamera();
+        } else {
+            _cameraState = CameraState.On;
+        }
+        StateHasChanged();
+        return success;
+    }
+
+    private async Task CycleCamera() {
         if (_videoDevices.Count <= 1)
             return;
 
@@ -350,6 +410,21 @@
         // Update blur preview in the modal
         if (_jsRef is not null && _isVideoOn)
             await _jsRef.InvokeVoidAsync("toggleBlur", _isBlurEnabled);
+    }
+
+    private async Task OnMirrorToggle() {
+        _isCameraMirrored = !_isCameraMirrored;
+        // Per-camera override: only persist when we know which camera is active.
+        // Without a deviceId we can't key the override, so just update the live state.
+        if (!string.IsNullOrEmpty(_currentDeviceId)) {
+            var deviceId = _currentDeviceId;
+            var mirrored = _isCameraMirrored;
+            await Hub.LocalSettings.LocalAppSettings().Update(
+                s => s with { CameraMirrorOverrides = s.CameraMirrorOverrides.With(deviceId, mirrored) });
+        }
+        ChatVideoUI.SetCameraMirrored(_isCameraMirrored);
+        if (_jsRef is not null)
+            await _jsRef.InvokeVoidAsync("setMirrored", _isCameraMirrored);
     }
 
     private Task OnJoinClick() {
@@ -410,6 +485,9 @@
     private string BlurBtnClass()
         => _isBlurEnabled ? "blur-btn active" : "blur-btn";
 
+    private string MirrorBtnClass()
+        => _isCameraMirrored ? "mirror-btn active" : "mirror-btn";
+
     private static string GetPlugText(CameraState cameraState) => cameraState switch {
         CameraState.Initializing => "Initializing...",
         CameraState.Off => "Camera is off",
@@ -422,6 +500,8 @@
 
     public enum CameraState { Initializing, Off, Starting, On, Unavailable }
     public enum VideoCallMode { Join, Settings }
+
+    public sealed record CameraInfo(string? DeviceId, string? FacingMode);
 
     public sealed class Model(Chat chat, VideoCallMode mode)
     {

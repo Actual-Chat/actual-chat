@@ -100,6 +100,19 @@ public sealed class VideoRecorder : IAsyncDisposable
         return _jsRef.InvokeVoidAsync("switchCamera", cancellationToken, deviceId).AsTask();
     }
 
+    /// <summary>
+    /// Flip the active camera between front and back via <c>facingMode</c>.
+    /// The JS side tears down the current track, acquires a new one with
+    /// <c>facingMode: exact</c>, and restarts the pipeline. Clears <c>_deviceId</c>
+    /// so the next state-sync-driven <see cref="SwitchCamera"/> (which might
+    /// carry a stale deviceId from LocalAppSettings) doesn't no-op.
+    /// </summary>
+    public Task<bool> SwitchFacing(CancellationToken cancellationToken)
+    {
+        _deviceId = "";
+        return _jsRef.InvokeAsync<bool>("switchFacing", cancellationToken).AsTask();
+    }
+
     public Task ToggleBlur(bool enabled, CancellationToken cancellationToken)
     {
         if (_isBlurEnabled == enabled)
@@ -293,6 +306,17 @@ public sealed class VideoRecorder : IAsyncDisposable
         {
             videoRecorder.OnRecordingError();
             owner.OnRecordingError(error, kind);
+        }
+
+        // Called from JS after a webcam track is acquired (on start and after
+        // each camera switch). Lets <see cref="ChatVideoUI"/> resolve per-camera
+        // display preferences (mirror) from the current device + facingMode.
+        // Not called for screencast — its display is never mirrored.
+        [JSInvokable]
+        public void OnTrackSettings(string? deviceId, string? facingMode)
+        {
+            if (kind == StreamKind.Webcam)
+                owner.OnWebcamTrackSettings(deviceId, facingMode);
         }
     }
 }

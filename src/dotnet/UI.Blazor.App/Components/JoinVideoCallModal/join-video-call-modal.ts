@@ -20,6 +20,7 @@ export class JoinVideoCallModal {
     private readonly captureCanvas: HTMLCanvasElement;
     private track: MediaStreamTrack | null = null;
     private selectedDeviceId: string | null = null;
+    private currentFacingMode: string | null = null;
     private isRendering = false;
     private lastTrackStoppedAt = 0;
     private attachedFromRecorder = false;
@@ -57,8 +58,14 @@ export class JoinVideoCallModal {
         this.captureCtx = this.captureCanvas.getContext('2d')!;
     }
 
-    public async startPreview(deviceId?: string): Promise<boolean> {
-        infoLog?.log(`startPreview: deviceId=${deviceId ?? '(default)'}`);
+    public startPreview(deviceId?: string): Promise<boolean> {
+        return this.startPreviewInternal({ deviceId });
+    }
+
+    private async startPreviewInternal(
+        options: { deviceId?: string; facingMode?: 'user' | 'environment' },
+    ): Promise<boolean> {
+        infoLog?.log(`startPreview: deviceId=${options.deviceId ?? '(default)'}, facingMode=${options.facingMode ?? '(none)'}`);
         await this.stopPreview();
 
         // Browser needs time to release camera hardware after track.stop().
@@ -75,12 +82,17 @@ export class JoinVideoCallModal {
 
         try {
             const track = await MediaCapture.captureCameraStream({
-                deviceId: deviceId,
+                deviceId: options.deviceId,
+                facingMode: options.facingMode,
+                // When picking by facingMode, bias toward the highest-resolution
+                // camera for that facing (main lens vs ultrawide/tele).
+                preferHighRes: options.facingMode != null && options.deviceId == null,
                 maxRetries: 3,
             });
             // If the modal was closed while getUserMedia was in flight, stop the
             // freshly-acquired track immediately — otherwise it holds the camera
             // hardware and the next getUserMedia fails with NotReadableError.
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             if (this.disposed) {
                 warnLog?.log('startPreview: disposed during getUserMedia — stopping track');
                 track.stop();
@@ -92,8 +104,9 @@ export class JoinVideoCallModal {
             // Capture the actual device ID the browser chose (important when no
             // explicit device was requested — ensures recording uses the same camera)
             const s = this.track.getSettings();
-            infoLog?.log(`startPreview track: deviceId=${s.deviceId}, ${s.width}x${s.height}`);
+            infoLog?.log(`startPreview track: deviceId=${s.deviceId}, ${s.width}x${s.height}, facingMode=${s.facingMode ?? '(none)'}`);
             if (s.deviceId) this.selectedDeviceId = s.deviceId;
+            this.currentFacingMode = s.facingMode ?? null;
 
             this.videoEl.srcObject = new MediaStream([this.track]);
             // Off-DOM video elements don't honor autoplay — must call play() explicitly
@@ -160,12 +173,40 @@ export class JoinVideoCallModal {
     }
 
     /**
+     * Toggle between the front ('user') and back ('environment') camera on mobile.
+     * Picks by facingMode rather than deviceId so the browser selects the primary
+     * lens for each facing (avoids cycling through ultrawide/tele variants).
+     * Returns false if the opposite facing isn't available on this device.
+     */
+    public async switchFacing(): Promise<boolean> {
+        const target: 'user' | 'environment' =
+            this.currentFacingMode === 'environment' ? 'user' : 'environment';
+        infoLog?.log(`switchFacing: ${this.currentFacingMode ?? '(unknown)'} -> ${target}`);
+        const wasBlurActive = this.isBlurActive;
+        const success = await this.startPreviewInternal({ facingMode: target });
+        if (success) {
+            this.selectedDeviceId = this.track?.getSettings().deviceId ?? null;
+            if (wasBlurActive)
+                await this.startBlurPreview();
+        }
+        return success;
+    }
+
+    /**
      * Get the actual device ID of the currently-previewing camera.
      * Returns the device ID resolved by getUserMedia, which may differ
      * from what was originally requested (e.g., when no device was specified).
      */
     public getActualDeviceId(): string | null {
         return this.selectedDeviceId;
+    }
+
+    /**
+     * Returns the deviceId and facingMode of the currently-previewing camera.
+     * Used by Blazor to resolve per-camera display preferences (mirror, etc.).
+     */
+    public getCurrentCameraInfo(): { deviceId: string | null; facingMode: string | null } {
+        return { deviceId: this.selectedDeviceId, facingMode: this.currentFacingMode };
     }
 
     /**
@@ -233,6 +274,16 @@ export class JoinVideoCallModal {
 
         this.attachedFromRecorder = false;
         infoLog?.log('Detached from recorder preview stream');
+    }
+
+    /**
+     * Toggle horizontal mirroring of the camera preview.
+     * Applies a CSS class on the .video-frame that overrides the default scaleX(-1) transform.
+     */
+    public setMirrored(mirrored: boolean): void {
+        const frame = this.container.querySelector<HTMLElement>('.video-frame');
+        if (frame)
+            frame.classList.toggle('no-mirror', !mirrored);
     }
 
     /**

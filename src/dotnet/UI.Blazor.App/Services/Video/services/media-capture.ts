@@ -4,10 +4,17 @@ const { infoLog } = getLogs('VideoRecorder');
 
 export interface CameraCaptureOptions {
     deviceId?: string;
+    // When set (and deviceId is not), constrains the browser to pick a camera
+    // matching this facingMode ('user' = front, 'environment' = back).
+    facingMode?: 'user' | 'environment';
     width?: number;
     height?: number;
     frameRate?: number;
     maxRetries?: number;
+    // Bias the browser toward the highest-resolution camera matching other
+    // constraints. Useful on phones with multiple rear lenses (main / ultrawide /
+    // tele) — the browser typically picks the main lens for 4K requests.
+    preferHighRes?: boolean;
 }
 
 export class MediaCapture {
@@ -19,6 +26,8 @@ export class MediaCapture {
         const videoConstraints: MediaTrackConstraints = {};
         if (options.deviceId) {
             videoConstraints.deviceId = { exact: options.deviceId };
+        } else if (options.facingMode) {
+            videoConstraints.facingMode = { exact: options.facingMode };
         }
         if (options.frameRate) {
             videoConstraints.frameRate = { ideal: options.frameRate };
@@ -28,6 +37,17 @@ export class MediaCapture {
             const max = Math.max(options.width, options.height);
             videoConstraints.width = { min: min, max: max };
             videoConstraints.height = { min: min, max: max };
+        } else if (options.preferHighRes) {
+            // Bias toward the highest-resolution camera without pinning exact
+            // dimensions, so the browser can still honor facingMode / deviceId.
+            // Using the same "long side" ideal for both width and height is
+            // orientation-agnostic: Android often reports portrait dimensions
+            // (width < height) while iOS and desktop report landscape. Fitness
+            // distance minimizes |actual - ideal| / ideal per axis, and a large
+            // ideal on both axes pulls the browser toward the sensor's maximum
+            // resolution regardless of which axis it calls "width".
+            videoConstraints.width = { ideal: 3840 };
+            videoConstraints.height = { ideal: 3840 };
         }
         infoLog?.log(`${tag}: constraints:`, JSON.stringify(videoConstraints));
         const maxRetries = options.maxRetries ?? 0;

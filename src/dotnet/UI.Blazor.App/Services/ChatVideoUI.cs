@@ -19,6 +19,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private readonly MutableState<ChatId?> _lastRecordingChatId;
     private readonly MutableState<string?> _selectedCameraDeviceId;
     private readonly MutableState<bool> _isBackgroundBlurEnabled;
+    private readonly MutableState<bool> _isCameraMirrored;
     private readonly MutableState<string?> _errorMessage;
 
     // Tracks which chat the user is currently watching video in (in-memory, resets on reload)
@@ -43,6 +44,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         _lastRecordingChatId = StateFactory.NewMutable((ChatId?)null);
         _selectedCameraDeviceId = StateFactory.NewMutable((string?)null);
         _isBackgroundBlurEnabled = StateFactory.NewMutable(false);
+        _isCameraMirrored = StateFactory.NewMutable(true);
         _errorMessage = StateFactory.NewMutable((string?)null);
         _watchingChatId = StateFactory.NewMutable((ChatId?)null);
         _isVideoPanelCollapsed = StateFactory.NewMutable(false);
@@ -147,6 +149,59 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public void SetBackgroundBlur(bool enabled)
         => _isBackgroundBlurEnabled.Value = enabled;
 
+    public void SetCameraMirrored(bool mirrored)
+        => _isCameraMirrored.Value = mirrored;
+
+    // Facing mode of the currently-active webcam recorder. Plain field (not a
+    // MutableState) since only SwitchCamera reads it and it's updated from the
+    // same thread that the recorder's JS callback delivers on.
+    private string? _currentWebcamFacingMode;
+    // Ref to the active webcam recorder. Captured by the StateSync lifecycle
+    // so SwitchCamera can call SwitchFacing directly on mobile instead of
+    // routing through the deviceId-keyed state (which can't flip facings).
+    internal VideoRecorder? ActiveWebcamRecorder { get; set; }
+
+    // Called by the active webcam recorder when a track is acquired (start or
+    // camera switch). Resolves the effective mirror state from per-camera
+    // overrides — so the self-preview reflects the correct camera regardless
+    // of how the stream was started (modal, resume, external swap).
+    internal void OnWebcamTrackSettings(string? deviceId, string? facingMode)
+    {
+        _currentWebcamFacingMode = facingMode;
+        _ = ApplyAsync();
+        return;
+
+        async Task ApplyAsync() {
+            var settings = await LocalSettings.LocalAppSettings().Get().ConfigureAwait(false);
+            _isCameraMirrored.Value = settings
+                .ResolveIsCameraMirrored(deviceId, facingMode, Hub.BrowserInfo.IsMobile);
+        }
+    }
+
+    /// <summary>
+    /// Shared mobile-vs-desktop camera-switch orchestration. On mobile with a
+    /// known facingMode, prefers flipping front↔back via <paramref name="flipFacing"/>;
+    /// otherwise (desktop, unknown facing, or flip failed) falls back to
+    /// <paramref name="cycleDevice"/>. Used by both the join modal (operates on
+    /// its own JS preview) and the active-call panel (operates on the recorder).
+    /// </summary>
+    public static async Task ExecuteCameraSwitchAsync(
+        bool isMobile,
+        string? currentFacingMode,
+        Func<Task<bool>> flipFacing,
+        Func<Task> cycleDevice)
+    {
+        if (isMobile && !string.IsNullOrEmpty(currentFacingMode)) {
+            if (await flipFacing().ConfigureAwait(false))
+                return;
+        }
+        await cycleDevice().ConfigureAwait(false);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<bool> GetIsCameraMirrored(CancellationToken cancellationToken = default)
+        => await _isCameraMirrored.Use(cancellationToken).ConfigureAwait(false);
+
     public void CloseVideoPanel()
         => SetWatching(null);
 
@@ -159,15 +214,9 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public void SetVideoPanelCollapsed(bool collapsed)
         => _isVideoPanelCollapsed.Value = collapsed;
 
-    /// <summary>
-    /// Called by VideoTrackPlayer when a remote stream ends normally (no error).
-    /// </summary>
     public void NotifyRemoteStreamEndedIntentionally()
         => Interlocked.Exchange(ref _remoteStreamEndedIntentionally, 1);
 
-    /// <summary>
-    /// Atomically reads and resets the intentional-end flag.
-    /// </summary>
     public bool ConsumeRemoteStreamEndedIntentionally()
         => Interlocked.Exchange(ref _remoteStreamEndedIntentionally, 0) != 0;
 
@@ -181,8 +230,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     // JS callback handlers (called from VideoPanel)
 
     public void OnRecordingStarted(ChatId chatId, StreamKind kind)
-    {
-    }
+    { }
 
     public void OnRecordingStopped(StreamKind kind)
     {
@@ -216,7 +264,25 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         }
     }
 
-    public async Task SwitchCamera()
+    /// <summary>
+    /// Active-call camera swap (panel button). On mobile, flips front/back via
+    /// the recorder's facingMode switch; on desktop, cycles through enumerated
+    /// deviceIds. Shares the mobile-first policy with the join modal via
+    /// <see cref="ExecuteCameraSwitchAsync"/>.
+    /// </summary>
+    public Task SwitchCamera()
+        => ExecuteCameraSwitchAsync(
+            Hub.BrowserInfo.IsMobile,
+            _currentWebcamFacingMode,
+            flipFacing: async () => {
+                var recorder = ActiveWebcamRecorder;
+                if (recorder == null)
+                    return false;
+                return await recorder.SwitchFacing(CancellationToken.None).ConfigureAwait(false);
+            },
+            cycleDevice: CycleCameraByDeviceId);
+
+    private async Task CycleCameraByDeviceId()
     {
         var devices = await EnumerateVideoDevices().ConfigureAwait(false);
         if (devices.Length <= 1)

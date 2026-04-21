@@ -25,6 +25,8 @@ export interface RecordingConfig {
   bitrate: number;
   framerate: number;
   cameraDeviceId?: string; // Specific camera device ID for webcam mode
+  cameraFacingMode?: 'user' | 'environment'; // Alternative to deviceId — used when flipping front/back on mobile
+  preferHighRes?: boolean; // Hint the browser toward the main lens when picking by facingMode
   // Streaming settings
   streaming?: {
     enabled: boolean;
@@ -310,6 +312,8 @@ export class RecordingService extends EventTarget {
         if (this.config.mode === 'webcam') {
             return MediaCapture.captureCameraStream({
                 deviceId: this.config.cameraDeviceId,
+                facingMode: this.config.cameraFacingMode,
+                preferHighRes: this.config.preferHighRes,
                 frameRate: this.config.framerate,
                 width: this.config.width,
                 height: this.config.height,

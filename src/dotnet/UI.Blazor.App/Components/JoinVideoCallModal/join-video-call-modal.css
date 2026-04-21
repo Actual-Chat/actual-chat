@@ -30,6 +30,9 @@
     @apply rounded-2xl;
     transform: scaleX(-1);
 }
+.join-video-call-modal .video-frame.no-mirror .camera-preview {
+    transform: none;
+}
 .join-video-call-modal .c-members {
     @apply flex-x items-center gap-x-4;
 }
@@ -49,9 +52,8 @@
 
 /* Toolbar — centered */
 .join-video-call-modal .c-toolbar {
-    @apply grid gap-x-3 items-center justify-center;
+    @apply flex items-center justify-center gap-3;
     @apply py-2;
-    grid-template-columns: 1fr auto 1fr;
 }
 
 /* Pill-shaped toolbar buttons (desktop mic/camera) */
@@ -168,6 +170,11 @@ body.hoverable .join-video-call-modal .camera-dropdown-item:hover {
 /* Blur button — active state */
 .join-video-call-modal .btn-round.blur-btn.active {
     @apply outline outline-2 outline-primary outline-offset-[-1px];
+}
+
+/* Mirror button — active (mirroring enabled) */
+.join-video-call-modal .btn-round.mirror-btn.active {
+    @apply text-primary;
 }
 
 /* Mobile: stack buttons vertically with Join on top */
