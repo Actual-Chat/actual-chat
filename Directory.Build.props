@@ -17,7 +17,6 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'Api'">Contracts</ProjectKind>
-    <ProjectKind Condition="'$(MSBuildProjectName)' == 'SignalR.Client'">Contracts</ProjectKind>
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'Backend'">Contracts</ProjectKind>
     <ProjectKind Condition="$(MSBuildProjectName.EndsWith('.Contracts'))">Contracts</ProjectKind>
     <ProjectKind Condition="$(MSBuildProjectName.EndsWith('.Service'))">Service</ProjectKind>

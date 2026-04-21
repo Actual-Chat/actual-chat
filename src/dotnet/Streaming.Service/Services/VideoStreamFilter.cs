@@ -5,8 +5,7 @@ namespace ActualChat.Streaming.Services;
 /// <summary>
 /// Per-consumer video filter pipeline. Applies fast-join (first keyframe from
 /// retention), temporal layer filtering, pause-aware filtering, and keyframe
-/// gap recovery. Extracted from VideoStreamingBackend for reuse in StreamHub
-/// (remote stream caching).
+/// gap recovery.
 /// </summary>
 /// <remarks>
 /// <para><b>skipTo is advisory.</b> The memoizer replays retention, which may contain

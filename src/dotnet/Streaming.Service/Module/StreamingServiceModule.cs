@@ -30,14 +30,12 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
         var rpcHost = services.AddRpcHost(HostInfo);
         var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IAudioStreamingBackend>() is ServiceMode.Client;
 
-        // SignalR hub
+        // SignalR hub — audio-only legacy endpoint (video has moved to Fusion RPC)
         if (rpcHost.IsApiHost) {
             var signalR = services.AddSignalR(options => {
                 options.StreamBufferCapacity = 20;
                 options.EnableDetailedErrors = true; // Enable for debugging
                 options.StatefulReconnectBufferSize = 2000;
-                // Increase max message size for video frames (keyframes can be 50KB+)
-                options.MaximumReceiveMessageSize = 512 * 1024; // 512KB
             });
             signalR.AddJsonProtocol();
             signalR.AddMessagePackProtocol();

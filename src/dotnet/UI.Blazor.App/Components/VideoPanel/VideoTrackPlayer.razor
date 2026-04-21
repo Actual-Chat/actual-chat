@@ -207,10 +207,10 @@
                 skipTo = TimeSpan.Zero;
 
             DebugLog?.LogDebug(
-                "[VideoTrackPlayer #{StreamId}] Starting SignalR pull, skipTo={SkipTo}",
+                "[VideoTrackPlayer #{StreamId}] Starting RPC pull, skipTo={SkipTo}",
                 StreamInfo.StreamId, skipTo);
 
-            // Initiate pull from JS — it connects via SignalR and feeds frames directly
+            // Initiate pull from JS — it connects via Fusion RPC and feeds frames directly
             await _jsPlayerRef!.InvokeVoidAsync(
                 "startPull",
                 cancellationToken,

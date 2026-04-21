@@ -2,9 +2,8 @@
 //   1. Generate a fresh Session Id (random GUID-ish, matches Session.New()).
 //   2. Open an RPC peer with that Id in the `Session` header.
 //   3. Call IEmailAuth.OnValidateTotp(command) to sign the session in.
-//   4. Call ISecureTokens.CreateForSession(session) to get a SignalR sessionToken.
-//   5. Return { sessionId, sessionToken } so producers/consumers can share the
-//      same identity across their individual connections.
+//   4. Return { sessionId } so producers/consumers can share the same
+//      identity across their individual connections.
 
 import { randomUUID } from 'node:crypto';
 import { RpcHub, RpcClientPeer, RpcPeerRefBuilder } from '../src/actuallab-rpc/index.js';
@@ -12,9 +11,7 @@ import { RpcHub, RpcClientPeer, RpcPeerRefBuilder } from '../src/actuallab-rpc/i
 import { createNodeWsFactory } from './node-ws.js';
 import {
     EmailAuthDef,
-    SecureTokensDef,
     type EmailAuthClient,
-    type SecureTokensClient,
 } from './service-defs.js';
 
 export interface SignInOptions {
@@ -25,7 +22,6 @@ export interface SignInOptions {
 
 export interface SignInResult {
     sessionId: string;
-    sessionToken: string;
 }
 
 /** Build the fixed-shape Session id the .NET SessionFactory produces. */
@@ -68,7 +64,6 @@ export async function signIn(opts: SignInOptions): Promise<SignInResult> {
 
     try {
         const emailAuth = hub.addClient(peer, EmailAuthDef) as unknown as EmailAuthClient;
-        const secureTokens = hub.addClient(peer, SecureTokensDef) as unknown as SecureTokensClient;
 
         stage(`Signing in as ${opts.email}`);
         const ok = await emailAuth.OnValidateTotp({
@@ -82,13 +77,7 @@ export async function signIn(opts: SignInOptions): Promise<SignInResult> {
                 `Is the dev OTP bypass active on the server?`);
         stage('OnValidateTotp returned true');
 
-        stage('Calling CreateForSession');
-        const secureToken = await secureTokens.CreateForSession(sessionId);
-        if (!secureToken.Token)
-            throw new Error('CreateForSession returned empty token.');
-        stage('Got secure token');
-
-        return { sessionId, sessionToken: secureToken.Token };
+        return { sessionId };
     } finally {
         peer.close();
     }
