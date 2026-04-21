@@ -4,7 +4,8 @@
 body.wide .video-panel.expanded .video-streaming-preview .call-video {
     @apply rounded-lg;
 }
-.video-streaming-preview.screencast .call-video {
+.video-streaming-preview.screencast .call-video,
+.video-streaming-preview.no-mirror .call-video {
     transform: none;
 }
 .video-streaming-preview .btn-h.btn-settings {

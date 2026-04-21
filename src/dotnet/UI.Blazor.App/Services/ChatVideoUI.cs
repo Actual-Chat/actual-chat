@@ -19,6 +19,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private readonly MutableState<ChatId?> _lastRecordingChatId;
     private readonly MutableState<string?> _selectedCameraDeviceId;
     private readonly MutableState<bool> _isBackgroundBlurEnabled;
+    private readonly MutableState<bool> _isCameraMirrored;
     private readonly MutableState<string?> _errorMessage;
 
     // Tracks which chat the user is currently watching video in (in-memory, resets on reload)
@@ -51,6 +52,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         _lastRecordingChatId = StateFactory.NewMutable((ChatId?)null);
         _selectedCameraDeviceId = StateFactory.NewMutable((string?)null);
         _isBackgroundBlurEnabled = StateFactory.NewMutable(false);
+        _isCameraMirrored = StateFactory.NewMutable(true);
         _errorMessage = StateFactory.NewMutable((string?)null);
         _watchingChatId = StateFactory.NewMutable((ChatId?)null);
         _isVideoPanelCollapsed = StateFactory.NewMutable(false);
@@ -154,6 +156,36 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     public void SetBackgroundBlur(bool enabled)
         => _isBackgroundBlurEnabled.Value = enabled;
+
+    public void SetCameraMirrored(bool mirrored)
+        => _isCameraMirrored.Value = mirrored;
+
+    [ComputeMethod]
+    public virtual async Task<bool> GetIsCameraMirrored(CancellationToken cancellationToken = default)
+        => await _isCameraMirrored.Use(cancellationToken).ConfigureAwait(false);
+
+    // Last track settings reported by the active webcam recorder. Plain fields —
+    // only touched from the Blazor dispatcher (JS callback + UI consumers).
+    public string? LastWebcamDeviceId { get; private set; }
+    public string? LastWebcamFacingMode { get; private set; }
+
+    internal void OnWebcamTrackSettings(string? deviceId, string? facingMode)
+    {
+        // Called by the active webcam recorder after each track acquisition
+        // (start or camera switch). Resolves the effective mirror state from
+        // per-camera overrides so the self-preview reflects the right camera
+        // regardless of how the stream was started (modal, resume, external swap).
+        LastWebcamDeviceId = deviceId;
+        LastWebcamFacingMode = facingMode;
+        _ = ApplyAsync();
+        return;
+
+        async Task ApplyAsync() {
+            var settings = await LocalSettings.LocalAppSettings().Get().ConfigureAwait(false);
+            _isCameraMirrored.Value = settings
+                .ResolveIsCameraMirrored(deviceId, facingMode, Hub.BrowserInfo.IsMobile);
+        }
+    }
 
     public void CloseVideoPanel()
         => SetWatching(null);

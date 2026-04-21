@@ -370,10 +370,17 @@ export class VideoRecorder {
             this.previewTrack = this.recordingService.getInputTrack()
             // Store actual camera resolution for capping reconfigure requests
             const trackSettings = this.previewTrack!.getSettings();
-            infoLog?.log(`Track resolution: ${trackSettings.width}x${trackSettings.height}`);
+            infoLog?.log(`Track resolution: ${trackSettings.width}x${trackSettings.height}, facingMode=${trackSettings.facingMode ?? '(none)'}`);
             this.cameraWidth = trackSettings.width ?? config.width;
             this.cameraHeight = trackSettings.height ?? config.height;
             infoLog?.log(`Camera resolution: ${this.cameraWidth}x${this.cameraHeight}`);
+
+            // Let Blazor resolve per-camera display prefs (mirror) from current
+            // deviceId + facingMode. Fire-and-forget — purely cosmetic.
+            void this.blazorRef.invokeMethodAsync(
+                'OnTrackSettings',
+                trackSettings.deviceId ?? null,
+                trackSettings.facingMode ?? null);
 
             // Subscribe to VAD for adaptive framerate
             this.recordingService.getPipeline()?.subscribeToVad();

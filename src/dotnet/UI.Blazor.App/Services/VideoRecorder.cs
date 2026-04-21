@@ -296,5 +296,16 @@ public sealed class VideoRecorder : IAsyncDisposable
             videoRecorder.OnRecordingError();
             owner.OnRecordingError(error, kind);
         }
+
+        [JSInvokable]
+        public void OnTrackSettings(string? deviceId, string? facingMode)
+        {
+            // Fires from JS after a webcam track is acquired (start or camera
+            // switch). Lets ChatVideoUI resolve per-camera display preferences
+            // (mirror) from current device + facingMode. Not called for
+            // screencast — its display is never mirrored.
+            if (kind == StreamKind.Webcam)
+                owner.OnWebcamTrackSettings(deviceId, facingMode);
+        }
     }
 }
