@@ -252,7 +252,7 @@
 
     private IVideoSession CreateSession(IJSObjectReference jsRef)
         => IsSettingsMode
-            ? new RecorderVideoSession(jsRef, ChatVideoUI)
+            ? new RecorderVideoSession(jsRef, ChatVideoUI, ModalModel.Chat.Id)
             : new LocalVideoSession(jsRef, () => _selectedDevice?.DeviceId, () => _isBlurEnabled);
 
     public override async ValueTask DisposeAsync() {
@@ -587,7 +587,8 @@
     /// advances it to <c>On</c>.</summary>
     private sealed class RecorderVideoSession(
         IJSObjectReference jsRef,
-        ChatVideoUI chatVideoUI) : VideoSessionBase
+        ChatVideoUI chatVideoUI,
+        ChatId chatId) : VideoSessionBase
     {
         public override async Task Start() {
             SetState(CameraState.Starting);
@@ -608,9 +609,19 @@
             return Task.CompletedTask;
         }
 
-        // Not supported in Settings mode — the recorder owns the pipeline. The
-        // canvas keeps drawing what the recorder produces regardless.
-        public override Task SetVideoEnabled(bool enabled) => Task.CompletedTask;
+        public override Task SetVideoEnabled(bool enabled) {
+            // Stops the webcam stream on the active call (or resumes it) —
+            // same as the video-panel's toggle. The RecorderPreviewView
+            // detaches on recorder teardown and re-attaches when it comes back.
+            if (enabled) {
+                chatVideoUI.ResumeVideoStreaming(chatId);
+                SetState(CameraState.Starting);
+            } else {
+                chatVideoUI.StopRecording();
+                SetState(CameraState.Off);
+            }
+            return Task.CompletedTask;
+        }
 
         // Not consumed by the Settings flow — the Close button never reads this.
         public override Task<string?> GetActualDeviceId() => Task.FromResult<string?>(null);
