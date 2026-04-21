@@ -20,16 +20,29 @@ public static class AotTypeGenerator
     // ArraySegment<byte> / <char> are referenced by HttpContent, BufferedFileStreamStrategy,
     // MemoryMarshal.TryGetArray, etc., and ILC can drop their generic instantiations
     // when nothing in our code keeps them.
-    //
-    // MessagePackByteSerializer<TypeRef> is built via an Expression<Func<...>> tree inside
-    // ActualLab.Serialization when decoding TypeRef-containing values; the concrete
-    // Expression / Func / serializer instantiations must be kept so ILC doesn't drop them.
     private static readonly string[] FrameworkTypeKeeps = [
         "global::System.ArraySegment<byte>",
         "global::System.ArraySegment<char>",
-        "global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Reflection.TypeRef>",
-        "global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Reflection.TypeRef>>",
-        "global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Reflection.TypeRef>>>",
+    ];
+
+    // ActualLab.Serialization.MessagePackByteSerializer<T> is constructed through an
+    // Expression<Func<...>> factory compiled per T. Under NativeAOT/trimming, every T that
+    // may reach this factory needs its MessagePackByteSerializer / Func / Expression generic
+    // instantiations kept explicitly. Primitives + universal framework types go into the Core
+    // AotSource. Additional per-target type arguments (enums, generic instantiations like
+    // ApiArray<T>, DTOs) are discovered at generation time by walking Serializable roots.
+    private static readonly string[] MessagePackByteSerializerCoreTypeArgs = [
+        "bool", "byte", "sbyte", "short", "ushort",
+        "int", "uint", "long", "ulong",
+        "float", "double", "decimal",
+        "char", "string",
+        "global::System.DateTime", "global::System.DateTimeOffset",
+        "global::System.TimeSpan", "global::System.DateOnly", "global::System.TimeOnly",
+        "global::System.Guid",
+        "global::System.Reactive.Unit",
+        "global::ActualLab.Text.Symbol",
+        "global::ActualLab.Time.Moment",
+        "global::ActualLab.Reflection.TypeRef",
     ];
 
     // Target projects: assembly name -> (class name, namespace, relative path from src/dotnet, type kinds)
@@ -116,20 +129,40 @@ public static class AotTypeGenerator
             // Framework type keeps go into the Core AotSource
             var frameworkKeeps = target.AssemblyName == "ActualChat.Core" ? FrameworkTypeKeeps : null;
 
-            // Discover MessagePack formatter types required by all serializable root types
-            // in this target assembly (walks member graph across assemblies).
+            // MessagePackByteSerializer<T> keeps: static primitives in Core; reachable-type
+            // discovery runs per target over its Serializable roots + API interfaces.
+            IReadOnlyList<string>? mpByteSerializerTypeArgs = null;
             var mpRoots = filtered
                 .Where(x => x.Kind == AotTypeKind.Serializable)
                 .Select(x => x.Type)
                 .ToList();
-            var mpKeeps = mpRoots.Count > 0
-                ? MessagePackFormatterDiscovery.DiscoverAll(mpRoots)
+            var mpApiRoots = filtered
+                .Where(x => x.Kind == AotTypeKind.Api)
+                .Select(x => x.Type)
+                .ToList();
+            if (target.AssemblyName == "ActualChat.Core" || mpRoots.Count > 0 || mpApiRoots.Count > 0) {
+                var discovered = MessagePackByteSerializerDiscovery.DiscoverAll(mpRoots, mpApiRoots);
+                var combined = new SortedSet<string>(discovered, StringComparer.Ordinal);
+                if (target.AssemblyName == "ActualChat.Core") {
+                    foreach (var t in MessagePackByteSerializerCoreTypeArgs)
+                        combined.Add(t);
+                }
+                if (combined.Count > 0) {
+                    mpByteSerializerTypeArgs = combined.ToList();
+                    WriteLine($"  [{target.AssemblyName}] MessagePackByteSerializer<T> keeps: {mpByteSerializerTypeArgs.Count}");
+                }
+            }
+
+            // Discover MessagePack formatter types required by all serializable root types
+            // in this target assembly (walks member graph across assemblies).
+            var mpKeeps = (mpRoots.Count > 0 || mpApiRoots.Count > 0)
+                ? MessagePackFormatterDiscovery.DiscoverAll(mpRoots, mpApiRoots)
                 : null;
             if (mpKeeps is { Count: > 0 })
                 WriteLine($"  [{target.AssemblyName}] Discovered {mpKeeps.Count} MessagePack formatter types");
 
             var outputPath = Path.Combine(srcDotnet, target.RelativePath.Replace('/', Path.DirectorySeparatorChar));
-            var code = GenerateSourceFile(target, filtered, stjKeeps, mpKeeps, frameworkKeeps);
+            var code = GenerateSourceFile(target, filtered, stjKeeps, mpKeeps, frameworkKeeps, mpByteSerializerTypeArgs);
             var dir = Path.GetDirectoryName(outputPath);
             if (!string.IsNullOrEmpty(dir))
                 Directory.CreateDirectory(dir);
@@ -273,7 +306,8 @@ public static class AotTypeGenerator
         List<(Type Type, AotTypeKind Kind)> types,
         SortedSet<string>? stjConverterAqns = null,
         SortedSet<string>? mpFormatterAqns = null,
-        IReadOnlyList<string>? frameworkTypeKeeps = null)
+        IReadOnlyList<string>? frameworkTypeKeeps = null,
+        IReadOnlyList<string>? mpByteSerializerTypeArgs = null)
     {
         var sb = new StringBuilder();
         sb.AppendLine("// <auto-generated>");
@@ -295,7 +329,8 @@ public static class AotTypeGenerator
         var hasContent = types.Count > 0
             || stjConverterAqns is { Count: > 0 }
             || mpFormatterAqns is { Count: > 0 }
-            || frameworkTypeKeeps is { Count: > 0 };
+            || frameworkTypeKeeps is { Count: > 0 }
+            || mpByteSerializerTypeArgs is { Count: > 0 };
         if (hasContent) {
             sb.AppendLine("        if (CodeKeeper.AlwaysTrue)");
             sb.AppendLine("            return;");
@@ -311,6 +346,16 @@ public static class AotTypeGenerator
                 sb.AppendLine("        // Framework types referenced by BCL / runtime code paths");
                 foreach (var typeName in frameworkTypeKeeps)
                     sb.AppendLine($"        CodeKeeper.Keep<{typeName}>();");
+            }
+            if (mpByteSerializerTypeArgs is { Count: > 0 }) {
+                sb.AppendLine();
+                sb.AppendLine("        // MessagePackByteSerializer<T> generic instantiations used by the");
+                sb.AppendLine("        // Expression<Func<...>> factory inside ActualLab.Serialization.");
+                foreach (var typeArg in mpByteSerializerTypeArgs) {
+                    sb.AppendLine($"        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<{typeArg}>>();");
+                    sb.AppendLine($"        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<{typeArg}>>>();");
+                    sb.AppendLine($"        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<{typeArg}>>>>();");
+                }
             }
             if (mpFormatterAqns is { Count: > 0 }) {
                 sb.AppendLine();

@@ -255,11 +255,12 @@
     <!-- IL2072: Return value does not satisfy 'DynamicallyAccessedMembersAttribute' -->
     <!-- IL2073: Annotation mismatch on return value -->
     <!-- IL2075: Call to non-public member via reflection -->
+    <!-- IL2076, IL2077: The source value must declare at least the same requirements ... -->
     <!-- IL2092: Annotation mismatch on parameter -->
     <!-- IL2110: Field with 'DynamicallyAccessedMembersAttribute' accessed via reflection -->
     <!-- IL2111: Method with 'DynamicallyAccessedMembersAttribute' accessed via reflection -->
     <!-- IL3050: Using member with 'RequiresDynamicCodeAttribute' -->
-    <NoWarn>$(NoWarn);IL2026;IL2046;IL2055;IL2060;IL2067;IL2072;IL2073;IL2075;IL2092;IL2110;IL2111;IL3050</NoWarn>
+    <NoWarn>$(NoWarn);IL2026;IL2046;IL2055;IL2060;IL2067;IL2072;IL2073;IL2075;IL2076,IL2077,IL2092;IL2110;IL2111;IL3050</NoWarn>
     <!-- String comparison / culture: invariant culture is configured globally, so these are unnecessary -->
     <!-- CA1304: The behavior of 'string.ToLower()' could vary based on the current user's locale settings -->
     <!-- CA1305: The behavior of 'FormattableString' could vary based on the current user's locale settings -->

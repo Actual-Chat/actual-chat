@@ -24,13 +24,38 @@ public static class MessagePackFormatterDiscovery
     /// Walks every reachable member type starting from <paramref name="rootTypes"/> and returns
     /// AQNs of all discovered MessagePack formatter types.
     /// </summary>
-    public static SortedSet<string> DiscoverAll(IEnumerable<Type> rootTypes)
+    public static SortedSet<string> DiscoverAll(
+        IEnumerable<Type> rootTypes,
+        IEnumerable<Type>? apiInterfaces = null)
     {
         var visited = new HashSet<Type>();
         var formatterAqns = new SortedSet<string>(StringComparer.Ordinal);
         foreach (var type in rootTypes)
             Walk(type, visited, formatterAqns);
+        if (apiInterfaces != null) {
+            foreach (var iface in apiInterfaces)
+                WalkApiInterface(iface, visited, formatterAqns);
+        }
         return formatterAqns;
+    }
+
+    private static void WalkApiInterface(Type iface, HashSet<Type> visited, SortedSet<string> formatterAqns)
+    {
+        foreach (var method in iface.GetMethods(BindingFlags.Public | BindingFlags.Instance)) {
+            foreach (var p in method.GetParameters())
+                Walk(p.ParameterType, visited, formatterAqns);
+            Walk(UnwrapAsync(method.ReturnType), visited, formatterAqns);
+        }
+    }
+
+    private static Type UnwrapAsync(Type type)
+    {
+        if (!type.IsGenericType)
+            return type;
+        var def = type.GetGenericTypeDefinition();
+        if (def == typeof(Task<>) || def == typeof(ValueTask<>))
+            return type.GetGenericArguments()[0];
+        return type;
     }
 
     private static void Walk(Type type, HashSet<Type> visited, SortedSet<string> formatterAqns)
