@@ -56,6 +56,12 @@ export class RecorderPreviewView {
     private animationFrameId: number | null = null;
     private disposed = false;
     private _paused = false;
+    // Per-attach counter so each CanvasVideoRenderer instance gets a unique
+    // fastRaf key. Without this, detach+attach happening in the same frame
+    // (e.g. after unpausing into a newly-swapped camera track) would dedup the
+    // new renderer's initial fastRaf against the old renderer's still-pending
+    // schedule — the new renderer would never get its first frame scheduled.
+    private attachSeq = 0;
 
     static create(options: RecorderPreviewViewOptions): RecorderPreviewView {
         return new RecorderPreviewView(options);
@@ -143,7 +149,7 @@ export class RecorderPreviewView {
 
         this.renderer = new CanvasVideoRenderer({
             canvas: this.canvasTarget.element,
-            rafKey: this.options.rafKey,
+            rafKey: `${this.options.rafKey}#${++this.attachSeq}`,
             onFirstFrame: () => this.fireFirstFrame(),
             onAfterDraw: (video) => this.drawBgFrame(video, video.videoWidth, video.videoHeight),
         });
