@@ -456,9 +456,10 @@ export class VisualMediaViewer {
         }
 
         const target = event.target as HTMLElement;
-        const clickOnControl = target.closest('.video-control');
-        if (clickOnControl)
+        if (target.closest('.video-control'))
             return; // let video controls handle their own clicks
+        if (target.closest('.image-viewer-header') || target.closest('.image-viewer-footer'))
+            return; // let header/footer handle their own clicks
 
         if (target.classList.contains('media-swiper')) {
             // click on prev / next buttons
