@@ -26,6 +26,7 @@
         }
         <div @ref="_containerRef" class="c-video @(_cameraState is CameraState.Starting ? "camera-starting" : "")">
             <div class="video-frame">
+                <canvas class="camera-preview"></canvas>
                 <span class="plug-text">@GetPlugText(_cameraState)</span>
                 <div class="video-loading">
                     <span class="spinner-icon-wrapper">

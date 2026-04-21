@@ -1,37 +1,24 @@
 import { getLogs } from 'logging';
-import { rpcClientServer, rpcNoWait } from 'rpc';
-import type { Disposable } from 'disposable';
 import { getActiveRecorder } from '../VideoPanel/video-recorder';
-import type { VideoProcessingWorker, VideoProcessingWorkerCallbacks } from '../../Services/Video/workers/video-processing-worker-contract';
-import { createAdaptiveSegmentationConfig } from '../../Services/Video/workers/video-processing-worker-contract';
-import { detectGPUBackends } from '../../Services/Video/gpu-support';
 import { MediaCapture } from '../../Services/Video/services/media-capture';
-import { Versioning } from 'versioning';
-import { fastRaf } from 'fast-raf';
+import { CanvasVideoRenderer } from '../../Services/Video/services/canvas-video-renderer';
+import { BlurPreviewSession } from '../../Services/Video/services/blur-preview-session';
 
-const { infoLog, warnLog, errorLog } = getLogs('JoinVideoCallModal');
+const { infoLog, errorLog } = getLogs('VideoRecorder');
 
 export class JoinVideoCallModal {
     private blazorRef: DotNet.DotNetObject;
-    private readonly container: HTMLElement;
-    private readonly videoEl: HTMLVideoElement; // off-DOM, frame source only
+    private readonly videoFrame: HTMLElement;
     private readonly canvasEl: HTMLCanvasElement; // on-DOM, single display canvas
-    private readonly canvasCtx: CanvasRenderingContext2D | null;
-    private readonly captureCanvas: HTMLCanvasElement;
+    private readonly renderer: CanvasVideoRenderer;
     private track: MediaStreamTrack | null = null;
     private selectedDeviceId: string | null = null;
-    private isRendering = false;
     private lastTrackStoppedAt = 0;
     private attachedFromRecorder = false;
 
     // Blur preview state
-    private previewWorkerInstance: Worker | null = null;
-    private previewWorker: (VideoProcessingWorker & Disposable) | null = null;
+    private blurSession: BlurPreviewSession | null = null;
     private isBlurActive = false;
-    private blurFrameTimer: number | null = null;
-    private captureCtx: CanvasRenderingContext2D;
-    private firstFrameNotified = false;
-    private disposed = false;
 
     static create(container: HTMLElement, blazorRef: DotNet.DotNetObject): JoinVideoCallModal {
         return new JoinVideoCallModal(container, blazorRef);
@@ -39,26 +26,19 @@ export class JoinVideoCallModal {
 
     constructor(container: HTMLElement, blazorRef: DotNet.DotNetObject) {
         this.blazorRef = blazorRef;
-        this.container = container;
+        this.videoFrame = container.querySelector<HTMLElement>('.video-frame')!;
+        this.canvasEl = this.videoFrame.querySelector<HTMLCanvasElement>('.camera-preview')!;
 
-        // Off-DOM video element — used only as a frame source for canvas drawing
-        this.videoEl = document.createElement('video');
-        this.videoEl.muted = true;
-        this.videoEl.playsInline = true;
-        this.videoEl.autoplay = true;
-
-        // Display canvas — inserted into DOM to show camera preview
-        this.canvasEl = document.createElement('canvas');
-        this.canvasEl.className = 'camera-preview';
-        this.canvasCtx = this.canvasEl.getContext('2d');
-
-        // Off-DOM canvas for capturing frames to feed the blur worker
-        this.captureCanvas = document.createElement('canvas');
-        this.captureCtx = this.captureCanvas.getContext('2d')!;
+        this.renderer = new CanvasVideoRenderer({
+            canvas: this.canvasEl,
+            rafKey: 'join-video-preview',
+            onFirstFrame: () => {
+                void this.blazorRef.invokeMethodAsync('OnFirstFrameRendered');
+            },
+        });
     }
 
     public async startPreview(deviceId?: string): Promise<boolean> {
-        infoLog?.log(`startPreview: deviceId=${deviceId ?? '(default)'}`);
         await this.stopPreview();
 
         // Browser needs time to release camera hardware after track.stop().
@@ -70,24 +50,11 @@ export class JoinVideoCallModal {
                 await new Promise(resolve => setTimeout(resolve, delay));
         }
 
-        if (this.disposed)
-            return false;
-
         try {
-            const track = await MediaCapture.captureCameraStream({
+            this.track = await MediaCapture.captureCameraStream({
                 deviceId: deviceId,
                 maxRetries: 3,
             });
-            // If the modal was closed while getUserMedia was in flight, stop the
-            // freshly-acquired track immediately — otherwise it holds the camera
-            // hardware and the next getUserMedia fails with NotReadableError.
-            if (this.disposed) {
-                warnLog?.log('startPreview: disposed during getUserMedia — stopping track');
-                track.stop();
-                this.lastTrackStoppedAt = performance.now();
-                return false;
-            }
-            this.track = track;
 
             // Capture the actual device ID the browser chose (important when no
             // explicit device was requested — ensures recording uses the same camera)
@@ -95,20 +62,10 @@ export class JoinVideoCallModal {
             infoLog?.log(`startPreview track: deviceId=${s.deviceId}, ${s.width}x${s.height}`);
             if (s.deviceId) this.selectedDeviceId = s.deviceId;
 
-            this.videoEl.srcObject = new MediaStream([this.track]);
-            // Off-DOM video elements don't honor autoplay — must call play() explicitly
-            void this.videoEl.play();
-
-            // Insert canvas into the video-frame container
-            const frame = this.container.querySelector('.video-frame');
-            if (frame) {
-                // Hide placeholder text
-                frame.querySelector<HTMLElement>('.plug-text')!.style.display = 'none';
-                frame.appendChild(this.canvasEl);
-            }
+            this.videoFrame.classList.add('has-video');
 
             // Start RAF render loop to draw raw camera frames to canvas
-            this.startRenderLoop();
+            this.renderer.start(this.track);
 
             infoLog?.log('Camera preview started');
             return true;
@@ -122,8 +79,7 @@ export class JoinVideoCallModal {
         // Stop blur preview first
         await this.stopBlurPreview();
 
-        this.stopRenderLoop();
-        this.firstFrameNotified = false;
+        this.renderer.stop();
 
         if (this.track) {
             this.track.stop();
@@ -131,23 +87,12 @@ export class JoinVideoCallModal {
             this.lastTrackStoppedAt = performance.now();
         }
 
-        this.videoEl.srcObject = null;
-
-        if (this.canvasEl.parentElement) {
-            this.canvasEl.parentElement.removeChild(this.canvasEl);
-        }
-
-        // Restore placeholder text
-        const frame = this.container.querySelector('.video-frame');
-        if (frame) {
-            frame.querySelector<HTMLElement>('.plug-text')!.style.display = '';
-        }
+        this.videoFrame.classList.remove('has-video');
 
         infoLog?.log('Camera preview stopped');
     }
 
     public async switchCamera(deviceId: string): Promise<boolean> {
-        infoLog?.log(`switchCamera: deviceId=${deviceId}`);
         this.selectedDeviceId = deviceId;
         const wasBlurActive = this.isBlurActive;
         // Restart preview with new device (stopPreview cleans up blur)
@@ -186,17 +131,9 @@ export class JoinVideoCallModal {
         // Pause the recorder's own preview rendering
         recorder.pausePreviewRendering();
 
-        this.videoEl.srcObject = new MediaStream([this.track]);
-        void this.videoEl.play();
+        this.videoFrame.classList.add('has-video');
 
-        // Insert canvas into the video-frame container
-        const frame = this.container.querySelector('.video-frame');
-        if (frame) {
-            frame.querySelector<HTMLElement>('.plug-text')!.style.display = 'none';
-            frame.appendChild(this.canvasEl);
-        }
-
-        this.startRenderLoop();
+        this.renderer.start(this.track);
         infoLog?.log('Attached to active recorder preview stream');
         return true;
     }
@@ -209,22 +146,15 @@ export class JoinVideoCallModal {
 
         // Stop blur preview first
         void this.stopBlurPreview();
-        this.stopRenderLoop();
+        this.renderer.stop();
 
         // Stop only our cloned track
         if (this.track) {
             this.track.stop();
             this.track = null;
         }
-        this.videoEl.srcObject = null;
 
-        if (this.canvasEl.parentElement)
-            this.canvasEl.parentElement.removeChild(this.canvasEl);
-
-        // Restore placeholder text
-        const frame = this.container.querySelector('.video-frame');
-        if (frame)
-            frame.querySelector<HTMLElement>('.plug-text')!.style.display = '';
+        this.videoFrame.classList.remove('has-video');
 
         // Resume the recorder's own preview rendering
         const recorder = getActiveRecorder();
@@ -247,142 +177,36 @@ export class JoinVideoCallModal {
         }
     }
 
-    private startRenderLoop(): void {
-        this.stopRenderLoop();
-        this.isRendering = true;
-        fastRaf(this.renderFrame, 'join-video-preview');
-    }
-
-    private stopRenderLoop(): void {
-        this.isRendering = false;
-    }
-
-    private renderFrame = (): void => {
-        if (!this.isRendering || !this.canvasCtx) return;
-
-        // When blur is active, the blur callback renders to canvas instead
-        if (!this.isBlurActive) {
-            if (this.videoEl.videoWidth > 0 && this.videoEl.videoHeight > 0) {
-                if (this.canvasEl.width !== this.videoEl.videoWidth ||
-                    this.canvasEl.height !== this.videoEl.videoHeight) {
-                    this.canvasEl.width = this.videoEl.videoWidth;
-                    this.canvasEl.height = this.videoEl.videoHeight;
-                }
-                this.canvasCtx.drawImage(this.videoEl, 0, 0);
-
-                // Notify Blazor on first frame
-                if (!this.firstFrameNotified && !this.disposed) {
-                    this.firstFrameNotified = true;
-                    void this.blazorRef.invokeMethodAsync('OnFirstFrameRendered');
-                }
-            }
-        }
-
-        fastRaf(this.renderFrame, 'join-video-preview');
-    };
-
     private async startBlurPreview(): Promise<void> {
         if (!this.track || this.isBlurActive) return;
 
         try {
-            infoLog?.log('Starting blur preview...');
+            // Pause raw-frame rendering — blur callback takes over canvas drawing
+            this.renderer.paused = true;
 
-            const gpuSupport = await detectGPUBackends();
-            const segConfig = createAdaptiveSegmentationConfig(gpuSupport.recommended);
-
-            // Use unified video processing worker in preview-only mode
-            const workerPath = Versioning.mapPath('/dist/videoProcessingWorker.js');
-            this.previewWorkerInstance = new Worker(workerPath, { type: 'module' });
-
-            this.previewWorker = rpcClientServer<VideoProcessingWorker>(
-                'PreviewBlur',
-                this.previewWorkerInstance,
-                {
-                    onPreviewFrame: (frame: VideoFrame) => {
-                        if (this.canvasCtx && this.isBlurActive) {
-                            if (this.canvasEl.width !== frame.displayWidth ||
-                                this.canvasEl.height !== frame.displayHeight) {
-                                this.canvasEl.width = frame.displayWidth;
-                                this.canvasEl.height = frame.displayHeight;
-                            }
-                            this.canvasCtx.drawImage(frame as CanvasImageSource, 0, 0);
-                        }
-                        frame.close();
-                        return Promise.resolve();
-                    },
-                    onSerializedChunk: () => Promise.resolve(),
-                    onBackpressure: () => Promise.resolve(),
-                    onEncoderFailed: () => Promise.resolve(),
-                    onDimensionReconciled: () => Promise.resolve(),
-                    onStreamCreated: () => Promise.resolve(),
-                } as VideoProcessingWorkerCallbacks
-            );
-
-            await this.previewWorker.initialize({
-                encoder: { codec: 'av01.0.01M.08', width: 640, height: 360, bitrate: 500_000, framerate: 15, keyframeInterval: 30, latencyMode: 'realtime', hardwareAcceleration: 'prefer-software' },
-                segmentation: segConfig,
-                streaming: { apiUrl: '', sessionToken: '', chatId: '', serverClockOffsetMs: 0 },
-                previewOnly: true,
-            }, { type: 'rpc-timeout', timeoutMs: 15000 });
-
+            this.blurSession = await BlurPreviewSession.create({
+                source: this.renderer.video,
+                target: this.canvasEl,
+            });
             this.isBlurActive = true;
-            this.pumpBlurFrames();
-
-            infoLog?.log('Blur preview started');
         } catch (error) {
             errorLog?.log('Failed to start blur preview:', error);
+            this.renderer.paused = false;
             await this.stopBlurPreview();
         }
     }
 
-    private pumpBlurFrames(): void {
-        if (!this.isBlurActive || !this.track || !this.previewWorker) return;
-
-        if (this.videoEl.videoWidth > 0 && this.videoEl.videoHeight > 0) {
-            this.captureCanvas.width = this.videoEl.videoWidth;
-            this.captureCanvas.height = this.videoEl.videoHeight;
-            this.captureCtx.drawImage(this.videoEl, 0, 0);
-
-            const frame = new VideoFrame(this.captureCanvas, {
-                timestamp: performance.now() * 1000
-            });
-
-            void this.previewWorker.encodeFrame(frame, rpcNoWait);
-        }
-
-        // ~15fps for preview (sufficient for blur effect)
-        this.blurFrameTimer = window.setTimeout(() => this.pumpBlurFrames(), 66);
-    }
-
     private async stopBlurPreview(): Promise<void> {
         this.isBlurActive = false;
+        this.renderer.paused = false;
 
-        if (this.blurFrameTimer !== null) {
-            clearTimeout(this.blurFrameTimer);
-            this.blurFrameTimer = null;
+        if (this.blurSession) {
+            await this.blurSession.stop();
+            this.blurSession = null;
         }
-
-        if (this.previewWorker) {
-            try {
-                await this.previewWorker.stop();
-                this.previewWorker.dispose();
-            } catch {
-                // ignore cleanup errors
-            }
-            this.previewWorker = null;
-        }
-
-        if (this.previewWorkerInstance) {
-            this.previewWorkerInstance.terminate();
-            this.previewWorkerInstance = null;
-        }
-
-        infoLog?.log('Blur preview stopped');
     }
 
     public dispose(): void {
-        infoLog?.log(`dispose: trackState=${this.track?.readyState ?? '(null)'}`);
-        this.disposed = true;
         if (this.attachedFromRecorder) {
             this.detachFromRecorder();
         } else {
