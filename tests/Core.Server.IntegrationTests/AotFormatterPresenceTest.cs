@@ -1,7 +1,6 @@
 using ActualChat.Aot;
 using ActualChat.Module;
 using ActualLab.Serialization.Internal;
-using MessagePack;
 
 namespace ActualChat.Core.Server.IntegrationTests;
 
