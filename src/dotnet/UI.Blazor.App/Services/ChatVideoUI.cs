@@ -267,10 +267,6 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             var model = new JoinVideoCallModal.Model(chat, JoinVideoCallModal.VideoCallMode.Settings);
             var modeRef = await ModalUI.Show(model, CancellationToken.None).ConfigureAwait(true);
             await modeRef.WhenClosed.ConfigureAwait(true);
-            if (!model.IsConfirmed)
-                return;
-
-            SetBackgroundBlur(model.IsBlurEnabled);
         }
     }
 
