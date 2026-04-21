@@ -1,3 +1,5 @@
+using ActualChat.UI.Blazor.App;
+
 namespace ActualChat.App.Maui;
 
 public static class MauiExceptionHandlers
@@ -9,10 +11,10 @@ public static class MauiExceptionHandlers
         // Useful: list of all MAUI exception handling endpoints:
         // - https://gist.github.com/mattjohnsonpint/7b385b7a2da7059c4a16562bc5ddb3b7
 
-#if false
-        // Enable FCE in Release to add breadcrumbs to crashlytics. It's also enabled for Debug build from ClientStartup.Initialize.
+        // Enable FCE to add breadcrumbs to crashlytics and to surface silent exceptions
+        // that Blazor's ErrorBoundary/ReconnectUI reacts to (otherwise invisible in Release).
+        // Debug builds also enable it from ClientStartup.Initialize.
         FirstChanceExceptionLogger.Use();
-#endif
 
         AppDomain.CurrentDomain.UnhandledException += (_, args) => {
             var logLevel = args.IsTerminating ? LogLevel.Critical : LogLevel.Error;

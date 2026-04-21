@@ -34,35 +34,12 @@ public static partial class MauiProgram
     private static ILogger Log => field ??= StaticLog.For(typeof(MauiProgram));
     private static Tracer Tracer => field ??= Tracer.Default[nameof(MauiProgram)];
 
-    private const string CrashLogPath = @"C:\Temp\fce.log";
-
     static MauiProgram()
     {
-        // Early crash logging — before anything else, to catch Native AOT issues
-        AppDomain.CurrentDomain.FirstChanceException += (_, e) => {
-            try {
-                var line = $"[{DateTime.Now:HH:mm:ss.fff}] FCE: {e.Exception}\n";
-                File.AppendAllText(CrashLogPath, line);
-            }
-            catch { /* best effort */ }
-        };
-        AppDomain.CurrentDomain.UnhandledException += (_, e) => {
-            try {
-                var line = $"[{DateTime.Now:HH:mm:ss.fff}] UNHANDLED: {e.ExceptionObject}\n";
-                File.AppendAllText(CrashLogPath, line);
-            }
-            catch { /* best effort */ }
-        };
-
-        try {
-            File.WriteAllText(CrashLogPath, $"[{DateTime.Now:HH:mm:ss.fff}] === App starting ===\n");
-            MauiDiagnostics.Initialize();
-            File.AppendAllText(CrashLogPath, $"[{DateTime.Now:HH:mm:ss.fff}] MauiDiagnostics.Initialize() done\n");
-        }
-        catch (Exception ex) {
-            File.AppendAllText(CrashLogPath, $"[{DateTime.Now:HH:mm:ss.fff}] FATAL in static ctor: {ex}\n");
-            throw;
-        }
+        // To enable early file-based crash logging for Native AOT bring-up, uncomment MauiNativeAotLogging.Use().
+        // Normally it should be kept off, see MauiNativeAotLogging for caveats.
+        // MauiNativeAotLogging.Use();
+        MauiDiagnostics.Initialize();
     }
 
     public static MauiApp CreateMauiApp()

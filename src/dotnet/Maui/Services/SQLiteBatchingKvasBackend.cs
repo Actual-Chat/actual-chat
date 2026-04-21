@@ -134,6 +134,8 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
             return InitializeCore(dbPath, version, key);
         }
         catch (Exception e) {
+            // InitializeCore drains its own connection pool on failure before rethrowing, so
+            // the file handles are already released by the time we reach DeleteDbFiles.
             Log.LogWarning(e, "Failed to initialize SQLite database, deleting and retrying");
             try {
                 DeleteDbFiles(dbPath);
@@ -146,7 +148,7 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
         }
     }
 
-    private SimpleConcurrentPool<SQLiteConnection> InitializeCore(FilePath dbPath, string version, byte[]? key)
+    private static SimpleConcurrentPool<SQLiteConnection> InitializeCore(FilePath dbPath, string version, byte[]? key)
     {
         var connectionCount = HardwareInfo.ProcessorCount + 2;
         var connections = new SimpleConcurrentPool<SQLiteConnection>(
@@ -154,31 +156,67 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
             static c => !c.IsInTransaction,
             connectionCount);
 
-        using var lease = connections.Rent();
-        var connection = lease.Resource;
-        // connection.EnableWriteAheadLogging();
-        connection.ExecuteScalar<string>("PRAGMA journal_mode=WAL");
-        connection.ExecuteScalar<string>("PRAGMA synchronous=normal");
-        connection.ExecuteScalar<string>("PRAGMA journal_size_limit=2048000");
-        var versionBytes = Encoding.UTF8.GetEncoder().Convert(version);
-        if (connection.CreateTable<DbItem>() == CreateTableResult.Migrated) {
-            var existingVersionBytes = connection.Find<DbItem>(VersionKey)?.Value ?? [];
-            if (!versionBytes.AsSpan().SequenceEqual(existingVersionBytes.AsSpan())) {
-                _ = connection.DropTable<DbItem>();
-                _ = connection.CreateTable<DbItem>();
+        try {
+            using var lease = connections.Rent();
+            var connection = lease.Resource;
+            // connection.EnableWriteAheadLogging();
+            connection.ExecuteScalar<string>("PRAGMA journal_mode=WAL");
+            connection.ExecuteScalar<string>("PRAGMA synchronous=normal");
+            connection.ExecuteScalar<string>("PRAGMA journal_size_limit=2048000");
+            var versionBytes = Encoding.UTF8.GetEncoder().Convert(version);
+            if (connection.CreateTable<DbItem>() == CreateTableResult.Migrated) {
+                var existingVersionBytes = connection.Find<DbItem>(VersionKey)?.Value ?? [];
+                if (!versionBytes.AsSpan().SequenceEqual(existingVersionBytes.AsSpan())) {
+                    _ = connection.DropTable<DbItem>();
+                    _ = connection.CreateTable<DbItem>();
+                }
             }
+            connection.InsertOrReplace(new DbItem { Key = VersionKey, Value = versionBytes });
+            return connections;
         }
-        connection.InsertOrReplace(new DbItem { Key = VersionKey, Value = versionBytes });
-        return connections;
+        catch {
+            // Release file locks before propagating so the caller can delete the db file.
+            connections.Drain(static c => {
+                try { c.Close(); } catch { /* Intended */ }
+            });
+            throw;
+        }
     }
 
     private static void DeleteDbFiles(FilePath dbPath)
     {
+        // Force finalizers so any SQLite handles released by Close() but not yet by the
+        // managed GC are fully cleaned up before we try to delete the backing files.
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
         var path = (string)dbPath;
         foreach (var suffix in new[] { "", "-wal", "-shm" }) {
             var file = path + suffix;
-            if (File.Exists(file))
+            if (!File.Exists(file))
+                continue;
+
+            DeleteWithRetry(file);
+        }
+    }
+
+    private static void DeleteWithRetry(string file)
+    {
+        // Windows can briefly hold the file open after sqlite3_close returns — retry on
+        // ERROR_SHARING_VIOLATION for up to ~500ms, then swallow: the init path is a
+        // best-effort recovery and a failed delete just falls through to the outer catch.
+        const int maxAttempts = 5;
+        var delayMs = 20;
+        for (var attempt = 1; ; attempt++) {
+            try {
                 File.Delete(file);
+                return;
+            }
+            catch (IOException) when (attempt < maxAttempts) {
+                Thread.Sleep(delayMs);
+                delayMs *= 2;
+            }
         }
     }
 

@@ -33,11 +33,21 @@ public static class StjConverterDiscovery
     // App types used in Blazor component parameters or JS interop that aren't
     // discoverable from [JSInvokable]/[JsonSerializable] scanning alone.
     // These need to be listed explicitly as additional root types.
+    //
+    // For dictionary-typed data that crosses JSRuntime.InvokeVoidAsync as `object`, STJ's
+    // runtime-type dispatch resolves converters for the *interface* views too (IDictionary,
+    // IReadOnlyDictionary, IEnumerable<KVP>, IReadOnlyCollection<KVP>, ICollection<KVP>), so
+    // each interface variant has to be a root type for the graph walk to capture them.
     private static readonly Type[] AppRootTypes = [
         typeof(ActualChat.UI.Blazor.Components.VirtualListEdge),
         typeof(ActualChat.UI.Blazor.Services.Tune),
         typeof(ActualChat.UI.Blazor.Services.TuneInfo),
         typeof(Dictionary<ActualChat.UI.Blazor.Services.Tune, ActualChat.UI.Blazor.Services.TuneInfo>),
+        typeof(IDictionary<ActualChat.UI.Blazor.Services.Tune, ActualChat.UI.Blazor.Services.TuneInfo>),
+        typeof(IReadOnlyDictionary<ActualChat.UI.Blazor.Services.Tune, ActualChat.UI.Blazor.Services.TuneInfo>),
+        typeof(IEnumerable<KeyValuePair<ActualChat.UI.Blazor.Services.Tune, ActualChat.UI.Blazor.Services.TuneInfo>>),
+        typeof(IReadOnlyCollection<KeyValuePair<ActualChat.UI.Blazor.Services.Tune, ActualChat.UI.Blazor.Services.TuneInfo>>),
+        typeof(ICollection<KeyValuePair<ActualChat.UI.Blazor.Services.Tune, ActualChat.UI.Blazor.Services.TuneInfo>>),
         typeof(KeyValuePair<ActualChat.UI.Blazor.Services.Tune, ActualChat.UI.Blazor.Services.TuneInfo>),
         typeof(List<ActualLab.Text.Symbol>),
         typeof(ActualLab.Text.Symbol),

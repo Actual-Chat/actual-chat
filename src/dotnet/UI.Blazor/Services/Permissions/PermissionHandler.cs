@@ -106,7 +106,9 @@ public abstract class PermissionHandler : UIWorkerBase<UIHub>
             var cExpected = cCached;
             if (ExpirationPeriod is { } expirationPeriod)
                 _ = BackgroundTask.Run(async () => {
-                    await Clock.Delay(expirationPeriod, expirationToken).ConfigureAwait(false);
+                    await Clock.Delay(expirationPeriod, expirationToken).SilentAwait(false);
+                    if (expirationToken.IsCancellationRequested)
+                        return; // Cached value changed or shutdown — don't expire
                     await Set(null, cExpected, cancellationToken).ConfigureAwait(false);
                 }, Log, "Expiration task failed", CancellationToken.None);
         }

@@ -5,9 +5,14 @@ namespace ActualChat.App.Maui;
 
 public class WindowsAppSettings : INativeAppSettings
 {
+    // ELEMENT_NOT_FOUND: StartupTask isn't registered (unpackaged or not declared in the manifest).
+    private const int HResultElementNotFound = unchecked((int)0x80070490);
+
     public async Task<AutoStartState> GetAutoStartState()
     {
-        var startupTask = await GetStartupTask().ConfigureAwait(true);
+        var startupTask = await TryGetStartupTask().ConfigureAwait(true);
+        if (startupTask == null)
+            return new AutoStartState(false); // Auto-start not available in this install mode
         return startupTask.State switch {
             StartupTaskState.Enabled => new AutoStartState(true),
             StartupTaskState.EnabledByPolicy => new AutoStartState(true, false,
@@ -24,7 +29,9 @@ public class WindowsAppSettings : INativeAppSettings
 
     public async Task SetAutoStart(bool isEnabled)
     {
-        var startupTask = await GetStartupTask().ConfigureAwait(true);
+        var startupTask = await TryGetStartupTask().ConfigureAwait(true);
+        if (startupTask == null)
+            return; // Auto-start not available in this install mode
         if (isEnabled) {
             switch (startupTask.State) {
             case StartupTaskState.Enabled:
@@ -53,9 +60,18 @@ public class WindowsAppSettings : INativeAppSettings
         }
     }
 
-    private static async Task<StartupTask> GetStartupTask()
-        // Pass the task ID you specified in the appxmanifest file
-        => await StartupTask.GetAsync("{2720A628-2446-460A-9B15-9F3B41104E79}");
+    private static async Task<StartupTask?> TryGetStartupTask()
+    {
+        try {
+            // Pass the task ID you specified in the appxmanifest file
+            return await StartupTask.GetAsync("{2720A628-2446-460A-9B15-9F3B41104E79}");
+        }
+        catch (COMException e) when (e.HResult == HResultElementNotFound) {
+            // Unpackaged app or task not declared in the AppxManifest — auto-start is simply
+            // not offered by the platform in this mode.
+            return null;
+        }
+    }
 
     private void OpenTaskManager()
     {

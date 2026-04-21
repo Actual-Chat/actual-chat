@@ -153,8 +153,10 @@ export class BrowserInit {
                     const classList = reconnectDiv.classList;
                     if (classList.length == 0 || classList.contains('components-reconnect-hide'))
                         this.resetAppConnectionState();
-                    else if (classList.contains('components-reconnect-rejected'))
+                    else if (classList.contains('components-reconnect-rejected')) {
+                        warnLog?.log(`startReloading: triggered by #components-reconnect-modal [${classList.toString()}], innerText=${reconnectDiv.innerText?.slice(0, 500)}`);
                         void this.startReloading();
+                    }
                     else if (classList.contains('components-reconnect-failed'))
                         this.startReconnecting(true);
                     else if (classList.contains('components-reconnect-show'))
@@ -170,8 +172,10 @@ export class BrowserInit {
             const errorDiv = document.getElementById('blazor-error-ui');
             if (errorDiv) {
                 const checkErrorDiv = () => {
-                    if (errorDiv.style.display === 'block')
+                    if (errorDiv.style.display === 'block') {
+                        warnLog?.log(`startReloading: triggered by #blazor-error-ui display=block, innerText=${errorDiv.innerText?.slice(0, 500)}`);
                         void this.startReloading();
+                    }
                 }
                 const observer = new MutationObserver(() => checkErrorDiv());
                 observer.observe(errorDiv, { attributes: true });

@@ -64,23 +64,11 @@ internal class MauiAppAotSource : IAotSource
 #endif
 
 #if WINDOWS
-        // NAudio COM interop: ILC needs full metadata for the ComObject wrappers so that
-        // `new MMDeviceEnumerator()` and related APIs don't trip InvalidProgramException
-        // under NativeAOT. See Platforms/Windows/Audio/WindowsAudioCapture.cs.
-        CodeKeeper.Keep("NAudio.CoreAudioApi.MMDeviceEnumerator, NAudio.Wasapi");
-        CodeKeeper.Keep("NAudio.CoreAudioApi.MMDevice, NAudio.Wasapi");
-        CodeKeeper.Keep("NAudio.CoreAudioApi.AudioEndpointVolume, NAudio.Wasapi");
-        CodeKeeper.Keep("NAudio.CoreAudioApi.Interfaces.IMMDeviceEnumerator, NAudio.Wasapi");
-        CodeKeeper.Keep("NAudio.CoreAudioApi.Interfaces.IMMDevice, NAudio.Wasapi");
-        CodeKeeper.Keep("NAudio.CoreAudioApi.Interfaces.IMMEndpoint, NAudio.Wasapi");
-        CodeKeeper.Keep("NAudio.CoreAudioApi.Interfaces.IMMNotificationClient, NAudio.Wasapi");
-        CodeKeeper.Keep("NAudio.CoreAudioApi.Interfaces.IAudioEndpointVolume, NAudio.Wasapi");
-        CodeKeeper.Keep("NAudio.CoreAudioApi.Interfaces.IAudioClient, NAudio.Wasapi");
-        CodeKeeper.Keep("NAudio.CoreAudioApi.Interfaces.IAudioCaptureClient, NAudio.Wasapi");
-        CodeKeeper.Keep("NAudio.CoreAudioApi.Interfaces.IAudioRenderClient, NAudio.Wasapi");
-        CodeKeeper.Keep("NAudio.CoreAudioApi.AudioClient, NAudio.Wasapi");
-        CodeKeeper.Keep("NAudio.Wave.WasapiCapture, NAudio.Wasapi");
-        CodeKeeper.Keep("NAudio.Wave.WasapiLoopbackCapture, NAudio.Wasapi");
+        // NAudio is preserved wholesale via <TrimmerRootAssembly Include="NAudio.Wasapi" />
+        // in App.Maui.csproj (Windows Native AOT path) because ILC otherwise emits invalid
+        // bodies for the ComObject wrapper ctors. CodeKeeper alone is insufficient — the
+        // types have no generic instantiations we could exercise here. If new closed-generic
+        // NAudio instantiations show up, pin them below.
 
         // WinRT StartupTask API: ensure both the public projection types and the CsWinRT-
         // generated ABI stubs are kept so that StartupTask.GetAsync / RequestEnableAsync /

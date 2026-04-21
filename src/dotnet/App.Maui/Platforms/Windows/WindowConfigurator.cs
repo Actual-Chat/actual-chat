@@ -34,9 +34,12 @@ internal static class WindowConfigurator
                 if (!App.MustMinimizeOnQuit)
                     return;
 
-                var presenter = (Microsoft.UI.Windowing.OverlappedPresenter)appWindow.Presenter;
-                presenter.Minimize();
-                e.Cancel = true;
+                // Presenter may not be OverlappedPresenter — e.g. CompactOverlay /
+                // FullScreen. Use pattern-match to avoid InvalidCastException FCE.
+                if (appWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter) {
+                    presenter.Minimize();
+                    e.Cancel = true;
+                }
             };
         }
         catch {
@@ -48,8 +51,8 @@ internal static class WindowConfigurator
     {
         try {
             var appWindow = window.GetAppWindow()!;
-            var presenter = (Microsoft.UI.Windowing.OverlappedPresenter)appWindow.Presenter;
-            presenter.Maximize();
+            if (appWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter)
+                presenter.Maximize();
         }
         catch {
             // In unpackaged/AOT mode, GetAppWindow may fail — just activate the window

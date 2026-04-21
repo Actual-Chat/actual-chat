@@ -31,6 +31,20 @@ internal static class BlazorUIModuleInitializer
         CodeKeeper.Keep<long>();
         CodeKeeper.Keep<float>();
 
+        // ApiArrayJsonConverter builds per-T sub-converters through a parameterless
+        // Expression<Func<Converter<T>>> factory. NativeAOT needs each concrete Converter<T>
+        // and its Expression/Func generic instantiations kept explicitly for every T that
+        // crosses JSON. The inner Converter<T> is internal so we use AQN-form keeps.
+        // If new ApiArray<T> types appear in JS interop, add their triple here.
+        CodeKeeper.Keep("ActualLab.Api.Internal.ApiArrayJsonConverter+Converter`1"
+            + "[[ActualLab.Text.Symbol, ActualLab.Core]], ActualLab.Core");
+        CodeKeeper.Keep("System.Func`1[[ActualLab.Api.Internal.ApiArrayJsonConverter+Converter`1"
+            + "[[ActualLab.Text.Symbol, ActualLab.Core]], ActualLab.Core]], System.Private.CoreLib");
+        CodeKeeper.Keep("System.Linq.Expressions.Expression`1[[System.Func`1"
+            + "[[ActualLab.Api.Internal.ApiArrayJsonConverter+Converter`1"
+            + "[[ActualLab.Text.Symbol, ActualLab.Core]], ActualLab.Core]], System.Private.CoreLib]]"
+            + ", System.Linq.Expressions");
+
         // Note: CreateDefaultStateOptionsFactory<T> keeps are now auto-generated
         // by App.AotHelper -g (discovers all ComputedStateComponent<T> descendants).
 

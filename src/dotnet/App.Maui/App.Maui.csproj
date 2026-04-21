@@ -219,13 +219,21 @@
     <PublishReadyToRunCrossgen2ExtraArgs>--embed-pgo-data;--mibc:$(MSBuildThisFileDirectory)_Profiling\merged.mibc</PublishReadyToRunCrossgen2ExtraArgs>
   </PropertyGroup>
 
-  <!-- Trimming -->
-  <!-- Trimmer root assemblies — not needed for Native AOT (CodeKeeper handles retention) -->
-  <ItemGroup Condition="!$(UseNativeAot)">
+  <!-- Trimming: trimmer root assemblies apply to both R2R/Mono trimming and Native AOT.
+       Under NAOT, CodeKeeper keeps reflection-referenced types but ILC still needs every
+       ctor/method body preserved for COM/JNI/ObjC activation paths — see the Native AOT
+       section below for third-party roots. -->
+  <ItemGroup>
     <!--
     <TrimmerRootDescriptor Include="ILLink.Descriptors.xml" />
     -->
-    <TrimmerRootAssembly Include="ActualChat" RootMode="EntryPoint" />
+    <!-- ActualChat.dll is the App.Maui output (AssemblyName override); RootMode="All"
+         so Platforms/{Windows,Android,iOS,MacCatalyst} code isn't trimmed. -->
+    <TrimmerRootAssembly Include="ActualChat" RootMode="All" />
+    <!-- MAUI services assembly (App.Maui's output is ActualChat.dll itself — see the
+         AssemblyName override above — and is rooted in the block above with RootMode="All"). -->
+    <TrimmerRootAssembly Include="ActualChat.Maui" RootMode="All" />
+    <!-- Other crucial assemblies -->
     <TrimmerRootAssembly Include="ActualChat.Api" RootMode="All" />
     <TrimmerRootAssembly Include="ActualChat.Api.Contracts" RootMode="All" />
     <TrimmerRootAssembly Include="ActualChat.UI.Blazor" RootMode="All" />
@@ -494,6 +502,17 @@
     <NativeDebugSymbols>false</NativeDebugSymbols>
     <StripSymbols>false</StripSymbols>
   </PropertyGroup>
+
+  <!-- Windows: NAudio is not AOT-compatible for its [ComImport]-based COM wrappers
+       (MMDeviceEnumeratorComObject..ctor() emits InvalidProgramException under NAOT even
+       with TrimmerRootAssembly — confirmed known limitation, see naudio/NAudio#1211 and
+       dotnet/runtime#75060). WindowsAudioCapture degrades gracefully when this fails;
+       keep NAudio.Wasapi rooted anyway so any non-COM code paths (WaveFormat, etc.) stay
+       intact, and CodeKeeper can't reach every member through reflection alone. -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
+    <TrimmerRootAssembly Include="NAudio.Wasapi" RootMode="All" />
+    <TrimmerRootAssembly Include="NAudio.Core" RootMode="All" />
+  </ItemGroup>
 
   <!-- Resources -->
 

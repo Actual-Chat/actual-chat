@@ -104,13 +104,17 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
             loopbackCapture.WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(Constants.Audio.RecordingSampleRate, 1);
         }
         catch (Exception e) {
-            Log.LogError(e, "Failed to initialize NAudio capture devices");
-            apm.DisposeSilently();
-            inputNode.DisposeSilently();
-            graph.DisposeSilently();
+            // Under NativeAOT, ILC emits an invalid body for NAudio's COM ComObject wrapper
+            // ctor (InvalidProgramException on MMDeviceEnumeratorComObject..ctor()).
+            // TrimmerRootAssembly on NAudio.Wasapi does not fix it. Same pattern as the
+            // WindowConfigurator / WindowsAppIconBadge known issues: wrap and degrade.
+            // The mic itself goes through WinRT AudioGraph above (AOT-safe), so we continue
+            // without the AEC loopback reverse stream and without mic volume control.
+            Log.LogWarning(e, "NAudio capture devices unavailable; continuing without AEC loopback and mic volume control");
             loopbackCapture.DisposeSilently();
+            loopbackCapture = null;
             micDevice.DisposeSilently();
-            return null;
+            micDevice = null;
         }
 
         // Throttled access to microphone volume to avoid per-frame COM calls
@@ -192,7 +196,7 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
         }, processingCts.Token);
         // Start recording
         try {
-            loopbackCapture.StartRecording();
+            loopbackCapture?.StartRecording();
             graph.Start();
             inputNode.Start();
         }
