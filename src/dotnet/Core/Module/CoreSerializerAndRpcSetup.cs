@@ -14,7 +14,6 @@ public static class CoreSerializerAndRpcSetup
     private static readonly Lock Lock = new();
     private static readonly List<IFormatterResolver> PrependResolvers = new();
     private static readonly List<IFormatterResolver> GeneratedResolvers = new();
-    private static bool _isConfigured;
 
     [ModuleInitializer]
     internal static void ModuleInitializer()
@@ -22,10 +21,8 @@ public static class CoreSerializerAndRpcSetup
 
     public static void Configure(bool isServer)
     {
-        lock (Lock) {
-            _isConfigured = true;
+        lock (Lock)
             RebuildResolverChain();
-        }
 #if USE_MESSAGEPACK
         var useMessagePack = true;
 #else
@@ -62,8 +59,7 @@ public static class CoreSerializerAndRpcSetup
     {
         lock (Lock) {
             PrependResolvers.Add(resolver);
-            if (_isConfigured)
-                RebuildResolverChain();
+            RebuildResolverChain();
         }
     }
 
@@ -71,8 +67,7 @@ public static class CoreSerializerAndRpcSetup
     {
         lock (Lock) {
             GeneratedResolvers.Add(resolver);
-            if (_isConfigured)
-                RebuildResolverChain();
+            RebuildResolverChain();
         }
     }
 
