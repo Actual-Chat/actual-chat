@@ -22,9 +22,7 @@ public static class ApiModuleInitializer
         // AudioFrame — enables serialize-once fan-out via the frame's SerializedData.
         CoreSerializerAndRpcSetup.AddPrependResolver(Video.CachingVideoFrameResolver.Instance);
         CoreSerializerAndRpcSetup.AddPrependResolver(Audio.CachingAudioFrameResolver.Instance);
-        // NB: no explicit AddGeneratedResolver(GeneratedMessagePackResolver.Instance) — the
-        // [assembly: GeneratedAssemblyMessagePackResolver] attribute emitted by the SG is
-        // picked up automatically by SourceGeneratedFormatterResolver in the default chain.
+        CoreSerializerAndRpcSetup.AddGeneratedResolver(GeneratedMessagePackResolver.Instance);
 
         // Custom MemoryPack formatters
 

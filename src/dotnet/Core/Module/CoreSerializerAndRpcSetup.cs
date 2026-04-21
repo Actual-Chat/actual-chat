@@ -13,6 +13,7 @@ public static class CoreSerializerAndRpcSetup
 {
     private static readonly Lock Lock = new();
     private static readonly List<IFormatterResolver> PrependResolvers = new();
+    private static readonly List<IFormatterResolver> GeneratedResolvers = new();
     private static bool _isConfigured;
     private static bool _isServer;
 
@@ -68,6 +69,15 @@ public static class CoreSerializerAndRpcSetup
         }
     }
 
+    public static void AddGeneratedResolver(IFormatterResolver resolver)
+    {
+        lock (Lock) {
+            GeneratedResolvers.Add(resolver);
+            if (_isConfigured)
+                RebuildResolverChain();
+        }
+    }
+
     // Private methods
 
     private static RpcSerializationFormat GetFullRpcSerializationFormat(bool useMessagePack = false)
@@ -82,26 +92,30 @@ public static class CoreSerializerAndRpcSetup
 
     private static void RebuildResolverChain()
     {
-        // SourceGeneratedFormatterResolver scans every loaded assembly for
-        // [assembly: GeneratedAssemblyMessagePackResolver(typeof(X))] (emitted by the
-        // MessagePack SG for ActualChat.Api / Api.Contracts / UI.Blazor.App as well as
-        // external ActualLab.Rpc / Core / Fusion etc.) and dispatches to the matching
-        // generated resolver — so we don't need to register each GeneratedMessagePackResolver
-        // explicitly. It's cheap and touches no dynamic-emit machinery.
-        //
-        // StandardResolver is the JIT-only dynamic fallback for the long tail of user arrays,
-        // enums, and other shapes the SG didn't pre-generate. Under genuine NativeAOT its
-        // emit paths would throw — at which point AotFormatterPresenceTest is the regression
-        // canary ensuring every type in AotTypes.All has a non-dynamic formatter registered
-        // ahead of time.
-        IFormatterResolver[] fallback = [
-            SourceGeneratedFormatterResolver.Instance,
-            StandardResolver.Instance,
-        ];
+        // Both modes put SourceGeneratedFormatterResolver first so types with
+        // [assembly: GeneratedAssemblyMessagePackResolver] (ActualLab.Rpc / Core / Fusion,
+        // etc.) resolve without touching StandardResolver's dynamic-emit machinery — cheaper
+        // startup on server and AOT-safe on client.
+        // Server also keeps StandardResolver as a last-resort dynamic fallback (JIT-only).
+        // Client omits StandardResolver: a type that's not covered by the static resolvers
+        // here or the explicitly-registered generated resolvers throws FormatterNotRegistered
+        // at runtime — intended, since silently falling back to IL emit would hide AOT-unsafe paths.
+        IFormatterResolver[] fallback = _isServer
+            ? [
+                SourceGeneratedFormatterResolver.Instance,
+                StandardResolver.Instance,
+            ]
+            : [
+                SourceGeneratedFormatterResolver.Instance,
+                BuiltinResolver.Instance,
+                AttributeFormatterResolver.Instance,
+                MessagePack.ImmutableCollection.ImmutableCollectionResolver.Instance,
+            ];
 
-        var chain = new IFormatterResolver[PrependResolvers.Count + fallback.Length];
+        var chain = new IFormatterResolver[PrependResolvers.Count + GeneratedResolvers.Count + fallback.Length];
         PrependResolvers.CopyTo(chain, 0);
-        fallback.CopyTo(chain, PrependResolvers.Count);
+        GeneratedResolvers.CopyTo(chain, PrependResolvers.Count);
+        fallback.CopyTo(chain, PrependResolvers.Count + GeneratedResolvers.Count);
         DefaultMessagePackResolver.Resolvers = chain;
     }
 }
