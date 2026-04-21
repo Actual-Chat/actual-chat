@@ -203,32 +203,40 @@
         _cameraState = CameraState.Starting;
         StateHasChanged();
 
-        if (IsSettingsMode) {
-            // Settings mode: attach to the active recorder's preview stream
-            var attached = await _jsRef.InvokeAsync<bool>("attachFromRecorder");
-            if (attached) {
-                _isVideoOn = true;
-                _cameraState = CameraState.On;
-                // Start blur preview if blur is currently active
-                if (_isBlurEnabled)
-                    await _jsRef.InvokeVoidAsync("toggleBlur", true);
+        // Fire-and-forget: on Windows (unpackaged NativeAOT) getUserMedia may never resolve
+        // because camera permission isn't declared in the app manifest. Awaiting the JS call
+        // from OnAfterRenderAsync blocks the Blazor render dispatcher and prevents any
+        // subsequent click (e.g. Join/Cancel) from running DisposeAsync, so the whole app
+        // hangs. OnFirstFrameRendered (JSInvokable) updates CameraState.On when it arrives.
+        _ = BackgroundTask.Run(StartPreview, Hub.LogFor(GetType()),
+            "JoinVideoCallModal preview start failed");
+        return;
+
+        async Task StartPreview() {
+            if (_jsRef is null)
+                return;
+
+            bool success;
+            if (IsSettingsMode) {
+                // Settings mode: attach to the active recorder's preview stream
+                success = await _jsRef.InvokeAsync<bool>("attachFromRecorder");
             } else {
-                _cameraState = CameraState.Off;
+                // Normal mode: acquire our own stream
+                success = await _jsRef.InvokeAsync<bool>("startPreview", _selectedDevice?.DeviceId);
             }
-        } else {
-            // Normal mode: acquire our own stream
-            var deviceId = _selectedDevice?.DeviceId;
-            var success = await _jsRef.InvokeAsync<bool>("startPreview", deviceId);
-            if (success) {
-                _isVideoOn = true;
-                _cameraState = CameraState.On;
-                if (_isBlurEnabled)
-                    await _jsRef.InvokeVoidAsync("toggleBlur", true);
-            } else {
-                _cameraState = CameraState.Unavailable;
-            }
+
+            await InvokeAsync(async () => {
+                if (success) {
+                    _isVideoOn = true;
+                    _cameraState = CameraState.On;
+                    if (_isBlurEnabled && _jsRef is not null)
+                        await _jsRef.InvokeVoidAsync("toggleBlur", true);
+                } else {
+                    _cameraState = IsSettingsMode ? CameraState.Off : CameraState.Unavailable;
+                }
+                StateHasChanged();
+            });
         }
-        StateHasChanged();
     }
 
     public override async ValueTask DisposeAsync() {
@@ -332,22 +340,35 @@
             await _jsRef.InvokeVoidAsync("toggleBlur", _isBlurEnabled);
     }
 
-    private async Task OnJoinClick() {
+    private Task OnJoinClick() {
         if (!IsSettingsMode) {
-            // Get actual device ID from JS before closing — the browser may have
-            // picked a different camera than what was originally requested (e.g.,
-            // front camera when no device ID was specified).
-            string? deviceId = null;
+            // Ideally we'd query `getActualDeviceId` from JS — the browser can pick a
+            // different camera than what was originally requested (e.g. front camera when
+            // no device ID was specified). BUT: if the preview is still hanging on an
+            // unresolved getUserMedia (common on Windows NativeAOT without cam permission),
+            // the JS event loop is busy and our call would wait forever, freezing the UI.
+            // So we use the selected device id + fire a best-effort lookup in the background
+            // to update the model later.
+            ModalModel.SelectedDeviceId = _selectedDevice?.DeviceId;
             if (_jsRef is not null)
-                deviceId = await _jsRef.InvokeAsync<string?>("getActualDeviceId");
-            if (string.IsNullOrEmpty(deviceId))
-                deviceId = _selectedDevice?.DeviceId;
-            ModalModel.SelectedDeviceId = deviceId;
+                _ = TryUpdateActualDeviceId(_jsRef, ModalModel);
         }
         ModalModel.IsBlurEnabled = _isBlurEnabled;
         ModalModel.IsConfirmed = true;
-        await DisposeAsync();
+        _ = DisposeAsync();  // fire-and-forget — don't block Modal.Close on the JS dispose roundtrip
         Modal.Close();
+        return Task.CompletedTask;
+
+        static async Task TryUpdateActualDeviceId(IJSObjectReference jsRef, Model model) {
+            try {
+                var deviceId = await jsRef.InvokeAsync<string?>("getActualDeviceId");
+                if (!string.IsNullOrEmpty(deviceId))
+                    model.SelectedDeviceId = deviceId;
+            }
+            catch {
+                // Best effort — ignore
+            }
+        }
     }
 
     private async Task OnMicToggle() {

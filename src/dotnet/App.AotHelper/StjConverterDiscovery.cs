@@ -49,7 +49,22 @@ public static class StjConverterDiscovery
         typeof(IReadOnlyCollection<KeyValuePair<ActualChat.UI.Blazor.Services.Tune, ActualChat.UI.Blazor.Services.TuneInfo>>),
         typeof(ICollection<KeyValuePair<ActualChat.UI.Blazor.Services.Tune, ActualChat.UI.Blazor.Services.TuneInfo>>),
         typeof(KeyValuePair<ActualChat.UI.Blazor.Services.Tune, ActualChat.UI.Blazor.Services.TuneInfo>),
+        // Dictionary<string, bool> family — surfaces in Blazor/JS interop under the `object`
+        // runtime-type dispatch path (e.g. generic feature/flag maps). Same interface-variant
+        // problem as Tune/TuneInfo above.
+        typeof(Dictionary<string, bool>),
+        typeof(IDictionary<string, bool>),
+        typeof(IReadOnlyDictionary<string, bool>),
+        typeof(IEnumerable<KeyValuePair<string, bool>>),
+        typeof(IReadOnlyCollection<KeyValuePair<string, bool>>),
+        typeof(ICollection<KeyValuePair<string, bool>>),
+        typeof(KeyValuePair<string, bool>),
         typeof(List<ActualLab.Text.Symbol>),
+        typeof(IEnumerable<ActualLab.Text.Symbol>),
+        typeof(IReadOnlyCollection<ActualLab.Text.Symbol>),
+        typeof(IReadOnlyList<ActualLab.Text.Symbol>),
+        typeof(ICollection<ActualLab.Text.Symbol>),
+        typeof(IList<ActualLab.Text.Symbol>),
         typeof(ActualLab.Text.Symbol),
         typeof(ActualChat.Chat.PlayableTextMarkup.Word),
         typeof(ActualChat.Chat.PlayableTextMarkup.Word[]),
@@ -57,8 +72,18 @@ public static class StjConverterDiscovery
 
     // Internal framework types (by AQN) that need keeping but can't be discovered via STJ
     private static readonly string[] FrameworkKeeps = [
-        // JSInterop internals
+        // JSInterop internals — TaskResultGetter<T> resolves JS return values going into
+        // Task<T>/ValueTask<T>; TcsResultSetter<T> resolves managed-side Task<T> completion
+        // when JS invokes .NET. Both are constructed reflectively via Activator.CreateInstance.
         "Microsoft.JSInterop.Infrastructure.TaskGenericsUtil+TaskResultGetter`1" +
+            "[[System.Threading.Tasks.VoidTaskResult, System.Private.CoreLib]], Microsoft.JSInterop",
+        "Microsoft.JSInterop.Infrastructure.TaskGenericsUtil+TcsResultSetter`1" +
+            "[[System.Boolean, System.Private.CoreLib]], Microsoft.JSInterop",
+        "Microsoft.JSInterop.Infrastructure.TaskGenericsUtil+TcsResultSetter`1" +
+            "[[System.String, System.Private.CoreLib]], Microsoft.JSInterop",
+        "Microsoft.JSInterop.Infrastructure.TaskGenericsUtil+TcsResultSetter`1" +
+            "[[System.Int32, System.Private.CoreLib]], Microsoft.JSInterop",
+        "Microsoft.JSInterop.Infrastructure.TaskGenericsUtil+TcsResultSetter`1" +
             "[[System.Threading.Tasks.VoidTaskResult, System.Private.CoreLib]], Microsoft.JSInterop",
         "System.Text.Json.Serialization.Converters.ObjectDefaultConverter`1" +
             "[[System.Threading.Tasks.VoidTaskResult, System.Private.CoreLib]], System.Text.Json",
