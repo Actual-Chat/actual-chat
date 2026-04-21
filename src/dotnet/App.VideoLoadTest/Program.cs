@@ -1,37 +1,32 @@
 using System.Buffers;
-using System.Collections.Concurrent;
 using System.Net.WebSockets;
-using ActualChat;
-using ActualChat.Chat;
 using ActualChat.Hosting;
 using ActualChat.Module;
 using ActualChat.Security;
 using ActualChat.Streaming;
-using ActualChat.Users;
 using ActualChat.Video;
 using ActualLab.Rpc;
-using MessagePack;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using static System.Console;
 
-CoreSerializerAndRpcSetup.Configure(true);
+CoreSerializerAndRpcSetup.Configure(isServer: true);
 
 // Ensure enough ThreadPool threads for 300+ concurrent async operations
 ThreadPool.SetMinThreads(Environment.ProcessorCount, Environment.ProcessorCount * 10);
 
 // Pre-warm MessagePack type resolver cache to avoid lock contention under concurrent connections.
 // Must use non-generic overloads — SignalR uses Serialize(Type, ...) which has a separate cache.
+#pragma warning disable CA2263 // Prefer generic overload
 MessagePackSerializer.Serialize(typeof(string), "");
 MessagePackSerializer.Serialize(typeof(int), 0);
 MessagePackSerializer.Serialize(typeof(double), 0.0);
 MessagePackSerializer.Serialize(typeof(bool), true);
 MessagePackSerializer.Serialize(typeof(byte[]), Array.Empty<byte>());
 MessagePackSerializer.Serialize(typeof(byte[][]), Array.Empty<byte[]>());
+#pragma warning restore CA2263
 
 // --- Configuration ---
 const int GopSize = 30;

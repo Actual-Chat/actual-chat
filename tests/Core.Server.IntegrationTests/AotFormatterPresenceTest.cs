@@ -23,12 +23,7 @@ namespace ActualChat.Core.Server.IntegrationTests;
 public class AotFormatterPresenceTest
 {
     static AotFormatterPresenceTest()
-    {
-        // Force module initializers of referenced assemblies to run (they register AotSources
-        // and PrependResolvers). Configure the resolver chain in client mode — no dynamic fallback.
-        RuntimeHelpers.RunClassConstructor(typeof(CoreSerializerAndRpcSetup).TypeHandle);
-        CoreSerializerAndRpcSetup.Configure(isServer: false);
-    }
+        => CoreSerializerAndRpcSetup.Configure(isServer: true);
 
 #if USE_MESSAGEPACK
     [Fact]

@@ -14,11 +14,10 @@ public static class ApiModuleInitializer
     internal static void ModuleInitializer()
     {
         AotTypes.AddSource(new ApiAotSource());
+        CoreSerializerAndRpcSetup.AddGeneratedMessagePackResolver(GeneratedMessagePackResolver.Instance);
         // This is super important: TypeRef and some other types that were formerly using Symbol
         // are stored in our DB, and this option enables their legacy serialization mode.
         StringAsSymbolMemoryPackFormatterAttribute.IsEnabled = true;
-
-        CoreSerializerAndRpcSetup.AddGeneratedResolver(GeneratedMessagePackResolver.Instance);
 
         // Custom MemoryPack formatters
 

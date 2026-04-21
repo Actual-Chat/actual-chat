@@ -20,7 +20,7 @@ internal static class Program
 #endif
 
         RuntimeInfo.IsServer = true;
-        CoreSerializerAndRpcSetup.Configure(true);
+        CoreSerializerAndRpcSetup.Configure(isServer: true);
         RpcOutboundCallOptions.Default = RpcOutboundCallOptions.Default with {
             Hasher = data => {
                 // SIMD-based version of Blake3 we use here is much faster than SSH256.

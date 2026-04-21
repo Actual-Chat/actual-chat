@@ -1,7 +1,6 @@
 using ActualChat.Aot;
 using ActualLab.Rpc;
 using ActualLab.Serialization.Internal;
-using MessagePack;
 using MessagePack.Resolvers;
 
 namespace ActualChat.Module;
@@ -12,7 +11,6 @@ namespace ActualChat.Module;
 public static class CoreSerializerAndRpcSetup
 {
     private static readonly Lock Lock = new();
-    private static readonly List<IFormatterResolver> PrependResolvers = new();
     private static readonly List<IFormatterResolver> GeneratedResolvers = new();
 
     [ModuleInitializer]
@@ -55,15 +53,7 @@ public static class CoreSerializerAndRpcSetup
 #endif
     }
 
-    public static void AddPrependResolver(IFormatterResolver resolver)
-    {
-        lock (Lock) {
-            PrependResolvers.Add(resolver);
-            RebuildResolverChain();
-        }
-    }
-
-    public static void AddGeneratedResolver(IFormatterResolver resolver)
+    public static void AddGeneratedMessagePackResolver(IFormatterResolver resolver)
     {
         lock (Lock) {
             GeneratedResolvers.Add(resolver);
@@ -101,10 +91,9 @@ public static class CoreSerializerAndRpcSetup
             StandardResolver.Instance,
         ];
 
-        var chain = new IFormatterResolver[PrependResolvers.Count + GeneratedResolvers.Count + fallback.Length];
-        PrependResolvers.CopyTo(chain, 0);
-        GeneratedResolvers.CopyTo(chain, PrependResolvers.Count);
-        fallback.CopyTo(chain, PrependResolvers.Count + GeneratedResolvers.Count);
+        var chain = new IFormatterResolver[GeneratedResolvers.Count + fallback.Length];
+        GeneratedResolvers.CopyTo(chain, 0);
+        fallback.CopyTo(chain, GeneratedResolvers.Count);
         DefaultMessagePackResolver.Resolvers = chain;
     }
 }

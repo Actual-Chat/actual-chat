@@ -5,7 +5,7 @@ using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.Hosting;
 using static System.Console;
 
-CoreSerializerAndRpcSetup.Configure(true);
+CoreSerializerAndRpcSetup.Configure(isServer: false);
 
 var cancellationTokenSource = new CancellationTokenSource();
 var cancellationToken = cancellationTokenSource.Token;
