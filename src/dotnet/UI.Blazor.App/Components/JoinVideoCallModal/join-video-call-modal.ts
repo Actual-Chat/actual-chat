@@ -172,11 +172,9 @@ export class JoinVideoCallModal {
         return success;
     }
 
+    // Flips front/back by facingMode so the browser picks the primary lens per
+    // facing (avoids cycling main/ultrawide/tele). Returns false on single-facing devices.
     public async switchFacing(): Promise<boolean> {
-        // Toggle between front ('user') and back ('environment') on mobile.
-        // Picks by facingMode rather than deviceId so the browser selects the
-        // primary lens for each facing (avoids cycling main/ultrawide/tele).
-        // Returns false if the opposite facing isn't available on this device.
         const target: 'user' | 'environment' =
             this.currentFacingMode === 'environment' ? 'user' : 'environment';
         infoLog?.log(`switchFacing: ${this.currentFacingMode ?? '(unknown)'} -> ${target}`);
@@ -199,8 +197,8 @@ export class JoinVideoCallModal {
         return this.selectedDeviceId;
     }
 
+    // Consumed by Blazor to resolve per-camera display preferences (mirror etc.).
     public getCurrentCameraInfo(): { deviceId: string | null; facingMode: string | null } {
-        // Consumed by Blazor to resolve per-camera display preferences (mirror etc.).
         return { deviceId: this.selectedDeviceId, facingMode: this.currentFacingMode };
     }
 
@@ -271,8 +269,8 @@ export class JoinVideoCallModal {
         infoLog?.log('Detached from recorder preview stream');
     }
 
+    // Toggles a CSS class on .video-frame that overrides scaleX(-1).
     public setMirrored(mirrored: boolean): void {
-        // Toggles a CSS class on .video-frame that overrides scaleX(-1).
         const frame = this.container.querySelector<HTMLElement>('.video-frame');
         if (frame)
             frame.classList.toggle('no-mirror', !mirrored);

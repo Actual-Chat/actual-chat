@@ -44,22 +44,34 @@ This document describes the coding conventions used in Voxt (formerly Actual Cha
 - Place accessor holder attributes on separate lines (unless the owner is single-line).
 
 #### Comments and XML Documentation:
-- **DO write `/// <summary>` XML documentation comments for every type**
-  (class, struct, record, interface, enum, delegate), including nested types
-- Keep XML summaries concise: 1-2 lines describing the type's purpose
-- Use `<see cref="..."/>` to reference related types
-- Prefer regular comments over XML documentation for members (methods, properties, fields)
-- When XML documentation exists on members, maintain its style and completeness
 
-**Placement order** (top to bottom):
-1. Regular `//` comment (optional, for extra context not suitable for API docs)
+**Types (class, struct, record, interface, enum, delegate, including nested):**
+- DO write a `/// <summary>` XML doc.
+- Keep it short: **5 lines maximum, 3 lines ideal.** If a type doc keeps growing,
+  split the type — don't keep writing.
+- Use `<see cref="..."/>` for cross-references.
+
+**Members (methods, properties, fields, events):**
+- **Do NOT write `/// <summary>` XML docs.** Ever. This is stricter than the
+  default .NET guidance. `///` on members bloats IntelliSense with prose that
+  ages faster than the signature.
+- If a method genuinely needs explanation, use a regular `//` comment.
+  - **C#**: put the comment at the **top of the method body** (inside the braces).
+  - **TypeScript**: put the comment **above the method declaration**.
+- If the name already explains what the method does, **omit the comment** —
+  don't restate the signature in English.
+- Keep comments short: a single line is almost always enough. Prefer a useful
+  one-liner over a paragraph.
+
+**Placement order for a type** (top to bottom):
+1. Regular `//` comment (optional, extra context not suitable for API docs)
 2. Empty line (if regular comment is present)
 3. `/// <summary>` XML documentation
 4. `#pragma` directives (if any)
 5. Attributes
 6. Type declaration
 
-Example:
+Example — type doc:
 ```csharp
 // This type is used as an extra parameter of constructors to indicate newly generated Id required
 
@@ -70,13 +82,32 @@ Example:
 public readonly struct Generate : IEquatable<Generate>
 ```
 
-Example with `<see cref="..."/>`:
+Example — type doc with `<see cref="..."/>`:
 ```csharp
 /// <summary>
 /// A thread-safe object pool backed by a <see cref="ConcurrentQueue{T}"/>
 /// and a <see cref="StochasticCounter"/> for approximate size tracking.
 /// </summary>
 public class ConcurrentPool<T> : IPool<T>
+```
+
+Example — C# method comment (inside the body):
+```csharp
+public Task<bool> SwitchFacing(CancellationToken cancellationToken)
+{
+    // Clears _deviceId so the next state-sync SwitchCamera (which may carry
+    // a stale deviceId from LocalAppSettings) doesn't no-op.
+    _deviceId = "";
+    return _jsRef.InvokeAsync<bool>("switchFacing", cancellationToken).AsTask();
+}
+```
+
+Example — TypeScript method comment (above the declaration):
+```ts
+// Flips front/back by facingMode so the browser picks the primary lens per facing.
+public async switchFacing(): Promise<boolean> {
+    ...
+}
 ```
 
 #### Multi-targeting

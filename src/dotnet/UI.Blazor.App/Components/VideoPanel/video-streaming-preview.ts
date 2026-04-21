@@ -13,6 +13,12 @@ export class VideoStreamingPreview {
     private readonly bgCanvasCtx: CanvasRenderingContext2D | null;
     private animationFrameId: number | null = null;
     private attachedRecorder: VideoRecorder | null = null;
+    // The track we're currently rendering. Kept alongside attachedRecorder so
+    // we can detect when the recorder swaps its track underneath us (camera
+    // switch / facing flip) — the recorder identity stays the same but the
+    // MediaStreamTrack reference changes. Without this check the <video>
+    // would stay bound to the stopped old track and render black.
+    private attachedTrack: MediaStreamTrack | null = null;
     private video: HTMLVideoElement | null = null;
     private disposed = false;
 
@@ -36,12 +42,12 @@ export class VideoStreamingPreview {
             return;
 
         const recorder = getActiveRecorder();
+        const recorderTrack = recorder?.getPreviewTrack() ?? null;
 
-        if (recorder && recorder !== this.attachedRecorder) {
-            // New recorder appeared — attach
+        if (recorder && (recorder !== this.attachedRecorder || recorderTrack !== this.attachedTrack)) {
+            // New recorder or recorder swapped its track (camera switch / facing flip)
             this.attach(recorder);
         } else if (!recorder && this.attachedRecorder) {
-            // Recorder gone — detach
             this.detach();
         }
 
@@ -105,6 +111,7 @@ export class VideoStreamingPreview {
             this.attachedRecorder = null;
             return;
         }
+        this.attachedTrack = track;
 
         infoLog?.log('Attached to active recorder');
 
@@ -147,6 +154,7 @@ export class VideoStreamingPreview {
             this.attachedRecorder.onPreviewFrame = null;
 
         this.attachedRecorder = null;
+        this.attachedTrack = null;
 
         // Clean up video element
         if (this.video) {

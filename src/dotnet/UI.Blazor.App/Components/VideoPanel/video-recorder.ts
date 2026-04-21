@@ -133,12 +133,9 @@ export class VideoRecorder {
         infoLog?.log('Selected camera device:', deviceId);
     }
 
-    /**
-     * Flip between front and back cameras during active recording. Uses
-     * `facingMode: exact` so the browser picks the primary lens for that facing
-     * (avoids cycling main/ultrawide/tele on multi-lens phones). Returns false
-     * if no opposite-facing camera is available on this device.
-     */
+    // Flips front/back by facingMode so the browser picks the primary lens
+    // per facing (avoids cycling main/ultrawide/tele). Returns false if the
+    // opposite facing isn't available on this device.
     public async switchFacing(): Promise<boolean> {
         if (!this.isRecording || !this.recordingService) {
             infoLog?.log('switchFacing: not recording');
