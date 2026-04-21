@@ -156,7 +156,7 @@
 
     // Disable submit while the camera is being acquired. If the user turned
     // video off intentionally (CameraState.Off), submit stays enabled.
-    private bool IsSubmitDisabled => _cameraState is CameraState.Starting or CameraState.Initializing;
+    private bool IsSubmitDisabled => PreviewState is CameraState.Starting || !_isInitialized;
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {
