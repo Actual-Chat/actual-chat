@@ -47,6 +47,7 @@
     [Parameter] public string Class { get; set; } = "";
 
     public override async ValueTask DisposeAsync() {
+        ChatVideoUI.SuspendOwnStreamingPreview -= OnSuspendOwnStreamingPreview;
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
         await base.DisposeAsync();
@@ -73,10 +74,17 @@
             return;
 
         JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
+        ChatVideoUI.SuspendOwnStreamingPreview += OnSuspendOwnStreamingPreview;
     }
 
     private void OnSettingsClick()
         => ChatVideoUI.ChangeVideoSessionSettings(ChatId);
+
+    private void OnSuspendOwnStreamingPreview(bool suspended) {
+        if (JSRef is null)
+            return;
+        _ = JSRef.InvokeVoidAsync("setPaused", suspended);
+    }
 
     // Nested types
 

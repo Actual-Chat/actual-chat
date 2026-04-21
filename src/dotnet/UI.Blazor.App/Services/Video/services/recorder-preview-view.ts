@@ -31,14 +31,6 @@ export interface RecorderPreviewViewOptions {
     rafKey: string;
     /** Which recorder kind to follow. Defaults to webcam (0). */
     streamKind?: number;
-    /**
-     * Whether to freeze this view while the recorder reports preview paused
-     * (e.g. when JoinVideoCallModal's Settings mode takes over rendering).
-     * The view keeping the last frame visible instead of detaching avoids
-     * wiping the canvas and flashing the spinner. Defaults to true; the
-     * consumer that actually drives the pause should pass false.
-     */
-    respectPauseFlag?: boolean;
     /** Called when we attach to a recorder with a live preview track. */
     onAttach?: (recorder: VideoRecorder) => void;
     /** Called when we detach (track gone, recorder gone). */
@@ -55,7 +47,6 @@ export class RecorderPreviewView {
     private readonly canvasTarget: CanvasTarget;
     private readonly bgCanvasTarget: CanvasTarget | null;
     private readonly streamKind: number;
-    private readonly respectPauseFlag: boolean;
 
     private renderer: CanvasVideoRenderer | null = null;
     private attachedRecorder: VideoRecorder | null = null;
@@ -64,6 +55,7 @@ export class RecorderPreviewView {
     private firstFrameFired = false;
     private animationFrameId: number | null = null;
     private disposed = false;
+    private _paused = false;
 
     static create(options: RecorderPreviewViewOptions): RecorderPreviewView {
         return new RecorderPreviewView(options);
@@ -74,13 +66,26 @@ export class RecorderPreviewView {
         this.canvasTarget = new CanvasTarget(options.canvas);
         this.bgCanvasTarget = options.bgCanvas ? new CanvasTarget(options.bgCanvas) : null;
         this.streamKind = options.streamKind ?? 0;
-        this.respectPauseFlag = options.respectPauseFlag !== false;
         this.animationFrameId = requestAnimationFrame(() => this.tick());
     }
 
     /** True when currently attached to a recorder with a live track. */
     public isAttached(): boolean {
         return this.attachedRecorder !== null;
+    }
+
+    /**
+     * When true, this view stops drawing new frames (both raw and blurred)
+     * and keeps the last frame on the canvas — attach/detach logic also
+     * freezes so a reattach won't wipe the canvas. Independent of the
+     * recorder's own pause flag honored via `respectPauseFlag`.
+     */
+    public get paused(): boolean {
+        return this._paused;
+    }
+
+    public set paused(value: boolean) {
+        this._paused = value;
     }
 
     public dispose(): void {
@@ -99,7 +104,7 @@ export class RecorderPreviewView {
         if (this.disposed) return;
 
         const recorder = getActiveRecorder(this.streamKind);
-        const paused = this.respectPauseFlag && !!recorder?.isPreviewPaused();
+        const paused = this._paused;
         const track = recorder?.getPreviewTrack() ?? null;
         const trackLive = track?.readyState === 'live';
 
@@ -145,10 +150,11 @@ export class RecorderPreviewView {
         this.renderer.start(track);
 
         const blurListener: PreviewFrameListener = (frame: VideoFrame) => {
-            // Skip drawing while another consumer owns the canvas — otherwise
+            // Skip drawing while the view is paused (either by the consumer via
+            // `paused` or by the recorder's global pause flag) — otherwise
             // blurred frames from the recorder pipeline would overwrite the
-            // modal's own rendering.
-            if (this.respectPauseFlag && recorder.isPreviewPaused())
+            // last preserved frame on the canvas.
+            if (this._paused)
                 return;
             this.canvasTarget.draw(frame, frame.displayWidth, frame.displayHeight);
             this.drawBgFrame(frame, frame.displayWidth, frame.displayHeight);
