@@ -37,7 +37,10 @@
 .join-video-call-modal .video-frame.has-video .camera-preview {
     @apply block;
 }
-.join-video-call-modal .video-frame.no-mirror .camera-preview {
+/* Mirror toggle — overrides the default scaleX(-1). Placed on .c-video (owned
+   fully by Blazor) rather than .video-frame (which JS manages `has-video` on)
+   so Blazor re-renders don't wipe out the JS-added class. */
+.join-video-call-modal .c-video.no-mirror .video-frame .camera-preview {
     transform: none;
 }
 .join-video-call-modal .c-members {
@@ -59,9 +62,8 @@
 
 /* Toolbar — centered */
 .join-video-call-modal .c-toolbar {
-    @apply grid gap-x-3 items-center justify-center;
+    @apply flex items-center justify-center gap-3;
     @apply py-2;
-    grid-template-columns: 1fr auto 1fr;
 }
 
 /* Pill-shaped toolbar buttons (desktop mic/camera) */

@@ -29,8 +29,15 @@
                 ? CameraState.Unavailable
                 : PreviewState;
         }
-        <div @ref="_containerRef" class="c-video @(effectiveCameraState is CameraState.Starting ? "camera-starting" : "")">
-            <div class="video-frame @(_isCameraMirrored ? "" : "no-mirror")">
+        @{
+            var videoCls = "c-video";
+            if (effectiveCameraState is CameraState.Starting)
+                videoCls += " camera-starting";
+            if (!_isCameraMirrored)
+                videoCls += " no-mirror";
+        }
+        <div @ref="_containerRef" class="@videoCls">
+            <div class="video-frame">
                 <canvas class="camera-preview"></canvas>
                 <span class="plug-text">@GetPlugText(effectiveCameraState)</span>
                 <div class="video-loading">
@@ -295,7 +302,6 @@
         var settings = await LocalSettings.LocalAppSettings().Get();
         _isCameraMirrored = settings
             .ResolveIsCameraMirrored(_currentDeviceId, _currentFacingMode, Hub.BrowserInfo.IsMobile);
-        ChatVideoUI.SetCameraMirrored(_isCameraMirrored);
         await InvokeAsync(StateHasChanged);
     }
 
@@ -336,18 +342,26 @@
         await OnCameraSelected(_videoDevices[nextIndex]);
     }
 
-    private async Task OnMirrorToggle() {
+    private void OnMirrorToggle() {
+        // Toggling only affects this modal's preview. The choice is committed
+        // (persisted + propagated to the live self-preview) on close / join —
+        // see CommitMirrorChoice. This lets users try the mirror state in the
+        // modal without immediately flipping the on-going call view.
         _isCameraMirrored = !_isCameraMirrored;
-        // Per-camera override: only persist when we know which camera is active.
-        // Without a deviceId we can't key the override, so just update live state.
-        if (!string.IsNullOrEmpty(_currentDeviceId)) {
-            var deviceId = _currentDeviceId;
-            var mirrored = _isCameraMirrored;
-            await Hub.LocalSettings.LocalAppSettings().Update(
-                s => s with { CameraMirrorOverrides = s.CameraMirrorOverrides.With(deviceId, mirrored) });
-        }
-        ChatVideoUI.SetCameraMirrored(_isCameraMirrored);
         StateHasChanged();
+    }
+
+    private async Task CommitMirrorChoice() {
+        // Persist the per-camera override and tell ChatVideoUI to re-resolve so
+        // the live self-preview picks up the change without waiting for the
+        // next camera (re)acquisition. No-op if we never resolved a deviceId.
+        if (string.IsNullOrEmpty(_currentDeviceId))
+            return;
+        var deviceId = _currentDeviceId;
+        var mirrored = _isCameraMirrored;
+        await Hub.LocalSettings.LocalAppSettings().Update(
+            s => s with { CameraMirrorOverrides = s.CameraMirrorOverrides.With(deviceId, mirrored) });
+        ChatVideoUI.ReapplyCameraMirror();
     }
 
     private string MirrorBtnClass()
@@ -365,6 +379,7 @@
     }
 
     private async Task OnCloseSettingsClick() {
+        await CommitMirrorChoice();
         await DisposeAsync();
         Modal.Close();
     }
@@ -382,6 +397,7 @@
             _ = TryUpdateActualDeviceId(_jsRef, ModalModel);
         ModalModel.IsBlurEnabled = _isBlurEnabled;
         ModalModel.IsConfirmed = true;
+        _ = CommitMirrorChoice();  // fire-and-forget — no need to block close on a settings write
         _ = DisposeAsync();  // fire-and-forget — don't block Modal.Close on the JS dispose roundtrip
         Modal.Close();
         return Task.CompletedTask;

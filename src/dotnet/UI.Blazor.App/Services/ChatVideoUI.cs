@@ -157,9 +157,6 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public void SetBackgroundBlur(bool enabled)
         => _isBackgroundBlurEnabled.Value = enabled;
 
-    public void SetCameraMirrored(bool mirrored)
-        => _isCameraMirrored.Value = mirrored;
-
     [ComputeMethod]
     public virtual async Task<bool> GetIsCameraMirrored(CancellationToken cancellationToken = default)
         => await _isCameraMirrored.Use(cancellationToken).ConfigureAwait(false);
@@ -173,8 +170,8 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     {
         // Called by the active webcam recorder after each track acquisition
         // (start or camera switch). Resolves the effective mirror state from
-        // per-camera overrides so the self-preview reflects the right camera
-        // regardless of how the stream was started (modal, resume, external swap).
+        // per-camera overrides so the live self-preview reflects the right
+        // camera regardless of how the stream was started.
         LastWebcamDeviceId = deviceId;
         LastWebcamFacingMode = facingMode;
         _ = ApplyAsync();
@@ -186,6 +183,12 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
                 .ResolveIsCameraMirrored(deviceId, facingMode, Hub.BrowserInfo.IsMobile);
         }
     }
+
+    // Called by JoinVideoCallModal after it persists a user's mirror choice —
+    // forces the live preview to re-resolve against the now-updated override
+    // without waiting for the next camera (re)acquisition.
+    public void ReapplyCameraMirror()
+        => OnWebcamTrackSettings(LastWebcamDeviceId, LastWebcamFacingMode);
 
     public void CloseVideoPanel()
         => SetWatching(null);
