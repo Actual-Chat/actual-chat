@@ -46,21 +46,19 @@ public class ExpiringEntryTest
     public async Task Disposer_ShouldBeCalledOnExpiration()
     {
         var dict = new ConcurrentDictionary<string, ExpiringEntry<string, string>>();
-        var disposerCalled = false;
-        string? disposedKey = null;
+        // Wait on a TCS instead of a fixed Task.Delay — under ThreadPool pressure the
+        // BackgroundTask scheduled by BeginExpire can overshoot its 1000ms target, which
+        // made the earlier `await Task.Delay(2000); disposerCalled.Should().BeTrue()` flaky.
+        var disposedKeyTcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         var entry = ExpiringEntry.New(dict, "key1", "value1");
-        entry.SetDisposer(e => {
-            disposerCalled = true;
-            disposedKey = e.Key;
-        });
+        entry.SetDisposer(e => disposedKeyTcs.TrySetResult(e.Key));
         dict["key1"] = entry;
 
         entry.BumpExpiresAt(TimeSpan.FromMilliseconds(1000));
         entry.BeginExpire();
 
-        await Task.Delay(2000);
-        disposerCalled.Should().BeTrue("disposer should be called on expiration");
+        var disposedKey = await disposedKeyTcs.Task.WaitAsync(TimeSpan.FromSeconds(5));
         disposedKey.Should().Be("key1");
     }
 
