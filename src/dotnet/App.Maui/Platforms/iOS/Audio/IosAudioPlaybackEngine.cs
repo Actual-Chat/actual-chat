@@ -1,3 +1,4 @@
+using ActualChat.Audio;
 using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Services;
@@ -65,7 +66,7 @@ public class IosAudioPlaybackEngine(
                 cancellationToken);
     }
 
-    public ValueTask PushFrame(MediaFrame frame, CancellationToken cancellationToken)
+    public ValueTask PushFrame(AudioFrame frame, CancellationToken cancellationToken)
     {
         DebugLog?.LogTrace("#{PlayerId}.PushFrame", playerId);
         var data = _decoder.Decode(frame.Data.ToArray());

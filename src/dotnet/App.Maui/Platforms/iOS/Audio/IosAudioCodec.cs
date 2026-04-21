@@ -1,4 +1,5 @@
 using System.Buffers;
+using ActualChat.Audio;
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Services;
 using ActualLab.Opus.MaciOS;
@@ -35,6 +36,6 @@ public sealed class IosAudioCodec(AppUIHub hub) : IAudioCodec
         }
     }
 
-    public IAsyncEnumerable<IMemoryOwner<float>> Decode(IAsyncEnumerable<IMemoryOwner<byte>> opusPackets, CancellationToken cancellationToken = default)
+    public IAsyncEnumerable<IMemoryOwner<float>> Decode(IAsyncEnumerable<AudioFrame> opusPackets, CancellationToken cancellationToken = default)
         => throw new NotImplementedException();
 }
