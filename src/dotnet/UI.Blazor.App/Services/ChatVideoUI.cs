@@ -178,20 +178,17 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         }
     }
 
-    /// <summary>
-    /// Shared mobile-vs-desktop camera-switch orchestration. On mobile with a
-    /// known facingMode, prefers flipping front↔back via <paramref name="flipFacing"/>;
-    /// otherwise (desktop, unknown facing, or flip failed) falls back to
-    /// <paramref name="cycleDevice"/>. Used by both the join modal (operates on
-    /// its own JS preview) and the active-call panel (operates on the recorder).
-    /// </summary>
-    public static async Task ExecuteCameraSwitchAsync(
-        bool isMobile,
+    public async Task ExecuteCameraSwitch(
         string? currentFacingMode,
         Func<Task<bool>> flipFacing,
         Func<Task> cycleDevice)
     {
-        if (isMobile && !string.IsNullOrEmpty(currentFacingMode)) {
+        // Shared mobile-vs-desktop camera-switch orchestration. On mobile with a
+        // known facingMode, prefers flipping front↔back via flipFacing; otherwise
+        // (desktop, unknown facing, or flip failed) falls back to cycleDevice.
+        // Used by both the join modal (operates on its own JS preview) and the
+        // active-call panel (operates on the recorder).
+        if (Hub.BrowserInfo.IsMobile && !string.IsNullOrEmpty(currentFacingMode)) {
             if (await flipFacing().ConfigureAwait(false))
                 return;
         }
@@ -264,15 +261,11 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         }
     }
 
-    /// <summary>
-    /// Active-call camera swap (panel button). On mobile, flips front/back via
-    /// the recorder's facingMode switch; on desktop, cycles through enumerated
-    /// deviceIds. Shares the mobile-first policy with the join modal via
-    /// <see cref="ExecuteCameraSwitchAsync"/>.
-    /// </summary>
+    // Active-call camera swap (panel button). On mobile flips front/back via
+    // the recorder's facingMode switch; on desktop cycles through enumerated
+    // deviceIds. Shares the mobile-first policy with the join modal.
     public Task SwitchCamera()
-        => ExecuteCameraSwitchAsync(
-            Hub.BrowserInfo.IsMobile,
+        => ExecuteCameraSwitch(
             _currentWebcamFacingMode,
             flipFacing: async () => {
                 var recorder = ActiveWebcamRecorder;

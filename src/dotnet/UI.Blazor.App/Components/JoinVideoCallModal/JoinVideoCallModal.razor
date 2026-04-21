@@ -363,12 +363,11 @@
         StateHasChanged();
     }
 
+    // Shared mobile-first logic: on phones try flipping front/back by facingMode
+    // (picks the primary lens per facing); otherwise cycle enumerated deviceIds.
+    // The active-call panel uses the same helper via ChatVideoUI.SwitchCamera.
     private Task OnSwitchCamera()
-        // Shared mobile-first logic: on phones try flipping front/back by facingMode
-        // (picks the primary lens per facing); otherwise cycle enumerated deviceIds.
-        // The active-call panel uses the same helper via ChatVideoUI.SwitchCamera.
-        => ChatVideoUI.ExecuteCameraSwitchAsync(
-            Hub.BrowserInfo.IsMobile,
+        => ChatVideoUI.ExecuteCameraSwitch(
             _currentFacingMode,
             flipFacing: TryFlipFacingInModal,
             cycleDevice: CycleCamera);

@@ -172,13 +172,11 @@ export class JoinVideoCallModal {
         return success;
     }
 
-    /**
-     * Toggle between the front ('user') and back ('environment') camera on mobile.
-     * Picks by facingMode rather than deviceId so the browser selects the primary
-     * lens for each facing (avoids cycling through ultrawide/tele variants).
-     * Returns false if the opposite facing isn't available on this device.
-     */
     public async switchFacing(): Promise<boolean> {
+        // Toggle between front ('user') and back ('environment') on mobile.
+        // Picks by facingMode rather than deviceId so the browser selects the
+        // primary lens for each facing (avoids cycling main/ultrawide/tele).
+        // Returns false if the opposite facing isn't available on this device.
         const target: 'user' | 'environment' =
             this.currentFacingMode === 'environment' ? 'user' : 'environment';
         infoLog?.log(`switchFacing: ${this.currentFacingMode ?? '(unknown)'} -> ${target}`);
@@ -201,11 +199,8 @@ export class JoinVideoCallModal {
         return this.selectedDeviceId;
     }
 
-    /**
-     * Returns the deviceId and facingMode of the currently-previewing camera.
-     * Used by Blazor to resolve per-camera display preferences (mirror, etc.).
-     */
     public getCurrentCameraInfo(): { deviceId: string | null; facingMode: string | null } {
+        // Consumed by Blazor to resolve per-camera display preferences (mirror etc.).
         return { deviceId: this.selectedDeviceId, facingMode: this.currentFacingMode };
     }
 
@@ -276,11 +271,8 @@ export class JoinVideoCallModal {
         infoLog?.log('Detached from recorder preview stream');
     }
 
-    /**
-     * Toggle horizontal mirroring of the camera preview.
-     * Applies a CSS class on the .video-frame that overrides the default scaleX(-1) transform.
-     */
     public setMirrored(mirrored: boolean): void {
+        // Toggles a CSS class on .video-frame that overrides scaleX(-1).
         const frame = this.container.querySelector<HTMLElement>('.video-frame');
         if (frame)
             frame.classList.toggle('no-mirror', !mirrored);

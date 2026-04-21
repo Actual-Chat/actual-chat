@@ -100,15 +100,13 @@ public sealed class VideoRecorder : IAsyncDisposable
         return _jsRef.InvokeVoidAsync("switchCamera", cancellationToken, deviceId).AsTask();
     }
 
-    /// <summary>
-    /// Flip the active camera between front and back via <c>facingMode</c>.
-    /// The JS side tears down the current track, acquires a new one with
-    /// <c>facingMode: exact</c>, and restarts the pipeline. Clears <c>_deviceId</c>
-    /// so the next state-sync-driven <see cref="SwitchCamera"/> (which might
-    /// carry a stale deviceId from LocalAppSettings) doesn't no-op.
-    /// </summary>
     public Task<bool> SwitchFacing(CancellationToken cancellationToken)
     {
+        // Flip the active camera between front and back via facingMode. JS
+        // side tears down the current track, acquires a new one with
+        // facingMode:exact, and restarts the pipeline. _deviceId is cleared
+        // so the next state-sync-driven SwitchCamera (which may carry a stale
+        // deviceId from LocalAppSettings) doesn't no-op.
         _deviceId = "";
         return _jsRef.InvokeAsync<bool>("switchFacing", cancellationToken).AsTask();
     }
