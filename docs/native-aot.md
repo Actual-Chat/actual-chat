@@ -133,11 +133,37 @@ When new types are used in JS interop, their STJ converters may need manual `Cod
 
 ### Platform-specific notes
 
-**Windows**: Requires `WindowsPackageType=None` for unpackaged deployment. MSIX packaging not supported with Native AOT.
+**Windows**: Requires `WindowsPackageType=None` for unpackaged deployment. MSIX packaging not supported with Native AOT. `App.Maui.csproj` explicitly roots `ActualChat` (our main assembly, output name set via `AssemblyName=$(BaseName)`) with `RootMode="EntryPoint"` — but only under `Condition="$(TargetFramework.Contains('-windows'))"`. On Android the Xamarin.Android linker pipeline rewrites/renames the entry-point assembly before ILLink runs, so an explicit `ActualChat` root there causes `ILLink : error IL1032: Root assembly 'ActualChat' could not be found`.
 
-**Android**: `PublishAot=true` replaces CoreCLR+R2R. Not yet tested.
+**Android**: **Not officially supported by NativeAOT as of .NET 10** — see [dotnet/runtime#106748](https://github.com/dotnet/runtime/issues/106748) (status: "Future" milestone, no timeline).
+
+Known failures:
+- **android-arm64**: `ilc` fails with `error : Failed to load type 'System.ArraySegment`1' from assembly 'System.Runtime…'`. Root cause is a gap in the `android-arm64` NativeAOT runtime pack's type-forwarding — our report: [dotnet/sdk#54013](https://github.com/dotnet/sdk/issues/54013); related: [dotnet/android#10587](https://github.com/dotnet/android/issues/10587), [dotnet/runtime#76983](https://github.com/dotnet/runtime/issues/76983) (`tls_CurrentThread` symbol also missing). No upstream fix yet.
+- **android-x64**: currently compiles, but this relies on the same broken runtime pack internals — treat as best-effort, expect regressions.
+- **ILLink IL1032 on `TrimmerRootAssembly Include="ActualChat"`**: the Xamarin.Android linker rewrites `RootMode=EntryPoint` → `RootMode=All` internally (`_FixRootAssembly` target — see [dotnet/android#10758](https://github.com/dotnet/android/issues/10758)), which makes our assembly-name-scoped root no longer resolve. Workaround lives in `App.Maui.csproj`: scope the `ActualChat` root to Windows only; Android's linker auto-roots the entry-point assembly regardless.
+
+Recommended gating (pick one, depending on whether x64 should still try NativeAOT):
+
+```xml
+<!-- All Android RIDs: fall back to CoreCLR/Mono -->
+<PropertyGroup Condition="$(UseNativeAot) and $(TargetFramework.Contains('-android'))">
+    <PublishAot>false</PublishAot>
+    <UseCoreClr>true</UseCoreClr>
+</PropertyGroup>
+```
+
+or, to keep android-x64 on the experimental NativeAOT path and only carve out arm64:
+
+```xml
+<PropertyGroup Condition="$(UseNativeAot) and $(TargetFramework.Contains('-android')) and '$(RuntimeIdentifier)' == 'android-arm64'">
+    <PublishAot>false</PublishAot>
+    <UseCoreClr>true</UseCoreClr>
+</PropertyGroup>
+```
 
 **iOS**: `PublishAot=true` replaces Mono+interpreter. Not yet tested. iOS already uses AOT (Mono AOT), so Native AOT is a different compilation path.
+
+**macOS (MacCatalyst)**: `Info.plist` must declare `NSCameraUsageDescription` and `NSMicrophoneUsageDescription` for `getUserMedia` to resolve (already in place); otherwise JS `mediaDevices` calls hang forever from within `WKWebView` with no visible error — the same hang shape as the earlier Windows unpackaged case (see Known Issues #8).
 
 ## Files reference
 
