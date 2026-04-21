@@ -43,6 +43,14 @@ export class VideoStreamingPreview {
     private updateStarting(): void {
         if (this.disposed) return;
 
+        // While paused the canvas is frozen — the spinner must be frozen too,
+        // or a camera switch during a Settings-mode pause flips the recorder's
+        // interrupted flag and the spinner appears over the preserved frame.
+        if (this.view.paused) {
+            this.spinnerRafId = requestAnimationFrame(() => this.updateStarting());
+            return;
+        }
+
         const recorder = getActiveRecorder();
         // `.starting` drives the loading spinner: visible whenever we have a
         // recorder that still intends to produce video (not interrupted) and we
