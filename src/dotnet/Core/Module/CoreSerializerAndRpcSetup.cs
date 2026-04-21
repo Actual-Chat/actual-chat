@@ -92,19 +92,21 @@ public static class CoreSerializerAndRpcSetup
 
     private static void RebuildResolverChain()
     {
-        // Server: StandardResolver as last-resort fallback — uses dynamic IL emit (JIT-only)
-        //   to handle user types that aren't covered by the SG-generated resolvers. Safe on
-        //   server because it's always JIT.
-        // Client (Wasm / Maui / anywhere NativeAOT-bound): replace the dynamic fallback with
-        //   static-only resolvers (BuiltinResolver for primitives/DateTime/Guid/etc.,
-        //   AttributeFormatterResolver for [MessagePackFormatter]-marked types,
-        //   ImmutableCollectionResolver for ImmutableArray/List/Dictionary). A type that
-        //   isn't covered here or by the SG-generated resolvers throws FormatterNotRegistered
-        //   at runtime — the intended behavior, since silently falling back to IL emit would
-        //   hide AOT-unsafe paths.
+        // Both modes put SourceGeneratedFormatterResolver first so types with
+        // [assembly: GeneratedAssemblyMessagePackResolver] (ActualLab.Rpc / Core / Fusion,
+        // etc.) resolve without touching StandardResolver's dynamic-emit machinery — cheaper
+        // startup on server and AOT-safe on client.
+        // Server also keeps StandardResolver as a last-resort dynamic fallback (JIT-only).
+        // Client omits StandardResolver: a type that's not covered by the static resolvers
+        // here or the explicitly-registered generated resolvers throws FormatterNotRegistered
+        // at runtime — intended, since silently falling back to IL emit would hide AOT-unsafe paths.
         IFormatterResolver[] fallback = _isServer
-            ? [StandardResolver.Instance]
+            ? [
+                SourceGeneratedFormatterResolver.Instance,
+                StandardResolver.Instance,
+            ]
             : [
+                SourceGeneratedFormatterResolver.Instance,
                 BuiltinResolver.Instance,
                 AttributeFormatterResolver.Instance,
                 MessagePack.ImmutableCollection.ImmutableCollectionResolver.Instance,
