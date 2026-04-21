@@ -227,11 +227,7 @@
     <!--
     <TrimmerRootDescriptor Include="ILLink.Descriptors.xml" />
     -->
-    <!-- ActualChat.dll is the App.Maui output (AssemblyName override); RootMode="All"
-         so Platforms/{Windows,Android,iOS,MacCatalyst} code isn't trimmed. -->
-    <TrimmerRootAssembly Include="ActualChat" RootMode="All" />
-    <!-- MAUI services assembly (App.Maui's output is ActualChat.dll itself — see the
-         AssemblyName override above — and is rooted in the block above with RootMode="All"). -->
+    <!-- MAUI services assembly -->
     <TrimmerRootAssembly Include="ActualChat.Maui" RootMode="All" />
     <!-- Other crucial assemblies -->
     <TrimmerRootAssembly Include="ActualChat.Api" RootMode="All" />
@@ -239,6 +235,14 @@
     <TrimmerRootAssembly Include="ActualChat.UI.Blazor" RootMode="All" />
     <TrimmerRootAssembly Include="ActualChat.UI.Blazor.App" RootMode="All" />
     <TrimmerRootAssembly Include="ActualChat.UI.Blazor.AppPack" RootMode="All" />
+  </ItemGroup>
+  <!-- Windows ILLink needs "ActualChat" (the App.Maui output after AssemblyName=$(BaseName)
+       override) explicitly rooted. Android's ILLink (Xamarin.Android linker pipeline) fails
+       IL1032 "Root assembly 'ActualChat' could not be found" here because by the time ILLink
+       runs the app assembly has been post-processed / renamed upstream — Xamarin.Android
+       auto-roots the entry-point assembly anyway, so we don't need this on Android / iOS. -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
+    <TrimmerRootAssembly Include="ActualChat" RootMode="EntryPoint" />
   </ItemGroup>
 
   <!-- Common iOS and Android build properties -->
