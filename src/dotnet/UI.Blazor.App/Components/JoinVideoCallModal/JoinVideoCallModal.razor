@@ -111,7 +111,9 @@
             <Button Class="btn-modal btn-primary" Click="@OnCloseSettingsClick">Close</Button>
         } else {
             <Button Class="btn-modal" Click="@(_ => Modal.Close())">Cancel</Button>
-            <Button Class="btn-modal btn-primary" Click="@OnJoinClick">@SubmitButtonText</Button>
+            <Button Class="btn-modal btn-primary"
+                    Click="@OnJoinClick"
+                    IsDisabled="@IsSubmitDisabled">@SubmitButtonText</Button>
         }
     </Buttons>
 </DialogFrame>
@@ -142,6 +144,7 @@
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private bool IsSettingsMode => ModalModel.Mode is VideoCallMode.Settings;
     private CameraState PreviewState => _session?.State ?? CameraState.Off;
+    private ILogger Log => field ??= Hub.LogFor(GetType());
 
     private string Title => IsSettingsMode ? "Video Settings"
         : State.Value.ShowActiveSessionInfo ? "Join the video"
@@ -150,6 +153,10 @@
     private string SubmitButtonText => IsSettingsMode ? "Apply"
         : State.Value.ShowActiveSessionInfo ? "Join"
         : "Start";
+
+    // Disable submit while the camera is being acquired. If the user turned
+    // video off intentionally (CameraState.Off), submit stays enabled.
+    private bool IsSubmitDisabled => _cameraState is CameraState.Starting or CameraState.Initializing;
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {

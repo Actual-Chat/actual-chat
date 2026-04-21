@@ -4,7 +4,7 @@ import { CanvasVideoRenderer } from '../../Services/Video/services/canvas-video-
 import { BlurPreviewSession } from '../../Services/Video/services/blur-preview-session';
 import { RecorderPreviewView } from '../../Services/Video/services/recorder-preview-view';
 
-const { infoLog, errorLog } = getLogs('VideoRecorder');
+const { infoLog, warnLog, errorLog } = getLogs('JoinVideoCallModal');
 
 export class JoinVideoCallModal {
     private blazorRef: DotNet.DotNetObject;
@@ -24,6 +24,7 @@ export class JoinVideoCallModal {
     // directly from the recorder's pipeline via RecorderPreviewView).
     private blurSession: BlurPreviewSession | null = null;
     private isBlurActive = false;
+    private disposed = false;
 
     static create(container: HTMLElement, blazorRef: DotNet.DotNetObject): JoinVideoCallModal {
         return new JoinVideoCallModal(container, blazorRef);
@@ -46,6 +47,7 @@ export class JoinVideoCallModal {
     // ---------- Join mode: own stream ---------------------------------------
 
     public async startPreview(deviceId?: string): Promise<boolean> {
+        infoLog?.log(`startPreview: deviceId=${deviceId ?? '(default)'}`);
         await this.stopPreview();
 
         // Browser needs time to release camera hardware after track.stop().
@@ -57,11 +59,24 @@ export class JoinVideoCallModal {
                 await new Promise(resolve => setTimeout(resolve, delay));
         }
 
+        if (this.disposed)
+            return false;
+
         try {
-            this.track = await MediaCapture.captureCameraStream({
+            const track = await MediaCapture.captureCameraStream({
                 deviceId: deviceId,
                 maxRetries: 3,
             });
+            // If the modal was closed while getUserMedia was in flight, stop the
+            // freshly-acquired track immediately — otherwise it holds the camera
+            // hardware and the next getUserMedia fails with NotReadableError.
+            if (this.disposed) {
+                warnLog?.log('startPreview: disposed during getUserMedia — stopping track');
+                track.stop();
+                this.lastTrackStoppedAt = performance.now();
+                return false;
+            }
+            this.track = track;
 
             // Capture the actual device ID the browser chose (important when no
             // explicit device was requested — ensures recording uses the same camera)
@@ -100,6 +115,7 @@ export class JoinVideoCallModal {
     }
 
     public async switchCamera(deviceId: string): Promise<boolean> {
+        infoLog?.log(`switchCamera: deviceId=${deviceId}`);
         this.selectedDeviceId = deviceId;
         const wasBlurActive = this.isBlurActive;
         // Restart preview with new device (stopPreview cleans up blur)
@@ -186,6 +202,8 @@ export class JoinVideoCallModal {
     // ---------- Teardown ----------------------------------------------------
 
     public dispose(): void {
+        infoLog?.log(`dispose: trackState=${this.track?.readyState ?? '(null)'}`);
+        this.disposed = true;
         if (this.recorderView) {
             this.recorderView.dispose();
             this.recorderView = null;
