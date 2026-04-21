@@ -154,7 +154,9 @@ export class BrowserInit {
                     if (classList.length == 0 || classList.contains('components-reconnect-hide'))
                         this.resetAppConnectionState();
                     else if (classList.contains('components-reconnect-rejected')) {
-                        warnLog?.log(`startReloading: triggered by #components-reconnect-modal [${classList.toString()}], innerText=${reconnectDiv.innerText?.slice(0, 500)}`);
+                        warnLog?.log(
+                            'startReloading: triggered by #components-reconnect-modal',
+                            { classes: reconnectDiv.className, text: reconnectDiv.innerText?.trim().slice(0, 300) });
                         void this.startReloading();
                     }
                     else if (classList.contains('components-reconnect-failed'))
@@ -173,7 +175,9 @@ export class BrowserInit {
             if (errorDiv) {
                 const checkErrorDiv = () => {
                     if (errorDiv.style.display === 'block') {
-                        warnLog?.log(`startReloading: triggered by #blazor-error-ui display=block, innerText=${errorDiv.innerText?.slice(0, 500)}`);
+                        warnLog?.log(
+                            'startReloading: triggered by #blazor-error-ui',
+                            { text: errorDiv.innerText?.trim().slice(0, 300) });
                         void this.startReloading();
                     }
                 }
