@@ -42,7 +42,58 @@ internal class MauiAppAotSource : IAotSource
         CodeKeeper.Keep("Microsoft.Maui.Controls.Compatibility.Platform.UWP.WindowsResourcesProvider, Microsoft.Maui.Controls");
 
 #if ANDROID
+        // JavaScript bridge type invoked from WebView JS via JNI.
         CodeKeeper.Keep<AndroidJSInterface>();
+
+        // Android components (Activity / Application / Service / BroadcastReceiver) are
+        // instantiated by the OS through Java reflection. Each needs its default ctor and
+        // overridden lifecycle methods preserved — the managed linker normally keeps them via
+        // [Register]-style attributes, but under stricter AOT we pin them explicitly.
+        CodeKeeper.Keep<MainActivity>();
+        CodeKeeper.Keep<MainApplication>();
+        CodeKeeper.Keep<AlarmReceiver>();
+        CodeKeeper.Keep<ActualChat.App.Maui.Audio.AndroidAudioWidgetForegroundService>();
+        CodeKeeper.Keep<FirebaseMessagingService>();
+#endif
+
+#if IOS || MACCATALYST
+        // ObjC runtime resolves types by their [Register] name and calls exported selectors
+        // against them. Under NativeAOT we pin the delegate types explicitly — Xamarin's
+        // linker usually preserves them, but belt-and-braces for AOT.
+        CodeKeeper.Keep<AppDelegate>();
+#endif
+
+#if WINDOWS
+        // NAudio COM interop: ILC needs full metadata for the ComObject wrappers so that
+        // `new MMDeviceEnumerator()` and related APIs don't trip InvalidProgramException
+        // under NativeAOT. See Platforms/Windows/Audio/WindowsAudioCapture.cs.
+        CodeKeeper.Keep("NAudio.CoreAudioApi.MMDeviceEnumerator, NAudio.Wasapi");
+        CodeKeeper.Keep("NAudio.CoreAudioApi.MMDevice, NAudio.Wasapi");
+        CodeKeeper.Keep("NAudio.CoreAudioApi.AudioEndpointVolume, NAudio.Wasapi");
+        CodeKeeper.Keep("NAudio.CoreAudioApi.Interfaces.IMMDeviceEnumerator, NAudio.Wasapi");
+        CodeKeeper.Keep("NAudio.CoreAudioApi.Interfaces.IMMDevice, NAudio.Wasapi");
+        CodeKeeper.Keep("NAudio.CoreAudioApi.Interfaces.IMMEndpoint, NAudio.Wasapi");
+        CodeKeeper.Keep("NAudio.CoreAudioApi.Interfaces.IMMNotificationClient, NAudio.Wasapi");
+        CodeKeeper.Keep("NAudio.CoreAudioApi.Interfaces.IAudioEndpointVolume, NAudio.Wasapi");
+        CodeKeeper.Keep("NAudio.CoreAudioApi.Interfaces.IAudioClient, NAudio.Wasapi");
+        CodeKeeper.Keep("NAudio.CoreAudioApi.Interfaces.IAudioCaptureClient, NAudio.Wasapi");
+        CodeKeeper.Keep("NAudio.CoreAudioApi.Interfaces.IAudioRenderClient, NAudio.Wasapi");
+        CodeKeeper.Keep("NAudio.CoreAudioApi.AudioClient, NAudio.Wasapi");
+        CodeKeeper.Keep("NAudio.Wave.WasapiCapture, NAudio.Wasapi");
+        CodeKeeper.Keep("NAudio.Wave.WasapiLoopbackCapture, NAudio.Wasapi");
+
+        // WinRT StartupTask API: ensure both the public projection types and the CsWinRT-
+        // generated ABI stubs are kept so that StartupTask.GetAsync / RequestEnableAsync /
+        // Disable resolve at runtime. The actual call site hits ABI.*StaticsMethods, see
+        // Platforms/Windows/WindowsAppSettings.cs.
+        CodeKeeper.Keep("Windows.ApplicationModel.StartupTask, Microsoft.Windows.SDK.NET");
+        CodeKeeper.Keep("Windows.ApplicationModel.IStartupTaskStatics, Microsoft.Windows.SDK.NET");
+        CodeKeeper.Keep("Windows.ApplicationModel.StartupTaskState, Microsoft.Windows.SDK.NET");
+        CodeKeeper.Keep("ABI.Windows.ApplicationModel.IStartupTaskStatics, Microsoft.Windows.SDK.NET");
+        CodeKeeper.Keep("ABI.Windows.ApplicationModel.IStartupTaskStaticsMethods, Microsoft.Windows.SDK.NET");
+        CodeKeeper.Keep("ABI.Windows.ApplicationModel.StartupTask, Microsoft.Windows.SDK.NET");
+        CodeKeeper.Keep("WinRT.ExceptionHelpers, WinRT.Runtime");
+        CodeKeeper.Keep("WinRT.IObjectReference, WinRT.Runtime");
 #endif
     }
 
