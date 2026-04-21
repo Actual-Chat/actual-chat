@@ -1,7 +1,7 @@
 import { getLogs } from 'logging';
 import { getActiveRecorder, type VideoRecorder } from './video-recorder';
 
-const { infoLog } = getLogs('VideoStreamingPreview');
+const { debugLog, infoLog, warnLog } = getLogs('VideoStreamingPreview');
 
 export class VideoStreamingPreview {
     private static readonly BG_CANVAS_WIDTH = 64;
@@ -107,20 +107,30 @@ export class VideoStreamingPreview {
 
         const track = recorder.getPreviewTrack();
         if (track?.readyState !== 'live') {
-            infoLog?.log('Recorder has no live preview track yet');
+            debugLog?.log(`attach: no live track yet (readyState=${track?.readyState ?? 'null'})`);
             this.attachedRecorder = null;
             return;
         }
         this.attachedTrack = track;
 
-        infoLog?.log('Attached to active recorder');
+        infoLog?.log(`attach: track deviceId=${track.getSettings().deviceId}, ${track.getSettings().width}x${track.getSettings().height}`);
 
         // Create a video element to render the track
         this.video = document.createElement('video');
         this.video.srcObject = new MediaStream([track]);
         this.video.muted = true;
         this.video.playsInline = true;
-        void this.video.play();
+        this.video.autoplay = true;
+        this.video.play().catch(err => warnLog?.log('video.play() rejected:', err));
+
+        // If the track ends (camera unplugged, source reset), force a re-attach
+        // on the next render tick rather than staring at dead frames.
+        track.addEventListener('ended', () => {
+            if (this.attachedTrack === track) {
+                infoLog?.log('attached track ended — detaching');
+                this.detach();
+            }
+        });
 
         // Register for blur preview frames
         recorder.onPreviewFrame = (frame: VideoFrame) => {

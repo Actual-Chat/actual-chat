@@ -24,6 +24,10 @@ export class JoinVideoCallModal {
     private isRendering = false;
     private lastTrackStoppedAt = 0;
     private attachedFromRecorder = false;
+    // The recorder's original track we last cloned from. Used to detect when
+    // the recorder swaps camera underneath us (settings-mode camera switch)
+    // so we can re-clone from the new track instead of showing a dead clone.
+    private attachedRecorderTrack: MediaStreamTrack | null = null;
 
     // Blur preview state
     private previewWorkerInstance: Worker | null = null;
@@ -216,6 +220,7 @@ export class JoinVideoCallModal {
         // Clone the track so we can stop it independently
         const originalTrack = previewStream.getVideoTracks()[0];
         this.track = originalTrack.clone();
+        this.attachedRecorderTrack = originalTrack;
         this.attachedFromRecorder = true;
 
         // Pause the recorder's own preview rendering
@@ -251,6 +256,7 @@ export class JoinVideoCallModal {
             this.track.stop();
             this.track = null;
         }
+        this.attachedRecorderTrack = null;
         this.videoEl.srcObject = null;
 
         if (this.canvasEl.parentElement)
@@ -267,6 +273,30 @@ export class JoinVideoCallModal {
 
         this.attachedFromRecorder = false;
         infoLog?.log('Detached from recorder preview stream');
+    }
+
+    // Re-clones from the recorder's current track after a camera swap. Keeps
+    // attachedFromRecorder=true throughout so detach paths stay correct.
+    private async reattachFromRecorder(): Promise<void> {
+        const recorder = getActiveRecorder();
+        if (!recorder) return;
+        const previewStream = recorder.getPreviewStream();
+        if (!previewStream) return;
+
+        // Stop the old clone
+        if (this.track) {
+            this.track.stop();
+            this.track = null;
+        }
+
+        const originalTrack = previewStream.getVideoTracks()[0];
+        this.track = originalTrack.clone();
+        this.attachedRecorderTrack = originalTrack;
+        this.videoEl.srcObject = new MediaStream([this.track]);
+        void this.videoEl.play();
+        // Reset so the existing renderFrame fires OnFirstFrameRendered once
+        // the new track delivers a frame — that's what flips state back to On.
+        this.firstFrameNotified = false;
     }
 
     // Toggles a CSS class on .video-frame that overrides scaleX(-1).
@@ -301,6 +331,20 @@ export class JoinVideoCallModal {
 
     private renderFrame = (): void => {
         if (!this.isRendering || !this.canvasCtx) return;
+
+        // In settings mode, re-attach when the recorder swaps its track
+        // (user changed camera in settings). Our clone stops when its source
+        // track stops, so we'd otherwise stare at a dead clone.
+        if (this.attachedFromRecorder) {
+            const recorder = getActiveRecorder();
+            const current = recorder?.getPreviewTrack() ?? null;
+            if (recorder && current && current !== this.attachedRecorderTrack) {
+                infoLog?.log('Recorder swapped track — re-cloning preview');
+                void this.reattachFromRecorder();
+                fastRaf(this.renderFrame, 'join-video-preview');
+                return;
+            }
+        }
 
         // When blur is active, the blur callback renders to canvas instead
         if (!this.isBlurActive) {

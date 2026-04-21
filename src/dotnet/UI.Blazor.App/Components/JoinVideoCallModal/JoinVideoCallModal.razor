@@ -59,9 +59,8 @@
                             <div class="camera-dropdown-header">Select a camera</div>
                             @foreach (var device in _videoDevices) {
                                 var isSelected = device == _selectedDevice;
-                                var isDisabled = IsSettingsMode;
-                                <div class="camera-dropdown-item @(isDisabled ? "disabled" : "")"
-                                     @onclick="@(isDisabled ? (Func<Task>)(() => Task.CompletedTask) : () => OnCameraSelected(device))">
+                                <div class="camera-dropdown-item"
+                                     @onclick="() => OnCameraSelected(device)">
                                     @if (isSelected) {
                                         <i class="icon-checkmark-simple text-primary text-lg"></i>
                                     } else {
@@ -117,7 +116,7 @@
                     }
                 </ButtonRound>
 
-                <ButtonRound Click="@OnSwitchCamera" IsDisabled="@IsSettingsMode">
+                <ButtonRound Click="@OnSwitchCamera">
                     <i class="icon-camera-switch text-2xl"></i>
                 </ButtonRound>
 
@@ -347,6 +346,17 @@
         await Hub.LocalSettings.LocalAppSettings().Update(
             s => s with { SelectedCameraDeviceId = device.DeviceId });
 
+        // Settings mode = active call is already running. Route the swap
+        // through the recorder (via ChatVideoUI) so we don't double-acquire
+        // the camera. The modal's preview will re-attach when the recorder's
+        // track changes.
+        if (IsSettingsMode) {
+            _cameraState = CameraState.Starting;
+            StateHasChanged();
+            ChatVideoUI.SetSelectedCamera(device.DeviceId);
+            return;
+        }
+
         // Switch camera if preview is active (or was unavailable — retry with new device)
         if ((_isVideoOn || _cameraState is CameraState.Unavailable) && _jsRef is not null) {
             _cameraState = CameraState.Starting;
@@ -366,11 +376,15 @@
     // Shared mobile-first logic: on phones try flipping front/back by facingMode
     // (picks the primary lens per facing); otherwise cycle enumerated deviceIds.
     // The active-call panel uses the same helper via ChatVideoUI.SwitchCamera.
+    // In settings mode we delegate to ChatVideoUI directly — there's already a
+    // live recorder, and the modal's preview will re-attach to the new track.
     private Task OnSwitchCamera()
-        => ChatVideoUI.ExecuteCameraSwitch(
-            _currentFacingMode,
-            flipFacing: TryFlipFacingInModal,
-            cycleDevice: CycleCamera);
+        => IsSettingsMode
+            ? ChatVideoUI.SwitchCamera()
+            : ChatVideoUI.ExecuteCameraSwitch(
+                _currentFacingMode,
+                flipFacing: TryFlipFacingInModal,
+                cycleDevice: CycleCamera);
 
     private async Task<bool> TryFlipFacingInModal() {
         if (_jsRef is null || !_isVideoOn)
