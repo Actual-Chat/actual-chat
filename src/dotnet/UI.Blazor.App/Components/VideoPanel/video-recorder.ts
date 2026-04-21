@@ -50,7 +50,6 @@ export interface VideoDevice {
 // webcam-specific recorder (preview, modal, diagnostics) pass kind=0
 // (the default). Kinds match the C# StreamKind enum values.
 const StreamKindWebcam = 0;
-const StreamKindScreencast = 1;
 const activeRecorders = new Map<number, VideoRecorder>();
 
 export function getActiveRecorder(kind: number = StreamKindWebcam): VideoRecorder | null {

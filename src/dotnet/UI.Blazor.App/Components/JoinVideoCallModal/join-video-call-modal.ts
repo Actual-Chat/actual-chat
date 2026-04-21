@@ -70,6 +70,9 @@ export class JoinVideoCallModal {
             // If the modal was closed while getUserMedia was in flight, stop the
             // freshly-acquired track immediately — otherwise it holds the camera
             // hardware and the next getUserMedia fails with NotReadableError.
+            // (TS narrows `this.disposed` to false after the pre-await check,
+            //  but dispose() can flip it during the await.)
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             if (this.disposed) {
                 warnLog?.log('startPreview: disposed during getUserMedia — stopping track');
                 track.stop();
