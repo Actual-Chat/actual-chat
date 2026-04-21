@@ -49,10 +49,12 @@ Each AotSource has two parts:
 ### App.AotHelper
 
 Console app that:
-- **Generate mode** (`-g [project-root]`): discovers Blazor components (`ComponentBase` descendants), `IComputeService` API interfaces, and `[MemoryPackable]` serializable types across all ActualChat assemblies. Outputs `XxxAotSource.g.cs` files into each target project. Run via `run-aot-type-generator.cmd` at the project root.
+- **Generate mode** (`-g [project-root]`): discovers Blazor components (`ComponentBase` descendants), `IComputeService` API interfaces, and serializable types (marked with `[MessagePackObject]`, `[MessagePackFormatter]` or `[Union]`) across all ActualChat assemblies. Outputs `XxxAotSource.g.cs` files into each target project. Run via `run-aot-type-generator.cmd` at the project root.
 - **Test mode** (no args): validates all registered types can be loaded, instantiated, and reflected upon. Uses `IAotTester` implementations (`ComponentTester`, `ApiTester`, `SerializableTester`).
 
 The App.AotHelper project itself is configured for Native AOT publishing (`PublishAot=true` in Release) to serve as a smoke test.
+
+In addition to the serializable root types, the generator also walks API interface methods (parameters + async-unwrapped return types) when discovering concrete types for `MessagePackByteSerializer<T>` and `MessagePack formatter` keeps — so enum/struct types that never appear as DTO fields but do appear in RPC signatures (e.g. `Presence` returned from `IUserPresences.Get`) are still covered.
 
 ### MessagePack formatter discovery
 
@@ -61,6 +63,12 @@ For each serializable root type in a target assembly, `MessagePackFormatterDisco
 - Each reachable type is resolved via `DefaultMessagePackResolver.Instance.GetFormatter<T>()` (invoked via reflection) to obtain the concrete formatter that MessagePack would pick at runtime. This catches `GenericEnumFormatter<TEnum>`, `ArrayFormatter<T>`, `NullableFormatter<T>`, `InterfaceImmutableDictionaryFormatter<K,V>`, `UnitMessagePackFormatter`, `ApiArrayMessagePackFormatter<T>`, and so on.
 
 Formatters are filtered to the `MessagePack.*`, `ActualLab.*`, `ActualChat.*` assembly prefixes (runtime-emitted formatters from `DynamicObjectResolver+` cannot be named by AQN) and emitted into the per-assembly `XxxAotSource.g.cs` as `CodeKeeper.Keep("<AQN>")` calls. Walking bases + generic interface arguments is required to reach types that appear only in a command's declared interface (e.g. `Unit` in `ISessionCommand<Unit>`).
+
+### `MessagePackByteSerializer<T>` expression-factory keeps
+
+`ActualLab.Serialization.MessagePackByteSerializer<T>` is constructed through a runtime-compiled `Expression<Func<MessagePackSerializerOptions, Type, MessagePackByteSerializer<T>>>` factory. Under Native AOT, every concrete `T` that reaches this factory needs its `MessagePackByteSerializer<T>` / `Func<…>` / `Expression<Func<…>>` generic instantiations kept explicitly — otherwise ILC drops them and the call throws `NotSupportedException: missing native code or metadata`.
+
+`MessagePackByteSerializerDiscovery` walks the same member graph as the formatter discovery (serializable roots + API interface methods) and emits these three keeps for every reachable non-primitive concrete type. A static list in `AotTypeGenerator.MessagePackByteSerializerCoreTypeArgs` covers the primitives + universal BCL value types + common ActualLab framework types (`Symbol`, `Moment`, `TypeRef`, `System.Reactive.Unit`) and is emitted into `CoreAotSource.g.cs`. Additional per-target reachable types land in the matching `XxxAotSource.g.cs`. The same pattern is used for `ApiArrayJsonConverter.Converter<T>` (manual keeps in `BlazorUIModuleInitializer.KeepBlazorIpcTypes()`).
 
 ### System.Text.Json source generation
 
@@ -74,12 +82,12 @@ Instead, STJ AOT compatibility is achieved via `CodeKeeper.Keep(string)` calls t
 
 **TODO**: Investigate whether `JsonSerializerIsReflectionEnabledByDefault=false` works with just the CodeKeeper approach, or if source-gen context injection is needed for full AOT without reflection. May require a custom `IJSRuntime` wrapper that uses our contexts directly instead of going through the `TypeInfoResolverChain`.
 
-## Current status (2026-04-04)
+## Current status (2026-04-21)
 
 ### What works
 
-- **Windows Native AOT MAUI app** starts, shows window, loads Blazor UI, connects to RPC, renders chat list and messages
-- **App.AotHelper** validates 906+ types (610 components, 42 APIs, 254 serializables) in both JIT and AOT modes
+- **Windows Native AOT MAUI app** starts, shows window, loads Blazor UI, connects to RPC, renders chat list and messages, records voice, opens video modal
+- **App.AotHelper** validates all types in both JIT and AOT modes; latest discovery counts: ~267 Serializable + ~620 Components + ~44 API interfaces
 - **Build configuration**: `UseNativeAot` property in `App.Maui.csproj` (default: false) switches between CoreCLR/R2R and Native AOT for all platforms
 - **Warning suppressions**: All IL trimming/AOT warnings suppressed globally in `Directory.Build.props`
 - **DynamicDependency cleanup**: All `[DynamicDependency]` attributes replaced with CodeKeeper patterns in AotSource files
@@ -88,13 +96,29 @@ Instead, STJ AOT compatibility is achieved via `CodeKeeper.Keep(string)` calls t
 
 1. **STJ context injection**: Source-generated JSON contexts can't be injected into JSRuntime's resolver chain (see above). CodeKeeper string-based keeps work as a substitute.
 
-2. **WindowConfigurator**: `window.GetAppWindow()` fails in unpackaged mode (`WindowsPackageType=None` required for AOT). Protected with try/catch, falls back to `window.Activate()`.
+2. **WindowConfigurator**: `window.GetAppWindow()` fails in unpackaged mode (`WindowsPackageType=None` required for AOT). Protected with try/catch, falls back to `window.Activate()`. The `Closing` lambda's presenter cast uses a pattern-match (`is OverlappedPresenter`) rather than a direct cast, to avoid InvalidCastException FCEs when the presenter is CompactOverlay/FullScreen.
 
-3. **WindowsAppIconBadge**: `CreateBadgeUpdaterForApplication` fails without AppxManifest.xml in unpackaged mode. Non-blocking FCE.
+3. **WindowsAppIconBadge**: `CreateBadgeUpdaterForApplication` fails without AppxManifest.xml in unpackaged mode. The class catches the COMException once, flips `_isUnsupported = true`, and short-circuits every subsequent call — so the FCE fires only during the first unread-count update rather than on every tick.
 
-4. **MissingTemplateException**: A few opaque "Template is missing" errors from `Internal.Runtime.TypeLoader` — no stack traces available to diagnose. Non-blocking.
+4. **NAudio WASAPI**: `MMDeviceEnumeratorComObject..ctor()` fires `InvalidProgramException` under Native AOT because NAudio's `[ComImport]`-based COM wrappers are not compatible with ILC's COM interop. `TrimmerRootAssembly Include="NAudio.Wasapi"` preserves metadata but does **not** fix the miscompiled ctor body — a known runtime limitation (see `docs/plans/naudio-replacement.md`). `WindowsAudioCapture` catches and degrades gracefully: mic capture continues through WinRT `AudioGraph` (AOT-safe), only system-loopback AEC reverse stream and OS-level mic volume control are lost. Long-term fix: migrate to `CsWin32` or `DirectNAot` (both generate `ComWrappers`-based interop).
 
-5. **Binary size**: ~120MB native executable (Windows x64). No size optimization done yet.
+5. **WinRT `StartupTask` in unpackaged mode**: `Windows.ApplicationModel.StartupTask.GetAsync(...)` throws `COMException 0x80070490 (ELEMENT_NOT_FOUND)` because there's no registered startup task when running unpackaged. `WindowsAppSettings.TryGetStartupTask()` catches and returns null, so `GetAutoStartState` / `SetAutoStart` no-op instead of surfacing the error.
+
+6. **SQLite schema-drift on startup**: SQLite-net's `MigrateTable` reports `duplicate column name: Key` the first time the DB file from a prior run is opened (case-sensitivity quirk in its column-existence probe). `SQLiteBatchingKvasBackend.Initialize` catches, drains connections via `SimpleConcurrentPool.Drain(c => c.Close())`, force-finalizes with `GC.Collect + WaitForPendingFinalizers`, and retries `File.Delete` with exponential back-off (20/40/80/160/320 ms × 5) to ride out any lingering OS-level file handle. Warnings appear in the log; the retry always succeeds (no `ERR`).
+
+7. **Permission-handler expiration noise**: the cache-invalidation scheduled task inside `PermissionHandler.OnRun` completes normally via `OperationCanceledException` whenever the cached value changes. The inner lambda uses `Clock.Delay(period, token).SilentAwait(false)` + early-return-on-cancellation so the task never surfaces an OCE to `BackgroundTask.Run`'s error-logging path.
+
+8. **`JoinVideoCallModal` — Blazor hang on stuck `getUserMedia`**: on Windows (unpackaged, no manifest camera permission), `navigator.mediaDevices.getUserMedia` can hang the JS event loop; awaiting it from `OnAfterRenderAsync` freezes the Blazor render dispatcher, so `OnJoinClick`/`Dispose` can never drain. Fixed by running `startPreview` / `attachFromRecorder` via `BackgroundTask.Run` (fire-and-forget), marshaling UI state back with `InvokeAsync`, and making `OnJoinClick` fire-and-forget the `DisposeAsync`. The Windows `Package.appxmanifest` now also declares the `webcam` device capability (microphone was already there); macOS adds `NSCameraUsageDescription` + `NSMicrophoneUsageDescription`; Android + iOS already declare these.
+
+9. **`MauiNativeAotLogging` — file-based crash logger (dormant)**: standalone FCE+UnhandledException handler that writes to `C:\Temp\fce.log`. Not called by default — opt in from `MauiProgram` static ctor when debugging an early NAOT crash. Has a known positive-feedback loop under concurrent FCEs (each file-lock `IOException` is itself an FCE), so never ship it enabled. The regular `FirstChanceExceptionLogger` (in `ClientStartup.Initialize`, gated on `#if DEBUG + Constants.DebugMode.LogAnyThrownException`) remains the normal path.
+
+10. **MissingTemplateException**: A few opaque "Template is missing" errors from `Internal.Runtime.TypeLoader` — no stack traces available to diagnose. Non-blocking.
+
+11. **`IRandomAccessStream.CloneStream` NotSupportedException** (×few): raised deep inside `Plugin.Maui.Audio.AudioPlayer` → WinRT `MediaSource.CreateFromStream` when playing short tunes. The adapter swallows and recovers internally; it's logged only because FCE sees the throw. Benign.
+
+12. **`Sentry` cache housekeeping FCEs**: `JsonReaderException` (empty envelope) and `FileNotFoundException` (racing `File.Move`) raised by `Sentry.Internal.Http.CachingTransport` when the local cache rotation loses a file. Benign.
+
+13. **Binary size**: ~180MB native executable (Windows x64). No size optimization done yet.
 
 ### Remaining STJ converter types to keep
 
