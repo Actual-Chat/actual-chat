@@ -34,37 +34,37 @@ internal partial class CoreAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Search.SearchMatch>();
         CodeKeeper.KeepSerializable<global::ActualChat.Search.SearchMatchPart>();
         CodeKeeper.KeepSerializable<global::ActualChat.Search.SearchPhrase>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Security.DecryptedSecureToken>();
         CodeKeeper.KeepSerializable<global::ActualChat.Security.SecureToken>();
-        CodeKeeper.KeepSerializable<global::ActualChat.Security.SecureValue>();
 
         // MessagePack formatter types for serializable root types (auto-discovered)
-        CodeKeeper.Keep("ActualLab.Fusion.Internal.SessionMessagePackFormatter, ActualLab.Fusion, Version=12.3.25.16053, Culture=neutral, PublicKeyToken=7c239217ec78b545");
-        CodeKeeper.Keep("ActualLab.Serialization.Internal.UnitMessagePackFormatter, ActualLab.Core, Version=12.3.25.16053, Culture=neutral, PublicKeyToken=7c239217ec78b545");
-        CodeKeeper.Keep("ActualLab.Text.Internal.SymbolMessagePackFormatter, ActualLab.Core, Version=12.3.25.16053, Culture=neutral, PublicKeyToken=7c239217ec78b545");
-        CodeKeeper.Keep("ActualLab.Time.Internal.MomentMessagePackFormatter, ActualLab.Core, Version=12.3.25.16053, Culture=neutral, PublicKeyToken=7c239217ec78b545");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Hashing_HashStringFormatter1, MessagePack.Resolvers.DynamicObjectResolver, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Hosting_HostRoleFormatter2, MessagePack.Resolvers.DynamicObjectResolver, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Kvas_ServerKvas_MigrateGuestKeysFormatter3, MessagePack.Resolvers.DynamicObjectResolver, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Kvas_ServerKvas_SetFormatter4, MessagePack.Resolvers.DynamicObjectResolver, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Kvas_ServerKvas_SetManyFormatter5, MessagePack.Resolvers.DynamicObjectResolver, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Kvas_ServerSettings_SetFormatter6, MessagePack.Resolvers.DynamicObjectResolver, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Mathematics_Internal_OldLinearMapFormatter7, MessagePack.Resolvers.DynamicObjectResolver, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Mathematics_LinearMapDiffFormatter9, MessagePack.Resolvers.DynamicObjectResolver, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Mathematics_LinearMapFormatter8, MessagePack.Resolvers.DynamicObjectResolver, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Mathematics_Range`1\\[\\[System_Int32\\, System_Private_CoreLib\\]\\]Formatter13, MessagePack.Resolvers.DynamicObjectResolver, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_NodeRefFormatter10, MessagePack.Resolvers.DynamicObjectResolver, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Search_SearchMatchFormatter11, MessagePack.Resolvers.DynamicObjectResolver, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Search_SearchMatchPartFormatter12, MessagePack.Resolvers.DynamicObjectResolver, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Search_SearchPhraseFormatter14, MessagePack.Resolvers.DynamicObjectResolver, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Security_SecureTokenFormatter15, MessagePack.Resolvers.DynamicObjectResolver, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Security_SecureValueFormatter16, MessagePack.Resolvers.DynamicObjectResolver, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("ActualChat.Hosting.Internal.HostRoleMessagePackFormatter, ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.Hashing.HashString, ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null]], ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.NodeRef, ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null]], ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("ActualChat.Kvas.Internal.ServerKvas_MigrateGuestKeysMessagePackFormatter, ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("ActualChat.Kvas.Internal.ServerKvas_SetManyMessagePackFormatter, ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("ActualChat.Kvas.Internal.ServerKvas_SetMessagePackFormatter, ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("ActualChat.Kvas.Internal.ServerSettings_SetMessagePackFormatter, ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("ActualChat.Mathematics.Internal.LinearMapDiffMessagePackFormatter, ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("ActualChat.Mathematics.Internal.LinearMapMessagePackFormatter, ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("ActualChat.Mathematics.Internal.OldLinearMapMessagePackFormatter, ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("ActualChat.Search.Internal.SearchMatchMessagePackFormatter, ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("ActualChat.Search.Internal.SearchMatchPartMessagePackFormatter, ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("ActualChat.Search.Internal.SearchPhraseMessagePackFormatter, ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("ActualChat.Security.Internal.DecryptedSecureTokenMessagePackFormatter, ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("ActualChat.Security.Internal.SecureTokenMessagePackFormatter, ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("ActualChat.Serialization.Internal.RangeMessagePackFormatter`1[[ActualChat.Mathematics.Range`1[[System.Int32, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null]], ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("ActualChat.Serialization.Internal.RangeMessagePackFormatter`1[[System.Int32, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("ActualLab.Fusion.Internal.SessionMessagePackFormatter, ActualLab.Fusion, Version=12.3.60.8639, Culture=neutral, PublicKeyToken=7c239217ec78b545");
+        CodeKeeper.Keep("ActualLab.Serialization.Internal.UnitMessagePackFormatter, ActualLab.Core, Version=12.3.60.8639, Culture=neutral, PublicKeyToken=7c239217ec78b545");
+        CodeKeeper.Keep("ActualLab.Text.Internal.SymbolMessagePackFormatter, ActualLab.Core, Version=12.3.60.8639, Culture=neutral, PublicKeyToken=7c239217ec78b545");
+        CodeKeeper.Keep("ActualLab.Time.Internal.MomentMessagePackFormatter, ActualLab.Core, Version=12.3.60.8639, Culture=neutral, PublicKeyToken=7c239217ec78b545");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualChat.Search.SearchMatchPart, ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null]], MessagePack, Version=3.1.4.0, Culture=neutral, PublicKeyToken=b4a0369545f0a1be");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[System.ValueTuple`2[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Byte[], System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], MessagePack, Version=3.1.4.0, Culture=neutral, PublicKeyToken=b4a0369545f0a1be");
         CodeKeeper.Keep("MessagePack.Formatters.ByteArrayFormatter, MessagePack, Version=3.1.4.0, Culture=neutral, PublicKeyToken=b4a0369545f0a1be");
         CodeKeeper.Keep("MessagePack.Formatters.NullableStringArrayFormatter, MessagePack, Version=3.1.4.0, Culture=neutral, PublicKeyToken=b4a0369545f0a1be");
         CodeKeeper.Keep("MessagePack.Formatters.SingleArrayFormatter, MessagePack, Version=3.1.4.0, Culture=neutral, PublicKeyToken=b4a0369545f0a1be");
         CodeKeeper.Keep("MessagePack.Formatters.ValueTupleFormatter`2[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Byte[], System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], MessagePack, Version=3.1.4.0, Culture=neutral, PublicKeyToken=b4a0369545f0a1be");
-        CodeKeeper.Keep("MessagePack.Formatters.Vector2Formatter, MessagePack, Version=3.1.4.0, Culture=neutral, PublicKeyToken=b4a0369545f0a1be");
     }
 
     public (Type, AotTypeKind)[] ListTypes()
@@ -88,7 +88,7 @@ internal partial class CoreAotSource : IAotSource
             (typeof(global::ActualChat.Search.SearchMatch), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Search.SearchMatchPart), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Search.SearchPhrase), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Security.DecryptedSecureToken), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Security.SecureToken), AotTypeKind.Serializable),
-            (typeof(global::ActualChat.Security.SecureValue), AotTypeKind.Serializable),
         ];
 }

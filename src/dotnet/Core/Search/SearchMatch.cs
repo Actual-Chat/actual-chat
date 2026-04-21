@@ -4,6 +4,7 @@
 /// Represents a search match with text, rank, and highlighted parts.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[MessagePackFormatter(typeof(Internal.SearchMatchMessagePackFormatter))]
 public sealed partial record SearchMatch(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] string Text,
     [property: DataMember(Order = 1), MemoryPackOrder(1)] double Rank,

@@ -7,9 +7,9 @@ namespace ActualChat.UI.Blazor.App.Components;
 #pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
 
 [DataContract]
-[JsonConverter(typeof(StringIdentifierJsonConverter<ChatMessageKey>))]
-[Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<ChatMessageKey>))]
-[TypeConverter(typeof(StringIdentifierTypeConverter<ChatMessageKey>))]
+[JsonConverter(typeof(StringLikeJsonConverter<ChatMessageKey>))]
+[Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<ChatMessageKey>))]
+[TypeConverter(typeof(StringLikeTypeConverter<ChatMessageKey>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 public partial class ChatMessageKey : StringIdentifier, IStringIdentifier<ChatMessageKey>
 {

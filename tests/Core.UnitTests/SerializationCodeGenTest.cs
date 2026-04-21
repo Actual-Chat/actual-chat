@@ -25,7 +25,7 @@ public class SerializationCodeGenTest(ITestOutputHelper @out) : TestBase(@out)
         // Hashing & Security
         SerializationCodeGen.ValidateType<HashString>();
         SerializationCodeGen.ValidateType<SecureToken>();
-        SerializationCodeGen.ValidateType<SecureValue>();
+        SerializationCodeGen.ValidateType<DecryptedSecureToken>();
 
         // Search
         SerializationCodeGen.ValidateType<SearchMatch>();

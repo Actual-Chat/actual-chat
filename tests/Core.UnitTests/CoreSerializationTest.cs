@@ -90,7 +90,7 @@ public class CoreSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void SecureValue_Basic()
     {
-        var value = new SecureValue("secret", new Moment(DateTime.UtcNow) + TimeSpan.FromHours(1));
+        var value = new DecryptedSecureToken("secret", new Moment(DateTime.UtcNow) + TimeSpan.FromHours(1));
         value.AssertPassesThroughAllSerializers();
     }
 

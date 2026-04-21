@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using ActualChat.Internal;
 using Microsoft.AspNetCore.Components;
 
 namespace ActualChat;
@@ -6,12 +8,19 @@ namespace ActualChat;
 /// Represents a normalized local URL path starting with '/'.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-public readonly partial struct LocalUrl : IEquatable<LocalUrl>
+// MemoryPack wire format intentionally kept SG-generated (IMemoryPackable<T> map) to stay
+// compatible with older clients. Switch to plain-string when safe by uncommenting:
+// [MemoryPackFormatter<StringLikeMemoryPackFormatter<LocalUrl>>]
+[MessagePackFormatter(typeof(StringLikeMessagePackFormatter<LocalUrl>))]
+[JsonConverter(typeof(StringLikeJsonConverter<LocalUrl>))]
+[Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<LocalUrl>))]
+[TypeConverter(typeof(StringLikeTypeConverter<LocalUrl>))]
+public readonly partial struct LocalUrl : IStringLike<LocalUrl>, IEquatable<LocalUrl>
 {
-    private readonly string _value;
-
     [DataMember, MemoryPackOrder(0)]
-    public string Value => _value ?? "/";
+    public string Value => field ?? "/";
+
+    public static LocalUrl Parse(string? s) => new(s);
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public string DisplayText => Value.Length <= 1 ? Value : Value[1..];
@@ -21,18 +30,18 @@ public readonly partial struct LocalUrl : IEquatable<LocalUrl>
     {
         // Normalizing it
         if (value.IsNullOrEmpty()) {
-            _value = "/";
+            Value = "/";
             return;
         }
         if (!value.StartsWith('/'))
             value = "/" + value;
         if (value.EndsWith('/') && value.Length > 1)
             value = value[..^1];
-        _value = value;
+        Value = value;
     }
 
     public LocalUrl(string value, ParseOrNone _)
-        => _value = value;
+        => Value = value;
 
     public override string ToString()
         => Value;

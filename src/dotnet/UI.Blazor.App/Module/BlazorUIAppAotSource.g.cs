@@ -449,6 +449,68 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.ReconnectBanner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.VideoPanelContainer>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.VideoPanelContent>();
+        CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.ActiveChat>();
+        CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.AttachFileRequestEntry>();
+        CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.EntryRef>();
+        CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.FileMetadata>();
+        CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.MauiFileProvider>();
+        CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.RelatedEntryRef>();
+        CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.SendMessageRequestEntry>();
+        CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.UploadSessionSnapshot>();
+        CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.WebFileProvider>();
+
+        // MessagePack formatter types for serializable root types (auto-discovered)
+        CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.AuthorId, ActualChat.Api, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null]], ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.ChatEntryId, ActualChat.Api, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null]], ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.ChatId, ActualChat.Api, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null]], ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.Hashing.HashString, ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null]], ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.MediaId, ActualChat.Api, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null]], ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.PrincipalId, ActualChat.Api, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null]], ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.UploadId, ActualChat.Api, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null]], ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("ActualChat.Mathematics.Internal.LinearMapMessagePackFormatter, ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("ActualLab.Api.Internal.ApiOptionMessagePackFormatter`1[[ActualLab.Api.ApiOption`1[[System.Nullable`1[[System.Int64, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], ActualLab.Core, Version=12.3.60.8639, Culture=neutral, PublicKeyToken=7c239217ec78b545]], ActualLab.Core, Version=12.3.60.8639, Culture=neutral, PublicKeyToken=7c239217ec78b545");
+        CodeKeeper.Keep("ActualLab.Api.Internal.ApiOptionMessagePackFormatter`1[[System.Nullable`1[[System.Int64, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], ActualLab.Core, Version=12.3.60.8639, Culture=neutral, PublicKeyToken=7c239217ec78b545");
+        CodeKeeper.Keep("ActualLab.IO.Internal.FilePathMessagePackFormatter, ActualLab.Core, Version=12.3.60.8639, Culture=neutral, PublicKeyToken=7c239217ec78b545");
+        CodeKeeper.Keep("ActualLab.Serialization.Internal.OptionMessagePackFormatter`1[[ActualLab.Option`1[[System.Nullable`1[[System.Int64, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], ActualLab.Core, Version=12.3.60.8639, Culture=neutral, PublicKeyToken=7c239217ec78b545]], ActualLab.Core, Version=12.3.60.8639, Culture=neutral, PublicKeyToken=7c239217ec78b545");
+        CodeKeeper.Keep("ActualLab.Serialization.Internal.OptionMessagePackFormatter`1[[System.Nullable`1[[System.Int64, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], ActualLab.Core, Version=12.3.60.8639, Culture=neutral, PublicKeyToken=7c239217ec78b545");
+        CodeKeeper.Keep("ActualLab.Text.Internal.SymbolMessagePackFormatter, ActualLab.Core, Version=12.3.60.8639, Culture=neutral, PublicKeyToken=7c239217ec78b545");
+        CodeKeeper.Keep("ActualLab.Time.Internal.MomentMessagePackFormatter, ActualLab.Core, Version=12.3.60.8639, Culture=neutral, PublicKeyToken=7c239217ec78b545");
+        CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualChat.Chat.ChatEntryAttachment, ActualChat.Api, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null]], MessagePack, Version=3.1.4.0, Culture=neutral, PublicKeyToken=b4a0369545f0a1be");
+        CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualChat.Media.LinkPreview, ActualChat.Api, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null]], MessagePack, Version=3.1.4.0, Culture=neutral, PublicKeyToken=b4a0369545f0a1be");
+        CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualChat.UI.Blazor.App.Services.AttachFileRequestEntry, ActualChat.UI.Blazor.App, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null]], MessagePack, Version=3.1.4.0, Culture=neutral, PublicKeyToken=b4a0369545f0a1be");
+        CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualLab.Collections.Internal.PropertyBagItem, ActualLab.Core, Version=12.3.60.8639, Culture=neutral, PublicKeyToken=7c239217ec78b545]], MessagePack, Version=3.1.4.0, Culture=neutral, PublicKeyToken=b4a0369545f0a1be");
+        CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualLab.Text.Symbol, ActualLab.Core, Version=12.3.60.8639, Culture=neutral, PublicKeyToken=7c239217ec78b545]], MessagePack, Version=3.1.4.0, Culture=neutral, PublicKeyToken=b4a0369545f0a1be");
+        CodeKeeper.Keep("MessagePack.Formatters.NullableFormatter`1[[ActualLab.IO.FilePath, ActualLab.Core, Version=12.3.60.8639, Culture=neutral, PublicKeyToken=7c239217ec78b545]], MessagePack, Version=3.1.4.0, Culture=neutral, PublicKeyToken=b4a0369545f0a1be");
+        CodeKeeper.Keep("MessagePack.Formatters.NullableInt64Formatter, MessagePack, Version=3.1.4.0, Culture=neutral, PublicKeyToken=b4a0369545f0a1be");
+        CodeKeeper.Keep("MessagePack.Formatters.SingleArrayFormatter, MessagePack, Version=3.1.4.0, Culture=neutral, PublicKeyToken=b4a0369545f0a1be");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+ChatEntryAttachmentFormatter, ActualChat.Api, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+ChatEntryAudioFormatter, ActualChat.Api, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+ChatEntryFlagsFormatter, ActualChat.Api, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+ChatEntryFormatter, ActualChat.Api, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+ChatEntryForwardedFormatter, ActualChat.Api, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+MembersChangedOptionFormatter, ActualChat.Api, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+NotifyMembersOptionFormatter, ActualChat.Api, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+SystemEntryFormatter, ActualChat.Api, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Media+LinkPreviewFormatter, ActualChat.Api, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Media+LinkPreviewModeFormatter, ActualChat.Api, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Media+MediaFormatter, ActualChat.Api, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Media+MediaKindFormatter, ActualChat.Api, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Media+MediaRefFormatter, ActualChat.Api, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+ActiveChatFormatter, ActualChat.UI.Blazor.App, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+AttachFileRequestEntryFormatter, ActualChat.UI.Blazor.App, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+EntryRefFormatter, ActualChat.UI.Blazor.App, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+FileMetadataFormatter, ActualChat.UI.Blazor.App, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+IFileProviderFormatter, ActualChat.UI.Blazor.App, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+MauiFileProviderFormatter, ActualChat.UI.Blazor.App, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+RelatedEntryKindFormatter, ActualChat.UI.Blazor.App, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+RelatedEntryRefFormatter, ActualChat.UI.Blazor.App, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+SendMessageRequestEntryFormatter, ActualChat.UI.Blazor.App, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+UploadSessionSnapshotFormatter, ActualChat.UI.Blazor.App, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+UploadSessionStateFormatter, ActualChat.UI.Blazor.App, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+WebFileProviderFormatter, ActualChat.UI.Blazor.App, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualLab+Collections+Internal+PropertyBagItemFormatter, ActualLab.Core, Version=12.3.60.8639, Culture=neutral, PublicKeyToken=7c239217ec78b545");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualLab+Collections+PropertyBagFormatter, ActualLab.Core, Version=12.3.60.8639, Culture=neutral, PublicKeyToken=7c239217ec78b545");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualLab+Serialization+TypeDecoratingUniSerializedFormatter`1[[System.Object, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], ActualLab.Core, Version=12.3.60.8639, Culture=neutral, PublicKeyToken=7c239217ec78b545");
     }
 
     public (Type, AotTypeKind)[] ListTypes()
@@ -887,5 +949,14 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Components.ReconnectBanner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.VideoPanelContainer), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.VideoPanelContent), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Services.ActiveChat), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.UI.Blazor.App.Services.AttachFileRequestEntry), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.UI.Blazor.App.Services.EntryRef), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.UI.Blazor.App.Services.FileMetadata), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.UI.Blazor.App.Services.MauiFileProvider), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.UI.Blazor.App.Services.RelatedEntryRef), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.UI.Blazor.App.Services.SendMessageRequestEntry), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.UI.Blazor.App.Services.UploadSessionSnapshot), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.UI.Blazor.App.Services.WebFileProvider), AotTypeKind.Serializable),
         ];
 }

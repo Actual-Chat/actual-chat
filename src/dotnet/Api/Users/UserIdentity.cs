@@ -1,9 +1,19 @@
-﻿namespace ActualChat.Users;
+﻿using System.ComponentModel;
+using ActualChat.Internal;
+
+namespace ActualChat.Users;
 
 [StructLayout(LayoutKind.Auto)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [Newtonsoft.Json.JsonObject(Newtonsoft.Json.MemberSerialization.OptOut)]
-public readonly partial record struct UserIdentity : IComparable<UserIdentity>
+// MemoryPack wire format intentionally kept SG-generated (IMemoryPackable<T> map) to stay
+// compatible with older clients. Switch to plain-string when safe by uncommenting:
+// [MemoryPackFormatter<StringLikeMemoryPackFormatter<UserIdentity>>]
+[MessagePackFormatter(typeof(StringLikeMessagePackFormatter<UserIdentity>))]
+[JsonConverter(typeof(StringLikeJsonConverter<UserIdentity>))]
+[Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<UserIdentity>))]
+[TypeConverter(typeof(StringLikeTypeConverter<UserIdentity>))]
+public readonly partial record struct UserIdentity : IStringLike<UserIdentity>, IComparable<UserIdentity>
 {
     private static readonly ListFormat IdFormat = ListFormat.SlashSeparated;
 
@@ -22,6 +32,11 @@ public readonly partial record struct UserIdentity : IComparable<UserIdentity>
     public string Value => ParseId(Id).Value;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore, IgnoreMember]
     public bool IsValid => !Id.IsNullOrEmpty();
+
+    // IStringLike — use Id (the round-trippable serialized form) rather than Value
+    // (the computed schema-less component). Formatters go through this interface path.
+    string IStringLike.Value => Id;
+    public static UserIdentity Parse(string? s) => new(s ?? "");
 
     [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
     public UserIdentity(string id)

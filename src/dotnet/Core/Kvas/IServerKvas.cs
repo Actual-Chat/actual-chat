@@ -20,6 +20,7 @@ public interface IServerKvas : IComputeService
 /// Command to set a single key-value pair in the server KVAS.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[MessagePackFormatter(typeof(Internal.ServerKvas_SetMessagePackFormatter))]
 // ReSharper disable once InconsistentNaming
 public partial record ServerKvas_Set(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] Session Session,
@@ -31,6 +32,7 @@ public partial record ServerKvas_Set(
 /// Command to set multiple key-value pairs in the server KVAS.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[MessagePackFormatter(typeof(Internal.ServerKvas_SetManyMessagePackFormatter))]
 // ReSharper disable once InconsistentNaming
 public partial record ServerKvas_SetMany(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] Session Session,
@@ -41,6 +43,7 @@ public partial record ServerKvas_SetMany(
 /// Command to migrate guest session keys to an authenticated session.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[MessagePackFormatter(typeof(Internal.ServerKvas_MigrateGuestKeysMessagePackFormatter))]
 // ReSharper disable once InconsistentNaming
 public partial record ServerKvas_MigrateGuestKeys(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] Session Session

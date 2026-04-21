@@ -20,58 +20,50 @@ public static class ApiModuleInitializer
 
         // Prepend MessagePack resolvers that supply caching formatters for VideoFrame and
         // AudioFrame — enables serialize-once fan-out via the frame's SerializedData.
-        CoreSerializerAndRpcSetup.AddPrependResolver(ActualChat.Video.CachingVideoFrameResolver.Instance);
-        CoreSerializerAndRpcSetup.AddPrependResolver(ActualChat.Audio.CachingAudioFrameResolver.Instance);
-        // NOTE: MessagePack source generator currently crashes on this assembly with
-        // IndexOutOfRangeException (distinct from the #2133 StackOverflow worked around
-        // in Core.csproj — that one is self-referencing generic constraints, this one
-        // is somewhere in the 109 [MessagePackObject] files and not yet pinned). The
-        // SG emits partial output before crashing, so we leave it enabled; no
-        // GeneratedMessagePackResolver.Instance is generated to register here.
-        // Under JIT, StandardResolver's dynamic IL emit covers Api types; under
-        // NativeAOT these types will need a workaround once the SG crash is fixed
-        // or a bisected repro is filed upstream.
+        CoreSerializerAndRpcSetup.AddPrependResolver(Video.CachingVideoFrameResolver.Instance);
+        CoreSerializerAndRpcSetup.AddPrependResolver(Audio.CachingAudioFrameResolver.Instance);
+        CoreSerializerAndRpcSetup.AddGeneratedResolver(GeneratedMessagePackResolver.Instance);
 
         // Custom MemoryPack formatters
 
         // Fixed lists
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<Emoji>());
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<Country>());
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<Interest>());
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<Language>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<Emoji>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<Country>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<Interest>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<Language>());
         // Common / general identifiers
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<AliasId>());
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<MediaId>());
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<StreamId>());
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<Phone>());
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<Email>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<AliasId>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<MediaId>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<StreamId>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<Phone>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<Email>());
         // Principal identifiers
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<PrincipalId>());
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<UserId>());
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<AuthorId>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<PrincipalId>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<UserId>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<AuthorId>());
         // User-related
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<RoleId>());
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<ContactId>());
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<ExternalContactId>());
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<NotificationId>());
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<ExplicitNotificationId>());
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<UserDeviceId>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<RoleId>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<ContactId>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<ExternalContactId>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<NotificationId>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<ExplicitNotificationId>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<UserDeviceId>());
         // Chat identifiers
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<PlaceId>());
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<ChatId>());
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<PeerChatId>());
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<GroupChatId>());
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<PlaceChatId>());
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<ThreadChatId>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<PlaceId>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<ChatId>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<PeerChatId>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<GroupChatId>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<PlaceChatId>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<ThreadChatId>());
         // Chat entry identifiers
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<ChatEntryId>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<ChatEntryId>());
         // Other chat-related identifiers
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<MentionId>());
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<ConversationId>());
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<TranslationId>());
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<TranslationSourceId>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<MentionId>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<ConversationId>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<TranslationId>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<TranslationSourceId>());
         // Content identifiers
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<ContentId>());
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<UploadId>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<ContentId>());
+        MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<UploadId>());
     }
 }

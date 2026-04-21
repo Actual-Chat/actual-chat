@@ -381,7 +381,7 @@ public class StreamHub(IServiceProvider services) : Hub
 
     private Session? GetSessionFromToken(string sessionToken)
         => sessionToken.IsNullOrEmpty() ? null
-            : SecureTokensBackend.ParseSessionToken(sessionToken);
+            : SecureTokensBackend.DecryptSessionToken(sessionToken);
 
     private async IAsyncEnumerable<VideoFrame> SuppressClientStreamCancellation(
         IAsyncEnumerable<VideoFrame> source,

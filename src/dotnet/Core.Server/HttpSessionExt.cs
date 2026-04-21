@@ -44,7 +44,7 @@ public static class HttpSessionExt
             return format is SessionFormat.Token ? null : SessionExt.NewValidOrNull(header);
 
         var secureTokensBackend = httpContext.RequestServices.GetRequiredService<ISecureTokensBackend>();
-        return secureTokensBackend.TryParseSessionToken(header);
+        return secureTokensBackend.TryDecryptSessionToken(header);
     }
 
     public static Session GetSessionFromCookie(this HttpContext httpContext)
@@ -86,6 +86,6 @@ public static class HttpSessionExt
             return null;
 
         var secureTokensBackend = httpContext.RequestServices.GetRequiredService<ISecureTokensBackend>();
-        return secureTokensBackend.TryParseSessionToken(token);
+        return secureTokensBackend.TryDecryptSessionToken(token);
     }
 }

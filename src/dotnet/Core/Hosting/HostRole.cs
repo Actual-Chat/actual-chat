@@ -4,6 +4,7 @@
 /// Defines roles that a host can fulfill (e.g., Api, Backend services, Queues).
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[MessagePackFormatter(typeof(ActualChat.Hosting.Internal.HostRoleMessagePackFormatter))]
 public partial record struct HostRole(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] Symbol Id
     ) : ICanBeNone<HostRole>, IComparable<HostRole>

@@ -5,9 +5,14 @@ using ActualLab.Fusion.Blazor;
 namespace ActualChat.Hashing;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-[JsonConverter(typeof(SymbolIdentifierJsonConverter<HashString>))]
-[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<HashString>))]
-[TypeConverter(typeof(SymbolIdentifierTypeConverter<HashString>))]
+// MemoryPack wire format intentionally kept SG-generated (IMemoryPackable<T> map) to stay
+// compatible with already-persisted ChatEntry rows referencing HashString. When migration
+// is in place, switch to plain-string by uncommenting the line below:
+// [MemoryPackFormatter<StringLikeMemoryPackFormatter<HashString>>]
+[MessagePackFormatter(typeof(ActualChat.Internal.StringLikeMessagePackFormatter<HashString>))]
+[JsonConverter(typeof(StringLikeJsonConverter<HashString>))]
+[Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<HashString>))]
+[TypeConverter(typeof(StringLikeTypeConverter<HashString>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 [StructLayout(LayoutKind.Auto)]
 public readonly partial struct HashString : ISymbolIdentifier<HashString>

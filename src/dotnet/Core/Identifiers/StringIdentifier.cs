@@ -6,20 +6,19 @@ namespace ActualChat;
 /// Base interface for string-based identifiers with hash code caching.
 /// </summary>
 // ReSharper disable once PossibleInterfaceMemberAmbiguity
-public interface IStringIdentifier : IHasId<string>, IHasId<Symbol>
+public interface IStringIdentifier : IStringLike, IHasId<string>, IHasId<Symbol>
 {
-    string Value { get; }
     int HashCode { get; }
 }
 
 /// <summary>
 /// Generic interface for string-based identifiers with parsing support.
 /// </summary>
-public interface IStringIdentifier<TSelf> : IStringIdentifier,
+public interface IStringIdentifier<TSelf> : IStringIdentifier, IStringLike<TSelf>,
     IEquatable<TSelf>, IComparable<TSelf>, IEqualityOperators<TSelf, TSelf, bool>
     where TSelf : StringIdentifier, IStringIdentifier<TSelf>
 {
-    static abstract TSelf Parse(string s); // Must rely on TryParse(s, out result)
+    // Parse(string?) is inherited from IStringLike<TSelf>; existing Parse(string s) implementations satisfy it at IL level.
     static abstract TSelf? ParseNullable(string? s); // Must rely on Parse(s)
     static abstract TSelf? TryParse(string? s, bool allowNull = false); // Must rely on TryParse(s, out result)
     static abstract bool TryParse(string? s, [NotNullWhen(true)] out TSelf? result);
@@ -42,7 +41,7 @@ public abstract class StringIdentifier(string value) : IStringIdentifier
 
     // IStringIdentifier members
     string IHasId<string>.Id => Value;
-    string IStringIdentifier.Value => Value;
+    string IStringLike.Value => Value;
     int IStringIdentifier.HashCode => HashCode;
 
     public override string ToString()

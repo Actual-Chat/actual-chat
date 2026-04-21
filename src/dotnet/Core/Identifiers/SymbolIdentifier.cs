@@ -4,20 +4,20 @@ namespace ActualChat;
 /// Base interface for Symbol-based identifiers.
 /// </summary>
 #pragma warning disable CA1000, CA2252
-public interface ISymbolIdentifier : IHasId<Symbol>, ICanBeNone
+public interface ISymbolIdentifier : IStringLike, IHasId<Symbol>, ICanBeNone
 {
-    public string Value { get; }
 }
 
 /// <summary>
 /// Generic interface for Symbol-based identifiers with parsing support.
 /// </summary>
-public interface ISymbolIdentifier<TSelf> : ISymbolIdentifier, IEquatable<TSelf>, IComparable<TSelf>, ICanBeNone<TSelf>
+public interface ISymbolIdentifier<TSelf> : ISymbolIdentifier, IStringLike<TSelf>,
+    IEquatable<TSelf>, IComparable<TSelf>, ICanBeNone<TSelf>
     where TSelf : struct, ISymbolIdentifier<TSelf>
 {
-    public static abstract TSelf Parse(string? s);
-    public static abstract TSelf ParseOrNone(string? s);
-    public static abstract bool TryParse(string? s, out TSelf result);
+    // Parse(string?) is inherited from IStringLike<TSelf>.
+    static abstract TSelf ParseOrNone(string? s);
+    static abstract bool TryParse(string? s, out TSelf result);
 
     int IComparable<TSelf>.CompareTo(TSelf other)
         => string.CompareOrdinal(Id.Value, other.Id.Value);

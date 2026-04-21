@@ -1,6 +1,4 @@
 using System.Buffers;
-using ActualLab.Collections;
-using MessagePack;
 using MessagePack.Formatters;
 
 namespace ActualChat.Video;
@@ -40,6 +38,7 @@ namespace ActualChat.Video;
 /// Height (int32), Description (bin or nil), Codec (str or nil), TemporalLayerId (int32).
 /// </para>
 /// </remarks>
+[ExcludeFormatterFromSourceGeneratedResolver]
 public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFrame>
 {
     public static readonly CachingVideoFrameFormatter Instance = new();
@@ -49,7 +48,7 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
 
     public void Serialize(ref MessagePackWriter writer, VideoFrame value, MessagePackSerializerOptions options)
     {
-        if (value is null) {
+        if (ReferenceEquals(value, null)) {
             writer.WriteNil();
             return;
         }

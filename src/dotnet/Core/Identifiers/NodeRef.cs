@@ -8,9 +8,14 @@ namespace ActualChat;
 /// Unique identifier for a cluster node.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-[JsonConverter(typeof(Internal.SymbolIdentifierJsonConverter<NodeRef>))]
-[Newtonsoft.Json.JsonConverter(typeof(Internal.SymbolIdentifierNewtonsoftJsonConverter<NodeRef>))]
-[TypeConverter(typeof(Internal.SymbolIdentifierTypeConverter<NodeRef>))]
+// MemoryPack wire format intentionally kept SG-generated (IMemoryPackable<T> map) to
+// stay compatible with older clients. When all peers are upgraded, switch to plain-string
+// by uncommenting the line below:
+// [MemoryPackFormatter<Internal.StringLikeMemoryPackFormatter<NodeRef>>]
+[MessagePackFormatter(typeof(Internal.StringLikeMessagePackFormatter<NodeRef>))]
+[JsonConverter(typeof(Internal.StringLikeJsonConverter<NodeRef>))]
+[Newtonsoft.Json.JsonConverter(typeof(Internal.StringLikeNewtonsoftJsonConverter<NodeRef>))]
+[TypeConverter(typeof(Internal.StringLikeTypeConverter<NodeRef>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 [StructLayout(LayoutKind.Auto)]
 public readonly partial struct NodeRef : ISymbolIdentifier<NodeRef>

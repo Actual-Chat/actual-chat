@@ -16,6 +16,7 @@ public interface IServerSettings : IComputeService
 /// Command to set a server-side setting value.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[MessagePackFormatter(typeof(Internal.ServerSettings_SetMessagePackFormatter))]
 // ReSharper disable once InconsistentNaming
 public partial record ServerSettings_Set(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] Session Session,

@@ -8,6 +8,7 @@ namespace ActualChat.Search;
 /// Represents a parsed search query with terms and matching configuration.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[MessagePackFormatter(typeof(Internal.SearchPhraseMessagePackFormatter))]
 public sealed partial class SearchPhrase
 {
     [GeneratedRegex("[\\s_]+")]

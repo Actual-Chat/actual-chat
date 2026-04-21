@@ -7,7 +7,8 @@ namespace ActualChat.Mathematics;
 /// <typeparam name="T">Type of the elements inside the range.</typeparam>
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 [StructLayout(LayoutKind.Sequential, Pack = 1)] // Important!
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[MessagePackFormatter(typeof(ActualChat.Serialization.Internal.RangeMessagePackFormatter<>))]
 [Newtonsoft.Json.JsonObject(Newtonsoft.Json.MemberSerialization.OptOut)]
 public readonly partial struct Range<T> : IEquatable<Range<T>>
     where T : notnull
@@ -15,13 +16,13 @@ public readonly partial struct Range<T> : IEquatable<Range<T>>
     /// <summary>
     /// Lower range boundary, always inclusive.
     /// </summary>
-    [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
+    [DataMember(Order = 0), MemoryPackOrder(0)]
     public T Start { get; }
 
     /// <summary>
     /// Upper range boundary, typically exclusive.
     /// </summary>
-    [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
+    [DataMember(Order = 1), MemoryPackOrder(1)]
     public T End { get; }
 
     /// <summary>

@@ -15,6 +15,7 @@ public static class CoreSerializerAndRpcSetup
     private static readonly List<IFormatterResolver> PrependResolvers = new();
     private static readonly List<IFormatterResolver> GeneratedResolvers = new();
     private static bool _isConfigured;
+    private static bool _isServer;
 
     [ModuleInitializer]
     internal static void ModuleInitializer()
@@ -24,6 +25,7 @@ public static class CoreSerializerAndRpcSetup
     {
         lock (Lock) {
             _isConfigured = true;
+            _isServer = isServer;
             RebuildResolverChain();
         }
 #if USE_MESSAGEPACK
@@ -90,13 +92,28 @@ public static class CoreSerializerAndRpcSetup
 
     private static void RebuildResolverChain()
     {
-        var chain = new IFormatterResolver[PrependResolvers.Count + GeneratedResolvers.Count + 1];
+        // Server: StandardResolver as last-resort fallback — uses dynamic IL emit (JIT-only)
+        //   to handle user types that aren't covered by the SG-generated resolvers. Safe on
+        //   server because it's always JIT.
+        // Client (Wasm / Maui / anywhere NativeAOT-bound): replace the dynamic fallback with
+        //   static-only resolvers (BuiltinResolver for primitives/DateTime/Guid/etc.,
+        //   AttributeFormatterResolver for [MessagePackFormatter]-marked types,
+        //   ImmutableCollectionResolver for ImmutableArray/List/Dictionary). A type that
+        //   isn't covered here or by the SG-generated resolvers throws FormatterNotRegistered
+        //   at runtime — the intended behavior, since silently falling back to IL emit would
+        //   hide AOT-unsafe paths.
+        IFormatterResolver[] fallback = _isServer
+            ? [StandardResolver.Instance]
+            : [
+                BuiltinResolver.Instance,
+                AttributeFormatterResolver.Instance,
+                MessagePack.ImmutableCollection.ImmutableCollectionResolver.Instance,
+            ];
+
+        var chain = new IFormatterResolver[PrependResolvers.Count + GeneratedResolvers.Count + fallback.Length];
         PrependResolvers.CopyTo(chain, 0);
         GeneratedResolvers.CopyTo(chain, PrependResolvers.Count);
-        // StandardResolver is the last-resort fallback. On JIT it handles types via
-        // dynamic IL emit; on NativeAOT those paths throw, so all user types must be
-        // covered by the generated resolvers registered above.
-        chain[^1] = StandardResolver.Instance;
+        fallback.CopyTo(chain, PrependResolvers.Count + GeneratedResolvers.Count);
         DefaultMessagePackResolver.Resolvers = chain;
     }
 }

@@ -11,10 +11,10 @@ namespace ActualChat;
 
 // TODO(AY): Rename to MentionRef
 [DataContract, MemoryPackable(GenerateType.NoGenerate)]
-[JsonConverter(typeof(StringIdentifierJsonConverter<MentionId>))]
-[Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<MentionId>))]
-[MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<MentionId>))]
-[TypeConverter(typeof(StringIdentifierTypeConverter<MentionId>))]
+[JsonConverter(typeof(StringLikeJsonConverter<MentionId>))]
+[Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<MentionId>))]
+[MessagePackFormatter(typeof(StringLikeMessagePackFormatter<MentionId>))]
+[TypeConverter(typeof(StringLikeTypeConverter<MentionId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 public sealed partial class MentionId : StringIdentifier, IStringIdentifier<MentionId>
 {

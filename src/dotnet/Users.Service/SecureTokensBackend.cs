@@ -29,7 +29,7 @@ public class SecureTokensBackend(IServiceProvider services) : ISecureTokensBacke
         return ValueTask.FromResult(new SecureToken(token, expiresAt));
     }
 
-    public SecureValue? TryParse(string token)
+    public DecryptedSecureToken? TryDecrypt(string token)
     {
         if (token.IsNullOrEmpty())
             return null;
@@ -43,7 +43,7 @@ public class SecureTokensBackend(IServiceProvider services) : ISecureTokensBacke
                 return null;
 
             var value = augmentedValue[(delimiterIndex + 1)..];
-            return new SecureValue(value, expiresAt);
+            return new DecryptedSecureToken(value, expiresAt);
         }
         catch (CryptographicException) {
             return null;

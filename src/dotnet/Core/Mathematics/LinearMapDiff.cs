@@ -3,6 +3,7 @@ using System.Numerics;
 namespace ActualChat.Mathematics;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[MessagePackFormatter(typeof(Internal.LinearMapDiffMessagePackFormatter))]
 [StructLayout(LayoutKind.Auto)]
 public readonly partial record struct LinearMapDiff(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] LinearMap Suffix,

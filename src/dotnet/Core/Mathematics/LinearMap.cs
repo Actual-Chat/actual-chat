@@ -3,6 +3,7 @@ using System.Numerics;
 namespace ActualChat.Mathematics;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[MessagePackFormatter(typeof(Internal.LinearMapMessagePackFormatter))]
 public readonly partial struct LinearMap
 {
     public static readonly LinearMap Zero = new(Vector2.Zero);
@@ -36,8 +37,8 @@ public readonly partial struct LinearMap
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public Range<float> YRange => IsEmpty ? default : new Range<float>(Points[0].Y, Points[^1].Y);
 
-    public Vector2 this[int index] => Points[index];
-    public LinearMap this[Range range] => new(Points[range]);
+    [IgnoreMember] public Vector2 this[int index] => Points[index];
+    [IgnoreMember] public LinearMap this[Range range] => new(Points[range]);
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
     public LinearMap(params float[] data)

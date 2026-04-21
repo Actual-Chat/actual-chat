@@ -86,7 +86,7 @@
         var sessionHash = SessionHash; // It's passed directly only in the WASM app
         if (hostKind.IsServer()) {
             var secureTokensBackend = Services.GetRequiredService<ISecureTokensBackend>();
-            var session = secureTokensBackend.ParseSessionToken(SessionToken);
+            var session = secureTokensBackend.DecryptSessionToken(SessionToken);
             SessionResolver.Session = session; // All clients use DefaultSessionResolver
             sessionHash = session.Hash;
         }

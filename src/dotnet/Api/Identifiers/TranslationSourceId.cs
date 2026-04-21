@@ -10,10 +10,10 @@ namespace ActualChat;
 #pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
 
 [DataContract, MemoryPackable(GenerateType.NoGenerate)]
-[JsonConverter(typeof(StringIdentifierJsonConverter<TranslationSourceId>))]
-[Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<TranslationSourceId>))]
-[MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<TranslationSourceId>))]
-[TypeConverter(typeof(StringIdentifierTypeConverter<TranslationSourceId>))]
+[JsonConverter(typeof(StringLikeJsonConverter<TranslationSourceId>))]
+[Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<TranslationSourceId>))]
+[MessagePackFormatter(typeof(StringLikeMessagePackFormatter<TranslationSourceId>))]
+[TypeConverter(typeof(StringLikeTypeConverter<TranslationSourceId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 
 public partial class TranslationSourceId  : StringIdentifier, IStringIdentifier<TranslationSourceId>

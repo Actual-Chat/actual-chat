@@ -3,6 +3,7 @@ using System.Numerics;
 namespace ActualChat.Mathematics.Internal;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[MessagePackFormatter(typeof(OldLinearMapMessagePackFormatter))]
 public readonly partial struct OldLinearMap
 {
     private readonly float[] _sourcePoints;

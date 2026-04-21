@@ -32,6 +32,7 @@ namespace ActualChat.Audio;
 /// Offset (int64 ticks), Duration (int64 ticks), IsKeyFrame (bool).
 /// </para>
 /// </remarks>
+[ExcludeFormatterFromSourceGeneratedResolver]
 public sealed class CachingAudioFrameFormatter : IMessagePackFormatter<AudioFrame?>
 {
     public static readonly CachingAudioFrameFormatter Instance = new();
