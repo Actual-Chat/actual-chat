@@ -1,16 +1,26 @@
 @namespace ActualChat.UI.Blazor.App.Components
 
-@if (IsVisible) {
+@if (IsPending) {
     <div class="image-quality-selector">
-        @foreach (var option in _options) {
-            var isSelected = option.Preset == SelectedPreset;
-            <button class="quality-chip @(isSelected ? "selected" : "")"
-                    @onclick="() => SelectPreset(option.Preset)">
-                <span class="quality-label">@option.Label</span>
-                @if (option.EstimatedSize > 0) {
-                    <span class="quality-size">@FormatSize(option.EstimatedSize)</span>
-                }
-            </button>
+        @if (!_estimatesLoaded) {
+            <div class="quality-chip quality-badge">
+                <span class="quality-label">&nbsp;</span>
+            </div>
+        } else if (_options.Length <= 1) {
+            <div class="quality-chip quality-badge">
+                <span class="quality-label">Original only</span>
+            </div>
+        } else {
+            @foreach (var option in _options) {
+                var isSelected = option.Preset == Attachment.SelectedQuality;
+                <button class="quality-chip @(isSelected ? "selected" : "")"
+                        @onclick="() => SelectPreset(option.Preset)">
+                    <span class="quality-label">@option.Label</span>
+                    @if (option.EstimatedSize > 0) {
+                        <span class="quality-size">@FormatSize(option.EstimatedSize)</span>
+                    }
+                </button>
+            }
         }
     </div>
 }
@@ -18,15 +28,30 @@
 @code {
     private QualityOption[] _options = [];
     private CancellationTokenSource? _estimateCts;
+    private Timer? _estimateTimer;
+    private bool _estimatesLoaded;
+    private AttachmentId _lastAttachmentId;
 
     [Parameter, EditorRequired] public Attachment Attachment { get; set; } = null!;
+    [Parameter] public EventCallback<QualitySelection> OnPresetChanged { get; set; }
 
-    public bool IsVisible => Attachment is { IsResizableImage: true, IsUploadPending: true };
-    public ImageQualityPreset SelectedPreset { get; private set; } = ImageQualityPreset.Original;
+    private bool IsPending => Attachment is { IsResizableImage: true, IsUploadPending: true };
 
     protected override void OnParametersSet() {
-        if (IsVisible && _options.Length == 0)
-            _ = EstimateSizes();
+        if (!IsPending)
+            return;
+
+        if (_lastAttachmentId != Attachment.Id) {
+            _lastAttachmentId = Attachment.Id;
+            _options = [];
+            _estimatesLoaded = false;
+            _estimateTimer?.Dispose();
+            _estimateTimer = new Timer(
+                _ => _ = InvokeAsync(() => _ = EstimateSizes()),
+                null,
+                TimeSpan.FromMilliseconds(300),
+                System.Threading.Timeout.InfiniteTimeSpan);
+        }
     }
 
     private async Task EstimateSizes() {
@@ -62,15 +87,18 @@
             _options = _options.Where(o =>
                 o.Preset == ImageQualityPreset.Original || o.EstimatedSize < _options[0].EstimatedSize * 0.9
             ).ToArray();
-            StateHasChanged();
         }
         catch {
             // Estimation failed — show original only.
         }
+        _estimatesLoaded = true;
+        StateHasChanged();
     }
 
-    private void SelectPreset(ImageQualityPreset preset)
-        => SelectedPreset = preset;
+    private async Task SelectPreset(ImageQualityPreset preset) {
+        var estimatedSize = _options.FirstOrDefault(o => o.Preset == preset)?.EstimatedSize ?? 0;
+        await OnPresetChanged.InvokeAsync(new QualitySelection(preset, estimatedSize));
+    }
 
     private static string FormatSize(long bytes) => bytes switch {
         < 1024 => $"{bytes} B",
@@ -79,4 +107,6 @@
     };
 
     private record QualityOption(ImageQualityPreset Preset, string Label, long EstimatedSize);
+
+    public record QualitySelection(ImageQualityPreset Preset, long EstimatedSize);
 }

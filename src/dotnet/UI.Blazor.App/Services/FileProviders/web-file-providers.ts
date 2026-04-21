@@ -178,13 +178,9 @@ export class WebFileProvider implements IUploadStreamSource {
             }
         }
 
-        const canvas = new OffscreenCanvas(width, height);
-        const ctx = canvas.getContext('2d')!;
-        ctx.drawImage(bitmap, 0, 0, width, height);
-        bitmap.close();
-
         const mimeType = blob.type === 'image/png' ? 'image/png' : 'image/jpeg';
-        const newBlob = await canvas.convertToBlob({ type: mimeType, quality });
+        const newBlob = await canvasToBlob(bitmap, width, height, mimeType, quality);
+        bitmap.close();
 
         this.revokePreviewUrl();
         this.resolvedFile = newBlob;
@@ -216,10 +212,7 @@ export class WebFileProvider implements IUploadStreamSource {
                 height = preset.maxDimension;
             }
 
-            const canvas = new OffscreenCanvas(width, height);
-            const ctx = canvas.getContext('2d')!;
-            ctx.drawImage(bitmap, 0, 0, width, height);
-            const resizedBlob = await canvas.convertToBlob({ type: mimeType, quality });
+            const resizedBlob = await canvasToBlob(bitmap, width, height, mimeType, quality);
             results.push({ size: resizedBlob.size, width, height });
         }
 
@@ -252,6 +245,27 @@ export class WebFileProvider implements IUploadStreamSource {
         URL.revokeObjectURL(this.previewUrl);
         this.previewUrl = null;
     }
+}
+
+function canvasToBlob(
+    source: ImageBitmap,
+    width: number,
+    height: number,
+    mimeType: string,
+    quality: number,
+): Promise<Blob> {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(source, 0, 0, width, height);
+    return new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(
+            blob => blob ? resolve(blob) : reject(new Error('toBlob returned null')),
+            mimeType,
+            quality,
+        );
+    });
 }
 
 export interface ImageResizePreset {

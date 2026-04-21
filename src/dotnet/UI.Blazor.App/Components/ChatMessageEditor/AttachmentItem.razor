@@ -11,7 +11,9 @@
     var previewUrl = m.Preview.PreviewUrl;
     var uploadProgressClass = "attachment-upload-progress";
     var plugClass = "blurred-plug";
-    if (progress.IsFailed) {
+    if (attachment.IsUploadPending) {
+        plugClass = "";
+    } else if (progress.IsFailed) {
         progressValue = Math.Max(progressValue, 30);
         uploadProgressClass += " attachment-upload-failed";
     } else if (progress.IsReady) {
@@ -21,10 +23,16 @@
 
     var uploadStyle = $"width: {progressValue}%;";
     var isUploading = progress.IsInProgress;
+    var wrapperClass = "attachment-wrapper"
+        + (attachment.IsUploadPending ? " pending-quality" : "")
+        + (IsSelected ? " selected" : "");
+    var itemStyle = attachment.IsUploadPending && attachment.Width > 0 && attachment.Height > 0
+        ? $"aspect-ratio: {attachment.Width} / {attachment.Height};"
+        : "";
 }
-<li class="attachment-wrapper">
+<li class="@wrapperClass" @onclick="OnClick">
     <div class="c-content">
-        <div class="attachment-item">
+        <div class="attachment-item" style="@itemStyle">
             <ButtonSquare Click="@RemoveClick" Class="remove-attachment-btn btn-danger btn-sm">
                 <i class="icon-trash03 text-2xl font-thin"></i>
             </ButtonSquare>
@@ -37,7 +45,7 @@
             } else {
                 <FileAttachmentView FileType="@attachment.FileType"/>
             }
-            @if (!progress.IsReady) {
+            @if (!progress.IsReady && !attachment.IsUploadPending) {
                 <span class="spinner-icon-wrapper">
                     @if (isUploading) {
                         <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>

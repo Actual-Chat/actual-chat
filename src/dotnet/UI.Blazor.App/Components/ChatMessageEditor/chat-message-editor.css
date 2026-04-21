@@ -316,9 +316,13 @@ body.narrow .attachment-list-wrapper > .c-btn-group {
     @apply hidden;
 }
 .attachment-list {
-    @apply flex-1 flex-x justify-start gap-x-0.5;
+    @apply flex-1 flex-x justify-start gap-x-1;
     @apply p-1 md:p-2;
     @apply overflow-x-auto;
+    scrollbar-width: none;
+}
+.attachment-list::-webkit-scrollbar {
+    display: none;
 }
 .narrow-panel .attachment-list {
     @apply items-center;
@@ -327,15 +331,16 @@ body.narrow .attachment-list-wrapper > .c-btn-group {
 /* Image quality selector */
 .image-quality-selector {
     @apply flex-x gap-x-1.5;
+    @apply h-10;
     @apply px-1 py-1;
 }
 .quality-chip {
     @apply flex-y items-center gap-x-1;
-    @apply px-3 py-1;
+    @apply px-2 py-0.5;
     @apply rounded-lg;
     @apply border border-separator;
-    @apply bg-01;
-    @apply text-xs text-02;
+    @apply bg-[var(--black-05)];
+    @apply text-xs text-white;
     @apply cursor-pointer;
     @apply select-none;
     flex: 1 1 auto;
@@ -343,11 +348,40 @@ body.narrow .attachment-list-wrapper > .c-btn-group {
 }
 .quality-chip.selected {
     @apply border-primary;
-    @apply bg-primary;
-    @apply text-white;
 }
 .quality-chip .quality-size {
     @apply text-xxs opacity-70;
+}
+
+/* Pending quality selection: original aspect ratio */
+.attachment-wrapper.pending-quality .attachment-item {
+    max-width: 50vw;
+}
+.attachment-wrapper.pending-quality .attachment-item > img {
+    @apply h-24 w-auto max-w-[50vw];
+    @apply object-cover;
+}
+.attachment-wrapper.pending-quality .attachment-filename {
+    @apply hidden;
+}
+.attachment-wrapper.pending-quality.selected {
+    @apply outline-2 outline-primary;
+    outline-offset: 0;
+    outline-style: solid;
+}
+.quality-badge {
+    @apply justify-center;
+    @apply opacity-50;
+    @apply cursor-default;
+}
+.attachment-total-size {
+    @apply px-2 py-0.5;
+    @apply text-xs text-03;
+    @apply text-center;
+}
+.narrow-panel .image-quality-selector,
+.narrow-panel .attachment-total-size {
+    @apply hidden;
 }
 
 .attachment-list-btn.btn {
@@ -411,13 +445,13 @@ body.narrow .attachment-wrapper.last-element {
     @apply object-cover;
 }
 body.narrow .attachment-item {
-    @apply h-30 w-30;
+    @apply h-24 w-auto;
 }
 body.narrow .narrow-panel .attachment-item {
     @apply h-10 w-10;
 }
 body.narrow .attachment-item > img, .attachment-item > video {
-    @apply min-h-30;
+    @apply min-h-24;
 }
 body.narrow .narrow-panel .attachment-item > img,
 .narrow-panel .attachment-item > video {
@@ -469,19 +503,15 @@ body.narrow .attachment-item > .c-file .c-extension {
     @apply justify-center;
 }
 .attachment-filename {
-    @apply absolute bottom-0 z-10;
-    @apply w-full max-w-34;
+    @apply absolute inset-x-0 bottom-0 z-10;
     @apply self-center text-center;
     @apply truncate;
     @apply px-2 md:px-0.5 pb-0.5 pt-1;
     @apply rounded-t-sm;
     @apply overflow-hidden;
     @apply cursor-default;
-    @apply bg-[var(--black-60)];
+    @apply bg-[var(--black-90)];
     @apply text-white text-xs font-medium;
-}
-body.narrow .attachment-filename {
-    @apply max-w-30;
 }
 body.narrow .narrow-panel .attachment-filename {
     @apply hidden;

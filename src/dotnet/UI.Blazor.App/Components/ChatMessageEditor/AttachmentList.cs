@@ -10,13 +10,22 @@ public class AttachmentList : IAttachmentList
 
     public int Count => _attachments.Count;
     public IEnumerable<Attachment> Items => _attachments;
+    public AttachmentId SelectedId { get; set; }
     public event EventHandler? Changed;
 
     public string MediaScope { get; init; } = "";
 
+    public void Select(AttachmentId id)
+    {
+        SelectedId = id;
+        RaiseChanged();
+    }
+
     public void Add(Attachment attachment)
     {
         _attachments = _attachments.Add(attachment);
+        if (attachment.IsUploadPending && SelectedId == default)
+            SelectedId = attachment.Id;
         RaiseChanged();
     }
 

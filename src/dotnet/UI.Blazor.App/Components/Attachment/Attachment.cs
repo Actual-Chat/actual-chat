@@ -27,6 +27,7 @@ public record Attachment(string FileName, string FileType, long Length, Size Siz
     public bool IsResizableImage => IsSupportedImage && !MediaTypeExt.IsGif(FileType) && !MediaTypeExt.IsSvg(FileType);
     public bool IsUploadPending { get; init; }
     public ImageQualityPreset SelectedQuality { get; init; } = ImageQualityPreset.Original;
+    public long OriginalLength { get; init; }
 
     public string DemandUploadSessionId()
         => !UploadSessionId.IsNullOrEmpty() ? UploadSessionId : throw new InvalidOperationException("Upload session not assigned");

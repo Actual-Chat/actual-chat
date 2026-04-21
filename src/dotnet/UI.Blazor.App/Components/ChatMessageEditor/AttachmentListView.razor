@@ -3,6 +3,10 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @{
     var attachments = Attachments;
+    var selectedId = attachments.SelectedId;
+    var selectedAttachment = attachments.Items.FirstOrDefault(a => a.Id == selectedId && a.IsUploadPending)
+        ?? attachments.Items.FirstOrDefault(a => a.IsUploadPending);
+    selectedId = selectedAttachment?.Id ?? default;
 }
 
 @if (attachments.Count > 0) {
@@ -18,18 +22,13 @@
         <HeaderButton Class="remove-all-btn" Click="_ => Clear()">
             <i class="icon-trash03 text-xl text-danger"></i>
         </HeaderButton>
-        @{
-            var singleResizable = attachments.Count == 1 ? attachments.Items.FirstOrDefault(a => a.IsUploadPending) : null;
-        }
-        @if (singleResizable != null) {
-            <ImageQualitySelector @ref="_qualitySelector"
-                Attachment="@singleResizable"/>
-        }
-        <ul class="attachment-list custom-scrollbar-x">
+        <ul class="attachment-list">
             @foreach (var attachment in attachments.Items) {
                 <AttachmentItem
                     @key="attachment.Id"
                     Attachment="@attachment"
+                    IsSelected="@(attachment.Id == selectedId)"
+                    OnClick="@(() => OnItemClick(attachment))"
                     RestartClick="@(() => OnRestartClick(attachment))"
                     RemoveClick="@(() => OnRemoveClick(attachment))"/>
             }
@@ -41,6 +40,16 @@
                 </li>
             }
         </ul>
+        @if (selectedAttachment != null) {
+            <ImageQualitySelector @ref="_qualitySelector"
+                Attachment="@selectedAttachment"
+                OnPresetChanged="@OnPresetChanged"/>
+        }
+        @if (attachments.Count > 1) {
+            <div class="attachment-total-size">
+                Total: @FormatSize(attachments.Items.Sum(a => a.Length))
+            </div>
+        }
         <HeaderButton Class="close-keyboard-btn">
             <i class="icon-chevron-up text-2xl text-03"></i>
         </HeaderButton>
@@ -87,6 +96,28 @@
     private Task OnRestartClick(Attachment attachment)
         => Attachments.Restart(attachment);
 
-    public ImageQualityPreset GetSelectedQuality()
-        => _qualitySelector?.SelectedPreset ?? ImageQualityPreset.Original;
+    private void OnItemClick(Attachment attachment) {
+        if (attachment.IsUploadPending)
+            Attachments.Select(attachment.Id);
+    }
+
+    private void OnPresetChanged(ImageQualitySelector.QualitySelection selection) {
+        var selected = Attachments.Items.FirstOrDefault(a => a.Id == Attachments.SelectedId);
+        if (selected is { IsUploadPending: true }) {
+            var newLength = selection.Preset == ImageQualityPreset.Original
+                ? selected.OriginalLength
+                : selection.EstimatedSize > 0 ? selection.EstimatedSize : selected.Length;
+            var updated = selected with {
+                SelectedQuality = selection.Preset,
+                Length = newLength,
+            };
+            Attachments.Replace(selected, updated);
+        }
+    }
+
+    private static string FormatSize(long bytes) => bytes switch {
+        < 1024 => $"{bytes} B",
+        < 1024 * 1024 => $"{bytes / 1024.0:F0} KB",
+        _ => $"{bytes / (1024.0 * 1024.0):F1} MB",
+    };
 }

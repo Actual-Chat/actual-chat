@@ -12,7 +12,6 @@
 
     RenderFragment RenderAttachmentListView() =>
         @<AttachmentListView
-             @ref="_attachmentListView"
              @key="AttachmentListKey"
              AttachmentListHolder="@_attachmentListHolder"
              FileAttachments="@FileAttachments"
@@ -99,7 +98,6 @@
 
     private readonly AsyncLock _postLock = new(LockReentryMode.CheckedFail);
     private AttachmentListHolder _attachmentListHolder = null!;
-    private AttachmentListView? _attachmentListView;
     private bool _hasAttachments;
     private bool _isRightPanelVisible;
     private bool Autofocus => ScreenSize.IsWide() && !BrowserInfo.IsTouchCapable;
@@ -205,8 +203,7 @@
         text = text.Trim();
 
         // Apply selected quality and start pending uploads before sending.
-        var selectedQuality = _attachmentListView?.GetSelectedQuality() ?? ImageQualityPreset.Original;
-        await FileAttachments.ApplyQualityAndStartUploads(_attachmentListHolder.Attachments, selectedQuality);
+        await FileAttachments.ApplyQualityAndStartUploads(_attachmentListHolder.Attachments);
 
         var attachmentListSnapshot = _attachmentListHolder.PopSnapshot();
         if (text.IsNullOrEmpty() && attachmentListSnapshot.Attachments.Count == 0) {

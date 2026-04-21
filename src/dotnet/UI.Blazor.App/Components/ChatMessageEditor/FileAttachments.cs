@@ -134,15 +134,15 @@ public class FileAttachments : UIServiceBase<AppUIHub>
             UICommander.ShowError("Failed to add file attachment.");
             return false;
         }
-        // Defer upload for single resizable images to allow quality selection.
-        if (attachment.IsResizableImage && list.Count == 0) {
-            attachment = attachment with { IsUploadPending = true };
+        // Defer upload for resizable images to allow quality selection.
+        if (attachment.IsResizableImage) {
+            attachment = attachment with { IsUploadPending = true, OriginalLength = attachment.Length };
+            if (attachment is SourceAttachment source)
+                AttachmentsState.SetPreview(attachment.Id, AttachmentPreview.From(source.Preview));
             list.Add(attachment);
             return true;
         }
-        // Start any pending uploads (as Original) for existing attachments before adding new ones.
-        await ApplyQualityAndStartUploads(list, ImageQualityPreset.Original);
-        // NOTE: Start upload immediately after adding attachments.
+        // NOTE: Start upload immediately after adding non-image attachments.
         attachment = await StartUpload(attachment, list);
         list.Add(attachment);
         return true;
@@ -178,10 +178,10 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         list.Replace(list.Items.First(a => a.Id == attachment.Id), attachment);
     }
 
-    public async Task ApplyQualityAndStartUploads(AttachmentList list, ImageQualityPreset preset)
+    public async Task ApplyQualityAndStartUploads(AttachmentList list)
     {
         foreach (var a in list.Items.Where(a => a.IsUploadPending).ToList())
-            await ConfirmImageQuality(list, a, preset);
+            await ConfirmImageQuality(list, a, a.SelectedQuality);
     }
 
     private async Task<Attachment> StartUpload(Attachment attachment, AttachmentList list)
