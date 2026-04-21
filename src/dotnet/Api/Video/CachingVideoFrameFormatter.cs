@@ -28,7 +28,8 @@ namespace ActualChat.Video;
 /// their reads.
 /// </para>
 /// <para>
-/// Scoped to <see cref="VideoFrame"/> only via <see cref="CachingVideoFrameResolver"/>.
+/// Bound to <see cref="VideoFrame"/> via <c>[MessagePackFormatter]</c> on the type —
+/// AttributeFormatterResolver instantiates this formatter automatically.
 /// MessagePack's built-in <c>ArrayFormatter&lt;VideoFrame&gt;</c> automatically delegates each
 /// element to this formatter, so <see cref="VideoFrame"/>[] batches hit the cache too.
 /// </para>
@@ -38,15 +39,11 @@ namespace ActualChat.Video;
 /// Height (int32), Description (bin or nil), Codec (str or nil), TemporalLayerId (int32).
 /// </para>
 /// </remarks>
-[ExcludeFormatterFromSourceGeneratedResolver]
-public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFrame>
+public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFrame?>
 {
     public static readonly CachingVideoFrameFormatter Instance = new();
 
-    private CachingVideoFrameFormatter()
-    { }
-
-    public void Serialize(ref MessagePackWriter writer, VideoFrame value, MessagePackSerializerOptions options)
+    public void Serialize(ref MessagePackWriter writer, VideoFrame? value, MessagePackSerializerOptions options)
     {
         if (ReferenceEquals(value, null)) {
             writer.WriteNil();
@@ -63,7 +60,7 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
         writer.WriteRaw(value.SerializedData.Span);
     }
 
-    public VideoFrame Deserialize(ref MessagePackReader reader, MessagePackSerializerOptions options)
+    public VideoFrame? Deserialize(ref MessagePackReader reader, MessagePackSerializerOptions options)
     {
         if (reader.TryReadNil())
             return null!;

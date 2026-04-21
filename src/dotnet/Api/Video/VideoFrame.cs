@@ -1,6 +1,7 @@
 namespace ActualChat.Video;
 
 [DataContract, MemoryPackable, MessagePackObject(true)]
+[MessagePackFormatter(typeof(CachingVideoFrameFormatter))]
 public partial class VideoFrame : MediaFrame
 {
     // Parameterless constructor for MessagePack and MemoryPack deserialization
@@ -9,6 +10,7 @@ public partial class VideoFrame : MediaFrame
 
     // Constructor for creating frames programmatically
     public VideoFrame(bool isKeyFrame)
+        // ReSharper disable once VirtualMemberCallInConstructor
         => IsKeyFrame = isKeyFrame;
 
     [DataMember(Order = 1), MemoryPackOrder(1)]

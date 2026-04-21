@@ -18,10 +18,6 @@ public static class ApiModuleInitializer
         // are stored in our DB, and this option enables their legacy serialization mode.
         StringAsSymbolMemoryPackFormatterAttribute.IsEnabled = true;
 
-        // Prepend MessagePack resolvers that supply caching formatters for VideoFrame and
-        // AudioFrame — enables serialize-once fan-out via the frame's SerializedData.
-        CoreSerializerAndRpcSetup.AddPrependResolver(Video.CachingVideoFrameResolver.Instance);
-        CoreSerializerAndRpcSetup.AddPrependResolver(Audio.CachingAudioFrameResolver.Instance);
         CoreSerializerAndRpcSetup.AddGeneratedResolver(GeneratedMessagePackResolver.Instance);
 
         // Custom MemoryPack formatters

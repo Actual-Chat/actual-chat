@@ -4,6 +4,7 @@ namespace ActualChat.Audio;
 /// Represents a single frame of audio data.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[MessagePackFormatter(typeof(CachingAudioFrameFormatter))]
 public partial class AudioFrame : MediaFrame
 {
     [DataMember(Order = 4), MemoryPackOrder(4)]

@@ -23,7 +23,8 @@ namespace ActualChat.Audio;
 /// GC-driven: the array lives as long as any consumer holds the frame. No pooling, no Dispose.
 /// </para>
 /// <para>
-/// Scoped to <see cref="AudioFrame"/> only via <see cref="CachingAudioFrameResolver"/>.
+/// Bound to <see cref="AudioFrame"/> via <c>[MessagePackFormatter]</c> on the type —
+/// AttributeFormatterResolver instantiates this formatter automatically.
 /// MessagePack's built-in <c>ArrayFormatter&lt;AudioFrame&gt;</c> automatically delegates each
 /// element to this formatter, so <see cref="AudioFrame"/>[] batches hit the cache too.
 /// </para>
@@ -32,13 +33,9 @@ namespace ActualChat.Audio;
 /// Offset (int64 ticks), Duration (int64 ticks), IsKeyFrame (bool).
 /// </para>
 /// </remarks>
-[ExcludeFormatterFromSourceGeneratedResolver]
 public sealed class CachingAudioFrameFormatter : IMessagePackFormatter<AudioFrame?>
 {
     public static readonly CachingAudioFrameFormatter Instance = new();
-
-    private CachingAudioFrameFormatter()
-    { }
 
     public void Serialize(ref MessagePackWriter writer, AudioFrame? value, MessagePackSerializerOptions options)
     {
