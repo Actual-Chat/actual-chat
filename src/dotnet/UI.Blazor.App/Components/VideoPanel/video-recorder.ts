@@ -115,18 +115,61 @@ export class VideoRecorder {
             tempStream.getTracks().forEach(t => t.stop());
 
             const devices = await navigator.mediaDevices.enumerateDevices();
-            const videoDevices = devices
-                .filter(d => d.kind === 'videoinput')
-                .map(d => ({
-                    deviceId: d.deviceId,
-                    label: d.label || `Camera ${d.deviceId.slice(0, 8)}`,
-                }));
+            const videoInputs = devices.filter(d => d.kind === 'videoinput');
+
+            // On mobile, browsers typically expose multiple physical back cameras
+            // (wide, ultra-wide, telephoto). The UI only needs "front" and "back",
+            // so pick a single device per facing mode.
+            const selected = DeviceInfo.isMobile
+                ? VideoRecorder.pickMobileCameras(videoInputs)
+                : videoInputs;
+
+            const videoDevices = selected.map(d => ({
+                deviceId: d.deviceId,
+                label: d.label || `Camera ${d.deviceId.slice(0, 8)}`,
+            }));
             infoLog?.log('Enumerated video devices:', videoDevices);
             return videoDevices;
         } catch (error) {
             errorLog?.log('Failed to enumerate video devices:', error);
             return [];
         }
+    }
+
+    /**
+     * Reduces a mobile device's camera list to at most one front + one back camera.
+     * Uses {@link InputDeviceInfo.getCapabilities} when available, falls back to
+     * a label heuristic (Chrome on Android labels them "... facing front/back").
+     */
+    private static pickMobileCameras(devices: MediaDeviceInfo[]): MediaDeviceInfo[] {
+        const facingOf = (d: MediaDeviceInfo): 'user' | 'environment' | null => {
+            // getCapabilities may be absent in older browsers even though TS types
+            // declare it as always present on InputDeviceInfo.
+            const input = d as InputDeviceInfo;
+            const facing: string[] | undefined = typeof input.getCapabilities === 'function'
+                ? input.getCapabilities().facingMode
+                : undefined;
+            if (facing && facing.length > 0) {
+                if (facing.includes('user')) return 'user';
+                if (facing.includes('environment')) return 'environment';
+            }
+            const label = d.label.toLowerCase();
+            if (/facing front|\bfront\b|\buser\b|self/.test(label)) return 'user';
+            if (/facing back|\bback\b|\brear\b|environment/.test(label)) return 'environment';
+            return null;
+        };
+
+        const front = devices.find(d => facingOf(d) === 'user');
+        const back = devices.find(d => facingOf(d) === 'environment');
+        if (front && back)
+            return [front, back];
+        if (front || back)
+            // Only one facing mode could be identified; return it plus the first
+            // unidentified device (if any) as a best-effort second camera.
+            return [front ?? back!, ...devices.filter(d => d !== (front ?? back) && facingOf(d) === null).slice(0, 1)];
+
+        // No facing mode info at all — just cap the list at 2 devices.
+        return devices.slice(0, 2);
     }
 
     constructor(blazorRef: DotNet.DotNetObject, kind: number) {
