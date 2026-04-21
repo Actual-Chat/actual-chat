@@ -50,7 +50,7 @@ public sealed partial class AliasId : StringIdentifier, IStringIdentifier<AliasI
 
     // Format & Parse
 
-    public static AliasId Parse(string s)
+    public static AliasId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<AliasId>(s);
 
     public static AliasId? ParseNullable(string? s)

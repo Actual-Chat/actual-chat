@@ -67,7 +67,7 @@ public sealed partial class Email : StringIdentifier, IStringIdentifier<Email>
 
     // Format & Parse
 
-    public static Email Parse(string s)
+    public static Email Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<Email>(s);
 
     public static Email? ParseNullable(string? s)

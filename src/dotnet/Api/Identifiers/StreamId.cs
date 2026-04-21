@@ -78,7 +78,7 @@ public sealed partial class StreamId : StringIdentifier, IStringIdentifier<Strea
     public static string Format(StreamId streamId, Language language)
         => $"{streamId.Value}{LanguageDelimiter}{language}";
 
-    public static StreamId Parse(string s)
+    public static StreamId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<StreamId>(s);
 
     public static StreamId? ParseNullable(string? s)

@@ -80,7 +80,7 @@ public sealed partial class Phone : StringIdentifier, IStringIdentifier<Phone>
     public static string Format(string code, string number)
         => $"{code}{Delimiter}{number}";
 
-    public static Phone Parse(string s)
+    public static Phone Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<Phone>(s);
 
     public static Phone? ParseNullable(string? s)

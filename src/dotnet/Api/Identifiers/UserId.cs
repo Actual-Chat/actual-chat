@@ -60,7 +60,7 @@ public sealed partial class UserId : PrincipalId, IStringIdentifier<UserId>
 
     // Format & Parse
 
-    public static new UserId Parse(string s)
+    public static new UserId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<UserId>(s);
 
     public static new UserId? ParseNullable(string? s)

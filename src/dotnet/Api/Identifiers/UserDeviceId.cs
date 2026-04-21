@@ -62,7 +62,7 @@ public sealed partial class UserDeviceId : StringIdentifier, IStringIdentifier<U
     public static string Format(UserId ownerId, string deviceId)
         => $"{ownerId}{Delimiter}{deviceId}";
 
-    public static UserDeviceId Parse(string s)
+    public static UserDeviceId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<UserDeviceId>(s);
 
     public static UserDeviceId? ParseNullable(string? s)
