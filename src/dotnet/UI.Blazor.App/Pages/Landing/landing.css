@@ -875,7 +875,7 @@ body.narrow .landing-menu {
     @apply fixed inset-x-0 top-0;
     @apply flex-x z-menu-container;
     height: 100vh;
-    height: calc(var(--vh, 1vh) * 100)
+    height: calc(var(--vh, 1vh) * 100);
 }
 body.narrow .landing-menu.closed {
     @apply -translate-x-full;
