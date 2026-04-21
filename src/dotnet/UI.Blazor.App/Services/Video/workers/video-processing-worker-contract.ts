@@ -187,6 +187,9 @@ export interface VideoProcessingWorker {
      *  into the worker so its `WorkerConnectivityUI` mirror drives the worker's
      *  `Api.isDotNetRpcConnected` gate. Mirrors the audio path. */
     onConnectivityUpdate(isOnline: boolean, isConnected: boolean, isBlazorServer: boolean, noWait?: RpcNoWait): Promise<void>;
+    /** Debug-only: force-remove the worker's RPC peer from the hub. The reconnect
+     *  loop will re-create it. Invoked by {@link DebugUI.disconnectApi}. */
+    disconnectApi(noWait?: RpcNoWait): Promise<void>;
 }
 
 export interface VideoProcessingWorkerCallbacks {

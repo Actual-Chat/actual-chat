@@ -85,16 +85,25 @@ public class StreamServer(IServiceProvider services) : IStreamServer
         RpcStream<AudioFrame> frameStream,
         CancellationToken cancellationToken)
     {
-        var chatIdTyped = ChatId.Parse(chatId);
-        var repliedEntryIdTyped = ChatEntryId.ParseNullable(repliedChatEntryId);
+        var stopCts = new CancellationTokenSource(Constants.Chat.MaxEntryDuration + TimeSpan.FromSeconds(5));
+        try {
+            var chatIdTyped = ChatId.Parse(chatId);
+            var repliedEntryIdTyped = ChatEntryId.ParseNullable(repliedChatEntryId);
 
-        var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
-        var audioRecord = new AudioRecord(streamId, session, chatIdTyped, clientStartOffset, repliedEntryIdTyped);
-        var newFrameStream = RpcStream.New(frameStream);
-        Log.LogInformation("PushAudio: {AudioRecord}", audioRecord);
+            var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
+            var audioRecord = new AudioRecord(streamId, session, chatIdTyped, clientStartOffset, repliedEntryIdTyped);
+            Log.LogInformation("PushAudio: {AudioRecord}", audioRecord);
 
-        using var stopCts = new CancellationTokenSource(Constants.Chat.MaxEntryDuration + TimeSpan.FromSeconds(5));
-        await Backend.ProcessAudio(audioRecord, preSkip, newFrameStream, stopCts.Token).ConfigureAwait(false);
+            var newFrameStream = RpcStream.New(frameStream);
+            await Backend.ProcessAudio(audioRecord, preSkip, newFrameStream, stopCts.Token).ConfigureAwait(false);
+        }
+        finally {
+            // Release the remote sender on the producing peer — otherwise it keeps
+            // buffering frames and its `writeFrom` hangs waiting for ACKs that we
+            // will never send, because this method has exited.
+            frameStream.Disconnect();
+            stopCts.CancelAndDisposeSilently();
+        }
     }
 
     public async Task PushVideo(
@@ -105,18 +114,24 @@ public class StreamServer(IServiceProvider services) : IStreamServer
         StreamKind streamKind,
         CancellationToken cancellationToken)
     {
-        var chatIdTyped = ChatId.Parse(chatId);
-
-        var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
-        var videoRecord = new VideoRecord(streamId, session, chatIdTyped, clientStartOffset, format, streamKind);
-        var newFrameStream = RpcStream.New(frameStream);
-        Log.LogInformation("PushVideo: {VideoRecord}", videoRecord);
-
         // Live video calls: cap at Constants.Video.MaxLiveDuration (8h) rather than
         // the 3-min chat-entry duration. Every StreamKind (Webcam/Screencast) is a
         // live stream; there is no voice-message-style video path.
         using var stopCts = new CancellationTokenSource(Constants.Video.MaxLiveDuration);
-        await VideoBackend.PushVideo(videoRecord, newFrameStream, stopCts.Token).ConfigureAwait(false);
+        try {
+            var chatIdTyped = ChatId.Parse(chatId);
+
+            var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
+            var videoRecord = new VideoRecord(streamId, session, chatIdTyped, clientStartOffset, format, streamKind);
+            Log.LogInformation("PushVideo: {VideoRecord}", videoRecord);
+
+            var newFrameStream = RpcStream.New(frameStream);
+            await VideoBackend.PushVideo(videoRecord, newFrameStream, stopCts.Token).ConfigureAwait(false);
+        }
+        finally {
+            // See PushAudio — release the remote sender on method exit.
+            frameStream.Disconnect();
+        }
     }
 
     public async Task RequestKeyFrame(string streamId, CancellationToken cancellationToken)

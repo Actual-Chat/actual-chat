@@ -15,6 +15,7 @@ import { supportsTransferableStreams } from '../workers/stream-channel';
 
 import { BrowserInit } from '../../../../UI.Blazor/Services/BrowserInit/browser-init';
 import { ConnectivityUI } from '../../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
+import { Api, WorkerKind } from 'api';
 import type { EncoderConfig, EncoderStats } from '../webcodecs-encoder';
 import type { SegmentationConfig, SegmentationStats, OrientationStats } from '../workers/video-processing-worker-contract';
 import type {
@@ -109,6 +110,9 @@ export class VideoPipeline implements IVideoPipeline {
     // Server clock sync
     private clockUnsubscribe: (() => void) | null = null;
 
+    // Disconnect-api handler — removed from the event set on stop().
+    private _disconnectApiHandler: (() => void) | null = null;
+
     // Stats (polled from worker)
     private currentStats: VideoProcessingStats = {
         encoder: {
@@ -197,6 +201,9 @@ export class VideoPipeline implements IVideoPipeline {
         ConnectivityUI.isOnlineChanged.add(pushConnectivity);
         ConnectivityUI.isConnectedChanged.add(pushConnectivity);
         void ConnectivityUI.whenReady.then(pushConnectivity);
+
+        this._disconnectApiHandler = () => void this.worker.disconnectApi(rpcNoWait);
+        Api.onDisconnectRequested(WorkerKind.VideoCapture).add(this._disconnectApiHandler);
     }
 
     public async start(inputStream: MediaStream): Promise<void> {
@@ -377,6 +384,10 @@ export class VideoPipeline implements IVideoPipeline {
         infoLog?.log('Worker stopped');
 
         // Cleanup
+        if (this._disconnectApiHandler) {
+            Api.onDisconnectRequested(WorkerKind.VideoCapture).remove(this._disconnectApiHandler);
+            this._disconnectApiHandler = null;
+        }
         this.worker.dispose();
         this.workerInstance.terminate();
 

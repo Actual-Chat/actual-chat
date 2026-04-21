@@ -9,6 +9,7 @@
 
 import { defineRpcService, RpcRemoteExecutionMode, RpcType, type RpcHub } from 'actuallab-rpc';
 import { Api, type ApiModule } from './api.js';
+import { coreApi } from './core-api.js';
 
 // Streaming push calls: fire-and-forget.  AwaitForConnection lets us wait for the WS to
 // come up before initial send; AllowReconnect makes the $sys.Reconnect protocol skip the
@@ -95,6 +96,7 @@ export interface StreamServerClient {
  *  The class is intentionally not exported; use `typeof streamingApi` if you
  *  need the type. */
 class StreamingApi implements ApiModule {
+    readonly deps = [coreApi];
     register(hub: RpcHub): void {
         // Pre-populate the method registry so compact-format hash resolution
         // works from the very first outbound message. (`hub.addClient` will

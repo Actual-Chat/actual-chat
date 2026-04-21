@@ -31,8 +31,7 @@ public abstract class MediaSource<TFormat, TFrame> : IMediaSource
         CreatedAt = createdAt;
         Format = format;
         DurationTaskSource = AsyncTaskMethodBuilderExt.New<TimeSpan>();
-        MemoizedFrames = IterateThrough(frameStream, cancellationToken)
-            .Memoize(cancellationToken);
+        MemoizedFrames = IterateThrough(frameStream, cancellationToken).Memoize(cancellationToken);
         Log = log;
     }
 

@@ -19,11 +19,11 @@ public partial class AudioStreamingBackend
         RpcStream<AudioFrame> frames,
         CancellationToken cancellationToken)
     {
-        ValidateStreamId(record.StreamId);
         Log.LogTrace(nameof(ProcessAudio) + ": record #{StreamId} = {Record}", record.StreamId, record);
         var delayedCts = cancellationToken.CreateDelayedTokenSource(Constants.Transcription.CancellationDelay);
         var delayedCancellationToken = delayedCts.Token;
         try {
+            ValidateStreamId(record.StreamId);
             IAsyncEnumerable<AudioFrame> augmentedFrames = frames;
             if (Constants.DebugMode.AudioRecordingStream)
                 augmentedFrames = augmentedFrames.WithLog(Log, nameof(ProcessAudio), cancellationToken);
@@ -38,6 +38,9 @@ public partial class AudioStreamingBackend
             throw;
         }
         finally {
+            // Release the producer's sender: once ProcessAudio returns, nobody
+            // will pull from `frames` again, so the far end must stop buffering.
+            frames.Disconnect();
             delayedCts.CancelAndDisposeSilently();
         }
     }

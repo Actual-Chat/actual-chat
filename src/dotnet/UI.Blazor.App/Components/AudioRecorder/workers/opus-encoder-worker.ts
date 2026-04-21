@@ -11,6 +11,7 @@ import { approximateGain, average, clamp } from 'math';
 import { rpcClientServer, rpcNoWait, RpcNoWait, RpcTimeout } from 'rpc';
 import { Versioning } from 'versioning';
 
+import { Api } from 'api';
 import { AudioStream, AudioStreamer } from './audio-streamer';
 import { ServerClock } from 'server-clock';
 import { AudioVadWorker } from './audio-vad-worker-contract';
@@ -136,8 +137,16 @@ const serverImpl: OpusEncoderWorker = {
         return AudioStreamer.ensureConnected();
     },
 
-    disconnect: (_noWait?: RpcNoWait): Promise<void> => {
-        return AudioStreamer.disconnect();
+    disconnectApi: async (_noWait?: RpcNoWait): Promise<void> => {
+        // Debug-only path — invoked by DebugUI.disconnectApi(WorkerKind.Recording).
+        // Closes the WS connection; the peer's reconnect loop reopens it.
+        warnLog?.log(`disconnectApi (debug): disconnecting peer`);
+        try {
+            if (Api.hub.defaultPeerUrl !== undefined)
+                Api.hub.peers.get(Api.hub.defaultPeerUrl)?.disconnect();
+        } catch (e) {
+            warnLog?.log(`disconnectApi: Api not initialized`, e);
+        }
     },
 
     runDiagnostics: async (diagnosticsState: AudioDiagnosticsState): Promise<AudioDiagnosticsState> => {

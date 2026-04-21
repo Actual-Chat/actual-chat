@@ -114,11 +114,14 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
 
     public async Task PushTranscript(StreamId streamId, RpcStream<TranscriptDiff> diffStream, CancellationToken cancellationToken)
     {
-        ValidateStreamId(streamId);
-        if (diffStream is null)
-            throw new ArgumentNullException(nameof(diffStream));
-
-        await _transcriptStreams.Publish(streamId, diffStream).ConfigureAwait(false);
+        try {
+            ValidateStreamId(streamId);
+            await _transcriptStreams.Publish(streamId, diffStream).ConfigureAwait(false);
+        }
+        finally {
+            // Release the producer's sender — see PushAudio/PushVideo.
+            diffStream.Disconnect();
+        }
     }
 
     // Private methods

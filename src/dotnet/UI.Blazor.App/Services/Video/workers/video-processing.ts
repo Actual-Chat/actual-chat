@@ -910,9 +910,6 @@ export const serverImpl: VideoProcessingWorker = {
             try { await lastVideoStream.whenDisposed; } catch { /* ignore */ }
             lastVideoStream = null;
         }
-        if (Api.hub.defaultPeerUrl !== undefined) {
-            try { Api.hub.removePeer(Api.hub.defaultPeerUrl); } catch { /* ignore */ }
-        }
         Api.releaseConnection('VideoCapture');
         streamCtx.rpcStreamServer = null;
         if (segInitialized) { try { outputGpuBuffer.destroy(); } catch { /* ignore */ } try { smoothedMaskBuffer.destroy(); } catch { /* ignore */ } }
@@ -957,5 +954,18 @@ export const serverImpl: VideoProcessingWorker = {
     // eslint-disable-next-line @typescript-eslint/require-await
     onConnectivityUpdate: async (isOnline, isConnected, isBlazorServer): Promise<void> => {
         WorkerConnectivityUI.update(isOnline, isConnected, isBlazorServer);
+    },
+
+    // eslint-disable-next-line @typescript-eslint/require-await
+    disconnectApi: async (): Promise<void> => {
+        // Debug-only path — invoked by DebugUI.disconnectApi(WorkerKind.VideoCapture).
+        // Closes the WS connection; the peer's reconnect loop reopens it.
+        warnLog?.log(`disconnectApi (debug): disconnecting peer`);
+        try {
+            if (Api.hub.defaultPeerUrl !== undefined)
+                Api.hub.peers.get(Api.hub.defaultPeerUrl)?.disconnect();
+        } catch (e) {
+            warnLog?.log(`disconnectApi: Api not initialized`, e);
+        }
     },
 };

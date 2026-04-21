@@ -9,11 +9,12 @@ public interface ISystemProperties : IComputeService
     Task<double> GetTime(CancellationToken cancellationToken);
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<ServerApiInfo> GetServerApiInfo(string expectedVersion, CancellationToken cancellationToken);
+    Task<ServerApiInfo> GetServerApiInfoNC(string expectedVersion, CancellationToken cancellationToken);
 
     [CommandHandler]
-    public Task OnInvalidateEverything(SystemProperties_InvalidateEverything command, CancellationToken cancellationToken);
+    Task OnInvalidateEverything(SystemProperties_InvalidateEverything command, CancellationToken cancellationToken);
     [CommandHandler]
-    public Task OnPruneComputedGraph(SystemProperties_PruneComputedGraph command, CancellationToken cancellationToken);
+    Task OnPruneComputedGraph(SystemProperties_PruneComputedGraph command, CancellationToken cancellationToken);
 
     // Legacy methods - to be removed in the future
 

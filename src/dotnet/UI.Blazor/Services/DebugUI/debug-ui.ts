@@ -1,4 +1,5 @@
 import { getLogs } from 'logging';
+import { Api, WorkerKind } from 'api';
 import { OnDeviceAwake } from 'on-device-awake';
 import { SvgCache } from '../../Components/Avatar/svg-cache';
 
@@ -50,8 +51,21 @@ export class DebugUI {
         void this.backendRef.invokeMethodAsync('NavigateTo', url);
     };
 
-    public static disconnectRpc(): void {
+    public static disconnectBlazorRpc(): void {
         void this.backendRef.invokeMethodAsync('DisconnectRpc');
+    };
+
+    /** Debug-only: force-disconnect the RPC peer for one target — see
+     *  {@link Api.disconnect}. Pass `'All'` (or omit) to disconnect every
+     *  {@link WorkerKind}. */
+    public static disconnectJSRpc(workerKind: WorkerKind | 'All' = 'All'): void {
+        infoLog?.log(`disconnectJSRpc:`, workerKind);
+        if (workerKind === 'All') {
+            for (const kind of Object.values(WorkerKind))
+                Api.disconnect(kind);
+        } else {
+            Api.disconnect(workerKind);
+        }
     };
 
     public static resetOnboarding(enable: boolean): void {

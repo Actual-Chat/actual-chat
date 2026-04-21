@@ -1,5 +1,5 @@
 import { getLogs } from 'logging';
-import { initVideoRpc, getStreamServerClient, disconnectVideoRpc } from '../../Services/Video/streaming-rpc-client';
+import { initVideoRpc, getStreamServerClient } from '../../Services/Video/streaming-rpc-client';
 import { Api, type VideoFrameDto } from 'api';
 import { fastRaf } from 'fast-raf';
 import { ServerClock } from 'server-clock';
@@ -1125,36 +1125,13 @@ export class VideoPlayer {
             warnLog?.log(`startPull [RPC]: GetStream returned, starting iteration`);
             let pullFrameCount = 0;
 
-            // Timeout: if no frames arrive within 5 seconds of starting
-            // iteration, the RPC stream is likely stuck (server-side
-            // RpcSharedStream deadlock — ack sent but never processed).
-            // Tear down the RPC peer — this calls stream.disconnect(),
-            // which resolves the consumer's `next()` promise and breaks
-            // the for-await loop, letting the retry logic below fire.
-            const FIRST_FRAME_TIMEOUT_MS = 5000;
-            let firstFrameTimer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
-                firstFrameTimer = null;
-                if (pullFrameCount === 0 && !abortController.signal.aborted) {
-                    warnLog?.log(`Pull stream timeout: no frames received in ${FIRST_FRAME_TIMEOUT_MS}ms, disconnecting RPC for retry`);
-                    disconnectVideoRpc();
-                }
-            }, FIRST_FRAME_TIMEOUT_MS);
-
             for await (const frame of stream) {
                 if (abortController.signal.aborted || !this._isPlayingNow) break;
-                if (firstFrameTimer !== null) {
-                    clearTimeout(firstFrameTimer);
-                    firstFrameTimer = null;
-                }
                 pullFrameCount++;
                 this.pullRetryCount = 0;
                 this.processRpcFrame(frame);
             }
-            if (firstFrameTimer !== null) {
-                clearTimeout(firstFrameTimer);
-                firstFrameTimer = null;
-            }
-            // Stream completed normally
+
             if (!abortController.signal.aborted && this._isPlayingNow) {
                 if (pullFrameCount > 0) {
                     // Normal completion with frames — sender intentionally ended the stream

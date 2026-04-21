@@ -78,13 +78,11 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         RpcStream<VideoFrame> videoStream,
         CancellationToken cancellationToken)
     {
-        ValidateStreamId(record.StreamId);
         Log.LogTrace(nameof(PushVideo) + ": record #{StreamId} = {Record}", record.StreamId, record);
-
         var delayedCts = cancellationToken.CreateDelayedTokenSource(Constants.Video.CancellationDelay);
         var delayedCancellationToken = delayedCts.Token;
-
         try {
+            ValidateStreamId(record.StreamId);
             await PushVideoInternal(record, videoStream, delayedCancellationToken)
                 .ConfigureAwait(false);
         }
@@ -93,6 +91,9 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             throw;
         }
         finally {
+            // Release the producer's sender: once PushVideo returns nobody will
+            // pull from `videoStream` again, so the far end must stop buffering.
+            videoStream.Disconnect();
             delayedCts.CancelAndDisposeSilently();
         }
     }

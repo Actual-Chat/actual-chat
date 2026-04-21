@@ -15,6 +15,10 @@ public class SystemProperties(IServiceProvider services)
 
     // [ComputeMethod]
     public virtual Task<ServerApiInfo> GetServerApiInfo(string expectedVersion, CancellationToken cancellationToken)
+        => GetServerApiInfoNC(expectedVersion, cancellationToken);
+
+    // Not a [ComputeMethod]!
+    public Task<ServerApiInfo> GetServerApiInfoNC(string expectedVersion, CancellationToken cancellationToken)
     {
         if (expectedVersion.IsNullOrEmpty())
             return Task.FromResult(new ServerApiInfo(CompatibilityLevel.Unknown));
@@ -33,6 +37,7 @@ public class SystemProperties(IServiceProvider services)
                 : CompatibilityLevel.Compatible;
         return Task.FromResult(new ServerApiInfo(compatibilityLevel));
     }
+
 
     // [CommandHandler]
     public virtual async Task OnInvalidateEverything(

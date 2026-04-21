@@ -53,8 +53,5 @@ export class AudioInitializer {
         await recordingAudioContextSource.setBackgroundActivityState(backgroundActivityState);
         if (backgroundActivityState === 'Foreground' || backgroundActivityState === 'BackgroundActive')
             await opusMediaRecorder.ensureConnected(true);
-        else
-            await opusMediaRecorder.disconnect();
-
     }
 }

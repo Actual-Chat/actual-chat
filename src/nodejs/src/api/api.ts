@@ -28,7 +28,21 @@ import { getLogs } from 'logging';
 
 import { ApiReconnectDelayer } from './api-reconnect-delayer.js';
 
-const { warnLog } = getLogs('Api');
+const { infoLog, warnLog } = getLogs('Api');
+
+/** Identifies which peer / realm a subscriber or {@link Api.disconnect} call
+ *  targets. Debug tooling uses this to drop peers; the reconnect loop brings
+ *  them back automatically. */
+export enum WorkerKind {
+    /** Main-thread peer (shared with {@link VideoPlayback}). */
+    UI = 'UI',
+    /** Main-thread peer used by video playback (shared with {@link UI}). */
+    VideoPlayback = 'VideoPlayback',
+    /** Opus encoder worker peer. */
+    Recording = 'Recording',
+    /** Video processing worker peer. */
+    VideoCapture = 'VideoCapture',
+}
 
 /** Serialization format used by every Api peer. Binary MessagePack — matches
  *  the .NET server's binary path and keeps frame traffic small. */
@@ -65,6 +79,10 @@ export class Api {
      *  the real signal in on main thread and audio worker. */
     private static _isDotNetRpcConnected = true;
     private static _canConnect = false;
+    /** Per-worker "debug-disconnect requested" event. Workers subscribe so that
+     *  {@link Api.disconnect} can reach across Worker boundaries — the main
+     *  thread peer is dropped inline, but each worker must clear its own hub. */
+    private static readonly _disconnectRequested = new Map<WorkerKind, EventHandlerSet<void>>();
 
     /** Fires when `requiresConnection` flips (0↔≥1 scopes). */
     static readonly requiresConnectionChanged = new EventHandlerSet<boolean>();
@@ -73,6 +91,40 @@ export class Api {
     /** Fires when `canConnect` (= `requiresConnection && isDotNetRpcConnected`)
      *  flips. Drives the internal reconnect-delayer gate. */
     static readonly canConnectChanged = new EventHandlerSet<boolean>();
+
+    /** Initialize the shared RpcHub with a URL and zero or more modules.
+     *  Must be called once at startup before `Api.hub` / `Api.peer` are
+     *  accessed. A second call is a no-op (logs a warning) — the hub is
+     *  already live and changing the URL mid-flight would strand in-flight
+     *  calls.
+     *  @param url Default peer URL (WebSocket, e.g. `wss://host/rpc/ws`).
+     *         If `undefined`, falls back to the module-level {@link Api.url}
+     *         (typically set by main-thread bootstrap). Throws if neither is
+     *         provided. The serialization format is fixed (`msgpack6`) and
+     *         appended automatically.
+     *  @param modules Modules to register. Dependencies declared via each
+     *         module's `deps` are registered first (transitively, deduped). */
+    static init(url: string | undefined, ...modules: ApiModule[]): void {
+        if (Api._hub !== undefined) {
+            warnLog?.log('Api.init called more than once — ignoring subsequent call.');
+            return;
+        }
+        Api.url = url ?? Api.url;
+        if (!Api.url)
+            throw new Error('Api.init: url is not provided and Api.url is not set.');
+        const hub = new RpcHub();
+        hub.defaultPeerUrl = RpcPeerRefBuilder.forClient(Api.url, SERIALIZATION_FORMAT);
+        hub.reconnectDelayer = Api._delayer; // shared across all peers in this hub
+        const done = new Set<ApiModule>();
+        const visit = (m: ApiModule): void => {
+            if (done.has(m)) return;
+            done.add(m); // mark first — terminates cycles and blocks duplicate registration
+            for (const d of m.deps ?? []) visit(d);
+            m.register(hub);
+        };
+        for (const m of modules) visit(m);
+        Api._hub = hub;
+    }
 
     /** The shared `RpcHub`. Throws if `Api.init` has not been called. */
     static get hub(): RpcHub {
@@ -151,39 +203,52 @@ export class Api {
         }
     }
 
-    /** Initialize the shared RpcHub with a URL and zero or more modules.
-     *  Must be called once at startup before `Api.hub` / `Api.peer` are
-     *  accessed. A second call is a no-op (logs a warning) — the hub is
-     *  already live and changing the URL mid-flight would strand in-flight
-     *  calls.
-     *  @param url Default peer URL (WebSocket, e.g. `wss://host/rpc/ws`).
-     *         If `undefined`, falls back to the module-level {@link Api.url}
-     *         (typically set by main-thread bootstrap). Throws if neither is
-     *         provided. The serialization format is fixed (`msgpack6`) and
-     *         appended automatically.
-     *  @param modules Modules to register. Dependencies declared via each
-     *         module's `deps` are registered first (transitively, deduped). */
-    static init(url: string | undefined, ...modules: ApiModule[]): void {
-        if (Api._hub !== undefined) {
-            warnLog?.log('Api.init called more than once — ignoring subsequent call.');
+    /** Debug-only: force-disconnect the peer for a single {@link WorkerKind}.
+     *  For main-thread kinds (UI, VideoPlayback) the current-realm peer's WS
+     *  connection is closed; for worker kinds (Recording, VideoCapture) the
+     *  request is dispatched via {@link onDisconnectRequested} subscribers
+     *  that live in each worker's realm. The peer instance is preserved in
+     *  every case — its reconnect loop reopens the WS. */
+    static disconnect(workerKind: WorkerKind): void {
+        // UI & VideoPlayback share the current-realm peer. Close its WS
+        // connection; the peer's reconnect loop reopens it. The peer instance
+        // itself is never destroyed — all cached client proxies stay valid.
+        if (workerKind === WorkerKind.UI || workerKind === WorkerKind.VideoPlayback) {
+            if (Api._hub?.defaultPeerUrl !== undefined) {
+                Api._hub.peers.get(Api._hub.defaultPeerUrl)?.disconnect();
+                infoLog?.log('disconnect: main peer disconnected');
+            }
             return;
         }
-        Api.url = url ?? Api.url;
-        if (!Api.url)
-            throw new Error('Api.init: url is not provided and Api.url is not set.');
-        const hub = new RpcHub();
-        hub.defaultPeerUrl = RpcPeerRefBuilder.forClient(Api.url, SERIALIZATION_FORMAT);
-        hub.reconnectDelayer = Api._delayer; // shared across all peers in this hub
-        const done = new Set<ApiModule>();
-        const visit = (m: ApiModule): void => {
-            if (done.has(m)) return;
-            done.add(m); // mark first — terminates cycles and blocks duplicate registration
-            for (const d of m.deps ?? []) visit(d);
-            m.register(hub);
-        };
-        for (const m of modules) visit(m);
-        Api._hub = hub;
+
+        // Worker-backed kinds — subscribers live in each worker's realm.
+        const set = Api._disconnectRequested.get(workerKind);
+        if (set === undefined || set.count === 0) {
+            infoLog?.log(`disconnect: no subscribers for ${workerKind}`);
+            return;
+        }
+        try {
+            set.trigger(undefined);
+        } catch (e) {
+            warnLog?.log(`disconnect: subscriber for ${workerKind} failed`, e);
+        }
     }
+
+    /** Event set subscribers attach to so {@link Api.disconnect} can reach
+     *  them. The main thread's peer is removed directly by `disconnect`; worker
+     *  pipelines subscribe here and call `Api.hub.removePeer(...)` in their own
+     *  realm. `workerKind` picks the bucket — `Recording` for the audio-encoder
+     *  worker, `VideoCapture` for the video-processing worker. */
+    static onDisconnectRequested(workerKind: WorkerKind): EventHandlerSet<void> {
+        let set = Api._disconnectRequested.get(workerKind);
+        if (!set) {
+            set = new EventHandlerSet<void>();
+            Api._disconnectRequested.set(workerKind, set);
+        }
+        return set;
+    }
+
+    // Private methods
 
     private static _recomputeCanConnect(): void {
         const value = Api.requiresConnection && Api._isDotNetRpcConnected;

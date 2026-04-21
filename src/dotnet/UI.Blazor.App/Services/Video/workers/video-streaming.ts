@@ -189,7 +189,8 @@ export class InternalVideoStream {
             // sender owns the lifetime of the stream.
             void streamServer
                 .PushVideo(RPC_SESSION_DEFAULT, this.ctx.chatId, clientStartOffset, format, stream.toRef(peer), this.ctx.streamKind)
-                .catch((err: unknown) => warnLog?.log('PushVideo rejected:', err));
+                .catch((err: unknown) => warnLog?.log('PushVideo rejected:', err))
+                .finally(() => stream.disconnect());
 
             // Wait for the pump to complete (writeFrom was started by toRef)
             await stream.whenSent;

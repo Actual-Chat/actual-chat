@@ -45,12 +45,3 @@ export function createAudioStream(source: AsyncIterable<AudioFrameDto>): { strea
     const stream = new RpcStream<AudioFrameDto>(source);
     return { stream, ref: stream.toRef(peer) };
 }
-
-/** Disconnect the RPC client — closes the shared hub's default peer.
- *  The next `getStreamServerClient()` / `createVideoStream` / `createAudioStream`
- *  call will recreate the peer via the hub's default factory (URL set by
- *  {@link initVideoRpc}). */
-export function disconnectVideoRpc(): void {
-    if (Api.hub.defaultPeerUrl !== undefined)
-        Api.hub.removePeer(Api.hub.defaultPeerUrl);
-}

@@ -6,8 +6,8 @@ import { EventHandlerSet } from 'event-handling';
 import { ObjectPool } from 'object-pool';
 import { delayAsync } from 'promises';
 import { RpcClientPeer, RpcConnectionState, RpcStream } from 'actuallab-rpc';
-import { Api, streamingApi,
-    type ApiModule, type AudioFrameDto, type StreamServerClient } from 'api';
+import { Api, coreApi, streamingApi,
+    type ApiModule, type AudioFrameDto } from 'api';
 import { ServerClock } from 'server-clock';
 import { WorkerConnectivityUI } from './worker-connectivity-ui';
 import { getLogs } from 'logging';
@@ -139,13 +139,9 @@ export class AudioStream implements Disposable {
                 await AudioStreamer.ensureConnected();
                 if (this.isDisposed)
                     return;
-                if (!AudioStreamer.rpcPeer || !AudioStreamer.streamServerClient) {
-                    warnLog?.log(`${this.name}: peer not connected, skipping stream`);
-                    return;
-                }
 
-                const streamServer = AudioStreamer.streamServerClient;
-                const peer = AudioStreamer.rpcPeer;
+                const streamServer = streamingApi.streamServer;
+                const peer = Api.peer;
 
                 // frameIndex and clientStartOffset are per-PushAudio (per chat entry on the
                 // server); each retry iteration is a fresh entry, so both reset.
@@ -188,7 +184,8 @@ export class AudioStream implements Disposable {
                 void streamServer
                     .PushAudio(RPC_SESSION_DEFAULT, this.chatId, this.repliedChatEntryId ?? null,
                         clientStartOffset, this.preSkip, stream.toRef(peer))
-                    .catch((err: unknown) => warnLog?.log(`${this.name}: PushAudio rejected:`, err));
+                    .catch((err: unknown) => warnLog?.log(`${this.name}: PushAudio rejected:`, err))
+                    .finally(() => stream.disconnect());
 
                 // repliedChatEntryId is only meaningful for the very first segment of the
                 // recording; subsequent peer-change-induced segments must not re-reply.
@@ -205,17 +202,9 @@ export class AudioStream implements Disposable {
 }
 
 export class AudioStreamer {
-    public static streamServerClient: StreamServerClient | null = null;
     public static readonly streams = new Array<AudioStream>();
     public static lastStream: AudioStream | null = null;
     public static connectionStateChangedEvents = new EventHandlerSet<boolean>()
-
-    /** The shared peer. Available after `init()`; undefined before/after teardown. */
-    public static get rpcPeer(): RpcClientPeer | undefined {
-        if (!this._initialized) return undefined;
-        const url = Api.hub.defaultPeerUrl;
-        return url !== undefined && Api.hub.peers.has(url) ? Api.peer : undefined;
-    }
 
     private static _initialized = false;
 
@@ -227,8 +216,15 @@ export class AudioStreamer {
         register(hub) {
             hub.defaultPeerFactory = (h, r) => {
                 const peer = new RpcClientPeer(h, r, false);
-                peer.connectionStateChanged.add(state =>
-                    updateConnectionState(state === RpcConnectionState.Connected));
+                peer.connectionStateChanged.add(state => {
+                    const isConnected = state === RpcConnectionState.Connected;
+                    updateConnectionState(isConnected);
+                    // if (isConnected) {
+                    //     void coreApi.systemProperties.GetServerApiInfoNC('')
+                    //         .then(info => infoLog?.log('post-connect GetServerApiInfoNC:', info))
+                    //         .catch(e => warnLog?.log('post-connect GetServerApiInfoNC rejected:', e));
+                    // }
+                });
                 peer.start();
                 return peer;
             };
@@ -247,9 +243,6 @@ export class AudioStreamer {
         // lifetime. The .NET-connected side still gates actual attempts.
         Api.requireConnection('AudioStreamer');
         this._initialized = true;
-        // Materialise the peer now so its connection/disconnection handlers
-        // are wired before anyone calls `ensureConnected`.
-        this.streamServerClient = streamingApi.streamServer;
     }
 
     public static get isInitialized(): boolean {
@@ -257,16 +250,7 @@ export class AudioStreamer {
     }
 
     public static get isConnected(): boolean {
-        return this.rpcPeer?.isConnected ?? false;
-    }
-
-    public static async disconnect(): Promise<void> {
-        infoLog?.log(`disconnect`);
-        if (this._initialized && Api.hub.defaultPeerUrl !== undefined)
-            Api.hub.removePeer(Api.hub.defaultPeerUrl);
-        Api.releaseConnection('AudioStreamer');
-        this.streamServerClient = null;
-        updateConnectionState(false);
+        return this._initialized && Api.peer.isConnected;
     }
 
     public static async ensureConnected(): Promise<void> {
