@@ -21,11 +21,6 @@ public static class CoreSerializerAndRpcSetup
     {
         lock (Lock)
             RebuildResolverChain();
-#if USE_MESSAGEPACK
-        var useMessagePack = true;
-#else
-        var useMessagePack = false;
-#endif
         if (isServer)
             RpcSerializationFormat.All = ImmutableList.Create(
                 RpcSerializationFormat.SystemJsonV5,
@@ -38,18 +33,14 @@ public static class CoreSerializerAndRpcSetup
                 RpcSerializationFormat.MessagePackV6C);
         else
             RpcSerializationFormat.All = ImmutableList.Create(
-#if !USE_MESSAGEPACK
-                RpcSerializationFormat.MemoryPackV6,
-                RpcSerializationFormat.MemoryPackV6C,
-#endif
                 RpcSerializationFormat.MessagePackV6,
                 RpcSerializationFormat.MessagePackV6C);
 
         RpcSerializationFormatResolver.Default
 #if DEBUG
-            = new(GetFullRpcSerializationFormat(useMessagePack).Key);
+            = new(GetFullRpcSerializationFormat().Key);
 #else
-            = new((isServer ? GetFullRpcSerializationFormat(useMessagePack) : GetCompactRpcSerializationFormat(useMessagePack)).Key);
+            = new((isServer ? GetFullRpcSerializationFormat() : GetCompactRpcSerializationFormat()).Key);
 #endif
     }
 
@@ -63,15 +54,11 @@ public static class CoreSerializerAndRpcSetup
 
     // Private methods
 
-    private static RpcSerializationFormat GetFullRpcSerializationFormat(bool useMessagePack = false)
-        => useMessagePack
-            ? RpcSerializationFormat.MessagePackV6
-            : RpcSerializationFormat.MemoryPackV6;
+    private static RpcSerializationFormat GetFullRpcSerializationFormat()
+        => RpcSerializationFormat.MessagePackV6;
 
-    private static RpcSerializationFormat GetCompactRpcSerializationFormat(bool useMessagePack = false)
-        => useMessagePack
-            ? RpcSerializationFormat.MessagePackV6C
-            : RpcSerializationFormat.MemoryPackV6C;
+    private static RpcSerializationFormat GetCompactRpcSerializationFormat()
+        => RpcSerializationFormat.MessagePackV6C;
 
     private static void RebuildResolverChain()
     {

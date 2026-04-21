@@ -7,7 +7,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="MemoryPack" />
+    <PackageReference Include="MemoryPack" Condition="$(UseMemoryPack)" />
     <PackageReference Include="ActualLab.Fusion.Blazor" />
   </ItemGroup>
 </Project>

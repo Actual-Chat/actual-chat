@@ -16,6 +16,22 @@ public static class AotTypeGenerator
         "ActualChat.UI.Blazor.App",
     ];
 
+    // Framework types that must be kept for Native AOT (emitted into CoreAotSource).
+    // ArraySegment<byte> / <char> are referenced by HttpContent, BufferedFileStreamStrategy,
+    // MemoryMarshal.TryGetArray, etc., and ILC can drop their generic instantiations
+    // when nothing in our code keeps them.
+    //
+    // MessagePackByteSerializer<TypeRef> is built via an Expression<Func<...>> tree inside
+    // ActualLab.Serialization when decoding TypeRef-containing values; the concrete
+    // Expression / Func / serializer instantiations must be kept so ILC doesn't drop them.
+    private static readonly string[] FrameworkTypeKeeps = [
+        "global::System.ArraySegment<byte>",
+        "global::System.ArraySegment<char>",
+        "global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Reflection.TypeRef>",
+        "global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Reflection.TypeRef>>",
+        "global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Reflection.TypeRef>>>",
+    ];
+
     // Target projects: assembly name -> (class name, namespace, relative path from src/dotnet, type kinds)
     private static readonly AotSourceTarget[] Targets = [
         new("ActualChat.Core",
@@ -97,6 +113,9 @@ public static class AotTypeGenerator
             // STJ converter keeps go into the UI.Blazor AotSource
             var stjKeeps = target.AssemblyName == "ActualChat.UI.Blazor" ? stjConverters : null;
 
+            // Framework type keeps go into the Core AotSource
+            var frameworkKeeps = target.AssemblyName == "ActualChat.Core" ? FrameworkTypeKeeps : null;
+
             // Discover MessagePack formatter types required by all serializable root types
             // in this target assembly (walks member graph across assemblies).
             var mpRoots = filtered
@@ -110,7 +129,7 @@ public static class AotTypeGenerator
                 WriteLine($"  [{target.AssemblyName}] Discovered {mpKeeps.Count} MessagePack formatter types");
 
             var outputPath = Path.Combine(srcDotnet, target.RelativePath.Replace('/', Path.DirectorySeparatorChar));
-            var code = GenerateSourceFile(target, filtered, stjKeeps, mpKeeps);
+            var code = GenerateSourceFile(target, filtered, stjKeeps, mpKeeps, frameworkKeeps);
             var dir = Path.GetDirectoryName(outputPath);
             if (!string.IsNullOrEmpty(dir))
                 Directory.CreateDirectory(dir);
@@ -200,12 +219,11 @@ public static class AotTypeGenerator
     }
 
     /// <summary>
-    /// Discovers types marked with [MemoryPackable] or [DataContract] that are
-    /// used as serializable DTOs (commands, results, etc.).
+    /// Discovers types marked with [MessagePackObject], [MessagePackFormatter], or [Union]
+    /// that are used as serializable DTOs (commands, results, etc.).
     /// </summary>
     private static List<Type> DiscoverSerializableTypes()
     {
-        var memoryPackableAttrName = "MemoryPack.MemoryPackableAttribute";
         var result = new List<Type>();
 
         foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies()) {
@@ -217,9 +235,7 @@ public static class AotTypeGenerator
                 foreach (var type in assembly.GetTypes()) {
                     if (type.IsAbstract || type.IsInterface || type.IsGenericTypeDefinition)
                         continue;
-                    // Look for [MemoryPackable] attribute (the primary serialization marker)
-                    if (!type.CustomAttributes.Any(a =>
-                        a.AttributeType.FullName == memoryPackableAttrName))
+                    if (!HasMessagePackMarker(type))
                         continue;
                     result.Add(type);
                 }
@@ -228,8 +244,7 @@ public static class AotTypeGenerator
                 foreach (var type in e.Types) {
                     if (type == null || type.IsAbstract || type.IsInterface || type.IsGenericTypeDefinition)
                         continue;
-                    if (!type.CustomAttributes.Any(a =>
-                        a.AttributeType.FullName == memoryPackableAttrName))
+                    if (!HasMessagePackMarker(type))
                         continue;
                     result.Add(type);
                 }
@@ -241,11 +256,24 @@ public static class AotTypeGenerator
         return result;
     }
 
+    private static bool HasMessagePackMarker(Type type)
+    {
+        foreach (var a in type.CustomAttributes) {
+            var n = a.AttributeType.FullName;
+            if (n is "MessagePack.MessagePackObjectAttribute"
+                or "MessagePack.MessagePackFormatterAttribute"
+                or "MessagePack.UnionAttribute")
+                return true;
+        }
+        return false;
+    }
+
     private static string GenerateSourceFile(
         AotSourceTarget target,
         List<(Type Type, AotTypeKind Kind)> types,
         SortedSet<string>? stjConverterAqns = null,
-        SortedSet<string>? mpFormatterAqns = null)
+        SortedSet<string>? mpFormatterAqns = null,
+        IReadOnlyList<string>? frameworkTypeKeeps = null)
     {
         var sb = new StringBuilder();
         sb.AppendLine("// <auto-generated>");
@@ -266,7 +294,8 @@ public static class AotTypeGenerator
         sb.AppendLine("    {");
         var hasContent = types.Count > 0
             || stjConverterAqns is { Count: > 0 }
-            || mpFormatterAqns is { Count: > 0 };
+            || mpFormatterAqns is { Count: > 0 }
+            || frameworkTypeKeeps is { Count: > 0 };
         if (hasContent) {
             sb.AppendLine("        if (CodeKeeper.AlwaysTrue)");
             sb.AppendLine("            return;");
@@ -276,6 +305,12 @@ public static class AotTypeGenerator
                 if (typeName == null) continue;
                 var method = kind == AotTypeKind.Serializable ? "KeepSerializable" : "Keep";
                 sb.AppendLine($"        CodeKeeper.{method}<{typeName}>();");
+            }
+            if (frameworkTypeKeeps is { Count: > 0 }) {
+                sb.AppendLine();
+                sb.AppendLine("        // Framework types referenced by BCL / runtime code paths");
+                foreach (var typeName in frameworkTypeKeeps)
+                    sb.AppendLine($"        CodeKeeper.Keep<{typeName}>();");
             }
             if (mpFormatterAqns is { Count: > 0 }) {
                 sb.AppendLine();

@@ -132,7 +132,6 @@ public static class MessagePackFormatterDiscovery
         foreach (var a in member.CustomAttributes) {
             var n = a.AttributeType.FullName;
             if (n is "System.Runtime.Serialization.IgnoreDataMemberAttribute"
-                or "MemoryPack.MemoryPackIgnoreAttribute"
                 or "MessagePack.IgnoreMemberAttribute"
                 or "System.Text.Json.Serialization.JsonIgnoreAttribute")
                 return true;

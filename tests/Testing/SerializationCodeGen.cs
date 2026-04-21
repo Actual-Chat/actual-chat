@@ -31,12 +31,7 @@ public static class SerializationCodeGen
         attr.Should().NotBeNull(
             $"{typeof(T).Name} should have a MessagePack attribute");
         var attrAssembly = attr!.GetType().Assembly.GetName().Name;
-#if USE_MESSAGEPACK
         attrAssembly.Should().Be("MessagePack.Annotations",
-            $"real MessagePack attributes should be used for {typeof(T).Name} when enabled");
-#else
-        attrAssembly.Should().Be("ActualChat.Core",
-            $"shim attributes should be used for {typeof(T).Name} when MessagePack is disabled");
-#endif
+            $"real MessagePack attributes should be used for {typeof(T).Name}");
     }
 }

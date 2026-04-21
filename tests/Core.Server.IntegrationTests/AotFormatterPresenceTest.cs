@@ -9,8 +9,8 @@ namespace ActualChat.Core.Server.IntegrationTests;
 /// <see cref="AotTypes.All"/> with <see cref="AotTypeKind.Serializable"/> must have a
 /// usable formatter available WITHOUT dynamic IL emit.
 ///
-/// Covers both serializers gated by build flags:
-///   USE_MESSAGEPACK: <see cref="DefaultMessagePackResolver"/> must return a non-null
+/// Covers both serializers:
+///   MessagePack: <see cref="DefaultMessagePackResolver"/> must return a non-null
 ///     formatter for the type — i.e. it's in a SG-generated resolver, a [MessagePackFormatter]
 ///     attribute, or one of the static non-dynamic resolvers.
 ///   USE_MEMORYPACK: the type must implement <c>MemoryPack.IMemoryPackable&lt;T&gt;</c>, which
@@ -22,10 +22,14 @@ namespace ActualChat.Core.Server.IntegrationTests;
 /// </summary>
 public class AotFormatterPresenceTest
 {
+    private readonly ITestOutputHelper _out;
+
     static AotFormatterPresenceTest()
         => CoreSerializerAndRpcSetup.Configure(isServer: true);
 
-#if USE_MESSAGEPACK
+    public AotFormatterPresenceTest(ITestOutputHelper @out)
+        => _out = @out;
+
     [Fact]
     public void AllSerializableTypes_HaveNonDynamicMessagePackFormatter()
     {
@@ -33,6 +37,7 @@ public class AotFormatterPresenceTest
         var getFormatter = typeof(IFormatterResolver)
             .GetMethod(nameof(IFormatterResolver.GetFormatter))!;
 
+        var supported = 0;
         var missing = new List<string>();
         foreach (var type in SerializableTypes()) {
             object? formatter;
@@ -45,17 +50,20 @@ public class AotFormatterPresenceTest
             }
             if (formatter is null)
                 missing.Add($"{type.FullName}: no formatter");
+            else
+                supported++;
         }
+
+        _out.WriteLine($"MessagePack-serializable types: {supported} (missing: {missing.Count})");
 
         missing.Count.Should().Be(0, "\n  " + string.Join("\n  ", missing) +
             "\n— every Serializable AotTypes entry must resolve to a non-null MessagePack formatter " +
             "without dynamic IL emit (client-mode resolver chain).");
     }
-#endif
 
 #if USE_MEMORYPACK
     [Fact]
-    public void AllSerializableTypes_HaveMemoryPackFormatter()
+    public void AllMemoryPackableTypes_HaveMemoryPackFormatter()
     {
         // A type is MemoryPack-serializable iff:
         //   (a) it implements MemoryPack.IMemoryPackable<T> (SG-generated formatter), OR
@@ -63,21 +71,33 @@ public class AotFormatterPresenceTest
         // Case (b) applies to string-identifier types (AliasId, UserId, ChatId, ...) which
         // declare [MemoryPackable(GenerateType.NoGenerate)] and register hand-written
         // StringIdentifierMemoryPackFormatter<T> from ApiModuleInitializer.
-        var isRegistered = typeof(MemoryPack.MemoryPackFormatterProvider)
-            .GetMethod(nameof(MemoryPack.MemoryPackFormatterProvider.IsRegistered))!;
+        // Only types that opt in to MemoryPack via [MemoryPackable] are checked here —
+        // the Serializable set also contains types that are MessagePack-only (e.g. marked
+        // with [MessagePackFormatter] or [Union] without [MemoryPackable]).
+        var isRegistered = typeof(MemoryPackFormatterProvider)
+            .GetMethod(nameof(MemoryPackFormatterProvider.IsRegistered))!;
 
+        var supported = 0;
         var missing = new List<string>();
         foreach (var type in SerializableTypes()) {
+            var hasMemoryPackableAttr = type.CustomAttributes.Any(a =>
+                a.AttributeType.FullName == "MemoryPack.MemoryPackableAttribute");
+            if (!hasMemoryPackableAttr)
+                continue;
             var hasInterface = type.GetInterfaces().Any(i =>
                 i.IsGenericType
                 && i.GetGenericTypeDefinition().FullName == "MemoryPack.IMemoryPackable`1");
             var registered = (bool)isRegistered.MakeGenericMethod(type).Invoke(null, null)!;
-            if (!hasInterface && !registered)
+            if (hasInterface || registered)
+                supported++;
+            else
                 missing.Add(type.FullName ?? type.Name);
         }
 
+        _out.WriteLine($"MemoryPack-serializable types: {supported} (missing: {missing.Count})");
+
         missing.Count.Should().Be(0, "\n  " + string.Join("\n  ", missing) +
-            "\n— every Serializable AotTypes entry must be MemoryPack-serializable.");
+            "\n— every [MemoryPackable] AotTypes entry must be MemoryPack-serializable.");
     }
 #endif
 

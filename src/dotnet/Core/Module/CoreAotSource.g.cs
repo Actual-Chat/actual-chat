@@ -37,6 +37,13 @@ internal partial class CoreAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Security.DecryptedSecureToken>();
         CodeKeeper.KeepSerializable<global::ActualChat.Security.SecureToken>();
 
+        // Framework types referenced by BCL / runtime code paths
+        CodeKeeper.Keep<global::System.ArraySegment<byte>>();
+        CodeKeeper.Keep<global::System.ArraySegment<char>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Reflection.TypeRef>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Reflection.TypeRef>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Reflection.TypeRef>>>>();
+
         // MessagePack formatter types for serializable root types (auto-discovered)
         CodeKeeper.Keep("ActualChat.Hosting.Internal.HostRoleMessagePackFormatter, ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");
         CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.Hashing.HashString, ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null]], ActualChat.Core, Version=2.8.0.0, Culture=neutral, PublicKeyToken=null");

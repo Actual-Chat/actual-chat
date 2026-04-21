@@ -5,14 +5,6 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
-  <!-- When the real serializer is enabled, exclude shim files (use real NuGet types) -->
-  <ItemGroup Condition="$(UseMemoryPack)">
-    <Compile Remove="Serialization\Shims\MemoryPack*.cs" />
-  </ItemGroup>
-  <ItemGroup Condition="$(UseMessagePack)">
-    <Compile Remove="Serialization\Shims\MessagePack*.cs" />
-  </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="MemoryPack" Condition="$(UseMemoryPack)" />
     <PackageReference Include="CommunityToolkit.HighPerformance" />
