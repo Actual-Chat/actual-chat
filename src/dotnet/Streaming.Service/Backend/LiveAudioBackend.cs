@@ -60,15 +60,15 @@ public partial class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
 
         var prevState = await ListRaw(chatId, cancellationToken).ConfigureAwait(false);
         var streams = new List<LiveStreamInfo>(prevState.Streams.Count + 1);
-        foreach (var info in prevState.Streams) {
-            if (info.StreamId == streamInfo.StreamId)
-                continue;
-            if (info.AuthorId == streamInfo.AuthorId) {
+        foreach (var prevStreamInfo in prevState.Streams) {
+            if (prevStreamInfo.StreamId == streamInfo.StreamId)
+                return; // Already registered
+            if (prevStreamInfo.AuthorId == streamInfo.AuthorId) {
                 Log.LogWarning("Register: evicting stale stream {OldStreamId} for author {AuthorId} (replaced by {NewStreamId})",
-                    info.StreamId, streamInfo.AuthorId, streamInfo.StreamId);
+                    prevStreamInfo.StreamId, streamInfo.AuthorId, streamInfo.StreamId);
                 continue;
             }
-            streams.Add(info);
+            streams.Add(prevStreamInfo);
         }
         streams.Add(streamInfo);
         streams.Sort(static (a, b) => string.CompareOrdinal(a.StreamId, b.StreamId));
