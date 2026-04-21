@@ -11,15 +11,17 @@ export class VideoStreamingPreview {
     private readonly canvasCtx: CanvasRenderingContext2D;
     private readonly bgCanvas: HTMLCanvasElement | null;
     private readonly bgCanvasCtx: CanvasRenderingContext2D | null;
+    // Single reusable off-DOM <video> element. Swap srcObject on camera change
+    // instead of rebuilding — a fresh element after a track swap sometimes
+    // doesn't deliver frames in Chrome (black canvas).
+    private readonly videoEl: HTMLVideoElement;
     private animationFrameId: number | null = null;
     private attachedRecorder: VideoRecorder | null = null;
     // The track we're currently rendering. Kept alongside attachedRecorder so
     // we can detect when the recorder swaps its track underneath us (camera
     // switch / facing flip) — the recorder identity stays the same but the
-    // MediaStreamTrack reference changes. Without this check the <video>
-    // would stay bound to the stopped old track and render black.
+    // MediaStreamTrack reference changes.
     private attachedTrack: MediaStreamTrack | null = null;
-    private video: HTMLVideoElement | null = null;
     private disposed = false;
 
     static create(element: HTMLElement): VideoStreamingPreview {
@@ -32,6 +34,11 @@ export class VideoStreamingPreview {
         this.canvasCtx = this.canvas.getContext('2d')!;
         this.bgCanvas = this.element.querySelector('.remote-video-bg');
         this.bgCanvasCtx = this.bgCanvas?.getContext('2d') ?? null;
+
+        this.videoEl = document.createElement('video');
+        this.videoEl.muted = true;
+        this.videoEl.playsInline = true;
+        this.videoEl.autoplay = true;
 
         // Start the render loop — it will auto-attach/detach to the active recorder
         this.animationFrameId = requestAnimationFrame(() => this.renderLoop());
@@ -52,7 +59,7 @@ export class VideoStreamingPreview {
         }
 
         // Render frame if attached
-        if (this.attachedRecorder && this.video) {
+        if (this.attachedRecorder && this.attachedTrack) {
             if (!this.attachedRecorder.isPreviewPaused()) {
                 // When blur is active, the onPreviewFrame callback handles rendering.
                 // Only draw the raw camera feed when blur is off.
@@ -66,10 +73,7 @@ export class VideoStreamingPreview {
     }
 
     private renderVideoFrame(): void {
-        if (!this.video)
-            return;
-
-        const { videoWidth, videoHeight } = this.video;
+        const { videoWidth, videoHeight } = this.videoEl;
         if (videoWidth === 0 || videoHeight === 0)
             return;
 
@@ -83,8 +87,8 @@ export class VideoStreamingPreview {
             this.canvas.height = videoHeight;
         }
 
-        this.canvasCtx.drawImage(this.video, 0, 0);
-        this.drawBgFrame(this.video, videoWidth, videoHeight);
+        this.canvasCtx.drawImage(this.videoEl, 0, 0);
+        this.drawBgFrame(this.videoEl, videoWidth, videoHeight);
     }
 
     // Draws a low-resolution copy of the frame into the background canvas.
@@ -113,15 +117,11 @@ export class VideoStreamingPreview {
         }
         this.attachedTrack = track;
 
-        infoLog?.log(`attach: track deviceId=${track.getSettings().deviceId}, ${track.getSettings().width}x${track.getSettings().height}`);
+        const s = track.getSettings();
+        infoLog?.log(`attach: deviceId=${s.deviceId}, ${s.width}x${s.height}, facingMode=${s.facingMode ?? '(none)'}`);
 
-        // Create a video element to render the track
-        this.video = document.createElement('video');
-        this.video.srcObject = new MediaStream([track]);
-        this.video.muted = true;
-        this.video.playsInline = true;
-        this.video.autoplay = true;
-        this.video.play().catch(err => warnLog?.log('video.play() rejected:', err));
+        this.videoEl.srcObject = new MediaStream([track]);
+        this.videoEl.play().catch(err => warnLog?.log('videoEl.play() rejected:', err));
 
         // If the track ends (camera unplugged, source reset), force a re-attach
         // on the next render tick rather than staring at dead frames.
@@ -157,7 +157,7 @@ export class VideoStreamingPreview {
         if (!this.attachedRecorder)
             return;
 
-        infoLog?.log('Detached from recorder');
+        infoLog?.log('detach');
 
         // Unregister blur callback
         if (this.attachedRecorder.onPreviewFrame)
@@ -166,11 +166,10 @@ export class VideoStreamingPreview {
         this.attachedRecorder = null;
         this.attachedTrack = null;
 
-        // Clean up video element
-        if (this.video) {
-            this.video.srcObject = null;
-            this.video = null;
-        }
+        // Release the track but keep the <video> element — next attach just
+        // swaps srcObject. Recreating the element after a camera switch can
+        // leave frames from the new track undelivered on some browsers.
+        this.videoEl.srcObject = null;
 
         this.element.classList.remove('has-video');
         this.element.classList.remove('screencast');
