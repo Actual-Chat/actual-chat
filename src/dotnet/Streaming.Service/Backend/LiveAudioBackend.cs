@@ -1,6 +1,8 @@
 using ActualChat.Live;
 using ActualChat.Redis;
+using ActualLab.Locking;
 using ActualLab.Redis;
+using ActualLab.Versioning;
 using StreamingContext = ActualChat.Streaming.Db.StreamingContext;
 
 namespace ActualChat.Streaming;
@@ -8,98 +10,108 @@ namespace ActualChat.Streaming;
 /// <summary>
 /// Backend service implementation for managing active live audio streams in chats.
 /// </summary>
-public class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
+public partial class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
 {
     private static readonly TimeSpan MinInvDelay = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan StreamTtl = Constants.Audio.MaxStreamDuration;
-    private static readonly TimeSpan HashTtl = TimeSpan.FromHours(1);
+    private static readonly TimeSpan KeyTtl = TimeSpan.FromHours(1);
 
-    private readonly RedisMultiHashMap<LiveStreamInfo> _streams;
-    private readonly LockingComputeMethodPrimer<ChatId, ApiArray<LiveStreamInfo>> _listRawPrimer;
+    private readonly RedisScope<State> _redisScope;
+    private readonly AsyncLockSet<ChatId> _changeLocks = new(LockReentryMode.CheckedFail);
+    private readonly VersionedComputeMethodPrimer<ChatId, long, State> _listRawPrimer;
 
     private IChatsBackend ChatsBackend { get; }
+    private VersionGenerator<long> VersionGenerator { get; }
 
     public LiveAudioBackend(IServiceProvider services)
         : base(services, ShardScheme.LiveBackend)
     {
         ChatsBackend = services.GetRequiredService<IChatsBackend>();
+        VersionGenerator = services.GetRequiredService<VersionGenerator<long>>();
         var redisDb = services.GetRequiredService<RedisDb<StreamingContext>>();
-        _streams = new RedisMultiHashMap<LiveStreamInfo>(redisDb, "live-audio:streams", Log) {
-            HashTtl = HashTtl,
+        _redisScope = new RedisScope<State>(redisDb, "live-audio:state", Log) {
+            DefaultTtl = KeyTtl,
         };
-        _listRawPrimer = new LockingComputeMethodPrimer<ChatId, ApiArray<LiveStreamInfo>>(ListRaw);
+        _listRawPrimer = new VersionedComputeMethodPrimer<ChatId, long, State>(ListRaw);
     }
 
     // [ComputeMethod]
     public virtual async Task<ApiArray<LiveStreamInfo>> List(ChatId chatId, CancellationToken cancellationToken)
     {
-        var streams = await ListRaw(chatId, cancellationToken).ConfigureAwait(false);
-        if (streams.Count == 0)
+        var state = await ListRaw(chatId, cancellationToken).ConfigureAwait(false);
+        if (state.Streams.Count == 0)
             return default;
 
         var meshState = await MeshWatcher.State.Use(cancellationToken).ConfigureAwait(false);
-        return streams.WhereAlive(meshState, static info => StreamId.Parse(info.StreamId)).ToApiArray();
+        return state.Streams.WhereAlive(meshState, static info => StreamId.Parse(info.StreamId)).ToApiArray();
     }
 
     public virtual async Task Register(ChatId chatId, LiveStreamInfo streamInfo, CancellationToken cancellationToken)
     {
         var now = Clocks.SystemClock.Now;
-        var ttl = streamInfo.BeginsAt + StreamTtl - now;
-        if (ttl <= TimeSpan.Zero) {
+        if (streamInfo.BeginsAt + StreamTtl <= now) {
             Log.LogWarning("Register: ignoring already-expired stream {StreamId} for author {AuthorId} (BeginsAt = {BeginsAt})",
                 streamInfo.StreamId, streamInfo.AuthorId, streamInfo.BeginsAt);
             return;
         }
 
         using var _ = Computed.BeginIsolation();
-        using var primer = await _listRawPrimer.LockAndPrepare(chatId, cancellationToken).ConfigureAwait(false);
+        using var lockHolder = await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false);
 
-        var prev = await List(chatId, cancellationToken).ConfigureAwait(false);
-        var next = new List<LiveStreamInfo>(prev.Count + 1);
-        foreach (var info in prev) {
+        var prevState = await ListRaw(chatId, cancellationToken).ConfigureAwait(false);
+        var streams = new List<LiveStreamInfo>(prevState.Streams.Count + 1);
+        foreach (var info in prevState.Streams) {
             if (info.StreamId == streamInfo.StreamId)
                 continue;
-
             if (info.AuthorId == streamInfo.AuthorId) {
                 Log.LogWarning("Register: evicting stale stream {OldStreamId} for author {AuthorId} (replaced by {NewStreamId})",
                     info.StreamId, streamInfo.AuthorId, streamInfo.StreamId);
-                await _streams.Remove(chatId.Value, info.StreamId).ConfigureAwait(false);
+                continue;
             }
-            else
-                next.Add(info);
+            streams.Add(info);
         }
-        next.Add(streamInfo);
-        await _streams.Set(chatId.Value, streamInfo.StreamId, streamInfo, ttl).ConfigureAwait(false);
-        await primer.Prime(new ApiArray<LiveStreamInfo>(next), cancellationToken).ConfigureAwait(false);
+        streams.Add(streamInfo);
+        streams.Sort(static (a, b) => string.CompareOrdinal(a.StreamId, b.StreamId));
+
+        var nextState = new State(
+            VersionGenerator.NextVersion(prevState.Version),
+            new ApiArray<LiveStreamInfo>(streams));
+        await _redisScope.Set(chatId.Value, nextState).ConfigureAwait(false);
+        await _listRawPrimer.Prime(chatId, nextState.Version, nextState, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task Unregister(ChatId chatId, string streamId, CancellationToken cancellationToken)
     {
         using var _ = Computed.BeginIsolation();
-        using var primer = await _listRawPrimer.LockAndPrepare(chatId, cancellationToken).ConfigureAwait(false);
+        using var lockHolder = await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false);
 
-        var prev = await List(chatId, cancellationToken).ConfigureAwait(false);
-        var next = prev.Where(info => info.StreamId != streamId).ToApiArray();
-        if (next.Count == prev.Count)
+        var prev = await ListRaw(chatId, cancellationToken).ConfigureAwait(false);
+        var nextStreams = prev.Streams.Where(info => info.StreamId != streamId).ToApiArray();
+        if (nextStreams.Count == prev.Streams.Count)
             return;
 
-        await _streams.Remove(chatId.Value, streamId).ConfigureAwait(false);
-        await primer.Prime(next, cancellationToken).ConfigureAwait(false);
+        var nextState = new State(VersionGenerator.NextVersion(prev.Version), nextStreams);
+        await _redisScope.Set(chatId.Value, nextState).ConfigureAwait(false);
+        await _listRawPrimer.Prime(chatId, nextState.Version, nextState, cancellationToken).ConfigureAwait(false);
     }
 
     // Protected methods
 
     [ComputeMethod]
-    protected virtual async Task<ApiArray<LiveStreamInfo>> ListRaw(ChatId chatId, CancellationToken cancellationToken)
+    protected virtual async Task<State> ListRaw(ChatId chatId, CancellationToken cancellationToken)
     {
         var now = Clocks.SystemClock.Now;
         if (_listRawPrimer.TryUsePrimed(chatId, out var primed))
             return WithAutoInvalidation(primed);
 
         try {
-            var map = await _streams.GetHashMap(chatId.Value).ConfigureAwait(false);
-            map.RemoveAll(static (_, v) => v is null);
-            return WithAutoInvalidation(map.Values.ToApiArray()!);
+            var state = await _redisScope.Get(chatId.Value).ConfigureAwait(false);
+            if (state is not null) {
+                var alive = state.Streams.Where(info => info.BeginsAt + StreamTtl > now).ToApiArray();
+                if (alive.Count != state.Streams.Count)
+                    state = state with { Streams = alive };
+                return WithAutoInvalidation(state);
+            }
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "Failed to read streams from Redis for chat #{ChatId}, falling back to ChatsBackend", chatId);
@@ -108,7 +120,7 @@ public class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
         // Fallback: reconstruct from ChatsBackend.ListEntries
         var cutoff = now - Constants.Chat.MaxEntryDuration;
         var entries = await ChatsBackend.ListEntries(chatId, cutoff, cancellationToken).ConfigureAwait(false);
-        var result = new Dictionary<string, LiveStreamInfo>(StringComparer.Ordinal);
+        var byStreamId = new Dictionary<string, LiveStreamInfo>(StringComparer.Ordinal);
         foreach (var entry in entries)
             if (entry.Audio is { StreamId.Length: > 0 } liveAudio
                 && !MediaId.TryParse(liveAudio.StreamId, out _)) {
@@ -118,28 +130,38 @@ public class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
                     StreamId = liveAudio.StreamId,
                     BeginsAt = entry.BeginsAt,
                 };
-                result.TryAdd(streamInfo.StreamId, streamInfo);
+                byStreamId.TryAdd(streamInfo.StreamId, streamInfo);
             }
 
-        // Drop already-expired entries, then persist the rest
-        result.RemoveAll((_, info) => info.BeginsAt + StreamTtl <= now);
-        foreach (var streamInfo in result.Values) {
-            var ttl = streamInfo.BeginsAt + StreamTtl - now;
-            await _streams.Set(chatId.Value, streamInfo.StreamId, streamInfo, ttl).ConfigureAwait(false);
+        byStreamId.RemoveAll((_, info) => info.BeginsAt + StreamTtl <= now);
+        var recovered = byStreamId.Values
+            .OrderBy(info => info.StreamId, StringComparer.Ordinal)
+            .ToApiArray();
+        var recoveredState = new State(VersionGenerator.NextVersion(), recovered);
+
+        try {
+            await _redisScope.Set(chatId.Value, recoveredState).ConfigureAwait(false);
         }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "Failed to persist reconstructed state to Redis for chat #{ChatId}", chatId);
+        }
+        return WithAutoInvalidation(recoveredState);
 
-        return WithAutoInvalidation(result.Values.ToApiArray());
+        State WithAutoInvalidation(State state) {
+            if (state.Streams.Count == 0)
+                return state;
 
-        // Invalidates the current computed at (min BeginsAt) + StreamTtl + 1s,
-        // so expired stream entries get refreshed even without external triggers.
-        ApiArray<LiveStreamInfo> WithAutoInvalidation(ApiArray<LiveStreamInfo> streams) {
-            if (streams.Count == 0)
-                return streams;
-
-            var minBeginsAt = streams.Min(x => x.BeginsAt);
+            var minBeginsAt = state.Streams.Min(x => x.BeginsAt);
             var delay = (minBeginsAt + StreamTtl - now + MinInvDelay).Clamp(MinInvDelay, StreamTtl);
             Computed.GetCurrent().Invalidate(delay);
-            return streams;
+            return state;
         }
     }
+
+    // Nested types
+
+    [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+    public sealed partial record State(
+        [property: DataMember(Order = 0), MemoryPackOrder(0)] long Version,
+        [property: DataMember(Order = 1), MemoryPackOrder(1)] ApiArray<LiveStreamInfo> Streams);
 }

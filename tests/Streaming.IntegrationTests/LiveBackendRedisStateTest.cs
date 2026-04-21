@@ -29,10 +29,12 @@ public class LiveBackendRedisStateTest(AppHostFixture fixture, ITestOutputHelper
         streams.Should().ContainSingle().Which.StreamId.Should().Be(streamInfo.StreamId);
 
         // Verify directly in Redis
-        var redisEntries = await ReadRedisHash<LiveStreamInfo>("live-audio:streams", chatId);
-        redisEntries.Should().ContainKey(streamInfo.StreamId);
-        redisEntries[streamInfo.StreamId].ChatId.Should().Be(chatId);
-        redisEntries[streamInfo.StreamId].AuthorId.Should().Be(streamInfo.AuthorId);
+        var state = await ReadRedisValue<LiveAudioBackend.State>("live-audio:state", chatId);
+        state.Should().NotBeNull();
+        state!.Version.Should().BeGreaterThan(0);
+        state.Streams.Should().ContainSingle().Which.StreamId.Should().Be(streamInfo.StreamId);
+        state.Streams[0].ChatId.Should().Be(chatId);
+        state.Streams[0].AuthorId.Should().Be(streamInfo.AuthorId);
     }
 
     [Fact]
@@ -44,8 +46,9 @@ public class LiveBackendRedisStateTest(AppHostFixture fixture, ITestOutputHelper
         await liveBackend.Register(chatId, streamInfo, CancellationToken.None);
         await liveBackend.Unregister(chatId, streamInfo.StreamId, CancellationToken.None);
 
-        var redisEntries = await ReadRedisHash<LiveStreamInfo>("live-audio:streams", chatId);
-        redisEntries.Should().BeEmpty();
+        var state = await ReadRedisValue<LiveAudioBackend.State>("live-audio:state", chatId);
+        state.Should().NotBeNull();
+        state!.Streams.Should().BeEmpty();
     }
 
     [Fact]
@@ -57,8 +60,9 @@ public class LiveBackendRedisStateTest(AppHostFixture fixture, ITestOutputHelper
         await liveBackend.Register(chatId, streamInfo, CancellationToken.None);
 
         // Verify it's in Redis
-        var redisEntries = await ReadRedisHash<LiveStreamInfo>("live-audio:streams", chatId);
-        redisEntries.Should().ContainKey(streamInfo.StreamId);
+        var state = await ReadRedisValue<LiveAudioBackend.State>("live-audio:state", chatId);
+        state.Should().NotBeNull();
+        state!.Streams.Should().ContainSingle().Which.StreamId.Should().Be(streamInfo.StreamId);
 
         // Invalidate Fusion cache to force re-read from Redis
         using (Invalidation.Begin())
@@ -222,8 +226,9 @@ public class LiveBackendRedisStateTest(AppHostFixture fixture, ITestOutputHelper
             _ = liveBackend.List(chatId, default);
 
         // Redis should still have the data
-        var redisEntries = await ReadRedisHash<LiveStreamInfo>("live-audio:streams", chatId);
-        redisEntries.Should().ContainKey(streamInfo.StreamId,
+        var state = await ReadRedisValue<LiveAudioBackend.State>("live-audio:state", chatId);
+        state.Should().NotBeNull();
+        state!.Streams.Select(s => s.StreamId).Should().Contain(streamInfo.StreamId,
             "Redis data should NOT be purged on shard switch");
 
         // List() should recover from Redis
@@ -348,5 +353,16 @@ public class LiveBackendRedisStateTest(AppHostFixture fixture, ITestOutputHelper
                 result[field] = value;
         }
         return result;
+    }
+
+    private async Task<TValue?> ReadRedisValue<TValue>(string keyPrefix, ChatId chatId)
+        where TValue : class
+    {
+        var db = await RedisDb.Database.Get().ConfigureAwait(false);
+        var key = $"{keyPrefix}{RedisDb.KeyDelimiter}{chatId}";
+        var raw = await db.StringGetAsync(key).ConfigureAwait(false);
+        if (raw.IsNullOrEmpty)
+            return null;
+        return (TValue?)RedisHashStoreSerialalizer.Read((byte[])raw!, typeof(TValue), out _);
     }
 }
