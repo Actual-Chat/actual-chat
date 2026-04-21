@@ -13,7 +13,6 @@ internal static class ApiContractsModuleInitializer
     internal static void ModuleInitializer()
     {
         AotTypes.AddSource(new ApiContractsAotSource());
-        CoreSerializerAndRpcSetup.AddGeneratedResolver(MessagePack.GeneratedMessagePackResolver.Instance);
 
         // Default binary serializer
         ByteSerializer.Default = MessagePackByteSerializer.Default;

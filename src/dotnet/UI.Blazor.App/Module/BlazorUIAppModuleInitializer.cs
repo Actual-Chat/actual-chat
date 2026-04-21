@@ -11,7 +11,6 @@ internal static class BlazorUIAppModuleInitializer
     internal static void ModuleInitializer()
     {
         AotTypes.AddSource(new BlazorUIAppAotSource());
-        CoreSerializerAndRpcSetup.AddGeneratedResolver(MessagePack.GeneratedMessagePackResolver.Instance);
         AotJsonContexts.Add(BlazorUIAppJsonContext.Default);
         RenderModeDef.All = [
             new("a", "Auto") { Mode = new InteractiveAutoRenderMode(prerender: false) },
