@@ -1,26 +1,23 @@
 # VideoLoadTest (TypeScript)
 
 TypeScript port of `src/dotnet/App.VideoLoadTest/Program.cs`. Measures end-to-end
-push/pull latency and throughput of the TS SignalR and Fusion RPC clients so the
-numbers can be compared directly against the C# harness results.
+push/pull latency and throughput of the Fusion RPC client so the numbers can be
+compared directly against the C# harness results.
 
 ## What it does
 
 1. Signs in as `test-videoload@actual.chat` with dev OTP `111111` via the Fusion
    RPC `IEmailAuth.OnValidateTotp` command (same call path as the C# test).
-2. Fetches a SignalR `sessionToken` via `ISecureTokens.CreateForSession`.
-3. Starts `chats × streamsPerChat` producers — each opens one WebSocket and
+2. Starts `chats × streamsPerChat` producers — each opens one WebSocket and
    pushes synthetic frames at 30 fps (40 KB keyframes / 10 KB deltas, GOP 30).
-4. Discovers the live streams per chat via `ILiveVideoStreams.List`.
-5. Starts `chats × consumersPerChat × (streamsPerChat - 1)` consumers; consumer
+3. Discovers the live streams per chat via `ILiveVideoStreams.List`.
+4. Starts `chats × consumersPerChat × (streamsPerChat - 1)` consumers; consumer
    `N` skips stream `N` in its chat.
-6. Runs for `durationSec`, then prints a per-chat + aggregate report with
+5. Runs for `durationSec`, then prints a per-chat + aggregate report with
    frames received, throughput (MB/s), and latency percentiles (p50/p95/p99).
 
 Frame layout, GOP size, data sizes, chat IDs, and report format all match the
-C# harness exactly. The only intentional divergence: no `-mem` or `-unified`
-modes — those map to server-side variants that don't exist or aren't useful in
-the TS client comparison.
+C# harness exactly.
 
 ## Prerequisites
 
@@ -34,8 +31,7 @@ the TS client comparison.
 ```bash
 # From repo root
 npm install                                      # pulls in tsx, ws, @types/ws, @types/node
-npm run test:video-load                          # SignalR default (10 chats × 6 × 6, 30s)
-npm run test:video-load -- -rpc                  # Fusion RPC
+npm run test:video-load                          # 10 chats × 6 × 6, 30s
 npm run test:video-load -- -c:5 -s:3 -n:3 -d:15  # smaller/faster
 ```
 
@@ -45,9 +41,8 @@ npm run test:video-load -- -c:5 -s:3 -n:3 -d:15  # smaller/faster
 bundle does not trust. The harness automatically sets
 `NODE_TLS_REJECT_UNAUTHORIZED=0` when the base URL matches a dev host
 (`local.voxt.ai`, `localhost`, `127.0.0.1`) and injects
-`rejectUnauthorized: false` into both the Fusion RPC `ws` connection
-(`node-ws.ts`) and the SignalR client (`signalr-runner.ts`
-`DevWebSocket`). You will see this line on every run:
+`rejectUnauthorized: false` into the Fusion RPC `ws` connection (`node-ws.ts`).
+You will see this line on every run:
 
 ```
 [load-test] NODE_TLS_REJECT_UNAUTHORIZED=0 — dev cert bypass active
@@ -66,7 +61,6 @@ CLI flags (mirror C# harness):
 | `-n:N` / `-consumers:N` | `6` | Consumers per chat |
 | `-u:URL` / `-url:URL` | `https://local.voxt.ai` | Server base URL |
 | `-d:SEC` / `-duration:SEC` | `30` | Test duration in seconds |
-| `-rpc` / `--rpc` | (off) | Use Fusion RPC instead of SignalR |
 
 Ctrl+C stops early and prints the report from whatever data was collected.
 
@@ -76,8 +70,6 @@ Ctrl+C stops early and prints the report from whatever data was collected.
 |---|---|---|
 | Sign-in | `ICommander.Call(EmailAuth_ValidateTotp)` | Direct RPC call to `IEmailAuth.OnValidateTotp` |
 | Session header | Via .NET `Session` DI resolution | Via `Session` HTTP header on the `ws` WebSocket upgrade |
-| SignalR push | `HubConnection.SendAsync("PushVideo", …)` | `HubConnection.send("PushVideo", …)` with a `signalR.Subject<Uint8Array>` |
-| SignalR pull | `connection.StreamAsync<byte[]>` | `connection.stream<Uint8Array>` |
 | RPC push | `IStreamServer.PushVideo` + `RpcStream.New(IAsyncEnumerable)` | `IStreamServer.PushVideo` + `RpcClientStreamSender<VideoFrameDto>` |
 | RPC pull | `ILiveVideoStreams.GetStream` | `ILiveVideoStreams.GetStream` |
 | Discovery | `Computed.Capture(List)` + `WhenInvalidated` | Polling `ILiveVideoStreams.List` every 500 ms until complete |
@@ -96,18 +88,14 @@ reads the frame's `Offset` field to look up the matching send timestamp.
 - **`Date.now()` resolution**: 1 ms. C# uses `Stopwatch` (~100 ns). For latency
   distributions that span tens of ms this is irrelevant, but p50 values below
   1 ms will read `0` in TS.
-- **Per-peer WebSocket**: both harnesses open one WebSocket per producer and
-  one per consumer. Node handles this via the `ws` package; C# uses
-  `Microsoft.AspNetCore.SignalR.Client`.
 
 ## File map
 
 - `index.ts` — CLI, orchestration, report
-- `auth.ts` — RPC sign-in flow (IEmailAuth + ISecureTokens)
+- `auth.ts` — RPC sign-in flow (IEmailAuth)
 - `service-defs.ts` — TS `defineRpcService` declarations mirroring the .NET contracts
-- `frame-gen.ts` — synthetic frame generator + MessagePack encoder (PascalCase keys)
+- `frame-gen.ts` — synthetic frame generator (PascalCase keys)
 - `metrics.ts` — latency/throughput aggregation + percentile report
-- `signalr-runner.ts` — SignalR producer + consumer
 - `rpc-runner.ts` — Fusion RPC producer + consumer + stream discovery
 - `node-ws.ts` — adapter that wraps `ws.WebSocket` into the `WebSocketLike`
   interface expected by `RpcClientPeer`, with `Session` header injection

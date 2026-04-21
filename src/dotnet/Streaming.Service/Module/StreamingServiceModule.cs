@@ -5,7 +5,6 @@ using ActualChat.Redis.Module;
 using ActualChat.Live;
 using ActualChat.Streaming.Services;
 using ActualChat.Streaming.Services.Transcribers;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using GoogleTranscriber = ActualChat.Streaming.Services.Transcribers.GoogleTranscriber;
 using StreamingContext = ActualChat.Streaming.Db.StreamingContext;
@@ -13,36 +12,13 @@ using StreamingContext = ActualChat.Streaming.Db.StreamingContext;
 namespace ActualChat.Streaming.Module;
 
 public sealed class StreamingServiceModule(IServiceProvider moduleServices)
-    : HostModule<StreamingSettings>(moduleServices), IWebServerModule
+    : HostModule<StreamingSettings>(moduleServices)
 {
-    public void ConfigureApp(WebApplication app)
-    {
-        if (!HostInfo.HasRole(HostRole.Api))
-            return;
-
-        // SignalR hub endpoints
-        app.MapHub<StreamHub>("/api/hub/streams");
-    }
-
     protected override void InjectServices(IServiceCollection services)
     {
         // RPC host
         var rpcHost = services.AddRpcHost(HostInfo);
         var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IAudioStreamingBackend>() is ServiceMode.Client;
-
-        // SignalR hub
-        if (rpcHost.IsApiHost) {
-            var signalR = services.AddSignalR(options => {
-                options.StreamBufferCapacity = 20;
-                options.EnableDetailedErrors = true; // Enable for debugging
-                options.StatefulReconnectBufferSize = 2000;
-                // Increase max message size for video frames (keyframes can be 50KB+)
-                options.MaximumReceiveMessageSize = 512 * 1024; // 512KB
-            });
-            signalR.AddJsonProtocol();
-            signalR.AddMessagePackProtocol();
-            services.AddScoped<StreamHub>();
-        }
 
         rpcHost.AddApi<IStreamServer, StreamServer>();
         rpcHost.AddApi<ILiveAudioStreams, LiveAudioStreams>();

@@ -1,8 +1,8 @@
 /**
  * Video Processing Worker Contract
- * Unified worker that combines segmentation, encoding, and SignalR streaming.
+ * Unified worker that combines segmentation, encoding, and Fusion RPC streaming.
  * All video frame processing happens in a single worker context — no cross-worker
- * VideoFrame transfer needed. Encoded chunks go directly to SignalR from the worker.
+ * VideoFrame transfer needed. Encoded chunks go directly to the RPC sender from the worker.
  *
  * Also contains segmentation config types and model configuration utilities
  * (previously in segmentation-worker-contract.ts).
@@ -142,7 +142,7 @@ export interface VideoProcessingConfig {
         serverClockOffsetMs: number;
         streamKind?: number; // 0 = Webcam (default), 1 = Screencast
     };
-    /** When true, skip encoder + SignalR. Only run segmentation and send preview frames. */
+    /** When true, skip encoder + RPC push. Only run segmentation and send preview frames. */
     previewOnly?: boolean;
 }
 

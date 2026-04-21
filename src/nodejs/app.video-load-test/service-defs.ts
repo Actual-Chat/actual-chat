@@ -1,5 +1,5 @@
 // Fusion RPC service definitions needed by the load test.
-// These mirror the C# IEmailAuth / ISecureTokens / ILiveVideoStreams / IStreamServer
+// These mirror the C# IEmailAuth / ILiveVideoStreams / IStreamServer
 // contracts. ILiveVideoStreams / IStreamServer already live in
 // `../src/api/streaming-service.ts` — we duplicate them here so the test has zero
 // dependencies on the shared api tree and can be built stand-alone.
@@ -24,24 +24,6 @@ export interface EmailAuthValidateTotpCommand {
 
 export interface EmailAuthClient {
     OnValidateTotp(command: EmailAuthValidateTotpCommand): Promise<boolean>;
-}
-
-// --- ISecureTokens ---
-// Server method: Task<SecureToken> CreateForSession(Session session, CancellationToken ct);
-// Session serializes as a plain string (see SessionMessagePackFormatter).
-// Returns SecureToken { Token: string; ExpiresAt: Moment }. We only need Token.
-// Wire: "ISecureTokens.CreateForSession:2".
-export const SecureTokensDef = defineRpcService('ISecureTokens', {
-    CreateForSession: { args: ['session'] },
-});
-
-export interface SecureTokenDto {
-    Token: string;
-    ExpiresAt: unknown;
-}
-
-export interface SecureTokensClient {
-    CreateForSession(session: string): Promise<SecureTokenDto>;
 }
 
 // --- ILiveVideoStreams (pull + discovery) ---

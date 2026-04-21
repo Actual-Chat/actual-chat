@@ -1,8 +1,8 @@
 /**
  * Video Pipeline
  * Thin orchestrator that creates a unified Video Processing Worker and transfers
- * the camera ReadableStream to it. All encoding, segmentation, and SignalR streaming
- * happen inside the worker — the main thread only handles:
+ * the camera ReadableStream to it. All encoding, segmentation, and Fusion RPC
+ * streaming happen inside the worker — the main thread only handles:
  *   - MSTP/canvas frame extraction
  *   - VAD state forwarding
  *   - Preview frame rendering
@@ -182,7 +182,7 @@ export class VideoPipeline implements IVideoPipeline {
                     return Promise.resolve();
                 },
                 onStreamCreated: (codecSettings: string) => {
-                    infoLog?.log(`Worker created SignalR stream, codecSettings: ${codecSettings.length} chars`);
+                    infoLog?.log(`Worker created RPC stream, codecSettings: ${codecSettings.length} chars`);
                     return Promise.resolve();
                 },
             } as VideoProcessingWorkerCallbacks,
@@ -379,7 +379,7 @@ export class VideoPipeline implements IVideoPipeline {
             this.frameReader = null;
         }
 
-        // Stop worker (handles encoder, segmentation, SignalR cleanup internally)
+        // Stop worker (handles encoder, segmentation, RPC cleanup internally)
         await this.worker.stop();
         infoLog?.log('Worker stopped');
 

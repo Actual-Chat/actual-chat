@@ -892,7 +892,7 @@ export class VideoPlayer {
             return;
         }
 
-        // After tab restore: skip stale encoded frames arriving from SignalR
+        // After tab restore: skip stale encoded frames arriving from the RPC stream
         if (this.skipFramesBelowOffsetMs > 0 && timestampMs < this.skipFramesBelowOffsetMs) {
             return;
         }

@@ -2,9 +2,7 @@
  * In-worker video streaming over Fusion RPC binary transport.
  *
  * Sends encoded frames to the server via `IStreamServer.PushVideo`, using an
- * `RpcStreamSender<VideoFrameDto>` to stream typed frame objects. The
- * server keeps its SignalR `StreamHub.PushVideo` endpoint for backward
- * compatibility with older clients, but this worker no longer touches it.
+ * `RpcStreamSender<VideoFrameDto>` to stream typed frame objects.
  */
 
 import Denque from 'denque';

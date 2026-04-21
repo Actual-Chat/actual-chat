@@ -5,7 +5,6 @@
     "LogLevel": {
       "Default": "Debug",
       "Microsoft": "Warning",
-      "Microsoft.AspNetCore.SignalR.Internal": "Warning",
       "Microsoft.EntityFrameworkCore.Database": "Warning",
       // Enable detailed Fusion/Rpc logging for routing debugging
       "ActualLab.Rpc": "Debug",

@@ -604,7 +604,6 @@ const serverImpl: DecoderWorker = {
             }
 
             // Decode using the WebCodecsDecoder wrapper (tracks timing for diagnostics)
-            // Simplified path — no reorder buffer since SignalR delivers in order
             decoder.decodeRaw(chunk);
         } catch (error) {
             errorLog?.log('Error decoding raw chunk:', error);

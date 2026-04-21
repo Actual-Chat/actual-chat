@@ -1,11 +1,10 @@
 // TypeScript port of App.VideoLoadTest — measures push/pull video throughput
-// and latency via the same wire protocols the browser uses (SignalR
-// /api/hub/streams or Fusion RPC /rpc/ws) so we can compare TS client numbers
-// directly against the C# harness results.
+// and latency via the Fusion RPC transport (/rpc/ws) so we can compare TS
+// client numbers directly against the C# harness results.
 //
 // Usage (from repo root, after `npm install`):
 //   npx tsx src/nodejs/app.video-load-test/index.ts [-c:10] [-s:6] [-n:6] \
-//       [-u:https://local.voxt.ai] [-d:30] [-rpc]
+//       [-u:https://local.voxt.ai] [-d:30]
 //
 // Flags mirror the C# App.VideoLoadTest:
 //   -c:N   chat count (default 10; uses hard-coded chat IDs)
@@ -13,7 +12,6 @@
 //   -n:N   consumers per chat (default 6)
 //   -u:URL base URL (default https://local.voxt.ai)
 //   -d:SEC test duration (default 30)
-//   -rpc   use Fusion RPC transport (default: SignalR)
 
 // --- Dev-only TLS bypass -------------------------------------------------
 // local.voxt.ai uses a self-signed / mkcert dev cert that Node's default CA
@@ -48,7 +46,6 @@ process.on('uncaughtException', (err) => {
 import { signIn } from './auth.js';
 import { Metrics, printReport } from './metrics.js';
 import { FrameConfig } from './frame-gen.js';
-import { runSignalRConsumer, runSignalRProducer } from './signalr-runner.js';
 import {
     createRpcHarnessBundle,
     closeRpcHarnessBundle,
@@ -79,7 +76,6 @@ interface CliArgs {
     consumersPerChat: number;
     baseUrl: string;
     durationSec: number;
-    useRpc: boolean;
 }
 
 function parseArgs(argv: readonly string[]): CliArgs {
@@ -123,16 +119,12 @@ function parseArgs(argv: readonly string[]): CliArgs {
         }
         return n;
     };
-    const flag = (...names: string[]): boolean =>
-        argv.some((a) => names.includes(a));
-
     return {
         chatCount: parseIntOr(get('c', 'chats'), 10, '-c/--chats'),
         streamsPerChat: parseIntOr(get('s', 'streams'), 6, '-s/--streams'),
         consumersPerChat: parseIntOr(get('n', 'consumers'), 6, '-n/--consumers'),
         baseUrl: get('u', 'url') ?? 'https://local.voxt.ai',
         durationSec: parseIntOr(get('d', 'duration'), 30, '-d/--duration'),
-        useRpc: flag('-rpc', '--rpc'),
     };
 }
 
@@ -145,9 +137,8 @@ async function main(): Promise<void> {
     }
     const chatIds = DEFAULT_CHAT_IDS.slice(0, args.chatCount);
 
-    const hubUrl = `${args.baseUrl}/api/hub/streams`;
     const apiUrl = `${args.baseUrl.replace(/^http/, 'ws')}/rpc/ws`;
-    const mode = args.useRpc ? 'Fusion RPC' : 'SignalR';
+    const mode = 'Fusion RPC';
     const totalStreams = args.chatCount * args.streamsPerChat;
     const pullsPerChat = args.consumersPerChat * (args.streamsPerChat - 1);
     const totalPulls = args.chatCount * pullsPerChat;
@@ -158,7 +149,7 @@ async function main(): Promise<void> {
     console.log(`  Base URL: ${args.baseUrl}, Duration: ${args.durationSec}s`);
 
     // --- Authentication ---
-    const { sessionId, sessionToken } = await signIn({
+    const { sessionId } = await signIn({
         apiUrl,
         email: 'test-videoload@actual.chat',
         totp: 111111,
@@ -192,12 +183,9 @@ async function main(): Promise<void> {
     // outbound channel became the bottleneck (p50 ~5 s behind real time);
     // splitting per chat gives the server N parallel peer loops to drain
     // into, and gives libuv multiple sockets to batch reads from.
-    let rpcBundles: RpcHarnessBundle[] = [];
-    if (args.useRpc) {
-        rpcBundles = await Promise.all(
-            chatIds.map(() => createRpcHarnessBundle({ apiUrl, sessionId, abort })),
-        );
-    }
+    const rpcBundles: RpcHarnessBundle[] = await Promise.all(
+        chatIds.map(() => createRpcHarnessBundle({ apiUrl, sessionId, abort })),
+    );
 
     // --- Producers ---
     console.log(`Starting ${totalStreams} producers…`);
@@ -205,19 +193,14 @@ async function main(): Promise<void> {
     for (let ci = 0; ci < args.chatCount; ci++) {
         for (let pi = 0; pi < args.streamsPerChat; pi++) {
             producerTasks.push(
-                args.useRpc
-                    ? runRpcProducer(rpcBundles[ci], { apiUrl, sessionId, metrics, abort }, ci, pi, chatIds[ci])
-                    : runSignalRProducer({ hubUrl, sessionToken, metrics, abort }, ci, pi, chatIds[ci]),
+                runRpcProducer(rpcBundles[ci], { apiUrl, sessionId, metrics, abort }, ci, pi, chatIds[ci]),
             );
         }
     }
 
     // --- Discover streams ---
     console.log('Waiting for streams to appear…');
-    // Discovery path is RPC-only; reuse chat 0's bundle if we have one,
-    // otherwise build a throwaway bundle just for discovery.
-    const discoveryBundle = rpcBundles[0]
-        ?? await createRpcHarnessBundle({ apiUrl, sessionId, abort });
+    const discoveryBundle = rpcBundles[0];
     const chatStreams = await discoverStreams(
         discoveryBundle,
         { apiUrl, sessionId, abort },
@@ -225,7 +208,6 @@ async function main(): Promise<void> {
         args.streamsPerChat,
         45_000,
     );
-    if (rpcBundles.length === 0) closeRpcHarnessBundle(discoveryBundle);
     console.log(`All ${totalStreams} streams discovered across ${args.chatCount} chats.`);
 
     // --- Consumers ---
@@ -238,9 +220,7 @@ async function main(): Promise<void> {
                 if (si === cons) continue; // consumer N skips stream N
                 const streamId = streams[si];
                 consumerTasks.push(
-                    args.useRpc
-                        ? runRpcConsumer(rpcBundles[ci], { apiUrl, sessionId, metrics, abort }, ci, cons, si, streamId)
-                        : runSignalRConsumer({ hubUrl, sessionToken, metrics, abort }, ci, cons, si, streamId),
+                    runRpcConsumer(rpcBundles[ci], { apiUrl, sessionId, metrics, abort }, ci, cons, si, streamId),
                 );
             }
         }

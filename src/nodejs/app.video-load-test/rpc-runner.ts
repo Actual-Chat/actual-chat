@@ -4,17 +4,9 @@
 // production browser client (UI.Blazor.App/Services/Video/streaming-rpc-client.ts):
 // ONE shared `RpcClientPeer` multiplexes every producer and every consumer
 // over a single WebSocket. That's how Fusion RPC is designed to be used.
-//
-// Why not one peer per task (the C# SignalR path):
-//   At -c:10 -s:6 -n:6 that's 60 producers + 300 consumers = 360 separate
-//   WebSockets. Each WebSocket pulls in its own TLS write buffer, ws Sender
-//   framing, ws Receiver consume loop, msgpack Encoder/Decoder, RpcPeer
-//   dispatch chain, and — on the server side — a dedicated peer + session
-//   lookup + Hub fan-out. Profile at 300 pulls showed 71% idle, 6% in TLS
-//   `writeBuffer`, and the main thread starved for I/O — classic fan-out
-//   bottleneck. Sharing a peer collapses all of that into a single socket
-//   with multiplexed stream IDs (`peer.sharedObjects.nextId()` already
-//   hands out distinct IDs for every producer sender).
+// Sharing a peer collapses all producer/consumer dispatch into a single socket
+// with multiplexed stream IDs (`peer.sharedObjects.nextId()` hands out distinct
+// IDs for every producer sender).
 //
 // The `RpcHarnessBundle` is built once in main() and handed to every
 // consumer/producer task. Clients are resolved off the same hub so there's
