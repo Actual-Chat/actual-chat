@@ -30,7 +30,9 @@ public abstract class SharedAppHostTestBase<TAppHostFixture>(
 
     protected override async Task DisposeAsync()
     {
-        await AppHost.Services.Queues().Purge().ConfigureAwait(false);
+        await AppHost.Services.Queues()
+            .PurgeWithTimeout(TimeSpan.FromSeconds(10), Out.WriteLine)
+            .ConfigureAwait(false);
         AppHost.Output = _originalAppHostOutput;
         await base.DisposeAsync();
     }

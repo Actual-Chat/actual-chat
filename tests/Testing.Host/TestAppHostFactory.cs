@@ -108,7 +108,9 @@ public static class TestAppHostFactory
         _ = appHost.Services.GetRequiredService<PostgreSqlPoolCleaner>(); // Force instantiation to ensure it's disposed in the end
 
         // Cleanup existing queues
-        await appHost.Services.Queues().Purge();
+        await appHost.Services.Queues().PurgeWithTimeout(
+            TimeSpan.FromSeconds(10),
+            msg => log.LogWarning("{Message}", msg));
 
         if (options.MustInitializeDb)
             await appHost.RunInitializers();

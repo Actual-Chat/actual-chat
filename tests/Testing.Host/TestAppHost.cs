@@ -39,7 +39,7 @@ public class TestAppHost : AppHost
             // the new host's in-flight FlowResumeEvents (same-class tests share a
             // NATS stream via the stable CoreSettings.Instance prefix).
             if (disposing)
-                await Services.Queues().Purge();
+                await Services.Queues().PurgeWithTimeout(TimeSpan.FromSeconds(10), WriteLine);
             await base.DisposeAsync(disposing);
         }
         catch (Exception) {
