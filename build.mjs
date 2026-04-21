@@ -2,6 +2,7 @@ import * as esbuild from 'esbuild';
 import path from 'path';
 import postcssPlugin from '@chialab/esbuild-plugin-postcss';
 import * as fs from 'node:fs';
+import readline from 'node:readline';
 
 console.time('build');
 const isProduction = process.argv.slice(2).includes('--production');
@@ -12,22 +13,24 @@ process.env.NODE_ENV = isProduction ? 'production' : 'development';
 const outputPath = path.normalize(path.resolve(import.meta.dirname, './src/dotnet/App.Wasm/wwwroot/dist'));
 const mauiOutputPath = path.normalize(path.resolve(import.meta.dirname, './src/dotnet/App.Maui/wwwroot/dist'));
 
+async function copyAssets() {
+    await fs.promises.mkdir(`${outputPath}/config`, { recursive: true });
+    if (fs.existsSync('./firebase.config.json'))
+        // only for local-dev build
+        await fs.promises.copyFile('./firebase.config.json', `${outputPath}/config/firebase.config.js`, );
+    await fs.promises.cp('./src/nodejs/images', `${outputPath}/images`, { recursive: true });
+    await fs.promises.cp('./resources/sounds/converted', `${outputPath}/sounds`, {
+        recursive: true,
+        filter: (src) => {
+            const ext = path.extname(src).toLowerCase();
+            return ext === '.webm' || ext === '.m4a' || fs.statSync(src).isDirectory();
+        },
+    });
+}
+
 await fs.promises.rm(outputPath, { recursive: true, force: true });
 await fs.promises.rm(mauiOutputPath, { recursive: true, force: true });
-
-// copy files
-await fs.promises.mkdir(`${outputPath}/config`, { recursive: true });
-if (fs.existsSync('./firebase.config.json'))
-    // only for local-dev build
-    await fs.promises.copyFile('./firebase.config.json', `${outputPath}/config/firebase.config.js`, );
-await fs.promises.cp('./src/nodejs/images', `${outputPath}/images`, { recursive: true });
-await fs.promises.cp('./resources/sounds/converted', `${outputPath}/sounds`, {
-    recursive: true,
-    filter: (src) => {
-        const ext = path.extname(src).toLowerCase();
-        return ext === '.webm' || ext === '.m4a' || fs.statSync(src).isDirectory();
-    },
-});
+await copyAssets();
 
 const options = {
     entryPoints: [
@@ -117,6 +120,31 @@ if (isWatch) {
                 rebuildTimer = setTimeout(() => ctx.rebuild().catch(() => {}), 100);
             }
         });
+    }
+
+    // Manual rebuild on keypress — useful when FS change notifications don't
+    // propagate (e.g. files edited from inside Docker/WSL while watcher runs on Windows host).
+    if (process.stdin.isTTY) {
+        readline.emitKeypressEvents(process.stdin);
+        process.stdin.setRawMode(true);
+        process.stdin.resume();
+        const runRebuild = async (label, extra) => {
+            const t0 = Date.now();
+            console.log(`[${label}] starting...`);
+            try {
+                if (extra) await extra();
+                await ctx.rebuild();
+                console.log(`[${label}] done in ${Date.now() - t0}ms`);
+            } catch (e) {
+                console.error(`[${label}] failed:`, e?.message ?? e);
+            }
+        };
+        process.stdin.on('keypress', (_str, key) => {
+            if (key.ctrl && key.name === 'c') process.exit(0);
+            if (key.name === 'r' || key.name === 'space') runRebuild('rebuild');
+            else if (key.name === 'f') runRebuild('full rebuild', copyAssets);
+        });
+        console.log('Watching... Press R / Space for rebuild, F for full rebuild + asset copy, Ctrl+C to quit.');
     }
 }
 else {
