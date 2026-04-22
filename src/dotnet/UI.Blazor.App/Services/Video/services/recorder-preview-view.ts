@@ -16,7 +16,12 @@
  */
 
 import { getLogs } from 'logging';
-import { getActiveRecorder, type VideoRecorder, type PreviewFrameListener } from '../../../Components/VideoPanel/video-recorder';
+import {
+    addActiveRecorderListener,
+    getActiveRecorder,
+    type PreviewFrameListener,
+    type VideoRecorder,
+} from '../../../Components/VideoPanel/video-recorder';
 import { CanvasVideoRenderer } from './canvas-video-renderer';
 import { CanvasTarget } from './canvas-target';
 import { BG_CANVAS_WIDTH, BG_DRAW_INTERVAL_MS, BG_FILTER } from './bg-canvas-settings';
@@ -56,9 +61,14 @@ export class RecorderPreviewView {
     private unsubscribeFrames: (() => void) | null = null;
     private firstFrameFired = false;
     private lastStarting = false;
-    private animationFrameId: number | null = null;
     private disposed = false;
     private _paused = false;
+    // Registry subscription — fires on recorder register/unregister for our streamKind.
+    private unsubscribeRegistry: (() => void) | null = null;
+    // The recorder currently being followed (may differ from attachedRecorder
+    // until its track goes live). We hold track/state/blur subscriptions on it.
+    private followedRecorder: VideoRecorder | null = null;
+    private followUnsubscribers: (() => void)[] = [];
     // Per-attach counter so each CanvasVideoRenderer instance gets a unique
     // fastRaf key. Without this, detach+attach happening in the same frame
     // (e.g. after unpausing into a newly-swapped camera track) would dedup the
@@ -76,7 +86,16 @@ export class RecorderPreviewView {
         this.bgCanvasTarget = options.bgCanvas ? new CanvasTarget(options.bgCanvas, false, BG_FILTER) : null;
         this.bgContainer = options.bgCanvas?.parentElement ?? null;
         this.streamKind = options.streamKind ?? 0;
-        this.animationFrameId = requestAnimationFrame(() => this.tick());
+
+        // Subscribe to recorder register/unregister events and immediately
+        // reconcile with whatever recorder is already active (common case:
+        // the recorder registers synchronously in its constructor, before
+        // this view is even constructed).
+        this.unsubscribeRegistry = addActiveRecorderListener((recorder, kind) => {
+            if (kind !== this.streamKind) return;
+            this.followRecorder(recorder);
+        });
+        this.followRecorder(getActiveRecorder(this.streamKind));
     }
 
     /** True when currently attached to a recorder with a live track. */
@@ -95,41 +114,61 @@ export class RecorderPreviewView {
     }
 
     public set paused(value: boolean) {
+        if (this._paused === value) return;
         this._paused = value;
+        // Flipping pause may require attach (resume) or just renderer.paused refresh.
+        this.syncAttachment();
     }
 
     public dispose(): void {
         if (this.disposed) return;
         this.disposed = true;
-
-        if (this.animationFrameId !== null) {
-            cancelAnimationFrame(this.animationFrameId);
-            this.animationFrameId = null;
+        if (this.unsubscribeRegistry) {
+            this.unsubscribeRegistry();
+            this.unsubscribeRegistry = null;
         }
-
+        for (const u of this.followUnsubscribers) u();
+        this.followUnsubscribers = [];
+        this.followedRecorder = null;
         this.detach();
     }
 
-    private tick(): void {
-        if (this.disposed) return;
+    // Switch to following a different recorder (or none). Unsubscribes from the
+    // previous recorder's lifecycle events and subscribes to the new one's.
+    private followRecorder(recorder: VideoRecorder | null): void {
+        if (this.followedRecorder === recorder) {
+            this.syncAttachment();
+            return;
+        }
+        for (const u of this.followUnsubscribers) u();
+        this.followUnsubscribers = [];
+        this.followedRecorder = recorder;
+        if (recorder) {
+            const resync = () => this.syncAttachment();
+            this.followUnsubscribers = [
+                recorder.addStateChangeListener(resync),
+                recorder.addBlurChangeListener(resync),
+            ];
+        }
+        this.syncAttachment();
+    }
 
-        const recorder = getActiveRecorder(this.streamKind);
+    // Reconcile attached state and derived flags with the currently-followed
+    // recorder. Called initially, on any lifecycle event, and on paused flip.
+    private syncAttachment(): void {
+        if (this.disposed) return;
+        const recorder = this.followedRecorder;
         const paused = this._paused;
-        const track = recorder?.getPreviewTrack() ?? null;
-        const trackLive = track?.readyState === 'live';
 
         // While paused, skip attach/detach so the canvas keeps the last frame
         // intact — detaching would `canvasTarget.clear()` and flash the spinner
         // even though another consumer is driving rendering.
         if (!paused) {
+            const track = recorder?.getPreviewTrack() ?? null;
+            const trackLive = track?.readyState === 'live';
             if (recorder && trackLive && track !== this.attachedTrack) {
-                // New live track — (re-)attach. Handles both initial attach and
-                // camera switch (recorder swaps the track while the same recorder
-                // instance stays registered).
                 this.attach(recorder, track);
             } else if (this.attachedRecorder && (!recorder || !trackLive)) {
-                // Recorder gone or its track became invalid — detach and wait for a
-                // new live track to appear (e.g. after the pipeline restarts).
                 this.detach();
             }
         }
@@ -148,8 +187,6 @@ export class RecorderPreviewView {
             this.lastStarting = isStarting;
             this.options.onStartingChange?.(isStarting);
         }
-
-        this.animationFrameId = requestAnimationFrame(() => this.tick());
     }
 
     private attach(recorder: VideoRecorder, track: MediaStreamTrack): void {

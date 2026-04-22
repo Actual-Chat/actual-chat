@@ -60,6 +60,28 @@ export function getAllActiveRecorders(): VideoRecorder[] {
     return [...activeRecorders.values()];
 }
 
+export type ActiveRecorderListener = (recorder: VideoRecorder | null, kind: number) => void;
+
+const registryListeners = new Set<ActiveRecorderListener>();
+
+// Subscribe to active-recorder registry changes. Callback fires with the
+// newly-registered recorder (or null on unregister) + its kind. Returns an
+// unsubscribe closure. Consumers typically filter by kind inside the callback.
+export function addActiveRecorderListener(cb: ActiveRecorderListener): () => void {
+    registryListeners.add(cb);
+    return () => registryListeners.delete(cb);
+}
+
+function notifyRegistryListeners(recorder: VideoRecorder | null, kind: number): void {
+    for (const cb of registryListeners) {
+        try {
+            cb(recorder, kind);
+        } catch (e) {
+            warnLog?.log('active-recorder listener threw', e);
+        }
+    }
+}
+
 interface Size {
     width: number;
     height: number;
@@ -80,7 +102,6 @@ export class VideoRecorder {
     // True when we were asked to record but currently have no active pipeline
     // (e.g. the user switched to a camera that failed to start). The next
     // switchCamera call restarts from this state.
-    private isInterrupted = false;
     private isScreencasting = false;
     // StreamKind this instance is registered under. Set in the constructor and
     // cleared on dispose (we register immediately so VideoStreamingPreview can
@@ -106,7 +127,14 @@ export class VideoRecorder {
     // a canvas before returning); they must NOT close it and must NOT retain it.
     private previewFrameListeners = new Set<PreviewFrameListener>();
 
-    public recordingState: VideoRecordingState = 'stopped';
+    // Lifecycle change subscribers. Each set is fired from the matching private
+    // setter below when the tracked value flips. Listeners may throw — we catch
+    // and log so one bad handler can't break the rest.
+    private stateChangeListeners = new Set<(state: VideoRecordingState) => void>();
+    private blurChangeListeners = new Set<(enabled: boolean) => void>();
+
+    private _recordingState: VideoRecordingState = 'stopped';
+    public get recordingState(): VideoRecordingState { return this._recordingState; }
 
     static create(blazorRef: DotNet.DotNetObject, kind: number): VideoRecorder {
         return new VideoRecorder(blazorRef, kind);
@@ -219,7 +247,7 @@ export class VideoRecorder {
             }
             this.recordingService = null;
             this.isRecording = false;
-            this.recordingState = 'stopped';
+            this.setRecordingState('stopped');
         }
 
         await this.startRecording(this.chatId);
@@ -229,7 +257,7 @@ export class VideoRecorder {
      * Set whether background blur should be enabled when recording starts
      */
     public setBlurEnabled(enabled: boolean): void {
-        this.isBlurEnabled = enabled;
+        this.setIsBlurEnabled(enabled);
         infoLog?.log('Background blur enabled:', enabled);
     }
 
@@ -244,7 +272,7 @@ export class VideoRecorder {
      * Toggle blur on an active recording
      */
     public toggleBlur(enabled: boolean): void {
-        this.isBlurEnabled = enabled;
+        this.setIsBlurEnabled(enabled);
         if (this.recordingService) {
             const rs = this.recordingService;
             this.blurToggleChain = this.blurToggleChain
@@ -282,14 +310,6 @@ export class VideoRecorder {
     }
 
     /**
-     * Whether recording was requested but the current pipeline failed to start.
-     * A subsequent switchCamera call will try to start fresh with the new device.
-     */
-    public isRecordingInterrupted(): boolean {
-        return this.isInterrupted;
-    }
-
-    /**
      * Subscribe to blur preview frames produced by the recorder's pipeline.
      * The returned function unsubscribes the listener.
      *
@@ -305,6 +325,22 @@ export class VideoRecorder {
         return () => this.previewFrameListeners.delete(cb);
     }
 
+    // Subscribe to recordingState transitions. Fires with the new state after
+    // each flip (no initial fire). Returns an unsubscribe closure.
+    // External track death (permission revoked, camera unplugged) is surfaced
+    // via this listener too — the track's `onended` handler triggers
+    // `stopRecording()`, which flips state to `'stopped'`.
+    public addStateChangeListener(cb: (state: VideoRecordingState) => void): () => void {
+        this.stateChangeListeners.add(cb);
+        return () => this.stateChangeListeners.delete(cb);
+    }
+
+    // Subscribe to blur on/off flips.
+    public addBlurChangeListener(cb: (enabled: boolean) => void): () => void {
+        this.blurChangeListeners.add(cb);
+        return () => this.blurChangeListeners.delete(cb);
+    }
+
     /**
      * Initialize and start video recording
      */
@@ -315,8 +351,7 @@ export class VideoRecorder {
             return;
         }
 
-        this.isInterrupted = false;
-        this.recordingState = 'starting';
+        this.setRecordingState('starting');
         infoLog?.log('Starting video recording...');
 
         try {
@@ -373,7 +408,18 @@ export class VideoRecorder {
             // Start recording (this initializes the video-pipeline)
             await this.recordingService.start();
 
-            this.previewTrack = this.recordingService.getInputTrack()
+            this.previewTrack = this.recordingService.getInputTrack();
+            // If the camera track ends externally (permission revoked, camera
+            // unplugged, OS stole the device), fall back to full stop — same
+            // pattern as screencast's browser-initiated "Stop sharing" below.
+            // cleanupPreviewTrack clears this handler before calling stop() on
+            // our own teardown to avoid re-entering stopRecording.
+            if (this.previewTrack) {
+                this.previewTrack.onended = () => {
+                    infoLog?.log('Camera track ended externally — stopping recording');
+                    void this.stopRecording();
+                };
+            }
             // Store actual camera resolution for capping reconfigure requests
             const trackSettings = this.previewTrack!.getSettings();
             infoLog?.log(`Track resolution: ${trackSettings.width}x${trackSettings.height}, facingMode=${trackSettings.facingMode ?? '(none)'}`);
@@ -406,15 +452,14 @@ export class VideoRecorder {
             });
 
             this.isRecording = true;
-            this.recordingState = 'recording';
+            this.setRecordingState('recording');
 
             // Notify Blazor that recording started successfully
             await this.blazorRef.invokeMethodAsync('OnRecordingStarted');
 
             infoLog?.log('Video recording started');
         } catch (error) {
-            this.isInterrupted = true;
-            this.recordingState = 'error';
+            this.setRecordingState('error');
             errorLog?.log('Failed to start recording:', error);
             const message = error instanceof Error ? error.message : String(error);
             await this.blazorRef.invokeMethodAsync('OnRecordingError', message);
@@ -431,7 +476,7 @@ export class VideoRecorder {
             return;
         }
 
-        this.recordingState = 'starting';
+        this.setRecordingState('starting');
         infoLog?.log('Starting screencast...');
 
         try {
@@ -499,12 +544,12 @@ export class VideoRecorder {
 
             this.isRecording = true;
             this.isScreencasting = true;
-            this.recordingState = 'recording';
+            this.setRecordingState('recording');
 
             await this.blazorRef.invokeMethodAsync('OnRecordingStarted');
             infoLog?.log('Screencast started');
         } catch (error) {
-            this.recordingState = 'error';
+            this.setRecordingState('error');
             errorLog?.log('Failed to start screencast:', error);
             const message = error instanceof Error ? error.message : String(error);
             await this.blazorRef.invokeMethodAsync('OnRecordingError', message);
@@ -526,7 +571,7 @@ export class VideoRecorder {
             this.cleanupPreviewTrack();
             this.isRecording = false;
             this.isScreencasting = false;
-            this.recordingState = 'stopped';
+            this.setRecordingState('stopped');
             this.unregister();
 
             // Notify Blazor
@@ -670,17 +715,39 @@ export class VideoRecorder {
     private register(kind: number): void {
         this.registeredKind = kind;
         activeRecorders.set(kind, this);
+        notifyRegistryListeners(this, kind);
     }
 
     private unregister(): void {
-        if (this.registeredKind !== null && activeRecorders.get(this.registeredKind) === this) {
-            activeRecorders.delete(this.registeredKind);
+        const kind = this.registeredKind;
+        if (kind !== null && activeRecorders.get(kind) === this) {
+            activeRecorders.delete(kind);
+            notifyRegistryListeners(null, kind);
         }
         this.registeredKind = null;
     }
 
+    private setRecordingState(next: VideoRecordingState): void {
+        if (this._recordingState === next) return;
+        this._recordingState = next;
+        for (const cb of this.stateChangeListeners) {
+            try { cb(next); } catch (e) { warnLog?.log('state change listener threw', e); }
+        }
+    }
+
+    private setIsBlurEnabled(next: boolean): void {
+        if (this.isBlurEnabled === next) return;
+        this.isBlurEnabled = next;
+        for (const cb of this.blurChangeListeners) {
+            try { cb(next); } catch (e) { warnLog?.log('blur change listener threw', e); }
+        }
+    }
+
     private cleanupPreviewTrack(): void {
         if (this.previewTrack) {
+            // Detach our onended handler first so our own track.stop() below
+            // doesn't re-enter stopRecording via the external-death callback.
+            this.previewTrack.onended = null;
             // For screencast, don't stop the track — it's shared with the pipeline.
             // The pipeline's stop() will handle track cleanup.
             if (!this.isScreencasting)
@@ -808,6 +875,6 @@ export class VideoRecorder {
 
         this.isRecording = false;
         this.isScreencasting = false;
-        this.recordingState = 'stopped';
+        this.setRecordingState('stopped');
     }
 }
