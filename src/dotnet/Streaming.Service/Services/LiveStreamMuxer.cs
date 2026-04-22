@@ -225,7 +225,7 @@ public sealed class LiveStreamMuxer : WorkerBase
                 }
 
                 // It's either the same stream or existing stream is fresher — cancel ourselves
-                Log.LogDebug(
+                Log.LogInformation(
                     "Author {AuthorId}: stream {NewStreamId} (beginsAt={NewBeginsAt}) is stale, keeping {OldStreamId} (beginsAt={OldBeginsAt})",
                     entry.AuthorId, entry.StreamId, entry.BeginsAt, existing.StreamId, existing.BeginsAt);
                 entry.StopTokenSource.CancelAndDisposeSilently();
