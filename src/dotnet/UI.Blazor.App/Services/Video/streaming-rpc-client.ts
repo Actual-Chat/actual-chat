@@ -2,7 +2,7 @@
 
 import { RpcStream } from 'actuallab-rpc';
 import { Api, streamingApi,
-    type StreamServerClient, type VideoFrameDto, type AudioFrameDto } from 'api';
+    type VideoFrameDto, type AudioFrameDto } from 'api';
 import { ConnectivityUI } from '../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
 
 /**
@@ -12,11 +12,6 @@ import { ConnectivityUI } from '../../../UI.Blazor/Services/ConnectivityUI/conne
 export function initVideoRpc(): void {
     Api.init(undefined, streamingApi);
     Api.bindDotNetRpcConnected(ConnectivityUI);
-}
-
-/** Get the IStreamServer RPC client (stream push/pull + control). */
-export function getStreamServerClient(): StreamServerClient {
-    return streamingApi.streamServer;
 }
 
 /**

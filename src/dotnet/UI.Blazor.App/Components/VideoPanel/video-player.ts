@@ -1,6 +1,6 @@
 import { getLogs } from 'logging';
-import { initVideoRpc, getStreamServerClient } from '../../Services/Video/streaming-rpc-client';
-import { Api, type VideoFrameDto } from 'api';
+import { initVideoRpc } from '../../Services/Video/streaming-rpc-client';
+import { Api, streamingApi, type VideoFrameDto } from 'api';
 import { fastRaf } from 'fast-raf';
 import { ServerClock } from 'server-clock';
 import { rpcClientServer, rpcNoWait } from 'rpc';
@@ -1054,7 +1054,7 @@ export class VideoPlayer {
         this.lastKeyFrameRequestTime = now;
 
         warnLog?.log(`PLI: requesting keyframe for stream ${this.streamId}`);
-        getStreamServerClient().RequestKeyFrame(this.streamId)
+        streamingApi.streamServer.RequestKeyFrame(this.streamId)
             .catch((e: unknown) => warnLog?.log('RequestKeyFrame error:', e));
     }
 
@@ -1114,14 +1114,13 @@ export class VideoPlayer {
         this.pullAbortController = abortController;
 
         initVideoRpc();
-        const client = getStreamServerClient();
         const skipToTicks = Math.round(skipToMs * 10000); // ms → .NET TimeSpan ticks (must be integer for MessagePack int64)
 
         warnLog?.log(`startPull [RPC]: stream=${streamId}, skipTo=${skipToMs}ms, skipToTicks=${skipToTicks}, retryCount=${this.pullRetryCount}`);
 
         try {
             warnLog?.log(`startPull [RPC]: calling GetVideo(${streamId}, ${skipToTicks})`);
-            const stream = await client.GetVideo(streamId, skipToTicks);
+            const stream = await streamingApi.streamServer.GetVideo(streamId, skipToTicks);
             warnLog?.log(`startPull [RPC]: GetStream returned, starting iteration`);
             let pullFrameCount = 0;
 
@@ -1393,7 +1392,7 @@ export class VideoPlayer {
 
             // Report the high latency to the server BEFORE resetting state,
             // so EvaluateQuality can detect that this peer is struggling and step down sender quality.
-            getStreamServerClient().ReportVideoLatency(this.streamId, streamOffsetMs, -1, -1, -1)
+            streamingApi.streamServer.ReportVideoLatency(this.streamId, streamOffsetMs, -1, -1, -1)
                 .catch(() => { /* best-effort */ });
 
             this.pullAbortController?.abort();
@@ -1498,7 +1497,7 @@ export class VideoPlayer {
 
                 // Send enriched latency report with diagnostics + RTT measurement
                 const sendTime = performance.now();
-                getStreamServerClient().ReportVideoLatency(
+                streamingApi.streamServer.ReportVideoLatency(
                     this.streamId,
                     streamOffsetMs,
                     ds.pureMedianDecodeTime >= 0 ? ds.pureMedianDecodeTime : ds.medianDecodeTime,
@@ -1513,7 +1512,7 @@ export class VideoPlayer {
         } else {
             // No decoder worker — send basic report without diagnostics + RTT measurement
             const sendTime = performance.now();
-            getStreamServerClient().ReportVideoLatency(this.streamId, streamOffsetMs, -1, -1, -1)
+            streamingApi.streamServer.ReportVideoLatency(this.streamId, streamOffsetMs, -1, -1, -1)
                 .then(() => {
                     this.updateRttEstimate(performance.now() - sendTime);
                 }).catch((e: unknown) => {
