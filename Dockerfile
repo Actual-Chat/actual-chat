@@ -95,18 +95,16 @@ RUN dotnet publish --no-restore --nologo -c Release -nodeReuse:false -o /app ./s
 
 FROM dotnet-build AS migrations-build
 COPY ./ef-migrations.cmd ./ef-migrations.cmd
-# Build all 7 migration projects in parallel — each is own dotnet process.
-# Can't use slnf here: NETSDK1134 forbids --runtime on a solution file.
-# No --no-restore: the global `./run-build.cmd restore` upstream doesn't include
-# linux-x64 RID, so each build must restore for its RID. NuGet cache is concurrent-safe.
-# -P 2 caps concurrency (conservative — avoid OOM on 2-core runner).
+# Fused build+bundle per project, 3 pipelines in parallel on 4-core runner.
+# Fusing avoids the 2-wave barrier: as soon as a project's build finishes its slot
+# rolls into its bundle without waiting for siblings. Can't slnf-build: NETSDK1134
+# forbids --runtime on a solution. NuGet cache is concurrent-safe.
 RUN printf '%s\n' Chat.Service Contacts.Service Invite.Service Media.Service MLSearch.Service Notification.Service Users.Service \
-    | xargs -P 2 -I{} dotnet build --runtime linux-x64 -nodeReuse:false "src/dotnet/{}.Migration/{}.Migration.csproj"
-# Bundle in parallel — each project writes own artifacts/obj/*, safe concurrently.
-# -P 2 cap: 7 concurrent `dotnet ef bundle` (each an internal dotnet publish)
-# thrashes 2-core runner; 2-at-a-time wins without OOM.
-RUN printf '%s\n' Chat.Service Contacts.Service Invite.Service Media.Service MLSearch.Service Notification.Service Users.Service \
-    | xargs -P 2 -I{} sh -c './ef-migrations.cmd "$1" bundle --runtime linux-x64 --output "./artifacts/$1.Migration.exe"' _ {} \
+    | xargs -P 3 -I{} sh -c ' \
+        set -e; \
+        m="$1"; \
+        dotnet build --runtime linux-x64 -nodeReuse:false "src/dotnet/$m.Migration/$m.Migration.csproj"; \
+        ./ef-migrations.cmd "$m" bundle --runtime linux-x64 --output "./artifacts/$m.Migration.exe"' _ {} \
     && ls -lha /src/artifacts
 
 FROM runtime AS migrations-app
