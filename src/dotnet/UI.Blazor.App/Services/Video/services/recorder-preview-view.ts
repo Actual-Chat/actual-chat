@@ -19,6 +19,7 @@ import { getLogs } from 'logging';
 import { getActiveRecorder, type VideoRecorder, type PreviewFrameListener } from '../../../Components/VideoPanel/video-recorder';
 import { CanvasVideoRenderer } from './canvas-video-renderer';
 import { CanvasTarget } from './canvas-target';
+import { BG_CANVAS_WIDTH, BG_DRAW_INTERVAL_MS, BG_FILTER } from './bg-canvas-settings';
 
 const { infoLog } = getLogs('VideoRecorder');
 
@@ -40,11 +41,6 @@ export interface RecorderPreviewViewOptions {
     /** Called when the "starting" state changes (recorder intends to produce video but first frame hasn't landed yet). */
     onStartingChange?: (starting: boolean) => void;
 }
-
-/** Background canvas is rendered at a fixed small width; height scales with aspect. */
-const BG_CANVAS_WIDTH = 64;
-/** Throttle bg redraw — it's blurred via CSS, full fps is wasted GPU work. */
-const BG_DRAW_INTERVAL_MS = 100;
 
 export class RecorderPreviewView {
     private readonly options: RecorderPreviewViewOptions;
@@ -77,7 +73,7 @@ export class RecorderPreviewView {
     constructor(options: RecorderPreviewViewOptions) {
         this.options = options;
         this.canvasTarget = new CanvasTarget(options.canvas);
-        this.bgCanvasTarget = options.bgCanvas ? new CanvasTarget(options.bgCanvas, false) : null;
+        this.bgCanvasTarget = options.bgCanvas ? new CanvasTarget(options.bgCanvas, false, BG_FILTER) : null;
         this.bgContainer = options.bgCanvas?.parentElement ?? null;
         this.streamKind = options.streamKind ?? 0;
         this.animationFrameId = requestAnimationFrame(() => this.tick());

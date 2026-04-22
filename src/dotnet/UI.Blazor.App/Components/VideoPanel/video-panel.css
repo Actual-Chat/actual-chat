@@ -339,8 +339,11 @@ body.hoverable .btn-h.expand-btn:hover {
     @apply z-0;
     @apply block;
     @apply object-cover;
-    filter: blur(24px) saturate(1.3);
-    transform: scale(1.15);
+    /* Promote to its own composited layer so drawImage on this canvas
+       doesn't invalidate the whole #document layer (see CANVAS repaint hot path).
+       Blur + saturate are baked into the canvas bitmap itself — cheaper than CSS filter. */
+    will-change: transform;
+    transform: translateZ(0);
 }
 .video-track-player.item-focused canvas:not(.remote-video-bg) {
     @apply bg-transparent;

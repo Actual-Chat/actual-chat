@@ -11,6 +11,7 @@ import { Versioning } from 'versioning';
 import { type Subscription } from 'rxjs';
 import type { DecoderWorker } from '../../Services/Video/workers/decoder-worker-contract';
 import type { DecoderStats } from '../../Services/Video/webcodecs-decoder';
+import { BG_CANVAS_WIDTH, BG_DRAW_INTERVAL_MS, BG_FILTER } from '../../Services/Video/services/bg-canvas-settings';
 
 // Global registry of active VideoPlayer instances for diagnostics
 const activePlayers = new Map<string, VideoPlayer>();
@@ -93,8 +94,6 @@ export class VideoPlayer {
     private bgCanvasCtx: CanvasRenderingContext2D | null = null;
     private bgContainer: HTMLElement | null = null;
     private lastBgDrawTime = 0;
-    private static readonly BG_CANVAS_WIDTH = 64;
-    private static readonly BG_DRAW_INTERVAL_MS = 100; // ~10 fps — bg is blurred, full fps is wasted
 
     // Decoder worker (off-main-thread decoding)
     private decoderWorkerInstance: Worker | null = null;
@@ -226,8 +225,10 @@ export class VideoPlayer {
         if (bgCanvas) {
             this.bgCanvas = bgCanvas;
             this.bgCanvasCtx = bgCanvas.getContext('2d');
-            if (this.bgCanvasCtx)
+            if (this.bgCanvasCtx) {
                 this.bgCanvasCtx.imageSmoothingEnabled = false;
+                this.bgCanvasCtx.filter = BG_FILTER;
+            }
             this.bgContainer = bgCanvas.parentElement;
         }
         this.renderKey = `vr-${streamId}`;
@@ -874,16 +875,17 @@ export class VideoPlayer {
         if (!this.bgContainer?.classList.contains('item-focused')) return;
         // Throttle: the bg is blurred via CSS, updating every frame is wasted GPU work
         const now = performance.now();
-        if (now - this.lastBgDrawTime < VideoPlayer.BG_DRAW_INTERVAL_MS) return;
+        if (now - this.lastBgDrawTime < BG_DRAW_INTERVAL_MS) return;
         this.lastBgDrawTime = now;
 
-        const bgW = VideoPlayer.BG_CANVAS_WIDTH;
+        const bgW = BG_CANVAS_WIDTH;
         const bgH = Math.max(1, Math.round(bgW * pf.displayHeight / Math.max(1, pf.displayWidth)));
         if (this.bgCanvas.width !== bgW || this.bgCanvas.height !== bgH) {
             this.bgCanvas.width = bgW;
             this.bgCanvas.height = bgH;
             // Canvas resize resets context state
             this.bgCanvasCtx.imageSmoothingEnabled = false;
+            this.bgCanvasCtx.filter = BG_FILTER;
         }
         // Source from the already-drawn main canvas instead of pf.drawable —
         // avoids a second GPU→RGB conversion of the VideoFrame per frame.
