@@ -120,6 +120,7 @@ export class VideoRecorder {
     private cameraHeight = 0;
     // Cached encoder capabilities (detected at recording start)
     private supportedEncoderCategories: string[] = [];
+    private audienceCodecs?: string[];
     private supportedCodecs: CodecInfo[] = [];
 
     // Blur preview frame subscribers. When blur is active, the pipeline produces
@@ -251,7 +252,7 @@ export class VideoRecorder {
             this.setRecordingState('stopped');
         }
 
-        await this.startRecording(this.chatId);
+        await this.startRecording(this.chatId, this.audienceCodecs);
     }
 
     /**
@@ -347,6 +348,7 @@ export class VideoRecorder {
      */
     public async startRecording(chatId: string, audienceCodecs?: string[]): Promise<void> {
         this.chatId = chatId;
+        this.audienceCodecs = audienceCodecs;
         if (this.isRecording) {
             warnLog?.log('Already recording');
             return;
@@ -472,6 +474,7 @@ export class VideoRecorder {
      */
     public async startScreencast(chatId: string, audienceCodecs?: string[]): Promise<void> {
         this.chatId = chatId;
+        this.audienceCodecs = audienceCodecs;
         if (this.isRecording) {
             warnLog?.log('Already recording');
             return;
