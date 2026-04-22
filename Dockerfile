@@ -96,7 +96,7 @@ RUN dotnet publish --no-restore --nologo -c Release -nodeReuse:false -o /app ./s
 FROM dotnet-build AS migrations-build
 COPY ./ef-migrations.cmd ./ef-migrations.cmd
 # Build all 7 migration projects in one MSBuild invocation — native -m parallelism
-RUN dotnet build ActualChat.Migrations.slnf --runtime linux-x64 --no-restore -nodeReuse:false
+RUN dotnet build ActualChat.Migrations.slnf --no-restore -nodeReuse:false
 # Bundle in parallel — each project writes to its own artifacts/obj/*, safe concurrently
 RUN set -e; \
     pids=""; \
