@@ -34,7 +34,7 @@ RUN sed -i 's|http://archive.ubuntu.com|https://archive.ubuntu.com|g' /etc/apt/s
 
 WORKDIR /src
 COPY lib/ lib/
-COPY nuget.config Directory.Build.* Directory.Packages.props .editorconfig ActualChat.sln ActualChat.Migrations.slnf ./
+COPY nuget.config Directory.Build.* Directory.Packages.props .editorconfig ActualChat.sln ./
 COPY .config/ .config/
 # copy from {repoRoot}/src/dotnet/
 COPY src/dotnet/*/*.csproj ./
@@ -95,9 +95,12 @@ RUN dotnet publish --no-restore --nologo -c Release -nodeReuse:false -o /app ./s
 
 FROM dotnet-build AS migrations-build
 COPY ./ef-migrations.cmd ./ef-migrations.cmd
-# Build all 7 migration projects in one MSBuild invocation — native -m parallelism
-RUN dotnet build ActualChat.Migrations.slnf --runtime linux-x64 --no-restore -nodeReuse:false
-# Bundle in parallel — each project writes to its own artifacts/obj/*, safe concurrently
+# Build all 7 migration projects in parallel — each is own dotnet process.
+# Can't use slnf here: NETSDK1134 forbids --runtime on a solution file.
+# -P 2 caps concurrency (conservative — avoid OOM on 2-core/7GB runner).
+RUN printf '%s\n' Chat.Service Contacts.Service Invite.Service Media.Service MLSearch.Service Notification.Service Users.Service \
+    | xargs -P 2 -I{} dotnet build --runtime linux-x64 --no-restore -nodeReuse:false "src/dotnet/{}.Migration/{}.Migration.csproj"
+# Bundle in parallel — each project writes its own artifacts/obj/*, safe concurrently
 RUN set -e; \
     pids=""; \
     for m in Chat.Service Contacts.Service Invite.Service Media.Service MLSearch.Service Notification.Service Users.Service; do \
