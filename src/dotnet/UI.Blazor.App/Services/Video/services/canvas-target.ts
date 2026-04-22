@@ -6,9 +6,13 @@
 
 export class CanvasTarget {
     private readonly ctx: CanvasRenderingContext2D;
+    private readonly smoothing: boolean;
 
-    constructor(public readonly element: HTMLCanvasElement) {
+    constructor(public readonly element: HTMLCanvasElement, smoothing = true) {
         this.ctx = element.getContext('2d')!;
+        this.smoothing = smoothing;
+        if (!smoothing)
+            this.ctx.imageSmoothingEnabled = false;
     }
 
     /**
@@ -20,6 +24,9 @@ export class CanvasTarget {
         if (this.element.width !== width || this.element.height !== height) {
             this.element.width = width;
             this.element.height = height;
+            // Canvas resize resets context state
+            if (!this.smoothing)
+                this.ctx.imageSmoothingEnabled = false;
         }
         this.ctx.drawImage(source, 0, 0, width, height);
     }

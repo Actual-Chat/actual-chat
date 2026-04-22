@@ -91,7 +91,10 @@ export class VideoPlayer {
     private canvasCtx: CanvasRenderingContext2D | null = null;
     private bgCanvas: HTMLCanvasElement | null = null;
     private bgCanvasCtx: CanvasRenderingContext2D | null = null;
+    private bgContainer: HTMLElement | null = null;
+    private lastBgDrawTime = 0;
     private static readonly BG_CANVAS_WIDTH = 64;
+    private static readonly BG_DRAW_INTERVAL_MS = 100; // ~10 fps — bg is blurred, full fps is wasted
 
     // Decoder worker (off-main-thread decoding)
     private decoderWorkerInstance: Worker | null = null;
@@ -223,6 +226,9 @@ export class VideoPlayer {
         if (bgCanvas) {
             this.bgCanvas = bgCanvas;
             this.bgCanvasCtx = bgCanvas.getContext('2d');
+            if (this.bgCanvasCtx)
+                this.bgCanvasCtx.imageSmoothingEnabled = false;
+            this.bgContainer = bgCanvas.parentElement;
         }
         this.renderKey = `vr-${streamId}`;
         this.isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
@@ -864,13 +870,24 @@ export class VideoPlayer {
     // providing a blurred fill behind the letterboxed (object-fit: contain) main canvas.
     private drawBgFrame(pf: PendingFrame): void {
         if (!this.bgCanvas || !this.bgCanvasCtx) return;
+        // Skip when the bg canvas is hidden — CSS reveals it only on .item-focused
+        if (!this.bgContainer?.classList.contains('item-focused')) return;
+        // Throttle: the bg is blurred via CSS, updating every frame is wasted GPU work
+        const now = performance.now();
+        if (now - this.lastBgDrawTime < VideoPlayer.BG_DRAW_INTERVAL_MS) return;
+        this.lastBgDrawTime = now;
+
         const bgW = VideoPlayer.BG_CANVAS_WIDTH;
         const bgH = Math.max(1, Math.round(bgW * pf.displayHeight / Math.max(1, pf.displayWidth)));
         if (this.bgCanvas.width !== bgW || this.bgCanvas.height !== bgH) {
             this.bgCanvas.width = bgW;
             this.bgCanvas.height = bgH;
+            // Canvas resize resets context state
+            this.bgCanvasCtx.imageSmoothingEnabled = false;
         }
-        this.bgCanvasCtx.drawImage(pf.drawable as CanvasImageSource, 0, 0, bgW, bgH);
+        // Source from the already-drawn main canvas instead of pf.drawable —
+        // avoids a second GPU→RGB conversion of the VideoFrame per frame.
+        this.bgCanvasCtx.drawImage(this.canvas, 0, 0, bgW, bgH);
     }
 
     private updateBufferState(): void {

@@ -43,12 +43,16 @@ export interface RecorderPreviewViewOptions {
 
 /** Background canvas is rendered at a fixed small width; height scales with aspect. */
 const BG_CANVAS_WIDTH = 64;
+/** Throttle bg redraw — it's blurred via CSS, full fps is wasted GPU work. */
+const BG_DRAW_INTERVAL_MS = 100;
 
 export class RecorderPreviewView {
     private readonly options: RecorderPreviewViewOptions;
     private readonly canvasTarget: CanvasTarget;
     private readonly bgCanvasTarget: CanvasTarget | null;
+    private readonly bgContainer: HTMLElement | null;
     private readonly streamKind: number;
+    private lastBgDrawTime = 0;
 
     private renderer: CanvasVideoRenderer | null = null;
     private attachedRecorder: VideoRecorder | null = null;
@@ -73,7 +77,8 @@ export class RecorderPreviewView {
     constructor(options: RecorderPreviewViewOptions) {
         this.options = options;
         this.canvasTarget = new CanvasTarget(options.canvas);
-        this.bgCanvasTarget = options.bgCanvas ? new CanvasTarget(options.bgCanvas) : null;
+        this.bgCanvasTarget = options.bgCanvas ? new CanvasTarget(options.bgCanvas, false) : null;
+        this.bgContainer = options.bgCanvas?.parentElement ?? null;
         this.streamKind = options.streamKind ?? 0;
         this.animationFrameId = requestAnimationFrame(() => this.tick());
     }
@@ -163,7 +168,7 @@ export class RecorderPreviewView {
             canvas: this.canvasTarget.element,
             rafKey: `${this.options.rafKey}#${++this.attachSeq}`,
             onFirstFrame: () => this.fireFirstFrame(),
-            onAfterDraw: (video) => this.drawBgFrame(video, video.videoWidth, video.videoHeight),
+            onAfterDraw: (video) => this.drawBgFrame(video.videoWidth, video.videoHeight),
         });
         this.renderer.start(track);
 
@@ -175,7 +180,7 @@ export class RecorderPreviewView {
             if (this._paused)
                 return;
             this.canvasTarget.draw(frame, frame.displayWidth, frame.displayHeight);
-            this.drawBgFrame(frame, frame.displayWidth, frame.displayHeight);
+            this.drawBgFrame(frame.displayWidth, frame.displayHeight);
             this.fireFirstFrame();
         };
         this.unsubscribeFrames = recorder.addPreviewFrameListener(blurListener);
@@ -221,10 +226,19 @@ export class RecorderPreviewView {
         this.options.onFirstFrame?.();
     }
 
-    private drawBgFrame(source: CanvasImageSource, width: number, height: number): void {
+    private drawBgFrame(width: number, height: number): void {
         if (!this.bgCanvasTarget) return;
+        // Skip when the bg canvas is hidden — CSS reveals it only on .item-focused
+        if (!this.bgContainer?.classList.contains('item-focused')) return;
+        // Throttle: the bg is blurred via CSS, updating every frame is wasted GPU work
+        const now = performance.now();
+        if (now - this.lastBgDrawTime < BG_DRAW_INTERVAL_MS) return;
+        this.lastBgDrawTime = now;
+
         const bgW = BG_CANVAS_WIDTH;
         const bgH = Math.max(1, Math.round(bgW * height / Math.max(1, width)));
-        this.bgCanvasTarget.draw(source, bgW, bgH);
+        // Source from the already-drawn main canvas — avoids a second GPU→RGB
+        // conversion of the VideoFrame / HTMLVideoElement per frame.
+        this.bgCanvasTarget.draw(this.canvasTarget.element, bgW, bgH);
     }
 }
