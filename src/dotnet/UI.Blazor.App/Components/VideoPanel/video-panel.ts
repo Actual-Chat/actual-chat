@@ -44,6 +44,15 @@ export class VideoPanel {
     // Touch identifiers to track only our gesture's touches
     private activeTouchIds = new Set<number>();
 
+    // Collapsed island drag state
+    private islandDragging = false;
+    private islandDragged = false; // true once user manually repositioned
+    private islandStartX = 0;
+    private islandStartY = 0;
+    private islandOrigLeft = 0;
+    private islandOrigTop = 0;
+    private islandResizeObserver: ResizeObserver | null = null;
+
     static create(videoPanel: HTMLElement, blazorRef: DotNet.DotNetObject): VideoPanel {
         return new VideoPanel(videoPanel, blazorRef);
     }
@@ -541,6 +550,167 @@ export class VideoPanel {
 
     // endregion
 
+    // region: Collapsed island positioning & drag
+
+    // Called from Blazor when collapsed state changes.
+    public updateIslandPosition(): void {
+        if (!this.videoPanel.classList.contains('collapsed')) {
+            this.teardownIsland();
+            return;
+        }
+        this.setupIsland();
+    }
+
+    private setupIsland(): void {
+        this.islandDragged = false;
+        // Reparent to body so `position: fixed` works correctly.
+        // (.list-view-layout has `filter: opacity(1)` which creates a containing
+        // block that breaks fixed positioning for descendants.)
+        document.body.appendChild(this.videoPanel);
+        this.positionIslandDefault();
+        this.initIslandDrag();
+
+        // Watch subheader/banners for size changes to reposition.
+        const subheader = document.querySelector('.layout-subheader');
+        if (subheader && !this.islandResizeObserver) {
+            this.islandResizeObserver = new ResizeObserver(() => {
+                if (!this.islandDragged)
+                    this.positionIslandDefault();
+            });
+            this.islandResizeObserver.observe(subheader);
+        }
+
+        // Clamp to viewport on resize/zoom.
+        fromEvent(window, 'resize')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(() => this.clampIslandToViewport());
+    }
+
+    private teardownIsland(): void {
+        this.islandResizeObserver?.disconnect();
+        this.islandResizeObserver = null;
+        // Clear inline positioning and reparent back.
+        this.videoPanel.style.top = '';
+        this.videoPanel.style.left = '';
+        this.videoPanel.style.right = '';
+        this.parentElement?.appendChild(this.videoPanel);
+    }
+
+    // Place the island below the subheader (or header if no subheader), top-right.
+    private positionIslandDefault(): void {
+        const subheader = document.querySelector('.layout-subheader');
+        let top: number;
+        if (subheader && subheader.getBoundingClientRect().height > 0) {
+            const rect = subheader.getBoundingClientRect();
+            top = rect.bottom + 8; // 0.5rem gap
+        } else {
+            const header = document.querySelector('.layout-header');
+            if (header) {
+                const rect = header.getBoundingClientRect();
+                top = rect.bottom + 8;
+            } else {
+                top = 64; // fallback
+            }
+        }
+        this.videoPanel.style.top = `${top}px`;
+        this.videoPanel.style.right = '0.5rem';
+        this.videoPanel.style.left = '';
+    }
+
+    private initIslandDrag(): void {
+        // Pointer events for unified mouse+touch drag.
+        fromEvent<PointerEvent>(this.videoPanel, 'pointerdown')
+            .pipe(
+                takeUntil(this.disposed$),
+                filter(() => this.videoPanel.classList.contains('collapsed')),
+                filter(e => e.button === 0),
+                filter(e => !(e.target as HTMLElement).closest('button')),
+            )
+            .subscribe(e => this.onIslandPointerDown(e));
+
+        fromEvent<PointerEvent>(document, 'pointermove')
+            .pipe(
+                takeUntil(this.disposed$),
+                filter(() => this.islandDragging),
+            )
+            .subscribe(e => this.onIslandPointerMove(e));
+
+        fromEvent<PointerEvent>(document, 'pointerup')
+            .pipe(
+                takeUntil(this.disposed$),
+                filter(() => this.islandDragging),
+            )
+            .subscribe(() => this.onIslandPointerUp());
+
+        fromEvent<PointerEvent>(document, 'pointercancel')
+            .pipe(
+                takeUntil(this.disposed$),
+                filter(() => this.islandDragging),
+            )
+            .subscribe(() => this.onIslandPointerUp());
+    }
+
+    private onIslandPointerDown(e: PointerEvent): void {
+        e.preventDefault();
+        e.stopPropagation();
+        this.islandDragging = true;
+        this.islandStartX = e.clientX;
+        this.islandStartY = e.clientY;
+        const rect = this.videoPanel.getBoundingClientRect();
+        this.islandOrigLeft = rect.left;
+        this.islandOrigTop = rect.top;
+        // Switch to left-based positioning immediately so right doesn't fight.
+        this.videoPanel.style.left = `${rect.left}px`;
+        this.videoPanel.style.right = 'auto';
+        this.videoPanel.setPointerCapture(e.pointerId);
+        this.videoPanel.style.cursor = 'grabbing';
+    }
+
+    private onIslandPointerMove(e: PointerEvent): void {
+        e.preventDefault();
+        const dx = e.clientX - this.islandStartX;
+        const dy = e.clientY - this.islandStartY;
+        // Clamp to viewport while dragging.
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const w = this.videoPanel.offsetWidth;
+        const h = this.videoPanel.offsetHeight;
+        const newLeft = Math.max(0, Math.min(vw - w, this.islandOrigLeft + dx));
+        const newTop = Math.max(0, Math.min(vh - h, this.islandOrigTop + dy));
+        this.videoPanel.style.left = `${newLeft}px`;
+        this.videoPanel.style.top = `${newTop}px`;
+        if (Math.abs(dx) > 4 || Math.abs(dy) > 4)
+            this.islandDragged = true;
+    }
+
+    private onIslandPointerUp(): void {
+        this.islandDragging = false;
+        this.videoPanel.style.cursor = '';
+    }
+
+    private clampIslandToViewport(): void {
+        if (!this.videoPanel.classList.contains('collapsed'))
+            return;
+
+        const rect = this.videoPanel.getBoundingClientRect();
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        let left = rect.left;
+        let top = rect.top;
+        let changed = false;
+        if (left + rect.width > vw) { left = vw - rect.width; changed = true; }
+        if (left < 0) { left = 0; changed = true; }
+        if (top + rect.height > vh) { top = vh - rect.height; changed = true; }
+        if (top < 0) { top = 0; changed = true; }
+        if (changed) {
+            this.videoPanel.style.left = `${left}px`;
+            this.videoPanel.style.top = `${top}px`;
+            this.videoPanel.style.right = 'auto';
+        }
+    }
+
+    // endregion
+
     // region: Panel expand/collapse
 
     public dispose() {
@@ -551,6 +721,7 @@ export class VideoPanel {
             clearTimeout(this.singleTapTimer);
             this.singleTapTimer = 0;
         }
+        this.teardownIsland();
         this.collapse();
         this.disposed$.next();
         this.disposed$.complete();

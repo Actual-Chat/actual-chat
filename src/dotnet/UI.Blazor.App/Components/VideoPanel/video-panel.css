@@ -10,7 +10,52 @@
 .video-panel:not(.expanded) {
     @apply max-w-192;
 }
+/* Collapsed "island" — fixed, positioned below subheader, draggable */
 .video-panel.collapsed {
+    @apply fixed z-button top-16 right-2;
+    @apply min-h-0 h-[3.25rem] max-h-[3.25rem];
+    @apply w-auto;
+    @apply p-px;
+    @apply rounded-lg border border-[var(text-03)];
+    @apply overflow-hidden;
+    @apply bg-03;
+    @apply cursor-grab;
+    @apply touch-none;
+}
+.video-panel.collapsed > .c-container {
+    @apply flex-x items-center gap-1;
+    @apply h-full;
+    @apply p-px;
+}
+.video-panel.collapsed .video-panel-toolbar {
+    @apply hidden;
+}
+.video-panel.collapsed .video-panel-content {
+    @apply relative;
+    @apply w-20 h-full min-h-0;
+    @apply p-0;
+    @apply rounded-md;
+    @apply overflow-hidden;
+    order: 0;
+}
+.video-panel.collapsed .video-panel-content .video-track-player:not(.item-focused) {
+    @apply hidden;
+}
+.video-panel.collapsed .video-panel-content .video-track-player.item-focused {
+    @apply relative inset-auto;
+    @apply w-full h-full;
+    @apply rounded-none border-0;
+}
+.video-panel.collapsed .video-panel-content .btn-h {
+    @apply hidden;
+}
+.video-panel.collapsed .video-panel-content .connecting-overlay {
+    @apply hidden;
+}
+.video-panel.collapsed .video-panel-content .video-participant-label {
+    @apply hidden;
+}
+.video-panel.collapsed .video-panel-chat {
     @apply hidden;
 }
 .video-panel.first-time-open {
@@ -60,20 +105,21 @@ body.wide .video-panel.expanded {
 body.wide .video-panel.expanded .video-panel-content {
     @apply justify-start;
 }
-body.narrow .video-panel {
+/* Default (inline) state — not collapsed, not expanded */
+body.narrow .video-panel:not(.collapsed):not(.expanded) {
     @apply min-h-48 max-h-48;
 }
-body.wide .video-panel {
+body.wide .video-panel:not(.collapsed):not(.expanded) {
     @apply min-h-112 max-h-112;
 }
-body.wide:not(.side-nav-right-open) .video-panel:not(.expanded) {
+body.wide:not(.side-nav-right-open) .video-panel:not(.collapsed):not(.expanded) {
     @apply min-h-0 max-w-none mx-auto;
     @apply h-auto;
     aspect-ratio: 16/9;
     max-height: 66.67dvh;
     width: min(100%, calc(66.67dvh * 16 / 9));
 }
-body.wide.side-nav-right-open .video-panel {
+body.wide.side-nav-right-open .video-panel:not(.collapsed):not(.expanded) {
     @apply min-h-96 max-h-96;
 }
 .video-panel > .c-container {
@@ -102,6 +148,21 @@ body.wide .video-panel.expanded:has(.video-panel-chat) > .c-container {
 .video-panel.closing .video-panel-content {
     animation: smoothHideVideoPanelContent 0.35s ease-in-out forwards;
 }
+/* Collapse/expand toggle — always visible */
+.video-panel .btn-h.video-panel-collapse-toggle {
+    @apply absolute top-2 right-2 z-button;
+}
+.video-panel.collapsed .btn-h.video-panel-collapse-toggle {
+    @apply relative inset-auto;
+    @apply flex-none self-start;
+    @apply w-9 h-9;
+    @apply -mt-1 -mr-1;
+    order: 1;
+}
+.video-panel.expanded .btn-h.video-panel-collapse-toggle {
+    @apply hidden;
+}
+
 .video-panel .btn-h.expand-btn {
     @apply absolute top-2 left-2 z-10;
 }

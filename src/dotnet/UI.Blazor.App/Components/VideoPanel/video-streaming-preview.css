@@ -13,7 +13,7 @@ body.wide .video-panel.expanded .video-streaming-preview .call-video {
     @apply object-contain;
 }
 .video-streaming-preview .btn-h.btn-settings {
-    @apply absolute top-2 right-2 z-button;
+    @apply absolute top-2 right-14 z-button;
 }
 body.hoverable .video-streaming-preview .btn-h.btn-settings:hover {
     @apply text-white;
