@@ -182,8 +182,8 @@ public sealed class VideoRecorder : IAsyncDisposable
                 () => LiveVideoStreams.GetQualityPreset(Session, ownStreamId, cancellationToken),
                 cancellationToken).ConfigureAwait(false);
             await foreach (var (preset, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
-                Log.LogInformation("SubscribeToQualityRequests: received preset {Level} ({Width}x{Height} @ {Bitrate}bps), keyframe={KeyFrame}",
-                    preset.Level, preset.Width, preset.Height, preset.Bitrate, preset.IsKeyFrameRequested);
+                Log.LogInformation("SubscribeToQualityRequests: received preset {Level} ({Width}x{Height}), keyframe={KeyFrame}",
+                    preset.Level, preset.Width, preset.Height, preset.IsKeyFrameRequested);
                 // Only reconfigure when the server actually changes the preset.
                 // On the first iteration we know nothing about network/CPU yet, so the
                 // default "High" preset is noise — seed lastAppliedPreset silently.
@@ -195,11 +195,10 @@ public sealed class VideoRecorder : IAsyncDisposable
                 else {
                     var qualityChanged = lastAppliedPreset.Level != preset.Level
                         || lastAppliedPreset.Width != preset.Width
-                        || lastAppliedPreset.Height != preset.Height
-                        || lastAppliedPreset.Bitrate != preset.Bitrate;
+                        || lastAppliedPreset.Height != preset.Height;
                     if (qualityChanged) {
                         await _jsRef.InvokeVoidAsync("reconfigure", cancellationToken,
-                            preset.Level.ToString(), preset.Width, preset.Height, preset.Bitrate).ConfigureAwait(false);
+                            preset.Level.ToString(), preset.Width, preset.Height).ConfigureAwait(false);
                         lastAppliedPreset = preset;
                     }
                 }

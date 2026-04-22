@@ -56,66 +56,55 @@ const CODEC_PROFILES = {
     ],
 };
 
-export async function detectSupportedCodecs(width = 1920, height = 1080): Promise<CodecInfo[]> {
+// Cache detection results by resolution key. Codec support is a property of the
+// UA + OS and does not change within a page lifetime, so each (W, H) probe runs
+// at most once. Stores the in-flight Promise so concurrent callers share work.
+const encoderCodecCache = new Map<string, Promise<CodecInfo[]>>();
+
+export function detectSupportedCodecs(width = 1920, height = 1080): Promise<CodecInfo[]> {
+    const key = `${width}x${height}`;
+    let cached = encoderCodecCache.get(key);
+    if (!cached) {
+        cached = detectSupportedCodecsUncached(width, height);
+        encoderCodecCache.set(key, cached);
+    }
+    return cached;
+}
+
+// Category-level detection: probe ONE representative codec per category at the
+// target resolution, in priority order (AV1 → HEVC → VP9 → H.264). For the
+// actual encoder profile string we consult `getCodecForCategory()` which picks
+// a profile deterministically from category + resolution + platform — no extra
+// probing needed. Reduces startup probe count ~7× vs per-profile detection.
+const REPRESENTATIVE_CODECS: { category: CodecInfo['category']; name: string; codec: string }[] = [
+    { category: 'av1',  name: 'AV1 Main L3.0',      codec: 'av01.0.05M.08' },
+    { category: 'hevc', name: 'HEVC Main L3.1',     codec: 'hev1.1.6.L93.B0' },
+    { category: 'vp9',  name: 'VP9 Profile 0 L3.1', codec: 'vp09.00.31.08' },
+    { category: 'h264', name: 'H.264 Main 3.1',     codec: 'avc1.4D401F' },
+];
+
+async function detectSupportedCodecsUncached(width: number, height: number): Promise<CodecInfo[]> {
     const results: CodecInfo[] = [];
-
-    // Check H.264 codecs
-    for (const profile of CODEC_PROFILES.h264) {
-        const { supported, hardwareAccelerated, scalabilityModes } = await isCodecSupported(profile.codec, 'h264', width, height);
+    for (const { category, name, codec } of REPRESENTATIVE_CODECS) {
+        const { supported, hardwareAccelerated, scalabilityModes } = await isCodecSupported(codec, category, width, height);
+        // Report with the profile string the encoder will actually use for this
+        // category at the target resolution. getCodecForCategory may pick a
+        // higher-level profile than the one we probed — WebCodecs level ladders
+        // are backward-compatible so a working low-level profile implies the
+        // higher ones work for the same width/height too.
+        const chosenCodec = supported ? getCodecForCategory(category, width, height) : codec;
         results.push({
-            name: profile.name,
-            codec: profile.codec,
-            category: 'h264',
+            name,
+            codec: chosenCodec,
+            category,
             supported,
             hardwareAccelerated,
             scalabilityModes,
         });
     }
-
-    // Check HEVC codecs
-    for (const profile of CODEC_PROFILES.hevc) {
-        const { supported, hardwareAccelerated, scalabilityModes } = await isCodecSupported(profile.codec, 'hevc', width, height);
-        results.push({
-            name: profile.name,
-            codec: profile.codec,
-            category: 'hevc',
-            supported,
-            hardwareAccelerated,
-            scalabilityModes,
-        });
-    }
-
-    // Check VP9 codecs
-    for (const profile of CODEC_PROFILES.vp9) {
-        const { supported, hardwareAccelerated, scalabilityModes } = await isCodecSupported(profile.codec, 'vp9', width, height);
-        results.push({
-            name: profile.name,
-            codec: profile.codec,
-            category: 'vp9',
-            supported,
-            hardwareAccelerated,
-            scalabilityModes,
-        });
-    }
-
-    // Check AV1 codecs
-    for (const profile of CODEC_PROFILES.av1) {
-        const { supported, hardwareAccelerated, scalabilityModes } = await isCodecSupported(profile.codec, 'av1', width, height);
-        results.push({
-            name: profile.name,
-            codec: profile.codec,
-            category: 'av1',
-            supported,
-            hardwareAccelerated,
-            scalabilityModes,
-        });
-    }
-
-    // Diagnostic summary
     const supported = results.filter(c => c.supported);
     warnLog?.log(`ENCODER_CODECS: ${supported.map(c =>
         `${c.codec}(${c.hardwareAccelerated ? 'hw' : 'sw'})`).join(', ') || 'none'}`);
-
     return results;
 }
 
@@ -332,6 +321,8 @@ export function excludeDecoderCodec(codec: string): void {
     if (codec === 'h264') return; // never exclude h264 — universal fallback
     warnLog?.log(`Excluding decoder codec: ${codec}`);
     excludedDecoderCodecs.add(codec);
+    // Invalidate the cache so the next call re-detects with the new exclusion set.
+    decoderCodecCache = null;
 }
 
 /** Get the set of runtime-excluded decoder codecs. */
@@ -339,7 +330,15 @@ export function getExcludedDecoderCodecs(): string[] {
     return [...excludedDecoderCodecs];
 }
 
-export async function detectSupportedDecoderCodecs(): Promise<string[]> {
+// Cache decoder-codec detection the same way as encoder detection.
+let decoderCodecCache: Promise<string[]> | null = null;
+
+export function detectSupportedDecoderCodecs(): Promise<string[]> {
+    decoderCodecCache ??= detectSupportedDecoderCodecsUncached();
+    return decoderCodecCache;
+}
+
+async function detectSupportedDecoderCodecsUncached(): Promise<string[]> {
     const codecs: string[] = ['h264']; // H.264 always assumed supported
 
     // AV1 — test both levels actually used in practice

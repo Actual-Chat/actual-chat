@@ -2,6 +2,7 @@ import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
 import { RecordingService, type RecordingConfig, type RecordingState } from '../../Services/Video/services/recording-service';
 import { detectSupportedCodecs, getDefaultCodec, getCodecCategory, type CodecInfo } from '../../Services/Video/codec-support';
+import { getExpectedBitrate } from '../../Services/Video/bitrate-table';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoRecorder');
 
@@ -358,7 +359,6 @@ export class VideoRecorder {
             // Capture at 720p on all platforms — lower resolutions may select the wrong
             // camera on Android and produce aspect-ratio mismatches.
             const targetSize = { width: 1280, height: 720 };
-            const targetBitrate = 4_000_000; // Must match VideoQualityPreset.High to avoid immediate reconfigure
             const targetFramerate = 30;
 
             // Detect supported encoder codecs — use target resolution to avoid
@@ -375,7 +375,8 @@ export class VideoRecorder {
             const bestCodecString = this.pickInitialCodec(supportedCodecs, audienceCodecs, targetSize);
             const bestCodecInfo = supportedCodecs.find(c => c.codec === bestCodecString);
             const codecCategory = getCodecCategory(bestCodecString);
-            infoLog?.log(`Initial codec selection: ${codecCategory} (${bestCodecString}), hw=${bestCodecInfo?.hardwareAccelerated ?? false}`);
+            const targetBitrate = getExpectedBitrate(bestCodecString, targetSize.height);
+            infoLog?.log(`Initial codec selection: ${codecCategory} (${bestCodecString}), hw=${bestCodecInfo?.hardwareAccelerated ?? false}, bitrate=${targetBitrate / 1_000_000}Mbps`);
 
             // Create recording service with streaming config (uses video-pipeline internally)
             const config: RecordingConfig = {
@@ -502,7 +503,7 @@ export class VideoRecorder {
                 scalabilityModes: bestCodecInfo?.scalabilityModes,
                 width: targetSize.width,
                 height: targetSize.height,
-                bitrate: 4_000_000, // Start at High quality (not Full 8Mbps at 4K)
+                bitrate: getExpectedBitrate(bestCodecString, targetSize.height),
                 framerate: 30,
                 backgroundBlur: { enabled: false },
                 streaming: {
@@ -613,9 +614,10 @@ export class VideoRecorder {
     }
 
     /**
-     * Reconfigure encoder bitrate/resolution (called from Blazor quality subscription)
+     * Reconfigure encoder resolution (called from Blazor quality subscription).
+     * Bitrate is derived from the current codec + capped height via bitrate-table.
      */
-    public reconfigure(level: string, width: number, height: number, bitrate: number): void {
+    public reconfigure(level: string, width: number, height: number): void {
         if (!this.recordingService) {
             warnLog?.log('reconfigure: no active recording service');
             return;
@@ -635,7 +637,7 @@ export class VideoRecorder {
         pipeline.resumeEncoding();
 
         // Transpose preset if camera orientation doesn't match (e.g., portrait camera, landscape preset)
-        infoLog?.log(`reconfigure: level=${level}, size=${width}x${height}, bitrate=${bitrate}, cameraSize=${this.cameraWidth}x${this.cameraHeight}`, );
+        infoLog?.log(`reconfigure: level=${level}, size=${width}x${height}, cameraSize=${this.cameraWidth}x${this.cameraHeight}`);
         const cameraIsPortrait = this.cameraWidth > 0 && this.cameraHeight > 0 && this.cameraHeight > this.cameraWidth;
         const presetIsLandscape = width > height;
         if (cameraIsPortrait && presetIsLandscape)
@@ -645,19 +647,16 @@ export class VideoRecorder {
         const cappedWidth = this.cameraWidth > 0 ? Math.min(width, this.cameraWidth) : width;
         const cappedHeight = this.cameraHeight > 0 ? Math.min(height, this.cameraHeight) : height;
 
-        // Cap bitrate for mobile and low-power devices
-        let cappedBitrate = bitrate;
-        if (DeviceInfo.isIos) {
+        // Pick bitrate from the codec-aware table at the (possibly capped) height,
+        // then apply device caps for low-power hardware.
+        const currentCodec = this.recordingService.getConfig().codecString ?? '';
+        let cappedBitrate = getExpectedBitrate(currentCodec, cappedHeight);
+        if (DeviceInfo.isIos)
             cappedBitrate = Math.min(cappedBitrate, 1_000_000);
-        } else if (DeviceInfo.isMobile) {
+        else if (DeviceInfo.isMobile)
             cappedBitrate = Math.min(cappedBitrate, 2_000_000);
-        }
 
-        if (cappedWidth !== width || cappedHeight !== height || cappedBitrate !== bitrate)
-            infoLog?.log(`reconfigure: ${width}x${height} @ ${bitrate / 1_000_000}Mbps → capped to ${cappedWidth}x${cappedHeight} @ ${cappedBitrate / 1_000_000}Mbps`);
-        else
-            infoLog?.log(`reconfigure: ${width}x${height} @ ${bitrate / 1_000_000}Mbps`);
-
+        infoLog?.log(`reconfigure: ${cappedWidth}x${cappedHeight} @ ${cappedBitrate / 1_000_000}Mbps (codec=${currentCodec})`);
         void pipeline.reconfigure({ bitrate: cappedBitrate, width: cappedWidth, height: cappedHeight });
     }
 

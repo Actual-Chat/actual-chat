@@ -136,6 +136,7 @@ public sealed class StreamLatencyStore(IServiceProvider services)
 
         public ChatId ChatId { get; } = chatId;
         public Moment StartedAt { get; } = startedAt;
+        public string Codec { get; } = format.Codec;
         public MutableState<VideoQualityPreset> QualityPreset { get; } = stateFactory.NewMutable(VideoQualityPreset.High);
 
         // Cap max quality to what the camera can actually provide — prevents wasteful upscaling
@@ -204,7 +205,7 @@ public sealed class StreamLatencyStore(IServiceProvider services)
                         ? (lastByteReceivedAt - _lastThroughputCheckAt).TotalSeconds
                         : 0;
                     var measuredBps = measurementSpan > 0.1 ? bytesDelta * 8.0 / measurementSpan : 0;
-                    var targetBps = QualityPreset.Value.Bitrate;
+                    var targetBps = VideoBitrateTable.GetExpectedBitrate(Codec, QualityPreset.Value.Height);
                     _lastThroughputCheckAt = CpuTimestamp.Now;
 
                     if (targetBps > 0 && measuredBps < targetBps * Constants.Video.ThroughputStepDownRatio) {
