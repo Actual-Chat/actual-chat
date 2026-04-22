@@ -22,6 +22,10 @@ public static partial class Constants
 
         // Latency measurement & quality adaptation
         public static readonly TimeSpan LatencyReportInterval = TimeSpan.FromSeconds(2);
+        // Absolute-latency fallbacks — used only before the per-peer baseline is
+        // established (during warmup). Once BaselineLatencyMs is set, the delta-from-
+        // baseline logic takes over so cross-continent peers with permanently high
+        // but stable latency are NOT treated as slow. See PeerLatencyState.IsNetworkSlow.
         public static readonly float HighLatencyThresholdMs = 900f;
         public static readonly float LowLatencyThresholdMs = 300f;
         public static readonly float SkipToLiveThresholdMs = 3000f; // Client-side threshold for re-requesting stream
@@ -30,6 +34,18 @@ public static partial class Constants
         public static readonly int LatencyHistorySize = 5; // ~10s at 2s intervals
         public static readonly float PeerOutlierRatio = 0.5f;
         public static readonly float PeerOutlierRatioSmallCall = 0.34f; // 1 of 2 peers triggers step-down
+
+        // Delta-from-baseline congestion detection. Step-down fires when a peer's
+        // median latency exceeds baseline by both the absolute and multiplicative
+        // margin (both must be true to avoid tripping on small baselines or small spikes).
+        public static readonly float BaselineLatencyRiseAbsoluteMs = 200f;
+        public static readonly float BaselineLatencyRiseMultiplier = 1.3f;
+        // "Fast" = within this much above baseline. Allows step-up when link is stable.
+        public static readonly float BaselineLatencyFastMarginMs = 100f;
+        // EMA smoothing factor for the per-peer baseline. α=0.05 → ~20-sample time
+        // constant, ≈40s at the 2s report interval. Slow enough that a transient
+        // 10s spike doesn't materially move it.
+        public static readonly float BaselineLatencyEmaAlpha = 0.05f;
 
         // Root-cause classification thresholds
         public static readonly float HighDecodeTimeThresholdMs = 15f; // Receiver's decoder is struggling

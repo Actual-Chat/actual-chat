@@ -73,11 +73,27 @@ public sealed class StreamLatencyStore(IServiceProvider services)
         private readonly CpuTimestamp _createdAt = CpuTimestamp.Now;
 
         public float MedianLatencyMs { get; private set; }
+        public float BaselineLatencyMs { get; private set; } = -1;
         public float MedianDecodeTimeMs { get; private set; } = -1;
         public int BufferDepth { get; private set; } = -1;
         public float BufferSpanMs { get; private set; } = -1;
         public int MaxTemporalLayer { get; private set; } = int.MaxValue;
         public bool IsWarmedUp => _createdAt.Elapsed >= Constants.Video.PeerWarmupDuration;
+
+        // Delta-from-baseline congestion detection. A peer with a permanently high but
+        // stable latency (cross-continent, jitter buffer, etc.) is NOT "slow" — only
+        // a significant rise above its own baseline is. During warmup the baseline
+        // has not been established yet, so we fall back to the absolute threshold.
+        public bool IsNetworkSlow =>
+            BaselineLatencyMs > 0
+                ? MedianLatencyMs > BaselineLatencyMs + Constants.Video.BaselineLatencyRiseAbsoluteMs
+                  && MedianLatencyMs > BaselineLatencyMs * Constants.Video.BaselineLatencyRiseMultiplier
+                : MedianLatencyMs > Constants.Video.HighLatencyThresholdMs;
+
+        public bool IsNetworkFast =>
+            BaselineLatencyMs > 0
+                ? MedianLatencyMs < BaselineLatencyMs + Constants.Video.BaselineLatencyFastMarginMs
+                : MedianLatencyMs < Constants.Video.LowLatencyThresholdMs;
 
         /// <summary>
         /// True when high latency is caused by receiver-side issues (slow decoder or buffer bloat)
@@ -104,6 +120,18 @@ public sealed class StreamLatencyStore(IServiceProvider services)
                 MedianLatencyMs = sorted.Count % 2 == 0
                     ? (sorted[mid - 1] + sorted[mid]) / 2f
                     : sorted[mid];
+
+                // Update baseline EMA only while the peer is healthy — freezing the
+                // baseline during congestion prevents it from drifting up and masking
+                // the problem. First post-warmup sample seeds the baseline outright.
+                if (!IsNetworkSlow) {
+                    if (BaselineLatencyMs < 0)
+                        BaselineLatencyMs = MedianLatencyMs;
+                    else {
+                        var alpha = Constants.Video.BaselineLatencyEmaAlpha;
+                        BaselineLatencyMs = (1 - alpha) * BaselineLatencyMs + alpha * MedianLatencyMs;
+                    }
+                }
 
                 // Update diagnostics if provided (>= 0 means client sent the value)
                 if (medianDecodeTimeMs >= 0)
@@ -253,7 +281,7 @@ public sealed class StreamLatencyStore(IServiceProvider services)
                 var networkSlowCount = 0;
                 var receiverSlowCount = 0;
                 foreach (var (peerId, peer) in peers) {
-                    if (peer.MedianLatencyMs <= Constants.Video.HighLatencyThresholdMs)
+                    if (!peer.IsNetworkSlow)
                         continue;
 
                     if (peer.IsReceiverBound) {
@@ -262,8 +290,12 @@ public sealed class StreamLatencyStore(IServiceProvider services)
                             "EvaluateQuality: PeerId={PeerId} receiver-bound (decodeMs={DecodeMs:F1}, bufDepth={BufDepth})",
                             peerId, peer.MedianDecodeTimeMs, peer.BufferDepth);
                     }
-                    else
+                    else {
                         networkSlowCount++;
+                        DebugLog?.LogDebug(
+                            "EvaluateQuality: PeerId={PeerId} network-slow (medianMs={MedianMs:F0}, baselineMs={BaselineMs:F0})",
+                            peerId, peer.MedianLatencyMs, peer.BaselineLatencyMs);
+                    }
                 }
 
                 var totalSlowCount = networkSlowCount + receiverSlowCount;
@@ -283,7 +315,7 @@ public sealed class StreamLatencyStore(IServiceProvider services)
                     }
                 }
                 else if (totalSlowCount == 0 && _lastQualityChangeAt.Elapsed >= Constants.Video.QualityHysteresisWindow) {
-                    var allFast = peers.All(p => p.Value.MedianLatencyMs < Constants.Video.LowLatencyThresholdMs);
+                    var allFast = peers.All(p => p.Value.IsNetworkFast && !p.Value.IsReceiverBound);
                     if (!allFast)
                         return;
 
