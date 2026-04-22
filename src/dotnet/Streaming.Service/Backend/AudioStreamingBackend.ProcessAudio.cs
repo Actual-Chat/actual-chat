@@ -1,6 +1,5 @@
 using System.Text.RegularExpressions;
 using ActualChat.Audio;
-using ActualChat.Kvas;
 using ActualChat.Live;
 using ActualChat.Transcription;
 using ActualLab.Rpc;
@@ -66,7 +65,7 @@ public partial class AudioStreamingBackend
         var beginsAt = default(Moment) + TimeSpan.FromSeconds(record.ClientStartOffset);
         var serverNow = Clocks.ServerClock.Now;
         var clockDelta = serverNow - beginsAt;
-        if (Math.Abs(clockDelta.TotalSeconds) > 5) {
+        if (Math.Abs(clockDelta.TotalSeconds) > Constants.Audio.MaxBeginsAtDrift.TotalSeconds) {
             Log.LogWarning(
                 "ProcessAudio: client clock skew {ClockDeltaMs:F0}ms for chat {ChatId}, using server clock",
                 clockDelta.TotalMilliseconds, chatId);
