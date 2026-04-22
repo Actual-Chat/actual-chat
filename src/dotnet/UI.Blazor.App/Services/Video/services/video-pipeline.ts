@@ -62,6 +62,15 @@ declare class MediaStreamTrackProcessor<T = VideoFrame> {
     readable: ReadableStream<T>;
 }
 
+// Map screen.orientation.angle → camera rotation (degrees CW to apply to the
+// sensor buffer so the image appears upright on display). Used as a fallback
+// when `VideoFrame.rotation` is not populated by the platform (Safari iOS MSTP).
+// Empirical table for iPhone front camera — landscape modes were rotated 180°
+// with the (90-angle) formula; (90+angle) matches tested orientations.
+function computeSenderRotation(): number {
+    return (90 + screen.orientation.angle) % 360;
+}
+
 export interface IVideoPipeline {
     start(inputStream: MediaStream): Promise<void>;
     stop(): Promise<void>;
@@ -109,6 +118,10 @@ export class VideoPipeline implements IVideoPipeline {
 
     // Server clock sync
     private clockUnsubscribe: (() => void) | null = null;
+
+    // Screen-orientation change listener — supplies senderRotationDeg to worker
+    // when VideoFrame.rotation is not populated by the platform (e.g. Safari iOS).
+    private orientationChangeHandler: (() => void) | null = null;
 
     // Disconnect-api handler — removed from the event set on stop().
     private _disconnectApiHandler: (() => void) | null = null;
@@ -216,6 +229,19 @@ export class VideoPipeline implements IVideoPipeline {
         // Fusion RPC WebSocket URL — worker pushes frames via
         // `IStreamServer.PushVideo` over this connection.
         const apiUrl = BrowserInit.getUrl('/rpc/ws').replace(/^http/, 'ws');
+        const initialSenderRotation = computeSenderRotation();
+        // Transpose encoder dims at startup when device is in portrait orientation:
+        // encoder must be sized in display orientation so the encoded stream matches
+        // what the sender sees. Mutates the shared encoder config (pipeline owns it).
+        const wantPortraitAtStart = initialSenderRotation === 90 || initialSenderRotation === 270;
+        const encCfg = this.config.encoderConfig;
+        if (wantPortraitAtStart && encCfg.width > encCfg.height) {
+            const tmp = encCfg.width; encCfg.width = encCfg.height; encCfg.height = tmp;
+            infoLog?.log(`Transposed encoder to portrait at start: ${encCfg.width}x${encCfg.height}`);
+        } else if (!wantPortraitAtStart && encCfg.height > encCfg.width) {
+            const tmp = encCfg.width; encCfg.width = encCfg.height; encCfg.height = tmp;
+            infoLog?.log(`Transposed encoder to landscape at start: ${encCfg.width}x${encCfg.height}`);
+        }
         const workerConfig: VideoProcessingConfig = {
             encoder: this.config.encoderConfig,
             streaming: {
@@ -225,7 +251,9 @@ export class VideoPipeline implements IVideoPipeline {
                 serverClockOffsetMs: ServerClock.offsetMs,
                 streamKind: this.config.streaming?.streamKind ?? 0,
             },
+            senderRotationDeg: initialSenderRotation,
         };
+        infoLog?.log(`Sender rotation (initial): ${initialSenderRotation}° (screen.orientation.angle=${screen.orientation.angle})`);
 
         if (this.config.backgroundBlur?.enabled) {
             workerConfig.segmentation = this.config.backgroundBlur.segmentationConfig;
@@ -249,6 +277,24 @@ export class VideoPipeline implements IVideoPipeline {
         this.clockUnsubscribe = ServerClock.onOffsetChanged((offsetMs) => {
             void this.worker.updateServerClockOffset(offsetMs);
         });
+
+        // Subscribe to screen-orientation changes — push rotation to worker so the
+        // GPU downscaler can rotate correctly on platforms where VideoFrame.rotation
+        // is null (Safari iOS MSTP). Encoder dims are transposed on portrait/landscape
+        // flip so the encoded stream matches device orientation.
+        this.orientationChangeHandler = () => {
+            const rot = computeSenderRotation();
+            infoLog?.log(`Sender rotation (change): ${rot}° (screen.orientation.angle=${screen.orientation.angle})`);
+            void this.worker.setSenderRotation(rot, rpcNoWait);
+            const encW = this.config.encoderConfig.width;
+            const encH = this.config.encoderConfig.height;
+            const wantPortrait = rot === 90 || rot === 270;
+            const isPortrait = encH > encW;
+            if (wantPortrait !== isPortrait) {
+                void this.reconfigure({ bitrate: this.savedBitrate, width: encH, height: encW });
+            }
+        };
+        screen.orientation.addEventListener('change', this.orientationChangeHandler);
 
         // Start stats polling
         this.statsInterval = window.setInterval(() => {
@@ -366,6 +412,12 @@ export class VideoPipeline implements IVideoPipeline {
         if (this.clockUnsubscribe) {
             this.clockUnsubscribe();
             this.clockUnsubscribe = null;
+        }
+
+        // Unsubscribe from orientation change
+        if (this.orientationChangeHandler) {
+            screen.orientation.removeEventListener('change', this.orientationChangeHandler);
+            this.orientationChangeHandler = null;
         }
 
         // Stop stats polling

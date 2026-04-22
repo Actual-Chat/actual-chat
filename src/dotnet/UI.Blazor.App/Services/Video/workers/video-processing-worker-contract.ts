@@ -144,6 +144,10 @@ export interface VideoProcessingConfig {
     };
     /** When true, skip encoder + RPC push. Only run segmentation and send preview frames. */
     previewOnly?: boolean;
+    /** Fallback rotation in degrees (0/90/180/270) applied by the GPU downscaler when
+     *  `VideoFrame.rotation` is null/undefined (e.g. Safari iOS MSTP does not populate it).
+     *  Derived from `screen.orientation.angle` on the main thread. */
+    senderRotationDeg?: number;
 }
 
 export interface OrientationStats {
@@ -173,6 +177,7 @@ export interface VideoProcessingWorker {
     encodeFrame(frame: VideoFrame, noWait?: RpcNoWait): Promise<void>;
 
     setVadState(speaking: boolean, remoteStreamCount: number): Promise<void>;
+    setSenderRotation(rotationDeg: number, noWait?: RpcNoWait): Promise<void>;
     reconfigure(params: { bitrate: number; width: number; height: number }): Promise<void>;
     switchCodec(config: EncoderConfig): Promise<void>;
     toggleBlur(enabled: boolean, segConfig?: SegmentationConfig): Promise<void>;

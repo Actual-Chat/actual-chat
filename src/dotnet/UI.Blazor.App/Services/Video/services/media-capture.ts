@@ -21,13 +21,18 @@ export class MediaCapture {
             videoConstraints.deviceId = { exact: options.deviceId };
         }
         if (options.frameRate) {
-            videoConstraints.frameRate = { ideal: options.frameRate };
+            videoConstraints.frameRate = { ideal: options.frameRate, max: options.frameRate };
         }
         if (options.width && options.height) {
-            const min = Math.min(options.width, options.height);
-            const max = Math.max(options.width, options.height);
-            videoConstraints.width = { min: min, max: max };
-            videoConstraints.height = { min: min, max: max };
+            // Camera sensors are physically landscape. Always request in sensor
+            // orientation (large × small) regardless of device orientation —
+            // portrait output is produced later by rotating via VideoFrame.rotation.
+            // Use `ideal` + generous `max`: exact-match fails on devices that only
+            // expose binned modes, and the GPU downscaler handles oversampling.
+            const large = Math.max(options.width, options.height);
+            const small = Math.min(options.width, options.height);
+            videoConstraints.width = { ideal: large, max: large * 2 };
+            videoConstraints.height = { ideal: small, max: large * 2 };
         }
         infoLog?.log(`${tag}: constraints:`, JSON.stringify(videoConstraints));
         const maxRetries = options.maxRetries ?? 0;

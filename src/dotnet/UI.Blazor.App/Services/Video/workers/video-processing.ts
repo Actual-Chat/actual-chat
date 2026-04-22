@@ -28,6 +28,7 @@ import {
     processBlurDeferredCleanups,
 } from '../webgpu-blur';
 import { WebGPUManager } from '../webgpu-manager';
+import { WebGpuDownscaler } from '../webgpu-downscaler';
 
 import { isAvcCDescription, deriveAvcCodecFromDescription, resizeFrame, cpuRgbaToI420 } from './video-encoding-helpers';
 import {
@@ -67,6 +68,8 @@ let framesWithoutOutput = 0;
 let nextFrameIsKeyFrame = false;
 let resizeCanvas: OffscreenCanvas | null = null;
 let resizeCtx: OffscreenCanvasRenderingContext2D | null = null;
+let downscaler: WebGpuDownscaler | null = null;
+let senderRotationDeg = 0;
 let startTimestamp: number | undefined = undefined;
 let lastLoggedFormat: string | null = '(unset)';
 let loggedI420Error = false;
@@ -406,10 +409,18 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
             infoLog?.log(`Start timestamp set to ${startTimestamp}μs`);
         }
 
-        const resized = resizeFrame(frame, encoderConfig.width, encoderConfig.height, resizeCanvas, resizeCtx, needsRotation);
-        let processedFrame = resized.frame;
-        resizeCanvas = resized.canvas;
-        resizeCtx = resized.ctx;
+        let processedFrame: VideoFrame;
+        if (downscaler) {
+            // WebGPU path: keeps frame on GPU. Uses VideoFrame.rotation when set,
+            // else senderRotationDeg (main-thread supplies from screen.orientation).
+            const results = downscaler.process(frame, senderRotationDeg);
+            processedFrame = results[0].frame;
+        } else {
+            const resized = resizeFrame(frame, encoderConfig.width, encoderConfig.height, resizeCanvas, resizeCtx, needsRotation);
+            processedFrame = resized.frame;
+            resizeCanvas = resized.canvas;
+            resizeCtx = resized.ctx;
+        }
 
         // Optional YUV pre-conversion — disabled by default since HW encoders accept RGBA natively.
         // Enable via EncoderConfig.preConvertYuv for devices where pre-conversion helps encoding perf.
@@ -618,6 +629,24 @@ function createEncoder(config: EncoderConfig): void {
     encoder.initialize();
 }
 
+// Init WebGPU downscaler for the current encoder dims. Returns null if WebGPU
+// is unavailable — caller then relies on the legacy canvas resizeFrame path.
+async function initDownscaler(width: number, height: number): Promise<void> {
+    if (downscaler) {
+        downscaler.configure([{ width, height }]);
+        return;
+    }
+    try {
+        const device = await WebGPUManager.init();
+        downscaler = new WebGpuDownscaler(device);
+        downscaler.configure([{ width, height }]);
+        infoLog?.log(`Downscaler initialized: ${width}x${height}`);
+    } catch (e) {
+        warnLog?.log('WebGPU downscaler unavailable, falling back to canvas resize:', e);
+        downscaler = null;
+    }
+}
+
 // ─── Stream read loop ───────────────────────────────────────────────────────
 
 async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFrame>): Promise<void> {
@@ -686,6 +715,29 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
                 orientationStats.lastRotation = frameRotation;
             }
 
+            // Sensor is physically landscape; VideoFrame.rotation tells us how the
+            // frame should be displayed. If display orientation crosses the 90°
+            // boundary (portrait ↔ landscape), swap encoder dims and reconfigure
+            // downscaler so output aspect matches user's device orientation.
+            const rotDeg = frameRotation ?? 0;
+            const displayPortrait = rotDeg === 90 || rotDeg === 270;
+            const encoderPortrait = encoderConfig.height > encoderConfig.width;
+            if (displayPortrait !== encoderPortrait) {
+                const newW = encoderConfig.height;
+                const newH = encoderConfig.width;
+                try {
+                    await encoder.reconfigure({ width: newW, height: newH, bitrate: encoderConfig.bitrate });
+                    encoderConfig.width = newW;
+                    encoderConfig.height = newH;
+                    if (downscaler) downscaler.configure([{ width: newW, height: newH }]);
+                    if (segConfig) { segConfig.outputWidth = newW; segConfig.outputHeight = newH; }
+                    void callbacks.onDimensionReconciled(newW, newH, rpcNoWait);
+                    infoLog?.log(`Orientation change: rotation=${rotDeg} → encoder ${newW}x${newH}`);
+                } catch (e) {
+                    warnLog?.log('Orientation reconfigure failed:', e);
+                }
+            }
+
             const frame = rawFrame;
 
             if (!vadSpeaking && vadRemoteStreamCount >= 2) {
@@ -711,6 +763,7 @@ export const serverImpl: VideoProcessingWorker = {
         try {
             infoLog?.log('Starting video processing worker (stream mode)...');
             applyStreamingConfig(config);
+            senderRotationDeg = config.senderRotationDeg ?? 0;
 
             if (config.segmentation) {
                 await initializeSegmentation({ ...config.segmentation, outputWidth: config.encoder.width, outputHeight: config.encoder.height });
@@ -719,6 +772,7 @@ export const serverImpl: VideoProcessingWorker = {
             }
 
             createEncoder(config.encoder);
+            await initDownscaler(config.encoder.width, config.encoder.height);
 
             if (config.adaptiveFramerate) {
                 vadReducedFrameIntervalMs = 1000 / config.adaptiveFramerate.reducedFps;
@@ -750,6 +804,7 @@ export const serverImpl: VideoProcessingWorker = {
             }
 
             applyStreamingConfig(config);
+            senderRotationDeg = config.senderRotationDeg ?? 0;
 
             if (config.segmentation) {
                 await initializeSegmentation({ ...config.segmentation, outputWidth: config.encoder.width, outputHeight: config.encoder.height });
@@ -758,6 +813,7 @@ export const serverImpl: VideoProcessingWorker = {
             }
 
             createEncoder(config.encoder);
+            await initDownscaler(config.encoder.width, config.encoder.height);
 
             if (config.adaptiveFramerate) {
                 vadReducedFrameIntervalMs = 1000 / config.adaptiveFramerate.reducedFps;
@@ -788,6 +844,7 @@ export const serverImpl: VideoProcessingWorker = {
             if (!isPreviewOnly) {
                 applyStreamingConfig(config);
             }
+            senderRotationDeg = config.senderRotationDeg ?? 0;
 
             if (config.segmentation) {
                 await initializeSegmentation({ ...config.segmentation, outputWidth: config.encoder.width, outputHeight: config.encoder.height });
@@ -796,6 +853,7 @@ export const serverImpl: VideoProcessingWorker = {
 
             if (!isPreviewOnly) {
                 createEncoder(config.encoder);
+                await initDownscaler(config.encoder.width, config.encoder.height);
             }
 
             if (config.adaptiveFramerate) {
@@ -823,6 +881,12 @@ export const serverImpl: VideoProcessingWorker = {
         debugLog?.log(`VAD state: speaking=${speaking}, remoteStreamCount=${remoteStreamCount}`);
     },
 
+    // eslint-disable-next-line @typescript-eslint/require-await
+    setSenderRotation: async (rotationDeg): Promise<void> => {
+        senderRotationDeg = ((rotationDeg % 360) + 360) % 360;
+        infoLog?.log(`Sender rotation set to ${senderRotationDeg}°`);
+    },
+
     reconfigure: async (params): Promise<void> => {
         if (!encoder || !processing || !encoderConfig) { warnLog?.log('Cannot reconfigure: not active'); return; }
         // Preserve encoder orientation: map incoming dimensions by magnitude
@@ -835,6 +899,7 @@ export const serverImpl: VideoProcessingWorker = {
         encoderConfig.bitrate = params.bitrate; encoderConfig.width = params.width; encoderConfig.height = params.height;
         await encoder.reconfigure(params);
         resizeCanvas = null; resizeCtx = null;
+        if (downscaler) downscaler.configure([{ width: params.width, height: params.height }]);
         if (segConfig && blurEnabled) { segConfig.outputWidth = params.width; segConfig.outputHeight = params.height; }
     },
 
@@ -859,6 +924,7 @@ export const serverImpl: VideoProcessingWorker = {
         streamingEnabled = wasStreaming;
         pendingStreamFrames = [];
         encoderConfig = config; resizeCanvas = null; resizeCtx = null;
+        if (downscaler) downscaler.configure([{ width: config.width, height: config.height }]);
         startTimestamp = undefined;
         backpressureDrops = 0; backpressureTotalFrames = 0; lastBackpressureCheckTime = 0; backpressureNotified = false;
         encoderFailed = false; encoderErrorSeen = false; framesWithoutOutput = 0;
@@ -913,6 +979,8 @@ export const serverImpl: VideoProcessingWorker = {
         Api.releaseConnection('VideoCapture');
         streamCtx.rpcStreamServer = null;
         if (segInitialized) { try { outputGpuBuffer.destroy(); } catch { /* ignore */ } try { smoothedMaskBuffer.destroy(); } catch { /* ignore */ } }
+
+        if (downscaler) { try { downscaler.dispose(); } catch { /* ignore */ } downscaler = null; }
 
         // Reset all state
         encoder = null; encoderConfig = null; onnxSession = null; segConfig = null; resolvedModelConfig = null;
