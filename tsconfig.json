@@ -19,6 +19,7 @@
     "src/dotnet/UI.Blazor/Layouts/base-layout.ts",
     "src/dotnet/UI.Blazor/Components/Skeleton/",
     "src/dotnet/UI.Blazor/ServiceWorkers/service-worker.ts",
+    "tests/ts/",
   ],
   "exclude": [
   ],

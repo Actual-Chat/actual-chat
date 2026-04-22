@@ -101,6 +101,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{9E3D1D2A-7BF6-45
 		build.mjs = build.mjs
 		eslint.config.mjs = eslint.config.mjs
 		package.json = package.json
+		vitest.config.ts = vitest.config.ts
+		vitest.config.e2e.ts = vitest.config.e2e.ts
 		postcss.config.mjs = postcss.config.mjs
 		postcss-watch-plugin.js = postcss-watch-plugin.js
 		tailwind.config.js = tailwind.config.js
@@ -445,8 +447,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "unit", "unit", "{A1B2C3D4-1
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "e2e", "e2e", "{A1B2C3D4-5555-6666-7777-888899990000}"
 	ProjectSection(SolutionItems) = preProject
+		tests\ts\e2e\helpers.ts = tests\ts\e2e\helpers.ts
+		tests\ts\e2e\global-setup.ts = tests\ts\e2e\global-setup.ts
 		tests\ts\e2e\signin-and-message.test.ts = tests\ts\e2e\signin-and-message.test.ts
 		tests\ts\e2e\mention-search.test.ts = tests\ts\e2e\mention-search.test.ts
+		tests\ts\e2e\svg-avatar-upload.test.ts = tests\ts\e2e\svg-avatar-upload.test.ts
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App.VideoLoadTest", "src\dotnet\App.VideoLoadTest\App.VideoLoadTest.csproj", "{6A98D32D-E702-4F3D-BD3C-BF3376383C4F}"

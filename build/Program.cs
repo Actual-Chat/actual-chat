@@ -31,6 +31,7 @@ internal static class Program
         public const string IntegrationTests = "integration-tests";
         public const string SlowTests = "slow-tests";
         public const string NightlyTests = "nightly-tests";
+        public const string E2eTests = "e2e-tests";
         public const string CleanTests = "clean-tests";
         public const string Tests = "tests";
         public const string Build = "build";
@@ -255,6 +256,23 @@ internal static class Program
         Target(Targets.SlowTests,  () => RunTests("FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.PlaywrightTests&Category~Slow", 30 * 60));
 
         Target(Targets.NightlyTests,  () => RunTests("FullyQualifiedName~IntegrationTests&Category~Nightly", 30 * 60));
+
+        Target(Targets.E2eTests, DependsOn(Targets.Build), async () => {
+            // Playwright's Chromium binary isn't tracked in node_modules; install it on demand.
+            // Safe to call repeatedly — no-op when the right version is already cached.
+            await Cli.Wrap(Utils.FindNpmExe())
+                .WithArguments("exec -- playwright install chromium")
+                .ToConsole(Blue("playwright: "))
+                .ExecuteAsync(cancellationToken).Task.ConfigureAwait(false);
+
+            await Npm()
+                .WithArguments("run test:e2e")
+                .WithEnvironmentVariables(new Dictionary<string, string?> {
+                    ["CI"] = "true",
+                })
+                .ToConsole(Blue("e2e: "))
+                .ExecuteAsync(cancellationToken).Task.ConfigureAwait(false);
+        });
 
         Target(Targets.CleanTests, () => {
             FileExt.Remove("artifacts/tests/output");

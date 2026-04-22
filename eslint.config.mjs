@@ -3,7 +3,7 @@ import tseslint from 'typescript-eslint';
 import tsParser from '@typescript-eslint/parser';
 import prettier from 'eslint-plugin-prettier'
 
-const tsFiles = ['src/nodejs/**/*.ts', 'src/dotnet/**/*.ts'];
+const tsFiles = ['src/nodejs/**/*.ts', 'src/dotnet/**/*.ts', 'tests/ts/**/*.ts'];
 
 function tsOnly(cfg) {
     return cfg.map((config) => ({

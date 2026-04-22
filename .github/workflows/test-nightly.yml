@@ -28,3 +28,13 @@ jobs:
       checkout-configs: true
       configs-ref: master
     secrets: inherit
+
+  ts-e2e-tests:
+    name: TS E2E Tests
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/dev'
+    uses: ./.github/workflows/_run-tests.yml
+    with:
+      build-target: e2e-tests
+      report-name: TS E2E tests results
+      checkout-ref: ${{ github.ref_name }}
+    secrets: inherit
