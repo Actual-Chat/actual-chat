@@ -117,6 +117,7 @@ export type LogScope =
     | 'UserInterface'
     | 'VideoPanel'
     | 'AudioVideoSync'
+    | 'JoinVideoCallModal'
     | 'VideoPlayer'
     | 'VideoRecorder'
     | 'VideoStreamingPreview'
@@ -124,6 +125,7 @@ export type LogScope =
     | 'VideoEncoder'
     | 'VideoDecoder'
     | 'VideoSegmentation'
+    | 'BlurPreviewSession'
     | 'VisualMediaViewer'
     | 'WebAuth'
     | 'WebFileProvider';
@@ -220,6 +222,7 @@ const defaults: Record<LogScope, LogLevel> = {
     // Video — Debug for latency troubleshooting (preserved from old reset())
     VideoPanel: LogLevel.Debug,
     AudioVideoSync: LogLevel.Debug,
+    JoinVideoCallModal: LogLevel.Info,
     VideoPlayer: LogLevel.Debug,
     VideoRecorder: LogLevel.Warn,
     VideoStreamingPreview: LogLevel.Warn,
@@ -227,6 +230,7 @@ const defaults: Record<LogScope, LogLevel> = {
     VideoEncoder: LogLevel.Warn,
     VideoDecoder: LogLevel.Warn,
     VideoSegmentation: LogLevel.Warn,
+    BlurPreviewSession: LogLevel.Warn,
     VisualMediaViewer: LogLevel.Warn,
     WebAuth: LogLevel.Warn,
     WebFileProvider: LogLevel.Warn,

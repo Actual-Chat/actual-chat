@@ -19,6 +19,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private readonly MutableState<ChatId?> _lastRecordingChatId;
     private readonly MutableState<string?> _selectedCameraDeviceId;
     private readonly MutableState<bool> _isBackgroundBlurEnabled;
+    private readonly MutableState<bool> _isCameraMirrored;
     private readonly MutableState<string?> _errorMessage;
 
     // Tracks which chat the user is currently watching video in (in-memory, resets on reload)
@@ -30,6 +31,14 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     // Set when a remote stream completes normally (sender intentionally ended).
     // Consumed by VideoPanelContent to suppress "Connecting..." overlay.
     private volatile int _remoteStreamEndedIntentionally;
+
+    /// <summary>
+    /// Raised to ask <see cref="VideoStreamingPreview"/> consumers to pause (true) /
+    /// resume (false) their local preview rendering while something else owns the
+    /// preview canvas — e.g. the Settings-mode JoinVideoCallModal. Fires on the
+    /// Blazor dispatcher; subscribers can call into JS synchronously from the handler.
+    /// </summary>
+    public event Action<bool>? SuspendOwnStreamingPreview;
 
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private IChats Chats => Hub.Chats;
@@ -43,6 +52,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         _lastRecordingChatId = StateFactory.NewMutable((ChatId?)null);
         _selectedCameraDeviceId = StateFactory.NewMutable((string?)null);
         _isBackgroundBlurEnabled = StateFactory.NewMutable(false);
+        _isCameraMirrored = StateFactory.NewMutable(true);
         _errorMessage = StateFactory.NewMutable((string?)null);
         _watchingChatId = StateFactory.NewMutable((ChatId?)null);
         _isVideoPanelCollapsed = StateFactory.NewMutable(false);
@@ -147,6 +157,39 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public void SetBackgroundBlur(bool enabled)
         => _isBackgroundBlurEnabled.Value = enabled;
 
+    [ComputeMethod]
+    public virtual async Task<bool> GetIsCameraMirrored(CancellationToken cancellationToken = default)
+        => await _isCameraMirrored.Use(cancellationToken).ConfigureAwait(false);
+
+    // Last track settings reported by the active webcam recorder. Plain fields —
+    // only touched from the Blazor dispatcher (JS callback + UI consumers).
+    public string? LastWebcamDeviceId { get; private set; }
+    public string? LastWebcamFacingMode { get; private set; }
+
+    internal void OnWebcamTrackSettings(string? deviceId, string? facingMode)
+    {
+        // Called by the active webcam recorder after each track acquisition
+        // (start or camera switch). Resolves the effective mirror state from
+        // per-camera overrides so the live self-preview reflects the right
+        // camera regardless of how the stream was started.
+        LastWebcamDeviceId = deviceId;
+        LastWebcamFacingMode = facingMode;
+        _ = ApplyAsync();
+        return;
+
+        async Task ApplyAsync() {
+            var settings = await LocalSettings.LocalAppSettings().Get().ConfigureAwait(false);
+            _isCameraMirrored.Value = settings
+                .ResolveIsCameraMirrored(deviceId, facingMode, Hub.BrowserInfo.IsMobile);
+        }
+    }
+
+    // Called by JoinVideoCallModal after it persists a user's mirror choice —
+    // forces the live preview to re-resolve against the now-updated override
+    // without waiting for the next camera (re)acquisition.
+    public void ReapplyCameraMirror()
+        => OnWebcamTrackSettings(LastWebcamDeviceId, LastWebcamFacingMode);
+
     public void CloseVideoPanel()
         => SetWatching(null);
 
@@ -181,8 +224,9 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     // JS callback handlers (called from VideoPanel)
 
     public void OnRecordingStarted(ChatId chatId, StreamKind kind)
-    {
-    }
+        // Clear any previous error (e.g. the user cycled past a failing camera
+        // and landed on a working one) so VideoStreamingPreview drops the overlay.
+        => _errorMessage.Value = null;
 
     public void OnRecordingStopped(StreamKind kind)
     {
@@ -193,14 +237,10 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     }
 
     public void OnRecordingError(string error, StreamKind kind)
-    {
-        _errorMessage.Value = error;
-        if (kind == StreamKind.Screencast)
-            StopScreenCasting();
-        else
-            StopRecording();
-        // Don't close the video panel. User stays watching remote streams, can retry or hang up
-    }
+        // Keep the recording session alive: the user can cycle cameras to recover
+        // (see VideoRecorder.switchCamera — it restarts from the interrupted state).
+        // VideoStreamingPreview shows the message via GetLastVideoRecorderError.
+        => _errorMessage.Value = error;
 
     // Device enumeration
 
@@ -267,13 +307,19 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             if (chat is null)
                 return;
 
-            var model = new JoinVideoCallModal.Model(chat, JoinVideoCallModal.VideoCallMode.Settings);
-            var modeRef = await ModalUI.Show(model, CancellationToken.None).ConfigureAwait(true);
-            await modeRef.WhenClosed.ConfigureAwait(true);
-            if (!model.IsConfirmed)
-                return;
-
-            SetBackgroundBlur(model.IsBlurEnabled);
+            // Freeze the VideoPanel's self-preview before the modal even opens so
+            // its canvas doesn't keep rendering into the frame the modal is about
+            // to take over. `finally` makes sure we always resume, even if Show
+            // throws or the modal never opens.
+            SuspendOwnStreamingPreview?.Invoke(true);
+            try {
+                var model = new JoinVideoCallModal.Model(chat, JoinVideoCallModal.VideoCallMode.Settings);
+                var modeRef = await ModalUI.Show(model, CancellationToken.None).ConfigureAwait(true);
+                await modeRef.WhenClosed.ConfigureAwait(true);
+            }
+            finally {
+                SuspendOwnStreamingPreview?.Invoke(false);
+            }
         }
     }
 

@@ -24,9 +24,22 @@
                 <div class="c-rules-text">No transcription, no anonymous</div>
             </div>
         }
-        <div @ref="_containerRef" class="c-video @(_cameraState is CameraState.Starting ? "camera-starting" : "")">
+        @{
+            var effectiveCameraState = IsSettingsMode && !string.IsNullOrEmpty(m.LastRecorderError)
+                ? CameraState.Unavailable
+                : PreviewState;
+        }
+        @{
+            var videoCls = "c-video";
+            if (effectiveCameraState is CameraState.Starting)
+                videoCls += " camera-starting";
+            if (!_isCameraMirrored)
+                videoCls += " no-mirror";
+        }
+        <div @ref="_containerRef" class="@videoCls">
             <div class="video-frame">
-                <span class="plug-text">@GetPlugText(_cameraState)</span>
+                <canvas class="camera-preview"></canvas>
+                <span class="plug-text">@GetPlugText(effectiveCameraState)</span>
                 <div class="video-loading">
                     <span class="spinner-icon-wrapper">
                         <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
@@ -37,14 +50,9 @@
         @if (ScreenSize.IsWide()) {
             @* Desktop toolbar *@
             <div class="c-toolbar">
-            @*     $1$ Blur circle #1# *@
-            @*     <ButtonRound Class="@BlurBtnClass()" Click="@OnBlurToggle"> *@
-            @*         <i class="icon-blur-person text-2xl"></i> *@
-            @*     </ButtonRound> *@
-
                 @* Camera pill with chevron + dropdown *@
                 <div class="camera-pill-wrapper">
-                    <div class="toolbar-pill @(_isVideoOn || _cameraState is CameraState.Starting ? "active" : "")">
+                    <div class="toolbar-pill @(_isVideoOn ? "active" : "")">
                         <HeaderButton Class="pill-action" Click="OnVideoToggle">
                             <i class="icon-video text-2xl"></i>
                         </HeaderButton>
@@ -59,9 +67,8 @@
                             <div class="camera-dropdown-header">Select a camera</div>
                             @foreach (var device in _videoDevices) {
                                 var isSelected = device == _selectedDevice;
-                                var isDisabled = IsSettingsMode;
-                                <div class="camera-dropdown-item @(isDisabled ? "disabled" : "")"
-                                     @onclick="@(isDisabled ? (Func<Task>)(() => Task.CompletedTask) : () => OnCameraSelected(device))">
+                                <div class="camera-dropdown-item"
+                                     @onclick="@(() => OnCameraSelected(device))">
                                     @if (isSelected) {
                                         <i class="icon-checkmark-simple text-primary text-lg"></i>
                                     } else {
@@ -70,15 +77,6 @@
                                     <span class="truncate">@device.Label</span>
                                 </div>
                             }
-                            @* <div class="camera-dropdown-divider"></div> *@
-                            @* <div class="camera-dropdown-item" @onclick="@OnBlurToggle"> *@
-                            @*     @if (_isBlurEnabled) { *@
-                            @*         <i class="icon-checkmark-simple text-primary text-lg"></i> *@
-                            @*     } else { *@
-                            @*         <span class="w-[18px]"></span> *@
-                            @*     } *@
-                            @*     <span>Blur my background</span> *@
-                            @* </div> *@
                         </div>
                     }
                 </div>
@@ -91,16 +89,19 @@
                         <i class="icon-mic-off text-2xl"></i>
                     }
                 </ButtonRound>
+
+                @* Mirror toggle *@
+                <ButtonRound Class="@MirrorBtnClass()" Click="@OnMirrorToggle" Tooltip="Mirror preview">
+                    <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M12 3v18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="2 2"/>
+                        <path d="M8 9l-3 3 3 3V9z" fill="currentColor"/>
+                        <path d="M16 9l3 3-3 3V9z" fill="currentColor"/>
+                    </svg>
+                </ButtonRound>
             </div>
         } else {
             @* Mobile toolbar *@
             <div class="c-toolbar">
-                @* @if (_enableIncompleteUI) { *@
-                @*     <ButtonRound Class="@BlurBtnClass()" Click="@OnBlurToggle"> *@
-                @*         <i class="icon-blur-person text-2xl"></i> *@
-                @*     </ButtonRound> *@
-                @* } *@
-
                 <ButtonRound Class="@VideoWrapperBtnClass()" Click="@OnVideoToggle">
                     <i class="icon-video text-2xl"></i>
                 </ButtonRound>
@@ -114,16 +115,31 @@
                     }
                 </ButtonRound>
 
-                <ButtonRound Click="@OnSwitchCamera" IsDisabled="@IsSettingsMode">
+                <ButtonRound Click="@OnSwitchCamera">
                     <i class="icon-camera-switch text-2xl"></i>
+                </ButtonRound>
+
+                @* Mirror toggle *@
+                <ButtonRound Class="@MirrorBtnClass()" Click="@OnMirrorToggle" Tooltip="Mirror preview">
+                    <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M12 3v18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="2 2"/>
+                        <path d="M8 9l-3 3 3 3V9z" fill="currentColor"/>
+                        <path d="M16 9l3 3-3 3V9z" fill="currentColor"/>
+                    </svg>
                 </ButtonRound>
             </div>
         }
     </FormBlock>
     </Body>
     <Buttons>
-        <Button Class="btn-modal" Click="@(_ => Modal.Close())">Cancel</Button>
-        <Button Class="btn-modal btn-primary" Click="@OnJoinClick">@SubmitButtonText</Button>
+        @if (IsSettingsMode) {
+            <Button Class="btn-modal btn-primary" Click="@OnCloseSettingsClick">Close</Button>
+        } else {
+            <Button Class="btn-modal" Click="@(_ => Modal.Close())">Cancel</Button>
+            <Button Class="btn-modal btn-primary"
+                    Click="@OnJoinClick"
+                    IsDisabled="@IsSubmitDisabled">@SubmitButtonText</Button>
+        }
     </Buttons>
 </DialogFrame>
 
@@ -133,14 +149,18 @@
     private ElementReference _containerRef;
     private DotNetObjectReference<JoinVideoCallModal>? _blazorRef;
     private IJSObjectReference? _jsRef;
+    private IVideoSession? _session;
 
-    private bool _isVideoOn;
-    private CameraState _cameraState = CameraState.Initializing;
+    private bool _isInitialized;
+    private bool _isVideoOn = true;
     private bool _isBlurEnabled;
+    private bool _isCameraMirrored = true;
     private bool _isCameraDropdownOpen;
     private bool _isRecording;
     private List<VideoDevice> _videoDevices = new();
     private VideoDevice? _selectedDevice;
+    private string? _currentDeviceId;
+    private string? _currentFacingMode;
     private Task<string> _getLastSelectedDeviceIdTask = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
@@ -151,6 +171,8 @@
     private AudioRecorder AudioRecorder => Hub.AudioRecorder;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private bool IsSettingsMode => ModalModel.Mode is VideoCallMode.Settings;
+    private CameraState PreviewState => _session?.State ?? CameraState.Off;
+    private ILogger Log => field ??= Hub.LogFor(GetType());
 
     private string Title => IsSettingsMode ? "Video Settings"
         : State.Value.ShowActiveSessionInfo ? "Join the video"
@@ -160,31 +182,39 @@
         : State.Value.ShowActiveSessionInfo ? "Join"
         : "Start";
 
+    // Disable submit while the camera is being acquired. If the user turned
+    // video off intentionally (CameraState.Off), submit stays enabled.
+    private bool IsSubmitDisabled => PreviewState is CameraState.Starting || !_isInitialized;
+
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {
-            InitialValue = new(false),
+            InitialValue = new(false, null),
             UpdateDelayer = FixedDelayer.NextTick,
             Category = GetStateCategory(GetType()),
         };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var chat = ModalModel.Chat;
-        if (IsSettingsMode)
-            return new ComputedModel(false);
+        if (IsSettingsMode) {
+            // Show "Camera is unavailable" when the live recorder reports an error
+            // (e.g. ghost camera). The recorder clears the error on a successful
+            // switch so the state recovers automatically.
+            var lastError = await ChatVideoUI.GetLastVideoRecorderError(cancellationToken).ConfigureAwait(false);
+            return new ComputedModel(false, lastError);
+        }
 
         var hasRemoteStreams = await ChatVideoUI.HasRemoteStreams(chat.Id, cancellationToken).ConfigureAwait(false);
-        return new(hasRemoteStreams);
+        return new(hasRemoteStreams, null);
     }
 
     protected override async Task OnInitializedAsync() {
-        _getLastSelectedDeviceIdTask = GetLastSelectedDeviceId();
+        var settingsTask = LocalSettings.LocalAppSettings().Get();
+        _getLastSelectedDeviceIdTask = settingsTask.ContinueWith(
+            t => t.Result.SelectedCameraDeviceId ?? "", TaskScheduler.Default);
+        var settings = await settingsTask;
+        _isBlurEnabled = settings.IsBackgroundBlurEnabledOrDefault;
         var recordingChatId = await ChatAudioUI.GetRecordingChatId();
         _isRecording = recordingChatId == ModalModel.Chat.Id;
-    }
-
-    private async Task<string> GetLastSelectedDeviceId() {
-        var settings = await LocalSettings.LocalAppSettings().Get();
-        return settings.SelectedCameraDeviceId ?? "";
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -196,12 +226,14 @@
         if (!lastSelectedDeviceId.IsNullOrEmpty() && _videoDevices.Count > 0)
             _selectedDevice = _videoDevices.FirstOrDefault(d => d.DeviceId == lastSelectedDeviceId);
 
-        await EnsureJsRef();
-        if (_jsRef is null)
-            return;
+        _blazorRef = DotNetObjectReference.Create(this);
+        _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _containerRef, _blazorRef);
+        _session = CreateSession(_jsRef);
+        _session.StateChanged += OnSessionStateChanged;
 
-        _cameraState = CameraState.Starting;
+        _isInitialized = true;
         StateHasChanged();
+
 
         // Fire-and-forget: on Windows (unpackaged NativeAOT) getUserMedia may never resolve
         // because camera permission isn't declared in the app manifest. Awaiting the JS call
@@ -213,36 +245,23 @@
         return;
 
         async Task StartPreview() {
-            if (_jsRef is null)
-                return;
-
-            bool success;
-            if (IsSettingsMode) {
-                // Settings mode: attach to the active recorder's preview stream
-                success = await _jsRef.InvokeAsync<bool>("attachFromRecorder");
-            } else {
-                // Normal mode: acquire our own stream
-                success = await _jsRef.InvokeAsync<bool>("startPreview", _selectedDevice?.DeviceId);
-            }
-
-            await InvokeAsync(async () => {
-                if (success) {
-                    _isVideoOn = true;
-                    _cameraState = CameraState.On;
-                    if (_isBlurEnabled && _jsRef is not null)
-                        await _jsRef.InvokeVoidAsync("toggleBlur", true);
-                } else {
-                    _cameraState = IsSettingsMode ? CameraState.Off : CameraState.Unavailable;
-                }
-                StateHasChanged();
-            });
+            await _session.Start();
+            await InvokeAsync(StateHasChanged);
         }
     }
 
+    private IVideoSession CreateSession(IJSObjectReference jsRef)
+        => IsSettingsMode
+            ? new RecorderVideoSession(jsRef, ChatVideoUI, ModalModel.Chat.Id)
+            : new LocalVideoSession(jsRef, () => _selectedDevice?.DeviceId, () => _isBlurEnabled);
+
     public override async ValueTask DisposeAsync() {
+        if (_session is not null) {
+            _session.StateChanged -= OnSessionStateChanged;
+            _session = null;
+        }
         if (_jsRef is not null) {
-            await _jsRef.InvokeVoidAsync("dispose");
-            await _jsRef.DisposeAsync();
+            await _jsRef.DisposeSilentlyAsync("dispose");
             _jsRef = null;
         }
         _blazorRef?.Dispose();
@@ -250,46 +269,49 @@
         await base.DisposeAsync();
     }
 
+    private void OnSessionStateChanged()
+        => _ = InvokeAsync(StateHasChanged);
+
     private async Task LoadVideoDevices() {
         _videoDevices = (await ChatVideoUI.EnumerateVideoDevices()).ToList();
         StateHasChanged();
     }
 
-    private async Task EnsureJsRef() {
-        if (_jsRef is not null)
-            return;
-
-        _blazorRef = DotNetObjectReference.Create(this);
-        _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _containerRef, _blazorRef);
+    [JSInvokable]
+    public Task OnFirstFrameRendered() {
+        _session?.NotifyFirstFrameRendered();
+        _ = ApplyMirrorForCurrentCamera();
+        return Task.CompletedTask;
     }
 
-    [JSInvokable]
-    public async Task OnFirstFrameRendered() {
-        _cameraState = CameraState.On;
+    // Reads the currently-previewing camera's deviceId + facingMode (Join mode:
+    // from own JS; Settings mode: from ChatVideoUI's last-seen values), resolves
+    // the effective mirror state per-camera, and updates local UI + ChatVideoUI
+    // so VideoStreamingPreview picks it up too.
+    private async Task ApplyMirrorForCurrentCamera() {
+        if (_jsRef is null)
+            return;
+        if (IsSettingsMode) {
+            _currentDeviceId = ChatVideoUI.LastWebcamDeviceId;
+            _currentFacingMode = ChatVideoUI.LastWebcamFacingMode;
+        } else {
+            var info = await _jsRef.InvokeAsync<CameraInfo?>("getCurrentCameraInfo");
+            _currentDeviceId = info?.DeviceId;
+            _currentFacingMode = info?.FacingMode;
+        }
+        var settings = await LocalSettings.LocalAppSettings().Get();
+        _isCameraMirrored = settings
+            .ResolveIsCameraMirrored(_currentDeviceId, _currentFacingMode, Hub.BrowserInfo.IsMobile);
         await InvokeAsync(StateHasChanged);
     }
 
     private async Task OnVideoToggle() {
-        await EnsureJsRef();
-        if (_jsRef is null)
+        if (_session is null)
             return;
 
-        if (_isVideoOn) {
-            await _jsRef.InvokeVoidAsync("stopPreview");
-            _isVideoOn = false;
-            _cameraState = CameraState.Off;
-        } else {
-            _cameraState = CameraState.Starting;
-            StateHasChanged();
-            var success = await _jsRef.InvokeAsync<bool>("startPreview", _selectedDevice?.DeviceId);
-            if (success) {
-                _isVideoOn = true;
-                _cameraState = CameraState.On;
-            } else {
-                _cameraState = CameraState.Unavailable;
-            }
-        }
+        _isVideoOn = !_isVideoOn;
         StateHasChanged();
+        await _session.SetVideoEnabled(_isVideoOn);
     }
 
     private void OnCameraDropdownToggle() {
@@ -305,19 +327,10 @@
         await Hub.LocalSettings.LocalAppSettings().Update(
             s => s with { SelectedCameraDeviceId = device.DeviceId });
 
-        // Switch camera if preview is active (or was unavailable — retry with new device)
-        if ((_isVideoOn || _cameraState is CameraState.Unavailable) && _jsRef is not null) {
-            _cameraState = CameraState.Starting;
-            StateHasChanged();
-            var success = await _jsRef.InvokeAsync<bool>("switchCamera", device.DeviceId);
-            if (success) {
-                _isVideoOn = true;
-                _cameraState = CameraState.On;
-            } else {
-                _cameraState = CameraState.Unavailable;
-            }
-        }
-        StateHasChanged();
+        if (!_isVideoOn || _session is null)
+            return;
+
+        await _session.ChangeCamera(device.DeviceId);
     }
 
     private async Task OnSwitchCamera() {
@@ -329,32 +342,62 @@
         await OnCameraSelected(_videoDevices[nextIndex]);
     }
 
+    private void OnMirrorToggle() {
+        // Toggling only affects this modal's preview. The choice is committed
+        // (persisted + propagated to the live self-preview) on close / join —
+        // see CommitMirrorChoice. This lets users try the mirror state in the
+        // modal without immediately flipping the on-going call view.
+        _isCameraMirrored = !_isCameraMirrored;
+        StateHasChanged();
+    }
+
+    private async Task CommitMirrorChoice() {
+        // Persist the per-camera override and tell ChatVideoUI to re-resolve so
+        // the live self-preview picks up the change without waiting for the
+        // next camera (re)acquisition. No-op if we never resolved a deviceId.
+        if (string.IsNullOrEmpty(_currentDeviceId))
+            return;
+        var deviceId = _currentDeviceId;
+        var mirrored = _isCameraMirrored;
+        await Hub.LocalSettings.LocalAppSettings().Update(
+            s => s with { CameraMirrorOverrides = s.CameraMirrorOverrides.With(deviceId, mirrored) });
+        ChatVideoUI.ReapplyCameraMirror();
+    }
+
+    private string MirrorBtnClass()
+        => _isCameraMirrored ? "mirror-btn active" : "mirror-btn";
+
     private async Task OnBlurToggle() {
         _isBlurEnabled = !_isBlurEnabled;
         await Hub.LocalSettings.LocalAppSettings().Update(
             s => s with { IsBackgroundBlurEnabled = _isBlurEnabled });
-        // Update live blur state so VideoPanel can react during an active call
-        ChatVideoUI.SetBackgroundBlur(_isBlurEnabled);
-        // Update blur preview in the modal
-        if (_jsRef is not null && _isVideoOn)
-            await _jsRef.InvokeVoidAsync("toggleBlur", _isBlurEnabled);
+
+        if (!_isVideoOn || _session is null)
+            return;
+
+        await _session.SetBlurEnabled(_isBlurEnabled);
+    }
+
+    private async Task OnCloseSettingsClick() {
+        await CommitMirrorChoice();
+        await DisposeAsync();
+        Modal.Close();
     }
 
     private Task OnJoinClick() {
-        if (!IsSettingsMode) {
-            // Ideally we'd query `getActualDeviceId` from JS — the browser can pick a
-            // different camera than what was originally requested (e.g. front camera when
-            // no device ID was specified). BUT: if the preview is still hanging on an
-            // unresolved getUserMedia (common on Windows NativeAOT without cam permission),
-            // the JS event loop is busy and our call would wait forever, freezing the UI.
-            // So we use the selected device id + fire a best-effort lookup in the background
-            // to update the model later.
-            ModalModel.SelectedDeviceId = _selectedDevice?.DeviceId;
-            if (_jsRef is not null)
-                _ = TryUpdateActualDeviceId(_jsRef, ModalModel);
-        }
+        // Ideally we'd query `getActualDeviceId` from JS — the browser can pick a
+        // different camera than what was originally requested (e.g. front camera when
+        // no device ID was specified). BUT: if the preview is still hanging on an
+        // unresolved getUserMedia (common on Windows NativeAOT without cam permission),
+        // the JS event loop is busy and our call would wait forever, freezing the UI.
+        // So we use the selected device id + fire a best-effort lookup in the background
+        // to update the model later.
+        ModalModel.SelectedDeviceId = _selectedDevice?.DeviceId;
+        if (_jsRef is not null)
+            _ = TryUpdateActualDeviceId(_jsRef, ModalModel);
         ModalModel.IsBlurEnabled = _isBlurEnabled;
         ModalModel.IsConfirmed = true;
+        _ = CommitMirrorChoice();  // fire-and-forget — no need to block close on a settings write
         _ = DisposeAsync();  // fire-and-forget — don't block Modal.Close on the JS dispose roundtrip
         Modal.Close();
         return Task.CompletedTask;
@@ -391,23 +434,205 @@
         => _isRecording ? "mic-btn recording" : "mic-btn";
 
     private string VideoWrapperBtnClass()
-        => _isVideoOn || _cameraState is CameraState.Starting ? "video-btn-on" : "video-btn-off";
+        => _isVideoOn ? "video-btn-on" : "video-btn-off";
 
     private string BlurBtnClass()
         => _isBlurEnabled ? "blur-btn active" : "blur-btn";
 
-    private static string GetPlugText(CameraState cameraState) => cameraState switch {
-        CameraState.Initializing => "Initializing...",
-        CameraState.Off => "Camera is off",
-        CameraState.Starting => "Camera is starting...",
-        CameraState.Unavailable => "Camera is unavailable",
-        _ => ""
-    };
+    private string GetPlugText(CameraState cameraState) {
+        if (!_isInitialized)
+            return "Initializing...";
+        return cameraState switch {
+            CameraState.Off => "Camera is off",
+            CameraState.Starting => "Camera is starting...",
+            CameraState.Unavailable => "Camera is unavailable",
+            _ => ""
+        };
+    }
 
     // Nested types
 
-    public enum CameraState { Initializing, Off, Starting, On, Unavailable }
+    /// <summary>
+    /// Strategy for the modal's live preview. <see cref="LocalVideoSession"/> drives
+    /// an own-stream preview via the modal's JS instance (Join mode);
+    /// <see cref="RecorderVideoSession"/> follows the active <c>VideoRecorder</c>
+    /// through <see cref="ChatVideoUI"/> (Settings mode). The session owns the
+    /// <see cref="CameraState"/> machine and notifies the component via
+    /// <see cref="StateChanged"/>; the first actually-rendered frame is funneled
+    /// into <see cref="NotifyFirstFrameRendered"/>.
+    /// </summary>
+    private interface IVideoSession
+    {
+        /// <summary>Current camera/preview state. Transitions are driven by the
+        /// session itself; subscribe to <see cref="StateChanged"/> to re-render.</summary>
+        CameraState State { get; }
+
+        event Action StateChanged;
+
+        /// <summary>Engage the preview source. Join mode: acquires a MediaStreamTrack
+        /// and starts the canvas renderer, ending in <c>On</c> or <c>Unavailable</c>.
+        /// Settings mode: attaches the canvas to the active recorder's preview
+        /// pipeline and stays in <c>Starting</c> until
+        /// <see cref="NotifyFirstFrameRendered"/> is called.</summary>
+        Task Start();
+
+        /// <summary>Switch the active camera. Join mode: restarts the own stream.
+        /// Settings mode: pushes the selection into <see cref="ChatVideoUI"/>; the
+        /// recorder's pipeline restarts and the shared preview view auto-reattaches.</summary>
+        Task ChangeCamera(string deviceId);
+
+        /// <summary>Toggle preview blur. Join mode: drives a local
+        /// <c>BlurPreviewSession</c> over the own stream. Settings mode: mutates
+        /// <see cref="ChatVideoUI.SetBackgroundBlur"/> — the recorder's pipeline
+        /// produces blurred frames for the shared view.</summary>
+        Task SetBlurEnabled(bool enabled);
+
+        /// <summary>Enable/disable the preview. Join mode: start/stop the own
+        /// stream. Settings mode: no-op (the recorder owns the pipeline).</summary>
+        Task SetVideoEnabled(bool enabled);
+
+        /// <summary>Resolved device ID for the Join-mode commit payload. Null in
+        /// Settings mode — the Close button never reads it.</summary>
+        Task<string?> GetActualDeviceId();
+
+        /// <summary>Called by the component when the JS layer reports the first
+        /// rendered frame. Advances state from <c>Starting</c> to <c>On</c>.</summary>
+        void NotifyFirstFrameRendered();
+    }
+
+    private abstract class VideoSessionBase : IVideoSession
+    {
+        private CameraState _state = CameraState.Off;
+
+        public CameraState State => _state;
+        public event Action? StateChanged;
+        event Action IVideoSession.StateChanged {
+            add => StateChanged += value;
+            remove => StateChanged -= value;
+        }
+
+        protected void SetState(CameraState state) {
+            if (_state == state)
+                return;
+            _state = state;
+            StateChanged?.Invoke();
+        }
+
+        public abstract Task Start();
+        public abstract Task ChangeCamera(string deviceId);
+        public abstract Task SetBlurEnabled(bool enabled);
+        public abstract Task SetVideoEnabled(bool enabled);
+        public abstract Task<string?> GetActualDeviceId();
+
+        public virtual void NotifyFirstFrameRendered() {
+            // The JS layer fires first-frame events on every (re)attach. Only
+            // promote Starting → On; ignore it if a toggle moved us elsewhere
+            // (e.g. the user hit Off between attach and the callback).
+            if (_state is CameraState.Starting)
+                SetState(CameraState.On);
+        }
+    }
+
+    /// <summary>Join mode — the modal owns its own preview stream via its JS instance.</summary>
+    private sealed class LocalVideoSession(
+        IJSObjectReference jsRef,
+        Func<string?> getSelectedDeviceId,
+        Func<bool> getIsBlurEnabled) : VideoSessionBase
+    {
+        public override async Task Start() {
+            await StartPreview();
+            if (getIsBlurEnabled() && State is CameraState.On)
+                await SetBlurEnabled(true);
+        }
+
+        public override Task ChangeCamera(string deviceId)
+            => SwitchCamera(deviceId);
+
+        public override async Task SetBlurEnabled(bool enabled)
+            => await jsRef.InvokeVoidAsync("toggleBlur", enabled);
+
+        public override async Task SetVideoEnabled(bool enabled) {
+            if (enabled) {
+                await StartPreview();
+            } else {
+                await jsRef.InvokeVoidAsync("stopPreview");
+                SetState(CameraState.Off);
+            }
+        }
+
+        public override async Task<string?> GetActualDeviceId()
+            => await jsRef.InvokeAsync<string?>("getActualDeviceId");
+
+        private async Task StartPreview() {
+            SetState(CameraState.Starting);
+            var success = await jsRef.InvokeAsync<bool>("startPreview", getSelectedDeviceId());
+            // Flip eagerly — `startPreview` returning true means the track is live
+            // and the canvas is drawing. The subsequent OnFirstFrameRendered
+            // callback is a no-op thanks to the `Starting`-only guard in the base.
+            SetState(success ? CameraState.On : CameraState.Unavailable);
+        }
+
+        private async Task SwitchCamera(string deviceId) {
+            SetState(CameraState.Starting);
+            var success = await jsRef.InvokeAsync<bool>("switchCamera", deviceId);
+            SetState(success ? CameraState.On : CameraState.Unavailable);
+        }
+    }
+
+    /// <summary>Settings mode — preview follows the active recorder; camera/blur
+    /// changes are applied by mutating the shared recorder state through
+    /// <see cref="ChatVideoUI"/>, and the <c>RecorderPreviewView</c> inside the JS
+    /// module re-renders automatically. Leaves the UI in <c>Starting</c> until the
+    /// recorder delivers a frame; <see cref="VideoSessionBase.NotifyFirstFrameRendered"/>
+    /// advances it to <c>On</c>.</summary>
+    private sealed class RecorderVideoSession(
+        IJSObjectReference jsRef,
+        ChatVideoUI chatVideoUI,
+        ChatId chatId) : VideoSessionBase
+    {
+        public override async Task Start() {
+            SetState(CameraState.Starting);
+            await jsRef.InvokeVoidAsync("attachToRecorder");
+        }
+
+        public override Task ChangeCamera(string deviceId) {
+            // The recorder's pipeline restarts; the shared RecorderPreviewView
+            // auto-detaches and reattaches, so we'll get a fresh first-frame
+            // callback once the new camera is live.
+            SetState(CameraState.Starting);
+            chatVideoUI.SetSelectedCamera(deviceId);
+            return Task.CompletedTask;
+        }
+
+        public override Task SetBlurEnabled(bool enabled) {
+            chatVideoUI.SetBackgroundBlur(enabled);
+            return Task.CompletedTask;
+        }
+
+        public override Task SetVideoEnabled(bool enabled) {
+            // Stops the webcam stream on the active call (or resumes it) —
+            // same as the video-panel's toggle. The RecorderPreviewView
+            // detaches on recorder teardown and re-attaches when it comes back.
+            if (enabled) {
+                chatVideoUI.ResumeVideoStreaming(chatId);
+                SetState(CameraState.Starting);
+            } else {
+                chatVideoUI.StopRecording();
+                SetState(CameraState.Off);
+            }
+            return Task.CompletedTask;
+        }
+
+        // Not consumed by the Settings flow — the Close button never reads this.
+        public override Task<string?> GetActualDeviceId() => Task.FromResult<string?>(null);
+    }
+
+    public enum CameraState { Off, Starting, On, Unavailable }
     public enum VideoCallMode { Join, Settings }
+
+    // JSON DTO returned by the JS `getCurrentCameraInfo` method.
+    // ReSharper disable once ClassNeverInstantiated.Global — instantiated via JS interop deserialization
+    public sealed record CameraInfo(string? DeviceId, string? FacingMode);
 
     public sealed class Model(Chat chat, VideoCallMode mode)
     {
@@ -420,5 +645,5 @@
         public bool IsBlurEnabled { get; set; }
     }
 
-    public sealed record ComputedModel(bool ShowActiveSessionInfo);
+    public sealed record ComputedModel(bool ShowActiveSessionInfo, string? LastRecorderError);
 }

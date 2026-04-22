@@ -50,7 +50,9 @@ public sealed class VideoRecorder : IAsyncDisposable
         var blazorCallbacks = new RecorderCallbacks(ChatVideoUI, this, Kind);
         _blazorCallbacksRef = DotNetObjectReference.Create(blazorCallbacks);
         var jsMethod = $"{BlazorUIAppModule.ImportName}.VideoRecorder.create";
-        _jsRef = await JS.InvokeAsync<IJSObjectReference>(jsMethod, CancellationToken.None, _blazorCallbacksRef).ConfigureAwait(false);
+        _jsRef = await JS
+            .InvokeAsync<IJSObjectReference>(jsMethod, CancellationToken.None, _blazorCallbacksRef, (int)Kind)
+            .ConfigureAwait(false);
     }
 
     // Recording lifecycle
@@ -293,6 +295,17 @@ public sealed class VideoRecorder : IAsyncDisposable
         {
             videoRecorder.OnRecordingError();
             owner.OnRecordingError(error, kind);
+        }
+
+        [JSInvokable]
+        public void OnTrackSettings(string? deviceId, string? facingMode)
+        {
+            // Fires from JS after a webcam track is acquired (start or camera
+            // switch). Lets ChatVideoUI resolve per-camera display preferences
+            // (mirror) from current device + facingMode. Not called for
+            // screencast — its display is never mirrored.
+            if (kind == StreamKind.Webcam)
+                owner.OnWebcamTrackSettings(deviceId, facingMode);
         }
     }
 }

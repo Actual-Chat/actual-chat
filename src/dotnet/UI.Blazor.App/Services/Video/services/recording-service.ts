@@ -252,9 +252,13 @@ export class RecordingService extends EventTarget {
         } catch (error) {
             errorLog?.log('Start failed:', error);
 
-            // Provide user-friendly error message for codec issues
+            // Provide user-friendly error messages
             let errorMessage = 'Failed to start recording';
-            if (error instanceof Error) {
+            if (error instanceof DOMException && error.name === 'NotReadableError') {
+                // Camera device exists in the OS enumeration but can't deliver frames
+                // (e.g. virtual cameras like Meta Quest 2 that are registered but idle).
+                errorMessage = await this.describeUnavailableCamera();
+            } else if (error instanceof Error) {
                 if (error.message.includes('not supported')) {
                     errorMessage = `${this.config.codec.toUpperCase()} codec is not supported in your browser. Please try using H.264 instead.`;
                 } else {
@@ -267,6 +271,20 @@ export class RecordingService extends EventTarget {
             const enhancedError = new Error(errorMessage);
             this.dispatchEvent(new CustomEvent('error', { detail: enhancedError }));
             throw enhancedError;
+        }
+    }
+
+    private async describeUnavailableCamera(): Promise<string> {
+        const deviceId = this.config.cameraDeviceId;
+        if (!deviceId) return 'Camera is unavailable';
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const label = devices
+                .find(d => d.kind === 'videoinput' && d.deviceId === deviceId)
+                ?.label;
+            return label ? `Camera '${label}' is unavailable` : 'Camera is unavailable';
+        } catch {
+            return 'Camera is unavailable';
         }
     }
 

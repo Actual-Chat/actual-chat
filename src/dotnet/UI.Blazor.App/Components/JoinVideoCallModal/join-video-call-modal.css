@@ -20,6 +20,9 @@
 .join-video-call-modal .camera-starting .video-frame .plug-text {
     @apply hidden;
 }
+.join-video-call-modal .video-frame.has-video .plug-text {
+    @apply hidden;
+}
 .join-video-call-modal .camera-starting .video-frame .video-loading {
     @apply flex;
 }
@@ -28,7 +31,17 @@
     @apply w-full h-full;
     @apply object-cover;
     @apply rounded-2xl;
+    @apply hidden;
     transform: scaleX(-1);
+}
+.join-video-call-modal .video-frame.has-video .camera-preview {
+    @apply block;
+}
+/* Mirror toggle — overrides the default scaleX(-1). Placed on .c-video (owned
+   fully by Blazor) rather than .video-frame (which JS manages `has-video` on)
+   so Blazor re-renders don't wipe out the JS-added class. */
+.join-video-call-modal .c-video.no-mirror .video-frame .camera-preview {
+    transform: none;
 }
 .join-video-call-modal .c-members {
     @apply flex-x items-center gap-x-4;
@@ -49,9 +62,8 @@
 
 /* Toolbar — centered */
 .join-video-call-modal .c-toolbar {
-    @apply grid gap-x-3 items-center justify-center;
+    @apply flex items-center justify-center gap-3;
     @apply py-2;
-    grid-template-columns: 1fr auto 1fr;
 }
 
 /* Pill-shaped toolbar buttons (desktop mic/camera) */
@@ -168,6 +180,11 @@ body.hoverable .join-video-call-modal .camera-dropdown-item:hover {
 /* Blur button — active state */
 .join-video-call-modal .btn-round.blur-btn.active {
     @apply outline outline-2 outline-primary outline-offset-[-1px];
+}
+
+/* Mirror button — active (mirroring enabled) */
+.join-video-call-modal .btn-round.mirror-btn.active {
+    @apply text-primary;
 }
 
 /* Mobile: stack buttons vertically with Join on top */

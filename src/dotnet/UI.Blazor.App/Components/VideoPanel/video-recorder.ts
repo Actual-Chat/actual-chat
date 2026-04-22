@@ -48,9 +48,8 @@ export interface VideoDevice {
 // Module-level registry keyed by StreamKind so a user can simultaneously
 // stream webcam (kind=0) and screencast (kind=1). Callers that want the
 // webcam-specific recorder (preview, modal, diagnostics) pass kind=0
-// (the default).
+// (the default). Kinds match the C# StreamKind enum values.
 const StreamKindWebcam = 0;
-const StreamKindScreencast = 1;
 const activeRecorders = new Map<number, VideoRecorder>();
 
 export function getActiveRecorder(kind: number = StreamKindWebcam): VideoRecorder | null {
@@ -66,13 +65,25 @@ interface Size {
     height: number;
 }
 
+/**
+ * See {@link VideoRecorder.addPreviewFrameListener} for the listener contract.
+ */
+export type PreviewFrameListener = (frame: VideoFrame) => void;
+
 export class VideoRecorder {
     private blazorRef: DotNet.DotNetObject;
     // Video recording service (using video-pipeline)
     private recordingService: RecordingService | null = null;
     private isRecording = false;
+    // True when we were asked to record but currently have no active pipeline
+    // (e.g. the user switched to a camera that failed to start). The next
+    // switchCamera call restarts from this state.
+    private isInterrupted = false;
     private isScreencasting = false;
-    // StreamKind this instance is currently registered under (null when idle).
+    // StreamKind this instance is registered under. Set in the constructor and
+    // cleared on dispose (we register immediately so VideoStreamingPreview can
+    // see the recorder during the pipeline startup phase, not only after the
+    // first frame lands).
     private registeredKind: number | null = null;
     private previewTrack: MediaStreamTrack | null = null;
     private selectedCameraDeviceId: string | null = null;
@@ -83,16 +94,18 @@ export class VideoRecorder {
     private lastStatus = '';
     private cameraWidth = 0;
     private cameraHeight = 0;
-    private previewPaused = false;
     // Cached encoder capabilities (detected at recording start)
     private supportedEncoderCategories: string[] = [];
     private supportedCodecs: CodecInfo[] = [];
 
-    /** External callback for blur preview frames — set by VideoStreamingPreview */
-    public onPreviewFrame: ((frame: VideoFrame) => void) | null = null;
+    // Blur preview frame subscribers. When blur is active, the pipeline produces
+    // `VideoFrame`s that we dispatch to every listener before the frame is closed
+    // by the pipeline. Listeners MUST consume the frame synchronously (draw it to
+    // a canvas before returning); they must NOT close it and must NOT retain it.
+    private previewFrameListeners = new Set<PreviewFrameListener>();
 
-    static create(blazorRef: DotNet.DotNetObject): VideoRecorder {
-        return new VideoRecorder(blazorRef);
+    static create(blazorRef: DotNet.DotNetObject, kind: number): VideoRecorder {
+        return new VideoRecorder(blazorRef, kind);
     }
 
     static async enumerateDevices(): Promise<VideoDevice[]> {
@@ -102,12 +115,19 @@ export class VideoRecorder {
             tempStream.getTracks().forEach(t => t.stop());
 
             const devices = await navigator.mediaDevices.enumerateDevices();
-            const videoDevices = devices
-                .filter(d => d.kind === 'videoinput')
-                .map(d => ({
-                    deviceId: d.deviceId,
-                    label: d.label || `Camera ${d.deviceId.slice(0, 8)}`,
-                }));
+            const videoInputs = devices.filter(d => d.kind === 'videoinput');
+
+            // On mobile, browsers typically expose multiple physical back cameras
+            // (wide, ultra-wide, telephoto). The UI only needs "front" and "back",
+            // so pick a single device per facing mode.
+            const selected = DeviceInfo.isMobile
+                ? VideoRecorder.pickMobileCameras(videoInputs)
+                : videoInputs;
+
+            const videoDevices = selected.map(d => ({
+                deviceId: d.deviceId,
+                label: d.label || `Camera ${d.deviceId.slice(0, 8)}`,
+            }));
             infoLog?.log('Enumerated video devices:', videoDevices);
             return videoDevices;
         } catch (error) {
@@ -116,8 +136,45 @@ export class VideoRecorder {
         }
     }
 
-    constructor(blazorRef: DotNet.DotNetObject) {
+    /**
+     * Reduces a mobile device's camera list to at most one front + one back camera.
+     * Uses {@link InputDeviceInfo.getCapabilities} when available, falls back to
+     * a label heuristic (Chrome on Android labels them "... facing front/back").
+     */
+    private static pickMobileCameras(devices: MediaDeviceInfo[]): MediaDeviceInfo[] {
+        const facingOf = (d: MediaDeviceInfo): 'user' | 'environment' | null => {
+            // getCapabilities may be absent in older browsers even though TS types
+            // declare it as always present on InputDeviceInfo.
+            const input = d as InputDeviceInfo;
+            const facing: string[] | undefined = typeof input.getCapabilities === 'function'
+                ? input.getCapabilities().facingMode
+                : undefined;
+            if (facing && facing.length > 0) {
+                if (facing.includes('user')) return 'user';
+                if (facing.includes('environment')) return 'environment';
+            }
+            const label = d.label.toLowerCase();
+            if (/facing front|\bfront\b|\buser\b|self/.test(label)) return 'user';
+            if (/facing back|\bback\b|\brear\b|environment/.test(label)) return 'environment';
+            return null;
+        };
+
+        const front = devices.find(d => facingOf(d) === 'user');
+        const back = devices.find(d => facingOf(d) === 'environment');
+        if (front && back)
+            return [front, back];
+        if (front || back)
+            // Only one facing mode could be identified; return it plus the first
+            // unidentified device (if any) as a best-effort second camera.
+            return [front ?? back!, ...devices.filter(d => d !== (front ?? back) && facingOf(d) === null).slice(0, 1)];
+
+        // No facing mode info at all — just cap the list at 2 devices.
+        return devices.slice(0, 2);
+    }
+
+    constructor(blazorRef: DotNet.DotNetObject, kind: number) {
         this.blazorRef = blazorRef;
+        this.register(kind);
     }
 
     /**
@@ -130,29 +187,37 @@ export class VideoRecorder {
 
     /**
      * Switch camera during active recording by stopping and restarting with the new device.
+     *
+     * If the new camera fails to start (e.g. a ghost device registered in the OS but not
+     * delivering frames), startRecording's error path leaves us in the interrupted state
+     * (`isInterrupted = true`, `recordingService = null`). The Blazor side no longer
+     * tears the panel down on OnRecordingError, so the user can simply click switch
+     * camera again — the next call will fall through the stop branch (pipeline is
+     * already null) and try startRecording with the new device.
      */
     public async switchCamera(deviceId: string): Promise<void> {
         this.selectedCameraDeviceId = deviceId;
         infoLog?.log('Switching camera to:', deviceId);
 
-        if (!this.isRecording || !this.recordingService) {
-            infoLog?.log('Not recording — camera will be used on next start');
+        // Never asked to record yet — just remember the device for the next start
+        if (!this.chatId) {
+            infoLog?.log('Not yet recording — camera will be used on next start');
             return;
         }
 
-        try {
-            // Tear down current recording silently (no Blazor notification)
+        // Tear down the current pipeline if one exists
+        if (this.recordingService) {
             this.cleanupPreviewTrack();
-            await this.recordingService.stop();
+            try {
+                await this.recordingService.stop();
+            } catch (e) {
+                warnLog?.log('Stop during switch failed:', e);
+            }
             this.recordingService = null;
             this.isRecording = false;
-
-            // Restart with the new camera
-            await this.startRecording(this.chatId);
-        } catch (error) {
-            errorLog?.log('Failed to switch camera:', error);
-            await this.blazorRef.invokeMethodAsync('OnRecordingError', String(error));
         }
+
+        await this.startRecording(this.chatId);
     }
 
     /**
@@ -184,14 +249,6 @@ export class VideoRecorder {
     }
 
     /**
-     * Get the preview stream (wraps previewTrack) for sharing with the settings modal.
-     */
-    public getPreviewStream(): MediaStream | null {
-        if (this.previewTrack?.readyState !== 'live') return null;
-        return new MediaStream([this.previewTrack]);
-    }
-
-    /**
      * Get the raw preview track for rendering by VideoStreamingPreview.
      */
     public getPreviewTrack(): MediaStreamTrack | null {
@@ -220,24 +277,27 @@ export class VideoRecorder {
     }
 
     /**
-     * Whether preview rendering is paused (modal is open).
+     * Whether recording was requested but the current pipeline failed to start.
+     * A subsequent switchCamera call will try to start fresh with the new device.
      */
-    public isPreviewPaused(): boolean {
-        return this.previewPaused;
+    public isRecordingInterrupted(): boolean {
+        return this.isInterrupted;
     }
 
     /**
-     * Pause the preview rendering (so only the modal draws while it's open).
+     * Subscribe to blur preview frames produced by the recorder's pipeline.
+     * The returned function unsubscribes the listener.
+     *
+     * Listener contract:
+     *  - called synchronously from the pipeline, once per produced frame;
+     *  - MUST consume the frame within the callback (e.g. `ctx.drawImage(frame, ...)`);
+     *  - MUST NOT call `frame.close()` (ownership stays with the pipeline);
+     *  - MUST NOT retain the frame (the pipeline closes it after dispatch);
+     *  - only fires while `isBlurActive()` is true.
      */
-    public pausePreviewRendering(): void {
-        this.previewPaused = true;
-    }
-
-    /**
-     * Resume the preview rendering.
-     */
-    public resumePreviewRendering(): void {
-        this.previewPaused = false;
+    public addPreviewFrameListener(cb: PreviewFrameListener): () => void {
+        this.previewFrameListeners.add(cb);
+        return () => this.previewFrameListeners.delete(cb);
     }
 
     /**
@@ -250,6 +310,7 @@ export class VideoRecorder {
             return;
         }
 
+        this.isInterrupted = false;
         infoLog?.log('Starting video recording...');
 
         try {
@@ -309,30 +370,46 @@ export class VideoRecorder {
             this.previewTrack = this.recordingService.getInputTrack()
             // Store actual camera resolution for capping reconfigure requests
             const trackSettings = this.previewTrack!.getSettings();
-            infoLog?.log(`Track resolution: ${trackSettings.width}x${trackSettings.height}`);
+            infoLog?.log(`Track resolution: ${trackSettings.width}x${trackSettings.height}, facingMode=${trackSettings.facingMode ?? '(none)'}`);
             this.cameraWidth = trackSettings.width ?? config.width;
             this.cameraHeight = trackSettings.height ?? config.height;
             infoLog?.log(`Camera resolution: ${this.cameraWidth}x${this.cameraHeight}`);
 
+            // Let Blazor resolve per-camera display prefs (mirror) from current
+            // deviceId + facingMode. Fire-and-forget — purely cosmetic.
+            void this.blazorRef.invokeMethodAsync(
+                'OnTrackSettings',
+                trackSettings.deviceId ?? null,
+                trackSettings.facingMode ?? null);
+
             // Subscribe to VAD for adaptive framerate
             this.recordingService.getPipeline()?.subscribeToVad();
 
-            // Set preview callback so blurred frames are forwarded to the external handler
+            // Fan out blur preview frames to every subscriber. Each listener draws
+            // synchronously; the pipeline closes the frame immediately after this
+            // callback returns (see `video-pipeline.ts`).
             this.recordingService.setPreviewCallback((frame: VideoFrame) => {
-                if (this.isBlurEnabled && this.onPreviewFrame)
-                    this.onPreviewFrame(frame);
+                if (!this.isBlurEnabled) return;
+                for (const listener of this.previewFrameListeners) {
+                    try {
+                        listener(frame);
+                    } catch (e) {
+                        warnLog?.log('preview frame listener threw', e);
+                    }
+                }
             });
 
             this.isRecording = true;
-            this.register(StreamKindWebcam);
 
             // Notify Blazor that recording started successfully
             await this.blazorRef.invokeMethodAsync('OnRecordingStarted');
 
             infoLog?.log('Video recording started');
         } catch (error) {
+            this.isInterrupted = true;
             errorLog?.log('Failed to start recording:', error);
-            await this.blazorRef.invokeMethodAsync('OnRecordingError', String(error));
+            const message = error instanceof Error ? error.message : String(error);
+            await this.blazorRef.invokeMethodAsync('OnRecordingError', message);
         }
     }
 
@@ -413,13 +490,13 @@ export class VideoRecorder {
 
             this.isRecording = true;
             this.isScreencasting = true;
-            this.register(StreamKindScreencast);
 
             await this.blazorRef.invokeMethodAsync('OnRecordingStarted');
             infoLog?.log('Screencast started');
         } catch (error) {
             errorLog?.log('Failed to start screencast:', error);
-            await this.blazorRef.invokeMethodAsync('OnRecordingError', String(error));
+            const message = error instanceof Error ? error.message : String(error);
+            await this.blazorRef.invokeMethodAsync('OnRecordingError', message);
         }
     }
 
@@ -705,6 +782,10 @@ export class VideoRecorder {
         this.disposed = true;
         this.unregister();
 
+        // Drop listeners before tearing down the pipeline so no in-flight
+        // preview callback reaches a listener after we're gone.
+        this.previewFrameListeners.clear();
+
         this.cleanupPreviewTrack();
 
         // Stop recording service
@@ -713,7 +794,6 @@ export class VideoRecorder {
             this.recordingService = null;
         }
 
-        this.onPreviewFrame = null;
         this.isRecording = false;
         this.isScreencasting = false;
     }

@@ -8,12 +8,17 @@
     // (per product decision — the user can see their shared screen already).
     var isRecording = m.IsOwnRecording;
     var recordingCls = isRecording ? "recording" : "";
+    // Mirror class goes on the <canvas> (Blazor-owned, never touched by JS)
+    // rather than the root .video-streaming-preview div — JS adds has-video /
+    // starting / screencast there, and a Blazor re-render of the root class
+    // would wipe them (and re-trigger the spinner).
+    var mirrorCls = m.IsCameraMirrored ? "" : "no-mirror";
 }
 
 <div @ref="Ref" class="video-track-player video-streaming-preview @Class @recordingCls">
     <canvas class="remote-video-bg" aria-hidden="true"></canvas>
     <canvas
-        class="call-video"
+        class="call-video @mirrorCls"
         @onclick="@(isRecording && !m.IsAloneOnStream ? OnSettingsClick : null!)"></canvas>
     <div class="video-loading">
         <span class="spinner-icon-wrapper">
@@ -47,6 +52,7 @@
     [Parameter] public string Class { get; set; } = "";
 
     public override async ValueTask DisposeAsync() {
+        ChatVideoUI.SuspendOwnStreamingPreview -= OnSuspendOwnStreamingPreview;
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
         await base.DisposeAsync();
@@ -65,7 +71,8 @@
         var isOwnRecording = await ChatVideoUI.IsOwnRecording(chatId, cancellationToken).ConfigureAwait(false);
         var hasRemoteStreams = await ChatVideoUI.HasRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
         var lastError = await ChatVideoUI.GetLastVideoRecorderError(cancellationToken).ConfigureAwait(false);
-        return new Model(isOwnRecording, !hasRemoteStreams, lastError);
+        var isMirrored = await ChatVideoUI.GetIsCameraMirrored(cancellationToken).ConfigureAwait(false);
+        return new Model(isOwnRecording, !hasRemoteStreams, lastError, isMirrored);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -73,14 +80,21 @@
             return;
 
         JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
+        ChatVideoUI.SuspendOwnStreamingPreview += OnSuspendOwnStreamingPreview;
     }
 
     private void OnSettingsClick()
         => ChatVideoUI.ChangeVideoSessionSettings(ChatId);
 
+    private void OnSuspendOwnStreamingPreview(bool suspended) {
+        if (JSRef is null)
+            return;
+        _ = JSRef.InvokeVoidAsync("setPaused", suspended);
+    }
+
     // Nested types
 
-    public sealed record Model(bool IsOwnRecording, bool IsAloneOnStream, string? LastErrorMessage) {
-        public static readonly Model None = new(false, true, null);
+    public sealed record Model(bool IsOwnRecording, bool IsAloneOnStream, string? LastErrorMessage, bool IsCameraMirrored) {
+        public static readonly Model None = new(false, true, null, true);
     }
 }
