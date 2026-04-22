@@ -47,6 +47,8 @@
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ElementReference Ref { get; set; }
     private IJSObjectReference? JSRef { get; set; }
+    private bool _isSuspended;
+    private Model _suspendedModel = Model.None;
 
     [Parameter, EditorRequired] public ChatId ChatId { get; set; }
     [Parameter] public string Class { get; set; } = "";
@@ -68,6 +70,9 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
+        if (_isSuspended)
+            return _suspendedModel;
+
         var isOwnRecording = await ChatVideoUI.IsOwnRecording(chatId, cancellationToken).ConfigureAwait(false);
         var hasRemoteStreams = await ChatVideoUI.HasRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
         var lastError = await ChatVideoUI.GetLastVideoRecorderError(cancellationToken).ConfigureAwait(false);
@@ -87,6 +92,9 @@
         => ChatVideoUI.ChangeVideoSessionSettings(ChatId);
 
     private void OnSuspendOwnStreamingPreview(bool suspended) {
+        _suspendedModel = suspended ? State.Value : Model.None;
+        _isSuspended = suspended;
+        _ = State.Recompute();
         if (JSRef is null)
             return;
         _ = JSRef.InvokeVoidAsync("setPaused", suspended);
