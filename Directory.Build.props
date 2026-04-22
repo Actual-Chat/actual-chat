@@ -109,7 +109,7 @@
 
     <!-- Output -->
     <UseArtifactsOutput>true</UseArtifactsOutput>
-    <ArtifactsPath>$(RepoRoot)artifacts</ArtifactsPath>
+    <ArtifactsPath Condition="'$(ArtifactsPath)' == ''">$(RepoRoot)artifacts</ArtifactsPath>
     <PackageOutputPath>$(RepoRoot)artifacts\nupkg</PackageOutputPath>
 
     <!-- NuGet -->
