@@ -95,15 +95,11 @@ RUN dotnet publish --no-restore --nologo -c Release -nodeReuse:false -o /app ./s
 
 FROM dotnet-build AS migrations-build
 COPY ./ef-migrations.cmd ./ef-migrations.cmd
-# Add net10.0/linux-x64 target to the migration projects' project.assets.json.
-# The earlier `dotnet restore ActualChat.CI.slnf` ran without --runtime, so the
-# bundle step (self-contained publish for linux-x64) would fail NETSDK1047.
-RUN dotnet restore ActualChat.Migrations.slnf --runtime linux-x64
-# Build all 7 migration projects in one MSBuild invocation — native -m parallelism.
-# No --runtime here: `dotnet build <slnf>` rejects --runtime (NETSDK1134); the
-# linux-x64 target comes from the RID-aware restore above, which is what
-# `dotnet ef migrations bundle --runtime linux-x64` (self-contained publish)
-# consumes in the next step.
+# Migration projects declare <RuntimeIdentifier>linux-x64</RuntimeIdentifier>, so restore
+# automatically adds net10.0/linux-x64 to project.assets.json and build outputs to
+# artifacts/bin/<Proj>/debug_linux-x64/ — where `dotnet ef bundle --runtime linux-x64
+# --no-build` looks for deps.json.
+RUN dotnet restore ActualChat.Migrations.slnf
 RUN dotnet build ActualChat.Migrations.slnf --no-restore -nodeReuse:false
 # Bundle in parallel — each project writes to its own artifacts/obj/*, safe concurrently
 RUN set -e; \
