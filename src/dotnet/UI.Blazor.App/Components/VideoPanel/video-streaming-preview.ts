@@ -1,10 +1,8 @@
-import { getActiveRecorder } from './video-recorder';
 import { RecorderPreviewView } from '../../Services/Video/services/recorder-preview-view';
 
 export class VideoStreamingPreview {
     private readonly element: HTMLElement;
     private readonly view: RecorderPreviewView;
-    private spinnerRafId: number | null = null;
     private disposed = false;
 
     static create(element: HTMLElement): VideoStreamingPreview {
@@ -20,55 +18,21 @@ export class VideoStreamingPreview {
             canvas,
             bgCanvas,
             rafKey: 'video-streaming-preview',
-            onAttach: (recorder) => {
-                this.element.classList.toggle('screencast', recorder.isScreencastActive());
-            },
             onFirstFrame: () => {
                 this.element.classList.add('has-video');
-                // Drop .starting immediately so the spinner doesn't flicker for
-                // one frame before the next spinner-tick re-evaluates.
-                this.element.classList.remove('starting');
             },
             onDetach: () => {
                 this.element.classList.remove('has-video');
-                this.element.classList.remove('screencast');
+            },
+            onStartingChange: (starting) => {
+                this.element.classList.toggle('starting', starting);
             },
         });
-
-        // Drive `.starting` purely from UI state. The recorder's interrupted
-        // flag can flip without any track event, so we poll each frame.
-        this.spinnerRafId = requestAnimationFrame(() => this.updateStarting());
     }
 
-    private updateStarting(): void {
-        if (this.disposed) return;
-
-        // While paused the canvas is frozen — the spinner must be frozen too,
-        // or a camera switch during a Settings-mode pause flips the recorder's
-        // interrupted flag and the spinner appears over the preserved frame.
-        if (this.view.paused) {
-            this.spinnerRafId = requestAnimationFrame(() => this.updateStarting());
-            return;
-        }
-
-        const recorder = getActiveRecorder();
-        // `.starting` drives the loading spinner: visible whenever we have a
-        // recorder that still intends to produce video (not interrupted) and we
-        // haven't yet rendered the first frame. Blazor clears any recent error
-        // before a switch so the spinner doesn't coexist with the error overlay.
-        const wantsStarting = recorder != null
-            && !recorder.isRecordingInterrupted()
-            && !this.element.classList.contains('has-video');
-        this.element.classList.toggle('starting', wantsStarting);
-
-        this.spinnerRafId = requestAnimationFrame(() => this.updateStarting());
-    }
-
-    /**
-     * Pause/resume rendering of the recorder's preview on this surface. While
-     * paused the last rendered frame stays on the canvas. Used by Blazor when
-     * Settings-mode JoinVideoCallModal is about to take over the preview.
-     */
+    // Pause/resume rendering of the recorder's preview on this surface. While
+    // paused the last rendered frame stays on the canvas. Used by Blazor when
+    // Settings-mode JoinVideoCallModal is about to take over the preview.
     public setPaused(paused: boolean): void {
         this.view.paused = paused;
     }
@@ -76,12 +40,6 @@ export class VideoStreamingPreview {
     public dispose(): void {
         if (this.disposed) return;
         this.disposed = true;
-
-        if (this.spinnerRafId !== null) {
-            cancelAnimationFrame(this.spinnerRafId);
-            this.spinnerRafId = null;
-        }
-
         this.view.dispose();
     }
 }

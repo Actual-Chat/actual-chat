@@ -161,9 +161,11 @@ export class JoinVideoCallModal {
         this.recorderView = RecorderPreviewView.create({
             canvas: this.canvasEl,
             rafKey: 'join-video-preview',
-            onAttach: () => this.videoFrame.classList.add('has-video'),
             onDetach: () => this.videoFrame.classList.remove('has-video'),
-            onFirstFrame: () => void this.blazorRef.invokeMethodAsync('OnFirstFrameRendered'),
+            onFirstFrame: () => {
+                this.videoFrame.classList.add('has-video');
+                void this.blazorRef.invokeMethodAsync('OnFirstFrameRendered');
+            },
         });
     }
 

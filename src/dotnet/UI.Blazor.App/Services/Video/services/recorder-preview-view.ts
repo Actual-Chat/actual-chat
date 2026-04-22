@@ -37,6 +37,8 @@ export interface RecorderPreviewViewOptions {
     onDetach?: () => void;
     /** Called once per attach, after the first frame reaches the canvas. */
     onFirstFrame?: () => void;
+    /** Called when the "starting" state changes (recorder intends to produce video but first frame hasn't landed yet). */
+    onStartingChange?: (starting: boolean) => void;
 }
 
 /** Background canvas is rendered at a fixed small width; height scales with aspect. */
@@ -53,6 +55,7 @@ export class RecorderPreviewView {
     private attachedTrack: MediaStreamTrack | null = null;
     private unsubscribeFrames: (() => void) | null = null;
     private firstFrameFired = false;
+    private lastStarting = false;
     private animationFrameId: number | null = null;
     private disposed = false;
     private _paused = false;
@@ -136,6 +139,15 @@ export class RecorderPreviewView {
         if (this.attachedRecorder && this.renderer)
             this.renderer.paused = paused || this.attachedRecorder.isBlurActive();
 
+        // Compute starting state: recorder intends to produce video but first frame hasn't landed yet
+        const isStarting = !paused
+            && recorder?.recordingState === 'starting'
+            && !this.firstFrameFired;
+        if (isStarting !== this.lastStarting) {
+            this.lastStarting = isStarting;
+            this.options.onStartingChange?.(isStarting);
+        }
+
         this.animationFrameId = requestAnimationFrame(() => this.tick());
     }
 
@@ -200,6 +212,12 @@ export class RecorderPreviewView {
     private fireFirstFrame(): void {
         if (this.firstFrameFired) return;
         this.firstFrameFired = true;
+        // Clear starting state immediately so the spinner doesn't flicker for
+        // one frame before the next tick() re-evaluates.
+        if (this.lastStarting) {
+            this.lastStarting = false;
+            this.options.onStartingChange?.(false);
+        }
         this.options.onFirstFrame?.();
     }
 

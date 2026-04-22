@@ -70,6 +70,8 @@ interface Size {
  */
 export type PreviewFrameListener = (frame: VideoFrame) => void;
 
+export type VideoRecordingState = 'stopped' | 'starting' | 'recording' | 'error';
+
 export class VideoRecorder {
     private blazorRef: DotNet.DotNetObject;
     // Video recording service (using video-pipeline)
@@ -103,6 +105,8 @@ export class VideoRecorder {
     // by the pipeline. Listeners MUST consume the frame synchronously (draw it to
     // a canvas before returning); they must NOT close it and must NOT retain it.
     private previewFrameListeners = new Set<PreviewFrameListener>();
+
+    public recordingState: VideoRecordingState = 'stopped';
 
     static create(blazorRef: DotNet.DotNetObject, kind: number): VideoRecorder {
         return new VideoRecorder(blazorRef, kind);
@@ -215,6 +219,7 @@ export class VideoRecorder {
             }
             this.recordingService = null;
             this.isRecording = false;
+            this.recordingState = 'stopped';
         }
 
         await this.startRecording(this.chatId);
@@ -311,6 +316,7 @@ export class VideoRecorder {
         }
 
         this.isInterrupted = false;
+        this.recordingState = 'starting';
         infoLog?.log('Starting video recording...');
 
         try {
@@ -400,6 +406,7 @@ export class VideoRecorder {
             });
 
             this.isRecording = true;
+            this.recordingState = 'recording';
 
             // Notify Blazor that recording started successfully
             await this.blazorRef.invokeMethodAsync('OnRecordingStarted');
@@ -407,6 +414,7 @@ export class VideoRecorder {
             infoLog?.log('Video recording started');
         } catch (error) {
             this.isInterrupted = true;
+            this.recordingState = 'error';
             errorLog?.log('Failed to start recording:', error);
             const message = error instanceof Error ? error.message : String(error);
             await this.blazorRef.invokeMethodAsync('OnRecordingError', message);
@@ -423,6 +431,7 @@ export class VideoRecorder {
             return;
         }
 
+        this.recordingState = 'starting';
         infoLog?.log('Starting screencast...');
 
         try {
@@ -490,10 +499,12 @@ export class VideoRecorder {
 
             this.isRecording = true;
             this.isScreencasting = true;
+            this.recordingState = 'recording';
 
             await this.blazorRef.invokeMethodAsync('OnRecordingStarted');
             infoLog?.log('Screencast started');
         } catch (error) {
+            this.recordingState = 'error';
             errorLog?.log('Failed to start screencast:', error);
             const message = error instanceof Error ? error.message : String(error);
             await this.blazorRef.invokeMethodAsync('OnRecordingError', message);
@@ -515,6 +526,7 @@ export class VideoRecorder {
             this.cleanupPreviewTrack();
             this.isRecording = false;
             this.isScreencasting = false;
+            this.recordingState = 'stopped';
             this.unregister();
 
             // Notify Blazor
@@ -796,5 +808,6 @@ export class VideoRecorder {
 
         this.isRecording = false;
         this.isScreencasting = false;
+        this.recordingState = 'stopped';
     }
 }
