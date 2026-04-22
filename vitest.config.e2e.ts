@@ -2,12 +2,10 @@ import { defineConfig } from 'vitest/config';
 import path from 'path';
 
 const src = (name: string) => path.resolve(__dirname, `src/nodejs/src/${name}.ts`);
-const pkg = (name: string) => path.resolve(__dirname, `src/nodejs/src/${name}/index.ts`);
 
 export default defineConfig({
     resolve: {
         alias: {
-            // Mirror tsconfig.json paths: bare imports resolve to src/nodejs/src/*
             'logging-init': src('logging-init'),
             'logging': src('logging'),
             'promises': src('promises'),
@@ -21,15 +19,19 @@ export default defineConfig({
             'object-pool': src('object-pool'),
             'server-clock': src('server-clock'),
             'async-processor': src('async-processor'),
-            'actuallab-core': pkg('actuallab-core'),
-            'actuallab-rpc': pkg('actuallab-rpc'),
         },
     },
     test: {
-        include: ['tests/ts/unit/**/*.test.ts'],
+        include: ['tests/ts/e2e/**/*.test.ts'],
+        globalSetup: ['tests/ts/e2e/global-setup.ts'],
+        testTimeout: 60_000,
+        hookTimeout: 120_000,
+        // Run files sequentially: all tests share one test account and
+        // parallel sign-ins race each other on the same server flow.
+        fileParallelism: false,
         reporters: ['default', 'junit'],
         outputFile: {
-            junit: 'tmp/unit-results.xml',
+            junit: 'tmp/e2e-results.xml',
         },
     },
 });

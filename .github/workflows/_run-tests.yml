@@ -6,7 +6,7 @@ on:
       build-target:
         type: string
         required: true
-        description: "Build target: integration-tests, slow-tests, nightly-tests"
+        description: "Build target: integration-tests, slow-tests, nightly-tests, e2e-tests"
       report-name:
         type: string
         required: true
@@ -201,6 +201,14 @@ jobs:
           --env TORCHSCRIPT_MODEL_CONFIG_PATH='/ml_model/config.json' \
           opensearch-configurator-image:latest
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Replace git+ssh://git@ to https://
+        run: sed -i 's/git+ssh:\/\/git@/https:\/\//g' package-lock.json
+
       - name: Setup dotnet
         uses: ./.github/actions/setup-dotnet
         with:
@@ -208,8 +216,20 @@ jobs:
           restore-workloads: false
 
       - name: Debug Build for tests
+        if: ${{ inputs.build-target != 'e2e-tests' }}
         run: |
           dotnet build ActualChat.CI.slnf --nologo --no-restore --configuration Debug
+
+      - name: Install Playwright Chromium
+        if: ${{ inputs.build-target == 'e2e-tests' }}
+        run: npx playwright install chromium --with-deps
+
+      - name: Configure E2E server URL
+        # CI has no nginx/cert/DNS for *.local.voxt.ai — override BaseUri so both the
+        # managed server and test workers talk to Kestrel on localhost.
+        # (Server's default port is 7080 via AppHost.DefaultServerUrls.)
+        if: ${{ inputs.build-target == 'e2e-tests' }}
+        run: echo "HostSettings__BaseUri=http://localhost:7080" >> $GITHUB_ENV
 
       - name: Run tests
         id: run-tests
@@ -239,7 +259,7 @@ jobs:
 
       - name: Report test results
         uses: phoenix-actions/test-reporting@v15
-        if: success() || failure() # run this step even if previous step failed
+        if: (success() || failure()) && inputs.build-target != 'e2e-tests'
         with:
           name: ${{ inputs.report-name }}
           path: "./tests/**/*.trx" # Path to test results
@@ -249,3 +269,25 @@ jobs:
           output-to: "checks"
           list-suites: "all"
           only-summary: "true"
+
+      - name: Report E2E test results
+        uses: phoenix-actions/test-reporting@v15
+        if: (success() || failure()) && inputs.build-target == 'e2e-tests'
+        with:
+          name: ${{ inputs.report-name }}
+          path: tmp/e2e-results.xml
+          reporter: java-junit
+          fail-on-error: false
+          list-tests: "all"
+          output-to: "checks"
+          list-suites: "all"
+          only-summary: "false"
+
+      - name: Upload E2E screenshots
+        if: ${{ always() && inputs.build-target == 'e2e-tests' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshots
+          path: tmp/*.png
+          if-no-files-found: ignore
+          retention-days: 7

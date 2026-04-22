@@ -2,139 +2,35 @@
  * E2E test: Sign in with a test account and send a message.
  *
  * Prerequisites:
- * - Chrome running with remote debugging: `c chrome` (on Windows host)
- * - Server running (via `c fwt` or `/server-start`)
+ * - Server running (or AC_E2E_SERVER=managed)
+ * - Optionally, Chrome with remote debugging: `c chrome` (port 9222)
  *
  * Run:
- *   npx vitest run tests/ts/signin-and-message.test.ts
+ *   npx vitest run tests/ts/e2e/signin-and-message.test.ts --config vitest.config.e2e.ts
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { chromium, type Browser, type Page } from 'playwright';
-import * as fs from 'fs';
-import * as path from 'path';
-
-// --- Configuration ---
-
-const CHROME_HOST = process.env.AC_OS === 'Linux in Docker' ? '192.168.65.254' : 'localhost';
-const CHROME_PORT = 9222;
-const TEST_EMAIL = 'test-claude-agent@actual.chat';
-const TEST_OTP = '111111';
-
-function loadBaseUrl(): string {
-    const envPath = path.resolve(process.cwd(), '.env');
-    if (fs.existsSync(envPath)) {
-        const match = fs.readFileSync(envPath, 'utf-8').match(/^HostSettings__BaseUri=(.+)$/m);
-        if (match) return match[1].trim();
-    }
-    return 'https://local.voxt.ai';
-}
-
-const BASE_URL = loadBaseUrl();
-
-const tmpDir = path.join(process.cwd(), 'tmp');
-if (!fs.existsSync(tmpDir)) {
-    fs.mkdirSync(tmpDir, { recursive: true });
-}
-
-function screenshot(name: string): string {
-    return path.join(tmpDir, `e2e-${name}.png`);
-}
-
-// --- Helpers ---
-
-async function dismissCookieConsent(page: Page) {
-    const btn = page.locator('button:has-text("Accept all cookies")');
-    if (await btn.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await btn.click();
-        await page.waitForTimeout(500);
-    }
-}
-
-async function skipOnboarding(page: Page) {
-    await page.evaluate(() => {
-        const debugUI = (window as any).debugUI;
-        if (debugUI) {
-            debugUI.resetOnboarding(false);
-            debugUI.resetBubbles(false);
-        }
-    });
-}
-
-async function isSignedIn(page: Page): Promise<boolean> {
-    // Already signed in: chat list or account dropdown visible
-    // Not signed in: sign-in buttons on landing page
-    const signedIn = page.locator('.chat-list, .account-dropdown').first();
-    const notSignedIn = page.locator('button.signin-button-group, button.signin-button').first();
-    return Promise.race([
-        signedIn.waitFor({ state: 'visible', timeout: 15000 }).then(() => true),
-        notSignedIn.waitFor({ state: 'visible', timeout: 15000 }).then(() => false),
-    ]);
-}
-
-async function signIn(page: Page) {
-    const signInButton = page.locator('button.signin-button-group, button.signin-button').first();
-    await signInButton.waitFor({ state: 'visible', timeout: 10000 });
-    await signInButton.click();
-    await page.waitForTimeout(1000);
-
-    // Enter email
-    const emailInput = page.locator('input[type="email"], input[placeholder*="email" i]').first();
-    await emailInput.waitFor({ timeout: 5000 });
-    await emailInput.fill(TEST_EMAIL);
-    await page.waitForTimeout(300);
-
-    // Submit
-    await page.locator('button[type="submit"]').first().click();
-    await page.waitForTimeout(2000);
-
-    // Handle "Account not found" → toggle "Register a new account" and resubmit
-    const accountError = page.locator('.c-account-error:has-text("Account not found")');
-    if (await accountError.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await page.locator('label:has-text("Register a new account")').click();
-        await page.waitForTimeout(300);
-        await page.locator('button[type="submit"]').first().click();
-        await page.waitForTimeout(2000);
-    }
-
-    // Enter OTP
-    const digitInputs = page.locator('input[maxlength="1"]');
-    const digitCount = await digitInputs.count();
-    if (digitCount >= 6) {
-        for (let i = 0; i < 6; i++) {
-            await digitInputs.nth(i).fill(TEST_OTP[i]);
-            await page.waitForTimeout(50);
-        }
-    } else {
-        const otpInput = page.locator('input[inputmode="numeric"], input[type="tel"]').first();
-        await otpInput.waitFor({ timeout: 5000 });
-        await otpInput.fill(TEST_OTP);
-    }
-    await page.waitForTimeout(500);
-
-    // Click verify if visible
-    const verifyButton = page.locator('button[type="submit"]').first();
-    if (await verifyButton.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await verifyButton.click();
-        await page.waitForTimeout(3000);
-    }
-}
-
-// --- Test suite ---
+import type { Page } from 'playwright';
+import {
+    BASE_URL, connectBrowser, dismissCookieConsent, skipOnboarding,
+    isSignedIn, signIn, screenshot, type BrowserConnection,
+} from './helpers';
 
 describe('sign-in and send message', () => {
-    let browser: Browser;
+    let conn: BrowserConnection;
     let page: Page;
 
     beforeAll(async () => {
-        browser = await chromium.connectOverCDP(`http://${CHROME_HOST}:${CHROME_PORT}`);
-        const contexts = browser.contexts();
-        const context = contexts.length > 0 ? contexts[0] : await browser.newContext();
-        page = await context.newPage();
+        conn = await connectBrowser();
+        page = await conn.context.newPage();
     }, 30_000);
 
     afterAll(async () => {
-        await page?.close();
+        await page.close();
+        if (conn.ownsBrowser) {
+            await conn.context.close();
+            await conn.browser.close();
+        }
     });
 
     it('should be signed in (sign in if needed)', async () => {
@@ -147,7 +43,7 @@ describe('sign-in and send message', () => {
         }
 
         await skipOnboarding(page);
-        await page.screenshot({ path: screenshot('signed-in') });
+        await page.screenshot({ path: screenshot('e2e', 'signed-in') });
 
         // Verify: chat list visible (main app) or account dropdown (landing while signed in)
         const app = page.locator('.chat-list, .account-dropdown').first();
@@ -166,7 +62,7 @@ describe('sign-in and send message', () => {
             await page.waitForTimeout(2000);
         }
 
-        await page.screenshot({ path: screenshot('chat') });
+        await page.screenshot({ path: screenshot('e2e', 'chat') });
 
         const messageInput = page.locator('.message-input[contenteditable="true"], #message-input').first();
         await expect(messageInput.isVisible({ timeout: 10000 })).resolves.toBe(true);
@@ -179,7 +75,7 @@ describe('sign-in and send message', () => {
 
         const testMessage = `E2E test at ${new Date().toISOString()}`;
         await page.keyboard.type(testMessage);
-        await page.screenshot({ path: screenshot('before-send') });
+        await page.screenshot({ path: screenshot('e2e', 'before-send') });
 
         // Send
         const sendButton = page.locator('button.post-message');
@@ -189,7 +85,7 @@ describe('sign-in and send message', () => {
             await page.keyboard.press('Control+Enter');
         }
         await page.waitForTimeout(3000);
-        await page.screenshot({ path: screenshot('after-send') });
+        await page.screenshot({ path: screenshot('e2e', 'after-send') });
 
         // Verify the message appears in the chat (text is inside .chat-message-markup)
         const sentMessage = page.locator(`.chat-message-markup:has-text("${testMessage}")`).first();

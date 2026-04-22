@@ -2,12 +2,11 @@
  * E2E test: Verify SVG avatar upload works across all UI paths.
  *
  * Prerequisites:
- * - Server running (via `./run-watch.cmd` or `/server-start`)
+ * - Server running (or AC_E2E_SERVER=managed)
  * - Optionally, Chrome with remote debugging: `c chrome` (port 9222)
- *   If Chrome CDP is not available, Playwright launches its own headless Chromium.
  *
  * Run:
- *   npx vitest run tests/ts/e2e/svg-avatar-upload.test.ts --config tmp/vitest.e2e.config.ts
+ *   npx vitest run tests/ts/e2e/svg-avatar-upload.test.ts --config vitest.config.e2e.ts
  *
  * Tests:
  * 1. API endpoint: POST /api/avatars/upload-picture (direct upload)
@@ -17,35 +16,13 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
+import type { Page } from 'playwright';
 import * as fs from 'fs';
 import * as path from 'path';
-
-// --- Configuration ---
-
-const CHROME_HOST = process.env.AC_OS === 'Linux in Docker' ? '192.168.65.254' : 'localhost';
-const CHROME_PORT = 9222;
-const TEST_EMAIL = 'test-claude-agent@actual.chat';
-const TEST_OTP = '111111';
-
-function loadBaseUrl(): string {
-    const envPath = path.resolve(process.cwd(), '.env');
-    if (fs.existsSync(envPath)) {
-        const match = fs.readFileSync(envPath, 'utf-8').match(/^HostSettings__BaseUri=(.+)$/m);
-        if (match) return match[1].trim();
-    }
-    return 'https://local.voxt.ai';
-}
-
-const BASE_URL = loadBaseUrl();
-const tmpDir = path.join(process.cwd(), 'tmp');
-if (!fs.existsSync(tmpDir)) {
-    fs.mkdirSync(tmpDir, { recursive: true });
-}
-
-function screenshot(name: string): string {
-    return path.join(tmpDir, `e2e-${name}.png`);
-}
+import {
+    BASE_URL, connectBrowser, ensureSignedIn, skipOnboarding,
+    screenshot, type BrowserConnection,
+} from './helpers';
 
 // Simple SVG test file — a colored circle with text
 const TEST_SVG = `<?xml version="1.0" encoding="UTF-8"?>
@@ -54,132 +31,32 @@ const TEST_SVG = `<?xml version="1.0" encoding="UTF-8"?>
   <text x="100" y="115" text-anchor="middle" font-size="48" font-family="sans-serif" fill="white">SVG</text>
 </svg>`;
 
-// --- Helpers ---
-
-/** Try connecting to host Chrome via CDP; fall back to launching headless Chromium. */
-async function connectOrLaunch(): Promise<{ browser: Browser; context: BrowserContext; ownsBrowser: boolean }> {
-    try {
-        const browser = await chromium.connectOverCDP(`http://${CHROME_HOST}:${CHROME_PORT}`);
-        const contexts = browser.contexts();
-        const context = contexts.length > 0 ? contexts[0] : await browser.newContext();
-        console.log('Connected to host Chrome via CDP');
-        return { browser, context, ownsBrowser: false };
-    } catch {
-        const browser = await chromium.launch({
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        });
-        const context = await browser.newContext({ ignoreHTTPSErrors: true });
-        console.log('Launched headless Chromium (Chrome CDP not available)');
-        return { browser, context, ownsBrowser: true };
-    }
-}
-
-async function dismissCookieConsent(page: Page) {
-    const btn = page.locator('button:has-text("Accept all cookies")');
-    if (await btn.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await btn.click();
-        await page.waitForTimeout(500);
-    }
-}
-
-async function skipOnboarding(page: Page) {
-    await page.evaluate(() => {
-        const debugUI = (window as any).debugUI;
-        if (debugUI) {
-            debugUI.resetOnboarding(false);
-            debugUI.resetBubbles(false);
-        }
-    });
-}
-
-async function isSignedIn(page: Page): Promise<boolean> {
-    const signedIn = page.locator('.chat-list, .account-dropdown').first();
-    const notSignedIn = page.locator('button.signin-button-group, button.signin-button').first();
-    return Promise.race([
-        signedIn.waitFor({ state: 'visible', timeout: 15000 }).then(() => true),
-        notSignedIn.waitFor({ state: 'visible', timeout: 15000 }).then(() => false),
-    ]);
-}
-
-async function signIn(page: Page) {
-    const signInButton = page.locator('button.signin-button-group, button.signin-button').first();
-    await signInButton.waitFor({ state: 'visible', timeout: 10000 });
-    await signInButton.click();
-    await page.waitForTimeout(1000);
-
-    const emailInput = page.locator('input[type="email"], input[placeholder*="email" i]').first();
-    await emailInput.waitFor({ timeout: 5000 });
-    await emailInput.fill(TEST_EMAIL);
-    await page.waitForTimeout(300);
-
-    await page.locator('button[type="submit"]').first().click();
-    await page.waitForTimeout(2000);
-
-    const accountError = page.locator('.c-account-error:has-text("Account not found")');
-    if (await accountError.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await page.locator('label:has-text("Register a new account")').click();
-        await page.waitForTimeout(300);
-        await page.locator('button[type="submit"]').first().click();
-        await page.waitForTimeout(2000);
-    }
-
-    const digitInputs = page.locator('input[maxlength="1"]');
-    const digitCount = await digitInputs.count();
-    if (digitCount >= 6) {
-        for (let i = 0; i < 6; i++) {
-            await digitInputs.nth(i).fill(TEST_OTP[i]);
-            await page.waitForTimeout(50);
-        }
-    } else {
-        const otpInput = page.locator('input[inputmode="numeric"], input[type="tel"]').first();
-        await otpInput.waitFor({ timeout: 5000 });
-        await otpInput.fill(TEST_OTP);
-    }
-    await page.waitForTimeout(500);
-
-    const verifyButton = page.locator('button[type="submit"]').first();
-    if (await verifyButton.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await verifyButton.click();
-        await page.waitForTimeout(3000);
-    }
-}
-
-// --- Test suite ---
+const tmpDir = path.join(process.cwd(), 'tmp');
 
 describe('SVG avatar upload', () => {
-    let browser: Browser;
-    let context: BrowserContext;
+    let conn: BrowserConnection;
     let page: Page;
     let svgFilePath: string;
-    let ownsBrowser: boolean;
 
     beforeAll(async () => {
         svgFilePath = path.join(tmpDir, 'test-avatar.svg');
+        if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
         fs.writeFileSync(svgFilePath, TEST_SVG);
 
-        ({ browser, context, ownsBrowser } = await connectOrLaunch());
-        page = await context.newPage();
+        conn = await connectBrowser();
+        page = await conn.context.newPage();
 
-        // Sign in
-        await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 15000 });
-        await page.waitForTimeout(5000);
-        await dismissCookieConsent(page);
-
-        if (!await isSignedIn(page)) {
-            await signIn(page);
-        }
-        await skipOnboarding(page);
+        await ensureSignedIn(page);
         await page.waitForTimeout(1000);
-        await page.screenshot({ path: screenshot('signed-in') });
+        await page.screenshot({ path: screenshot('e2e', 'signed-in') });
         console.log('Signed in successfully');
     }, 90_000);
 
     afterAll(async () => {
-        await page?.close();
-        if (ownsBrowser) {
-            await context?.close();
-            await browser?.close();
+        await page.close();
+        if (conn.ownsBrowser) {
+            await conn.context.close();
+            await conn.browser.close();
         }
         if (fs.existsSync(svgFilePath))
             fs.unlinkSync(svgFilePath);
@@ -207,11 +84,11 @@ describe('SVG avatar upload', () => {
         console.log('API upload response:', result.status, result.body);
         expect(result.status).toBe(200);
 
-        const mediaRef = JSON.parse(result.body);
+        const mediaRef = JSON.parse(result.body) as Record<string, unknown>;
         expect(mediaRef).toBeTruthy();
 
         // BlobId should end with .png (SVG was converted)
-        const blobId: string = mediaRef.BlobId ?? mediaRef.blobId ?? '';
+        const blobId = (mediaRef.BlobId ?? mediaRef.blobId ?? '') as string;
         console.log('BlobId:', blobId);
         expect(blobId).toMatch(/\.png$/);
     }, 30_000);
@@ -231,17 +108,15 @@ describe('SVG avatar upload', () => {
             await accountTab.click();
             await page.waitForTimeout(1000);
         }
-        await page.screenshot({ path: screenshot('svg-settings') });
+        await page.screenshot({ path: screenshot('e2e', 'svg-settings') });
 
         // Click the edit (pencil) icon in the "My avatars" section.
-        // The TileButtons in "My avatars" has both a star button and an edit button,
-        // while the "Information" section only has an edit button.
         const avatarTileButtons = page.locator(':has(> button:has(i.icon-star)):has(> button:has(i.icon-edit))').first();
         const avatarEditBtn = avatarTileButtons.locator('button:has(i.icon-edit)');
         await avatarEditBtn.waitFor({ state: 'visible', timeout: 10000 });
         await avatarEditBtn.click();
         await page.waitForTimeout(1500);
-        await page.screenshot({ path: screenshot('svg-avatar-editor-modal') });
+        await page.screenshot({ path: screenshot('e2e', 'svg-avatar-editor-modal') });
 
         // The OwnAvatarEditorModal should be open with class "edit-avatar-modal".
         const avatarModal = page.locator('.edit-avatar-modal');
@@ -252,7 +127,7 @@ describe('SVG avatar upload', () => {
         await fileInput.waitFor({ state: 'attached', timeout: 5000 });
         await fileInput.setInputFiles(svgFilePath);
         await page.waitForTimeout(3000);
-        await page.screenshot({ path: screenshot('svg-avatar-uploaded') });
+        await page.screenshot({ path: screenshot('e2e', 'svg-avatar-uploaded') });
 
         // Verify the uploaded image is visible and is a PNG (not SVG)
         const avatarPic = avatarModal.locator('.pic img, .pic-upload img').first();
@@ -269,7 +144,7 @@ describe('SVG avatar upload', () => {
         await saveButton.waitFor({ state: 'visible', timeout: 3000 });
         await saveButton.click();
         await page.waitForTimeout(2000);
-        await page.screenshot({ path: screenshot('svg-avatar-saved') });
+        await page.screenshot({ path: screenshot('e2e', 'svg-avatar-saved') });
     }, 60_000);
 
     it('should upload SVG picture in New Chat modal and convert to PNG', async () => {
@@ -288,14 +163,14 @@ describe('SVG avatar upload', () => {
         await newChatEntry.waitFor({ state: 'visible', timeout: 5000 });
         await newChatEntry.click();
         await page.waitForTimeout(1500);
-        await page.screenshot({ path: screenshot('svg-new-chat-modal') });
+        await page.screenshot({ path: screenshot('e2e', 'svg-new-chat-modal') });
 
         // The NewChatModal has PicUpload with a hidden file input.
         const fileInput = page.locator('.pic-upload input[type="file"]').first();
         await fileInput.waitFor({ state: 'attached', timeout: 5000 });
         await fileInput.setInputFiles(svgFilePath);
         await page.waitForTimeout(3000);
-        await page.screenshot({ path: screenshot('svg-new-chat-uploaded') });
+        await page.screenshot({ path: screenshot('e2e', 'svg-new-chat-uploaded') });
 
         // Verify pic-upload shows an image that is PNG (converted from SVG)
         const chatPic = page.locator('.pic-upload .pic img').first();
@@ -326,8 +201,8 @@ describe('SVG avatar upload', () => {
 
             if (!uploadResp.ok) return { error: `Upload failed: ${uploadResp.status}` };
 
-            const mediaRef = await uploadResp.json();
-            const blobUrl = mediaRef.BlobId ?? mediaRef.blobId ?? '';
+            const mediaRef = (await uploadResp.json()) as Record<string, unknown>;
+            const blobUrl = (mediaRef.BlobId ?? mediaRef.blobId ?? '') as string;
 
             if (blobUrl) {
                 try {
@@ -337,8 +212,8 @@ describe('SVG avatar upload', () => {
                         mediaStatus: mediaResp.status,
                         mediaContentType: mediaResp.headers.get('content-type'),
                     };
-                } catch (e: any) {
-                    return { blobId: blobUrl, fetchError: e.message };
+                } catch (e: unknown) {
+                    return { blobId: blobUrl, fetchError: e instanceof Error ? e.message : String(e) };
                 }
             }
 

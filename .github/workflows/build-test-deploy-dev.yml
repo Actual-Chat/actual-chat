@@ -314,6 +314,57 @@ jobs:
       skip-tests: ${{ needs.check-tested.outputs.skip-tests == 'true' }}
     secrets: inherit
 
+  ts-unit-tests:
+    name: TS Unit Tests
+    needs: [check-tested]
+    runs-on: ubuntu-latest
+    env:
+      SKIP_TESTS: ${{ needs.check-tested.outputs.skip-tests }}
+    steps:
+      - name: Skip tests
+        if: env.SKIP_TESTS == 'true'
+        run: 'echo "Tests are skipped"'
+
+      - name: Checkout
+        if: env.SKIP_TESTS != 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          lfs: false
+
+      - name: Setup Node.js
+        if: env.SKIP_TESTS != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Replace git+ssh://git@ to https://
+        if: env.SKIP_TESTS != 'true'
+        run: sed -i 's/git+ssh:\/\/git@/https:\/\//g' package-lock.json
+
+      - name: Install dependencies
+        if: env.SKIP_TESTS != 'true'
+        run: npm ci
+        env:
+          NPM_READ_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
+
+      - name: Run TS unit tests
+        if: env.SKIP_TESTS != 'true'
+        run: npm run test:unit
+
+      - name: Report TS unit test results
+        uses: phoenix-actions/test-reporting@v15
+        if: (success() || failure()) && env.SKIP_TESTS != 'true'
+        with:
+          name: TS Unit tests results
+          path: tmp/unit-results.xml
+          reporter: java-junit
+          fail-on-error: false
+          list-tests: "all"
+          output-to: "step-summary"
+          list-suites: "all"
+          only-summary: "false"
+
   nuget-pack:
     name: Create nuget packages for ${{ github.ref_name }}
     if: |
