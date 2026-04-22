@@ -1,7 +1,23 @@
 @inherits MarkupViewBase<ListMarkup>
+@{
+    var items = Markup.Items;
+}
 
 <ul class="list-markup">
-    @foreach (var item in Markup.Items) {
-        <li><MarkupView Markup="@item.Content"/></li>
+    @for (var i = 0; i < items.Length; i++) {
+        var item = items[i];
+        <li>
+            @if (i < items.Length - 1 && LastFragment != null) {
+                <CascadingValue TValue="RenderFragment" Value="@null">
+                    <MarkupView Markup="@item.Content"/>
+                </CascadingValue>
+            } else {
+                <MarkupView Markup="@item.Content"/>
+            }
+        </li>
     }
 </ul>
+
+@code {
+    [CascadingParameter] public RenderFragment? LastFragment { get; set; }
+}
