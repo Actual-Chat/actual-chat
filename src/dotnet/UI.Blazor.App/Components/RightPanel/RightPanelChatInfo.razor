@@ -65,10 +65,8 @@
         if (State.Value.IsSummarized == isSummarized)
             return Task.CompletedTask;
 
-        var chatId = Chat.Id;
-        var expectedVersion = Chat.Version;
         var update = Change.Update<ChatDiff>(new() { IsSummarized = isSummarized });
-        return UICommander.Run(new Chats_Change(Session, chatId, expectedVersion, update));
+        return UICommander.Run(new Chats_Change(Session, Chat.Id, null, update));
     }
 
     // Nested types
