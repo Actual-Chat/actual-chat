@@ -299,9 +299,6 @@ body.narrow .layout-header > .c-content.selection-header {
     @apply w-full;
     @apply mt-1;
 }
-.layout-subheader > .bottom-sheet {
-    @apply mb-0.5;
-}
 
 .layout-body {
     @apply flex-1 flex-y flex-nowrap;
@@ -689,88 +686,7 @@ body.wide .error-container {
     background: radial-gradient(56.91% 105.88% at 50% 100%, rgba(211, 154, 255, 0.20) 0%, rgba(211, 154, 255, 0.00) 100%);
 }
 
-/* Bottom Sheet */
-.bottom-sheet {
-    @apply sticky z-10 left-1/2;
-    @apply h-0 w-16;
-    @apply -translate-x-1/2;
-    @apply flex items-start justify-center;
-    @apply opacity-0 invisible;
-    @apply cursor-grab;
-    @apply touch-none;
-    transition: opacity 0.15s ease-in-out 0.15s, visibility 0.15s ease-in-out 0.15s, transform 0.15s ease-out, width 0.15s ease-out;
-}
-.bottom-sheet::before {
-    content: '';
-    @apply block;
-    @apply h-1.5 w-16;
-    @apply rounded-full;
-    background: linear-gradient(to left, var(--bottom-sheet-1), var(--bottom-sheet-2));
-    transition: width 0.15s ease-out, height 0.15s ease-out;
-}
-/* Touch target for easier grabbing on touch devices */
-.touch-capable .bottom-sheet::after {
-    @apply content-empty;
-    @apply absolute left-1/2;
-    @apply -translate-x-1/2;
-    @apply pointer-events-auto;
-    width: 5rem;
-    height: 2.5rem;
-    top: -1rem;
-}
-.bottom-sheet:active {
-    @apply cursor-grabbing;
-}
-.bottom-sheet.active,
-.bottom-sheet.dragging {
-    @apply w-32;
-}
-.bottom-sheet.active::before,
-.bottom-sheet.dragging::before {
-    @apply w-32;
-}
-.layout-subheader > .bottom-sheet {
-    @apply mt-1.5 -mb-3;
-}
-.list-view-layout:has(.header-activity-panel-wrapper) .bottom-sheet,
-.bottom-sheet.dragging {
-    @apply opacity-100 visible;
-}
-.list-view-layout:has(.header-activity-panel-wrapper) .bottom-sheet::before,
-.bottom-sheet.dragging::before {
-    @apply opacity-80;
-}
-.bottom-sheet.dragging {
-    transition: none;
-}
-/* When pinned, hide the bottom sheet */
-
-/* Pin/Unpin badges - oval badges above bottom-sheet bar, scaled via JS */
-.bottom-sheet .pin-badge,
-.bottom-sheet .unpin-badge {
-    @apply absolute left-1/2 bottom-2 z-20;
-    @apply pointer-events-none;
-    @apply opacity-0 invisible;
-    transform: translateX(-50%) scale(0);
-    transform-origin: center bottom;
-}
-.bottom-sheet .pin-badge .c-badge-content,
-.bottom-sheet .unpin-badge .c-badge-content {
-    @apply flex items-center justify-center gap-x-1;
-    @apply px-4 py-1.5;
-    @apply rounded-full;
-    @apply text-sm font-medium whitespace-nowrap;
-    @apply text-white;
-    @apply border border-separator;
-    @apply shadow-sm;
-    background: linear-gradient(to left, color-mix(in srgb, var(--indigo-60), black 20%), color-mix(in srgb, var(--magenta-60), black 20%));
-}
-.bottom-sheet .pin-badge i,
-.bottom-sheet .unpin-badge i {
-    @apply text-base;
-}
-
-/* Activity panel pinned state - show it's interactive */
+/* Activity panel pinned state */
 .list-view-layout:has(.layout-header.pinned) .header-activity-panel-wrapper .chat-activity-panel {
     @apply cursor-pointer;
 }

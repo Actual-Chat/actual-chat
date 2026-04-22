@@ -30,6 +30,11 @@
      @onclick:preventDefault="true"
      @onclick:stopPropagation="true"
      @onclick="@Click">
+    <div class="c-pin-badge">
+        <span class="c-badge-content">
+            <i class="icon-arrow-down"></i> Pin panel
+        </span>
+    </div>
     @if (!isParticipating) {
         @* Camera/audio icon - shown when not participating *@
         <div class="c-icon hideable">

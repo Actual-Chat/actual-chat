@@ -3,7 +3,6 @@
     var m = State.Value;
     var chat = m.Chat;
     var isRightPanelVisible = m.IsRightPanelVisible;
-    var cls = ScreenSize.IsNarrow() ? "btn-sm" : "";
 }
 
 @if (ScreenSize.IsNarrow()) {
@@ -15,7 +14,6 @@
             data-menu="@(MenuRef.New<ChatPropertiesMenu>(chat.Id.Value).ToString())"
             data-menu-trigger="@MenuTrigger.Primary"
             data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())"
-            Class="@cls"
             Tooltip="Chat properties"
             TooltipPosition="FloatingPosition.Bottom">
             <i class="icon-more-vertical"></i>
@@ -25,7 +23,6 @@
             data-bubble="@(BubbleRef.New<RightChatPanelButtonBubble>())"
             data-bubble-priority="401"
             data-bubble-placement="@(FloatingPosition.BottomEnd.ToPositionString())"
-            Class="@cls"
             Click="Click"
             Tooltip="Chat properties"
             TooltipPosition="FloatingPosition.Bottom">
@@ -38,7 +35,6 @@
             data-bubble="@(BubbleRef.New<RightChatPanelButtonBubble>())"
             data-bubble-priority="401"
             data-bubble-placement="@(FloatingPosition.BottomEnd.ToPositionString())"
-            Class="@cls"
             Click="Click"
             Tooltip="Chat properties"
             TooltipPosition="FloatingPosition.Bottom">
