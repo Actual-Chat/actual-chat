@@ -173,8 +173,26 @@ More restrictive than default:
 - **0 blank lines** inside types (default allows 1)
 - **0 blank lines** around single-line properties, fields, and methods
 - Keep maximum **1 blank line** in code (default allows more)
-- Blank line must follow any (yield) return, (yield) break, or continue statement -
-  in other words, any block-escaping statement - unless it's the last statement in the block.
+- A blank line typically follows any `return`, `break`, `continue`, `yield return`,
+  or `yield break` statement — i.e. any block-escaping statement — unless it's on
+  the very last line of the enclosing statement block.
+- Methods whose body ends with one or more **local functions** typically have an
+  explicit `return;` right before the first local function, followed by a blank
+  line. This marks where the method's actual execution ends and makes the
+  local-function section unambiguous to the reader.
+
+Example:
+```csharp
+protected override async Task OnRun(CancellationToken cancellationToken)
+{
+    // ... main body ...
+    return;
+
+    void Helper() {
+        // ...
+    }
+}
+```
 
 ### Code Style Preferences
 
