@@ -131,7 +131,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo sed -ri 's|http://(azure\.)?archive\.ubuntu\.com|https://\1archive.ubuntu.com|g; s|http://security\.ubuntu\.com|https://security.ubuntu.com|g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list /etc/apt/apt-mirrors.txt 2>/dev/null || true
+          sudo sed -ri 's|http://(azure\.)?archive\.ubuntu\.com|https://\1archive.ubuntu.com|g; s|http://security\.ubuntu\.com|https://security.ubuntu.com|g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list 2>/dev/null || true
+          sudo sed -i '/azure\.archive\.ubuntu\.com/d' /etc/apt/apt-mirrors.txt 2>/dev/null || true
           sudo apt-get update
           sudo apt-get install -y postgresql-client libatomic1
 
