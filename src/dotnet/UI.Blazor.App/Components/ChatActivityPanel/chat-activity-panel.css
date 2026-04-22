@@ -385,11 +385,30 @@ body.narrow .chat-activity-panel.listening:after {
     @apply pointer-events-auto;
 }
 
-/* During unpin drag, disable transitions and animation for smooth finger following */
-.header-activity-panel-wrapper.dragging {
-    @apply z-button;
+/* During drag, disable transitions for smooth finger following */
+.layout-header.dragging .header-activity-panel-wrapper {
     transition: none;
 }
-.header-activity-panel-wrapper.dragging .chat-activity-panel {
-    @apply z-button;
+
+/* Pin badge inside activity panel */
+.chat-activity-panel .c-pin-badge {
+    @apply absolute inset-x-0 top-3 z-20;
+    @apply flex justify-center;
+    @apply pointer-events-none;
+    @apply opacity-0 invisible;
+    transform: scale(0);
+    transform-origin: center bottom;
+}
+.chat-activity-panel .c-pin-badge .c-badge-content {
+    @apply flex items-center justify-center gap-x-0.5;
+    @apply px-2 py-1;
+    @apply rounded-full border border-[var(--white-40)];
+    @apply text-sm font-medium whitespace-nowrap;
+    @apply text-white;
+    background: linear-gradient(180deg,var(--black-10) -20.83%,var(--black-20) 50%);
+    text-shadow: 0 1px 3px rgba(0,0,0,.6);
+    backdrop-filter: blur(2px);
+}
+.chat-activity-panel .c-pin-badge i {
+    @apply text-xs;
 }

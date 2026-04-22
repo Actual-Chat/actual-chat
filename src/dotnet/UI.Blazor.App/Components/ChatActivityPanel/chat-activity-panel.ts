@@ -1,7 +1,5 @@
-// TODO: Fix ESLint errors
-/* eslint-disable @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-deprecated */
-import { fromEvent, merge, Subject } from 'rxjs';
-import { filter, first, switchMap, takeUntil, tap, throttleTime } from 'rxjs/operators';
+import { fromEvent, Subject } from 'rxjs';
+import { filter, takeUntil, throttleTime } from 'rxjs/operators';
 import { Gesture, Gestures } from 'gestures';
 import { DocumentEvents, tryPreventDefaultForEvent } from 'event-handling';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
@@ -9,7 +7,9 @@ import { Disposables } from 'disposable';
 
 // Wrapper height (the only animated element for collapse/expand)
 const WRAPPER_HEIGHT_REM = 3.5; // h-14
-const PIN_BADGE_THRESHOLD_REM = 3.75; // extra drag to show pin badge
+const WRAPPER_MAX_HEIGHT_REM = 7; // max stretch when dragging past expanded
+const DETENT_REM = 2; // dead zone at expanded position before stretch begins
+const PIN_BADGE_THRESHOLD_REM = 2.5; // extra drag beyond detent to trigger pin
 
 function getRemSize(): number {
     return parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
@@ -19,14 +19,17 @@ function remToPx(rem: number): number {
     return rem * getRemSize();
 }
 
+function vibrate(): void {
+    if ('vibrate' in navigator)
+        navigator.vibrate(10);
+}
+
 export class ChatActivityPanel {
     private readonly activityPanel: HTMLElement;
     private chatView: HTMLElement;
     private header: HTMLElement;
     private wrapper: HTMLElement;
-    private bottomSheet: HTMLElement | null;
     private pinBadge: HTMLElement | null;
-    private unpinBadge: HTMLElement | null;
     private disposed$: Subject<void> = new Subject<void>();
 
     private state: 'expanded' | 'collapsed' = 'expanded';
@@ -46,13 +49,10 @@ export class ChatActivityPanel {
         this.chatView = document.querySelector('.chat-view')!;
         this.header = this.activityPanel.closest('.layout-header')!;
         this.wrapper = this.activityPanel.closest('.header-activity-panel-wrapper')!;
-        this.bottomSheet = document.querySelector('.bottom-sheet');
-        this.pinBadge = this.bottomSheet?.querySelector('.pin-badge') ?? null;
-        this.unpinBadge = this.bottomSheet?.querySelector('.unpin-badge') ?? null;
+        this.pinBadge = this.activityPanel.querySelector('.c-pin-badge');
 
-        if (!this.chatView || !this.header || !this.wrapper) {
+        if (!this.chatView || !this.header || !this.wrapper)
             return;
-        }
 
         this.lockUntil = Date.now() + 3000;
 
@@ -68,50 +68,23 @@ export class ChatActivityPanel {
             takeUntil(this.disposed$)
         ).subscribe(() => this.collapse());
 
-        // Pointer events: swipe down on header/subheader to expand header
-        merge(
-            fromEvent<PointerEvent>(this.header, 'pointerdown'),
-            fromEvent<PointerEvent>(this.activityPanel, 'pointerdown')
-        ).pipe(
-            filter(e => e.target !== this.bottomSheet && !this.bottomSheet?.contains(e.target as Node)),
-            filter(e => !this.isPinned || !this.activityPanel.contains(e.target as Node)),
-            tap(startEvent => {
-                this.isMoving = true;
-                startEvent.preventDefault();
-            }),
-            switchMap(startEvent => {
-                const startY = startEvent.clientY;
-                const startX = startEvent.clientX;
-
-                return fromEvent<PointerEvent>(document, 'pointermove').pipe(
-                    filter(moveEvent => {
-                        const dy = moveEvent.clientY - startY;
-                        const dx = Math.abs(moveEvent.clientX - startX);
-                        return dy > 6 && dy > dx;
-                    }),
-                    first(),
-                    takeUntil(
-                        fromEvent(document, 'pointerup').pipe(
-                            tap(() => {
-                                this.isMoving = false;
-                            })
-                        )
-                    )
-                );
+        // Continuous drag gesture for expand/pin/unpin.
+        // When collapsed: triggers from header OR activity panel touch.
+        // When expanded/pinned: triggers from activity panel touch only.
+        DocumentEvents.capturedPassive.touchStart$.pipe(
+            filter(() => !ScreenSize.isWide()),
+            filter(e => {
+                const onPanel = this.activityPanel.contains(e.target as Node);
+                const onHeader = this.header.contains(e.target as Node);
+                if (onPanel) return true;
+                // When collapsed, allow touch on header to start the gesture
+                return onHeader && this.state === 'collapsed';
             }),
             takeUntil(this.disposed$)
-        ).subscribe(() => this.manualExpand());
-
-        // Bottom sheet drag for pin/unpin toggle
-        if (this.bottomSheet) {
-            DocumentEvents.capturedPassive.touchStart$.pipe(
-                filter(() => !ScreenSize.isWide()),
-                filter(e => this.bottomSheet?.contains(e.target as Node) ?? false),
-                takeUntil(this.disposed$)
-            ).subscribe(e => {
-                Gestures.addActive(new BottomSheetTogglePinGesture(this, e));
-            });
-        }
+        ).subscribe(e => {
+            this.isMoving = true;
+            Gestures.addActive(new PanelDragGesture(this, e));
+        });
     }
 
     public dispose() {
@@ -119,16 +92,6 @@ export class ChatActivityPanel {
             return;
 
         this.header?.classList.remove('expanded', 'collapsed', 'pinned');
-        if (this.pinBadge) {
-            this.pinBadge.style.transform = '';
-            this.pinBadge.style.opacity = '';
-            this.pinBadge.style.visibility = '';
-        }
-        if (this.unpinBadge) {
-            this.unpinBadge.style.transform = '';
-            this.unpinBadge.style.opacity = '';
-            this.unpinBadge.style.visibility = '';
-        }
         this.disposed$.next();
         this.disposed$.complete();
     }
@@ -180,11 +143,18 @@ export class ChatActivityPanel {
     public setLockUntil(value: number) { this.lockUntil = value; }
 }
 
-// Gesture: Drag bottom-sheet down to toggle pin/unpin
-// Animates the wrapper height (the single collapse/expand control point)
-class BottomSheetTogglePinGesture extends Gesture {
+// Gesture: Drag activity panel down to expand/pin, drag up to unpin.
+//
+// State machine:
+//   COLLAPSED → drag down → wrapper height follows finger → EXPANDED
+//   EXPANDED  → continue drag down → rubber-band → badge appears → vibro
+//            → release with badge visible → PIN
+//   PINNED    → drag up → wrapper height shrinks → release near 0 → UNPIN + vibro
+class PanelDragGesture extends Gesture {
     private toggled = false;
     private badgeVisible = false;
+    private vibroFired = false;
+    private detentVibroFired = false;
     private dragStarted = false;
     private currentProgress = 0; // 0 = collapsed, 1 = expanded
 
@@ -199,47 +169,38 @@ class BottomSheetTogglePinGesture extends Gesture {
             return;
         }
 
-        const bottomSheet = document.querySelector<HTMLElement>('.bottom-sheet')!;
         const header = panel['header'];
         const wrapper = panel['wrapper'];
         const isPinned = panel['isPinned'];
-        const badge = isPinned ? panel['unpinBadge'] : panel['pinBadge'];
-        if (!bottomSheet || !header || !wrapper) {
+        const badge = isPinned ? null : panel['pinBadge'];
+        if (!header || !wrapper) {
             this.dispose();
             return;
         }
 
         tryPreventDefaultForEvent(touchStartEvent);
+        const gestureStartTime = Date.now();
 
         const wrapperHeightRange = remToPx(WRAPPER_HEIGHT_REM);
+        const wrapperMaxHeight = remToPx(WRAPPER_MAX_HEIGHT_REM);
+        const detentZone = remToPx(DETENT_REM);
         const pinBadgeThreshold = remToPx(PIN_BADGE_THRESHOLD_REM);
-
-        // Start from current state
+        const activityPanel = panel['activityPanel'];
         const startProgress = panel.getState() === 'collapsed' ? 0 : 1;
         this.currentProgress = startProgress;
-
-        // Visual feedback that bottom-sheet is touched (but don't change header yet)
-        bottomSheet.classList.add('active');
 
         const startDragging = () => {
             if (this.dragStarted) return;
             this.dragStarted = true;
 
-            // Set initial wrapper height BEFORE removing classes to prevent jump
             const initialHeight = wrapperHeightRange * this.currentProgress;
             wrapper.style.height = `${initialHeight}px`;
             wrapper.style.transition = 'none';
-
-            bottomSheet.classList.remove('active');
-            bottomSheet.classList.add('dragging');
             header.classList.add('dragging');
             header.classList.remove('collapsed', 'expanded');
         };
 
         const cleanup = () => {
-            bottomSheet.classList.remove('active');
-            bottomSheet.classList.remove('dragging');
-            bottomSheet.style.transform = '';
             if (badge) {
                 badge.style.transform = '';
                 badge.style.opacity = '';
@@ -248,6 +209,8 @@ class BottomSheetTogglePinGesture extends Gesture {
             header.classList.remove('dragging');
             wrapper.style.height = '';
             wrapper.style.transition = '';
+            activityPanel.style.bottom = '';
+            activityPanel.style.top = '';
         };
 
         const snapToState = () => {
@@ -267,16 +230,42 @@ class BottomSheetTogglePinGesture extends Gesture {
                 this.dispose();
             }),
             DocumentEvents.capturedPassive.touchEnd$.subscribe(() => {
+                const elapsed = Date.now() - gestureStartTime;
+                panel['isMoving'] = false;
+
                 if (!this.toggled && this.badgeVisible) {
+                    // Dragged past pin threshold → pin
                     this.toggled = true;
+                    // Reset panel positioning before cleanup so CSS transition
+                    // starts from the correct position (not bottom-aligned).
+                    activityPanel.style.bottom = '';
+                    activityPanel.style.top = '';
+                    // Snap wrapper to normal height before transition kicks in
+                    wrapper.style.height = `${wrapperHeightRange}px`;
+                    // Force reflow so the browser captures this as the start state
+                    void wrapper.offsetHeight;
                     cleanup();
-                    if (isPinned)
+                    if (isPinned) {
                         panel.unpin();
-                    else
+                        vibrate();
+                    } else {
                         panel.pin();
+                    }
                 } else if (!this.toggled) {
-                    snapToState();
-                    panel.setLockUntil(Date.now() + 5000);
+                    if (isPinned && this.currentProgress < 0.3) {
+                        // Dragged up far enough → unpin
+                        this.toggled = true;
+                        cleanup();
+                        panel.unpin();
+                        vibrate();
+                    } else if (!isPinned && elapsed < 300 && this.dragStarted) {
+                        // Quick swipe down → snap expand
+                        cleanup();
+                        panel.manualExpand();
+                    } else {
+                        snapToState();
+                        panel.setLockUntil(Date.now() + 5000);
+                    }
                 }
                 this.dispose();
             }),
@@ -288,35 +277,68 @@ class BottomSheetTogglePinGesture extends Gesture {
 
                 const dy = coords.y - origin.y;
 
-                // Only start dragging when user moves finger down
-                if (dy > 5) {
-                    startDragging();
+                if (isPinned) {
+                    // Pinned: drag UP to unpin
+                    if (dy < -5)
+                        startDragging();
+                    if (!this.dragStarted) return;
                     tryPreventDefaultForEvent(e);
-                }
 
-                if (!this.dragStarted) return;
+                    const effectiveDy = startProgress * wrapperHeightRange + dy;
+                    this.currentProgress = Math.max(0, Math.min(1, effectiveDy / wrapperHeightRange));
+                    wrapper.style.height = `${wrapperHeightRange * this.currentProgress}px`;
+                } else {
+                    // Not pinned: drag DOWN to expand, then pin
+                    if (dy > 5)
+                        startDragging();
+                    if (!this.dragStarted) return;
+                    tryPreventDefaultForEvent(e);
 
-                tryPreventDefaultForEvent(e);
+                    const effectiveDy = startProgress * wrapperHeightRange + dy;
+                    this.currentProgress = Math.max(0, Math.min(1, effectiveDy / wrapperHeightRange));
 
-                // Calculate progress: 0 = collapsed (h-0), 1 = expanded (h-14)
-                const effectiveDy = dy + startProgress * wrapperHeightRange;
-                this.currentProgress = Math.max(0, Math.min(1, effectiveDy / wrapperHeightRange));
-                const currentHeight = wrapperHeightRange * this.currentProgress;
+                    // Vibrate when panel reaches expanded position
+                    if (this.currentProgress >= 1 && !this.detentVibroFired) {
+                        this.detentVibroFired = true;
+                        vibrate();
+                    }
+                    if (this.currentProgress < 0.9)
+                        this.detentVibroFired = false;
 
-                // Calculate extra drag beyond full expand for badge
-                const extraDrag = Math.max(0, effectiveDy - wrapperHeightRange);
-                const sheetOffset = Math.min(extraDrag, pinBadgeThreshold);
+                    // Beyond expanded: detent zone, then stretch downward
+                    const rawExtra = Math.max(0, effectiveDy - wrapperHeightRange);
+                    // Dead zone: first detentZone px of extra drag → panel stays put
+                    const effectiveExtra = Math.max(0, rawExtra - detentZone);
+                    const stretchHeight = Math.min(effectiveExtra, wrapperMaxHeight - wrapperHeightRange);
+                    const currentHeight = wrapperHeightRange * this.currentProgress + stretchHeight;
+                    wrapper.style.height = `${currentHeight}px`;
 
-                wrapper.style.height = `${currentHeight}px`;
-                bottomSheet.style.transform = `translateX(-50%) translateY(${sheetOffset}px)`;
+                    // During stretch: pin panel to top so content stays in place,
+                    // extra space appears below
+                    if (stretchHeight > 0) {
+                        activityPanel.style.bottom = 'auto';
+                        activityPanel.style.top = '0';
+                    } else {
+                        activityPanel.style.bottom = '';
+                        activityPanel.style.top = '';
+                    }
 
-                // Progressive badge scaling based on extra drag distance
-                const badgeProgress = Math.min(1, extraDrag / pinBadgeThreshold);
-                this.badgeVisible = badgeProgress >= 0.95;
-                if (badge) {
-                    badge.style.transform = `translateX(-50%) scale(${badgeProgress})`;
-                    badge.style.opacity = '1';
-                    badge.style.visibility = badgeProgress > 0.01 ? 'visible' : 'hidden';
+                    const badgeProgress = Math.min(1, effectiveExtra / pinBadgeThreshold);
+                    this.badgeVisible = badgeProgress >= 0.95;
+
+                    // Vibrate once when badge becomes fully visible
+                    if (this.badgeVisible && !this.vibroFired) {
+                        this.vibroFired = true;
+                        vibrate();
+                    }
+                    if (!this.badgeVisible)
+                        this.vibroFired = false;
+
+                    if (badge) {
+                        badge.style.transform = `scale(${badgeProgress})`;
+                        badge.style.opacity = `${badgeProgress}`;
+                        badge.style.visibility = badgeProgress > 0.01 ? 'visible' : 'hidden';
+                    }
                 }
             })
         );
