@@ -24,5 +24,6 @@ if [ -z "$project" ]; then
 fi
 
 mproject="$project.Migration"
+art="${ArtifactsPath:-artifacts}"
 echo Make sure the project is built before you use this script to add migrations!
-dotnet ef migrations --no-build --msbuildprojectextensionspath artifacts/obj/$mproject --project src/dotnet/$mproject/$mproject.csproj $2 $3 $4 $5 $6 $7 $8 $9
+dotnet ef migrations --no-build --msbuildprojectextensionspath "$art/obj/$mproject" --project src/dotnet/$mproject/$mproject.csproj $2 $3 $4 $5 $6 $7 $8 $9

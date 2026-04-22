@@ -96,15 +96,17 @@ RUN dotnet publish --no-restore --nologo -c Release -nodeReuse:false -o /app ./s
 FROM dotnet-build AS migrations-build
 COPY ./ef-migrations.cmd ./ef-migrations.cmd
 # Fused build+bundle per project, 3 pipelines in parallel on 4-core runner.
-# Fusing avoids the 2-wave barrier: as soon as a project's build finishes its slot
-# rolls into its bundle without waiting for siblings. Can't slnf-build: NETSDK1134
-# forbids --runtime on a solution. NuGet cache is concurrent-safe.
-RUN printf '%s\n' Chat.Service Contacts.Service Invite.Service Media.Service MLSearch.Service Notification.Service Users.Service \
+# Each worker writes to its own ArtifactsPath to avoid obj/bin file-lock contention
+# on shared deps (Core, Api, Backend, ...). Final bundle exes collected into
+# /src/artifacts via ef `--output`. NuGet package cache stays shared (safe).
+RUN mkdir -p /src/artifacts && \
+    printf '%s\n' Chat.Service Contacts.Service Invite.Service Media.Service MLSearch.Service Notification.Service Users.Service \
     | xargs -P 3 -I{} sh -c ' \
         set -e; \
         m="$1"; \
+        export ArtifactsPath="/src/artifacts-$m"; \
         dotnet build --runtime linux-x64 -nodeReuse:false "src/dotnet/$m.Migration/$m.Migration.csproj"; \
-        ./ef-migrations.cmd "$m" bundle --runtime linux-x64 --output "./artifacts/$m.Migration.exe"' _ {} \
+        ./ef-migrations.cmd "$m" bundle --runtime linux-x64 --output "/src/artifacts/$m.Migration.exe"' _ {} \
     && ls -lha /src/artifacts
 
 FROM runtime AS migrations-app
