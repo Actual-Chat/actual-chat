@@ -2,10 +2,10 @@
  * CanvasVideoRenderer
  * Manages an off-DOM HTMLVideoElement → on-DOM HTMLCanvasElement render loop.
  * Given a MediaStreamTrack, creates a hidden video element, attaches the track,
- * and draws frames to the target canvas via fastRaf at display refresh rate.
+ * and draws frames to the target canvas at the video's native frame rate using
+ * requestVideoFrameCallback.
  */
 
-import { fastRaf } from 'fast-raf';
 import { CanvasTarget } from './canvas-target';
 
 export interface CanvasVideoRendererOptions {
@@ -14,7 +14,7 @@ export interface CanvasVideoRendererOptions {
     onFirstFrame?: () => void;
     /** Called each frame after drawImage — receives the video element as a source. */
     onAfterDraw?: (video: HTMLVideoElement) => void;
-    /** fastRaf dedup key — must be unique per renderer instance. */
+    /** Unique per-instance key (kept for API compat, no longer used for scheduling). */
     rafKey: string;
 }
 
@@ -25,6 +25,7 @@ export class CanvasVideoRenderer {
     private running = false;
     private _paused = false;
     private firstFrameFired = false;
+    private vfcHandle = 0;
 
     get canvas(): HTMLCanvasElement { return this.options.canvas; }
     get video(): HTMLVideoElement { return this.videoEl; }
@@ -52,7 +53,7 @@ export class CanvasVideoRenderer {
         this.running = true;
         this._paused = false;
         this.firstFrameFired = false;
-        fastRaf(this.renderFrame, this.options.rafKey);
+        this.scheduleFrame();
     }
 
     /** Stop the render loop and detach the track. Does NOT stop the track itself. */
@@ -60,11 +61,20 @@ export class CanvasVideoRenderer {
         this.running = false;
         this._paused = false;
         this.firstFrameFired = false;
+        if (this.vfcHandle) {
+            this.videoEl.cancelVideoFrameCallback(this.vfcHandle);
+            this.vfcHandle = 0;
+        }
         this.videoEl.srcObject = null;
     }
 
     dispose(): void {
         this.stop();
+    }
+
+    private scheduleFrame(): void {
+        if (!this.running) return;
+        this.vfcHandle = this.videoEl.requestVideoFrameCallback(this.renderFrame);
     }
 
     private renderFrame = (): void => {
@@ -81,6 +91,6 @@ export class CanvasVideoRenderer {
             this.options.onAfterDraw?.(this.videoEl);
         }
 
-        fastRaf(this.renderFrame, this.options.rafKey);
+        this.scheduleFrame();
     };
 }
