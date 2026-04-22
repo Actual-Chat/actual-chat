@@ -16,7 +16,7 @@ BATCH
 
 #!/bin/sh
 project="$1"
-if [ "$project" == "" ]; then
+if [ -z "$project" ]; then
     echo No PROJECT argument.
     echo Usage:   ef-migrations PROJECT COMMAND [options]
     echo Example: ef-migrations Chat.Service list

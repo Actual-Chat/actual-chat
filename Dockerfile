@@ -101,15 +101,19 @@ COPY ./ef-migrations.cmd ./ef-migrations.cmd
 # --no-build` looks for deps.json.
 RUN dotnet restore ActualChat.Migrations.slnf
 RUN dotnet build ActualChat.Migrations.slnf --no-restore -nodeReuse:false
-# Bundle in parallel — each project writes to its own artifacts/obj/*, safe concurrently
-RUN set -e; \
-    pids=""; \
-    for m in Chat.Service Contacts.Service Invite.Service Media.Service MLSearch.Service Notification.Service Users.Service; do \
-      ./ef-migrations.cmd "$m" bundle --runtime linux-x64 --output "./artifacts/$m.Migration.exe" & \
-      pids="$pids $!"; \
-    done; \
-    fail=0; for p in $pids; do wait "$p" || fail=1; done; \
-    [ "$fail" = 0 ] && ls -lha /src/artifacts
+# Bundle serially: each run warms up the shared .NET runtime publish cache,
+# making every subsequent bundle significantly faster (~128s, 44s, 21s, ...).
+# Parallel bundles contend on shared obj dirs and runtime extraction, making
+# each take ~630s regardless of core count — much worse than serial.
+RUN mkdir -p /src/artifacts \
+ && ./ef-migrations.cmd Chat.Service bundle --runtime linux-x64 --output ./artifacts/Chat.Service.Migration.exe \
+ && ./ef-migrations.cmd Contacts.Service bundle --runtime linux-x64 --output ./artifacts/Contacts.Service.Migration.exe \
+ && ./ef-migrations.cmd Invite.Service bundle --runtime linux-x64 --output ./artifacts/Invite.Service.Migration.exe \
+ && ./ef-migrations.cmd Media.Service bundle --runtime linux-x64 --output ./artifacts/Media.Service.Migration.exe \
+ && ./ef-migrations.cmd MLSearch.Service bundle --runtime linux-x64 --output ./artifacts/MLSearch.Service.Migration.exe \
+ && ./ef-migrations.cmd Notification.Service bundle --runtime linux-x64 --output ./artifacts/Notification.Service.Migration.exe \
+ && ./ef-migrations.cmd Users.Service bundle --runtime linux-x64 --output ./artifacts/Users.Service.Migration.exe \
+ && ls -lha /src/artifacts
 
 FROM runtime AS migrations-app
 COPY --from=migrations-build /src/artifacts/*.Migration.exe /migrations/
