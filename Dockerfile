@@ -97,9 +97,11 @@ FROM dotnet-build AS migrations-build
 COPY ./ef-migrations.cmd ./ef-migrations.cmd
 # Build all 7 migration projects in parallel — each is own dotnet process.
 # Can't use slnf here: NETSDK1134 forbids --runtime on a solution file.
-# -P 2 caps concurrency (conservative — avoid OOM on 2-core/7GB runner).
+# No --no-restore: the global `./run-build.cmd restore` upstream doesn't include
+# linux-x64 RID, so each build must restore for its RID. NuGet cache is concurrent-safe.
+# -P 2 caps concurrency (conservative — avoid OOM on 2-core runner).
 RUN printf '%s\n' Chat.Service Contacts.Service Invite.Service Media.Service MLSearch.Service Notification.Service Users.Service \
-    | xargs -P 2 -I{} dotnet build --runtime linux-x64 --no-restore -nodeReuse:false "src/dotnet/{}.Migration/{}.Migration.csproj"
+    | xargs -P 2 -I{} dotnet build --runtime linux-x64 -nodeReuse:false "src/dotnet/{}.Migration/{}.Migration.csproj"
 # Bundle in parallel — each project writes its own artifacts/obj/*, safe concurrently
 RUN set -e; \
     pids=""; \
