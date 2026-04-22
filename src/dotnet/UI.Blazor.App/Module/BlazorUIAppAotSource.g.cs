@@ -330,7 +330,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ShareExternallyButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ShareLinkBadge>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ShareModal>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ShowVideoPanelToggle>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.StatusBadge>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.StopListeningCountdownButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.StreamingEntryBadge>();
@@ -990,7 +989,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ShareExternallyButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ShareLinkBadge), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ShareModal), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.ShowVideoPanelToggle), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.StatusBadge), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.StopListeningCountdownButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.StreamingEntryBadge), AotTypeKind.Component),

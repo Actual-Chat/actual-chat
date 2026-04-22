@@ -49,6 +49,17 @@
 
 <div @ref="Ref" class="video-panel @firstOpenCls @recordingCls @remoteStreamsCls @expandedCls @collapsedCls">
     <div class="c-container">
+        <HeaderButton
+            Class="@("video-panel-collapse-toggle" + (m.IsCollapsed ? "" : " btn-video-panel"))"
+            StopPropagation="true"
+            PreventDefault="true"
+            Click="@OnToggleCollapsed">
+            @if (m.IsCollapsed) {
+                <i class="icon-video-expand text-lg"></i>
+            } else {
+                <i class="icon-video-collapse text-lg"></i>
+            }
+        </HeaderButton>
         @* Header for expanded video *@
         <div class="video-panel-toolbar video-panel-header">
             <HeaderButton Class="btn-video-panel expand-btn show-with-delay expanded-video-btn" Click="@OnExpandClick">
@@ -176,6 +187,7 @@
     private bool _showConnecting;
     private bool _hadRemoteStreams;
     private bool _shouldStartClosing;
+    private bool _lastCollapsed;
     private VideoPanelLayoutCalculator? _layoutCalculator;
 
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
@@ -219,6 +231,13 @@
             JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
 
             _ = ClearFirstOpenAsync();
+        }
+
+        var isCollapsed = State.Value.IsCollapsed;
+        if (isCollapsed != _lastCollapsed) {
+            _lastCollapsed = isCollapsed;
+            if (JSRef is not null)
+                await JSRef.InvokeVoidAsync("updateIslandPosition");
         }
     }
 
@@ -377,6 +396,9 @@
         _isChatVisible = !(_isChatVisible ?? GetDefaultChatVisibility());
         StateHasChanged();
     }
+
+    private void OnToggleCollapsed()
+        => ChatVideoUI.SetVideoPanelCollapsed(!State.Value.IsCollapsed);
 
     private async Task OnExpandClick() {
         if (JSRef is not null)

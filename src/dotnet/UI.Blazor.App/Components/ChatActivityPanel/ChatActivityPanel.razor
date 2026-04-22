@@ -23,7 +23,6 @@
     var tooltip = isListening ? "Listening..." : "Listen";
     var cls = isListening ? " listening" : "";
     var joinButtonText = "Join muted";
-    var showVideoPanelToggle = m.IsAnyoneVideoStreaming || isOwnVideoStreaming;
 }
 
 <div @ref="Ref"
@@ -47,9 +46,6 @@
     }
     <div class="flex-1"></div>
     <div class="c-buttons">
-        @if (showVideoPanelToggle) {
-            <ShowVideoPanelToggle ChatId="@chat.Id"/>
-        }
         @if (!isListening && !isRecordingHere && !isOwnVideoStreaming) {
             <Button
                 Class="btn-sm btn-transparent unhovered not-listening"
