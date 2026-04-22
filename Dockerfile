@@ -34,7 +34,7 @@ RUN sed -i 's|http://archive.ubuntu.com|https://archive.ubuntu.com|g' /etc/apt/s
 
 WORKDIR /src
 COPY lib/ lib/
-COPY nuget.config Directory.Build.* Directory.Packages.props .editorconfig ActualChat.sln ./
+COPY nuget.config Directory.Build.* Directory.Packages.props .editorconfig ActualChat.sln ActualChat.Migrations.slnf ./
 COPY .config/ .config/
 # copy from {repoRoot}/src/dotnet/
 COPY src/dotnet/*/*.csproj ./
@@ -95,19 +95,17 @@ RUN dotnet publish --no-restore --nologo -c Release -nodeReuse:false -o /app ./s
 
 FROM dotnet-build AS migrations-build
 COPY ./ef-migrations.cmd ./ef-migrations.cmd
-# Fused build+bundle per project, 3 pipelines in parallel on 4-core runner.
-# Each worker writes to its own ArtifactsPath to avoid obj/bin file-lock contention
-# on shared deps (Core, Api, Backend, ...). Final bundle exes collected into
-# /src/artifacts via ef `--output`. NuGet package cache stays shared (safe).
-RUN mkdir -p /src/artifacts && \
-    printf '%s\n' Chat.Service Contacts.Service Invite.Service Media.Service MLSearch.Service Notification.Service Users.Service \
-    | xargs -P 3 -I{} sh -c ' \
-        set -e; \
-        m="$1"; \
-        export ArtifactsPath="/src/artifacts-$m"; \
-        dotnet build --runtime linux-x64 -nodeReuse:false "src/dotnet/$m.Migration/$m.Migration.csproj"; \
-        ./ef-migrations.cmd "$m" bundle --runtime linux-x64 --output "/src/artifacts/$m.Migration.exe"' _ {} \
-    && ls -lha /src/artifacts
+# Build all 7 migration projects in one MSBuild invocation — native -m parallelism
+RUN dotnet build ActualChat.Migrations.slnf --runtime linux-x64 --no-restore -nodeReuse:false
+# Bundle in parallel — each project writes to its own artifacts/obj/*, safe concurrently
+RUN set -e; \
+    pids=""; \
+    for m in Chat.Service Contacts.Service Invite.Service Media.Service MLSearch.Service Notification.Service Users.Service; do \
+      ./ef-migrations.cmd "$m" bundle --runtime linux-x64 --output "./artifacts/$m.Migration.exe" & \
+      pids="$pids $!"; \
+    done; \
+    fail=0; for p in $pids; do wait "$p" || fail=1; done; \
+    [ "$fail" = 0 ] && ls -lha /src/artifacts
 
 FROM runtime AS migrations-app
 COPY --from=migrations-build /src/artifacts/*.Migration.exe /migrations/
