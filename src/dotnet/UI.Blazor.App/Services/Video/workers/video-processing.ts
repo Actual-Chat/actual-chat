@@ -719,7 +719,9 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
             // frame should be displayed. If display orientation crosses the 90°
             // boundary (portrait ↔ landscape), swap encoder dims and reconfigure
             // downscaler so output aspect matches user's device orientation.
-            const rotDeg = frameRotation ?? 0;
+            // Fall back to senderRotationDeg when frame.rotation is null (Safari
+            // iOS MSTP): main thread derives it from screen.orientation.
+            const rotDeg = frameRotation ?? senderRotationDeg;
             const displayPortrait = rotDeg === 90 || rotDeg === 270;
             const encoderPortrait = encoderConfig.height > encoderConfig.width;
             if (displayPortrait !== encoderPortrait) {
