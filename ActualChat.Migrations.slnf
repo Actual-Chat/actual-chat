@@ -1,0 +1,14 @@
+{
+  "solution": {
+    "path": "ActualChat.sln",
+    "projects": [
+      "src\\dotnet\\Chat.Service.Migration\\Chat.Service.Migration.csproj",
+      "src\\dotnet\\Contacts.Service.Migration\\Contacts.Service.Migration.csproj",
+      "src\\dotnet\\Invite.Service.Migration\\Invite.Service.Migration.csproj",
+      "src\\dotnet\\Media.Service.Migration\\Media.Service.Migration.csproj",
+      "src\\dotnet\\MLSearch.Service.Migration\\MLSearch.Service.Migration.csproj",
+      "src\\dotnet\\Notification.Service.Migration\\Notification.Service.Migration.csproj",
+      "src\\dotnet\\Users.Service.Migration\\Users.Service.Migration.csproj"
+    ]
+  }
+}

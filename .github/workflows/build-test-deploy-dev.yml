@@ -289,10 +289,14 @@ jobs:
   integration-tests:
     name: Run Integration tests
     needs: [check-tested]
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [users, chat, mlsearch, core]
     uses: ./.github/workflows/_run-tests.yml
     with:
-      build-target: integration-tests
-      report-name: Integration tests results
+      build-target: integration-tests-${{ matrix.shard }}
+      report-name: Integration tests (${{ matrix.shard }})
       checkout-configs: true
       skip-tests: ${{ needs.check-tested.outputs.skip-tests == 'true' }}
     secrets: inherit
