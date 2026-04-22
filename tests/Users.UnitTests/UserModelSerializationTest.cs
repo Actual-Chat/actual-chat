@@ -195,13 +195,32 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         var settings = new LocalAppSettings {
             IsLogViewerEnabled = true,
         };
-        settings.AssertPassesThroughAllSerializers();
+        settings.AssertPassesThroughAllSerializers(AssertLocalAppSettingsEqual);
     }
 
     [Fact]
     public void LocalAppSettings_Default()
     {
         var settings = new LocalAppSettings();
-        settings.AssertPassesThroughAllSerializers();
+        settings.AssertPassesThroughAllSerializers(AssertLocalAppSettingsEqual);
+    }
+
+    [Fact]
+    public void LocalAppSettings_WithCameraMirrorOverrides()
+    {
+        var settings = new LocalAppSettings {
+            CameraMirrorOverrides = ApiMap<string, bool>.Empty
+                .With("cam-1", true)
+                .With("cam-2", false),
+        };
+        settings.AssertPassesThroughAllSerializers(AssertLocalAppSettingsEqual);
+    }
+
+    private static void AssertLocalAppSettingsEqual(LocalAppSettings actual, LocalAppSettings expected)
+    {
+        actual.IsLogViewerEnabled.Should().Be(expected.IsLogViewerEnabled);
+        actual.SelectedCameraDeviceId.Should().Be(expected.SelectedCameraDeviceId);
+        actual.IsBackgroundBlurEnabled.Should().Be(expected.IsBackgroundBlurEnabled);
+        actual.CameraMirrorOverrides.Should().BeEquivalentTo(expected.CameraMirrorOverrides);
     }
 }
