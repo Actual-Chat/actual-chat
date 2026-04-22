@@ -29,6 +29,10 @@ internal static class Program
         public const string GenerateVersion = "generate-version";
         public const string GenerateCISolutionFilter = "slnf";
         public const string IntegrationTests = "integration-tests";
+        public const string IntegrationTestsUsers = "integration-tests-users";
+        public const string IntegrationTestsChat = "integration-tests-chat";
+        public const string IntegrationTestsMLSearch = "integration-tests-mlsearch";
+        public const string IntegrationTestsCore = "integration-tests-core";
         public const string SlowTests = "slow-tests";
         public const string NightlyTests = "nightly-tests";
         public const string CleanTests = "clean-tests";
@@ -251,6 +255,20 @@ internal static class Program
         Target(Targets.UnitTests, () => RunTests("FullyQualifiedName~UnitTests", 15 * 60));
 
         Target(Targets.IntegrationTests,  () => RunTests("FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.PlaywrightTests&Category!~Slow&Category!~Nightly", 5 * 60));
+
+        const string integrationTestsCommonTail = "&FullyQualifiedName!~UI.Blazor.PlaywrightTests&Category!~Slow&Category!~Nightly";
+        Target(Targets.IntegrationTestsUsers,    () => RunTests(
+            "FullyQualifiedName~Users.IntegrationTests" + integrationTestsCommonTail, 5 * 60));
+        Target(Targets.IntegrationTestsChat,     () => RunTests(
+            "FullyQualifiedName~Chat.IntegrationTests&FullyQualifiedName!~Chat.UI.Blazor" + integrationTestsCommonTail, 5 * 60));
+        Target(Targets.IntegrationTestsMLSearch, () => RunTests(
+            "FullyQualifiedName~MLSearch.IntegrationTests" + integrationTestsCommonTail, 10 * 60));
+        Target(Targets.IntegrationTestsCore,     () => RunTests(
+            "FullyQualifiedName~IntegrationTests"
+            + "&FullyQualifiedName!~Users.IntegrationTests"
+            + "&FullyQualifiedName!~Chat.IntegrationTests"
+            + "&FullyQualifiedName!~MLSearch.IntegrationTests"
+            + integrationTestsCommonTail, 5 * 60));
 
         Target(Targets.SlowTests,  () => RunTests("FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.PlaywrightTests&Category~Slow", 30 * 60));
 

@@ -34,7 +34,7 @@ RUN sed -i 's|http://archive.ubuntu.com|https://archive.ubuntu.com|g' /etc/apt/s
 
 WORKDIR /src
 COPY lib/ lib/
-COPY nuget.config Directory.Build.* Directory.Packages.props .editorconfig ActualChat.sln ./
+COPY nuget.config Directory.Build.* Directory.Packages.props .editorconfig ActualChat.sln ActualChat.Migrations.slnf ./
 COPY .config/ .config/
 # copy from {repoRoot}/src/dotnet/
 COPY src/dotnet/*/*.csproj ./
@@ -50,7 +50,8 @@ COPY build/ build/
 COPY run-build.cmd .
 
 RUN dotnet workload install wasm-tools aspire \
-    && ./run-build.cmd restore
+    && ./run-build.cmd restore \
+    && dotnet tool restore
 
 # node:20-alpine because it's [cached on gh actions VM](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2204-Readme.md#cached-docker-images)
 FROM node:20-alpine AS nodejs-restore
@@ -94,22 +95,17 @@ RUN dotnet publish --no-restore --nologo -c Release -nodeReuse:false -o /app ./s
 
 FROM dotnet-build AS migrations-build
 COPY ./ef-migrations.cmd ./ef-migrations.cmd
-RUN dotnet tool restore
-RUN dotnet build --runtime linux-x64 src/dotnet/Chat.Service.Migration/Chat.Service.Migration.csproj \
-    && dotnet build --runtime linux-x64 src/dotnet/Contacts.Service.Migration/Contacts.Service.Migration.csproj \
-    && dotnet build --runtime linux-x64 src/dotnet/Invite.Service.Migration/Invite.Service.Migration.csproj \
-    && dotnet build --runtime linux-x64 src/dotnet/Media.Service.Migration/Media.Service.Migration.csproj \
-    && dotnet build --runtime linux-x64 src/dotnet/MLSearch.Service.Migration/MLSearch.Service.Migration.csproj \
-    && dotnet build --runtime linux-x64 src/dotnet/Notification.Service.Migration/Notification.Service.Migration.csproj \
-    && dotnet build --runtime linux-x64 src/dotnet/Users.Service.Migration/Users.Service.Migration.csproj
-RUN ./ef-migrations.cmd Chat.Service bundle --runtime linux-x64 --output ./artifacts/Chat.Service.Migration.exe \
-    && ./ef-migrations.cmd Contacts.Service bundle --runtime linux-x64 --output ./artifacts/Contacts.Service.Migration.exe \
-    && ./ef-migrations.cmd Invite.Service bundle --runtime linux-x64 --output ./artifacts/Invite.Service.Migration.exe \
-    && ./ef-migrations.cmd Media.Service bundle --runtime linux-x64 --output ./artifacts/Media.Service.Migration.exe \
-    && ./ef-migrations.cmd MLSearch.Service bundle --runtime linux-x64 --output ./artifacts/MLSearch.Service.Migration.exe \
-    && ./ef-migrations.cmd Notification.Service bundle --runtime linux-x64 --output ./artifacts/Notification.Service.Migration.exe \
-    && ./ef-migrations.cmd Users.Service bundle --runtime linux-x64 --output ./artifacts/Users.Service.Migration.exe \
-    && ls -lha /src/artifacts
+# Build all 7 migration projects in one MSBuild invocation — native -m parallelism
+RUN dotnet build ActualChat.Migrations.slnf --runtime linux-x64 --no-restore -nodeReuse:false
+# Bundle in parallel — each project writes to its own artifacts/obj/*, safe concurrently
+RUN set -e; \
+    pids=""; \
+    for m in Chat.Service Contacts.Service Invite.Service Media.Service MLSearch.Service Notification.Service Users.Service; do \
+      ./ef-migrations.cmd "$m" bundle --runtime linux-x64 --output "./artifacts/$m.Migration.exe" & \
+      pids="$pids $!"; \
+    done; \
+    fail=0; for p in $pids; do wait "$p" || fail=1; done; \
+    [ "$fail" = 0 ] && ls -lha /src/artifacts
 
 FROM runtime AS migrations-app
 COPY --from=migrations-build /src/artifacts/*.Migration.exe /migrations/
