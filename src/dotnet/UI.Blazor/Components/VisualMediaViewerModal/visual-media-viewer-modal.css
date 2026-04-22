@@ -150,12 +150,12 @@ swiper-container::part(button-prev) {
     @apply max-h-full;
 }
 .video-wrapper .video-control {
-    @apply absolute z-10 left-0 right-0;
+    @apply absolute z-10 left-0 right-0 bottom-0;
     @apply flex-y items-center gap-x-2;
     @apply bg-black;
-    bottom: calc(var(--safe-area-bottom) + 1rem);
     padding-left: calc(1rem + var(--safe-area-left));
     padding-right: calc(1rem + var(--safe-area-right));
+    padding-bottom: calc(var(--safe-area-bottom) + 1rem);
     transition: opacity 300ms ease-in-out 150ms;
 }
 .video-wrapper .video-control.hide-control {
