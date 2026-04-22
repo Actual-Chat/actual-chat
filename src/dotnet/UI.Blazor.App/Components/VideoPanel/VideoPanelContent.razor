@@ -143,7 +143,9 @@
                         Class="pip-overlay" />
                 }
             }
-            <VideoStreamingPreview ChatId="@ChatId" Class="@(layout.OwnStreamingPreviewClass)" />
+            @if (isOwnCameraStreaming) {
+                <VideoStreamingPreview ChatId="@ChatId" Class="@(layout.OwnStreamingPreviewClass)" />
+            }
             @if (m.AllowDiagnostics) {
                 <HeaderButton Class="btn-video-panel btn-diagnostics collapsed-video-btn" Tooltip="Diagnostics" Click="@OnDiagnosticsClick">
                     <i class="icon-activity text-lg"></i>
