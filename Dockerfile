@@ -102,15 +102,12 @@ COPY ./ef-migrations.cmd ./ef-migrations.cmd
 # -P 2 caps concurrency (conservative — avoid OOM on 2-core runner).
 RUN printf '%s\n' Chat.Service Contacts.Service Invite.Service Media.Service MLSearch.Service Notification.Service Users.Service \
     | xargs -P 2 -I{} dotnet build --runtime linux-x64 -nodeReuse:false "src/dotnet/{}.Migration/{}.Migration.csproj"
-# Bundle in parallel — each project writes its own artifacts/obj/*, safe concurrently
-RUN set -e; \
-    pids=""; \
-    for m in Chat.Service Contacts.Service Invite.Service Media.Service MLSearch.Service Notification.Service Users.Service; do \
-      ./ef-migrations.cmd "$m" bundle --runtime linux-x64 --output "./artifacts/$m.Migration.exe" & \
-      pids="$pids $!"; \
-    done; \
-    fail=0; for p in $pids; do wait "$p" || fail=1; done; \
-    [ "$fail" = 0 ] && ls -lha /src/artifacts
+# Bundle in parallel — each project writes own artifacts/obj/*, safe concurrently.
+# -P 2 cap: 7 concurrent `dotnet ef bundle` (each an internal dotnet publish)
+# thrashes 2-core runner; 2-at-a-time wins without OOM.
+RUN printf '%s\n' Chat.Service Contacts.Service Invite.Service Media.Service MLSearch.Service Notification.Service Users.Service \
+    | xargs -P 2 -I{} sh -c './ef-migrations.cmd "$1" bundle --runtime linux-x64 --output "./artifacts/$1.Migration.exe"' _ {} \
+    && ls -lha /src/artifacts
 
 FROM runtime AS migrations-app
 COPY --from=migrations-build /src/artifacts/*.Migration.exe /migrations/
