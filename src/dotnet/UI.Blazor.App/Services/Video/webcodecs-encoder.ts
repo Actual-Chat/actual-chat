@@ -54,6 +54,9 @@ export interface EncodedChunkData {
   byteLength: number;
   sequenceNumber: number; // Added for chunk ordering to prevent out-of-order delivery issues
   temporalLayerId?: number; // SVC temporal layer: 0 = base, 1+ = enhancement
+  // Simulcast spatial layer: 0 = base (lowest-res) layer, 1+ = higher-res layers.
+  // Always 0 for single-encoder (P2P) streams; set by encoder instance in multi-encoder mode.
+  spatialLayerId?: number;
 }
 
 export interface EncoderStats {
@@ -85,11 +88,19 @@ export class WebCodecsEncoder {
     private pureEncodeTimeHistory = new Denque<number>(); // Times when queue was 0 at start (actual codec cost)
     private chunkSequence = 0; // Track chunk sequence for proper ordering
 
+    // Simulcast spatial layer ID this encoder instance is producing. 0 = base
+    // (lowest-res) layer, 1+ = higher-res simulcast layers. Stamped onto every
+    // chunk emitted by this instance. Defaults to 0 — single-encoder pipelines
+    // (P2P, screencast, non-simulcast recordings) leave it at 0.
+    private readonly spatialLayerId: number;
+
     constructor(
     private config: EncoderConfig,
     private onChunk: (chunk: EncodedChunkData) => void,
-    private onError: (error: Error) => void
+    private onError: (error: Error) => void,
+    spatialLayerId = 0,
     ) {
+        this.spatialLayerId = spatialLayerId;
         this.encoder = this.createEncoder();
     }
 
@@ -248,6 +259,7 @@ export class WebCodecsEncoder {
                     byteLength: chunk.byteLength,
                     sequenceNumber: this.chunkSequence++,
                     temporalLayerId: extractTemporalLayerId(metadata),
+                    spatialLayerId: this.spatialLayerId,
                 };
 
                 this.totalBytes += chunk.byteLength;
