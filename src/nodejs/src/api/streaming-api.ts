@@ -42,6 +42,10 @@ export interface VideoFrameDto {
     Description?: Uint8Array | null;
     Codec?: string | null;
     TemporalLayerId?: number;
+    // Native source dimensions, keyframe only. Lets server track source-resolution
+    // growth (e.g. screencast window resize) and unlock higher quality tiers mid-stream.
+    SourceWidth?: number;
+    SourceHeight?: number;
 }
 
 // --- VideoFormat TypeScript interface ---

@@ -59,6 +59,13 @@ const CATCHUP_GENTLE_MS = 300;        // Start gentle 1.05x catch-up
 const CATCHUP_AGGRESSIVE_MS = 1000;   // Increase to 1.15x catch-up
 const DROP_TO_KEYFRAME_MS = 2000;     // Drop non-keyframes from buffer, advance to next keyframe
 
+// Late-join catchup: when the rendered frame is much older than the newest
+// arrived frame (receiver joined mid-stream, or the sender went through a
+// static gap), jump playback forward to the latest buffered frame instead of
+// waiting for the ~1x consume rate to catch up. Threshold chosen above typical
+// jitter + one heartbeat interval (1s) so we don't thrash on normal playback.
+const LATE_JOIN_GAP_MS = 1500;
+
 // Decode performance thresholds — if exceeded on consecutive ticks, trigger quality reduction / codec exclusion
 const SLOW_DECODE_TIME_THRESHOLD_MS = 100; // 3x the 33ms/frame budget at 30fps
 const SLOW_DECODE_QUEUE_THRESHOLD = 10;    // Normal is 0-1; 10+ means decoder is ~300ms behind
@@ -760,6 +767,29 @@ export class VideoPlayer {
             // Adaptive catch-up: measure buffer depth and adjust playback rate
             let newRate = 1.0;
             let bufferSpanMs = 0;
+
+            // Late-join catchup (screencast-friendly): compare the rendered frame's
+            // offset against the newest arrived frame. Buffer-span alone doesn't
+            // catch this — on sparse heartbeat streams (1 fps static screen) the
+            // buffer never accumulates even when we're 2s behind live because
+            // frames arrive and get consumed at matched cadence. The gap between
+            // rendered and arrived is the real signal.
+            const liveGapMs = this.lastArrivedOffsetMs - this.lastRenderedOffsetMs;
+            if (liveGapMs > LATE_JOIN_GAP_MS
+                && this.pendingFrames.length > 0
+                && (now - this.lastSeekTime) > this.seekCooldownMs) {
+                const latestTimestamp = this.pendingFrames[this.pendingFrames.length - 1].timestamp;
+                this.playbackStartTime = now;
+                this.firstFrameTimestamp = latestTimestamp;
+                this.playbackRate = 1.0;
+                this.lastSeekTime = now;
+                warnLog?.log(
+                    `Late-join catchup: jumped to live edge, ` +
+                    `lastArrivedMs=${this.lastArrivedOffsetMs.toFixed(0)}, ` +
+                    `lastRenderedMs=${this.lastRenderedOffsetMs.toFixed(0)}, ` +
+                    `gapMs=${liveGapMs.toFixed(0)}`);
+            }
+
             if (this.pendingFrames.length >= 2) {
                 bufferSpanMs = (this.pendingFrames[this.pendingFrames.length - 1].timestamp
                     - this.pendingFrames[0].timestamp) / 1000;

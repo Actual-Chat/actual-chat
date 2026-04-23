@@ -32,6 +32,12 @@ public sealed class StreamLatencyStore(IServiceProvider services)
             state.RecordFrameBytes(byteCount);
     }
 
+    public void UpdateMaxQuality(StreamId streamId, int sourceWidth, int sourceHeight)
+    {
+        if (LatencyStates.TryGetValue(streamId, out var state))
+            state.UpdateMaxQuality(sourceWidth, sourceHeight);
+    }
+
     public void OnStreamExpire(StreamId streamId)
     {
         LatencyStates.TryRemove(streamId, out _);
@@ -188,9 +194,27 @@ public sealed class StreamLatencyStore(IServiceProvider services)
         private static readonly long FullPixelThreshold = (long)(1920 * 1080 * 0.9);    // ~1.87M
         private static readonly long HighPixelThreshold = (long)(1280 * 720 * 0.9);     // ~0.83M
         private static readonly long MediumPixelThreshold = (long)(960 * 540 * 0.9);    // ~0.47M
-        private readonly VideoQualityLevel _maxQuality =
+        // Mutable — UpdateMaxQuality raises the ceiling mid-stream when keyframes
+        // report larger source dims (e.g. screencast window resized to full-screen 4K).
+        // Note on monotonicity: only promoted upward. We don't lower the ceiling if the
+        // source later shrinks — that would risk oscillation (window resize events can
+        // be bursty) and the encoder can always be asked to produce smaller than its
+        // ceiling. Quality adaptation still steps down based on latency independently.
+        private VideoQualityLevel _maxQuality =
             ComputeMaxQuality(format.SourceWidth > 0 ? format.SourceWidth : format.Width,
                               format.SourceHeight > 0 ? format.SourceHeight : format.Height);
+
+        public void UpdateMaxQuality(int sourceWidth, int sourceHeight)
+        {
+            var newMax = ComputeMaxQuality(sourceWidth, sourceHeight);
+            if (newMax < _maxQuality) { // lower enum value = higher quality
+                var oldMax = _maxQuality;
+                _maxQuality = newMax;
+                Log.LogInformation(
+                    "UpdateMaxQuality: raised ceiling {OldMax} -> {NewMax} on source {W}x{H}",
+                    oldMax, newMax, sourceWidth, sourceHeight);
+            }
+        }
 
         private static VideoQualityLevel ComputeMaxQuality(int width, int height)
         {

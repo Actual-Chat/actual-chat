@@ -231,8 +231,14 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                 await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                     watchdogCts.CancelAfter(silenceTimeout);
 
-                    if (frame.IsKeyFrame)
+                    if (frame.IsKeyFrame) {
                         keyFrameNumber++;
+                        // Keyframes carry current source dimensions — lets the server
+                        // track mid-stream source growth (e.g. screencast window resize)
+                        // and unlock the matching quality-preset ceiling.
+                        if (frame.SourceWidth > 0 && frame.SourceHeight > 0)
+                            LatencyStore.UpdateMaxQuality(record.StreamId, frame.SourceWidth, frame.SourceHeight);
+                    }
                     frame.KeyFrameNumber = keyFrameNumber;
 
                     // Track throughput for quality adaptation (same node, direct call)

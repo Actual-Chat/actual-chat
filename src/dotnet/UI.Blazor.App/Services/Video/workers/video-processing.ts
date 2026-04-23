@@ -608,6 +608,10 @@ function deliverChunkToStream(
         width: encoderConfig!.width, height: encoderConfig!.height,
         data: chunkData, codec: isKeyFrame ? codec : undefined,
         temporalLayerId: temporalLayerId,
+        // Source dims piggybacked on keyframes only — server uses them to
+        // recompute its max-quality ceiling when the window is resized mid-stream.
+        sourceWidth: isKeyFrame ? sourceWidth : undefined,
+        sourceHeight: isKeyFrame ? sourceHeight : undefined,
     };
 
     if (isKeyFrame) {
@@ -710,9 +714,6 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
                 const frameH = rawFrame.displayHeight;
                 const codedW = rawFrame.codedWidth;
                 const codedH = rawFrame.codedHeight;
-                // Capture source dimensions once — used for server PushVideo format so
-                // the server knows the real upscale headroom (e.g. 4K screencast with
-                // encoder initially configured at 1080p).
                 sourceWidth = frameW;
                 sourceHeight = frameH;
                 warnLog?.log(`DIMENSIONS: display=${frameW}x${frameH}, coded=${codedW}x${codedH}, config=${encoderConfig.width}x${encoderConfig.height}, rotation=${frameRotation ?? 'N/A'}`);
@@ -761,6 +762,13 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
             } else if (orientationStats) {
                 orientationStats.framesSeen++;
                 orientationStats.lastRotation = frameRotation;
+                // Track running max source dimensions so window resize / camera swap
+                // that grows the source is visible to the server via subsequent
+                // keyframes (see enqueueStreamingFrame — source dims attached on KF).
+                const currentW = rawFrame.displayWidth;
+                const currentH = rawFrame.displayHeight;
+                if (currentW > sourceWidth) sourceWidth = currentW;
+                if (currentH > sourceHeight) sourceHeight = currentH;
             }
 
             // Sensor is physically landscape; VideoFrame.rotation tells us how the

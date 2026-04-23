@@ -29,6 +29,11 @@ export interface VideoStreamFrame {
     description?: Uint8Array;
     codec?: string;
     temporalLayerId?: number;
+    // Native source dimensions, populated on keyframes only. Sent to server so
+    // it can track source-resolution growth (window resize, camera swap) and
+    // unlock higher quality presets mid-stream without a full stream restart.
+    sourceWidth?: number;
+    sourceHeight?: number;
 }
 
 export function microsecondsToTicks(microseconds: number): number {
@@ -67,6 +72,10 @@ function frameToDto(frame: VideoStreamFrame): VideoFrameDto {
     if (frame.isKeyFrame) {
         dto.Width = frame.width;
         dto.Height = frame.height;
+        if (frame.sourceWidth && frame.sourceHeight) {
+            dto.SourceWidth = frame.sourceWidth;
+            dto.SourceHeight = frame.sourceHeight;
+        }
     }
     if (frame.description) dto.Description = frame.description;
     if (frame.codec) dto.Codec = frame.codec;

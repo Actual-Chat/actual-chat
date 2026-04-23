@@ -48,6 +48,19 @@ public partial class VideoFrame : MediaFrame
     public int TemporalLayerId { get; init; }
 
     /// <summary>
+    /// Native capture source dimensions (pre-downscale). Sent on keyframes only —
+    /// lets the server track live source resolution changes (e.g. a screencast
+    /// window resized from 1280x768 to full-screen 4K) and unlock the matching
+    /// quality-preset ceiling. Zero when the sender doesn't populate them
+    /// (legacy peers, non-keyframe deltas).
+    /// </summary>
+    [DataMember(Order = 9), MemoryPackOrder(9)]
+    public int SourceWidth { get; init; }
+
+    [DataMember(Order = 10), MemoryPackOrder(10)]
+    public int SourceHeight { get; init; }
+
+    /// <summary>
     /// Monotonically increasing keyframe sequence number. Assigned server-side in ProcessFrames.
     /// Incremented on each keyframe; non-keyframes inherit the current value.
     /// Used for gap detection when frames are dropped by bounded replay channels.
