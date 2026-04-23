@@ -62,10 +62,17 @@
         </HeaderButton>
         @* Header for expanded video *@
         <div class="video-panel-toolbar video-panel-header">
-            <HeaderButton Class="btn-video-panel expand-btn show-with-delay expanded-video-btn" Click="@OnExpandClick">
-                <i class="icon-expand text-lg collapsed-video-panel"></i>
-                <i class="icon-collapse text-lg expanded-video-panel"></i>
-            </HeaderButton>
+            <div class="c-left">
+                <HeaderButton Class="btn-video-panel expand-btn show-with-delay" Click="@OnExpandClick">
+                    <i class="icon-expand text-lg collapsed-video-panel"></i>
+                    <i class="icon-collapse text-lg expanded-video-panel"></i>
+                </HeaderButton>
+                @if (m.AllowDiagnostics) {
+                    <HeaderButton Tooltip="Diagnostics" Click="@OnDiagnosticsClick" Class="btn-video-panel btn-diagnostics">
+                        <i class="icon-activity text-lg"></i>
+                    </HeaderButton>
+                }
+            </div>
 
             @if (m.VideoStreamMemberCount > 0 || !string.IsNullOrEmpty(m.FocusedParticipantName)) {
                 <div class="c-center">
@@ -78,14 +85,16 @@
                 </div>
             }
 
-            <HeaderButton
-                Class="btn-video-panel talking"
-                StopPropagation="true"
-                PreventDefault="true"
-                Click="@OnHangUpClick"
-                TooltipPosition="FloatingPosition.Bottom">
-                <i class="icon-phone-off"></i>
-            </HeaderButton>
+            <div class="c-right">
+                <HeaderButton
+                    Class="btn-video-panel talking"
+                    StopPropagation="true"
+                    PreventDefault="true"
+                    Click="@OnHangUpClick"
+                    TooltipPosition="FloatingPosition.Bottom">
+                    <i class="icon-phone-off"></i>
+                </HeaderButton>
+            </div>
         </div>
 
         @* Footer for mobile full-screen video *@
@@ -119,11 +128,6 @@
             <HeaderButton Click="@OnVideoSettingsClick" Class="btn-video-panel settings-btn">
                 <i class="icon-settings text-lg"></i>
             </HeaderButton>
-            @if (m.AllowDiagnostics) {
-                <HeaderButton Tooltip="Diagnostics" Click="@OnDiagnosticsClick" Class="btn-video-panel btn-diagnostics">
-                    <i class="icon-activity text-lg"></i>
-                </HeaderButton>
-            }
             @if (!ScreenSize.IsNarrow()) {
                 <HeaderButton Click="@OnToggleChatVisibilityClick" Class="@("btn-video-panel chat-btn " + chatBtnCls)">
                     <i class="icon-message-ellipse text-lg"></i>
@@ -157,15 +161,6 @@
             @if (isOwnStreaming) {
                 <VideoStreamingPreview ChatId="@ChatId" Class="@(layout.OwnStreamingPreviewClass)" />
             }
-            @if (m.AllowDiagnostics) {
-                <HeaderButton Class="btn-video-panel btn-diagnostics collapsed-video-btn" Tooltip="Diagnostics" Click="@OnDiagnosticsClick">
-                    <i class="icon-activity text-lg"></i>
-                </HeaderButton>
-            }
-            <HeaderButton Class="btn-video-panel expand-btn show-with-delay collapsed-video-btn" Click="@OnExpandClick">
-                <i class="icon-expand text-lg collapsed-video-panel"></i>
-                <i class="icon-collapse text-lg expanded-video-panel"></i>
-            </HeaderButton>
         </div>
         @if (_isExpanded && isChatVisible && !ScreenSize.IsNarrow() && _lastChat is { } chat) {
             <div class="video-panel-chat upload-drag-drop-host">

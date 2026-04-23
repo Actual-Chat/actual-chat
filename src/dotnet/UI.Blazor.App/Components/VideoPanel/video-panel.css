@@ -196,17 +196,6 @@ body.wide .video-panel.expanded:has(.video-panel-chat) > .c-container {
     @apply hidden;
 }
 
-.video-panel .btn-h.expand-btn {
-    @apply absolute top-2 left-2 z-10;
-}
-.video-panel .btn-h.btn-diagnostics.collapsed-video-btn {
-    @apply absolute top-2 z-10;
-    left: 3.75rem;
-}
-.video-panel .btn-h.expand-btn.expanded-video-btn {
-    @apply inset-auto;
-    @apply relative;
-}
 .video-panel .expanded-video-panel {
     @apply hidden;
 }
@@ -218,19 +207,33 @@ body.wide .video-panel.expanded:has(.video-panel-chat) > .c-container {
 }
 .video-panel .video-panel-toolbar {
     @apply absolute z-[1000];
-    @apply hidden;
     @apply px-4;
 }
+.video-panel .video-panel-footer {
+    @apply hidden;
+}
 .video-panel .video-panel-header {
-    @apply pt-4;
+    @apply flex-x items-center justify-between;
+    @apply left-0 top-0;
+    @apply pt-2 px-2;
+}
+.video-panel .video-panel-header .c-left,
+.video-panel .video-panel-header .c-right {
+    @apply flex-x items-center gap-2;
+}
+.video-panel:not(.expanded) .video-panel-header .c-right,
+.video-panel:not(.expanded) .video-panel-header .c-center {
+    @apply hidden;
 }
 .video-panel .video-panel-header .c-center {
+    @apply absolute left-1/2 -translate-x-1/2;
     @apply flex-y items-center justify-center;
     @apply min-h-12 max-w-48;
     @apply px-8 py-1;
     @apply rounded-none;
     @apply text-caption-1 text-white;
     @apply overflow-hidden;
+    @apply pointer-events-none;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.60);
     background: linear-gradient(
         90deg,
@@ -283,6 +286,7 @@ body.wide .video-panel.expanded .video-panel-footer {
     @apply pointer-events-none;
 }
 .video-panel.expanded .video-panel-header {
+    @apply pt-4 px-4;
     top: var(--vp-safe-top);
 }
 body.device-mobile.narrow .video-panel.expanded .video-panel-header {
@@ -405,9 +409,6 @@ body.hoverable .btn-h.expand-btn:hover {
 }
 .video-panel .show-with-delay.show {
     @apply visible;
-}
-.video-panel.expanded .collapsed-video-btn {
-    @apply hidden;
 }
 
 /* ── Item-based layout ── */
