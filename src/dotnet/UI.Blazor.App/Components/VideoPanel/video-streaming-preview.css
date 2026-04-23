@@ -8,6 +8,10 @@ body.wide .video-panel.expanded .video-streaming-preview .call-video {
 .video-streaming-preview .call-video.no-mirror {
     transform: none;
 }
+/* Screencast preview: show whole screen with letterboxing instead of cropping. */
+.video-streaming-preview.screencast .call-video {
+    @apply object-contain;
+}
 .video-streaming-preview .btn-h.btn-settings {
     @apply absolute top-2 right-2 z-button;
 }

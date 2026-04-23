@@ -42,6 +42,19 @@ export class CanvasVideoRenderer {
         this.videoEl.muted = true;
         this.videoEl.playsInline = true;
         this.videoEl.autoplay = true;
+        // Attach off-screen to the DOM. Chromium's `requestVideoFrameCallback`
+        // does not reliably fire for `getDisplayMedia` tracks attached to a
+        // detached video element — a static screen produces zero frames and
+        // the canvas never renders. Placing the element in the DOM (visually
+        // hidden) fixes this without affecting webcam rendering.
+        this.videoEl.style.position = 'absolute';
+        this.videoEl.style.width = '1px';
+        this.videoEl.style.height = '1px';
+        this.videoEl.style.opacity = '0';
+        this.videoEl.style.pointerEvents = 'none';
+        this.videoEl.style.left = '-9999px';
+        this.videoEl.style.top = '-9999px';
+        document.body.appendChild(this.videoEl);
     }
 
     /** Attach a track and start the render loop. Replaces any previous track. */
@@ -70,6 +83,7 @@ export class CanvasVideoRenderer {
 
     dispose(): void {
         this.stop();
+        this.videoEl.remove();
     }
 
     private scheduleFrame(): void {

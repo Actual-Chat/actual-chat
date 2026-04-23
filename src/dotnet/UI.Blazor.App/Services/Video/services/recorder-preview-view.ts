@@ -35,8 +35,10 @@ export interface RecorderPreviewViewOptions {
     bgCanvas?: HTMLCanvasElement;
     /** Unique per-instance key for fastRaf scheduling. */
     rafKey: string;
-    /** Which recorder kind to follow. Defaults to webcam (0). */
-    streamKind?: number;
+    /** Which recorder kinds to follow, in priority order. First available wins.
+     *  Defaults to [0] (webcam only). Pass [0, 1] to prefer webcam and fall
+     *  back to screencast when no webcam is recording. */
+    streamKinds?: number[];
     /** Called when we attach to a recorder with a live preview track. */
     onAttach?: (recorder: VideoRecorder) => void;
     /** Called when we detach (track gone, recorder gone). */
@@ -52,7 +54,7 @@ export class RecorderPreviewView {
     private readonly canvasTarget: CanvasTarget;
     private readonly bgCanvasTarget: CanvasTarget | null;
     private readonly bgContainer: HTMLElement | null;
-    private readonly streamKind: number;
+    private readonly streamKinds: number[];
     private lastBgDrawTime = 0;
 
     private renderer: CanvasVideoRenderer | null = null;
@@ -85,17 +87,26 @@ export class RecorderPreviewView {
         this.canvasTarget = new CanvasTarget(options.canvas);
         this.bgCanvasTarget = options.bgCanvas ? new CanvasTarget(options.bgCanvas, false, BG_FILTER) : null;
         this.bgContainer = options.bgCanvas?.parentElement ?? null;
-        this.streamKind = options.streamKind ?? 0;
+        this.streamKinds = options.streamKinds ?? [0];
 
         // Subscribe to recorder register/unregister events and immediately
         // reconcile with whatever recorder is already active (common case:
         // the recorder registers synchronously in its constructor, before
         // this view is even constructed).
-        this.unsubscribeRegistry = addActiveRecorderListener((recorder, kind) => {
-            if (kind !== this.streamKind) return;
-            this.followRecorder(recorder);
+        this.unsubscribeRegistry = addActiveRecorderListener((_recorder, kind) => {
+            if (!this.streamKinds.includes(kind)) return;
+            this.followRecorder(this.pickRecorder());
         });
-        this.followRecorder(getActiveRecorder(this.streamKind));
+        this.followRecorder(this.pickRecorder());
+    }
+
+    // Return the highest-priority recorder currently active among streamKinds.
+    private pickRecorder(): VideoRecorder | null {
+        for (const k of this.streamKinds) {
+            const r = getActiveRecorder(k);
+            if (r) return r;
+        }
+        return null;
     }
 
     /** True when currently attached to a recorder with a live track. */

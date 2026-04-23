@@ -90,11 +90,14 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
     protected virtual async Task<LayoutInputs> GetLayoutInputs(CancellationToken cancellationToken)
     {
         var focusedIds = await _focusedSpeakerIds.Use(cancellationToken).ConfigureAwait(false);
-        // Own-preview slot reflects the webcam only — screencast has no self-preview.
+        // Own-preview slot reflects any local source — webcam when active, else
+        // screencast. VideoStreamingPreview picks the actual source per streamKind.
         var isOwnRecording = await ChatVideoUI.IsOwnRecording(ChatId, cancellationToken).ConfigureAwait(false);
+        var isOwnScreencasting = await ChatVideoUI.IsOwnScreencasting(ChatId, cancellationToken).ConfigureAwait(false);
+        var hasOwnPreview = isOwnRecording || isOwnScreencasting;
         var remoteStreams = await ChatVideoUI.GetRemoteStreams(ChatId, cancellationToken).ConfigureAwait(false);
         var screenSize = await Hub.BrowserInfo.ScreenSize.Use(cancellationToken).ConfigureAwait(false);
-        return new LayoutInputs(screenSize.IsNarrow(), isOwnRecording, remoteStreams, focusedIds);
+        return new LayoutInputs(screenSize.IsNarrow(), hasOwnPreview, remoteStreams, focusedIds);
     }
 
     // Private methods

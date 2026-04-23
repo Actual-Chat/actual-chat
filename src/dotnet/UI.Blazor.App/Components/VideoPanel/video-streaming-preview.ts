@@ -18,6 +18,9 @@ export class VideoStreamingPreview {
             canvas,
             bgCanvas,
             rafKey: 'video-streaming-preview',
+            // Prefer webcam (0); fall back to screencast (1) so the slot shows
+            // the shared screen when the user is only screencasting.
+            streamKinds: [0, 1],
             onFirstFrame: () => {
                 this.element.classList.add('has-video');
             },

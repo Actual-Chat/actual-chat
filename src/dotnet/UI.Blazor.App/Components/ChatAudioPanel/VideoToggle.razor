@@ -1,5 +1,4 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using ActualChat.Streaming
 @inherits ComputedStateComponent<AppUIHub, bool>
 @{
     var isVideoOn = State.Value;
@@ -35,16 +34,13 @@
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
         var chatId = chat.Id;
-
-        var ownStreamKind = await ChatVideoUI.GetOwnStreamKind(chatId, cancellationToken).ConfigureAwait(false);
-        var isOwnCameraStreaming = ownStreamKind == StreamKind.Webcam;
-        return isOwnCameraStreaming;
+        return await ChatVideoUI.IsOwnRecording(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     private void OnVideoClick(bool enable) {
         if (!enable) {
-            // Recording → stop
-            ChatVideoUI.StopStreaming();
+            // Stop webcam only — screencast (if any) keeps running
+            ChatVideoUI.StopRecording();
         } else if (ChatVideoUI.HasJoinedVideoCall(Chat.Id)) {
             // Previously recorded this session → resume without modal
             ChatVideoUI.ResumeVideoStreaming(Chat.Id);
