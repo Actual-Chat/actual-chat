@@ -1,6 +1,19 @@
 import { fromEvent, Subject, takeUntil, filter } from 'rxjs';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 
+// Inline drag constants
+const INLINE_FULL_HEIGHT_REM = 12; // body.narrow min-h-48 max-h-48
+const STRIP_HEIGHT_REM = 1;
+
+function getRemSize(): number {
+    return parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+}
+
+function vibrate(): void {
+    if ('vibrate' in navigator)
+        navigator.vibrate(10);
+}
+
 const MIN_SCALE = 1;
 const MAX_SCALE_MOBILE = 4;
 const MAX_SCALE_DESKTOP = 2;
@@ -69,6 +82,7 @@ export class VideoPanel {
         }, 1000);
 
         this.initGestures();
+        this.initInlineDrag();
 
         // Escape key handler
         fromEvent<KeyboardEvent>(document, 'keydown')
@@ -83,6 +97,14 @@ export class VideoPanel {
 
     private isExpanded(): boolean {
         return this.videoPanel.classList.contains('expanded');
+    }
+
+    private isCollapsed(): boolean {
+        return this.videoPanel.classList.contains('collapsed');
+    }
+
+    private isInline(): boolean {
+        return !this.isExpanded() && !this.isCollapsed();
     }
 
     private get maxScale(): number {
@@ -554,6 +576,7 @@ export class VideoPanel {
 
     // Called from Blazor when collapsed state changes.
     public updateIslandPosition(): void {
+        this.videoPanel.classList.remove('minimized');
         if (!this.videoPanel.classList.contains('collapsed')) {
             this.teardownIsland();
             return;
@@ -711,6 +734,178 @@ export class VideoPanel {
 
     // endregion
 
+    // region: Inline drag — swipe up to minimize, swipe down to restore
+
+    private initInlineDrag(): void {
+        const MORPH_START_REM = 3; // width morph begins below this height
+        const HANDLE_WIDTH_REM = 8;
+
+        let startX = 0;
+        let startY = 0;
+        let startHeight = 0;
+        let containerFullWidth = 0;
+        let dragActive = false;
+        let dragStarted = false;
+        let rejected = false;
+        let container: HTMLElement | null = null;
+
+        const applyVisuals = (height: number, rem: number) => {
+            if (!container) return;
+            const fullHeight = INLINE_FULL_HEIGHT_REM * rem;
+            const stripHeight = STRIP_HEIGHT_REM * rem;
+            const progress = (height - stripHeight) / (fullHeight - stripHeight); // 1=full, 0=strip
+
+            // Blur increases as panel shrinks
+            const blur = (1 - progress) * 16;
+            container.style.filter = blur > 0.5 ? `blur(${blur}px)` : '';
+
+            // Morph zone: container shrinks in width, fades out; handle fades in
+            const morphStart = MORPH_START_REM * rem;
+            if (height < morphStart) {
+                const t = 1 - (height - stripHeight) / (morphStart - stripHeight); // 0→1
+                const targetWidth = HANDLE_WIDTH_REM * rem;
+                const w = containerFullWidth - (containerFullWidth - targetWidth) * t;
+                container.style.width = `${w}px`;
+                container.style.margin = '0 auto';
+                container.style.borderRadius = `${0.5 * t}rem`;
+                container.style.opacity = `${1 - t}`;
+                this.videoPanel.style.setProperty('--drag-handle-opacity', `${t}`);
+            } else {
+                container.style.width = '';
+                container.style.margin = '';
+                container.style.borderRadius = '';
+                container.style.opacity = '';
+                this.videoPanel.style.removeProperty('--drag-handle-opacity');
+            }
+        };
+
+        const cleanupAll = () => {
+            if (container) {
+                container.style.filter = '';
+                container.style.width = '';
+                container.style.margin = '';
+                container.style.borderRadius = '';
+                container.style.opacity = '';
+            }
+            container = null;
+            this.videoPanel.style.removeProperty('--drag-handle-opacity');
+            this.videoPanel.style.minHeight = '';
+            this.videoPanel.style.maxHeight = '';
+            this.videoPanel.style.transition = '';
+        };
+
+        fromEvent<TouchEvent>(this.videoPanel, 'touchstart', { passive: true } as AddEventListenerOptions)
+            .pipe(
+                takeUntil(this.disposed$),
+                filter(() => this.isInline() && !ScreenSize.isWide()),
+                filter(e => e.touches.length === 1),
+                filter(e => !(e.target as HTMLElement).closest('button, .btn-h')),
+            )
+            .subscribe(e => {
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+                startHeight = this.videoPanel.offsetHeight;
+                dragActive = true;
+                dragStarted = false;
+                rejected = false;
+            });
+
+        fromEvent<TouchEvent>(document, 'touchmove', { passive: false } as AddEventListenerOptions)
+            .pipe(
+                takeUntil(this.disposed$),
+                filter(() => dragActive && !rejected),
+            )
+            .subscribe(e => {
+                if (e.touches.length !== 1) return;
+                const dy = e.touches[0].clientY - startY;
+                const dx = e.touches[0].clientX - startX;
+
+                if (!dragStarted) {
+                    const absDy = Math.abs(dy);
+                    const absDx = Math.abs(dx);
+                    if (absDy < 8 && absDx < 8) return;
+                    if (absDx > absDy) {
+                        rejected = true;
+                        return;
+                    }
+                    dragStarted = true;
+                    const currentH = this.videoPanel.offsetHeight;
+                    this.videoPanel.style.minHeight = `${currentH}px`;
+                    this.videoPanel.style.maxHeight = `${currentH}px`;
+                    this.videoPanel.style.transition = 'none';
+                    this.videoPanel.classList.remove('minimized');
+                    container = this.videoPanel.querySelector<HTMLElement>('.c-container');
+                    containerFullWidth = container?.offsetWidth ?? this.videoPanel.offsetWidth;
+                }
+
+                e.preventDefault();
+
+                const rem = getRemSize();
+                const fullHeight = INLINE_FULL_HEIGHT_REM * rem;
+                const stripHeight = STRIP_HEIGHT_REM * rem;
+                const newHeight = Math.max(stripHeight, Math.min(fullHeight, startHeight + dy));
+
+                this.videoPanel.style.minHeight = `${newHeight}px`;
+                this.videoPanel.style.maxHeight = `${newHeight}px`;
+                applyVisuals(newHeight, rem);
+            });
+
+        fromEvent<TouchEvent>(document, 'touchend')
+            .pipe(
+                takeUntil(this.disposed$),
+                filter(() => dragActive && dragStarted),
+            )
+            .subscribe(() => {
+                dragActive = false;
+
+                const rem = getRemSize();
+                const fullHeight = INLINE_FULL_HEIGHT_REM * rem;
+                const stripHeight = STRIP_HEIGHT_REM * rem;
+                const currentHeight = this.videoPanel.offsetHeight;
+                const midPoint = (fullHeight + stripHeight) / 2;
+                const targetHeight = currentHeight < midPoint ? stripHeight : fullHeight;
+                const willMinimize = targetHeight === stripHeight;
+
+                // Snap visuals to target
+                applyVisuals(targetHeight, rem);
+
+                // Animate snap to target height
+                this.videoPanel.style.transition = 'min-height 0.15s ease-out, max-height 0.15s ease-out';
+                void this.videoPanel.offsetHeight;
+                this.videoPanel.style.minHeight = `${targetHeight}px`;
+                this.videoPanel.style.maxHeight = `${targetHeight}px`;
+
+                setTimeout(() => {
+                    cleanupAll();
+                    if (willMinimize)
+                        this.videoPanel.classList.add('minimized');
+                    else
+                        this.videoPanel.classList.remove('minimized');
+                    vibrate();
+                }, 160);
+            });
+
+        fromEvent<TouchEvent>(document, 'touchend')
+            .pipe(
+                takeUntil(this.disposed$),
+                filter(() => dragActive && !dragStarted),
+            )
+            .subscribe(() => { dragActive = false; });
+
+        fromEvent<TouchEvent>(document, 'touchcancel')
+            .pipe(
+                takeUntil(this.disposed$),
+                filter(() => dragActive),
+            )
+            .subscribe(() => {
+                dragActive = false;
+                if (dragStarted)
+                    cleanupAll();
+            });
+    }
+
+    // endregion
+
     // region: Panel expand/collapse
 
     public dispose() {
@@ -729,6 +924,7 @@ export class VideoPanel {
 
     public toggleExpand(): void {
         if (!this.videoPanel.classList.contains('expanded')) {
+            this.videoPanel.classList.remove('minimized');
             this.videoPanel.classList.add('expanded');
             document.body.appendChild(this.videoPanel);
             // Freeze narrow/wide state so rotating the device while fullscreen
