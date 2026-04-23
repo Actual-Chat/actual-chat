@@ -3,7 +3,7 @@ import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 
 // Inline drag constants
 const INLINE_FULL_HEIGHT_REM = 12; // body.narrow min-h-48 max-h-48
-const STRIP_HEIGHT_REM = 1;
+
 
 function getRemSize(): number {
     return parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
@@ -65,6 +65,7 @@ export class VideoPanel {
     private islandOrigLeft = 0;
     private islandOrigTop = 0;
     private islandResizeObserver: ResizeObserver | null = null;
+    private islandTeardown$: Subject<void> | null = null;
 
     static create(videoPanel: HTMLElement, blazorRef: DotNet.DotNetObject): VideoPanel {
         return new VideoPanel(videoPanel, blazorRef);
@@ -82,6 +83,7 @@ export class VideoPanel {
         }, 1000);
 
         this.initGestures();
+        this.reparentDragHandle();
         this.initInlineDrag();
 
         // Escape key handler
@@ -105,6 +107,45 @@ export class VideoPanel {
 
     private isInline(): boolean {
         return !this.isExpanded() && !this.isCollapsed();
+    }
+
+    private handleObserver: MutationObserver | null = null;
+
+    private setDragHandleVisible(visible: boolean): void {
+        const handle = document.querySelector<HTMLElement>('.c-drag-handle');
+        if (handle)
+            handle.style.display = visible ? '' : 'none';
+    }
+
+    // Reparent drag handle to after layout-subheader (or layout-header).
+    // Watches for subheader changes so the handle always stays at the bottom.
+    private reparentDragHandle(): void {
+        const handle = this.videoPanel.querySelector<HTMLElement>('.c-drag-handle');
+        if (!handle) return;
+
+        const positionHandle = () => {
+            const subheader = document.querySelector('.layout-subheader');
+            const header = document.querySelector('.layout-header');
+            const insertAfter = subheader ?? header;
+            if (insertAfter && handle.previousElementSibling !== insertAfter)
+                insertAfter.after(handle);
+        };
+
+        positionHandle();
+
+        // Watch for subheader appearing/disappearing/reordering
+        const layoutParent = document.querySelector('.layout-header')?.parentElement;
+        if (layoutParent) {
+            this.handleObserver = new MutationObserver(positionHandle);
+            this.handleObserver.observe(layoutParent, { childList: true });
+        }
+    }
+
+    private returnDragHandle(): void {
+        this.handleObserver?.disconnect();
+        this.handleObserver = null;
+        // Remove handle from layout; video-panel will be destroyed anyway
+        document.querySelector('.c-drag-handle')?.remove();
     }
 
     private get maxScale(): number {
@@ -579,13 +620,17 @@ export class VideoPanel {
         this.videoPanel.classList.remove('minimized');
         if (!this.videoPanel.classList.contains('collapsed')) {
             this.teardownIsland();
+            this.setDragHandleVisible(true);
             return;
         }
+        this.setDragHandleVisible(false);
         this.setupIsland();
     }
 
     private setupIsland(): void {
+        this.teardownIsland(); // clean up any previous island state
         this.islandDragged = false;
+        this.islandTeardown$ = new Subject<void>();
         // Reparent to body so `position: fixed` works correctly.
         // (.list-view-layout has `filter: opacity(1)` which creates a containing
         // block that breaks fixed positioning for descendants.)
@@ -605,11 +650,16 @@ export class VideoPanel {
 
         // Clamp to viewport on resize/zoom.
         fromEvent(window, 'resize')
-            .pipe(takeUntil(this.disposed$))
+            .pipe(takeUntil(this.islandTeardown$))
             .subscribe(() => this.clampIslandToViewport());
     }
 
     private teardownIsland(): void {
+        if (this.islandTeardown$) {
+            this.islandTeardown$.next();
+            this.islandTeardown$.complete();
+            this.islandTeardown$ = null;
+        }
         this.islandResizeObserver?.disconnect();
         this.islandResizeObserver = null;
         // Clear inline positioning and reparent back.
@@ -641,10 +691,11 @@ export class VideoPanel {
     }
 
     private initIslandDrag(): void {
+        const teardown$ = this.islandTeardown$!;
         // Pointer events for unified mouse+touch drag.
         fromEvent<PointerEvent>(this.videoPanel, 'pointerdown')
             .pipe(
-                takeUntil(this.disposed$),
+                takeUntil(teardown$),
                 filter(() => this.videoPanel.classList.contains('collapsed')),
                 filter(e => e.button === 0),
                 filter(e => !(e.target as HTMLElement).closest('button')),
@@ -653,21 +704,21 @@ export class VideoPanel {
 
         fromEvent<PointerEvent>(document, 'pointermove')
             .pipe(
-                takeUntil(this.disposed$),
+                takeUntil(teardown$),
                 filter(() => this.islandDragging),
             )
             .subscribe(e => this.onIslandPointerMove(e));
 
         fromEvent<PointerEvent>(document, 'pointerup')
             .pipe(
-                takeUntil(this.disposed$),
+                takeUntil(teardown$),
                 filter(() => this.islandDragging),
             )
             .subscribe(() => this.onIslandPointerUp());
 
         fromEvent<PointerEvent>(document, 'pointercancel')
             .pipe(
-                takeUntil(this.disposed$),
+                takeUntil(teardown$),
                 filter(() => this.islandDragging),
             )
             .subscribe(() => this.onIslandPointerUp());
@@ -737,13 +788,11 @@ export class VideoPanel {
     // region: Inline drag — swipe up to minimize, swipe down to restore
 
     private initInlineDrag(): void {
-        const MORPH_START_REM = 3; // width morph begins below this height
-        const HANDLE_WIDTH_REM = 8;
+        const FADE_START_REM = 3; // c-container starts fading below this height
 
         let startX = 0;
         let startY = 0;
         let startHeight = 0;
-        let containerFullWidth = 0;
         let dragActive = false;
         let dragStarted = false;
         let rejected = false;
@@ -752,48 +801,45 @@ export class VideoPanel {
         const applyVisuals = (height: number, rem: number) => {
             if (!container) return;
             const fullHeight = INLINE_FULL_HEIGHT_REM * rem;
-            const stripHeight = STRIP_HEIGHT_REM * rem;
-            const progress = (height - stripHeight) / (fullHeight - stripHeight); // 1=full, 0=strip
+            const progress = height / fullHeight; // 1=full, 0=collapsed
 
             // Blur increases as panel shrinks
             const blur = (1 - progress) * 16;
             container.style.filter = blur > 0.5 ? `blur(${blur}px)` : '';
 
-            // Morph zone: container shrinks in width, fades out; handle fades in
-            const morphStart = MORPH_START_REM * rem;
-            if (height < morphStart) {
-                const t = 1 - (height - stripHeight) / (morphStart - stripHeight); // 0→1
-                const targetWidth = HANDLE_WIDTH_REM * rem;
-                const w = containerFullWidth - (containerFullWidth - targetWidth) * t;
-                container.style.width = `${w}px`;
-                container.style.margin = '0 auto';
-                container.style.borderRadius = `${0.5 * t}rem`;
+            // Fade out c-container in the last stretch
+            const fadeStart = FADE_START_REM * rem;
+            if (height < fadeStart) {
+                const t = 1 - height / fadeStart; // 0→1
                 container.style.opacity = `${1 - t}`;
-                this.videoPanel.style.setProperty('--drag-handle-opacity', `${t}`);
             } else {
-                container.style.width = '';
-                container.style.margin = '';
-                container.style.borderRadius = '';
                 container.style.opacity = '';
-                this.videoPanel.style.removeProperty('--drag-handle-opacity');
             }
         };
 
         const cleanupAll = () => {
             if (container) {
                 container.style.filter = '';
-                container.style.width = '';
-                container.style.margin = '';
-                container.style.borderRadius = '';
                 container.style.opacity = '';
             }
             container = null;
-            this.videoPanel.style.removeProperty('--drag-handle-opacity');
+            handle?.classList.remove('dragging');
             this.videoPanel.style.minHeight = '';
             this.videoPanel.style.maxHeight = '';
             this.videoPanel.style.transition = '';
         };
 
+        const handle = document.querySelector<HTMLElement>('.c-drag-handle');
+        const startDragFrom = (e: TouchEvent) => {
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+            startHeight = this.videoPanel.offsetHeight;
+            dragActive = true;
+            dragStarted = false;
+            rejected = false;
+        };
+
+        // Touch on video panel
         fromEvent<TouchEvent>(this.videoPanel, 'touchstart', { passive: true } as AddEventListenerOptions)
             .pipe(
                 takeUntil(this.disposed$),
@@ -801,14 +847,18 @@ export class VideoPanel {
                 filter(e => e.touches.length === 1),
                 filter(e => !(e.target as HTMLElement).closest('button, .btn-h')),
             )
-            .subscribe(e => {
-                startX = e.touches[0].clientX;
-                startY = e.touches[0].clientY;
-                startHeight = this.videoPanel.offsetHeight;
-                dragActive = true;
-                dragStarted = false;
-                rejected = false;
-            });
+            .subscribe(startDragFrom);
+
+        // Touch on drag handle (reparented outside video-panel)
+        if (handle) {
+            fromEvent<TouchEvent>(handle, 'touchstart', { passive: true } as AddEventListenerOptions)
+                .pipe(
+                    takeUntil(this.disposed$),
+                    filter(() => this.isInline() && !ScreenSize.isWide()),
+                    filter(e => e.touches.length === 1),
+                )
+                .subscribe(startDragFrom);
+        }
 
         fromEvent<TouchEvent>(document, 'touchmove', { passive: false } as AddEventListenerOptions)
             .pipe(
@@ -829,21 +879,20 @@ export class VideoPanel {
                         return;
                     }
                     dragStarted = true;
+                    this.videoPanel.classList.remove('minimized');
+                    handle?.classList.add('dragging');
+                    container = this.videoPanel.querySelector<HTMLElement>('.c-container');
                     const currentH = this.videoPanel.offsetHeight;
                     this.videoPanel.style.minHeight = `${currentH}px`;
                     this.videoPanel.style.maxHeight = `${currentH}px`;
                     this.videoPanel.style.transition = 'none';
-                    this.videoPanel.classList.remove('minimized');
-                    container = this.videoPanel.querySelector<HTMLElement>('.c-container');
-                    containerFullWidth = container?.offsetWidth ?? this.videoPanel.offsetWidth;
                 }
 
                 e.preventDefault();
 
                 const rem = getRemSize();
                 const fullHeight = INLINE_FULL_HEIGHT_REM * rem;
-                const stripHeight = STRIP_HEIGHT_REM * rem;
-                const newHeight = Math.max(stripHeight, Math.min(fullHeight, startHeight + dy));
+                const newHeight = Math.max(0, Math.min(fullHeight, startHeight + dy));
 
                 this.videoPanel.style.minHeight = `${newHeight}px`;
                 this.videoPanel.style.maxHeight = `${newHeight}px`;
@@ -860,11 +909,10 @@ export class VideoPanel {
 
                 const rem = getRemSize();
                 const fullHeight = INLINE_FULL_HEIGHT_REM * rem;
-                const stripHeight = STRIP_HEIGHT_REM * rem;
                 const currentHeight = this.videoPanel.offsetHeight;
-                const midPoint = (fullHeight + stripHeight) / 2;
-                const targetHeight = currentHeight < midPoint ? stripHeight : fullHeight;
-                const willMinimize = targetHeight === stripHeight;
+                const midPoint = fullHeight / 2;
+                const targetHeight = currentHeight < midPoint ? 0 : fullHeight;
+                const willMinimize = targetHeight === 0;
 
                 // Snap visuals to target
                 applyVisuals(targetHeight, rem);
@@ -917,6 +965,7 @@ export class VideoPanel {
             this.singleTapTimer = 0;
         }
         this.teardownIsland();
+        this.returnDragHandle();
         this.collapse();
         this.disposed$.next();
         this.disposed$.complete();
@@ -926,6 +975,7 @@ export class VideoPanel {
         if (!this.videoPanel.classList.contains('expanded')) {
             this.videoPanel.classList.remove('minimized');
             this.videoPanel.classList.add('expanded');
+            this.setDragHandleVisible(false);
             document.body.appendChild(this.videoPanel);
             // Freeze narrow/wide state so rotating the device while fullscreen
             // doesn't reflow the hidden app layout underneath (e.g. left panel appearing).
@@ -943,6 +993,7 @@ export class VideoPanel {
         this.resetZoom();
         this.videoPanel.classList.remove('expanded', 'toolbar-hidden');
         this.parentElement?.appendChild(this.videoPanel);
+        this.setDragHandleVisible(true);
         // Resume ScreenSize updates; re-sync body classes to the current orientation.
         ScreenSize.unfreeze();
         void this.blazorRef.invokeMethodAsync('OnCollapsed');
