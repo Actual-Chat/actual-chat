@@ -502,7 +502,11 @@
 
     private abstract class VideoSessionBase : IVideoSession
     {
-        private CameraState _state = CameraState.Off;
+        // Starting (not Off) so the very first render already shows the camera
+        // as acquiring. Start() runs on a background task, so without this the
+        // Submit button briefly flashes enabled between `_isInitialized = true`
+        // and the SetState(Starting) that happens inside Start().
+        private CameraState _state = CameraState.Starting;
 
         public CameraState State => _state;
         public event Action? StateChanged;
