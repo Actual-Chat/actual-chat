@@ -1,7 +1,6 @@
 import { getLogs } from 'logging';
 import { initVideoRpc } from '../../Services/Video/streaming-rpc-client';
 import { Api, streamingApi, type VideoFrameDto } from 'api';
-import { fastRaf } from 'fast-raf';
 import { ServerClock } from 'server-clock';
 import { rpcClientServer, rpcNoWait } from 'rpc';
 import type { Disposable } from 'disposable';
@@ -10,8 +9,14 @@ import { DocumentEvents } from 'event-handling';
 import { Versioning } from 'versioning';
 import { type Subscription } from 'rxjs';
 import type { DecoderWorker } from '../../Services/Video/workers/decoder-worker-contract';
-import type { DecoderStats } from '../../Services/Video/webcodecs-decoder';
+import type { DecoderConfig, DecoderStats } from '../../Services/Video/webcodecs-decoder';
 import { BG_CANVAS_WIDTH, BG_DRAW_INTERVAL_MS, BG_FILTER } from '../../Services/Video/services/bg-canvas-settings';
+import {
+    createInputChannel,
+    type RawChunkMessage,
+    type StreamEndpoints,
+    supportsTransferableStreams,
+} from '../../Services/Video/workers/stream-channel';
 
 // Global registry of active VideoPlayer instances for diagnostics
 const activePlayers = new Map<string, VideoPlayer>();
@@ -41,13 +46,6 @@ export interface RemoteStreamDiagnostics {
     decoderStats: DecoderStats | null;
     avDriftMs: number | null;
 }
-import type { DecoderConfig } from '../../Services/Video/webcodecs-decoder';
-import {
-    supportsTransferableStreams,
-    createInputChannel,
-    type RawChunkMessage,
-    type StreamEndpoints,
-} from '../../Services/Video/workers/stream-channel';
 
 const { debugLog, warnLog, errorLog } = getLogs('VideoPlayer');
 
@@ -134,7 +132,7 @@ export class VideoPlayer {
     // Frame pacing state
     private playbackStartTime = 0;     // wall-clock ms (performance.now) when first frame rendered
     private firstFrameTimestamp = 0;    // timestamp of first decoded frame (microseconds)
-    private renderKey: string;
+    private renderRafId = 0;
     private renderFrameCount = 0;       // count of rendered frames (for periodic logging)
     private receivedFrameCount = 0;     // count of received frames (for periodic logging)
     private receivedKeyframeCount = 0;   // count of received keyframes (for correlation with encoder)
@@ -244,7 +242,6 @@ export class VideoPlayer {
             }
             this.bgContainer = bgCanvas.parentElement;
         }
-        this.renderKey = `vr-${streamId}`;
         this.isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
         this.useStreams = supportsTransferableStreams();
         if (this.isSafari)
@@ -633,7 +630,6 @@ export class VideoPlayer {
             dropped.close();
             this.bufferSize--;
         }
-        this.scheduleRender();
     }
 
     private onFrameDecoded(frame: VideoFrame): void {
@@ -675,9 +671,26 @@ export class VideoPlayer {
         void this.reportEnded(error.message);
     }
 
-    private scheduleRender(): void {
-        if (this.pendingFrames.length === 0 || !this.isPlaying) return;
-        fastRaf({ write: () => this.onRenderFrame(), key: this.renderKey });
+    private startRenderLoop(): void {
+        if (this.renderRafId !== 0)
+            return;
+
+        const tick = () => {
+            this.renderRafId = 0;
+            if (!this.isPlaying)
+                return;
+
+            this.onRenderFrame();
+            this.renderRafId = requestAnimationFrame(tick);
+        };
+        this.renderRafId = requestAnimationFrame(tick);
+    }
+
+    private stopRenderLoop(): void {
+        if (this.renderRafId !== 0) {
+            cancelAnimationFrame(this.renderRafId);
+            this.renderRafId = 0;
+        }
     }
 
     private onRenderFrame(): void {
@@ -693,8 +706,7 @@ export class VideoPlayer {
             // rather than pacing stale buffered frames at 1x from their old timestamps.
             // This makes the renderer immediately drop stale frames and start from the latest.
             const liveOffsetMs = ServerClock.now() - this.startedAtMs;
-            const liveTimestamp = liveOffsetMs * 1000; // ms → μs
-            this.firstFrameTimestamp = liveTimestamp;
+            this.firstFrameTimestamp = liveOffsetMs * 1000; // ms → μs
         }
 
         this.renderFrameCount++;
@@ -882,9 +894,6 @@ export class VideoPlayer {
             this.lastLatencyReportTime = now;
             this.reportLatencyTick();
         }
-
-        if (this.pendingFrames.length > 0)
-            this.scheduleRender();
     }
 
     private drawFrame(pf: PendingFrame): void {
@@ -1085,6 +1094,7 @@ export class VideoPlayer {
         if (this.isPlaying) return;
 
         this.isPlaying = true;
+        this.startRenderLoop();
         // Per-instance scope — refcounts across concurrent players so one
         // stopping doesn't park the peer that other players still need.
         Api.requireConnection(`VideoPlayer:${this.streamId}`);
@@ -1329,6 +1339,7 @@ export class VideoPlayer {
         warnLog?.log(`VideoPlayer registry: removed ${this.streamId}, active=${activePlayers.size}`);
 
         this.isPlaying = false;
+        this.stopRenderLoop();
         Api.releaseConnection(`VideoPlayer:${this.streamId}`);
         this.playbackStartTime = 0;
         this.lastRenderedOffsetMs = 0;
