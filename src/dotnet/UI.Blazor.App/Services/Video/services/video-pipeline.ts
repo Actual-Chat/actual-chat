@@ -17,7 +17,7 @@ import { BrowserInit } from '../../../../UI.Blazor/Services/BrowserInit/browser-
 import { ConnectivityUI } from '../../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
 import { Api, WorkerKind } from 'api';
 import type { EncoderConfig, EncoderStats } from '../webcodecs-encoder';
-import type { SegmentationConfig, SegmentationStats, OrientationStats } from '../workers/video-processing-worker-contract';
+import type { SegmentationConfig, SegmentationStats, OrientationStats, SpatialLayerConfig } from '../workers/video-processing-worker-contract';
 import type {
     VideoProcessingWorker,
     VideoProcessingWorkerCallbacks,
@@ -35,6 +35,10 @@ const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
 
 export interface PipelineConfig {
     encoderConfig: EncoderConfig;
+    /** Simulcast layers. When set with length >= 1, the worker creates N encoders
+     *  (encoderConfig drives SpatialLayerId=0 base; entries here are extras at
+     *  SpatialLayerId=i+1). Omit for single-encoder (P2P) mode. */
+    spatialLayers?: SpatialLayerConfig[];
     backgroundBlur?: {
         enabled: boolean;
         segmentationConfig: SegmentationConfig;
@@ -262,6 +266,11 @@ export class VideoPipeline implements IVideoPipeline {
             },
             senderRotationDeg: initialSenderRotation,
         };
+
+        if (this.config.spatialLayers && this.config.spatialLayers.length > 0) {
+            workerConfig.spatialLayers = this.config.spatialLayers;
+            infoLog?.log(`Simulcast activated: base + ${this.config.spatialLayers.length} extra layer(s)`);
+        }
         infoLog?.log(`Sender rotation (initial): ${initialSenderRotation}° (screen.orientation.angle=${screen.orientation.angle})`);
 
         if (this.config.backgroundBlur?.enabled) {

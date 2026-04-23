@@ -1,6 +1,7 @@
 import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
 import { RecordingService, type RecordingConfig, type RecordingState } from '../../Services/Video/services/recording-service';
+import type { SpatialLayerConfig } from '../../Services/Video/workers/video-processing-worker-contract';
 import { detectSupportedCodecs, getDefaultCodec, getCodecCategory, type CodecInfo } from '../../Services/Video/codec-support';
 import { getExpectedBitrate } from '../../Services/Video/bitrate-table';
 
@@ -122,6 +123,11 @@ export class VideoRecorder {
     private supportedEncoderCategories: string[] = [];
     private audienceCodecs?: string[];
     private supportedCodecs: CodecInfo[] = [];
+    // Simulcast layer ladder — cached; applied to the next startRecording. Empty/null
+    // = single-encoder (P2P) mode. Index 0 is the base layer (lowest res); higher
+    // indices are enhancement layers. Sent by C# VideoRecorder in response to
+    // VideoQualityPreset.MaxSpatialLayer aggregate changes.
+    private simulcastLayers: SpatialLayerConfig[] | null = null;
 
     // Blur preview frame subscribers. When blur is active, the pipeline produces
     // `VideoFrame`s that we dispatch to every listener before the frame is closed
@@ -266,6 +272,20 @@ export class VideoRecorder {
     /**
      * Forward remote stream count to the video pipeline for slowdown decisions
      */
+    // Caches the simulcast ladder. Applied only at the next `startRecording` —
+    // mid-stream layer count changes would require encoder reinit, which is
+    // currently not supported (future work: observe aggregate layer directive
+    // and hot-swap). Passing null or an array of length < 2 disables simulcast.
+    public setSimulcastLayers(layers: SpatialLayerConfig[] | null): void {
+        const active = (layers && layers.length >= 2) ? layers : null;
+        const prevCount = this.simulcastLayers?.length ?? 0;
+        const newCount = active?.length ?? 0;
+        if (prevCount !== newCount) {
+            infoLog?.log(`setSimulcastLayers: ${prevCount} -> ${newCount} layer(s)`);
+        }
+        this.simulcastLayers = active;
+    }
+
     public setRemoteStreamCount(count: number): void {
         this.recordingService?.getPipeline()?.setRemoteStreamCount(count);
     }
@@ -380,6 +400,23 @@ export class VideoRecorder {
             const targetBitrate = getExpectedBitrate(bestCodecString, targetSize.height);
             infoLog?.log(`Initial codec selection: ${codecCategory} (${bestCodecString}), hw=${bestCodecInfo?.hardwareAccelerated ?? false}, bitrate=${targetBitrate / 1_000_000}Mbps`);
 
+            // Simulcast: when C# has pushed a layer ladder, the base encoder serves
+            // SpatialLayerId=0 (lowest res, `layers[0]` dims/bitrate) and each remaining
+            // entry becomes an extra encoder at SpatialLayerId=i+1. Camera still captures
+            // at `targetSize` — downscaler handles per-layer scaling.
+            let baseWidth = targetSize.width;
+            let baseHeight = targetSize.height;
+            let baseBitrate = targetBitrate;
+            let simulcastExtras: SpatialLayerConfig[] | undefined;
+            if (this.simulcastLayers && this.simulcastLayers.length >= 2) {
+                const base = this.simulcastLayers[0];
+                baseWidth = base.width;
+                baseHeight = base.height;
+                baseBitrate = base.bitrate;
+                simulcastExtras = this.simulcastLayers.slice(1);
+                infoLog?.log(`Simulcast: base ${baseWidth}x${baseHeight} + ${simulcastExtras.length} extra layer(s)`);
+            }
+
             // Create recording service with streaming config (uses video-pipeline internally)
             const config: RecordingConfig = {
                 mode: 'webcam',
@@ -387,9 +424,9 @@ export class VideoRecorder {
                 codecString: bestCodecString,
                 hardwareAccelerated: bestCodecInfo?.hardwareAccelerated ?? false,
                 scalabilityModes: bestCodecInfo?.scalabilityModes,
-                width: targetSize.width,
-                height: targetSize.height,
-                bitrate: targetBitrate,
+                width: baseWidth,
+                height: baseHeight,
+                bitrate: baseBitrate,
                 framerate: targetFramerate,
                 cameraDeviceId: this.selectedCameraDeviceId ?? undefined,
                 backgroundBlur: {
@@ -404,6 +441,7 @@ export class VideoRecorder {
                 adaptiveFramerate: {
                     enabled: true,
                 },
+                spatialLayers: simulcastExtras,
             };
 
             this.recordingService = this.createRecordingService(config);

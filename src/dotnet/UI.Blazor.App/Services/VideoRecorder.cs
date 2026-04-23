@@ -4,6 +4,11 @@ using ActualChat.Video;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
+// One simulcast layer — matches the JS SpatialLayerConfig structure. PascalCase
+// property names serialize to JS-friendly camelCase via Blazor JS interop's default
+// JsonNamingPolicy.CamelCase.
+public sealed record SpatialLayerSpec(int Width, int Height, int Bitrate);
+
 /// <summary>
 /// Typed wrapper around the JS VideoRecorder object reference.
 /// Created via <see cref="Create"/> and disposed when recording session ends.
@@ -109,6 +114,15 @@ public sealed class VideoRecorder : IAsyncDisposable
 
         _isBlurEnabled = enabled;
         return _jsRef.InvokeVoidAsync("toggleBlur", cancellationToken, enabled).AsTask();
+    }
+
+    // Pushes a simulcast layer ladder to the JS VideoRecorder. Applied at the next
+    // startRecording — mid-stream layer reconfig is not supported yet. Pass null
+    // or an empty list to disable simulcast (single-encoder P2P mode).
+    public Task SetSimulcastLayers(IReadOnlyList<SpatialLayerSpec>? layers, CancellationToken cancellationToken)
+    {
+        var arg = layers is { Count: > 0 } ? layers.ToArray() : null;
+        return _jsRef.InvokeVoidAsync("setSimulcastLayers", cancellationToken, (object?)arg).AsTask();
     }
 
     public async ValueTask DisposeAsync()
@@ -233,6 +247,7 @@ public sealed class VideoRecorder : IAsyncDisposable
     {
         try {
             var lastCount = -1;
+            var lastSimulcastActive = false;
             var cState = await Computed.Capture(
                 () => ChatVideoUI.GetRemoteStreams(chatId, cancellationToken),
                 cancellationToken).ConfigureAwait(false);
@@ -244,6 +259,22 @@ public sealed class VideoRecorder : IAsyncDisposable
                 lastCount = count;
                 await _jsRef.InvokeVoidAsync("setRemoteStreamCount", cancellationToken, count)
                     .ConfigureAwait(false);
+
+                // Simulcast gate: activate at 2+ remote streams (3+ participant call).
+                // Webcam only — screencast stays single-encoder (text legibility requires
+                // the full-res path). Applies at the next StartRecording; mid-stream
+                // layer reconfig isn't supported yet.
+                if (Kind != StreamKind.Webcam)
+                    continue;
+                var simulcastActive = count >= Constants.Video.MinMembersForSimulcast - 1;
+                if (simulcastActive == lastSimulcastActive)
+                    continue;
+                lastSimulcastActive = simulcastActive;
+                var ladder = simulcastActive ? BuildSimulcastLadder() : null;
+                Log.LogInformation(
+                    "SyncRemoteStreamCount: remoteCount={Count}, simulcast={Simulcast}, layers={Layers}",
+                    count, simulcastActive, ladder?.Count ?? 0);
+                await SetSimulcastLayers(ladder, cancellationToken).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
@@ -251,6 +282,18 @@ public sealed class VideoRecorder : IAsyncDisposable
             Log.LogWarning(e, "SyncRemoteStreamCount failed");
         }
     }
+
+    // 3-tier simulcast ladder matching server-side spatial cap semantics:
+    // index 0 = base (lowest-res, SpatialLayerId=0), N = top. Fixed tiers — dims
+    // mirror VideoQualityLevel steps (Low=360p, High=720p); bitrates tuned for
+    // H.264 baseline headroom on mobile HW encoders. AV1/HEVC simulcast profile
+    // selection + per-device probe gating lands with Stage 8.
+    private static IReadOnlyList<SpatialLayerSpec> BuildSimulcastLadder()
+        => new SpatialLayerSpec[] {
+            new(320, 180, 300_000),
+            new(640, 360, 700_000),
+            new(1280, 720, 2_000_000),
+        };
 
     private async Task<string[]> GetInitialAudienceCodecs(ChatId chatId) {
         try {
