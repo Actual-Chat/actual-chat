@@ -260,12 +260,10 @@ jobs:
         if: (success() || failure()) && inputs.build-target != 'e2e-tests'
         with:
           name: ${{ inputs.report-name }}
-          path: "./tests/**/*.trx" # Path to test results
-          reporter: dotnet-trx # Format of test results
+          path: "./tests/**/*.trx"
+          reporter: dotnet-trx
           fail-on-error: false
-          list-tests: "failed"
           output-to: "checks"
-          list-suites: "all"
           only-summary: "true"
 
       - name: Report E2E test results
@@ -273,13 +271,11 @@ jobs:
         if: (success() || failure()) && inputs.build-target == 'e2e-tests'
         with:
           name: ${{ inputs.report-name }}
-          path: "tmp/TS E2E Tests.xml"
+          path: tmp/ts-e2e-tests.xml
           reporter: java-junit
           fail-on-error: false
-          list-tests: "failed"
           output-to: "checks"
-          list-suites: "all"
-          only-summary: "false"
+          only-summary: "true"
 
       - name: Upload E2E screenshots
         if: ${{ always() && inputs.build-target == 'e2e-tests' }}

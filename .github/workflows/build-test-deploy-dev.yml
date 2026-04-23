@@ -277,14 +277,12 @@ jobs:
         uses: phoenix-actions/test-reporting@v15
         if: (success() || failure()) && env.SKIP_TESTS != 'true'
         with:
-          name: Unit tests results # Name of the check run which will be created
-          path: "./tests/**/*.trx" # Path to test results
-          reporter: dotnet-trx # Format of test results
+          name: Unit tests results
+          path: "./tests/**/*.trx"
+          reporter: dotnet-trx
           fail-on-error: false
-          list-tests: "failed"
           output-to: "checks"
-          list-suites: "all"
-          only-summary: "false"
+          only-summary: "true"
 
   integration-tests:
     name: Run Integration tests
@@ -340,13 +338,11 @@ jobs:
         if: (success() || failure()) && env.SKIP_TESTS != 'true'
         with:
           name: TS Unit tests results
-          path: "tmp/TS Unit Tests.xml"
+          path: tmp/ts-unit-tests.xml
           reporter: java-junit
           fail-on-error: false
-          list-tests: "failed"
           output-to: "step-summary"
-          list-suites: "all"
-          only-summary: "false"
+          only-summary: "true"
 
   nuget-pack:
     name: Create nuget packages for ${{ github.ref_name }}
