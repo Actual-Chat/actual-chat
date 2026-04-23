@@ -144,9 +144,9 @@ public class VideoStreamFilter(
                 if (frame.IsKeyFrame
                     && frame.SpatialLayerId == targetSpatialLayer
                     && selectedSpatialLayer != targetSpatialLayer) {
-                    log.LogDebug(
-                        "VideoStreamFilter: spatial switch {OldLayer} -> {NewLayer} at KF#{KeyFrameNumber}",
-                        selectedSpatialLayer, targetSpatialLayer, frame.KeyFrameNumber);
+                    log.LogInformation(
+                        "VideoStreamFilter: peer={PeerId} spatial switch {OldLayer} -> {NewLayer} at KF#{KeyFrameNumber}",
+                        peerId, selectedSpatialLayer, targetSpatialLayer, frame.KeyFrameNumber);
                     selectedSpatialLayer = targetSpatialLayer;
                     // Force re-anchor on the new layer's keyframe — flush any prior
                     // GOP state from the old layer so the downstream decoder gets a

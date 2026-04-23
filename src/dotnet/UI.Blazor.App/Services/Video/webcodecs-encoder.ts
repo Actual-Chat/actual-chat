@@ -57,6 +57,11 @@ export interface EncodedChunkData {
   // Simulcast spatial layer: 0 = base (lowest-res) layer, 1+ = higher-res layers.
   // Always 0 for single-encoder (P2P) streams; set by encoder instance in multi-encoder mode.
   spatialLayerId?: number;
+  // Encoded frame dimensions — the dims of the encoder instance that produced
+  // this chunk. Needed so the worker can tag each layer's VideoStreamFrame with
+  // its true resolution instead of borrowing from the primary encoder's config.
+  width: number;
+  height: number;
 }
 
 export interface EncoderStats {
@@ -260,6 +265,8 @@ export class WebCodecsEncoder {
                     sequenceNumber: this.chunkSequence++,
                     temporalLayerId: extractTemporalLayerId(metadata),
                     spatialLayerId: this.spatialLayerId,
+                    width: this.config.width,
+                    height: this.config.height,
                 };
 
                 this.totalBytes += chunk.byteLength;

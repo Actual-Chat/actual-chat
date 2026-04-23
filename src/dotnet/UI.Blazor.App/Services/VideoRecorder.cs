@@ -68,6 +68,10 @@ public sealed class VideoRecorder : IAsyncDisposable
             throw StandardError.Constraint("Start request already set");
         _startRequest = (chatId, true);
         var codecs = await GetInitialAudienceCodecs(chatId).ConfigureAwait(false);
+        // Seed simulcast layers BEFORE JS startRecording builds its config —
+        // otherwise the initial pipeline spins up in P2P mode and a later
+        // SetSimulcastLayers must pay a stop/restart cycle to apply.
+        await SeedSimulcastLayers(chatId, cancellationToken).ConfigureAwait(false);
         await _jsRef.InvokeVoidAsync("startRecording", cancellationToken, chatId.Value, codecs).ConfigureAwait(false);
     }
 
@@ -294,6 +298,37 @@ public sealed class VideoRecorder : IAsyncDisposable
             new(640, 360, 700_000),
             new(1280, 720, 2_000_000),
         };
+
+    // Queries current remote stream count and pushes a ladder to JS before the
+    // pipeline spins up. Screencast stays single-encoder. Best-effort — any
+    // failure is logged and the session falls back to P2P mode.
+    private async Task SeedSimulcastLayers(ChatId chatId, CancellationToken cancellationToken)
+    {
+        if (Kind != StreamKind.Webcam) {
+            Log.LogInformation("SeedSimulcastLayers: skipped (kind={Kind})", Kind);
+            return;
+        }
+        try {
+            var streams = await ChatVideoUI.GetRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
+            var count = streams.Length;
+            var threshold = Constants.Video.MinMembersForSimulcast - 1;
+            if (count < threshold) {
+                Log.LogInformation(
+                    "SeedSimulcastLayers: remote count={Count} < {Threshold} — staying in P2P",
+                    count, threshold);
+                return;
+            }
+            var ladder = BuildSimulcastLadder();
+            Log.LogInformation(
+                "SeedSimulcastLayers: remote count={Count} >= {Threshold} — activating {Layers}-layer simulcast",
+                count, threshold, ladder.Count);
+            await SetSimulcastLayers(ladder, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception e) {
+            Log.LogWarning(e, "SeedSimulcastLayers failed");
+        }
+    }
 
     private async Task<string[]> GetInitialAudienceCodecs(ChatId chatId) {
         try {
