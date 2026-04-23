@@ -12,7 +12,13 @@ public sealed partial record VideoQualityPreset(
     // MemoryPackOrder(3) / Key(3) is intentionally unused — a prior schema placed Bitrate
     // there. Keep IsKeyFrameRequested at order 4 so VersionTolerant can read
     // records from older peers that still carry Bitrate at order 3.
-    [property: DataMember, MemoryPackOrder(4), Key(4)] bool IsKeyFrameRequested = false
+    [property: DataMember, MemoryPackOrder(4), Key(4)] bool IsKeyFrameRequested = false,
+    // Simulcast layer directive — aggregated across all peers in the stream,
+    // signals to the sender which spatial/temporal enhancement layers are in
+    // demand. `int.MaxValue` = no cap (produce all layers). Sender spins encoder
+    // instances up/down based on these values.
+    [property: DataMember, MemoryPackOrder(5), Key(5)] int MaxSpatialLayer = int.MaxValue,
+    [property: DataMember, MemoryPackOrder(6), Key(6)] int MaxTemporalLayer = int.MaxValue
 ) {
     public static readonly VideoQualityPreset Ultra  = new(VideoQualityLevel.Ultra,  3840, 2160);
     public static readonly VideoQualityPreset Full   = new(VideoQualityLevel.Full,   1920, 1080);

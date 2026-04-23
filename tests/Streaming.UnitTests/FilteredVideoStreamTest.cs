@@ -250,12 +250,109 @@ public class FilteredVideoStreamTest(ILogger log)
         result[3].KeyFrameNumber.Should().Be(3);
     }
 
+    // --- Simulcast spatial layer selection ---
+
+    [Fact]
+    public async Task Spatial_AllLayer0_PassesThrough()
+    {
+        // Baseline: single-layer (pre-simulcast) producer — all frames SpatialLayerId=0.
+        // Filter behavior identical to today: keyframe-gap detection drives emission.
+        var frames = new[] {
+            KeyFrame(1, spatialLayer: 0),
+            Delta(kf: 1, spatialLayer: 0),
+            Delta(kf: 1, spatialLayer: 0),
+        };
+        var result = await Filter(frames);
+
+        result.Should().HaveCount(3);
+        result.All(f => f.SpatialLayerId == 0).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Spatial_MixedLayers_SelectsHighestAvailable()
+    {
+        // Producer emits simulcast layers 0 and 1. Synchronous keyframe boundary.
+        // Filter starts at layer 0, upgrades to layer 1 on its keyframe, then keeps
+        // delivering layer 1 deltas. Layer 0 traffic is dropped once switched.
+        var frames = new[] {
+            KeyFrame(1, spatialLayer: 0),                // ingress arrives layer 0 first
+            KeyFrame(1, spatialLayer: 1),                // then layer 1 — switch triggers
+            Delta(kf: 1, spatialLayer: 0),               // layer 0 delta — dropped
+            Delta(kf: 1, spatialLayer: 1),               // layer 1 delta — kept
+            Delta(kf: 1, spatialLayer: 1),
+        };
+        var result = await Filter(frames);
+
+        result.Should().HaveCount(4, "layer-0 KF bootstraps join + layer-1 KF switch + two layer-1 deltas");
+        result[0].SpatialLayerId.Should().Be(0, "first KF on layer 0 bootstraps the join state");
+        result[1].SpatialLayerId.Should().Be(1, "switched to layer 1 on its keyframe");
+        result.Skip(1).All(f => f.SpatialLayerId == 1).Should().BeTrue("layer 0 deltas dropped post-switch");
+    }
+
+    [Fact]
+    public async Task Spatial_CapRestrictsSelection()
+    {
+        // Producer emits all 3 layers. Cap=1 allows layers 0-1. Filter selects 1,
+        // drops layer 2.
+        var frames = new[] {
+            KeyFrame(1, spatialLayer: 0),
+            KeyFrame(1, spatialLayer: 1),
+            KeyFrame(1, spatialLayer: 2),
+            Delta(kf: 1, spatialLayer: 1),
+            Delta(kf: 1, spatialLayer: 2),
+        };
+        var result = await Filter(frames, maxSpatialCap: 1);
+
+        result.All(f => f.SpatialLayerId <= 1).Should().BeTrue("cap=1 excludes layer 2");
+        result.Should().Contain(f => f.SpatialLayerId == 1);
+        result.Should().NotContain(f => f.SpatialLayerId == 2);
+    }
+
+    [Fact]
+    public async Task Spatial_CapZero_ForcesBaseLayer()
+    {
+        // Cap=0 forces base-layer-only delivery even when producer emits higher layers.
+        var frames = new[] {
+            KeyFrame(1, spatialLayer: 0),
+            KeyFrame(1, spatialLayer: 1),
+            Delta(kf: 1, spatialLayer: 0),
+            Delta(kf: 1, spatialLayer: 1),
+        };
+        var result = await Filter(frames, maxSpatialCap: 0);
+
+        result.Should().HaveCount(2);
+        result.All(f => f.SpatialLayerId == 0).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Spatial_DeltaOnHigherLayer_DoesNotTriggerSwitch()
+    {
+        // Deltas on a new spatial layer without a keyframe on that layer must NOT
+        // switch selection — decoder has no anchor for mid-GOP join.
+        var frames = new[] {
+            KeyFrame(1, spatialLayer: 0),
+            Delta(kf: 1, spatialLayer: 0),
+            Delta(kf: 1, spatialLayer: 1),   // no layer-1 keyframe yet — must drop
+            Delta(kf: 1, spatialLayer: 0),
+        };
+        var result = await Filter(frames);
+
+        result.Should().HaveCount(3, "all layer-0 frames pass, layer-1 delta dropped");
+        result.All(f => f.SpatialLayerId == 0).Should().BeTrue();
+    }
+
     // Helpers
 
     private Task<List<VideoFrame>> Filter(VideoFrame[] frames, CancellationToken cancellationToken = default)
-        => Filter(frames, TimeSpan.Zero, cancellationToken);
+        => Filter(frames, TimeSpan.Zero, int.MaxValue, cancellationToken);
 
-    private async Task<List<VideoFrame>> Filter(VideoFrame[] frames, TimeSpan skipTo, CancellationToken cancellationToken = default)
+    private Task<List<VideoFrame>> Filter(VideoFrame[] frames, TimeSpan skipTo, CancellationToken cancellationToken = default)
+        => Filter(frames, skipTo, int.MaxValue, cancellationToken);
+
+    private Task<List<VideoFrame>> Filter(VideoFrame[] frames, int maxSpatialCap, CancellationToken cancellationToken = default)
+        => Filter(frames, TimeSpan.Zero, maxSpatialCap, cancellationToken);
+
+    private async Task<List<VideoFrame>> Filter(VideoFrame[] frames, TimeSpan skipTo, int maxSpatialCap, CancellationToken cancellationToken = default)
     {
         var services = new ServiceCollection()
             .AddSingleton<StreamLatencyStore>()
@@ -271,6 +368,7 @@ public class FilteredVideoStreamTest(ILogger log)
 
         var filter = new VideoStreamFilter(
             latencyStore.GetPeerMaxTemporalLayer,
+            (_, _) => maxSpatialCap,
             (sid, ct) => Computed.Capture(() => backend.GetQualityPreset(sid, ct), ct),
             Log);
 
@@ -297,17 +395,19 @@ public class FilteredVideoStreamTest(ILogger log)
         }
     }
 
-    private static VideoFrame KeyFrame(long kfNumber, int temporalLayer = 0, int offsetMs = 0)
+    private static VideoFrame KeyFrame(long kfNumber, int temporalLayer = 0, int offsetMs = 0, int spatialLayer = 0)
         => new(true) {
             KeyFrameNumber = kfNumber,
             TemporalLayerId = temporalLayer,
+            SpatialLayerId = spatialLayer,
             Offset = TimeSpan.FromMilliseconds(offsetMs),
         };
 
-    private static VideoFrame Delta(long kf, int temporalLayer = 0, int offsetMs = 0)
+    private static VideoFrame Delta(long kf, int temporalLayer = 0, int offsetMs = 0, int spatialLayer = 0)
         => new(false) {
             KeyFrameNumber = kf,
             TemporalLayerId = temporalLayer,
+            SpatialLayerId = spatialLayer,
             Offset = TimeSpan.FromMilliseconds(offsetMs),
         };
 }

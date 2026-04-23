@@ -146,6 +146,7 @@ public class StreamServer(IServiceProvider services) : IStreamServer
         double medianDecodeTimeMs,
         int bufferDepth,
         double bufferSpanMs,
+        int renderQualityLevel,
         CancellationToken cancellationToken)
     {
         var parsedStreamId = StreamId.Parse(streamId);
@@ -153,6 +154,7 @@ public class StreamServer(IServiceProvider services) : IStreamServer
         await VideoBackend.ReportPeerLatency(
             parsedStreamId, peerId, streamOffsetMs,
             medianDecodeTimeMs, bufferDepth, bufferSpanMs,
+            renderQualityLevel,
             cancellationToken).ConfigureAwait(false);
 
         return Clocks.SystemClock.UtcNow.ToUnixTimeMilliseconds();

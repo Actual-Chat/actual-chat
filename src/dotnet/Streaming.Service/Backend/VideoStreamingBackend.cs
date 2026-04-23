@@ -51,8 +51,14 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 
         var filter = new VideoStreamFilter(
             LatencyStore.GetPeerMaxTemporalLayer,
+            LatencyStore.GetPeerMaxSpatialLayer,
             (sid, ct) => Computed.Capture(() => GetQualityPreset(sid, ct), ct),
-            Log);
+            Log,
+            new VideoStreamFilter.EgressControl(
+                (sid, pid) => LatencyStore.DecrementPeerEgressFallback(sid, pid),
+                LatencyStore.RestorePeerEgressFallback,
+                LatencyStore.HasPeerEgressFallback,
+                LatencyStore.GetPeerEgressFallbackSetAt));
         return new RpcStream<VideoFrame>(filter.Apply(streamId, peerId, skipTo, stream, cancellationToken)) {
             AckPeriod = Constants.Video.StreamAckPeriod,
             AckAdvance = Constants.Video.StreamAckAdvance,
@@ -156,9 +162,10 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         double medianDecodeTimeMs = -1,
         int bufferDepth = -1,
         double bufferSpanMs = -1,
+        int renderQualityLevel = -1,
         CancellationToken cancellationToken = default)
     {
-        LatencyStore.ReportPeerLatency(streamId, peerId, streamOffsetMs, medianDecodeTimeMs, bufferDepth, bufferSpanMs);
+        LatencyStore.ReportPeerLatency(streamId, peerId, streamOffsetMs, medianDecodeTimeMs, bufferDepth, bufferSpanMs, renderQualityLevel);
         return Task.CompletedTask;
     }
 
