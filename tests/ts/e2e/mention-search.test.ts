@@ -16,18 +16,34 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { Page } from 'playwright';
 import {
     BASE_URL, connectBrowser, ensureSignedIn, skipOnboarding,
-    screenshot, type BrowserConnection,
+    screenshot, waitForChatReady, type BrowserConnection,
 } from './helpers';
 
 async function clearEditor(page: Page) {
     await page.keyboard.press('Escape');
     await page.waitForTimeout(100);
     const editor = page.locator('#message-input .editor-content[contenteditable="true"]').first();
+    // Best-effort — if the editor vanished (e.g. navigation away in afterAll) don't fail teardown.
+    if (!await editor.isVisible({ timeout: 1000 }).catch(() => false)) return;
     await editor.evaluate(el => {
         el.innerHTML = '';
         el.dispatchEvent(new Event('input', { bubbles: true }));
-    });
+    }).catch(() => { /* ignore */ });
     await page.waitForTimeout(200);
+}
+
+/**
+ * Put the chat message editor back into a known-interactive state before a test.
+ *
+ * OnboardingModal re-renders on a schedule (e.g. after tutorial events fire) and
+ * can reappear between tests even though we called `skipOnboarding` in beforeAll.
+ * When it does, its `modal-chrome-overlay` intercepts pointer events on the
+ * editor. Dismiss it and ensure the editor is focusable before each test acts.
+ */
+async function ensureEditorReady(page: Page) {
+    await skipOnboarding(page);
+    const editor = page.locator('#message-input .editor-content[contenteditable="true"]').first();
+    await editor.waitFor({ state: 'visible', timeout: 10_000 });
 }
 
 describe('mention search', () => {
@@ -42,16 +58,20 @@ describe('mention search', () => {
 
         // Navigate to a chat with multiple members
         await page.goto(`${BASE_URL}/chat/the-actual-one`, { waitUntil: 'domcontentloaded' });
-        await page.waitForTimeout(3000);
+        await waitForChatReady(page);
         await skipOnboarding(page);
 
         // Join if needed
         const joinButton = page.locator('button:has-text("Join this chat")');
         if (await joinButton.isVisible({ timeout: 3000 }).catch(() => false)) {
             await joinButton.click();
-            await page.waitForTimeout(2000);
+            await waitForChatReady(page);
         }
 
+        // Editor is the prerequisite for every test in this suite — wait for it
+        // before screenshot so failures have a meaningful last-known state.
+        await page.locator('#message-input .editor-content[contenteditable="true"]').first()
+            .waitFor({ state: 'visible', timeout: 15_000 });
         await page.screenshot({ path: screenshot('mention', '00-chat-page') });
     }, 60_000);
 
@@ -68,8 +88,8 @@ describe('mention search', () => {
     });
 
     it('should show mention list when typing @', async () => {
+        await ensureEditorReady(page);
         const messageInput = page.locator('#message-input .editor-content[contenteditable="true"]').first();
-        await messageInput.waitFor({ state: 'visible', timeout: 10000 });
         await messageInput.click();
         await page.waitForTimeout(300);
 
@@ -87,6 +107,7 @@ describe('mention search', () => {
     }, 30_000);
 
     it('should filter mention list by search term', async () => {
+        await ensureEditorReady(page);
         const messageInput = page.locator('#message-input .editor-content[contenteditable="true"]').first();
         await messageInput.click();
         await page.waitForTimeout(300);
@@ -109,6 +130,7 @@ describe('mention search', () => {
     }, 30_000);
 
     it('should insert mention on Enter and close the list', async () => {
+        await ensureEditorReady(page);
         const messageInput = page.locator('#message-input .editor-content[contenteditable="true"]').first();
         await messageInput.click();
         await page.waitForTimeout(300);

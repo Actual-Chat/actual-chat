@@ -21,7 +21,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import {
     BASE_URL, connectBrowser, ensureSignedIn, skipOnboarding,
-    screenshot, type BrowserConnection,
+    screenshot, waitForAppReady, type BrowserConnection,
 } from './helpers';
 
 // Simple SVG test file — a colored circle with text
@@ -95,12 +95,12 @@ describe('SVG avatar upload', () => {
 
     it('should upload SVG avatar through the settings UI and convert to PNG', async () => {
         await page.goto(`${BASE_URL}/settings`, { waitUntil: 'domcontentloaded' });
-        await page.waitForTimeout(3000);
+        await waitForAppReady(page);
         await skipOnboarding(page);
 
         // Wait for settings modal
         const settingsModal = page.locator('.settings-modal');
-        await settingsModal.waitFor({ state: 'visible', timeout: 10000 });
+        await settingsModal.waitFor({ state: 'visible', timeout: 15000 });
 
         // Navigate to "Your Account" tab
         const accountTab = page.locator('text=Your Account').first();
@@ -122,19 +122,28 @@ describe('SVG avatar upload', () => {
         const avatarModal = page.locator('.edit-avatar-modal');
         await avatarModal.waitFor({ state: 'visible', timeout: 5000 });
 
-        // The file input is inside PicUpload > FileUpload, hidden.
-        const fileInput = avatarModal.locator('input[type="file"]').first();
+        // AvatarPicFormBlock now uses ImageCropPicker, whose <input type="file"> is
+        // attached to the document root (not inside the avatar modal). Target it
+        // globally — the modal currently has only one file input in the DOM tree.
+        const fileInput = page.locator('input[type="file"]').first();
         await fileInput.waitFor({ state: 'attached', timeout: 5000 });
         await fileInput.setInputFiles(svgFilePath);
-        await page.waitForTimeout(3000);
+
+        // After file selection, ImageCropPicker opens PicCropModal on top of the
+        // avatar editor. Confirm the crop to trigger server-side conversion + upload.
+        const cropModal = page.locator('.pic-crop-modal');
+        await cropModal.waitFor({ state: 'visible', timeout: 10_000 });
+        const confirmBtn = cropModal.locator('.btn-confirm').first();
+        await confirmBtn.waitFor({ state: 'visible', timeout: 5_000 });
+        await confirmBtn.click();
+        await cropModal.waitFor({ state: 'hidden', timeout: 15_000 });
         await page.screenshot({ path: screenshot('e2e', 'svg-avatar-uploaded') });
 
-        // Verify the uploaded image is visible and is a PNG (not SVG)
-        const avatarPic = avatarModal.locator('.pic img, .pic-upload img').first();
-        const hasPic = await avatarPic.isVisible({ timeout: 5000 }).catch(() => false);
-        expect(hasPic).toBe(true);
+        // Verify the preview image is visible and is served as PNG.
+        // Pic renders via <image-skeleton> (LitElement, light DOM) containing <img>.
+        const avatarPic = avatarModal.locator('.pic img').first();
+        await avatarPic.waitFor({ state: 'visible', timeout: 10_000 });
 
-        // Check the img src — it should reference a .png blob, not .svg
         const imgSrc = await avatarPic.getAttribute('src') ?? '';
         console.log('Avatar editor img src after SVG upload:', imgSrc);
         expect(imgSrc).toMatch(/\.png/);
@@ -149,7 +158,7 @@ describe('SVG avatar upload', () => {
 
     it('should upload SVG picture in New Chat modal and convert to PNG', async () => {
         await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
-        await page.waitForTimeout(2000);
+        await waitForAppReady(page);
         await skipOnboarding(page);
 
         // Click the "+" button in the navbar to open the Create menu
