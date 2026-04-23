@@ -3,17 +3,17 @@ namespace ActualChat.Chat;
 /// <summary>
 /// Lightweight representation of a text chat entry for streaming and translation.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-[method: MemoryPackConstructor, SerializationConstructor, JsonConstructor, Newtonsoft.Json.JsonConstructor]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[method: ConstructorShape, MemoryPackConstructor, JsonConstructor, Newtonsoft.Json.JsonConstructor]
 public sealed partial record ChatEntrySlim(
-    [property: DataMember(Order = 0), MemoryPackOrder(0)] long LocalId,
-    [property: DataMember(Order = 1), MemoryPackOrder(1)] string Content,
-    [property: DataMember(Order = 2), MemoryPackOrder(2)] AuthorId AuthorId,
-    [property: DataMember(Order = 3), MemoryPackOrder(3)] Moment BeginsAt,
-    [property: DataMember(Order = 4), MemoryPackOrder(4)] Moment? EndsAt,
-    [property: DataMember(Order = 5), MemoryPackOrder(5)] bool IsTranscript,
-    [property: DataMember(Order = 6), MemoryPackOrder(6)] long? RepliedEntryLid,
-    [property: DataMember(Order = 7), MemoryPackOrder(7)] bool HasAttachments)
+    [property: DataMember(Order = 0), MemoryPackOrder(0), NbKey(0)] long LocalId,
+    [property: DataMember(Order = 1), MemoryPackOrder(1), NbKey(1)] string Content,
+    [property: DataMember(Order = 2), MemoryPackOrder(2), NbKey(2)] AuthorId AuthorId,
+    [property: DataMember(Order = 3), MemoryPackOrder(3), NbKey(3)] Moment BeginsAt,
+    [property: DataMember(Order = 4), MemoryPackOrder(4), NbKey(4)] Moment? EndsAt,
+    [property: DataMember(Order = 5), MemoryPackOrder(5), NbKey(5)] bool IsTranscript,
+    [property: DataMember(Order = 6), MemoryPackOrder(6), NbKey(6)] long? RepliedEntryLid,
+    [property: DataMember(Order = 7), MemoryPackOrder(7), NbKey(7)] bool HasAttachments)
 {
     public static Comparer<ChatEntrySlim> LocalIdComparer { get; } = Comparer<ChatEntrySlim>.Create((a, b) => a.LocalId.CompareTo(b.LocalId));
 

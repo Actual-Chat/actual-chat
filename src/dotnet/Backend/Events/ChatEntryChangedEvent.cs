@@ -1,6 +1,6 @@
 namespace ActualChat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record ChatEntryChangedEvent(
     [property: DataMember, MemoryPackOrder(1)] ChatEntry Entry,
     [property: DataMember, MemoryPackOrder(2)] AuthorFull Author,
@@ -8,6 +8,6 @@ public partial record ChatEntryChangedEvent(
     [property: DataMember, MemoryPackOrder(4)] ChatEntry? OldEntry
 ) : EventCommand, IHasShardKey<ChatId>
 {
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public ChatId ShardKey => Entry.ChatId;
 }

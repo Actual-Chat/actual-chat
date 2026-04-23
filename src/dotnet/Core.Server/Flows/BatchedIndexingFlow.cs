@@ -9,9 +9,9 @@ public abstract class BatchedIndexingFlow<TItem, TId> : IndexingFlow<IndexingFlo
     where TItem : class, IHasId<TId>, IHasVersion<long>
     where TId : StringIdentifier
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     protected virtual int BatchSize => 100;
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     protected virtual int Quota => 1000;
 
     // Overridable methods

@@ -3,7 +3,7 @@ using ActualChat.Flows;
 namespace ActualChat.Media.Flows;
 
 [Flow(ResumeTimeout = 14.5 * 60)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial class UploadProcessingFlow : Flow<MediaRef>
 {
     private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();

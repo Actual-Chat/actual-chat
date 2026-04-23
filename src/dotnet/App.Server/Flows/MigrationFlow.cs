@@ -5,7 +5,7 @@ using ActualChat.Users.Flows;
 namespace ActualChat.App.Server.Flows;
 
 [Flow(DataVersion = 1, DelayQuanta = 1)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class MigrationFlow : Flow<Unit>, IMasterFlow
 {
     private TimeSpan DependencyCheckPeriod

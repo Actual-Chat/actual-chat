@@ -12,7 +12,6 @@ namespace ActualChat;
 [DataContract, MemoryPackable(GenerateType.NoGenerate)]
 [JsonConverter(typeof(StringLikeJsonConverter<TranslationSourceId>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<TranslationSourceId>))]
-[MessagePackFormatter(typeof(StringLikeMessagePackFormatter<TranslationSourceId>))]
 [TypeConverter(typeof(StringLikeTypeConverter<TranslationSourceId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 

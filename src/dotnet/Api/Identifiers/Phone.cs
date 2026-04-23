@@ -12,7 +12,6 @@ namespace ActualChat;
 [DataContract, MemoryPackable(GenerateType.NoGenerate)]
 [JsonConverter(typeof(StringLikeJsonConverter<Phone>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<Phone>))]
-[MessagePackFormatter(typeof(StringLikeMessagePackFormatter<Phone>))]
 [TypeConverter(typeof(StringLikeTypeConverter<Phone>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 public sealed partial class Phone : StringIdentifier, IStringIdentifier<Phone>

@@ -1,13 +1,5 @@
 Before starting any task, read AGENTS.md files in every directory starting from the current one and above, up to the root one (project directory).
 
-**YOU MUST READ [docs/CODING_STYLE.md](docs/CODING_STYLE.md) before writing or
-modifying any C# or TypeScript code.** It's not optional. This project
-**deviates from standard .NET conventions** on several points (notably:
-no `Async` suffix on async methods; no XML docs on members; mixed brace
-style). Default instincts from elsewhere will produce code that gets
-rejected. If you haven't opened that file yet in this session, stop and
-read it now.
-
 `pwsh` (cross-platform PowerShell) command is available on any OS you run, so use it.
 
 # Claude Launcher (c.ps1)

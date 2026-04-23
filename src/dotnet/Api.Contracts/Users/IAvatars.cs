@@ -1,4 +1,4 @@
-﻿namespace ActualChat.Users;
+namespace ActualChat.Users;
 
 /// <summary>
 /// Service for managing user avatars.
@@ -18,18 +18,18 @@ public interface IAvatars : IComputeService
     Task OnSetDefault(Avatars_SetDefault command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Avatars_Change(
-    [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] Symbol AvatarId,
-    [property: DataMember, MemoryPackOrder(2)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(3)] Change<AvatarDiff> Change
+    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] Symbol AvatarId,
+    [property: DataMember, MemoryPackOrder(2), Key(2)] long? ExpectedVersion,
+    [property: DataMember, MemoryPackOrder(3), Key(3)] Change<AvatarDiff> Change
 ) : ISessionCommand<AvatarFull>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Avatars_SetDefault(
-    [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] Symbol AvatarId
+    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] Symbol AvatarId
 ) : ISessionCommand<Unit>, IApiCommand;

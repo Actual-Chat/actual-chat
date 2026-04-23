@@ -1,9 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
-  <PropertyGroup>
-    <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
-  </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\MLSearch.Service\MLSearch.Service.csproj" />
   </ItemGroup>

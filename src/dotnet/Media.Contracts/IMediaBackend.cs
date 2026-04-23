@@ -25,29 +25,29 @@ public interface IMediaBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to create, update, or delete a media record.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record MediaBackend_Change(
-    [property: DataMember, MemoryPackOrder(0)] MediaId Id,
-    [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(2)] Change<MediaFull> Change
+    [property: DataMember, MemoryPackOrder(0), NbKey(0)] MediaId Id,
+    [property: DataMember, MemoryPackOrder(1), NbKey(1)] long? ExpectedVersion,
+    [property: DataMember, MemoryPackOrder(2), NbKey(2)] Change<MediaFull> Change
 ) : ICommand<MediaFull?>, IBackendCommand, IHasShardKey<MediaId>
 {
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public MediaId ShardKey => Id;
 }
 
 /// <summary>
 /// Command to copy media files to a new chat.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record MediaBackend_CopyChat(
-    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1)] string CorrelationId,
-    [property: DataMember, MemoryPackOrder(2)] MediaId[] MediaIds
+    [property: DataMember, MemoryPackOrder(0), NbKey(0)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(1), NbKey(1)] string CorrelationId,
+    [property: DataMember, MemoryPackOrder(2), NbKey(2)] MediaId[] MediaIds
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     public ChatId ShardKey => ChatId;
 }

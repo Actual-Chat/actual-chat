@@ -24,20 +24,20 @@ public interface ISessionsBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to create or update a session.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-[method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[method: ConstructorShape, JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
 // ReSharper disable once InconsistentNaming
 public partial record SessionsBackend_Upsert(
-    [property: DataMember, MemoryPackOrder(0)] Session Session
+    [property: DataMember, MemoryPackOrder(0), NbKey(0)] Session Session
     ) : ISessionCommand<SessionInfoFull>, IBackendCommand, INotLogged, IHasShardKey<Session>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     public Session ShardKey => Session;
 
-    [DataMember, MemoryPackOrder(1)] public string? IPAddress { get; init; }
-    [DataMember, MemoryPackOrder(2)] public string? Description { get; init; }
-    [DataMember, MemoryPackOrder(3)] public ImmutableOptionSet Options { get; init; }
-    [DataMember, MemoryPackOrder(4)] public Option<UserId?> UserId { get; init; }
-    [DataMember, MemoryPackOrder(5)] public UserIdentity? AuthenticatedIdentity { get; init; }
-    [DataMember, MemoryPackOrder(6)] public Moment? ExpiresAt { get; init; }
+    [DataMember, MemoryPackOrder(1), NbKey(1)] public string? IPAddress { get; init; }
+    [DataMember, MemoryPackOrder(2), NbKey(2)] public string? Description { get; init; }
+    [DataMember, MemoryPackOrder(3), NbKey(3)] public ImmutableOptionSet Options { get; init; }
+    [DataMember, MemoryPackOrder(4), NbKey(4)] public Option<UserId?> UserId { get; init; }
+    [DataMember, MemoryPackOrder(5), NbKey(5)] public UserIdentity? AuthenticatedIdentity { get; init; }
+    [DataMember, MemoryPackOrder(6), NbKey(6)] public Moment? ExpiresAt { get; init; }
 }

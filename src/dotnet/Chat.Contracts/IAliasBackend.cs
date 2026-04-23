@@ -20,30 +20,30 @@ public interface IAliasBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to create, update, or delete an alias.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record AliasBackend_Change(
-    [property: DataMember, MemoryPackOrder(0)] AliasId Id,
-    [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(2)] Change<Alias> Change
+    [property: DataMember, MemoryPackOrder(0), NbKey(0)] AliasId Id,
+    [property: DataMember, MemoryPackOrder(1), NbKey(1)] long? ExpectedVersion,
+    [property: DataMember, MemoryPackOrder(2), NbKey(2)] Change<Alias> Change
 ) : ICommand<Alias?>, IBackendCommand, IHasShardKey<AliasId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     public AliasId ShardKey => Id;
 }
 
 /// <summary>
 /// Represents a named alias pointing to a chat or place.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record Alias(
-    [property: DataMember, MemoryPackOrder(0)] AliasId Id,
-    [property: DataMember, MemoryPackOrder(1)] long Version = 0
+    [property: DataMember, MemoryPackOrder(0), NbKey(0)] AliasId Id,
+    [property: DataMember, MemoryPackOrder(1), NbKey(1)] long Version = 0
     ) : IHasId<AliasId>, IHasVersion<long>, IRequirementTarget
 {
-    [DataMember, MemoryPackOrder(2)] public Moment CreatedAt { get; init; }
-    [DataMember, MemoryPackOrder(3)] public AliasKind Kind { get; init; }
-    [DataMember, MemoryPackOrder(4)] public string TargetId { get; init; } = "";
+    [DataMember, MemoryPackOrder(2), NbKey(2)] public Moment CreatedAt { get; init; }
+    [DataMember, MemoryPackOrder(3), NbKey(3)] public AliasKind Kind { get; init; }
+    [DataMember, MemoryPackOrder(4), NbKey(4)] public string TargetId { get; init; } = "";
 
     // This record relies on referential equality
     public bool Equals(Alias? other) => ReferenceEquals(this, other);

@@ -25,7 +25,7 @@ public abstract class FeaturesBase(
 {
     private ILogger? _log;
 
-    protected IByteSerializer Serializer { get; set; } = ByteSerializer.Default;
+    protected IByteSerializer Serializer { get; set; } = Serializers.MessagePack;
     protected ILogger Log => _log ??= Services.LogFor(GetType());
 
     public IServiceProvider Services { get; } = services;

@@ -15,7 +15,7 @@ public class ApiEvolutionTest(ITestOutputHelper @out) : TestBase(@out)
     private static readonly ChatEntryId TestEntryId = ChatEntryId.New(TestChatId, 1);
     private static readonly Moment TestMoment = new(new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc));
 
-    private IByteSerializer Serializer => MemoryPackByteSerializer.Default;
+    private IByteSerializer Serializer => Serializers.MemoryPack;
 
     [Fact(Skip = "Will fail in this version, we'll get back to that later.")]
     public void RunTest()

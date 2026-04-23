@@ -7,7 +7,7 @@ using ActualChat.Search;
 
 namespace ActualChat.MLSearch.Flows;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class AccountIndexingFlow : BatchedIndexingFlow<AccountFull, UserId>, IMasterFlow
 {
     private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();

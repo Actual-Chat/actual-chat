@@ -1,6 +1,7 @@
 <linker>
   <!-- ActualChat - common -->
   <assembly fullname="ActualChat.Core" />
+  <assembly fullname="ActualChat.SignalR.Client" />
   <assembly fullname="ActualChat.UI.Blazor" RootMode="visible" />
   <assembly fullname="ActualChat.UI.Blazor.App" RootMode="visible" />
 
@@ -22,6 +23,7 @@
   <assembly fullname="ActualChat.MediaPlayback" />
   <assembly fullname="ActualChat.Notification" />
   <assembly fullname="ActualChat.Notification.Contracts" />
+  <assembly fullname="ActualChat.SignalR.Client" />
   <assembly fullname="ActualChat.Transcription.Contracts" />
   <assembly fullname="ActualChat.Users" />
   <assembly fullname="ActualChat.Users.Contracts" />
@@ -50,6 +52,10 @@
   <assembly fullname="OpenTelemetry.Api.ProviderBuilderExtensions" />
   <assembly fullname="OpenTelemetry.Instrumentation.Http" />
   <assembly fullname="System.Security.Cryptography.X509Certificates" />
+  <assembly fullname="Microsoft.AspNetCore.SignalR.Client" />
+  <assembly fullname="Microsoft.AspNetCore.SignalR.Client.Core" />
+  <assembly fullname="Microsoft.AspNetCore.SignalR.Common" />
+  <assembly fullname="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" />
   <assembly fullname="RestEase" />
   <!-- System.Private.CoreLib is needed only if you want to enable TaskEventListener -->
   <!--

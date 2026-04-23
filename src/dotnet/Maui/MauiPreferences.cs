@@ -67,7 +67,7 @@ public static class MauiPreferences
                 else if (typeof(T) == typeof(string))
                     result = (T)(object)stored;
                 else
-                    result = SystemJsonSerializer.Default.Read<T>(stored);
+                    result = Serializers.SystemJson.Read<T>(stored);
             }
             catch {
                 // Handles type mismatch when stored format changes across versions
@@ -96,7 +96,7 @@ public static class MauiPreferences
                 Preferences.Default.Set(key, str);
                 return;
             default:
-                var stored = SystemJsonSerializer.Default.Write(value, value.GetType());
+                var stored = Serializers.SystemJson.Write(value, value.GetType());
                 Preferences.Default.Set(key, stored);
                 return;
             }

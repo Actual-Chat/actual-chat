@@ -1,16 +1,16 @@
-﻿namespace ActualChat.Chat;
+namespace ActualChat.Chat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial class ChatLanguageTile
 {
-    [DataMember, MemoryPackOrder(0)] public Range<long> IdTileRange { get; init; }
+    [DataMember, MemoryPackOrder(0), Key(0)] public Range<long> IdTileRange { get; init; }
     // Entries area always sorted by Id!
-    [DataMember, MemoryPackOrder(1)] public ChatEntryLanguage[] Entries { get; init; } = [];
+    [DataMember, MemoryPackOrder(1), Key(1)] public ChatEntryLanguage[] Entries { get; init; } = [];
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsEmpty => Entries.Length == 0;
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
+    [ConstructorShape, JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public ChatLanguageTile() { }
 
     public ChatLanguageTile(Range<long> idTileRange, ChatEntryLanguage[] entries)

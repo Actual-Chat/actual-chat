@@ -17,14 +17,14 @@ public interface IAvatarsBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to create, update, or delete an avatar.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record AvatarsBackend_Change(
-    [property: DataMember, MemoryPackOrder(0)] Symbol AvatarId,
-    [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(2)] Change<AvatarDiff> Change
+    [property: DataMember, MemoryPackOrder(0), NbKey(0)] Symbol AvatarId,
+    [property: DataMember, MemoryPackOrder(1), NbKey(1)] long? ExpectedVersion,
+    [property: DataMember, MemoryPackOrder(2), NbKey(2)] Change<AvatarDiff> Change
 ) : ICommand<AvatarFull>, IBackendCommand, IHasShardKey<Symbol>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     public Symbol ShardKey => AvatarId;
 }

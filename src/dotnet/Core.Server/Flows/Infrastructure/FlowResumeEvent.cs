@@ -5,7 +5,7 @@ using ActualLab.Generators;
 
 namespace ActualChat.Flows.Infrastructure;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial class FlowResumeEvent :
     IDelegatingCommand<long>, IBackendCommand,
     IHasDelayUntil, IHasDelayQuanta,
@@ -17,20 +17,20 @@ public sealed partial class FlowResumeEvent :
     private readonly FlowHub? _hub; // Used only in Schedule method
     private volatile OperationEvent? _operationEvent;
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
+    [DataMember(Order = 0), MemoryPackOrder(0), NbKey(0)]
     public FlowId FlowId { get; }
-    [DataMember(Order = 1), MemoryPackOrder(1)]
+    [DataMember(Order = 1), MemoryPackOrder(1), NbKey(1)]
     public bool MustReset { get; private set; }
-    [DataMember(Order = 2), MemoryPackOrder(2)]
+    [DataMember(Order = 2), MemoryPackOrder(2), NbKey(2)]
     public Moment DelayUntil { get; private set; }
 
-    [DataMember(Order = 3), MemoryPackOrder(3)]
+    [DataMember(Order = 3), MemoryPackOrder(3), NbKey(3)]
     public TimeSpan? DelayQuanta {
         get => MustReset ? TimeSpan.Zero : field; // MustReset overrides DelayQuanta: we can't skip such events
         private set => field = value is { } q ? q.Positive() : null;
     }
 
-    [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
+    [method: ConstructorShape, JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     private FlowResumeEvent(FlowId flowId)
         => FlowId = flowId;
 

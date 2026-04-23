@@ -7,7 +7,7 @@ namespace ActualChat.Contacts;
 /// </summary>
 public sealed class ExternalContactHasher
 {
-    private IByteSerializer ByteSerializer { get; } = MemoryPackByteSerializer.Default;
+    private IByteSerializer ByteSerializer { get; } = Serializers.MemoryPack;
 
     public HashString Compute(ExternalContactFull externalContactFull)
     {
@@ -26,18 +26,18 @@ public sealed class ExternalContactHasher
 // Switching the serializer would invalidate every previously stored hash and trigger
 // a full re-detection pass for all external contacts.
 // This type is backend-only, so the MemoryPack dependency does not leak to clients.
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true, AllowPrivate = true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 internal sealed partial record HashedExternalContact
 {
-    [DataMember, MemoryPackOrder(0)] public ExternalContactId Id { get; init; } = null!;
-    [DataMember, MemoryPackOrder(1)] public string DisplayName { get; init; } = "";
-    [DataMember, MemoryPackOrder(2)] public string GivenName { get; init; } = "";
-    [DataMember, MemoryPackOrder(3)] public string FamilyName { get; init; } = "";
-    [DataMember, MemoryPackOrder(4)] public string MiddleName { get; init; } = "";
-    [DataMember, MemoryPackOrder(5)] public string NamePrefix { get; init; } = "";
-    [DataMember, MemoryPackOrder(6)] public string NameSuffix { get; init; } = "";
-    [DataMember, MemoryPackOrder(7)] public ApiSet<string> PhoneHashes { get; init; } = ApiSet<string>.Empty;
-    [DataMember, MemoryPackOrder(8)] public ApiSet<string> EmailHashes { get; init; } = ApiSet<string>.Empty;
+    [DataMember, MemoryPackOrder(0), Key(0)] public ExternalContactId Id { get; init; } = null!;
+    [DataMember, MemoryPackOrder(1), Key(1)] public string DisplayName { get; init; } = "";
+    [DataMember, MemoryPackOrder(2), Key(2)] public string GivenName { get; init; } = "";
+    [DataMember, MemoryPackOrder(3), Key(3)] public string FamilyName { get; init; } = "";
+    [DataMember, MemoryPackOrder(4), Key(4)] public string MiddleName { get; init; } = "";
+    [DataMember, MemoryPackOrder(5), Key(5)] public string NamePrefix { get; init; } = "";
+    [DataMember, MemoryPackOrder(6), Key(6)] public string NameSuffix { get; init; } = "";
+    [DataMember, MemoryPackOrder(7), Key(7)] public ApiSet<string> PhoneHashes { get; init; } = ApiSet<string>.Empty;
+    [DataMember, MemoryPackOrder(8), Key(8)] public ApiSet<string> EmailHashes { get; init; } = ApiSet<string>.Empty;
 
     public static HashedExternalContact From(ExternalContactFull externalContactFull)
         => new () {

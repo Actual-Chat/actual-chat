@@ -1,12 +1,11 @@
-﻿namespace ActualChat.Hosting;
+namespace ActualChat.Hosting;
 
 /// <summary>
 /// Defines roles that a host can fulfill (e.g., Api, Backend services, Queues).
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-[MessagePackFormatter(typeof(ActualChat.Hosting.Internal.HostRoleMessagePackFormatter))]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record struct HostRole(
-    [property: DataMember(Order = 0), MemoryPackOrder(0)] Symbol Id
+    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] Symbol Id
     ) : ICanBeNone<HostRole>, IComparable<HostRole>
 {
     public const string QueueSuffix = "Queue";
@@ -46,13 +45,13 @@ public partial record struct HostRole(
     // The only role any app has
     public static readonly HostRole App = nameof(App); // Implies BlazorUI
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsNone => Id.IsEmpty;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsQueue => Id.Value.EndsWith(QueueSuffix);
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsBackend => Id == OneBackendServer.Id || Id.Value.EndsWith(BackendSuffix);
 
     public override string ToString() => Value;

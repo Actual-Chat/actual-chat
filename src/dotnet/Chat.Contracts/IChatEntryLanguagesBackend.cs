@@ -31,14 +31,14 @@ public interface IChatEntryLanguagesBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to detect the language of a chat entry.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatEntryLanguagesBackend_Detect(
-    [property: DataMember, MemoryPackOrder(0)] ChatEntryId Id,
-    [property: DataMember, MemoryPackOrder(1)] HashString ContentHash
+    [property: DataMember, MemoryPackOrder(0), NbKey(0)] ChatEntryId Id,
+    [property: DataMember, MemoryPackOrder(1), NbKey(1)] HashString ContentHash
 ) : ICommand<ChatEntryLanguage?>, IBackendCommand, IHasShardKey<ChatId>, IHasUuid
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     public ChatId ShardKey => Id.ChatId;
 
     string IHasUuid.Uuid => $"{Id}.{ContentHash.Hash}";
@@ -47,15 +47,15 @@ public sealed partial record ChatEntryLanguagesBackend_Detect(
 /// <summary>
 /// Command to update the detected language for a chat entry.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatEntryLanguagesBackend_Change(
-    [property: DataMember, MemoryPackOrder(0)] ChatEntryId Id,
-    [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(2)] Change<ChatEntryLanguage> Change
+    [property: DataMember, MemoryPackOrder(0), NbKey(0)] ChatEntryId Id,
+    [property: DataMember, MemoryPackOrder(1), NbKey(1)] long? ExpectedVersion,
+    [property: DataMember, MemoryPackOrder(2), NbKey(2)] Change<ChatEntryLanguage> Change
 ) : ICommand<ChatEntryLanguage?>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     public ChatId ShardKey => Id.ChatId;
 
     public static ChatEntryLanguagesBackend_Change Upsert(ChatEntryLanguage language)

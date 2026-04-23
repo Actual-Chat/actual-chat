@@ -30,14 +30,14 @@ public partial class PublicInitSerializationTest(ITestOutputHelper @out) : TestB
         roundTripped.Text.Should().Be("hello");
     }
 
-    [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+    [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
     public partial class TypeWithPublicInit
     {
         [DataMember, MemoryPackOrder(0)] public int Number { get; init; }
         [DataMember, MemoryPackOrder(1)] public string Text { get; init; } = "";
     }
 
-    [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+    [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
     public partial class TypeWithPublicInitAndDefaultCtor
     {
         public TypeWithPublicInitAndDefaultCtor() { }

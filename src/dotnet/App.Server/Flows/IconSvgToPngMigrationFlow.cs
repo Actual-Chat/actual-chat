@@ -26,7 +26,7 @@ namespace ActualChat.App.Server.Flows;
 /// and <c>MediaDbInitializer</c> already upgrades them to PNG in place on startup.
 /// </remarks>
 [Flow(DataVersion = 2, DelayQuanta = 0)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
 {
     private const int BatchSize = 50;
@@ -48,16 +48,16 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
     private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
     private ICommander Commander => Hub.Commander;
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
+    [DataMember(Order = 0), MemoryPackOrder(0), NbKey(0)]
     public MigrationPhase Phase { get; set; }
-    [DataMember(Order = 1), MemoryPackOrder(1)]
+    [DataMember(Order = 1), MemoryPackOrder(1), NbKey(1)]
     public string? LastProcessedEntityId { get; set; }
-    [DataMember(Order = 2), MemoryPackOrder(2)]
+    [DataMember(Order = 2), MemoryPackOrder(2), NbKey(2)]
     public long ConvertedCount { get; set; }
-    [DataMember(Order = 3), MemoryPackOrder(3)]
+    [DataMember(Order = 3), MemoryPackOrder(3), NbKey(3)]
     public long SkippedCount { get; set; }
     // Unexpected ProcessOne exceptions. Non-zero at completion needs dev attention.
-    [DataMember(Order = 4), MemoryPackOrder(4)]
+    [DataMember(Order = 4), MemoryPackOrder(4), NbKey(4)]
     public long FailedCount { get; set; }
 
     protected override async ValueTask Resume(CancellationToken cancellationToken)

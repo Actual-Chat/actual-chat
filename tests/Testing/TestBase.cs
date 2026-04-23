@@ -1,3 +1,4 @@
+using ActualChat.Module;
 using ActualLab.IO;
 using Microsoft.Extensions.Configuration;
 
@@ -5,6 +6,13 @@ namespace ActualChat.Testing;
 
 public abstract class TestBase(ITestOutputHelper @out, ILogger? log = null) : IAsyncLifetime
 {
+    static TestBase()
+    {
+        RuntimeInfo.IsServer = true;
+        ApiContractsModuleInitializer.Load();
+        CoreModuleInitializer.Configure();
+    }
+
     protected ITestOutputHelper Out { get; private set; } = @out.ToSafe();
 
     protected ILogger Log => field ??= log ?? Out.ToLoggerFactory().CreateLogger(GetType());

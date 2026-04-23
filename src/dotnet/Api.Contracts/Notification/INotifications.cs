@@ -26,38 +26,38 @@ public interface INotifications : IComputeService
     Task OnNotifyMentionedMembers(Notifications_NotifyMentionedMembers command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Notifications_Handle(
-    [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] NotificationId NotificationId
+    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] NotificationId NotificationId
 ) : ISessionCommand<Unit>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Notifications_RegisterDevice(
-    [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] Symbol DeviceId,
-    [property: DataMember, MemoryPackOrder(2)] DeviceType DeviceType
+    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] Symbol DeviceId,
+    [property: DataMember, MemoryPackOrder(2), Key(2)] DeviceType DeviceType
 ) : ISessionCommand<Unit>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Notifications_DeregisterDevice(
-    [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] Symbol DeviceId
+    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] Symbol DeviceId
 ) : ISessionCommand<Unit>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Notifications_NotifyMembers(
-    [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] ChatId ChatId
+    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatId ChatId
 ) : ISessionCommand<Unit>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Notifications_NotifyMentionedMembers(
-    [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] ChatEntryId ChatEntryId
+    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatEntryId ChatEntryId
 ) : ISessionCommand<Unit>, IApiCommand;

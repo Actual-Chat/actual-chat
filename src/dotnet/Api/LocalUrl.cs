@@ -7,11 +7,10 @@ namespace ActualChat;
 /// <summary>
 /// Represents a normalized local URL path starting with '/'.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // MemoryPack wire format intentionally kept SG-generated (IMemoryPackable<T> map) to stay
 // compatible with older clients. Switch to plain-string when safe by uncommenting:
 // [MemoryPackFormatter<StringLikeMemoryPackFormatter<LocalUrl>>]
-[MessagePackFormatter(typeof(StringLikeMessagePackFormatter<LocalUrl>))]
 [JsonConverter(typeof(StringLikeJsonConverter<LocalUrl>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<LocalUrl>))]
 [TypeConverter(typeof(StringLikeTypeConverter<LocalUrl>))]
@@ -22,10 +21,10 @@ public readonly partial struct LocalUrl : IStringLike<LocalUrl>, IEquatable<Loca
 
     public static LocalUrl Parse(string? s) => new(s);
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public string DisplayText => Value.Length <= 1 ? Value : Value[1..];
 
-    [MemoryPackConstructor, SerializationConstructor]
+    [ConstructorShape, MemoryPackConstructor]
     public LocalUrl(string? value)
     {
         // Normalizing it

@@ -1,4 +1,4 @@
-﻿namespace ActualChat.Users;
+namespace ActualChat.Users;
 
 /// <summary>
 /// Service for tracking and querying user online presence.
@@ -14,9 +14,9 @@ public interface IUserPresences : IComputeService
     Task OnCheckIn(UserPresences_CheckIn command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record UserPresences_CheckIn(
-    [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] bool IsActive
+    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] bool IsActive
 ) : ISessionCommand<Unit>, IApiCommand;

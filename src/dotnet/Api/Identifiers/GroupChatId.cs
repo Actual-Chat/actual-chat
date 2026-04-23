@@ -12,7 +12,6 @@ namespace ActualChat;
 [DataContract, MemoryPackable(GenerateType.NoGenerate)]
 [JsonConverter(typeof(StringLikeJsonConverter<GroupChatId>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<GroupChatId>))]
-[MessagePackFormatter(typeof(StringLikeMessagePackFormatter<GroupChatId>))]
 [TypeConverter(typeof(StringLikeTypeConverter<GroupChatId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 public sealed partial class GroupChatId : ChatId, IStringIdentifier<GroupChatId>

@@ -1,20 +1,20 @@
-﻿namespace ActualChat.Transcription;
+namespace ActualChat.Transcription;
 
 /// <summary>
 /// Represents incremental changes to a <see cref="Transcript"/>.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record TranscriptDiff(
-    [property: DataMember(Order = 0), MemoryPackOrder(0)] StringDiff TextDiff,
-    [property: DataMember(Order = 1), MemoryPackOrder(1)] LinearMapDiff TimeMapDiff
+    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] StringDiff TextDiff,
+    [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] LinearMapDiff TimeMapDiff
 ) : ISanitized
 {
     public static readonly TranscriptDiff None = new(StringDiff.None, LinearMapDiff.None);
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsNone => TextDiff.IsNone && TimeMapDiff.IsNone;
 
-    [DataMember(Order = 2), MemoryPackOrder(2)]
+    [DataMember(Order = 2), MemoryPackOrder(2), Key(2)]
     public bool IsStable { get; init; }
 
     public static TranscriptDiff New(Transcript transcript, Transcript baseTranscript)
