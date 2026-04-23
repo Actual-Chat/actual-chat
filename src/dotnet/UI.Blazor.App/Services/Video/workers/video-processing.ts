@@ -578,7 +578,8 @@ function onEncoderOutput(chunkData: EncodedChunkData): void {
     if (streamingEnabled) {
         deliverChunkToStream(chunkBuffer, chunkData.chunk.timestamp, chunkData.chunk.duration ?? 0,
             chunkData.type === 'key', actualCodec, chunkData.sequenceNumber, descBuffer,
-            chunkData.temporalLayerId, chunkData.spatialLayerId);
+            chunkData.temporalLayerId, chunkData.spatialLayerId,
+            chunkData.width, chunkData.height);
     } else {
         void callbacks.onSerializedChunk(
             chunkBuffer, chunkData.chunk.timestamp, chunkData.chunk.duration ?? 0,
@@ -595,7 +596,9 @@ function deliverChunkToStream(
     sequenceNumber: number,
     descriptionBytes?: ArrayBuffer,
     temporalLayerId?: number,
-    spatialLayerId?: number
+    spatialLayerId?: number,
+    chunkWidth?: number,
+    chunkHeight?: number
 ): void {
     // Detect sender disconnect BEFORE normalizing timestamps.
     //
@@ -622,11 +625,16 @@ function deliverChunkToStream(
     firstEncodedTimestamp ??= timestamp;
     const normalizedTimestamp = timestamp - firstEncodedTimestamp;
 
+    // Use encoder-instance dims when provided (simulcast extras differ from primary),
+    // fall back to primary's encoderConfig for single-encoder streams.
+    const frameWidth = chunkWidth ?? encoderConfig!.width;
+    const frameHeight = chunkHeight ?? encoderConfig!.height;
+
     const frame: VideoStreamFrame = {
         offset: microsecondsToTicks(normalizedTimestamp),
         duration: microsecondsToTicks(duration),
         isKeyFrame,
-        width: encoderConfig!.width, height: encoderConfig!.height,
+        width: frameWidth, height: frameHeight,
         data: chunkData, codec: isKeyFrame ? codec : undefined,
         temporalLayerId: temporalLayerId,
         spatialLayerId: spatialLayerId,
@@ -637,7 +645,7 @@ function deliverChunkToStream(
     };
 
     if (isKeyFrame) {
-        debugLog?.log(`Streaming keyframe: seq=${sequenceNumber}, offsetMs=${(normalizedTimestamp / 1000).toFixed(0)}, ${(chunkData.length / 1024).toFixed(2)} KB`);
+        infoLog?.log(`Streaming keyframe: spatial=${spatialLayerId ?? 0}, temporal=${temporalLayerId ?? 0}, seq=${sequenceNumber}, ${frameWidth}x${frameHeight}, offsetMs=${(normalizedTimestamp / 1000).toFixed(0)}, ${(chunkData.length / 1024).toFixed(2)} KB`);
     }
 
     if (isKeyFrame && descriptionBytes && descriptionBytes.byteLength > 0) {
@@ -730,6 +738,21 @@ function collectDownscaleTargets(config: VideoProcessingConfig): DownscaleTarget
         { width: config.encoder.width, height: config.encoder.height },
         ...(config.spatialLayers ?? []).map(l => ({ width: l.width, height: l.height })),
     ];
+}
+
+// Builds the current downscaler target list from live encoder state. Primary
+// dims come from encoderConfig (which is mutated by reconfigure + orientation
+// reconcile); extras come from each live WebCodecsEncoder's configured dims.
+// Used by any code path that rebuilds downscaler config mid-stream so that
+// simulcast extras aren't accidentally dropped.
+function currentDownscaleTargets(): DownscaleTarget[] {
+    const targets: DownscaleTarget[] = [];
+    if (encoderConfig) targets.push({ width: encoderConfig.width, height: encoderConfig.height });
+    for (const e of extraLayerEncoders) {
+        const s = e.getStats();
+        targets.push({ width: s.configuredWidth, height: s.configuredHeight });
+    }
+    return targets;
 }
 
 // Init WebGPU downscaler for the full simulcast target list (base + any extras).
@@ -845,10 +868,13 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
                     await encoder.reconfigure({ width: newW, height: newH, bitrate: encoderConfig.bitrate });
                     encoderConfig.width = newW;
                     encoderConfig.height = newH;
-                    if (downscaler) downscaler.configure([{ width: newW, height: newH }]);
+                    // Preserve simulcast extras in the downscaler target list —
+                    // reconfiguring with primary-only drops them and the extra
+                    // encoders stop receiving frames.
+                    if (downscaler) downscaler.configure(currentDownscaleTargets());
                     if (segConfig) { segConfig.outputWidth = newW; segConfig.outputHeight = newH; }
                     void callbacks.onDimensionReconciled(newW, newH, rpcNoWait);
-                    infoLog?.log(`Orientation change: rotation=${rotDeg} → encoder ${newW}x${newH}`);
+                    infoLog?.log(`Orientation change: rotation=${rotDeg} → encoder ${newW}x${newH} (downscaler targets=${extraLayerEncoders.length + 1})`);
                 } catch (e) {
                     warnLog?.log('Orientation reconfigure failed:', e);
                 }
@@ -1062,14 +1088,10 @@ export const serverImpl: VideoProcessingWorker = {
         await encoder.reconfigure(params);
         resizeCanvas = null; resizeCtx = null;
         if (downscaler) {
-            // Preserve simulcast extras when reconfiguring the primary layer. Extras
-            // stay at their initial dims — per-layer reconfigure is a later-stage
-            // feature driven by VideoQualityPreset.MaxSpatialLayer.
-            const targets: DownscaleTarget[] = [
-                { width: params.width, height: params.height },
-                ...extraLayerEncoders.map(e => ({ width: e.getStats().configuredWidth, height: e.getStats().configuredHeight })),
-            ];
-            downscaler.configure(targets);
+            // Preserve simulcast extras when reconfiguring the primary layer.
+            // Extras stay at their initial dims — per-layer reconfigure is a
+            // later-stage feature driven by VideoQualityPreset.MaxSpatialLayer.
+            downscaler.configure(currentDownscaleTargets());
         }
         if (segConfig && blurEnabled) { segConfig.outputWidth = params.width; segConfig.outputHeight = params.height; }
         // Drop cached heartbeat frame — its dimensions no longer match the encoder.
@@ -1098,11 +1120,15 @@ export const serverImpl: VideoProcessingWorker = {
         // Extras don't auto-inherit the new codec; keeping them on the old codec
         // would emit chunks a downstream decoder can't parse.
         if (extraLayerEncoders.length > 0) {
-            infoLog?.log(`switchCodec: tearing down ${extraLayerEncoders.length} simulcast extras`);
-            for (const e of extraLayerEncoders) {
-                try { await e.flush(); e.close(); } catch { /* ignore */ }
-            }
+            // Snapshot + clear before awaiting flush so a concurrent stop()
+            // iterating the same list doesn't see the pool shrinking under it.
+            const extras = extraLayerEncoders.slice();
             extraLayerEncoders = [];
+            infoLog?.log(`switchCodec: tearing down ${extras.length} simulcast extras`);
+            for (const e of extras) {
+                try { await e.flush(); } catch { /* already closed elsewhere */ }
+                try { e.close(); } catch { /* already closed */ }
+            }
         }
 
         // Re-enable streaming and clear any frames that leaked during flush
@@ -1136,8 +1162,12 @@ export const serverImpl: VideoProcessingWorker = {
 
     flush: async (): Promise<void> => {
         if (encoder) { try { await encoder.flush(); infoLog?.log('Encoder flushed'); } catch (e) { warnLog?.log('Encoder flush error:', e); } }
-        for (let i = 0; i < extraLayerEncoders.length; i++) {
-            try { await extraLayerEncoders[i].flush(); } catch (e) { warnLog?.log(`Extra layer ${i + 1} flush error:`, e); }
+        // Snapshot extras before iterating — switchCodec can reset the shared
+        // `extraLayerEncoders` array concurrently, which would turn indexed
+        // access into `undefined`.
+        const extras = extraLayerEncoders.slice();
+        for (let i = 0; i < extras.length; i++) {
+            try { await extras[i].flush(); } catch (e) { warnLog?.log(`Extra layer ${i + 1} flush error:`, e); }
         }
     },
 
@@ -1150,12 +1180,22 @@ export const serverImpl: VideoProcessingWorker = {
         if (streamReadLoopPromise) { try { await streamReadLoopPromise; } catch { /* ignore */ } streamReadLoopPromise = null; }
         try { await awaitAllPendingReadbacks(); } catch { /* ignore */ }
         if (frameQueue) { while (!frameQueue.isEmpty()) { const qf = frameQueue.shift(); if (qf) qf.frame.close(); } frameQueue = null; }
-        if (encoder) { try { await encoder.flush(); encoder.close(); } catch (e) { warnLog?.log('Encoder close error:', e); } }
-        for (let i = 0; i < extraLayerEncoders.length; i++) {
-            try { await extraLayerEncoders[i].flush(); extraLayerEncoders[i].close(); }
-            catch (e) { warnLog?.log(`Extra layer ${i + 1} close error:`, e); }
+        if (encoder) {
+            try { await encoder.flush(); } catch (e) { warnLog?.log('Encoder flush error (stop):', e); }
+            try { encoder.close(); } catch (e) { warnLog?.log('Encoder close error:', e); }
         }
+        // Snapshot + clear BEFORE awaiting flush — if switchCodec runs during
+        // these awaits it also drains the shared array, and concurrent indexed
+        // iteration would hit `undefined`. Flush and close are guarded
+        // separately so a stale `flush()` rejecting with AbortError doesn't
+        // skip the `close()` step.
+        const extras = extraLayerEncoders.slice();
         extraLayerEncoders = [];
+        for (let i = 0; i < extras.length; i++) {
+            const e = extras[i];
+            try { await e.flush(); } catch (err) { warnLog?.log(`Extra layer ${i + 1} flush error (stop):`, err); }
+            try { e.close(); } catch (err) { warnLog?.log(`Extra layer ${i + 1} close error:`, err); }
+        }
         if (videoStream) {
             videoStream.complete();
             // Wait for stream loop to finish sending remaining frames before closing connection
