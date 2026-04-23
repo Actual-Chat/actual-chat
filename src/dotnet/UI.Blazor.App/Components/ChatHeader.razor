@@ -72,13 +72,9 @@
     <ChatActivityPanelNarrowScreenWrapper Chat="@chat" Click="@OnToggleRightPanelClick" />
 }
 
-@if(m.IsVideoStreamingEnabled) {
-    <VideoPanelContainer />
-}
+<VideoPanelContainer />
 
 @code {
-    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
-
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [ParameterComparer(typeof(ByRefParameterComparer))]
     [Parameter, EditorRequired] public Chat? Chat { get; set; }
@@ -98,12 +94,10 @@
         var hasSelection = await Hub.SelectionUI.HasSelection.Use(cancellationToken).ConfigureAwait(false);
         var isSearchMode = await Hub.PanelsUI.Right.IsSearchMode.Use(cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
-        var isVideoStreamingEnabled = await ChatVideoUI.IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
         return new() {
             HasSelection = hasSelection,
             IsSearchMode = isSearchMode,
             EnableIncompleteUI = enableIncompleteUI,
-            IsVideoStreamingEnabled = isVideoStreamingEnabled,
         };
     }
 
@@ -141,6 +135,5 @@
         public bool HasSelection { get; init; }
         public bool IsSearchMode { get; init; }
         public bool EnableIncompleteUI { get; init; }
-        public bool IsVideoStreamingEnabled { get; init; }
     }
 }

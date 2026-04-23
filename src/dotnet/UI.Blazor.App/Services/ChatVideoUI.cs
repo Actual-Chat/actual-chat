@@ -71,10 +71,6 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     [ComputeMethod]
     public virtual async Task<StreamKind?> GetOwnStreamKind(ChatId chatId, CancellationToken cancellationToken = default)
     {
-        var isVideoEnabled = await IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
-        if (!isVideoEnabled)
-            return null;
-
         if (await IsOwnScreencasting(chatId, cancellationToken).ConfigureAwait(false))
             return StreamKind.Screencast;
         if (await IsOwnRecording(chatId, cancellationToken).ConfigureAwait(false))
@@ -85,10 +81,6 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     [ComputeMethod]
     public virtual async Task<bool> IsOwnRecording(ChatId chatId, CancellationToken cancellationToken = default)
     {
-        var isVideoEnabled = await IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
-        if (!isVideoEnabled)
-            return false;
-
         var recordingChatId = await _recordingChatId.Use(cancellationToken).ConfigureAwait(false);
         return recordingChatId == chatId;
     }
@@ -96,10 +88,6 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     [ComputeMethod]
     public virtual async Task<bool> IsOwnScreencasting(ChatId chatId, CancellationToken cancellationToken = default)
     {
-        var isVideoEnabled = await IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
-        if (!isVideoEnabled)
-            return false;
-
         var screencastChatId = await _screencastChatId.Use(cancellationToken).ConfigureAwait(false);
         return screencastChatId == chatId;
     }
@@ -331,27 +319,15 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     [ComputeMethod]
     public virtual async Task<ApiArray<VideoStreamInfo>> GetActiveVideoStreams(ChatId chatId, CancellationToken cancellationToken = default)
-    {
-        var isVideoEnabled = await IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
-        if (!isVideoEnabled)
-            return [];
-
-        return await LiveVideoStreams
+        => await LiveVideoStreams
             .List(Session, chatId, cancellationToken)
             .ConfigureAwait(false);
-    }
 
     [ComputeMethod]
     public virtual async Task<int> GetVideoStreamMemberCount(ChatId chatId, CancellationToken cancellationToken = default)
-    {
-        var isEnabled = await IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
-        if (!isEnabled)
-            return 0;
-
-        return await LiveVideoStreams
+        => await LiveVideoStreams
             .GetMemberCount(Session, chatId, cancellationToken)
             .ConfigureAwait(false);
-    }
 
     [ComputeMethod]
     public virtual async Task<VideoStreamInfo[]> GetRemoteStreams(ChatId chatId, CancellationToken cancellationToken = default)
@@ -378,9 +354,6 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         return videoStreams.Any(s => s.AuthorId != ownAuthor?.Id);
     }
-
-    public ValueTask<bool> IsVideoStreamingEnabled(CancellationToken cancellationToken)
-        => Features.IsVideoStreamingEnabled(cancellationToken);
 
     private void SetWatching(ChatId? chatId)
     {

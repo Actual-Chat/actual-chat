@@ -5,15 +5,13 @@
     var audioState = m.AudioState;
     var isListening = audioState?.IsListening == true;
     var isRecording = audioState?.IsRecording == true;
-    var allowVideo = m.IsVideoFeatureEnabled;
     var isOwnCameraStreaming = m.IsOwnRecording;
     var isOwnScreencasting = m.IsOwnScreencasting;
     var isOwnStreaming = isOwnCameraStreaming || isOwnScreencasting;
     var isAnyoneVideoStreaming = m.IsAnyoneVideoStreaming;
-    var showHeader = allowVideo
-        && (isListening || isOwnCameraStreaming)
+    var showHeader = (isListening || isOwnCameraStreaming)
         && (isRecording || isOwnCameraStreaming || isAnyoneVideoStreaming);
-    var showMainVideoControls = allowVideo && (isRecording || isAnyoneVideoStreaming || isOwnStreaming);
+    var showMainVideoControls = isRecording || isAnyoneVideoStreaming || isOwnStreaming;
 }
 
 <div class="chat-audio-panel">
@@ -86,7 +84,7 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<Model>.Options {
-                InitialValue = new Model(null, false, false, false, false),
+                InitialValue = new Model(null, false, false, false),
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
@@ -94,13 +92,11 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
         var audioState = await ChatAudioUI.GetState(chat.Id).ConfigureAwait(false);
-        var isVideoFeatureEnabled = await ChatVideoUI.IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
         var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chat.Id, cancellationToken).ConfigureAwait(false);
         var isOwnRecording = await ChatVideoUI.IsOwnRecording(chat.Id, cancellationToken).ConfigureAwait(false);
         var isOwnScreencasting = await ChatVideoUI.IsOwnScreencasting(chat.Id, cancellationToken).ConfigureAwait(false);
         return new(
             audioState,
-            isVideoFeatureEnabled,
             isAnyoneVideoStreaming,
             isOwnRecording,
             isOwnScreencasting);
@@ -111,7 +107,6 @@
 
     public sealed record Model(
         ChatAudioState? AudioState,
-        bool IsVideoFeatureEnabled,
         bool IsAnyoneVideoStreaming,
         bool IsOwnRecording,
         bool IsOwnScreencasting);

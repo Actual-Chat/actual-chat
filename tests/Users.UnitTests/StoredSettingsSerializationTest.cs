@@ -30,6 +30,8 @@ public partial class StoredSettingsSerializationTest
     [Fact]
     public void LegacyUserAppSettings_DeserializesAs_UserAppSettings()
     {
+        // Legacy still carries slot 4 (IsVideoStreamingEnabled). New type reserves
+        // but does not expose slot 4; version-tolerant deserialization must ignore it.
         var legacy = new LegacyUserAppSettings {
             Origin = "test",
             IsDataCollectionEnabled = true,
@@ -46,7 +48,6 @@ public partial class StoredSettingsSerializationTest
         result.IsDataCollectionEnabled.Should().Be(legacy.IsDataCollectionEnabled);
         result.AreExperimentalFeaturesEnabled.Should().Be(legacy.AreExperimentalFeaturesEnabled);
         result.IsIncompleteUIEnabled.Should().Be(legacy.IsIncompleteUIEnabled);
-        result.IsVideoStreamingEnabled.Should().Be(legacy.IsVideoStreamingEnabled);
     }
 
     [Fact]
@@ -77,7 +78,6 @@ public partial class StoredSettingsSerializationTest
             IsDataCollectionEnabled = false,
             AreExperimentalFeaturesEnabled = true,
             IsIncompleteUIEnabled = false,
-            IsVideoStreamingEnabled = true,
         };
 
         using var buffer = KvasSerializer.Default.Write(settings);
@@ -88,7 +88,8 @@ public partial class StoredSettingsSerializationTest
         result.IsDataCollectionEnabled.Should().Be(settings.IsDataCollectionEnabled);
         result.AreExperimentalFeaturesEnabled.Should().Be(settings.AreExperimentalFeaturesEnabled);
         result.IsIncompleteUIEnabled.Should().Be(settings.IsIncompleteUIEnabled);
-        result.IsVideoStreamingEnabled.Should().Be(settings.IsVideoStreamingEnabled);
+        // New type omits slot 4 — legacy picks up the default (null).
+        result.IsVideoStreamingEnabled.Should().BeNull();
     }
 
     [Fact]
@@ -119,7 +120,6 @@ public partial class StoredSettingsSerializationTest
             IsDataCollectionEnabled = true,
             AreExperimentalFeaturesEnabled = true,
             IsIncompleteUIEnabled = false,
-            IsVideoStreamingEnabled = true,
         };
 
         using var buffer = KvasSerializer.Default.Write(settings);
@@ -155,7 +155,6 @@ public partial class StoredSettingsSerializationTest
             IsDataCollectionEnabled = true,
             AreExperimentalFeaturesEnabled = false,
             IsIncompleteUIEnabled = true,
-            IsVideoStreamingEnabled = false,
         };
 
         using var buffer = KvasSerializer.Default.Write<StoredSettings>(settings);
@@ -168,7 +167,6 @@ public partial class StoredSettingsSerializationTest
         typed.IsDataCollectionEnabled.Should().Be(settings.IsDataCollectionEnabled);
         typed.AreExperimentalFeaturesEnabled.Should().Be(settings.AreExperimentalFeaturesEnabled);
         typed.IsIncompleteUIEnabled.Should().Be(settings.IsIncompleteUIEnabled);
-        typed.IsVideoStreamingEnabled.Should().Be(settings.IsVideoStreamingEnabled);
     }
 
     [Fact]
