@@ -229,18 +229,27 @@ export class VideoPipeline implements IVideoPipeline {
         // Fusion RPC WebSocket URL — worker pushes frames via
         // `IStreamServer.PushVideo` over this connection.
         const apiUrl = BrowserInit.getUrl('/rpc/ws').replace(/^http/, 'ws');
-        const initialSenderRotation = computeSenderRotation();
+        // Screencast: screen buffer is already in display orientation regardless
+        // of device rotation. Applying camera-sensor rotation compensation here
+        // rotates the encoded frames 90° on desktop (angle=0 → rotation=90) which
+        // breaks playback on the remote end. Skip it entirely for screen tracks.
+        const isScreencast = (this.config.streaming?.streamKind ?? 0) === 1;
+        const initialSenderRotation = isScreencast ? 0 : computeSenderRotation();
         // Transpose encoder dims at startup when device is in portrait orientation:
         // encoder must be sized in display orientation so the encoded stream matches
         // what the sender sees. Mutates the shared encoder config (pipeline owns it).
-        const wantPortraitAtStart = initialSenderRotation === 90 || initialSenderRotation === 270;
+        // Skipped for screencast — the worker reconciles encoder dims against the
+        // actual screen-track size on first frame.
+        const wantPortraitAtStart = !isScreencast && (initialSenderRotation === 90 || initialSenderRotation === 270);
         const encCfg = this.config.encoderConfig;
-        if (wantPortraitAtStart && encCfg.width > encCfg.height) {
-            const tmp = encCfg.width; encCfg.width = encCfg.height; encCfg.height = tmp;
-            infoLog?.log(`Transposed encoder to portrait at start: ${encCfg.width}x${encCfg.height}`);
-        } else if (!wantPortraitAtStart && encCfg.height > encCfg.width) {
-            const tmp = encCfg.width; encCfg.width = encCfg.height; encCfg.height = tmp;
-            infoLog?.log(`Transposed encoder to landscape at start: ${encCfg.width}x${encCfg.height}`);
+        if (!isScreencast) {
+            if (wantPortraitAtStart && encCfg.width > encCfg.height) {
+                const tmp = encCfg.width; encCfg.width = encCfg.height; encCfg.height = tmp;
+                infoLog?.log(`Transposed encoder to portrait at start: ${encCfg.width}x${encCfg.height}`);
+            } else if (!wantPortraitAtStart && encCfg.height > encCfg.width) {
+                const tmp = encCfg.width; encCfg.width = encCfg.height; encCfg.height = tmp;
+                infoLog?.log(`Transposed encoder to landscape at start: ${encCfg.width}x${encCfg.height}`);
+            }
         }
         const workerConfig: VideoProcessingConfig = {
             encoder: this.config.encoderConfig,
@@ -282,19 +291,23 @@ export class VideoPipeline implements IVideoPipeline {
         // GPU downscaler can rotate correctly on platforms where VideoFrame.rotation
         // is null (Safari iOS MSTP). Encoder dims are transposed on portrait/landscape
         // flip so the encoded stream matches device orientation.
-        this.orientationChangeHandler = () => {
-            const rot = computeSenderRotation();
-            infoLog?.log(`Sender rotation (change): ${rot}° (screen.orientation.angle=${screen.orientation.angle})`);
-            void this.worker.setSenderRotation(rot, rpcNoWait);
-            const encW = this.config.encoderConfig.width;
-            const encH = this.config.encoderConfig.height;
-            const wantPortrait = rot === 90 || rot === 270;
-            const isPortrait = encH > encW;
-            if (wantPortrait !== isPortrait) {
-                void this.reconfigure({ bitrate: this.savedBitrate, width: encH, height: encW });
-            }
-        };
-        screen.orientation.addEventListener('change', this.orientationChangeHandler);
+        // Screencast ignores device rotation: the screen buffer stays in its native
+        // orientation regardless of how the phone is held.
+        if (!isScreencast) {
+            this.orientationChangeHandler = () => {
+                const rot = computeSenderRotation();
+                infoLog?.log(`Sender rotation (change): ${rot}° (screen.orientation.angle=${screen.orientation.angle})`);
+                void this.worker.setSenderRotation(rot, rpcNoWait);
+                const encW = this.config.encoderConfig.width;
+                const encH = this.config.encoderConfig.height;
+                const wantPortrait = rot === 90 || rot === 270;
+                const isPortrait = encH > encW;
+                if (wantPortrait !== isPortrait) {
+                    void this.reconfigure({ bitrate: this.savedBitrate, width: encH, height: encW });
+                }
+            };
+            screen.orientation.addEventListener('change', this.orientationChangeHandler);
+        }
 
         // Start stats polling
         this.statsInterval = window.setInterval(() => {

@@ -497,7 +497,11 @@ export class VideoRecorder {
             const bestCodecInfo = supportedCodecs.find(c => c.codec === bestCodecString);
             const codecCategory = getCodecCategory(bestCodecString);
 
-            // Screencast config: start at 1080p cap, quality preset will adjust
+            // Screencast config: start at 1080p cap, quality preset will adjust.
+            // No adaptiveFramerate — screencast has no voice-activity semantics;
+            // cutting bitrate to 25% during silence would destroy text fidelity.
+            // Framerate 15 matches the getDisplayMedia cap in captureScreencast
+            // and gives the encoder ~2x bits-per-frame vs 30 fps at same bitrate.
             const config: RecordingConfig = {
                 mode: 'screen',
                 codec: codecCategory,
@@ -506,15 +510,12 @@ export class VideoRecorder {
                 scalabilityModes: bestCodecInfo?.scalabilityModes,
                 width: targetSize.width,
                 height: targetSize.height,
-                bitrate: getExpectedBitrate(bestCodecString, targetSize.height),
-                framerate: 30,
+                bitrate: getExpectedBitrate(bestCodecString, targetSize.height, 'screen'),
+                framerate: 15,
                 backgroundBlur: { enabled: false },
                 streaming: {
                     enabled: true,
                     chatId: this.chatId,
-                },
-                adaptiveFramerate: {
-                    enabled: true,
                 },
             };
 
@@ -524,7 +525,6 @@ export class VideoRecorder {
             await this.recordingService.start();
 
             // Get the screen track for preview and track-ended detection
-            const pipeline = this.recordingService.getPipeline();
             const screenTrack = this.recordingService.getInputTrack();
             if (screenTrack) {
                 // Use screen track for local preview
@@ -543,8 +543,7 @@ export class VideoRecorder {
                 };
             }
 
-            // Subscribe to VAD for adaptive framerate
-            pipeline?.subscribeToVad();
+            // Screencast does not subscribe to VAD — bitrate must stay full for text readability.
 
             this.isRecording = true;
             this.isScreencasting = true;
@@ -553,6 +552,16 @@ export class VideoRecorder {
             await this.blazorRef.invokeMethodAsync('OnRecordingStarted');
             infoLog?.log('Screencast started');
         } catch (error) {
+            // User-cancelled the picker (or denied permission). This is not an
+            // error to surface — treat it as a graceful stop so the C# side
+            // clears the screencast intent and the toggle flips back off.
+            const isUserCancel = error instanceof DOMException && error.name === 'NotAllowedError';
+            if (isUserCancel) {
+                this.setRecordingState('stopped');
+                infoLog?.log('Screencast cancelled by user');
+                await this.blazorRef.invokeMethodAsync('OnRecordingStopped');
+                return;
+            }
             this.setRecordingState('error');
             errorLog?.log('Failed to start screencast:', error);
             const message = error instanceof Error ? error.message : String(error);
@@ -651,9 +660,11 @@ export class VideoRecorder {
         const cappedHeight = this.cameraHeight > 0 ? Math.min(height, this.cameraHeight) : height;
 
         // Pick bitrate from the codec-aware table at the (possibly capped) height,
-        // then apply device caps for low-power hardware.
+        // passing the current recording mode so screencast gets the higher-entropy
+        // bitrate budget. Device caps for low-power hardware apply after.
         const currentCodec = this.recordingService.getConfig().codecString ?? '';
-        let cappedBitrate = getExpectedBitrate(currentCodec, cappedHeight);
+        const mode = this.recordingService.getConfig().mode;
+        let cappedBitrate = getExpectedBitrate(currentCodec, cappedHeight, mode);
         if (DeviceInfo.isIos)
             cappedBitrate = Math.min(cappedBitrate, 1_000_000);
         else if (DeviceInfo.isMobile)

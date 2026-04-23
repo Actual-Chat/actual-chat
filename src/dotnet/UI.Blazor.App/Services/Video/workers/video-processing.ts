@@ -556,7 +556,10 @@ function deliverChunkToStream(
     // so the first frame must start a fresh timing anchor at offset 0 — otherwise
     // the viewer sees offsetMs≈past-stream-length and stalls.
     if (videoStream?.isDisposed) {
-        warnLog?.log('VideoStream disposed (peer-change) — will recreate on next keyframe');
+        // Causes: RPC peer-change (server restart / different hubId), or server
+        // killed PushVideo via its frame-silence watchdog (WebcamFrameSilenceTimeout /
+        // ScreencastFrameSilenceTimeout), or MaxLiveDuration. Recreate on next keyframe.
+        warnLog?.log('VideoStream disposed — will recreate on next keyframe');
         videoStream = null;
         firstEncodedTimestamp = null;
     }

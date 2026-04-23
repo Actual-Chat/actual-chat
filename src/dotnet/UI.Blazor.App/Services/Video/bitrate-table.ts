@@ -2,6 +2,7 @@ import { getCodecCategory } from './codec-support';
 
 type Tier = 1080 | 720 | 540 | 360;
 type Category = 'h264' | 'hevc' | 'vp9' | 'av1';
+export type StreamMode = 'webcam' | 'screen';
 
 const BITRATE_TABLE: Record<Category, Record<Tier, number>> = {
     h264: { 1080: 6_500_000, 720: 4_000_000, 540: 2_500_000, 360: 1_250_000 },
@@ -10,9 +11,15 @@ const BITRATE_TABLE: Record<Category, Record<Tier, number>> = {
     av1:  { 1080: 2_250_000, 720: 1_400_000, 540: 1_000_000, 360:   500_000 },
 };
 
-export function getExpectedBitrate(codec: string, height: number): number {
+// Screen content (IDE text, UI chrome) has much higher spatial entropy than
+// camera video. ~1.75x the camera budget keeps 10-12pt text readable at the
+// same resolution on a cross-continent link. Keep in sync with VideoBitrateTable.cs.
+const SCREEN_MULTIPLIER = 1.75;
+
+export function getExpectedBitrate(codec: string, height: number, mode: StreamMode = 'webcam'): number {
     const category = getCodecCategory(codec);
-    return BITRATE_TABLE[category][pickTier(height)];
+    const base = BITRATE_TABLE[category][pickTier(height)];
+    return mode === 'screen' ? Math.round(base * SCREEN_MULTIPLIER) : base;
 }
 
 function pickTier(height: number): Tier {

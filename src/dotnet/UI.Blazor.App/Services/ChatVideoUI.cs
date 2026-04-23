@@ -237,10 +237,16 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     }
 
     public void OnRecordingError(string error, StreamKind kind)
-        // Keep the recording session alive: the user can cycle cameras to recover
+    {
+        _errorMessage.Value = error;
+        // Webcam keeps the session alive — the user can cycle cameras to recover
         // (see VideoRecorder.switchCamera — it restarts from the interrupted state).
-        // VideoStreamingPreview shows the message via GetLastVideoRecorderError.
-        => _errorMessage.Value = error;
+        // Screencast has no such retry path: a failed getDisplayMedia (user cancel,
+        // permission denied) means the user doesn't want to share, so turn the
+        // toggle off by clearing the intent.
+        if (kind == StreamKind.Screencast)
+            _screencastChatId.Value = null;
+    }
 
     // Device enumeration
 

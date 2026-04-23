@@ -1,8 +1,23 @@
+using ActualChat.Streaming;
+
 namespace ActualChat.Video;
 
 public static class VideoBitrateTable
 {
-    public static int GetExpectedBitrate(string codec, int height)
+    // Screen content (IDE text, UI chrome) has much higher spatial entropy
+    // than camera video. Empirically ~1.75x the camera budget keeps 10-12pt
+    // text readable at the same resolution on a cross-continent link.
+    private const double ScreenMultiplier = 1.75;
+
+    public static int GetExpectedBitrate(string codec, int height, StreamKind kind = StreamKind.Webcam)
+    {
+        var baseBitrate = GetBaseBitrate(codec, height);
+        return kind == StreamKind.Screencast
+            ? (int)(baseBitrate * ScreenMultiplier)
+            : baseBitrate;
+    }
+
+    private static int GetBaseBitrate(string codec, int height)
     {
         var category = GetCategory(codec);
         return (category, height) switch {

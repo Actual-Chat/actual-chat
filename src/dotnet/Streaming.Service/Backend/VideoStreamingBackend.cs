@@ -210,7 +210,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         await LiveVideoBackend.Register(record.ChatId, streamInfo, cancellationToken)
             .ConfigureAwait(false);
 
-        LatencyStore.RegisterStreamLatencyState(record.StreamId, record.ChatId, beginsAt, record.Format);
+        LatencyStore.RegisterStreamLatencyState(record.StreamId, record.ChatId, beginsAt, record.Format, record.StreamKind);
 
         try {
             // Publish video stream for real-time viewing
@@ -220,7 +220,9 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             var keyFrameNumber = 0L;
             var lastHeartbeat = CpuTimestamp.Now;
             var heartbeatInterval = TimeSpan.FromMinutes(2.5); // Half of LiveVideoBackend.ChatStateTtl
-            var silenceTimeout = Constants.Video.FrameSilenceTimeout;
+            var silenceTimeout = record.StreamKind == StreamKind.Screencast
+                ? Constants.Video.ScreencastFrameSilenceTimeout
+                : Constants.Video.WebcamFrameSilenceTimeout;
             async IAsyncEnumerable<VideoFrame> ProcessFrames(IAsyncEnumerable<VideoFrame> source)
             {
                 // Frame-silence watchdog: cancels watchdogCts if no frame arrives within silenceTimeout.

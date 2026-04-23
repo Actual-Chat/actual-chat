@@ -36,6 +36,15 @@ public sealed partial record VideoQualityPreset(
             _ => null, // Already at lowest
         };
 
+    public static VideoQualityPreset? StepDown(VideoQualityLevel current, Streaming.StreamKind kind)
+    {
+        // Screencast floors at Medium (540p). Below that, IDE text is unreadable
+        // regardless of bitrate, so pausing is preferable to sending garbage.
+        if (kind == Streaming.StreamKind.Screencast && current == VideoQualityLevel.Medium)
+            return null;
+        return StepDown(current);
+    }
+
     public static VideoQualityPreset? StepUp(VideoQualityLevel current)
         => current switch {
             VideoQualityLevel.Low => Medium,

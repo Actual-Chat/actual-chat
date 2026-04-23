@@ -171,9 +171,23 @@
                             <span class="diag-value">@s.Info.Format.Codec</span>
                         </div>
                         <div class="diag-row">
-                            <span class="diag-label">Resolution</span>
+                            <span class="diag-label">Declared</span>
                             <span class="diag-value">@(s.Info.Format.Width)×@(s.Info.Format.Height)</span>
                         </div>
+                        @{
+                            var encodedRes = _streamDiags.TryGetValue(sid, out var rdPeek)
+                                && rdPeek.ValueKind == JsonValueKind.Object
+                                && rdPeek.TryGetProperty("decoderStats", out var dsPeek)
+                                && dsPeek.ValueKind == JsonValueKind.Object
+                                ? GetStr(dsPeek, "resolution")
+                                : null;
+                        }
+                        @if (!string.IsNullOrEmpty(encodedRes)) {
+                            <div class="diag-row">
+                                <span class="diag-label">Encoded</span>
+                                <span class="diag-value">@encodedRes</span>
+                            </div>
+                        }
                         @if (isExpanded && _streamDiags.TryGetValue(sid, out var rd) && rd.ValueKind == JsonValueKind.Object) {
                             <div class="diag-js-details">
                                 <div class="diag-row">

@@ -23,8 +23,8 @@ public sealed class StreamLatencyStore(IServiceProvider services)
             ? state.GetPeerMaxTemporalLayer(peerId)
             : int.MaxValue;
 
-    public void RegisterStreamLatencyState(StreamId streamId, ChatId chatId, Moment beginsAt, VideoFormat format)
-        => LatencyStates[streamId] = new StreamLatencyState(chatId, beginsAt, format, services.StateFactory(), Log);
+    public void RegisterStreamLatencyState(StreamId streamId, ChatId chatId, Moment beginsAt, VideoFormat format, StreamKind kind)
+        => LatencyStates[streamId] = new StreamLatencyState(chatId, beginsAt, format, kind, services.StateFactory(), Log);
 
     public void RecordFrameBytes(StreamId streamId, int byteCount)
     {
@@ -156,6 +156,7 @@ public sealed class StreamLatencyStore(IServiceProvider services)
         ChatId chatId,
         Moment startedAt,
         VideoFormat format,
+        StreamKind kind,
         StateFactory stateFactory,
         ILogger log)
     {
@@ -165,7 +166,12 @@ public sealed class StreamLatencyStore(IServiceProvider services)
         public ChatId ChatId { get; } = chatId;
         public Moment StartedAt { get; } = startedAt;
         public string Codec { get; } = format.Codec;
-        public MutableState<VideoQualityPreset> QualityPreset { get; } = stateFactory.NewMutable(VideoQualityPreset.High);
+        public StreamKind Kind { get; } = kind;
+        // Screencast starts at Full so text is readable from the first keyframe.
+        // Camera starts at High — faces/torsos look fine there and 1080p webcam
+        // is wasteful when the user isn't the focus of attention.
+        public MutableState<VideoQualityPreset> QualityPreset { get; } = stateFactory.NewMutable(
+            kind == StreamKind.Screencast ? VideoQualityPreset.Full : VideoQualityPreset.High);
 
         // Cap max quality to what the camera can actually provide — prevents wasteful upscaling
         private readonly VideoQualityLevel _maxQuality = format switch
@@ -233,13 +239,13 @@ public sealed class StreamLatencyStore(IServiceProvider services)
                         ? (lastByteReceivedAt - _lastThroughputCheckAt).TotalSeconds
                         : 0;
                     var measuredBps = measurementSpan > 0.1 ? bytesDelta * 8.0 / measurementSpan : 0;
-                    var targetBps = VideoBitrateTable.GetExpectedBitrate(Codec, QualityPreset.Value.Height);
+                    var targetBps = VideoBitrateTable.GetExpectedBitrate(Codec, QualityPreset.Value.Height, Kind);
                     _lastThroughputCheckAt = CpuTimestamp.Now;
 
                     if (targetBps > 0 && measuredBps < targetBps * Constants.Video.ThroughputStepDownRatio) {
                         _consecutiveLowThroughputChecks++;
                         if (_consecutiveLowThroughputChecks >= Constants.Video.ThroughputStepDownConsecutiveChecks) {
-                            var stepped = VideoQualityPreset.StepDown(currentQuality);
+                            var stepped = VideoQualityPreset.StepDown(currentQuality, Kind);
                             if (stepped != null) {
                                 _consecutiveLowThroughputChecks = 0;
                                 _lastQualityChangeAt = CpuTimestamp.Now;
@@ -258,7 +264,7 @@ public sealed class StreamLatencyStore(IServiceProvider services)
                     if (targetBps > 0 && measuredBps > targetBps * Constants.Video.ThroughputOverDeliveryRatio) {
                         _consecutiveHighThroughputChecks++;
                         if (_consecutiveHighThroughputChecks >= Constants.Video.ThroughputStepDownConsecutiveChecks) {
-                            var stepped = VideoQualityPreset.StepDown(currentQuality);
+                            var stepped = VideoQualityPreset.StepDown(currentQuality, Kind);
                             if (stepped != null) {
                                 _consecutiveHighThroughputChecks = 0;
                                 _lastQualityChangeAt = CpuTimestamp.Now;
@@ -305,7 +311,7 @@ public sealed class StreamLatencyStore(IServiceProvider services)
                     : Constants.Video.PeerOutlierRatio;
 
                 if (networkSlowRatio > effectiveOutlierRatio) {
-                    var stepped = VideoQualityPreset.StepDown(currentQuality);
+                    var stepped = VideoQualityPreset.StepDown(currentQuality, Kind);
                     if (stepped != null) {
                         _lastQualityChangeAt = CpuTimestamp.Now;
                         QualityPreset.Value = stepped;

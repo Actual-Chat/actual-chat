@@ -68,10 +68,22 @@ export class MediaCapture {
 
     static async captureScreencast(): Promise<MediaStreamTrack> {
         infoLog?.log('captureScreencast: requesting display media');
+        // 15 fps ideal (30 max) biases the encoder toward spatial fidelity for
+        // IDE/code review content. displaySurface='monitor' is a hint only —
+        // browsers may still let the user pick a window/tab.
         const stream = await navigator.mediaDevices.getDisplayMedia({
-            video: true,
+            video: {
+                displaySurface: 'monitor',
+                frameRate: { ideal: 15, max: 30 },
+            },
             audio: false,
         });
-        return stream.getVideoTracks()[0];
+        const track = stream.getVideoTracks()[0];
+        // contentHint='text' tells the encoder to prioritize sharpness over
+        // motion smoothness — critical for readable text on low-bitrate links.
+        track.contentHint = 'text';
+        const settings = track.getSettings();
+        infoLog?.log(`captureScreencast: ${settings.width}x${settings.height} @ ${settings.frameRate}fps, surface=${settings.displaySurface}`);
+        return track;
     }
 }

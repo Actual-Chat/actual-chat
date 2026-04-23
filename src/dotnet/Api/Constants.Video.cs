@@ -9,8 +9,13 @@ public static partial class Constants
         public static readonly TimeSpan MaxLiveDuration = TimeSpan.FromHours(8);
 
         // Watchdog: cancel PushVideo handler if no frame arrives within this window.
-        // At 30 fps, any gap longer than this means the producer is effectively dead.
-        public static readonly TimeSpan FrameSilenceTimeout = TimeSpan.FromSeconds(3);
+        // Webcam: 10s — tolerates brief sensor stalls (camera permission re-prompt,
+        // OS-level camera swap, momentary USB hang) without killing the stream.
+        public static readonly TimeSpan WebcamFrameSilenceTimeout = TimeSpan.FromSeconds(10);
+        // Screencast: 60s — getDisplayMedia is change-driven. A user reading code
+        // in a static IDE produces zero frames for extended periods; a 3s or 10s
+        // watchdog would kill the stream and trigger an endless recreate cycle.
+        public static readonly TimeSpan ScreencastFrameSilenceTimeout = TimeSpan.FromSeconds(60);
 
         // RPC stream flow control for video (30fps, 33ms frames).
         // Tuned for up to ~1s RTT: ackAdvance > ackPeriod + fps × RTT.
