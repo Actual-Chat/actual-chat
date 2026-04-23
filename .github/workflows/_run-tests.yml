@@ -265,7 +265,7 @@ jobs:
           path: "./tests/**/*.trx"
           reporter: dotnet-trx
           fail-on-error: false
-          output-to: "checks"
+          output-to: "step-summary"
           only-summary: "true"
 
       - name: Report E2E test results
@@ -276,7 +276,7 @@ jobs:
           path: tmp/ts-e2e-tests.xml
           reporter: java-junit
           fail-on-error: false
-          output-to: "checks"
+          output-to: "step-summary"
           only-summary: "true"
 
       - name: Upload E2E screenshots

@@ -294,7 +294,7 @@ jobs:
           path: "./tests/**/*.trx"
           reporter: dotnet-trx
           fail-on-error: false
-          output-to: "checks"
+          output-to: "step-summary"
           only-summary: "true"
 
   integration-tests:
