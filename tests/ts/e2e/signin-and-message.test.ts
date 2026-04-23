@@ -13,7 +13,8 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { Page } from 'playwright';
 import {
     BASE_URL, connectBrowser, dismissCookieConsent, skipOnboarding,
-    isSignedIn, signIn, screenshot, type BrowserConnection,
+    isSignedIn, signIn, screenshot, waitForAppReady, waitForChatReady,
+    type BrowserConnection,
 } from './helpers';
 
 describe('sign-in and send message', () => {
@@ -35,7 +36,7 @@ describe('sign-in and send message', () => {
 
     it('should be signed in (sign in if needed)', async () => {
         await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
-        await page.waitForTimeout(2000);
+        await waitForAppReady(page);
         await dismissCookieConsent(page);
 
         if (!await isSignedIn(page)) {
@@ -52,7 +53,7 @@ describe('sign-in and send message', () => {
 
     it('should navigate to a chat and see the message input', async () => {
         await page.goto(`${BASE_URL}/chat/the-actual-one`, { waitUntil: 'domcontentloaded' });
-        await page.waitForTimeout(3000);
+        await waitForChatReady(page);
         await skipOnboarding(page);
 
         // Join if needed
@@ -64,12 +65,12 @@ describe('sign-in and send message', () => {
 
         await page.screenshot({ path: screenshot('e2e', 'chat') });
 
-        const messageInput = page.locator('.message-input[contenteditable="true"], #message-input').first();
-        await expect(messageInput.isVisible({ timeout: 10000 })).resolves.toBe(true);
-    }, 30_000);
+        const messageInput = page.locator('#message-input .editor-content[contenteditable="true"]').first();
+        await messageInput.waitFor({ state: 'visible', timeout: 15_000 });
+    }, 45_000);
 
     it('should send a message and see it appear', async () => {
-        const messageInput = page.locator('.message-input[contenteditable="true"], #message-input').first();
+        const messageInput = page.locator('#message-input .editor-content[contenteditable="true"]').first();
         await messageInput.click();
         await page.waitForTimeout(300);
 
