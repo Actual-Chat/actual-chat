@@ -1,9 +1,9 @@
 namespace ActualChat.Chat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record ChatListSettings(
-    [property: DataMember, MemoryPackOrder(0)] ChatListOrder Order = ChatListOrder.ByLastEventTime,
-    [property: DataMember, MemoryPackOrder(1)] Symbol FilterId = default
+    [property: DataMember, MemoryPackOrder(0), Key(0)] ChatListOrder Order = ChatListOrder.ByLastEventTime,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] Symbol FilterId = default
 ) : StoredSettings
 {
     public static readonly ChatListSettings None = new ();

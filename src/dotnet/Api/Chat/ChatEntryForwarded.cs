@@ -7,19 +7,19 @@ namespace ActualChat.Chat;
 /// was forwarded from another chat; null otherwise.
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record ChatEntryForwarded : ISanitized
 {
     /// <summary>
     /// The original entry id. Can be <c>default</c> for peer-chat forwards where the link is suppressed.
     /// </summary>
-    [DataMember, MemoryPackOrder(0)] public ChatEntryId? ChatEntryId { get; init; }
-    [DataMember, MemoryPackOrder(1)] public AuthorId AuthorId { get; init; } = null!;
-    [DataMember, MemoryPackOrder(2)] public Moment BeginsAt { get; init; }
-    [DataMember, MemoryPackOrder(3)] public string ChatTitle { get => Sanitizer.MaskPrivate(field); init; } = "";
-    [DataMember, MemoryPackOrder(4)] public string AuthorName { get => Sanitizer.MaskPrivate(field); init; } = "";
+    [DataMember, MemoryPackOrder(0), Key(0)] public ChatEntryId? ChatEntryId { get; init; }
+    [DataMember, MemoryPackOrder(1), Key(1)] public AuthorId AuthorId { get; init; } = null!;
+    [DataMember, MemoryPackOrder(2), Key(2)] public Moment BeginsAt { get; init; }
+    [DataMember, MemoryPackOrder(3), Key(3)] public string ChatTitle { get => Sanitizer.MaskPrivate(field); init; } = "";
+    [DataMember, MemoryPackOrder(4), Key(4)] public string AuthorName { get => Sanitizer.MaskPrivate(field); init; } = "";
 
-    [MemoryPackConstructor, SerializationConstructor]
+    [ConstructorShape, MemoryPackConstructor]
     public ChatEntryForwarded() { }
 
     // This record relies on referential equality

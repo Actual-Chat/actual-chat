@@ -6,7 +6,7 @@ namespace ActualChat.Chat;
 /// Represents a mention of a user or author in markup.
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial class MentionMarkup(MentionId id, string name = "") : Markup
 {
     public static readonly string NotAvailableName = "(n/a)";
@@ -19,11 +19,11 @@ public sealed partial class MentionMarkup(MentionId id, string name = "") : Mark
     [DataMember, MemoryPackOrder(1)]
     public string Name { get; } = name;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public string QuotedName => Quote(Name);
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public string NameOrNotAvailable => Name.NullIfEmpty() ?? NotAvailableName;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public string NameOrId => Name.NullIfEmpty() ?? Id.Value;
 
     public override string Format()

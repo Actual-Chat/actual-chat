@@ -2,7 +2,7 @@ using ActualChat.Flows;
 
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class SimpleIndexingFlow : IndexingFlow<long>
 {
     private IndexingFlowTestContext Context => field ??= Services.GetRequiredService<IndexingFlowTestContext>();

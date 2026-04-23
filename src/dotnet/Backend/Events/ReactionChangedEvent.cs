@@ -1,6 +1,6 @@
 namespace ActualChat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record ReactionChangedEvent(
     [property: DataMember, MemoryPackOrder(1)] Reaction Reaction,
     [property: DataMember, MemoryPackOrder(2)] ChatEntry Entry,
@@ -9,6 +9,6 @@ public partial record ReactionChangedEvent(
     [property: DataMember, MemoryPackOrder(5)] ChangeKind ChangeKind
 ) : EventCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     public ChatId ShardKey => Entry.ChatId;
 }

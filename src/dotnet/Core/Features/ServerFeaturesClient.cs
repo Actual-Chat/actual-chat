@@ -10,7 +10,7 @@ public interface IServerFeaturesClient : IServerFeatures;
 /// </summary>
 public class ServerFeaturesClient(IServiceProvider services) : IServerFeatures
 {
-    protected IByteSerializer Serializer { get; set; } = ByteSerializer.Default;
+    protected IByteSerializer Serializer { get; set; } = Serializers.MessagePack;
 
     public IServiceProvider Services { get; } = services;
     public IServerFeaturesClient Client { get; } = services.GetRequiredService<IServerFeaturesClient>();

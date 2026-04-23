@@ -1,4 +1,4 @@
-﻿namespace ActualChat.Chat;
+namespace ActualChat.Chat;
 
 /// <summary>
 /// Service for managing chat roles and permissions.
@@ -19,12 +19,12 @@ public interface IRoles : IComputeService
     Task<Role> OnChange(Roles_Change command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Roles_Change(
-    [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(2)] RoleId RoleId,
-    [property: DataMember, MemoryPackOrder(3)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(4)] Change<RoleDiff> Change
+    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(2), Key(2)] RoleId RoleId,
+    [property: DataMember, MemoryPackOrder(3), Key(3)] long? ExpectedVersion,
+    [property: DataMember, MemoryPackOrder(4), Key(4)] Change<RoleDiff> Change
 ) : ISessionCommand<Role>, IApiCommand;

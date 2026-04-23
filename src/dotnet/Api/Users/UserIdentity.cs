@@ -1,15 +1,14 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using ActualChat.Internal;
 
 namespace ActualChat.Users;
 
 [StructLayout(LayoutKind.Auto)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [Newtonsoft.Json.JsonObject(Newtonsoft.Json.MemberSerialization.OptOut)]
 // MemoryPack wire format intentionally kept SG-generated (IMemoryPackable<T> map) to stay
 // compatible with older clients. Switch to plain-string when safe by uncommenting:
 // [MemoryPackFormatter<StringLikeMemoryPackFormatter<UserIdentity>>]
-[MessagePackFormatter(typeof(StringLikeMessagePackFormatter<UserIdentity>))]
 [JsonConverter(typeof(StringLikeJsonConverter<UserIdentity>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<UserIdentity>))]
 [TypeConverter(typeof(StringLikeTypeConverter<UserIdentity>))]
@@ -21,16 +20,16 @@ public readonly partial record struct UserIdentity : IStringLike<UserIdentity>, 
     public static readonly string DefaultSchema = "Default";
     public static readonly string InternalSchema = "internal";
 
-    [DataMember(Order = 0), MemoryPackOrder(0), StringAsSymbolMemoryPackFormatter]
+    [DataMember(Order = 0), MemoryPackOrder(0), StringAsSymbolMemoryPackFormatter, Key(0)]
     public string Id { get => field ?? ""; init; }
 
     // Computed properties
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public string Schema => ParseId(Id).Schema;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public string Value => ParseId(Id).Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public bool IsValid => !Id.IsNullOrEmpty();
 
     // IStringLike — use Id (the round-trippable serialized form) rather than Value
@@ -38,7 +37,7 @@ public readonly partial record struct UserIdentity : IStringLike<UserIdentity>, 
     string IStringLike.Value => Id;
     public static UserIdentity Parse(string? s) => new(s ?? "");
 
-    [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
+    [method: ConstructorShape, JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public UserIdentity(string id)
         => Id = id;
     public UserIdentity(string provider, string providerBoundId)

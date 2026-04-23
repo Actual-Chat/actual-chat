@@ -14,7 +14,7 @@ public partial class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
 {
     private static readonly TimeSpan MinInvDelay = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan StreamTtl = Constants.Audio.MaxStreamDuration;
-    private static readonly TimeSpan KeyTtl = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan KeyTtl = TimeSpan.FromHours(1);
 
     private readonly RedisScope<State> _redisScope;
     private readonly AsyncLockSet<ChatId> _changeLocks = new(LockReentryMode.CheckedFail);
@@ -160,8 +160,8 @@ public partial class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
 
     // Nested types
 
-    [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+    [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
     public sealed partial record State(
-        [property: DataMember(Order = 0), MemoryPackOrder(0)] long Version,
-        [property: DataMember(Order = 1), MemoryPackOrder(1)] ApiArray<LiveStreamInfo> Streams);
+        [property: DataMember(Order = 0), MemoryPackOrder(0), NbKey(0)] long Version,
+        [property: DataMember(Order = 1), MemoryPackOrder(1), NbKey(1)] ApiArray<LiveStreamInfo> Streams);
 }

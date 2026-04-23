@@ -3,17 +3,17 @@
 /// <summary>
 /// Represents a contact match from a search query.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true, AllowPrivate = true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class ContactSearchResult : SearchResult
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     public ContactId ContactId => field ??= ContactId.Parse(Id);
 
     public ContactSearchResult(ContactId id, SearchMatch searchMatch)
         : base(id.Value, searchMatch)
     { }
 
-    [MemoryPackConstructor, SerializationConstructor]
+    [ConstructorShape, MemoryPackConstructor]
     private ContactSearchResult(string id, SearchMatch searchMatch)
         : base(id, searchMatch)
     { }

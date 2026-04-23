@@ -9,7 +9,7 @@ public static class MetadataSerializer
         if (metadataJson.IsNullOrEmpty())
             return default;
 
-        var items = NewtonsoftJsonSerializer.Default.Read<ImmutableOptionSet>(metadataJson).Items;
+        var items = Serializers.NewtonsoftJson.Read<ImmutableOptionSet>(metadataJson).Items;
         if (items.Count == 0)
             return default;
 
@@ -29,6 +29,6 @@ public static class MetadataSerializer
         foreach (var item in metadata.Items)
             optionSet = optionSet.Set(item.Key, item.Value);
 
-        return NewtonsoftJsonSerializer.Default.Write(optionSet);
+        return Serializers.NewtonsoftJson.Write(optionSet);
     }
 }

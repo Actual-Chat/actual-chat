@@ -1,4 +1,3 @@
-using ActualChat.Aot;
 using ActualLab.Generators;
 using ActualLab.Resilience;
 using ActualLab.Rpc;
@@ -7,16 +6,14 @@ namespace ActualChat.Module;
 
 #pragma warning disable CA2255
 
-internal static class ApiContractsModuleInitializer
+public static partial class ApiContractsModuleInitializer
 {
+    public static void Load() { }
+
     [ModuleInitializer]
     internal static void ModuleInitializer()
     {
-        AotTypes.AddSource(new ApiContractsAotSource());
-        CoreSerializerAndRpcSetup.AddGeneratedMessagePackResolver(GeneratedMessagePackResolver.Instance);
-
-        // Default binary serializer
-        ByteSerializer.Default = MessagePackByteSerializer.Default;
+        ApiModuleInitializer.Load();
 
         // Session.Factory & Validator
 #pragma warning disable CA2000

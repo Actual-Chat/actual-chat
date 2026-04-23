@@ -2,13 +2,13 @@ using ActualChat.Users;
 
 namespace ActualChat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record AvatarChangedEvent(
     [property: DataMember, MemoryPackOrder(1)] AvatarFull Avatar,
     [property: DataMember, MemoryPackOrder(2)] AvatarFull? OldAvatar,
     [property: DataMember, MemoryPackOrder(3)] ChangeKind ChangeKind
 ) : EventCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     public UserId ShardKey => Avatar.UserId;
 }

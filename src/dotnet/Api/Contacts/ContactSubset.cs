@@ -8,13 +8,18 @@ public enum ContactSubsetKind { All, Chats, Place }
 /// <summary>
 /// Specifies a subset of contacts to retrieve.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true, AllowPrivate = true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class ContactSubset
 {
     [property: DataMember, MemoryPackOrder(0)] public ContactSubsetKind Kind { get; }
     [property: DataMember, MemoryPackOrder(1)] public PlaceId? PlaceId { get; }
 
-    private ContactSubset(ContactSubsetKind kind, PlaceId? placeId = null)
+    // [ConstructorShape] + internal visibility lets PolyType's reflection provider instantiate
+    // this type through the primary ctor. The legacy MessagePack-CSharp AllowPrivate=true hint
+    // doesn't exist in Nerdbank's shape provider, and an explicit annotation is cheaper than
+    // surfacing the factory methods as ctors.
+    [ConstructorShape]
+    internal ContactSubset(ContactSubsetKind kind, PlaceId? placeId = null)
     {
         Kind = kind;
         PlaceId = placeId;

@@ -2,21 +2,21 @@ using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Chat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record SystemEntry : IUnionRecord<SystemEntryOption?>
 {
     // Union options
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, PropertyShape(Ignore=true)]
     public SystemEntryOption? Option { get; init; }
 
-    [DataMember, MemoryPackOrder(0)]
+    [DataMember, MemoryPackOrder(0), Key(0)]
     public MembersChangedOption? MembersChanged {
         get => Option as MembersChangedOption;
         init => Option ??= value;
     }
 
-    [DataMember, MemoryPackOrder(1)]
+    [DataMember, MemoryPackOrder(1), Key(1)]
     public NotifyMembersOption? NotifyMembers {
         get => Option as NotifyMembersOption;
         init => Option ??= value;
@@ -34,14 +34,14 @@ public abstract record SystemEntryOption : IRequirementTarget
     public abstract Markup ToMarkup();
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record MembersChangedOption : SystemEntryOption
 {
     [DataMember, MemoryPackOrder(0)] public AuthorId? AuthorId { get; init; }
     [DataMember, MemoryPackOrder(1)] public string AuthorName { get; init; } = "";
     [DataMember, MemoryPackOrder(2)] public bool HasLeft { get; init; }
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
+    [ConstructorShape, JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public MembersChangedOption(AuthorId? authorId, string authorName, bool hasLeft)
     {
         AuthorId = authorId;
@@ -61,13 +61,13 @@ public sealed partial record MembersChangedOption : SystemEntryOption
     }
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record NotifyMembersOption : SystemEntryOption
 {
     [DataMember, MemoryPackOrder(0)] public AuthorId AuthorId { get; init; }
     [DataMember, MemoryPackOrder(1)] public string AuthorName { get; init; } = "";
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
+    [ConstructorShape, JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public NotifyMembersOption(AuthorId authorId, string authorName)
     {
         AuthorId = authorId;

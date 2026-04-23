@@ -12,7 +12,6 @@ namespace ActualChat;
 [DataContract, MemoryPackable(GenerateType.NoGenerate)]
 [JsonConverter(typeof(StringLikeJsonConverter<ExternalContactId>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<ExternalContactId>))]
-[MessagePackFormatter(typeof(StringLikeMessagePackFormatter<ExternalContactId>))]
 [TypeConverter(typeof(StringLikeTypeConverter<ExternalContactId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 public sealed partial class ExternalContactId : StringIdentifier, IStringIdentifier<ExternalContactId>

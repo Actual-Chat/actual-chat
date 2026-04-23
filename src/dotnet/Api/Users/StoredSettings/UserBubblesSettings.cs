@@ -5,13 +5,13 @@ namespace ActualChat.Users;
 /// <summary>
 /// Tracks which help bubbles the user has read.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record UserBubbleSettings : StoredSettings, IHasOrigin
 {
     public const string KvasKey = nameof(UserBubbleSettings);
 
-    [DataMember, MemoryPackOrder(0)] public ApiArray<Symbol> ReadBubbles { get; init; } = [];
-    [DataMember, MemoryPackOrder(1)] public string Origin { get; init; } = "";
+    [DataMember, MemoryPackOrder(0), Key(0)] public ApiArray<Symbol> ReadBubbles { get; init; } = [];
+    [DataMember, MemoryPackOrder(1), Key(1)] public string Origin { get; init; } = "";
 
     public UserBubbleSettings WithRead(params string[] bubbleRefs)
     {

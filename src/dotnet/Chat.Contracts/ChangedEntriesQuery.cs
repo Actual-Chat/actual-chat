@@ -1,14 +1,14 @@
-﻿namespace ActualChat.Chat;
+namespace ActualChat.Chat;
 
 /// <summary>
 /// Query parameters for listing changed chat entries by version range.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record ChangedEntriesQuery
 {
-    [DataMember, MemoryPackOrder(0)] public long MinVersion { get; init; }
-    [DataMember, MemoryPackOrder(1)] public long MaxVersion { get; init; } = long.MaxValue;
-    [DataMember, MemoryPackOrder(2)] public long LastLocalId { get; init; }
-    [DataMember, MemoryPackOrder(3)] public ChatId ChatId { get; init; } = null!;
-    [DataMember, MemoryPackOrder(4)] public int Limit { get; init; }
+    [DataMember, MemoryPackOrder(0), NbKey(0)] public long MinVersion { get; init; }
+    [DataMember, MemoryPackOrder(1), NbKey(1)] public long MaxVersion { get; init; } = long.MaxValue;
+    [DataMember, MemoryPackOrder(2), NbKey(2)] public long LastLocalId { get; init; }
+    [DataMember, MemoryPackOrder(3), NbKey(3)] public ChatId ChatId { get; init; } = null!;
+    [DataMember, MemoryPackOrder(4), NbKey(4)] public int Limit { get; init; }
 }

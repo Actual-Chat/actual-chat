@@ -7,12 +7,11 @@ namespace ActualChat;
 /// <summary>
 /// Unique identifier for a cluster node.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // MemoryPack wire format intentionally kept SG-generated (IMemoryPackable<T> map) to
 // stay compatible with older clients. When all peers are upgraded, switch to plain-string
 // by uncommenting the line below:
 // [MemoryPackFormatter<Internal.StringLikeMemoryPackFormatter<NodeRef>>]
-[MessagePackFormatter(typeof(Internal.StringLikeMessagePackFormatter<NodeRef>))]
 [JsonConverter(typeof(Internal.StringLikeJsonConverter<NodeRef>))]
 [Newtonsoft.Json.JsonConverter(typeof(Internal.StringLikeNewtonsoftJsonConverter<NodeRef>))]
 [TypeConverter(typeof(Internal.StringLikeTypeConverter<NodeRef>))]
@@ -31,12 +30,12 @@ public readonly partial struct NodeRef : ISymbolIdentifier<NodeRef>
     public Symbol Id { get; }
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsNone => Id.IsEmpty;
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
+    [ConstructorShape, JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public NodeRef(Symbol id)
         => this = Parse(id);
     public NodeRef(string? id)

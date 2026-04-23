@@ -135,164 +135,164 @@ public interface IChatsBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to create attachments for a text entry.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_CreateAttachments(
-    [property: DataMember, MemoryPackOrder(0)]
+    [property: DataMember, MemoryPackOrder(0), NbKey(0)]
     ChatEntryAttachment[] Attachments
 ) : ICommand<ChatEntryAttachment[]>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     public ChatId ShardKey => Attachments.Length > 0 ? Attachments[0].EntryId.ChatId : throw new ArgumentException("No attachments provided", nameof(Attachments));
 }
 
 /// <summary>
 /// Command to create, update, or delete a chat.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_RemoveAttachments(
-    [property: DataMember, MemoryPackOrder(0)]
+    [property: DataMember, MemoryPackOrder(0), NbKey(0)]
     ChatEntryId EntryId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     public ChatId ShardKey => EntryId.ChatId;
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_Change(
-    [property: DataMember, MemoryPackOrder(0)] ChatId? ChatId,
-    [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(2)] Change<ChatDiff> Change,
-    [property: DataMember, MemoryPackOrder(3)] UserId? OwnerId = null
+    [property: DataMember, MemoryPackOrder(0), NbKey(0)] ChatId? ChatId,
+    [property: DataMember, MemoryPackOrder(1), NbKey(1)] long? ExpectedVersion,
+    [property: DataMember, MemoryPackOrder(2), NbKey(2)] Change<ChatDiff> Change,
+    [property: DataMember, MemoryPackOrder(3), NbKey(3)] UserId? OwnerId = null
 ) : ICommand<Chat>, IBackendCommand, IHasShardKey<ChatId?>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     public ChatId? ShardKey => ChatId;
 }
 
 /// <summary>
 /// Command to create, update, or delete a chat entry.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_ChangeEntry(
-    [property: DataMember, MemoryPackOrder(0)] ChatEntryId ChatEntryId,
-    [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(2)] Change<ChatEntryDiff> Change
+    [property: DataMember, MemoryPackOrder(0), NbKey(0)] ChatEntryId ChatEntryId,
+    [property: DataMember, MemoryPackOrder(1), NbKey(1)] long? ExpectedVersion,
+    [property: DataMember, MemoryPackOrder(2), NbKey(2)] Change<ChatEntryDiff> Change
 ) : ICommand<ChatEntry>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     public ChatId ShardKey => ChatEntryId.ChatId;
 }
 
 /// <summary>
 /// Command to remove all chats owned by a user.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_RemoveOwnChats(
-    [property: DataMember, MemoryPackOrder(0)] UserId UserId
+    [property: DataMember, MemoryPackOrder(0), NbKey(0)] UserId UserId
 ) : ICommand<ChatEntry>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     public UserId ShardKey => UserId;
 }
 
 /// <summary>
 /// Command to remove all chat entries created by a user.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_RemoveOwnEntries(
-    [property: DataMember, MemoryPackOrder(0)] UserId UserId
+    [property: DataMember, MemoryPackOrder(0), NbKey(0)] UserId UserId
 ) : ICommand<ChatEntry>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     public UserId ShardKey => UserId;
 }
 
 /// <summary>
 /// Command to create the user's personal notes chat.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_CreateNotesChat(
-    [property: DataMember, MemoryPackOrder(0)] UserId UserId
+    [property: DataMember, MemoryPackOrder(0), NbKey(0)] UserId UserId
 ) : ICommand<ChatEntry>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     public UserId ShardKey => UserId;
 }
 
 /// <summary>
 /// Command to copy a chat to a different place.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatBackend_CopyChat(
-    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1)] PlaceId PlaceId,
-    [property: DataMember, MemoryPackOrder(2)] string CorrelationId
+    [property: DataMember, MemoryPackOrder(0), NbKey(0)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(1), NbKey(1)] PlaceId PlaceId,
+    [property: DataMember, MemoryPackOrder(2), NbKey(2)] string CorrelationId
 ) : ICommand<ChatBackend_CopyChatResult>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     public ChatId ShardKey => ChatId;
 }
 
 /// <summary>
 /// Result of the chat copy operation.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatBackend_CopyChatResult(
-    [property: DataMember, MemoryPackOrder(0)] bool HasChanges,
-    [property: DataMember, MemoryPackOrder(1)] bool HasErrors,
-    [property: DataMember, MemoryPackOrder(2)] long LastProcessedEntryId
+    [property: DataMember, MemoryPackOrder(0), NbKey(0)] bool HasChanges,
+    [property: DataMember, MemoryPackOrder(1), NbKey(1)] bool HasErrors,
+    [property: DataMember, MemoryPackOrder(2), NbKey(2)] long LastProcessedEntryId
 );
 
 /// <summary>
 /// Command to update the chat copy state during migration.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_ChangeChatCopyState(
-    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(2)] Change<ChatCopyStateDiff> Change
+    [property: DataMember, MemoryPackOrder(0), NbKey(0)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(1), NbKey(1)] long? ExpectedVersion,
+    [property: DataMember, MemoryPackOrder(2), NbKey(2)] Change<ChatCopyStateDiff> Change
 ) : ICommand<ChatCopyState>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     public ChatId ShardKey => ChatId;
 }
 
 /// <summary>
 /// Command to update read positions statistics for a chat.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_UpdateReadPositionsStat(
-    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1)] UserId UserId,
-    [property: DataMember, MemoryPackOrder(2)] long EntryLid
+    [property: DataMember, MemoryPackOrder(0), NbKey(0)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(1), NbKey(1)] UserId UserId,
+    [property: DataMember, MemoryPackOrder(2), NbKey(2)] long EntryLid
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     public ChatId ShardKey => ChatId;
 }
 
 /// <summary>
 /// Command to re-transcribe an audio entry in a different language.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_RetranscribeChatEntry(
-    [property: DataMember, MemoryPackOrder(0)] ChatEntryId EntryId,
-    [property: DataMember, MemoryPackOrder(1)] Language Language
+    [property: DataMember, MemoryPackOrder(0), NbKey(0)] ChatEntryId EntryId,
+    [property: DataMember, MemoryPackOrder(1), NbKey(1)] Language Language
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     public ChatId ShardKey => EntryId.ChatId;
 }

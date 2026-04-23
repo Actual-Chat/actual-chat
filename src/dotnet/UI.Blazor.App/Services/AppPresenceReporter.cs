@@ -1,4 +1,5 @@
 using ActualChat.UI.Blazor.Services;
+using ActualChat.Users;
 using ActualLab.Rpc;
 
 namespace ActualChat.UI.Blazor.App.Services;

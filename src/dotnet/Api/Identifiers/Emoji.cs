@@ -12,7 +12,6 @@ namespace ActualChat;
 [DataContract, MemoryPackable(GenerateType.NoGenerate)]
 [JsonConverter(typeof(StringLikeJsonConverter<Emoji>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<Emoji>))]
-[MessagePackFormatter(typeof(StringLikeMessagePackFormatter<Emoji>))]
 [TypeConverter(typeof(StringLikeTypeConverter<Emoji>))]
 [ParameterComparer(typeof(ByRefParameterComparer))] // Fine for Emoji
 public sealed partial class Emoji : StringIdentifier, IStringIdentifier<Emoji>

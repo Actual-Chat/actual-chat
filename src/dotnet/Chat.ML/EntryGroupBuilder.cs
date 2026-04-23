@@ -2,7 +2,7 @@ using System.Text;
 
 namespace ActualChat.Chat.ML;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class EntryGroupBuilder
 {
     private readonly List<ChatEntrySlim> _entries = [];
@@ -13,28 +13,28 @@ public partial class EntryGroupBuilder
     private long _minLid = long.MaxValue;
     private long _maxLid = 0;
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
+    [DataMember(Order = 0), MemoryPackOrder(0), NbKey(0)]
     public IReadOnlyList<ChatEntrySlim> Entries => _entries;
 
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     public IDictionary<AuthorId, int> AuthorActivity { get; } = new Dictionary<AuthorId, int>();
 
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     public int WordCount => _wordCount;
 
-    [DataMember(Order = 1), MemoryPackOrder(1)]
+    [DataMember(Order = 1), MemoryPackOrder(1), NbKey(1)]
     public double[] Embeddings { get; set; } = [];
 
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     public int AveragePauseBetweenEntries => _averagePauseBetweenEntries;
 
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     public long MinLid => _minLid;
 
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     public long MaxLid => _maxLid;
 
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     public string Text {
         get {
             if (_text is not null)
@@ -66,7 +66,10 @@ public partial class EntryGroupBuilder
         Initialize();
     }
 
-    [JsonConstructor, MemoryPackConstructor, SerializationConstructor]
+    // [ConstructorShape] tells PolyType which ctor to use — without it PolyType walks all ctors
+    // and may pick the self-referencing EntryGroupBuilder(EntryGroupBuilder?) one, which trips
+    // its converter cache with a "delayed value not completed" cycle.
+    [ConstructorShape, JsonConstructor, MemoryPackConstructor]
     public EntryGroupBuilder(IReadOnlyList<ChatEntrySlim> entries)
     {
         _entries = [.. entries];

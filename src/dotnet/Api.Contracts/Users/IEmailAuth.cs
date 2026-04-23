@@ -1,4 +1,4 @@
-﻿namespace ActualChat.Users;
+namespace ActualChat.Users;
 
 /// <summary>
 /// Service for email-based authentication with TOTP codes.
@@ -20,26 +20,26 @@ public interface IEmailAuth : IComputeService
     Task<string> ValidateCanSendToEmail(Session session, Email email, TotpPurpose purpose, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record EmailAuth_SendTotp(
-    [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] Email Email,
-    [property: DataMember, MemoryPackOrder(2)] TotpPurpose Purpose = TotpPurpose.SignInEmail
+    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] Email Email,
+    [property: DataMember, MemoryPackOrder(2), Key(2)] TotpPurpose Purpose = TotpPurpose.SignInEmail
 ) : ISessionCommand<Moment>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record EmailAuth_ValidateTotp(
-    [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] Email Email,
-    [property: DataMember, MemoryPackOrder(2)] int Totp
+    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] Email Email,
+    [property: DataMember, MemoryPackOrder(2), Key(2)] int Totp
 ) : ISessionCommand<bool>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record EmailAuth_VerifyEmail(
-    [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] Email Email,
-    [property: DataMember, MemoryPackOrder(2)] int Token
+    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] Email Email,
+    [property: DataMember, MemoryPackOrder(2), Key(2)] int Token
 ) : ISessionCommand<bool>, IApiCommand; // NOTE(AY): Add backend, implement IApiCommand

@@ -5,7 +5,9 @@ using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.Hosting;
 using static System.Console;
 
-CoreSerializerAndRpcSetup.Configure(isServer: false);
+RuntimeInfo.IsServer = false;
+ApiContractsModuleInitializer.Load();
+CoreModuleInitializer.Configure();
 
 var cancellationTokenSource = new CancellationTokenSource();
 var cancellationToken = cancellationTokenSource.Token;

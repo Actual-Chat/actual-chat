@@ -4,7 +4,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <PropertyGroup>
-    <ActualLabFusionVersion>12.3.63</ActualLabFusionVersion>
+    <ActualLabFusionVersion>12.3.74</ActualLabFusionVersion>
     <AspNetCoreVersion>10.0.2</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <EntityFrameworkCoreVersion>10.0.2</EntityFrameworkCoreVersion>
@@ -19,7 +19,8 @@
     <OpenTelemetryVersion>1.15.0</OpenTelemetryVersion>
     <SentryVersion>5.14.1</SentryVersion>
     <MemoryPackVersion>1.21.4</MemoryPackVersion>
-    <MessagePackVersion>3.1.4</MessagePackVersion>
+    <NerdbankMessagePackVersion>[1.0.43,)</NerdbankMessagePackVersion>
+    <PolyTypeVersion>[1.0.0,)</PolyTypeVersion>
     <SemanticKernelVersion>1.64.0</SemanticKernelVersion>
     <XamarinAndroidLifecycle>[2.9.2.1,)</XamarinAndroidLifecycle>
   </PropertyGroup>
@@ -115,6 +116,7 @@
     <PackageVersion Include="ActualLab.RestEase" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Rpc" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Rpc.Server" Version="$(ActualLabFusionVersion)" />
+    <PackageVersion Include="ActualLab.Serialization.NerdbankMessagePack" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Testing" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="Svg.Skia" Version="4.0.0-rc1" />
     <PackageVersion Include="SkiaSharp" Version="3.119.3-preview.1.1" />
@@ -154,8 +156,8 @@
     <PackageVersion Include="MemoryPack" Version="$(MemoryPackVersion)" />
     <PackageVersion Include="MemoryPack.Core" Version="$(MemoryPackVersion)" />
     <PackageVersion Include="MemoryPack.Generator" Version="$(MemoryPackVersion)" />
-    <PackageVersion Include="MessagePack" Version="$(MessagePackVersion)" />
-    <PackageVersion Include="MessagePack.Annotations" Version="$(MessagePackVersion)" />
+    <PackageVersion Include="Nerdbank.MessagePack" Version="$(NerdbankMessagePackVersion)" />
+    <PackageVersion Include="PolyType" Version="$(PolyTypeVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.Google" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.MicrosoftAccount" Version="$(AspNetCoreVersion)" />
@@ -169,6 +171,7 @@
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="$(BlazorVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="$(SignalRVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="$(SignalRVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.StaticFiles" Version="2.3.0" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="$(EntityFrameworkCoreVersion)" />

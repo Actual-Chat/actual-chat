@@ -5,7 +5,7 @@ using ActualLab.Rpc;
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
 
 [Flow(ResumeTimeout = 60, DataVersion = 2)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class TimerFlow : Flow<Unit>
 {
     private static bool _threwRerouteException;

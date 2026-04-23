@@ -1,5 +1,4 @@
 using ActualChat.Flows.Infrastructure;
-using ActualChat.Serialization;
 using ActualLab.Caching;
 
 namespace ActualChat.Flows;
@@ -19,11 +18,13 @@ public interface IFlowData
 
 public static class FlowData
 {
-    // Format version 0 = MessagePack (TypeDecorating); legacy fallback = MemoryPack (TypeDecorating)
-    // for previously-persisted flow data written before the format byte was introduced.
+    // Format version 0 = Nerdbank.MessagePack (TypeDecorating); legacy fallback = MemoryPack
+    // (TypeDecorating) for previously-persisted flow data written before the format byte was
+    // introduced. MessagePack-CSharp's path is gone post-migration — its DynamicObjectResolver
+    // can't construct StringLike identifier structs (ChatId etc.) without a parameterless ctor.
     public static readonly IByteSerializer FlowSerializer = new VersionedByteSerializer(
-        [MessagePackByteSerializer.DefaultTypeDecorating],
-        legacy: MemoryPackByteSerializer.DefaultTypeDecorating);
+        [Serializers.MessagePackTypeDecorating],
+        legacy: Serializers.MemoryPackTypeDecorating);
     public static readonly IByteSerializer ResultSerializer = FlowSerializer;
 
     public static IFlowData FromFlow(Flow flow)
@@ -58,7 +59,7 @@ public static class FlowData
 
 #pragma warning disable CA1000 // Do not declare static members on generic types
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class FlowData<TFlow> : IFlowData
     where TFlow : Flow
 {
@@ -68,14 +69,14 @@ public partial class FlowData<TFlow> : IFlowData
     private string? _console;
     private TFlow? _flow;
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
+    [DataMember(Order = 0), MemoryPackOrder(0), NbKey(0)]
     public FlowId Id { get; init; }
-    [DataMember(Order = 1), MemoryPackOrder(1)]
+    [DataMember(Order = 1), MemoryPackOrder(1), NbKey(1)]
     public long Version { get; init; }
-    [DataMember(Order = 2), MemoryPackOrder(2)]
+    [DataMember(Order = 2), MemoryPackOrder(2), NbKey(2)]
     public int DataVersion { get; init; }
 
-    [DataMember(Order = 3), MemoryPackOrder(3)]
+    [DataMember(Order = 3), MemoryPackOrder(3), NbKey(3)]
     public byte[] ResultData {
         get => _resultData ?? Serialize().ResultData;
         private init {
@@ -84,7 +85,7 @@ public partial class FlowData<TFlow> : IFlowData
         }
     }
 
-    [DataMember(Order = 4), MemoryPackOrder(4)]
+    [DataMember(Order = 4), MemoryPackOrder(4), NbKey(4)]
     public byte[] Data {
         get => _data ?? Serialize().Data;
         private init {
@@ -93,7 +94,7 @@ public partial class FlowData<TFlow> : IFlowData
         }
     }
 
-    [DataMember(Order = 5), MemoryPackOrder(5)]
+    [DataMember(Order = 5), MemoryPackOrder(5), NbKey(5)]
     public string Console {
         get => _console ?? Serialize().Console;
         private init {
@@ -104,7 +105,7 @@ public partial class FlowData<TFlow> : IFlowData
 
     // Computed properties
 
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     public bool IsCompleted => _flow is { } flow
         ? flow.UntypedResult is not null
         : ResultData.Length != 0;

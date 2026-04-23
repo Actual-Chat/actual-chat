@@ -3,7 +3,7 @@ using ActualChat.Flows;
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
 
 [Flow(DelayQuanta = 0)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class ResumeLatencyFlow : Flow<Unit>
 {
     private const int ResumeCount = 5;

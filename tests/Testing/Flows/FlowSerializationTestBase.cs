@@ -1,12 +1,10 @@
 using ActualChat.Flows;
-using AwesomeAssertions;
-using Xunit.Abstractions;
 
 namespace ActualChat.Testing.Flows;
 
 /// <summary>
 /// Base class for verifying that every persisted property of a flow round-trips correctly
-/// through both MemoryPack and MessagePack. Each derived test class provides a populated
+/// through both MemoryPack and Nerdbank.MessagePack. Each derived test class provides a populated
 /// instance via <see cref="CreatePopulated"/>; the base class snapshots all
 /// <c>[DataMember]</c> properties (including inherited ones) before and after serialization
 /// and asserts that every value survives.
@@ -23,11 +21,13 @@ public abstract class FlowSerializationTestBase<TFlow>(ITestOutputHelper @out) :
 
     [Fact]
     public void MemoryPack_RoundTrip()
-        => RoundTrip(MemoryPackByteSerializer.Default, "MemoryPack");
+        => RoundTrip(Serializers.MemoryPack, "MemoryPack");
 
+    // Test name kept for historical continuity; the underlying serializer is Nerdbank.MessagePack
+    // since the MessagePack-CSharp path was removed during the migration.
     [Fact]
     public void MessagePack_RoundTrip()
-        => RoundTrip(MessagePackByteSerializer.Default, "MessagePack");
+        => RoundTrip(Serializers.MessagePack, "Nerdbank.MessagePack");
 
     private void RoundTrip(IByteSerializer serializer, string name)
     {

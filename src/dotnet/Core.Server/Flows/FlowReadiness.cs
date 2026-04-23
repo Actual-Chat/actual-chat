@@ -1,18 +1,18 @@
 ﻿namespace ActualChat.Flows;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-[method: MemoryPackConstructor, SerializationConstructor, JsonConstructor, Newtonsoft.Json.JsonConstructor]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[method: ConstructorShape, MemoryPackConstructor, JsonConstructor, Newtonsoft.Json.JsonConstructor]
 public readonly partial record struct FlowReadiness(string SuspensionReason, TimeSpan? ResumeDelay = null)
 {
     public static FlowReadiness Ready => default;
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
+    [DataMember(Order = 0), MemoryPackOrder(0), NbKey(0)]
     public string SuspensionReason { get => field ?? ""; init; } = SuspensionReason;
-    [DataMember(Order = 1), MemoryPackOrder(1)]
+    [DataMember(Order = 1), MemoryPackOrder(1), NbKey(1)]
     public TimeSpan? ResumeDelay { get => IsSuspended ? field : TimeSpan.Zero; init; } = ResumeDelay;
 
     // Computed
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember, JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public bool IsSuspended => !SuspensionReason.IsNullOrEmpty();
 
     public override string ToString()

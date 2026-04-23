@@ -1,4 +1,5 @@
 using ActualChat.Contacts;
+using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 

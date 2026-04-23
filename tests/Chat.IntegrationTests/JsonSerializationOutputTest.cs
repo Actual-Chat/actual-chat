@@ -1,5 +1,4 @@
 using ActualChat.UI.Blazor.App.Services;
-using ActualChat.Users;
 using ICommand = ActualLab.CommandR.ICommand;
 
 namespace ActualChat.Chat.IntegrationTests;
@@ -88,7 +87,7 @@ public class JsonSerializationOutputTest(ITestOutputHelper @out) : TestBase(@out
 
     private void Dump<T>(T instance)
     {
-        var s = SystemJsonSerializer.Default;
+        var s = Serializers.SystemJson;
         WriteLine($"{typeof(T).GetName()}:");
         WriteLine("\"" + s.Write(instance).Replace("\"", "\\\"", StringComparison.OrdinalIgnoreCase) + "\"");
         WriteLine("");

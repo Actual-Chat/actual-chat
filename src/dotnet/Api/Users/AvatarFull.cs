@@ -5,18 +5,19 @@ namespace ActualChat.Users;
 /// <summary>
 /// Extended <see cref="Avatar"/> with user association and anonymity flag.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record AvatarFull(
-    [property: DataMember, MemoryPackOrder(7)] UserId UserId,
+    [property: DataMember, MemoryPackOrder(7), Key(10)] UserId UserId,
     Symbol Id = default,
-    long Version = 0) : Avatar(Id, Version)
+    long Version = 0
+    ) : Avatar(Id, Version)
 {
     public static new readonly Requirement<AvatarFull> MustExist = Requirement.New(
         (AvatarFull? a) => a?.Id is not null,
         new(() => StandardError.NotFound<Avatar>()));
 
-    [DataMember, MemoryPackOrder(8)] public bool IsAnonymous { get; init; }
+    [DataMember, MemoryPackOrder(8), Key(11)] public bool IsAnonymous { get; init; }
 
     // Helpers
 

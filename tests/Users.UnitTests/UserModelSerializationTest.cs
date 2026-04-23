@@ -216,6 +216,9 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         settings.AssertPassesThroughAllSerializers(AssertLocalAppSettingsEqual);
     }
 
+    // The compiler-generated record equality compares CameraMirrorOverrides by reference
+    // (ApiMap : Dictionary, no Equals override) — two empty ApiMaps round-trip but aren't
+    // == per record semantics. Compare contents instead.
     private static void AssertLocalAppSettingsEqual(LocalAppSettings actual, LocalAppSettings expected)
     {
         actual.IsLogViewerEnabled.Should().Be(expected.IsLogViewerEnabled);

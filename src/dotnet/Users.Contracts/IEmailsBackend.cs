@@ -17,16 +17,16 @@ public interface IEmailsBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to send a digest email to a user.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record EmailsBackend_SendDigest(
-    [property: DataMember, MemoryPackOrder(0)] UserId UserId
+    [property: DataMember, MemoryPackOrder(0), NbKey(0)] UserId UserId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>, IHasTimeout
 {
     [property: DataMember, MemoryPackOrder(1)]
-    public bool IsDiagnosticsEnabled { get; init; }
+[NbKey(1)]    public bool IsDiagnosticsEnabled { get; init; }
 
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore]
     public UserId ShardKey => UserId;
 
     TimeSpan? IHasTimeout.Timeout => TimeSpan.FromMinutes(5);

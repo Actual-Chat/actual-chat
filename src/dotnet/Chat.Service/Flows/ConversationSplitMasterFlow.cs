@@ -2,13 +2,13 @@ using ActualChat.Flows;
 
 namespace ActualChat.Chat.Flows;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class ConversationSplitMasterFlow
     : IndexingMasterFlow<ConversationSplitFlow, Chat, ChatId>, IMasterFlow
 {
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
 
-    [DataMember(Order = 5), MemoryPackOrder(5)]
+    [DataMember(Order = 5), MemoryPackOrder(5), NbKey(5)]
     public long MaxVersion { get; set; }
 
     protected override ValueTask Init(CancellationToken cancellationToken)

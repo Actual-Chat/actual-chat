@@ -4,7 +4,7 @@ using ActualChat.Flows;
 namespace ActualChat.Chat.Flows;
 
 [Flow(DelayQuanta = 60)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class TranslationCleanupFlow : PeriodicFlow, IMasterFlow
 {
     private const int BatchSize = 50;
