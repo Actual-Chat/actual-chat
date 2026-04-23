@@ -1417,25 +1417,33 @@ export class VideoPlayer {
         const streamOffsetMs = Math.max(this.lastArrivedOffsetMs, this.lastRenderedOffsetMs);
 
         const nowMs = ServerClock.now();
-        const recordedAtMs = this.startedAtMs + this.lastRenderedOffsetMs;
-        const latencyMs = nowMs - recordedAtMs;
+        // Two metrics with distinct semantics:
+        // - latencyMs (newest arrived frame vs now) = true sender→receiver transit.
+        //   Used for SKIP_TO_LIVE trigger and for user-visible "network latency".
+        // - frameAgeMs (rendered frame vs now) = how old is what's on screen. High on
+        //   screencast with sparse heartbeats (up to heartbeat interval) even when
+        //   transit is tiny — content just hasn't changed recently. Diagnostic only.
+        const arrivedAtMs = this.startedAtMs + this.lastArrivedOffsetMs;
+        const renderedAtMs = this.startedAtMs + this.lastRenderedOffsetMs;
+        const latencyMs = nowMs - arrivedAtMs;
+        const frameAgeMs = nowMs - renderedAtMs;
         warnLog?.log(
             `LATENCY: authorId=${this.authorId}, streamId=${this.streamId}, ` +
-            `now=${nowMs.toFixed(0)}, recorded=${recordedAtMs.toFixed(0)} ` +
-            `(startedAt=${this.startedAtMs.toFixed(0)}+offset=${this.lastRenderedOffsetMs.toFixed(0)}), ` +
-            `latency=${latencyMs.toFixed(0)}ms`);
+            `now=${nowMs.toFixed(0)}, arrivedAt=${arrivedAtMs.toFixed(0)} ` +
+            `(startedAt=${this.startedAtMs.toFixed(0)}+arrivedOffset=${this.lastArrivedOffsetMs.toFixed(0)}), ` +
+            `latency=${latencyMs.toFixed(0)}ms, frameAge=${frameAgeMs.toFixed(0)}ms ` +
+            `(renderedOffset=${this.lastRenderedOffsetMs.toFixed(0)})`);
 
-        // Audio-sync catch-up: when latency grows, reduce pipelineLatencyMs to advance
-        // the audio-sync target, effectively catching up without disrupting A/V sync.
-        // This applies to both audio-sync and wall-clock paths.
-        if (latencyMs > CATCHUP_GENTLE_MS && latencyMs <= DROP_TO_KEYFRAME_MS) {
-            // Reduce pipeline latency estimate by a fraction of the excess to catch up gradually
-            const excessMs = latencyMs - CATCHUP_GENTLE_MS;
+        // Audio-sync catch-up: when render age grows, reduce pipelineLatencyMs to
+        // advance the audio-sync target. Uses frameAgeMs because pipelineLatencyMs
+        // tracks render delay — the same domain as frameAge, not network transit.
+        if (frameAgeMs > CATCHUP_GENTLE_MS && frameAgeMs <= DROP_TO_KEYFRAME_MS) {
+            const excessMs = frameAgeMs - CATCHUP_GENTLE_MS;
             const reductionMs = Math.min(excessMs * 0.3, 20); // Reduce by up to 20ms per tick
             if (this.pipelineLatencyMs > reductionMs) {
                 this.pipelineLatencyMs -= reductionMs;
                 warnLog?.log(
-                    `CATCHUP: latency ${latencyMs.toFixed(0)}ms, reducing pipelineLatencyMs by ${reductionMs.toFixed(1)}ms to ${this.pipelineLatencyMs.toFixed(0)}ms`);
+                    `CATCHUP: frameAge ${frameAgeMs.toFixed(0)}ms, reducing pipelineLatencyMs by ${reductionMs.toFixed(1)}ms to ${this.pipelineLatencyMs.toFixed(0)}ms`);
             }
         }
 
@@ -1443,15 +1451,17 @@ export class VideoPlayer {
         if (performance.now() - this.lastSkipToLiveTime < 5000)
             return;
 
-        // Graduated recovery: escalating response to growing latency
-        if (latencyMs > DROP_TO_KEYFRAME_MS && latencyMs <= SKIP_TO_LIVE_THRESHOLD_MS) {
+        // Graduated recovery: when rendered-frame age is high, buffered frames are
+        // stale. Dropping the oldest half helps the renderer reach live without
+        // ratcheting through aged content. Uses frameAgeMs (render-domain signal).
+        if (frameAgeMs > DROP_TO_KEYFRAME_MS && frameAgeMs <= SKIP_TO_LIVE_THRESHOLD_MS) {
             // Phase 2: Drop oldest frames to catch up quickly.
             // PendingFrame (decoded VideoFrame/ImageBitmap) lacks isKeyFrame metadata,
             // so we can't do keyframe-aware dropping — drop the oldest half instead.
             const dropCount = Math.floor(this.pendingFrames.length / 2);
             if (dropCount > 0) {
                 warnLog?.log(
-                    `GRADUATED_RECOVERY: latency ${latencyMs.toFixed(0)}ms > ${DROP_TO_KEYFRAME_MS}ms, dropping ${dropCount} oldest frames`);
+                    `GRADUATED_RECOVERY: frameAge ${frameAgeMs.toFixed(0)}ms > ${DROP_TO_KEYFRAME_MS}ms, dropping ${dropCount} oldest frames`);
                 for (let i = 0; i < dropCount; i++) {
                     this.pendingFrames[i].close();
                 }
@@ -1459,6 +1469,11 @@ export class VideoPlayer {
                 this.bufferSize = this.pendingFrames.length;
             }
         }
+        // SKIP_TO_LIVE triggers on NETWORK latency (latencyMs = arrival vs sender),
+        // not frameAge — on screencast, frameAge can hit 1.5s just from heartbeat
+        // pacing on a perfectly healthy link, and re-requesting the stream would
+        // be pointless churn. Arrival latency only grows when the stream is actually
+        // stalled server-side or the network is congested.
         else if (latencyMs > SKIP_TO_LIVE_THRESHOLD_MS) {
             // Phase 3: Nuclear — re-request stream from live offset
             this.skipToLiveCount++;
