@@ -153,6 +153,12 @@ export class VideoPlayer {
     private consecutiveEmptyRenders = 0; // Safety net: count consecutive RAFs with no frame rendered
     private lastHighLatencyLogTime = 0;  // Throttle high-latency FRAME_RECV logs
     private skipToLiveCount = 0;          // Number of skip-to-live events
+    // Offset of the newest frame that arrived at this receiver. Used for server
+    // latency reporting so the signal reflects pure network+relay transit —
+    // NOT pipelineLatencyMs (the intentional jitter buffer). Reporting
+    // lastRenderedOffsetMs would conflate the buffer with congestion and make
+    // the server step down quality on a perfectly healthy local link.
+    private lastArrivedOffsetMs = 0;
 
     // Adaptive jitter buffer — absorbs network jitter by delaying rendering
     private jitterBufferMs = 40;                   // Current target delay (ms)
@@ -1105,6 +1111,7 @@ export class VideoPlayer {
         // Reset lastRenderedOffsetMs so reportLatencyTick skips until a fresh frame renders
         // (prevents SKIP_TO_LIVE loop from using stale offset after background→foreground)
         this.lastRenderedOffsetMs = 0;
+        this.lastArrivedOffsetMs = 0;
 
         // Reset decode performance tracking — Chrome may have throttled the decoder while hidden
         this.codecSlowTickCount = 0;
@@ -1201,6 +1208,8 @@ export class VideoPlayer {
             const description = frame.Description ?? undefined;
 
             this.receivedFrameCount++;
+            if (offsetMs > this.lastArrivedOffsetMs)
+                this.lastArrivedOffsetMs = offsetMs;
             if (isKeyFrame) {
                 this.receivedKeyframeCount++;
             } else if (this.receivedFrameCount % 100 === 1) {
@@ -1293,6 +1302,7 @@ export class VideoPlayer {
         Api.releaseConnection(`VideoPlayer:${this.streamId}`);
         this.playbackStartTime = 0;
         this.lastRenderedOffsetMs = 0;
+        this.lastArrivedOffsetMs = 0;
         this.renderFrameCount = 0;
         this.receivedFrameCount = 0;
         this.receivedKeyframeCount = 0;
@@ -1354,11 +1364,27 @@ export class VideoPlayer {
         if (!this.isPlaying)
             return;
 
+        // Chrome throttles requestAnimationFrame / setTimeout heavily in hidden
+        // tabs (rAF → ~1 Hz, timers → ≥1s clamp). `lastRenderedOffsetMs` stops
+        // advancing while wall-clock keeps ticking → computed latency balloons
+        // → spurious SKIP_TO_LIVE fires the moment a throttled tick lands. The
+        // onVisibilityRestored path (visibilityChange handler) already issues a
+        // fresh PLI + stream re-request, so skipping latency reporting while
+        // hidden is safe recovery and avoids double-triggering.
+        if (document.hidden)
+            return;
+
         if (this.lastRenderedOffsetMs <= 0) {
             warnLog?.log(`reportLatencyTick: skip — lastRendered=${this.lastRenderedOffsetMs.toFixed(0)}`);
             return;
         }
-        const streamOffsetMs = this.lastRenderedOffsetMs;
+        // streamOffsetMs is what we send to the server for its latency computation
+        // (ServerClock.Now - (StartedAt + streamOffsetMs) = network+relay transit).
+        // Use the newest arrived offset, NOT the rendered one — the render lags by
+        // pipelineLatencyMs (jitter buffer) which is our local choice, not congestion.
+        // Conflating them trips the server's "baseline + 200ms + 30%" step-down on a
+        // healthy link once the buffer stabilizes.
+        const streamOffsetMs = Math.max(this.lastArrivedOffsetMs, this.lastRenderedOffsetMs);
 
         const nowMs = ServerClock.now();
         const recordedAtMs = this.startedAtMs + this.lastRenderedOffsetMs;
@@ -1429,6 +1455,7 @@ export class VideoPlayer {
             this.playbackStartTime = 0;
             // Prevent stale latency report before first new frame renders
             this.lastRenderedOffsetMs = 0;
+            this.lastArrivedOffsetMs = 0;
             this.lastSkipToLiveTime = performance.now();
             // Reset jitter buffer state — stale arrival times from old stream are meaningless
             this.jitterEstimateMs = 0;

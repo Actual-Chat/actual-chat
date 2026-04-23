@@ -104,7 +104,14 @@ export class InternalVideoStream {
     public readonly whenDisposed: Promise<void>;
 
     constructor(
-        private readonly config: { codec: string; width: number; height: number; codecSettings: string },
+        private readonly config: {
+            codec: string;
+            width: number;
+            height: number;
+            sourceWidth: number;
+            sourceHeight: number;
+            codecSettings: string;
+        },
         private readonly ctx: StreamingContext,
         streamAfter?: Promise<void>,
     ) {
@@ -144,13 +151,17 @@ export class InternalVideoStream {
             warnLog?.log(`TIMING_ANCHOR: clientStartOffset=${clientStartOffset.toFixed(3)}s`);
 
             infoLog?.log(`PushVideo: codec=${this.config.codec}, ` +
-                `${this.config.width}x${this.config.height}, settings=${this.config.codecSettings.length} chars`);
+                `${this.config.width}x${this.config.height} ` +
+                `(source ${this.config.sourceWidth}x${this.config.sourceHeight}), ` +
+                `settings=${this.config.codecSettings.length} chars`);
 
             const format: VideoFormatDto = {
                 Codec: this.config.codec,
                 Width: this.config.width,
                 Height: this.config.height,
                 CodecSettings: this.config.codecSettings,
+                SourceWidth: this.config.sourceWidth,
+                SourceHeight: this.config.sourceHeight,
             };
 
             // Real-time video stream: isRealTime=true, allowReconnect=true, ackPeriod=5, ackAdvance=31.

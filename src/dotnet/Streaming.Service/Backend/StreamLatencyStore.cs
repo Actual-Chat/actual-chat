@@ -173,17 +173,37 @@ public sealed class StreamLatencyStore(IServiceProvider services)
         public MutableState<VideoQualityPreset> QualityPreset { get; } = stateFactory.NewMutable(
             kind == StreamKind.Screencast ? VideoQualityPreset.Full : VideoQualityPreset.High);
 
-        // Cap max quality to what the source can actually provide — prevents wasteful upscaling.
-        // Ultra (4K) only unlocks when the source reports >= 3840x2160 — typical for
-        // getDisplayMedia on a 4K monitor; webcams rarely exceed 1080p.
-        private readonly VideoQualityLevel _maxQuality = format switch
+        // Cap max quality to what the SOURCE (capture) can provide — prevents wasteful
+        // upscaling. Sender's Width/Height in VideoFormat is the encoder config which
+        // starts below source when adaptation is active; use SourceWidth/SourceHeight
+        // instead so we know the real headroom. Legacy peers that don't populate source
+        // dims send 0 → fall back to encoder dims.
+        //
+        // Match by **pixel count with 10% tolerance**. Real-world capture dimensions
+        // drift from nominal (e.g. getDisplayMedia on a 4K monitor reports 3840x2088
+        // on macOS / 3840x2100 on Windows — never 2160 because of the OS chrome;
+        // webcams may report 1920x1079 or similar). Strict Width/Height matches reject
+        // these. The 90%-of-tier rule lets such sources qualify for their natural tier.
+        private static readonly long UltraPixelThreshold = (long)(3840 * 2160 * 0.9);   // ~7.46M
+        private static readonly long FullPixelThreshold = (long)(1920 * 1080 * 0.9);    // ~1.87M
+        private static readonly long HighPixelThreshold = (long)(1280 * 720 * 0.9);     // ~0.83M
+        private static readonly long MediumPixelThreshold = (long)(960 * 540 * 0.9);    // ~0.47M
+        private readonly VideoQualityLevel _maxQuality =
+            ComputeMaxQuality(format.SourceWidth > 0 ? format.SourceWidth : format.Width,
+                              format.SourceHeight > 0 ? format.SourceHeight : format.Height);
+
+        private static VideoQualityLevel ComputeMaxQuality(int width, int height)
         {
-            { Width: >= 3840, Height: >= 2160 } => VideoQualityLevel.Ultra,
-            { Width: >= 1920, Height: >= 1080 } => VideoQualityLevel.Full,
-            { Width: >= 1280, Height: >= 720 } => VideoQualityLevel.High,
-            { Width: >= 960, Height: >= 540 } => VideoQualityLevel.Medium,
-            _ => VideoQualityLevel.Low,
-        };
+            var pixels = (long)width * height;
+            return pixels switch
+            {
+                var p when p >= UltraPixelThreshold => VideoQualityLevel.Ultra,
+                var p when p >= FullPixelThreshold => VideoQualityLevel.Full,
+                var p when p >= HighPixelThreshold => VideoQualityLevel.High,
+                var p when p >= MediumPixelThreshold => VideoQualityLevel.Medium,
+                _ => VideoQualityLevel.Low,
+            };
+        }
 
         private readonly ConcurrentDictionary<string, PeerLatencyState> _peers = new();
         private readonly Lock _evaluationLock = new();
@@ -196,7 +216,6 @@ public sealed class StreamLatencyStore(IServiceProvider services)
         private long _bytesAtLastCheck;
         private CpuTimestamp _lastThroughputCheckAt = CpuTimestamp.Now;
         private CpuTimestamp _lastByteReceivedAt = CpuTimestamp.Now;
-        private int _consecutiveLowThroughputChecks;
         private int _consecutiveHighThroughputChecks;
 
         public int GetPeerMaxTemporalLayer(string peerId)
@@ -245,33 +264,12 @@ public sealed class StreamLatencyStore(IServiceProvider services)
                     var targetBps = VideoBitrateTable.GetExpectedBitrate(Codec, QualityPreset.Value.Height, Kind);
                     _lastThroughputCheckAt = CpuTimestamp.Now;
 
-                    // Under-delivery step-down applies to webcam only. A camera sensor produces
-                    // near-constant entropy, so a webcam encoder lands close to target — sustained
-                    // undershoot then reliably signals an uplink bottleneck.
-                    // Screencast encoder output is content-driven: static/simple screens compress to
-                    // 500–900kbps at 720p regardless of target cap, so a "measured < 50% target"
-                    // ratio constantly trips even on a local link with sub-200ms latency.
-                    // Latency-based step-down (per-peer median vs baseline, below) remains the
-                    // primary congestion detector for screencast.
-                    if (Kind != StreamKind.Screencast
-                        && targetBps > 0 && measuredBps < targetBps * Constants.Video.ThroughputStepDownRatio) {
-                        _consecutiveLowThroughputChecks++;
-                        if (_consecutiveLowThroughputChecks >= Constants.Video.ThroughputStepDownConsecutiveChecks) {
-                            var stepped = VideoQualityPreset.StepDown(currentQuality, Kind);
-                            if (stepped != null) {
-                                _consecutiveLowThroughputChecks = 0;
-                                _lastQualityChangeAt = CpuTimestamp.Now;
-                                QualityPreset.Value = stepped;
-                                Log.LogInformation(
-                                    "EvaluateQuality: THROUGHPUT STEP DOWN {OldLevel} -> {NewLevel}, measured={MeasuredKbps:F0}kbps vs target={TargetKbps:F0}kbps",
-                                    currentQuality, stepped.Level, measuredBps / 1000, targetBps / 1000.0);
-                                return;
-                            }
-                        }
-                    }
-                    else
-                        _consecutiveLowThroughputChecks = 0;
-
+                    // Under-delivery step-down removed: measured < target is not a congestion
+                    // signal. Encoder output is content-driven (static screens, dark scenes, VAD
+                    // framerate cuts all produce < target) and real congestion shows up as latency
+                    // rise first (TCP backpressure → socket buffer fills → ACK delay grows), which
+                    // the per-peer latency-vs-baseline check below catches directly.
+                    //
                     // Over-delivery detection: HW encoder ignoring bitrate cap (e.g. HEVC VBR at 12Mbps vs 4Mbps target)
                     if (targetBps > 0 && measuredBps > targetBps * Constants.Video.ThroughputOverDeliveryRatio) {
                         _consecutiveHighThroughputChecks++;

@@ -10,6 +10,12 @@ public partial record VideoFormat : MediaFormat
     [DataMember(Order = 11), MemoryPackOrder(11)] public int Width { get; init; }
     [DataMember(Order = 12), MemoryPackOrder(12)] public int Height { get; init; }
     [DataMember(Order = 13), MemoryPackOrder(13)] public string CodecSettings { get; init; } = "";
+    // Source capture dimensions (getDisplayMedia output for screencast, camera sensor
+    // for webcam). May be larger than encoder Width/Height when downscaling is active.
+    // Server uses these to decide the quality-preset ceiling (e.g. unlock Ultra/4K).
+    // Legacy peers that don't populate these send 0 — server falls back to Width/Height.
+    [DataMember(Order = 14), MemoryPackOrder(14)] public int SourceWidth { get; init; }
+    [DataMember(Order = 15), MemoryPackOrder(15)] public int SourceHeight { get; init; }
 
     public override byte[] Serialize(int index = 0)
         => CodecSettings.IsNullOrEmpty() ? [] : Convert.FromBase64String(CodecSettings);

@@ -147,15 +147,21 @@ let streamingEnabled = false;
 
 // ─── Screencast heartbeat ──────────────────────────────────────────────────
 // getDisplayMedia is change-driven: a static screen produces zero frames. Without
-// traffic, the server's frame-silence watchdog would reap the stream. We cache
-// the last encoded frame and re-encode it (with a bumped timestamp + forced
-// keyframe) every SCREENCAST_HEARTBEAT_MS of encode-side silence. Cost: one
-// small keyframe per ~20s while idle. Webcam skips this — its sensor emits
-// continuously, so the path is dead code for streamKind=0.
-const SCREENCAST_HEARTBEAT_MS = 20_000;
-const SCREENCAST_HEARTBEAT_CHECK_MS = 5_000;
+// traffic, (a) the server's frame-silence watchdog reaps the stream, and (b) the
+// receiver's SKIP_TO_LIVE check (3s threshold) trips and force-reloads, both
+// pointlessly on unchanged content. We re-encode the cached last frame every
+// SCREENCAST_HEARTBEAT_MS — interval sits well below the 3s receiver threshold
+// so receiver latency stays bounded. Keyframes are auto-promoted by the encoder
+// via maxKeyFrameIntervalMs=2000 (see recording-service.ts), so we don't force
+// one here; encoder emits tiny P-frames for identical content most of the time
+// (a few hundred bytes) and a real keyframe every ~2s for mid-stream joiners.
+// Webcam skips this — its sensor emits continuously, so the path is dead code
+// for streamKind=0.
+const SCREENCAST_HEARTBEAT_MS = 1_000;
+const SCREENCAST_HEARTBEAT_CHECK_MS = 500;
 let lastEncodedFrame: VideoFrame | null = null;
 let lastEncodedFrameAt = 0; // performance.now() of the last encoder.encode() we drove
+let lastEncodedTimestampUs = 0; // μs timestamp of the last frame fed to encoder (real or heartbeat)
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
 // Pipeline
@@ -163,6 +169,11 @@ let processing = false;
 let dimensionsReconciled = false;
 let needsRotation = false;
 let orientationStats: OrientationStats | null = null;
+// Native source dimensions as they arrive from MSTP (before any downscale). Sent to
+// server on PushVideo so it knows the upscaling headroom — e.g. a screencast encoder
+// configured at 1080p can be asked to step up to 4K only if the source is actually 4K.
+let sourceWidth = 0;
+let sourceHeight = 0;
 let vadSpeaking = true;
 let vadRemoteStreamCount = 0;
 let vadReducedFrameIntervalMs = 1000 / 5;
@@ -493,10 +504,11 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
         nextFrameIsKeyFrame = false;
         // Cache a handle to the frame for the screencast heartbeat BEFORE
         // encoder.encode() — the encoder closes the frame it receives.
-        // clone() just bumps a ref count; no pixel copy.
+        // clone() shares underlying pixel data, so this is a ref bump not a copy.
         if (streamCtx.streamKind === 1) {
             if (lastEncodedFrame) lastEncodedFrame.close();
             lastEncodedFrame = processedFrame.clone();
+            lastEncodedTimestampUs = processedFrame.timestamp;
             lastEncodedFrameAt = performance.now();
         }
         encoder.encode(processedFrame, forceKf);
@@ -626,7 +638,14 @@ function deliverChunkToStream(
             const settings = codecSettings ?? '';
             infoLog?.log(`Creating VideoStream: codec=${encoderConfig!.codec}, ${encoderConfig!.width}x${encoderConfig!.height}, codecSettings=${settings.length} chars`);
             videoStream = new InternalVideoStream(
-                { codec: encoderConfig!.codec, width: encoderConfig!.width, height: encoderConfig!.height, codecSettings: settings },
+                {
+                    codec: encoderConfig!.codec,
+                    width: encoderConfig!.width,
+                    height: encoderConfig!.height,
+                    sourceWidth: sourceWidth || encoderConfig!.width,
+                    sourceHeight: sourceHeight || encoderConfig!.height,
+                    codecSettings: settings,
+                },
                 streamCtx,
                 lastVideoStream?.whenDisposed,
             );
@@ -691,6 +710,11 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
                 const frameH = rawFrame.displayHeight;
                 const codedW = rawFrame.codedWidth;
                 const codedH = rawFrame.codedHeight;
+                // Capture source dimensions once — used for server PushVideo format so
+                // the server knows the real upscale headroom (e.g. 4K screencast with
+                // encoder initially configured at 1080p).
+                sourceWidth = frameW;
+                sourceHeight = frameH;
                 warnLog?.log(`DIMENSIONS: display=${frameW}x${frameH}, coded=${codedW}x${codedH}, config=${encoderConfig.width}x${encoderConfig.height}, rotation=${frameRotation ?? 'N/A'}`);
                 // Detect rotation: display dims are transposed vs encoder config
                 // (MSTP gives raw sensor dims as displayWidth/Height)
@@ -792,19 +816,24 @@ function startScreencastHeartbeat(): void {
         if (silence < SCREENCAST_HEARTBEAT_MS) return;
 
         try {
-            // Bump timestamp so the encoder doesn't reject a duplicate. Use μs.
-            const baseTs = lastEncodedFrame.timestamp;
-            const freshTs = baseTs + Math.max(1, Math.round(silence * 1000));
+            // Monotonic timestamps: advance by the wall-clock gap since the last
+            // frame we fed to the encoder (real or heartbeat). μs.
+            const freshTs = lastEncodedTimestampUs + Math.max(1, Math.round(silence * 1000));
+            // Constructing a new VideoFrame from lastEncodedFrame shares the
+            // underlying pixel buffer (ref bump). The encoder closes `fresh`
+            // after encode() — but lastEncodedFrame stays alive and reusable
+            // for the next tick. Do NOT close+re-clone lastEncodedFrame here;
+            // that would fail on the next tick because encoder.encode() has
+            // already closed `fresh` before we'd attempt fresh.clone().
             const fresh = new VideoFrame(lastEncodedFrame, {
                 timestamp: freshTs,
                 duration: lastEncodedFrame.duration ?? undefined,
             });
-            // Heartbeat is always a keyframe — ensures mid-stream joiners get a
-            // decodable frame without waiting for real activity, and resets the
-            // server's frame-silence watchdog.
-            encoder.encode(fresh, true);
-            lastEncodedFrame.close();
-            lastEncodedFrame = fresh.clone();
+            // Don't force keyframe here — encoder auto-promotes every
+            // maxKeyFrameIntervalMs. P-frame on identical content is near-zero
+            // bytes; keyframes land on schedule for mid-stream joiners.
+            encoder.encode(fresh, false);
+            lastEncodedTimestampUs = freshTs;
             lastEncodedFrameAt = performance.now();
             debugLog?.log(`Screencast heartbeat: re-encoded last frame after ${Math.round(silence)}ms of silence`);
         } catch (e) {
@@ -817,6 +846,7 @@ function stopScreencastHeartbeat(): void {
     if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
     if (lastEncodedFrame) { lastEncodedFrame.close(); lastEncodedFrame = null; }
     lastEncodedFrameAt = 0;
+    lastEncodedTimestampUs = 0;
 }
 
 // ─── Server implementation ──────────────────────────────────────────────────
@@ -1057,7 +1087,7 @@ export const serverImpl: VideoProcessingWorker = {
         segInitialized = false; blurEnabled = false; resizeCanvas = null; resizeCtx = null;
         startTimestamp = undefined; lastLoggedFormat = '(unset)'; loggedI420Error = false;
         backpressureDrops = 0; backpressureTotalFrames = 0; lastBackpressureCheckTime = 0; backpressureNotified = false;
-        dimensionsReconciled = false; needsRotation = false; orientationStats = null; vadSpeaking = true; vadRemoteStreamCount = 0; vadLastPassedFrameTime = 0;
+        dimensionsReconciled = false; needsRotation = false; orientationStats = null; sourceWidth = 0; sourceHeight = 0; vadSpeaking = true; vadRemoteStreamCount = 0; vadLastPassedFrameTime = 0;
         segFrameCounter = 0; hasValidMask = false; loggedBlurFormat = false; processingFrame = false; frameSequence = 0;
         segProcessedFrames = 0; segTotalInferenceTime = 0; segTotalBlurTime = 0; segTotalProcessingTime = 0; segDroppedFrames = 0;
         videoStream = null; lastVideoStream = null; pendingStreamFrames = [];

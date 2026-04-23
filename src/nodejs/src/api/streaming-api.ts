@@ -52,6 +52,8 @@ export interface VideoFormatDto {
     Width: number;
     Height: number;
     CodecSettings: string;
+    SourceWidth: number;
+    SourceHeight: number;
 }
 
 // --- AudioFrame TypeScript interface ---

@@ -57,10 +57,11 @@ public static partial class Constants
         public static readonly float HighDecodeTimeThresholdMs = 15f; // Receiver's decoder is struggling
         public static readonly int HighBufferDepthThreshold = 10;     // Receiver's buffer is bloated
 
-        // Throughput-based quality adaptation
-        public static readonly float ThroughputStepDownRatio = 0.5f; // Step down when actual < 50% of target
+        // Over-delivery detection: HW encoder ignoring bitrate cap (e.g. HEVC VBR blowing past
+        // target by 2.5×). Under-delivery is NOT a congestion signal — latency-vs-baseline
+        // catches real congestion; encoder output is content-driven and routinely below target.
         public static readonly float ThroughputOverDeliveryRatio = 2.5f; // Step down when actual > 250% of target
-        public static readonly int ThroughputStepDownConsecutiveChecks = 2; // Require 2 consecutive low checks
+        public static readonly int ThroughputStepDownConsecutiveChecks = 2; // Require 2 consecutive high checks
 
         // PLI rate limiting
         public static readonly TimeSpan KeyFrameRequestCooldown = TimeSpan.FromSeconds(5);

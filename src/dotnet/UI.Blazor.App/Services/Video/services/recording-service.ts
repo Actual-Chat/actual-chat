@@ -394,12 +394,16 @@ export class RecordingService extends EventTarget {
                 // Webcam: 2-3s interval (less frequent keyframes save bandwidth).
                 // Screencast: 1-2s interval (more frequent for text clarity on content switches).
                 keyframeInterval: this.config.mode === 'screen'
-                    ? this.config.framerate * 2   // ~2s for screencast
+                    ? this.config.framerate * 2   // ~2s for screencast (active scrolling)
                     : this.config.framerate * 3,  // ~3s for webcam
-                // Wall-clock floor — guarantees a keyframe even when frames arrive slowly
-                // (VAD-reduced path, static screencast). Paired with server-side fast-join
-                // (VideoStreamFilter) so late joiners always find a keyframe in retention.
-                maxKeyFrameIntervalMs: this.config.mode === 'screen' ? 2000 : 3000,
+                // Wall-clock floor — guarantees a keyframe even when frames arrive slowly.
+                // Screencast heartbeat feeds 1 frame/s on static content; at 2s cap every 2nd
+                // heartbeat got promoted to keyframe (~600kbps pure heartbeat). Raised to 10s
+                // so static-screen heartbeats stay mostly P-frames (tiny). New joiners are
+                // served by the PLI path: server requests keyframe on peer join → next
+                // heartbeat is promoted via forceKeyFrame. Active scrolling (15 fps) hits
+                // the count-based cap (framerate*2 = 30 frames) at 2s anyway.
+                maxKeyFrameIntervalMs: this.config.mode === 'screen' ? 10000 : 3000,
                 latencyMode: 'realtime',
                 hardwareAcceleration: this.config.hardwareAccelerated ? 'prefer-hardware' : 'no-preference',
                 scalabilityMode: scalabilityMode
