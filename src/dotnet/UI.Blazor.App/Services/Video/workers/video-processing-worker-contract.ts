@@ -126,9 +126,27 @@ export function createAdaptiveSegmentationConfig(backend: SegmentationConfig['ba
 /**
  * Configuration for the unified video processing worker.
  */
+/**
+ * One simulcast layer. The base-layer dims/bitrate live on `encoder`; additional
+ * layers (higher-res for closer peers) are enumerated here and produce parallel
+ * encoder instances tagged with `SpatialLayerId = index` on each emitted chunk.
+ */
+export interface SpatialLayerConfig {
+    width: number;
+    height: number;
+    bitrate: number;
+    /** Overrides EncoderConfig.scalabilityMode for this layer (e.g. 'L1T3'). */
+    scalabilityMode?: string;
+}
+
 export interface VideoProcessingConfig {
-    /** Encoder settings (codec, bitrate, resolution, etc.) */
+    /** Encoder settings (codec, bitrate, resolution, etc.) — also serves as the
+     *  base simulcast layer (SpatialLayerId=0) when `spatialLayers` is set. */
     encoder: EncoderConfig;
+    /** Additional simulcast layers. Index i in this array corresponds to
+     *  `SpatialLayerId = i + 1` on wire; base layer (index 0 on wire) is driven
+     *  from `encoder`. Omit or leave empty for single-encoder (P2P) mode. */
+    spatialLayers?: SpatialLayerConfig[];
     /** Segmentation settings — omit for no blur */
     segmentation?: SegmentationConfig;
     /** Adaptive framerate settings */

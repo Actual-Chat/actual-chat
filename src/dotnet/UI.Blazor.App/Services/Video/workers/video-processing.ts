@@ -28,7 +28,7 @@ import {
     processBlurDeferredCleanups,
 } from '../webgpu-blur';
 import { WebGPUManager } from '../webgpu-manager';
-import { WebGpuDownscaler } from '../webgpu-downscaler';
+import { WebGpuDownscaler, type DownscaleTarget } from '../webgpu-downscaler';
 
 import { isAvcCDescription, deriveAvcCodecFromDescription, resizeFrame, cpuRgbaToI420 } from './video-encoding-helpers';
 import {
@@ -59,8 +59,12 @@ export function setCallbacks(cb: VideoProcessingWorkerCallbacks): void {
 
 // ─── State ──────────────────────────────────────────────────────────────────
 
-// Encoder
+// Encoder. `encoder` is the base layer (SpatialLayerId=0) and is always present
+// when encoding is active. `extraLayerEncoders` holds simulcast layers 1..N when
+// VideoProcessingConfig.spatialLayers is set, each tagged with its SpatialLayerId
+// via the WebCodecsEncoder ctor. Empty for single-encoder (P2P) mode.
 let encoder: WebCodecsEncoder | null = null;
+let extraLayerEncoders: WebCodecsEncoder[] = [];
 let encoderConfig: EncoderConfig | null = null;
 let encoderFailed = false;
 let encoderErrorSeen = false;
@@ -439,6 +443,21 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
             // else senderRotationDeg (main-thread supplies from screen.orientation).
             const results = downscaler.process(frame, senderRotationDeg);
             processedFrame = results[0].frame;
+            // Simulcast extras — feed each additional downscale result to its layer
+            // encoder. Encoders stamp SpatialLayerId on every emitted chunk via their
+            // ctor-bound id, so the fan-out path tags frames automatically.
+            if (extraLayerEncoders.length > 0) {
+                for (let i = 0; i < extraLayerEncoders.length; i++) {
+                    const extra = results[i + 1];
+                    if (!extra) continue; // downscaler produced fewer targets than layers
+                    try {
+                        extraLayerEncoders[i].encode(extra.frame, nextFrameIsKeyFrame);
+                    } catch (e) {
+                        errorLog?.log(`Extra layer ${i + 1} encode error:`, e);
+                        try { extra.frame.close(); } catch { /* already closed */ }
+                    }
+                }
+            }
         } else {
             const resized = resizeFrame(frame, encoderConfig.width, encoderConfig.height, resizeCanvas, resizeCtx, needsRotation);
             processedFrame = resized.frame;
@@ -670,27 +689,63 @@ function deliverChunkToStream(
     }
 }
 
-function createEncoder(config: EncoderConfig): void {
-    encoderConfig = config;
-    encoder = new WebCodecsEncoder(config, onEncoderOutput, (error) => {
-        errorLog?.log('Encoder error:', error.name, error.message);
-        encoderErrorSeen = true;
-    });
-    encoder.initialize();
+function onEncoderError(error: Error): void {
+    errorLog?.log('Encoder error:', error.name, error.message);
+    encoderErrorSeen = true;
 }
 
-// Init WebGPU downscaler for the current encoder dims. Returns null if WebGPU
-// is unavailable — caller then relies on the legacy canvas resizeFrame path.
-async function initDownscaler(width: number, height: number): Promise<void> {
+// Creates the base encoder (SpatialLayerId=0) plus any simulcast extras declared
+// in `config.spatialLayers`. Base encoder always present; extras empty in P2P mode.
+function setupEncoders(config: VideoProcessingConfig): void {
+    encoderConfig = config.encoder;
+    encoder = new WebCodecsEncoder(config.encoder, onEncoderOutput, onEncoderError, 0);
+    encoder.initialize();
+
+    // Drop any prior extras (covers switchCodec re-entry and re-init scenarios).
+    for (const e of extraLayerEncoders) {
+        try { e.close(); } catch { /* already closed */ }
+    }
+    extraLayerEncoders = [];
+
+    const layers = config.spatialLayers ?? [];
+    for (let i = 0; i < layers.length; i++) {
+        const layer = layers[i];
+        const layerCfg: EncoderConfig = {
+            ...config.encoder,
+            width: layer.width,
+            height: layer.height,
+            bitrate: layer.bitrate,
+            scalabilityMode: layer.scalabilityMode ?? config.encoder.scalabilityMode,
+        };
+        const spatialId = i + 1; // base layer consumed index 0
+        const extra = new WebCodecsEncoder(layerCfg, onEncoderOutput, onEncoderError, spatialId);
+        extra.initialize();
+        extraLayerEncoders.push(extra);
+        infoLog?.log(`Simulcast layer ${spatialId}: ${layer.width}x${layer.height} @ ${(layer.bitrate / 1_000_000).toFixed(1)}Mbps`);
+    }
+}
+
+function collectDownscaleTargets(config: VideoProcessingConfig): DownscaleTarget[] {
+    return [
+        { width: config.encoder.width, height: config.encoder.height },
+        ...(config.spatialLayers ?? []).map(l => ({ width: l.width, height: l.height })),
+    ];
+}
+
+// Init WebGPU downscaler for the full simulcast target list (base + any extras).
+// Returns null if WebGPU is unavailable — caller then relies on the legacy canvas
+// resizeFrame path (which only covers the primary layer; simulcast requires WebGPU).
+async function initDownscaler(config: VideoProcessingConfig): Promise<void> {
+    const targets = collectDownscaleTargets(config);
     if (downscaler) {
-        downscaler.configure([{ width, height }]);
+        downscaler.configure(targets);
         return;
     }
     try {
         const device = await WebGPUManager.init();
         downscaler = new WebGpuDownscaler(device);
-        downscaler.configure([{ width, height }]);
-        infoLog?.log(`Downscaler initialized: ${width}x${height}`);
+        downscaler.configure(targets);
+        infoLog?.log(`Downscaler initialized with ${targets.length} target(s)`);
     } catch (e) {
         warnLog?.log('WebGPU downscaler unavailable, falling back to canvas resize:', e);
         downscaler = null;
@@ -876,8 +931,8 @@ export const serverImpl: VideoProcessingWorker = {
                 infoLog?.log('Segmentation initialized (blur enabled)');
             }
 
-            createEncoder(config.encoder);
-            await initDownscaler(config.encoder.width, config.encoder.height);
+            setupEncoders(config);
+            await initDownscaler(config);
 
             if (config.adaptiveFramerate) {
                 vadReducedFrameIntervalMs = 1000 / config.adaptiveFramerate.reducedFps;
@@ -918,8 +973,8 @@ export const serverImpl: VideoProcessingWorker = {
                 infoLog?.log('Segmentation initialized (blur enabled)');
             }
 
-            createEncoder(config.encoder);
-            await initDownscaler(config.encoder.width, config.encoder.height);
+            setupEncoders(config);
+            await initDownscaler(config);
 
             if (config.adaptiveFramerate) {
                 vadReducedFrameIntervalMs = 1000 / config.adaptiveFramerate.reducedFps;
@@ -959,8 +1014,8 @@ export const serverImpl: VideoProcessingWorker = {
             }
 
             if (!isPreviewOnly) {
-                createEncoder(config.encoder);
-                await initDownscaler(config.encoder.width, config.encoder.height);
+                setupEncoders(config);
+                await initDownscaler(config);
             }
 
             if (config.adaptiveFramerate) {
@@ -1006,7 +1061,16 @@ export const serverImpl: VideoProcessingWorker = {
         encoderConfig.bitrate = params.bitrate; encoderConfig.width = params.width; encoderConfig.height = params.height;
         await encoder.reconfigure(params);
         resizeCanvas = null; resizeCtx = null;
-        if (downscaler) downscaler.configure([{ width: params.width, height: params.height }]);
+        if (downscaler) {
+            // Preserve simulcast extras when reconfiguring the primary layer. Extras
+            // stay at their initial dims — per-layer reconfigure is a later-stage
+            // feature driven by VideoQualityPreset.MaxSpatialLayer.
+            const targets: DownscaleTarget[] = [
+                { width: params.width, height: params.height },
+                ...extraLayerEncoders.map(e => ({ width: e.getStats().configuredWidth, height: e.getStats().configuredHeight })),
+            ];
+            downscaler.configure(targets);
+        }
         if (segConfig && blurEnabled) { segConfig.outputWidth = params.width; segConfig.outputHeight = params.height; }
         // Drop cached heartbeat frame — its dimensions no longer match the encoder.
         if (lastEncodedFrame) { lastEncodedFrame.close(); lastEncodedFrame = null; }
@@ -1029,6 +1093,17 @@ export const serverImpl: VideoProcessingWorker = {
         codecSettings = null; firstEncodedTimestamp = null; pendingStreamFrames = []; storedDescriptionBytes = null;
         if (lastEncodedFrame) { lastEncodedFrame.close(); lastEncodedFrame = null; }
         await encoder.switchCodec(config);
+        // Tear down simulcast extras — caller must re-initialize the worker with
+        // a new VideoProcessingConfig to reactivate simulcast post codec-switch.
+        // Extras don't auto-inherit the new codec; keeping them on the old codec
+        // would emit chunks a downstream decoder can't parse.
+        if (extraLayerEncoders.length > 0) {
+            infoLog?.log(`switchCodec: tearing down ${extraLayerEncoders.length} simulcast extras`);
+            for (const e of extraLayerEncoders) {
+                try { await e.flush(); e.close(); } catch { /* ignore */ }
+            }
+            extraLayerEncoders = [];
+        }
 
         // Re-enable streaming and clear any frames that leaked during flush
         streamingEnabled = wasStreaming;
@@ -1061,6 +1136,9 @@ export const serverImpl: VideoProcessingWorker = {
 
     flush: async (): Promise<void> => {
         if (encoder) { try { await encoder.flush(); infoLog?.log('Encoder flushed'); } catch (e) { warnLog?.log('Encoder flush error:', e); } }
+        for (let i = 0; i < extraLayerEncoders.length; i++) {
+            try { await extraLayerEncoders[i].flush(); } catch (e) { warnLog?.log(`Extra layer ${i + 1} flush error:`, e); }
+        }
     },
 
     stop: async (): Promise<void> => {
@@ -1073,6 +1151,11 @@ export const serverImpl: VideoProcessingWorker = {
         try { await awaitAllPendingReadbacks(); } catch { /* ignore */ }
         if (frameQueue) { while (!frameQueue.isEmpty()) { const qf = frameQueue.shift(); if (qf) qf.frame.close(); } frameQueue = null; }
         if (encoder) { try { await encoder.flush(); encoder.close(); } catch (e) { warnLog?.log('Encoder close error:', e); } }
+        for (let i = 0; i < extraLayerEncoders.length; i++) {
+            try { await extraLayerEncoders[i].flush(); extraLayerEncoders[i].close(); }
+            catch (e) { warnLog?.log(`Extra layer ${i + 1} close error:`, e); }
+        }
+        extraLayerEncoders = [];
         if (videoStream) {
             videoStream.complete();
             // Wait for stream loop to finish sending remaining frames before closing connection
