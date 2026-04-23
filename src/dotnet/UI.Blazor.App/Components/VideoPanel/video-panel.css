@@ -109,6 +109,29 @@ body.wide .video-panel.expanded .video-panel-content {
 body.narrow .video-panel:not(.collapsed):not(.expanded) {
     @apply min-h-48 max-h-48;
 }
+/* Minimized strip state — dragged up to a thin bar */
+body.narrow .video-panel.minimized:not(.collapsed):not(.expanded) {
+    @apply min-h-4 max-h-4;
+    @apply bg-01;
+}
+.video-panel.minimized .video-panel-content,
+.video-panel.minimized .video-panel-toolbar,
+.video-panel.minimized .video-panel-collapse-toggle,
+.video-panel.minimized .collapsed-video-btn {
+    @apply hidden;
+}
+/* Handle indicator — always present, shown via --drag-handle-opacity during drag */
+.video-panel::after {
+    @apply content-empty;
+    @apply absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2;
+    @apply w-32 h-1 rounded-full;
+    @apply pointer-events-none;
+    background: var(--text-03);
+    opacity: var(--drag-handle-opacity, 0);
+}
+.video-panel.minimized::after {
+    opacity: 1;
+}
 body.wide .video-panel:not(.collapsed):not(.expanded) {
     @apply min-h-112 max-h-112;
 }
