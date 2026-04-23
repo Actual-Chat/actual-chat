@@ -51,5 +51,6 @@ public interface IStreamServer : IRpcService
         double medianDecodeTimeMs,
         int bufferDepth,
         double bufferSpanMs,
+        int renderQualityLevel,
         CancellationToken cancellationToken);
 }

@@ -27,5 +27,6 @@ public interface IVideoStreamingBackend : IComputeService, IRpcService, IBackend
         double medianDecodeTimeMs = -1,
         int bufferDepth = -1,
         double bufferSpanMs = -1,
+        int renderQualityLevel = -1,
         CancellationToken cancellationToken = default);
 }

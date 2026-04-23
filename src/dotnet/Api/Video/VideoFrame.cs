@@ -57,6 +57,13 @@ public partial class VideoFrame : MediaFrame
     public int SourceHeight { get; init; }
 
     /// <summary>
+    /// SVC spatial layer ID. 0 = base (lowest-res) layer, 1+ = higher-res simulcast layers.
+    /// Always 0 on single-encoder (P2P) streams.
+    /// </summary>
+    [DataMember(Order = 11), MemoryPackOrder(11), Key(17)]
+    public int SpatialLayerId { get; init; }
+
+    /// <summary>
     /// Monotonically increasing keyframe sequence number. Assigned server-side in ProcessFrames.
     /// Incremented on each keyframe; non-keyframes inherit the current value.
     /// Used for gap detection when frames are dropped by bounded replay channels.

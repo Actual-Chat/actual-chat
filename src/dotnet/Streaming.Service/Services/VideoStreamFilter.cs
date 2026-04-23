@@ -18,9 +18,22 @@ namespace ActualChat.Streaming.Services;
 /// </remarks>
 public class VideoStreamFilter(
     Func<StreamId, string, int> getMaxTemporalLayer,
+    Func<StreamId, string, int> getMaxSpatialLayer,
     Func<StreamId, CancellationToken, ValueTask<Computed<VideoQualityPreset>>> capturePreset,
-    ILogger log)
+    ILogger log,
+    VideoStreamFilter.EgressControl? egressControl = null)
 {
+    // Server-edge fast-reaction cap controls. Decrement is called when the filter
+    // detects a stall on write or walks past retention without finding a keyframe
+    // on the selected spatial layer. Restore is called after EgressRecoveryWindow
+    // of uneventful delivery at the reduced layer. Null in test scenarios where
+    // egress fallback is not exercised.
+    public sealed record EgressControl(
+        Action<StreamId, string> Decrement,
+        Action<StreamId, string> Restore,
+        Func<StreamId, string, bool> HasFallback,
+        Func<StreamId, string, CpuTimestamp> GetSetAt);
+
     public async IAsyncEnumerable<VideoFrame> Apply(
         StreamId streamId,
         string peerId,
@@ -45,34 +58,121 @@ public class VideoStreamFilter(
             }
         }, refreshToken);
 
-        // --- Per-peer temporal layer: cached locally, refreshed once per second ---
+        // --- Per-peer layer caps: cached locally, refreshed once per second ---
         var maxTemporalLayer = getMaxTemporalLayer(streamId, peerId);
-        var maxTemporalLayerUpdatedAt = CpuTimestamp.Now;
+        var maxSpatialLayer = getMaxSpatialLayer(streamId, peerId);
+        var layerCapsUpdatedAt = CpuTimestamp.Now;
+
+        // --- Spatial layer selection state ---
+        // Simulcast fan-out delivers exactly one spatial layer to each peer — mixing
+        // multiple layers into a single decoder corrupts output. `selectedSpatialLayer`
+        // is the layer this peer is currently receiving; `observedMaxSpatial` tracks
+        // the highest layer the producer is actually emitting (may be < configured
+        // max when sender has spun down upper encoders under VAD / feedback).
+        // Switching layers is done at keyframe boundaries only: the target layer must
+        // produce a keyframe before we snap to it, otherwise the decoder has no anchor.
+        // Staleness decay — if no keyframe on observedMaxSpatial arrives within this
+        // window, sender has spun down that layer and we demote to whatever keyframe
+        // we're currently seeing. 2× the 1s forced-keyframe cadence.
+        var selectedSpatialLayer = 0;
+        var observedMaxSpatial = 0;
+        var observedMaxSpatialSeenAt = CpuTimestamp.Now;
+        var spatialStalenessWindow = TimeSpan.FromSeconds(2);
 
         // --- KeyFrame gap filter state ---
-        // Start in skip mode: wait for the first keyframe before yielding anything,
-        // even if the memoizer replays older P-frames first.
+        // Start in skip mode: wait for the first keyframe on the selected spatial
+        // layer before yielding anything, even if the memoizer replays older P-frames
+        // first (or keyframes on other spatial layers).
         var lastKeyFrameNumber = -1L;
         var skipping = true;
         var skippedCount = 0;
         var joined = false;
 
         var yieldedCount = 0;
+        // Egress back-pressure measurement: time between yielding a frame and the
+        // consumer pulling the next one. If this exceeds EgressStallThreshold, the
+        // consumer can't keep up at the selected layer → drop one layer via the
+        // egress control.
+        var lastYieldAt = CpuTimestamp.Now;
         try {
             await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-                // 1. Temporal layer filter — drop enhancement layers for slow peers
-                if (maxTemporalLayerUpdatedAt.Elapsed.TotalSeconds >= 1) {
-                    maxTemporalLayer = getMaxTemporalLayer(streamId, peerId);
-                    maxTemporalLayerUpdatedAt = CpuTimestamp.Now;
+                // 0. Egress back-pressure: how long did the consumer take to pull us?
+                if (egressControl != null && yieldedCount > 0
+                    && lastYieldAt.Elapsed > Constants.Video.EgressStallThreshold) {
+                    log.LogInformation(
+                        "VideoStreamFilter: egress stall ({ElapsedMs:F0}ms) for peer={PeerId}, decrementing",
+                        lastYieldAt.Elapsed.TotalMilliseconds, peerId);
+                    egressControl.Decrement(streamId, peerId);
                 }
+
+                // 0b. Egress recovery: if we've been at reduced layer for > EgressRecoveryWindow
+                // with no new stall/gap bumping the timer, restore the cap.
+                if (egressControl != null && egressControl.HasFallback(streamId, peerId)) {
+                    var setAt = egressControl.GetSetAt(streamId, peerId);
+                    if (setAt.Elapsed > Constants.Video.EgressRecoveryWindow) {
+                        log.LogInformation(
+                            "VideoStreamFilter: egress recovery — restoring cap for peer={PeerId}",
+                            peerId);
+                        egressControl.Restore(streamId, peerId);
+                    }
+                }
+
+                // 1. Layer-cap refresh — re-read per-peer caps once per second
+                if (layerCapsUpdatedAt.Elapsed.TotalSeconds >= 1) {
+                    maxTemporalLayer = getMaxTemporalLayer(streamId, peerId);
+                    maxSpatialLayer = getMaxSpatialLayer(streamId, peerId);
+                    layerCapsUpdatedAt = CpuTimestamp.Now;
+                }
+
+                // 2. Spatial layer tracking + selection
+                // Track the highest spatial layer the producer is emitting (via
+                // keyframes — enhancement deltas may be present without a matching
+                // keyframe). Switch `selectedSpatialLayer` only on a keyframe whose
+                // SpatialLayerId equals the target (min of cap and observed).
+                if (frame.IsKeyFrame) {
+                    if (frame.SpatialLayerId >= observedMaxSpatial) {
+                        observedMaxSpatial = frame.SpatialLayerId;
+                        observedMaxSpatialSeenAt = CpuTimestamp.Now;
+                    }
+                    else if (observedMaxSpatialSeenAt.Elapsed > spatialStalenessWindow) {
+                        // Top layer stopped producing — decay to whatever's arriving now.
+                        observedMaxSpatial = frame.SpatialLayerId;
+                        observedMaxSpatialSeenAt = CpuTimestamp.Now;
+                    }
+                }
+                var targetSpatialLayer = Math.Min(maxSpatialLayer, observedMaxSpatial);
+                if (frame.IsKeyFrame
+                    && frame.SpatialLayerId == targetSpatialLayer
+                    && selectedSpatialLayer != targetSpatialLayer) {
+                    log.LogDebug(
+                        "VideoStreamFilter: spatial switch {OldLayer} -> {NewLayer} at KF#{KeyFrameNumber}",
+                        selectedSpatialLayer, targetSpatialLayer, frame.KeyFrameNumber);
+                    selectedSpatialLayer = targetSpatialLayer;
+                    // Force re-anchor on the new layer's keyframe — flush any prior
+                    // GOP state from the old layer so the downstream decoder gets a
+                    // clean start.
+                    skipping = false;
+                    lastKeyFrameNumber = frame.KeyFrameNumber;
+                    skippedCount = 0;
+                    if (!joined)
+                        joined = true;
+                    yieldedCount++;
+                    yield return frame;
+                    lastYieldAt = CpuTimestamp.Now;
+                    continue;
+                }
+                if (frame.SpatialLayerId != selectedSpatialLayer)
+                    continue;
+
+                // 3. Temporal layer filter — drop enhancement layers for slow peers
                 if (frame.TemporalLayerId > maxTemporalLayer)
                     continue;
 
-                // 2. Pause filter — drop all frames when stream is paused by priority queue
+                // 4. Pause filter — drop all frames when stream is paused by priority queue
                 if (preset.Level == VideoQualityLevel.Paused)
                     continue;
 
-                // 3. KeyFrame gap filter — ensure decoder-safe output
+                // 5. KeyFrame gap filter — ensure decoder-safe output
                 if (frame.IsKeyFrame) {
                     if (!joined) {
                         log.LogDebug(
@@ -90,10 +190,12 @@ public class VideoStreamFilter(
                     skippedCount = 0;
                     yieldedCount++;
                     yield return frame;
+                    lastYieldAt = CpuTimestamp.Now;
                 }
                 else if (!skipping && frame.KeyFrameNumber == lastKeyFrameNumber) {
                     yieldedCount++;
                     yield return frame;
+                    lastYieldAt = CpuTimestamp.Now;
                 }
                 else {
                     if (!skipping) {
@@ -105,6 +207,13 @@ public class VideoStreamFilter(
                             lastKeyFrameNumber, frame.KeyFrameNumber);
                     }
                     skippedCount++;
+                    if (egressControl != null && skippedCount == Constants.Video.EgressGapFrameThreshold
+                        && selectedSpatialLayer > 0) {
+                        log.LogInformation(
+                            "VideoStreamFilter: egress gap exhausted ({Skipped} frames) for peer={PeerId}, decrementing",
+                            skippedCount, peerId);
+                        egressControl.Decrement(streamId, peerId);
+                    }
                 }
             }
 

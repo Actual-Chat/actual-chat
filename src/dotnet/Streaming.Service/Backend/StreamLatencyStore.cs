@@ -23,6 +23,31 @@ public sealed class StreamLatencyStore(IServiceProvider services)
             ? state.GetPeerMaxTemporalLayer(peerId)
             : int.MaxValue;
 
+    public int GetPeerMaxSpatialLayer(StreamId streamId, string peerId)
+        => LatencyStates.TryGetValue(streamId, out var state)
+            ? state.GetPeerMaxSpatialLayer(peerId)
+            : int.MaxValue;
+
+    public int DecrementPeerEgressFallback(StreamId streamId, string peerId)
+        => LatencyStates.TryGetValue(streamId, out var state)
+            ? state.DecrementPeerEgressFallback(peerId)
+            : int.MaxValue;
+
+    public void RestorePeerEgressFallback(StreamId streamId, string peerId)
+    {
+        if (LatencyStates.TryGetValue(streamId, out var state))
+            state.RestorePeerEgressFallback(peerId);
+    }
+
+    public CpuTimestamp GetPeerEgressFallbackSetAt(StreamId streamId, string peerId)
+        => LatencyStates.TryGetValue(streamId, out var state)
+            ? state.GetPeerEgressFallbackSetAt(peerId)
+            : default;
+
+    public bool HasPeerEgressFallback(StreamId streamId, string peerId)
+        => LatencyStates.TryGetValue(streamId, out var state)
+            && state.HasPeerEgressFallback(peerId);
+
     public void RegisterStreamLatencyState(StreamId streamId, ChatId chatId, Moment beginsAt, VideoFormat format, StreamKind kind)
         => LatencyStates[streamId] = new StreamLatencyState(chatId, beginsAt, format, kind, services.StateFactory(), Log);
 
@@ -51,16 +76,17 @@ public sealed class StreamLatencyStore(IServiceProvider services)
         double streamOffsetMs,
         double medianDecodeTimeMs = -1,
         int bufferDepth = -1,
-        double bufferSpanMs = -1)
+        double bufferSpanMs = -1,
+        int renderQualityLevel = -1)
     {
         if (LatencyStates.TryGetValue(streamId, out var latencyState)) {
             var latency = Clocks.ServerClock.Now - (latencyState.StartedAt + TimeSpan.FromMilliseconds(streamOffsetMs));
             if (latency > TimeSpan.Zero) {
                 AppMeters.VideoLatency.Record(latency.TotalMilliseconds);
-                DebugLog?.LogDebug("ReportPeerLatency: #{StreamId}, PeerId={PeerId}, StreamOffsetMs={StreamOffsetMs:F0}, LatencyMs={LatencyMs:F0}, DecodeMs={DecodeMs:F1}, BufDepth={BufDepth}, BufSpanMs={BufSpanMs:F0}",
-                    streamId, peerId, streamOffsetMs, latency.TotalMilliseconds, medianDecodeTimeMs, bufferDepth, bufferSpanMs);
+                DebugLog?.LogDebug("ReportPeerLatency: #{StreamId}, PeerId={PeerId}, StreamOffsetMs={StreamOffsetMs:F0}, LatencyMs={LatencyMs:F0}, DecodeMs={DecodeMs:F1}, BufDepth={BufDepth}, BufSpanMs={BufSpanMs:F0}, RenderLvl={RenderLvl}",
+                    streamId, peerId, streamOffsetMs, latency.TotalMilliseconds, medianDecodeTimeMs, bufferDepth, bufferSpanMs, renderQualityLevel);
                 latencyState.RecordPeerLatency(peerId, (float)latency.TotalMilliseconds,
-                    (float)medianDecodeTimeMs, bufferDepth, (float)bufferSpanMs);
+                    (float)medianDecodeTimeMs, bufferDepth, (float)bufferSpanMs, renderQualityLevel);
             }
             else
                 DebugLog?.LogDebug("ReportPeerLatency: #{StreamId}, PeerId={PeerId}, negative latency={LatencyMs:F0}ms (clock skew?), skipping",
@@ -76,7 +102,12 @@ public sealed class StreamLatencyStore(IServiceProvider services)
     {
         private readonly Queue<float> _samples = new();
         private readonly Lock _lock = new();
-        private readonly CpuTimestamp _createdAt = CpuTimestamp.Now;
+        private readonly CpuTimestamp _createdAt;
+
+        public PeerLatencyState() : this(CpuTimestamp.Now) { }
+
+        internal PeerLatencyState(CpuTimestamp createdAt)
+            => _createdAt = createdAt;
 
         public float MedianLatencyMs { get; private set; }
         public float BaselineLatencyMs { get; private set; } = -1;
@@ -84,6 +115,21 @@ public sealed class StreamLatencyStore(IServiceProvider services)
         public int BufferDepth { get; private set; } = -1;
         public float BufferSpanMs { get; private set; } = -1;
         public int MaxTemporalLayer { get; private set; } = int.MaxValue;
+        public int MaxSpatialLayer { get; private set; } = int.MaxValue;
+        // Render-hint cap: client-declared per-peer based on its actual render dims.
+        // `int.MaxValue` = not hinted (no cap). Updated from RecordLatency's optional
+        // renderQualityLevel param.
+        public int RenderHintSpatialLayer { get; private set; } = int.MaxValue;
+        // Egress-fallback cap: set by the fan-out filter when the peer stalls on write
+        // or can't anchor a keyframe on its current selected layer. Tightest of the
+        // three caps. Restored via RestoreEgressFallback after EgressRecoveryWindow
+        // of uneventful delivery.
+        public int EgressFallbackSpatialLayer { get; private set; } = int.MaxValue;
+        public CpuTimestamp EgressFallbackSetAt { get; private set; }
+        // Effective cap applied to fan-out: the tightest of latency-derived, render-hint,
+        // and egress-fallback caps. Consumers call this via StreamLatencyStore.GetPeerMaxSpatialLayer.
+        public int EffectiveMaxSpatial =>
+            Math.Min(Math.Min(MaxSpatialLayer, RenderHintSpatialLayer), EgressFallbackSpatialLayer);
         public bool IsWarmedUp => _createdAt.Elapsed >= Constants.Video.PeerWarmupDuration;
 
         // Delta-from-baseline congestion detection. A peer with a permanently high but
@@ -109,8 +155,15 @@ public sealed class StreamLatencyStore(IServiceProvider services)
             MedianDecodeTimeMs > Constants.Video.HighDecodeTimeThresholdMs
             || BufferDepth > Constants.Video.HighBufferDepthThreshold;
 
-        public void RecordLatency(float latencyMs, float medianDecodeTimeMs = -1, int bufferDepth = -1, float bufferSpanMs = -1)
+        public void RecordLatency(float latencyMs, float medianDecodeTimeMs = -1, int bufferDepth = -1, float bufferSpanMs = -1,
+            int renderQualityLevel = -1)
         {
+            // Render hint is independent of warmup — the client knows its render size
+            // even before playback warms up, and a wrong-sized delivery for a sidebar
+            // tile wastes bandwidth from frame #1. Apply immediately when provided.
+            if (renderQualityLevel >= 0)
+                RenderHintSpatialLayer = MapRenderLevelToSpatialLayer((VideoQualityLevel)renderQualityLevel);
+
             // Discard samples during warmup to prevent initial-buffer latency from contaminating the median
             if (!IsWarmedUp)
                 return;
@@ -147,13 +200,62 @@ public sealed class StreamLatencyStore(IServiceProvider services)
                 if (bufferSpanMs >= 0)
                     BufferSpanMs = bufferSpanMs;
 
-                // Compute max temporal layer based on latency
-                if (MedianLatencyMs > Constants.Video.HighLatencyThresholdMs)
-                    MaxTemporalLayer = 0; // Base layer only
-                else if (MedianLatencyMs > Constants.Video.LowLatencyThresholdMs)
-                    MaxTemporalLayer = 0; // Conservative: base layer when borderline
-                else
-                    MaxTemporalLayer = int.MaxValue; // All layers
+                // Compute per-peer layer caps using delta-from-baseline semantics.
+                // A peer with a stable high baseline (e.g. cross-continent, flat 300ms)
+                // is NOT congested — congestion shows as a rise ABOVE baseline. So we
+                // key caps off IsNetworkSlow / IsNetworkFast (already delta-aware) and
+                // fall back to absolute thresholds only during warmup (baseline unset).
+                var slow = IsNetworkSlow;
+                var fast = IsNetworkFast;
+
+                // Temporal: only drop enhancement layers under congestion.
+                MaxTemporalLayer = slow ? 0 : int.MaxValue;
+
+                // Spatial: 3-tier. Slow → base only; fast → top; borderline (neither
+                // slow nor fast — median sits between absolute thresholds during warmup,
+                // or between baseline+fastMargin and baseline+slowThreshold post-warmup)
+                // → mid.
+                MaxSpatialLayer = slow ? 0 : fast ? 2 : 1;
+            }
+        }
+
+        // VideoQualityLevel → spatial layer. Simulcast produces 3 layers — 180p (0),
+        // 360p (1), 720p (2). Client sends the smallest preset whose nominal dims meet
+        // or approximately match its actual render size. Low/Medium render targets are
+        // served from lower simulcast layers to save bandwidth; High+ forces top layer.
+        private static int MapRenderLevelToSpatialLayer(VideoQualityLevel level)
+            => level switch {
+                VideoQualityLevel.Low => 0,
+                VideoQualityLevel.Medium => 1,
+                // High, Full, Ultra — any "focused" render target wants top layer.
+                _ => 2,
+            };
+
+        // Fan-out calls this when the peer stalls on write or walks past retention
+        // without finding a keyframe on its current selected spatial layer. Drops
+        // the egress floor by one step below the current EffectiveMaxSpatial; never
+        // below zero. Returns the new egress floor.
+        internal int DecrementEgressFallback()
+        {
+            lock (_lock) {
+                var current = EffectiveMaxSpatial;
+                // EffectiveMaxSpatial could be int.MaxValue on a peer with no other
+                // caps set — treat that as "assume 2 and decrement from there" so we
+                // still move the needle.
+                var effective = current == int.MaxValue ? 2 : current;
+                var newFloor = Math.Max(0, effective - 1);
+                EgressFallbackSpatialLayer = newFloor;
+                EgressFallbackSetAt = CpuTimestamp.Now;
+                return newFloor;
+            }
+        }
+
+        // Clears the egress floor. Caller should only invoke this after a window of
+        // uneventful delivery at the reduced layer (see EgressRecoveryWindow).
+        internal void RestoreEgressFallback()
+        {
+            lock (_lock) {
+                EgressFallbackSpatialLayer = int.MaxValue;
             }
         }
     }
@@ -245,14 +347,39 @@ public sealed class StreamLatencyStore(IServiceProvider services)
         public int GetPeerMaxTemporalLayer(string peerId)
             => _peers.TryGetValue(peerId, out var state) ? state.MaxTemporalLayer : int.MaxValue;
 
+        public int GetPeerMaxSpatialLayer(string peerId)
+            => _peers.TryGetValue(peerId, out var state) ? state.EffectiveMaxSpatial : int.MaxValue;
+
+        // Test-only: inject a pre-warmed PeerLatencyState so RecordLatency doesn't
+        // discard samples during warmup. Production code uses the default-ctor path
+        // via RecordPeerLatency's GetOrAdd.
+        internal PeerLatencyState GetOrAddWarmedPeerForTests(string peerId)
+            => _peers.GetOrAdd(peerId, _ => new PeerLatencyState(CpuTimestamp.Now - TimeSpan.FromMinutes(1)));
+
+        public int DecrementPeerEgressFallback(string peerId)
+            => _peers.TryGetValue(peerId, out var state) ? state.DecrementEgressFallback() : int.MaxValue;
+
+        public void RestorePeerEgressFallback(string peerId)
+        {
+            if (_peers.TryGetValue(peerId, out var state))
+                state.RestoreEgressFallback();
+        }
+
+        public CpuTimestamp GetPeerEgressFallbackSetAt(string peerId)
+            => _peers.TryGetValue(peerId, out var state) ? state.EgressFallbackSetAt : default;
+
+        public bool HasPeerEgressFallback(string peerId)
+            => _peers.TryGetValue(peerId, out var state) && state.EgressFallbackSpatialLayer != int.MaxValue;
+
         public void RecordPeerLatency(string peerId, float latencyMs,
-            float medianDecodeTimeMs = -1, int bufferDepth = -1, float bufferSpanMs = -1)
+            float medianDecodeTimeMs = -1, int bufferDepth = -1, float bufferSpanMs = -1,
+            int renderQualityLevel = -1)
         {
             var peer = _peers.GetOrAdd(peerId, _ => new PeerLatencyState());
-            peer.RecordLatency(latencyMs, medianDecodeTimeMs, bufferDepth, bufferSpanMs);
+            peer.RecordLatency(latencyMs, medianDecodeTimeMs, bufferDepth, bufferSpanMs, renderQualityLevel);
             DebugLog?.LogDebug(
-                "RecordPeerLatency: PeerId={PeerId}, LatencyMs={LatencyMs:F0}, MedianMs={MedianMs:F0}, ReceiverBound={ReceiverBound}",
-                peerId, latencyMs, peer.MedianLatencyMs, peer.IsReceiverBound);
+                "RecordPeerLatency: PeerId={PeerId}, LatencyMs={LatencyMs:F0}, MedianMs={MedianMs:F0}, ReceiverBound={ReceiverBound}, MaxSpatial={MaxSpatial}",
+                peerId, latencyMs, peer.MedianLatencyMs, peer.IsReceiverBound, peer.EffectiveMaxSpatial);
 
             // Throttle evaluation to QualityDecisionInterval
             if (_lastEvaluationAt.Elapsed >= Constants.Video.QualityDecisionInterval)
@@ -265,7 +392,7 @@ public sealed class StreamLatencyStore(IServiceProvider services)
             _lastByteReceivedAt = CpuTimestamp.Now;
         }
 
-        private void EvaluateQuality()
+        internal void EvaluateQuality()
         {
             lock (_evaluationLock) {
                 _lastEvaluationAt = CpuTimestamp.Now;
@@ -378,6 +505,20 @@ public sealed class StreamLatencyStore(IServiceProvider services)
                     DebugLog?.LogDebug(
                         "EvaluateQuality: HOLD at {Level}, networkSlow={NetworkSlow}, receiverSlow={ReceiverSlow}, total={TotalCount}",
                         currentQuality, networkSlowCount, receiverSlowCount, peers.Count);
+
+                // Aggregate per-peer layer demands into the stream-wide preset so the
+                // sender (subscribed via Fusion on GetQualityPreset) knows which
+                // simulcast layers are actually required. `Max` semantics — if ANY peer
+                // wants layer N, sender must produce it; peers with lower caps are
+                // filtered per-peer in VideoStreamFilter.
+                var aggregatedMaxSpatial = peers.Max(p => p.Value.EffectiveMaxSpatial);
+                var aggregatedMaxTemporal = peers.Max(p => p.Value.MaxTemporalLayer);
+                var withLayers = QualityPreset.Value with {
+                    MaxSpatialLayer = aggregatedMaxSpatial,
+                    MaxTemporalLayer = aggregatedMaxTemporal,
+                };
+                if (withLayers != QualityPreset.Value)
+                    QualityPreset.Value = withLayers;
             }
         }
     }
