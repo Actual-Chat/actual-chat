@@ -26,9 +26,9 @@ function vibrate(): void {
 
 export class ChatActivityPanel {
     private readonly activityPanel: HTMLElement;
-    private chatView: HTMLElement;
-    private header: HTMLElement;
-    private wrapper: HTMLElement;
+    private chatView!: HTMLElement;
+    private header!: HTMLElement;
+    private wrapper!: HTMLElement;
     private pinBadge: HTMLElement | null;
     private disposed$: Subject<void> = new Subject<void>();
 
@@ -51,7 +51,7 @@ export class ChatActivityPanel {
         this.wrapper = this.activityPanel.closest('.header-activity-panel-wrapper')!;
         this.pinBadge = this.activityPanel.querySelector('.c-pin-badge');
 
-        if (!this.chatView || !this.header || !this.wrapper)
+        if (!this.chatView || !this.header || !this.wrapper) // eslint-disable-line @typescript-eslint/no-unnecessary-condition
             return;
 
         this.lockUntil = Date.now() + 3000;
@@ -88,10 +88,10 @@ export class ChatActivityPanel {
     }
 
     public dispose() {
-        if (this.disposed$.isStopped)
+        if (this.disposed$.closed)
             return;
 
-        this.header?.classList.remove('expanded', 'collapsed', 'pinned');
+        this.header.classList.remove('expanded', 'collapsed', 'pinned');
         this.disposed$.next();
         this.disposed$.complete();
     }
@@ -153,8 +153,8 @@ export class ChatActivityPanel {
 class PanelDragGesture extends Gesture {
     private toggled = false;
     private badgeVisible = false;
-    private vibroFired = false;
     private detentVibroFired = false;
+    private bottomVibroFired = false;
     private dragStarted = false;
     private currentProgress = 0; // 0 = collapsed, 1 = expanded
 
@@ -173,6 +173,7 @@ class PanelDragGesture extends Gesture {
         const wrapper = panel['wrapper'];
         const isPinned = panel['isPinned'];
         const badge = isPinned ? null : panel['pinBadge'];
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!header || !wrapper) {
             this.dispose();
             return;
@@ -234,23 +235,31 @@ class PanelDragGesture extends Gesture {
                 panel['isMoving'] = false;
 
                 if (!this.toggled && this.badgeVisible) {
-                    // Dragged past pin threshold → pin
+                    // Dragged past pin threshold → pin / unpin
                     this.toggled = true;
-                    // Reset panel positioning before cleanup so CSS transition
-                    // starts from the correct position (not bottom-aligned).
+                    // Clear badge & panel positioning immediately
+                    if (badge) {
+                        badge.style.transform = '';
+                        badge.style.opacity = '';
+                        badge.style.visibility = '';
+                    }
                     activityPanel.style.bottom = '';
                     activityPanel.style.top = '';
-                    // Snap wrapper to normal height before transition kicks in
+                    // Fast snap-back from stretched height to normal
+                    header.classList.remove('dragging');
+                    wrapper.style.transition = 'height 0.15s ease-out';
                     wrapper.style.height = `${wrapperHeightRange}px`;
-                    // Force reflow so the browser captures this as the start state
-                    void wrapper.offsetHeight;
-                    cleanup();
-                    if (isPinned) {
-                        panel.unpin();
+                    // After snap-back completes, clean up and apply final state
+                    setTimeout(() => {
+                        wrapper.style.height = '';
+                        wrapper.style.transition = '';
+                        if (isPinned) {
+                            panel.unpin();
+                        } else {
+                            panel.pin();
+                        }
                         vibrate();
-                    } else {
-                        panel.pin();
-                    }
+                    }, 160);
                 } else if (!this.toggled) {
                     if (isPinned && this.currentProgress < 0.3) {
                         // Dragged up far enough → unpin
@@ -313,11 +322,11 @@ class PanelDragGesture extends Gesture {
                     const currentHeight = wrapperHeightRange * this.currentProgress + stretchHeight;
                     wrapper.style.height = `${currentHeight}px`;
 
-                    // During stretch: pin panel to top so content stays in place,
-                    // extra space appears below
+                    // During stretch: center panel vertically so content
+                    // drifts down by half the extra height
                     if (stretchHeight > 0) {
                         activityPanel.style.bottom = 'auto';
-                        activityPanel.style.top = '0';
+                        activityPanel.style.top = `${stretchHeight / 2}px`;
                     } else {
                         activityPanel.style.bottom = '';
                         activityPanel.style.top = '';
@@ -326,13 +335,14 @@ class PanelDragGesture extends Gesture {
                     const badgeProgress = Math.min(1, effectiveExtra / pinBadgeThreshold);
                     this.badgeVisible = badgeProgress >= 0.95;
 
-                    // Vibrate once when badge becomes fully visible
-                    if (this.badgeVisible && !this.vibroFired) {
-                        this.vibroFired = true;
+                    // Vibrate when panel hits maximum stretch (bottom limit)
+                    const maxStretch = wrapperMaxHeight - wrapperHeightRange;
+                    if (stretchHeight >= maxStretch && !this.bottomVibroFired) {
+                        this.bottomVibroFired = true;
                         vibrate();
                     }
-                    if (!this.badgeVisible)
-                        this.vibroFired = false;
+                    if (stretchHeight < maxStretch * 0.9)
+                        this.bottomVibroFired = false;
 
                     if (badge) {
                         badge.style.transform = `scale(${badgeProgress})`;
