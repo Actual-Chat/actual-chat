@@ -13,6 +13,9 @@
     "figma": {
       "type": "http",
       "url": "https://mcp.figma.com/mcp"
+    },
+    "seq": {
+      "command": "tools/seq-mcp-mcp-wrapper"
     }
   }
 }

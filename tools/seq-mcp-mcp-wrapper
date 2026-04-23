@@ -1,0 +1,17 @@
+#!/bin/bash
+# MCP wrapper for MCLifeLeader/seq-mcp, pinned to a released tag.
+# Builds the Docker image on first run and caches it; subsequent runs exec immediately.
+set -euo pipefail
+
+TAG="0.3.1"
+IMAGE="ac-seq-mcp:$TAG"
+
+# Seq in this project's docker-compose runs with auth disabled (port 8081 = query API),
+# but the MCP server still requires SEQ_API_KEY to be set, so a placeholder is used.
+docker image inspect "$IMAGE" >/dev/null 2>&1 || \
+  docker build -t "$IMAGE" "https://github.com/MCLifeLeader/seq-mcp.git#$TAG" >&2
+
+exec docker run --rm -i --network host \
+  -e "SEQ_URL=${SEQ_URL:-http://localhost:8081}" \
+  -e "SEQ_API_KEY=${SEQ_API_KEY:-noauth}" \
+  "$IMAGE"
