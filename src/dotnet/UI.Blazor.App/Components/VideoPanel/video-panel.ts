@@ -1005,6 +1005,7 @@ export class VideoPanel {
     }
 
     public startClosing() {
+        this.setDragHandleVisible(false);
         this.videoPanel.classList.remove('first-time-open');
         this.videoPanel.classList.add('closing');
 

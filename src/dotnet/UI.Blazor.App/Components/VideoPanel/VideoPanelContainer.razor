@@ -37,6 +37,7 @@
     private ChatId? _lastWatchingChatId;
 
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private IChats Chats => Hub.Chats;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -61,6 +62,18 @@
 
         var watchingChatId = await ChatVideoUI.GetWatchingChatId(cancellationToken).ConfigureAwait(false);
         var isWatching = watchingChatId == chatId;
+
+        // Auto-open video panel when user is listening and someone is streaming
+        if (!isWatching) {
+            var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
+            if (audioState.IsListening || audioState.IsRecording) {
+                var isAnyoneStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chatId, cancellationToken).ConfigureAwait(false);
+                if (isAnyoneStreaming) {
+                    ChatVideoUI.OpenVideoPanel(chatId);
+                    isWatching = true;
+                }
+            }
+        }
 
         return new Model(chatId, isWatching);
     }
