@@ -173,9 +173,12 @@ public sealed class StreamLatencyStore(IServiceProvider services)
         public MutableState<VideoQualityPreset> QualityPreset { get; } = stateFactory.NewMutable(
             kind == StreamKind.Screencast ? VideoQualityPreset.Full : VideoQualityPreset.High);
 
-        // Cap max quality to what the camera can actually provide — prevents wasteful upscaling
+        // Cap max quality to what the source can actually provide — prevents wasteful upscaling.
+        // Ultra (4K) only unlocks when the source reports >= 3840x2160 — typical for
+        // getDisplayMedia on a 4K monitor; webcams rarely exceed 1080p.
         private readonly VideoQualityLevel _maxQuality = format switch
         {
+            { Width: >= 3840, Height: >= 2160 } => VideoQualityLevel.Ultra,
             { Width: >= 1920, Height: >= 1080 } => VideoQualityLevel.Full,
             { Width: >= 1280, Height: >= 720 } => VideoQualityLevel.High,
             { Width: >= 960, Height: >= 540 } => VideoQualityLevel.Medium,
@@ -242,7 +245,16 @@ public sealed class StreamLatencyStore(IServiceProvider services)
                     var targetBps = VideoBitrateTable.GetExpectedBitrate(Codec, QualityPreset.Value.Height, Kind);
                     _lastThroughputCheckAt = CpuTimestamp.Now;
 
-                    if (targetBps > 0 && measuredBps < targetBps * Constants.Video.ThroughputStepDownRatio) {
+                    // Under-delivery step-down applies to webcam only. A camera sensor produces
+                    // near-constant entropy, so a webcam encoder lands close to target — sustained
+                    // undershoot then reliably signals an uplink bottleneck.
+                    // Screencast encoder output is content-driven: static/simple screens compress to
+                    // 500–900kbps at 720p regardless of target cap, so a "measured < 50% target"
+                    // ratio constantly trips even on a local link with sub-200ms latency.
+                    // Latency-based step-down (per-peer median vs baseline, below) remains the
+                    // primary congestion detector for screencast.
+                    if (Kind != StreamKind.Screencast
+                        && targetBps > 0 && measuredBps < targetBps * Constants.Video.ThroughputStepDownRatio) {
                         _consecutiveLowThroughputChecks++;
                         if (_consecutiveLowThroughputChecks >= Constants.Video.ThroughputStepDownConsecutiveChecks) {
                             var stepped = VideoQualityPreset.StepDown(currentQuality, Kind);

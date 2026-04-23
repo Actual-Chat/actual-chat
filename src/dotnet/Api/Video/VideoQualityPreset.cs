@@ -1,6 +1,8 @@
 namespace ActualChat.Video;
 
-public enum VideoQualityLevel { Full = 0, High = 1, Medium = 2, Low = 3, Paused = 4 }
+// Numeric order: lower value = higher quality. Preserved so `level < maxQuality`
+// comparisons in StreamLatencyStore express "is this better than the cap".
+public enum VideoQualityLevel { Ultra = 0, Full = 1, High = 2, Medium = 3, Low = 4, Paused = 5 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record VideoQualityPreset(
@@ -12,6 +14,7 @@ public sealed partial record VideoQualityPreset(
     // records from older peers that still carry Bitrate at order 3.
     [property: DataMember, MemoryPackOrder(4)] bool IsKeyFrameRequested = false
 ) {
+    public static readonly VideoQualityPreset Ultra  = new(VideoQualityLevel.Ultra,  3840, 2160);
     public static readonly VideoQualityPreset Full   = new(VideoQualityLevel.Full,   1920, 1080);
     public static readonly VideoQualityPreset High   = new(VideoQualityLevel.High,   1280,  720);
     public static readonly VideoQualityPreset Medium = new(VideoQualityLevel.Medium,  960,  540);
@@ -20,6 +23,7 @@ public sealed partial record VideoQualityPreset(
 
     public static VideoQualityPreset ForLevel(VideoQualityLevel level)
         => level switch {
+            VideoQualityLevel.Ultra => Ultra,
             VideoQualityLevel.Full => Full,
             VideoQualityLevel.High => High,
             VideoQualityLevel.Medium => Medium,
@@ -30,6 +34,7 @@ public sealed partial record VideoQualityPreset(
 
     public static VideoQualityPreset? StepDown(VideoQualityLevel current)
         => current switch {
+            VideoQualityLevel.Ultra => Full,
             VideoQualityLevel.Full => High,
             VideoQualityLevel.High => Medium,
             VideoQualityLevel.Medium => Low,
@@ -50,6 +55,7 @@ public sealed partial record VideoQualityPreset(
             VideoQualityLevel.Low => Medium,
             VideoQualityLevel.Medium => High,
             VideoQualityLevel.High => Full,
+            VideoQualityLevel.Full => Ultra,
             _ => null, // Already at highest
         };
 }

@@ -12,10 +12,11 @@ public static partial class Constants
         // Webcam: 10s — tolerates brief sensor stalls (camera permission re-prompt,
         // OS-level camera swap, momentary USB hang) without killing the stream.
         public static readonly TimeSpan WebcamFrameSilenceTimeout = TimeSpan.FromSeconds(10);
-        // Screencast: 60s — getDisplayMedia is change-driven. A user reading code
-        // in a static IDE produces zero frames for extended periods; a 3s or 10s
-        // watchdog would kill the stream and trigger an endless recreate cycle.
-        public static readonly TimeSpan ScreencastFrameSilenceTimeout = TimeSpan.FromSeconds(60);
+        // Screencast: 3min — getDisplayMedia is change-driven. A user reading code
+        // in a static IDE produces zero frames for extended periods. Client sends
+        // heartbeat frames every ScreencastHeartbeatInterval during silence, so
+        // this timeout only trips if the client itself is stuck/gone.
+        public static readonly TimeSpan ScreencastFrameSilenceTimeout = TimeSpan.FromMinutes(3);
 
         // RPC stream flow control for video (30fps, 33ms frames).
         // Tuned for up to ~1s RTT: ackAdvance > ackPeriod + fps × RTT.

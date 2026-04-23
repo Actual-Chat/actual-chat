@@ -145,6 +145,19 @@ let storedDescriptionBytes: Uint8Array | null = null;
 let firstEncodedTimestamp: number | null = null;
 let streamingEnabled = false;
 
+// ─── Screencast heartbeat ──────────────────────────────────────────────────
+// getDisplayMedia is change-driven: a static screen produces zero frames. Without
+// traffic, the server's frame-silence watchdog would reap the stream. We cache
+// the last encoded frame and re-encode it (with a bumped timestamp + forced
+// keyframe) every SCREENCAST_HEARTBEAT_MS of encode-side silence. Cost: one
+// small keyframe per ~20s while idle. Webcam skips this — its sensor emits
+// continuously, so the path is dead code for streamKind=0.
+const SCREENCAST_HEARTBEAT_MS = 20_000;
+const SCREENCAST_HEARTBEAT_CHECK_MS = 5_000;
+let lastEncodedFrame: VideoFrame | null = null;
+let lastEncodedFrameAt = 0; // performance.now() of the last encoder.encode() we drove
+let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+
 // Pipeline
 let processing = false;
 let dimensionsReconciled = false;
@@ -478,6 +491,14 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
         // (set by recording-service.ts: ~2s screencast, ~3s webcam)
         const forceKf = nextFrameIsKeyFrame;
         nextFrameIsKeyFrame = false;
+        // Cache a handle to the frame for the screencast heartbeat BEFORE
+        // encoder.encode() — the encoder closes the frame it receives.
+        // clone() just bumps a ref count; no pixel copy.
+        if (streamCtx.streamKind === 1) {
+            if (lastEncodedFrame) lastEncodedFrame.close();
+            lastEncodedFrame = processedFrame.clone();
+            lastEncodedFrameAt = performance.now();
+        }
         encoder.encode(processedFrame, forceKf);
         framesWithoutOutput++;
 
@@ -760,6 +781,44 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
     }
 }
 
+function startScreencastHeartbeat(): void {
+    if (heartbeatTimer) return;
+    if (streamCtx.streamKind !== 1) return; // screencast only
+    heartbeatTimer = setInterval(() => {
+        if (!processing || !encoder || !encoderConfig) return;
+        if (!videoStream || videoStream.isDisposed) return;
+        if (!lastEncodedFrame) return;
+        const silence = performance.now() - lastEncodedFrameAt;
+        if (silence < SCREENCAST_HEARTBEAT_MS) return;
+
+        try {
+            // Bump timestamp so the encoder doesn't reject a duplicate. Use μs.
+            const baseTs = lastEncodedFrame.timestamp;
+            const freshTs = baseTs + Math.max(1, Math.round(silence * 1000));
+            const fresh = new VideoFrame(lastEncodedFrame, {
+                timestamp: freshTs,
+                duration: lastEncodedFrame.duration ?? undefined,
+            });
+            // Heartbeat is always a keyframe — ensures mid-stream joiners get a
+            // decodable frame without waiting for real activity, and resets the
+            // server's frame-silence watchdog.
+            encoder.encode(fresh, true);
+            lastEncodedFrame.close();
+            lastEncodedFrame = fresh.clone();
+            lastEncodedFrameAt = performance.now();
+            debugLog?.log(`Screencast heartbeat: re-encoded last frame after ${Math.round(silence)}ms of silence`);
+        } catch (e) {
+            warnLog?.log('Screencast heartbeat encode failed:', e);
+        }
+    }, SCREENCAST_HEARTBEAT_CHECK_MS);
+}
+
+function stopScreencastHeartbeat(): void {
+    if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+    if (lastEncodedFrame) { lastEncodedFrame.close(); lastEncodedFrame = null; }
+    lastEncodedFrameAt = 0;
+}
+
 // ─── Server implementation ──────────────────────────────────────────────────
 
 export const serverImpl: VideoProcessingWorker = {
@@ -791,6 +850,7 @@ export const serverImpl: VideoProcessingWorker = {
 
             const inputReader = frameInputStream.getReader();
             streamReadLoopPromise = streamReadLoop(inputReader);
+            startScreencastHeartbeat();
 
             infoLog?.log('Video processing worker started (stream mode)');
         } catch (error) {
@@ -833,6 +893,7 @@ export const serverImpl: VideoProcessingWorker = {
             const processor = new MediaStreamTrackProcessor({ track });
             const inputReader = processor.readable.getReader();
             streamReadLoopPromise = streamReadLoop(inputReader);
+            startScreencastHeartbeat();
 
             infoLog?.log('Video processing worker started (track transfer mode)');
         } catch (error) {
@@ -906,6 +967,8 @@ export const serverImpl: VideoProcessingWorker = {
         resizeCanvas = null; resizeCtx = null;
         if (downscaler) downscaler.configure([{ width: params.width, height: params.height }]);
         if (segConfig && blurEnabled) { segConfig.outputWidth = params.width; segConfig.outputHeight = params.height; }
+        // Drop cached heartbeat frame — its dimensions no longer match the encoder.
+        if (lastEncodedFrame) { lastEncodedFrame.close(); lastEncodedFrame = null; }
     },
 
     switchCodec: async (config: EncoderConfig): Promise<void> => {
@@ -923,6 +986,7 @@ export const serverImpl: VideoProcessingWorker = {
             videoStream = null;
         }
         codecSettings = null; firstEncodedTimestamp = null; pendingStreamFrames = []; storedDescriptionBytes = null;
+        if (lastEncodedFrame) { lastEncodedFrame.close(); lastEncodedFrame = null; }
         await encoder.switchCodec(config);
 
         // Re-enable streaming and clear any frames that leaked during flush
@@ -962,6 +1026,7 @@ export const serverImpl: VideoProcessingWorker = {
         infoLog?.log('Stopping video processing worker...');
         processing = false;
         streamCtx.processing = false;
+        stopScreencastHeartbeat();
 
         if (streamReadLoopPromise) { try { await streamReadLoopPromise; } catch { /* ignore */ } streamReadLoopPromise = null; }
         try { await awaitAllPendingReadbacks(); } catch { /* ignore */ }
