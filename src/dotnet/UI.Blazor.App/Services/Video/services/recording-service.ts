@@ -6,7 +6,7 @@
 import { VideoPipeline, type PipelineConfig } from './video-pipeline';
 import { getBestScalabilityMode, getCodecCategory, getCodecForCategory } from '../codec-support';
 import { detectGPUBackends } from '../gpu-support';
-import type { SegmentationConfig } from '../workers/video-processing-worker-contract';
+import type { SegmentationConfig, SpatialLayerConfig } from '../workers/video-processing-worker-contract';
 import { createDefaultSegmentationConfig, createAdaptiveSegmentationConfig } from '../workers/video-processing-worker-contract';
 import { MediaCapture } from './media-capture';
 import { getLogs } from 'logging';
@@ -47,6 +47,8 @@ export interface RecordingConfig {
     reducedBitrateRatio?: number;
     silenceDelayMs?: number;
   };
+  // Simulcast extra layers — passed through to PipelineConfig. Omit for P2P.
+  spatialLayers?: SpatialLayerConfig[];
 }
 
 export interface RecordingState {
@@ -455,6 +457,12 @@ export class RecordingService extends EventTarget {
         if (this.config.adaptiveFramerate?.enabled) {
             pipelineConfig.adaptiveFramerate = { ...this.config.adaptiveFramerate };
             infoLog?.log('Adaptive framerate enabled');
+        }
+
+        // Pass through simulcast extras when configured. Base layer is the current
+        // encoderConfig; each entry here becomes SpatialLayerId = i + 1 on wire.
+        if (this.config.spatialLayers && this.config.spatialLayers.length > 0) {
+            pipelineConfig.spatialLayers = this.config.spatialLayers;
         }
 
         return pipelineConfig;
