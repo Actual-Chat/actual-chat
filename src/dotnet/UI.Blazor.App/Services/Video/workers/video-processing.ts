@@ -558,7 +558,8 @@ function onEncoderOutput(chunkData: EncodedChunkData): void {
 
     if (streamingEnabled) {
         deliverChunkToStream(chunkBuffer, chunkData.chunk.timestamp, chunkData.chunk.duration ?? 0,
-            chunkData.type === 'key', actualCodec, chunkData.sequenceNumber, descBuffer, chunkData.temporalLayerId);
+            chunkData.type === 'key', actualCodec, chunkData.sequenceNumber, descBuffer,
+            chunkData.temporalLayerId, chunkData.spatialLayerId);
     } else {
         void callbacks.onSerializedChunk(
             chunkBuffer, chunkData.chunk.timestamp, chunkData.chunk.duration ?? 0,
@@ -574,7 +575,8 @@ function deliverChunkToStream(
     codec: string,
     sequenceNumber: number,
     descriptionBytes?: ArrayBuffer,
-    temporalLayerId?: number
+    temporalLayerId?: number,
+    spatialLayerId?: number
 ): void {
     // Detect sender disconnect BEFORE normalizing timestamps.
     //
@@ -608,6 +610,7 @@ function deliverChunkToStream(
         width: encoderConfig!.width, height: encoderConfig!.height,
         data: chunkData, codec: isKeyFrame ? codec : undefined,
         temporalLayerId: temporalLayerId,
+        spatialLayerId: spatialLayerId,
         // Source dims piggybacked on keyframes only — server uses them to
         // recompute its max-quality ceiling when the window is resized mid-stream.
         sourceWidth: isKeyFrame ? sourceWidth : undefined,

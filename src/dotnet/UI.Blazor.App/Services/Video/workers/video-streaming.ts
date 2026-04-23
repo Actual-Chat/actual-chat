@@ -29,6 +29,9 @@ export interface VideoStreamFrame {
     description?: Uint8Array;
     codec?: string;
     temporalLayerId?: number;
+    // SVC spatial layer (simulcast): 0 = base (lowest-res), 1+ = higher-res layers.
+    // Always 0 for single-encoder (P2P) streams.
+    spatialLayerId?: number;
     // Native source dimensions, populated on keyframes only. Sent to server so
     // it can track source-resolution growth (window resize, camera swap) and
     // unlock higher quality presets mid-stream without a full stream restart.
@@ -81,6 +84,8 @@ function frameToDto(frame: VideoStreamFrame): VideoFrameDto {
     if (frame.codec) dto.Codec = frame.codec;
     if (frame.temporalLayerId !== undefined && frame.temporalLayerId > 0)
         dto.TemporalLayerId = frame.temporalLayerId;
+    if (frame.spatialLayerId !== undefined && frame.spatialLayerId > 0)
+        dto.SpatialLayerId = frame.spatialLayerId;
     return dto;
 }
 
