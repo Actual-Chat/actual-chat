@@ -357,7 +357,7 @@ jobs:
         if: (success() || failure()) && env.SKIP_TESTS != 'true'
         with:
           name: TS Unit tests results
-          path: tmp/unit-results.xml
+          path: "tmp/TS Unit Tests.xml"
           reporter: java-junit
           fail-on-error: false
           list-tests: "all"

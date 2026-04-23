@@ -31,7 +31,7 @@ export default defineConfig({
         fileParallelism: false,
         reporters: ['default', 'junit'],
         outputFile: {
-            junit: 'tmp/e2e-results.xml',
+            junit: 'tmp/TS E2E Tests.xml',
         },
     },
 });

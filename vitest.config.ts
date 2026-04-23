@@ -29,7 +29,7 @@ export default defineConfig({
         include: ['tests/ts/unit/**/*.test.ts'],
         reporters: ['default', 'junit'],
         outputFile: {
-            junit: 'tmp/unit-results.xml',
+            junit: 'tmp/TS Unit Tests.xml',
         },
     },
 });
