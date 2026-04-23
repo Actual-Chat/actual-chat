@@ -281,7 +281,7 @@ jobs:
           path: "./tests/**/*.trx" # Path to test results
           reporter: dotnet-trx # Format of test results
           fail-on-error: false
-          list-tests: "all"
+          list-tests: "failed"
           output-to: "checks"
           list-suites: "all"
           only-summary: "false"
@@ -343,7 +343,7 @@ jobs:
           path: "tmp/TS Unit Tests.xml"
           reporter: java-junit
           fail-on-error: false
-          list-tests: "all"
+          list-tests: "failed"
           output-to: "step-summary"
           list-suites: "all"
           only-summary: "false"
