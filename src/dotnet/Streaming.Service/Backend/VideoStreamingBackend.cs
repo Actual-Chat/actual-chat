@@ -58,7 +58,8 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                 (sid, pid) => LatencyStore.DecrementPeerEgressFallback(sid, pid),
                 LatencyStore.RestorePeerEgressFallback,
                 LatencyStore.HasPeerEgressFallback,
-                LatencyStore.GetPeerEgressFallbackSetAt));
+                LatencyStore.GetPeerEgressFallbackSetAt),
+            LatencyStore.IsPeerVisible);
         return new RpcStream<VideoFrame>(filter.Apply(streamId, peerId, skipTo, stream, cancellationToken)) {
             AckPeriod = Constants.Video.StreamAckPeriod,
             AckAdvance = Constants.Video.StreamAckAdvance,
@@ -163,9 +164,10 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         int bufferDepth = -1,
         double bufferSpanMs = -1,
         int renderQualityLevel = -1,
+        bool isVisible = true,
         CancellationToken cancellationToken = default)
     {
-        LatencyStore.ReportPeerLatency(streamId, peerId, streamOffsetMs, medianDecodeTimeMs, bufferDepth, bufferSpanMs, renderQualityLevel);
+        LatencyStore.ReportPeerLatency(streamId, peerId, streamOffsetMs, medianDecodeTimeMs, bufferDepth, bufferSpanMs, renderQualityLevel, isVisible);
         return Task.CompletedTask;
     }
 
@@ -224,7 +226,16 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             // No processing - just forward to StreamStore for memoization
             Log.LogInformation("PushVideoInternal: publishing #{StreamId} to StreamStore", record.StreamId);
 
-            var keyFrameNumber = 0L;
+            // Per-(spatial-layer) keyframe counters. Simulcast senders emit a
+            // keyframe on every spatial layer at the same boundary; a single
+            // global counter would give sibling-layer KFs different numbers,
+            // and deltas would be stamped with whichever layer's KF landed last
+            // — making downstream gap detection (filter compares KeyFrameNumber
+            // equality to decide "this delta belongs to the KF I joined at")
+            // fire spuriously. Keeping counters per-layer keeps the "delta.kf
+            // == lastYieldedKf" invariant correct for the filter's selected
+            // layer. Small key = int (spatialLayerId, typically 0..2).
+            var keyFrameNumberByLayer = new Dictionary<int, long>();
             var lastHeartbeat = CpuTimestamp.Now;
             var heartbeatInterval = TimeSpan.FromMinutes(2.5); // Half of LiveVideoBackend.ChatStateTtl
             var silenceTimeout = record.StreamKind == StreamKind.Screencast
@@ -238,15 +249,18 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                 await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                     watchdogCts.CancelAfter(silenceTimeout);
 
+                    var layerId = frame.SpatialLayerId;
                     if (frame.IsKeyFrame) {
-                        keyFrameNumber++;
+                        keyFrameNumberByLayer.TryGetValue(layerId, out var current);
+                        keyFrameNumberByLayer[layerId] = current + 1;
                         // Keyframes carry current source dimensions — lets the server
                         // track mid-stream source growth (e.g. screencast window resize)
                         // and unlock the matching quality-preset ceiling.
                         if (frame.SourceWidth > 0 && frame.SourceHeight > 0)
                             LatencyStore.UpdateMaxQuality(record.StreamId, frame.SourceWidth, frame.SourceHeight);
                     }
-                    frame.KeyFrameNumber = keyFrameNumber;
+                    keyFrameNumberByLayer.TryGetValue(layerId, out var layerKf);
+                    frame.KeyFrameNumber = layerKf;
 
                     // Track throughput for quality adaptation (same node, direct call)
                     LatencyStore.RecordFrameBytes(record.StreamId,

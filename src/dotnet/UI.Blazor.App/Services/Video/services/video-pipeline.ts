@@ -10,6 +10,7 @@
  */
 
 import { rpcClientServer, rpcNoWait } from 'rpc';
+import { RunningEMA } from 'math';
 import type { Disposable } from 'disposable';
 import { supportsTransferableStreams } from '../workers/stream-channel';
 
@@ -116,6 +117,14 @@ export class VideoPipeline implements IVideoPipeline {
     // Encoder backpressure state
     private backpressureStepDownCount = 0;
     private lastBackpressureStepDown = 0;
+    // EMA-smoothed drop rate across successive backpressure notifications.
+    // Each notification is a 5 s drop-rate window from the worker (see
+    // video-processing.ts:backpressureWindowMs). Step-down only fires when the
+    // EMA is sustained — a single transient spike (thermal blip, one slow GC)
+    // no longer collapses resolution for the rest of the session. RunningEMA
+    // uses a plain running average for the first `minSampleCount` samples
+    // (warmup), then switches to exponential smoothing with α = 2/(n+1).
+    private readonly backpressureEma = new RunningEMA(0, 2);
 
     // Encoder failure callback (set by recording-service for codec fallback)
     public onEncoderFailure: ((failedCodec: string) => void) | null = null;
@@ -704,32 +713,76 @@ export class VideoPipeline implements IVideoPipeline {
     // ─── Backpressure ───────────────────────────────────────────────────────
 
     private handleEncoderBackpressure(dropRate: number): void {
+        // Sustained-backpressure step-down with EMA smoothing.
+        //
+        // Worker notifies once per 5 s drop-rate window (see video-processing.ts
+        // backpressureWindowMs). A SINGLE high-dropRate sample is noise — GPU
+        // contention from a tab switch, a thermal blip, one GC. Step-down only
+        // fires once the EMA stays elevated across multiple windows — the
+        // signature of sustained encoder overload.
+        //
+        // RunningEMA(minSampleCount=2) uses a running average for the first two
+        // samples (gives transients a chance to clear) then switches to
+        // exponential smoothing with α = 2/(n+1) = 0.67 — responsive but
+        // resists a single spike.
+        //
+        //   trigger  = 0.30 → EMA above this = ~30% sustained drop.
+        //   cooldown = 10 s between step-downs.
+        const trigger = 0.30;
+        const cooldownMs = 10_000;
+        const cfg = this.config.encoderConfig;
+
+        this.backpressureEma.appendSample(dropRate);
+        const ema = this.backpressureEma.value;
+        const n = this.backpressureEma.sampleCount;
+
         const now = performance.now();
-        if (now - this.lastBackpressureStepDown < 5000) return;
+        const inCooldown = now - this.lastBackpressureStepDown < cooldownMs;
+        warnLog?.log(
+            `Backpressure sample: dropRate=${(dropRate * 100).toFixed(0)}%, ` +
+            `ema=${(ema * 100).toFixed(0)}% (n=${n}), cooldown=${inCooldown ? 'yes' : 'no'} at ` +
+            `${cfg.width}x${cfg.height}@${(cfg.bitrate / 1e6).toFixed(1)}Mbps`);
 
-        const currentBitrate = this.config.encoderConfig.bitrate;
-        const currentWidth = this.config.encoderConfig.width;
-        const currentHeight = this.config.encoderConfig.height;
+        if (ema < trigger) return;
+        if (inCooldown) return;
 
+        // Target: drop one tier along a fixed 1080p → 720p → 540p → 360p chain.
+        // Per-tier bitrate roughly halves. Below 360p there's no useful
+        // step-down — keep the current tier and ride out.
+        const currentWidth = cfg.width;
+        const currentHeight = cfg.height;
+        const currentBitrate = cfg.bitrate;
         let target: { width: number; height: number; bitrate: number } | null = null;
         if (currentWidth > 1280) target = { width: 1280, height: 720, bitrate: 4_000_000 };
         else if (currentWidth > 960) target = { width: 960, height: 540, bitrate: 2_500_000 };
         else if (currentWidth > 640) target = { width: 640, height: 360, bitrate: 1_000_000 };
-        if (!target && currentBitrate > 500_000) {
-            target = { width: currentWidth, height: currentHeight, bitrate: Math.round(currentBitrate * 0.5) };
-        }
-
         if (!target) {
-            warnLog?.log('Backpressure step-down: already at minimum quality');
+            // Bottomed out on the current codec. Reuse the encoder-failure
+            // path to ask recording-service for the next codec in priority
+            // order (currently H.264 — widest HW coverage, most forgiving
+            // encoder under load). Reset EMA before the handoff so a
+            // successful codec switch gets a clean measurement window.
+            warnLog?.log(
+                `Backpressure step-down: already at minimum tier (${currentWidth}x${currentHeight}) ` +
+                `on ${cfg.codec} (ema=${(ema * 100).toFixed(0)}%) — requesting codec fallback`);
+            this.backpressureEma.reset();
+            this.lastBackpressureStepDown = now;  // cooldown for the codec switch too
+            if (this.onEncoderFailure)
+                this.onEncoderFailure(cfg.codec);
             return;
         }
 
         this.backpressureStepDownCount++;
         this.lastBackpressureStepDown = now;
-        warnLog?.log(`Backpressure step-down #${this.backpressureStepDownCount}: ` +
+        warnLog?.log(
+            `Backpressure step-down #${this.backpressureStepDownCount}: ` +
             `${currentWidth}x${currentHeight}@${(currentBitrate / 1e6).toFixed(1)}Mbps → ` +
-            `${target.width}x${target.height}@${(target.bitrate / 1e6).toFixed(1)}Mbps, dropRate=${(dropRate * 100).toFixed(0)}%`);
-
+            `${target.width}x${target.height}@${(target.bitrate / 1e6).toFixed(1)}Mbps ` +
+            `(ema=${(ema * 100).toFixed(0)}%, samples=${n})`);
+        // Reset so the post-reconfig window re-evaluates fresh. If the new
+        // tier still can't keep up, EMA climbs again and triggers another
+        // step at the lower tier.
+        this.backpressureEma.reset();
         void this.reconfigure(target);
     }
 

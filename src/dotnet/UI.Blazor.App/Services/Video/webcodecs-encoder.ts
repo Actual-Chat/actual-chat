@@ -7,7 +7,7 @@ import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
 import Denque from 'denque';
 
-const { infoLog, errorLog } = getLogs('VideoEncoder');
+const { infoLog, warnLog, errorLog } = getLogs('VideoEncoder');
 
 // WebCodecs SVC metadata (svc.temporalLayerId) is not yet in TS typings
 function extractTemporalLayerId(metadata: EncodedVideoChunkMetadata | undefined): number | undefined {
@@ -126,6 +126,25 @@ export class WebCodecsEncoder {
     encode(frame: VideoFrame, forceKeyFrame = false): void {
         if (this.encoder.state !== 'configured') {
             this.droppedFrames++;
+            frame.close();
+            return;
+        }
+
+        // Dims-mismatch guard. Chrome's HW encoders (HEVC, H.264, AV1) silently
+        // crop from the top-left corner when `frame.codedWidth/Height` exceeds
+        // the configured dims instead of scaling — producing a visible
+        // top-left-crop artifact on the receiver for what should be a
+        // scaled-down frame. The mismatch happens transiently during a
+        // reconfigure race: `downscaler.configure` and `encoder.configure`
+        // can't be applied atomically, so a frame from the old downscaler
+        // (old target dims) may reach a newly-reconfigured encoder, or
+        // vice versa. Drop such frames — a few missed frames at a reconfigure
+        // boundary are invisible; a multi-second crop is not.
+        if (frame.codedWidth !== this.config.width || frame.codedHeight !== this.config.height) {
+            this.droppedFrames++;
+            warnLog?.log(
+                `Encoder dims mismatch: frame=${frame.codedWidth}x${frame.codedHeight}, `
+                + `config=${this.config.width}x${this.config.height} — dropping frame`);
             frame.close();
             return;
         }

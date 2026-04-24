@@ -66,10 +66,13 @@ export function serverClockNow(ctx: StreamingContext): number {
  * expected by `.NET VideoFrame` (`[MessagePackObject(true)]` ⇒ PascalCase keys).
  */
 function frameToDto(frame: VideoStreamFrame): VideoFrameDto {
+    // Math.trunc coerces to int64-safe integer. @msgpack/msgpack v3 encodes any
+    // non-integer number as float64 (0xCB), which the server's ReadInt64 on
+    // TimeSpan ticks rejects — tearing down the whole PushVideo stream.
     const dto: VideoFrameDto = {
         Data: frame.data,
-        Offset: frame.offset,
-        Duration: frame.duration,
+        Offset: Math.trunc(frame.offset),
+        Duration: Math.trunc(frame.duration),
         IsKeyFrame: frame.isKeyFrame,
     };
     if (frame.isKeyFrame) {

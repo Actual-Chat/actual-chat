@@ -124,12 +124,22 @@ function decodeChunk(chunkData: EncodedChunkData): void {
 
         // If decoder is closed and this is a keyframe, attempt recovery
         if (decoder && decoder.getState() === 'closed' && chunkData.type === 'key') {
-            infoLog?.log(`Decoder closed, attempting recovery with keyframe #${seq}`);
+            // HEVC/AVC require description on every configure() — bake it into the
+            // recovery config so the next keyframe doesn't fail with
+            // "A key frame is required after configure()" DataError.
+            const metadataDesc = chunkData.metadata?.decoderConfig?.description;
+            const recoveryDescription = metadataDesc
+                ?? lastRawDescription
+                ?? currentDecoderConfig?.description;
+            infoLog?.log(`Decoder closed, attempting recovery with keyframe #${seq} (descLen=${
+                recoveryDescription ? (recoveryDescription as ArrayBuffer).byteLength : 0})`);
 
             try {
-                // Reinitialize decoder
+                const recoveryConfig: DecoderConfig = recoveryDescription
+                    ? { ...currentDecoderConfig!, description: recoveryDescription }
+                    : { ...currentDecoderConfig!, description: undefined };
                 decoder = new WebCodecsDecoder(
-                    { ...currentDecoderConfig!, description: undefined },
+                    recoveryConfig,
                     emitDecodedFrame,
                     (error) => {
                         errorLog?.log('Decoder error:', error);
@@ -138,12 +148,7 @@ function decodeChunk(chunkData: EncodedChunkData): void {
 
                 decoder.initialize();
                 infoLog?.log(`Decoder recovered at keyframe #${seq}`);
-                decoderConfigured = false; // Will be set to true when we process this keyframe
-
-                // Update description if available
-                if (chunkData.metadata?.decoderConfig?.description) {
-                    decoder.updateDescription(chunkData.metadata.decoderConfig.description);
-                }
+                decoderConfigured = !!recoveryDescription;
             } catch (error) {
                 errorLog?.log('Failed to recover decoder:', error);
                 return;
@@ -583,11 +588,29 @@ const serverImpl: DecoderWorker = {
             // Check decoder state — recover from closed/error state on keyframe
             if (decoder.getState() !== 'configured') {
                 if (isKeyFrame && currentDecoderConfig) {
-                    warnLog?.log(`Decoder in state '${decoder.getState()}', recovering on keyframe`);
+                    // HEVC/AVC require description on every configure() — recovery must re-apply
+                    // the cached description, otherwise the next keyframe fails with
+                    // "A key frame is required after configure()" DataError.
+                    const recoveryDescription: ArrayBuffer | undefined = description && description.byteLength > 0
+                        ? description
+                        : (lastRawDescription ?? undefined);
+                    warnLog?.log(`Decoder in state '${decoder.getState()}', recovering on keyframe (descLen=${recoveryDescription?.byteLength ?? 0})`);
                     try {
-                        decoder = createDecoder(currentDecoderConfig);
+                        const recoveryConfig: DecoderConfig = recoveryDescription
+                            ? { ...currentDecoderConfig, description: recoveryDescription }
+                            : { ...currentDecoderConfig, description: undefined };
+                        decoder = new WebCodecsDecoder(
+                            recoveryConfig,
+                            emitDecodedFrame,
+                            (error) => {
+                                errorLog?.log('Decoder error:', error);
+                            }
+                        );
                         decoder.initialize();
                         decoderConfigured = true;
+                        if (recoveryDescription) {
+                            lastRawDescription = recoveryDescription.slice(0);
+                        }
                     } catch (recoveryError) {
                         errorLog?.log('Decoder recovery failed:', recoveryError);
                         return;

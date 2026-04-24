@@ -1493,7 +1493,7 @@ export class VideoPlayer {
 
             // Report the high latency to the server BEFORE resetting state,
             // so EvaluateQuality can detect that this peer is struggling and step down sender quality.
-            streamingApi.streamServer.ReportVideoLatency(this.streamId, streamOffsetMs, -1, -1, -1, this.computeRenderQualityLevel())
+            streamingApi.streamServer.ReportVideoLatency(this.streamId, streamOffsetMs, -1, -1, -1, this.computeRenderQualityLevel(), document.visibilityState === 'visible')
                 .catch(() => { /* best-effort */ });
 
             this.pullAbortController?.abort();
@@ -1605,7 +1605,8 @@ export class VideoPlayer {
                     ds.pureMedianDecodeTime >= 0 ? ds.pureMedianDecodeTime : ds.medianDecodeTime,
                     this.pendingFrames.length,
                     currentBufferSpanMs,
-                    this.computeRenderQualityLevel()
+                    this.computeRenderQualityLevel(),
+                    document.visibilityState === 'visible',
                 ).then(() => {
                     this.updateRttEstimate(performance.now() - sendTime);
                 }).catch((e: unknown) => {
@@ -1615,7 +1616,7 @@ export class VideoPlayer {
         } else {
             // No decoder worker — send basic report without diagnostics + RTT measurement
             const sendTime = performance.now();
-            streamingApi.streamServer.ReportVideoLatency(this.streamId, streamOffsetMs, -1, -1, -1, this.computeRenderQualityLevel())
+            streamingApi.streamServer.ReportVideoLatency(this.streamId, streamOffsetMs, -1, -1, -1, this.computeRenderQualityLevel(), document.visibilityState === 'visible')
                 .then(() => {
                     this.updateRttEstimate(performance.now() - sendTime);
                 }).catch((e: unknown) => {
@@ -1636,7 +1637,7 @@ export class VideoPlayer {
         if (w <= 720) return 3;      // Medium
         if (w <= 1280) return 2;     // High
         if (w <= 1920) return 1;     // Full
-        return 0;                     // Ultra
+        return 0;                    // Ultra
     }
 
     private updateRttEstimate(rttMs: number): void {

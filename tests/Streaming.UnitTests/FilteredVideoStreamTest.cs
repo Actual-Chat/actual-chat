@@ -269,24 +269,28 @@ public class FilteredVideoStreamTest(ILogger log)
     }
 
     [Fact]
-    public async Task Spatial_MixedLayers_SelectsHighestAvailable()
+    public async Task Spatial_MixedLayers_NoCap_StaysOnBaseLayer()
     {
-        // Producer emits simulcast layers 0 and 1. Synchronous keyframe boundary.
-        // Filter starts at layer 0, upgrades to layer 1 on its keyframe, then keeps
-        // delivering layer 1 deltas. Layer 0 traffic is dropped once switched.
+        // Producer emits simulcast layers 0 and 1 at the same keyframe boundary
+        // (a single simulcast cycle: one KF per spatial layer at identical offset).
+        // With no explicit per-peer spatial cap (maxSpatialCap = int.MaxValue means
+        // no render hint / latency evidence) the filter MUST stay on the base layer
+        // and drop higher-layer traffic. Auto-climbing on every observed KF would
+        // deliver one KF per layer per cycle — each carrying a distinct parameter
+        // set for HEVC — causing the receiver's decoder to reconfig-thrash and
+        // fail non-keyframe decode ("A key frame is required after configure()").
+        // Regression guard for the iOS simulcast / multi-layer delivery bug.
         var frames = new[] {
-            KeyFrame(1, spatialLayer: 0),                // ingress arrives layer 0 first
-            KeyFrame(1, spatialLayer: 1),                // then layer 1 — switch triggers
-            Delta(kf: 1, spatialLayer: 0),               // layer 0 delta — dropped
-            Delta(kf: 1, spatialLayer: 1),               // layer 1 delta — kept
+            KeyFrame(1, spatialLayer: 0),
+            KeyFrame(1, spatialLayer: 1),
+            Delta(kf: 1, spatialLayer: 0),
+            Delta(kf: 1, spatialLayer: 1),
             Delta(kf: 1, spatialLayer: 1),
         };
         var result = await Filter(frames);
 
-        result.Should().HaveCount(4, "layer-0 KF bootstraps join + layer-1 KF switch + two layer-1 deltas");
-        result[0].SpatialLayerId.Should().Be(0, "first KF on layer 0 bootstraps the join state");
-        result[1].SpatialLayerId.Should().Be(1, "switched to layer 1 on its keyframe");
-        result.Skip(1).All(f => f.SpatialLayerId == 1).Should().BeTrue("layer 0 deltas dropped post-switch");
+        result.All(f => f.SpatialLayerId == 0).Should().BeTrue("no explicit cap → stay at base layer, never auto-promote");
+        result.Should().HaveCount(2, "layer-0 KF bootstraps join + one layer-0 delta; layer-1 traffic dropped");
     }
 
     [Fact]

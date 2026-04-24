@@ -143,11 +143,15 @@ export class WebGpuDownscaler {
         if (!this.pipeline || !this.uniformBuffer || this.slots.length === 0)
             throw new Error('WebGpuDownscaler.process: not configured');
 
-        // Use coded dims — they always reflect pixel buffer layout (sensor-native).
-        // displayWidth/Height may be post-rotation on Safari, which would cause
-        // double-swap with the rotation uniform below.
-        const srcW = source.codedWidth;
-        const srcH = source.codedHeight;
+        // Prefer display dims over coded dims. Chrome's getUserMedia with
+        // `resizeMode: 'crop-and-scale'` returns VideoFrames whose codedWidth/Height
+        // report the camera's native plane (e.g. 1920x1080) while the actual
+        // plane0 buffer is scaled to displayWidth/Height (e.g. 1280x720). Using
+        // coded dims makes `importExternalTexture` default cropSize exceed plane0
+        // → WebGPU validation spam ("cropSize exceeds texture size"). When display
+        // ≤ coded, trust display.
+        const srcW = source.displayWidth > 0 ? source.displayWidth : source.codedWidth;
+        const srcH = source.displayHeight > 0 ? source.displayHeight : source.codedHeight;
         // Prefer spec-populated rotation. Fall back to a main-thread supplied value
         // derived from `screen.orientation.angle` — needed on Safari iOS where MSTP
         // does not populate VideoFrame.rotation.
@@ -167,7 +171,25 @@ export class WebGpuDownscaler {
             );
         }
 
-        const externalTex = this.device.importExternalTexture({ source });
+        // Normalize visibleRect so Chrome's importExternalTexture sees a crop
+        // that fits Plane0. With getUserMedia `resizeMode: 'crop-and-scale'`
+        // source.codedWidth/Height may report the camera's pre-scale plane
+        // (e.g. 1920x1080) while plane0 is actually scaled to display dims
+        // (1280x720). Default cropSize = codedW/H → exceeds plane0 → validation
+        // error spam + every frame skipped.
+        let input = source;
+        if (source.codedWidth > srcW || source.codedHeight > srcH) {
+            try {
+                input = new VideoFrame(source, {
+                    visibleRect: { x: 0, y: 0, width: srcW, height: srcH },
+                });
+                source.close();
+            }
+            catch {
+                input = source;
+            }
+        }
+        const externalTex = this.device.importExternalTexture({ source: input });
         const timestamp = source.timestamp;
         const duration = source.duration ?? undefined;
         const results: DownscaleResult[] = [];
@@ -212,7 +234,7 @@ export class WebGpuDownscaler {
             results.push({ frame: outFrame, target: slot.target });
         }
 
-        source.close();
+        input.close();
         return results;
     }
 

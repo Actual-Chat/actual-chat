@@ -48,6 +48,10 @@ public sealed class StreamLatencyStore(IServiceProvider services)
         => LatencyStates.TryGetValue(streamId, out var state)
             && state.HasPeerEgressFallback(peerId);
 
+    public bool IsPeerVisible(StreamId streamId, string peerId)
+        => !LatencyStates.TryGetValue(streamId, out var state)
+            || state.IsPeerVisible(peerId);
+
     public void RegisterStreamLatencyState(StreamId streamId, ChatId chatId, Moment beginsAt, VideoFormat format, StreamKind kind)
         => LatencyStates[streamId] = new StreamLatencyState(chatId, beginsAt, format, kind, services.StateFactory(), Log);
 
@@ -77,20 +81,27 @@ public sealed class StreamLatencyStore(IServiceProvider services)
         double medianDecodeTimeMs = -1,
         int bufferDepth = -1,
         double bufferSpanMs = -1,
-        int renderQualityLevel = -1)
+        int renderQualityLevel = -1,
+        bool isVisible = true)
     {
         if (LatencyStates.TryGetValue(streamId, out var latencyState)) {
             var latency = Clocks.ServerClock.Now - (latencyState.StartedAt + TimeSpan.FromMilliseconds(streamOffsetMs));
             if (latency > TimeSpan.Zero) {
                 AppMeters.VideoLatency.Record(latency.TotalMilliseconds);
-                DebugLog?.LogDebug("ReportPeerLatency: #{StreamId}, PeerId={PeerId}, StreamOffsetMs={StreamOffsetMs:F0}, LatencyMs={LatencyMs:F0}, DecodeMs={DecodeMs:F1}, BufDepth={BufDepth}, BufSpanMs={BufSpanMs:F0}, RenderLvl={RenderLvl}",
-                    streamId, peerId, streamOffsetMs, latency.TotalMilliseconds, medianDecodeTimeMs, bufferDepth, bufferSpanMs, renderQualityLevel);
+                DebugLog?.LogDebug("ReportPeerLatency: #{StreamId}, PeerId={PeerId}, StreamOffsetMs={StreamOffsetMs:F0}, LatencyMs={LatencyMs:F0}, DecodeMs={DecodeMs:F1}, BufDepth={BufDepth}, BufSpanMs={BufSpanMs:F0}, RenderLvl={RenderLvl}, Visible={Visible}",
+                    streamId, peerId, streamOffsetMs, latency.TotalMilliseconds, medianDecodeTimeMs, bufferDepth, bufferSpanMs, renderQualityLevel, isVisible);
                 latencyState.RecordPeerLatency(peerId, (float)latency.TotalMilliseconds,
-                    (float)medianDecodeTimeMs, bufferDepth, (float)bufferSpanMs, renderQualityLevel);
+                    (float)medianDecodeTimeMs, bufferDepth, (float)bufferSpanMs, renderQualityLevel, isVisible);
             }
-            else
-                DebugLog?.LogDebug("ReportPeerLatency: #{StreamId}, PeerId={PeerId}, negative latency={LatencyMs:F0}ms (clock skew?), skipping",
+            else {
+                DebugLog?.LogDebug("ReportPeerLatency: #{StreamId}, PeerId={PeerId}, negative latency={LatencyMs:F0}ms (clock skew?), applying render hint + visibility only",
                     streamId, peerId, latency.TotalMilliseconds);
+                // Skip the polluted latency sample, but still record the render hint
+                // and visibility flag — both are independent of the clock skew and
+                // drive filter behavior (cap selection + stall suppression).
+                latencyState.RecordPeerLatency(peerId, latencyMs: -1f,
+                    medianDecodeTimeMs: -1f, bufferDepth: -1, bufferSpanMs: -1f, renderQualityLevel, isVisible);
+            }
             return;
         }
         Log.LogWarning("ReportPeerLatency: No latency state for stream #{StreamId}", streamId);
@@ -126,6 +137,11 @@ public sealed class StreamLatencyStore(IServiceProvider services)
         // of uneventful delivery.
         public int EgressFallbackSpatialLayer { get; private set; } = int.MaxValue;
         public CpuTimestamp EgressFallbackSetAt { get; private set; }
+        // Client-declared tab visibility. When false (document.visibilityState ===
+        // 'hidden'), the fan-out filter should suppress egress-stall handling —
+        // the consumer simply isn't pulling, and skipping ahead or decrementing
+        // caps now would penalize the session when the tab comes back.
+        public bool IsVisible { get; private set; } = true;
         // Effective cap applied to fan-out: the tightest of latency-derived, render-hint,
         // and egress-fallback caps. Consumers call this via StreamLatencyStore.GetPeerMaxSpatialLayer.
         public int EffectiveMaxSpatial =>
@@ -156,13 +172,22 @@ public sealed class StreamLatencyStore(IServiceProvider services)
             || BufferDepth > Constants.Video.HighBufferDepthThreshold;
 
         public void RecordLatency(float latencyMs, float medianDecodeTimeMs = -1, int bufferDepth = -1, float bufferSpanMs = -1,
-            int renderQualityLevel = -1)
+            int renderQualityLevel = -1, bool isVisible = true)
         {
             // Render hint is independent of warmup — the client knows its render size
             // even before playback warms up, and a wrong-sized delivery for a sidebar
-            // tile wastes bandwidth from frame #1. Apply immediately when provided.
+            // tile wastes bandwidth from frame #1. Apply immediately when provided,
+            // even when latencyMs is -1 (caller extracted render hint from a report
+            // whose latency was clock-skewed negative).
             if (renderQualityLevel >= 0)
                 RenderHintSpatialLayer = MapRenderLevelToSpatialLayer((VideoQualityLevel)renderQualityLevel);
+            // Visibility: always applied, regardless of warmup / latency validity.
+            IsVisible = isVisible;
+
+            // Skip sample enqueue for sentinel/negative latency. Caller may pass -1
+            // when only the render hint is usable.
+            if (latencyMs < 0)
+                return;
 
             // Discard samples during warmup to prevent initial-buffer latency from contaminating the median
             if (!IsWarmedUp)
@@ -219,13 +244,15 @@ public sealed class StreamLatencyStore(IServiceProvider services)
             }
         }
 
-        // VideoQualityLevel → spatial layer. Simulcast produces 3 layers — 180p (0),
-        // 360p (1), 720p (2). Client sends the smallest preset whose nominal dims meet
-        // or approximately match its actual render size. Low/Medium render targets are
-        // served from lower simulcast layers to save bandwidth; High+ forces top layer.
+        // VideoQualityLevel → spatial layer. Render hint answers "what's the smallest
+        // layer that still fills the receiver's canvas?" — base (spatial=0) is typical
+        // ladder's 180p, useful only for thumbnails/grid; a Low-bucketed 640x360 tile
+        // still wants 360p content (spatial=1), not a 180p upscale. Mapping Low→0
+        // pinned sidebar viewers to base even on capable networks. Reserve spatial=0
+        // for latency/egress-driven drop, not render size.
         private static int MapRenderLevelToSpatialLayer(VideoQualityLevel level)
             => level switch {
-                VideoQualityLevel.Low => 0,
+                VideoQualityLevel.Low => 1,     // sidebar / small tile — mid tier (~360p)
                 VideoQualityLevel.Medium => 1,
                 // High, Full, Ultra — any "focused" render target wants top layer.
                 _ => 2,
@@ -373,18 +400,21 @@ public sealed class StreamLatencyStore(IServiceProvider services)
 
         public void RecordPeerLatency(string peerId, float latencyMs,
             float medianDecodeTimeMs = -1, int bufferDepth = -1, float bufferSpanMs = -1,
-            int renderQualityLevel = -1)
+            int renderQualityLevel = -1, bool isVisible = true)
         {
             var peer = _peers.GetOrAdd(peerId, _ => new PeerLatencyState());
-            peer.RecordLatency(latencyMs, medianDecodeTimeMs, bufferDepth, bufferSpanMs, renderQualityLevel);
+            peer.RecordLatency(latencyMs, medianDecodeTimeMs, bufferDepth, bufferSpanMs, renderQualityLevel, isVisible);
             DebugLog?.LogDebug(
-                "RecordPeerLatency: PeerId={PeerId}, LatencyMs={LatencyMs:F0}, MedianMs={MedianMs:F0}, ReceiverBound={ReceiverBound}, MaxSpatial={MaxSpatial}",
-                peerId, latencyMs, peer.MedianLatencyMs, peer.IsReceiverBound, peer.EffectiveMaxSpatial);
+                "RecordPeerLatency: PeerId={PeerId}, LatencyMs={LatencyMs:F0}, MedianMs={MedianMs:F0}, ReceiverBound={ReceiverBound}, MaxSpatial={MaxSpatial}, Visible={Visible}",
+                peerId, latencyMs, peer.MedianLatencyMs, peer.IsReceiverBound, peer.EffectiveMaxSpatial, peer.IsVisible);
 
             // Throttle evaluation to QualityDecisionInterval
             if (_lastEvaluationAt.Elapsed >= Constants.Video.QualityDecisionInterval)
                 EvaluateQuality();
         }
+
+        public bool IsPeerVisible(string peerId)
+            => !_peers.TryGetValue(peerId, out var state) || state.IsVisible;
 
         public void RecordFrameBytes(int byteCount)
         {
