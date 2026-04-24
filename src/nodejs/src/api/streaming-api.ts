@@ -24,7 +24,7 @@ export const StreamServerDef = defineRpcService('IStreamServer', {
     PushVideo: { args: ['session', 'chatId', 'clientStartOffset', 'format', 'frameStream', 'streamKind'], remoteExecutionMode: StreamPushMode },
     PushAudio: { args: ['session', 'chatId', 'repliedChatEntryId', 'clientStartOffset', 'preSkip', 'frameStream'], remoteExecutionMode: StreamPushMode },
     RequestKeyFrame: { args: ['streamId'] },
-    ReportVideoLatency: { args: ['streamId', 'streamOffsetMs', 'medianDecodeTimeMs', 'bufferDepth', 'bufferSpanMs', 'renderQualityLevel', 'isVisible'] },
+    ReportVideoLatency: { args: ['streamId', 'report'] },
 });
 
 // --- VideoFrame TypeScript interface ---
@@ -63,6 +63,26 @@ export interface VideoFormatDto {
     SourceHeight: number;
 }
 
+// --- VideoLatencyReport TypeScript interface ---
+// Matches .NET VideoLatencyReport serialized via MessagePack with implicit
+// string keys — [MessagePackObject(true)] → PascalCase wire keys.
+// All metric fields default to sentinel values server-side (-1 / null) when
+// absent, so clients can omit fields they haven't measured this tick.
+export interface VideoLatencyReportDto {
+    StreamOffsetMs: number;
+    // -1 = not measured this tick.
+    MedianDecodeTimeMs?: number;
+    // -1 = not measured.
+    BufferDepth?: number;
+    // -1 = not measured.
+    BufferSpanMs?: number;
+    // null = no render-size hint; numeric = VideoQualityLevel ordinal.
+    // Server maps non-null via StreamLatencyStore.MapRenderLevelToSpatialLayer.
+    RenderQuality?: number | null;
+    // document.visibilityState === 'visible'. Defaults to true server-side.
+    IsVisible?: boolean;
+}
+
 // --- AudioFrame TypeScript interface ---
 // Matches .NET AudioFrame serialized via MessagePack with implicit string keys.
 // AudioFrame.cs is [MessagePackObject(true)] → PascalCase property names.
@@ -92,22 +112,15 @@ export interface StreamServerClient {
         preSkip: number,
         frameStreamRef: unknown): Promise<void>;
     RequestKeyFrame(streamId: string): Promise<void>;
-    ReportVideoLatency(
-        streamId: string,
-        streamOffsetMs: number,
-        medianDecodeTimeMs: number,
-        bufferDepth: number,
-        bufferSpanMs: number,
-        renderQualityLevel: number,
-        isVisible: boolean): Promise<number>;
+    ReportVideoLatency(streamId: string, report: VideoLatencyReportDto): Promise<number>;
 }
 
 // Mirrors .NET VideoQualityLevel enum. Lower numeric value = higher quality.
-// Used as the `renderQualityLevel` arg to ReportVideoLatency — pick the smallest
-// level whose nominal dims meet or approximately match the consumer's actual
-// render size. Server maps Low→spatial 0, Medium→1, High/Full/Ultra→2.
-// Use -1 for "not hinted" (server applies no render cap).
-export const VideoQualityLevelNotHinted = -1;
+// Used as the `RenderQuality` field on VideoLatencyReportDto — pick the
+// smallest level whose nominal dims meet or approximately match the
+// consumer's actual render size. Server maps Low→spatial 0, Medium→1,
+// High/Full/Ultra→2. Use `null` for "not hinted" (server applies no render
+// cap); using a number forces server-side interpretation of that level.
 export const VideoQualityLevelUltra = 0;
 export const VideoQualityLevelFull = 1;
 export const VideoQualityLevelHigh = 2;

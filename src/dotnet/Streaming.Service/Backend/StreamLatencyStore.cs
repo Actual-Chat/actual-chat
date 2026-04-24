@@ -74,24 +74,19 @@ public sealed class StreamLatencyStore(IServiceProvider services)
         LastKeyFrameRequestTime.TryRemove(streamId, out _);
     }
 
-    public void ReportPeerLatency(
-        StreamId streamId,
-        string peerId,
-        double streamOffsetMs,
-        double medianDecodeTimeMs = -1,
-        int bufferDepth = -1,
-        double bufferSpanMs = -1,
-        int renderQualityLevel = -1,
-        bool isVisible = true)
+    public void ReportPeerLatency(StreamId streamId, string peerId, VideoLatencyReport report)
     {
+        // PeerLatencyState.RecordLatency is still positional — unpack here.
+        // Null render-quality becomes the -1 sentinel the inner helper expects.
+        var renderQualityLevel = report.RenderQuality is { } level ? (int)level : -1;
         if (LatencyStates.TryGetValue(streamId, out var latencyState)) {
-            var latency = Clocks.ServerClock.Now - (latencyState.StartedAt + TimeSpan.FromMilliseconds(streamOffsetMs));
+            var latency = Clocks.ServerClock.Now - (latencyState.StartedAt + TimeSpan.FromMilliseconds(report.StreamOffsetMs));
             if (latency > TimeSpan.Zero) {
                 AppMeters.VideoLatency.Record(latency.TotalMilliseconds);
                 DebugLog?.LogDebug("ReportPeerLatency: #{StreamId}, PeerId={PeerId}, StreamOffsetMs={StreamOffsetMs:F0}, LatencyMs={LatencyMs:F0}, DecodeMs={DecodeMs:F1}, BufDepth={BufDepth}, BufSpanMs={BufSpanMs:F0}, RenderLvl={RenderLvl}, Visible={Visible}",
-                    streamId, peerId, streamOffsetMs, latency.TotalMilliseconds, medianDecodeTimeMs, bufferDepth, bufferSpanMs, renderQualityLevel, isVisible);
+                    streamId, peerId, report.StreamOffsetMs, latency.TotalMilliseconds, report.MedianDecodeTimeMs, report.BufferDepth, report.BufferSpanMs, renderQualityLevel, report.IsVisible);
                 latencyState.RecordPeerLatency(peerId, (float)latency.TotalMilliseconds,
-                    (float)medianDecodeTimeMs, bufferDepth, (float)bufferSpanMs, renderQualityLevel, isVisible);
+                    (float)report.MedianDecodeTimeMs, report.BufferDepth, (float)report.BufferSpanMs, renderQualityLevel, report.IsVisible);
             }
             else {
                 DebugLog?.LogDebug("ReportPeerLatency: #{StreamId}, PeerId={PeerId}, negative latency={LatencyMs:F0}ms (clock skew?), applying render hint + visibility only",
@@ -100,7 +95,7 @@ public sealed class StreamLatencyStore(IServiceProvider services)
                 // and visibility flag — both are independent of the clock skew and
                 // drive filter behavior (cap selection + stall suppression).
                 latencyState.RecordPeerLatency(peerId, latencyMs: -1f,
-                    medianDecodeTimeMs: -1f, bufferDepth: -1, bufferSpanMs: -1f, renderQualityLevel, isVisible);
+                    medianDecodeTimeMs: -1f, bufferDepth: -1, bufferSpanMs: -1f, renderQualityLevel, report.IsVisible);
             }
             return;
         }

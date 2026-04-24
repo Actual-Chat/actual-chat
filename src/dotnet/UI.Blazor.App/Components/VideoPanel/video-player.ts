@@ -1493,8 +1493,11 @@ export class VideoPlayer {
 
             // Report the high latency to the server BEFORE resetting state,
             // so EvaluateQuality can detect that this peer is struggling and step down sender quality.
-            streamingApi.streamServer.ReportVideoLatency(this.streamId, streamOffsetMs, -1, -1, -1, this.computeRenderQualityLevel(), document.visibilityState === 'visible')
-                .catch(() => { /* best-effort */ });
+            streamingApi.streamServer.ReportVideoLatency(this.streamId, {
+                StreamOffsetMs: streamOffsetMs,
+                RenderQuality: this.computeRenderQualityLevel(),
+                IsVisible: document.visibilityState === 'visible',
+            }).catch(() => { /* best-effort */ });
 
             this.pullAbortController?.abort();
             this.pullAbortController = null;
@@ -1599,15 +1602,14 @@ export class VideoPlayer {
 
                 // Send enriched latency report with diagnostics + RTT measurement
                 const sendTime = performance.now();
-                streamingApi.streamServer.ReportVideoLatency(
-                    this.streamId,
-                    streamOffsetMs,
-                    ds.pureMedianDecodeTime >= 0 ? ds.pureMedianDecodeTime : ds.medianDecodeTime,
-                    this.pendingFrames.length,
-                    currentBufferSpanMs,
-                    this.computeRenderQualityLevel(),
-                    document.visibilityState === 'visible',
-                ).then(() => {
+                streamingApi.streamServer.ReportVideoLatency(this.streamId, {
+                    StreamOffsetMs: streamOffsetMs,
+                    MedianDecodeTimeMs: ds.pureMedianDecodeTime >= 0 ? ds.pureMedianDecodeTime : ds.medianDecodeTime,
+                    BufferDepth: this.pendingFrames.length,
+                    BufferSpanMs: currentBufferSpanMs,
+                    RenderQuality: this.computeRenderQualityLevel(),
+                    IsVisible: document.visibilityState === 'visible',
+                }).then(() => {
                     this.updateRttEstimate(performance.now() - sendTime);
                 }).catch((e: unknown) => {
                     warnLog?.log('ReportVideoLatency invoke error:', e);
@@ -1616,23 +1618,26 @@ export class VideoPlayer {
         } else {
             // No decoder worker — send basic report without diagnostics + RTT measurement
             const sendTime = performance.now();
-            streamingApi.streamServer.ReportVideoLatency(this.streamId, streamOffsetMs, -1, -1, -1, this.computeRenderQualityLevel(), document.visibilityState === 'visible')
-                .then(() => {
-                    this.updateRttEstimate(performance.now() - sendTime);
-                }).catch((e: unknown) => {
-                    warnLog?.log('ReportVideoLatency invoke error:', e);
-                });
+            streamingApi.streamServer.ReportVideoLatency(this.streamId, {
+                StreamOffsetMs: streamOffsetMs,
+                RenderQuality: this.computeRenderQualityLevel(),
+                IsVisible: document.visibilityState === 'visible',
+            }).then(() => {
+                this.updateRttEstimate(performance.now() - sendTime);
+            }).catch((e: unknown) => {
+                warnLog?.log('ReportVideoLatency invoke error:', e);
+            });
         }
     }
 
     // Maps this player's current render size to a VideoQualityLevel hint for the
     // server's simulcast fan-out. Uses canvas.clientWidth (actual layout pixels)
     // rather than canvas.width (decoder output resolution). Server maps Low→spatial
-    // layer 0, Medium→1, High/Full/Ultra→2. Returns -1 when the canvas has no
+    // layer 0, Medium→1, High/Full/Ultra→2. Returns null when the canvas has no
     // layout yet (detached or hidden) so the server applies no render cap.
-    private computeRenderQualityLevel(): number {
+    private computeRenderQualityLevel(): number | null {
         const w = this.canvas?.clientWidth ?? 0;
-        if (w <= 0) return -1;
+        if (w <= 0) return null;
         if (w <= 480) return 4;      // Low — sidebar tile
         if (w <= 720) return 3;      // Medium
         if (w <= 1280) return 2;     // High

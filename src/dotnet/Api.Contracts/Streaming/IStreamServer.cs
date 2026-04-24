@@ -47,11 +47,6 @@ public interface IStreamServer : IRpcService
 
     Task<double> ReportVideoLatency(
         string streamId,
-        double streamOffsetMs,
-        double medianDecodeTimeMs,
-        int bufferDepth,
-        double bufferSpanMs,
-        int renderQualityLevel,
-        bool isVisible,
+        VideoLatencyReport report,
         CancellationToken cancellationToken);
 }

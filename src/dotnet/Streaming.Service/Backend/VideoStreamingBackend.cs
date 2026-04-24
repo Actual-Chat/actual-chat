@@ -159,15 +159,10 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
     public virtual Task ReportPeerLatency(
         StreamId streamId,
         string peerId,
-        double streamOffsetMs,
-        double medianDecodeTimeMs = -1,
-        int bufferDepth = -1,
-        double bufferSpanMs = -1,
-        int renderQualityLevel = -1,
-        bool isVisible = true,
+        VideoLatencyReport report,
         CancellationToken cancellationToken = default)
     {
-        LatencyStore.ReportPeerLatency(streamId, peerId, streamOffsetMs, medianDecodeTimeMs, bufferDepth, bufferSpanMs, renderQualityLevel, isVisible);
+        LatencyStore.ReportPeerLatency(streamId, peerId, report);
         return Task.CompletedTask;
     }
 
