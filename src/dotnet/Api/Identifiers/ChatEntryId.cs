@@ -4,12 +4,12 @@ using ActualLab.Fusion.Blazor;
 
 namespace ActualChat;
 
+#pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
+
 /// <summary>
 /// Unique identifier for a chat entry (message).
 /// String format: "chatId:kind:localId" where kind is always 0 for text entries.
 /// </summary>
-#pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
-
 [DataContract, MemoryPackable(GenerateType.NoGenerate)]
 [JsonConverter(typeof(StringLikeJsonConverter<ChatEntryId>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<ChatEntryId>))]

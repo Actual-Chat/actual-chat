@@ -4,11 +4,11 @@ using ActualLab.Fusion.Blazor;
 
 namespace ActualChat;
 
+#pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
+
 /// <summary>
 /// Unique identifier for a translation of content into a specific language.
 /// </summary>
-#pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
-
 [DataContract, MemoryPackable(GenerateType.NoGenerate)]
 [JsonConverter(typeof(StringLikeJsonConverter<TranslationId>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<TranslationId>))]
