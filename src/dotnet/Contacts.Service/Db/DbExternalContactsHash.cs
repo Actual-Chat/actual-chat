@@ -12,7 +12,7 @@ public class DbExternalContactsHash : IHasId<string>, IHasVersion<long>, IRequir
     private DateTime _createdAt;
     private DateTime _modifiedAt;
 
-    [Key] public string Id { get; set; } = null!;
+    [DbKey] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
     public string Hash { get; set; } = "";
 

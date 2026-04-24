@@ -12,7 +12,7 @@ public class DbConversation : IHasId<string>, IHasVersion<long>, IRequirementTar
     public DbConversation() { }
     public DbConversation(Conversation model) => UpdateFrom(model);
 
-    [Key] public string Id { get; set; } = null!;
+    [DbKey] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
 
     public string ChatId { get; set; } = "";

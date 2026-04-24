@@ -8,7 +8,7 @@ namespace ActualChat.Chat.Db;
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbReadPositionsStat : IHasId<string>, IHasVersion<long>
 {
-    [Key] public string ChatId { get; set; } = null!;
+    [DbKey] public string ChatId { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
 
     public long StartTrackingEntryLid { get; set; }

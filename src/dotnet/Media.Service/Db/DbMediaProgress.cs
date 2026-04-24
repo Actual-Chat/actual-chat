@@ -12,7 +12,7 @@ public class DbMediaProgress : IHasId<string>, IHasVersion<long>, IRequirementTa
     public DbMediaProgress() { }
     public DbMediaProgress(MediaProgress model) => UpdateFrom(model);
 
-    [Key] public string Id { get; set; } = "";
+    [DbKey] public string Id { get; set; } = "";
     [ConcurrencyCheck] public long Version { get; set; }
 
     public MediaProcessingStage Stage { get; set; }

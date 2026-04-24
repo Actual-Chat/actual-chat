@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ActualChat.Users.Db;
@@ -7,7 +6,7 @@ namespace ActualChat.Users.Db;
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbUserPresence : IRequirementTarget
 {
-    [Key] public string UserId { get; set; } = "";
+    [DbKey] public string UserId { get; set; } = "";
 
     public bool IsActive { get; set; }
 

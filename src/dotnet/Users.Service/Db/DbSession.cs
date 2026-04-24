@@ -16,7 +16,7 @@ public class DbSession : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private NewtonsoftJsonSerialized<ImmutableOptionSet> _options = ImmutableOptionSet.Empty;
 
-    [Key, StringLength(256)]
+    [DbKey, StringLength(256)]
     public string Id { get; set; } = "";
 
     [ConcurrencyCheck]

@@ -11,7 +11,7 @@ namespace ActualChat.Chat.Db;
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbTranslation : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    [Key] public string Id { get; set; } = "";
+    [DbKey] public string Id { get; set; } = "";
     [ConcurrencyCheck] public long Version { get; set; }
     public string Content { get; set; } = "";
     public string SourceContentHash { get; set; } = "";

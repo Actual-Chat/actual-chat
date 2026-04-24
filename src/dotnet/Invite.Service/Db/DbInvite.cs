@@ -21,7 +21,7 @@ public class DbInvite : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public DbInvite() { }
     public DbInvite(Invite invite) => UpdateFrom(invite);
 
-    [Key] public string Id { get; set; } = null!;
+    [DbKey] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
 
     public string SearchKey { get; set; } = "";

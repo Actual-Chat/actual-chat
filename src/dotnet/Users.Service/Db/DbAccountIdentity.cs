@@ -7,8 +7,7 @@ namespace ActualChat.Users.Db;
 [Index(nameof(Id))]
 public class DbAccountIdentity : IHasId<string>
 {
-    [Key]
-    public string Id { get; set; } = "";
+    [DbKey] public string Id { get; set; } = "";
     [Column("AccountId")]
     public string DbAccountId { get; set; } = "";
     public string Secret { get; set; } = "";

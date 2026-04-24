@@ -9,7 +9,7 @@ namespace ActualChat.Users.Db;
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbChatPosition : IHasId<string>, IRequirementTarget
 {
-    [Key] public string Id { get; set; } = null!;
+    [DbKey] public string Id { get; set; } = null!;
     public ChatPositionKind Kind { get; set; }
     public long EntryLid { get; set; }
     public string Origin { get; set; } = "";

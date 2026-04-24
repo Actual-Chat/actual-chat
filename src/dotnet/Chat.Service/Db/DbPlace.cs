@@ -14,7 +14,7 @@ public class DbPlace : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public DbPlace() { }
     public DbPlace(Place model) => UpdateFrom(model);
 
-    [Key] public string Id { get; set; } = null!;
+    [DbKey] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
 
     public string Title { get; set; } = "";

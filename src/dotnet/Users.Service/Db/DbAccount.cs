@@ -14,7 +14,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
     private NewtonsoftJsonSerialized<ImmutableDictionary<string, string>?> _claims
         = ImmutableDictionary<string, string>.Empty;
 
-    [Key] public string Id { get; set; } = null!;
+    [DbKey] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
 
     // FormatVersion: always 2 for all accounts (legacy versions 0 and 1 have been migrated)

@@ -11,7 +11,7 @@ namespace ActualChat.Contacts.Db;
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbThreadContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    [Key] public string Id { get; set; } = null!;
+    [DbKey] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
 
     public string OwnerId { get; set; } = "";
