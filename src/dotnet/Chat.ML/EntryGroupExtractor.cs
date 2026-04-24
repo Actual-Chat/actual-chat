@@ -32,20 +32,20 @@ public record EntryGroup(IReadOnlyList<ChatEntrySlim> Entries, int WordCount = 0
 
 public record ReplySequence(IReadOnlyList<ChatEntrySlim> Entries);
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record ExtractorState(
-    [property: DataMember, MemoryPackOrder(0), NbKey(0)] EntryGroupBuilder? CurrentGroup,
-    [property: DataMember, MemoryPackOrder(1), NbKey(1)] EntryGroupBuilder? CurrentChunk)
+    [property: DataMember, MemoryPackOrder(0)] EntryGroupBuilder? CurrentGroup,
+    [property: DataMember, MemoryPackOrder(1)] EntryGroupBuilder? CurrentChunk)
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public long MinLid => CurrentGroup?.MinLid ?? (CurrentChunk?.MinLid ?? 0);
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public long MaxLid => Math.Max(CurrentChunk?.MaxLid ?? 0, CurrentGroup?.MaxLid ?? 0);
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ChatEntrySlim? LastEntry => CurrentChunk?.Entries.LastOrDefault() ?? CurrentGroup?.Entries.LastOrDefault();
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public int WordCount => (CurrentGroup?.WordCount ?? 0) + (CurrentChunk?.WordCount ?? 0);
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public int EntryCount => (CurrentGroup?.Entries.Count ?? 0) + (CurrentChunk?.Entries.Count ?? 0);
 }
 

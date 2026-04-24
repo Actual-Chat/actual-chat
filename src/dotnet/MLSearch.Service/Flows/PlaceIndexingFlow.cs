@@ -6,7 +6,7 @@ using ActualChat.Search;
 
 namespace ActualChat.MLSearch.Flows;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class PlaceIndexingFlow : BatchedIndexingFlow<Place, PlaceId>, IMasterFlow
 {
     private Task WhenReady => field ??= Services.GetRequiredService<OpenSearchConfigurator>().WhenReady;

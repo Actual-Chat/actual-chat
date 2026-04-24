@@ -8,7 +8,7 @@ namespace ActualChat.Redis;
 /// </summary>
 public readonly struct RedisSerializer(IByteSerializer serializer)
 {
-    public static readonly RedisSerializer Default = new(Serializers.MessagePack);
+    public static readonly RedisSerializer Default = new(MessagePackByteSerializer.Default);
 
     public IByteSerializer Serializer { get; } = serializer;
 

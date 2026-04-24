@@ -17,7 +17,6 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'Api'">Contracts</ProjectKind>
-    <ProjectKind Condition="'$(MSBuildProjectName)' == 'SignalR.Client'">Contracts</ProjectKind>
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'Backend'">Contracts</ProjectKind>
     <ProjectKind Condition="$(MSBuildProjectName.EndsWith('.Contracts'))">Contracts</ProjectKind>
     <ProjectKind Condition="$(MSBuildProjectName.EndsWith('.Service'))">Service</ProjectKind>
@@ -53,19 +52,6 @@
     <IsStandaloneProject Condition="'$(ProjectKind)' == 'App.ConsoleClient'">true</IsStandaloneProject>
     <IsStandaloneProject Condition="'$(ProjectKind)' == 'App.AotHelper'">true</IsStandaloneProject>
     <IsMauiProject Condition="'$(ProjectKind)' == 'Maui'">true</IsMauiProject>
-
-    <!-- PolyType source-gen: opt-in. Only the 5 projects whose witnesses we actually
-         consume — Core, Api, Api.Contracts, UI.Blazor, UI.Blazor.App — get the generator.
-         Server-side projects (Backend, Core.Server, all Service/Contracts/Migration, App.Server)
-         deliberately go through PolyType's reflection provider at runtime; running the
-         source-gen there would only burn build time and produce dead `Witness.GeneratedTypeShapeProvider`
-         that nobody references. Keep this list in sync with App.AotHelper's AssemblyNames. -->
-    <UsePolyTypeGenerator>false</UsePolyTypeGenerator>
-    <UsePolyTypeGenerator Condition="'$(MSBuildProjectName)' == 'Core'">true</UsePolyTypeGenerator>
-    <UsePolyTypeGenerator Condition="'$(MSBuildProjectName)' == 'Api'">true</UsePolyTypeGenerator>
-    <UsePolyTypeGenerator Condition="'$(MSBuildProjectName)' == 'Api.Contracts'">true</UsePolyTypeGenerator>
-    <UsePolyTypeGenerator Condition="'$(MSBuildProjectName)' == 'UI.Blazor'">true</UsePolyTypeGenerator>
-    <UsePolyTypeGenerator Condition="'$(MSBuildProjectName)' == 'UI.Blazor.App'">true</UsePolyTypeGenerator>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -323,7 +309,6 @@
     <Using Include="ActualLab.DependencyInjection" />
     <Using Include="ActualLab.Mathematics" />
     <Using Include="ActualLab.Serialization" />
-    <Using Include="ActualChat.Serialization" />
     <Using Include="ActualLab.OS" />
     <Using Include="ActualLab.Reflection" />
     <Using Include="ActualLab.Text" />
@@ -358,18 +343,14 @@
     <Using Include="Microsoft.Extensions.DependencyInjection" />
     <!-- Everything else -->
     <Using Include="MemoryPack" />
-    <Using Include="Nerdbank.MessagePack" />
-    <Using Include="PolyType" />
-    <!-- `[Key(int)]` collides with DataAnnotations.KeyAttribute on server projects. The alias
-         lets every project use `[NbKey(N)]` unambiguously without fully qualifying. -->
-    <Using Include="Nerdbank.MessagePack.KeyAttribute" Alias="NbKey" />
+    <Using Include="MessagePack" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' and $(IsServerSideProject)">
     <Using Include="ActualChat.Blobs" />
     <Using Include="ActualChat.Mesh" />
     <Using Include="ActualChat.Sharding" />
-    <!-- Resolve ambiguity: server projects use DataAnnotations.Key for EF, not Nerdbank.MessagePack.Key -->
+    <!-- Resolve ambiguity: server projects use DataAnnotations.Key for EF, not MessagePack.Key -->
     <Using Include="System.ComponentModel.DataAnnotations.KeyAttribute" Alias="KeyAttribute" />
   </ItemGroup>
 

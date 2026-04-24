@@ -4,11 +4,11 @@
 public abstract class IndexingFlow<TCursor> : Flow<string>, IHasLastRunAt
 {
     // Persisted state
-    [DataMember(Order = 0), MemoryPackOrder(0), NbKey(0)]
+    [DataMember(Order = 0), MemoryPackOrder(0)]
     public TCursor? Cursor { get; set; }
-    [DataMember(Order = 1), MemoryPackOrder(1), NbKey(1)]
+    [DataMember(Order = 1), MemoryPackOrder(1)]
     public Moment LastRunAt { get; set; }
-    [DataMember(Order = 2), MemoryPackOrder(2), NbKey(2)]
+    [DataMember(Order = 2), MemoryPackOrder(2)]
     public FlowReadiness LastReadiness { get; set; }
 
     // Overridable methods

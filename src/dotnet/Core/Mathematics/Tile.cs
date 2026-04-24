@@ -9,20 +9,21 @@ namespace ActualChat.Mathematics;
 [StructLayout(LayoutKind.Auto)]
 [Newtonsoft.Json.JsonObject(Newtonsoft.Json.MemberSerialization.OptOut)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[MessagePackObject(true, AllowPrivate = true)]
 public readonly partial struct Tile<T>
     where T : struct, INumber<T>
 {
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public Range<T> Range { get; }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public TileLayer<T> Layer { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public TileStack<T> Stack => Layer.Stack;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public T Start => Range.Start;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public T End => Range.End;
 
     public Tile(T start, T end, TileLayer<T> layer)
@@ -37,7 +38,7 @@ public readonly partial struct Tile<T>
         Layer = layer;
     }
 
-    [ConstructorShape, JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
     private Tile(Range<T> range)
     {
         Range = range;

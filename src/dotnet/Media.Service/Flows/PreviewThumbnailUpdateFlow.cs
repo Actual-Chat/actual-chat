@@ -4,7 +4,7 @@ using ActualChat.Media.Module;
 namespace ActualChat.Media.Flows;
 
 [Flow(DelayQuanta = 1)] // Extra resumes are fine
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial class PreviewThumbnailUpdateFlow : ThrottledUpdateFlow
 {
     private MediaSettings MediaSettings => field ??= Services.GetRequiredService<MediaSettings>();

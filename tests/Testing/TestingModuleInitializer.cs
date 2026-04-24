@@ -1,3 +1,5 @@
+using ActualLab.Testing;
+
 namespace ActualChat.Testing;
 
 #pragma warning disable CA2255
@@ -10,8 +12,5 @@ internal static class TestingModuleInitializer
 #if !USE_MEMORYPACK
         SerializationTestExt.UseMemoryPackSerializer = false;
 #endif
-        // Post-migration: MessagePack-CSharp is gone, Nerdbank.MessagePack owns the wire.
-        SerializationTestExt.UseMessagePackSerializer = false;
-        SerializationTestExt.UseNerdbankMessagePackSerializer = true;
     }
 }

@@ -3,18 +3,18 @@ namespace ActualChat.Streaming;
 /// <summary>
 /// Represents an active audio recording session for a chat entry.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record AudioRecord(
-    [property: DataMember, MemoryPackOrder(0), NbKey(0)] StreamId StreamId, // Ignored on upload
-    [property: DataMember, MemoryPackOrder(1), NbKey(1)] Session Session,
-    [property: DataMember, MemoryPackOrder(2), NbKey(2)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(3), NbKey(3)] double ClientStartOffset,
-    [property: DataMember, MemoryPackOrder(4), NbKey(4)] ChatEntryId? RepliedEntryId
+    [property: DataMember, MemoryPackOrder(0)] StreamId StreamId, // Ignored on upload
+    [property: DataMember, MemoryPackOrder(1)] Session Session,
+    [property: DataMember, MemoryPackOrder(2)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(3)] double ClientStartOffset,
+    [property: DataMember, MemoryPackOrder(4)] ChatEntryId? RepliedEntryId
     ) : IHasId<StreamId>, IHasNodeRef
 {
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     NodeRef IHasNodeRef.NodeRef => StreamId.NodeRef;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     StreamId IHasId<StreamId>.Id => StreamId;
 
     // This record relies on referential equality

@@ -5,7 +5,7 @@ namespace ActualChat.Flows;
 
 public abstract class Flow<TResult> : Flow
 {
-    [IgnoreDataMember, MemoryPackIgnore, PropertyShape(Ignore = true)]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public Result<TResult>? Result {
         get => (Result<TResult>?)UntypedResult;
         private set => ((IFlowImpl)this).UntypedResult = value;
@@ -32,27 +32,27 @@ public abstract class Flow<TResult> : Flow
 
 public abstract class Flow : IFlowImpl
 {
-    [IgnoreDataMember, MemoryPackIgnore, PropertyShape(Ignore = true)]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     protected FlowRuntime Runtime { get; private set; } = null!;
-    [IgnoreDataMember, MemoryPackIgnore, PropertyShape(Ignore = true)]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     protected FlowHub Hub => Runtime?.Hub!;
-    [IgnoreDataMember, MemoryPackIgnore, PropertyShape(Ignore = true)]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     protected IServiceProvider Services => Runtime?.Services!;
-    [IgnoreDataMember, MemoryPackIgnore, PropertyShape(Ignore = true)]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     protected FlowDef FlowDef => Runtime.FlowDef;
 
     // Properties that are persisted to the DB directly
-    [IgnoreDataMember, MemoryPackIgnore, PropertyShape(Ignore = true)]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public FlowId Id { get; private set; }
-    [IgnoreDataMember, MemoryPackIgnore, PropertyShape(Ignore = true)]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public long Version { get; private set; }
-    [IgnoreDataMember, MemoryPackIgnore, PropertyShape(Ignore = true)]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public int DataVersion { get; private set; }
-    [IgnoreDataMember, MemoryPackIgnore, PropertyShape(Ignore = true)]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public IResult? UntypedResult { get; private set; }
-    [IgnoreDataMember, MemoryPackIgnore, PropertyShape(Ignore = true)]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public FlowConsole Console { get; private set; } = null!;
-    [IgnoreDataMember, MemoryPackIgnore, PropertyShape(Ignore = true)]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     protected Moment ResumedAt { get; private set; }
 
     // IFlowImpl properties

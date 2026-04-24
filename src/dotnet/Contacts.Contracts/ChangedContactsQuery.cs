@@ -1,13 +1,13 @@
-namespace ActualChat.Contacts;
+﻿namespace ActualChat.Contacts;
 
 /// <summary>
 /// Query parameters for listing changed contacts by version range.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record ChangedContactsQuery
 {
-    [DataMember, MemoryPackOrder(2), NbKey(2)] public required ContactId? LastId { get; init; }
-    [DataMember, MemoryPackOrder(3), NbKey(3)] public required int Limit { get; init; }
-    [DataMember, MemoryPackOrder(0), NbKey(0)] public long MinVersion { get; init; }
-    [DataMember, MemoryPackOrder(1), NbKey(1)] public long MaxVersion { get; init; } = long.MaxValue;
+    [DataMember, MemoryPackOrder(2)] public required ContactId? LastId { get; init; }
+    [DataMember, MemoryPackOrder(3)] public required int Limit { get; init; }
+    [DataMember, MemoryPackOrder(0)] public long MinVersion { get; init; }
+    [DataMember, MemoryPackOrder(1)] public long MaxVersion { get; init; } = long.MaxValue;
 }

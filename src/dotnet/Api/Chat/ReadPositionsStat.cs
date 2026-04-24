@@ -1,10 +1,10 @@
-namespace ActualChat.Chat;
+﻿namespace ActualChat.Chat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record ReadPositionsStat(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] long StartTrackingEntryLid,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] AuthorReadPosition[] TopReadPositions)
+    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(1)] long StartTrackingEntryLid,
+    [property: DataMember, MemoryPackOrder(2)] AuthorReadPosition[] TopReadPositions)
 {
     public bool CanCalculateHasReadByAnotherAuthor(ChatEntry chatEntry)
         => CanCalculateHasReadByAnotherAuthor(chatEntry.Id);
@@ -26,7 +26,7 @@ public partial record ReadPositionsStat(
     }
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record AuthorReadPosition(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] AuthorId AuthorId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] long EntryLid);
+    [property: DataMember, MemoryPackOrder(0)] AuthorId AuthorId,
+    [property: DataMember, MemoryPackOrder(1)] long EntryLid);

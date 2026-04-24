@@ -16,7 +16,7 @@ namespace ActualChat.Chat.Db;
 public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private static ITextSerializer<SystemEntry> SystemEntrySerializer { get; } =
-        Serializers.SystemJson.ToTyped<SystemEntry>();
+        SystemJsonSerializer.Default.ToTyped<SystemEntry>();
 
     public DbChatEntry() { }
     public DbChatEntry(ChatEntry model) => UpdateFrom(model);

@@ -1,65 +1,20 @@
-using ActualChat.Audio;
+using ActualChat.Aot;
 using ActualChat.Internal;
-using ActualChat.Video;
 
 namespace ActualChat.Module;
 
+/// <summary>
+/// Module initializer that registers MemoryPack formatters for identifiers.
+/// </summary>
 #pragma warning disable CA2255
 
-/// <summary>
-/// API module initializer that registers MessagePack formatters and MessagePack converters
-/// for a number of types declared in this assembly.
-/// </summary>
-public static partial class ApiModuleInitializer
+public static class ApiModuleInitializer
 {
-    /// <summary>
-    /// IStringLike identifier types owned by ActualChat.Api. Single source of truth — used both
-    /// for the MemoryPack formatter list below and the Nerdbank converter registration.
-    /// </summary>
-    private static readonly Type[] StringLikeIdentifiers = [
-        // Fixed lists
-        typeof(Emoji), typeof(Country), typeof(Interest), typeof(Language),
-        // Common / general identifiers
-        typeof(AliasId), typeof(MediaId), typeof(StreamId), typeof(Phone), typeof(Email),
-        typeof(LocalUrl),
-        // Principal identifiers
-        typeof(PrincipalId), typeof(UserId), typeof(AuthorId), typeof(UserIdentity),
-        // User-related
-        typeof(RoleId), typeof(ContactId), typeof(ExternalContactId),
-        typeof(NotificationId), typeof(ExplicitNotificationId), typeof(UserDeviceId),
-        // Chat identifiers
-        typeof(PlaceId), typeof(ChatId), typeof(PeerChatId), typeof(GroupChatId),
-        typeof(PlaceChatId), typeof(ThreadChatId),
-        // Chat entry identifiers
-        typeof(ChatEntryId),
-        // Other chat-related identifiers
-        typeof(MentionId), typeof(ConversationId),
-        typeof(TranslationId), typeof(TranslationSourceId),
-        // Content identifiers
-        typeof(ContentId), typeof(UploadId),
-    ];
-
-    public static void Load() { }
-
     [ModuleInitializer]
     internal static void ModuleInitializer()
     {
-        CoreModuleInitializer.Load();
-        // AotTypes.AddSource + Serializers.RegisterShapeProvider(ApiWitness.Generated…) are
-        // handled by the generated ApiModuleInitializer.g.cs half's RegisterGenerated.
-        // Union dispatch goes through PolyType's native [DerivedTypeShape] attributes on each
-        // union base (see MediaFrame, LiveStreamItem, StoredSettings) — Nerdbank picks them up
-        // from the codegen shape (so PolyType's reflection-emit dispatcher, which has a
-        // one-byte-branch overflow for large unions, is bypassed).
-        Serializers.RegisterStringLikeTypes(StringLikeIdentifiers);
-
-        // Hand-written serialize-once-fan-out converters for AudioFrame / VideoFrame.
-        // Both wire variants (Key-honoring and keyless) get the same map layout — application
-        // code never sees the auto-generated converter for these types.
-        Serializers.RegisterConverters([
-            CachingAudioFrameFormatter.Instance,
-            CachingVideoFrameFormatter.Instance,
-        ]);
+        AotTypes.AddSource(new ApiAotSource());
+        CoreSerializerAndRpcSetup.AddGeneratedMessagePackResolver(GeneratedMessagePackResolver.Instance);
         // This is super important: TypeRef and some other types that were formerly using Symbol
         // are stored in our DB, and this option enables their legacy serialization mode.
         StringAsSymbolMemoryPackFormatterAttribute.IsEnabled = true;

@@ -6,7 +6,7 @@
 [DataContract]
 public abstract record MediaFormat
 {
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public abstract MediaType Type { get; }
 
     public abstract byte[] Serialize(int index = 0);

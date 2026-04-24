@@ -27,15 +27,15 @@ public interface IRolesBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to create, update, or delete a role.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record RolesBackend_Change(
-    [property: DataMember, MemoryPackOrder(0), NbKey(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1), NbKey(1)] RoleId? RoleId,
-    [property: DataMember, MemoryPackOrder(2), NbKey(2)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(3), NbKey(3)] Change<RoleDiff> Change
+    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(1)] RoleId? RoleId,
+    [property: DataMember, MemoryPackOrder(2)] long? ExpectedVersion,
+    [property: DataMember, MemoryPackOrder(3)] Change<RoleDiff> Change
 ) : ICommand<Role>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ChatId ShardKey => ChatId;
 }

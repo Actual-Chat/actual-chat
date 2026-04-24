@@ -20,14 +20,14 @@ public interface IUserPresencesBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to record a user's presence check-in.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record UserPresencesBackend_CheckIn(
-    [property: DataMember, MemoryPackOrder(0), NbKey(0)] UserId UserId,
-    [property: DataMember, MemoryPackOrder(1), NbKey(1)] Moment At,
-    [property: DataMember, MemoryPackOrder(2), NbKey(2)] bool IsActive
+    [property: DataMember, MemoryPackOrder(0)] UserId UserId,
+    [property: DataMember, MemoryPackOrder(1)] Moment At,
+    [property: DataMember, MemoryPackOrder(2)] bool IsActive
 ) : IDelegatingCommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public UserId ShardKey => UserId;
 }

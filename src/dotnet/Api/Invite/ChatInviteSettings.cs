@@ -3,7 +3,7 @@ namespace ActualChat.Invite;
 /// <summary>
 /// Stores the activation key for a chat invite.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record ChatInviteSettings : StoredSettings
 {
     public static readonly string KeyPrefix = "@Invite.Chat(";
@@ -19,5 +19,5 @@ public sealed partial record ChatInviteSettings : StoredSettings
         ChatId.Parse(chatIdValue);
     }
 
-    [DataMember, MemoryPackOrder(0), Key(0)] public string ActivationKey { get; init; } = "";
+    [DataMember, MemoryPackOrder(0)] public string ActivationKey { get; init; } = "";
 }

@@ -7,7 +7,8 @@ namespace ActualChat.Search;
 /// <summary>
 /// Represents a parsed search query with terms and matching configuration.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[MessagePackFormatter(typeof(Internal.SearchPhraseMessagePackFormatter))]
 public sealed partial class SearchPhrase
 {
     [GeneratedRegex("[\\s_]+")]
@@ -22,11 +23,11 @@ public sealed partial class SearchPhrase
     [DataMember, MemoryPackOrder(0)] public string[] Terms { get; }
     [DataMember, MemoryPackOrder(1)] public bool MatchPrefixes { get; }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public string Text => _text ??= Terms.ToDelimitedString(" ");
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public Regex TermRegex => _termRegex ??= new Regex(GetTermRegexString(), RegexOptions.IgnoreCase);
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsEmpty => Terms.Length == 0;
 
     public SearchPhrase(string text, bool matchPrefixes, bool matchSuffixes)
@@ -35,7 +36,7 @@ public sealed partial class SearchPhrase
         MatchPrefixes = matchPrefixes;
     }
 
-    [ConstructorShape, JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
     public SearchPhrase(string[] terms, bool matchPrefixes)
     {
         Terms = terms;

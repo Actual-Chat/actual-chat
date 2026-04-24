@@ -4,6 +4,7 @@ using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Components.Internal;
 using ActualChat.UI.Blazor.Components.SideNav;
 using ActualChat.UI.Blazor.Services;
+using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -151,7 +152,7 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
 #pragma warning restore CA1861
 
         static void Warmup<T>(T instance) {
-            var s = Serializers.MessagePack;
+            var s = ByteSerializer.Default;
             using var buffer = s.Write(instance, typeof(T));
             s.Read(buffer.WrittenMemory, typeof(T), out _);
         }
@@ -190,7 +191,7 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
         return;
 
         static void Warmup<T>(T instance) {
-            var s = Serializers.SystemJson;
+            var s = SystemJsonSerializer.Default;
             var json = s.Write(instance);
             s.Read<T>(json);
         }

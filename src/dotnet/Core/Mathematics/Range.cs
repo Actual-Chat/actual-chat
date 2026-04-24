@@ -8,6 +8,7 @@ namespace ActualChat.Mathematics;
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 [StructLayout(LayoutKind.Sequential, Pack = 1)] // Important!
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[MessagePackFormatter(typeof(ActualChat.Serialization.Internal.RangeMessagePackFormatter<>))]
 [Newtonsoft.Json.JsonObject(Newtonsoft.Json.MemberSerialization.OptOut)]
 public readonly partial struct Range<T> : IEquatable<Range<T>>
     where T : notnull
@@ -27,11 +28,11 @@ public readonly partial struct Range<T> : IEquatable<Range<T>>
     /// <summary>
     /// Indicates whether the range is empty (has no items).
     /// </summary>
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsEmpty => EqualityComparer<T>.Default.Equals(Start, End);
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsNegative => Comparer<T>.Default.Compare(Start, End) > 0;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsEmptyOrNegative => Comparer<T>.Default.Compare(Start, End) >= 0;
 
     /// <summary>
@@ -39,7 +40,7 @@ public readonly partial struct Range<T> : IEquatable<Range<T>>
     /// </summary>
     /// <param name="start"><see cref="Start"/> property value.</param>
     /// <param name="end"><see cref="End"/> property value.</param>
-    [ConstructorShape, JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
     public Range(T start, T end)
     {
         Start = start;
@@ -60,7 +61,7 @@ public readonly partial struct Range<T> : IEquatable<Range<T>>
 
     /// <inheritdoc />
     public override string ToString()
-        => Serializers.SystemJson.Write(this, GetType());
+        => SystemJsonSerializer.Default.Write(this, GetType());
 
 #pragma warning disable CA1000, MA0018 // Do not declare static members on generic types
     /// <summary>
@@ -69,7 +70,7 @@ public readonly partial struct Range<T> : IEquatable<Range<T>>
     /// <param name="value">The string representation of the range to parse.</param>
     /// <returns>Parsed range.</returns>
     public static Range<T> Parse(string value)
-        => Serializers.SystemJson.Read<Range<T>>(value);
+        => SystemJsonSerializer.Default.Read<Range<T>>(value);
 
     /// <summary>
     /// Implicit conversion of a 2-item <see cref="ValueTuple"/> to range.

@@ -18,10 +18,9 @@ public class KvasSerializer : ByteSerializerBase
     public static KvasSerializer Default { get; set; } = new();
     public static readonly byte[] SerializedTrue = Default.Write(true, typeof(bool)).WrittenMemory.ToArray();
 
-    public bool PreferMemoryPack { get; init; }
-    public IByteSerializer MemoryPackSerializer { get; init; } = Serializers.MemoryPack;
-    public IByteSerializer MessagePackSerializer { get; init; } = Serializers.MessagePack;
-    public ITextSerializer TextSerializer { get; init; } = Serializers.SystemJson;
+    public IByteSerializer MemoryPackSerializer { get; init; } = MemoryPackByteSerializer.Default;
+    public IByteSerializer MessagePackSerializer { get; init; } = MessagePackByteSerializer.Default;
+    public ITextSerializer TextSerializer { get; init; } = SystemJsonSerializer.Default;
 
     public override object? Read(
         ReadOnlyMemory<byte> data,
@@ -39,7 +38,7 @@ public class KvasSerializer : ByteSerializerBase
                 _ => TextSerializer.Read(data, type, out readLength), // Legacy JSON format (no marker)
             };
         }
-        catch (Exception e) when (e is MemoryPackSerializationException or MessagePackSerializationException) {
+        catch (MemoryPackSerializationException e) {
             Log.LogWarning(e, "Failed to deserialize data of type {Type} with length {Length}", type, data.Length);
             readLength = 0;
             return null;
@@ -51,13 +50,7 @@ public class KvasSerializer : ByteSerializerBase
         object? value,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type)
     {
-        if (PreferMemoryPack) {
-            bufferWriter.Write(MemoryPackHeader);
-            MemoryPackSerializer.Write(bufferWriter, value, type);
-        }
-        else {
-            bufferWriter.Write(MessagePackHeader);
-            MessagePackSerializer.Write(bufferWriter, value, type);
-        }
+        bufferWriter.Write(MessagePackHeader);
+        MessagePackSerializer.Write(bufferWriter, value, type);
     }
 }

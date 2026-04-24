@@ -2,7 +2,6 @@ using System.Text;
 using ActualChat.Audio.WebM;
 using ActualChat.Module;
 using ActualChat.Rpc.Internal;
-using ActualChat.UI.Blazor.App.Module;
 using ActualLab.Fusion.Client;
 using ActualLab.Rpc;
 using Grpc.Core;
@@ -21,8 +20,7 @@ internal static class Program
 #endif
 
         RuntimeInfo.IsServer = true;
-        BlazorUIAppModuleInitializer.Load();
-        CoreModuleInitializer.Configure();
+        CoreSerializerAndRpcSetup.Configure(isServer: true);
         RpcOutboundCallOptions.Default = RpcOutboundCallOptions.Default with {
             Hasher = data => {
                 // SIMD-based version of Blake3 we use here is much faster than SSH256.

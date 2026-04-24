@@ -9,45 +9,45 @@ namespace ActualChat.Media;
 #pragma warning disable MA0049 // Allows ActualChat.Media.Media
 
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record Media : IHasId<MediaId>, IHasVersion<long>, IHasMetadata, IRequirementTarget
 {
-    [DataMember, MemoryPackOrder(0), Key(0)] public MediaId Id { get; init; }
-    [DataMember, MemoryPackOrder(1), Key(1)] public string BlobId { get; init; } = "";
-    [DataMember, MemoryPackOrder(2), Key(2)] public long Version { get; init; }
-    [DataMember, MemoryPackOrder(9), Key(3)] public MediaKind Kind { get; init; }
-    [DataMember, MemoryPackOrder(10), Key(4)] public PropertyBag Metadata { get; init; }
+    [DataMember, MemoryPackOrder(0)] public MediaId Id { get; init; }
+    [DataMember, MemoryPackOrder(1)] public string BlobId { get; init; } = "";
+    [DataMember, MemoryPackOrder(2)] public long Version { get; init; }
+    [DataMember, MemoryPackOrder(9)] public MediaKind Kind { get; init; }
+    [DataMember, MemoryPackOrder(10)] public PropertyBag Metadata { get; init; }
 
     // Computed properties
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsReady => !BlobId.IsNullOrEmpty();
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, PropertyShape(Ignore=true)]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public long Length {
         get => this.GetMetadataValue(0L);
         init => this.SetMetadataValue(value);
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, PropertyShape(Ignore=true)]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public string FileName {
         get => this.GetMetadataValue("");
         init => this.SetMetadataValue(value);
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, PropertyShape(Ignore=true)]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public string ContentType {
         get => this.GetMetadataValue("");
         init => this.SetMetadataValue(value);
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, PropertyShape(Ignore=true)]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public int Width {
         get => this.GetMetadataValue<int>();
         init => this.SetMetadataValue(value);
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, PropertyShape(Ignore=true)]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public int Height {
         get => this.GetMetadataValue<int>();
         init => this.SetMetadataValue(value);
@@ -55,25 +55,25 @@ public partial record Media : IHasId<MediaId>, IHasVersion<long>, IHasMetadata, 
 
     // Used when Kind = ChatEntryXxx
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, PropertyShape(Ignore=true)]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public Moment BeginsAt {
         get => this.GetMetadataValue<Moment>();
         init => this.SetMetadataValue(value);
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, PropertyShape(Ignore=true)]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public Moment EndsAt {
         get => this.GetMetadataValue<Moment>();
         init => this.SetMetadataValue(value);
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, PropertyShape(Ignore=true)]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public Moment ContentEndsAt {
         get => this.GetMetadataValue<Moment>();
         init => this.SetMetadataValue(value);
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, PropertyShape(Ignore=true)]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public Moment ClientSideBeginsAt {
         get => this.GetMetadataValue<Moment>();
         init => this.SetMetadataValue(value);
@@ -85,7 +85,7 @@ public partial record Media : IHasId<MediaId>, IHasVersion<long>, IHasMetadata, 
     public Media(MediaId id)
         => Id = id;
 
-    [ConstructorShape, JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
     public Media(MediaId id, long version, string blobId, PropertyBag metadata)
     {
         Id = id;

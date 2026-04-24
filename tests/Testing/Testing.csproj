@@ -18,7 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\dotnet\Api.Contracts\Api.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\dotnet\Api\Api.csproj" />
     <ProjectReference Include="..\..\src\dotnet\Core.Server\Core.Server.csproj" />
   </ItemGroup>
 

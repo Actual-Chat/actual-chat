@@ -2,7 +2,8 @@ using System.Numerics;
 
 namespace ActualChat.Mathematics;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[MessagePackFormatter(typeof(Internal.LinearMapMessagePackFormatter))]
 public readonly partial struct LinearMap
 {
     public static readonly LinearMap Zero = new(Vector2.Zero);
@@ -12,7 +13,7 @@ public readonly partial struct LinearMap
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public float[] Data => _data ?? [];
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ReadOnlySpan<Vector2> Points {
         get {
             var data = _data;
@@ -25,21 +26,21 @@ public readonly partial struct LinearMap
         }
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public int Length => _data == null ? 0 : _data.Length >> 1;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsEmpty => _data == null || _data.Length == 0;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsDegenerate => Data.Length < 4;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public Range<float> XRange => IsEmpty ? default : new Range<float>(Points[0].X, Points[^1].X);
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public Range<float> YRange => IsEmpty ? default : new Range<float>(Points[0].Y, Points[^1].Y);
 
-    [IgnoreDataMember] public Vector2 this[int index] => Points[index];
-    [IgnoreDataMember] public LinearMap this[Range range] => new(Points[range]);
+    [IgnoreMember] public Vector2 this[int index] => Points[index];
+    [IgnoreMember] public LinearMap this[Range range] => new(Points[range]);
 
-    [ConstructorShape, JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
     public LinearMap(params float[] data)
     {
         if ((data.Length & 1) != 0)

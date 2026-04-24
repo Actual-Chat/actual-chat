@@ -210,9 +210,8 @@
     <UseInterpreter Condition="'$(Configuration)' == 'Release'">false</UseInterpreter>
   </PropertyGroup>
 
-  <!-- R2R exclusions (Android + Windows Release). Inert when UseNativeAot=true since
-       PublishReadyToRun is forced off by the common NAOT block at the end. -->
-  <ItemGroup Condition="'$(Configuration)' == 'Release'">
+  <!-- R2R exclusions (applies to both Android and Windows Release builds, only when not using Native AOT) -->
+  <ItemGroup Condition="'$(Configuration)' == 'Release' and !$(UseNativeAot)">
     <PublishReadyToRunExclude Include="PhoneNumbers.dll" />
   </ItemGroup>
 
@@ -288,10 +287,8 @@
     <EmbedAssembliesIntoApk Condition="'$(EmbedAssembliesIntoApk)' == ''">False</EmbedAssembliesIntoApk>
   </PropertyGroup>
 
-  <!-- Android: Release configuration (default — Mono AOT or CoreCLR + R2R). The common
-       NAOT block at the end overrides PublishTrimmed/TrimMode/RunAOTCompilation when
-       UseNativeAot=true, so this block always applies in Release. -->
-  <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
+  <!-- Android: Release configuration (Mono AOT — only when NOT using Native AOT) -->
+  <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release' and !$(UseNativeAot)">
     <RuntimeIdentifiers>android-arm64</RuntimeIdentifiers>
     <!-- Trimming & AOT -->
     <AndroidDexTool>d8</AndroidDexTool>
@@ -345,13 +342,20 @@
     <AndroidAotEnableLazyLoad>True</AndroidAotEnableLazyLoad>
   </PropertyGroup>
 
-  <!-- Android: CoreCLR mode (instead of Mono). The common NAOT block at the end overrides
-       PublishReadyToRun / PublishReadyToRunComposite when UseNativeAot=true. -->
-  <PropertyGroup Condition="$(UseCoreClr) and $(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
+  <!-- Android: CoreCLR mode (instead of Mono) — only when NOT using Native AOT -->
+  <PropertyGroup Condition="$(UseCoreClr) and !$(UseNativeAot) and $(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
     <UseMonoRuntime>false</UseMonoRuntime>
     <RunAOTCompilation>false</RunAOTCompilation>
     <PublishReadyToRun>true</PublishReadyToRun>
     <PublishReadyToRunComposite>true</PublishReadyToRunComposite>
+  </PropertyGroup>
+
+  <!-- Android: Native AOT mode -->
+  <PropertyGroup Condition="$(UseNativeAot) and $(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
+    <PublishAot>true</PublishAot>
+    <RunAOTCompilation>false</RunAOTCompilation>
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <TrimMode>full</TrimMode>
   </PropertyGroup>
 
   <!-- Android: Profile-guided AOT profiles -->
@@ -438,9 +442,8 @@
     <MtouchLink>SdkOnly</MtouchLink>
   </PropertyGroup>
 
-  <!-- iOS: Release configuration (default — Mono + interpreter). The common NAOT block at
-       the end overrides MtouchLink / UseInterpreter when UseNativeAot=true. -->
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net10.0-ios|AnyCPU'">
+  <!-- iOS: Release configuration (default — Mono + interpreter) -->
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net10.0-ios|AnyCPU' and !$(UseNativeAot)">
     <CodesignProvision Condition="'$(IsDevMaui)' == 'true'">App Store Dev</CodesignProvision>
     <CodesignProvision Condition="'$(IsDevMaui)' != 'true'">App Store 2</CodesignProvision>
     <CodesignKey>Apple Distribution: Actual Chat Inc. (M287G8G83F)</CodesignKey>
@@ -450,6 +453,19 @@
     <MTouchInterpreter>-ActualChat</MTouchInterpreter>
     <CreatePackage>false</CreatePackage>
   </PropertyGroup>
+  <!-- iOS: Release configuration (Native AOT) -->
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net10.0-ios|AnyCPU' and $(UseNativeAot)">
+    <CodesignProvision Condition="'$(IsDevMaui)' == 'true'">App Store Dev</CodesignProvision>
+    <CodesignProvision Condition="'$(IsDevMaui)' != 'true'">App Store 2</CodesignProvision>
+    <CodesignKey>Apple Distribution: Actual Chat Inc. (M287G8G83F)</CodesignKey>
+    <ArchiveOnBuild>true</ArchiveOnBuild>
+    <PublishAot>true</PublishAot>
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>full</TrimMode>
+    <MtouchLink>Full</MtouchLink>
+    <UseInterpreter>false</UseInterpreter>
+    <CreatePackage>false</CreatePackage>
+  </PropertyGroup>
 
   <!-- Windows build properties -->
 
@@ -457,10 +473,8 @@
     <!-- <WindowsPackageType>None</WindowsPackageType>-->
   </PropertyGroup>
 
-  <!-- Windows: Release (default — CoreCLR + R2R). The common NAOT block at the end overrides
-       PublishAot / PublishTrimmed / PublishReadyToRun* and adds WindowsPackageType / IlcTrimMetadata
-       when UseNativeAot=true. -->
-  <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release'">
+  <!-- Windows: Release (default — CoreCLR + R2R) -->
+  <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release' and !$(UseNativeAot)">
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
     <PublishAot>false</PublishAot>
@@ -483,6 +497,22 @@
        but on the R2R path instead of NAOT). -->
     <!-- <PublishReadyToRunCrossgen2ExtraArgs>&#45;&#45;embed-pgo-data;&#45;&#45;mibc:$(MSBuildThisFileDirectory)_Profiling\merged.mibc</PublishReadyToRunCrossgen2ExtraArgs> -->
   </PropertyGroup>
+  <!-- Windows: Release (Native AOT) -->
+  <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release' and $(UseNativeAot)">
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <WindowsPackageType>None</WindowsPackageType>
+    <PublishAot>true</PublishAot>
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>full</TrimMode>
+    <OptimizationPreference>Size</OptimizationPreference>
+    <IlcGenerateStackTraceData>true</IlcGenerateStackTraceData>
+    <IlcDisableReflection>false</IlcDisableReflection>
+    <IlcTrimMetadata>false</IlcTrimMetadata>
+    <NativeDebugSymbols>false</NativeDebugSymbols>
+    <StripSymbols>false</StripSymbols>
+  </PropertyGroup>
+
   <!-- Windows: NAudio is not AOT-compatible for its [ComImport]-based COM wrappers
        (MMDeviceEnumeratorComObject..ctor() emits InvalidProgramException under NAOT even
        with TrimmerRootAssembly — confirmed known limitation, see naudio/NAudio#1211 and
@@ -723,33 +753,5 @@
       <_CustomLinkFlags Include="-Wl,/usr/lib/swift" />
     </ItemGroup>
   </Target>
-
-  <!-- Native AOT — single source of truth:
-       Per-platform Release blocks above describe the DEFAULT (non-NAOT) Release
-       behavior — Mono AOT / CoreCLR + R2R / interpreter etc. — and run regardless
-       of UseNativeAot. This block then overrides what conflicts with NAOT and sets
-       the NAOT-specific properties for every TFM (Android / iOS / Windows). Add a
-       new NAOT-only knob? It goes here. -->
-  <PropertyGroup Condition="'$(Configuration)' == 'Release' and $(UseNativeAot)">
-    <!-- NAOT mode -->
-    <PublishAot>true</PublishAot>
-    <PublishTrimmed>true</PublishTrimmed>
-    <TrimMode>full</TrimMode>
-    <IlcGenerateStackTraceData>false</IlcGenerateStackTraceData>
-    <IlcDisableReflection>false</IlcDisableReflection>
-    <IlcTrimMetadata>false</IlcTrimMetadata>
-
-    <!-- Disable Mono AOT / R2R / interpreter — all incompatible with NAOT -->
-    <RunAOTCompilation>false</RunAOTCompilation>
-    <PublishReadyToRun>false</PublishReadyToRun>
-    <PublishReadyToRunComposite>false</PublishReadyToRunComposite>
-    <UseInterpreter>false</UseInterpreter>
-
-    <!-- iOS-only: full mtouch link replaces the default SdkOnly link -->
-    <MtouchLink Condition="$(TargetFramework.Contains('-ios'))">Full</MtouchLink>
-
-    <!-- Windows-only: NAOT publishes a self-contained exe, not an MSIX -->
-    <WindowsPackageType Condition="$(TargetFramework.Contains('-windows'))">None</WindowsPackageType>
-  </PropertyGroup>
 
 </Project>

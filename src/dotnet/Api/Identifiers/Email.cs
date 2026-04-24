@@ -13,6 +13,7 @@ namespace ActualChat;
 [DataContract, MemoryPackable(GenerateType.NoGenerate)]
 [JsonConverter(typeof(StringLikeJsonConverter<Email>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<Email>))]
+[MessagePackFormatter(typeof(StringLikeMessagePackFormatter<Email>))]
 [TypeConverter(typeof(StringLikeTypeConverter<Email>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 public sealed partial class Email : StringIdentifier, IStringIdentifier<Email>

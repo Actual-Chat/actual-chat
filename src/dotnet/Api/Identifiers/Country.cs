@@ -12,6 +12,7 @@ namespace ActualChat;
 [DataContract, MemoryPackable(GenerateType.NoGenerate)]
 [JsonConverter(typeof(StringLikeJsonConverter<Country>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<Country>))]
+[MessagePackFormatter(typeof(StringLikeMessagePackFormatter<Country>))]
 [TypeConverter(typeof(StringLikeTypeConverter<Country>))]
 [ParameterComparer(typeof(ByRefParameterComparer))] // Fine for Country
 public sealed partial class Country : StringIdentifier, IStringIdentifier<Country>

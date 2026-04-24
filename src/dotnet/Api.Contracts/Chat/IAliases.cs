@@ -1,4 +1,4 @@
-namespace ActualChat.Chat;
+﻿namespace ActualChat.Chat;
 
 /// <summary>
 /// Service for resolving human-friendly aliases to chats and places.
@@ -21,7 +21,7 @@ public enum AliasKind { Chat, Place }
 /// <summary>
 /// Represents the target of an alias resolution.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record AliasTarget(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] AliasKind Kind,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] string TargetId);
+    [property: DataMember, MemoryPackOrder(0)] AliasKind Kind,
+    [property: DataMember, MemoryPackOrder(1)] string TargetId);

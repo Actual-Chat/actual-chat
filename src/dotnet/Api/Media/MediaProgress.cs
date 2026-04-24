@@ -4,13 +4,13 @@ using ActualLab.Versioning;
 namespace ActualChat.Media;
 
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record MediaProgress(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] MediaId Id,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] long Version,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] MediaProcessingStage Stage,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] double StageProgress,
-    [property: DataMember, MemoryPackOrder(4), Key(4)] string? Error = null
+    [property: DataMember, MemoryPackOrder(0)] MediaId Id,
+    [property: DataMember, MemoryPackOrder(1)] long Version,
+    [property: DataMember, MemoryPackOrder(2)] MediaProcessingStage Stage,
+    [property: DataMember, MemoryPackOrder(3)] double StageProgress,
+    [property: DataMember, MemoryPackOrder(4)] string? Error = null
 ) : IHasId<MediaId>, IHasVersion<long>
 {
     [IgnoreDataMember, MemoryPackIgnore]

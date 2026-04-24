@@ -13,7 +13,10 @@ public class DbInvite : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     public static readonly RandomStringGenerator IdGenerator = new(10, Alphabet.AlphaNumeric);
     private static ITextSerializer<InviteDetails> DetailsSerializer { get; } =
-        Serializers.SystemJson.ToTyped<InviteDetails>();
+        SystemJsonSerializer.Default.ToTyped<InviteDetails>();
+
+    private DateTime _createdAt;
+    private DateTime _expiresOn;
 
     public DbInvite() { }
     public DbInvite(Invite invite) => UpdateFrom(invite);
@@ -26,13 +29,13 @@ public class DbInvite : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string CreatedBy { get; set; } = "";
 
     public DateTime CreatedAt {
-        get => field.DefaultKind(DateTimeKind.Utc);
-        set => field = value.DefaultKind(DateTimeKind.Utc);
+        get => _createdAt.DefaultKind(DateTimeKind.Utc);
+        set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
     }
 
     public DateTime ExpiresOn {
-        get => field.DefaultKind(DateTimeKind.Utc);
-        set => field = value.DefaultKind(DateTimeKind.Utc);
+        get => _expiresOn.DefaultKind(DateTimeKind.Utc);
+        set => _expiresOn = value.DefaultKind(DateTimeKind.Utc);
     }
 
     public string DetailsJson { get; set; } = "";

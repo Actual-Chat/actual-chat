@@ -4,11 +4,9 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 #pragma warning disable MsgPack005 // Union attr required — handled by custom formatter, Maui subtype unavailable in CI
 
-// Nerdbank-side union dispatch — interface bases are supported by PolyType's [DerivedTypeShape].
-// Tags match the MemoryPack ones on FileProviderUnionFormatter below.
-[DerivedTypeShape(typeof(WebFileProvider), Tag = 0)]
-[DerivedTypeShape(typeof(MauiFileProvider), Tag = 1)]
 [MemoryPackable(GenerateType.NoGenerate)]
+[Union(0, typeof(WebFileProvider))]
+[Union(1, typeof(MauiFileProvider))]
 public partial interface IFileProvider
 {
     FileMetadata Metadata { get; }

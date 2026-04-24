@@ -23,28 +23,12 @@
 //   `*Changed: EventHandlerSet<boolean>` events.
 
 import { EventHandlerSet } from 'actuallab-core';
-import {
-    RpcHub,
-    RpcPeerRefBuilder,
-    RpcSerializationFormat,
-    RpcSerializationFormatResolver,
-    RpcMessagePackSerializationFormat,
-    RpcMessagePackCompactSerializationFormat,
-    type RpcClientPeer,
-} from 'actuallab-rpc';
+import { RpcHub, RpcPeerRefBuilder, type RpcClientPeer } from 'actuallab-rpc';
 import { getLogs } from 'logging';
 
 import { ApiReconnectDelayer } from './api-reconnect-delayer.js';
 
 const { infoLog, warnLog } = getLogs('Api');
-
-const SERIALIZATION_FORMAT = 'msgpack6ck';
-
-(RpcSerializationFormat.All as RpcSerializationFormat[]).push(
-    new RpcMessagePackSerializationFormat('msgpack6k'),
-    new RpcMessagePackCompactSerializationFormat('msgpack6ck'),
-);
-RpcSerializationFormatResolver.Default = new RpcSerializationFormatResolver(SERIALIZATION_FORMAT);
 
 /** Identifies which peer / realm a subscriber or {@link Api.disconnect} call
  *  targets. Debug tooling uses this to drop peers; the reconnect loop brings
@@ -59,6 +43,10 @@ export enum WorkerKind {
     /** Video processing worker peer. */
     VideoCapture = 'VideoCapture',
 }
+
+/** Serialization format used by every Api peer. Binary MessagePack — matches
+ *  the .NET server's binary path and keeps frame traffic small. */
+const SERIALIZATION_FORMAT = 'msgpack6';
 
 /** An opt-in chunk of RPC wiring — a group of service registrations and/or
  *  client-side setup, typically expressed as a static class so consumers can

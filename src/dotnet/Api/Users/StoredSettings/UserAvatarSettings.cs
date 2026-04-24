@@ -5,11 +5,11 @@ namespace ActualChat.Users;
 /// <summary>
 /// User preferences for avatar management and defaults.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record UserAvatarSettings : StoredSettings, IHasKvasKey<UserAvatarSettings>
 {
-    [DataMember, MemoryPackOrder(0), Key(0)] public ApiArray<Symbol> AvatarIds { get; init; } = [];
-    [DataMember, MemoryPackOrder(1), Key(1)] public Symbol DefaultAvatarId { get; init; }
+    [DataMember, MemoryPackOrder(0)] public ApiArray<Symbol> AvatarIds { get; init; } = [];
+    [DataMember, MemoryPackOrder(1)] public Symbol DefaultAvatarId { get; init; }
 
     public UserAvatarSettings WithAvatarId(Symbol avatarId)
     {

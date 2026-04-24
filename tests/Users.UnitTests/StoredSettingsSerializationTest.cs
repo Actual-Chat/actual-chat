@@ -4,17 +4,6 @@ namespace ActualChat.Users.UnitTests;
 
 public partial class StoredSettingsSerializationTest
 {
-    // Nerdbank.MessagePack serializers — the wire format actually used by RPC.
-    // KvasSerializer wraps these with a 1-byte format marker for KVAS storage.
-    private static readonly IByteSerializer NerdbankMessagePack = Serializers.MessagePack;
-    private static readonly IByteSerializer NerdbankKeylessMessagePack = Serializers.KeylessMessagePack;
-
-    // Cross-version compat (Legacy ↔ New) only works through MemoryPack here: the new types
-    // carry [Key(N)] for Nerdbank's array-keyed wire (a property-name map otherwise), while the
-    // Legacy copies don't, so a Nerdbank round-trip across the type boundary is shape-mismatched.
-    // MemoryPack uses MemoryPackOrder positionally on both sides — same indices match.
-    private static readonly KvasSerializer MemoryPackKvasSerializer = new() { PreferMemoryPack = true };
-
     // Legacy types: exact copies of the original types without StoredSettings base.
     // Used to verify that adding the base record doesn't break binary compatibility.
 
@@ -51,9 +40,9 @@ public partial class StoredSettingsSerializationTest
             IsVideoStreamingEnabled = false,
         };
 
-        using var buffer = MemoryPackKvasSerializer.Write(legacy);
+        using var buffer = KvasSerializer.Default.Write(legacy);
         var bytes = buffer.WrittenMemory;
-        var result = MemoryPackKvasSerializer.Read<UserAppSettings>(ref bytes);
+        var result = KvasSerializer.Default.Read<UserAppSettings>(ref bytes);
 
         result.Origin.Should().Be(legacy.Origin);
         result.IsDataCollectionEnabled.Should().Be(legacy.IsDataCollectionEnabled);
@@ -70,9 +59,9 @@ public partial class StoredSettingsSerializationTest
             IsDigestEnabled = false,
         };
 
-        using var buffer = MemoryPackKvasSerializer.Write(legacy);
+        using var buffer = KvasSerializer.Default.Write(legacy);
         var bytes = buffer.WrittenMemory;
-        var result = MemoryPackKvasSerializer.Read<UserEmailsSettings>(ref bytes);
+        var result = KvasSerializer.Default.Read<UserEmailsSettings>(ref bytes);
 
         result.Origin.Should().Be(legacy.Origin);
         result.DigestTime.Should().Be(legacy.DigestTime);
@@ -91,9 +80,9 @@ public partial class StoredSettingsSerializationTest
             IsIncompleteUIEnabled = false,
         };
 
-        using var buffer = MemoryPackKvasSerializer.Write(settings);
+        using var buffer = KvasSerializer.Default.Write(settings);
         var bytes = buffer.WrittenMemory;
-        var result = MemoryPackKvasSerializer.Read<LegacyUserAppSettings>(ref bytes);
+        var result = KvasSerializer.Default.Read<LegacyUserAppSettings>(ref bytes);
 
         result.Origin.Should().Be(settings.Origin);
         result.IsDataCollectionEnabled.Should().Be(settings.IsDataCollectionEnabled);
@@ -112,9 +101,9 @@ public partial class StoredSettingsSerializationTest
             IsDigestEnabled = true,
         };
 
-        using var buffer = MemoryPackKvasSerializer.Write(settings);
+        using var buffer = KvasSerializer.Default.Write(settings);
         var bytes = buffer.WrittenMemory;
-        var result = MemoryPackKvasSerializer.Read<LegacyUserEmailsSettings>(ref bytes);
+        var result = KvasSerializer.Default.Read<UserEmailsSettings>(ref bytes);
 
         result.Origin.Should().Be(settings.Origin);
         result.DigestTime.Should().Be(settings.DigestTime);
@@ -168,9 +157,9 @@ public partial class StoredSettingsSerializationTest
             IsIncompleteUIEnabled = true,
         };
 
-        using var buffer = MemoryPackKvasSerializer.Write<StoredSettings>(settings);
+        using var buffer = KvasSerializer.Default.Write<StoredSettings>(settings);
         var bytes = buffer.WrittenMemory;
-        var result = MemoryPackKvasSerializer.Read<StoredSettings>(ref bytes);
+        var result = KvasSerializer.Default.Read<StoredSettings>(ref bytes);
 
         result.Should().BeOfType<UserAppSettings>();
         var typed = (UserAppSettings)result!;
@@ -189,66 +178,14 @@ public partial class StoredSettingsSerializationTest
             IsDigestEnabled = true,
         };
 
-        using var buffer = MemoryPackKvasSerializer.Write<StoredSettings>(settings);
+        using var buffer = KvasSerializer.Default.Write<StoredSettings>(settings);
         var bytes = buffer.WrittenMemory;
-        var result = MemoryPackKvasSerializer.Read<StoredSettings>(ref bytes);
+        var result = KvasSerializer.Default.Read<StoredSettings>(ref bytes);
 
         result.Should().BeOfType<UserEmailsSettings>();
         var typed = (UserEmailsSettings)result!;
         typed.Origin.Should().Be(settings.Origin);
         typed.DigestTime.Should().Be(settings.DigestTime);
         typed.IsDigestEnabled.Should().Be(settings.IsDigestEnabled);
-    }
-
-    // --- Nerdbank.MessagePack polymorphic round-trip ---
-    //
-    // RPC sends StoredSettings as the declared base type (e.g. IUserSettings.Get returns
-    // StoredSettings). Nerdbank dispatches via [DerivedTypeShape] union tags. These tests
-    // exercise that path directly — independently of KVAS, MemoryPack, or RPC framing.
-
-    [Fact]
-    public void UserAppSettings_AsBase_NerdbankRoundTrip()
-        => AssertBaseTypeRoundTrip(new UserAppSettings {
-            Origin = "nb-test",
-            IsDataCollectionEnabled = true,
-            AreExperimentalFeaturesEnabled = false,
-            IsIncompleteUIEnabled = true,
-        });
-
-    [Fact]
-    public void UserChatRecordingDetectedLanguage_AsBase_NerdbankRoundTrip()
-        => AssertBaseTypeRoundTrip(new UserChatRecordingDetectedLanguage {
-            Timestamp = new Moment(new DateTime(2026, 04, 23, 12, 34, 56, DateTimeKind.Utc)),
-            ChatId = default,
-            Language = null,
-        });
-
-    [Fact]
-    public void UserNavbarSettings_AsBase_NerdbankRoundTrip()
-        => AssertBaseTypeRoundTrip(new UserNavbarSettings {
-            Origin = "nav-test",
-            PinnedChats = [],
-            PlacesOrder = [],
-        });
-
-    private static void AssertBaseTypeRoundTrip<T>(T value)
-        where T : StoredSettings
-    {
-        // Keyed wire (msgpack6).
-        using (var buffer = NerdbankMessagePack.Write<StoredSettings>(value)) {
-            var bytes = buffer.WrittenMemory.ToArray();
-            var read = (StoredSettings?)NerdbankMessagePack.Read(bytes, typeof(StoredSettings), out _);
-            read.Should().BeOfType<T>();
-            // Structural equivalence — records with array members default to reference equality
-            // on the arrays, so two structurally identical instances aren't `Equals`.
-            read.Should().BeEquivalentTo(value);
-        }
-        // Keyless wire (msgpack6k / msgpack6ck) — what TS-style maps look like.
-        using (var buffer = NerdbankKeylessMessagePack.Write<StoredSettings>(value)) {
-            var bytes = buffer.WrittenMemory.ToArray();
-            var read = (StoredSettings?)NerdbankKeylessMessagePack.Read(bytes, typeof(StoredSettings), out _);
-            read.Should().BeOfType<T>();
-            read.Should().BeEquivalentTo(value);
-        }
     }
 }

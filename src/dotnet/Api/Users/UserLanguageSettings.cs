@@ -1,25 +1,26 @@
 using ActualChat.Kvas;
+using ActualChat.Serialization;
 
 namespace ActualChat.Users;
 
 /// <summary>
 /// User preferences for spoken languages (primary, secondary, tertiary).
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record UserLanguageSettings : StoredSettings, IHasOrigin, IHasKvasKey<UserLanguageSettings>
 {
     public static string KvasKey => nameof(UserLanguageSettings);
 
-    [DataMember, MemoryPackOrder(0), Key(0), LegacyLanguageFormatter(false)]
+    [DataMember, MemoryPackOrder(0), LegacyLanguageFormatter(false)]
     public Language Primary {
         get => field ?? Languages.Main;
         init;
     }
-    [DataMember, MemoryPackOrder(1), Key(1), LegacyLanguageFormatter(true)]
+    [DataMember, MemoryPackOrder(1), LegacyLanguageFormatter(true)]
     public Language? Secondary { get; init; }
-    [DataMember, MemoryPackOrder(3), Key(3), LegacyLanguageFormatter(true)]
+    [DataMember, MemoryPackOrder(3), LegacyLanguageFormatter(true)]
     public Language? Tertiary { get; init; }
-    [DataMember, MemoryPackOrder(2), Key(2)]
+    [DataMember, MemoryPackOrder(2)]
     public string Origin { get; init; } = "";
 
     public List<Language> ListSpoken()

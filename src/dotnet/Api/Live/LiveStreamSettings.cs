@@ -1,4 +1,4 @@
-namespace ActualChat.Live;
+﻿namespace ActualChat.Live;
 
 /// <summary>
 /// Flags indicating the types of live stream content.
@@ -13,11 +13,11 @@ public enum LiveStreamKind
 /// <summary>
 /// Configuration for a live stream subscription.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record LiveStreamSettings
 {
     public static readonly LiveStreamSettings Default = new();
 
-    [DataMember(Order = 1), MemoryPackOrder(1), Key(0)]
+    [DataMember(Order = 1), MemoryPackOrder(1)]
     public LiveStreamKind StreamKindFilter { get; init; } = LiveStreamKind.Audio;
 }

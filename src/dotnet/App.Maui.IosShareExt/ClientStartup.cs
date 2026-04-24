@@ -13,11 +13,9 @@ public static class ClientStartup
 {
     public static void Initialize()
     {
-        // Rpc & Fusion defaults — RuntimeInfo.IsServer = false makes Serializers skip the
-        // PolyType reflection provider (AOT clients have no reflection metadata to fall back on).
+        // Rpc & Fusion defaults
         RuntimeInfo.IsServer = false;
-        ApiContractsModuleInitializer.Load();
-        CoreModuleInitializer.Configure();
+        CoreSerializerAndRpcSetup.Configure(false);
 #if !DEBUG
         RpcDiagnosticsOptions.Default = RpcDiagnosticsOptions.Default with {
             CallTracerFactory = _ => null // No call tracing in release builds
