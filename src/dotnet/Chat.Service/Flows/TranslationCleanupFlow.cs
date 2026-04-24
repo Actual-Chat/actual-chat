@@ -4,14 +4,14 @@ using ActualChat.Flows;
 namespace ActualChat.Chat.Flows;
 
 [Flow(DelayQuanta = 60)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(AllowPrivate = true)]
 public partial class TranslationCleanupFlow : PeriodicFlow, IMasterFlow
 {
     private const int BatchSize = 50;
 
-    private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
-    private ITranslationsBackend TranslationsBackend => field ??= Services.GetRequiredService<ITranslationsBackend>();
-    private ICommander Commander => field ??= Services.Commander();
+    [IgnoreMember] private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
+    [IgnoreMember] private ITranslationsBackend TranslationsBackend => field ??= Services.GetRequiredService<ITranslationsBackend>();
+    [IgnoreMember] private ICommander Commander => field ??= Services.Commander();
 
     protected override async ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken)
     {

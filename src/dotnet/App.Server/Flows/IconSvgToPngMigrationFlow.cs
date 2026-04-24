@@ -26,7 +26,7 @@ namespace ActualChat.App.Server.Flows;
 /// and <c>MediaDbInitializer</c> already upgrades them to PNG in place on startup.
 /// </remarks>
 [Flow(DataVersion = 2, DelayQuanta = 0)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(AllowPrivate = true)]
 public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
 {
     private const int BatchSize = 50;
@@ -41,23 +41,23 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
     // Backup-only — not read by application code.
     private const string ReplacesMediaIdMetadataKey = "ReplacesMediaId";
 
-    private DbHub<UsersDbContext> UsersDbHub => field ??= Services.DbHub<UsersDbContext>();
-    private DbHub<ChatDbContext> ChatDbHub => field ??= Services.DbHub<ChatDbContext>();
-    private IBlobStorage BlobStorage => field ??= Services.BlobStorages()[BlobScope.ContentRecord];
-    private SvgRasterizer SvgRasterizer => field ??= Services.GetRequiredService<SvgRasterizer>();
-    private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
-    private ICommander Commander => Hub.Commander;
+    [IgnoreMember] private DbHub<UsersDbContext> UsersDbHub => field ??= Services.DbHub<UsersDbContext>();
+    [IgnoreMember] private DbHub<ChatDbContext> ChatDbHub => field ??= Services.DbHub<ChatDbContext>();
+    [IgnoreMember] private IBlobStorage BlobStorage => field ??= Services.BlobStorages()[BlobScope.ContentRecord];
+    [IgnoreMember] private SvgRasterizer SvgRasterizer => field ??= Services.GetRequiredService<SvgRasterizer>();
+    [IgnoreMember] private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
+    [IgnoreMember] private ICommander Commander => Hub.Commander;
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
+    [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
     public MigrationPhase Phase { get; set; }
-    [DataMember(Order = 1), MemoryPackOrder(1)]
+    [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
     public string? LastProcessedEntityId { get; set; }
-    [DataMember(Order = 2), MemoryPackOrder(2)]
+    [DataMember(Order = 2), MemoryPackOrder(2), Key(2)]
     public long ConvertedCount { get; set; }
-    [DataMember(Order = 3), MemoryPackOrder(3)]
+    [DataMember(Order = 3), MemoryPackOrder(3), Key(3)]
     public long SkippedCount { get; set; }
     // Unexpected ProcessOne exceptions. Non-zero at completion needs dev attention.
-    [DataMember(Order = 4), MemoryPackOrder(4)]
+    [DataMember(Order = 4), MemoryPackOrder(4), Key(4)]
     public long FailedCount { get; set; }
 
     protected override async ValueTask Resume(CancellationToken cancellationToken)

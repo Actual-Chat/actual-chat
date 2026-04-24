@@ -160,8 +160,8 @@ public partial class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
 
     // Nested types
 
-    [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+    [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
     public sealed partial record State(
-        [property: DataMember(Order = 0), MemoryPackOrder(0)] long Version,
-        [property: DataMember(Order = 1), MemoryPackOrder(1)] ApiArray<LiveStreamInfo> Streams);
+        [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] long Version,
+        [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] ApiArray<LiveStreamInfo> Streams);
 }

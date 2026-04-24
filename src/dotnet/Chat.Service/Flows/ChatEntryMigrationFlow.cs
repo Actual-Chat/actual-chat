@@ -11,27 +11,27 @@ namespace ActualChat.Chat.Flows;
 /// Processes one chat at a time, in batches of 100 text entries per resume.
 /// </summary>
 [Flow(DataVersion = 1, DelayQuanta = 0)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(AllowPrivate = true)]
 public partial class ChatEntryMigrationFlow : Flow<(Moment, long, long)>
 {
     private const int BatchSize = 300;
     private const int MaxChatsPerResume = 300;
     private static readonly RandomTimeSpan BatchDelay = TimeSpan.FromSeconds(2).ToRandom(0.25);
 
-    private DbHub<ChatDbContext> DbHub => field ??= Services.DbHub<ChatDbContext>();
-    private ICommander Commander => Hub.Commander;
+    [IgnoreMember] private DbHub<ChatDbContext> DbHub => field ??= Services.DbHub<ChatDbContext>();
+    [IgnoreMember] private ICommander Commander => Hub.Commander;
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
+    [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
     public string? LastProcessedChatId { get; set; }
-    [DataMember(Order = 1), MemoryPackOrder(1)]
+    [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
     public long LastProcessedLocalId { get; set; }
-    [DataMember(Order = 2), MemoryPackOrder(2)]
+    [DataMember(Order = 2), MemoryPackOrder(2), Key(2)]
     public long MigratedEntryCount { get; set; }
-    [DataMember(Order = 3), MemoryPackOrder(3)]
+    [DataMember(Order = 3), MemoryPackOrder(3), Key(3)]
     public long MigratedChatCount { get; set; }
-    [DataMember(Order = 4), MemoryPackOrder(4)]
+    [DataMember(Order = 4), MemoryPackOrder(4), Key(4)]
     public long TotalEntryCount { get; set; }
-    [DataMember(Order = 5), MemoryPackOrder(5)]
+    [DataMember(Order = 5), MemoryPackOrder(5), Key(5)]
     public long TotalChatCount { get; set; }
 
     protected override async ValueTask Resume(CancellationToken cancellationToken)

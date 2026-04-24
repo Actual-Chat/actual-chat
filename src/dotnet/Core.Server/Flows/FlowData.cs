@@ -57,7 +57,7 @@ public static class FlowData
 
 #pragma warning disable CA1000 // Do not declare static members on generic types
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public partial class FlowData<TFlow> : IFlowData
     where TFlow : Flow
 {
@@ -67,14 +67,14 @@ public partial class FlowData<TFlow> : IFlowData
     private string? _console;
     private TFlow? _flow;
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
+    [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
     public FlowId Id { get; init; }
-    [DataMember(Order = 1), MemoryPackOrder(1)]
+    [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
     public long Version { get; init; }
-    [DataMember(Order = 2), MemoryPackOrder(2)]
+    [DataMember(Order = 2), MemoryPackOrder(2), Key(2)]
     public int DataVersion { get; init; }
 
-    [DataMember(Order = 3), MemoryPackOrder(3)]
+    [DataMember(Order = 3), MemoryPackOrder(3), Key(3)]
     public byte[] ResultData {
         get => _resultData ?? Serialize().ResultData;
         private init {
@@ -83,7 +83,7 @@ public partial class FlowData<TFlow> : IFlowData
         }
     }
 
-    [DataMember(Order = 4), MemoryPackOrder(4)]
+    [DataMember(Order = 4), MemoryPackOrder(4), Key(4)]
     public byte[] Data {
         get => _data ?? Serialize().Data;
         private init {
@@ -92,7 +92,7 @@ public partial class FlowData<TFlow> : IFlowData
         }
     }
 
-    [DataMember(Order = 5), MemoryPackOrder(5)]
+    [DataMember(Order = 5), MemoryPackOrder(5), Key(5)]
     public string Console {
         get => _console ?? Serialize().Console;
         private init {
