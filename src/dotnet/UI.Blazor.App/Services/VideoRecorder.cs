@@ -287,11 +287,11 @@ public sealed class VideoRecorder : IAsyncDisposable
         }
     }
 
-    // 3-tier simulcast ladder matching server-side spatial cap semantics:
-    // index 0 = base (lowest-res, SpatialLayerId=0), N = top. Fixed tiers — dims
-    // mirror VideoQualityLevel steps (Low=360p, High=720p); bitrates tuned for
-    // H.264 baseline headroom on mobile HW encoders. AV1/HEVC simulcast profile
-    // selection + per-device probe gating lands with Stage 8.
+    // 3-tier simulcast ladder, sorted lowest → highest so index matches the
+    // spatial-id convention used everywhere (0 = base, N = top). The top entry
+    // is also the ideal camera-capture target. Dims mirror VideoQualityLevel
+    // steps (Low=360p, High=720p); bitrates tuned for H.264 baseline headroom
+    // on mobile HW encoders.
     private static IReadOnlyList<SpatialLayerSpec> BuildSimulcastLadder()
         => new SpatialLayerSpec[] {
             new(320, 180, 300_000),

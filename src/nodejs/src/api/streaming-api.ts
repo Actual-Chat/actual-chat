@@ -24,7 +24,7 @@ export const StreamServerDef = defineRpcService('IStreamServer', {
     PushVideo: { args: ['session', 'chatId', 'clientStartOffset', 'format', 'frameStream', 'streamKind'], remoteExecutionMode: StreamPushMode },
     PushAudio: { args: ['session', 'chatId', 'repliedChatEntryId', 'clientStartOffset', 'preSkip', 'frameStream'], remoteExecutionMode: StreamPushMode },
     RequestKeyFrame: { args: ['streamId'] },
-    ReportVideoLatency: { args: ['streamId', 'streamOffsetMs', 'medianDecodeTimeMs', 'bufferDepth', 'bufferSpanMs', 'renderQualityLevel'] },
+    ReportVideoLatency: { args: ['streamId', 'streamOffsetMs', 'medianDecodeTimeMs', 'bufferDepth', 'bufferSpanMs', 'renderQualityLevel', 'isVisible'] },
 });
 
 // --- VideoFrame TypeScript interface ---
@@ -98,7 +98,8 @@ export interface StreamServerClient {
         medianDecodeTimeMs: number,
         bufferDepth: number,
         bufferSpanMs: number,
-        renderQualityLevel: number): Promise<number>;
+        renderQualityLevel: number,
+        isVisible: boolean): Promise<number>;
 }
 
 // Mirrors .NET VideoQualityLevel enum. Lower numeric value = higher quality.

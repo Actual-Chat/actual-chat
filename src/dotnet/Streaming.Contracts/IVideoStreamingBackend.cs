@@ -28,5 +28,6 @@ public interface IVideoStreamingBackend : IComputeService, IRpcService, IBackend
         int bufferDepth = -1,
         double bufferSpanMs = -1,
         int renderQualityLevel = -1,
+        bool isVisible = true,
         CancellationToken cancellationToken = default);
 }

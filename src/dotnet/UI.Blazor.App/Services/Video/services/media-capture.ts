@@ -33,6 +33,16 @@ export class MediaCapture {
             const small = Math.min(options.width, options.height);
             videoConstraints.width = { ideal: large, max: large * 2 };
             videoConstraints.height = { ideal: small, max: large * 2 };
+            // Force native capture — no browser-side crop-and-scale. Chrome's
+            // `resizeMode: 'crop-and-scale'` returns MSTP VideoFrames with a
+            // codedW/H / plane0 mismatch that blows up WebGPU
+            // importExternalTexture ("cropSize exceeds texture size"). We do
+            // all scaling ourselves in the GPU downscaler; if the camera can't
+            // match the requested dims exactly, we'd rather get a larger
+            // native frame and downscale than have the browser scale it with
+            // the broken metadata.
+            (videoConstraints as MediaTrackConstraints & { resizeMode?: ConstrainDOMString })
+                .resizeMode = { ideal: 'none' };
         }
         infoLog?.log(`${tag}: constraints:`, JSON.stringify(videoConstraints));
         const maxRetries = options.maxRetries ?? 0;

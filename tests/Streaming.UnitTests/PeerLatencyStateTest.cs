@@ -120,12 +120,12 @@ public class PeerLatencyStateTest
         state.RecordLatency(50, renderQualityLevel: (int)VideoQualityLevel.Low);
 
         // assert
-        state.RenderHintSpatialLayer.Should().Be(0, "Low preset → base layer");
-        state.EffectiveMaxSpatial.Should().Be(0, "render hint clamps effective cap even when latency cap is default");
+        state.RenderHintSpatialLayer.Should().Be(1, "Low preset → mid layer (sidebar tile, not thumbnail)");
+        state.EffectiveMaxSpatial.Should().Be(1, "render hint clamps effective cap even when latency cap is default");
     }
 
     [Theory]
-    [InlineData(VideoQualityLevel.Low, 0)]
+    [InlineData(VideoQualityLevel.Low, 1)]      // sidebar → mid tier, not base
     [InlineData(VideoQualityLevel.Medium, 1)]
     [InlineData(VideoQualityLevel.High, 2)]
     [InlineData(VideoQualityLevel.Full, 2)]
@@ -145,8 +145,9 @@ public class PeerLatencyStateTest
     [Fact]
     public void RenderHintCapsBelowFastLatencyCap()
     {
-        // Peer has fast network (latency cap = 2) but only renders sidebar (Low = 0).
-        // Effective cap must be 0 — no point sending 720p to a 240px sidebar tile.
+        // Peer has fast network (latency cap = 2) but only renders a sidebar
+        // tile (Low). Effective cap clamps to mid tier — a 640x360 sidebar doesn't
+        // need 720p but also shouldn't be served 180p upscaled.
         // arrange
         var state = WarmedUp();
         for (var i = 0; i < 6; i++)
@@ -155,8 +156,8 @@ public class PeerLatencyStateTest
         // assert
         state.IsNetworkFast.Should().BeTrue();
         state.MaxSpatialLayer.Should().Be(2, "latency-derived cap unaffected by hint");
-        state.RenderHintSpatialLayer.Should().Be(0);
-        state.EffectiveMaxSpatial.Should().Be(0, "render hint clamps effective cap");
+        state.RenderHintSpatialLayer.Should().Be(1);
+        state.EffectiveMaxSpatial.Should().Be(1, "render hint clamps effective cap to mid tier");
     }
 
     [Fact]

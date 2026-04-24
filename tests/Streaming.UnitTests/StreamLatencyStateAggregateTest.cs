@@ -103,10 +103,11 @@ public class StreamLatencyStateAggregateTest(ILogger log)
     }
 
     [Fact]
-    public void AllPeersSidebar_AggregateIsBaseLayer()
+    public void AllPeersSidebar_AggregateIsMidLayer()
     {
         // All receivers render small sidebar tiles → no one needs the top simulcast
-        // layer. Sender can spin down its 720p encoder.
+        // layer. Sender can spin down its 720p encoder, keep 360p mid tier running.
+        // Base tier alone would be too low for a 640x360 sidebar canvas (upscale).
         // arrange
         var state = NewStreamLatencyState();
         for (var i = 0; i < 6; i++) {
@@ -118,7 +119,7 @@ public class StreamLatencyStateAggregateTest(ILogger log)
         state.EvaluateQuality();
 
         // assert
-        state.QualityPreset.Value.MaxSpatialLayer.Should().Be(0, "all sidebar → base only");
+        state.QualityPreset.Value.MaxSpatialLayer.Should().Be(1, "all sidebar → mid tier (~360p), not base upscale");
     }
 
     // Helpers
