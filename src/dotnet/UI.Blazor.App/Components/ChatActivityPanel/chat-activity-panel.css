@@ -98,6 +98,57 @@ body.narrow .chat-activity-panel:after {
     }
 }
 
+/* Film strip decoration for video streaming */
+.c-film-strip {
+    @apply absolute inset-0 z-minus;
+    @apply pointer-events-none;
+    @apply overflow-hidden;
+    @apply transition-opacity duration-500;
+    border-radius: inherit;
+}
+/* Rotated vertical film strip (real film strip SVG, evenodd cutouts) */
+.c-film-strip::after {
+    --film-w: 3.5rem;
+    --film-tile-h: calc(var(--film-w) * 216 / 39);
+    @apply content-empty;
+    @apply absolute left-1/2 -top-full;
+    @apply opacity-40;
+    width: var(--film-w);
+    height: 300%;
+    /*left: 50%;*/
+    /*top: -100%;*/
+    transform: translateX(-50%) rotate(212deg);
+    background-image: url("data:image/svg+xml,%3Csvg width='39' height='216' viewBox='0 2 39 216' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M39 218H0V0H39V218ZM2 216H10V210H2V216ZM12 216H27V194H12V216ZM29 216H37V210H29V216ZM2 208H10V202H2V208ZM29 208H37V202H29V208ZM2 200H10V194H2V200ZM29 200H37V194H29V200ZM2 192H10V186H2V192ZM12 192H27V170H12V192ZM29 192H37V186H29V192ZM2 184H10V178H2V184ZM29 184H37V178H29V184ZM2 176H10V170H2V176ZM29 176H37V170H29V176ZM2 168H10V162H2V168ZM12 168H27V146H12V168ZM29 168H37V162H29V168ZM2 160H10V154H2V160ZM29 160H37V154H29V160ZM2 152H10V146H2V152ZM29 152H37V146H29V152ZM2 144H10V138H2V144ZM12 144H27V122H12V144ZM29 144H37V138H29V144ZM2 136H10V130H2V136ZM29 136H37V130H29V136ZM2 128H10V122H2V128ZM29 128H37V122H29V128ZM2 120H10V114H2V120ZM12 120H27V98H12V120ZM29 120H37V114H29V120ZM2 112H10V106H2V112ZM29 112H37V106H29V112ZM2 104H10V98H2V104ZM29 104H37V98H29V104ZM2 96H10V90H2V96ZM12 96H27V74H12V96ZM29 96H37V90H29V96ZM2 88H10V82H2V88ZM29 88H37V82H29V88ZM2 80H10V74H2V80ZM29 80H37V74H29V80ZM2 72H10V66H2V72ZM12 72H27V50H12V72ZM29 72H37V66H29V72ZM2 64H10V58H2V64ZM29 64H37V58H29V64ZM2 56H10V50H2V56ZM29 56H37V50H29V56ZM2 48H10V42H2V48ZM12 48H27V26H12V48ZM29 48H37V42H29V48ZM2 40H10V34H2V40ZM29 40H37V34H29V40ZM2 32H10V26H2V32ZM29 32H37V26H29V32ZM2 24H10V18H2V24ZM12 24H27V2H12V24ZM29 24H37V18H29V24ZM2 16H10V10H2V16ZM29 16H37V10H29V16ZM2 8H10V2H2V8ZM29 8H37V2H29V8Z' fill='%23BB63FF'/%3E%3C/svg%3E");
+    background-repeat: repeat-y;
+    background-size: var(--film-w) var(--film-tile-h);
+    -webkit-mask-image: linear-gradient(to bottom, transparent, black 20%, black 80%, transparent);
+    mask-image: linear-gradient(to bottom, transparent, black 20%, black 80%, transparent);
+    animation: film-scroll 15s linear infinite;
+}
+@keyframes film-scroll {
+    from { background-position-y: 0; }
+    to { background-position-y: var(--film-tile-h); }
+}
+/* Narrow: extend film strip through header */
+body.narrow .chat-activity-panel.video-streaming {
+    @apply overflow-visible;
+}
+body.narrow .c-film-strip {
+    top: calc(-3.5rem - var(--safe-area-top));
+}
+body.narrow .layout-header:has(.video-streaming) {
+    @apply overflow-hidden;
+}
+/* Hide film when activity panel is collapsed */
+.layout-header.collapsed .c-film-strip {
+    @apply opacity-0;
+}
+@media (prefers-reduced-motion: reduce) {
+    .c-film-strip {
+        @apply hidden;
+    }
+}
+
 .chat-activity-panel > .c-buttons {
     @apply flex-none flex-x items-center gap-x-4 md:gap-x-2;
     @apply pl-1 pr-2 md:pr-1;

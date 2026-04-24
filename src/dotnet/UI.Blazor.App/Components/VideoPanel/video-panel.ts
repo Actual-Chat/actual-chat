@@ -153,7 +153,7 @@ export class VideoPanel {
     }
 
     private getScreencastContainer(): HTMLElement | null {
-        return this.videoPanel.querySelector<HTMLElement>('.remote-video-container.focused.screencast');
+        return this.videoPanel.querySelector<HTMLElement>('.remote-video-container.item-focused.screencast');
     }
 
     private getScreencastCanvas(): HTMLCanvasElement | null {
