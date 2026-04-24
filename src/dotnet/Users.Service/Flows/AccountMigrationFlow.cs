@@ -13,21 +13,21 @@ namespace ActualChat.Users.Flows;
 /// Processes accounts in batches, all items in a batch are processed in parallel.
 /// </summary>
 [Flow(DataVersion = 1, DelayQuanta = 0)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(AllowPrivate = true)]
 public partial class AccountMigrationFlow : Flow<(Moment, long)>
 {
     private const int BatchSize = 50;
     private static readonly RandomTimeSpan BatchDelay = TimeSpan.FromSeconds(5).ToRandom(0.25);
 
-    private DbHub<UsersDbContext> DbHub => field ??= Services.DbHub<UsersDbContext>();
-    private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
-    private ICommander Commander => Hub.Commander;
+    [IgnoreMember] private DbHub<UsersDbContext> DbHub => field ??= Services.DbHub<UsersDbContext>();
+    [IgnoreMember] private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
+    [IgnoreMember] private ICommander Commander => Hub.Commander;
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
+    [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
     public string? LastProcessedId { get; set; }
-    [DataMember(Order = 1), MemoryPackOrder(1)]
+    [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
     public int MigratedCount { get; set; }
-    [DataMember(Order = 2), MemoryPackOrder(2)]
+    [DataMember(Order = 2), MemoryPackOrder(2), Key(2)]
     public int TotalCount { get; set; }
 
     protected override async ValueTask Resume(CancellationToken cancellationToken)

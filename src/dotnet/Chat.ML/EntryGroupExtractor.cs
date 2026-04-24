@@ -32,10 +32,10 @@ public record EntryGroup(IReadOnlyList<ChatEntrySlim> Entries, int WordCount = 0
 
 public record ReplySequence(IReadOnlyList<ChatEntrySlim> Entries);
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public partial record ExtractorState(
-    [property: DataMember, MemoryPackOrder(0)] EntryGroupBuilder? CurrentGroup,
-    [property: DataMember, MemoryPackOrder(1)] EntryGroupBuilder? CurrentChunk)
+    [property: DataMember, MemoryPackOrder(0), Key(0)] EntryGroupBuilder? CurrentGroup,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] EntryGroupBuilder? CurrentChunk)
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public long MinLid => CurrentGroup?.MinLid ?? (CurrentChunk?.MinLid ?? 0);

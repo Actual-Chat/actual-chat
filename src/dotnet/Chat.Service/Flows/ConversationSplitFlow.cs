@@ -6,32 +6,32 @@ using ActualChat.Queues;
 namespace ActualChat.Chat.Flows;
 
 [Flow(ResumeTimeout = 60)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(AllowPrivate = true)]
 public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
 {
     private const int BatchSize = 100;
     private static readonly TimeSpan MaxDelay = TimeSpan.FromDays(7);
     private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
-    private ChatId ChatId { get; set; } = null!;
+    [IgnoreMember] private ChatId ChatId { get; set; } = null!;
 
-    private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
-    private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
-    private IConversationsBackend ConversationsBackend => field ??= Services.GetRequiredService<IConversationsBackend>();
-    private IEntryGroupExtractor EntryGroupExtractor => field ??= Services.GetRequiredKeyedService<IEntryGroupExtractor>(EntryGroupLimit.None);
+    [IgnoreMember] private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
+    [IgnoreMember] private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
+    [IgnoreMember] private IConversationsBackend ConversationsBackend => field ??= Services.GetRequiredService<IConversationsBackend>();
+    [IgnoreMember] private IEntryGroupExtractor EntryGroupExtractor => field ??= Services.GetRequiredKeyedService<IEntryGroupExtractor>(EntryGroupLimit.None);
 
     // Flow state
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
+    [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
     public ExtractorState? ExtractorState { get; set; }
-    [DataMember(Order = 1), MemoryPackOrder(1)]
+    [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
     public long LastLid { get; set; }
-    [DataMember(Order = 2), MemoryPackOrder(2)]
+    [DataMember(Order = 2), MemoryPackOrder(2), Key(2)]
     public Moment LastRunAt { get; set; }
-    [DataMember(Order = 3), MemoryPackOrder(3)]
+    [DataMember(Order = 3), MemoryPackOrder(3), Key(3)]
     public Moment LastSummaryAt { get; set; }
-    [DataMember(Order = 4), MemoryPackOrder(4)]
+    [DataMember(Order = 4), MemoryPackOrder(4), Key(4)]
     public Range<long>[] LastSummaryRanges { get; set; } = [];
-    [DataMember(Order = 5), MemoryPackOrder(5)]
+    [DataMember(Order = 5), MemoryPackOrder(5), Key(5)]
     public FlowReadiness LastReadiness { get; set; }
 
     private async ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken)

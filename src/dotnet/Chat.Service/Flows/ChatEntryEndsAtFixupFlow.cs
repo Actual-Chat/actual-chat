@@ -11,22 +11,22 @@ namespace ActualChat.Chat.Flows;
 /// from legacy audio entries to text entries but doesn't set EndsAt.
 /// </summary>
 [Flow(DataVersion = 1, DelayQuanta = 0)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(AllowPrivate = true)]
 public partial class ChatEntryEndsAtFixupFlow : Flow<(Moment, long)>
 {
     private const int BatchSize = 200;
     private static readonly RandomTimeSpan BatchDelay = TimeSpan.FromSeconds(2).ToRandom(0.25);
 
-    private DbHub<ChatDbContext> DbHub => field ??= Services.DbHub<ChatDbContext>();
-    private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
+    [IgnoreMember] private DbHub<ChatDbContext> DbHub => field ??= Services.DbHub<ChatDbContext>();
+    [IgnoreMember] private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
+    [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
     public string? LastProcessedEntryId { get; set; }
-    [DataMember(Order = 1), MemoryPackOrder(1)]
+    [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
     public long FixedCount { get; set; }
-    [DataMember(Order = 2), MemoryPackOrder(2)]
+    [DataMember(Order = 2), MemoryPackOrder(2), Key(2)]
     public long SkippedCount { get; set; }
-    [DataMember(Order = 3), MemoryPackOrder(3)]
+    [DataMember(Order = 3), MemoryPackOrder(3), Key(3)]
     public long TotalScanned { get; set; }
 
     protected override async ValueTask Resume(CancellationToken cancellationToken)

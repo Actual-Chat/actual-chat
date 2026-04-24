@@ -1,14 +1,14 @@
 ﻿namespace ActualChat.Flows;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 [method: MemoryPackConstructor, SerializationConstructor, JsonConstructor, Newtonsoft.Json.JsonConstructor]
 public readonly partial record struct FlowReadiness(string SuspensionReason, TimeSpan? ResumeDelay = null)
 {
     public static FlowReadiness Ready => default;
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
+    [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
     public string SuspensionReason { get => field ?? ""; init; } = SuspensionReason;
-    [DataMember(Order = 1), MemoryPackOrder(1)]
+    [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
     public TimeSpan? ResumeDelay { get => IsSuspended ? field : TimeSpan.Zero; init; } = ResumeDelay;
 
     // Computed

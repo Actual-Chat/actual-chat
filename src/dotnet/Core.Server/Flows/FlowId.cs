@@ -5,11 +5,7 @@ using ActualLab.Internal;
 
 namespace ActualChat.Flows;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-// MemoryPack wire format intentionally kept SG-generated (IMemoryPackable<T> map) to stay
-// compatible with already-queued FlowResumeEvents from older nodes. When all peers are
-// upgraded and queues are drained, switch to plain-string by uncommenting the line below:
-// [MemoryPackFormatter<StringLikeMemoryPackFormatter<FlowId>>]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<FlowId>))]
 [JsonConverter(typeof(StringLikeJsonConverter<FlowId>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<FlowId>))]
@@ -25,7 +21,7 @@ public readonly partial struct FlowId : ISymbolIdentifier<FlowId>
 
     public static FlowId None => default;
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
+    [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
     public Symbol Id { get; }
 
     // Set on deserialization

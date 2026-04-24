@@ -8,11 +8,11 @@ public abstract class PeriodicFlow : Flow<string>
     protected virtual TimeSpan MaxResumeDelay => TimeSpan.FromDays(7);
 
     // Persisted state
-    [DataMember(Order = 0), MemoryPackOrder(0)]
+    [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
     public int RunCount { get; set; }
-    [DataMember(Order = 1), MemoryPackOrder(1)]
+    [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
     public Moment LastRunAt { get; set; }
-    [DataMember(Order = 2), MemoryPackOrder(2)]
+    [DataMember(Order = 2), MemoryPackOrder(2), Key(2)]
     public FlowReadiness LastReadiness { get; set; }
 
     // Overridable methods

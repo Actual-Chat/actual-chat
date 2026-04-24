@@ -2,7 +2,7 @@ using System.Text;
 
 namespace ActualChat.Chat.ML;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public partial class EntryGroupBuilder
 {
     private readonly List<ChatEntrySlim> _entries = [];
@@ -13,7 +13,7 @@ public partial class EntryGroupBuilder
     private long _minLid = long.MaxValue;
     private long _maxLid = 0;
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
+    [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
     public IReadOnlyList<ChatEntrySlim> Entries => _entries;
 
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
@@ -22,7 +22,7 @@ public partial class EntryGroupBuilder
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public int WordCount => _wordCount;
 
-    [DataMember(Order = 1), MemoryPackOrder(1)]
+    [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
     public double[] Embeddings { get; set; } = [];
 
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
