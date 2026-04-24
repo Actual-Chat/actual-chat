@@ -18,10 +18,10 @@
     var isOwnVideoStreaming = m.IsOwnVideoStreaming;
     var isParticipating = isListening || isRecordingHere || isOwnVideoStreaming;
     var isActive = m.IsAnyoneTalking;
-    var showVideoIcon = m.IsAnyoneVideoStreaming && !m.IsAnyoneTalking;
-    var iconMode = showVideoIcon ? "video" : "audio";
+    var iconMode = m.IsAnyoneVideoStreaming ? "video" : "audio";
     var tooltip = isListening ? "Listening..." : "Listen";
     var cls = isListening ? " listening" : "";
+    if (m.IsAnyoneVideoStreaming) cls += " video-streaming";
     var joinButtonText = "Join muted";
 }
 
@@ -35,6 +35,9 @@
             <i class="icon-arrow-down"></i> Pin panel
         </span>
     </div>
+    @if (m.IsAnyoneVideoStreaming) {
+        <div class="c-film-strip"></div>
+    }
     @if (!isParticipating) {
         @* Camera/audio icon - shown when not participating *@
         <div class="c-icon hideable">

@@ -1,0 +1,28 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="2" y="3" width="20" height="16" rx="3.2" ry="3.2"
+          pathLength="100"
+          stroke="#777777" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round"
+          stroke-dasharray="90 10"
+          style="animation: frame-gap 4s linear infinite;"/>
+    <rect class="eq-bar b1" x="7.5"  y="8" width="2" height="7" rx="1" fill="#777777"/>
+    <rect class="eq-bar b2" x="11"   y="8" width="2" height="7" rx="1" fill="#777777"/>
+    <rect class="eq-bar b3" x="14.5" y="8" width="2" height="7" rx="1" fill="#777777"/>
+    <style>
+        @keyframes frame-gap {
+        from { stroke-dashoffset: 0; }
+        to   { stroke-dashoffset: 100; }
+        }
+        @keyframes eq {
+        0%, 100% { transform: scaleY(0.35); }
+        50%      { transform: scaleY(1); }
+        }
+        .eq-bar {
+        transform-origin: center;
+        transform-box: fill-box;
+        }
+        .b1 { animation: eq 0.9s ease-in-out infinite; }
+        .b2 { animation: eq 0.9s ease-in-out infinite 0.15s; }
+        .b3 { animation: eq 0.9s ease-in-out infinite 0.3s; }
+    </style>
+</svg>

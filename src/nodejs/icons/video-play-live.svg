@@ -1,0 +1,25 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="2" y="3" width="20" height="16" rx="3.2" ry="3.2"
+          pathLength="100"
+          stroke="#777777" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round"
+          stroke-dasharray="90 10"
+          style="animation: frame-gap 4s linear infinite;"/>
+    <path d="M9 15V7L17 11.3077L9 15Z"
+          pathLength="100"
+          stroke="#777777" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round"
+          stroke-dasharray="100"
+          style="animation: play-draw 5.71s ease-in-out infinite;"/>
+    <style>
+        @keyframes frame-gap {
+        from { stroke-dashoffset: 0; }
+        to   { stroke-dashoffset: 100; }
+        }
+        @keyframes play-draw {
+        0%        { stroke-dashoffset: 100; }
+        35%, 65%  { stroke-dashoffset: 0; }
+        100%      { stroke-dashoffset: -100; }
+        }
+    </style>
+</svg>

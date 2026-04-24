@@ -1,11 +1,11 @@
 @font-face {
   font-family: "icon";
-  src: url('icon.eot?t=1776238520495'); /* IE9*/
-  src: url('icon.eot?t=1776238520495#iefix') format('embedded-opentype') /* IE6-IE8 */,
-  url('icon.woff2?t=1776238520495') format('woff2'),
-  url('icon.woff?t=1776238520495') format('woff'),
-  url('icon.ttf?t=1776238520495') format('truetype'),
-  url('icon.svg?t=1776238520495') format('svg');
+  src: url('icon.eot?t=1777031488538'); /* IE9*/
+  src: url('icon.eot?t=1777031488538#iefix') format('embedded-opentype') /* IE6-IE8 */,
+  url('icon.woff2?t=1777031488538') format('woff2'),
+  url('icon.woff?t=1777031488538') format('woff'),
+  url('icon.ttf?t=1777031488538') format('truetype'),
+  url('icon.svg?t=1777031488538') format('svg');
 }
 
 [class^="icon-"], [class*=" icon-"] {
@@ -215,18 +215,21 @@
 .icon-upload-cloud::before { content: "\eac5"; }
 .icon-vector-left::before { content: "\eac6"; }
 .icon-vector-right::before { content: "\eac7"; }
-.icon-video-collapse::before { content: "\eac8"; }
-.icon-video-expand::before { content: "\eac9"; }
-.icon-video::before { content: "\eaca"; }
-.icon-voice-01::before { content: "\eacb"; }
-.icon-voice-and-text::before { content: "\eacc"; }
-.icon-voice-message::before { content: "\eacd"; }
-.icon-voice-to-text-message::before { content: "\eace"; }
-.icon-volume-off-fill::before { content: "\eacf"; }
-.icon-volume-off::before { content: "\ead0"; }
-.icon-volume-settings::before { content: "\ead1"; }
-.icon-volume-up-fill::before { content: "\ead2"; }
-.icon-volume-up::before { content: "\ead3"; }
+.icon-video-and-voice-live::before { content: "\eac8"; }
+.icon-video-collapse::before { content: "\eac9"; }
+.icon-video-expand::before { content: "\eaca"; }
+.icon-video-play-live::before { content: "\eacb"; }
+.icon-video-play::before { content: "\eacc"; }
+.icon-video::before { content: "\eacd"; }
+.icon-voice-01::before { content: "\eace"; }
+.icon-voice-and-text::before { content: "\eacf"; }
+.icon-voice-message::before { content: "\ead0"; }
+.icon-voice-to-text-message::before { content: "\ead1"; }
+.icon-volume-off-fill::before { content: "\ead2"; }
+.icon-volume-off::before { content: "\ead3"; }
+.icon-volume-settings::before { content: "\ead4"; }
+.icon-volume-up-fill::before { content: "\ead5"; }
+.icon-volume-up::before { content: "\ead6"; }
 
 
 $icon-activity: '\ea01';
@@ -428,15 +431,18 @@ $icon-unread: '\eac4';
 $icon-upload-cloud: '\eac5';
 $icon-vector-left: '\eac6';
 $icon-vector-right: '\eac7';
-$icon-video-collapse: '\eac8';
-$icon-video-expand: '\eac9';
-$icon-video: '\eaca';
-$icon-voice-01: '\eacb';
-$icon-voice-and-text: '\eacc';
-$icon-voice-message: '\eacd';
-$icon-voice-to-text-message: '\eace';
-$icon-volume-off-fill: '\eacf';
-$icon-volume-off: '\ead0';
-$icon-volume-settings: '\ead1';
-$icon-volume-up-fill: '\ead2';
-$icon-volume-up: '\ead3';
+$icon-video-and-voice-live: '\eac8';
+$icon-video-collapse: '\eac9';
+$icon-video-expand: '\eaca';
+$icon-video-play-live: '\eacb';
+$icon-video-play: '\eacc';
+$icon-video: '\eacd';
+$icon-voice-01: '\eace';
+$icon-voice-and-text: '\eacf';
+$icon-voice-message: '\ead0';
+$icon-voice-to-text-message: '\ead1';
+$icon-volume-off-fill: '\ead2';
+$icon-volume-off: '\ead3';
+$icon-volume-settings: '\ead4';
+$icon-volume-up-fill: '\ead5';
+$icon-volume-up: '\ead6';
