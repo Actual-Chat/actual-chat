@@ -9,19 +9,19 @@ namespace ActualChat.Media;
 /// Represents a preview of a linked URL with title, description, and thumbnail.
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public sealed partial record LinkPreview : IHasId<Symbol>, IHasVersion<long>, IHasMetadata, IRequirementTarget
 {
-    [DataMember, MemoryPackOrder(0)] public required Symbol Id { get; init; }
-    [DataMember, MemoryPackOrder(8)] public long Version { get; init; }
-    [DataMember, MemoryPackOrder(1)] public string Url { get; init; } = "";
-    [DataMember, MemoryPackOrder(2)] public MediaId? PreviewMediaId { get; init; }
-    [DataMember, MemoryPackOrder(3)] public string Title { get; init; } = "";
-    [DataMember, MemoryPackOrder(4)] public string Description { get; init; } = "";
-    [DataMember, MemoryPackOrder(5)] public Moment CreatedAt { get; init; }
-    [DataMember, MemoryPackOrder(6)] public Moment ModifiedAt { get; init; }
-    [DataMember, MemoryPackOrder(7)] public Media? PreviewMedia { get; init; } // Populated only on reads
-    [DataMember, MemoryPackOrder(10)] public PropertyBag Metadata { get; init; }
+    [DataMember, MemoryPackOrder(0), Key(0)] public required Symbol Id { get; init; }
+    [DataMember, MemoryPackOrder(8), Key(8)] public long Version { get; init; }
+    [DataMember, MemoryPackOrder(1), Key(1)] public string Url { get; init; } = "";
+    [DataMember, MemoryPackOrder(2), Key(2)] public MediaId? PreviewMediaId { get; init; }
+    [DataMember, MemoryPackOrder(3), Key(3)] public string Title { get; init; } = "";
+    [DataMember, MemoryPackOrder(4), Key(4)] public string Description { get; init; } = "";
+    [DataMember, MemoryPackOrder(5), Key(5)] public Moment CreatedAt { get; init; }
+    [DataMember, MemoryPackOrder(6), Key(6)] public Moment ModifiedAt { get; init; }
+    [DataMember, MemoryPackOrder(7), Key(7)] public Media? PreviewMedia { get; init; } // Populated only on reads
+    [DataMember, MemoryPackOrder(10), Key(9)] public PropertyBag Metadata { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public int VideoWidth {

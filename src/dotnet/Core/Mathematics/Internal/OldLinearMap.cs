@@ -2,23 +2,20 @@ using System.Numerics;
 
 namespace ActualChat.Mathematics.Internal;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 [MessagePackFormatter(typeof(OldLinearMapMessagePackFormatter))]
 public readonly partial struct OldLinearMap
 {
-    private readonly float[] _sourcePoints;
-    private readonly float[] _targetPoints;
-
-    [DataMember(Order = 0), MemoryPackOrder(0)]
-    public float[] SourcePoints => _sourcePoints ?? [];
-    [DataMember(Order = 1), MemoryPackOrder(1)]
-    public float[] TargetPoints => _targetPoints ?? [];
+    [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
+    public float[] SourcePoints => field ?? [];
+    [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
+    public float[] TargetPoints => field ?? [];
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
     public OldLinearMap(float[] sourcePoints, float[] targetPoints)
     {
-        _sourcePoints = sourcePoints;
-        _targetPoints = targetPoints;
+        SourcePoints = sourcePoints;
+        TargetPoints = targetPoints;
         if (sourcePoints.Length != targetPoints.Length)
             throw new ArgumentOutOfRangeException(nameof(targetPoints));
     }

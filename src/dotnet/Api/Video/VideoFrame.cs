@@ -1,6 +1,6 @@
 namespace ActualChat.Video;
 
-[DataContract, MemoryPackable, MessagePackObject(true)]
+[DataContract, MemoryPackable, MessagePackObject]
 [MessagePackFormatter(typeof(CachingVideoFrameFormatter))]
 public partial class VideoFrame : MediaFrame
 {
@@ -13,38 +13,34 @@ public partial class VideoFrame : MediaFrame
         // ReSharper disable once VirtualMemberCallInConstructor
         => IsKeyFrame = isKeyFrame;
 
-    [DataMember(Order = 1), MemoryPackOrder(1)]
+    [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
     public override TimeSpan Offset { get; init; }
-
-    [DataMember(Order = 2), MemoryPackOrder(2)]
+    [DataMember(Order = 2), MemoryPackOrder(2), Key(2)]
     public override TimeSpan Duration { get; init; }
-
-    [DataMember(Order = 3), MemoryPackOrder(3)]
+    [DataMember(Order = 3), MemoryPackOrder(3), Key(3)]
     public override bool IsKeyFrame { get; init; }
-
-    [DataMember(Order = 4), MemoryPackOrder(4)]
+    [DataMember(Order = 4), MemoryPackOrder(4), Key(10)]
     public int Width { get; init; }
-
-    [DataMember(Order = 5), MemoryPackOrder(5)]
+    [DataMember(Order = 5), MemoryPackOrder(5), Key(11)]
     public int Height { get; init; }
 
     /// <summary>
     /// Codec-specific data (SPS/PPS for H.264). Only present on keyframes.
     /// ReadOnlyMemory&lt;byte&gt; for zero-copy slicing and reduced GC pressure.
     /// </summary>
-    [DataMember(Order = 6), MemoryPackOrder(6)]
+    [DataMember(Order = 6), MemoryPackOrder(6), Key(12)]
     public ReadOnlyMemory<byte> Description { get; init; }
 
     /// <summary>
     /// Codec identifier (e.g., "avc1" for H.264). Only present on keyframes.
     /// </summary>
-    [DataMember(Order = 7), MemoryPackOrder(7)]
+    [DataMember(Order = 7), MemoryPackOrder(7), Key(13)]
     public string? Codec { get; init; }
 
     /// <summary>
     /// SVC temporal layer ID. 0 = base layer, 1+ = enhancement layers.
     /// </summary>
-    [DataMember(Order = 8), MemoryPackOrder(8)]
+    [DataMember(Order = 8), MemoryPackOrder(8), Key(14)]
     public int TemporalLayerId { get; init; }
 
     /// <summary>
@@ -54,10 +50,10 @@ public partial class VideoFrame : MediaFrame
     /// quality-preset ceiling. Zero when the sender doesn't populate them
     /// (legacy peers, non-keyframe deltas).
     /// </summary>
-    [DataMember(Order = 9), MemoryPackOrder(9)]
+    [DataMember(Order = 9), MemoryPackOrder(9), Key(15)]
     public int SourceWidth { get; init; }
 
-    [DataMember(Order = 10), MemoryPackOrder(10)]
+    [DataMember(Order = 10), MemoryPackOrder(10), Key(16)]
     public int SourceHeight { get; init; }
 
     /// <summary>
@@ -78,5 +74,5 @@ public partial class VideoFrame : MediaFrame
     /// same array, so the array lives as long as any consumer holds this frame.
     /// </summary>
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    internal ReadOnlyMemory<byte> SerializedData { get; set; }
+    public ReadOnlyMemory<byte> SerializedData { get; set; }
 }

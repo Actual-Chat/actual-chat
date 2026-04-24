@@ -7,7 +7,7 @@ namespace ActualChat.Chat;
 /// enriched with <see cref="Media.Media"/> data for tiles. Stored back to DB via UpdateFrom().
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(AllowPrivate = true)]
 public sealed partial record ChatEntryAudio
 {
     #region MemoryPackXxx properties
@@ -32,14 +32,14 @@ public sealed partial record ChatEntryAudio
 
     #endregion
 
-    [DataMember, MemoryPackOrder(0)] public MediaId? MediaId { get; init; }
-    [DataMember, MemoryPackOrder(1)] public string BlobId { get; init; } = "";
-    [DataMember, MemoryPackOrder(2)] public string StreamId { get; init; } = "";
-    [DataMember, MemoryPackOrder(3)] public Moment BeginsAt { get; init; }
-    [DataMember, MemoryPackIgnore] public Moment? EndsAt { get; init; }
-    [DataMember, MemoryPackIgnore] public Moment? ContentEndsAt { get; init; }
-    [DataMember, MemoryPackIgnore] public Moment? ClientSideBeginsAt { get; init; }
-    [DataMember, MemoryPackOrder(4)] public LinearMap TimeMap { get; init; }
+    [DataMember, MemoryPackOrder(0), Key(0)] public MediaId? MediaId { get; init; }
+    [DataMember, MemoryPackOrder(1), Key(1)] public string BlobId { get; init; } = "";
+    [DataMember, MemoryPackOrder(2), Key(2)] public string StreamId { get; init; } = "";
+    [DataMember, MemoryPackOrder(3), Key(3)] public Moment BeginsAt { get; init; }
+    [DataMember, MemoryPackIgnore, Key(5)] public Moment? EndsAt { get; init; }
+    [DataMember, MemoryPackIgnore, Key(6)] public Moment? ContentEndsAt { get; init; }
+    [DataMember, MemoryPackIgnore, Key(7)] public Moment? ClientSideBeginsAt { get; init; }
+    [DataMember, MemoryPackOrder(4), Key(4)] public LinearMap TimeMap { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public double? Duration => EndsAt is { } endsAt ? (endsAt - BeginsAt).TotalSeconds : null;

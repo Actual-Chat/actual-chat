@@ -5,7 +5,7 @@ namespace ActualChat.Media;
 /// <summary>
 /// Base class for media data frames (audio, video).
 /// </summary>
-[DataContract, MemoryPackable, MessagePackObject(true)]
+[DataContract, MemoryPackable, MessagePackObject]
 [MemoryPackUnion(0, typeof(AudioFrame))]
 [MemoryPackUnion(1, typeof(Video.VideoFrame))]
 [Union(0, typeof(AudioFrame))]
@@ -13,7 +13,7 @@ namespace ActualChat.Media;
 public abstract partial class MediaFrame
 {
     // ReadOnlyMemory<byte> for zero-copy slicing and reduced GC pressure.
-    [DataMember(Order = 0), MemoryPackOrder(0)]
+    [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
     public ReadOnlyMemory<byte> Data { get; init; }
 
     [DataMember(Order = 1), MemoryPackOrder(1)]

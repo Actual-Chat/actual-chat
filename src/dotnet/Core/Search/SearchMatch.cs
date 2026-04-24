@@ -3,16 +3,16 @@
 /// <summary>
 /// Represents a search match with text, rank, and highlighted parts.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 [MessagePackFormatter(typeof(Internal.SearchMatchMessagePackFormatter))]
 public sealed partial record SearchMatch(
-    [property: DataMember(Order = 0), MemoryPackOrder(0)] string Text,
-    [property: DataMember(Order = 1), MemoryPackOrder(1)] double Rank,
+    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] string Text,
+    [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] double Rank,
     SearchMatchPart[] Parts)
 {
     public static readonly SearchMatch Empty = New("");
 
-    [DataMember(Order = 2), MemoryPackOrder(2)]
+    [DataMember(Order = 2), MemoryPackOrder(2), Key(2)]
     public SearchMatchPart[] Parts {
         get => field ?? [];
         init;

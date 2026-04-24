@@ -1,28 +1,29 @@
 using System.ComponentModel.DataAnnotations;
+using Key = MessagePack.KeyAttribute;
 
 namespace ActualChat;
 
 /// <summary>
 /// Query parameters for avatar generation endpoints.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public sealed partial record AvatarQuery : IValidatableObject
 {
-    [DataMember, MemoryPackOrder(0)]
+    [DataMember, MemoryPackOrder(0), Key(0)]
     [Required]
     public required AvatarKind Kind { get; init; }
 
-    [DataMember, MemoryPackOrder(1)]
+    [DataMember, MemoryPackOrder(1), Key(1)]
     [Required]
     public required string Key { get; init; }
 
-    [DataMember, MemoryPackOrder(2)]
+    [DataMember, MemoryPackOrder(2), Key(2)]
     public AvatarFormat Format { get; init; } = AvatarFormat.Svg;
 
-    [DataMember, MemoryPackOrder(3)]
+    [DataMember, MemoryPackOrder(3), Key(3)]
     public int? Size { get; init; }
 
-    [DataMember, MemoryPackOrder(4)]
+    [DataMember, MemoryPackOrder(4), Key(4)]
     public string? Title { get; init; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)

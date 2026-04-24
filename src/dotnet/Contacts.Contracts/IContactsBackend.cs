@@ -72,12 +72,12 @@ public interface IContactsBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to create, update, or delete a contact.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ContactsBackend_Change(
-    [property: DataMember, MemoryPackOrder(0)] ContactId Id,
-    [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(2)] Change<Contact> Change
+    [property: DataMember, MemoryPackOrder(0), Key(0)] ContactId Id,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] long? ExpectedVersion,
+    [property: DataMember, MemoryPackOrder(2), Key(2)] Change<Contact> Change
 ) : ICommand<Contact?>, IBackendCommand, IHasShardKey<ContactId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
@@ -87,10 +87,10 @@ public sealed partial record ContactsBackend_Change(
 /// <summary>
 /// Command to update a contact's last activity timestamp.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ContactsBackend_Touch(
-    [property: DataMember, MemoryPackOrder(0)] ContactId Id
+    [property: DataMember, MemoryPackOrder(0), Key(0)] ContactId Id
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ContactId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
@@ -100,10 +100,10 @@ public sealed partial record ContactsBackend_Touch(
 /// <summary>
 /// Command to remove all contacts for a deleted account.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ContactsBackend_RemoveAccount(
-    [property: DataMember, MemoryPackOrder(0)] UserId UserId
+    [property: DataMember, MemoryPackOrder(0), Key(0)] UserId UserId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
@@ -113,10 +113,10 @@ public sealed partial record ContactsBackend_RemoveAccount(
 /// <summary>
 /// Command to remove all contacts for a deleted chat.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ContactsBackend_RemoveChatContacts(
-    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId
+    [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId ChatId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
@@ -126,10 +126,10 @@ public sealed partial record ContactsBackend_RemoveChatContacts(
 /// <summary>
 /// Command to send welcome messages to a new user.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ContactsBackend_Greet(
-    [property: DataMember, MemoryPackOrder(0)] UserId UserId
+    [property: DataMember, MemoryPackOrder(0), Key(0)] UserId UserId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
@@ -139,12 +139,12 @@ public sealed partial record ContactsBackend_Greet(
 /// <summary>
 /// Command to update a user's membership status in a place.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ContactsBackend_ChangePlaceMembership(
-    [property: DataMember, MemoryPackOrder(0)] PlaceId PlaceId,
-    [property: DataMember, MemoryPackOrder(1)] UserId OwnerId,
-    [property: DataMember, MemoryPackOrder(2)] bool HasLeft
+    [property: DataMember, MemoryPackOrder(0), Key(0)] PlaceId PlaceId,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] UserId OwnerId,
+    [property: DataMember, MemoryPackOrder(2), Key(2)] bool HasLeft
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<PlaceId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
@@ -154,10 +154,10 @@ public sealed partial record ContactsBackend_ChangePlaceMembership(
 /// <summary>
 /// Command to publish a chat that was copied to a place.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ContactsBackend_PublishCopiedChat(
-    [property: DataMember, MemoryPackOrder(0)] PlaceChatId ChatId
+    [property: DataMember, MemoryPackOrder(0), Key(0)] PlaceChatId ChatId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
@@ -167,10 +167,10 @@ public sealed partial record ContactsBackend_PublishCopiedChat(
 /// <summary>
 /// Command to review and update a contact's name from external contacts.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ContactsBackend_ReviewExternalContactName(
-    [property: DataMember, MemoryPackOrder(0)] ContactId Id
+    [property: DataMember, MemoryPackOrder(0), Key(0)] ContactId Id
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ContactId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
@@ -180,12 +180,12 @@ public sealed partial record ContactsBackend_ReviewExternalContactName(
 /// <summary>
 /// Command to create, update, or delete a thread contact.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ContactsBackend_ChangeThreadContact(
-    [property: DataMember, MemoryPackOrder(0)] ContactId Id,
-    [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(2)] Change<ThreadContact> Change
+    [property: DataMember, MemoryPackOrder(0), Key(0)] ContactId Id,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] long? ExpectedVersion,
+    [property: DataMember, MemoryPackOrder(2), Key(2)] Change<ThreadContact> Change
 ) : ICommand<ThreadContact?>, IBackendCommand, IHasShardKey<ContactId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]

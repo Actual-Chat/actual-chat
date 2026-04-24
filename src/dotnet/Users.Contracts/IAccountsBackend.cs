@@ -47,25 +47,25 @@ public interface IAccountsBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to sign in a user with the given identity.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
 // ReSharper disable once InconsistentNaming
 public sealed partial record AccountsBackend_SignIn(
-    [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] UserIdentity AuthenticatedIdentity,
-    [property: DataMember, MemoryPackOrder(2)] ApiMap<UserIdentity, string> Identities, // May not include AuthenticatedIdentity
-    [property: DataMember, MemoryPackOrder(3)] ApiMap<string, string> Claims,
-    [property: DataMember, MemoryPackOrder(4)] bool MustExist = false
+    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] UserIdentity AuthenticatedIdentity,
+    [property: DataMember, MemoryPackOrder(2), Key(2)] ApiMap<UserIdentity, string> Identities, // May not include AuthenticatedIdentity
+    [property: DataMember, MemoryPackOrder(3), Key(3)] ApiMap<string, string> Claims,
+    [property: DataMember, MemoryPackOrder(4), Key(4)] bool MustExist = false
 ) : ISessionCommand<Unit>, IBackendCommand;
 
 /// <summary>
 /// Command to sign out a session.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record AccountsBackend_SignOut(
-    [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] bool Deactivate = false
+    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] bool Deactivate = false
 ) : ISessionCommand<Unit>, IBackendCommand, IHasShardKey<Session>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
@@ -75,11 +75,11 @@ public sealed partial record AccountsBackend_SignOut(
 /// <summary>
 /// Command to update a user account.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record AccountsBackend_Update(
-    [property: DataMember, MemoryPackOrder(0)] AccountFull Account,
-    [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion
+    [property: DataMember, MemoryPackOrder(0), Key(0)] AccountFull Account,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] long? ExpectedVersion
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
@@ -89,10 +89,10 @@ public sealed partial record AccountsBackend_Update(
 /// <summary>
 /// Command to delete a user account.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record AccountsBackend_Delete(
-    [property: DataMember, MemoryPackOrder(0)] UserId UserId
+    [property: DataMember, MemoryPackOrder(0), Key(0)] UserId UserId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]

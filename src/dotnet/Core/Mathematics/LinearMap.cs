@@ -2,7 +2,7 @@ using System.Numerics;
 
 namespace ActualChat.Mathematics;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 [MessagePackFormatter(typeof(Internal.LinearMapMessagePackFormatter))]
 public readonly partial struct LinearMap
 {
@@ -10,7 +10,7 @@ public readonly partial struct LinearMap
 
     private readonly float[]? _data;
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
+    [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
     public float[] Data => _data ?? [];
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]

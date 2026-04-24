@@ -6,17 +6,17 @@ namespace ActualChat.Chat;
 /// <summary>
 /// Defines a permission role within a chat.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record Role(
-    [property: DataMember, MemoryPackOrder(0)] RoleId Id, // Corresponds to DbRole.Id
-    [property: DataMember, MemoryPackOrder(1)] long Version = 0
+    [property: DataMember, MemoryPackOrder(0), Key(0)] RoleId Id, // Corresponds to DbRole.Id
+    [property: DataMember, MemoryPackOrder(1), Key(1)] long Version = 0
     ) : IHasId<RoleId>, IHasVersion<long>, IRequirementTarget
 {
-    [DataMember, MemoryPackOrder(2)] public string Picture { get; init; } = "";
-    [DataMember, MemoryPackOrder(3)] public ChatPermissions Permissions { get; init; }
-    [DataMember, MemoryPackOrder(4)] public string Name { get; init; } = "";
-    [DataMember, MemoryPackOrder(5)] public SystemRole SystemRole { get; init; } = SystemRole.None;
+    [DataMember, MemoryPackOrder(2), Key(2)] public string Picture { get; init; } = "";
+    [DataMember, MemoryPackOrder(3), Key(3)] public ChatPermissions Permissions { get; init; }
+    [DataMember, MemoryPackOrder(4), Key(4)] public string Name { get; init; } = "";
+    [DataMember, MemoryPackOrder(5), Key(5)] public SystemRole SystemRole { get; init; } = SystemRole.None;
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
@@ -27,7 +27,7 @@ public sealed partial record Role(
     private Role() : this(null!) { }
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
-    public Role(string picture, ChatPermissions permissions, string name, SystemRole systemRole, RoleId id, long version = 0)
+    public Role(RoleId id, long version, string picture, ChatPermissions permissions, string name, SystemRole systemRole)
         : this(id, version)
     {
         Picture = picture;

@@ -6,12 +6,12 @@ namespace ActualChat.Transcription;
 /// <summary>
 /// Represents transcribed text with character-to-time mapping.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 [method: MemoryPackConstructor, SerializationConstructor]
 public sealed partial record Transcript(
-    [property: DataMember(Order = 0), MemoryPackOrder(0)] string Text,
-    [property: DataMember(Order = 1), MemoryPackOrder(1)] LinearMap TimeMap,
-    [property: DataMember(Order = 2), MemoryPackOrder(2)] Language[] Languages
+    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] string Text,
+    [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] LinearMap TimeMap,
+    [property: DataMember(Order = 2), MemoryPackOrder(2), Key(2)] Language[] Languages
 ) : ISanitized
 {
     [GeneratedRegex(@"^\s*", RegexOptions.Singleline | RegexOptions.ExplicitCapture)]
@@ -35,7 +35,7 @@ public sealed partial record Transcript(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public Range<float> TimeRange => TimeMap.YRange;
 
-    [DataMember(Order = 3), MemoryPackOrder(3)]
+    [DataMember(Order = 3), MemoryPackOrder(3), Key(3)]
     public bool IsStable { get; init; }
 
     public static Transcript New()

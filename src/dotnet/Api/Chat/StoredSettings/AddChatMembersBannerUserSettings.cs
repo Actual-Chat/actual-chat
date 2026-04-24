@@ -3,7 +3,7 @@ namespace ActualChat.Chat;
 /// <summary>
 /// Stores the dismissed-at timestamp for the "Add Chat Members" banner.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public sealed partial record AddChatMembersBannerUserSettings : StoredSettings
 {
     public static readonly string KeyPrefix = "@AddChatMembersBanner(";
@@ -19,5 +19,5 @@ public sealed partial record AddChatMembersBannerUserSettings : StoredSettings
         ChatId.Parse(chatIdValue);
     }
 
-    [DataMember, MemoryPackOrder(0)] public Moment DismissedAt { get; init; }
+    [DataMember, MemoryPackOrder(0), Key(0)] public Moment DismissedAt { get; init; }
 }

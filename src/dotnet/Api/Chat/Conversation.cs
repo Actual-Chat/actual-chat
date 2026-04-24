@@ -8,10 +8,10 @@ namespace ActualChat.Chat;
 /// Represents a thread conversation within a chat, grouping related entries.
 /// </summary>
 [ParameterComparer(typeof(ByIdAndVersionParameterComparer<ConversationId, long>))]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public sealed partial record Conversation(
-    [property: DataMember, MemoryPackOrder(0)] ConversationId Id,
-    [property: DataMember, MemoryPackOrder(1)] long Version = 0
+    [property: DataMember, MemoryPackOrder(0), Key(0)] ConversationId Id,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] long Version = 0
 ) : IHasId<ConversationId>, IHasVersion<long>, IRequirementTarget
 {
     public static readonly VersionEqualityComparer<Conversation, ConversationId> VersionEqualityComparer = new();
@@ -19,18 +19,18 @@ public sealed partial record Conversation(
         (Conversation? c) => c?.Id is not null,
         new(() => StandardError.NotFound<Conversation>()));
 
-    [DataMember, MemoryPackOrder(2)] public string Title { get; init; } = "";
-    [DataMember, MemoryPackOrder(3)] public string Description { get; init; } = "";
-    [DataMember, MemoryPackOrder(4)] public string Summary { get; init; } = "";
+    [DataMember, MemoryPackOrder(2), Key(2)] public string Title { get; init; } = "";
+    [DataMember, MemoryPackOrder(3), Key(3)] public string Description { get; init; } = "";
+    [DataMember, MemoryPackOrder(4), Key(4)] public string Summary { get; init; } = "";
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember] public Range<long> EntryRange => new(Id.StartEntryLid, EndEntryLid + 1);
-    [DataMember, MemoryPackOrder(5)] public long EndEntryLid { get; init; } = Id.StartEntryLid;
-    [DataMember, MemoryPackOrder(6)] public Moment StartsAt { get; init; }
-    [DataMember, MemoryPackOrder(7)] public Moment EndsAt { get; init; }
-    [DataMember, MemoryPackOrder(8)] public int MessageCount { get; init; }
-    [DataMember, MemoryPackOrder(9)] public IReadOnlyList<AuthorId> AuthorIds { get; init; } = [];
-    [DataMember, MemoryPackOrder(10)] public int AttachmentCount { get; init; }
-    [DataMember, MemoryPackOrder(11)] public Symbol[] AttachmentIds { get; init; } = [];
-    [DataMember, MemoryPackOrder(12)] public ChatEntryAttachment[] Attachments { get; init; } = []; // Populated only on reads by ConversationsBackend
+    [DataMember, MemoryPackOrder(5), Key(5)] public long EndEntryLid { get; init; } = Id.StartEntryLid;
+    [DataMember, MemoryPackOrder(6), Key(6)] public Moment StartsAt { get; init; }
+    [DataMember, MemoryPackOrder(7), Key(7)] public Moment EndsAt { get; init; }
+    [DataMember, MemoryPackOrder(8), Key(8)] public int MessageCount { get; init; }
+    [DataMember, MemoryPackOrder(9), Key(9)] public IReadOnlyList<AuthorId> AuthorIds { get; init; } = [];
+    [DataMember, MemoryPackOrder(10), Key(10)] public int AttachmentCount { get; init; }
+    [DataMember, MemoryPackOrder(11), Key(11)] public Symbol[] AttachmentIds { get; init; } = [];
+    [DataMember, MemoryPackOrder(12), Key(12)] public ChatEntryAttachment[] Attachments { get; init; } = []; // Populated only on reads by ConversationsBackend
 
     // This record relies on referential equality
     public bool Equals(Conversation? other) => ReferenceEquals(this, other);

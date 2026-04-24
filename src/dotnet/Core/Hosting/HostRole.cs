@@ -3,10 +3,10 @@
 /// <summary>
 /// Defines roles that a host can fulfill (e.g., Api, Backend services, Queues).
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 [MessagePackFormatter(typeof(ActualChat.Hosting.Internal.HostRoleMessagePackFormatter))]
 public partial record struct HostRole(
-    [property: DataMember(Order = 0), MemoryPackOrder(0)] Symbol Id
+    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] Symbol Id
     ) : ICanBeNone<HostRole>, IComparable<HostRole>
 {
     public const string QueueSuffix = "Queue";

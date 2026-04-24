@@ -1,13 +1,12 @@
 using System.Text;
 using System.Text.RegularExpressions;
-using Cysharp.Text;
 
 namespace ActualChat.Search;
 
 /// <summary>
 /// Represents a parsed search query with terms and matching configuration.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 [MessagePackFormatter(typeof(Internal.SearchPhraseMessagePackFormatter))]
 public sealed partial class SearchPhrase
 {
@@ -17,16 +16,13 @@ public sealed partial class SearchPhrase
 
     public static readonly SearchPhrase None = "".ToSearchPhrase(true, false);
 
-    private string? _text;
-    private Regex? _termRegex;
-
-    [DataMember, MemoryPackOrder(0)] public string[] Terms { get; }
-    [DataMember, MemoryPackOrder(1)] public bool MatchPrefixes { get; }
+    [DataMember, MemoryPackOrder(0), Key(0)] public string[] Terms { get; }
+    [DataMember, MemoryPackOrder(1), Key(1)] public bool MatchPrefixes { get; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public string Text => _text ??= Terms.ToDelimitedString(" ");
+    public string Text => field ??= Terms.ToDelimitedString(" ");
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public Regex TermRegex => _termRegex ??= new Regex(GetTermRegexString(), RegexOptions.IgnoreCase);
+    public Regex TermRegex => field ??= new Regex(GetTermRegexString(), RegexOptions.IgnoreCase);
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsEmpty => Terms.Length == 0;
 

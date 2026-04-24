@@ -2,12 +2,12 @@ using System.Numerics;
 
 namespace ActualChat.Mathematics;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 [MessagePackFormatter(typeof(Internal.LinearMapDiffMessagePackFormatter))]
 [StructLayout(LayoutKind.Auto)]
 public readonly partial record struct LinearMapDiff(
-    [property: DataMember(Order = 0), MemoryPackOrder(0)] LinearMap Suffix,
-    [property: DataMember(Order = 1), MemoryPackOrder(1)] bool IsRewrite = false
+    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] LinearMap Suffix,
+    [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] bool IsRewrite = false
 ) : ICanBeNone<LinearMapDiff>
 {
     public static LinearMapDiff None => default;

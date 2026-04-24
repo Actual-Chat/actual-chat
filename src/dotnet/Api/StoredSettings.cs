@@ -7,7 +7,7 @@ namespace ActualChat;
 /// Common base for all stored settings types, enabling polymorphic (union) serialization.
 /// </summary>
 [RpcSerializable]
-[DataContract, MemoryPackable, MessagePackObject(true)]
+[DataContract, MemoryPackable, MessagePackObject]
 // User settings
 [MemoryPackUnion(0, typeof(UserAppSettings))]
 [MemoryPackUnion(1, typeof(UserEmailsSettings))]

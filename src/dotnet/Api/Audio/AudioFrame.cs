@@ -3,14 +3,16 @@ namespace ActualChat.Audio;
 /// <summary>
 /// Represents a single frame of audio data.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 [MessagePackFormatter(typeof(CachingAudioFrameFormatter))]
 public partial class AudioFrame : MediaFrame
 {
-    [DataMember(Order = 4), MemoryPackOrder(4)]
+    [DataMember(Order = 4), MemoryPackOrder(4), Key(1)]
     public override TimeSpan Offset { get; init; }
 
+    [Key(2)]
     public override TimeSpan Duration { get; init; } = Constants.Audio.OpusFrameDuration;
+    [Key(3)]
     public override bool IsKeyFrame { get; init; } = true;
 
     /// <summary>
@@ -23,5 +25,5 @@ public partial class AudioFrame : MediaFrame
     /// into the same array, so the array lives as long as any consumer holds this frame.
     /// </summary>
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    internal ReadOnlyMemory<byte> SerializedData { get; set; }
+    public ReadOnlyMemory<byte> SerializedData { get; set; }
 }

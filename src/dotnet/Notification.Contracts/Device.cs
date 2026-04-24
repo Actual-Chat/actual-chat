@@ -4,11 +4,11 @@
 /// Represents a device registered for push notifications.
 /// </summary>
 [Newtonsoft.Json.JsonObject(Newtonsoft.Json.MemberSerialization.OptOut)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(AllowPrivate = true)]
 public sealed partial record Device(
-    [property: DataMember(Order = 0), MemoryPackOrder(0)] Symbol DeviceId,
-    [property: DataMember(Order = 1), MemoryPackOrder(1)] DeviceType DeviceType,
-    [property: DataMember(Order = 2), MemoryPackOrder(2)] Moment CreatedAt)
+    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] Symbol DeviceId,
+    [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] DeviceType DeviceType,
+    [property: DataMember(Order = 2), MemoryPackOrder(2), Key(2)] Moment CreatedAt)
 {
     #region MemoryPackXxx properties
 
@@ -20,5 +20,5 @@ public sealed partial record Device(
 
     #endregion
 
-    [DataMember(Order = 3), MemoryPackIgnore] public Moment? AccessedAt { get; init; }
+    [DataMember(Order = 3), MemoryPackIgnore, Key(3)] public Moment? AccessedAt { get; init; }
 }

@@ -7,11 +7,7 @@ namespace ActualChat;
 /// <summary>
 /// Unique identifier for a cluster node.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-// MemoryPack wire format intentionally kept SG-generated (IMemoryPackable<T> map) to
-// stay compatible with older clients. When all peers are upgraded, switch to plain-string
-// by uncommenting the line below:
-// [MemoryPackFormatter<Internal.StringLikeMemoryPackFormatter<NodeRef>>]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [MessagePackFormatter(typeof(Internal.StringLikeMessagePackFormatter<NodeRef>))]
 [JsonConverter(typeof(Internal.StringLikeJsonConverter<NodeRef>))]
 [Newtonsoft.Json.JsonConverter(typeof(Internal.StringLikeNewtonsoftJsonConverter<NodeRef>))]

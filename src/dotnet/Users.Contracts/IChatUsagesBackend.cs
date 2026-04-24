@@ -26,13 +26,13 @@ public interface IChatUsagesBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to record a user's chat access.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatUsagesBackend_RegisterUsage(
-    [property: DataMember, MemoryPackOrder(0)] UserId UserId,
-    [property: DataMember, MemoryPackOrder(1)] ChatUsageListKind Kind,
-    [property: DataMember, MemoryPackOrder(2)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(3)] DateTime? AccessTime
+    [property: DataMember, MemoryPackOrder(0), Key(0)] UserId UserId,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatUsageListKind Kind,
+    [property: DataMember, MemoryPackOrder(2), Key(2)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(3), Key(3)] DateTime? AccessTime
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
@@ -42,12 +42,12 @@ public sealed partial record ChatUsagesBackend_RegisterUsage(
 /// <summary>
 /// Command to trim the recency list to a maximum size.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatUsagesBackend_PurgeRecencyList(
-    [property: DataMember, MemoryPackOrder(0)] UserId UserId,
-    [property: DataMember, MemoryPackOrder(1)] ChatUsageListKind Kind,
-    [property: DataMember, MemoryPackOrder(2)] int Size
+    [property: DataMember, MemoryPackOrder(0), Key(0)] UserId UserId,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatUsageListKind Kind,
+    [property: DataMember, MemoryPackOrder(2), Key(2)] int Size
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]

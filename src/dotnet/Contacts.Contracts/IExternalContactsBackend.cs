@@ -24,10 +24,10 @@ public interface IExternalContactsBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to bulk create, update, or delete external contacts.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ExternalContactsBackend_BulkChange(
-    [property: DataMember, MemoryPackOrder(0)] ExternalContactChange[] Changes
+    [property: DataMember, MemoryPackOrder(0), Key(0)] ExternalContactChange[] Changes
 ) : ICommand<Result<ExternalContactFull?>[]>, IBackendCommand, IHasShardKey<UserId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
@@ -37,10 +37,10 @@ public sealed partial record ExternalContactsBackend_BulkChange(
 /// <summary>
 /// Command to update an external contact's last sync timestamp.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ExternalContactsBackend_Touch(
-    [property: DataMember, MemoryPackOrder(0)] ExternalContactId Id
+    [property: DataMember, MemoryPackOrder(0), Key(0)] ExternalContactId Id
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
@@ -50,10 +50,10 @@ public sealed partial record ExternalContactsBackend_Touch(
 /// <summary>
 /// Command to remove all external contacts for a deleted account.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ExternalContactsBackend_RemoveAccount(
-    [property: DataMember, MemoryPackOrder(0)] UserId UserId
+    [property: DataMember, MemoryPackOrder(0), Key(0)] UserId UserId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
