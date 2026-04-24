@@ -18,9 +18,9 @@ public class KvasSerializer : ByteSerializerBase
     public static KvasSerializer Default { get; set; } = new();
     public static readonly byte[] SerializedTrue = Default.Write(true, typeof(bool)).WrittenMemory.ToArray();
 
-    public IByteSerializer MemoryPackSerializer { get; init; } = MemoryPackByteSerializer.Default;
-    public IByteSerializer MessagePackSerializer { get; init; } = MessagePackByteSerializer.Default;
-    public ITextSerializer TextSerializer { get; init; } = SystemJsonSerializer.Default;
+    public IByteSerializer MemoryPackSerializer { get; init; } = Serializers.MemoryPack;
+    public IByteSerializer MessagePackSerializer { get; init; } = Serializers.MessagePack;
+    public ITextSerializer TextSerializer { get; init; } = Serializers.SystemJson;
 
     public override object? Read(
         ReadOnlyMemory<byte> data,

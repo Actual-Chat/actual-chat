@@ -1,5 +1,4 @@
 using ActualChat.Kvas;
-using ActualChat.Serialization;
 
 namespace ActualChat.Users;
 

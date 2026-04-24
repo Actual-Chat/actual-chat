@@ -62,7 +62,7 @@ public class LanguageDetector(IServiceProvider services)
             var json = result
                 .Replace("```json", "", StringComparison.OrdinalIgnoreCase)
                 .Replace("`", "");
-            return SystemJsonSerializer.Default.Read<string[]>(json)
+            return Serializers.SystemJson.Read<string[]>(json)
                 .Select(Language.ParseNullable)
                 .SkipNullItems()
                 .ToList();

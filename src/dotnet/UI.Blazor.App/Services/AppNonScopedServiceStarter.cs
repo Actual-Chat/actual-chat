@@ -191,7 +191,7 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
         return;
 
         static void Warmup<T>(T instance) {
-            var s = SystemJsonSerializer.Default;
+            var s = Serializers.SystemJson;
             var json = s.Write(instance);
             s.Read<T>(json);
         }

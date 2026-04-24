@@ -1,5 +1,4 @@
 using System.Buffers;
-using ActualChat.Serialization;
 
 namespace ActualChat.Core.UnitTests.Serialization;
 
@@ -181,8 +180,8 @@ public partial class VersionedByteSerializerTest(ITestOutputHelper @out) : TestB
     public void RoundTrip_RealSerializers_NewFormat()
     {
         var versioned = new VersionedByteSerializer(
-            [MessagePackByteSerializer.DefaultTypeDecorating],
-            legacy: MemoryPackByteSerializer.DefaultTypeDecorating);
+            [Serializers.MessagePackTypeDecorating],
+            legacy: Serializers.MemoryPackTypeDecorating);
 
         var value = new TestRecord("hello", 42);
         var buffer = new ArrayPoolBuffer<byte>();
@@ -200,7 +199,7 @@ public partial class VersionedByteSerializerTest(ITestOutputHelper @out) : TestB
     public void RoundTrip_RealSerializers_LegacyDataReadable()
     {
         // Pre-existing data: written by the legacy serializer with no version byte.
-        var legacy = MemoryPackByteSerializer.DefaultTypeDecorating;
+        var legacy = Serializers.MemoryPackTypeDecorating;
         var value = new TestRecord("hello", 42);
         var legacyBuffer = new ArrayPoolBuffer<byte>();
         legacy.Write(legacyBuffer, value, typeof(TestRecord));
@@ -208,7 +207,7 @@ public partial class VersionedByteSerializerTest(ITestOutputHelper @out) : TestB
 
         // Reader: new format = MessagePack at index 0, legacy fallback = MemoryPack.
         var versioned = new VersionedByteSerializer(
-            [MessagePackByteSerializer.DefaultTypeDecorating],
+            [Serializers.MessagePackTypeDecorating],
             legacy: legacy);
 
         var result = (TestRecord)versioned.Read(legacyData, typeof(TestRecord), out _)!;

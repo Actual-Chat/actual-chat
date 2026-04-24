@@ -1,5 +1,3 @@
-using ActualChat.Serialization;
-
 namespace ActualChat.Chat;
 
 /// <summary>

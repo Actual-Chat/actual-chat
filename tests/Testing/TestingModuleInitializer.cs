@@ -1,4 +1,4 @@
-using ActualLab.Testing;
+using ActualChat.Module;
 
 namespace ActualChat.Testing;
 
@@ -9,6 +9,10 @@ internal static class TestingModuleInitializer
     [ModuleInitializer]
     internal static void Initialize()
     {
+        RuntimeInfo.IsServer = true;
+        ApiContractsModuleInitializer.Load();
+        CoreModuleInitializer.Initialize();
+
 #if !USE_MEMORYPACK
         SerializationTestExt.UseMemoryPackSerializer = false;
 #endif

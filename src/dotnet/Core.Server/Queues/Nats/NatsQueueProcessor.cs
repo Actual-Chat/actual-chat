@@ -15,10 +15,10 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
     // We always write v3, but still read v2 to drain in-flight messages from older publishers.
     private const byte FormatVersion = 3;
     private static readonly byte[] FormatVersionBytes = [FormatVersion];
-    private static readonly IByteSerializer SerializerV2 = MemoryPackByteSerializer.Default;
-    private static readonly IByteSerializer SerializerV3 = MessagePackByteSerializer.Default;
-    private static readonly IByteSerializer TypeDecoratingSerializerV2 = MemoryPackByteSerializer.DefaultTypeDecorating;
-    private static readonly IByteSerializer TypeDecoratingSerializerV3 = MessagePackByteSerializer.DefaultTypeDecorating;
+    private static readonly IByteSerializer SerializerV2 = Serializers.MemoryPack;
+    private static readonly IByteSerializer SerializerV3 = Serializers.MessagePack;
+    private static readonly IByteSerializer TypeDecoratingSerializerV2 = Serializers.MemoryPackTypeDecorating;
+    private static readonly IByteSerializer TypeDecoratingSerializerV3 = Serializers.MessagePackTypeDecorating;
 
     private readonly AsyncLockSet<int> _getStreamLocks = new();
     private readonly AsyncLockSet<int> _getConsumerLock = new();

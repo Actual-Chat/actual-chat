@@ -40,9 +40,10 @@ public static class ClientStartup
         // AppContext feature switches
         // AppContext.SetSwitch("System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported", false);
 
-        // Rpc & Fusion defaults
         RuntimeInfo.IsServer = false;
-        CoreSerializerAndRpcSetup.Configure(isServer: false);
+        ApiContractsModuleInitializer.Load();
+        CoreModuleInitializer.Initialize();
+
 #if !DEBUG
         RpcDiagnosticsOptions.Default = RpcDiagnosticsOptions.Default with {
             CallTracerFactory = _ => null // No call tracing in release builds

@@ -1,5 +1,4 @@
 using ActualChat.Flows.Infrastructure;
-using ActualChat.Serialization;
 using ActualLab.Caching;
 
 namespace ActualChat.Flows;
@@ -22,8 +21,8 @@ public static class FlowData
     // Format version 0 = MessagePack (TypeDecorating); legacy fallback = MemoryPack (TypeDecorating)
     // for previously-persisted flow data written before the format byte was introduced.
     public static readonly IByteSerializer FlowSerializer = new VersionedByteSerializer(
-        [MessagePackByteSerializer.DefaultTypeDecorating],
-        legacy: MemoryPackByteSerializer.DefaultTypeDecorating);
+        [Serializers.MessagePackTypeDecorating],
+        legacy: Serializers.MemoryPackTypeDecorating);
     public static readonly IByteSerializer ResultSerializer = FlowSerializer;
 
     public static IFlowData FromFlow(Flow flow)
