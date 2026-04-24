@@ -8,7 +8,7 @@ namespace ActualChat.Media.Db;
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbLinkPreview : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    [Key] public string Id { get; set; } = "";
+    [DbKey] public string Id { get; set; } = "";
     [ConcurrencyCheck] public long Version { get; set; }
     public string Url { get; set; } = "";
     public string ThumbnailMediaId { get; set; } = "";

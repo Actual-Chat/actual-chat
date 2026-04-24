@@ -13,7 +13,7 @@ namespace ActualChat.Contacts.Db;
 public class DbPlaceContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private const char IdDelimiter = ' ';
-    [Key] public string Id { get; set; } = null!;
+    [DbKey] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
 
     public string OwnerId { get; set; } = "";

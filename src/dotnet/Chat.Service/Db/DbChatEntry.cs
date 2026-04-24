@@ -22,7 +22,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public DbChatEntry(ChatEntry model) => UpdateFrom(model);
 
     // (ChatId, Type, Id)
-    [Key] public string Id { get; set; } = "";
+    [DbKey] public string Id { get; set; } = "";
     [ConcurrencyCheck] public long Version { get; set; }
     public string ChatId { get; set; } = "";
     public long LocalId { get; set; }

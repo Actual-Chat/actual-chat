@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ActualChat.Users.Db;
@@ -7,9 +6,7 @@ namespace ActualChat.Users.Db;
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbChatUsage
 {
-    private DateTime _accessedAt;
-
-    [Key] public string Id { get; set; } = null!;
+    [DbKey] public string Id { get; set; } = null!;
     public ChatUsageListKind Kind { get; set; }
     public string UserId { get; set; } = "";
     public string ChatId { get; set; } = "";
@@ -20,7 +17,7 @@ public class DbChatUsage
         => $"{userId} {kind.Format()}:";
 
     public DateTime AccessedAt {
-        get => _accessedAt.DefaultKind(DateTimeKind.Utc);
-        set => _accessedAt = value.DefaultKind(DateTimeKind.Utc);
+        get => field.DefaultKind(DateTimeKind.Utc);
+        set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 }

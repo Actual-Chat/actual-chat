@@ -9,7 +9,7 @@ namespace ActualChat.Flows.Db;
 [Index(nameof(Version), nameof(IsCompleted))]
 public sealed class DbFlow
 {
-    [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+    [DbKey, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public string Id { get; set; } = "";
     [ConcurrencyCheck]
     public long Version { get; set; }

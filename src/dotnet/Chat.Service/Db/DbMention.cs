@@ -9,7 +9,7 @@ namespace ActualChat.Chat.Db;
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbMention : IHasId<string>, IRequirementTarget
 {
-    [Key] public string Id { get; set; } = null!;
+    [DbKey] public string Id { get; set; } = null!;
     public string ChatId { get; set; } = "";
     public string MentionId { get; set; } = "";
     public long EntryLid { get; set; }

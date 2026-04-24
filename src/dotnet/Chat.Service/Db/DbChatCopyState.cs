@@ -17,7 +17,7 @@ public class DbChatCopyState : IHasId<string>, IHasVersion<long>, IRequirementTa
     public DbChatCopyState() { }
     public DbChatCopyState(ChatCopyState model) => UpdateFrom(model);
 
-    [Key] public string Id { get; set; } = null!;
+    [DbKey] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
     public string SourceChatId { get; set; } = null!;
 

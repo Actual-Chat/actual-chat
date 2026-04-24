@@ -16,7 +16,7 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
 {
     private DateTime? _handledAt;
 
-    [Key] public string Id { get; set; } = null!;
+    [DbKey] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; } = 0;
     public string UserId { get; set; } = null!;
     public NotificationKind Kind { get; set; }

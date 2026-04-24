@@ -14,7 +14,7 @@ public class DbActivationKey : IHasId<string>, IRequirementTarget
     public DbActivationKey(Symbol inviteId)
         => Id = GenerateId(inviteId);
 
-    [Key] public string Id { get; set; } = null!;
+    [DbKey] public string Id { get; set; } = null!;
 
     public static string GenerateId(Symbol inviteId)
         => ComposeId(inviteId, SuffixGenerator.Next());

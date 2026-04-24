@@ -13,7 +13,7 @@ public class DbChatEntryAttachment : IHasId<string>, IHasVersion<long>, IRequire
     public DbChatEntryAttachment(ChatEntryAttachment model) => UpdateFrom(model);
 
     // (ChatId, EntryId, Index)
-    [Key] public string Id { get; set; } = "";
+    [DbKey] public string Id { get; set; } = "";
     [ConcurrencyCheck] public long Version { get; set; }
     public string EntryId { get; set; } = "";
     public string MediaId { get; set; } = "";

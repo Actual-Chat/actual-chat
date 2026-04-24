@@ -13,7 +13,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     public static readonly RandomStringGenerator IdGenerator = new(10, Alphabet.AlphaNumeric);
 
-    [Key] public string Id { get; set; } = null!;
+    [DbKey] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
 
     // TODO(AY): Make UserId non-nullable

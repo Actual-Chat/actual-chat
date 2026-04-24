@@ -8,7 +8,7 @@ namespace ActualChat.Chat.Db;
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbAlias : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    [Key] public string Id { get; set; } = null!;
+    [DbKey] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
     public AliasKind Kind { get; set; }
     public string TargetId { get; set; } = "";

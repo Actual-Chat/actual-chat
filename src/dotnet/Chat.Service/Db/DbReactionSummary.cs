@@ -13,7 +13,7 @@ public class DbReactionSummary : IHasId<string>, IHasVersion<long>, IRequirement
     private static ITextSerializer<ImmutableList<AuthorId>> AuthorIdsSerializer { get; } =
         Serializers.SystemJson.ToTyped<ImmutableList<AuthorId>>();
 
-    [Key] public string Id { get; set; } = null!;
+    [DbKey] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
     public string EntryId { get; set; } = "";
 
