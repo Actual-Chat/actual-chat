@@ -10,8 +10,8 @@ namespace ActualChat.Users;
 [method: MemoryPackConstructor]
 public sealed partial record AvatarFull(
     [property: DataMember, MemoryPackOrder(7), Key(10)] UserId UserId,
-    Symbol Id = default,
-    long Version = 0) : Avatar(Id, Version)
+    Symbol Id = default, long Version = 0
+    ) : Avatar(Id, Version)
 {
     public static new readonly Requirement<AvatarFull> MustExist = Requirement.New(
         (AvatarFull? a) => a?.Id is not null,
@@ -19,7 +19,7 @@ public sealed partial record AvatarFull(
 
     [DataMember, MemoryPackOrder(8), Key(11)] public bool IsAnonymous { get; init; }
 
-    internal AvatarFull() : this(default!) { }
+    internal AvatarFull() : this(null!) { }
 
     // Helpers
 
