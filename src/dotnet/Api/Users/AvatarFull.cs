@@ -19,7 +19,7 @@ public sealed partial record AvatarFull(
 
     [DataMember, MemoryPackOrder(8), Key(11)] public bool IsAnonymous { get; init; }
 
-    internal AvatarFull() : this(null!) { }
+    internal AvatarFull() : this(null!, default) { }
 
     // Helpers
 
