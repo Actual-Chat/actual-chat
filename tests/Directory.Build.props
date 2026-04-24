@@ -42,6 +42,13 @@
     <NoWarn>$(NoWarn);xUnit1041</NoWarn>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <!-- Suppress Nerdbank.GitVersioning's ThisAssembly class — tests don't reference it,
+         and its presence causes CS0436 collisions with referenced assemblies whose
+         InternalsVisibleTo makes their own ThisAssembly visible here. -->
+    <NBGV_EmitThisAssemblyClass>false</NBGV_EmitThisAssemblyClass>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="ActualLab.CommandR" />
     <PackageReference Include="ActualLab.Fusion" />

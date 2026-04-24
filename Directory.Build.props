@@ -198,6 +198,8 @@
     <!-- VSTHRD110: Observe the awaitable result of this method call by awaiting it, assigning to a variable, or passing it to another method. -->
     <!-- VSTHRD200: Add 'Async' suffix. -->
     <NoWarn>$(NoWarn);RCS1047;VSTHRD002;VSTHRD003;VSTHRD103;VSTHRD110;VSTHRD200</NoWarn>
+    <!-- MsgPack017: default value will be reset on deserialization -->
+    <NoWarn>$(NoWarn);MsgPack017</NoWarn>
     <!-- New .NET 8 warnings -->
     <!-- CA1001: Type C owns disposable field(s) F but is not disposable -->
     <!-- CA1002: Change 'List<T>' in P to use 'Collection<T>', 'ReadOnlyCollection<T>' or 'KeyedCollection<K,V>' -->
@@ -352,7 +354,7 @@
     <Using Include="ActualChat.Mesh" />
     <Using Include="ActualChat.Sharding" />
     <!-- Resolve ambiguity: server projects use DataAnnotations.Key for EF, not MessagePack.Key -->
-    <Using Include="System.ComponentModel.DataAnnotations.KeyAttribute" Alias="KeyAttribute" />
+    <Using Include="System.ComponentModel.DataAnnotations.KeyAttribute" Alias="DbKeyAttribute" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' and $(MSBuildProjectFile.Contains('UI.Blazor'))">
