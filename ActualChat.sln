@@ -388,11 +388,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "plans", "plans", "{A0CDF5EA
 		docs\plans\BigTasks.md = docs\plans\BigTasks.md
 		docs\plans\Search.md = docs\plans\Search.md
 		docs\plans\SmallTasks.md = docs\plans\SmallTasks.md
-		docs\plans\user-account-merge.md = docs\plans\user-account-merge.md
-		docs\plans\audio-context-source-refactor.md = docs\plans\audio-context-source-refactor.md
-		docs\plans\live-streams.md = docs\plans\live-streams.md
 		docs\plans\e2ee.md = docs\plans\e2ee.md
-		docs\plans\sanitizer.md = docs\plans\sanitizer.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "types", "types", "{CDA725E9-7CDB-46A4-9696-9A3BAB683662}"
