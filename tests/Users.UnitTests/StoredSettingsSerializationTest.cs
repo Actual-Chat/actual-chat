@@ -4,6 +4,16 @@ namespace ActualChat.Users.UnitTests;
 
 public partial class StoredSettingsSerializationTest
 {
+    // MessagePack-CSharp serializer — the wire format actually used by RPC.
+    // KvasSerializer wraps this with a 1-byte format marker for KVAS storage.
+    private static readonly IByteSerializer MessagePackSerializer = Serializers.MessagePack;
+
+    // Cross-version compat (Legacy ↔ New) only works through MemoryPack here: the new types
+    // carry [Key(N)] for MessagePack-CSharp's array-keyed wire, while the Legacy copies
+    // don't, so a MessagePack round-trip across the type boundary is shape-mismatched.
+    // MemoryPack uses MemoryPackOrder positionally on both sides — same indices match.
+    private static readonly KvasSerializer MemoryPackKvasSerializer = new() { PreferMemoryPack = true };
+
     // Legacy types: exact copies of the original types without StoredSettings base.
     // Used to verify that adding the base record doesn't break binary compatibility.
 
@@ -40,9 +50,9 @@ public partial class StoredSettingsSerializationTest
             IsVideoStreamingEnabled = false,
         };
 
-        using var buffer = KvasSerializer.Default.Write(legacy);
+        using var buffer = MemoryPackKvasSerializer.Write(legacy);
         var bytes = buffer.WrittenMemory;
-        var result = KvasSerializer.Default.Read<UserAppSettings>(ref bytes);
+        var result = MemoryPackKvasSerializer.Read<UserAppSettings>(ref bytes);
 
         result.Origin.Should().Be(legacy.Origin);
         result.IsDataCollectionEnabled.Should().Be(legacy.IsDataCollectionEnabled);
@@ -59,9 +69,9 @@ public partial class StoredSettingsSerializationTest
             IsDigestEnabled = false,
         };
 
-        using var buffer = KvasSerializer.Default.Write(legacy);
+        using var buffer = MemoryPackKvasSerializer.Write(legacy);
         var bytes = buffer.WrittenMemory;
-        var result = KvasSerializer.Default.Read<UserEmailsSettings>(ref bytes);
+        var result = MemoryPackKvasSerializer.Read<UserEmailsSettings>(ref bytes);
 
         result.Origin.Should().Be(legacy.Origin);
         result.DigestTime.Should().Be(legacy.DigestTime);
@@ -80,9 +90,9 @@ public partial class StoredSettingsSerializationTest
             IsIncompleteUIEnabled = false,
         };
 
-        using var buffer = KvasSerializer.Default.Write(settings);
+        using var buffer = MemoryPackKvasSerializer.Write(settings);
         var bytes = buffer.WrittenMemory;
-        var result = KvasSerializer.Default.Read<LegacyUserAppSettings>(ref bytes);
+        var result = MemoryPackKvasSerializer.Read<LegacyUserAppSettings>(ref bytes);
 
         result.Origin.Should().Be(settings.Origin);
         result.IsDataCollectionEnabled.Should().Be(settings.IsDataCollectionEnabled);
@@ -101,9 +111,9 @@ public partial class StoredSettingsSerializationTest
             IsDigestEnabled = true,
         };
 
-        using var buffer = KvasSerializer.Default.Write(settings);
+        using var buffer = MemoryPackKvasSerializer.Write(settings);
         var bytes = buffer.WrittenMemory;
-        var result = KvasSerializer.Default.Read<UserEmailsSettings>(ref bytes);
+        var result = MemoryPackKvasSerializer.Read<LegacyUserEmailsSettings>(ref bytes);
 
         result.Origin.Should().Be(settings.Origin);
         result.DigestTime.Should().Be(settings.DigestTime);
@@ -187,5 +197,49 @@ public partial class StoredSettingsSerializationTest
         typed.Origin.Should().Be(settings.Origin);
         typed.DigestTime.Should().Be(settings.DigestTime);
         typed.IsDigestEnabled.Should().Be(settings.IsDigestEnabled);
+    }
+
+    // --- MessagePack-CSharp polymorphic round-trip ---
+    //
+    // RPC sends StoredSettings as the declared base type (e.g. IUserSettings.Get returns
+    // StoredSettings). MessagePack-CSharp dispatches via [Union(N, typeof(Derived))] tags
+    // declared on the base. These tests exercise that path directly — independently of
+    // KVAS, MemoryPack, or RPC framing.
+
+    [Fact]
+    public void UserAppSettings_AsBase_MessagePackRoundTrip()
+        => AssertBaseTypeRoundTrip(new UserAppSettings {
+            Origin = "mp-test",
+            IsDataCollectionEnabled = true,
+            AreExperimentalFeaturesEnabled = false,
+            IsIncompleteUIEnabled = true,
+        });
+
+    [Fact]
+    public void UserChatRecordingDetectedLanguage_AsBase_MessagePackRoundTrip()
+        => AssertBaseTypeRoundTrip(new UserChatRecordingDetectedLanguage {
+            Timestamp = new Moment(new DateTime(2026, 04, 23, 12, 34, 56, DateTimeKind.Utc)),
+            ChatId = default,
+            Language = null,
+        });
+
+    [Fact]
+    public void UserNavbarSettings_AsBase_MessagePackRoundTrip()
+        => AssertBaseTypeRoundTrip(new UserNavbarSettings {
+            Origin = "nav-test",
+            PinnedChats = [],
+            PlacesOrder = [],
+        });
+
+    private static void AssertBaseTypeRoundTrip<T>(T value)
+        where T : StoredSettings
+    {
+        using var buffer = MessagePackSerializer.Write<StoredSettings>(value);
+        var bytes = buffer.WrittenMemory.ToArray();
+        var read = (StoredSettings?)MessagePackSerializer.Read(bytes, typeof(StoredSettings), out _);
+        read.Should().BeOfType<T>();
+        // Structural equivalence — records with array members default to reference equality
+        // on the arrays, so two structurally identical instances aren't `Equals`.
+        read.Should().BeEquivalentTo(value);
     }
 }
