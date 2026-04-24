@@ -446,5 +446,5 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
 
     // Nested types
 
-    private record Identities(Phone Phone, string Email);
+    private sealed record Identities(Phone Phone, string Email);
 }

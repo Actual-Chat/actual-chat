@@ -38,7 +38,7 @@ public abstract class FlowSerializationTestBase<TFlow>(ITestOutputHelper @out) :
         foreach (var (k, v) in snapshot)
             Out.WriteLine($"  {k} = {Format(v)}");
 
-        using var buffer = serializer.Write(original, typeof(TFlow));
+        using var buffer = serializer.Write(original);
         Out.WriteLine($"  bytes: {buffer.WrittenSpan.Length}");
         var deserialized = (TFlow)serializer.Read(buffer.WrittenMemory, typeof(TFlow), out _)!;
         var deserializedSnapshot = TakeSnapshot(deserialized);

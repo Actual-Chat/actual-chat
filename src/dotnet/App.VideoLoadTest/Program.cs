@@ -12,6 +12,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
 using static System.Console;
 
+#pragma warning disable CS0618 // Type or member is obsolete
+#pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
+#pragma warning disable CA1849 // Method/Property synchronously blocks
+
 RuntimeInfo.IsServer = false;
 ApiContractsModuleInitializer.Load();
 CoreModuleInitializer.Initialize();
@@ -72,7 +76,7 @@ var mode = useRpcBackend ? "RPC Backend (direct)" : useRpc ? "RPC (API)" : useMe
 
 if (workerChatIdx < 0) {
     // --- Orchestrator mode ---
-    await RunOrchestrator();
+    await RunOrchestrator().ConfigureAwait(false);
     return;
 }
 
@@ -99,8 +103,9 @@ var hubUrl = $"{baseUrl}/api/hub/streams";
 // Authenticate orchestrator (used for chat discovery and consumers) — chat-scoped to avoid cross-worker contention.
 var orchEmail = $"test-videoload-c{workerChatIdx}-o@actual.chat";
 WriteLine($"Signing in orchestrator ({orchEmail})...");
-var signedIn = await commander.Call(
-    new EmailAuth_ValidateTotp(session, Email.New(orchEmail), 111111), cts.Token);
+var signedIn = await commander
+    .Call(new EmailAuth_ValidateTotp(session, Email.New(orchEmail), 111111), cts.Token)
+    .ConfigureAwait(false);
 if (!signedIn)
     throw new InvalidOperationException("Sign-in failed. Is the server running with test agent bypass?");
 
@@ -117,14 +122,14 @@ for (var pi = 0; pi < streamsPerChat; pi++) {
     authTasks[p] = commander.Call(
         new EmailAuth_ValidateTotp(s, Email.New($"test-videoload-c{workerChatIdx}-p{p}@actual.chat"), 111111), cts.Token);
 }
-await Task.WhenAll(authTasks);
+await Task.WhenAll(authTasks).ConfigureAwait(false);
 foreach (var t in authTasks) {
     if (t is Task<bool> { Result: false })
         throw new InvalidOperationException("Producer sign-in failed. Test agent bypass required.");
 }
 WriteLine("All producer users signed in.");
 var secureTokens = services.GetRequiredService<ISecureTokens>();
-var secureToken = await secureTokens.CreateForSession(session, cts.Token);
+var secureToken = await secureTokens.CreateForSession(session, cts.Token).ConfigureAwait(false);
 var sessionToken = secureToken.Token;
 
 // Resolve chat ID for this worker.
@@ -141,7 +146,7 @@ for (var pi = 0; pi < streamsPerChat; pi++) {
         joinTasks.Add(commander.Call(new Authors_Join(s, cid), cts.Token));
     }
 }
-await Task.WhenAll(joinTasks);
+await Task.WhenAll(joinTasks).ConfigureAwait(false);
 WriteLine("Producer users joined all chats.");
 
 // --- Metrics ---
@@ -180,7 +185,7 @@ if (useRpc) {
             hubTasks.Add(Task.Run(() => consumerHubs[c, n] = CreateServiceProvider(baseUrl)));
         }
     }
-    await Task.WhenAll(hubTasks);
+    await Task.WhenAll(hubTasks).ConfigureAwait(false);
     WriteLine($"Hubs ready in {hubSw.ElapsedMilliseconds}ms.");
 }
 
@@ -197,7 +202,7 @@ for (var ci = 0; ci < chatCount; ci++) {
                 : RunProducer(chatIdx, prodIdx, cts.Token),
             cts.Token));
         if (staggerMs > 0) {
-            try { await Task.Delay(staggerMs, cts.Token); }
+            try { await Task.Delay(staggerMs, cts.Token).ConfigureAwait(false); }
             catch (OperationCanceledException) { break; }
         }
     }
@@ -217,17 +222,18 @@ for (var ci = 0; ci < chatCount; ci++) {
     discoveryTasks[ci] = Task.Run(async () => {
         var cid = chatIds[chatIdx];
         while (true) {
-            var computed = await Computed.Capture(
-                () => liveVideoStreams.List(session, cid, linkedCts.Token), linkedCts.Token);
+            var computed = await Computed
+                .Capture(() => liveVideoStreams.List(session, cid, linkedCts.Token), linkedCts.Token)
+                .ConfigureAwait(false);
             if (computed.Value.Count >= streamsPerChat) {
                 chatStreams[chatIdx] = computed.Value;
                 return;
             }
-            await computed.WhenInvalidated(linkedCts.Token);
+            await computed.WhenInvalidated(linkedCts.Token).ConfigureAwait(false);
         }
     }, linkedCts.Token);
 }
-await Task.WhenAll(discoveryTasks);
+await Task.WhenAll(discoveryTasks).ConfigureAwait(false);
 WriteLine($"All {totalStreams} streams discovered across {chatCount} chats.");
 
 // --- Map discovered StreamId → (chatIdx, prodIdx) for latency correlation ---
@@ -260,8 +266,10 @@ if (useUnified) {
     // Unified mode: each participant reuses their producer connection to pull other streams
     // Stop existing producers first — they'll be replaced by participants
     WriteLine("Stopping standalone producers for unified mode...");
-    await cts.CancelAsync();
-    await Task.WhenAll(producerTasks.Select(t => t.ContinueWith(_ => { }, TaskScheduler.Default)));
+    await cts.CancelAsync().ConfigureAwait(false);
+    await Task
+        .WhenAll(producerTasks.Select(t => t.ContinueWith(_ => { }, TaskScheduler.Default)))
+        .ConfigureAwait(false);
     producerTasks.Clear();
 
     // Reset cancellation
@@ -313,7 +321,7 @@ else {
                     cts.Token));
             }
             if (staggerMs > 0) {
-                try { await Task.Delay(staggerMs, cts.Token); }
+                try { await Task.Delay(staggerMs, cts.Token).ConfigureAwait(false); }
                 catch (OperationCanceledException) { break; }
             }
         }
@@ -323,14 +331,15 @@ else {
 
 // --- Wait for test duration ---
 WriteLine($"Running for {durationSec}s... (Ctrl+C to stop early)");
-try { await Task.Delay(testDuration, cts.Token); }
+try { await Task.Delay(testDuration, cts.Token).ConfigureAwait(false); }
 catch (OperationCanceledException) { }
 
 WriteLine("Stopping...");
-await cts.CancelAsync();
+await cts.CancelAsync().ConfigureAwait(false);
 
-await Task.WhenAll(
-    producerTasks.Concat(consumerTasks).Select(t => t.ContinueWith(_ => { }, TaskScheduler.Default)));
+await Task
+    .WhenAll(producerTasks.Concat(consumerTasks).Select(t => t.ContinueWith(_ => { }, TaskScheduler.Default)))
+    .ConfigureAwait(false);
 
 // Graceful RpcHub shutdown — otherwise the server logs WebSocket.ReceiveAsync warnings.
 async Task DisposeHubAsync(IServiceProvider? sp)
@@ -339,7 +348,7 @@ async Task DisposeHubAsync(IServiceProvider? sp)
     try {
         var rpcHub = sp.GetService<RpcHub>();
         if (rpcHub != null)
-            await rpcHub.DisposeAsync();
+            await rpcHub.DisposeAsync().ConfigureAwait(false);
     }
     catch { /* best effort */ }
 }
@@ -352,7 +361,7 @@ if (useRpc) {
             shutdownTasks.Add(DisposeHubAsync(consumerHubs[ci, ni]));
     }
 }
-await Task.WhenAll(shutdownTasks);
+await Task.WhenAll(shutdownTasks).ConfigureAwait(false);
 
 // --- Report ---
 PrintReport();
@@ -467,7 +476,7 @@ async Task RunOrchestrator()
 
     // Wait for all workers. On Ctrl+C, terminate them.
     var waits = children.Select(c => c.WaitForExitAsync(cts.Token)).ToArray();
-    try { await Task.WhenAll(waits); }
+    try { await Task.WhenAll(waits).ConfigureAwait(false); }
     catch (OperationCanceledException) {
         WriteLine("Orchestrator cancelled — terminating workers...");
         foreach (var c in children) {
@@ -475,8 +484,8 @@ async Task RunOrchestrator()
             catch { /* best effort */ }
         }
         foreach (var c in children) {
-            try { await c.WaitForExitAsync(CancellationToken.None); }
-            catch { }
+            try { await c.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false); }
+            catch { /* Intended */ }
         }
     }
 
@@ -586,17 +595,20 @@ void PrintAggregateReport()
 async Task RunProducer(int chatIdx, int prodIdx, CancellationToken ct)
 {
     try {
-        await using var connection = CreateHubConnection(hubUrl);
-        await connection.StartAsync(ct);
+        var connection = CreateHubConnection(hubUrl);
+        await using var _ = connection.ConfigureAwait(false);
+        await connection.StartAsync(ct).ConfigureAwait(false);
         var clientStartOffset = CpuClock.Instance.Now.EpochOffset.TotalSeconds;
 
         var method = useMem ? "PushVideoMem" : "PushVideo";
-        await connection.SendAsync(method,
+        await connection.SendAsync(
+            method,
             sessionToken, chatIds[chatIdx].Value, Codec, FrameWidth, FrameHeight, "",
             clientStartOffset, 0, // 0 = Webcam
-            PushFrames(chatIdx, prodIdx, ct), ct);
+            PushFrames(chatIdx, prodIdx, ct), ct
+            ).ConfigureAwait(false);
 
-        try { await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, ct); }
+        try { await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, ct).ConfigureAwait(false); }
         catch (OperationCanceledException) { }
     }
     catch (Exception e) when (e is not OperationCanceledException) {
@@ -606,7 +618,7 @@ async Task RunProducer(int chatIdx, int prodIdx, CancellationToken ct)
 
 async IAsyncEnumerable<byte[]> PushFrames(
     int chatIdx, int prodIdx,
-    [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+    [EnumeratorCancellation] CancellationToken ct)
 {
     var sw = Stopwatch.StartNew();
     for (var i = 0; !ct.IsCancellationRequested; i++) {
@@ -616,7 +628,7 @@ async IAsyncEnumerable<byte[]> PushFrames(
         var targetElapsed = TimeSpan.FromTicks(frameDuration.Ticks * i);
         var remaining = targetElapsed - sw.Elapsed;
         if (remaining > TimeSpan.Zero)
-            await Task.Delay(remaining, ct);
+            await Task.Delay(remaining, ct).ConfigureAwait(false);
 
         sentTimestamps[(chatIdx, prodIdx, frame.Offset.Ticks)] = Stopwatch.GetTimestamp();
         yield return serialized;
@@ -626,13 +638,14 @@ async IAsyncEnumerable<byte[]> PushFrames(
 async Task RunConsumer(int chatIdx, int consumerIdx, int streamIdx, StreamId streamId, CancellationToken ct)
 {
     try {
-        await using var connection = CreateHubConnection(hubUrl);
-        await connection.StartAsync(ct);
+        var connection = CreateHubConnection(hubUrl);
+        await using var _ = connection.ConfigureAwait(false);
+        await connection.StartAsync(ct).ConfigureAwait(false);
 
         if (useMem)
-            await RunConsumerMem(connection, chatIdx, consumerIdx, streamIdx, streamId, ct);
+            await RunConsumerMem(connection, chatIdx, consumerIdx, streamIdx, streamId, ct).ConfigureAwait(false);
         else
-            await RunConsumerBytes(connection, chatIdx, consumerIdx, streamIdx, streamId, ct);
+            await RunConsumerBytes(connection, chatIdx, consumerIdx, streamIdx, streamId, ct).ConfigureAwait(false);
     }
     catch (Exception e) when (e is OperationCanceledException or WebSocketException or IOException) {
         // Expected on shutdown
@@ -645,7 +658,7 @@ async Task RunConsumer(int chatIdx, int consumerIdx, int streamIdx, StreamId str
 async Task RunConsumerBytes(HubConnection connection, int chatIdx, int consumerIdx, int streamIdx, StreamId streamId, CancellationToken ct)
 {
     var stream = connection.StreamAsync<byte[]>("GetVideo", sessionToken, streamId.Value, 0.0, ct);
-    await foreach (var frameBytes in stream) {
+    await foreach (var frameBytes in stream.ConfigureAwait(false)) {
         if (ct.IsCancellationRequested) break;
 
         var receiveTs = Stopwatch.GetTimestamp();
@@ -666,7 +679,7 @@ async Task RunConsumerBytes(HubConnection connection, int chatIdx, int consumerI
 async Task RunConsumerMem(HubConnection connection, int chatIdx, int consumerIdx, int streamIdx, StreamId streamId, CancellationToken ct)
 {
     var stream = connection.StreamAsync<ReadOnlyMemory<byte>>("GetVideoMem", sessionToken, streamId.Value, 0.0, ct);
-    await foreach (var frameMem in stream) {
+    await foreach (var frameMem in stream.ConfigureAwait(false)) {
         if (ct.IsCancellationRequested) break;
 
         var receiveTs = Stopwatch.GetTimestamp();
@@ -689,8 +702,9 @@ async Task RunConsumerMem(HubConnection connection, int chatIdx, int consumerIdx
 async Task RunParticipant(int chatIdx, int partIdx, ApiArray<VideoStreamInfo> streams, CancellationToken ct)
 {
     try {
-        await using var connection = CreateHubConnection(hubUrl);
-        await connection.StartAsync(ct);
+        var connection = CreateHubConnection(hubUrl);
+        await using var _ = connection.ConfigureAwait(false);
+        await connection.StartAsync(ct).ConfigureAwait(false);
         var clientStartOffset = CpuClock.Instance.Now.EpochOffset.TotalSeconds;
 
         // Start push (fire-and-forget on this connection)
@@ -709,9 +723,9 @@ async Task RunParticipant(int chatIdx, int partIdx, ApiArray<VideoStreamInfo> st
             pullTasks.Add(Task.Run(async () => {
                 try {
                     if (useMem)
-                        await RunConsumerMem(connection, chatIdx, partIdx, streamIdx, streamId, ct);
+                        await RunConsumerMem(connection, chatIdx, partIdx, streamIdx, streamId, ct).ConfigureAwait(false);
                     else
-                        await RunConsumerBytes(connection, chatIdx, partIdx, streamIdx, streamId, ct);
+                        await RunConsumerBytes(connection, chatIdx, partIdx, streamIdx, streamId, ct).ConfigureAwait(false);
                 }
                 catch (Exception e) when (e is OperationCanceledException or WebSocketException or IOException) {
                     // Expected on shutdown
@@ -719,8 +733,8 @@ async Task RunParticipant(int chatIdx, int partIdx, ApiArray<VideoStreamInfo> st
             }, ct));
         }
 
-        await Task.WhenAll(pullTasks.Append(pushTask));
-        try { await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, ct); }
+        await Task.WhenAll(pullTasks.Append(pushTask)).ConfigureAwait(false);
+        try { await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, ct).ConfigureAwait(false); }
         catch (OperationCanceledException) { }
     }
     catch (Exception e) when (e is not OperationCanceledException) {
@@ -740,8 +754,9 @@ async Task RunProducerRpc(int chatIdx, int prodIdx, CancellationToken ct)
         var frameStream = RpcStream.New(PushFramesRpc(chatIdx, prodIdx, ct));
         await ownStreamServer.PushVideo(
             prodSession, chatIds[chatIdx].Value, clientStartOffset,
-            format, frameStream, StreamKind.Webcam, ct);
-        try { await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, ct); }
+            format, frameStream, StreamKind.Webcam, ct
+            ).ConfigureAwait(false);
+        try { await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, ct).ConfigureAwait(false); }
         catch (OperationCanceledException) { }
     }
     catch (Exception e) when (e is not OperationCanceledException) {
@@ -760,7 +775,7 @@ async IAsyncEnumerable<VideoFrame> PushFramesRpc(
         var targetElapsed = TimeSpan.FromTicks(frameDuration.Ticks * i);
         var remaining = targetElapsed - sw.Elapsed;
         if (remaining > TimeSpan.Zero)
-            await Task.Delay(remaining, ct);
+            await Task.Delay(remaining, ct).ConfigureAwait(false);
 
         sentTimestamps[(chatIdx, prodIdx, frame.Offset.Ticks)] = Stopwatch.GetTimestamp();
         yield return frame;
@@ -772,13 +787,13 @@ async Task RunConsumerRpc(int chatIdx, int consumerIdx, int streamIdx, StreamId 
 {
     try {
         var ownLiveVideoStreams = consumerHubs[chatIdx, consumerIdx].GetRequiredService<ILiveVideoStreams>();
-        var rpcStream = await ownLiveVideoStreams.GetStream(session, streamId, TimeSpan.Zero, ct);
+        var rpcStream = await ownLiveVideoStreams.GetStream(session, streamId, TimeSpan.Zero, ct).ConfigureAwait(false);
         if (rpcStream == null) {
             Error.WriteLine($"ConsumerRpc[chat={chatIdx},cons={consumerIdx},stream={streamIdx}] stream not found");
             return;
         }
 
-        await foreach (var frame in rpcStream.WithCancellation(ct)) {
+        await foreach (var frame in rpcStream.WithCancellation(ct).ConfigureAwait(false)) {
             if (ct.IsCancellationRequested) break;
 
             var receiveTs = Stopwatch.GetTimestamp();
@@ -809,13 +824,13 @@ async Task RunConsumerRpcBackend(int chatIdx, int consumerIdx, int streamIdx, St
     try {
         var videoBackend = services.GetRequiredService<IVideoStreamingBackend>();
         var peerId = $"loadtest-{chatIdx}-{consumerIdx}";
-        var rpcStream = await videoBackend.GetVideo(streamId, TimeSpan.Zero, peerId, ct);
+        var rpcStream = await videoBackend.GetVideo(streamId, TimeSpan.Zero, peerId, ct).ConfigureAwait(false);
         if (rpcStream == null) {
             Error.WriteLine($"ConsumerRpcBackend[chat={chatIdx},cons={consumerIdx},stream={streamIdx}] stream not found");
             return;
         }
 
-        await foreach (var frame in rpcStream.WithCancellation(ct)) {
+        await foreach (var frame in rpcStream.WithCancellation(ct).ConfigureAwait(false)) {
             if (ct.IsCancellationRequested) break;
 
             var receiveTs = Stopwatch.GetTimestamp();
@@ -906,7 +921,7 @@ void PrintReport()
                   $"(got first frame: {firstFrameDelaysMs.Count}/{totalPulls}, silent: {noFirstFrame})");
     }
 
-    var expectedFramesPerPull = (int)(durationSec * 30);
+    var expectedFramesPerPull = durationSec * 30;
     var expectedTotal = expectedFramesPerPull * totalPulls;
     WriteLine($"Expected ~{expectedTotal} total frames, got {aggFrames} ({100.0 * aggFrames / Math.Max(1, expectedTotal):F1}%)");
 }

@@ -4,7 +4,6 @@ public record ChatListItemModel(int Position, Chat.Chat Chat, bool IsLastItemInB
 {
     public string Key { get; } = Position.ToString();
     public string RenderKey => Chat.Id.Value;
-    public int CountAs => 1;
     public bool IsGroup => false;
     public bool ShouldSkipKey => false;
 }
