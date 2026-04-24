@@ -1,5 +1,3 @@
-using ActualChat.Users;
-
 namespace ActualChat;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]

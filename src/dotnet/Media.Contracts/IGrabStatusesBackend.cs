@@ -19,11 +19,11 @@ public interface IGrabStatusesBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to update the status of a link preview grab operation.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record GrabStatusesBackend_Change(
-    [property: DataMember, MemoryPackOrder(0)] Symbol Id,
-    [property: DataMember, MemoryPackOrder(1)] bool IsSuccessful
+    [property: DataMember, MemoryPackOrder(0), Key(0)] Symbol Id,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] bool IsSuccessful
 ) : ICommand<GrabStatus>, IBackendCommand, IHasShardKey<Symbol>
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]

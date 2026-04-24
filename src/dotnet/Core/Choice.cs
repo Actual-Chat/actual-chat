@@ -20,15 +20,18 @@ public static class Choice
 /// Represents a value that is either <typeparamref name="T"/> or <typeparamref name="TAlt"/>.
 /// </summary>
 [Newtonsoft.Json.JsonObject(Newtonsoft.Json.MemberSerialization.OptOut)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 [DebuggerDisplay("{" + nameof(DebugValue) + "}")]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-[method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
 [method: MethodImpl(MethodImplOptions.AggressiveInlining)]
-public partial class Choice<T, TAlt>(bool hasValue, T? valueOrDefault, TAlt? alternativeOrDefault)
-    : Maybe<T>(hasValue, valueOrDefault), IEquatable<Choice<T, TAlt>>
+[method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
+public partial class Choice<T, TAlt>(
+    bool hasValue,
+    T? valueOrDefault,
+    TAlt? alternativeOrDefault
+    ) : Maybe<T>(hasValue, valueOrDefault), IEquatable<Choice<T, TAlt>>
 {
-    [DataMember(Order = 2), MemoryPackOrder(2)]
+    [DataMember(Order = 2), MemoryPackOrder(2), Key(2)]
     public TAlt? AlternativeOrDefault { get; } = alternativeOrDefault;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]

@@ -8,11 +8,11 @@ namespace ActualChat.Chat;
 /// <summary>
 /// Represents a message or media entry in a chat conversation.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(AllowPrivate = true)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record ChatEntry(
-    [property: DataMember(Order = 0), MemoryPackOrder(0)] ChatEntryId Id,
-    [property: DataMember(Order = 1), MemoryPackOrder(1)] long Version = 0
+    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] ChatEntryId Id,
+    [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] long Version = 0
     ) : IHasId<ChatEntryId>, IHasVersion<long>, IRequirementTarget, ISanitized
 {
     public static readonly VersionEqualityComparer<ChatEntry, ChatEntryId> VersionEqualityComparer = new();
@@ -30,33 +30,33 @@ public sealed partial record ChatEntry(
         => new (id, -1);
 
     // Flags
-    [DataMember(Order = 2), MemoryPackOrder(2)] public ChatEntryFlags Flags { get; init; }
+    [DataMember(Order = 2), MemoryPackOrder(2), Key(2)] public ChatEntryFlags Flags { get; init; }
 
     // Author & Timing
-    [DataMember(Order = 3), MemoryPackOrder(3)] public AuthorId AuthorId { get; init; } = null!;
-    [DataMember(Order = 4), MemoryPackOrder(4)] public Moment BeginsAt { get; init; }
-    [DataMember(Order = 5), MemoryPackIgnore] public Moment? EndsAt { get; init; }
+    [DataMember(Order = 3), MemoryPackOrder(3), Key(3)] public AuthorId AuthorId { get; init; } = null!;
+    [DataMember(Order = 4), MemoryPackOrder(4), Key(4)] public Moment BeginsAt { get; init; }
+    [DataMember(Order = 5), MemoryPackIgnore, Key(5)] public Moment? EndsAt { get; init; }
     // Content
-    [DataMember(Order = 6), MemoryPackOrder(6)] public string Content { get => Sanitizer.MaskPrivate(field); init; } = "";
-    [DataMember(Order = 7), MemoryPackOrder(7)] public HashString ContentHash { get; init; }
-    [DataMember(Order = 8), MemoryPackOrder(8)] public SystemEntry? SystemEntry { get; init; }
-    [DataMember(Order = 9), MemoryPackOrder(9)] public string ContentStreamId { get; init; } = "";
+    [DataMember(Order = 6), MemoryPackOrder(6), Key(6)] public string Content { get => Sanitizer.MaskPrivate(field); init; } = "";
+    [DataMember(Order = 7), MemoryPackOrder(7), Key(7)] public HashString ContentHash { get; init; }
+    [DataMember(Order = 8), MemoryPackOrder(8), Key(8)] public SystemEntry? SystemEntry { get; init; }
+    [DataMember(Order = 9), MemoryPackOrder(9), Key(9)] public string ContentStreamId { get; init; } = "";
     // Reply
-    [DataMember(Order = 10), MemoryPackIgnore] public long? RepliedEntryLid { get; init; }
+    [DataMember(Order = 10), MemoryPackIgnore, Key(10)] public long? RepliedEntryLid { get; init; }
     // Forward
-    [DataMember(Order = 11), MemoryPackOrder(11)] public ChatEntryForwarded? Forwarded { get; init; }
+    [DataMember(Order = 11), MemoryPackOrder(11), Key(11)] public ChatEntryForwarded? Forwarded { get; init; }
     // Audio
-    [DataMember(Order = 12), MemoryPackOrder(12)] public ChatEntryAudio? Audio { get; init; }
+    [DataMember(Order = 12), MemoryPackOrder(12), Key(12)] public ChatEntryAudio? Audio { get; init; }
     // Links
-    [DataMember(Order = 13), MemoryPackOrder(13)] public LinkPreviewMode LinkPreviewMode { get; init; }
-    [DataMember(Order = 14), MemoryPackOrder(14)] public Symbol[] LinkPreviewIds { get; init; } = [];
-    [DataMember(Order = 15), MemoryPackOrder(15)] public LinkPreview[] LinkPreviews { get; init; } = [];
+    [DataMember(Order = 13), MemoryPackOrder(13), Key(13)] public LinkPreviewMode LinkPreviewMode { get; init; }
+    [DataMember(Order = 14), MemoryPackOrder(14), Key(14)] public Symbol[] LinkPreviewIds { get; init; } = [];
+    [DataMember(Order = 15), MemoryPackOrder(15), Key(15)] public LinkPreview[] LinkPreviews { get; init; } = [];
 
     // Client
-    [DataMember(Order = 16), MemoryPackOrder(16)] public string ClientId { get; init; } = ""; // Soon obsolete
+    [DataMember(Order = 16), MemoryPackOrder(16), Key(16)] public string ClientId { get; init; } = ""; // Soon obsolete
 
     // Read-only (populated on reads)
-    [DataMember(Order = 17), MemoryPackOrder(17)] public ChatEntryAttachment[] Attachments { get; init; } = [];
+    [DataMember(Order = 17), MemoryPackOrder(17), Key(17)] public ChatEntryAttachment[] Attachments { get; init; } = [];
 
     // MemoryPackXxx properties
 

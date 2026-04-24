@@ -3,7 +3,7 @@ namespace ActualChat.Chat;
 /// <summary>
 /// Per-chat user preferences for notifications, language, and voice mode.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public sealed partial record ChatUserSettings : StoredSettings
 {
     public static readonly string KeyPrefix = "@UserChatSettings(";
@@ -22,14 +22,14 @@ public sealed partial record ChatUserSettings : StoredSettings
     }
 
     // `isNullable = false` is intentional to keep backward compatibility with v1.26 format when Language was non-nullable
-    [DataMember, MemoryPackOrder(0), LegacyLanguageFormatter(false)]
+    [DataMember, MemoryPackOrder(0), Key(0), LegacyLanguageFormatter(false)]
     public Language? Language { get; init; }
-    [DataMember, MemoryPackOrder(1)] public ChatNotificationMode NotificationMode { get; init; }
-    [DataMember, MemoryPackOrder(3)] public VoiceMode VoiceMode { get; init; }
-    [DataMember, MemoryPackOrder(4)] public ListeningMode ListeningMode { get; init; }
-    [DataMember, MemoryPackOrder(5)] public bool? MustTranslate { get; init; }
-    [DataMember, MemoryPackOrder(8)] public bool? MustTranslateOwnMessages { get; init; }
-    [DataMember, MemoryPackOrder(6), LegacyLanguageFormatter(true)]
+    [DataMember, MemoryPackOrder(1), Key(1)] public ChatNotificationMode NotificationMode { get; init; }
+    [DataMember, MemoryPackOrder(3), Key(2)] public VoiceMode VoiceMode { get; init; }
+    [DataMember, MemoryPackOrder(4), Key(3)] public ListeningMode ListeningMode { get; init; }
+    [DataMember, MemoryPackOrder(5), Key(4)] public bool? MustTranslate { get; init; }
+    [DataMember, MemoryPackOrder(8), Key(7)] public bool? MustTranslateOwnMessages { get; init; }
+    [DataMember, MemoryPackOrder(6), Key(5), LegacyLanguageFormatter(true)]
     public Language? TranslationTargetLanguage { get; init; }
-    [DataMember, MemoryPackOrder(7)] public bool? IsTranslationSubHeaderVisible { get; init; }
+    [DataMember, MemoryPackOrder(7), Key(6)] public bool? IsTranslationSubHeaderVisible { get; init; }
 }

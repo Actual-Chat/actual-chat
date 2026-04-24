@@ -4,11 +4,8 @@ using ActualChat.Internal;
 namespace ActualChat.Users;
 
 [StructLayout(LayoutKind.Auto)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [Newtonsoft.Json.JsonObject(Newtonsoft.Json.MemberSerialization.OptOut)]
-// MemoryPack wire format intentionally kept SG-generated (IMemoryPackable<T> map) to stay
-// compatible with older clients. Switch to plain-string when safe by uncommenting:
-// [MemoryPackFormatter<StringLikeMemoryPackFormatter<UserIdentity>>]
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<UserIdentity>))]
 [JsonConverter(typeof(StringLikeJsonConverter<UserIdentity>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<UserIdentity>))]
@@ -21,7 +18,7 @@ public readonly partial record struct UserIdentity : IStringLike<UserIdentity>, 
     public static readonly string DefaultSchema = "Default";
     public static readonly string InternalSchema = "internal";
 
-    [DataMember(Order = 0), MemoryPackOrder(0), StringAsSymbolMemoryPackFormatter]
+    [DataMember(Order = 0), MemoryPackOrder(0), StringAsSymbolMemoryPackFormatter, Key(0)]
     public string Id { get => field ?? ""; init; }
 
     // Computed properties

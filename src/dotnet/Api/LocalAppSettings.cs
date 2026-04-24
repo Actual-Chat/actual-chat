@@ -6,18 +6,18 @@ namespace ActualChat;
 /// <summary>
 /// Application settings stored locally on the device.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public partial record LocalAppSettings : StoredSettings, IHasKvasKey<LocalAppSettings>
 {
-    [DataMember, MemoryPackOrder(0)] public bool? IsLogViewerEnabled { get; init; }
-    [DataMember, MemoryPackOrder(1)] public string? SelectedCameraDeviceId { get; init; }
-    [DataMember, MemoryPackOrder(2)] public bool? IsBackgroundBlurEnabled { get; init; }
+    [DataMember, MemoryPackOrder(0), Key(0)] public bool? IsLogViewerEnabled { get; init; }
+    [DataMember, MemoryPackOrder(1), Key(1)] public string? SelectedCameraDeviceId { get; init; }
+    [DataMember, MemoryPackOrder(2), Key(2)] public bool? IsBackgroundBlurEnabled { get; init; }
 
     // MediaStreamTrack.getSettings().deviceId -> isMirrored.
     // `field ??=` handles older payloads where MemoryPack's version-tolerant
     // reader leaves the property null (init-only defaults don't run during
     // deserialization).
-    [DataMember, MemoryPackOrder(3)]
+    [DataMember, MemoryPackOrder(3), Key(3)]
     public ApiMap<string, bool> CameraMirrorOverrides {
         get => field ??= ApiMap<string, bool>.Empty;
         init;

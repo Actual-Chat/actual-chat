@@ -19,10 +19,10 @@ public interface IReactionsBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to add or remove a reaction on a chat entry.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ReactionsBackend_React(
-    [property: DataMember, MemoryPackOrder(0)] Reaction Reaction
+    [property: DataMember, MemoryPackOrder(0), Key(0)] Reaction Reaction
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatEntryId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]

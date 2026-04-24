@@ -24,20 +24,20 @@ public interface ISessionsBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to create or update a session.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
 // ReSharper disable once InconsistentNaming
 public partial record SessionsBackend_Upsert(
-    [property: DataMember, MemoryPackOrder(0)] Session Session
+    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session
     ) : ISessionCommand<SessionInfoFull>, IBackendCommand, INotLogged, IHasShardKey<Session>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public Session ShardKey => Session;
 
-    [DataMember, MemoryPackOrder(1)] public string? IPAddress { get; init; }
-    [DataMember, MemoryPackOrder(2)] public string? Description { get; init; }
-    [DataMember, MemoryPackOrder(3)] public ImmutableOptionSet Options { get; init; }
-    [DataMember, MemoryPackOrder(4)] public Option<UserId?> UserId { get; init; }
-    [DataMember, MemoryPackOrder(5)] public UserIdentity? AuthenticatedIdentity { get; init; }
-    [DataMember, MemoryPackOrder(6)] public Moment? ExpiresAt { get; init; }
+    [DataMember, MemoryPackOrder(1), Key(1)] public string? IPAddress { get; init; }
+    [DataMember, MemoryPackOrder(2), Key(2)] public string? Description { get; init; }
+    [DataMember, MemoryPackOrder(3), Key(3)] public ImmutableOptionSet Options { get; init; }
+    [DataMember, MemoryPackOrder(4), Key(4)] public Option<UserId?> UserId { get; init; }
+    [DataMember, MemoryPackOrder(5), Key(5)] public UserIdentity? AuthenticatedIdentity { get; init; }
+    [DataMember, MemoryPackOrder(6), Key(6)] public Moment? ExpiresAt { get; init; }
 }

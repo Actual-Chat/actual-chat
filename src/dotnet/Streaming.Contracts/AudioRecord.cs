@@ -3,13 +3,14 @@ namespace ActualChat.Streaming;
 /// <summary>
 /// Represents an active audio recording session for a chat entry.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(AllowPrivate = true)]
+[method: MemoryPackConstructor, SerializationConstructor]
 public sealed partial record AudioRecord(
-    [property: DataMember, MemoryPackOrder(0)] StreamId StreamId, // Ignored on upload
-    [property: DataMember, MemoryPackOrder(1)] Session Session,
-    [property: DataMember, MemoryPackOrder(2)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(3)] double ClientStartOffset,
-    [property: DataMember, MemoryPackOrder(4)] ChatEntryId? RepliedEntryId
+    [property: DataMember, MemoryPackOrder(0), Key(0)] StreamId StreamId, // Ignored on upload
+    [property: DataMember, MemoryPackOrder(1), Key(1)] Session Session,
+    [property: DataMember, MemoryPackOrder(2), Key(2)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(3), Key(3)] double ClientStartOffset,
+    [property: DataMember, MemoryPackOrder(4), Key(4)] ChatEntryId? RepliedEntryId
     ) : IHasId<StreamId>, IHasNodeRef
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]

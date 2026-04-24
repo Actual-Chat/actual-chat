@@ -9,14 +9,14 @@ namespace ActualChat.Media;
 #pragma warning disable MA0049 // Allows ActualChat.Media.Media
 
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public partial record Media : IHasId<MediaId>, IHasVersion<long>, IHasMetadata, IRequirementTarget
 {
-    [DataMember, MemoryPackOrder(0)] public MediaId Id { get; init; }
-    [DataMember, MemoryPackOrder(1)] public string BlobId { get; init; } = "";
-    [DataMember, MemoryPackOrder(2)] public long Version { get; init; }
-    [DataMember, MemoryPackOrder(9)] public MediaKind Kind { get; init; }
-    [DataMember, MemoryPackOrder(10)] public PropertyBag Metadata { get; init; }
+    [DataMember, MemoryPackOrder(0), Key(0)] public MediaId Id { get; init; }
+    [DataMember, MemoryPackOrder(1), Key(1)] public string BlobId { get; init; } = "";
+    [DataMember, MemoryPackOrder(2), Key(2)] public long Version { get; init; }
+    [DataMember, MemoryPackOrder(9), Key(3)] public MediaKind Kind { get; init; }
+    [DataMember, MemoryPackOrder(10), Key(4)] public PropertyBag Metadata { get; init; }
 
     // Computed properties
 
@@ -86,11 +86,12 @@ public partial record Media : IHasId<MediaId>, IHasVersion<long>, IHasMetadata, 
         => Id = id;
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
-    public Media(MediaId id, long version, string blobId, PropertyBag metadata)
+    public Media(MediaId id, string blobId, long version, MediaKind kind, PropertyBag metadata)
     {
         Id = id;
-        Version = version;
         BlobId = blobId;
+        Version = version;
+        Kind = kind;
         Metadata = metadata;
     }
 

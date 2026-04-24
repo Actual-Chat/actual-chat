@@ -4,12 +4,8 @@ using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Hashing;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-// MemoryPack wire format intentionally kept SG-generated (IMemoryPackable<T> map) to stay
-// compatible with already-persisted ChatEntry rows referencing HashString. When migration
-// is in place, switch to plain-string by uncommenting the line below:
-// [MemoryPackFormatter<StringLikeMemoryPackFormatter<HashString>>]
-[MessagePackFormatter(typeof(ActualChat.Internal.StringLikeMessagePackFormatter<HashString>))]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[MessagePackFormatter(typeof(StringLikeMessagePackFormatter<HashString>))]
 [JsonConverter(typeof(StringLikeJsonConverter<HashString>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<HashString>))]
 [TypeConverter(typeof(StringLikeTypeConverter<HashString>))]

@@ -7,18 +7,18 @@ namespace ActualChat.Chat;
 /// <summary>
 /// Represents a translation of chat content to a target language.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record Translation(
-    [property: DataMember, MemoryPackOrder(0)] TranslationId Id,
-    [property: DataMember, MemoryPackOrder(1)] long Version = 0
+    [property: DataMember, MemoryPackOrder(0), Key(0)] TranslationId Id,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] long Version = 0
 ) : IHasId<TranslationId>, IHasVersion<long>, IRequirementTarget, ISanitized
 {
-    [DataMember, MemoryPackOrder(2)] public string Content { get => Sanitizer.MaskPrivate(field); init; } = "";
-    [DataMember, MemoryPackOrder(3)] public HashString SourceContentHash { get; init; }
-    [DataMember, MemoryPackOrder(4)] public Moment CreatedAt { get; init; }
-    [DataMember, MemoryPackOrder(5)] public Moment ModifiedAt { get; init; }
-    [DataMember, MemoryPackOrder(6)] public StreamId? StreamId { get; set; }
+    [DataMember, MemoryPackOrder(2), Key(2)] public string Content { get => Sanitizer.MaskPrivate(field); init; } = "";
+    [DataMember, MemoryPackOrder(3), Key(3)] public HashString SourceContentHash { get; init; }
+    [DataMember, MemoryPackOrder(4), Key(4)] public Moment CreatedAt { get; init; }
+    [DataMember, MemoryPackOrder(5), Key(5)] public Moment ModifiedAt { get; init; }
+    [DataMember, MemoryPackOrder(6), Key(6)] public StreamId? StreamId { get; set; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public Language TargetLanguage => Id.Language;

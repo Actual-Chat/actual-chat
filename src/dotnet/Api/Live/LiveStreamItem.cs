@@ -7,7 +7,7 @@ namespace ActualChat.Live;
 /// Base type for all live stream items, enabling polymorphic serialization over multiplexed streams.
 /// </summary>
 [RpcSerializable]
-[DataContract, MemoryPackable, MessagePackObject(true)]
+[DataContract, MemoryPackable, MessagePackObject]
 [MemoryPackUnion(0, typeof(LiveStreamStart))]
 [MemoryPackUnion(1, typeof(LiveStreamEnd))]
 [MemoryPackUnion(2, typeof(LiveAudioFrame))]
@@ -18,6 +18,6 @@ namespace ActualChat.Live;
 [Union(3, typeof(LiveStreamReset))]
 public abstract partial class LiveStreamItem : IMuxable
 {
-    [DataMember(Order = 0), MemoryPackOrder(0)]
+    [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
     public int StreamIndex { get; set; }
 }

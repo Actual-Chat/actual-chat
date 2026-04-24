@@ -5,11 +5,11 @@ namespace ActualChat.Chat;
 /// <summary>
 /// Extended <see cref="Author"/> with user association and role memberships.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(AllowPrivate = true)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
+[method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
 public sealed partial record AuthorFull(
-    [property: DataMember, MemoryPackOrder(6)] UserId UserId,
+    [property: DataMember, MemoryPackOrder(6), Key(10)] UserId UserId,
     AuthorId Id, long Version = 0
     ) : Author(Id, Version)
 {
@@ -17,11 +17,11 @@ public sealed partial record AuthorFull(
         (AuthorFull? a) => a?.Id is not null,
         new(() => StandardError.NotFound<Author>()));
 
-    [DataMember, MemoryPackOrder(7)]  public IReadOnlyList<RoleId> RoleIds { get; init; } = [];
-    [DataMember, MemoryPackOrder(10)] public bool IsPlaceAuthor { get; set; }
-    [DataMember, MemoryPackOrder(9)]  public Moment CreatedAt { get; init; }
+    [DataMember, MemoryPackOrder(7), Key(11)]  public IReadOnlyList<RoleId> RoleIds { get; init; } = [];
+    [DataMember, MemoryPackOrder(10), Key(13)] public bool IsPlaceAuthor { get; set; }
+    [DataMember, MemoryPackOrder(9), Key(12)]  public Moment CreatedAt { get; init; }
 
-    private AuthorFull() : this(null!, null!) { }
+    internal AuthorFull() : this(null!, null!) { }
 
     // This record relies on referential equality
     public bool Equals(AuthorFull? other) => ReferenceEquals(this, other);
