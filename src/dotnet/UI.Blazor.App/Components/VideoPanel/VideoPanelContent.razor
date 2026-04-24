@@ -185,11 +185,13 @@
     private bool _shouldStartClosing;
     private bool _lastCollapsed;
     private VideoPanelLayoutCalculator? _layoutCalculator;
+    private HistoryStepRef? _expandStepRef;
 
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
+    private HistoryStepper HistoryStepper => field ??= Hub.Services.GetRequiredService<HistoryStepper>();
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
     private ElementReference Ref { get; set; }
@@ -202,6 +204,7 @@
     [Parameter] public EventCallback OnClosed { get; set; }
 
     public override async ValueTask DisposeAsync() {
+        CloseExpandStep();
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
         BlazorRef.DisposeSilently();
@@ -240,6 +243,7 @@
     [JSInvokable]
     public async Task CloseVideoPanel() {
         _isExpanded = false;
+        CloseExpandStep();
         _lastChat = null;
         ChatVideoUI.StopStreaming();
         await JSRef.DisposeSilentlyAsync("dispose");
@@ -255,6 +259,8 @@
     public async Task OnExpanded()
     {
         _isExpanded = true;
+        _expandStepRef = HistoryStepper.StepIn("VideoPanel");
+        _ = WaitForExpandStepClosed(_expandStepRef);
         await InvokeAsync(StateHasChanged);
     }
 
@@ -262,7 +268,31 @@
     public async Task OnCollapsed()
     {
         _isExpanded = false;
+        CloseExpandStep();
         await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task WaitForExpandStepClosed(HistoryStepRef stepRef)
+    {
+        await stepRef.WhenClosed.ConfigureAwait(false);
+        await HistoryStepper.Dispatcher.InvokeSafeAsync(() => {
+            if (_expandStepRef != stepRef)
+                return; // Already handled
+            _expandStepRef = null;
+            if (!_isExpanded)
+                return; // Already collapsed
+            // Back button pressed — collapse the video panel
+            if (JSRef is not null)
+                _ = JSRef.InvokeVoidAsync("collapse");
+        }, Log);
+    }
+
+    private void CloseExpandStep()
+    {
+        if (_expandStepRef is not { } stepRef)
+            return;
+        _expandStepRef = null;
+        stepRef.Close();
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
