@@ -65,23 +65,13 @@ public sealed class DbModule(IServiceProvider moduleServices)
 
         // Adding services
         if (dbKind == DbKind.PostgreSql) {
-            var healthChecks = services.AddHealthChecks();
-            // due to iap proxy we need to restart pod in case it's not responding anymore
-            if (Settings.ShouldAddLivenessHealthCheck && !HostInfo.IsProductionInstance)
-                healthChecks
-                    .AddNpgSql(
-                        connectionStringSuffix,
-                        name: $"db_{contextName}_live",
-                        failureStatus: HealthStatus.Unhealthy,
-                        tags: [HealthTags.Live]);
+            services.AddHealthChecks()
+                .AddNpgSql(
+                    connectionStringSuffix,
+                    name: $"db_{contextName}",
+                    failureStatus: HealthStatus.Degraded,
+                    tags: [HealthTags.Ready]);
         }
-        /*
-            .AddNpgSql(
-                connectionStringSuffix,
-                name: $"db_{contextName}",
-                failureStatus: HealthStatus.Degraded,
-                tags: new[] { HealthTags.Ready });
-        */
 
         services.AddSingleton(dbInfo);
         services.AddPooledDbContextFactory<TDbContext>((c, db) => {

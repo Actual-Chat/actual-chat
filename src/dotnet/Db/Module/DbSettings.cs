@@ -10,5 +10,4 @@ public sealed class DbSettings
     public bool ShouldMigrateDb { get; set; } = true;
     public bool ShouldRepairDb { get; set; } = true;
     public bool ShouldVerifyDb { get; set; } = true;
-    public bool ShouldAddLivenessHealthCheck { get; set; }
 }
