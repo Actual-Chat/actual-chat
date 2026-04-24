@@ -1,5 +1,4 @@
 using ActualChat.Aot;
-using ActualChat.Module;
 using ActualLab.Serialization.Internal;
 
 namespace ActualChat.Core.Server.IntegrationTests;
@@ -20,16 +19,8 @@ namespace ActualChat.Core.Server.IntegrationTests;
 /// dynamic IL emit is NOT in the chain — a type that only resolves via dynamic emit will
 /// fail here, matching the runtime behavior under NativeAOT/Wasm/Maui.
 /// </summary>
-public class AotFormatterPresenceTest
+public class AotFormatterPresenceTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    private readonly ITestOutputHelper _out;
-
-    static AotFormatterPresenceTest()
-        => CoreSerializerAndRpcSetup.Configure(isServer: true);
-
-    public AotFormatterPresenceTest(ITestOutputHelper @out)
-        => _out = @out;
-
     [Fact]
     public void AllSerializableTypes_HaveNonDynamicMessagePackFormatter()
     {
@@ -54,7 +45,7 @@ public class AotFormatterPresenceTest
                 supported++;
         }
 
-        _out.WriteLine($"MessagePack-serializable types: {supported} (missing: {missing.Count})");
+        Out.WriteLine($"MessagePack-serializable types: {supported} (missing: {missing.Count})");
 
         missing.Count.Should().Be(0, "\n  " + string.Join("\n  ", missing) +
             "\n— every Serializable AotTypes entry must resolve to a non-null MessagePack formatter " +
@@ -94,7 +85,7 @@ public class AotFormatterPresenceTest
                 missing.Add(type.FullName ?? type.Name);
         }
 
-        _out.WriteLine($"MemoryPack-serializable types: {supported} (missing: {missing.Count})");
+        Out.WriteLine($"MemoryPack-serializable types: {supported} (missing: {missing.Count})");
 
         missing.Count.Should().Be(0, "\n  " + string.Join("\n  ", missing) +
             "\n— every [MemoryPackable] AotTypes entry must be MemoryPack-serializable.");

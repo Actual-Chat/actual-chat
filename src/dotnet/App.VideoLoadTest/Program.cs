@@ -1,16 +1,34 @@
+using System.Buffers;
+using System.Net.WebSockets;
 using ActualChat.Hosting;
 using ActualChat.Module;
+using ActualChat.Security;
 using ActualChat.Streaming;
 using ActualChat.Video;
 using ActualLab.Rpc;
+using Microsoft.AspNetCore.Http.Connections;
+using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
 using static System.Console;
 
-CoreSerializerAndRpcSetup.Configure(isServer: true);
+RuntimeInfo.IsServer = false;
+ApiContractsModuleInitializer.Load();
+CoreModuleInitializer.Initialize();
 
 // Ensure enough ThreadPool threads for 300+ concurrent async operations
 ThreadPool.SetMinThreads(Environment.ProcessorCount, Environment.ProcessorCount * 10);
+
+// Pre-warm MessagePack type resolver cache to avoid lock contention under concurrent connections.
+// Must use non-generic overloads — SignalR uses Serialize(Type, ...) which has a separate cache.
+#pragma warning disable CA2263 // Prefer generic overload
+MessagePackSerializer.Serialize(typeof(string), "");
+MessagePackSerializer.Serialize(typeof(int), 0);
+MessagePackSerializer.Serialize(typeof(double), 0.0);
+MessagePackSerializer.Serialize(typeof(bool), true);
+MessagePackSerializer.Serialize(typeof(byte[]), Array.Empty<byte>());
+MessagePackSerializer.Serialize(typeof(byte[][]), Array.Empty<byte[]>());
+#pragma warning restore CA2263
 
 // --- Configuration ---
 const int GopSize = 30;
@@ -29,6 +47,8 @@ var baseUrl = GetArg("u", "url") ?? "http://localhost:7080";
 var durationSec = int.TryParse(GetArg("d", "duration"), out var dd) ? dd : 30;
 var testDuration = TimeSpan.FromSeconds(durationSec);
 var useRpcBackend = args.Any(x => x is "-rpc-backend" or "--rpc-backend");
+var useRpc = useRpcBackend || args.Any(x => x is "-rpc" or "--rpc");
+var useMem = args.Any(x => x is "-mem" or "--mem");
 // Stagger between producer/consumer spawns (ms). Avoids thundering herd.
 var staggerMs = int.TryParse(GetArg("stagger", "stagger"), out var stg) ? stg : 50;
 
@@ -48,7 +68,7 @@ var originalChatCount = chatCount;
 var cts = new CancellationTokenSource();
 CancelKeyPress += (_, args) => { args.Cancel = true; cts.Cancel(); };
 
-var mode = useRpcBackend ? "RPC Backend (direct)" : "RPC (API)";
+var mode = useRpcBackend ? "RPC Backend (direct)" : useRpc ? "RPC (API)" : useMem ? "SignalR (Memory)" : "SignalR";
 
 if (workerChatIdx < 0) {
     // --- Orchestrator mode ---
@@ -74,6 +94,7 @@ WriteLine($"  Base URL: {baseUrl}, Duration: {durationSec}s, Stagger: {staggerMs
 var services = CreateServiceProvider(baseUrl);
 var commander = services.Commander();
 var session = Session.New();
+var hubUrl = $"{baseUrl}/api/hub/streams";
 
 // Authenticate orchestrator (used for chat discovery and consumers) — chat-scoped to avoid cross-worker contention.
 var orchEmail = $"test-videoload-c{workerChatIdx}-o@actual.chat";
@@ -102,6 +123,9 @@ foreach (var t in authTasks) {
         throw new InvalidOperationException("Producer sign-in failed. Test agent bypass required.");
 }
 WriteLine("All producer users signed in.");
+var secureTokens = services.GetRequiredService<ISecureTokens>();
+var secureToken = await secureTokens.CreateForSession(session, cts.Token);
+var sessionToken = secureToken.Token;
 
 // Resolve chat ID for this worker.
 var chatIds = new ChatId[] { ChatId.Parse(allChatIdStrings[workerChatIdx]) };
@@ -142,7 +166,7 @@ long consumerStartTicks = 0;
 // single-peer send-loop bottleneck that starves fan-out under load.
 var producerHubs = new IServiceProvider[chatCount, streamsPerChat];
 var consumerHubs = new IServiceProvider[chatCount, consumersPerChat];
-{
+if (useRpc) {
     WriteLine($"Creating {totalStreams} producer hubs + {chatCount * consumersPerChat} consumer hubs...");
     var hubSw = Stopwatch.StartNew();
     var hubTasks = new List<Task>();
@@ -168,7 +192,9 @@ for (var ci = 0; ci < chatCount; ci++) {
         var chatIdx = ci;
         var prodIdx = pi;
         producerTasks.Add(Task.Run(
-            () => RunProducerRpc(chatIdx, prodIdx, cts.Token),
+            () => useRpc
+                ? RunProducerRpc(chatIdx, prodIdx, cts.Token)
+                : RunProducer(chatIdx, prodIdx, cts.Token),
             cts.Token));
         if (staggerMs > 0) {
             try { await Task.Delay(staggerMs, cts.Token); }
@@ -227,9 +253,41 @@ for (var ci = 0; ci < chatCount; ci++) {
 }
 WriteLine($"Mapped {streamToProd.Count}/{totalStreams} streams to producers for latency correlation.");
 
-// --- Start consumers ---
+// --- Start consumers (or participants in unified mode) ---
 var consumerTasks = new List<Task>();
-{
+var useUnified = !useRpc && !useRpcBackend; // Unified mode: 1 connection per participant
+if (useUnified) {
+    // Unified mode: each participant reuses their producer connection to pull other streams
+    // Stop existing producers first — they'll be replaced by participants
+    WriteLine("Stopping standalone producers for unified mode...");
+    await cts.CancelAsync();
+    await Task.WhenAll(producerTasks.Select(t => t.ContinueWith(_ => { }, TaskScheduler.Default)));
+    producerTasks.Clear();
+
+    // Reset cancellation
+    cts = new CancellationTokenSource();
+    CancelKeyPress += (_, args) => { args.Cancel = true; cts.Cancel(); };
+
+    // Re-start producers as unified participants (push 1 + pull N-1 on same connection)
+    WriteLine($"Starting {totalStreams} unified participants (push 1 + pull {streamsPerChat - 1} each)...");
+    for (var ci = 0; ci < chatCount; ci++) {
+        var streams = chatStreams[ci];
+        for (var pi = 0; pi < streamsPerChat; pi++) {
+            var chatIdx = ci;
+            var partIdx = pi;
+            // Initialize metrics for this participant's pulls
+            for (var si = 0; si < streams.Count; si++) {
+                if (si == partIdx) continue;
+                latencies[(chatIdx, partIdx, si)] = new ConcurrentBag<double>();
+                framesReceived[(chatIdx, partIdx, si)] = 0;
+                bytesReceived[(chatIdx, partIdx, si)] = 0;
+            }
+            producerTasks.Add(Task.Run(
+                () => RunParticipant(chatIdx, partIdx, streams, cts.Token), cts.Token));
+        }
+    }
+}
+else {
     WriteLine($"Starting {totalPulls} consumer pulls (stagger={staggerMs}ms per consumer)...");
     consumerStartTicks = Stopwatch.GetTimestamp();
     for (var ci = 0; ci < chatCount; ci++) {
@@ -249,7 +307,9 @@ var consumerTasks = new List<Task>();
                 consumerTasks.Add(Task.Run(
                     () => useRpcBackend
                         ? RunConsumerRpcBackend(chatIdx, consumerIdx, streamIdx, streamId, cts.Token)
-                        : RunConsumerRpc(chatIdx, consumerIdx, streamIdx, streamId, cts.Token),
+                        : useRpc
+                            ? RunConsumerRpc(chatIdx, consumerIdx, streamIdx, streamId, cts.Token)
+                            : RunConsumer(chatIdx, consumerIdx, streamIdx, streamId, cts.Token),
                     cts.Token));
             }
             if (staggerMs > 0) {
@@ -284,11 +344,13 @@ async Task DisposeHubAsync(IServiceProvider? sp)
     catch { /* best effort */ }
 }
 var shutdownTasks = new List<Task> { DisposeHubAsync(services) };
-for (var ci = 0; ci < chatCount; ci++) {
-    for (var pi = 0; pi < streamsPerChat; pi++)
-        shutdownTasks.Add(DisposeHubAsync(producerHubs[ci, pi]));
-    for (var ni = 0; ni < consumersPerChat; ni++)
-        shutdownTasks.Add(DisposeHubAsync(consumerHubs[ci, ni]));
+if (useRpc) {
+    for (var ci = 0; ci < chatCount; ci++) {
+        for (var pi = 0; pi < streamsPerChat; pi++)
+            shutdownTasks.Add(DisposeHubAsync(producerHubs[ci, pi]));
+        for (var ni = 0; ni < consumersPerChat; ni++)
+            shutdownTasks.Add(DisposeHubAsync(consumerHubs[ci, ni]));
+    }
 }
 await Task.WhenAll(shutdownTasks);
 
@@ -521,6 +583,151 @@ void PrintAggregateReport()
         WriteLine($"WARNING: missing results for chats: {string.Join(",", missingChats)}");
 }
 
+async Task RunProducer(int chatIdx, int prodIdx, CancellationToken ct)
+{
+    try {
+        await using var connection = CreateHubConnection(hubUrl);
+        await connection.StartAsync(ct);
+        var clientStartOffset = CpuClock.Instance.Now.EpochOffset.TotalSeconds;
+
+        var method = useMem ? "PushVideoMem" : "PushVideo";
+        await connection.SendAsync(method,
+            sessionToken, chatIds[chatIdx].Value, Codec, FrameWidth, FrameHeight, "",
+            clientStartOffset, 0, // 0 = Webcam
+            PushFrames(chatIdx, prodIdx, ct), ct);
+
+        try { await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, ct); }
+        catch (OperationCanceledException) { }
+    }
+    catch (Exception e) when (e is not OperationCanceledException) {
+        Error.WriteLine($"Producer[chat={chatIdx},prod={prodIdx}] error: {e.GetType().Name}: {e.Message}");
+    }
+}
+
+async IAsyncEnumerable<byte[]> PushFrames(
+    int chatIdx, int prodIdx,
+    [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+{
+    var sw = Stopwatch.StartNew();
+    for (var i = 0; !ct.IsCancellationRequested; i++) {
+        var frame = GenerateFrame(i);
+        var serialized = SerializeVideoFrame(frame);
+
+        var targetElapsed = TimeSpan.FromTicks(frameDuration.Ticks * i);
+        var remaining = targetElapsed - sw.Elapsed;
+        if (remaining > TimeSpan.Zero)
+            await Task.Delay(remaining, ct);
+
+        sentTimestamps[(chatIdx, prodIdx, frame.Offset.Ticks)] = Stopwatch.GetTimestamp();
+        yield return serialized;
+    }
+}
+
+async Task RunConsumer(int chatIdx, int consumerIdx, int streamIdx, StreamId streamId, CancellationToken ct)
+{
+    try {
+        await using var connection = CreateHubConnection(hubUrl);
+        await connection.StartAsync(ct);
+
+        if (useMem)
+            await RunConsumerMem(connection, chatIdx, consumerIdx, streamIdx, streamId, ct);
+        else
+            await RunConsumerBytes(connection, chatIdx, consumerIdx, streamIdx, streamId, ct);
+    }
+    catch (Exception e) when (e is OperationCanceledException or WebSocketException or IOException) {
+        // Expected on shutdown
+    }
+    catch (Exception e) {
+        Error.WriteLine($"Consumer[chat={chatIdx},cons={consumerIdx},stream={streamIdx}] error: {e.GetType().Name}: {e.Message}");
+    }
+}
+
+async Task RunConsumerBytes(HubConnection connection, int chatIdx, int consumerIdx, int streamIdx, StreamId streamId, CancellationToken ct)
+{
+    var stream = connection.StreamAsync<byte[]>("GetVideo", sessionToken, streamId.Value, 0.0, ct);
+    await foreach (var frameBytes in stream) {
+        if (ct.IsCancellationRequested) break;
+
+        var receiveTs = Stopwatch.GetTimestamp();
+        var frame = DeserializeVideoFrame(frameBytes);
+        if (frame == null) continue;
+
+        var key = (chatIdx, consumerIdx, streamIdx);
+        framesReceived.AddOrUpdate(key, 1, (_, v) => v + 1);
+        bytesReceived.AddOrUpdate(key, frameBytes.Length, (_, v) => v + frameBytes.Length);
+
+        if (sentTimestamps.TryGetValue((chatIdx, streamIdx, frame.Offset.Ticks), out var sentTs)) {
+            var latencyMs = Stopwatch.GetElapsedTime(sentTs, receiveTs).TotalMilliseconds;
+            latencies[key].Add(latencyMs);
+        }
+    }
+}
+
+async Task RunConsumerMem(HubConnection connection, int chatIdx, int consumerIdx, int streamIdx, StreamId streamId, CancellationToken ct)
+{
+    var stream = connection.StreamAsync<ReadOnlyMemory<byte>>("GetVideoMem", sessionToken, streamId.Value, 0.0, ct);
+    await foreach (var frameMem in stream) {
+        if (ct.IsCancellationRequested) break;
+
+        var receiveTs = Stopwatch.GetTimestamp();
+        var frameBytes = frameMem.ToArray();
+        var frame = DeserializeVideoFrame(frameBytes);
+        if (frame == null) continue;
+
+        var key = (chatIdx, consumerIdx, streamIdx);
+        framesReceived.AddOrUpdate(key, 1, (_, v) => v + 1);
+        bytesReceived.AddOrUpdate(key, frameBytes.Length, (_, v) => v + frameBytes.Length);
+
+        if (sentTimestamps.TryGetValue((chatIdx, streamIdx, frame.Offset.Ticks), out var sentTs)) {
+            var latencyMs = Stopwatch.GetElapsedTime(sentTs, receiveTs).TotalMilliseconds;
+            latencies[key].Add(latencyMs);
+        }
+    }
+}
+
+// --- Unified participant: 1 connection pushes 1 stream + pulls N-1 streams ---
+async Task RunParticipant(int chatIdx, int partIdx, ApiArray<VideoStreamInfo> streams, CancellationToken ct)
+{
+    try {
+        await using var connection = CreateHubConnection(hubUrl);
+        await connection.StartAsync(ct);
+        var clientStartOffset = CpuClock.Instance.Now.EpochOffset.TotalSeconds;
+
+        // Start push (fire-and-forget on this connection)
+        var pushMethod = useMem ? "PushVideoMem" : "PushVideo";
+        var pushTask = connection.SendAsync(pushMethod,
+            sessionToken, chatIds[chatIdx].Value, Codec, FrameWidth, FrameHeight, "",
+            clientStartOffset, 0, // 0 = Webcam
+            PushFrames(chatIdx, partIdx, ct), ct);
+
+        // Start all pulls concurrently on the same connection
+        var pullTasks = new List<Task>();
+        for (var si = 0; si < streams.Count; si++) {
+            if (si == partIdx) continue; // Skip own stream
+            var streamIdx = si;
+            var streamId = streams[si].StreamId;
+            pullTasks.Add(Task.Run(async () => {
+                try {
+                    if (useMem)
+                        await RunConsumerMem(connection, chatIdx, partIdx, streamIdx, streamId, ct);
+                    else
+                        await RunConsumerBytes(connection, chatIdx, partIdx, streamIdx, streamId, ct);
+                }
+                catch (Exception e) when (e is OperationCanceledException or WebSocketException or IOException) {
+                    // Expected on shutdown
+                }
+            }, ct));
+        }
+
+        await Task.WhenAll(pullTasks.Append(pushTask));
+        try { await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, ct); }
+        catch (OperationCanceledException) { }
+    }
+    catch (Exception e) when (e is not OperationCanceledException) {
+        Error.WriteLine($"Participant[chat={chatIdx},part={partIdx}] error: {e.GetType().Name}: {e.Message}");
+    }
+}
+
 // --- RPC-based producer: pushes VideoFrame objects directly via IStreamServer ---
 async Task RunProducerRpc(int chatIdx, int prodIdx, CancellationToken ct)
 {
@@ -726,6 +933,94 @@ VideoFrame GenerateFrame(int index)
         Codec = isKeyFrame ? Codec : null,
     };
 }
+
+static byte[] SerializeVideoFrame(VideoFrame frame)
+{
+    var buffer = new ArrayBufferWriter<byte>();
+    var writer = new MessagePackWriter(buffer);
+
+    var fieldCount = 3;
+    if (frame.IsKeyFrame) fieldCount += 3;
+    if (!frame.Description.IsEmpty) fieldCount++;
+    if (frame.Codec != null) fieldCount++;
+
+    writer.WriteMapHeader(fieldCount);
+    writer.Write("offset");
+    writer.Write(frame.Offset.Ticks);
+    writer.Write("duration");
+    writer.Write(frame.Duration.Ticks);
+    writer.Write("data");
+    writer.Write(frame.Data.Span);
+
+    if (frame.IsKeyFrame) {
+        writer.Write("isKeyFrame");
+        writer.Write(true);
+        writer.Write("width");
+        writer.Write(frame.Width);
+        writer.Write("height");
+        writer.Write(frame.Height);
+    }
+    if (!frame.Description.IsEmpty) {
+        writer.Write("description");
+        writer.Write(frame.Description.Span);
+    }
+    if (frame.Codec != null) {
+        writer.Write("codec");
+        writer.Write(frame.Codec);
+    }
+
+    writer.Flush();
+    return buffer.WrittenSpan.ToArray();
+}
+
+static VideoFrame? DeserializeVideoFrame(byte[] bytes)
+{
+    try {
+        var reader = new MessagePackReader(bytes);
+        var mapLen = reader.ReadMapHeader();
+
+        long offset = 0, duration = 0;
+        var isKeyFrame = false;
+        int width = 0, height = 0;
+        byte[]? data = null, description = null;
+        string? codec = null;
+
+        for (var i = 0; i < mapLen; i++) {
+            var key = reader.ReadString();
+            switch (key) {
+                case "offset": offset = reader.ReadInt64(); break;
+                case "duration": duration = reader.ReadInt64(); break;
+                case "isKeyFrame": isKeyFrame = reader.ReadBoolean(); break;
+                case "width": width = reader.ReadInt32(); break;
+                case "height": height = reader.ReadInt32(); break;
+                case "data": data = reader.ReadBytes()?.ToArray(); break;
+                case "description": description = reader.TryReadNil() ? null : reader.ReadBytes()?.ToArray(); break;
+                case "codec": codec = reader.TryReadNil() ? null : reader.ReadString(); break;
+                default: reader.Skip(); break;
+            }
+        }
+
+        return new VideoFrame(isKeyFrame) {
+            Data = data ?? [],
+            Offset = new TimeSpan(offset),
+            Duration = new TimeSpan(duration),
+            Width = width,
+            Height = height,
+            Description = description ?? default,
+            Codec = codec,
+        };
+    }
+    catch { return null; }
+}
+
+HubConnection CreateHubConnection(string url)
+    => new HubConnectionBuilder()
+        .WithUrl(url, o => {
+            o.SkipNegotiation = true;
+            o.Transports = HttpTransportType.WebSockets;
+        })
+        .AddMessagePackProtocol()
+        .Build();
 
 static double Percentile(List<double> values, double percentile)
 {

@@ -61,7 +61,7 @@ public readonly partial struct Range<T> : IEquatable<Range<T>>
 
     /// <inheritdoc />
     public override string ToString()
-        => SystemJsonSerializer.Default.Write(this, GetType());
+        => Serializers.SystemJson.Write(this, GetType());
 
 #pragma warning disable CA1000, MA0018 // Do not declare static members on generic types
     /// <summary>
@@ -70,7 +70,7 @@ public readonly partial struct Range<T> : IEquatable<Range<T>>
     /// <param name="value">The string representation of the range to parse.</param>
     /// <returns>Parsed range.</returns>
     public static Range<T> Parse(string value)
-        => SystemJsonSerializer.Default.Read<Range<T>>(value);
+        => Serializers.SystemJson.Read<Range<T>>(value);
 
     /// <summary>
     /// Implicit conversion of a 2-item <see cref="ValueTuple"/> to range.

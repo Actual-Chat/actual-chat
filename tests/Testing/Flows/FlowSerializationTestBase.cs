@@ -23,11 +23,11 @@ public abstract class FlowSerializationTestBase<TFlow>(ITestOutputHelper @out) :
 
     [Fact]
     public void MemoryPack_RoundTrip()
-        => RoundTrip(MemoryPackByteSerializer.Default, "MemoryPack");
+        => RoundTrip(Serializers.MemoryPack, "MemoryPack");
 
     [Fact]
     public void MessagePack_RoundTrip()
-        => RoundTrip(MessagePackByteSerializer.Default, "MessagePack");
+        => RoundTrip(Serializers.MessagePack, "MessagePack");
 
     private void RoundTrip(IByteSerializer serializer, string name)
     {

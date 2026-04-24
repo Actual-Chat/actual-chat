@@ -64,7 +64,7 @@
          class="data render-state">
         @* RenderAtDepth ensures the JSON here is rendered once every item is rendered *@
         <RenderAtDepth RenderKey="@renderState" Depth="5">
-            @SystemJsonSerializer.Default.Write(context)
+            @Serializers.SystemJson.Write(context)
         </RenderAtDepth>
     </div>
 

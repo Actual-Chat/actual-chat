@@ -7,16 +7,15 @@ namespace ActualChat.Module;
 
 #pragma warning disable CA2255
 
-internal static class ApiContractsModuleInitializer
+public static partial class ApiContractsModuleInitializer
 {
+    public static void Load() { }
+
     [ModuleInitializer]
     internal static void ModuleInitializer()
     {
+        ApiModuleInitializer.Load();
         AotTypes.AddSource(new ApiContractsAotSource());
-        CoreSerializerAndRpcSetup.AddGeneratedMessagePackResolver(GeneratedMessagePackResolver.Instance);
-
-        // Default binary serializer
-        ByteSerializer.Default = MessagePackByteSerializer.Default;
 
         // Session.Factory & Validator
 #pragma warning disable CA2000

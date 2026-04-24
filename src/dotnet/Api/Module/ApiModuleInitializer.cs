@@ -8,13 +8,16 @@ namespace ActualChat.Module;
 /// </summary>
 #pragma warning disable CA2255
 
-public static class ApiModuleInitializer
+public static partial class ApiModuleInitializer
 {
+    public static void Load() { }
+
     [ModuleInitializer]
     internal static void ModuleInitializer()
     {
+        CoreModuleInitializer.Load();
         AotTypes.AddSource(new ApiAotSource());
-        CoreSerializerAndRpcSetup.AddGeneratedMessagePackResolver(GeneratedMessagePackResolver.Instance);
+
         // This is super important: TypeRef and some other types that were formerly using Symbol
         // are stored in our DB, and this option enables their legacy serialization mode.
         StringAsSymbolMemoryPackFormatterAttribute.IsEnabled = true;

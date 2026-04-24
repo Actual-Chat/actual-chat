@@ -7,7 +7,7 @@ namespace ActualChat.Contacts;
 /// </summary>
 public sealed class ExternalContactHasher
 {
-    private IByteSerializer ByteSerializer { get; } = MemoryPackByteSerializer.Default;
+    private IByteSerializer ByteSerializer { get; } = Serializers.MemoryPack;
 
     public HashString Compute(ExternalContactFull externalContactFull)
     {

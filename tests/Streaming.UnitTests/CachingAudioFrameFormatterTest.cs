@@ -7,7 +7,7 @@ namespace ActualChat.Streaming.UnitTests;
 // MessagePack path since the resolver is registered at module init.
 public class CachingAudioFrameFormatterTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    private static readonly MessagePackByteSerializer Serializer = MessagePackByteSerializer.Default;
+    private static readonly IByteSerializer Serializer = Serializers.MessagePack;
 
     [Fact]
     public void SingleFrame_RoundTrip()

@@ -13,7 +13,7 @@ public class DbInvite : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     public static readonly RandomStringGenerator IdGenerator = new(10, Alphabet.AlphaNumeric);
     private static ITextSerializer<InviteDetails> DetailsSerializer { get; } =
-        SystemJsonSerializer.Default.ToTyped<InviteDetails>();
+        Serializers.SystemJson.ToTyped<InviteDetails>();
 
     private DateTime _createdAt;
     private DateTime _expiresOn;
