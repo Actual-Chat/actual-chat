@@ -6,7 +6,8 @@
       android:dataExtractionRules="@xml/data_extraction_rules"
       android:icon="@mipmap/appicon_android"
       android:roundIcon="@mipmap/appicon_android_round"
-      android:supportsRtl="true">
+      android:supportsRtl="true"
+      android:enableOnBackInvokedCallback="false">
     <!-- Defines the fallback channel id when backend does not specify notification channel id -->
     <!-- Resource value should aligned with Constants.Notification.ChannelIds.Default -->
     <meta-data
