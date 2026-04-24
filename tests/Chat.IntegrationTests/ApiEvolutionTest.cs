@@ -4,6 +4,8 @@ using ChatModel = ActualChat.Chat.Chat;
 
 namespace ActualChat.Chat.IntegrationTests;
 
+#pragma warning disable CS0618 // Type or member is obsolete
+
 public class ApiEvolutionTest(ITestOutputHelper @out) : TestBase(@out)
 {
     private static readonly bool MustSerialize = false;

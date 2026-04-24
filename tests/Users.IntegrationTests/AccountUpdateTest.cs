@@ -29,7 +29,7 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         return ComputedTest.When(async ct => {
             result = await Accounts.GetOwn(Tester.Session, ct);
             predicate(result).Should().BeTrue();
-        }).ContinueWith(_ => result);
+        }).ContinueWith(_ => result, TaskScheduler.Current);
     }
 
     // Tests for Accounts.OnUpdate (public API) - should preserve Claims and Identities

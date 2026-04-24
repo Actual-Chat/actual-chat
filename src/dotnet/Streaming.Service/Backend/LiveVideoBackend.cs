@@ -158,7 +158,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         var (activeMembers, _) = FilterStaleMembers(chatId, allMembers);
         var chatState = GetChatState(chatId);
         chatState.RecomputeCodecs(activeMembers);
-        return chatState.GetCurrentSupportedDecoderCodecs();
+        return chatState.CurrentSupportedDecoderCodecs;
     }
 
     // [ComputeMethod]

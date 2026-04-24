@@ -20,10 +20,11 @@ public partial class LiveVideoBackend
         public LiveVideoBackend Owner { get; } = owner;
         public ChatId ChatId { get; } = chatId;
 
-        public ApiArray<string> GetCurrentSupportedDecoderCodecs()
-        {
-            lock (_codecLock)
-                return _currentSupportedDecoderCodecs;
+        public ApiArray<string> CurrentSupportedDecoderCodecs {
+            get {
+                lock (_codecLock)
+                    return _currentSupportedDecoderCodecs;
+            }
         }
 
         // Lock-free: reads an immutable FrozenSet snapshot

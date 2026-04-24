@@ -288,6 +288,7 @@ public partial class AudioStreamingBackend
         var authorId = audioSegment.Author.Id;
         var repliedEntryId = audioSegment.Record.RepliedEntryId;
 
+        AsyncMemoizer<TranscriptDiff>? transcriptDiffStream = null;
         Transcript? lastTranscript = null;
         ChatEntry? textEntry = null;
         ChatEntryLanguage? entryLanguage = null;
@@ -306,11 +307,13 @@ public partial class AudioStreamingBackend
 
                 // Got first non-empty transcript -> create text entry, so the code below is performed only once
 
-                var transcriptDiffStream = transcripts
+                transcriptDiffStream = transcripts
                     .Replay(cancellationToken)
                     .ToTranscriptDiffs()
                     .Memoize(cancellationToken);
+#pragma warning disable CA2025 // transcriptDiffStream must be disposed after publishTranscriptStreamTask completes
                 var publishTranscriptStreamTask = _transcriptStreams.Publish(transcriptStreamId, transcriptDiffStream);
+#pragma warning restore CA2025
 
                 // Wait 0.1s for publishTranscriptStreamTask to publish the stream.
                 // We want this to happen BEFORE creating the entry to avoid a race condition
@@ -330,6 +333,7 @@ public partial class AudioStreamingBackend
         finally {
             if (lastTranscript != null && textEntry != null)
                 await Task.WhenAll(FinalizeTextEntry(), FinalizeLanguages()).ConfigureAwait(false);
+            await transcriptDiffStream.DisposeSilentlyAsync().ConfigureAwait(false);
         }
         return textEntry?.Id;
 

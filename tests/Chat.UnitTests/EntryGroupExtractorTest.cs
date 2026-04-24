@@ -304,7 +304,7 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
             .ToList();
     }
 
-    private class HighSimilarityEmbeddingsCalculator : IEmbeddingsCalculator
+    private sealed class HighSimilarityEmbeddingsCalculator : IEmbeddingsCalculator
     {
         public Task<double[]> CalculateVector(string text, CancellationToken cancellationToken)
             => Task.FromResult(new [] { 0.1, 0.2 });
@@ -316,7 +316,7 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
             => vector;
     }
 
-    private class LowSimilarityEmbeddingsCalculator : IEmbeddingsCalculator
+    private sealed class LowSimilarityEmbeddingsCalculator : IEmbeddingsCalculator
     {
         public Task<double[]> CalculateVector(string text, CancellationToken cancellationToken)
             => Task.FromResult(new[] { 0.3, 0.4 }); // Different from HighSimilarityEmbeddingsCalculator

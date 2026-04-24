@@ -20,8 +20,8 @@ public class RedisMultiHashMapTest(ITestOutputHelper @out)
 
         var all = await hash.GetHashMap(hashKey);
         all.Should().HaveCount(2);
-        all["f1"].Number.Should().Be(1);
-        all["f2"].Number.Should().Be(2);
+        all["f1"]!.Number.Should().Be(1);
+        all["f2"]!.Number.Should().Be(2);
     }
 
     [Fact(Timeout = 30_000)]
@@ -61,8 +61,8 @@ public class RedisMultiHashMapTest(ITestOutputHelper @out)
         await hash.Set("h1", "f", new RedisTestValue("h1", 1));
         await hash.Set("h2", "f", new RedisTestValue("h2", 2));
 
-        (await hash.GetHashMap("h1"))["f"].Number.Should().Be(1);
-        (await hash.GetHashMap("h2"))["f"].Number.Should().Be(2);
+        (await hash.GetHashMap("h1"))["f"]!.Number.Should().Be(1);
+        (await hash.GetHashMap("h2"))["f"]!.Number.Should().Be(2);
     }
 
     [Fact(Timeout = 30_000)]
@@ -192,7 +192,7 @@ public class RedisMultiHashMapTest(ITestOutputHelper @out)
 
         try {
             await hash.Set(hashKey, "f", new RedisTestValue("f", 1));
-            (await hash.GetHashMap(hashKey))["f"].Number.Should().Be(1);
+            (await hash.GetHashMap(hashKey))["f"]!.Number.Should().Be(1);
             (await hash.Get(hashKey, "f"))!.Number.Should().Be(1);
         }
         finally {
