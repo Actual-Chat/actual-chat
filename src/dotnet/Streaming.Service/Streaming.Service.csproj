@@ -58,4 +58,13 @@
     <EmbeddedResource Include="data\silence.opuss" />
   </ItemGroup>
 
+  <!-- Workaround: MessagePack 3.x source generator produces invalid code referencing
+       ActualLab types when processing types in this project.
+       [MessagePackObject(true)] still works at runtime via dynamic formatter. -->
+  <Target Name="DisableMessagePackSourceGenerator" BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <Analyzer Remove="@(Analyzer)" Condition="'%(Filename)' == 'MessagePack.SourceGenerator' Or '%(Filename)' == 'MessagePack.Analyzers.CodeFixes'" />
+    </ItemGroup>
+  </Target>
+
 </Project>

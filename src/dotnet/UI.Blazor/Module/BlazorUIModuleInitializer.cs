@@ -1,19 +1,15 @@
 using ActualChat.Aot;
-using ActualChat.Module;
 using Microsoft.JSInterop;
 
 namespace ActualChat.UI.Blazor.Module;
 
 #pragma warning disable CA2255 // Module initializer is intended to be used in...
 
-public static partial class BlazorUIModuleInitializer
+internal static class BlazorUIModuleInitializer
 {
-    public static void Load() { }
-
     [ModuleInitializer]
     internal static void ModuleInitializer()
     {
-        ApiContractsModuleInitializer.Load();
         AotTypes.AddSource(new BlazorUIAotSource());
         AotJsonContexts.Add(BlazorUIJsonContext.Default);
         KeepBlazorIpcTypes();

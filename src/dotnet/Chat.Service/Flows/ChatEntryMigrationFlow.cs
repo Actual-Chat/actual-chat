@@ -11,7 +11,7 @@ namespace ActualChat.Chat.Flows;
 /// Processes one chat at a time, in batches of 100 text entries per resume.
 /// </summary>
 [Flow(DataVersion = 1, DelayQuanta = 0)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class ChatEntryMigrationFlow : Flow<(Moment, long, long)>
 {
     private const int BatchSize = 300;
@@ -21,17 +21,17 @@ public partial class ChatEntryMigrationFlow : Flow<(Moment, long, long)>
     private DbHub<ChatDbContext> DbHub => field ??= Services.DbHub<ChatDbContext>();
     private ICommander Commander => Hub.Commander;
 
-    [DataMember(Order = 0), MemoryPackOrder(0), NbKey(0)]
+    [DataMember(Order = 0), MemoryPackOrder(0)]
     public string? LastProcessedChatId { get; set; }
-    [DataMember(Order = 1), MemoryPackOrder(1), NbKey(1)]
+    [DataMember(Order = 1), MemoryPackOrder(1)]
     public long LastProcessedLocalId { get; set; }
-    [DataMember(Order = 2), MemoryPackOrder(2), NbKey(2)]
+    [DataMember(Order = 2), MemoryPackOrder(2)]
     public long MigratedEntryCount { get; set; }
-    [DataMember(Order = 3), MemoryPackOrder(3), NbKey(3)]
+    [DataMember(Order = 3), MemoryPackOrder(3)]
     public long MigratedChatCount { get; set; }
-    [DataMember(Order = 4), MemoryPackOrder(4), NbKey(4)]
+    [DataMember(Order = 4), MemoryPackOrder(4)]
     public long TotalEntryCount { get; set; }
-    [DataMember(Order = 5), MemoryPackOrder(5), NbKey(5)]
+    [DataMember(Order = 5), MemoryPackOrder(5)]
     public long TotalChatCount { get; set; }
 
     protected override async ValueTask Resume(CancellationToken cancellationToken)

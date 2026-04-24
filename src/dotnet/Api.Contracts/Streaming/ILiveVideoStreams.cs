@@ -5,21 +5,6 @@ namespace ActualChat.Streaming;
 
 public interface ILiveVideoStreams : IComputeService
 {
-    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
-    [LegacyName("ListActiveStreams", "2.6.9999")]
-    Task<ApiArray<VideoStreamInfo>> List(Session session, ChatId chatId, CancellationToken cancellationToken);
-
-    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
-    [LegacyName("GetVideoStreamMemberCount", "2.6.9999")]
-    Task<int> GetMemberCount(Session session, ChatId chatId, CancellationToken cancellationToken);
-
-    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
-    [LegacyName("GetSupportedDecoderCodecs", "2.6.9999")]
-    Task<ApiArray<string>> GetSupportedCodecs(Session session, ChatId chatId, CancellationToken cancellationToken);
-
-    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
-    Task<VideoQualityPreset> GetQualityPreset(Session session, StreamId streamId, CancellationToken cancellationToken);
-
     [Obsolete("2026.04: Use IStreamServer.GetVideo via RPC")]
     [LegacyName("GetVideo", "2.6.9999")]
     Task<RpcStream<VideoFrame>?> GetStream(
@@ -27,6 +12,21 @@ public interface ILiveVideoStreams : IComputeService
         StreamId streamId,
         TimeSpan skipTo,
         CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    [LegacyName("ListActiveStreams", "2.6.9999")]
+    Task<ApiArray<VideoStreamInfo>> List(Session session, ChatId chatId, CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    [LegacyName("GetVideoStreamMemberCount", "2.6.9999")]
+    Task<int> GetMemberCount(Session session, ChatId chatId, CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    [LegacyName("GetSupportedDecoderCodecs", "2.6.9999")]
+    Task<ApiArray<string>> GetSupportedCodecs(Session session, ChatId chatId, CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    Task<VideoQualityPreset> GetQualityPreset(Session session, StreamId streamId, CancellationToken cancellationToken);
 
     [LegacyName("RegisterVideoStreamMember", "2.6.9999")]
     Task RegisterMember(

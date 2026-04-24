@@ -8,7 +8,12 @@
 
   <!-- Release configuration -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
-    <IsPublishable>false</IsPublishable>
+    <IsPublishable>true</IsPublishable>
+    <PublishAot>true</PublishAot>
+    <TrimMode>full</TrimMode>
+    <IlcGenerateStackTraceData>true</IlcGenerateStackTraceData>
+    <IlcDisableReflection>false</IlcDisableReflection>
+    <IlcTrimMetadata>true</IlcTrimMetadata>
   </PropertyGroup>
 
   <!-- Debug symbols -->
@@ -24,12 +29,10 @@
     <RuntimeHostConfigurationOption Include="ArgumentList.AllowGenerics" Value="false" Trim="true" />
   </ItemGroup>
 
-  <!-- App.Server transitively references the full server-side surface (every Service +
-       transitively every Contracts project) AND UI.Blazor.App, so the generator's
-       reflection-based discovery sees every serializable / API / component type without
-       us having to enumerate them here. AotHelper isn't shipped, only used at dev time. -->
+  <!-- References: same surface as App.Wasm + App.ConsoleClient -->
   <ItemGroup>
-    <ProjectReference Include="..\App.Server\App.Server.csproj" />
+    <ProjectReference Include="..\Api.Contracts\Api.Contracts.csproj" />
+    <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
   </ItemGroup>
 
 </Project>

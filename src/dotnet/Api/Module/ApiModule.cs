@@ -7,6 +7,7 @@ namespace ActualChat.Module;
 /// <summary>
 /// Registers Api project services with the DI container.
 /// </summary>
+
 public sealed class ApiModule(IServiceProvider moduleServices)
     : HostModule(moduleServices)
 {

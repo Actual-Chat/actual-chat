@@ -2,7 +2,7 @@ namespace ActualChat.Core.UnitTests.Identifiers;
 
 public class SerializationTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    private static readonly TypeDecoratingByteSerializer Serializer = new(Serializers.MemoryPack);
+    private static readonly TypeDecoratingByteSerializer Serializer = new(MemoryPackByteSerializer.Default);
 
     [Fact]
     public void SerializeChatId()

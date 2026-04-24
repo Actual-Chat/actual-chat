@@ -10,7 +10,7 @@ namespace ActualChat.Chat.Flows;
 /// - Audio entry valid: retries media creation via base flow.
 /// </summary>
 [Flow(DataVersion = 1, DelayQuanta = 0)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class ChatEntryMigrationFixupFlow : ChatEntryMigrationFlow
 {
     protected override async Task ProcessOne(ChatDbContext dbContext, DbChatEntry textEntry, CancellationToken cancellationToken)

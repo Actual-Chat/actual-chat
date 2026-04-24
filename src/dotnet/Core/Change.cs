@@ -15,7 +15,7 @@ public interface IChange : IRequirementTarget, ISanitized
 /// <summary>
 /// A serializable change record with separate create and update payload types.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackFormatter(typeof(ChangeMessagePackFormatter<,>))]
 public partial record Change<TCreate, TUpdate> : IChange
 {
     [DataMember, MemoryPackOrder(0)]
@@ -25,7 +25,7 @@ public partial record Change<TCreate, TUpdate> : IChange
     [DataMember, MemoryPackOrder(2)]
     public bool Remove { get; init; }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ChangeKind Kind {
         get {
             this.RequireValid();
@@ -70,7 +70,7 @@ public partial record Change<TCreate, TUpdate> : IChange
 /// <summary>
 /// A serializable change record using the same type for create and update payloads.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackFormatter(typeof(ChangeMessagePackFormatter<>))]
 public partial record Change<T> : Change<T, T>;
 
 /// <summary>

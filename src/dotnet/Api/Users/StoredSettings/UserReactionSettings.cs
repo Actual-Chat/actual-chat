@@ -7,7 +7,7 @@ namespace ActualChat.Users;
 /// Top 6 emojis have ranks 1-6 (6 = highest/first position).
 /// Other emojis have rank 0.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record UserReactionSettings : StoredSettings, IHasKvasKey<UserReactionSettings>
 {
     private const int TopCount = 6;
@@ -17,7 +17,7 @@ public sealed partial record UserReactionSettings : StoredSettings, IHasKvasKey<
     /// <summary>
     /// Maps emoji ID to rank (1-6 for top emojis, 0 for others).
     /// </summary>
-    [DataMember, MemoryPackOrder(0), Key(0)]
+    [DataMember, MemoryPackOrder(0)]
     public Dictionary<string, int> EmojiRanks { get; init; } = new();
 
     public UserReactionSettings WithBubbleUp(string emojiId)

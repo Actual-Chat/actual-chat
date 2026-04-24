@@ -15,6 +15,7 @@ namespace ActualChat;
 [DataContract, MemoryPackable(GenerateType.NoGenerate)]
 [JsonConverter(typeof(StringLikeJsonConverter<MediaId>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<MediaId>))]
+[MessagePackFormatter(typeof(StringLikeMessagePackFormatter<MediaId>))]
 [TypeConverter(typeof(StringLikeTypeConverter<MediaId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 public sealed partial class MediaId : StringIdentifier, IStringIdentifier<MediaId>

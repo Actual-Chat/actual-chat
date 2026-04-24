@@ -8,12 +8,12 @@ public interface IGifs : IRpcService
     Task<GifSearchResult> GetTrending(int page, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record GifSearchResult(
     [property: DataMember, MemoryPackOrder(0), Key(0)] GifItem[] Items,
     [property: DataMember, MemoryPackOrder(1), Key(1)] bool HasNext);
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record GifItem(
     [property: DataMember, MemoryPackOrder(0), Key(0)] string Slug,
     [property: DataMember, MemoryPackOrder(1), Key(1)] string Title,

@@ -1,5 +1,7 @@
 using ActualChat.Diff.Handlers;
 using ActualLab.Interception.Trimming;
+using MessagePack.ImmutableCollection;
+
 namespace ActualChat.UI.Blazor.App.Module;
 
 // Manual CodeKeeper entries — not overwritten by the generator.
@@ -56,5 +58,7 @@ internal partial class BlazorUIAppAotSource
         CodeKeeper.Keep<AudioRecorder>();
         CodeKeeper.Keep<AudioTrackPlayer>();
         CodeKeeper.Keep<NotificationUI>();
+        CodeKeeper.Keep<InterfaceImmutableDictionaryFormatter<PlaceId, ChatId>>();
+        CodeKeeper.Keep<InterfaceImmutableDictionaryFormatter<string, ChatId>>();
     }
 }

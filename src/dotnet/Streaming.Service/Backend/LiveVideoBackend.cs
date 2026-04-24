@@ -7,7 +7,7 @@ namespace ActualChat.Streaming;
 
 public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
 {
-    private static readonly TimeSpan RedisTtl = TimeSpan.FromHours(1);
+    private static readonly TimeSpan RedisTtl = TimeSpan.FromMinutes(6);
     private static readonly TimeSpan ChatStateTtl = TimeSpan.FromMinutes(5);
 
     private readonly ConcurrentDictionary<ChatId, ExpiringEntry<ChatId, ChatState>> _chatStates = new();
@@ -73,9 +73,12 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         // Heartbeat fast path: caller re-registers the same stream on an interval to
         // keep the chat state alive. If an identical entry already exists (record
         // value equality), skip the Redis write + primer.Prime to avoid unnecessary
-        // invalidation cycles that would churn all bound RPC subscribers.
-        if (prev.Any(s => s == streamInfo))
+        // invalidation cycles that would churn all bound RPC subscribers. Still
+        // bump the Redis hash TTL so the entry doesn't expire mid-stream.
+        if (prev.Any(s => s == streamInfo)) {
+            await _streams.Touch(chatId.Value, streamInfo.StreamId.Value).ConfigureAwait(false);
             return;
+        }
 
         // Enforce single screencaster per chat — but allow the same author to replace
         // their own prior screencast (mints a new StreamId on every reconnect / pipeline
@@ -115,7 +118,10 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
 
         Log.LogWarning("RegisterActiveStream({ChatId}): #{StreamId}, AuthorId={AuthorId}, StreamKind={StreamKind}",
             chatId, streamInfo.StreamId, streamInfo.AuthorId, streamInfo.StreamKind);
-        await _streams.Set(chatId.Value, streamInfo.StreamId.Value, streamInfo).ConfigureAwait(false);
+        var isAdded = await _streams.Set(chatId.Value, streamInfo.StreamId.Value, streamInfo).ConfigureAwait(false);
+        if (!isAdded)
+            return;
+
         await primer.Prime(new ApiArray<VideoStreamInfo>(next), cancellationToken).ConfigureAwait(false);
 
         _ = BackgroundTask.Run(() => EvaluateStreamPriority(chatId, CancellationToken.None), CancellationToken.None);
@@ -134,7 +140,10 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
             return;
 
         Log.LogWarning("UnregisterActiveStream({ChatId}): #{StreamId}", chatId, streamId);
-        await _streams.Remove(chatId.Value, streamId.Value).ConfigureAwait(false);
+        var isDeleted = await _streams.Remove(chatId.Value, streamId.Value).ConfigureAwait(false);
+        if (!isDeleted)
+            return;
+
         await primer.Prime(next, cancellationToken).ConfigureAwait(false);
 
         _ = BackgroundTask.Run(() => EvaluateStreamPriority(chatId, CancellationToken.None), CancellationToken.None);

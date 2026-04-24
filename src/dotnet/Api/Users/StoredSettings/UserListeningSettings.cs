@@ -5,13 +5,13 @@ namespace ActualChat.Users;
 /// <summary>
 /// User preferences for which chats to always listen to.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record UserListeningSettings : StoredSettings, IHasOrigin, IHasKvasKey<UserListeningSettings>
 {
-    [DataMember, MemoryPackOrder(0), Key(0)]
+    [DataMember, MemoryPackOrder(0)]
     public ChatId[] AlwaysListenedChatIds { get; init; } = [];
 
-    [DataMember, MemoryPackOrder(1), Key(1)]
+    [DataMember, MemoryPackOrder(1)]
     public string Origin { get; init; } = "";
 
     public UserListeningSettings WithAlwaysListeningChat(ChatId chatId)

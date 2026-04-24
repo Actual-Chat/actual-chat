@@ -12,7 +12,7 @@ public class LiveBackendRedisStateTest(AppHostFixture fixture, ITestOutputHelper
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private RedisDb<StreamingContext> RedisDb => AppHost.Services.GetRequiredService<RedisDb<StreamingContext>>();
-    private IByteSerializer RedisHashStoreSerialalizer => Serializers.MessagePack;
+    private IByteSerializer RedisHashStoreSerialalizer => MessagePackByteSerializer.Default;
 
     // --- Audio ---
 

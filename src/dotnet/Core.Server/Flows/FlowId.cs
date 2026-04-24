@@ -5,11 +5,12 @@ using ActualLab.Internal;
 
 namespace ActualChat.Flows;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // MemoryPack wire format intentionally kept SG-generated (IMemoryPackable<T> map) to stay
 // compatible with already-queued FlowResumeEvents from older nodes. When all peers are
 // upgraded and queues are drained, switch to plain-string by uncommenting the line below:
 // [MemoryPackFormatter<StringLikeMemoryPackFormatter<FlowId>>]
+[MessagePackFormatter(typeof(StringLikeMessagePackFormatter<FlowId>))]
 [JsonConverter(typeof(StringLikeJsonConverter<FlowId>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<FlowId>))]
 [TypeConverter(typeof(StringLikeTypeConverter<FlowId>))]
@@ -24,22 +25,22 @@ public readonly partial struct FlowId : ISymbolIdentifier<FlowId>
 
     public static FlowId None => default;
 
-    [DataMember(Order = 0), MemoryPackOrder(0), NbKey(0)]
+    [DataMember(Order = 0), MemoryPackOrder(0)]
     public Symbol Id { get; }
 
     // Set on deserialization
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public Symbol Name { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public string Arguments { get; }
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsNone => Id.IsEmpty;
 
-    [ConstructorShape, JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
     public FlowId(Symbol id)
         => this = Parse(id);
     public FlowId(string? id)

@@ -11,7 +11,7 @@ namespace ActualChat.Chat.Flows;
 /// from legacy audio entries to text entries but doesn't set EndsAt.
 /// </summary>
 [Flow(DataVersion = 1, DelayQuanta = 0)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class ChatEntryEndsAtFixupFlow : Flow<(Moment, long)>
 {
     private const int BatchSize = 200;
@@ -20,13 +20,13 @@ public partial class ChatEntryEndsAtFixupFlow : Flow<(Moment, long)>
     private DbHub<ChatDbContext> DbHub => field ??= Services.DbHub<ChatDbContext>();
     private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
 
-    [DataMember(Order = 0), MemoryPackOrder(0), NbKey(0)]
+    [DataMember(Order = 0), MemoryPackOrder(0)]
     public string? LastProcessedEntryId { get; set; }
-    [DataMember(Order = 1), MemoryPackOrder(1), NbKey(1)]
+    [DataMember(Order = 1), MemoryPackOrder(1)]
     public long FixedCount { get; set; }
-    [DataMember(Order = 2), MemoryPackOrder(2), NbKey(2)]
+    [DataMember(Order = 2), MemoryPackOrder(2)]
     public long SkippedCount { get; set; }
-    [DataMember(Order = 3), MemoryPackOrder(3), NbKey(3)]
+    [DataMember(Order = 3), MemoryPackOrder(3)]
     public long TotalScanned { get; set; }
 
     protected override async ValueTask Resume(CancellationToken cancellationToken)

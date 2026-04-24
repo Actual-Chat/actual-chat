@@ -1,41 +1,43 @@
 using System.Buffers;
+using MessagePack.Formatters;
 
 namespace ActualChat.Audio;
 
 /// <summary>
-/// Nerdbank.MessagePack converter for <see cref="AudioFrame"/> that enables serialize-once fan-out.
-/// Hand-written — bypasses the auto-generated converter to eliminate per-frame Gen0 allocation
-/// of a separate <c>byte[]</c> for <see cref="MediaFrame.Data"/>. Mirrors
-/// <see cref="ActualChat.Video.CachingVideoFrameFormatter"/>.
+/// MessagePack formatter for <see cref="AudioFrame"/> that enables serialize-once fan-out.
+/// Hand-written — bypasses the auto-generated formatter to eliminate per-frame Gen0 allocation
+/// of a separate <c>byte[]</c> for <see cref="MediaFrame.Data"/> and the dynamic-IL machinery
+/// behind the default formatter. Mirrors <see cref="ActualChat.Video.CachingVideoFrameFormatter"/>.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Write:</b> if <see cref="AudioFrame.SerializedData"/> is populated, the cached bytes
+/// <b>Serialize:</b> if <see cref="AudioFrame.SerializedData"/> is populated, the cached bytes
 /// are written via <see cref="MessagePackWriter.WriteRaw(ReadOnlySpan{byte})"/> — zero-cost.
 /// On cache miss the frame is encoded into a pooled <see cref="ArrayPoolBuffer{T}"/> scratch
 /// buffer, the final bytes are copied to a plain <c>byte[]</c> held by the frame.
 /// </para>
 /// <para>
-/// <b>Read:</b> the raw MessagePack bytes for the frame are copied into a plain
+/// <b>Deserialize:</b> the raw MessagePack bytes for the frame are copied into a plain
 /// <c>byte[]</c> owned by the frame. The frame is parsed out of that copy, so
 /// <see cref="MediaFrame.Data"/> is a slice into the same <c>byte[]</c>. Lifetime is purely
 /// GC-driven: the array lives as long as any consumer holds the frame. No pooling, no Dispose.
 /// </para>
 /// <para>
-/// Registered via <see cref="ActualChat.Serialization.Serializers.RegisterConverters"/> so the
-/// custom converter wins over the auto-generated one for both Key-honoring and keyless wire
-/// variants — application code always sees the same fan-out-friendly layout.
+/// Bound to <see cref="AudioFrame"/> via <c>[MessagePackFormatter]</c> on the type —
+/// AttributeFormatterResolver instantiates this formatter automatically.
+/// MessagePack's built-in <c>ArrayFormatter&lt;AudioFrame&gt;</c> automatically delegates each
+/// element to this formatter, so <see cref="AudioFrame"/>[] batches hit the cache too.
 /// </para>
 /// <para>
 /// Wire format: a 4-entry MessagePack map with PascalCase string keys — Data (bin),
 /// Offset (int64 ticks), Duration (int64 ticks), IsKeyFrame (bool).
 /// </para>
 /// </remarks>
-public sealed class CachingAudioFrameFormatter : MessagePackConverter<AudioFrame?>
+public sealed class CachingAudioFrameFormatter : IMessagePackFormatter<AudioFrame?>
 {
     public static readonly CachingAudioFrameFormatter Instance = new();
 
-    public override void Write(ref MessagePackWriter writer, in AudioFrame? value, SerializationContext context)
+    public void Serialize(ref MessagePackWriter writer, AudioFrame? value, MessagePackSerializerOptions options)
     {
         if (value is null) {
             writer.WriteNil();
@@ -52,19 +54,20 @@ public sealed class CachingAudioFrameFormatter : MessagePackConverter<AudioFrame
         writer.WriteRaw(value.SerializedData.Span);
     }
 
-    public override AudioFrame? Read(ref MessagePackReader reader, SerializationContext context)
+    public AudioFrame? Deserialize(ref MessagePackReader reader, MessagePackSerializerOptions options)
     {
         if (reader.TryReadNil())
             return null;
 
-        // Mark the start, then Skip() the entire frame map to find its end. ReadRaw does
-        // exactly that and returns the slice; we copy it into a plain byte[] owned by the frame.
-        var raw = (ReadOnlySequence<byte>)reader.ReadRaw(context);
-        var len = (int)raw.Length;
+        // Mark the start, then Skip() the entire frame map to find its end.
+        var startPos = reader.Position;
+        reader.Skip();
+        var slice = reader.Sequence.Slice(startPos, reader.Position);
+        var len = (int)slice.Length;
 
         // Plain GC-managed byte[] — not pooled. Exact size (no bucket rounding slack).
         var bytes = new byte[len];
-        raw.CopyTo(bytes);
+        slice.CopyTo(bytes);
         return ParseFrame(bytes);
     }
 
@@ -80,7 +83,6 @@ public sealed class CachingAudioFrameFormatter : MessagePackConverter<AudioFrame
         var isKey = true;
         var dataSlice = default(ReadOnlyMemory<byte>);
 
-        var skipContext = new SerializationContext();
         for (var i = 0; i < mapLen; i++) {
             var key = reader.ReadString();
             switch (key) {
@@ -98,7 +100,7 @@ public sealed class CachingAudioFrameFormatter : MessagePackConverter<AudioFrame
                     break;
                 default:
                     // Forward-compat: tolerate unknown fields.
-                    reader.Skip(skipContext);
+                    reader.Skip();
                     break;
             }
         }

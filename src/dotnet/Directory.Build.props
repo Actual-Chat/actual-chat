@@ -53,15 +53,6 @@
     <PackageReference Condition="!$(UseMemoryPack)" Include="MemoryPack.Core" />
   </ItemGroup>
 
-  <!-- PolyType source-gen runs only in projects whose AotHelper-emitted `*Witness.g.cs`
-       files (with `[GenerateShapeFor<T>]`) we actually consume — gated by the
-       UsePolyTypeGenerator property defined in the root Directory.Build.props. Server-side
-       projects fall back to PolyType's reflection provider at runtime (see
-       Serializers.Build); running the generator there would just burn build time. -->
-  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' AND '$(UsePolyTypeGenerator)' == 'true'">
-    <PackageReference Include="PolyType" />
-  </ItemGroup>
-
   <!-- Analyzers -->
   <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
     <PackageReference Include="Nerdbank.GitVersioning" PrivateAssets="all" />

@@ -198,7 +198,6 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.UIColorsTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.UnavailablePage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.WebSplashTestPage>();
-        AotTypes.KeepSerializable<global::ActualLab.Serialization.Box<global::System.Boolean>, BlazorUIWitness>();
 
         // STJ internal converter types for JS interop (auto-discovered)
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.Chat.MentionSearchResult[], ActualChat.Api]], ActualLab.Fusion.Blazor");
@@ -667,6 +666,5 @@ internal partial class BlazorUIAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Pages.UIColorsTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.UnavailablePage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.WebSplashTestPage), AotTypeKind.Component),
-            (typeof(global::ActualLab.Serialization.Box<global::System.Boolean>), AotTypeKind.Serializable),
         ];
 }

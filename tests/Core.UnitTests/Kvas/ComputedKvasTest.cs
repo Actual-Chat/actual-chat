@@ -64,7 +64,7 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
 
         var value = "test-value";
         using var buffer = new ArrayPoolBufferWriter<byte>();
-        Serializers.SystemJson.Write(buffer, value, typeof(string));
+        SystemJsonSerializer.Default.Write(buffer, value, typeof(string));
         await kvas.Set("a", buffer.WrittenMemory.ToArray());
         (await kvas.Get<string>("a")).Should().Be(value);
     }

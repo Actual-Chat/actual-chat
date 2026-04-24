@@ -11,7 +11,7 @@ namespace ActualChat.Chat.Db;
 public class DbReactionSummary : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private static ITextSerializer<ImmutableList<AuthorId>> AuthorIdsSerializer { get; } =
-        Serializers.SystemJson.ToTyped<ImmutableList<AuthorId>>();
+        SystemJsonSerializer.Default.ToTyped<ImmutableList<AuthorId>>();
 
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }

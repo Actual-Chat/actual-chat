@@ -4,11 +4,12 @@ using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Hashing;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // MemoryPack wire format intentionally kept SG-generated (IMemoryPackable<T> map) to stay
 // compatible with already-persisted ChatEntry rows referencing HashString. When migration
 // is in place, switch to plain-string by uncommenting the line below:
 // [MemoryPackFormatter<StringLikeMemoryPackFormatter<HashString>>]
+[MessagePackFormatter(typeof(ActualChat.Internal.StringLikeMessagePackFormatter<HashString>))]
 [JsonConverter(typeof(StringLikeJsonConverter<HashString>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<HashString>))]
 [TypeConverter(typeof(StringLikeTypeConverter<HashString>))]
@@ -26,20 +27,20 @@ public readonly partial struct HashString : ISymbolIdentifier<HashString>
     public Symbol Id { get; }
 
     // Set on deserialization
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public HashAlgorithm Algorithm { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public HashEncoding Encoding { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public string Hash { get; }
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsNone => Id.IsEmpty;
 
-    [ConstructorShape, JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
     public HashString(Symbol id)
         => this = Parse(id);
     public HashString(HashAlgorithm algorithm, HashEncoding encoding, Symbol hash)

@@ -4,15 +4,15 @@ namespace ActualChat.Video;
 // comparisons in StreamLatencyStore express "is this better than the cap".
 public enum VideoQualityLevel { Ultra = 0, Full = 1, High = 2, Medium = 3, Low = 4, Paused = 5 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record VideoQualityPreset(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] VideoQualityLevel Level,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] int Width,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] int Height,
-    // MemoryPackOrder(3) / Key(3) is intentionally unused — a prior schema placed Bitrate
+    [property: DataMember, MemoryPackOrder(0)] VideoQualityLevel Level,
+    [property: DataMember, MemoryPackOrder(1)] int Width,
+    [property: DataMember, MemoryPackOrder(2)] int Height,
+    // MemoryPackOrder(3) is intentionally unused — a prior schema placed Bitrate
     // there. Keep IsKeyFrameRequested at order 4 so VersionTolerant can read
     // records from older peers that still carry Bitrate at order 3.
-    [property: DataMember, MemoryPackOrder(4), Key(4)] bool IsKeyFrameRequested = false
+    [property: DataMember, MemoryPackOrder(4)] bool IsKeyFrameRequested = false
 ) {
     public static readonly VideoQualityPreset Ultra  = new(VideoQualityLevel.Ultra,  3840, 2160);
     public static readonly VideoQualityPreset Full   = new(VideoQualityLevel.Full,   1920, 1080);

@@ -18,13 +18,22 @@ public sealed class RedisMultiHashMap<TValue>(RedisDb redisDb, string? keyPrefix
     public TimeSpan? DefaultFieldTtl { get; init; }
     public TimeSpan? HashTtl { get; init; }
 
-    public async Task Set(string hashKey, string field, TValue value, TimeSpan? fieldTtl = null)
+    public async Task<bool> Set(string hashKey, string field, TValue value, TimeSpan? fieldTtl = null)
     {
         var db = await RedisDb.Database.Get().ConfigureAwait(false);
-        await db.HashSetAsync(hashKey, field, Serializer.Write(value)).ConfigureAwait(false);
+        var isAdded = await db.HashSetAsync(hashKey, field, Serializer.Write(value)).ConfigureAwait(false);
 
+        await Touch(hashKey, field, fieldTtl).ConfigureAwait(false);
+
+        return isAdded;
+    }
+
+    public async Task Touch(string hashKey, string? field = null, TimeSpan? fieldTtl = null)
+    {
         var effectiveFieldTtl = fieldTtl ?? DefaultFieldTtl;
-        var fieldTtlTask = effectiveFieldTtl is { } fTtl
+        var db = await RedisDb.Database.Get().ConfigureAwait(false);
+
+        var fieldTtlTask = (field is not null && effectiveFieldTtl is { } fTtl)
             ? db.HashFieldExpireAsync(hashKey, [field], fTtl)
             : null;
         var hashTtlTask = HashTtl is { } hTtl

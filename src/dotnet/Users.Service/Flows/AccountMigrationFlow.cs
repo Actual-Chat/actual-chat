@@ -13,7 +13,7 @@ namespace ActualChat.Users.Flows;
 /// Processes accounts in batches, all items in a batch are processed in parallel.
 /// </summary>
 [Flow(DataVersion = 1, DelayQuanta = 0)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class AccountMigrationFlow : Flow<(Moment, long)>
 {
     private const int BatchSize = 50;
@@ -23,11 +23,11 @@ public partial class AccountMigrationFlow : Flow<(Moment, long)>
     private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
     private ICommander Commander => Hub.Commander;
 
-    [DataMember(Order = 0), MemoryPackOrder(0), NbKey(0)]
+    [DataMember(Order = 0), MemoryPackOrder(0)]
     public string? LastProcessedId { get; set; }
-    [DataMember(Order = 1), MemoryPackOrder(1), NbKey(1)]
+    [DataMember(Order = 1), MemoryPackOrder(1)]
     public int MigratedCount { get; set; }
-    [DataMember(Order = 2), MemoryPackOrder(2), NbKey(2)]
+    [DataMember(Order = 2), MemoryPackOrder(2)]
     public int TotalCount { get; set; }
 
     protected override async ValueTask Resume(CancellationToken cancellationToken)

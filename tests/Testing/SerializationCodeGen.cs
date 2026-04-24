@@ -1,23 +1,37 @@
 namespace ActualChat.Testing;
 
-/// <summary>
-/// Post-MessagePack migration: the only remaining codegen guard is MemoryPack. The earlier
-/// ValidateMessagePack check was removed along with MessagePack itself — serializable types
-/// are now shape-driven via PolyType + Nerdbank and no longer carry [MessagePackObject].
-/// </summary>
 public static class SerializationCodeGen
 {
     public static void ValidateType<T>()
     {
-        var hasMemoryPackable = typeof(T).GetInterfaces()
+        ValidateMemoryPack<T>();
+        ValidateMessagePack<T>();
+    }
+
+    // Private methods
+
+    private static void ValidateMemoryPack<T>()
+    {
+        var hasInterface = typeof(T).GetInterfaces()
             .Any(i => i.IsGenericType
                 && i.GetGenericTypeDefinition().FullName == "MemoryPack.IMemoryPackable`1");
 #if USE_MEMORYPACK
-        hasMemoryPackable.Should().BeTrue(
+        hasInterface.Should().BeTrue(
             $"{typeof(T).Name} should implement IMemoryPackable<T> (generator active)");
 #else
-        hasMemoryPackable.Should().BeFalse(
+        hasInterface.Should().BeFalse(
             $"{typeof(T).Name} should NOT implement IMemoryPackable<T> (generator disabled)");
 #endif
+    }
+
+    private static void ValidateMessagePack<T>()
+    {
+        var attr = typeof(T).GetCustomAttributes(false)
+            .FirstOrDefault(a => a.GetType().Namespace == "MessagePack");
+        attr.Should().NotBeNull(
+            $"{typeof(T).Name} should have a MessagePack attribute");
+        var attrAssembly = attr!.GetType().Assembly.GetName().Name;
+        attrAssembly.Should().Be("MessagePack.Annotations",
+            $"real MessagePack attributes should be used for {typeof(T).Name}");
     }
 }

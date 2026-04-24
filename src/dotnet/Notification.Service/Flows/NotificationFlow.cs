@@ -4,7 +4,7 @@ using ActualChat.Queues;
 namespace ActualChat.Notification.Flows;
 
 [Flow(DelayQuanta = 30)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial class NotificationFlow : Flow<Unit>
 {
     private IChatPositionsBackend ChatPositionsBackend => field ??= Services.GetRequiredService<IChatPositionsBackend>();

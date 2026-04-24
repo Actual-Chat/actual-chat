@@ -1,15 +1,33 @@
+using ActualChat.Diff.Handlers;
 using ActualChat.Hosting;
 using ActualChat.Logging;
 using ActualChat.Module;
+using ActualChat.UI.Blazor.App.Components.Discover;
+using ActualChat.UI.Blazor.App.Components.PlaceInfo;
 using ActualChat.UI.Blazor.App.Module;
+using ActualChat.UI.Blazor.App.Pages;
+using ActualChat.UI.Blazor.App.Pages.Landing.Docs;
+using ActualChat.UI.Blazor.App.Pages.Test;
+using ActualChat.UI.Blazor.Components.Internal;
+using ActualChat.UI.Blazor.Components.Requirements;
 using ActualChat.UI.Blazor.Module;
+using ActualChat.UI.Blazor.Pages;
+using ActualChat.UI.Blazor.Pages.DiveInModalTestPage;
+using ActualChat.UI.Blazor.Pages.Emails;
+using ActualChat.UI.Blazor.Pages.ErrorBarrierTestPage;
+using ActualChat.UI.Blazor.Pages.RenderSlotTestPage;
 using ActualChat.UI.Module;
+using ActualLab.Fusion.Client;
 using ActualLab.Fusion.Client.Caching;
 using ActualLab.Fusion.Client.Interception;
+using ActualLab.Fusion.Internal;
+using ActualLab.Fusion.Trimming;
 using ActualLab.Interception;
+using ActualLab.Interception.Trimming;
 using ActualLab.Internal;
 using ActualLab.Rpc.Clients;
 using ActualLab.Rpc;
+using MemoryPack.Formatters;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 
@@ -21,9 +39,10 @@ public static class ClientStartup
     {
         // AppContext feature switches
         // AppContext.SetSwitch("System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported", false);
+
+        // Rpc & Fusion defaults
         RuntimeInfo.IsServer = false;
-        BlazorUIAppModuleInitializer.Load();
-        CoreModuleInitializer.Configure();
+        CoreSerializerAndRpcSetup.Configure(isServer: false);
 #if !DEBUG
         RpcDiagnosticsOptions.Default = RpcDiagnosticsOptions.Default with {
             CallTracerFactory = _ => null // No call tracing in release builds

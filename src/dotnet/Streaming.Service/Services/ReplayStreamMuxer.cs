@@ -20,6 +20,7 @@ public sealed class ReplayStreamMuxer : WorkerBase
     private IChats Chats => field ??= Services.GetRequiredService<IChats>();
     private AudioSourceDownloader AudioDownloader => field ??= Services.GetRequiredService<AudioSourceDownloader>();
     private MomentClockSet Clocks => field ??= Services.Clocks();
+    private MomentClock SystemClock => Clocks.SystemClock;
     private ILogger Log => field ??= Services.LogFor<ReplayStreamMuxer>();
 
     public ChannelReader<LiveStreamItem> Output => _output.Reader;
@@ -60,9 +61,6 @@ public sealed class ReplayStreamMuxer : WorkerBase
                 return;
             }
 
-            var serverClock = Clocks.ServerClock;
-            await serverClock.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
-
             // Resolve actual start position
             var resolvedStartAt = await ResolveStartPosition(cancellationToken).ConfigureAwait(false);
             if (resolvedStartAt is null) {
@@ -73,7 +71,7 @@ public sealed class ReplayStreamMuxer : WorkerBase
             Log.LogInformation("OnRun: Resolved start position to {ResolvedStartAt}", resolvedStartAt.Value);
 
             // Stream entries from resolved position
-            var streamStartedAt = serverClock.Now;
+            var streamStartedAt = SystemClock.Now;
             var gapAdjustment = TimeSpan.Zero;
             var lastEntryEnd = resolvedStartAt.Value;
             var streamTasks = new List<Task>();
@@ -104,7 +102,7 @@ public sealed class ReplayStreamMuxer : WorkerBase
                     gapAdjustment += entry.BeginsAt - gapStart;
 
                 // Pacing: check how far ahead we are of expected client playback
-                var expectedPosition = resolvedStartAt.Value + gapAdjustment + (serverClock.Now - streamStartedAt) * Speed;
+                var expectedPosition = resolvedStartAt.Value + gapAdjustment + (SystemClock.Now - streamStartedAt) * Speed;
                 var aheadBy = (entry.BeginsAt - expectedPosition) / 2; // /2 for safety margin
 
                 if (aheadBy > TimeSpan.FromMinutes(1)) {

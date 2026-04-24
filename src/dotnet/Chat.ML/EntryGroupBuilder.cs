@@ -2,7 +2,7 @@ using System.Text;
 
 namespace ActualChat.Chat.ML;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class EntryGroupBuilder
 {
     private readonly List<ChatEntrySlim> _entries = [];
@@ -13,28 +13,28 @@ public partial class EntryGroupBuilder
     private long _minLid = long.MaxValue;
     private long _maxLid = 0;
 
-    [DataMember(Order = 0), MemoryPackOrder(0), NbKey(0)]
+    [DataMember(Order = 0), MemoryPackOrder(0)]
     public IReadOnlyList<ChatEntrySlim> Entries => _entries;
 
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public IDictionary<AuthorId, int> AuthorActivity { get; } = new Dictionary<AuthorId, int>();
 
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public int WordCount => _wordCount;
 
-    [DataMember(Order = 1), MemoryPackOrder(1), NbKey(1)]
+    [DataMember(Order = 1), MemoryPackOrder(1)]
     public double[] Embeddings { get; set; } = [];
 
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public int AveragePauseBetweenEntries => _averagePauseBetweenEntries;
 
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public long MinLid => _minLid;
 
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public long MaxLid => _maxLid;
 
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public string Text {
         get {
             if (_text is not null)
@@ -66,10 +66,7 @@ public partial class EntryGroupBuilder
         Initialize();
     }
 
-    // [ConstructorShape] tells PolyType which ctor to use — without it PolyType walks all ctors
-    // and may pick the self-referencing EntryGroupBuilder(EntryGroupBuilder?) one, which trips
-    // its converter cache with a "delayed value not completed" cycle.
-    [ConstructorShape, JsonConstructor, MemoryPackConstructor]
+    [JsonConstructor, MemoryPackConstructor, SerializationConstructor]
     public EntryGroupBuilder(IReadOnlyList<ChatEntrySlim> entries)
     {
         _entries = [.. entries];

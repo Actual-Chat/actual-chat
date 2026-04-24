@@ -25,7 +25,6 @@
     <PackageReference Include="ActualLab.Rpc" />
     <PackageReference Include="ActualLab.CommandR" />
     <PackageReference Include="ActualLab.Fusion" />
-    <PackageReference Include="ActualLab.Serialization.NerdbankMessagePack" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Reflection\" />
@@ -33,5 +32,18 @@
   <ItemGroup>
     <Using Remove="ActualChat.Users" />
   </ItemGroup>
+
+  <!-- Workaround: MessagePack 3.x analyzer/source generator crashes (StackOverflow) on types
+       with self-referencing generic constraints like IAdditionOperators<T, T, T> (Trimmed<T>).
+       The [MessagePackFormatter] attribute on Trimmed<T> doesn't opt it out of the SG's
+       type-constraint analysis, so the whole SG must be disabled for this assembly — which
+       means every [MessagePackObject] type in Core needs its own [MessagePackFormatter]
+       + hand-written formatter to be usable from non-dynamic (AOT) resolver chains.
+       See: https://github.com/MessagePack-CSharp/MessagePack-CSharp/issues/2133 -->
+  <Target Name="DisableMessagePackSourceGenerator" BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <Analyzer Remove="@(Analyzer)" Condition="'%(Filename)' == 'MessagePack.SourceGenerator' Or '%(Filename)' == 'MessagePack.Analyzers.CodeFixes'" />
+    </ItemGroup>
+  </Target>
 
 </Project>

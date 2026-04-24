@@ -26,27 +26,38 @@ public class UserPresencesBackend(IServiceProvider services)
     public virtual async Task OnCheckIn(UserPresencesBackend_CheckIn command, CancellationToken cancellationToken)
     {
         // !!! command is IDelegatingCommand, so no invalidation block here
-        var (userId, checkInAt, isActive) = command;
+        // NB: command.At is effectively "now" here, see how it's set in UserPresences.OnCheckIn
+        var (userId, now, isActive) = command;
         var context = CommandContext.GetCurrent();
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
         context.Operation.MustStore(false);
 
+        var awayTimeout = Constants.Presence.AwayTimeout;
         var dbUserPresence = await dbContext.UserPresences.ForUpdate()
             .FirstOrDefaultAsync(x => x.UserId == command.UserId.Value, cancellationToken)
             .ConfigureAwait(false);
         if (dbUserPresence == null) {
             dbUserPresence = new DbUserPresence {
-                UserId = command.UserId.Value,
+                UserId = userId.Value,
                 IsActive = isActive,
-                CheckInAt = checkInAt,
+                CheckInAt = isActive ? now : now - awayTimeout,
             };
             dbContext.Add(dbUserPresence);
         }
+        else if (isActive) {
+            dbUserPresence.IsActive = true;
+            dbUserPresence.CheckInAt = now;
+        }
         else {
-            dbUserPresence.IsActive = command.IsActive;
-            dbUserPresence.CheckInAt = command.At;
+            var lastCheckInRecency = now - dbUserPresence.CheckInAt.ToMoment();
+            if (lastCheckInRecency <= 2 * awayTimeout)
+                return; // Inactive & checked in recently -> Leave as-is
+
+            // Inactive, but checked in 2*awayTimeout ago -> move CheckInAt to "away" range & mark inactive
+            dbUserPresence.IsActive = false;
+            dbUserPresence.CheckInAt = now - awayTimeout;
         }
         context.Operation.AddCompletionHandler(scope => {
             using (Invalidation.Begin())

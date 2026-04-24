@@ -41,7 +41,7 @@ public class LinearMapTest(ITestOutputHelper @out) : TestBase(@out)
     public void ActualMapTest()
     {
         var json = "{\"sourcePoints\":[0,4,18,20,25,27,37,46,53,57,64,74,81,93,98],\"targetPoints\":[0,1.8,2.4,3.2,3.4,4.2,4.3,5.4,5.5,6.9,7.4,7.6,8.9,9.9,10.5]}";
-        var oldMap = Serializers.SystemJson.Read<OldLinearMap>(json);
+        var oldMap = SystemJsonSerializer.Default.Read<OldLinearMap>(json);
         var map = oldMap.ToLinearMap();
         map.Length.Should().BeGreaterThan(10);
         var last = 0f;

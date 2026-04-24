@@ -16,17 +16,8 @@ public class LiveStreamUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompute
     [ComputeMethod]
     public virtual async Task<AuthorId[]> GetStreamingAuthorIds(ChatId chatId, CancellationToken cancellationToken)
     {
-        try {
-            var streams = await LiveAudioStreams
-                .List(Session, chatId, cancellationToken)
-                .WaitAsync(TimeSpan.FromSeconds(3), cancellationToken)
-                .ConfigureAwait(false);
-            return streams.Select(s => s.AuthorId).Distinct().ToArray();
-        }
-        catch (TimeoutException) {
-            Computed.GetCurrent().Invalidate(TimeSpan.FromSeconds(7));
-            return [];
-        }
+        var streams = await LiveAudioStreams.List(Session, chatId, cancellationToken).ConfigureAwait(false);
+        return streams.Select(s => s.AuthorId).Distinct().ToArray();
     }
 
     [ComputeMethod]

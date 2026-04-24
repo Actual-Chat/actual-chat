@@ -1,4 +1,4 @@
-namespace ActualChat.Kvas;
+﻿namespace ActualChat.Kvas;
 
 /// <summary>
 /// Server-side key-value store service for session-scoped settings.
@@ -19,29 +19,32 @@ public interface IServerKvas : IComputeService
 /// <summary>
 /// Command to set a single key-value pair in the server KVAS.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[MessagePackFormatter(typeof(Internal.ServerKvas_SetMessagePackFormatter))]
 // ReSharper disable once InconsistentNaming
 public partial record ServerKvas_Set(
-    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] string Key,
-    [property: DataMember(Order = 2), MemoryPackOrder(2), Key(2)] byte[]? Value
+    [property: DataMember(Order = 0), MemoryPackOrder(0)] Session Session,
+    [property: DataMember(Order = 1), MemoryPackOrder(1)] string Key,
+    [property: DataMember(Order = 2), MemoryPackOrder(2)] byte[]? Value
 ) : ISessionCommand<Unit>, IApiCommand;
 
 /// <summary>
 /// Command to set multiple key-value pairs in the server KVAS.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[MessagePackFormatter(typeof(Internal.ServerKvas_SetManyMessagePackFormatter))]
 // ReSharper disable once InconsistentNaming
 public partial record ServerKvas_SetMany(
-    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] params (string Key, byte[]? Value)[] Items
+    [property: DataMember(Order = 0), MemoryPackOrder(0)] Session Session,
+    [property: DataMember(Order = 1), MemoryPackOrder(1)] params (string Key, byte[]? Value)[] Items
 ) : ISessionCommand<Unit>, IApiCommand;
 
 /// <summary>
 /// Command to migrate guest session keys to an authenticated session.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[MessagePackFormatter(typeof(Internal.ServerKvas_MigrateGuestKeysMessagePackFormatter))]
 // ReSharper disable once InconsistentNaming
 public partial record ServerKvas_MigrateGuestKeys(
-    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] Session Session
+    [property: DataMember(Order = 0), MemoryPackOrder(0)] Session Session
 ) : ISessionCommand<Unit>, IApiCommand;
