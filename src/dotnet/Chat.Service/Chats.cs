@@ -12,6 +12,8 @@ public partial class Chats(IServiceProvider services) : IChats
     public static readonly TileStack<long> ServerIdTileStack = Constants.Chat.ServerIdTileStack;
     public static readonly TileStack<long> ViewIdTileStack = Constants.Chat.ViewIdTileStack;
 
+    private const int NonContactPeerMessageCap = 3;
+
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
     private IAvatars Avatars { get; } = services.GetRequiredService<IAvatars>();
@@ -359,6 +361,8 @@ public partial class Chats(IServiceProvider services) : IChats
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(ChatPermissions.Write);
         var attachments = command.Attachments;
+        if (attachments.Length > 0 || command.HasUploadingAttachments)
+            chat.Rules.Permissions.Require(ChatPermissions.Upload);
         if (string.IsNullOrWhiteSpace(text) && attachments.Length == 0 && !command.HasUploadingAttachments)
             throw StandardError.Constraint("Sorry, you can't post empty messages.");
 
@@ -423,6 +427,17 @@ public partial class Chats(IServiceProvider services) : IChats
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
         }
         else { // Create
+            // In peer chats, when the caller isn't in the recipient's contacts,
+            // ChatPermissions.WriteAudio (and other content-type flags) are stripped.
+            // Use that as the cheap signal to enforce a 3-message creation cap.
+            // Edits remain unaffected since this branch only runs on create.
+            if (chatId is PeerChatId && !chat.Rules.Has(ChatPermissions.WriteAudio)) {
+                var existingCount = await Backend.GetEntryCount(chatId, author.Id, cancellationToken).ConfigureAwait(false);
+                if (existingCount >= NonContactPeerMessageCap)
+                    throw StandardError.Constraint(
+                        $"You can send up to {NonContactPeerMessageCap} messages until this user adds you to their contacts.");
+            }
+
             var commandResult = await TryHandleAdminCommand(session, chatId, author, text, cancellationToken)
                 .ConfigureAwait(false);
             if (commandResult != null)

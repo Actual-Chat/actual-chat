@@ -37,13 +37,15 @@
                  data-bubble-priority="150"
                  data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
                 <div class="c-left-buttons">
-                    <ButtonRound
-                        data-menu="@(MenuRef.New<ChatMessageEditorMenu>(_editorId))"
-                        data-menu-trigger="@MenuTrigger.Primary"
-                        data-menu-placement="@(FloatingPosition.Top.ToPositionString())"
-                        Class="post-panel-btn attach-btn btn-transparent btn-xxs">
-                        <i class="icon-plus-circle text-2.5xl"></i>
-                    </ButtonRound>
+                    @if (Chat.Rules.CanUpload()) {
+                        <ButtonRound
+                            data-menu="@(MenuRef.New<ChatMessageEditorMenu>(_editorId))"
+                            data-menu-trigger="@MenuTrigger.Primary"
+                            data-menu-placement="@(FloatingPosition.Top.ToPositionString())"
+                            Class="post-panel-btn attach-btn btn-transparent btn-xxs">
+                            <i class="icon-plus-circle text-2.5xl"></i>
+                        </ButtonRound>
+                    }
                 </div>
                 <label for="message-input" class="message-input-label">
                     <MarkupEditor
@@ -76,7 +78,9 @@
                 </div>
                 <RelatedChatEntryPanel/>
             }
-            <ChatAudioPanel Chat="@Chat" IsNarrow="@ScreenSize.IsNarrow()"/>
+            @if (Chat.Rules.CanWriteAudio() || Chat.Rules.CanWriteVideo() || Chat.Rules.CanReadAudio() || Chat.Rules.CanReadVideo()) {
+                <ChatAudioPanel Chat="@Chat" IsNarrow="@ScreenSize.IsNarrow()"/>
+            }
         </div>
     </MentionListManager>
 </div>

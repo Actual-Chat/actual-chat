@@ -22,4 +22,11 @@ public enum ChatPermissions
     EditMembers    = 0x4000,
 
     Owner          = 0x10_000, // Implies EditProperties, EditRoles, Invite (-> Join, Read), Write (-> Read)
+
+    // Content-type capabilities (default-on; selectively stripped, e.g. for non-contact peer chats).
+    Upload         = 0x10_0000, // Attach files/media to entries; implied by Write.
+    WriteAudio     = 0x20_0000, // Record voice messages / start an audio stream; implied by Write.
+    WriteVideo     = 0x40_0000, // Start a video stream / screenshare; implied by Write.
+    ReadAudio      = 0x80_0000, // Receive audio streams; implied by Read.
+    ReadVideo      = 0x100_0000, // Receive video streams; implied by Read.
 }

@@ -25,6 +25,8 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
+        if (!chat.Rules.Has(ChatPermissions.ReadAudio))
+            return [];
         return await LiveBackend.List(chatId, cancellationToken).ConfigureAwait(false);
     }
 
@@ -36,6 +38,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
+        chat.Rules.Require(ChatPermissions.ReadAudio);
 
         LiveStreamMuxer muxer;
         var key = (session, chatId);
@@ -63,6 +66,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
+        chat.Rules.Require(ChatPermissions.ReadAudio);
 
         if (_liveMuxers.TryGetValue((session, chatId), out var muxer))
             muxer.UpdateConfig(settings);
@@ -78,6 +82,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
+        chat.Rules.Require(ChatPermissions.ReadAudio);
 
         ReplayStreamMuxer muxer;
         var key = (session, chatId);

@@ -2,6 +2,7 @@ using ActualChat.Chat.Db;
 using ActualChat.Chat.Flows;
 using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
+using ActualChat.Contacts;
 using ActualChat.Db;
 using ActualChat.Diagnostics;
 using ActualChat.Flows;
@@ -47,6 +48,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     private IInvitesBackend InvitesBackend => field ??= Services.GetRequiredService<IInvitesBackend>();
     private IPlacesBackend PlacesBackend => field ??= Services.GetRequiredService<IPlacesBackend>();
     private IConversationsBackend ConversationsBackend => field ??= Services.GetRequiredService<IConversationsBackend>();
+    private IContactsBackend ContactsBackend => field ??= Services.GetRequiredService<IContactsBackend>();
     private IServerKvasBackend ServerKvasBackend => field ??= Services.GetRequiredService<IServerKvasBackend>();
     private HostInfo HostInfo => field ??= Services.HostInfo();
     private IMarkupParser MarkupParser => field ??= Services.GetRequiredService<IMarkupParser>();
@@ -107,6 +109,20 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var sid = chatId.Value;
         return await dbContext.ChatEntries.Where(x => x.Id == sid && x.Kind == 0)
             .MaxAsync(x => (long?)x.Version, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<long> GetEntryCount(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)
+    {
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var sChatId = chatId.Value;
+        var sAuthorId = authorId.Value;
+        return await dbContext.ChatEntries
+            .Where(e => e.ChatId == sChatId && e.Kind == 0 && e.AuthorId == sAuthorId && !e.IsRemoved)
+            .LongCountAsync(cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -2391,6 +2407,19 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         }
 
         var permissions = (ChatPermissions.Write | ChatPermissions.SeeMembers | ChatPermissions.Join | ChatPermissions.EditProperties).AddImplied();
+
+        // Strip stream + upload capabilities if the caller isn't in the recipient's contacts.
+        // The 3-message cap on creates is enforced separately in Chats.OnUpsertEntry.
+        var peerUserId = otherUserId!;
+        var peerContactId = ContactId.NewUser(peerUserId, account.Id);
+        var peerContact = await ContactsBackend.Get(peerUserId, peerContactId, cancellationToken).ConfigureAwait(false);
+        if (!peerContact.IsStored())
+            permissions &= ~(ChatPermissions.Upload
+                | ChatPermissions.WriteAudio
+                | ChatPermissions.WriteVideo
+                | ChatPermissions.ReadAudio
+                | ChatPermissions.ReadVideo);
+
         return new(chatId, author, account, permissions);
     }
 

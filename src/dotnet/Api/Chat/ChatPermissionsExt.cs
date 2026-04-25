@@ -20,8 +20,17 @@ public static class ChatPermissionsExt
             permissions |=
                 ChatPermissions.Join
                 | ChatPermissions.SeeMembers;
+        if (permissions.Has(ChatPermissions.Write))
+            permissions |=
+                ChatPermissions.Upload
+                | ChatPermissions.WriteAudio
+                | ChatPermissions.WriteVideo;
         if (permissions.Has(ChatPermissions.Join) || permissions.Has(ChatPermissions.Write))
             permissions |= ChatPermissions.Read;
+        if (permissions.Has(ChatPermissions.Read))
+            permissions |=
+                ChatPermissions.ReadAudio
+                | ChatPermissions.ReadVideo;
         return permissions;
     }
 
