@@ -257,9 +257,12 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                     keyFrameNumberByLayer.TryGetValue(layerId, out var layerKf);
                     frame.KeyFrameNumber = layerKf;
 
-                    // Track throughput for quality adaptation (same node, direct call)
+                    // Track throughput for quality adaptation (same node, direct call).
+                    // Pass SpatialLayerId so the store can detect simulcast-active and
+                    // skip OVER-DELIVERY (multi-encoder bytes legitimately sum past target).
                     LatencyStore.RecordFrameBytes(record.StreamId,
-                        !frame.SerializedData.IsEmpty ? frame.SerializedData.Length : frame.Data.Length);
+                        !frame.SerializedData.IsEmpty ? frame.SerializedData.Length : frame.Data.Length,
+                        frame.SpatialLayerId);
 
                     if (lastHeartbeat.Elapsed >= heartbeatInterval) {
                         lastHeartbeat = CpuTimestamp.Now;
