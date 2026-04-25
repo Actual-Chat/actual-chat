@@ -147,6 +147,16 @@ export class VideoPipeline implements IVideoPipeline {
     // Encoder failure callback (set by recording-service for codec fallback)
     public onEncoderFailure: ((failedCodec: string) => void) | null = null;
 
+    // Camera-track-ended callback (set by recording-service). Fires when the
+    // underlying MediaStreamTrack ends UNEXPECTEDLY — e.g. another browser tab
+    // grabbed the same physical camera, the device was unplugged, or a privacy
+    // shutter triggered. Distinct from the worker's normal `Stream input ended`
+    // path (which fires both on user-initiated stop and on track-end). Recording
+    // service surfaces a user-visible error and stops the pipeline.
+    public onTrackEnded: (() => void) | null = null;
+    private trackEndedHandler: (() => void) | null = null;
+    private inputTrack: MediaStreamTrack | null = null;
+
     // Server clock sync
     private clockUnsubscribe: (() => void) | null = null;
 
@@ -256,6 +266,22 @@ export class VideoPipeline implements IVideoPipeline {
         const videoTrack = inputStream.getVideoTracks()[0];
         this.processing = true;
         this.pipelineStartedAt = performance.now();
+        this.inputTrack = videoTrack;
+        // Watch for track-end. The MSTP path keeps the main-thread reference alive
+        // (only the underlying ReadableStream is transferred), so this listener
+        // fires on either a deliberate `track.stop()` (we'll be in `processing=false`
+        // by then via stop()) or an external cause — camera contention, device
+        // unplug, privacy shutter, OS-level revocation. Only the external causes
+        // need user feedback; the deliberate-stop case is filtered in the handler.
+        this.trackEndedHandler = () => {
+            if (!this.processing) {
+                debugLog?.log('Camera track ended after pipeline stop — expected');
+                return;
+            }
+            warnLog?.log('Camera track ended unexpectedly (other tab grabbed device, unplug, or revoked permission)');
+            this.onTrackEnded?.();
+        };
+        videoTrack.addEventListener('ended', this.trackEndedHandler);
 
         // Build worker config
         // Fusion RPC WebSocket URL — worker pushes frames via
@@ -469,6 +495,14 @@ export class VideoPipeline implements IVideoPipeline {
             screen.orientation.removeEventListener('change', this.orientationChangeHandler);
             this.orientationChangeHandler = null;
         }
+
+        // Detach track-ended listener — pipe is shutting down so any subsequent
+        // `ended` event is the deliberate stop and irrelevant.
+        if (this.inputTrack && this.trackEndedHandler) {
+            this.inputTrack.removeEventListener('ended', this.trackEndedHandler);
+        }
+        this.inputTrack = null;
+        this.trackEndedHandler = null;
 
         // Stop stats polling
         if (this.statsInterval) { clearInterval(this.statsInterval); this.statsInterval = null; }

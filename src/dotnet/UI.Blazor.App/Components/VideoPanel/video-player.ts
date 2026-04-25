@@ -1164,6 +1164,14 @@ export class VideoPlayer {
         this.codecSlowTickCount = 0;
         this.decoderWarmupUntilMs = performance.now() + SLOW_DECODE_WARMUP_MS;
 
+        // Reset diagnostic counters: the decoder reset zeroes its frame counter,
+        // but lastDiag* still holds the pre-reset value. The next VIDEO_DECODE
+        // diff would compute (small new value) - (large old value) = negative,
+        // producing log lines like `recv=257 decoded=-2071` after tab-restore.
+        this.lastDiagDecodedFrames = 0;
+        this.lastDiagReceivedFrames = 0;
+        this.receivedFrameCount = 0;
+
         // Dispose current pull and re-request from live offset (skip-to-live)
         this.pullAbortController?.abort();
         this.pullAbortController = null;
