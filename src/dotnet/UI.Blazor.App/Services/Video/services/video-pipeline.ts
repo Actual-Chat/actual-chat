@@ -118,6 +118,14 @@ export class VideoPipeline implements IVideoPipeline {
     // Encoder backpressure state
     private backpressureStepDownCount = 0;
     private lastBackpressureStepDown = 0;
+    // Timestamp of the most recent structural change (switchCodec / setSpatialLayers).
+    // Backpressure samples in the cooldown window after a switch are dropped — the
+    // freshly armed encoder hasn't produced output yet, so worker drop-rate spikes
+    // to ~100% during the few frames between switch and first encoded chunk. Without
+    // this gate, a codec switch would immediately trigger another step-down or codec
+    // fallback, producing the cascade we see in logs (Bug G).
+    private lastStructuralChangeAt = 0;
+    private readonly postSwitchCooldownMs = 3000;
     // EMA-smoothed drop rate across successive backpressure notifications.
     // Each notification is a 5 s drop-rate window from the worker (see
     // video-processing.ts:backpressureWindowMs). Step-down only fires when the
@@ -515,7 +523,14 @@ export class VideoPipeline implements IVideoPipeline {
             return;
         }
         infoLog?.log(`setSpatialLayers: ${prevCount} → ${nextCount} layer(s) live`);
+        this.markStructuralChange('setSpatialLayers');
         await this.worker.setSpatialLayers(next);
+    }
+
+    private markStructuralChange(reason: string): void {
+        this.lastStructuralChangeAt = performance.now();
+        this.backpressureEma.reset();
+        debugLog?.log(`Structural change (${reason}): backpressure cooldown ${this.postSwitchCooldownMs}ms armed`);
     }
 
     async switchCodec(newCodecString: string, spatialLayers?: SpatialLayerConfig[]): Promise<void> {
@@ -536,6 +551,7 @@ export class VideoPipeline implements IVideoPipeline {
         // Worker handles VideoStream completion + encoder switch internally, and
         // rebuilds simulcast extras from `spatialLayers` so the ladder survives
         // the switch. Omitting `spatialLayers` collapses to single-encoder (P2P).
+        this.markStructuralChange(`switchCodec(${newCodecString})`);
         await this.worker.switchCodec(newEncoderConfig, this.config.spatialLayers);
 
         infoLog?.log(`Codec switched to ${newCodecString}`);
@@ -772,6 +788,20 @@ export class VideoPipeline implements IVideoPipeline {
                     `deferring step-down, resetting EMA`);
                 this.backpressureEma.reset();
             }
+            return;
+        }
+
+        // Post-switch cooldown: a freshly armed encoder needs a few hundred ms to
+        // produce output. The worker's drop-rate counter sees frames-in / 0 frames-out
+        // = 100% drop in that window. Without this gate, a codec switch (or simulcast
+        // ladder reconfig) immediately triggers another step-down — cascade documented
+        // as Bug G in the plan.
+        const sinceSwitch = performance.now() - this.lastStructuralChangeAt;
+        if (this.lastStructuralChangeAt > 0 && sinceSwitch < this.postSwitchCooldownMs) {
+            debugLog?.log(
+                `Backpressure during post-switch cooldown ` +
+                `(${sinceSwitch.toFixed(0)}/${this.postSwitchCooldownMs}ms, ` +
+                `dropRate=${(dropRate * 100).toFixed(0)}%): ignoring sample`);
             return;
         }
 

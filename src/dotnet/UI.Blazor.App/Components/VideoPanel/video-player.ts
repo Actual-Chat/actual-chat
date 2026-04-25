@@ -67,8 +67,13 @@ const LATE_JOIN_GAP_MS = 1500;
 // Decode performance thresholds — if exceeded on consecutive ticks, trigger quality reduction / codec exclusion
 const SLOW_DECODE_TIME_THRESHOLD_MS = 100; // 3x the 33ms/frame budget at 30fps
 const SLOW_DECODE_QUEUE_THRESHOLD = 10;    // Normal is 0-1; 10+ means decoder is ~300ms behind
-const QUALITY_REDUCTION_TICK_COUNT = 2;    // ~10s of sustained bad performance → request quality reduction
-const CODEC_EXCLUSION_TICK_COUNT = 3;      // ~15s after quality reduction still bad → exclude codec
+const QUALITY_REDUCTION_TICK_COUNT = 5;    // ~10s of sustained bad performance → request quality reduction
+const CODEC_EXCLUSION_TICK_COUNT = 30;     // ~60s after quality reduction still bad → exclude codec
+// SLOW_DECODE warmup: skip the first window of samples after decoder init / codec
+// switch / tab-restore. Cold-start times for codec init + first keyframe routinely
+// exceed the per-frame budget (200–600 ms) before steady-state hits the sub-ms median;
+// counting those samples against codec health triggers spurious exclusions.
+const SLOW_DECODE_WARMUP_MS = 5000;
 const LATENCY_REPORT_INTERVAL_MS = 2000; // Matches Constants.Video.LatencyReportInterval
 
 interface PendingFrame {
@@ -191,6 +196,7 @@ export class VideoPlayer {
     private codecSlowTickCount = 0;            // consecutive bad decode ticks (each tick = 2s)
     private qualityReductionRequested = false;  // true after Phase 1 quality reduction was requested
     private codecCategory = '';         // 'av1', 'hevc', 'vp9', 'h264' — derived from codec string
+    private decoderWarmupUntilMs = 0;          // performance.now() before this → skip SLOW_DECODE detector
 
     // Audio sync
     private startedAtMs: number;
@@ -318,6 +324,7 @@ export class VideoPlayer {
             this.codecCategory = VideoPlayer.getCodecCategory(codecString);
             this.codecSlowTickCount = 0;
             this.qualityReductionRequested = false;
+            this.decoderWarmupUntilMs = performance.now() + SLOW_DECODE_WARMUP_MS;
 
             this.decoderConfig = {
                 codec: codecString,
@@ -1155,6 +1162,7 @@ export class VideoPlayer {
 
         // Reset decode performance tracking — Chrome may have throttled the decoder while hidden
         this.codecSlowTickCount = 0;
+        this.decoderWarmupUntilMs = performance.now() + SLOW_DECODE_WARMUP_MS;
 
         // Dispose current pull and re-request from live offset (skip-to-live)
         this.pullAbortController?.abort();
@@ -1551,9 +1559,26 @@ export class VideoPlayer {
                     `recv=${recvDelta} decoded=${decodedDelta} drop=${ds.droppedFrames} ` +
                     `res=${ds.resolution} hw=${ds.hardwareAcceleration}`);
 
-                // Decode performance tracking — detect codecs that can't sustain realtime
-                const isBadTick = ds.medianDecodeTime > SLOW_DECODE_TIME_THRESHOLD_MS
-                    || ds.decodeQueueSize > SLOW_DECODE_QUEUE_THRESHOLD;
+                // Decode performance tracking — detect codecs that can't sustain realtime.
+                // Skip when:
+                //  - within warmup window: codec init + first KF latency dominate the median
+                //    and don't repeat at steady state (typical: 200–600 ms cold, < 1 ms hot).
+                //  - tab is hidden: rAF stops on the main thread, decoded-frame queue swells,
+                //    looks like decoder slowness but is just paused consumption (Bug F mirror
+                //    of sender-side Bug 0).
+                const inWarmup = performance.now() < this.decoderWarmupUntilMs;
+                const tabHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+                const isBadTick = !inWarmup && !tabHidden
+                    && (ds.medianDecodeTime > SLOW_DECODE_TIME_THRESHOLD_MS
+                        || ds.decodeQueueSize > SLOW_DECODE_QUEUE_THRESHOLD);
+                if (inWarmup || tabHidden) {
+                    if (this.codecSlowTickCount > 0) {
+                        debugLog?.log(
+                            `SLOW_DECODE: ${inWarmup ? 'warmup' : 'hidden tab'} — ` +
+                            `resetting tick count (was ${this.codecSlowTickCount})`);
+                        this.codecSlowTickCount = 0;
+                    }
+                }
                 if (isBadTick) {
                     this.codecSlowTickCount++;
                     if (!this.qualityReductionRequested && this.codecSlowTickCount >= QUALITY_REDUCTION_TICK_COUNT) {
@@ -1636,7 +1661,7 @@ export class VideoPlayer {
     // layer 0, Medium→1, High/Full/Ultra→2. Returns null when the canvas has no
     // layout yet (detached or hidden) so the server applies no render cap.
     private computeRenderQualityLevel(): number | null {
-        const w = this.canvas?.clientWidth ?? 0;
+        const w = this.canvas.clientWidth;
         if (w <= 0) return null;
         if (w <= 480) return 4;      // Low — sidebar tile
         if (w <= 720) return 3;      // Medium
