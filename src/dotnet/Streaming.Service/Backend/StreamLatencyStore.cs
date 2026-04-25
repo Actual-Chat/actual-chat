@@ -561,9 +561,15 @@ public sealed class StreamLatencyStore(IServiceProvider services)
                 // filtered per-peer in VideoStreamFilter.
                 var aggregatedMaxSpatial = peers.Max(p => p.Value.EffectiveMaxSpatial);
                 var aggregatedMaxTemporal = peers.Max(p => p.Value.MaxTemporalLayer);
+                // ViewerCount is the number of peers that have pushed at least one
+                // ReportPeerLatency for this stream — i.e. active subscribers. The
+                // publisher uses this to decide simulcast activation independent of
+                // its own incoming-stream count (covers the asymmetric publisher
+                // case where peer P pushes, peer V watches but never pushes itself).
                 var withLayers = QualityPreset.Value with {
                     MaxSpatialLayer = aggregatedMaxSpatial,
                     MaxTemporalLayer = aggregatedMaxTemporal,
+                    ViewerCount = peers.Count,
                 };
                 if (withLayers != QualityPreset.Value)
                     QualityPreset.Value = withLayers;

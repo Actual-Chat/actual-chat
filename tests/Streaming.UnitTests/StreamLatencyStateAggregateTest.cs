@@ -122,6 +122,57 @@ public class StreamLatencyStateAggregateTest(ILogger log)
         state.QualityPreset.Value.MaxSpatialLayer.Should().Be(1, "all sidebar → mid tier (~360p), not base upscale");
     }
 
+    // --- Bug X: ViewerCount propagation ---
+    // VideoQualityPreset.ViewerCount tells the publisher how many peers are
+    // currently subscribed to its stream. Without this, an asymmetric publisher
+    // (one that pushes but doesn't watch anything) stays in P2P mode forever
+    // because its incoming-stream count is 0, and simulcast never arms.
+
+    [Fact]
+    public void NoPeers_ViewerCountIsZero()
+    {
+        // arrange
+        var state = NewStreamLatencyState();
+
+        // act
+        state.EvaluateQuality();
+
+        // assert
+        state.QualityPreset.Value.ViewerCount.Should().Be(0, "no peers reporting → no viewers");
+    }
+
+    [Fact]
+    public void OneViewer_ViewerCountIsOne()
+    {
+        // arrange
+        var state = NewStreamLatencyState();
+        RecordWarmed(state, "peer-only-watcher", 50);
+
+        // act
+        state.EvaluateQuality();
+
+        // assert
+        state.QualityPreset.Value.ViewerCount.Should().Be(1,
+            "one peer reporting latency = one active subscriber to this stream");
+    }
+
+    [Fact]
+    public void ThreeViewers_ViewerCountReflectsPeerCount()
+    {
+        // arrange
+        var state = NewStreamLatencyState();
+        RecordWarmed(state, "peer-a", 50);
+        RecordWarmed(state, "peer-b", 60);
+        RecordWarmed(state, "peer-c", 55);
+
+        // act
+        state.EvaluateQuality();
+
+        // assert
+        state.QualityPreset.Value.ViewerCount.Should().Be(3,
+            "publisher should know how many peers are subscribed");
+    }
+
     // Helpers
 
     private static readonly ChatId TestChatId = ChatId.Parse("the-actual-one");
