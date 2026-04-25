@@ -11,6 +11,9 @@
 import { RpcNoWait, RpcTimeout } from 'rpc';
 import type { EncoderConfig, EncoderStats } from '../webcodecs-encoder';
 import { getLogs } from 'logging';
+import type { SpatialLayerConfig } from '../../../Components/VideoPanel/simulcast-ladder';
+
+export type { SpatialLayerConfig };
 
 const { debugLog, warnLog } = getLogs('VideoSegmentation');
 
@@ -126,19 +129,6 @@ export function createAdaptiveSegmentationConfig(backend: SegmentationConfig['ba
 /**
  * Configuration for the unified video processing worker.
  */
-/**
- * One simulcast layer. The base-layer dims/bitrate live on `encoder`; additional
- * layers (higher-res for closer peers) are enumerated here and produce parallel
- * encoder instances tagged with `SpatialLayerId = index` on each emitted chunk.
- */
-export interface SpatialLayerConfig {
-    width: number;
-    height: number;
-    bitrate: number;
-    /** Overrides EncoderConfig.scalabilityMode for this layer (e.g. 'L1T3'). */
-    scalabilityMode?: string;
-}
-
 export interface VideoProcessingConfig {
     /** Encoder settings (codec, bitrate, resolution, etc.) — also serves as the
      *  base simulcast layer (SpatialLayerId=0) when `spatialLayers` is set. */

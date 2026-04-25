@@ -87,10 +87,9 @@ public static partial class Constants
         // Minimum total participant count (sender + remote peers) at which simulcast
         // activates. Below this, sender uses single-encoder P2P path. Translates to
         // "remote stream count >= MinMembersForSimulcast - 1" in VideoRecorder.
-        // TEMP: dropped from 3 to 2 for dev/integration testing — makes 2-peer P2P
-        // calls exercise the simulcast path. Revert to 3 before ship; a 2-peer call
-        // has no receiver diversity worth the extra encode cost in production.
-        public static readonly int MinMembersForSimulcast = 2;
+        // ViewerCount path can also arm simulcast asymmetrically (peer pushes, no
+        // one pushes back — server reports viewer count, sender activates).
+        public static readonly int MinMembersForSimulcast = 3;
 
         // Stream count limits
         public static readonly int MaxWebcamStreamsPerChat = 8;

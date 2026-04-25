@@ -280,7 +280,7 @@ export class VideoRecorder {
     // → start cycle preserves the latest ladder. Passing null or a list of
     // length < 2 disables simulcast. Screencast streams ignore the ladder
     // (single-encoder text legibility path).
-    public setSimulcastLayers(layers: SpatialLayerConfig[] | null): void {
+    public setSimulcastLayers(layers: SpatialLayerConfig[] | null, force = false): void {
         const incoming = (layers && layers.length >= 2) ? layers : null;
         const prevCount = this.simulcastLayers?.length ?? 0;
         // Bug N: don't downgrade a probe-promoted ladder. C#'s default ladder
@@ -289,13 +289,22 @@ export class VideoRecorder {
         // (e.g. SyncRemoteStreamCount activating), we'd lose the 1080p tier.
         // Only accept the incoming ladder when it's null (deactivate), strictly
         // longer than ours, OR has a strictly higher top tier.
+        //
+        // `force = true` bypasses this guard. Used by C#-side cap-driven shrinks
+        // (G1: server's MaxSpatialLayer aggregate dropped because all viewers
+        // want low/mid). Intent is explicit, downgrade is the policy.
         let active: SpatialLayerConfig[] | null;
         if (incoming === null) {
             active = null;
-        } else if (this.simulcastLayers === null
+        } else if (force
+            || this.simulcastLayers === null
             || incoming.length > this.simulcastLayers.length
             || hasHigherTopTier(incoming, this.simulcastLayers)) {
             active = incoming;
+            if (force && this.simulcastLayers !== null && incoming.length < this.simulcastLayers.length) {
+                infoLog?.log(
+                    `setSimulcastLayers: force-shrink ${this.simulcastLayers.length} → ${incoming.length} layer(s)`);
+            }
         } else {
             active = this.simulcastLayers;
             infoLog?.log(
@@ -448,8 +457,23 @@ export class VideoRecorder {
             infoLog?.log(`Supported encoder categories: [${this.supportedEncoderCategories.join(', ')}]`);
 
             // Pick initial codec: if audience codecs are known, pick the best encoder
-            // codec that the audience can decode — avoids mid-stream codec switches
-            const bestCodecString = this.pickInitialCodec(supportedCodecs, audienceCodecs, targetSize);
+            // codec that the audience can decode — avoids mid-stream codec switches.
+            // For simulcast, also probe the candidate codec for N-concurrent-encoder
+            // feasibility along the [av1, hevc, vp9, h264] priority chain — first
+            // PASS wins. Avoids picking AV1/HEVC for sessions whose HW can encode a
+            // single AV1 stream but not 3 in parallel (common on mid-range mobile).
+            let bestCodecString = this.pickInitialCodec(supportedCodecs, audienceCodecs, targetSize);
+            const candidateLadder = this.simulcastLayers && this.simulcastLayers.length >= 2
+                ? this.simulcastLayers
+                : null;
+            if (candidateLadder) {
+                const simulcastPick = await this.pickSimulcastCodec(
+                    supportedCodecs, audienceCodecs, candidateLadder);
+                if (simulcastPick && simulcastPick !== bestCodecString) {
+                    infoLog?.log(`Simulcast probe override: ${bestCodecString} → ${simulcastPick}`);
+                    bestCodecString = simulcastPick;
+                }
+            }
             const bestCodecInfo = supportedCodecs.find(c => c.codec === bestCodecString);
             const codecCategory = getCodecCategory(bestCodecString);
             const targetBitrate = getExpectedBitrate(bestCodecString, targetSize.height);
@@ -823,6 +847,38 @@ export class VideoRecorder {
         }
         infoLog?.log('forceKeyFrame: PLI — forcing keyframe on encoder');
         void pipeline.forceKeyFrame();
+    }
+
+    // Probes the [av1, hevc, vp9, h264] priority chain for simulcast feasibility
+    // on the given ladder. Returns the first codec category whose probe passes,
+    // mapped to a concrete codec string from `supportedCodecs`. Returns null
+    // when no candidate passes — caller falls back to the static priority pick
+    // and accepts the risk of backpressure-driven step-down.
+    //
+    // Filters by `audienceCodecs` (if provided) and `supportedEncoderCategories`
+    // — same constraints as `pickFallbackCodec`. Probe budget 12ms matches the
+    // simulcast concurrency gate used in 1080p promotion.
+    private async pickSimulcastCodec(
+        supportedCodecs: CodecInfo[],
+        audienceCodecs: string[] | undefined,
+        ladder: SpatialLayerConfig[],
+    ): Promise<string | null> {
+        const priority: ('av1' | 'hevc' | 'vp9' | 'h264')[] = ['av1', 'hevc', 'vp9', 'h264'];
+        const audience = audienceCodecs && audienceCodecs.length > 0 ? audienceCodecs : null;
+        for (const category of priority) {
+            if (!this.supportedEncoderCategories.includes(category)) continue;
+            if (audience && !audience.includes(category)) continue;
+            const codecInfo = supportedCodecs.find(c => c.category === category && c.supported && c.hardwareAccelerated)
+                ?? supportedCodecs.find(c => c.category === category && c.supported);
+            if (!codecInfo) continue;
+            const probe = await probeConcurrentEncoders(codecInfo.codec, ladder, 8, 12);
+            if (probe.supported) {
+                infoLog?.log(`pickSimulcastCodec: ${category} (${codecInfo.codec}) PASS — median=${probe.medianEncodeMs.toFixed(1)}ms over ${ladder.length} layer(s)`);
+                return codecInfo.codec;
+            }
+            infoLog?.log(`pickSimulcastCodec: ${category} (${codecInfo.codec}) FAIL — median=${probe.medianEncodeMs.toFixed(1)}ms, stage=${probe.failedStage ?? 'timing'}`);
+        }
+        return null;
     }
 
     private pickInitialCodec(supportedCodecs: CodecInfo[], audienceCodecs: string[] | undefined, size: Size) {
