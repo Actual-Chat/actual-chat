@@ -107,6 +107,13 @@ export class VideoPipeline implements IVideoPipeline {
     // Common
     private processing = false;
 
+    // VAD-driven local spatial drop (G2). When silence latches in a multi-peer
+    // call we drop the top simulcast extra locally without waiting for a server
+    // feedback round-trip. Speech resume restores it. Saved here so the resume
+    // path knows what to add back; cleared whenever an external setSpatialLayers
+    // arrives (cap-driven changes are authoritative over VAD state).
+    private vadDroppedLayer: SpatialLayerConfig | null = null;
+
     // VAD-based adaptive framerate (main thread tracks state, forwards to worker)
     private remoteStreamCount = 0;
     private isSpeaking = true;
@@ -562,6 +569,14 @@ export class VideoPipeline implements IVideoPipeline {
         const prevCount = this.config.spatialLayers?.length ?? 0;
         const nextCount = next.length;
         this.config.spatialLayers = next.length > 0 ? next : undefined;
+        // External cap-driven change overrides any pending VAD-restore — server
+        // policy (G1: MaxSpatialLayer aggregate) is authoritative over local
+        // VAD heuristic. Drop the saved layer so speech-resume doesn't add it
+        // back against current cap intent.
+        if (this.vadDroppedLayer !== null) {
+            debugLog?.log('setSpatialLayers: clearing pending VAD-dropped layer (external override)');
+            this.vadDroppedLayer = null;
+        }
         if (!this.processing) {
             debugLog?.log(`setSpatialLayers: not running, cached ${prevCount} → ${nextCount} for next start`);
             return;
@@ -761,6 +776,17 @@ export class VideoPipeline implements IVideoPipeline {
                     width: this.config.encoderConfig.width,
                     height: this.config.encoderConfig.height,
                 });
+                // G2: restore the VAD-dropped top extra (if any). Re-emits via
+                // worker.setSpatialLayers — base encoder + RPC stream untouched.
+                // forceKeyFrame after both reconfig and layer restore so the new
+                // extra has a clean anchor for subscribers.
+                if (this.vadDroppedLayer && this.processing) {
+                    const restored = [...(this.config.spatialLayers ?? []), this.vadDroppedLayer];
+                    this.config.spatialLayers = restored;
+                    debugLog?.log(`VAD: restoring dropped layer ${this.vadDroppedLayer.width}x${this.vadDroppedLayer.height}`);
+                    this.vadDroppedLayer = null;
+                    void this.worker.setSpatialLayers(restored);
+                }
                 void this.worker.forceKeyFrame();
                 void this.worker.setVadState(true, this.remoteStreamCount);
             }
@@ -780,6 +806,24 @@ export class VideoPipeline implements IVideoPipeline {
                         width: this.config.encoderConfig.width,
                         height: this.config.encoderConfig.height,
                     });
+                    // G2: drop the top simulcast extra locally during silence.
+                    // Webcam only — screencast has no VAD semantics and its
+                    // adaptiveFramerate config isn't even enabled, but guard
+                    // explicitly for clarity. Only when 2+ extras are active so
+                    // the receiver still gets at least base + mid (avoids
+                    // collapsing to single tier during the silent half of a
+                    // conversation, which would give a 180p experience to
+                    // anyone joining mid-silence).
+                    const isScreencast = (this.config.streaming?.streamKind ?? 0) === 1;
+                    const extras = this.config.spatialLayers;
+                    if (!isScreencast && extras && extras.length >= 2 && this.vadDroppedLayer === null) {
+                        const dropped = extras[extras.length - 1];
+                        const remaining = extras.slice(0, -1);
+                        this.vadDroppedLayer = dropped;
+                        this.config.spatialLayers = remaining;
+                        debugLog?.log(`VAD: dropping top layer ${dropped.width}x${dropped.height} (${extras.length} → ${remaining.length} extras)`);
+                        void this.worker.setSpatialLayers(remaining);
+                    }
                     void this.worker.setVadState(false, this.remoteStreamCount);
                 }, delay);
             }

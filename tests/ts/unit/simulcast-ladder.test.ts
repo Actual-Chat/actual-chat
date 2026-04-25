@@ -2,10 +2,10 @@ import { describe, it, expect } from 'vitest';
 import {
     hasHigherTopTier,
     maybeAugmentLadderForRunningBase,
-    type LadderTier,
+    type SpatialLayerConfig,
 } from '../../../src/dotnet/UI.Blazor.App/Components/VideoPanel/simulcast-ladder';
 
-const tier = (width: number, height: number, bitrate = 1_000_000): LadderTier =>
+const tier = (width: number, height: number, bitrate = 1_000_000): SpatialLayerConfig =>
     ({ width, height, bitrate });
 
 describe('hasHigherTopTier (Bug N — ladder persistence)', () => {
