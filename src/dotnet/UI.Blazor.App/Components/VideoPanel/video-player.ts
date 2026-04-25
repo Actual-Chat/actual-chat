@@ -1151,6 +1151,12 @@ export class VideoPlayer {
         this.lastSentRenderQuality = level;
         if (level === null) return level; // canvas not laid out yet — wait
         debugLog?.log(`RenderQuality hint: level=${level} (canvas=${this.canvas.clientWidth}x${this.canvas.clientHeight})`);
+        // The ResizeObserver can fire BEFORE startPull initializes the streaming
+        // RPC client (canvas layout happens during the same animation frame
+        // VideoPlayer.start runs in). initVideoRpc is idempotent — calling here
+        // ensures the streaming proxy is ready regardless of which entry point
+        // runs first.
+        initVideoRpc();
         // Hint-only mode: StreamOffsetMs=-1 tells the server to apply just the
         // render hint + visibility flag without recording a latency sample
         // (we haven't rendered a frame yet, no offset to report).
