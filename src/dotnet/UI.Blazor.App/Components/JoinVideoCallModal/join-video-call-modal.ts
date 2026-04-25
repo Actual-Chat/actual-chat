@@ -1,6 +1,5 @@
 import { getLogs } from 'logging';
 import { MediaCapture } from '../../Services/Video/services/media-capture';
-import { CanvasVideoRenderer } from '../../Services/Video/services/canvas-video-renderer';
 import { BlurPreviewSession } from '../../Services/Video/services/blur-preview-session';
 import { RecorderPreviewView } from '../../Services/Video/services/recorder-preview-view';
 
@@ -9,11 +8,12 @@ const { infoLog, warnLog, errorLog } = getLogs('JoinVideoCallModal');
 export class JoinVideoCallModal {
     private blazorRef: DotNet.DotNetObject;
     private readonly videoFrame: HTMLElement;
-    private readonly canvasEl: HTMLCanvasElement; // on-DOM, single display canvas
-    private readonly renderer: CanvasVideoRenderer;
+    private readonly canvasEl: HTMLCanvasElement;
+    private readonly videoEl: HTMLVideoElement;
     private track: MediaStreamTrack | null = null;
     private selectedDeviceId: string | null = null;
     private lastTrackStoppedAt = 0;
+    private firstFrameFired = false;
 
     // Settings-mode preview: follows the active recorder via the shared view so
     // the modal and VideoPanel's self-preview both render the same pipeline
@@ -34,15 +34,17 @@ export class JoinVideoCallModal {
         this.blazorRef = blazorRef;
         this.videoFrame = container.querySelector<HTMLElement>('.video-frame')!;
         this.canvasEl = this.videoFrame.querySelector<HTMLCanvasElement>('.camera-preview')!;
+        this.videoEl = this.videoFrame.querySelector<HTMLVideoElement>('.camera-preview-video')!;
 
-        this.renderer = new CanvasVideoRenderer({
-            canvas: this.canvasEl,
-            rafKey: 'join-video-preview',
-            onFirstFrame: () => {
-                void this.blazorRef.invokeMethodAsync('OnFirstFrameRendered');
-            },
-        });
+        // Native first-frame signal — fires on iOS Safari unlike rVFC for hidden videos.
+        this.videoEl.addEventListener('loadeddata', this.onVideoLoadedData);
     }
+
+    private readonly onVideoLoadedData = (): void => {
+        if (this.firstFrameFired) return;
+        this.firstFrameFired = true;
+        void this.blazorRef.invokeMethodAsync('OnFirstFrameRendered');
+    };
 
     // ---------- Join mode: own stream ---------------------------------------
 
@@ -87,10 +89,10 @@ export class JoinVideoCallModal {
             infoLog?.log(`startPreview track: deviceId=${s.deviceId}, ${s.width}x${s.height}`);
             if (s.deviceId) this.selectedDeviceId = s.deviceId;
 
-            this.videoFrame.classList.add('has-video');
-
-            // Start RAF render loop to draw raw camera frames to canvas
-            this.renderer.start(this.track);
+            this.firstFrameFired = false;
+            this.videoEl.srcObject = new MediaStream([this.track]);
+            void this.videoEl.play();
+            this.videoFrame.classList.add('has-video', 'shows-video');
 
             infoLog?.log('Camera preview started');
             return true;
@@ -104,7 +106,8 @@ export class JoinVideoCallModal {
         // Stop blur preview first
         await this.stopBlurPreview();
 
-        this.renderer.stop();
+        this.videoEl.srcObject = null;
+        this.firstFrameFired = false;
 
         if (this.track) {
             this.track.stop();
@@ -112,7 +115,7 @@ export class JoinVideoCallModal {
             this.lastTrackStoppedAt = performance.now();
         }
 
-        this.videoFrame.classList.remove('has-video');
+        this.videoFrame.classList.remove('has-video', 'shows-video', 'shows-canvas');
 
         infoLog?.log('Camera preview stopped');
     }
@@ -161,9 +164,9 @@ export class JoinVideoCallModal {
         this.recorderView = RecorderPreviewView.create({
             canvas: this.canvasEl,
             rafKey: 'join-video-preview',
-            onDetach: () => this.videoFrame.classList.remove('has-video'),
+            onDetach: () => this.videoFrame.classList.remove('has-video', 'shows-canvas'),
             onFirstFrame: () => {
-                this.videoFrame.classList.add('has-video');
+                this.videoFrame.classList.add('has-video', 'shows-canvas');
                 void this.blazorRef.invokeMethodAsync('OnFirstFrameRendered');
             },
         });
@@ -189,24 +192,25 @@ export class JoinVideoCallModal {
         if (!this.track || this.isBlurActive) return;
 
         try {
-            // Pause raw-frame rendering — blur callback takes over canvas drawing
-            this.renderer.paused = true;
+            // Canvas overlay sits on top of the still-decoding <video>;
+            // BlurPreviewSession's drawImage pump pulls frames from videoEl.
+            this.videoFrame.classList.add('shows-canvas');
 
             this.blurSession = await BlurPreviewSession.create({
-                source: this.renderer.video,
+                source: this.videoEl,
                 target: this.canvasEl,
             });
             this.isBlurActive = true;
         } catch (error) {
             errorLog?.log('Failed to start blur preview:', error);
-            this.renderer.paused = false;
+            this.videoFrame.classList.remove('shows-canvas');
             await this.stopBlurPreview();
         }
     }
 
     private async stopBlurPreview(): Promise<void> {
         this.isBlurActive = false;
-        this.renderer.paused = false;
+        this.videoFrame.classList.remove('shows-canvas');
 
         if (this.blurSession) {
             await this.blurSession.stop();
@@ -219,6 +223,7 @@ export class JoinVideoCallModal {
     public dispose(): void {
         infoLog?.log(`dispose: trackState=${this.track?.readyState ?? '(null)'}`);
         this.disposed = true;
+        this.videoEl.removeEventListener('loadeddata', this.onVideoLoadedData);
         if (this.recorderView) {
             this.recorderView.dispose();
             this.recorderView = null;

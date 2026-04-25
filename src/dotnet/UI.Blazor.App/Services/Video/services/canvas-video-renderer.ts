@@ -3,9 +3,12 @@
  * Manages an off-DOM HTMLVideoElement → on-DOM HTMLCanvasElement render loop.
  * Given a MediaStreamTrack, creates a hidden video element, attaches the track,
  * and draws frames to the target canvas at the video's native frame rate using
- * requestVideoFrameCallback.
+ * requestVideoFrameCallback. iOS Safari falls back to rAF (fastRaf) because
+ * rVFC does not fire for off-viewport video elements (WebKit bug #241152).
  */
 
+import { fastRaf } from 'fast-raf';
+import { DeviceInfo } from 'device-info';
 import { CanvasTarget } from './canvas-target';
 
 export interface CanvasVideoRendererOptions {
@@ -22,6 +25,7 @@ export class CanvasVideoRenderer {
     private readonly target: CanvasTarget;
     private readonly videoEl: HTMLVideoElement;
     private readonly options: CanvasVideoRendererOptions;
+    private readonly useRvfc = !DeviceInfo.isIos;
     private running = false;
     private _paused = false;
     private firstFrameFired = false;
@@ -74,7 +78,7 @@ export class CanvasVideoRenderer {
         this.running = false;
         this._paused = false;
         this.firstFrameFired = false;
-        if (this.vfcHandle) {
+        if (this.useRvfc && this.vfcHandle) {
             this.videoEl.cancelVideoFrameCallback(this.vfcHandle);
             this.vfcHandle = 0;
         }
@@ -88,7 +92,10 @@ export class CanvasVideoRenderer {
 
     private scheduleFrame(): void {
         if (!this.running) return;
-        this.vfcHandle = this.videoEl.requestVideoFrameCallback(this.renderFrame);
+        if (this.useRvfc)
+            this.vfcHandle = this.videoEl.requestVideoFrameCallback(this.renderFrame);
+        else
+            fastRaf(this.renderFrame, this.options.rafKey);
     }
 
     private renderFrame = (): void => {

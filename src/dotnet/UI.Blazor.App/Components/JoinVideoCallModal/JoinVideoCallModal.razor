@@ -38,6 +38,7 @@
         }
         <div @ref="_containerRef" class="@videoCls">
             <div class="video-frame">
+                <video class="camera-preview-video" autoplay playsinline muted></video>
                 <canvas class="camera-preview"></canvas>
                 <span class="plug-text">@GetPlugText(effectiveCameraState)</span>
                 <div class="video-loading">

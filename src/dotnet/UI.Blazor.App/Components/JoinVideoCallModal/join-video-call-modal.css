@@ -26,7 +26,8 @@
 .join-video-call-modal .camera-starting .video-frame .video-loading {
     @apply flex;
 }
-.join-video-call-modal .video-frame .camera-preview {
+.join-video-call-modal .video-frame .camera-preview,
+.join-video-call-modal .video-frame .camera-preview-video {
     @apply absolute inset-0;
     @apply w-full h-full;
     @apply object-cover;
@@ -34,13 +35,20 @@
     @apply hidden;
     transform: scaleX(-1);
 }
-.join-video-call-modal .video-frame.has-video .camera-preview {
+/* Native <video> visible when Join mode has a live track. Stays visible (and
+   decoding) even when blur is on so BlurPreviewSession's drawImage pump can
+   pull frames from it; the canvas overlay sits on top and visually covers it. */
+.join-video-call-modal .video-frame.shows-video .camera-preview-video {
+    @apply block;
+}
+.join-video-call-modal .video-frame.shows-canvas .camera-preview {
     @apply block;
 }
 /* Mirror toggle — overrides the default scaleX(-1). Placed on .c-video (owned
-   fully by Blazor) rather than .video-frame (which JS manages `has-video` on)
-   so Blazor re-renders don't wipe out the JS-added class. */
-.join-video-call-modal .c-video.no-mirror .video-frame .camera-preview {
+   fully by Blazor) rather than .video-frame (which JS manages state on) so
+   Blazor re-renders don't wipe out the JS-added classes. */
+.join-video-call-modal .c-video.no-mirror .video-frame .camera-preview,
+.join-video-call-modal .c-video.no-mirror .video-frame .camera-preview-video {
     transform: none;
 }
 .join-video-call-modal .c-members {
