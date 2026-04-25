@@ -52,12 +52,12 @@ public class UserPresencesBackend(IServiceProvider services)
         }
         else {
             var lastCheckInRecency = now - dbUserPresence.CheckInAt.ToMoment();
-            if (lastCheckInRecency <= 2 * awayTimeout)
+            if (lastCheckInRecency <= 3 * awayTimeout)
                 return; // Inactive & checked in recently -> Leave as-is
 
-            // Inactive, but checked in 2*awayTimeout ago -> move CheckInAt to "away" range & mark inactive
+            // Inactive, but checked in 3*awayTimeout ago -> move CheckInAt to "away" range & mark inactive
             dbUserPresence.IsActive = false;
-            dbUserPresence.CheckInAt = now - awayTimeout;
+            dbUserPresence.CheckInAt = now - awayTimeout - TimeSpan.FromSeconds(1);
         }
         context.Operation.AddCompletionHandler(scope => {
             using (Invalidation.Begin())
