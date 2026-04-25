@@ -22,8 +22,22 @@ public class VideoStreamFilter(
     Func<StreamId, CancellationToken, ValueTask<Computed<VideoQualityPreset>>> capturePreset,
     ILogger log,
     VideoStreamFilter.EgressControl? egressControl = null,
-    Func<StreamId, string, bool>? isPeerVisible = null)
+    Func<StreamId, string, bool>? isPeerVisible = null,
+    TimeSpan? spatialStalenessWindow = null,
+    TimeSpan? burstStabilizationWindow = null)
 {
+    // Defaults sized for production keyframe cadence: encoder forces a KF every
+    // ~3 s (recording-service.ts:maxKeyFrameIntervalMs=3000). Staleness window must
+    // exceed that with margin (2× cadence) so a normal burst can't be misread as
+    // "top layer disappeared". Burst stabilization holds a would-be decay decision
+    // long enough for the rest of a multi-layer KF burst to arrive — extras emit
+    // within ms, base trails by ~1.1 s, so 1.5 s covers the full burst envelope.
+    private static readonly TimeSpan DefaultSpatialStalenessWindow = TimeSpan.FromSeconds(6);
+    private static readonly TimeSpan DefaultBurstStabilizationWindow = TimeSpan.FromMilliseconds(1500);
+
+    private TimeSpan SpatialStalenessWindow { get; } = spatialStalenessWindow ?? DefaultSpatialStalenessWindow;
+    private TimeSpan BurstStabilizationWindow { get; } = burstStabilizationWindow ?? DefaultBurstStabilizationWindow;
+
     // Server-edge fast-reaction cap controls. Decrement is called when the filter
     // detects a stall on write or walks past retention without finding a keyframe
     // on the selected spatial layer. Restore is called after EgressRecoveryWindow
@@ -87,10 +101,19 @@ public class VideoStreamFilter(
         var observedMaxSpatial = 0;
         var observedMaxSpatialSeenAt = CpuTimestamp.Now;
         var observedMaxLastChange = CpuTimestamp.Now;
-        var spatialStalenessWindow = TimeSpan.FromSeconds(2);
+        var spatialStalenessWindow = SpatialStalenessWindow;
+        var burstStabilizationWindow = BurstStabilizationWindow;
         var joinStabilizationWindow = TimeSpan.FromMilliseconds(50);
         VideoFrame? joinPendingKF = null;
         var joinPendingSince = CpuTimestamp.Now;
+        // Pending-decay state for staleness-driven demotion. When a staleness
+        // trigger fires we don't decay observedMaxSpatial synchronously — we record
+        // the would-be target and wait BurstStabilizationWindow. If a higher-layer
+        // keyframe arrives in that window the burst is intact (just out-of-order
+        // arrival) and we abort. Otherwise the producer truly stopped emitting the
+        // upper layer and we commit the decay.
+        var pendingDecayLayer = -1;
+        var pendingDecaySince = CpuTimestamp.Now;
 
         // --- KeyFrame gap filter state ---
         // Start in skip mode: wait for the first keyframe on the selected spatial
@@ -175,16 +198,48 @@ public class VideoStreamFilter(
                         observedMaxSpatial = frame.SpatialLayerId;
                         observedMaxSpatialSeenAt = CpuTimestamp.Now;
                         observedMaxLastChange = CpuTimestamp.Now;
+                        // Higher KF arrived — any pending decay was a false alarm.
+                        pendingDecayLayer = -1;
                     }
                     else if (frame.SpatialLayerId == observedMaxSpatial) {
                         observedMaxSpatialSeenAt = CpuTimestamp.Now;
+                        pendingDecayLayer = -1;
+                    }
+                    else if (frame.SpatialLayerId > pendingDecayLayer
+                        && pendingDecayLayer >= 0) {
+                        // Same burst, higher than what we'd decay to but still below
+                        // observedMax — promote the pending target. e.g. burst arrives
+                        // spatial=0 KF first (sets pending=0), then spatial=1 KF
+                        // (raise pending to 1). If spatial=2 also arrives we'll abort
+                        // entirely on the previous branch.
+                        pendingDecayLayer = frame.SpatialLayerId;
                     }
                     else if (observedMaxSpatialSeenAt.Elapsed > spatialStalenessWindow) {
-                        // Top layer stopped producing — decay to whatever's arriving now.
-                        observedMaxSpatial = frame.SpatialLayerId;
-                        observedMaxSpatialSeenAt = CpuTimestamp.Now;
-                        observedMaxLastChange = CpuTimestamp.Now;
+                        // Top layer hasn't produced a KF in spatialStalenessWindow.
+                        // Don't decay synchronously — record the would-be target and
+                        // wait BurstStabilizationWindow. A higher-layer KF arriving
+                        // before then means the burst is intact (out-of-order delivery,
+                        // base lags extras by ~1 s); commit only if no higher KF
+                        // shows up.
+                        if (pendingDecayLayer < 0) {
+                            pendingDecayLayer = frame.SpatialLayerId;
+                            pendingDecaySince = CpuTimestamp.Now;
+                        }
                     }
+                }
+
+                // 2b. Pending-decay commit.
+                // If the burst-stabilization window has elapsed without a higher-layer
+                // KF arriving, the upper layer is genuinely gone — apply the decay.
+                if (pendingDecayLayer >= 0
+                    && pendingDecaySince.Elapsed > burstStabilizationWindow) {
+                    log.LogInformation(
+                        "VideoStreamFilter: peer={PeerId} observedMaxSpatial decay {Old}->{New} after burst window expired",
+                        peerId, observedMaxSpatial, pendingDecayLayer);
+                    observedMaxSpatial = pendingDecayLayer;
+                    observedMaxSpatialSeenAt = CpuTimestamp.Now;
+                    observedMaxLastChange = CpuTimestamp.Now;
+                    pendingDecayLayer = -1;
                 }
 
                 // 3. Desired layer = what we want to deliver, clamped to what producer
