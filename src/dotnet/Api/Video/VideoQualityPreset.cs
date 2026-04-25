@@ -18,7 +18,14 @@ public sealed partial record VideoQualityPreset(
     // demand. `int.MaxValue` = no cap (produce all layers). Sender spins encoder
     // instances up/down based on these values.
     [property: DataMember, MemoryPackOrder(5), Key(5)] int MaxSpatialLayer = int.MaxValue,
-    [property: DataMember, MemoryPackOrder(6), Key(6)] int MaxTemporalLayer = int.MaxValue
+    [property: DataMember, MemoryPackOrder(6), Key(6)] int MaxTemporalLayer = int.MaxValue,
+    // Number of peers currently subscribed to this stream (i.e. viewers, NOT
+    // counting the publisher itself). Used by the publisher to arm simulcast
+    // even when its own incoming-stream count is 0 — covers the asymmetric
+    // case where a publisher is the first to push and would otherwise stay
+    // single-layer until another peer starts pushing back. Default 0 keeps
+    // legacy peers (no field on wire) safe.
+    [property: DataMember, MemoryPackOrder(7), Key(7)] int ViewerCount = 0
 ) {
     public static readonly VideoQualityPreset Ultra  = new(VideoQualityLevel.Ultra,  3840, 2160);
     public static readonly VideoQualityPreset Full   = new(VideoQualityLevel.Full,   1920, 1080);

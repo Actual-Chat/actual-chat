@@ -25,6 +25,18 @@ public sealed class VideoRecorder : IAsyncDisposable
     private string _deviceId = "";
     private bool _isBlurEnabled;
 
+    // Combined remote-presence state for the simulcast decision.
+    // `_incomingStreamCount` = number of remote streams I'm subscribed to (from
+    // ChatVideoUI.GetRemoteStreams). `_viewerCount` = number of peers subscribed
+    // to MY stream (from VideoQualityPreset.ViewerCount, server-driven).
+    // Either signal can independently arm simulcast — covers the asymmetric
+    // publisher case where peer P pushes, peer V watches but never pushes back.
+    // Negative = unknown / not yet observed. Both feed into ApplySimulcastDecision.
+    private int _incomingStreamCount = -1;
+    private int _viewerCount = -1;
+    private bool _lastSimulcastActive;
+    private readonly SemaphoreSlim _simulcastDecisionLock = new(1, 1);
+
     private AppUIHub Hub { get; }
     private StreamKind Kind { get; }
     private Session Session => Hub.Session;
@@ -200,8 +212,8 @@ public sealed class VideoRecorder : IAsyncDisposable
                 () => LiveVideoStreams.GetQualityPreset(Session, ownStreamId, cancellationToken),
                 cancellationToken).ConfigureAwait(false);
             await foreach (var (preset, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
-                Log.LogInformation("SubscribeToQualityRequests: received preset {Level} ({Width}x{Height}), keyframe={KeyFrame}",
-                    preset.Level, preset.Width, preset.Height, preset.IsKeyFrameRequested);
+                Log.LogInformation("SubscribeToQualityRequests: received preset {Level} ({Width}x{Height}), keyframe={KeyFrame}, viewers={ViewerCount}",
+                    preset.Level, preset.Width, preset.Height, preset.IsKeyFrameRequested, preset.ViewerCount);
                 // Only reconfigure when the server actually changes the preset.
                 // On the first iteration we know nothing about network/CPU yet, so the
                 // default "High" preset is noise — seed lastAppliedPreset silently.
@@ -222,6 +234,12 @@ public sealed class VideoRecorder : IAsyncDisposable
                 }
                 if (preset.IsKeyFrameRequested)
                     await _jsRef.InvokeVoidAsync("forceKeyFrame", cancellationToken).ConfigureAwait(false);
+                // Bug X: viewer count from the server arms simulcast even when
+                // we have no incoming streams (asymmetric publisher case).
+                if (preset.ViewerCount != _viewerCount) {
+                    _viewerCount = preset.ViewerCount;
+                    await ApplySimulcastDecision(cancellationToken).ConfigureAwait(false);
+                }
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
@@ -251,7 +269,6 @@ public sealed class VideoRecorder : IAsyncDisposable
     {
         try {
             var lastCount = -1;
-            var lastSimulcastActive = false;
             var cState = await Computed.Capture(
                 () => ChatVideoUI.GetRemoteStreams(chatId, cancellationToken),
                 cancellationToken).ConfigureAwait(false);
@@ -264,26 +281,46 @@ public sealed class VideoRecorder : IAsyncDisposable
                 await _jsRef.InvokeVoidAsync("setRemoteStreamCount", cancellationToken, count)
                     .ConfigureAwait(false);
 
-                // Simulcast gate: activate at 2+ remote streams (3+ participant call).
-                // Webcam only — screencast stays single-encoder (text legibility requires
-                // the full-res path). Applies at the next StartRecording; mid-stream
-                // layer reconfig isn't supported yet.
-                if (Kind != StreamKind.Webcam)
-                    continue;
-                var simulcastActive = count >= Constants.Video.MinMembersForSimulcast - 1;
-                if (simulcastActive == lastSimulcastActive)
-                    continue;
-                lastSimulcastActive = simulcastActive;
-                var ladder = simulcastActive ? BuildSimulcastLadder() : null;
-                Log.LogInformation(
-                    "SyncRemoteStreamCount: remoteCount={Count}, simulcast={Simulcast}, layers={Layers}",
-                    count, simulcastActive, ladder?.Count ?? 0);
-                await SetSimulcastLayers(ladder, cancellationToken).ConfigureAwait(false);
+                _incomingStreamCount = count;
+                await ApplySimulcastDecision(cancellationToken).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
         catch (Exception e) {
             Log.LogWarning(e, "SyncRemoteStreamCount failed");
+        }
+    }
+
+    // Single decision point for simulcast activation. Combines the local
+    // incoming-stream count with the server-reported viewer count so either
+    // signal can arm simulcast. Webcam only — screencast keeps the single-
+    // encoder full-res path for text legibility. Idempotent on repeated
+    // calls with the same effective count.
+    private async Task ApplySimulcastDecision(CancellationToken cancellationToken)
+    {
+        if (Kind != StreamKind.Webcam)
+            return;
+        await _simulcastDecisionLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try {
+            // Treat unknown signals as 0 for the threshold check so a single
+            // available signal can arm/disarm. Threshold = MinMembersForSimulcast - 1
+            // because "remote count" excludes the publisher itself.
+            var localCount = Math.Max(0, _incomingStreamCount);
+            var viewerCount = Math.Max(0, _viewerCount);
+            var effectiveCount = Math.Max(localCount, viewerCount);
+            var threshold = Constants.Video.MinMembersForSimulcast - 1;
+            var simulcastActive = effectiveCount >= threshold;
+            if (simulcastActive == _lastSimulcastActive)
+                return;
+            _lastSimulcastActive = simulcastActive;
+            var ladder = simulcastActive ? BuildSimulcastLadder() : null;
+            Log.LogInformation(
+                "ApplySimulcastDecision: incoming={Incoming}, viewers={Viewers}, effective={Effective}, simulcast={Simulcast}, layers={Layers}",
+                _incomingStreamCount, _viewerCount, effectiveCount, simulcastActive, ladder?.Count ?? 0);
+            await SetSimulcastLayers(ladder, cancellationToken).ConfigureAwait(false);
+        }
+        finally {
+            _simulcastDecisionLock.Release();
         }
     }
 
