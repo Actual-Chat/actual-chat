@@ -296,10 +296,18 @@ async function probeConcurrentEncodersUncached(
             timings.push(performance.now() - t0);
         }
 
-        timings.sort((a, b) => a - b);
-        const median = timings[Math.floor(timings.length / 2)];
+        // Discard cold-start samples — the first frame is a keyframe and the
+        // first 1-2 frames also pay codec init / first I-frame allocation costs
+        // that don't repeat at steady state. Without this the probe rejects
+        // HW-capable machines that just need a few ms more for warmup
+        // (Bug O — peer B's 1080p single-encoder probe failed at 20.5/18 ms,
+        // mostly due to warmup samples skewing the median high).
+        const warmupCount = Math.min(2, Math.max(0, frameCount - 4));
+        const steadyTimings = timings.slice(warmupCount);
+        steadyTimings.sort((a, b) => a - b);
+        const median = steadyTimings[Math.floor(steadyTimings.length / 2)];
         const supported = median <= budgetMs;
-        debugLog?.log(`probeConcurrentEncoders: ${codec} × ${layers.length} @ ${layers[0].width}x${layers[0].height} — median=${median.toFixed(1)}ms, budget=${budgetMs}ms, ${supported ? 'PASS' : 'FAIL'}`);
+        debugLog?.log(`probeConcurrentEncoders: ${codec} × ${layers.length} @ ${layers[0].width}x${layers[0].height} — median=${median.toFixed(1)}ms (warmup=${warmupCount}, steady=${steadyTimings.length}), budget=${budgetMs}ms, ${supported ? 'PASS' : 'FAIL'}`);
         return { supported, medianEncodeMs: median, failedStage: supported ? null : 'encode' };
     } catch (error) {
         errorLog?.log('probeConcurrentEncoders: unexpected error', error);

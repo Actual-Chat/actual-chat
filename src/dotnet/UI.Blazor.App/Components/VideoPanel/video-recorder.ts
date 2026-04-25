@@ -4,6 +4,7 @@ import { RecordingService, type RecordingConfig, type RecordingState } from '../
 import type { SpatialLayerConfig } from '../../Services/Video/workers/video-processing-worker-contract';
 import { detectSupportedCodecs, getDefaultCodec, getCodecCategory, probeConcurrentEncoders, type CodecInfo } from '../../Services/Video/codec-support';
 import { getExpectedBitrate } from '../../Services/Video/bitrate-table';
+import { hasHigherTopTier } from './simulcast-ladder';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoRecorder');
 
@@ -280,8 +281,26 @@ export class VideoRecorder {
     // length < 2 disables simulcast. Screencast streams ignore the ladder
     // (single-encoder text legibility path).
     public setSimulcastLayers(layers: SpatialLayerConfig[] | null): void {
-        const active = (layers && layers.length >= 2) ? layers : null;
+        const incoming = (layers && layers.length >= 2) ? layers : null;
         const prevCount = this.simulcastLayers?.length ?? 0;
+        // Bug N: don't downgrade a probe-promoted ladder. C#'s default ladder
+        // tops out at 720p; the JS-side startRecording probe may have promoted
+        // it to 1080p. If C# later pushes its default 720p-cap ladder
+        // (e.g. SyncRemoteStreamCount activating), we'd lose the 1080p tier.
+        // Only accept the incoming ladder when it's null (deactivate), strictly
+        // longer than ours, OR has a strictly higher top tier.
+        let active: SpatialLayerConfig[] | null;
+        if (incoming === null) {
+            active = null;
+        } else if (this.simulcastLayers === null
+            || incoming.length > this.simulcastLayers.length
+            || hasHigherTopTier(incoming, this.simulcastLayers)) {
+            active = incoming;
+        } else {
+            active = this.simulcastLayers;
+            infoLog?.log(
+                `setSimulcastLayers: keeping promoted ladder (${prevCount} layers, top=${this.simulcastLayers[this.simulcastLayers.length - 1].width}x${this.simulcastLayers[this.simulcastLayers.length - 1].height}) over incoming (${incoming.length} layers)`);
+        }
         const newCount = active?.length ?? 0;
         this.simulcastLayers = active;
         if (prevCount !== newCount) {
@@ -446,10 +465,12 @@ export class VideoRecorder {
                     : [tier1080];
                 // Budget: a single 1080p encoder needs more per-frame headroom
                 // than the per-layer cost of concurrent simulcast extras
-                // (lower layers finish fast and lift the median). 18ms leaves
-                // iGPU HW a realistic chance at real-time single-encoder 1080p;
-                // 12ms is right for multi-encoder concurrency gates.
-                const budgetMs = isSimulcast ? 12 : 18;
+                // (lower layers finish fast and lift the median). 24ms leaves
+                // iGPU HW a realistic chance at real-time single-encoder 1080p
+                // (~25% headroom under the 33ms/30fps frame budget); 12ms is
+                // right for multi-encoder concurrency gates. Bumped from 18 to
+                // 24 in Bug O — peer B's HW-capable iGPU was rejected at 20ms.
+                const budgetMs = isSimulcast ? 12 : 24;
                 const probe = await probeConcurrentEncoders(bestCodecString, promoted, 8, budgetMs);
                 if (probe.supported) {
                     infoLog?.log(`1080p promotion accepted: probe median=${probe.medianEncodeMs.toFixed(1)}ms (layers=${promoted.length}, budget=${budgetMs}ms)`);
@@ -464,6 +485,13 @@ export class VideoRecorder {
             const captureHeight = top.height;
             const captureBitrate = top.bitrate;
             const simulcastLadder: SpatialLayerConfig[] = ladder;
+            // Persist the promoted ladder so a subsequent C# setSimulcastLayers
+            // call (e.g. SyncRemoteStreamCount activating simulcast) doesn't
+            // clobber our locally-promoted ladder with a stale C# default.
+            // Compared against in setSimulcastLayers below — we keep ours when
+            // the incoming ladder is a strict subset (shorter / no top tier).
+            // Bug N from the plan.
+            this.simulcastLayers = simulcastLadder.length >= 2 ? [...simulcastLadder] : null;
             infoLog?.log(`Capture ladder (pre-clamp, bottom-first): [${ladder.map(l => `${l.width}x${l.height}`).join(', ')}], capture ${captureWidth}x${captureHeight}, primary ${base.width}x${base.height}`);
 
             // Create recording service with streaming config (uses video-pipeline internally)
