@@ -540,36 +540,38 @@ public sealed class StreamLatencyStore(IServiceProvider services)
                     }
                 }
                 else if (totalSlowCount == 0 && _lastQualityChangeAt.Elapsed >= Constants.Video.QualityHysteresisWindow) {
+                    // Step-up only when all peers are unambiguously fast. Borderline
+                    // peers (neither slow nor fast — e.g. still building samples)
+                    // hold quality but must still reach aggregation below so the
+                    // publisher sees ViewerCount/MaxSpatialLayer updates (the
+                    // asymmetric-publisher arm path depends on it).
                     var allFast = peers.All(p => p.Value.IsNetworkFast && !p.Value.IsReceiverBound);
-                    if (!allFast)
-                        return;
-
-                    // Short-circuit when already at the camera ceiling. Without this,
-                    // every 2 s ReportPeerLatency would cycle through StepUp + a SKIP
-                    // log line for the same scenario — pure noise once the stream
-                    // saturates `_maxQuality`. Lower enum value = higher quality, so
-                    // currentQuality at or above the ceiling has Level <= _maxQuality.
-                    // Note: the layer-demand aggregation below this branch must still
-                    // run, so we only skip the step-up logic — not the whole method.
-                    VideoQualityPreset? stepped = null;
-                    if (currentQuality > _maxQuality) {
-                        stepped = VideoQualityPreset.StepUp(currentQuality);
-                        if (stepped != null && stepped.Level < _maxQuality) {
-                            // Stepped past the ceiling — Debug so the path is still
-                            // diagnosable while not spamming production logs at info
-                            // every tick.
-                            DebugLog?.LogDebug(
-                                "EvaluateQuality: SKIP step-up to {Level}, camera max is {MaxLevel}",
-                                stepped.Level, _maxQuality);
-                            stepped = null;
+                    if (allFast) {
+                        // Short-circuit when already at the camera ceiling. Without this,
+                        // every 2 s ReportPeerLatency would cycle through StepUp + a SKIP
+                        // log line for the same scenario — pure noise once the stream
+                        // saturates `_maxQuality`. Lower enum value = higher quality, so
+                        // currentQuality at or above the ceiling has Level <= _maxQuality.
+                        VideoQualityPreset? stepped = null;
+                        if (currentQuality > _maxQuality) {
+                            stepped = VideoQualityPreset.StepUp(currentQuality);
+                            if (stepped != null && stepped.Level < _maxQuality) {
+                                // Stepped past the ceiling — Debug so the path is still
+                                // diagnosable while not spamming production logs at info
+                                // every tick.
+                                DebugLog?.LogDebug(
+                                    "EvaluateQuality: SKIP step-up to {Level}, camera max is {MaxLevel}",
+                                    stepped.Level, _maxQuality);
+                                stepped = null;
+                            }
                         }
-                    }
-                    if (stepped != null) {
-                        _lastQualityChangeAt = CpuTimestamp.Now;
-                        QualityPreset.Value = stepped;
-                        Log.LogInformation(
-                            "EvaluateQuality: STEP UP {OldLevel} -> {NewLevel}, all peers fast ({TotalCount} peers)",
-                            currentQuality, stepped.Level, peers.Count);
+                        if (stepped != null) {
+                            _lastQualityChangeAt = CpuTimestamp.Now;
+                            QualityPreset.Value = stepped;
+                            Log.LogInformation(
+                                "EvaluateQuality: STEP UP {OldLevel} -> {NewLevel}, all peers fast ({TotalCount} peers)",
+                                currentQuality, stepped.Level, peers.Count);
+                        }
                     }
                 }
                 else

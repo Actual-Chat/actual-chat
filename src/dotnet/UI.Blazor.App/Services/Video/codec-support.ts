@@ -281,21 +281,24 @@ async function probeConcurrentEncodersUncached(
                 pendingResolvers[i] = resolve;
             }));
             const t0 = performance.now();
-            for (let i = 0; i < encoders.length; i++) {
-                // Narrow the frame dims per encoder by creating a cropped view —
-                // cheap ref bump, no pixel copy. Encoders that need resizing
-                // handle it themselves.
-                const copy = srcFrame.clone();
-                try {
-                    encoders[i].encode(copy, { keyFrame: f === 0 });
-                } catch (e) {
+            try {
+                for (let i = 0; i < encoders.length; i++) {
+                    // Narrow the frame dims per encoder by creating a cropped view —
+                    // cheap ref bump, no pixel copy. Encoders that need resizing
+                    // handle it themselves.
+                    const copy = srcFrame.clone();
+                    try {
+                        encoders[i].encode(copy, { keyFrame: f === 0 });
+                    } catch (e) {
+                        copy.close();
+                        errorLog?.log(`probeConcurrentEncoders[${i}] encode threw`, e);
+                        return { supported: false, medianEncodeMs: 0, failedStage: 'encode' };
+                    }
                     copy.close();
-                    errorLog?.log(`probeConcurrentEncoders[${i}] encode threw`, e);
-                    return { supported: false, medianEncodeMs: 0, failedStage: 'encode' };
                 }
-                copy.close();
+            } finally {
+                srcFrame.close();
             }
-            srcFrame.close();
             await Promise.all(waits);
             timings.push(performance.now() - t0);
         }

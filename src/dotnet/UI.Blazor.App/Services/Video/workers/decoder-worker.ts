@@ -149,6 +149,8 @@ function decodeChunk(chunkData: EncodedChunkData): void {
                 decoder.initialize();
                 infoLog?.log(`Decoder recovered at keyframe #${seq}`);
                 decoderConfigured = !!recoveryDescription;
+                if (recoveryDescription)
+                    lastRawDescription = (recoveryDescription as ArrayBuffer).slice(0);
             } catch (error) {
                 errorLog?.log('Failed to recover decoder:', error);
                 return;
