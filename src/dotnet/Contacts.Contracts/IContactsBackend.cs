@@ -18,6 +18,10 @@ public interface IContactsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<ContactId[]> ListIds(UserId ownerId, PlaceId? placeId, CancellationToken cancellationToken);
     [ComputeMethod]
+    Task<ContactId[]> ListBannedIds(UserId ownerId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<bool> IsBanned(UserId ownerId, UserId otherUserId, CancellationToken cancellationToken);
+    [ComputeMethod]
     Task<PlaceId[]> ListPlaceIds(UserId ownerId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ThreadContact?> GetThreadContact(UserId ownerId, ContactId contactId, CancellationToken cancellationToken);
@@ -36,6 +40,8 @@ public interface IContactsBackend : IComputeService, IBackendService
     Task<Contact?> OnChange(ContactsBackend_Change command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnTouch(ContactsBackend_Touch command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnSetIsBanned(ContactsBackend_SetIsBanned command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRemoveAccount(ContactsBackend_RemoveAccount command, CancellationToken cancellationToken);
     [CommandHandler]
@@ -91,6 +97,20 @@ public sealed partial record ContactsBackend_Change(
 // ReSharper disable once InconsistentNaming
 public sealed partial record ContactsBackend_Touch(
     [property: DataMember, MemoryPackOrder(0), Key(0)] ContactId Id
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<ContactId>
+{
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public ContactId ShardKey => Id;
+}
+
+/// <summary>
+/// Command to set a peer contact's banned flag.
+/// </summary>
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ContactsBackend_SetIsBanned(
+    [property: DataMember, MemoryPackOrder(0), Key(0)] ContactId Id,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] bool IsBanned
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ContactId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]

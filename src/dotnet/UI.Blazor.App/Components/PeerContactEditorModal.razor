@@ -30,6 +30,16 @@
                 <TextBox @bind-Value="@_form.PeerContactName" Id="@_form.PeerContactNameFieldId" />
             </FormSection>
         </FormBlock>
+        @if (_contact is not null) {
+            <FormBlock>
+                <Button
+                    Type="@ButtonType.Button"
+                    Class="btn-modal warning-item"
+                    Click="@OnToggleBlock">
+                    @(_contact.IsBanned ? "Unblock user" : "Block user")
+                </Button>
+            </FormBlock>
+        }
         </Body>
         <Buttons>
             <FormButtons>
@@ -77,6 +87,18 @@
             PeerContactName = _form.PeerContactName
         };
         var command = new Contacts_Change(Session, contact.Id, contact.Version, Change.Update(contact));
+        var (_, error) = await UICommander.Run(command);
+        if (error != null)
+            return;
+
+        CloseModal();
+    }
+
+    private async Task OnToggleBlock() {
+        if (_contact is null)
+            return;
+
+        var command = new Contacts_SetIsBanned(Session, _contact.Id, !_contact.IsBanned);
         var (_, error) = await UICommander.Run(command);
         if (error != null)
             return;

@@ -22,6 +22,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string ExternalContactName { get; set; } = "";
     public ContactState State { get; set; }
     public bool IsPinned { get; set; }
+    public bool IsBanned { get; set; }
 
     public DateTime TouchedAt {
         get => field.DefaultKind(DateTimeKind.Utc);
@@ -39,6 +40,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
             PeerContactName = PeerContactName,
             ExternalContactName = ExternalContactName,
             State = State,
+            IsBanned = IsBanned,
         };
 
     public void UpdateFrom(Contact model)
@@ -53,6 +55,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
         PeerContactName = model.PeerContactName;
         ExternalContactName = model.ExternalContactName;
         State = model.State;
+        IsBanned = model.IsBanned;
         if (!Id.IsNullOrEmpty())
             return; // Only the above properties can be changed for already existing contacts
 

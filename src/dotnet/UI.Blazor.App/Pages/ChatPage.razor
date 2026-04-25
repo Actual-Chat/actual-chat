@@ -2,6 +2,7 @@
 @page "/chat/{*Route}"
 @layout ListViewLayout
 @using ActualChat.Hosting
+@using ActualChat.Contacts
 @using RightPanel = ActualChat.UI.Blazor.App.Components.RightPanel
 @inherits ComputedStateComponent<AppUIHub, ChatPage.Model?>
 @{
@@ -92,6 +93,7 @@
     protected IPlaces Places => Hub.Places;
     protected IAccounts Accounts => Hub.Accounts;
     protected IAvatars Avatars => Hub.Avatars;
+    protected IContacts Contacts => Hub.Contacts;
     protected IAliases Aliases => Hub.Aliases;
     protected ChatUI ChatUI => Hub.ChatUI;
     protected ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
@@ -216,6 +218,17 @@
         var otherUserId = chatId is PeerChatId peerChatId
             ? peerChatId.UserIds.OtherThan(account.Id)
             : null;
+        var isBanned = false;
+        var isBannedByPeer = false;
+        ContactId? peerContactId = null;
+        if (chatId is PeerChatId) {
+            var peerContact = await Contacts.GetForChat(session, chatId, cancellationToken).ConfigureAwait(false);
+            if (peerContact is not null) {
+                isBanned = peerContact.IsBanned;
+                isBannedByPeer = peerContact.IsBannedByPeer;
+                peerContactId = peerContact.Id;
+            }
+        }
         var hasMultipleAvatars = false;
         var canJoinWithGuestAccount = false;
         var canJoinAnonymously = false;
@@ -242,6 +255,9 @@
             HasMultipleAvatars = hasMultipleAvatars,
             CanJoinWithGuestAccount = canJoinWithGuestAccount,
             CanJoinAnonymously = canJoinAnonymously,
+            IsBanned = isBanned,
+            IsBannedByPeer = isBannedByPeer,
+            PeerContactId = peerContactId,
         };
     }
 
@@ -386,6 +402,9 @@
         public bool CanJoinWithGuestAccount { get; init; }
         public bool CanJoinAnonymously { get; init; }
         public bool ShouldJoinPlaceFirst { get; init; }
+        public bool IsBanned { get; init; }
+        public bool IsBannedByPeer { get; init; }
+        public ContactId? PeerContactId { get; init; }
 
         // This record relies on referential equality
         public bool Equals(FooterModel? other) => ReferenceEquals(this, other);

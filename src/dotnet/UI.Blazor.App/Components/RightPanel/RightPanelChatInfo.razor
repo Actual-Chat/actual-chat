@@ -1,3 +1,4 @@
+@using ActualChat.Contacts
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, RightPanelChatInfo.Model>
 @{
@@ -34,6 +35,19 @@
             </Right>
         </RightPanelChatInfoItem>
     }
+    @if (m.ShowBlockToggle) {
+        <RightPanelChatInfoItem
+            Click="@(_ => OnBlockToggleChanged(!m.IsBanned))"
+            Content="Block user"
+            Hint="@(m.IsBanned ? "Blocked" : "Not blocked")">
+            <Icon>
+                <i class="text-2xl icon-block @(m.IsBanned ? "text-danger" : "text-03")"></i>
+            </Icon>
+            <Right>
+                <Toggle Class="mr-2" IsChecked="@m.IsBanned"/>
+            </Right>
+        </RightPanelChatInfoItem>
+    }
 </div>
 
 @code {
@@ -51,10 +65,17 @@
 
         var isOwner = chat.Rules.IsOwner() || chat.Kind == ChatKind.Peer;
         var chatUserSettings = await UserSettingsUI.ChatUserSettings(chatId).Get(cancellationToken).ConfigureAwait(false);
+        var isPeer = chatId is PeerChatId;
+        Contact? peerContact = null;
+        if (isPeer)
+            peerContact = await Hub.Contacts.GetForChat(Session, chatId, cancellationToken).ConfigureAwait(false);
         return new() {
             NotificationMode = chatUserSettings.NotificationMode,
             ShowSummarizationToggle = isOwner,
             IsSummarized = Chat.IsSummarized ?? false,
+            ShowBlockToggle = isPeer && peerContact is not null,
+            IsBanned = peerContact?.IsBanned ?? false,
+            PeerContactId = peerContact?.Id,
         };
     }
 
@@ -62,6 +83,14 @@
         => UICommander.RunLocal(ct
             => UserSettingsUI.ChatUserSettings(Chat.Id)
                 .Update(x => x with { NotificationMode = isMuted ? ChatNotificationMode.Muted : ChatNotificationMode.Default, }, ct));
+
+    private Task OnBlockToggleChanged(bool isBanned) {
+        var m = State.Value;
+        if (m.PeerContactId is null)
+            return Task.CompletedTask;
+
+        return UICommander.Run(new Contacts_SetIsBanned(Session, m.PeerContactId, isBanned));
+    }
 
     private Task OnSummarizeToggleChanged(bool isSummarized) {
         if (State.Value.IsSummarized == isSummarized)
@@ -78,5 +107,8 @@
         public bool IsSummarized { get; init; }
         public bool HideNotificationsToggle { get; init; }
         public bool ShowSummarizationToggle { get; init; }
+        public bool ShowBlockToggle { get; init; }
+        public bool IsBanned { get; init; }
+        public ContactId? PeerContactId { get; init; }
     }
 }
