@@ -55,10 +55,10 @@ public sealed class StreamLatencyStore(IServiceProvider services)
     public void RegisterStreamLatencyState(StreamId streamId, ChatId chatId, Moment beginsAt, VideoFormat format, StreamKind kind)
         => LatencyStates[streamId] = new StreamLatencyState(chatId, beginsAt, format, kind, services.StateFactory(), Log);
 
-    public void RecordFrameBytes(StreamId streamId, int byteCount)
+    public void RecordFrameBytes(StreamId streamId, int byteCount, int spatialLayerId = 0)
     {
         if (LatencyStates.TryGetValue(streamId, out var state))
-            state.RecordFrameBytes(byteCount);
+            state.RecordFrameBytes(byteCount, spatialLayerId);
     }
 
     public void UpdateMaxQuality(StreamId streamId, int sourceWidth, int sourceHeight)
@@ -241,11 +241,12 @@ public sealed class StreamLatencyStore(IServiceProvider services)
                 // Temporal: only drop enhancement layers under congestion.
                 MaxTemporalLayer = slow ? 0 : int.MaxValue;
 
-                // Spatial: 3-tier. Slow → base only; fast → top; borderline (neither
-                // slow nor fast — median sits between absolute thresholds during warmup,
-                // or between baseline+fastMargin and baseline+slowThreshold post-warmup)
-                // → mid.
-                MaxSpatialLayer = slow ? 0 : fast ? 2 : 1;
+                // Spatial: ladder-agnostic. Slow → base only; fast → uncapped (server filter
+                // clamps to producer's observedMaxSpatial, whatever that turns out to be);
+                // borderline → mid (~spatial=1). Hard-coding `fast → 2` pinned receivers to
+                // the 3rd layer of any ladder, which silently caps a 4-tier 1080p ladder at
+                // its 720p tier even on a fast network. int.MaxValue lets observedMax decide.
+                MaxSpatialLayer = slow ? 0 : fast ? int.MaxValue : 1;
             }
         }
 
@@ -259,8 +260,10 @@ public sealed class StreamLatencyStore(IServiceProvider services)
             => level switch {
                 VideoQualityLevel.Low => 1,     // sidebar / small tile — mid tier (~360p)
                 VideoQualityLevel.Medium => 1,
-                // High, Full, Ultra — any "focused" render target wants top layer.
-                _ => 2,
+                VideoQualityLevel.High => 2,    // ~720p target
+                // Full, Ultra — uncapped. Producer's observedMaxSpatial decides; with
+                // a 4-tier 1080p ladder this naturally resolves to spatial=3.
+                _ => int.MaxValue,
             };
 
         // Fan-out calls this when the peer stalls on write or walks past retention
@@ -375,6 +378,11 @@ public sealed class StreamLatencyStore(IServiceProvider services)
         private CpuTimestamp _lastThroughputCheckAt = CpuTimestamp.Now;
         private CpuTimestamp _lastByteReceivedAt = CpuTimestamp.Now;
         private int _consecutiveHighThroughputChecks;
+        // Highest SpatialLayerId observed across all incoming frames. >0 means
+        // simulcast is active — multi-encoder bytes legitimately sum past any
+        // single-layer target, so OVER-DELIVERY (which models single-encoder
+        // VBR overshoot) doesn't apply. Monotonic; never resets.
+        private int _maxObservedSpatialLayer;
 
         public int GetPeerMaxTemporalLayer(string peerId)
             => _peers.TryGetValue(peerId, out var state) ? state.MaxTemporalLayer : int.MaxValue;
@@ -421,11 +429,23 @@ public sealed class StreamLatencyStore(IServiceProvider services)
         public bool IsPeerVisible(string peerId)
             => !_peers.TryGetValue(peerId, out var state) || state.IsVisible;
 
-        public void RecordFrameBytes(int byteCount)
+        public void RecordFrameBytes(int byteCount, int spatialLayerId = 0)
         {
             Interlocked.Add(ref _totalBytesReceived, byteCount);
             _lastByteReceivedAt = CpuTimestamp.Now;
+            // Track observed simulcast width so EvaluateQuality can skip the
+            // single-encoder OVER-DELIVERY check once multi-encoder is live.
+            if (spatialLayerId > _maxObservedSpatialLayer) {
+                // Lock-free max: CAS until we lose to a higher writer.
+                int observed;
+                do {
+                    observed = Volatile.Read(ref _maxObservedSpatialLayer);
+                    if (spatialLayerId <= observed) break;
+                } while (Interlocked.CompareExchange(ref _maxObservedSpatialLayer, spatialLayerId, observed) != observed);
+            }
         }
+
+        public bool IsSimulcastActive => Volatile.Read(ref _maxObservedSpatialLayer) > 0;
 
         internal void EvaluateQuality()
         {
@@ -456,8 +476,11 @@ public sealed class StreamLatencyStore(IServiceProvider services)
                     // rise first (TCP backpressure → socket buffer fills → ACK delay grows), which
                     // the per-peer latency-vs-baseline check below catches directly.
                     //
-                    // Over-delivery detection: HW encoder ignoring bitrate cap (e.g. HEVC VBR at 12Mbps vs 4Mbps target)
-                    if (targetBps > 0 && measuredBps > targetBps * Constants.Video.ThroughputOverDeliveryRatio) {
+                    // Over-delivery detection: HW encoder ignoring bitrate cap (e.g. HEVC VBR at 12Mbps vs 4Mbps target).
+                    // Disabled when simulcast is active — measured bytes legitimately sum across N concurrent encoders
+                    // (~base + extras), each respecting its own cap, while the target only models a single layer.
+                    // Without this guard, every simulcast stream trips OVER-DELIVERY on the next evaluation tick.
+                    if (!IsSimulcastActive && targetBps > 0 && measuredBps > targetBps * Constants.Video.ThroughputOverDeliveryRatio) {
                         _consecutiveHighThroughputChecks++;
                         if (_consecutiveHighThroughputChecks >= Constants.Video.ThroughputStepDownConsecutiveChecks) {
                             var stepped = VideoQualityPreset.StepDown(currentQuality, Kind);

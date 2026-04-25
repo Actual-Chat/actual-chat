@@ -39,7 +39,7 @@ public class PeerLatencyStateTest
 
         // assert
         state.IsNetworkFast.Should().BeTrue();
-        state.MaxSpatialLayer.Should().Be(2, "fast peer gets top spatial layer");
+        state.MaxSpatialLayer.Should().Be(int.MaxValue, "fast peer is uncapped — observedMaxSpatial decides the actual top");
         state.MaxTemporalLayer.Should().Be(int.MaxValue);
     }
 
@@ -125,11 +125,11 @@ public class PeerLatencyStateTest
     }
 
     [Theory]
-    [InlineData(VideoQualityLevel.Low, 1)]      // sidebar → mid tier, not base
+    [InlineData(VideoQualityLevel.Low, 1)]                  // sidebar → mid tier, not base
     [InlineData(VideoQualityLevel.Medium, 1)]
-    [InlineData(VideoQualityLevel.High, 2)]
-    [InlineData(VideoQualityLevel.Full, 2)]
-    [InlineData(VideoQualityLevel.Ultra, 2)]
+    [InlineData(VideoQualityLevel.High, 2)]                 // ~720p target
+    [InlineData(VideoQualityLevel.Full, int.MaxValue)]      // uncapped — let observedMaxSpatial decide (ladder may be 4-tier 1080p)
+    [InlineData(VideoQualityLevel.Ultra, int.MaxValue)]
     public void RenderHintMapping(VideoQualityLevel level, int expectedSpatial)
     {
         // arrange
@@ -155,7 +155,7 @@ public class PeerLatencyStateTest
 
         // assert
         state.IsNetworkFast.Should().BeTrue();
-        state.MaxSpatialLayer.Should().Be(2, "latency-derived cap unaffected by hint");
+        state.MaxSpatialLayer.Should().Be(int.MaxValue, "latency-derived cap unaffected by hint");
         state.RenderHintSpatialLayer.Should().Be(1);
         state.EffectiveMaxSpatial.Should().Be(1, "render hint clamps effective cap to mid tier");
     }
@@ -194,7 +194,7 @@ public class PeerLatencyStateTest
 
         // assert
         state.RenderHintSpatialLayer.Should().Be(int.MaxValue, "default = no cap");
-        state.EffectiveMaxSpatial.Should().Be(2, "latency cap alone applies");
+        state.EffectiveMaxSpatial.Should().Be(int.MaxValue, "fast-latency cap is uncapped, no hint, no egress fallback");
     }
 
     // --- Egress fallback (Stage 6) ---
@@ -265,17 +265,17 @@ public class PeerLatencyStateTest
     [Fact]
     public void EffectiveMaxSpatial_TakesTightestOfThreeCaps()
     {
-        // Latency says 2 (fast), render hint says 1 (Medium), egress fallback says 0.
+        // Latency uncapped (fast), render hint says 1 (Medium), egress fallback says 0.
         // Effective must be 0.
         // arrange
         var state = WarmedUp();
         for (var i = 0; i < 6; i++)
             state.RecordLatency(50, renderQualityLevel: (int)VideoQualityLevel.Medium);
-        state.MaxSpatialLayer.Should().Be(2);
+        state.MaxSpatialLayer.Should().Be(int.MaxValue);
         state.RenderHintSpatialLayer.Should().Be(1);
 
         // act
-        state.DecrementEgressFallback(); // from effective min(2,1)=1 → 0
+        state.DecrementEgressFallback(); // from effective min(∞,1)=1 → 0
 
         // assert
         state.EgressFallbackSpatialLayer.Should().Be(0);
@@ -322,7 +322,7 @@ public class PeerLatencyStateTest
 
         // assert
         state.IsNetworkFast.Should().BeTrue();
-        state.MaxSpatialLayer.Should().Be(2, "fast peer back to top");
+        state.MaxSpatialLayer.Should().Be(int.MaxValue, "fast peer back to uncapped");
         state.MaxTemporalLayer.Should().Be(int.MaxValue);
     }
 }

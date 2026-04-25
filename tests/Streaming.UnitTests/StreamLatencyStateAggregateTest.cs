@@ -25,8 +25,10 @@ public class StreamLatencyStateAggregateTest(ILogger log)
     [Fact]
     public void AllPeersFast_AggregateIsTopLayer()
     {
-        // 3 peers all reporting low stable latency — each gets MaxSpatialLayer=2.
-        // Aggregate (max across peers) = 2. Temporal uncapped.
+        // 3 peers all reporting low stable latency — each gets MaxSpatialLayer=int.MaxValue
+        // (uncapped). Aggregate (max across peers) = int.MaxValue. Temporal uncapped.
+        // The sender's filter resolves the actual layer at delivery time using
+        // observedMaxSpatial; the aggregate just signals "no peer is asking for less".
         // arrange
         var state = NewStreamLatencyState();
         RecordWarmed(state, "peer-a", 50);
@@ -37,14 +39,14 @@ public class StreamLatencyStateAggregateTest(ILogger log)
         state.EvaluateQuality();
 
         // assert
-        state.QualityPreset.Value.MaxSpatialLayer.Should().Be(2);
+        state.QualityPreset.Value.MaxSpatialLayer.Should().Be(int.MaxValue);
         state.QualityPreset.Value.MaxTemporalLayer.Should().Be(int.MaxValue);
     }
 
     [Fact]
     public void MixedFastAndSlow_AggregateIsMax()
     {
-        // One slow peer (cap=0) + one fast peer (cap=2) → aggregate = 2.
+        // One slow peer (cap=0) + one fast peer (cap=int.MaxValue) → aggregate = int.MaxValue.
         // Sender still produces all layers; filter caps the slow peer per-peer.
         // arrange
         var state = NewStreamLatencyState();
@@ -59,7 +61,7 @@ public class StreamLatencyStateAggregateTest(ILogger log)
         state.EvaluateQuality();
 
         // assert
-        state.QualityPreset.Value.MaxSpatialLayer.Should().Be(2, "fast peer still needs top layer");
+        state.QualityPreset.Value.MaxSpatialLayer.Should().Be(int.MaxValue, "fast peer still needs top layer");
     }
 
     [Fact]
@@ -171,6 +173,71 @@ public class StreamLatencyStateAggregateTest(ILogger log)
         // assert
         state.QualityPreset.Value.ViewerCount.Should().Be(3,
             "publisher should know how many peers are subscribed");
+    }
+
+    // --- Bug BB: OVER-DELIVERY skipped while simulcast is active ---
+    // RecordFrameBytes counts every byte across every spatial layer. The single-layer
+    // bitrate target (VideoBitrateTable.GetExpectedBitrate) was tripping a 2.5x
+    // OVER-DELIVERY step-down on every simulcast stream — the multi-encoder sum is
+    // legitimate, not VBR overshoot. Once spatialLayerId>0 is observed, the check
+    // must be suppressed.
+
+    [Fact]
+    public void IsSimulcastActive_StartsFalse()
+    {
+        // arrange
+        var state = NewStreamLatencyState();
+
+        // assert
+        state.IsSimulcastActive.Should().BeFalse("no frames recorded yet");
+    }
+
+    [Fact]
+    public void IsSimulcastActive_StaysFalseForSingleEncoder()
+    {
+        // arrange
+        var state = NewStreamLatencyState();
+
+        // act: many frames at spatial=0 only
+        for (var i = 0; i < 100; i++)
+            state.RecordFrameBytes(50_000, spatialLayerId: 0);
+
+        // assert
+        state.IsSimulcastActive.Should().BeFalse("base-layer-only stream is single-encoder");
+    }
+
+    [Fact]
+    public void IsSimulcastActive_FlipsTrueOnFirstExtraLayer()
+    {
+        // arrange
+        var state = NewStreamLatencyState();
+        state.RecordFrameBytes(50_000, spatialLayerId: 0);
+        state.IsSimulcastActive.Should().BeFalse();
+
+        // act: first frame on spatial=1
+        state.RecordFrameBytes(20_000, spatialLayerId: 1);
+
+        // assert
+        state.IsSimulcastActive.Should().BeTrue("second simulcast layer observed");
+    }
+
+    [Fact]
+    public void IsSimulcastActive_RemainsTrueWhenLowerLayersArrive()
+    {
+        // Once any extra layer is seen, the flag latches — even if the next frame
+        // happens to come on spatial=0. Monotonic. (Filter callers shouldn't see
+        // it flipping back and forth across a single keyframe burst.)
+        // arrange
+        var state = NewStreamLatencyState();
+        state.RecordFrameBytes(50_000, spatialLayerId: 2);
+        state.IsSimulcastActive.Should().BeTrue();
+
+        // act
+        for (var i = 0; i < 10; i++)
+            state.RecordFrameBytes(50_000, spatialLayerId: 0);
+
+        // assert
+        state.IsSimulcastActive.Should().BeTrue("max-observed is monotonic");
     }
 
     // Helpers

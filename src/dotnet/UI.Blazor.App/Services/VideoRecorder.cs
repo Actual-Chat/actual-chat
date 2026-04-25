@@ -324,16 +324,20 @@ public sealed class VideoRecorder : IAsyncDisposable
         }
     }
 
-    // 3-tier simulcast ladder, sorted lowest → highest so index matches the
-    // spatial-id convention used everywhere (0 = base, N = top). The top entry
-    // is also the ideal camera-capture target. Dims mirror VideoQualityLevel
-    // steps (Low=360p, High=720p); bitrates tuned for H.264 baseline headroom
-    // on mobile HW encoders.
+    // 4-tier simulcast ladder, sorted lowest → highest so index matches the
+    // spatial-id convention used everywhere (0 = base, N = top). Top entry is
+    // 1080p, matching the JS-side single-encoder probe-promotion ceiling — so a
+    // pipeline that started solo at 1080p can keep that resolution as the wire-
+    // top once simulcast activates (without it, hot-adding extras only up to
+    // 720p left spatial=0=1080p as a stranded "bonus" tier the receiver-side
+    // filter can't reach via the spatial-id-ordered cap). Dims mirror
+    // VideoQualityLevel steps; bitrates tuned for H.264 baseline headroom.
     private static IReadOnlyList<SpatialLayerSpec> BuildSimulcastLadder()
         => new SpatialLayerSpec[] {
             new(320, 180, 300_000),
             new(640, 360, 700_000),
             new(1280, 720, 2_000_000),
+            new(1920, 1080, 2_300_000),
         };
 
     // Queries current remote stream count and pushes a ladder to JS before the
