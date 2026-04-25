@@ -8,6 +8,7 @@ import { AudioVideoSync } from 'audio-video-sync';
 import { DocumentEvents } from 'event-handling';
 import { Versioning } from 'versioning';
 import { type Subscription } from 'rxjs';
+import { renderQualityLevelForWidth } from './render-quality';
 import type { DecoderWorker } from '../../Services/Video/workers/decoder-worker-contract';
 import type { DecoderConfig, DecoderStats } from '../../Services/Video/webcodecs-decoder';
 import { BG_CANVAS_WIDTH, BG_DRAW_INTERVAL_MS, BG_FILTER } from '../../Services/Video/services/bg-canvas-settings';
@@ -147,6 +148,14 @@ export class VideoPlayer {
     // PLI: receiver-requested keyframe
     private lastKeyFrameRequestTime = 0;
     private readonly keyFrameRequestCooldownMs = 10000; // Max 1 request per 10 seconds
+
+    // Render-quality hint state (Bug L). The latency tick fires every 2 s but
+    // is gated on `lastRenderedOffsetMs > 0` — i.e. waits for the first decoded
+    // frame. Until then the server has no render-hint cap on this peer and joins
+    // it at the top spatial layer; once the canvas has laid out we want to push
+    // the hint right away so the cap kicks in within ms, not seconds.
+    private resizeObserver: ResizeObserver | null = null;
+    private lastSentRenderQuality: number | null | undefined = undefined;
 
     // Diagnostics counters for 10s delta reporting
     private lastDiagDecodedFrames = 0;
@@ -1115,8 +1124,42 @@ export class VideoPlayer {
             }
         });
 
+        // Watch the canvas for layout changes and send a render-hint-only
+        // ReportVideoLatency whenever the implied quality level flips between
+        // buckets (Low/Medium/High/Full/Ultra). The latency tick won't run
+        // until first frame is rendered, so without this the server treats this
+        // peer as uncapped for several seconds — bandwidth waste on multi-tile
+        // layouts where the canvas is much smaller than the source resolution.
+        // Bug L in the plan.
+        this.resizeObserver = new ResizeObserver(() => this.maybeSendRenderHint());
+        this.resizeObserver.observe(this.canvas);
+        // Initial fire — ResizeObserver delivers the first entry asynchronously,
+        // but we want the hint to land before the first ReportVideoLatency tick.
+        this.maybeSendRenderHint();
+
         // Report initial playing state
         void this.reportPlaying(0, true);
+    }
+
+    // Sends a render-hint-only ReportVideoLatency if the canvas-derived quality
+    // level has changed since the last send. Idempotent across repeat fires from
+    // the ResizeObserver. Returns the level that was sent (or undefined if
+    // suppressed because nothing changed).
+    private maybeSendRenderHint(): number | null | undefined {
+        const level = this.computeRenderQualityLevel();
+        if (level === this.lastSentRenderQuality) return undefined;
+        this.lastSentRenderQuality = level;
+        if (level === null) return level; // canvas not laid out yet — wait
+        debugLog?.log(`RenderQuality hint: level=${level} (canvas=${this.canvas.clientWidth}x${this.canvas.clientHeight})`);
+        // Hint-only mode: StreamOffsetMs=-1 tells the server to apply just the
+        // render hint + visibility flag without recording a latency sample
+        // (we haven't rendered a frame yet, no offset to report).
+        streamingApi.streamServer.ReportVideoLatency(this.streamId, {
+            StreamOffsetMs: -1,
+            RenderQuality: level,
+            IsVisible: typeof document !== 'undefined' && document.visibilityState === 'visible',
+        }).catch((e: unknown) => warnLog?.log('Render-hint ReportVideoLatency error:', e));
+        return level;
     }
 
     private requestKeyFrame(): void {
@@ -1378,6 +1421,12 @@ export class VideoPlayer {
         if (this.visibilitySubscription) {
             this.visibilitySubscription.unsubscribe();
             this.visibilitySubscription = null;
+        }
+
+        // Disconnect the canvas resize observer
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+            this.resizeObserver = null;
         }
 
         this.stopPull();
@@ -1669,13 +1718,7 @@ export class VideoPlayer {
     // layer 0, Medium→1, High/Full/Ultra→2. Returns null when the canvas has no
     // layout yet (detached or hidden) so the server applies no render cap.
     private computeRenderQualityLevel(): number | null {
-        const w = this.canvas.clientWidth;
-        if (w <= 0) return null;
-        if (w <= 480) return 4;      // Low — sidebar tile
-        if (w <= 720) return 3;      // Medium
-        if (w <= 1280) return 2;     // High
-        if (w <= 1920) return 1;     // Full
-        return 0;                    // Ultra
+        return renderQualityLevelForWidth(this.canvas.clientWidth);
     }
 
     private updateRttEstimate(rttMs: number): void {
