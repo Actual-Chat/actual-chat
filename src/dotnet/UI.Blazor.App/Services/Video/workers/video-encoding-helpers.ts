@@ -26,9 +26,9 @@ export function isAvcCDescription(desc: ArrayBuffer): boolean {
 // then the 1280×720 extra encoder rejects with NotSupportedError.
 export function pickAvcLevelByte(width: number, height: number): number {
     const pixels = width * height;
-    if (pixels > 2_073_600) return 0x34; // Level 5.2 — up to ~4.2M (4K UHD)
-    if (pixels > 921_600)   return 0x28; // Level 4.0 — up to ~2.1M (1080p)
-    return 0x1F;                         // Level 3.1 — up to 921,600 (720p)
+    if (pixels > 2_073_600) return 0x34; // Level 5.2 — above 1080p area (4K tiers and beyond)
+    if (pixels > 921_600)   return 0x28; // Level 4.0 — above 720p area, up to 1080p area
+    return 0x1F;                         // Level 3.1 — up to 720p area (≤ 921,600)
 }
 
 // Derive avc1 codec string from avcC description bytes. `minLevelByte` raises

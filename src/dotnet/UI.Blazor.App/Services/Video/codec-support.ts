@@ -184,7 +184,8 @@ interface ProbeLayer { width: number; height: number; bitrate: number }
 
 // Cache results per (codec, layer-count, top-layer-dims) — layer count and top
 // dims dominate throughput, lower tiers are cheap-by-comparison and don't move
-// the bottleneck meaningfully for gating decisions.
+// the bottleneck meaningfully for gating decisions. Ladders are bottom-first
+// (index 0 = base, last = top) so we key on `layers[layers.length - 1]`.
 const concurrentEncoderProbeCache = new Map<string, Promise<ConcurrentEncoderProbeResult>>();
 
 export function probeConcurrentEncoders(
@@ -195,7 +196,7 @@ export function probeConcurrentEncoders(
 ): Promise<ConcurrentEncoderProbeResult> {
     if (layers.length === 0)
         return Promise.resolve({ supported: false, medianEncodeMs: 0, failedStage: 'configure' });
-    const top = layers[0];
+    const top = layers[layers.length - 1];
     const key = `${codec}@${top.width}x${top.height}×${layers.length}`;
     let cached = concurrentEncoderProbeCache.get(key);
     if (!cached) {
@@ -251,12 +252,15 @@ async function probeConcurrentEncodersUncached(
             encoders.push(enc);
         }
 
-        // Shared synthetic source — one canvas covers the top layer, smaller
-        // encoders resize internally via the downscaler path they own. For the
-        // probe we just feed the same frame to all: encoder accepts any size ≤
-        // configured and scales. A 1920×1080 BGRA canvas is ~8 MB, allocated once.
-        const srcW = layers[0].width;
-        const srcH = layers[0].height;
+        // Shared synthetic source — one canvas at top-tier dims, smaller
+        // encoders resize internally (Chrome's VideoEncoder accepts mismatched
+        // input and scales to configured dims). Feeding the same top-res frame
+        // to all is conservative — production downscales upstream, so per-tier
+        // encode cost is no higher than what we measure here.
+        // A 1920×1080 BGRA canvas is ~8 MB, allocated once.
+        const top = layers[layers.length - 1];
+        const srcW = top.width;
+        const srcH = top.height;
         const canvas = new OffscreenCanvas(srcW, srcH);
         const ctx = canvas.getContext('2d');
         if (!ctx) {
@@ -299,15 +303,15 @@ async function probeConcurrentEncodersUncached(
         // Discard cold-start samples — the first frame is a keyframe and the
         // first 1-2 frames also pay codec init / first I-frame allocation costs
         // that don't repeat at steady state. Without this the probe rejects
-        // HW-capable machines that just need a few ms more for warmup
-        // (Bug O — peer B's 1080p single-encoder probe failed at 20.5/18 ms,
-        // mostly due to warmup samples skewing the median high).
+        // HW-capable machines that just need a few ms more for warmup (e.g.
+        // 1080p single-encoder probes failing at ~20 ms median because the
+        // warmup samples dragged the median above an 18 ms budget).
         const warmupCount = Math.min(2, Math.max(0, frameCount - 4));
         const steadyTimings = timings.slice(warmupCount);
         steadyTimings.sort((a, b) => a - b);
         const median = steadyTimings[Math.floor(steadyTimings.length / 2)];
         const supported = median <= budgetMs;
-        debugLog?.log(`probeConcurrentEncoders: ${codec} × ${layers.length} @ ${layers[0].width}x${layers[0].height} — median=${median.toFixed(1)}ms (warmup=${warmupCount}, steady=${steadyTimings.length}), budget=${budgetMs}ms, ${supported ? 'PASS' : 'FAIL'}`);
+        debugLog?.log(`probeConcurrentEncoders: ${codec} × ${layers.length} @ ${top.width}x${top.height} — median=${median.toFixed(1)}ms (warmup=${warmupCount}, steady=${steadyTimings.length}), budget=${budgetMs}ms, ${supported ? 'PASS' : 'FAIL'}`);
         return { supported, medianEncodeMs: median, failedStage: supported ? null : 'encode' };
     } catch (error) {
         errorLog?.log('probeConcurrentEncoders: unexpected error', error);

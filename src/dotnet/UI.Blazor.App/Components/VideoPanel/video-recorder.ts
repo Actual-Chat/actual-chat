@@ -283,7 +283,7 @@ export class VideoRecorder {
     public setSimulcastLayers(layers: SpatialLayerConfig[] | null, force = false): void {
         const incoming = (layers && layers.length >= 2) ? layers : null;
         const prevCount = this.simulcastLayers?.length ?? 0;
-        // Bug N: don't downgrade a probe-promoted ladder. C#'s default ladder
+        // Ladder persistence: don't downgrade a probe-promoted ladder. C#'s default ladder
         // tops out at 720p; the JS-side startRecording probe may have promoted
         // it to 1080p. If C# later pushes its default 720p-cap ladder
         // (e.g. SyncRemoteStreamCount activating), we'd lose the 1080p tier.
@@ -310,7 +310,7 @@ export class VideoRecorder {
             infoLog?.log(
                 `setSimulcastLayers: keeping promoted ladder (${prevCount} layers, top=${this.simulcastLayers[this.simulcastLayers.length - 1].width}x${this.simulcastLayers[this.simulcastLayers.length - 1].height}) over incoming (${incoming.length} layers)`);
         }
-        // Bug AA defensive: hot setSpatialLayers leaves the base encoder running
+        // Wire-id monotonicity: hot setSpatialLayers leaves the base encoder running
         // at its current resolution, so the wire layout is `[base, ...extras]`
         // — and if the base is *bigger* than every incoming extra, the extras
         // numbering doesn't reach the receiver-side filter's "top" (which sorts
@@ -520,7 +520,7 @@ export class VideoRecorder {
                 // iGPU HW a realistic chance at real-time single-encoder 1080p
                 // (~25% headroom under the 33ms/30fps frame budget); 12ms is
                 // right for multi-encoder concurrency gates. Bumped from 18 to
-                // 24 in Bug O — peer B's HW-capable iGPU was rejected at 20ms.
+                // 24 after observing HW-capable iGPUs rejected at ~20 ms median.
                 const budgetMs = isSimulcast ? 12 : 24;
                 const probe = await probeConcurrentEncoders(bestCodecString, promoted, 8, budgetMs);
                 if (probe.supported) {
@@ -541,7 +541,6 @@ export class VideoRecorder {
             // clobber our locally-promoted ladder with a stale C# default.
             // Compared against in setSimulcastLayers below — we keep ours when
             // the incoming ladder is a strict subset (shorter / no top tier).
-            // Bug N from the plan.
             this.simulcastLayers = simulcastLadder.length >= 2 ? [...simulcastLadder] : null;
             infoLog?.log(`Capture ladder (pre-clamp, bottom-first): [${ladder.map(l => `${l.width}x${l.height}`).join(', ')}], capture ${captureWidth}x${captureHeight}, primary ${base.width}x${base.height}`);
 

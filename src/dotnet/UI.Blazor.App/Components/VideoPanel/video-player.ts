@@ -149,7 +149,7 @@ export class VideoPlayer {
     private lastKeyFrameRequestTime = 0;
     private readonly keyFrameRequestCooldownMs = 10000; // Max 1 request per 10 seconds
 
-    // Render-quality hint state (Bug L). The latency tick fires every 2 s but
+    // Render-quality hint state. The latency tick fires every 2 s but
     // is gated on `lastRenderedOffsetMs > 0` — i.e. waits for the first decoded
     // frame. Until then the server has no render-hint cap on this peer and joins
     // it at the top spatial layer; once the canvas has laid out we want to push
@@ -1130,7 +1130,6 @@ export class VideoPlayer {
         // until first frame is rendered, so without this the server treats this
         // peer as uncapped for several seconds — bandwidth waste on multi-tile
         // layouts where the canvas is much smaller than the source resolution.
-        // Bug L in the plan.
         this.resizeObserver = new ResizeObserver(() => this.maybeSendRenderHint());
         this.resizeObserver.observe(this.canvas);
         // Initial fire — ResizeObserver delivers the first entry asynchronously,
@@ -1627,8 +1626,8 @@ export class VideoPlayer {
                 //  - within warmup window: codec init + first KF latency dominate the median
                 //    and don't repeat at steady state (typical: 200–600 ms cold, < 1 ms hot).
                 //  - tab is hidden: rAF stops on the main thread, decoded-frame queue swells,
-                //    looks like decoder slowness but is just paused consumption (Bug F mirror
-                //    of sender-side Bug 0).
+                //    looks like decoder slowness but is just paused consumption (mirror of
+                //    the sender-side hidden-tab encoder backpressure case).
                 const inWarmup = performance.now() < this.decoderWarmupUntilMs;
                 const tabHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
                 const isBadTick = !inWarmup && !tabHidden

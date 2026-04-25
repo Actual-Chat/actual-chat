@@ -177,6 +177,10 @@ export class WebGpuDownscaler {
         // (e.g. 1920x1080) while plane0 is actually scaled to display dims
         // (1280x720). Default cropSize = codedW/H → exceeds plane0 → validation
         // error spam + every frame skipped.
+        // Capture timestamp/duration before any potential close — VideoFrame
+        // attributes return 0/null after close().
+        const timestamp = source.timestamp;
+        const duration = source.duration ?? undefined;
         let input = source;
         if (source.codedWidth > srcW || source.codedHeight > srcH) {
             try {
@@ -190,8 +194,6 @@ export class WebGpuDownscaler {
             }
         }
         const externalTex = this.device.importExternalTexture({ source: input });
-        const timestamp = source.timestamp;
-        const duration = source.duration ?? undefined;
         const results: DownscaleResult[] = [];
 
         for (const slot of this.slots) {

@@ -299,7 +299,7 @@ export class RecordingService extends EventTarget {
                 this.dispatchEvent(new CustomEvent('encoder-failure', { detail: category }));
             };
 
-            // Track-end detection (Bug Y). Camera was unexpectedly revoked —
+            // Track-end detection. Camera was unexpectedly revoked —
             // dispatch a user-visible error and stop the pipeline so callers
             // can decide whether to retry. Without this, the worker logged
             // `Stream input ended` and the pipeline died silently.

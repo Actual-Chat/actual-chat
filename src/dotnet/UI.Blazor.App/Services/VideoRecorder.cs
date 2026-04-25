@@ -245,8 +245,8 @@ public sealed class VideoRecorder : IAsyncDisposable
                 }
                 if (preset.IsKeyFrameRequested)
                     await _jsRef.InvokeVoidAsync("forceKeyFrame", cancellationToken).ConfigureAwait(false);
-                // Bug X: viewer count from the server arms simulcast even when
-                // we have no incoming streams (asymmetric publisher case).
+                // Viewer count from the server arms simulcast even when we have
+                // no incoming streams (asymmetric publisher case).
                 if (preset.ViewerCount != _viewerCount) {
                     _viewerCount = preset.ViewerCount;
                     await ApplySimulcastDecision(cancellationToken).ConfigureAwait(false);
