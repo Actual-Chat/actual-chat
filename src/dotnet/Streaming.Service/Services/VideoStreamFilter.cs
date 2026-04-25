@@ -196,14 +196,21 @@ public class VideoStreamFilter(
 
                 // 3a. Pending-join handling — absorb the initial keyframe burst.
                 if (joinPendingKF != null) {
-                    // Upgrade pending if a higher-layer KF arrives in the same burst —
-                    // only when the peer's cap is explicitly set. Without a cap we stay
-                    // at the lowest layer (which simulcast emits first) to avoid
-                    // auto-climbing into an N-KF-per-cycle delivery pattern.
+                    // Upgrade pending if a higher-layer KF arrives in the same burst.
+                    // Climb whenever the peer's cap permits — including the uncapped
+                    // case (int.MaxValue, the default for a fresh peer that hasn't
+                    // sent a render hint yet). Bias on initial subscribe is the top
+                    // layer the producer is emitting; receivers that want less
+                    // bandwidth lower the cap via render hint after first frames,
+                    // and the post-join switch (3b) demotes them. The previous
+                    // policy (climb only when cap was explicitly finite) pinned
+                    // every fresh subscribe to spatial=0 because peer caps default
+                    // to int.MaxValue and the first ReportVideoLatency arrives
+                    // ~1 s later — meaning every join landed at the lowest layer
+                    // even when the producer was emitting all three.
                     if (frame.IsKeyFrame
                         && frame.SpatialLayerId > joinPendingKF.SpatialLayerId
-                        && maxSpatialLayer != int.MaxValue
-                        && frame.SpatialLayerId <= maxSpatialLayer) {
+                        && (maxSpatialLayer == int.MaxValue || frame.SpatialLayerId <= maxSpatialLayer)) {
                         joinPendingKF = frame;
                     }
                     var reachedCap = maxSpatialLayer != int.MaxValue
