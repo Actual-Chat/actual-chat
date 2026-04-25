@@ -30,7 +30,7 @@ import {
 import { WebGPUManager } from '../webgpu-manager';
 import { WebGpuDownscaler, type DownscaleTarget } from '../webgpu-downscaler';
 
-import { isAvcCDescription, deriveAvcCodecFromDescription, resizeFrame, cpuRgbaToI420 } from './video-encoding-helpers';
+import { isAvcCDescription, deriveAvcCodecFromDescription, pickAvcLevelByte, resizeFrame, cpuRgbaToI420 } from './video-encoding-helpers';
 import {
     type VideoStreamFrame, type StreamingContext,
     microsecondsToTicks, InternalVideoStream,
@@ -577,8 +577,15 @@ function onEncoderOutput(chunkData: EncodedChunkData): void {
         new Uint8Array(descBuffer).set(sourceArray);
 
         if (isAvcCDescription(descBuffer) && !encoderConfig!.codec.startsWith('avc1')) {
-            const derivedCodec = deriveAvcCodecFromDescription(descBuffer);
-            warnLog?.log(`Encoder output mismatch: configured=${encoderConfig!.codec} but output is avcC, correcting to ${derivedCodec}`);
+            // Bump derived AVC level to admit the largest tier the ladder will encode.
+            // Encoders pick the minimum level for THEIR input dims; the base layer
+            // (e.g. 320×180) yields Level 3.0, but the 720p / 1080p simulcast extras
+            // need Level 3.1 / 4.0. Without this bump the extra encoders fail with
+            // `NotSupportedError ... AVC level (3.0) ... codec string (0x1E)`.
+            const max = ladderMaxDims();
+            const minLevelByte = pickAvcLevelByte(max.width, max.height);
+            const derivedCodec = deriveAvcCodecFromDescription(descBuffer, minLevelByte);
+            warnLog?.log(`Encoder output mismatch: configured=${encoderConfig!.codec} but output is avcC, correcting to ${derivedCodec} (ladder max ${max.width}x${max.height})`);
             actualCodec = derivedCodec;
             encoderConfig!.codec = derivedCodec;
         }
@@ -755,6 +762,20 @@ function setupEncoders(config: VideoProcessingConfig): void {
         extraLayerEncoders.push(extra);
         infoLog?.log(`Simulcast layer ${spatialId}: ${layer.width}x${layer.height} @ ${(layer.bitrate / 1_000_000).toFixed(1)}Mbps`);
     }
+}
+
+// Largest (width, height) across base + extras. Used to pick an AVC level
+// that admits every layer in the ladder — see deriveAvcCodecFromDescription
+// site for why a base-derived level is too low for simulcast.
+function ladderMaxDims(): { width: number; height: number } {
+    let w = encoderConfig?.width ?? 0;
+    let h = encoderConfig?.height ?? 0;
+    for (const e of extraLayerEncoders) {
+        const s = e.getStats();
+        if (s.configuredWidth > w) w = s.configuredWidth;
+        if (s.configuredHeight > h) h = s.configuredHeight;
+    }
+    return { width: w, height: h };
 }
 
 // Cheap structural match: same length AND identical (w, h, bitrate) per index.
@@ -1231,6 +1252,26 @@ export const serverImpl: VideoProcessingWorker = {
             for (const e of extras) {
                 try { await e.flush(); } catch { /* already closed */ }
                 try { e.close(); } catch { /* already closed */ }
+            }
+        }
+
+        // If base codec is avc1.* and incoming extras need a higher AVC level
+        // than the current string admits, bump it. Without this, hot-adding a
+        // 720p extra to a base whose codec was auto-corrected to avc1.64001e
+        // (Level 3.0, max 720×576) would fail with NotSupportedError.
+        if (encoderConfig.codec.startsWith('avc1.') && layers.length > 0) {
+            let maxW = encoderConfig.width;
+            let maxH = encoderConfig.height;
+            for (const l of layers) {
+                if (l.width > maxW) maxW = l.width;
+                if (l.height > maxH) maxH = l.height;
+            }
+            const needed = pickAvcLevelByte(maxW, maxH);
+            const currentLevel = parseInt(encoderConfig.codec.slice(-2), 16);
+            if (currentLevel < needed) {
+                const bumped = encoderConfig.codec.slice(0, -2) + needed.toString(16).padStart(2, '0');
+                infoLog?.log(`setSpatialLayers: bumping AVC level ${encoderConfig.codec} → ${bumped} for ladder max ${maxW}x${maxH}`);
+                encoderConfig.codec = bumped;
             }
         }
 

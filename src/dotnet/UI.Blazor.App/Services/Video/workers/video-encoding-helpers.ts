@@ -18,13 +18,30 @@ export function isAvcCDescription(desc: ArrayBuffer): boolean {
     return true;
 }
 
-/** Derive avc1 codec string from avcC description bytes. */
-export function deriveAvcCodecFromDescription(desc: ArrayBuffer): string {
+// AVC level byte for a given coded area, per H.264 Annex A Table A-1. Picks the
+// smallest level that admits the resolution. Used to bump the description-derived
+// level when the encoder reports a level only sufficient for the BASE tier but
+// the simulcast ladder needs higher (extras up to 1080p / 4K). Without this
+// the avcC fallback path bakes Level 3.0 (max 720×576) into the codec string,
+// then the 1280×720 extra encoder rejects with NotSupportedError.
+export function pickAvcLevelByte(width: number, height: number): number {
+    const pixels = width * height;
+    if (pixels > 2_073_600) return 0x34; // Level 5.2 — up to ~4.2M (4K UHD)
+    if (pixels > 921_600)   return 0x28; // Level 4.0 — up to ~2.1M (1080p)
+    return 0x1F;                         // Level 3.1 — up to 921,600 (720p)
+}
+
+// Derive avc1 codec string from avcC description bytes. `minLevelByte` raises
+// the level if the description's level is below it — caller passes the level
+// required by the *largest* simulcast tier so all extras inherit a string that
+// admits their resolution.
+export function deriveAvcCodecFromDescription(desc: ArrayBuffer, minLevelByte = 0): string {
     const bytes = new Uint8Array(desc);
     const profile = bytes[1].toString(16).padStart(2, '0');
     const compat = bytes[2].toString(16).padStart(2, '0');
-    const level = bytes[3].toString(16).padStart(2, '0');
-    return `avc1.${profile}${compat}${level}`;
+    const descLevel = bytes[3];
+    const finalLevel = Math.max(descLevel, minLevelByte).toString(16).padStart(2, '0');
+    return `avc1.${profile}${compat}${finalLevel}`;
 }
 
 /**
