@@ -299,6 +299,21 @@ export class RecordingService extends EventTarget {
                 this.dispatchEvent(new CustomEvent('encoder-failure', { detail: category }));
             };
 
+            // Track-end detection (Bug Y). Camera was unexpectedly revoked —
+            // dispatch a user-visible error and stop the pipeline so callers
+            // can decide whether to retry. Without this, the worker logged
+            // `Stream input ended` and the pipeline died silently.
+            this.pipeline.onTrackEnded = () => {
+                warnLog?.log('Camera track ended unexpectedly — stopping recording');
+                this.setState({ status: 'error: Camera was disconnected (another app may have taken it)' });
+                this.dispatchEvent(new CustomEvent('error', {
+                    detail: new Error('Camera was disconnected (another app may have taken it)'),
+                }));
+                // Best-effort stop. Caller (video-recorder) listens to the
+                // `error` event and decides on retry policy; we just clean up.
+                void this.stop().catch((e: unknown) => errorLog?.log('Stop after track-end failed:', e));
+            };
+
             await this.pipeline.start(new MediaStream([this.inputTrack]));
 
             // Start duration tracking
