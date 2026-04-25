@@ -17,6 +17,7 @@ interface TargetSlot {
     target: DownscaleTarget;
     canvas: OffscreenCanvas;
     ctx: GPUCanvasContext;
+    key: string;
 }
 
 const SHADER_WGSL = `
@@ -99,31 +100,69 @@ fn fs(in: VsOut) -> @location(0) vec4<f32> {
 }
 `;
 
+const UNIFORM_BYTES = 32;
+
+function slotKey(t: DownscaleTarget): string {
+    return `${t.width}x${t.height}:${t.centerCrop === false ? 0 : 1}`;
+}
+
+// Outputs are GPU-resident (Chrome canvas-backed VideoFrames). Do NOT insert
+// `copyTo` / `getImageData` / `readPixels` between this class and the encoder
+// path — every readback round-trips through CPU and bleeds battery on mobile.
 export class WebGpuDownscaler {
     private readonly device: GPUDevice;
     private readonly sampler: GPUSampler;
     private readonly format: GPUTextureFormat;
+    private readonly slotStride: number;
     private pipeline: GPURenderPipeline | null = null;
     private bindGroupLayout: GPUBindGroupLayout | null = null;
     private uniformBuffer: GPUBuffer | null = null;
+    private uniformBufferCapacity = 0;
+    private uniformStaging: Uint8Array | null = null;
     private slots: TargetSlot[] = [];
     private loggedFirstFrame = false;
+    private loggedIdentitySkip = false;
+    private loggedAllIdentitySkip = false;
 
     constructor(device: GPUDevice) {
         this.device = device;
         this.sampler = device.createSampler({ magFilter: 'linear', minFilter: 'linear' });
         this.format = navigator.gpu.getPreferredCanvasFormat();
+        // Dynamic-offset uniform regions must align to device limit (typically 256).
+        const align = device.limits.minUniformBufferOffsetAlignment;
+        this.slotStride = Math.max(align, UNIFORM_BYTES);
     }
 
     configure(targets: DownscaleTarget[]): void {
         if (targets.length === 0)
             throw new Error('WebGpuDownscaler.configure: at least one target required');
 
-        this.disposeSlots();
         this.ensurePipeline();
+        this.ensureUniformCapacity(targets.length);
 
-        this.slots = targets.map(t => {
-            const canvas = new OffscreenCanvas(t.width, t.height);
+        // Multi-map of survivor slots keyed by dims+crop. Multiple targets with
+        // identical dims each consume one slot from the pool.
+        const survivors = new Map<string, TargetSlot[]>();
+        for (const slot of this.slots) {
+            const arr = survivors.get(slot.key);
+            if (arr) arr.push(slot);
+            else survivors.set(slot.key, [slot]);
+        }
+
+        const newSlots: TargetSlot[] = [];
+        const kept = new Set<TargetSlot>();
+        for (const t of targets) {
+            const target: DownscaleTarget = { centerCrop: true, ...t };
+            const key = slotKey(target);
+            const pool = survivors.get(key);
+            const existing = pool && pool.length > 0 ? pool.shift()! : undefined;
+            if (existing) {
+                existing.target = target;
+                kept.add(existing);
+                newSlots.push(existing);
+                continue;
+            }
+            const canvas = new OffscreenCanvas(target.width, target.height);
             const ctx = canvas.getContext('webgpu');
             if (!ctx)
                 throw new Error('Failed to get webgpu context on OffscreenCanvas');
@@ -132,15 +171,25 @@ export class WebGpuDownscaler {
                 format: this.format,
                 alphaMode: 'opaque',
             });
-            return { target: { centerCrop: true, ...t }, canvas, ctx };
-        });
+            newSlots.push({ target, canvas, ctx, key });
+        }
 
-        infoLog?.log(`WebGpuDownscaler configured with ${targets.length} target(s): ${
-            targets.map(t => `${t.width}x${t.height}`).join(', ')}`);
+        let disposed = 0;
+        for (const slot of this.slots) {
+            if (kept.has(slot)) continue;
+            try { slot.ctx.unconfigure(); } catch { /* ignore */ }
+            disposed++;
+        }
+        this.slots = newSlots;
+
+        infoLog?.log(
+            `WebGpuDownscaler configured: ${targets.length} target(s) (${kept.size} reused, ${disposed} disposed)`
+            + ` — ${targets.map(t => `${t.width}x${t.height}`).join(', ')}`,
+        );
     }
 
     process(source: VideoFrame, fallbackRotationDeg?: number): DownscaleResult[] {
-        if (!this.pipeline || !this.uniformBuffer || this.slots.length === 0)
+        if (!this.pipeline || !this.uniformBuffer || !this.bindGroupLayout || this.slots.length === 0)
             throw new Error('WebGpuDownscaler.process: not configured');
 
         // Prefer display dims over coded dims. Chrome's getUserMedia with
@@ -167,16 +216,13 @@ export class WebGpuDownscaler {
                 + ` coded=${source.codedWidth}x${source.codedHeight}`
                 + ` display=${source.displayWidth}x${source.displayHeight}`
                 + ` targets=${this.slots.map(s => `${s.target.width}x${s.target.height}`).join(',')}`
-                + ` rotationIdx=${rotationIdx}`,
+                + ` rotationIdx=${rotationIdx}`
+                + ` slotStride=${this.slotStride}`,
             );
         }
 
         // Normalize visibleRect so Chrome's importExternalTexture sees a crop
-        // that fits Plane0. With getUserMedia `resizeMode: 'crop-and-scale'`
-        // source.codedWidth/Height may report the camera's pre-scale plane
-        // (e.g. 1920x1080) while plane0 is actually scaled to display dims
-        // (1280x720). Default cropSize = codedW/H → exceeds plane0 → validation
-        // error spam + every frame skipped.
+        // that fits Plane0 (see comment above on coded/display divergence).
         // Capture timestamp/duration before any potential close — VideoFrame
         // attributes return 0/null after close().
         const timestamp = source.timestamp;
@@ -193,47 +239,103 @@ export class WebGpuDownscaler {
                 input = source;
             }
         }
-        const externalTex = this.device.importExternalTexture({ source: input });
-        const results: DownscaleResult[] = [];
 
+        // Identity slot = output dims match source AND rotation is zero. We
+        // skip the render entirely and clone the input frame; saves a render
+        // pass and (when ALL slots are identity) the importExternalTexture
+        // upload too — meaningful on Safari iOS where the import is not
+        // free.
+        const isIdentity = (slot: TargetSlot): boolean =>
+            rotationIdx === 0
+            && slot.target.width === srcW
+            && slot.target.height === srcH;
+
+        let renderingCount = 0;
         for (const slot of this.slots) {
-            const uniformData = new ArrayBuffer(32);
-            const f32 = new Float32Array(uniformData, 0, 4);
-            const u32 = new Uint32Array(uniformData, 16, 4);
-            f32[0] = srcW; f32[1] = srcH;
-            f32[2] = slot.target.width; f32[3] = slot.target.height;
-            u32[0] = rotationIdx;
-            u32[1] = slot.target.centerCrop === false ? 0 : 1;
-            this.device.queue.writeBuffer(this.uniformBuffer, 0, uniformData);
+            if (!isIdentity(slot)) renderingCount++;
+        }
 
+        if (renderingCount > 0) {
+            const externalTex = this.device.importExternalTexture({ source: input });
+
+            // Pack uniforms for all rendering slots into one staging buffer;
+            // single writeBuffer call replaces N small writes.
+            const totalBytes = renderingCount * this.slotStride;
+            if (!this.uniformStaging || this.uniformStaging.byteLength < totalBytes)
+                this.uniformStaging = new Uint8Array(totalBytes);
+            const staging = this.uniformStaging.subarray(0, totalBytes);
+            let writeIdx = 0;
+            for (const slot of this.slots) {
+                if (isIdentity(slot)) continue;
+                const off = writeIdx * this.slotStride;
+                const f32 = new Float32Array(staging.buffer, staging.byteOffset + off, 4);
+                const u32 = new Uint32Array(staging.buffer, staging.byteOffset + off + 16, 4);
+                f32[0] = srcW; f32[1] = srcH;
+                f32[2] = slot.target.width; f32[3] = slot.target.height;
+                u32[0] = rotationIdx;
+                u32[1] = slot.target.centerCrop === false ? 0 : 1;
+                writeIdx++;
+            }
+            this.device.queue.writeBuffer(
+                this.uniformBuffer, 0, staging.buffer, staging.byteOffset, totalBytes,
+            );
+
+            // One bind group per frame (externalTex changes each frame; uniform
+            // buffer is shared via dynamic offset).
             const bindGroup = this.device.createBindGroup({
-                layout: this.bindGroupLayout!,
+                layout: this.bindGroupLayout,
                 entries: [
                     { binding: 0, resource: this.sampler },
                     { binding: 1, resource: externalTex },
-                    { binding: 2, resource: { buffer: this.uniformBuffer } },
+                    { binding: 2, resource: { buffer: this.uniformBuffer, offset: 0, size: UNIFORM_BYTES } },
                 ],
             });
 
+            // Single command encoder + single submit batches all render passes.
             const encoder = this.device.createCommandEncoder();
-            const view = slot.ctx.getCurrentTexture().createView();
-            const pass = encoder.beginRenderPass({
-                colorAttachments: [{
-                    view,
-                    loadOp: 'clear',
-                    storeOp: 'store',
-                    clearValue: { r: 0, g: 0, b: 0, a: 1 },
-                }],
-            });
-            pass.setPipeline(this.pipeline);
-            pass.setBindGroup(0, bindGroup);
-            pass.draw(3);
-            pass.end();
+            let drawIdx = 0;
+            for (const slot of this.slots) {
+                if (isIdentity(slot)) continue;
+                const view = slot.ctx.getCurrentTexture().createView();
+                const pass = encoder.beginRenderPass({
+                    colorAttachments: [{
+                        view,
+                        loadOp: 'clear',
+                        storeOp: 'store',
+                        clearValue: { r: 0, g: 0, b: 0, a: 1 },
+                    }],
+                });
+                pass.setPipeline(this.pipeline);
+                pass.setBindGroup(0, bindGroup, [drawIdx * this.slotStride]);
+                pass.draw(3);
+                pass.end();
+                drawIdx++;
+            }
             this.device.queue.submit([encoder.finish()]);
+        }
+        else if (!this.loggedAllIdentitySkip) {
+            this.loggedAllIdentitySkip = true;
+            infoLog?.log('Downscaler: all slots identity — importExternalTexture skipped');
+        }
 
-            // new VideoFrame(OffscreenCanvas) implicitly syncs with prior submits.
-            const outFrame = new VideoFrame(slot.canvas, { timestamp, duration });
-            results.push({ frame: outFrame, target: slot.target });
+        // Build results in slot order. Identity slots clone the input frame
+        // (refcount bump, no copy); rendered slots wrap the canvas.
+        const results: DownscaleResult[] = [];
+        let identityHits = 0;
+        for (const slot of this.slots) {
+            if (isIdentity(slot)) {
+                results.push({ frame: input.clone(), target: slot.target });
+                identityHits++;
+            } else {
+                // new VideoFrame(OffscreenCanvas) implicitly syncs with prior submits.
+                const outFrame = new VideoFrame(slot.canvas, { timestamp, duration });
+                results.push({ frame: outFrame, target: slot.target });
+            }
+        }
+
+        if (identityHits > 0 && !this.loggedIdentitySkip) {
+            this.loggedIdentitySkip = true;
+            infoLog?.log(`Downscaler: ${identityHits}/${this.slots.length} slot(s) identity short-circuit`);
         }
 
         input.close();
@@ -244,6 +346,8 @@ export class WebGpuDownscaler {
         this.disposeSlots();
         this.uniformBuffer?.destroy();
         this.uniformBuffer = null;
+        this.uniformBufferCapacity = 0;
+        this.uniformStaging = null;
         this.pipeline = null;
         this.bindGroupLayout = null;
     }
@@ -256,7 +360,11 @@ export class WebGpuDownscaler {
             entries: [
                 { binding: 0, visibility: GPUShaderStage.FRAGMENT, sampler: {} },
                 { binding: 1, visibility: GPUShaderStage.FRAGMENT, externalTexture: {} },
-                { binding: 2, visibility: GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } },
+                {
+                    binding: 2,
+                    visibility: GPUShaderStage.FRAGMENT,
+                    buffer: { type: 'uniform', hasDynamicOffset: true, minBindingSize: UNIFORM_BYTES },
+                },
             ],
         });
         const pipelineLayout = this.device.createPipelineLayout({
@@ -272,10 +380,17 @@ export class WebGpuDownscaler {
             },
             primitive: { topology: 'triangle-list' },
         });
+    }
+
+    private ensureUniformCapacity(slotCount: number): void {
+        const neededBytes = Math.max(slotCount, 1) * this.slotStride;
+        if (this.uniformBuffer && this.uniformBufferCapacity >= neededBytes) return;
+        this.uniformBuffer?.destroy();
         this.uniformBuffer = this.device.createBuffer({
-            size: 32,
+            size: neededBytes,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
+        this.uniformBufferCapacity = neededBytes;
     }
 
     private disposeSlots(): void {
@@ -285,4 +400,3 @@ export class WebGpuDownscaler {
         this.slots = [];
     }
 }
-

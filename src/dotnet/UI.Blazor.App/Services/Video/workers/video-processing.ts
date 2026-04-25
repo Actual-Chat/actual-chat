@@ -77,6 +77,7 @@ let senderRotationDeg = 0;
 let startTimestamp: number | undefined = undefined;
 let lastLoggedFormat: string | null = '(unset)';
 let loggedI420Error = false;
+let loggedPreConvertSkipped = false;
 
 // Backpressure
 let backpressureDrops = 0;
@@ -504,7 +505,18 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
 
         // Optional YUV pre-conversion — disabled by default since HW encoders accept RGBA natively.
         // Enable via EncoderConfig.preConvertYuv for devices where pre-conversion helps encoding perf.
-        if (encoderConfig.preConvertYuv) {
+        // When the WebGPU downscaler is active its output is a GPU-resident
+        // canvas-backed VideoFrame; running copyTo→new VideoFrame here forces a
+        // GPU→CPU readback + re-upload, which is exactly the round-trip we
+        // designed the downscaler path to avoid. Skip and let the HW encoder
+        // consume RGBA directly.
+        if (encoderConfig.preConvertYuv && downscaler) {
+            if (!loggedPreConvertSkipped) {
+                loggedPreConvertSkipped = true;
+                warnLog?.log('preConvertYuv ignored: WebGPU downscaler active (output already GPU-resident, HW encoder consumes RGBA)');
+            }
+        }
+        else if (encoderConfig.preConvertYuv) {
             const format = processedFrame.format as string | null;
             const isAlreadyYuv = format === 'NV12' || format === 'I420'
                 || format === 'I420A' || format === 'I422' || format === 'I444' || format === 'NV12A';
@@ -1409,7 +1421,7 @@ export const serverImpl: VideoProcessingWorker = {
         // Reset all state
         encoder = null; encoderConfig = null; onnxSession = null; segConfig = null; resolvedModelConfig = null;
         segInitialized = false; blurEnabled = false; resizeCanvas = null; resizeCtx = null;
-        startTimestamp = undefined; lastLoggedFormat = '(unset)'; loggedI420Error = false;
+        startTimestamp = undefined; lastLoggedFormat = '(unset)'; loggedI420Error = false; loggedPreConvertSkipped = false;
         backpressureDrops = 0; backpressureTotalFrames = 0; lastBackpressureCheckTime = 0; backpressureNotified = false;
         dimensionsReconciled = false; needsRotation = false; orientationStats = null; sourceWidth = 0; sourceHeight = 0; vadSpeaking = true; vadRemoteStreamCount = 0; vadLastPassedFrameTime = 0;
         segFrameCounter = 0; hasValidMask = false; loggedBlurFormat = false; processingFrame = false; frameSequence = 0;
