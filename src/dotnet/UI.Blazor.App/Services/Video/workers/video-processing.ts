@@ -430,6 +430,14 @@ function processOneFrame(frame: VideoFrame): void {
 async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
     if (!encoder || !processing || !encoderConfig) { frame.close(); return; }
 
+    // Track the live VideoFrame reference at each pipeline stage so the catch
+    // path can close whatever's still owned. Without this, an exception between
+    // sourceFrame creation and encoder.encode() leaked the intermediate frame
+    // (Bug J — `VideoFrame was garbage collected without being closed` warnings
+    // in browser console). The encoder wrapper closes its argument in finally,
+    // so once we hand off to encode() this variable is set to null.
+    let liveFrame: VideoFrame | null = frame;
+    let sourceFrame: VideoFrame | null = null;
     try {
         if (startTimestamp === undefined) {
             startTimestamp = frame.timestamp;
@@ -443,24 +451,29 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
         // sub-µs fractions on MSTP-wrapped getUserMedia, which would otherwise
         // propagate to `Offset` and force msgpack float64 (server rejects).
         const normalizedSourceTs = Math.round(frame.timestamp - startTimestamp);
-        let sourceFrame: VideoFrame = frame;
+        sourceFrame = frame;
         if (normalizedSourceTs !== frame.timestamp) {
             sourceFrame = new VideoFrame(frame, {
                 timestamp: normalizedSourceTs,
                 duration: frame.duration ?? undefined,
             });
             frame.close();
+            liveFrame = sourceFrame;
         }
 
         let processedFrame: VideoFrame;
         if (downscaler) {
             // WebGPU path: keeps frame on GPU. Uses VideoFrame.rotation when set,
             // else senderRotationDeg (main-thread supplies from screen.orientation).
+            // downscaler.process closes its input internally; sourceFrame is gone.
             const results = downscaler.process(sourceFrame, senderRotationDeg);
+            sourceFrame = null;
             processedFrame = results[0].frame;
+            liveFrame = processedFrame;
             // Simulcast extras — feed each additional downscale result to its layer
             // encoder. Encoders stamp SpatialLayerId on every emitted chunk via their
-            // ctor-bound id, so the fan-out path tags frames automatically.
+            // ctor-bound id, so the fan-out path tags frames automatically. The
+            // extra encoders close their input in finally regardless of success.
             if (extraLayerEncoders.length > 0) {
                 for (let i = 0; i < extraLayerEncoders.length; i++) {
                     const extra = results[i + 1];
@@ -472,9 +485,19 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
                     }
                 }
             }
+            // Defensive cleanup: if `extras.length` is shorter than results - 1
+            // (transient mismatch during a reconfig), close any orphan downscale
+            // results so they don't get GC'd uncloseed.
+            for (let i = extraLayerEncoders.length + 1; i < results.length; i++) {
+                try { results[i].frame.close(); } catch { /* already closed */ }
+            }
         } else {
             const resized = resizeFrame(sourceFrame, encoderConfig.width, encoderConfig.height, resizeCanvas, resizeCtx, needsRotation);
+            // resizeFrame closes its input when it produces a new frame; the
+            // returned `frame` is the live one.
+            sourceFrame = null;
             processedFrame = resized.frame;
+            liveFrame = processedFrame;
             resizeCanvas = resized.canvas;
             resizeCtx = resized.ctx;
         }
@@ -500,6 +523,7 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
                         });
                         processedFrame.close();
                         processedFrame = yuvFrame;
+                        liveFrame = processedFrame;
                         converted = true;
                         break;
                     } catch { continue; }
@@ -508,7 +532,9 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
                 if (!converted) {
                     try {
                         const result = cpuRgbaToI420(processedFrame, resizeCanvas, resizeCtx);
+                        // cpuRgbaToI420 closes its input and returns a fresh I420 frame.
                         processedFrame = result.frame;
+                        liveFrame = processedFrame;
                         resizeCanvas = result.canvas;
                         resizeCtx = result.ctx;
                     } catch (e) {
@@ -539,6 +565,10 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
             lastEncodedTimestampUs = processedFrame.timestamp;
             lastEncodedFrameAt = performance.now();
         }
+        // Encoder.encode() closes processedFrame in its finally regardless of
+        // success/throw — drop our live-tracking now so the catch below doesn't
+        // try to close an already-closed frame.
+        liveFrame = null;
         encoder.encode(processedFrame, forceKf);
         framesWithoutOutput++;
 
@@ -551,7 +581,11 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
         }
     } catch (error) {
         errorLog?.log('Error encoding frame:', error);
-        try { frame.close(); } catch { /* already closed */ }
+        // Whichever stage we got to, close the still-owned frame to avoid
+        // GC-without-close warnings (Bug J).
+        if (liveFrame) {
+            try { liveFrame.close(); } catch { /* already closed */ }
+        }
     }
 }
 
