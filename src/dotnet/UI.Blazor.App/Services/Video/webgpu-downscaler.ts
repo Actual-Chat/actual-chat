@@ -204,9 +204,11 @@ export class WebGpuDownscaler {
         // Prefer spec-populated rotation. Fall back to a main-thread supplied value
         // derived from `screen.orientation.angle` — needed on Safari iOS where MSTP
         // does not populate VideoFrame.rotation.
+        // Round (not truncate) to absorb sensor-fusion float noise:
+        // 89.999° must map to idx 1, not 0; 359.999° must wrap to 0.
         const rawRot = source.rotation ?? fallbackRotationDeg ?? 0;
-        const rotationDeg = rawRot % 360;
-        const rotationIdx = ((rotationDeg + 360) % 360) / 90 >>> 0;
+        const rotationDeg = ((rawRot % 360) + 360) % 360;
+        const rotationIdx = Math.round(rotationDeg / 90) % 4;
 
         if (!this.loggedFirstFrame) {
             this.loggedFirstFrame = true;
