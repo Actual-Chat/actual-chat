@@ -64,11 +64,18 @@ fn fs(in: VsOut) -> @location(0) vec4<f32> {
     let dstW = u.srcDstDims.z;
     let dstH = u.srcDstDims.w;
 
-    // UV in displayable source space; apply center-crop.
+    let srcAspect = dispW / dispH;
+    let dstAspect = dstW / dstH;
+    // Treat 1:1 as landscape for orientation match purposes (arbitrary, stable).
+    let orientMatch = (srcAspect >= 1.0) == (dstAspect >= 1.0);
+
+    // UV starts in dst-display space [0,1]^2.
+    // - doCrop + orientMatch  → fill (zoom in to drop bars on minor-axis aspect mismatch).
+    // - doCrop + !orientMatch → fit  (portrait↔landscape never zooms; letterbox instead).
+    // - !doCrop               → stretch (uv unchanged).
     var uv = in.uv;
-    if (doCrop) {
-        let srcAspect = dispW / dispH;
-        let dstAspect = dstW / dstH;
+    var letterbox = false;
+    if (doCrop && orientMatch) {
         if (srcAspect > dstAspect) {
             // Source wider than target — crop horizontally.
             let scale = dstAspect / srcAspect;
@@ -77,6 +84,23 @@ fn fs(in: VsOut) -> @location(0) vec4<f32> {
             let scale = srcAspect / dstAspect;
             uv.y = 0.5 + (uv.y - 0.5) * scale;
         }
+    } else if (doCrop) {
+        // Orientation mismatch — fit (contain). Expand uv past [0,1] on the
+        // axis where the source is smaller than dst; out-of-range uv samples
+        // become black bars below.
+        if (srcAspect > dstAspect) {
+            let scale = srcAspect / dstAspect;
+            uv.y = 0.5 + (uv.y - 0.5) * scale;
+        } else if (srcAspect < dstAspect) {
+            let scale = dstAspect / srcAspect;
+            uv.x = 0.5 + (uv.x - 0.5) * scale;
+        }
+        letterbox = true;
+    }
+
+    // Bar pixels — output black before sampling (avoid clamp-to-edge smear).
+    if (letterbox && (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0)) {
+        return vec4<f32>(0.0, 0.0, 0.0, 1.0);
     }
 
     // Rotate UV back into source texture space (inverse of display rotation).
