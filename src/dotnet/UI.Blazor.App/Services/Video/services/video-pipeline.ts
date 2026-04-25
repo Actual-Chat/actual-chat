@@ -80,7 +80,7 @@ export interface IVideoPipeline {
     start(inputStream: MediaStream): Promise<void>;
     stop(): Promise<void>;
     reconfigure(params: { bitrate: number; width: number; height: number }): Promise<void>;
-    switchCodec(newCodecString: string): Promise<void>;
+    switchCodec(newCodecString: string, spatialLayers?: SpatialLayerConfig[]): Promise<void>;
     toggleBlur(enabled: boolean, segmentationConfig?: SegmentationConfig): Promise<void>;
     switchSegmentationBackend(backend: 'webgpu' | 'wasm'): Promise<void>;
     setPreviewCallback(callback: ((frame: VideoFrame) => void) | null): void;
@@ -500,7 +500,7 @@ export class VideoPipeline implements IVideoPipeline {
         await this.worker.reconfigure(params);
     }
 
-    async switchCodec(newCodecString: string): Promise<void> {
+    async switchCodec(newCodecString: string, spatialLayers?: SpatialLayerConfig[]): Promise<void> {
         if (newCodecString === this.config.encoderConfig.codec) {
             infoLog?.log(`switchCodec: already using ${newCodecString}, skipping`);
             return;
@@ -510,9 +510,15 @@ export class VideoPipeline implements IVideoPipeline {
 
         const newEncoderConfig: EncoderConfig = { ...this.config.encoderConfig, codec: newCodecString };
         this.config.encoderConfig = newEncoderConfig;
+        // Persist the ladder override if the caller supplied one, so subsequent
+        // restarts/re-probes pick up the same simulcast shape.
+        if (spatialLayers !== undefined)
+            this.config.spatialLayers = spatialLayers.length > 0 ? spatialLayers : undefined;
 
-        // Worker handles VideoStream completion + encoder switch internally
-        await this.worker.switchCodec(newEncoderConfig);
+        // Worker handles VideoStream completion + encoder switch internally, and
+        // rebuilds simulcast extras from `spatialLayers` so the ladder survives
+        // the switch. Omitting `spatialLayers` collapses to single-encoder (P2P).
+        await this.worker.switchCodec(newEncoderConfig, this.config.spatialLayers);
 
         infoLog?.log(`Codec switched to ${newCodecString}`);
     }
@@ -731,6 +737,25 @@ export class VideoPipeline implements IVideoPipeline {
         const trigger = 0.30;
         const cooldownMs = 10_000;
         const cfg = this.config.encoderConfig;
+
+        // Skip step-down when the tab is backgrounded. A capturing tab is exempt
+        // from Page Lifecycle freezing, but Windows EcoQoS / macOS QoS still
+        // demote the renderer's CPU tier — encoder throughput drops even though
+        // the hardware is capable. The worker already drops frames via
+        // encodeQueueSize, which is the correct response. A resolution downshift
+        // or codec switch here would stick permanently after the user returns
+        // focus (particularly problematic during screencast, where the sharer's
+        // tab is hidden the whole time). Reset the EMA so foreground samples
+        // start clean.
+        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+            if (this.backpressureEma.sampleCount > 0) {
+                debugLog?.log(
+                    `Backpressure during hidden tab (dropRate=${(dropRate * 100).toFixed(0)}%): ` +
+                    `deferring step-down, resetting EMA`);
+                this.backpressureEma.reset();
+            }
+            return;
+        }
 
         this.backpressureEma.appendSample(dropRate);
         const ema = this.backpressureEma.value;

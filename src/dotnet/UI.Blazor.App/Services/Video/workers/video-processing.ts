@@ -10,7 +10,7 @@ import Denque from 'denque';
 import * as ort from 'onnxruntime-web';
 
 import { type EncoderConfig, type EncodedChunkData, WebCodecsEncoder } from '../webcodecs-encoder';
-import type { SegmentationConfig, SegmentationStats, ModelConfig, VideoProcessingConfig, VideoProcessingWorker, VideoProcessingWorkerCallbacks, VideoProcessingStats, OrientationStats } from './video-processing-worker-contract';
+import type { SegmentationConfig, SegmentationStats, ModelConfig, SpatialLayerConfig, VideoProcessingConfig, VideoProcessingWorker, VideoProcessingWorkerCallbacks, VideoProcessingStats, OrientationStats } from './video-processing-worker-contract';
 import { getModelConfig } from './video-processing-worker-contract';
 import {
     initTensorWebGPU,
@@ -464,7 +464,6 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
             if (extraLayerEncoders.length > 0) {
                 for (let i = 0; i < extraLayerEncoders.length; i++) {
                     const extra = results[i + 1];
-                    if (!extra) continue; // downscaler produced fewer targets than layers
                     try {
                         extraLayerEncoders[i].encode(extra.frame, nextFrameIsKeyFrame);
                     } catch (e) {
@@ -1132,7 +1131,7 @@ export const serverImpl: VideoProcessingWorker = {
         if (lastEncodedFrame) { lastEncodedFrame.close(); lastEncodedFrame = null; }
     },
 
-    switchCodec: async (config: EncoderConfig): Promise<void> => {
+    switchCodec: async (config: EncoderConfig, spatialLayers?: SpatialLayerConfig[]): Promise<void> => {
         if (!encoder) { warnLog?.log('Cannot switch codec: not active'); return; }
         infoLog?.log(`Switching codec to ${config.codec}`);
 
@@ -1149,13 +1148,11 @@ export const serverImpl: VideoProcessingWorker = {
         codecSettings = null; startTimestamp = undefined; pendingStreamFrames = []; storedDescriptionBytesByLayer.clear();
         if (lastEncodedFrame) { lastEncodedFrame.close(); lastEncodedFrame = null; }
         await encoder.switchCodec(config);
-        // Tear down simulcast extras — caller must re-initialize the worker with
-        // a new VideoProcessingConfig to reactivate simulcast post codec-switch.
-        // Extras don't auto-inherit the new codec; keeping them on the old codec
-        // would emit chunks a downstream decoder can't parse.
+        // Drop old-codec simulcast extras; we rebuild them below with the new codec
+        // so the ladder survives the switch. Without this rebuild every codec
+        // switch permanently collapses the stream to base layer (regression
+        // observed on AV1→H.264 audience changes: receivers stuck at 640×360).
         if (extraLayerEncoders.length > 0) {
-            // Snapshot + clear before awaiting flush so a concurrent stop()
-            // iterating the same list doesn't see the pool shrinking under it.
             const extras = extraLayerEncoders.slice();
             extraLayerEncoders = [];
             infoLog?.log(`switchCodec: tearing down ${extras.length} simulcast extras`);
@@ -1165,15 +1162,35 @@ export const serverImpl: VideoProcessingWorker = {
             }
         }
 
+        encoderConfig = config; resizeCanvas = null; resizeCtx = null;
+        // Rebuild simulcast extras on the new codec and restore downscaler targets
+        // to match. If caller omits spatialLayers (P2P mode) we fall through to
+        // a single base target and stay single-layer.
+        const layers = spatialLayers ?? [];
+        for (let i = 0; i < layers.length; i++) {
+            const layer = layers[i];
+            const layerCfg: EncoderConfig = {
+                ...config,
+                width: layer.width,
+                height: layer.height,
+                bitrate: layer.bitrate,
+                scalabilityMode: layer.scalabilityMode ?? config.scalabilityMode,
+            };
+            const spatialId = i + 1;
+            const extra = new WebCodecsEncoder(layerCfg, onEncoderOutput, onEncoderError, spatialId);
+            extra.initialize();
+            extraLayerEncoders.push(extra);
+            infoLog?.log(`Simulcast layer ${spatialId} (post-switch): ${layer.width}x${layer.height} @ ${(layer.bitrate / 1_000_000).toFixed(1)}Mbps`);
+        }
+        if (downscaler) downscaler.configure(currentDownscaleTargets());
+
         // Re-enable streaming and clear any frames that leaked during flush
         streamingEnabled = wasStreaming;
         pendingStreamFrames = [];
-        encoderConfig = config; resizeCanvas = null; resizeCtx = null;
-        if (downscaler) downscaler.configure([{ width: config.width, height: config.height }]);
         startTimestamp = undefined;
         backpressureDrops = 0; backpressureTotalFrames = 0; lastBackpressureCheckTime = 0; backpressureNotified = false;
         encoderFailed = false; encoderErrorSeen = false; framesWithoutOutput = 0;
-        infoLog?.log('Codec switched successfully');
+        infoLog?.log(`Codec switched successfully (${extraLayerEncoders.length} simulcast extras rearmed)`);
     },
 
     toggleBlur: async (enabled, segCfg?): Promise<void> => {
