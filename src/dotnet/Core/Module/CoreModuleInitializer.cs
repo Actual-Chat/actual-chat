@@ -1,5 +1,7 @@
 using ActualChat.Aot;
+using ActualChat.Serialization.Internal;
 using ActualLab.Rpc;
+using ActualLab.Rpc.Serialization;
 
 namespace ActualChat.Module;
 
@@ -27,8 +29,30 @@ public static partial class CoreModuleInitializer
             return;
 
         lock (Lock) {
+            // Default MessagePack serializer
+            var defaultOptions = new MessagePackSerializerOptions(AppMessagePackResolver.Instance);
+            var defaultMessagePack = new MessagePackByteSerializer(defaultOptions);
+            MessagePackByteSerializer.DefaultOptions = defaultOptions;
+            Serializers.MessagePack = MessagePackByteSerializer.Default = defaultMessagePack;
+            Serializers.MessagePackTypeDecorating = MessagePackByteSerializer.DefaultTypeDecorating
+                = new TypeDecoratingByteSerializer(defaultMessagePack);
+            ByteSerializer.Default = defaultMessagePack;
+
+            // Keyless MessagePack serializer
+            var keylessOptions = new MessagePackSerializerOptions(AppMessagePackKeylessResolver.Instance);
+            var keylessMessagePack = new MessagePackByteSerializer(keylessOptions);
+            Serializers.KeylessMessagePack = keylessMessagePack;
+            Serializers.KeylessMessagePackTypeDecorating = new TypeDecoratingByteSerializer(keylessMessagePack);
+
+            // RPC setup
             var isServer = RuntimeInfo.IsServer;
-            if (isServer)
+            if (isServer) {
+                var messagePackV6K = new RpcSerializationFormat("msgpack6k",
+                    () => new RpcByteArgumentSerializerV4(Serializers.KeylessMessagePack),
+                    peer => new RpcByteMessageSerializerV5(peer));
+                var messagePackV6CK = new RpcSerializationFormat("msgpack6ck",
+                    () => new RpcByteArgumentSerializerV4(Serializers.KeylessMessagePack),
+                    peer => new RpcByteMessageSerializerV5Compact(peer));
                 RpcSerializationFormat.All = ImmutableList.Create(
                     RpcSerializationFormat.SystemJsonV5,
                     RpcSerializationFormat.SystemJsonV5NP,
@@ -37,7 +61,10 @@ public static partial class CoreModuleInitializer
                     RpcSerializationFormat.MemoryPackV6,
                     RpcSerializationFormat.MemoryPackV6C,
                     RpcSerializationFormat.MessagePackV6,
-                    RpcSerializationFormat.MessagePackV6C);
+                    RpcSerializationFormat.MessagePackV6C,
+                    messagePackV6K,
+                    messagePackV6CK);
+            }
             else
                 RpcSerializationFormat.All = ImmutableList.Create(
                     RpcSerializationFormat.MessagePackV6,

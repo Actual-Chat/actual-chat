@@ -16,6 +16,9 @@ public static class Serializers
     public static IByteSerializer MemoryPack => MemoryPackByteSerializer.Default;
     public static IByteSerializer MemoryPackTypeDecorating => MemoryPackByteSerializer.DefaultTypeDecorating;
 
-    public static IByteSerializer MessagePack => MessagePackByteSerializer.Default;
-    public static IByteSerializer MessagePackTypeDecorating => MessagePackByteSerializer.DefaultTypeDecorating;
+    public static IByteSerializer MessagePack { get; internal set; } = null!;
+    public static IByteSerializer MessagePackTypeDecorating { get; internal set; } = null!;
+
+    public static IByteSerializer KeylessMessagePack { get; internal set; } = null!;
+    public static IByteSerializer KeylessMessagePackTypeDecorating { get; internal set; } = null!;
 }

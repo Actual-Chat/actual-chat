@@ -27,9 +27,6 @@
     <PackageReference Include="ActualLab.Fusion" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Reflection\" />
-  </ItemGroup>
-  <ItemGroup>
     <Using Remove="ActualChat.Users" />
   </ItemGroup>
 
