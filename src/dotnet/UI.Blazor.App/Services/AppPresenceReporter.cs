@@ -19,18 +19,33 @@ public class AppPresenceReporter : UIWorkerBase<AppUIHub>, IComputeService
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
+        var awayTimeout = Constants.Presence.AwayTimeout;
+        var activeCheckInPeriod = awayTimeout * 0.75;
+        var inactiveCheckInPeriod = awayTimeout * 3;
+
         var cIsActive = await Computed
             .Capture(() => IsActive(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         var prevIsActive = false;
-        await foreach (var change in cIsActive.Changes(cancellationToken).ConfigureAwait(false)) {
-            var isActive = change.Value;
-            // throttle since IsActive depends on LastCheckInAt
-            if (isActive == prevIsActive && CpuNow - _lastCheckInAt.Value < Constants.Presence.CheckInPeriod * 0.7)
+        while (!cancellationToken.IsCancellationRequested) {
+            var isActive = cIsActive.Value;
+            var isStateChange = isActive != prevIsActive;
+            var checkInPeriod = isActive ? activeCheckInPeriod : inactiveCheckInPeriod;
+            var dueIn = _lastCheckInAt.Value + checkInPeriod - CpuNow;
+            if (isStateChange || dueIn <= TimeSpan.Zero) {
+                await CheckIn(isActive, cancellationToken).ConfigureAwait(false);
+                prevIsActive = isActive;
                 continue;
+            }
 
-            await CheckIn(isActive, cancellationToken).ConfigureAwait(false);
-            prevIsActive = isActive;
+            using var delayCts = cancellationToken.CreateLinkedTokenSource();
+            var whenInvalidated = cIsActive.WhenInvalidated(cancellationToken);
+            var whenDue = Task.Delay(dueIn, delayCts.Token);
+            await Task.WhenAny(whenInvalidated, whenDue).ConfigureAwait(false);
+            delayCts.CancelAndDisposeSilently();
+
+            if (cIsActive.IsInvalidated())
+                cIsActive = await cIsActive.Update(cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -39,15 +54,11 @@ public class AppPresenceReporter : UIWorkerBase<AppUIHub>, IComputeService
     {
         var now = CpuNow;
         var activeUntil = await GetActiveUntil(cancellationToken).ConfigureAwait(false);
+        if (activeUntil <= now)
+            return false;
 
-        return activeUntil > now
-            ? WithAutoInvalidation(activeUntil, true)
-            : WithAutoInvalidation(_lastCheckInAt.Value + Constants.Presence.CheckInPeriod, false);
-
-        bool WithAutoInvalidation(Moment invalidateAt, bool result) {
-            Computed.GetCurrent().Invalidate(invalidateAt - now);
-            return result;
-        }
+        Computed.GetCurrent().Invalidate(activeUntil - TimeSpan.FromSeconds(0.25) - now);
+        return true;
     }
 
     [ComputeMethod]

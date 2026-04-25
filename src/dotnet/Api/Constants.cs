@@ -191,7 +191,6 @@ public static partial class Constants
     {
         public static readonly TimeSpan ActivityPeriod = TimeSpan.FromSeconds(30);
         public static readonly TimeSpan CheckPeriod = TimeSpan.FromSeconds(10);
-        public static readonly TimeSpan CheckInPeriod = TimeSpan.FromSeconds(49);
         public static readonly TimeSpan CheckInClientConnectTimeout = TimeSpan.FromSeconds(10);
         public static readonly TimeSpan CheckInRetryDelay = TimeSpan.FromSeconds(15);
         public static readonly TimeSpan AwayTimeout = TimeSpan.FromSeconds(60);
