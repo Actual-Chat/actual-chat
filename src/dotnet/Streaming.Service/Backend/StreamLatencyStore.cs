@@ -80,6 +80,16 @@ public sealed class StreamLatencyStore(IServiceProvider services)
         // Null render-quality becomes the -1 sentinel the inner helper expects.
         var renderQualityLevel = report.RenderQuality is { } level ? (int)level : -1;
         if (LatencyStates.TryGetValue(streamId, out var latencyState)) {
+            // Hint-only mode: clients that haven't rendered a frame yet (canvas
+            // resize fires before the first decoded frame) send StreamOffsetMs<0
+            // to update render-cap + visibility without polluting the latency
+            // sample window. Same code path as the negative-latency clock-skew
+            // branch below, but skips the latency-arithmetic + log line.
+            if (report.StreamOffsetMs < 0) {
+                latencyState.RecordPeerLatency(peerId, latencyMs: -1f,
+                    medianDecodeTimeMs: -1f, bufferDepth: -1, bufferSpanMs: -1f, renderQualityLevel, report.IsVisible);
+                return;
+            }
             var latency = Clocks.ServerClock.Now - (latencyState.StartedAt + TimeSpan.FromMilliseconds(report.StreamOffsetMs));
             if (latency > TimeSpan.Zero) {
                 AppMeters.VideoLatency.Record(latency.TotalMilliseconds);
