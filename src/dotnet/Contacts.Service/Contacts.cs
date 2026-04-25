@@ -59,6 +59,15 @@ public class Contacts(IServiceProvider services) : IContacts
     }
 
     // [ComputeMethod]
+    public virtual async Task<ContactId[]> ListBannedIds(
+        Session session,
+        CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        return await Backend.ListBannedIds(account.Id, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
     public virtual async Task<ContactId[]> ListIds(
         Session session,
         PlaceId? placeId,
@@ -121,6 +130,25 @@ public class Contacts(IServiceProvider services) : IContacts
 
         var touchCommand = new ContactsBackend_Touch(id);
         await Commander.Call(touchCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnSetIsBanned(Contacts_SetIsBanned command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
+        var (session, id, isBanned) = command;
+        id.Require();
+        if (id.ChatId is not PeerChatId)
+            throw StandardError.Constraint("Only peer contacts can be banned.");
+
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (id.OwnerId != account.Id)
+            throw Unauthorized();
+
+        var setIsBannedCommand = new ContactsBackend_SetIsBanned(id, isBanned);
+        await Commander.Call(setIsBannedCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     // Protected methods

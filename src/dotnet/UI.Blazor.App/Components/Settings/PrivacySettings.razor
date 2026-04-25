@@ -1,0 +1,73 @@
+@using ActualChat.Contacts
+@inherits ComputedStateComponent<AppUIHub, PrivacySettings.Model>
+@{
+    var m = State.Value;
+}
+
+<TileTopic Topic="Blocked users"/>
+
+<Tile>
+    @if (m.Items.Count == 0) {
+        <TileItem IsHoverable="false">
+            <Content>You haven't blocked anyone.</Content>
+        </TileItem>
+    }
+    else {
+        @foreach (var item in m.Items) {
+            <TileItem IsHoverable="false">
+                <Icon>
+                    @if (item.Avatar is not null) {
+                        <AvatarCircle Avatar="@item.Avatar" Size="@SquareSize.Size9" IsBlurred="@false"/>
+                    }
+                </Icon>
+                <Content>
+                    <span>@item.Name</span>
+                </Content>
+                <Right>
+                    <Button Class="btn-sm btn-outline" Click="@(() => OnUnblock(item.ContactId))">
+                        Unblock
+                    </Button>
+                </Right>
+            </TileItem>
+            @if (item != m.Items[^1]) {
+                <Divider/>
+            }
+        }
+    }
+</Tile>
+
+@code {
+    private IContacts Contacts => Hub.Contacts;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.None,
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var ids = await Contacts.ListBannedIds(Session, cancellationToken).ConfigureAwait(false);
+        var items = new List<Item>(ids.Length);
+        foreach (var id in ids) {
+            var contact = await Contacts.Get(Session, id, cancellationToken).ConfigureAwait(false);
+            if (contact?.Account is null)
+                continue;
+
+            var avatar = contact.Account.Avatar;
+            var name = contact.PeerRename ?? avatar.Name;
+            items.Add(new Item(id, name, avatar));
+        }
+        return new Model(items);
+    }
+
+    private Task OnUnblock(ContactId contactId)
+        => UICommander.Run(new Contacts_SetIsBanned(Session, contactId, false));
+
+    // Nested types
+
+    public sealed record Model(IReadOnlyList<Item> Items) {
+        public static readonly Model None = new(Array.Empty<Item>());
+    }
+
+    public sealed record Item(ContactId ContactId, string Name, Avatar Avatar);
+}

@@ -24,6 +24,9 @@ public sealed partial record Contact(
     [DataMember, MemoryPackOrder(8), Key(8)] public Symbol SystemTag { get; init; }
     [DataMember, MemoryPackOrder(9), Key(9)] public string ExternalContactName { get; init; } = "";
     [DataMember, MemoryPackOrder(10), Key(10)] public ContactState State { get; init; }
+    [DataMember, MemoryPackOrder(11), Key(11)] public bool IsBanned { get; init; }
+    // Populated on backend on reads for peer contacts
+    [DataMember, MemoryPackOrder(12), Key(12)] public bool IsBannedByPeer { get; init; }
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]

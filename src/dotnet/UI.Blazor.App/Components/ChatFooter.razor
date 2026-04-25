@@ -1,4 +1,5 @@
-﻿@using ActualChat.UI.Blazor.App.Pages
+﻿@using ActualChat.Contacts
+@using ActualChat.UI.Blazor.App.Pages
 @inherits FusionComponentBase<AppUIHub>
 @{
     var m = Model;
@@ -10,6 +11,15 @@
         <chat-view-footer-skeleton/>
     } else if (chat is null) {
         <ReadOnlyChatFooter Text="" />
+    } else if (m.IsBanned) {
+        <div class="chat-footer readonly">
+            <div class="c-content">
+                <span>You blocked this user.</span>
+                <Button Class="btn-sm btn-primary ml-2" Click="@OnUnblock">Unblock</Button>
+            </div>
+        </div>
+    } else if (m.IsBannedByPeer) {
+        <ReadOnlyChatFooter Text="This user has blocked you."/>
     } else {
         @if (m.CanPost) {
             <ChatMessageEditor @key="@chat.Id.Value"/>
@@ -76,4 +86,11 @@
 
     private void OnJoinPlace(Place place)
         => _ = ChatUI.JoinPlace(place.Id);
+
+    private Task OnUnblock() {
+        if (Model?.PeerContactId is not { } contactId)
+            return Task.CompletedTask;
+
+        return UICommander.Run(new Contacts_SetIsBanned(Session, contactId, false));
+    }
 }

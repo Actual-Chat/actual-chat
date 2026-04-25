@@ -51,6 +51,12 @@
             </SettingsTab>
         }
 
+        @if (showMyAccount) {
+            <SettingsTab @key="7" TabIndex="7" Title="Privacy" Id="@SettingsTabId.Privacy" IconClass="icon-lock">
+                <PrivacySettings/>
+            </SettingsTab>
+        }
+
         <SettingsTab @key="90" TabIndex="90" Title="Documents" Id="@SettingsTabId.Documents" Class="docs-tab" IconClass="icon-file-text" HasSeparatorBefore="true">
             <DocumentsPage/>
         </SettingsTab>

@@ -47,7 +47,8 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                 throw new ArgumentOutOfRangeException(nameof(contactId));
 
             var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
-            contact = contact with { Account = account.ToAccount() };
+            var isBannedByPeer = await IsBanned(userId, ownerId, cancellationToken).ConfigureAwait(false);
+            contact = contact with { Account = account.ToAccount(), IsBannedByPeer = isBannedByPeer };
         }
 
         if (contactId.ChatId != Constants.Chat.AnnouncementsChatId)
@@ -111,6 +112,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var sContactIds = await dbContext.Contacts
             .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
             .Where(a => a.PlaceId == sPlaceId)
+            .Where(a => !a.IsBanned)
             .OrderByDescending(a => a.TouchedAt)
             .Select(a => a.Id)
             .ToListAsync(cancellationToken)
@@ -139,6 +141,38 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         }
 
         return contactIds.ToArray();
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ContactId[]> ListBannedIds(UserId ownerId, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(ownerId);
+
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var idPrefix = ownerId.Value + ' ';
+        var sContactIds = await dbContext.Contacts
+            .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
+            .Where(a => a.IsBanned)
+            .OrderByDescending(a => a.TouchedAt)
+            .Select(a => a.Id)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return sContactIds.Select(ContactId.Parse).ToArray();
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<bool> IsBanned(UserId ownerId, UserId otherUserId, CancellationToken cancellationToken)
+    {
+        if (ownerId == otherUserId)
+            return false;
+        if (ownerId.IsGuestOrNull() || otherUserId.IsGuestOrNull())
+            return false;
+
+        var contactId = ContactId.NewUser(ownerId, otherUserId);
+        var dbContact = await DbContactResolver.Get(contactId.Value, cancellationToken).ConfigureAwait(false);
+        return dbContact?.IsBanned ?? false;
     }
 
     // [ComputeMethod]
@@ -298,6 +332,15 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             if (invIndex != long.MinValue) {
                 _ = Get(ownerId, id, default);
                 _ = ListIds(ownerId, placeId, default);
+                if (chatId is PeerChatId peerChatId) {
+                    var otherUserId = peerChatId.AnotherUserIdOrNull(ownerId);
+                    if (otherUserId is not null) {
+                        _ = IsBanned(ownerId, otherUserId, default);
+                        // Other side's IsBannedByPeer depends on ownerId's IsBanned
+                        _ = Get(otherUserId, ContactId.NewUser(otherUserId, ownerId), default);
+                    }
+                    _ = ListBannedIds(ownerId, default);
+                }
             }
             return default!;
         }
@@ -418,6 +461,38 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         context.Operation.Items.KeylessSet((long)contactIds.IndexOf(id));
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnSetIsBanned(ContactsBackend_SetIsBanned command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
+        var (id, isBanned) = command;
+        id.Require();
+        if (id.ChatId is not PeerChatId)
+            throw StandardError.Constraint("Only peer contacts can be banned.");
+
+        var ownerId = id.OwnerId;
+        var existing = await Get(ownerId, id, cancellationToken).ConfigureAwait(false);
+        if (existing.IsStored()) {
+            if (existing.IsBanned == isBanned)
+                return;
+
+            var change = Change.Update(existing with { IsBanned = isBanned });
+            var cmd = new ContactsBackend_Change(id, existing.Version, change);
+            await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
+        }
+        else {
+            // Contact doesn't exist yet (e.g. you've never opened the chat); create with IsBanned set
+            if (!isBanned)
+                return;
+
+            var change = Change.Create(new Contact(id) { IsBanned = true });
+            var cmd = new ContactsBackend_Change(id, null, change);
+            await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     // [CommandHandler]

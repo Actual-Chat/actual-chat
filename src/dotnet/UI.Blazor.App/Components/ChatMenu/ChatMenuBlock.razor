@@ -1,0 +1,20 @@
+@using ActualChat.Contacts
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits FusionComponentBase<AppUIHub>
+
+<MenuEntry
+    Class="warning-item"
+    Icon="icon-block"
+    Text="@(ChatState.Contact.IsBanned ? "Unblock user" : "Block user")"
+    Click="@OnClick">
+</MenuEntry>
+
+@code {
+    [CascadingParameter] public ChatState ChatState { get; set; } = null!;
+
+    private void OnClick() {
+        var contact = ChatState.Contact;
+        var command = new Contacts_SetIsBanned(Session, contact.Id, !contact.IsBanned);
+        _ = UICommander.Run(command);
+    }
+}
