@@ -126,6 +126,15 @@ export class VideoPipeline implements IVideoPipeline {
     // fallback, producing the cascade we see in logs (Bug G).
     private lastStructuralChangeAt = 0;
     private readonly postSwitchCooldownMs = 3000;
+    // Timestamp at which the pipeline first started (pipeline-start cooldown).
+    // Distinct from `lastStructuralChangeAt`: the first encoder warmup is much
+    // longer than a mid-stream switch (cold KF + codec init + chroma allocation),
+    // so we need a longer grace window. Without this, the first backpressure
+    // sample arrives during cold-start with dropRate=60%+, triggers a step-down
+    // immediately, and locks the call to a lower tier even though the steady
+    // state is healthy.
+    private pipelineStartedAt = 0;
+    private readonly pipelineWarmupMs = 12_000;
     // EMA-smoothed drop rate across successive backpressure notifications.
     // Each notification is a 5 s drop-rate window from the worker (see
     // video-processing.ts:backpressureWindowMs). Step-down only fires when the
@@ -246,6 +255,7 @@ export class VideoPipeline implements IVideoPipeline {
 
         const videoTrack = inputStream.getVideoTracks()[0];
         this.processing = true;
+        this.pipelineStartedAt = performance.now();
 
         // Build worker config
         // Fusion RPC WebSocket URL — worker pushes frames via
@@ -805,6 +815,29 @@ export class VideoPipeline implements IVideoPipeline {
             return;
         }
 
+        // Pipeline-startup cooldown: encoder cold-start (codec init, first KF,
+        // first I-frame allocation) routinely produces 60-80% drop rate on the
+        // very first 5 s window from the worker. Without this gate, a single
+        // cold-start sample steps down the resolution and locks the call there
+        // even though the steady-state encode would be fine. Reset the EMA so
+        // post-warmup samples start clean.
+        const sinceStart = performance.now() - this.pipelineStartedAt;
+        if (this.pipelineStartedAt > 0 && sinceStart < this.pipelineWarmupMs) {
+            if (this.backpressureEma.sampleCount > 0) {
+                debugLog?.log(
+                    `Backpressure during pipeline warmup ` +
+                    `(${sinceStart.toFixed(0)}/${this.pipelineWarmupMs}ms, ` +
+                    `dropRate=${(dropRate * 100).toFixed(0)}%): ignoring sample, resetting EMA`);
+                this.backpressureEma.reset();
+            } else {
+                debugLog?.log(
+                    `Backpressure during pipeline warmup ` +
+                    `(${sinceStart.toFixed(0)}/${this.pipelineWarmupMs}ms, ` +
+                    `dropRate=${(dropRate * 100).toFixed(0)}%): ignoring sample`);
+            }
+            return;
+        }
+
         this.backpressureEma.appendSample(dropRate);
         const ema = this.backpressureEma.value;
         const n = this.backpressureEma.sampleCount;
@@ -816,6 +849,10 @@ export class VideoPipeline implements IVideoPipeline {
             `ema=${(ema * 100).toFixed(0)}% (n=${n}), cooldown=${inCooldown ? 'yes' : 'no'} at ` +
             `${cfg.width}x${cfg.height}@${(cfg.bitrate / 1e6).toFixed(1)}Mbps`);
 
+        // Minimum sample gate: with a single sample, the EMA equals the sample
+        // value, defeating the smoothing. Require at least 2 windows of sustained
+        // backpressure (~10 s with the worker's 5 s window) before any step-down.
+        if (n < 2) return;
         if (ema < trigger) return;
         if (inCooldown) return;
 
