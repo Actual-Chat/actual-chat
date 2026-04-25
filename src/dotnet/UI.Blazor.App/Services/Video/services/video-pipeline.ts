@@ -81,6 +81,7 @@ export interface IVideoPipeline {
     stop(): Promise<void>;
     reconfigure(params: { bitrate: number; width: number; height: number }): Promise<void>;
     switchCodec(newCodecString: string, spatialLayers?: SpatialLayerConfig[]): Promise<void>;
+    setSpatialLayers(layers: SpatialLayerConfig[] | null): Promise<void>;
     toggleBlur(enabled: boolean, segmentationConfig?: SegmentationConfig): Promise<void>;
     switchSegmentationBackend(backend: 'webgpu' | 'wasm'): Promise<void>;
     setPreviewCallback(callback: ((frame: VideoFrame) => void) | null): void;
@@ -498,6 +499,23 @@ export class VideoPipeline implements IVideoPipeline {
         }
 
         await this.worker.reconfigure(params);
+    }
+
+    // Hot-add or hot-remove simulcast extras on a running pipeline. Pass null /
+    // empty array to collapse to single-encoder. Worker preserves the base
+    // encoder + RPC stream — no Unregister/Register round-trip on the server.
+    // Force-keyframe is issued internally so subscribers latch on instantly.
+    async setSpatialLayers(layers: SpatialLayerConfig[] | null): Promise<void> {
+        const next = (layers && layers.length > 0) ? layers : [];
+        const prevCount = this.config.spatialLayers?.length ?? 0;
+        const nextCount = next.length;
+        this.config.spatialLayers = next.length > 0 ? next : undefined;
+        if (!this.processing) {
+            debugLog?.log(`setSpatialLayers: not running, cached ${prevCount} → ${nextCount} for next start`);
+            return;
+        }
+        infoLog?.log(`setSpatialLayers: ${prevCount} → ${nextCount} layer(s) live`);
+        await this.worker.setSpatialLayers(next);
     }
 
     async switchCodec(newCodecString: string, spatialLayers?: SpatialLayerConfig[]): Promise<void> {

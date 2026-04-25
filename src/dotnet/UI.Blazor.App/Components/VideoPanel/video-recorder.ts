@@ -269,31 +269,29 @@ export class VideoRecorder {
         infoLog?.log('Background blur enabled:', enabled);
     }
 
-    /**
-     * Forward remote stream count to the video pipeline for slowdown decisions
-     */
-    // Stores the simulcast ladder. Applied only at the NEXT startRecording —
-    // mid-stream activation is intentionally disabled to avoid cascading
-    // stop/start across peers. Explanation: calling stop+start would
-    // Unregister/Register this peer's active stream on the server, which
-    // drops it out of every other peer's `GetRemoteStreams` for ~1s; those
-    // peers' `SyncRemoteStreamCount` observers then flip their own simulcast
-    // decision, triggering their stop+start, which drops them out for the
-    // first peer, and so on forever. See bright-soaring-phoenix.md "CRITICAL —
-    // Cascading restart loop" for the full trace. Proper mid-stream activation
-    // requires hot encoder reconfig (Option C) — a worker-level
-    // setSpatialLayers that swaps extras without touching the primary encoder
-    // or the RPC PushVideo stream. Until that lands, treat this as a ladder
-    // cache: the value is picked up by the next fresh startRecording.
-    // Passing null or a list of length < 2 disables simulcast. Screencast
-    // streams ignore the ladder (single-encoder text legibility path).
+    // Stores the simulcast ladder. Applied immediately to a running pipeline
+    // via hot encoder reconfig (Option C: see RecordingService.setSimulcastLadder
+    // → VideoPipeline.setSpatialLayers → worker.setSpatialLayers). The hot
+    // path swaps extras without restarting the base encoder or the RPC
+    // PushVideo stream, so other peers don't see this peer's stream churn —
+    // avoiding the cascading stop/start loop documented in commit 2de3f2617.
+    // The cache is also picked up by the next fresh startRecording so a stop
+    // → start cycle preserves the latest ladder. Passing null or a list of
+    // length < 2 disables simulcast. Screencast streams ignore the ladder
+    // (single-encoder text legibility path).
     public setSimulcastLayers(layers: SpatialLayerConfig[] | null): void {
         const active = (layers && layers.length >= 2) ? layers : null;
         const prevCount = this.simulcastLayers?.length ?? 0;
         const newCount = active?.length ?? 0;
         this.simulcastLayers = active;
         if (prevCount !== newCount) {
-            infoLog?.log(`setSimulcastLayers: ${prevCount} -> ${newCount} layer(s); applied on next startRecording (mid-stream reconfig disabled)`);
+            infoLog?.log(`setSimulcastLayers: ${prevCount} -> ${newCount} layer(s)`);
+        }
+        if (this.recordingService) {
+            // Hot apply to the running pipeline. Failures are non-fatal — the
+            // ladder remains cached and applies at the next fresh start.
+            void this.recordingService.setSimulcastLadder(active).catch((e: unknown) =>
+                warnLog?.log('setSimulcastLayers: hot reconfig failed:', e));
         }
     }
 

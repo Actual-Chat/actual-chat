@@ -170,6 +170,20 @@ export class RecordingService extends EventTarget {
         };
     }
 
+    // Hot reconfig of simulcast layers on the live pipeline. `ladder` is the
+    // FULL bottom-first ladder (base + extras); we split off base internally.
+    // Mid-stream activation (Option C) — bypasses stop/start so the active
+    // RPC stream stays registered and other peers don't see stream churn.
+    async setSimulcastLadder(ladder: SpatialLayerConfig[] | null): Promise<void> {
+        if (!this.pipeline) return;
+        // Cache for next fresh start as well.
+        this.config.simulcastLadder = ladder ?? undefined;
+        // Strip base — pipeline.setSpatialLayers takes EXTRAS only (base lives
+        // on encoderConfig). Empty/single-tier ladder → empty extras → P2P.
+        const extras = ladder && ladder.length > 1 ? ladder.slice(1) : [];
+        await this.pipeline.setSpatialLayers(extras);
+    }
+
     async switchCodec(codec: string): Promise<void> {
         if (!this.pipeline) {
             warnLog?.log('switchCodec: no active pipeline');
