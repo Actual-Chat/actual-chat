@@ -928,6 +928,11 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
                         // (avoids upscaling which wastes CPU for no quality gain)
                         warnLog?.log(`Display dimensions ${frameW}x${frameH} smaller than config ${encoderConfig.width}x${encoderConfig.height}, reconfiguring`);
                         encoderConfig.width = frameW; encoderConfig.height = frameH;
+                        // Downscaler first (sync), encoder second (async) — same invariant as
+                        // orientation/RPC reconfigure paths. Without this the downscaler keeps
+                        // its old slot target and feeds frames at the old dims into a smaller
+                        // encoder, hitting the dim-mismatch guard and dropping every frame.
+                        if (downscaler) downscaler.configure(currentDownscaleTargets());
                         await encoder.reconfigure({ width: frameW, height: frameH, bitrate: encoderConfig.bitrate });
                         if (segConfig) { segConfig.outputWidth = frameW; segConfig.outputHeight = frameH; }
                         void callbacks.onDimensionReconciled(frameW, frameH, rpcNoWait);
