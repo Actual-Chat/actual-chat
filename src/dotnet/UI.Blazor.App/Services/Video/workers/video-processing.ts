@@ -432,10 +432,10 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
 
     // Track the live VideoFrame reference at each pipeline stage so the catch
     // path can close whatever's still owned. Without this, an exception between
-    // sourceFrame creation and encoder.encode() leaked the intermediate frame
-    // (Bug J — `VideoFrame was garbage collected without being closed` warnings
-    // in browser console). The encoder wrapper closes its argument in finally,
-    // so once we hand off to encode() this variable is set to null.
+    // sourceFrame creation and encoder.encode() leaks the intermediate frame
+    // (browser console: `VideoFrame was garbage collected without being closed`).
+    // The encoder wrapper closes its argument in finally, so once we hand off
+    // to encode() this variable is set to null.
     let liveFrame: VideoFrame | null = frame;
     let sourceFrame: VideoFrame | null = null;
     try {
@@ -487,7 +487,7 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
             }
             // Defensive cleanup: if `extras.length` is shorter than results - 1
             // (transient mismatch during a reconfig), close any orphan downscale
-            // results so they don't get GC'd uncloseed.
+            // results so they don't get GC'd unclosed.
             for (let i = extraLayerEncoders.length + 1; i < results.length; i++) {
                 try { results[i].frame.close(); } catch { /* already closed */ }
             }
@@ -582,7 +582,7 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
     } catch (error) {
         errorLog?.log('Error encoding frame:', error);
         // Whichever stage we got to, close the still-owned frame to avoid
-        // GC-without-close warnings (Bug J).
+        // GC-without-close warnings.
         if (liveFrame) {
             try { liveFrame.close(); } catch { /* already closed */ }
         }

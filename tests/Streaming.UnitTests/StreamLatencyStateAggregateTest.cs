@@ -124,7 +124,7 @@ public class StreamLatencyStateAggregateTest(ILogger log)
         state.QualityPreset.Value.MaxSpatialLayer.Should().Be(1, "all sidebar → mid tier (~360p), not base upscale");
     }
 
-    // --- Bug X: ViewerCount propagation ---
+    // --- ViewerCount propagation ---
     // VideoQualityPreset.ViewerCount tells the publisher how many peers are
     // currently subscribed to its stream. Without this, an asymmetric publisher
     // (one that pushes but doesn't watch anything) stays in P2P mode forever
@@ -175,7 +175,7 @@ public class StreamLatencyStateAggregateTest(ILogger log)
             "publisher should know how many peers are subscribed");
     }
 
-    // --- Bug BB: OVER-DELIVERY skipped while simulcast is active ---
+    // --- OVER-DELIVERY skipped while simulcast is active ---
     // RecordFrameBytes counts every byte across every spatial layer. The single-layer
     // bitrate target (VideoBitrateTable.GetExpectedBitrate) was tripping a 2.5x
     // OVER-DELIVERY step-down on every simulcast stream — the multi-encoder sum is

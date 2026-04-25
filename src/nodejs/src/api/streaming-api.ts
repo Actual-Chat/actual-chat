@@ -118,9 +118,10 @@ export interface StreamServerClient {
 // Mirrors .NET VideoQualityLevel enum. Lower numeric value = higher quality.
 // Used as the `RenderQuality` field on VideoLatencyReportDto — pick the
 // smallest level whose nominal dims meet or approximately match the
-// consumer's actual render size. Server maps Low→spatial 0, Medium→1,
-// High/Full/Ultra→2. Use `null` for "not hinted" (server applies no render
-// cap); using a number forces server-side interpretation of that level.
+// consumer's actual render size. Server maps Low/Medium→spatial 1,
+// High→2, Full/Ultra→uncapped (producer's observedMaxSpatial decides).
+// Use `null` for "not hinted" (server applies no render cap); using a
+// number forces server-side interpretation of that level.
 export const VideoQualityLevelUltra = 0;
 export const VideoQualityLevelFull = 1;
 export const VideoQualityLevelHigh = 2;

@@ -130,7 +130,7 @@ export class VideoPipeline implements IVideoPipeline {
     // freshly armed encoder hasn't produced output yet, so worker drop-rate spikes
     // to ~100% during the few frames between switch and first encoded chunk. Without
     // this gate, a codec switch would immediately trigger another step-down or codec
-    // fallback, producing the cascade we see in logs (Bug G).
+    // fallback, producing a cascade of switches.
     private lastStructuralChangeAt = 0;
     private readonly postSwitchCooldownMs = 3000;
     // Timestamp at which the pipeline first started (pipeline-start cooldown).
@@ -882,8 +882,8 @@ export class VideoPipeline implements IVideoPipeline {
         // Post-switch cooldown: a freshly armed encoder needs a few hundred ms to
         // produce output. The worker's drop-rate counter sees frames-in / 0 frames-out
         // = 100% drop in that window. Without this gate, a codec switch (or simulcast
-        // ladder reconfig) immediately triggers another step-down — cascade documented
-        // as Bug G in the plan.
+        // ladder reconfig) immediately triggers another step-down, cascading
+        // into repeated codec/ladder churn.
         const sinceSwitch = performance.now() - this.lastStructuralChangeAt;
         if (this.lastStructuralChangeAt > 0 && sinceSwitch < this.postSwitchCooldownMs) {
             debugLog?.log(

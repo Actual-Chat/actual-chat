@@ -15,9 +15,9 @@ export interface SpatialLayerConfig {
 
 // Returns true when the incoming ladder's top tier is taller than the existing
 // one — used to decide whether to replace the existing ladder. Compares by
-// height (matches the height-based bitrate table). Bug N's ladder-persistence
-// logic uses this to accept upgrades while rejecting same- or lower-quality
-// pushes from C#.
+// height (matches the height-based bitrate table). The ladder-persistence path
+// uses this to accept upgrades while rejecting same- or lower-quality pushes
+// from C#.
 export function hasHigherTopTier(
     incoming: readonly SpatialLayerConfig[],
     existing: readonly SpatialLayerConfig[],
@@ -28,7 +28,7 @@ export function hasHigherTopTier(
     return incomingTop.height > existingTop.height;
 }
 
-// Bug AA: when a hot setSpatialLayers is applied and the running base encoder is
+// When a hot setSpatialLayers is applied and the running base encoder is
 // taller than the incoming ladder's top tier, the resulting wire layout is
 // non-monotonic in spatial-id (base is bigger than every "extra"), and the
 // receiver-side filter (which sorts by spatial-id) can't reach the base via

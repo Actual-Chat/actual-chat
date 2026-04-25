@@ -8,7 +8,7 @@ import {
 const tier = (width: number, height: number, bitrate = 1_000_000): SpatialLayerConfig =>
     ({ width, height, bitrate });
 
-describe('hasHigherTopTier (Bug N — ladder persistence)', () => {
+describe('hasHigherTopTier — ladder persistence', () => {
     it('returns false when incoming top equals existing top', () => {
         const ladder = [tier(640, 360), tier(1280, 720)];
         expect(hasHigherTopTier(ladder, ladder)).toBe(false);
@@ -43,7 +43,7 @@ describe('hasHigherTopTier (Bug N — ladder persistence)', () => {
     });
 });
 
-describe('maybeAugmentLadderForRunningBase (Bug AA — wire-id monotonicity)', () => {
+describe('maybeAugmentLadderForRunningBase — wire-id monotonicity', () => {
     it('appends a tier matching running base when running is taller than top', () => {
         // The exact regression: pipeline is in single-encoder 1080p (JS-promoted).
         // C# pushes a 720p-cap ladder to activate simulcast. Without augmentation
