@@ -198,6 +198,7 @@ export interface VideoProcessingWorker {
     setSenderRotation(rotationDeg: number, noWait?: RpcNoWait): Promise<void>;
     reconfigure(params: { bitrate: number; width: number; height: number }): Promise<void>;
     switchCodec(config: EncoderConfig, spatialLayers?: SpatialLayerConfig[]): Promise<void>;
+    setSpatialLayers(layers: SpatialLayerConfig[]): Promise<void>;
     toggleBlur(enabled: boolean, segConfig?: SegmentationConfig): Promise<void>;
     forceKeyFrame(): Promise<void>;
     flush(): Promise<void>;

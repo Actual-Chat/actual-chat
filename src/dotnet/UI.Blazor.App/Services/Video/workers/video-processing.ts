@@ -757,6 +757,22 @@ function setupEncoders(config: VideoProcessingConfig): void {
     }
 }
 
+// Cheap structural match: same length AND identical (w, h, bitrate) per index.
+// Used by setSpatialLayers to skip a no-op rebuild — repeated server pushes of
+// the same ladder are common and we don't want to drain the encoder pipeline
+// on every duplicate.
+function extraLayerCountMatches(layers: SpatialLayerConfig[]): boolean {
+    if (layers.length !== extraLayerEncoders.length) return false;
+    for (let i = 0; i < layers.length; i++) {
+        const live = extraLayerEncoders[i].getStats();
+        const want = layers[i];
+        if (live.configuredWidth !== want.width
+            || live.configuredHeight !== want.height
+            || live.configuredBitrate !== want.bitrate) return false;
+    }
+    return true;
+}
+
 function collectDownscaleTargets(config: VideoProcessingConfig): DownscaleTarget[] {
     return [
         { width: config.encoder.width, height: config.encoder.height },
@@ -1191,6 +1207,54 @@ export const serverImpl: VideoProcessingWorker = {
         backpressureDrops = 0; backpressureTotalFrames = 0; lastBackpressureCheckTime = 0; backpressureNotified = false;
         encoderFailed = false; encoderErrorSeen = false; framesWithoutOutput = 0;
         infoLog?.log(`Codec switched successfully (${extraLayerEncoders.length} simulcast extras rearmed)`);
+    },
+
+    // Hot simulcast reconfig: swap the extra-layer encoders without touching the
+    // base encoder or the active VideoStream/RPC connection. Used to enable
+    // simulcast mid-recording when a second peer joins (or to drop it when the
+    // call collapses to P2P), without the stop/start cascade documented in
+    // commit 2de3f2617. No-op when the requested ladder matches the live one.
+    setSpatialLayers: async (layers): Promise<void> => {
+        if (!encoder || !encoderConfig) {
+            warnLog?.log('Cannot set spatial layers: not active');
+            return;
+        }
+        if (extraLayerCountMatches(layers)) {
+            debugLog?.log(`setSpatialLayers: no-op, ${extraLayerEncoders.length} extras already match request`);
+            return;
+        }
+
+        infoLog?.log(`setSpatialLayers: rebuilding ${extraLayerEncoders.length} → ${layers.length} extra(s)`);
+        if (extraLayerEncoders.length > 0) {
+            const extras = extraLayerEncoders.slice();
+            extraLayerEncoders = [];
+            for (const e of extras) {
+                try { await e.flush(); } catch { /* already closed */ }
+                try { e.close(); } catch { /* already closed */ }
+            }
+        }
+
+        const baseCodec = encoderConfig.codec;
+        for (let i = 0; i < layers.length; i++) {
+            const layer = layers[i];
+            const layerCfg: EncoderConfig = {
+                ...encoderConfig,
+                width: layer.width,
+                height: layer.height,
+                bitrate: layer.bitrate,
+                scalabilityMode: layer.scalabilityMode ?? encoderConfig.scalabilityMode,
+            };
+            const spatialId = i + 1;
+            const extra = new WebCodecsEncoder(layerCfg, onEncoderOutput, onEncoderError, spatialId);
+            extra.initialize();
+            extraLayerEncoders.push(extra);
+            infoLog?.log(`Simulcast layer ${spatialId} (hot): ${layer.width}x${layer.height} @ ${(layer.bitrate / 1_000_000).toFixed(1)}Mbps codec=${baseCodec}`);
+        }
+        if (downscaler) downscaler.configure(currentDownscaleTargets());
+
+        // Force a keyframe so subscribers can latch onto any newly-armed layer
+        // without waiting for the next encoder-driven keyframe interval.
+        nextFrameIsKeyFrame = true;
     },
 
     toggleBlur: async (enabled, segCfg?): Promise<void> => {
