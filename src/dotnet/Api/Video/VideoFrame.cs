@@ -19,28 +19,28 @@ public partial class VideoFrame : MediaFrame
     public override TimeSpan Duration { get; init; }
     [DataMember(Order = 3), MemoryPackOrder(3), Key(3)]
     public override bool IsKeyFrame { get; init; }
-    [DataMember(Order = 4), MemoryPackOrder(4), Key(10)]
+    [DataMember(Order = 4), MemoryPackOrder(4), Key(4)]
     public int Width { get; init; }
-    [DataMember(Order = 5), MemoryPackOrder(5), Key(11)]
+    [DataMember(Order = 5), MemoryPackOrder(5), Key(5)]
     public int Height { get; init; }
 
     /// <summary>
     /// Codec-specific data (SPS/PPS for H.264). Only present on keyframes.
     /// ReadOnlyMemory&lt;byte&gt; for zero-copy slicing and reduced GC pressure.
     /// </summary>
-    [DataMember(Order = 6), MemoryPackOrder(6), Key(12)]
+    [DataMember(Order = 6), MemoryPackOrder(6), Key(6)]
     public ReadOnlyMemory<byte> Description { get; init; }
 
     /// <summary>
     /// Codec identifier (e.g., "avc1" for H.264). Only present on keyframes.
     /// </summary>
-    [DataMember(Order = 7), MemoryPackOrder(7), Key(13)]
+    [DataMember(Order = 7), MemoryPackOrder(7), Key(7)]
     public string? Codec { get; init; }
 
     /// <summary>
     /// SVC temporal layer ID. 0 = base layer, 1+ = enhancement layers.
     /// </summary>
-    [DataMember(Order = 8), MemoryPackOrder(8), Key(14)]
+    [DataMember(Order = 8), MemoryPackOrder(8), Key(8)]
     public int TemporalLayerId { get; init; }
 
     /// <summary>
@@ -50,17 +50,17 @@ public partial class VideoFrame : MediaFrame
     /// quality-preset ceiling. Zero when the sender doesn't populate them
     /// (legacy peers, non-keyframe deltas).
     /// </summary>
-    [DataMember(Order = 9), MemoryPackOrder(9), Key(15)]
+    [DataMember(Order = 9), MemoryPackOrder(9), Key(9)]
     public int SourceWidth { get; init; }
 
-    [DataMember(Order = 10), MemoryPackOrder(10), Key(16)]
+    [DataMember(Order = 10), MemoryPackOrder(10), Key(10)]
     public int SourceHeight { get; init; }
 
     /// <summary>
     /// SVC spatial layer ID. 0 = base (lowest-res) layer, 1+ = higher-res simulcast layers.
     /// Always 0 on single-encoder (P2P) streams.
     /// </summary>
-    [DataMember(Order = 11), MemoryPackOrder(11), Key(17)]
+    [DataMember(Order = 11), MemoryPackOrder(11), Key(11)]
     public int SpatialLayerId { get; init; }
 
     /// <summary>

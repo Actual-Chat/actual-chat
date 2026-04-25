@@ -7,7 +7,7 @@ namespace ActualChat.Audio;
 [MessagePackFormatter(typeof(CachingAudioFrameFormatter))]
 public partial class AudioFrame : MediaFrame
 {
-    [DataMember(Order = 4), MemoryPackOrder(4), Key(1)]
+    [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
     public override TimeSpan Offset { get; init; }
 
     [Key(2)]
