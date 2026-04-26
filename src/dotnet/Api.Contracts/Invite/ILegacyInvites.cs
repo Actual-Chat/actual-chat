@@ -4,42 +4,32 @@ namespace ActualChat.Invite;
 
 /// <summary>
 /// v2.7 legacy IInvites facade. Old clients (version ≤ 2.7.9999) call wire-name
-/// <c>"IInvites"</c> and the RPC layer routes them here via <see cref="LegacyNameAttribute"/>.
-/// Methods convert the modern <see cref="Invite"/> union into the v2.7
-/// wire-frozen <see cref="LegacyInvite"/> shape with its
-/// <see cref="LegacyInviteDetails"/> wrapper.
+/// <c>"IInvites"</c> and the interface-level <see cref="LegacyNameAttribute"/> below
+/// routes them here without per-method aliases — method names match
+/// <see cref="IInvites"/>, only the return shapes (and the OnGenerate command parameter)
+/// are pinned to the v2.7 wire format.
 /// </summary>
 [LegacyName(nameof(IInvites), "2.7.9999")]
 public interface ILegacyInvites : IComputeService
 {
     [ComputeMethod, Obsolete("2025.02: User invites feature is removed.")]
-    [LegacyName(nameof(IInvites.ListUserInvites), "2.7.9999")]
-    Task<LegacyInvite[]> ListLegacyUserInvites(Session session, CancellationToken cancellationToken);
+    Task<LegacyInvite[]> ListUserInvites(Session session, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    [LegacyName(nameof(IInvites.ListChatInvites), "2.7.9999")]
-    Task<LegacyInvite[]> ListLegacyChatInvites(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<LegacyInvite[]> ListChatInvites(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    [LegacyName(nameof(IInvites.ListPlaceInvites), "2.7.9999")]
-    Task<LegacyInvite[]> ListLegacyPlaceInvites(Session session, PlaceId placeId, CancellationToken cancellationToken);
+    Task<LegacyInvite[]> ListPlaceInvites(Session session, PlaceId placeId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    [LegacyName(nameof(IInvites.GetOrGenerateChatInvite), "2.7.9999")]
-    Task<LegacyInvite?> GetOrGenerateLegacyChatInvite(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<LegacyInvite?> GetOrGenerateChatInvite(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    [LegacyName(nameof(IInvites.GetOrGeneratePlaceInvite), "2.7.9999")]
-    Task<LegacyInvite?> GetOrGenerateLegacyPlaceInvite(Session session, PlaceId placeId, CancellationToken cancellationToken);
+    Task<LegacyInvite?> GetOrGeneratePlaceInvite(Session session, PlaceId placeId, CancellationToken cancellationToken);
 
-    [LegacyName(nameof(IInvites.OnGenerate), "2.7.9999")]
-    Task<LegacyInvite> OnLegacyGenerate(LegacyInvites_Generate command, CancellationToken cancellationToken);
-
-    [LegacyName(nameof(IInvites.OnUse), "2.7.9999")]
-    Task<LegacyInvite> OnLegacyUse(Invites_Use command, CancellationToken cancellationToken);
-
-    [LegacyName(nameof(IInvites.OnRevoke), "2.7.9999")]
-    Task OnLegacyRevoke(Invites_Revoke command, CancellationToken cancellationToken);
+    Task<LegacyInvite> OnGenerate(LegacyInvites_Generate command, CancellationToken cancellationToken);
+    Task<LegacyInvite> OnUse(Invites_Use command, CancellationToken cancellationToken);
+    Task OnRevoke(Invites_Revoke command, CancellationToken cancellationToken);
 }
 
 /// <summary>

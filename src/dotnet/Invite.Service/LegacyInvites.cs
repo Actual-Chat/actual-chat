@@ -11,7 +11,7 @@ public class LegacyInvites(IServiceProvider services) : ILegacyInvites
     private ICommander Commander { get; } = services.Commander();
 
 #pragma warning disable CS0618 // ListUserInvites is itself obsolete
-    public virtual async Task<LegacyInvite[]> ListLegacyUserInvites(
+    public virtual async Task<LegacyInvite[]> ListUserInvites(
         Session session, CancellationToken cancellationToken)
     {
         var invites = await Invites.ListUserInvites(session, cancellationToken).ConfigureAwait(false);
@@ -19,35 +19,35 @@ public class LegacyInvites(IServiceProvider services) : ILegacyInvites
     }
 #pragma warning restore CS0618
 
-    public virtual async Task<LegacyInvite[]> ListLegacyChatInvites(
+    public virtual async Task<LegacyInvite[]> ListChatInvites(
         Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var invites = await Invites.ListChatInvites(session, chatId, cancellationToken).ConfigureAwait(false);
         return invites.Select(LegacyInvite.From).ToArray();
     }
 
-    public virtual async Task<LegacyInvite[]> ListLegacyPlaceInvites(
+    public virtual async Task<LegacyInvite[]> ListPlaceInvites(
         Session session, PlaceId placeId, CancellationToken cancellationToken)
     {
         var invites = await Invites.ListPlaceInvites(session, placeId, cancellationToken).ConfigureAwait(false);
         return invites.Select(LegacyInvite.From).ToArray();
     }
 
-    public virtual async Task<LegacyInvite?> GetOrGenerateLegacyChatInvite(
+    public virtual async Task<LegacyInvite?> GetOrGenerateChatInvite(
         Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var invite = await Invites.GetOrGenerateChatInvite(session, chatId, cancellationToken).ConfigureAwait(false);
         return invite is null ? null : LegacyInvite.From(invite);
     }
 
-    public virtual async Task<LegacyInvite?> GetOrGenerateLegacyPlaceInvite(
+    public virtual async Task<LegacyInvite?> GetOrGeneratePlaceInvite(
         Session session, PlaceId placeId, CancellationToken cancellationToken)
     {
         var invite = await Invites.GetOrGeneratePlaceInvite(session, placeId, cancellationToken).ConfigureAwait(false);
         return invite is null ? null : LegacyInvite.From(invite);
     }
 
-    public virtual async Task<LegacyInvite> OnLegacyGenerate(
+    public virtual async Task<LegacyInvite> OnGenerate(
         LegacyInvites_Generate command, CancellationToken cancellationToken)
     {
         var modern = new Invites_Generate(command.Session, command.Invite.ToModern());
@@ -55,13 +55,13 @@ public class LegacyInvites(IServiceProvider services) : ILegacyInvites
         return LegacyInvite.From(invite);
     }
 
-    public virtual async Task<LegacyInvite> OnLegacyUse(
+    public virtual async Task<LegacyInvite> OnUse(
         Invites_Use command, CancellationToken cancellationToken)
     {
         var invite = await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
         return LegacyInvite.From(invite);
     }
 
-    public virtual Task OnLegacyRevoke(Invites_Revoke command, CancellationToken cancellationToken)
+    public virtual Task OnRevoke(Invites_Revoke command, CancellationToken cancellationToken)
         => Commander.Call(command, true, cancellationToken);
 }
