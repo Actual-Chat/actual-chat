@@ -357,7 +357,7 @@ See also: [Condensed API Index](api-index.md).
 - `IEmailAuth` - Service for email-based authentication with TOTP codes.
 - `IEmails` - Service for sending email communications.
 - `IMobileSessions` - Service for mobile app session creation and validation.
-- `INativeAuthClient` - HTTP client interface for native (iOS/Android) authentication flows.
+- `INativeAuth` - Service for native (iOS/Android) OAuth sign-in flows.
 - `IPhoneAuth` - Service for phone-based authentication with TOTP codes.
 - `IPhones` - Service for parsing and validating phone numbers.
 - `ISystemProperties` - Service for system properties, version checking, and maintenance operations.
