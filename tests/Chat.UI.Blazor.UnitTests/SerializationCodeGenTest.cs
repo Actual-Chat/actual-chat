@@ -12,6 +12,8 @@ public class SerializationCodeGenTest(ITestOutputHelper @out) : TestBase(@out)
         SerializationCodeGen.ValidateType<ActiveChat>();
         SerializationCodeGen.ValidateType<FileMetadata>();
         SerializationCodeGen.ValidateType<UploadSessionSnapshot>();
-        SerializationCodeGen.ValidateType<RelatedEntryRef>();
+        // RelatedEntryRef wraps an EntryRef whose ChatEntry payload is the new
+        // MessagePack-only union, so MemoryPack is intentionally not generated.
+        SerializationCodeGen.ValidateMessagePackOnlyType<RelatedEntryRef>();
     }
 }
