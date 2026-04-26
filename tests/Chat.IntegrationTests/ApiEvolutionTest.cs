@@ -259,7 +259,7 @@ public class ApiEvolutionTest(ITestOutputHelper @out) : TestBase(@out)
         => new(new Range<long>(1, 100), CreateChatEntry());
 
     private ChatEntry CreateChatEntry()
-        => new(TestEntryId, 1) {
+        => new TextEntry(TestEntryId, 1) {
             AuthorId = TestAuthorId,
             BeginsAt = TestMoment,
             Content = "Hello, world!",

@@ -51,7 +51,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     {
         var chatId = ChatId.Parse("the-actual-one");
         var entryId = ChatEntryId.New(chatId, 1);
-        var entry = new ChatEntry(entryId, 1) {
+        var entry = new TextEntry(entryId, 1) {
             AuthorId = AuthorId.New(chatId, 10),
             BeginsAt = new Moment(DateTime.UtcNow),
             Content = "Hello, world!",
@@ -77,7 +77,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         var chatId = ChatId.Parse("the-actual-one");
         var entryId = ChatEntryId.New(chatId, 2);
         var now = new Moment(DateTime.UtcNow);
-        var entry = new ChatEntry(entryId, 1) {
+        var entry = new TextEntry(entryId, 1) {
             AuthorId = AuthorId.New(chatId, 10),
             BeginsAt = now,
             EndsAt = now + TimeSpan.FromMinutes(5),
@@ -93,7 +93,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     {
         var chatId = ChatId.Parse("the-actual-one");
         var entryId = ChatEntryId.New(chatId, 3);
-        var entry = new ChatEntry(entryId, 1) {
+        var entry = new TextEntry(entryId, 1) {
             AuthorId = AuthorId.New(chatId, 10),
             BeginsAt = new Moment(DateTime.UtcNow),
             EndsAt = null,
@@ -176,7 +176,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         var chatId = ChatId.Parse("the-actual-one");
         var entryId = ChatEntryId.New(chatId, 1);
         var entries = new[] {
-            new ChatEntry(entryId, 1) {
+            new TextEntry(entryId, 1) {
                 AuthorId = AuthorId.New(chatId, 10),
                 BeginsAt = new Moment(DateTime.UtcNow),
                 Content = "Hello",
@@ -501,29 +501,38 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void SystemEntry_MembersChanged()
     {
         var chatId = ChatId.Parse("the-actual-one");
+        var entryId = ChatEntryId.New(chatId, 1);
         var authorId = AuthorId.New(chatId, 5);
-        var option = new MembersChangedOption(authorId, "TestUser", false);
-        SystemEntry entry = option;
+        ChatEntry entry = new MembersChangedEntry(entryId, 1) {
+            TargetAuthorId = authorId,
+            TargetAuthorName = "TestUser",
+            HasLeft = false,
+        };
 
         var s = entry.PassThroughAllSerializers(Out);
-        s.MembersChanged.Should().NotBeNull();
-        s.MembersChanged!.AuthorId.Should().Be(authorId);
-        s.MembersChanged.AuthorName.Should().Be("TestUser");
-        s.MembersChanged.HasLeft.Should().BeFalse();
+        s.Should().BeOfType<MembersChangedEntry>();
+        var mc = (MembersChangedEntry)s;
+        mc.TargetAuthorId.Should().Be(authorId);
+        mc.TargetAuthorName.Should().Be("TestUser");
+        mc.HasLeft.Should().BeFalse();
     }
 
     [Fact]
     public void SystemEntry_NotifyMembers()
     {
         var chatId = ChatId.Parse("the-actual-one");
+        var entryId = ChatEntryId.New(chatId, 1);
         var authorId = AuthorId.New(chatId, 5);
-        var option = new NotifyMembersOption(authorId, "TestUser");
-        SystemEntry entry = option;
+        ChatEntry entry = new NotifyMembersEntry(entryId, 1) {
+            TargetAuthorId = authorId,
+            TargetAuthorName = "TestUser",
+        };
 
         var s = entry.PassThroughAllSerializers(Out);
-        s.NotifyMembers.Should().NotBeNull();
-        s.NotifyMembers!.AuthorId.Should().Be(authorId);
-        s.NotifyMembers.AuthorName.Should().Be("TestUser");
+        s.Should().BeOfType<NotifyMembersEntry>();
+        var nm = (NotifyMembersEntry)s;
+        nm.TargetAuthorId.Should().Be(authorId);
+        nm.TargetAuthorName.Should().Be("TestUser");
     }
 
     [Fact]

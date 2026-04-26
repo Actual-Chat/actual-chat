@@ -1,18 +1,18 @@
-﻿namespace ActualChat.Chat;
+namespace ActualChat.Chat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial class ChatTile
 {
-    [DataMember, MemoryPackOrder(0), Key(0)] public Range<long> IdTileRange { get; init; }
-    [DataMember, MemoryPackOrder(1), Key(1)] public bool IncludesRemoved { get; init; }
-    [DataMember, MemoryPackOrder(2), Key(2)] public Range<Moment> BeginsAtRange { get; init; }
+    [DataMember, Key(0)] public Range<long> IdTileRange { get; init; }
+    [DataMember, Key(1)] public bool IncludesRemoved { get; init; }
+    [DataMember, Key(2)] public Range<Moment> BeginsAtRange { get; init; }
     // Entries area always sorted by Id!
-    [DataMember, MemoryPackOrder(3), Key(3)] public ChatEntry[] Entries { get; init; } = [];
+    [DataMember, Key(3)] public ChatEntry[] Entries { get; init; } = [];
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsEmpty => Entries.Length == 0;
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, SerializationConstructor]
     public ChatTile() { }
 
     public ChatTile(Range<long> idTileRange, bool includesRemoved, ChatEntry[] entries)

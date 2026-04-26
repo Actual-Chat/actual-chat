@@ -2,8 +2,8 @@ using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Chat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 public sealed partial record ChatNews(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Range<long> TextEntryIdRange,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatEntry? LastTextEntry = null);
+    [property: DataMember, Key(0)] Range<long> TextEntryIdRange,
+    [property: DataMember, Key(1)] ChatEntry? LastTextEntry = null);

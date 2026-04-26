@@ -15,8 +15,12 @@ namespace ActualChat.Chat.Db;
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    private static ITextSerializer<SystemEntry> SystemEntrySerializer { get; } =
-        Serializers.SystemJson.ToTyped<SystemEntry>();
+    // SystemEntry payloads live in the Content column as JSON in the legacy wrapper shape
+    // (LegacySystemEntry/LegacySystemEntryOption). This preserves the on-disk format —
+    // existing rows deserialize without migration — while the in-memory model uses the new
+    // SystemEntry hierarchy.
+    private static ITextSerializer<LegacySystemEntry> LegacySystemEntrySerializer { get; } =
+        Serializers.SystemJson.ToTyped<LegacySystemEntry>();
 
     public DbChatEntry() { }
     public DbChatEntry(ChatEntry model) => UpdateFrom(model);
@@ -95,10 +99,29 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         if (IsThreadEntry) flags |= ChatEntryFlags.IsThread;
         if (hasUploadingAttachments) flags |= ChatEntryFlags.HasUploadingAttachments;
 
-        // Build partial audio from DB columns (like SystemEntry pattern)
+        // Build partial audio from DB columns
         var audio = BuildPartialAudio();
 
-        return new (id, Version) {
+        ChatEntry baseEntry;
+        if (IsSystemEntry) {
+            var legacy = LegacySystemEntrySerializer.Read(Content);
+            baseEntry = legacy.Option switch {
+                LegacyMembersChangedOption mc => new MembersChangedEntry(id, Version) {
+                    TargetAuthorId = mc.AuthorId,
+                    TargetAuthorName = mc.AuthorName,
+                    HasLeft = mc.HasLeft,
+                },
+                LegacyNotifyMembersOption nm => new NotifyMembersEntry(id, Version) {
+                    TargetAuthorId = nm.AuthorId,
+                    TargetAuthorName = nm.AuthorName,
+                },
+                _ => throw StandardError.Internal($"Unknown system entry option: {legacy.Option?.GetType().Name}"),
+            };
+        }
+        else {
+            baseEntry = new TextEntry(id, Version);
+        }
+        return baseEntry with {
             Flags = flags,
             AuthorId = ActualChat.AuthorId.Parse(AuthorId),
             ClientId = ClientId,
@@ -106,7 +129,6 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             EndsAt = EndsAt.ToMoment(),
             Content = !IsSystemEntry ? Content : "",
             ContentHash = new (ContentHash ?? ""),
-            SystemEntry = IsSystemEntry ? SystemEntrySerializer.Read(Content) : null,
             ContentStreamId = ContentStreamId ?? "",
             Audio = audio,
             RepliedEntryLid = RepliedChatEntryId,
@@ -192,9 +214,15 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             ForwardedChatTitle = null;
             ForwardedAuthorName = null;
         }
-        Content = model.SystemEntry != null ? SystemEntrySerializer.Write(model.SystemEntry) : model.Content;
-        ContentHash = model.SystemEntry != null ? HashString.None : model.GetContentHashString();
-        IsSystemEntry = model.SystemEntry != null;
+        IsSystemEntry = model is SystemEntry;
+        if (model is SystemEntry sys) {
+            Content = LegacySystemEntrySerializer.Write(ToLegacySystemEntry(sys));
+            ContentHash = HashString.None;
+        }
+        else {
+            Content = model.Content;
+            ContentHash = model.GetContentHashString();
+        }
         LinkPreviewIds = model.LinkPreviewIds.Length != 0
             ? JsonSerializer.Serialize(model.LinkPreviewIds)
             : null;
@@ -215,6 +243,16 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             TimeMap = null;
         }
     }
+
+    private static LegacySystemEntry ToLegacySystemEntry(SystemEntry sys) => sys switch {
+        MembersChangedEntry mc => new LegacySystemEntry {
+            Option = new LegacyMembersChangedOption(mc.TargetAuthorId, mc.TargetAuthorName, mc.HasLeft),
+        },
+        NotifyMembersEntry nm => new LegacySystemEntry {
+            Option = new LegacyNotifyMembersOption(nm.TargetAuthorId, nm.TargetAuthorName),
+        },
+        _ => throw StandardError.Internal($"Unknown system entry: {sys.GetType().Name}"),
+    };
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbChatEntry>
     {

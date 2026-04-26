@@ -150,8 +150,10 @@ public class Notifications(IServiceProvider services) : INotifications
         var entryId = ChatEntryId.New(author.ChatId, 0);
         var changeEntry = new ChatsBackend_ChangeEntry(entryId, null,
             Change.Create(new ChatEntryDiff {
+                Kind = ChatEntryKind.NotifyMembers,
                 AuthorId = GetWalleId(author.ChatId),
-                SystemEntry = (SystemEntry)new NotifyMembersOption(author.Id, author.ToString()),
+                TargetAuthorId = author.Id,
+                TargetAuthorName = author.ToString(),
             }));
 
         var textEntry = await Commander.Call(changeEntry, true, cancellationToken).ConfigureAwait(false);

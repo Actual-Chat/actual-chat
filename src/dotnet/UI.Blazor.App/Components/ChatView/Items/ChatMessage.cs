@@ -50,7 +50,7 @@ public abstract class ChatMessage(long id) : IVirtualListItem, IEquatable<ChatMe
 
     public static ChatMessage Welcome(ChatId chatId)
     {
-        var chatEntry = new ChatEntry(ChatEntryId.New(chatId, 0L));
+        var chatEntry = new TextEntry(ChatEntryId.New(chatId, 0L));
         return new ChatEntryMessage(chatEntry) { Kind = ChatMessageKind.WelcomeBlock };
     }
 }
