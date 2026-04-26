@@ -8,40 +8,34 @@ public class InviteDetailsSerializationTest(ITestOutputHelper @out) : TestBase(@
     private static readonly Session TestSession = Session.New();
 
     [Fact]
-    public void InviteDetails_ChatInvite()
+    public void ChatInvite_Basic()
     {
         var chatId = ChatId.Parse("r5IbjdG7Cq");
-        var chatInviteOption = new ChatInviteOption(chatId);
-        InviteDetails inviteDetails = chatInviteOption;
-        inviteDetails.AssertPassesThroughAllSerializers();
-    }
-
-    [Fact]
-    public void InviteDetails_PlaceInvite()
-    {
-        var placeId = PlaceId.New();
-        var placeInviteOption = new PlaceInviteOption(placeId);
-        InviteDetails inviteDetails = placeInviteOption;
-        inviteDetails.AssertPassesThroughAllSerializers();
-    }
-
-    [Fact]
-    public void Invite_Basic()
-    {
-        var chatId = ChatId.Parse("r5IbjdG7Cq");
-        var invite = new Invite.Invite("invite-1", 1) {
+        var invite = new ChatInvite("invite-1", 1) {
             CreatedBy = "admin",
             CreatedAt = new Moment(DateTime.UtcNow),
             ExpiresOn = new Moment(DateTime.UtcNow) + TimeSpan.FromDays(7),
             Remaining = 10,
-            Details = new ChatInviteOption(chatId),
+            ChatId = chatId,
         };
-
-        var s = invite.PassThroughAllSerializers(Out);
+        var s = (ChatInvite)invite.PassThroughAllSerializers(Out);
         s.Id.Should().Be(invite.Id);
         s.CreatedBy.Should().Be(invite.CreatedBy);
         s.Remaining.Should().Be(invite.Remaining);
-        s.Details.Chat.Should().NotBeNull();
+        s.ChatId.Should().Be(chatId);
+    }
+
+    [Fact]
+    public void PlaceInvite_Basic()
+    {
+        var placeId = PlaceId.New();
+        ActualChat.Invite.Invite invite = new PlaceInvite("invite-2", 1) {
+            Remaining = 5,
+            PlaceId = placeId,
+        };
+        var s = invite.PassThroughAllSerializers(Out);
+        s.Should().BeOfType<PlaceInvite>();
+        ((PlaceInvite)s).PlaceId.Should().Be(placeId);
     }
 
     [Fact]
@@ -62,8 +56,8 @@ public class InviteDetailsSerializationTest(ITestOutputHelper @out) : TestBase(@
     public void Invites_Generate_Basic()
     {
         var chatId = ChatId.Parse("r5IbjdG7Cq");
-        var invite = new Invite.Invite("invite-1") {
-            Details = new ChatInviteOption(chatId),
+        ActualChat.Invite.Invite invite = new ChatInvite("invite-1") {
+            ChatId = chatId,
             Remaining = 5,
         };
         var cmd = new Invites_Generate(TestSession, invite);
@@ -94,8 +88,8 @@ public class InviteDetailsSerializationTest(ITestOutputHelper @out) : TestBase(@
     public void InvitesBackend_Generate_Basic()
     {
         var chatId = ChatId.Parse("r5IbjdG7Cq");
-        var invite = new Invite.Invite("invite-1") {
-            Details = new ChatInviteOption(chatId),
+        ActualChat.Invite.Invite invite = new ChatInvite("invite-1") {
+            ChatId = chatId,
             Remaining = 5,
         };
         var cmd = new InvitesBackend_Generate(invite);
