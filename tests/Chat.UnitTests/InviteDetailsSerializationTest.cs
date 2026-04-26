@@ -18,7 +18,7 @@ public class InviteDetailsSerializationTest(ITestOutputHelper @out) : TestBase(@
             Remaining = 10,
             ChatId = chatId,
         };
-        var s = (ChatInvite)invite.PassThroughAllSerializers(Out);
+        var s = (ChatInvite)((ActualChat.Invite.Invite)invite).PassThroughModernSerializers(Out);
         s.Id.Should().Be(invite.Id);
         s.CreatedBy.Should().Be(invite.CreatedBy);
         s.Remaining.Should().Be(invite.Remaining);
@@ -33,7 +33,7 @@ public class InviteDetailsSerializationTest(ITestOutputHelper @out) : TestBase(@
             Remaining = 5,
             PlaceId = placeId,
         };
-        var s = invite.PassThroughAllSerializers(Out);
+        var s = invite.PassThroughModernSerializers(Out);
         s.Should().BeOfType<PlaceInvite>();
         ((PlaceInvite)s).PlaceId.Should().Be(placeId);
     }
@@ -61,11 +61,9 @@ public class InviteDetailsSerializationTest(ITestOutputHelper @out) : TestBase(@
             Remaining = 5,
         };
         var cmd = new Invites_Generate(TestSession, invite);
-        cmd.AssertPassesThroughAllSerializers(
-            (deserialized, original) => {
-                deserialized.Session.Should().Be(original.Session);
-                deserialized.Invite.Id.Should().Be(original.Invite.Id);
-            }, Out);
+        var s = cmd.PassThroughModernSerializers(Out);
+        s.Session.Should().Be(cmd.Session);
+        s.Invite.Id.Should().Be(cmd.Invite.Id);
     }
 
     [Fact]
@@ -93,10 +91,8 @@ public class InviteDetailsSerializationTest(ITestOutputHelper @out) : TestBase(@
             Remaining = 5,
         };
         var cmd = new InvitesBackend_Generate(invite);
-        cmd.AssertPassesThroughAllSerializers(
-            (deserialized, original) => {
-                deserialized.Invite.Id.Should().Be(original.Invite.Id);
-            }, Out);
+        var s = cmd.PassThroughModernSerializers(Out);
+        s.Invite.Id.Should().Be(cmd.Invite.Id);
     }
 
     [Fact]

@@ -8,6 +8,12 @@ public static class SerializationCodeGen
         ValidateMessagePack<T>();
     }
 
+    // For modern union-shaped types (e.g. ChatEntry, Invite) that intentionally
+    // ship MessagePack-only on the wire — MemoryPack is reserved for the legacy
+    // wire-frozen counterparts.
+    public static void ValidateMessagePackOnlyType<T>()
+        => ValidateMessagePack<T>();
+
     // Private methods
 
     private static void ValidateMemoryPack<T>()

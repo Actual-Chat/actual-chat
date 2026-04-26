@@ -14,7 +14,9 @@ public sealed partial record UserInvite : Invite
     public static UserInvite New(int remaining)
         => new(Symbol.Empty) { Remaining = remaining };
 
-    public static readonly string SearchKey = nameof(UserInvite);
+    // Keep the v2.7 string ("UserInviteOption") so existing DbInvite.SearchKey
+    // rows stay reachable across the union refactor.
+    public static readonly string SearchKey = "UserInviteOption";
 
     public override string GetSearchKey()
         => SearchKey;

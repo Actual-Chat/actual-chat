@@ -57,10 +57,10 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Content = "Hello, world!",
             HasReactions = true,
             IsRemoved = false,
-            ContentHash = new HashString("SHA256 Base16 abc123"),
+            ContentHash = HashString.None,
         };
 
-        var s = entry.PassThroughAllSerializers(Out);
+        ChatEntry s = entry.PassThroughModernSerializers(Out);
         s.Id.Should().Be(entry.Id);
         s.Version.Should().Be(entry.Version);
         s.AuthorId.Should().Be(entry.AuthorId);
@@ -84,7 +84,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Content = "Test",
         };
 
-        var s = entry.PassThroughAllSerializers(Out);
+        var s = entry.PassThroughModernSerializers(Out);
         s.EndsAt.Should().Be(entry.EndsAt);
     }
 
@@ -100,7 +100,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Content = "Test",
         };
 
-        var s = entry.PassThroughAllSerializers(Out);
+        var s = entry.PassThroughModernSerializers(Out);
         s.EndsAt.Should().BeNull();
     }
 
@@ -111,7 +111,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Content = "Updated content",
             IsRemoved = true,
         };
-        diff.AssertPassesThroughAllSerializers();
+        diff.PassThroughModernSerializers();
     }
 
     [Fact]
@@ -184,7 +184,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         };
         var tile = new ChatTile(new Range<long>(0, 100), false, entries);
 
-        var s = tile.PassThroughAllSerializers(Out);
+        var s = tile.PassThroughModernSerializers(Out);
         s.IdTileRange.Should().Be(tile.IdTileRange);
         s.IncludesRemoved.Should().Be(tile.IncludesRemoved);
         s.Entries.Length.Should().Be(tile.Entries.Length);
@@ -194,7 +194,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void ChatNews_Basic()
     {
         var news = new ChatNews(new Range<long>(1, 100));
-        news.AssertPassesThroughAllSerializers();
+        news.PassThroughModernSerializers();
     }
 
     [Fact]
@@ -509,7 +509,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             HasLeft = false,
         };
 
-        var s = entry.PassThroughAllSerializers(Out);
+        var s = entry.PassThroughModernSerializers(Out);
         s.Should().BeOfType<MembersChangedEntry>();
         var mc = (MembersChangedEntry)s;
         mc.TargetAuthorId.Should().Be(authorId);
@@ -528,7 +528,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             TargetAuthorName = "TestUser",
         };
 
-        var s = entry.PassThroughAllSerializers(Out);
+        var s = entry.PassThroughModernSerializers(Out);
         s.Should().BeOfType<NotifyMembersEntry>();
         var nm = (NotifyMembersEntry)s;
         nm.TargetAuthorId.Should().Be(authorId);

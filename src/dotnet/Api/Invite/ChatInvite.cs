@@ -16,8 +16,10 @@ public sealed partial record ChatInvite : Invite
     public static ChatInvite New(int remaining, ChatId chatId)
         => new(Symbol.Empty) { Remaining = remaining, ChatId = chatId };
 
+    // Keep the v2.7 string ("ChatInviteOption:...") so existing DbInvite.SearchKey
+    // rows stay reachable across the union refactor.
     public static string GetSearchKey(ChatId chatId)
-        => $"{nameof(ChatInvite)}:{chatId}";
+        => $"ChatInviteOption:{chatId}";
 
     public override string GetSearchKey()
         => GetSearchKey(ChatId);

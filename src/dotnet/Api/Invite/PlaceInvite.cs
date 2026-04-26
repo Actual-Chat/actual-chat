@@ -16,8 +16,10 @@ public sealed partial record PlaceInvite : Invite
     public static PlaceInvite New(int remaining, PlaceId placeId)
         => new(Symbol.Empty) { Remaining = remaining, PlaceId = placeId };
 
+    // Keep the v2.7 string ("PlaceInviteOption:...") so existing DbInvite.SearchKey
+    // rows stay reachable across the union refactor.
     public static string GetSearchKey(PlaceId placeId)
-        => $"{nameof(PlaceInvite)}:{placeId}";
+        => $"PlaceInviteOption:{placeId}";
 
     public override string GetSearchKey()
         => GetSearchKey(PlaceId);
