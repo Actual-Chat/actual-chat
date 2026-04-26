@@ -29,6 +29,13 @@ public sealed partial record LegacyInviteDetails : IUnionRecord<LegacyInviteDeta
 
     public static implicit operator LegacyInviteDetails(LegacyInviteDetailsOption option)
         => new() { Option = option };
+
+    public static LegacyInviteDetails From(Invite invite) => invite switch {
+        ChatInvite chat => new LegacyInviteDetails { Option = new LegacyChatInviteOption(chat.ChatId) },
+        PlaceInvite place => new LegacyInviteDetails { Option = new LegacyPlaceInviteOption(place.PlaceId) },
+        UserInvite => new LegacyInviteDetails { Option = new LegacyUserInviteOption() },
+        _ => throw StandardError.Format<Invite>($"Unknown invite type: {invite.GetType().Name}"),
+    };
 }
 
 public abstract record LegacyInviteDetailsOption;

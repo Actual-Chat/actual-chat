@@ -20,4 +20,37 @@ public sealed partial record LegacyInvite(
     [DataMember, MemoryPackOrder(4)] public Moment ExpiresOn { get; init; }
     [DataMember, MemoryPackOrder(5)] public int Remaining { get; init; }
     [DataMember, MemoryPackOrder(6)] public LegacyInviteDetails Details { get; init; } = null!;
+
+    public static LegacyInvite From(Invite invite)
+        => new(invite.Id, invite.Version) {
+            CreatedBy = invite.CreatedBy,
+            CreatedAt = invite.CreatedAt,
+            ExpiresOn = invite.ExpiresOn,
+            Remaining = invite.Remaining,
+            Details = LegacyInviteDetails.From(invite),
+        };
+
+    public Invite ToModern() => Details.Option switch {
+        LegacyChatInviteOption chat => new ChatInvite(Id, Version) {
+            ChatId = chat.ChatId,
+            CreatedBy = CreatedBy,
+            CreatedAt = CreatedAt,
+            ExpiresOn = ExpiresOn,
+            Remaining = Remaining,
+        },
+        LegacyPlaceInviteOption place => new PlaceInvite(Id, Version) {
+            PlaceId = place.PlaceId,
+            CreatedBy = CreatedBy,
+            CreatedAt = CreatedAt,
+            ExpiresOn = ExpiresOn,
+            Remaining = Remaining,
+        },
+        LegacyUserInviteOption => new UserInvite(Id, Version) {
+            CreatedBy = CreatedBy,
+            CreatedAt = CreatedAt,
+            ExpiresOn = ExpiresOn,
+            Remaining = Remaining,
+        },
+        _ => throw StandardError.Format<LegacyInvite>($"Unknown legacy invite details: {Details.Option?.GetType().Name}"),
+    };
 }

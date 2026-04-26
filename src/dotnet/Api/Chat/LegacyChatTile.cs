@@ -24,4 +24,11 @@ public sealed partial class LegacyChatTile
         BeginsAtRange = beginsAtRange;
         Entries = entries;
     }
+
+    public static LegacyChatTile From(ChatTile tile)
+        => new(
+            tile.IdTileRange,
+            tile.IncludesRemoved,
+            tile.BeginsAtRange,
+            tile.Entries.Select(LegacyChatEntry.From).ToArray());
 }

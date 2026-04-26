@@ -65,4 +65,24 @@ public sealed partial record LegacyChatEntry(
     // This record relies on referential equality
     public bool Equals(LegacyChatEntry? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
+
+    public static LegacyChatEntry From(ChatEntry entry)
+        => new(entry.Id, entry.Version) {
+            Flags = entry.Flags,
+            AuthorId = entry.AuthorId,
+            BeginsAt = entry.BeginsAt,
+            EndsAt = entry.EndsAt,
+            Content = entry.Content,
+            ContentHash = entry.ContentHash,
+            SystemEntry = LegacySystemEntry.From(entry),
+            ContentStreamId = entry.ContentStreamId,
+            RepliedEntryLid = entry.RepliedEntryLid,
+            Forwarded = entry.Forwarded,
+            Audio = entry.Audio,
+            LinkPreviewMode = entry.LinkPreviewMode,
+            LinkPreviewIds = entry.LinkPreviewIds,
+            LinkPreviews = entry.LinkPreviews,
+            ClientId = entry.ClientId,
+            Attachments = entry.Attachments,
+        };
 }

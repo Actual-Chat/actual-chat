@@ -30,6 +30,16 @@ public sealed partial record LegacySystemEntry : IUnionRecord<LegacySystemEntryO
 
     public bool Equals(LegacySystemEntry? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
+
+    public static LegacySystemEntry? From(ChatEntry entry) => entry switch {
+        MembersChangedEntry mc => new LegacySystemEntry {
+            Option = new LegacyMembersChangedOption(mc.TargetAuthorId, mc.TargetAuthorName, mc.HasLeft),
+        },
+        NotifyMembersEntry nm => new LegacySystemEntry {
+            Option = new LegacyNotifyMembersOption(nm.TargetAuthorId, nm.TargetAuthorName),
+        },
+        _ => null,
+    };
 }
 
 public abstract record LegacySystemEntryOption;

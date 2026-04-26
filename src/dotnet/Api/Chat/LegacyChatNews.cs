@@ -9,4 +9,12 @@ namespace ActualChat.Chat;
 [ParameterComparer(typeof(ByValueParameterComparer))]
 public sealed partial record LegacyChatNews(
     [property: DataMember, MemoryPackOrder(0)] Range<long> TextEntryIdRange,
-    [property: DataMember, MemoryPackOrder(1)] LegacyChatEntry? LastTextEntry = null);
+    [property: DataMember, MemoryPackOrder(1)] LegacyChatEntry? LastTextEntry = null)
+{
+    public static LegacyChatNews? From(ChatNews? news)
+        => news is null
+            ? null
+            : new LegacyChatNews(
+                news.TextEntryIdRange,
+                news.LastTextEntry is { } entry ? LegacyChatEntry.From(entry) : null);
+}
