@@ -368,10 +368,15 @@ export class VideoRecorder {
     }
 
     /**
-     * Get the raw preview track for rendering by VideoStreamingPreview.
+     * Get the preview track for VideoStreamingPreview / RecorderPreviewView.
+     * Returns the worker's WYSIWYG MSTG output (post-rotate, post-downscale —
+     * exactly what the remote peer sees) when available, falling back to the
+     * raw camera/screen track on browsers without MSTG support.
      */
     public getPreviewTrack(): MediaStreamTrack | null {
-        return this.previewTrack;
+        // Screencast keeps the raw track — the encoder doesn't transform it.
+        if (this.isScreencasting) return this.previewTrack;
+        return this.recordingService?.getProcessedTrack() ?? this.previewTrack;
     }
 
     /**

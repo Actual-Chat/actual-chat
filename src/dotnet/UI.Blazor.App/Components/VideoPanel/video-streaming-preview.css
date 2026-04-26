@@ -1,16 +1,31 @@
-.video-streaming-preview .call-video {
+.video-streaming-preview .call-video,
+.video-streaming-preview .call-video-native {
     transform: scaleX(-1);
 }
-body.wide .video-panel.expanded .video-streaming-preview .call-video {
+body.wide .video-panel.expanded .video-streaming-preview .call-video,
+body.wide .video-panel.expanded .video-streaming-preview .call-video-native {
     @apply rounded-lg;
 }
 .video-streaming-preview.screencast .call-video,
-.video-streaming-preview .call-video.no-mirror {
+.video-streaming-preview.screencast .call-video-native,
+.video-streaming-preview .call-video.no-mirror,
+.video-streaming-preview .call-video-native.no-mirror {
     transform: none;
 }
 /* Screencast preview: show whole screen with letterboxing instead of cropping. */
-.video-streaming-preview.screencast .call-video {
+.video-streaming-preview.screencast .call-video,
+.video-streaming-preview.screencast .call-video-native {
     @apply object-contain;
+}
+/* Native <video> element fills the container the same way the canvas does, and
+   sits underneath it. The canvas overlay is transparent unless blurred frames
+   are being drawn on it (via addPreviewFrameListener) — so the user sees the
+   <video> for the raw camera feed and the canvas overlays it when blur is on. */
+.video-streaming-preview .call-video-native {
+    @apply absolute inset-0 w-full h-full bg-black object-cover;
+}
+.video-streaming-preview .call-video {
+    background: transparent;
 }
 .video-streaming-preview .btn-h.btn-settings {
     @apply absolute top-2 right-14 z-button;

@@ -41,11 +41,17 @@ import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/
 // Import the ONNX model so esbuild copies it to dist/assets/onnx/
 import SegmentationModelUrl from './selfie_segmentation_olive_webgpu.onnx';
 
-// Type declaration for Insertable Streams API (may be available in worker scope on Safari 18+)
+// Type declarations for Insertable Streams API (may be available in worker scope on Safari 18+)
 declare class MediaStreamTrackProcessor<T = VideoFrame> {
     constructor(options: { track: MediaStreamTrack });
     readable: ReadableStream<T>;
 }
+// Structural ctor types for the two output-track flavours: standardized
+// `VideoTrackGenerator` (Safari 18+) and Chromium's older proprietary
+// `MediaStreamTrackGenerator`. Both produce a writable VideoFrame stream + a
+// readable MediaStreamTrack. We probe `self` for these names at runtime.
+type VideoTrackGeneratorCtor = new () => { writable: WritableStream<VideoFrame>; track: MediaStreamTrack };
+type MediaStreamTrackGeneratorCtor = new (opts: { kind: 'video' }) => { writable: WritableStream<VideoFrame>; track: MediaStreamTrack };
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
 
@@ -78,6 +84,7 @@ let startTimestamp: number | undefined = undefined;
 let lastLoggedFormat: string | null = '(unset)';
 let loggedI420Error = false;
 let loggedPreConvertSkipped = false;
+let loggedPreviewCloneError = false;
 
 // Backpressure
 let backpressureDrops = 0;
@@ -184,6 +191,16 @@ let vadReducedFrameIntervalMs = 1000 / 5;
 let vadLastPassedFrameTime = 0;
 let streamReadLoopPromise: Promise<void> | null = null;
 
+// Preview-track output (MSTG path). When set, processed frames are written to
+// `previewWriter` instead of being copied across the RPC boundary as VideoFrames.
+let previewWriter: WritableStreamDefaultWriter<VideoFrame> | null = null;
+let previewWriterClosed = false;
+
+// Input track held by `startWithTrack` / `startPreviewWithTrack` (MSTP source).
+// Tracked here so `stop()` can explicitly release it instead of relying on GC
+// of the MSTP processor — keeps the camera light from lingering.
+let inputTrack: MediaStreamTrack | null = null;
+
 // ─── Segmentation ───────────────────────────────────────────────────────────
 
 function initializeQueue(cfg: SegmentationConfig): void {
@@ -218,14 +235,29 @@ function enqueueFrame(frame: VideoFrame): void {
 
 function emitPreviewAndEncode(frame: VideoFrame): void {
     if (encoder) {
-        // Streaming mode: clone for preview, original goes to encoder
-        try {
-            const previewFrame = new VideoFrame(frame, { timestamp: frame.timestamp });
-            void callbacks.onPreviewFrame(previewFrame, rpcNoWait);
-        } catch { /* clone failed, skip preview */ }
+        // Streaming mode: encoder consumes the frame; preview is emitted from
+        // *inside* `encodeProcessedFrame` after rotation+downscale so what the
+        // remote peer sees is what the local preview shows (WYSIWYG).
         void encodeProcessedFrame(frame);
     } else {
-        // Preview-only mode: send frame directly as preview, no encoding
+        // Preview-only mode: no encoder/downscale step — emit the post-blur
+        // frame directly. (Optional MSTG path still applies; falls back to RPC.)
+        emitPreview(frame);
+    }
+}
+
+// Single point that delivers a processed VideoFrame to the preview consumer.
+// MSTG path (`previewWriter` set) writes to the generator's WritableStream — the
+// browser closes the frame after the writer takes ownership. RPC path (legacy
+// fallback) hands the frame to `onPreviewFrame`, which serialises it across.
+function emitPreview(frame: VideoFrame): void {
+    if (previewWriter && !previewWriterClosed) {
+        previewWriter.write(frame).catch((err: unknown) => {
+            warnLog?.log('Preview MSTG write failed:', err);
+            previewWriterClosed = true;
+            try { frame.close(); } catch { /* already closed */ }
+        });
+    } else {
         void callbacks.onPreviewFrame(frame, rpcNoWait);
     }
 }
@@ -387,8 +419,8 @@ function processOneFrame(frame: VideoFrame): void {
         if (blurEnabled && segInitialized) {
             enqueueFrame(frame);
         } else {
-            // No blur, no encoder — just send as preview and close
-            void callbacks.onPreviewFrame(frame, rpcNoWait);
+            // No blur, no encoder — just emit as preview (MSTG or RPC fallback)
+            emitPreview(frame);
         }
         return;
     }
@@ -501,6 +533,22 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
             liveFrame = processedFrame;
             resizeCanvas = resized.canvas;
             resizeCtx = resized.ctx;
+        }
+
+        // WYSIWYG preview: clone the processed frame (post-rotate, post-downscale,
+        // post-blur — exactly what we hand to the encoder) and emit to the preview
+        // sink. Encoder still consumes the original `processedFrame` below; clone
+        // is independent and closed by the MSTG writer / RPC consumer.
+        if (previewWriter && !previewWriterClosed) {
+            try {
+                const previewClone = new VideoFrame(processedFrame, { timestamp: processedFrame.timestamp });
+                emitPreview(previewClone);
+            } catch (e) {
+                if (!loggedPreviewCloneError) {
+                    loggedPreviewCloneError = true;
+                    warnLog?.log('Preview clone failed:', e);
+                }
+            }
         }
 
         // Optional YUV pre-conversion — disabled by default since HW encoders accept RGBA natively.
@@ -882,6 +930,58 @@ async function initDownscaler(config: VideoProcessingConfig): Promise<void> {
     }
 }
 
+// ─── Preview-only (MSTG) helpers ────────────────────────────────────────────
+
+interface PreviewMSTG { writable: WritableStream<VideoFrame>; track: MediaStreamTrack }
+
+// Initialise the preview MSTG and hand the output track to main. Idempotent —
+// no-op if MSTG already set up. Returns true on success. Encoder modes call
+// this opportunistically (no-op on browsers without MSTG, RPC fallback applies);
+// previewOnly mode calls it as a hard requirement.
+function ensurePreviewMSTG(): boolean {
+    if (previewWriter && !previewWriterClosed) return true;
+    const mstg = tryCreatePreviewMSTG();
+    if (!mstg) return false;
+    previewWriter = mstg.writable.getWriter();
+    previewWriterClosed = false;
+    void callbacks.onPreviewTrack(mstg.track, rpcNoWait);
+    return true;
+}
+
+function tryCreatePreviewMSTG(): PreviewMSTG | null {
+    const w = self as unknown as {
+        VideoTrackGenerator?: VideoTrackGeneratorCtor;
+        MediaStreamTrackGenerator?: MediaStreamTrackGeneratorCtor;
+    };
+    try {
+        if (typeof w.VideoTrackGenerator === 'function') {
+            const gen = new w.VideoTrackGenerator();
+            return { writable: gen.writable, track: gen.track };
+        }
+        if (typeof w.MediaStreamTrackGenerator === 'function') {
+            const gen = new w.MediaStreamTrackGenerator({ kind: 'video' });
+            return { writable: gen.writable, track: gen.track };
+        }
+    } catch (e) {
+        warnLog?.log('Failed to construct preview MSTG:', e);
+    }
+    return null;
+}
+
+async function previewReadLoop(inputReader: ReadableStreamDefaultReader<VideoFrame>): Promise<void> {
+    try {
+        while (processing) {
+            const { done, value } = await inputReader.read();
+            if (done) { infoLog?.log('Preview input ended'); break; }
+            processOneFrame(value);
+        }
+    } catch (e) {
+        errorLog?.log('previewReadLoop error:', e);
+    } finally {
+        try { inputReader.releaseLock(); } catch { /* ignore */ }
+    }
+}
+
 // ─── Stream read loop ───────────────────────────────────────────────────────
 
 async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFrame>): Promise<void> {
@@ -1064,6 +1164,13 @@ export const serverImpl: VideoProcessingWorker = {
             applyStreamingConfig(config);
             senderRotationDeg = config.senderRotationDeg ?? 0;
 
+            // Set up MSTG output BEFORE encoder so the preview track is delivered
+            // to main while we're still in the awaited startup window — main can
+            // read it synchronously after `startWithStream` resolves. No-op
+            // (returns false) on browsers without MSTG; preview falls back to
+            // the existing RPC `onPreviewFrame` callback path.
+            ensurePreviewMSTG();
+
             if (config.segmentation) {
                 await initializeSegmentation({ ...config.segmentation, outputWidth: config.encoder.width, outputHeight: config.encoder.height });
                 blurEnabled = true;
@@ -1094,6 +1201,48 @@ export const serverImpl: VideoProcessingWorker = {
         }
     },
 
+    startPreviewWithTrack: async (config, track): Promise<void> => {
+        try {
+            infoLog?.log('Starting preview-only worker (MSTG mode)...');
+
+            if (typeof MediaStreamTrackProcessor === 'undefined')
+                throw new Error('MediaStreamTrackProcessor not available in worker scope');
+
+            // Hand the output track to main BEFORE we start producing frames so
+            // the consumer is wired up by the time the first frame arrives.
+            if (!ensurePreviewMSTG())
+                throw new Error('MediaStreamTrackGenerator/VideoTrackGenerator not available in worker scope');
+
+            senderRotationDeg = config.senderRotationDeg ?? 0;
+            if (config.segmentation) {
+                await initializeSegmentation({
+                    ...config.segmentation,
+                    outputWidth: config.encoder.width,
+                    outputHeight: config.encoder.height,
+                });
+                blurEnabled = true;
+            }
+
+            processing = true;
+            inputTrack = track;
+
+            const processor = new MediaStreamTrackProcessor({ track });
+            const inputReader = processor.readable.getReader();
+            streamReadLoopPromise = previewReadLoop(inputReader);
+
+            infoLog?.log('Preview-only worker started (MSTG mode)');
+        } catch (error) {
+            errorLog?.log('Failed to start preview-only worker (MSTG mode):', error);
+            // Roll back partial state so the caller can fall back cleanly.
+            if (previewWriter) {
+                try { await previewWriter.close(); } catch { /* ignore */ }
+                previewWriter = null;
+            }
+            previewWriterClosed = false;
+            throw error;
+        }
+    },
+
     startWithTrack: async (config, track): Promise<void> => {
         try {
             infoLog?.log('Starting video processing worker (track transfer mode)...');
@@ -1105,6 +1254,10 @@ export const serverImpl: VideoProcessingWorker = {
 
             applyStreamingConfig(config);
             senderRotationDeg = config.senderRotationDeg ?? 0;
+
+            // Set up MSTG output BEFORE encoder so the preview track is delivered
+            // to main while we're still in the awaited startup window.
+            ensurePreviewMSTG();
 
             if (config.segmentation) {
                 await initializeSegmentation({ ...config.segmentation, outputWidth: config.encoder.width, outputHeight: config.encoder.height });
@@ -1124,6 +1277,7 @@ export const serverImpl: VideoProcessingWorker = {
             dimensionsReconciled = false;
             needsRotation = false;
             orientationStats = null;
+            inputTrack = track;
 
             const processor = new MediaStreamTrackProcessor({ track });
             const inputReader = processor.readable.getReader();
@@ -1144,6 +1298,9 @@ export const serverImpl: VideoProcessingWorker = {
 
             if (!isPreviewOnly) {
                 applyStreamingConfig(config);
+                // Encoder mode: opportunistic MSTG output. No-op on browsers
+                // without MSTG; preview falls back to RPC `onPreviewFrame`.
+                ensurePreviewMSTG();
             }
             senderRotationDeg = config.senderRotationDeg ?? 0;
 
@@ -1385,6 +1542,17 @@ export const serverImpl: VideoProcessingWorker = {
         stopScreencastHeartbeat();
 
         if (streamReadLoopPromise) { try { await streamReadLoopPromise; } catch { /* ignore */ } streamReadLoopPromise = null; }
+        if (previewWriter) {
+            previewWriterClosed = true;
+            try { await previewWriter.close(); } catch { /* writer may already be in error state */ }
+            previewWriter = null;
+        }
+        if (inputTrack) {
+            // Stop the cloned camera track explicitly — releases the camera light
+            // immediately rather than waiting for MSTP/processor GC.
+            try { inputTrack.stop(); } catch { /* ignore */ }
+            inputTrack = null;
+        }
         try { await awaitAllPendingReadbacks(); } catch { /* ignore */ }
         if (frameQueue) { while (!frameQueue.isEmpty()) { const qf = frameQueue.shift(); if (qf) qf.frame.close(); } frameQueue = null; }
         if (encoder) {

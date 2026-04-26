@@ -85,6 +85,11 @@ export interface IVideoPipeline {
     toggleBlur(enabled: boolean, segmentationConfig?: SegmentationConfig): Promise<void>;
     switchSegmentationBackend(backend: 'webgpu' | 'wasm'): Promise<void>;
     setPreviewCallback(callback: ((frame: VideoFrame) => void) | null): void;
+    /** WYSIWYG preview track: post-rotation, post-downscale `MediaStreamTrack`
+     *  produced inside the worker via MSTG and posted back to main on startup.
+     *  Null on browsers without MSTG worker support, or before pipeline.start
+     *  has resolved. Consumers attach to a `<video srcObject>`. */
+    getProcessedTrack(): MediaStreamTrack | null;
     getEncoderStats(): EncoderStats;
     getSegmentationStats(): SegmentationStats | null;
     getOrientationStats(): OrientationStats | null;
@@ -103,6 +108,10 @@ export class VideoPipeline implements IVideoPipeline {
 
     // Preview callback for rendering blurred frames on main thread
     private previewCallback: ((frame: VideoFrame) => void) | null = null;
+    // WYSIWYG preview track from worker MSTG (encoder modes only). Set by the
+    // `onPreviewTrack` callback during worker startup; null on browsers without
+    // MSTG support, in which case `previewCallback` (RPC frame path) is used.
+    private processedTrack: MediaStreamTrack | null = null;
 
     // Common
     private processing = false;
@@ -240,6 +249,11 @@ export class VideoPipeline implements IVideoPipeline {
                         }
                     }
                     frame.close();
+                    return Promise.resolve();
+                },
+                onPreviewTrack: (track: MediaStreamTrack) => {
+                    infoLog?.log(`Worker delivered preview MSTG track (id=${track.id}, kind=${track.kind})`);
+                    this.processedTrack = track;
                     return Promise.resolve();
                 },
                 onStreamCreated: (codecSettings: string) => {
@@ -446,7 +460,12 @@ export class VideoPipeline implements IVideoPipeline {
     private async startTrackTransferMode(videoTrack: MediaStreamTrack, config: VideoProcessingConfig): Promise<void> {
         infoLog?.log('Starting track transfer mode...');
         try {
-            await this.worker.startWithTrack(config, videoTrack, { type: 'rpc-timeout', timeoutMs: 15000 });
+            // Transferring a MediaStreamTrack via postMessage neuters the
+            // main-thread reference (Safari 18 spec behaviour). Clone first so
+            // the original `videoTrack` stays alive on main for preview
+            // consumers (RecorderPreviewView's <video srcObject>).
+            const workerTrack = videoTrack.clone();
+            await this.worker.startWithTrack(config, workerTrack, { type: 'rpc-timeout', timeoutMs: 15000 });
             infoLog?.log('Track transfer mode started');
         } catch (error) {
             warnLog?.log('Track transfer mode failed, falling back to RPC:', error);
@@ -661,6 +680,10 @@ export class VideoPipeline implements IVideoPipeline {
 
     setPreviewCallback(callback: ((frame: VideoFrame) => void) | null): void {
         this.previewCallback = callback;
+    }
+
+    getProcessedTrack(): MediaStreamTrack | null {
+        return this.processedTrack;
     }
 
     updateSavedBitrate(bitrate: number): void {

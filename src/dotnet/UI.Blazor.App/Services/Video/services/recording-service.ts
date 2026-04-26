@@ -571,6 +571,12 @@ export class RecordingService extends EventTarget {
         return this.inputTrack;
     }
 
+    /** WYSIWYG preview track produced inside the worker (post-rotate, post-downscale).
+     *  Null on browsers without MSTG support — caller falls back to {@link getInputTrack}. */
+    getProcessedTrack(): MediaStreamTrack | null {
+        return this.pipeline?.getProcessedTrack() ?? null;
+    }
+
     /**
    * Set a callback to receive processed (blurred) frames for local preview.
    * Must be called after start().
