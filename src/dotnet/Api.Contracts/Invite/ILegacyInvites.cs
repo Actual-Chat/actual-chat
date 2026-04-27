@@ -27,8 +27,11 @@ public interface ILegacyInvites : IComputeService
     [ComputeMethod]
     Task<LegacyInvite?> GetOrGeneratePlaceInvite(Session session, PlaceId placeId, CancellationToken cancellationToken);
 
+    [CommandHandler]
     Task<LegacyInvite> OnGenerate(LegacyInvites_Generate command, CancellationToken cancellationToken);
+    [CommandHandler]
     Task<LegacyInvite> OnUse(Invites_Use command, CancellationToken cancellationToken);
+    [CommandHandler]
     Task OnRevoke(Invites_Revoke command, CancellationToken cancellationToken);
 }
 

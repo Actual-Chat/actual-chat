@@ -24,6 +24,10 @@ public class LegacyChats(IServiceProvider services) : ILegacyChats
         return LegacyChatTile.From(tile);
     }
 
+    public virtual Task<LegacyChatTile> GetTile(
+        Session session, ChatId chatId, int entryKind, Range<long> idTileRange, CancellationToken cancellationToken)
+        => GetTile(session, chatId, idTileRange, cancellationToken);
+
     public virtual async Task<LegacyChatEntry> OnUpsertEntry(
         Chats_UpsertEntry command, CancellationToken cancellationToken)
     {

@@ -19,7 +19,13 @@ public interface ILegacyChats : IComputeService
     Task<LegacyChatTile> GetTile(
         Session session, ChatId chatId, Range<long> idTileRange, CancellationToken cancellationToken);
 
-    [RpcMethod(ConnectTimeout = double.PositiveInfinity)]
+    // v2.6 IChats.GetTile overload with entryKind is still callable from old clients,
+    // route it here so they get a LegacyChatTile rather than the modern union shape.
+    [ComputeMethod(MinCacheDuration = 10), RemoteComputeMethod(MinCacheDuration = 300)]
+    Task<LegacyChatTile> GetTile(
+        Session session, ChatId chatId, int entryKind, Range<long> idTileRange, CancellationToken cancellationToken);
+
+    [CommandHandler, RpcMethod(ConnectTimeout = double.PositiveInfinity)]
     Task<LegacyChatEntry> OnUpsertEntry(
         Chats_UpsertEntry command, CancellationToken cancellationToken);
 }
