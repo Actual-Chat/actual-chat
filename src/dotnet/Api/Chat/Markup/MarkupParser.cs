@@ -257,6 +257,19 @@ public partial class MarkupParser : IMarkupParser
             new[] { first }.Concat(rest).Select(c => (ListItemMarkup)c).ToArray())
         ).Debug("<List>");
 
+    // After a list/code block, optionally consume \n if followed by another \n (or end)
+    // This preserves empty lines after list/code blocks as ParagraphMarkup.Empty,
+    // so users can add a blank line after a list without it being silently swallowed.
+    private static readonly Parser<char, Markup> TrailingEmptyParagraphAfterBlock =
+        Try(EndOfLine.Then(Lookahead(Try(EndOfLine).Or(End.ThenReturn("")))))
+            .ThenReturn((Markup)ParagraphMarkup.Empty);
+
+    // List or code block, optionally followed by an empty paragraph that captures a trailing blank line
+    private static readonly Parser<char, Markup> ListOrCodeBlockWithOptionalEmpty =
+        from b in SafeTryOneOf(CodeBlock, ListBlock)
+        from emptyOpt in TrailingEmptyParagraphAfterBlock.Optional()
+        select emptyOpt.HasValue ? Markup.Join(b, emptyOpt.Value) : b;
+
     private static readonly Parser<char, Markup> FullWithUnparsedMarkup =
         new InternalParsers(true).Parser;
 
@@ -318,7 +331,7 @@ public partial class MarkupParser : IMarkupParser
                 ).Debug("<Paragraph>");
 
             Parser<char, Markup> block =
-                SafeTryOneOf(CodeBlock, ListBlock, paragraph);
+                SafeTryOneOf(ListOrCodeBlockWithOptionalEmpty, paragraph);
 
             // Empty paragraph: matches when there's another newline (or end) after paragraph break
             Parser<char, Markup> emptyParagraph =
@@ -328,7 +341,7 @@ public partial class MarkupParser : IMarkupParser
             // After paragraph: need double newline for next paragraph, single newline OK for code/list
             // Solution: Try all options with proper backtracking
             Parser<char, Markup> blockSeparatorThenBlock =
-                Try(EndOfLine.Then(SafeTryOneOf(CodeBlock, ListBlock))) // single \n + code/list
+                Try(EndOfLine.Then(ListOrCodeBlockWithOptionalEmpty)) // single \n + code/list (with optional trailing empty line)
                     .Or(Try(EndOfLine.Then(EndOfLine).Then(SafeTryOneOf(emptyParagraph, block)))) // \n\n + empty or block
                     .Or(EndOfLine.Then(paragraph)); // single \n + paragraph (only works after code/list)
 
