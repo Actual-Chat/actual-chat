@@ -150,6 +150,10 @@ export class InternalVideoStream {
         this.frameAdded.trigger();
     }
 
+    getAddedFrameCount(): number {
+        return this.addedFrameCount;
+    }
+
     complete(): void {
         this.isCompleted = true;
         this.frameAdded.trigger();

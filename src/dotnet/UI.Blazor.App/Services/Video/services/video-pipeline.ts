@@ -18,7 +18,7 @@ import { BrowserInit } from '../../../../UI.Blazor/Services/BrowserInit/browser-
 import { ConnectivityUI } from '../../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
 import { Api, WorkerKind } from 'api';
 import type { EncoderConfig, EncoderStats } from '../webcodecs-encoder';
-import type { SegmentationConfig, SegmentationStats, OrientationStats, SpatialLayerConfig } from '../workers/video-processing-worker-contract';
+import type { SegmentationConfig, SegmentationStats, OrientationStats, SpatialLayerConfig, VideoProcessingStreamingStats } from '../workers/video-processing-worker-contract';
 import type {
     VideoProcessingWorker,
     VideoProcessingWorkerCallbacks,
@@ -93,6 +93,7 @@ export interface IVideoPipeline {
     getEncoderStats(): EncoderStats;
     getSegmentationStats(): SegmentationStats | null;
     getOrientationStats(): OrientationStats | null;
+    getStreamingStats(): VideoProcessingStreamingStats | null;
     pauseEncoding(): void;
     resumeEncoding(): void;
     forceKeyFrame(): Promise<void>;
@@ -193,6 +194,7 @@ export class VideoPipeline implements IVideoPipeline {
         },
         segmentation: null,
         orientation: null,
+        streaming: null,
     };
     private statsInterval: number | null = null;
     private diagnosticsInterval: number | null = null;
@@ -676,6 +678,10 @@ export class VideoPipeline implements IVideoPipeline {
 
     getOrientationStats(): OrientationStats | null {
         return this.currentStats.orientation ? { ...this.currentStats.orientation } : null;
+    }
+
+    getStreamingStats(): VideoProcessingStreamingStats | null {
+        return this.currentStats.streaming ? { ...this.currentStats.streaming } : null;
     }
 
     setPreviewCallback(callback: ((frame: VideoFrame) => void) | null): void {

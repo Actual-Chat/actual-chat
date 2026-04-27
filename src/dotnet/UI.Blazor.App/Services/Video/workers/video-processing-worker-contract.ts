@@ -172,10 +172,18 @@ export interface OrientationStats {
     framesSeen: number;
 }
 
+export interface VideoProcessingStreamingStats {
+    sentFrames: number;
+    pendingFrames: number;
+    streamRecreations: number;
+    status: string;
+}
+
 export interface VideoProcessingStats {
     encoder: EncoderStats;
     segmentation: SegmentationStats | null;
     orientation: OrientationStats | null;
+    streaming: VideoProcessingStreamingStats | null;
 }
 
 export interface VideoProcessingWorker {

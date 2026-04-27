@@ -41,6 +41,12 @@ export interface OwnStreamDiagnostics {
         rotationDetection: string;
         framesSeen: number;
     } | null;
+    streaming: {
+        sentFrames: number;
+        pendingFrames: number;
+        streamRecreations: number;
+        status: string;
+    } | null;
 }
 
 export interface VideoDevice {
@@ -1049,6 +1055,7 @@ export class VideoRecorder {
         const encoderStats = pipeline?.getEncoderStats();
         const segStats = pipeline?.getSegmentationStats();
         const orientStats = pipeline?.getOrientationStats();
+        const streamStats = pipeline?.getStreamingStats();
         const state = rs?.getState();
         const config = rs?.getConfig();
         const inputTrack = rs?.getInputTrack();
@@ -1093,6 +1100,12 @@ export class VideoRecorder {
                 needsRotation: orientStats.needsRotation,
                 rotationDetection: orientStats.rotationDetection,
                 framesSeen: orientStats.framesSeen,
+            } : null,
+            streaming: streamStats ? {
+                sentFrames: streamStats.sentFrames,
+                pendingFrames: streamStats.pendingFrames,
+                streamRecreations: streamStats.streamRecreations,
+                status: streamStats.status,
             } : null,
         };
     }

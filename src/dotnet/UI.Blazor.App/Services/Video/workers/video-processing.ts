@@ -10,7 +10,7 @@ import Denque from 'denque';
 import * as ort from 'onnxruntime-web';
 
 import { type EncoderConfig, type EncodedChunkData, WebCodecsEncoder } from '../webcodecs-encoder';
-import type { SegmentationConfig, SegmentationStats, ModelConfig, SpatialLayerConfig, VideoProcessingConfig, VideoProcessingWorker, VideoProcessingWorkerCallbacks, VideoProcessingStats, OrientationStats } from './video-processing-worker-contract';
+import type { SegmentationConfig, SegmentationStats, ModelConfig, SpatialLayerConfig, VideoProcessingConfig, VideoProcessingWorker, VideoProcessingWorkerCallbacks, VideoProcessingStats, VideoProcessingStreamingStats, OrientationStats } from './video-processing-worker-contract';
 import { getModelConfig } from './video-processing-worker-contract';
 import {
     initTensorWebGPU,
@@ -144,6 +144,7 @@ function applyStreamingConfig(config: VideoProcessingConfig): void {
     streamCtx.streamKind = s.streamKind ?? 0;
     streamCtx.apiUrl = s.apiUrl;
     streamingEnabled = true;
+    streamStatus = 'waiting for first frame';
     // Declare our intent to keep a connection up while we capture.
     // Actual attempts are still gated by `Api.isDotNetRpcConnected`.
     Api.requireConnection('VideoCapture');
@@ -155,6 +156,8 @@ let pendingStreamFrames: VideoStreamFrame[] = [];
 let codecSettings: string | null = null;
 const storedDescriptionBytesByLayer = new Map<number, Uint8Array>();
 let streamingEnabled = false;
+let streamRecreations = 0;
+let streamStatus = 'idle';
 
 // ─── Screencast heartbeat ──────────────────────────────────────────────────
 // getDisplayMedia is change-driven: a static screen produces zero frames. Without
@@ -731,6 +734,7 @@ function deliverChunkToStream(
         warnLog?.log('VideoStream disposed — will recreate on next keyframe');
         videoStream = null;
         startTimestamp = undefined;
+        streamStatus = 'reconnecting: waiting for keyframe';
     }
 
     const chunkData = new Uint8Array(chunkBytes);
@@ -806,12 +810,15 @@ function deliverChunkToStream(
                 lastVideoStream?.whenDisposed,
             );
             lastVideoStream = videoStream;
+            streamRecreations++;
             warnLog?.log(`TIMING_ANCHOR: startTimestamp=${((startTimestamp ?? 0) / 1000).toFixed(0)}ms, firstChunkOffsetMs=${(timestamp / 1000).toFixed(0)}`);
             for (const buffered of pendingStreamFrames) videoStream.addFrame(buffered);
             pendingStreamFrames = [];
             videoStream.addFrame(frame);
+            streamStatus = 'streaming';
             void callbacks.onStreamCreated(settings, rpcNoWait);
         } else {
+            streamStatus = 'waiting for codec description';
             pendingStreamFrames.push(frame);
         }
     } else {
@@ -1390,6 +1397,7 @@ export const serverImpl: VideoProcessingWorker = {
     switchCodec: async (config: EncoderConfig, spatialLayers?: SpatialLayerConfig[]): Promise<void> => {
         if (!encoder) { warnLog?.log('Cannot switch codec: not active'); return; }
         infoLog?.log(`Switching codec to ${config.codec}`);
+        streamStatus = 'switching codec';
 
         // Suppress frame output during codec switch — encoder.switchCodec() flushes
         // old-codec frames that must NOT leak into the new stream
@@ -1442,6 +1450,14 @@ export const serverImpl: VideoProcessingWorker = {
 
         // Re-enable streaming and clear any frames that leaked during flush
         streamingEnabled = wasStreaming;
+        // Diagnostic: explain what the encoder needs to resume streaming.
+        // lastEncodedFrame is always null here (cleared above), so screencast
+        // heartbeat can't fire until getDisplayMedia produces a new frame.
+        // On a static screen this means the stream is stalled until user activity.
+        if (streamCtx.streamKind === 1)
+            streamStatus = 'stalled: waiting for screen activity after codec switch (heartbeat source lost)';
+        else
+            streamStatus = 'waiting for encoder output';
         pendingStreamFrames = [];
         startTimestamp = undefined;
         backpressureDrops = 0; backpressureTotalFrames = 0; lastBackpressureCheckTime = 0; backpressureNotified = false;
@@ -1611,7 +1627,8 @@ export const serverImpl: VideoProcessingWorker = {
         segFrameCounter = 0; hasValidMask = false; loggedBlurFormat = false; processingFrame = false; frameSequence = 0;
         segProcessedFrames = 0; segTotalInferenceTime = 0; segTotalBlurTime = 0; segTotalProcessingTime = 0; segDroppedFrames = 0;
         videoStream = null; lastVideoStream = null; pendingStreamFrames = [];
-        codecSettings = null; storedDescriptionBytesByLayer.clear(); streamingEnabled = false;
+        codecSettings = null; storedDescriptionBytesByLayer.clear();
+        streamingEnabled = false; streamRecreations = 0; streamStatus = 'idle';
 
         infoLog?.log('Video processing worker stopped');
     },
@@ -1630,7 +1647,13 @@ export const serverImpl: VideoProcessingWorker = {
             averageTotalTime: segProcessedFrames > 0 ? segTotalProcessingTime / segProcessedFrames : 0,
             droppedFrames: segDroppedFrames, backend: segConfig?.backend ?? 'unknown',
         } : null;
-        return { encoder: encoderStats, segmentation: segStats, orientation: orientationStats ? { ...orientationStats } : null };
+        const streamStats: VideoProcessingStreamingStats | null = streamingEnabled ? {
+            sentFrames: videoStream?.getAddedFrameCount() ?? 0,
+            pendingFrames: pendingStreamFrames.length,
+            streamRecreations,
+            status: streamStatus,
+        } : null;
+        return { encoder: encoderStats, segmentation: segStats, orientation: orientationStats ? { ...orientationStats } : null, streaming: streamStats };
     },
 
     // eslint-disable-next-line @typescript-eslint/require-await
