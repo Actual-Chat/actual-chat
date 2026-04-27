@@ -17,8 +17,8 @@ public class NativeAuth(IServiceProvider services) : INativeAuth
     private UsersSettings Settings { get; } = services.GetRequiredService<UsersSettings>();
     private AuthHelper AuthHelper { get; } = services.GetRequiredService<AuthHelper>();
     private ICommander Commander { get; } = services.Commander();
-    private IOptionsMonitor<AppleAuthenticationOptions> AppleOptions { get; }
-        = services.GetRequiredService<IOptionsMonitor<AppleAuthenticationOptions>>();
+    private IOptionsFactory<AppleAuthenticationOptions> AppleOptionsFactory { get; }
+        = services.GetRequiredService<IOptionsFactory<AppleAuthenticationOptions>>();
     private IOptionsMonitor<GoogleOptions> GoogleOptions { get; }
         = services.GetRequiredService<IOptionsMonitor<GoogleOptions>>();
     private ILogger Log { get; } = services.LogFor<NativeAuth>();
@@ -79,17 +79,19 @@ public class NativeAuth(IServiceProvider services) : INativeAuth
             code.RequireNonEmpty();
 
             var schemeName = AppleAuthenticationDefaults.AuthenticationScheme;
-            var options = AppleOptions.Get(schemeName);
-            // Native iOS flow uses the app's bundle id, not the web ClientId — and the secret generator
-            // needs a HttpContext to resolve services. We don't mutate the shared options instance.
-            var appleAppId = Settings.AppleAppId;
+            // Use a fresh, isolated options instance so we can safely override ClientId for the native
+            // app id without mutating the shared singleton. The secret generator reads ClientId to build
+            // the JWT 'iss'/'sub', and Apple's token endpoint requires it to match the request's client_id.
+            var options = AppleOptionsFactory.Create(schemeName);
+            options.ClientId = Settings.AppleAppId;
+
             var stubHttpContext = new DefaultHttpContext { RequestServices = Services };
             var scheme = new AuthenticationScheme(schemeName, schemeName, typeof(AppleAuthenticationHandler));
             var secretContext = new AppleGenerateClientSecretContext(stubHttpContext, scheme, options);
             var clientSecret = await options.ClientSecretGenerator.GenerateAsync(secretContext).ConfigureAwait(false);
 
             using var token = await ExchangeCode(
-                    code, options.Backchannel, options.TokenEndpoint, appleAppId, clientSecret, cancellationToken)
+                    code, options.Backchannel, options.TokenEndpoint, options.ClientId, clientSecret, cancellationToken)
                 .ConfigureAwait(false);
 
             // Use sub and email from Apple's id_token (received server-to-server),
