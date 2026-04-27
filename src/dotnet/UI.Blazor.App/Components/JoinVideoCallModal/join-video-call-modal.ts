@@ -195,44 +195,28 @@ export class JoinVideoCallModal {
         if (!this.track || this.isBlurActive) return;
 
         try {
-            this.blurSession = await BlurPreviewSession.create({
-                track: this.track,
-                source: this.videoEl,
-                target: this.canvasEl,
-            });
-
-            if (this.blurSession.previewTrack) {
-                // MSTG path: swap <video>.srcObject to the blurred output track.
-                // Camera <video> stays as-is in the DOM; only its source changes.
-                this.videoEl.srcObject = new MediaStream([this.blurSession.previewTrack]);
-            } else {
-                // Pump fallback: canvas overlay sits on top of the still-decoding
-                // <video>; BlurPreviewSession's drawImage pump pulls from videoEl.
-                this.videoFrame.classList.add('shows-canvas');
-            }
-
+            this.blurSession = await BlurPreviewSession.create({ track: this.track });
+            // Swap <video>.srcObject to the blurred MSTG output track. Camera
+            // <video> stays as-is in the DOM; only its source changes.
+            this.videoEl.srcObject = new MediaStream([this.blurSession.previewTrack]);
             this.isBlurActive = true;
         } catch (error) {
             errorLog?.log('Failed to start blur preview:', error);
-            this.videoFrame.classList.remove('shows-canvas');
             await this.stopBlurPreview();
         }
     }
 
     private async stopBlurPreview(): Promise<void> {
         this.isBlurActive = false;
-        this.videoFrame.classList.remove('shows-canvas');
-
-        const wasMstg = this.blurSession?.previewTrack != null;
 
         if (this.blurSession) {
             await this.blurSession.stop();
             this.blurSession = null;
         }
 
-        // After MSTG-mode teardown, restore the raw camera track on the <video>
-        // so the user keeps seeing themselves once blur is off.
-        if (wasMstg && this.track) {
+        // Restore the raw camera track on <video> so the user keeps seeing
+        // themselves once blur is off.
+        if (this.track) {
             this.videoEl.srcObject = new MediaStream([this.track]);
             void this.videoEl.play();
         }

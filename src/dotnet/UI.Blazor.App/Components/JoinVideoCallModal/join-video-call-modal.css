@@ -35,12 +35,14 @@
     @apply hidden;
     transform: scaleX(-1);
 }
-/* Native <video> visible when Join mode has a live track. Stays visible (and
-   decoding) even when blur is on so BlurPreviewSession's drawImage pump can
-   pull frames from it; the canvas overlay sits on top and visually covers it. */
+/* Native <video> visible when Join mode has a live track. Blur-on case swaps
+   the <video>'s srcObject to the worker's MediaStreamTrackGenerator output,
+   so the same element shows raw and blurred without a separate overlay. */
 .join-video-call-modal .video-frame.shows-video .camera-preview-video {
     @apply block;
 }
+/* Canvas overlay used by Settings mode (RecorderPreviewView toggles
+   .shows-canvas via onBlurChange to overlay the recorder's blurred frames). */
 .join-video-call-modal .video-frame.shows-canvas .camera-preview {
     @apply block;
 }
