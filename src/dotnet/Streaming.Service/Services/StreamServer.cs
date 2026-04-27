@@ -142,18 +142,13 @@ public class StreamServer(IServiceProvider services) : IStreamServer
 
     public async Task<double> ReportVideoLatency(
         string streamId,
-        double streamOffsetMs,
-        double medianDecodeTimeMs,
-        int bufferDepth,
-        double bufferSpanMs,
+        VideoLatencyReport report,
         CancellationToken cancellationToken)
     {
         var parsedStreamId = StreamId.Parse(streamId);
         var peerId = RpcInboundContext.Current?.Peer.Id.ToString() ?? "rpc-unknown";
-        await VideoBackend.ReportPeerLatency(
-            parsedStreamId, peerId, streamOffsetMs,
-            medianDecodeTimeMs, bufferDepth, bufferSpanMs,
-            cancellationToken).ConfigureAwait(false);
+        await VideoBackend.ReportPeerLatency(parsedStreamId, peerId, report, cancellationToken)
+            .ConfigureAwait(false);
 
         return Clocks.SystemClock.UtcNow.ToUnixTimeMilliseconds();
     }

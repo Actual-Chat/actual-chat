@@ -10,6 +10,7 @@
  */
 
 import { rpcClientServer, rpcNoWait } from 'rpc';
+import { RunningEMA } from 'math';
 import type { Disposable } from 'disposable';
 import { supportsTransferableStreams } from '../workers/stream-channel';
 
@@ -17,7 +18,7 @@ import { BrowserInit } from '../../../../UI.Blazor/Services/BrowserInit/browser-
 import { ConnectivityUI } from '../../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
 import { Api, WorkerKind } from 'api';
 import type { EncoderConfig, EncoderStats } from '../webcodecs-encoder';
-import type { SegmentationConfig, SegmentationStats, OrientationStats } from '../workers/video-processing-worker-contract';
+import type { SegmentationConfig, SegmentationStats, OrientationStats, SpatialLayerConfig, VideoProcessingStreamingStats } from '../workers/video-processing-worker-contract';
 import type {
     VideoProcessingWorker,
     VideoProcessingWorkerCallbacks,
@@ -35,6 +36,10 @@ const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
 
 export interface PipelineConfig {
     encoderConfig: EncoderConfig;
+    /** Simulcast layers. When set with length >= 1, the worker creates N encoders
+     *  (encoderConfig drives SpatialLayerId=0 base; entries here are extras at
+     *  SpatialLayerId=i+1). Omit for single-encoder (P2P) mode. */
+    spatialLayers?: SpatialLayerConfig[];
     backgroundBlur?: {
         enabled: boolean;
         segmentationConfig: SegmentationConfig;
@@ -75,13 +80,20 @@ export interface IVideoPipeline {
     start(inputStream: MediaStream): Promise<void>;
     stop(): Promise<void>;
     reconfigure(params: { bitrate: number; width: number; height: number }): Promise<void>;
-    switchCodec(newCodecString: string): Promise<void>;
+    switchCodec(newCodecString: string, spatialLayers?: SpatialLayerConfig[]): Promise<void>;
+    setSpatialLayers(layers: SpatialLayerConfig[] | null): Promise<void>;
     toggleBlur(enabled: boolean, segmentationConfig?: SegmentationConfig): Promise<void>;
     switchSegmentationBackend(backend: 'webgpu' | 'wasm'): Promise<void>;
     setPreviewCallback(callback: ((frame: VideoFrame) => void) | null): void;
+    /** WYSIWYG preview track: post-rotation, post-downscale `MediaStreamTrack`
+     *  produced inside the worker via MSTG and posted back to main on startup.
+     *  Null on browsers without MSTG worker support, or before pipeline.start
+     *  has resolved. Consumers attach to a `<video srcObject>`. */
+    getProcessedTrack(): MediaStreamTrack | null;
     getEncoderStats(): EncoderStats;
     getSegmentationStats(): SegmentationStats | null;
     getOrientationStats(): OrientationStats | null;
+    getStreamingStats(): VideoProcessingStreamingStats | null;
     pauseEncoding(): void;
     resumeEncoding(): void;
     forceKeyFrame(): Promise<void>;
@@ -97,9 +109,20 @@ export class VideoPipeline implements IVideoPipeline {
 
     // Preview callback for rendering blurred frames on main thread
     private previewCallback: ((frame: VideoFrame) => void) | null = null;
+    // WYSIWYG preview track from worker MSTG (encoder modes only). Set by the
+    // `onPreviewTrack` callback during worker startup; null on browsers without
+    // MSTG support, in which case `previewCallback` (RPC frame path) is used.
+    private processedTrack: MediaStreamTrack | null = null;
 
     // Common
     private processing = false;
+
+    // VAD-driven local spatial drop (G2). When silence latches in a multi-peer
+    // call we drop the top simulcast extra locally without waiting for a server
+    // feedback round-trip. Speech resume restores it. Saved here so the resume
+    // path knows what to add back; cleared whenever an external setSpatialLayers
+    // arrives (cap-driven changes are authoritative over VAD state).
+    private vadDroppedLayer: SpatialLayerConfig | null = null;
 
     // VAD-based adaptive framerate (main thread tracks state, forwards to worker)
     private remoteStreamCount = 0;
@@ -112,9 +135,44 @@ export class VideoPipeline implements IVideoPipeline {
     // Encoder backpressure state
     private backpressureStepDownCount = 0;
     private lastBackpressureStepDown = 0;
+    // Timestamp of the most recent structural change (switchCodec / setSpatialLayers).
+    // Backpressure samples in the cooldown window after a switch are dropped — the
+    // freshly armed encoder hasn't produced output yet, so worker drop-rate spikes
+    // to ~100% during the few frames between switch and first encoded chunk. Without
+    // this gate, a codec switch would immediately trigger another step-down or codec
+    // fallback, producing a cascade of switches.
+    private lastStructuralChangeAt = 0;
+    private readonly postSwitchCooldownMs = 3000;
+    // Timestamp at which the pipeline first started (pipeline-start cooldown).
+    // Distinct from `lastStructuralChangeAt`: the first encoder warmup is much
+    // longer than a mid-stream switch (cold KF + codec init + chroma allocation),
+    // so we need a longer grace window. Without this, the first backpressure
+    // sample arrives during cold-start with dropRate=60%+, triggers a step-down
+    // immediately, and locks the call to a lower tier even though the steady
+    // state is healthy.
+    private pipelineStartedAt = 0;
+    private readonly pipelineWarmupMs = 12_000;
+    // EMA-smoothed drop rate across successive backpressure notifications.
+    // Each notification is a 5 s drop-rate window from the worker (see
+    // video-processing.ts:backpressureWindowMs). Step-down only fires when the
+    // EMA is sustained — a single transient spike (thermal blip, one slow GC)
+    // no longer collapses resolution for the rest of the session. RunningEMA
+    // uses a plain running average for the first `minSampleCount` samples
+    // (warmup), then switches to exponential smoothing with α = 2/(n+1).
+    private readonly backpressureEma = new RunningEMA(0, 2);
 
     // Encoder failure callback (set by recording-service for codec fallback)
     public onEncoderFailure: ((failedCodec: string) => void) | null = null;
+
+    // Camera-track-ended callback (set by recording-service). Fires when the
+    // underlying MediaStreamTrack ends UNEXPECTEDLY — e.g. another browser tab
+    // grabbed the same physical camera, the device was unplugged, or a privacy
+    // shutter triggered. Distinct from the worker's normal `Stream input ended`
+    // path (which fires both on user-initiated stop and on track-end). Recording
+    // service surfaces a user-visible error and stops the pipeline.
+    public onTrackEnded: (() => void) | null = null;
+    private trackEndedHandler: (() => void) | null = null;
+    private inputTrack: MediaStreamTrack | null = null;
 
     // Server clock sync
     private clockUnsubscribe: (() => void) | null = null;
@@ -136,6 +194,7 @@ export class VideoPipeline implements IVideoPipeline {
         },
         segmentation: null,
         orientation: null,
+        streaming: null,
     };
     private statsInterval: number | null = null;
     private diagnosticsInterval: number | null = null;
@@ -194,6 +253,11 @@ export class VideoPipeline implements IVideoPipeline {
                     frame.close();
                     return Promise.resolve();
                 },
+                onPreviewTrack: (track: MediaStreamTrack) => {
+                    infoLog?.log(`Worker delivered preview MSTG track (id=${track.id}, kind=${track.kind})`);
+                    this.processedTrack = track;
+                    return Promise.resolve();
+                },
                 onStreamCreated: (codecSettings: string) => {
                     infoLog?.log(`Worker created RPC stream, codecSettings: ${codecSettings.length} chars`);
                     return Promise.resolve();
@@ -224,6 +288,23 @@ export class VideoPipeline implements IVideoPipeline {
 
         const videoTrack = inputStream.getVideoTracks()[0];
         this.processing = true;
+        this.pipelineStartedAt = performance.now();
+        this.inputTrack = videoTrack;
+        // Watch for track-end. The MSTP path keeps the main-thread reference alive
+        // (only the underlying ReadableStream is transferred), so this listener
+        // fires on either a deliberate `track.stop()` (we'll be in `processing=false`
+        // by then via stop()) or an external cause — camera contention, device
+        // unplug, privacy shutter, OS-level revocation. Only the external causes
+        // need user feedback; the deliberate-stop case is filtered in the handler.
+        this.trackEndedHandler = () => {
+            if (!this.processing) {
+                debugLog?.log('Camera track ended after pipeline stop — expected');
+                return;
+            }
+            warnLog?.log('Camera track ended unexpectedly (other tab grabbed device, unplug, or revoked permission)');
+            this.onTrackEnded?.();
+        };
+        videoTrack.addEventListener('ended', this.trackEndedHandler);
 
         // Build worker config
         // Fusion RPC WebSocket URL — worker pushes frames via
@@ -262,6 +343,11 @@ export class VideoPipeline implements IVideoPipeline {
             },
             senderRotationDeg: initialSenderRotation,
         };
+
+        if (this.config.spatialLayers && this.config.spatialLayers.length > 0) {
+            workerConfig.spatialLayers = this.config.spatialLayers;
+            infoLog?.log(`Simulcast activated: base + ${this.config.spatialLayers.length} extra layer(s)`);
+        }
         infoLog?.log(`Sender rotation (initial): ${initialSenderRotation}° (screen.orientation.angle=${screen.orientation.angle})`);
 
         if (this.config.backgroundBlur?.enabled) {
@@ -376,7 +462,12 @@ export class VideoPipeline implements IVideoPipeline {
     private async startTrackTransferMode(videoTrack: MediaStreamTrack, config: VideoProcessingConfig): Promise<void> {
         infoLog?.log('Starting track transfer mode...');
         try {
-            await this.worker.startWithTrack(config, videoTrack, { type: 'rpc-timeout', timeoutMs: 15000 });
+            // Transferring a MediaStreamTrack via postMessage neuters the
+            // main-thread reference (Safari 18 spec behaviour). Clone first so
+            // the original `videoTrack` stays alive on main for preview
+            // consumers (RecorderPreviewView's <video srcObject>).
+            const workerTrack = videoTrack.clone();
+            await this.worker.startWithTrack(config, workerTrack, { type: 'rpc-timeout', timeoutMs: 15000 });
             infoLog?.log('Track transfer mode started');
         } catch (error) {
             warnLog?.log('Track transfer mode failed, falling back to RPC:', error);
@@ -433,6 +524,14 @@ export class VideoPipeline implements IVideoPipeline {
             this.orientationChangeHandler = null;
         }
 
+        // Detach track-ended listener — pipe is shutting down so any subsequent
+        // `ended` event is the deliberate stop and irrelevant.
+        if (this.inputTrack && this.trackEndedHandler) {
+            this.inputTrack.removeEventListener('ended', this.trackEndedHandler);
+        }
+        this.inputTrack = null;
+        this.trackEndedHandler = null;
+
         // Stop stats polling
         if (this.statsInterval) { clearInterval(this.statsInterval); this.statsInterval = null; }
         if (this.diagnosticsInterval) { clearInterval(this.diagnosticsInterval); this.diagnosticsInterval = null; }
@@ -482,7 +581,39 @@ export class VideoPipeline implements IVideoPipeline {
         await this.worker.reconfigure(params);
     }
 
-    async switchCodec(newCodecString: string): Promise<void> {
+    // Hot-add or hot-remove simulcast extras on a running pipeline. Pass null /
+    // empty array to collapse to single-encoder. Worker preserves the base
+    // encoder + RPC stream — no Unregister/Register round-trip on the server.
+    // Force-keyframe is issued internally so subscribers latch on instantly.
+    async setSpatialLayers(layers: SpatialLayerConfig[] | null): Promise<void> {
+        const next = (layers && layers.length > 0) ? layers : [];
+        const prevCount = this.config.spatialLayers?.length ?? 0;
+        const nextCount = next.length;
+        this.config.spatialLayers = next.length > 0 ? next : undefined;
+        // External cap-driven change overrides any pending VAD-restore — server
+        // policy (G1: MaxSpatialLayer aggregate) is authoritative over local
+        // VAD heuristic. Drop the saved layer so speech-resume doesn't add it
+        // back against current cap intent.
+        if (this.vadDroppedLayer !== null) {
+            debugLog?.log('setSpatialLayers: clearing pending VAD-dropped layer (external override)');
+            this.vadDroppedLayer = null;
+        }
+        if (!this.processing) {
+            debugLog?.log(`setSpatialLayers: not running, cached ${prevCount} → ${nextCount} for next start`);
+            return;
+        }
+        infoLog?.log(`setSpatialLayers: ${prevCount} → ${nextCount} layer(s) live`);
+        this.markStructuralChange('setSpatialLayers');
+        await this.worker.setSpatialLayers(next);
+    }
+
+    private markStructuralChange(reason: string): void {
+        this.lastStructuralChangeAt = performance.now();
+        this.backpressureEma.reset();
+        debugLog?.log(`Structural change (${reason}): backpressure cooldown ${this.postSwitchCooldownMs}ms armed`);
+    }
+
+    async switchCodec(newCodecString: string, spatialLayers?: SpatialLayerConfig[]): Promise<void> {
         if (newCodecString === this.config.encoderConfig.codec) {
             infoLog?.log(`switchCodec: already using ${newCodecString}, skipping`);
             return;
@@ -492,9 +623,16 @@ export class VideoPipeline implements IVideoPipeline {
 
         const newEncoderConfig: EncoderConfig = { ...this.config.encoderConfig, codec: newCodecString };
         this.config.encoderConfig = newEncoderConfig;
+        // Persist the ladder override if the caller supplied one, so subsequent
+        // restarts/re-probes pick up the same simulcast shape.
+        if (spatialLayers !== undefined)
+            this.config.spatialLayers = spatialLayers.length > 0 ? spatialLayers : undefined;
 
-        // Worker handles VideoStream completion + encoder switch internally
-        await this.worker.switchCodec(newEncoderConfig);
+        // Worker handles VideoStream completion + encoder switch internally, and
+        // rebuilds simulcast extras from `spatialLayers` so the ladder survives
+        // the switch. Omitting `spatialLayers` collapses to single-encoder (P2P).
+        this.markStructuralChange(`switchCodec(${newCodecString})`);
+        await this.worker.switchCodec(newEncoderConfig, this.config.spatialLayers);
 
         infoLog?.log(`Codec switched to ${newCodecString}`);
     }
@@ -542,8 +680,16 @@ export class VideoPipeline implements IVideoPipeline {
         return this.currentStats.orientation ? { ...this.currentStats.orientation } : null;
     }
 
+    getStreamingStats(): VideoProcessingStreamingStats | null {
+        return this.currentStats.streaming ? { ...this.currentStats.streaming } : null;
+    }
+
     setPreviewCallback(callback: ((frame: VideoFrame) => void) | null): void {
         this.previewCallback = callback;
+    }
+
+    getProcessedTrack(): MediaStreamTrack | null {
+        return this.processedTrack;
     }
 
     updateSavedBitrate(bitrate: number): void {
@@ -659,6 +805,17 @@ export class VideoPipeline implements IVideoPipeline {
                     width: this.config.encoderConfig.width,
                     height: this.config.encoderConfig.height,
                 });
+                // G2: restore the VAD-dropped top extra (if any). Re-emits via
+                // worker.setSpatialLayers — base encoder + RPC stream untouched.
+                // forceKeyFrame after both reconfig and layer restore so the new
+                // extra has a clean anchor for subscribers.
+                if (this.vadDroppedLayer && this.processing) {
+                    const restored = [...(this.config.spatialLayers ?? []), this.vadDroppedLayer];
+                    this.config.spatialLayers = restored;
+                    debugLog?.log(`VAD: restoring dropped layer ${this.vadDroppedLayer.width}x${this.vadDroppedLayer.height}`);
+                    this.vadDroppedLayer = null;
+                    void this.worker.setSpatialLayers(restored);
+                }
                 void this.worker.forceKeyFrame();
                 void this.worker.setVadState(true, this.remoteStreamCount);
             }
@@ -678,6 +835,24 @@ export class VideoPipeline implements IVideoPipeline {
                         width: this.config.encoderConfig.width,
                         height: this.config.encoderConfig.height,
                     });
+                    // G2: drop the top simulcast extra locally during silence.
+                    // Webcam only — screencast has no VAD semantics and its
+                    // adaptiveFramerate config isn't even enabled, but guard
+                    // explicitly for clarity. Only when 2+ extras are active so
+                    // the receiver still gets at least base + mid (avoids
+                    // collapsing to single tier during the silent half of a
+                    // conversation, which would give a 180p experience to
+                    // anyone joining mid-silence).
+                    const isScreencast = (this.config.streaming?.streamKind ?? 0) === 1;
+                    const extras = this.config.spatialLayers;
+                    if (!isScreencast && extras && extras.length >= 2 && this.vadDroppedLayer === null) {
+                        const dropped = extras[extras.length - 1];
+                        const remaining = extras.slice(0, -1);
+                        this.vadDroppedLayer = dropped;
+                        this.config.spatialLayers = remaining;
+                        debugLog?.log(`VAD: dropping top layer ${dropped.width}x${dropped.height} (${extras.length} → ${remaining.length} extras)`);
+                        void this.worker.setSpatialLayers(remaining);
+                    }
                     void this.worker.setVadState(false, this.remoteStreamCount);
                 }, delay);
             }
@@ -695,32 +870,136 @@ export class VideoPipeline implements IVideoPipeline {
     // ─── Backpressure ───────────────────────────────────────────────────────
 
     private handleEncoderBackpressure(dropRate: number): void {
+        // Sustained-backpressure step-down with EMA smoothing.
+        //
+        // Worker notifies once per 5 s drop-rate window (see video-processing.ts
+        // backpressureWindowMs). A SINGLE high-dropRate sample is noise — GPU
+        // contention from a tab switch, a thermal blip, one GC. Step-down only
+        // fires once the EMA stays elevated across multiple windows — the
+        // signature of sustained encoder overload.
+        //
+        // RunningEMA(minSampleCount=2) uses a running average for the first two
+        // samples (gives transients a chance to clear) then switches to
+        // exponential smoothing with α = 2/(n+1) = 0.67 — responsive but
+        // resists a single spike.
+        //
+        //   trigger  = 0.30 → EMA above this = ~30% sustained drop.
+        //   cooldown = 10 s between step-downs.
+        const trigger = 0.30;
+        const cooldownMs = 10_000;
+        const cfg = this.config.encoderConfig;
+
+        // Skip step-down when the tab is backgrounded. A capturing tab is exempt
+        // from Page Lifecycle freezing, but Windows EcoQoS / macOS QoS still
+        // demote the renderer's CPU tier — encoder throughput drops even though
+        // the hardware is capable. The worker already drops frames via
+        // encodeQueueSize, which is the correct response. A resolution downshift
+        // or codec switch here would stick permanently after the user returns
+        // focus (particularly problematic during screencast, where the sharer's
+        // tab is hidden the whole time). Reset the EMA so foreground samples
+        // start clean.
+        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+            if (this.backpressureEma.sampleCount > 0) {
+                debugLog?.log(
+                    `Backpressure during hidden tab (dropRate=${(dropRate * 100).toFixed(0)}%): ` +
+                    `deferring step-down, resetting EMA`);
+                this.backpressureEma.reset();
+            }
+            return;
+        }
+
+        // Post-switch cooldown: a freshly armed encoder needs a few hundred ms to
+        // produce output. The worker's drop-rate counter sees frames-in / 0 frames-out
+        // = 100% drop in that window. Without this gate, a codec switch (or simulcast
+        // ladder reconfig) immediately triggers another step-down, cascading
+        // into repeated codec/ladder churn.
+        const sinceSwitch = performance.now() - this.lastStructuralChangeAt;
+        if (this.lastStructuralChangeAt > 0 && sinceSwitch < this.postSwitchCooldownMs) {
+            debugLog?.log(
+                `Backpressure during post-switch cooldown ` +
+                `(${sinceSwitch.toFixed(0)}/${this.postSwitchCooldownMs}ms, ` +
+                `dropRate=${(dropRate * 100).toFixed(0)}%): ignoring sample`);
+            return;
+        }
+
+        // Pipeline-startup cooldown: encoder cold-start (codec init, first KF,
+        // first I-frame allocation) routinely produces 60-80% drop rate on the
+        // very first 5 s window from the worker. Without this gate, a single
+        // cold-start sample steps down the resolution and locks the call there
+        // even though the steady-state encode would be fine. Reset the EMA so
+        // post-warmup samples start clean.
+        const sinceStart = performance.now() - this.pipelineStartedAt;
+        if (this.pipelineStartedAt > 0 && sinceStart < this.pipelineWarmupMs) {
+            if (this.backpressureEma.sampleCount > 0) {
+                debugLog?.log(
+                    `Backpressure during pipeline warmup ` +
+                    `(${sinceStart.toFixed(0)}/${this.pipelineWarmupMs}ms, ` +
+                    `dropRate=${(dropRate * 100).toFixed(0)}%): ignoring sample, resetting EMA`);
+                this.backpressureEma.reset();
+            } else {
+                debugLog?.log(
+                    `Backpressure during pipeline warmup ` +
+                    `(${sinceStart.toFixed(0)}/${this.pipelineWarmupMs}ms, ` +
+                    `dropRate=${(dropRate * 100).toFixed(0)}%): ignoring sample`);
+            }
+            return;
+        }
+
+        this.backpressureEma.appendSample(dropRate);
+        const ema = this.backpressureEma.value;
+        const n = this.backpressureEma.sampleCount;
+
         const now = performance.now();
-        if (now - this.lastBackpressureStepDown < 5000) return;
+        const inCooldown = now - this.lastBackpressureStepDown < cooldownMs;
+        warnLog?.log(
+            `Backpressure sample: dropRate=${(dropRate * 100).toFixed(0)}%, ` +
+            `ema=${(ema * 100).toFixed(0)}% (n=${n}), cooldown=${inCooldown ? 'yes' : 'no'} at ` +
+            `${cfg.width}x${cfg.height}@${(cfg.bitrate / 1e6).toFixed(1)}Mbps`);
 
-        const currentBitrate = this.config.encoderConfig.bitrate;
-        const currentWidth = this.config.encoderConfig.width;
-        const currentHeight = this.config.encoderConfig.height;
+        // Minimum sample gate: with a single sample, the EMA equals the sample
+        // value, defeating the smoothing. Require at least 2 windows of sustained
+        // backpressure (~10 s with the worker's 5 s window) before any step-down.
+        if (n < 2) return;
+        if (ema < trigger) return;
+        if (inCooldown) return;
 
+        // Target: drop one tier along a fixed 1080p → 720p → 540p → 360p chain.
+        // Per-tier bitrate roughly halves. Below 360p there's no useful
+        // step-down — keep the current tier and ride out.
+        const currentWidth = cfg.width;
+        const currentHeight = cfg.height;
+        const currentBitrate = cfg.bitrate;
         let target: { width: number; height: number; bitrate: number } | null = null;
         if (currentWidth > 1280) target = { width: 1280, height: 720, bitrate: 4_000_000 };
         else if (currentWidth > 960) target = { width: 960, height: 540, bitrate: 2_500_000 };
         else if (currentWidth > 640) target = { width: 640, height: 360, bitrate: 1_000_000 };
-        if (!target && currentBitrate > 500_000) {
-            target = { width: currentWidth, height: currentHeight, bitrate: Math.round(currentBitrate * 0.5) };
-        }
-
         if (!target) {
-            warnLog?.log('Backpressure step-down: already at minimum quality');
+            // Bottomed out on the current codec. Reuse the encoder-failure
+            // path to ask recording-service for the next codec in priority
+            // order (currently H.264 — widest HW coverage, most forgiving
+            // encoder under load). Reset EMA before the handoff so a
+            // successful codec switch gets a clean measurement window.
+            warnLog?.log(
+                `Backpressure step-down: already at minimum tier (${currentWidth}x${currentHeight}) ` +
+                `on ${cfg.codec} (ema=${(ema * 100).toFixed(0)}%) — requesting codec fallback`);
+            this.backpressureEma.reset();
+            this.lastBackpressureStepDown = now;  // cooldown for the codec switch too
+            if (this.onEncoderFailure)
+                this.onEncoderFailure(cfg.codec);
             return;
         }
 
         this.backpressureStepDownCount++;
         this.lastBackpressureStepDown = now;
-        warnLog?.log(`Backpressure step-down #${this.backpressureStepDownCount}: ` +
+        warnLog?.log(
+            `Backpressure step-down #${this.backpressureStepDownCount}: ` +
             `${currentWidth}x${currentHeight}@${(currentBitrate / 1e6).toFixed(1)}Mbps → ` +
-            `${target.width}x${target.height}@${(target.bitrate / 1e6).toFixed(1)}Mbps, dropRate=${(dropRate * 100).toFixed(0)}%`);
-
+            `${target.width}x${target.height}@${(target.bitrate / 1e6).toFixed(1)}Mbps ` +
+            `(ema=${(ema * 100).toFixed(0)}%, samples=${n})`);
+        // Reset so the post-reconfig window re-evaluates fresh. If the new
+        // tier still can't keep up, EMA climbs again and triggers another
+        // step at the lower tier.
+        this.backpressureEma.reset();
         void this.reconfigure(target);
     }
 

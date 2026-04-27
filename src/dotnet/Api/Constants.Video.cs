@@ -22,7 +22,10 @@ public static partial class Constants
         // Tuned for up to ~1s RTT: ackAdvance > ackPeriod + fps × RTT.
         public const int StreamAckPeriod = 64;
         public const int StreamAckAdvance = 192;
-        public static readonly int RetentionBufferSize = 60; // ~2s at 30fps — bounds live server heap
+        // Bumped from 60 to absorb simulcast: a 3-layer sender produces 3× items per source
+        // frame, so a 180-slot ring keeps the effective ~2s window per-layer. P2P single-
+        // layer streams still retain ~6s of history under this size.
+        public static readonly int RetentionBufferSize = 180;
         public static readonly int ReplayBufferSize = 30;   // ~1s at 30fps — bounded replay channel per consumer
         public static readonly int ConsumerBufferSize = 300; // ~10s at 30fps before slow consumer disconnect
 
@@ -71,6 +74,22 @@ public static partial class Constants
 
         // Codec selection
         public static readonly TimeSpan CodecSwitchHysteresisWindow = TimeSpan.FromSeconds(10);
+
+        // Egress-side spatial fallback: server-edge fast-reaction cap when a peer's
+        // fan-out stalls or can't anchor a keyframe on its current spatial layer.
+        // Bypasses the 2s latency-report cadence to react within one frame.
+        public static readonly TimeSpan EgressStallThreshold = TimeSpan.FromMilliseconds(500);
+        public static readonly TimeSpan EgressRecoveryWindow = TimeSpan.FromSeconds(10);
+        // Max frames skipped on the selected spatial layer before egress falls back.
+        // ~5s at 30fps — covers up to 5 missed 1s-cadence keyframes.
+        public static readonly int EgressGapFrameThreshold = 150;
+
+        // Minimum total participant count (sender + remote peers) at which simulcast
+        // activates. Below this, sender uses single-encoder P2P path. Translates to
+        // "remote stream count >= MinMembersForSimulcast - 1" in VideoRecorder.
+        // ViewerCount path can also arm simulcast asymmetrically (peer pushes, no
+        // one pushes back — server reports viewer count, sender activates).
+        public static readonly int MinMembersForSimulcast = 3;
 
         // Stream count limits
         public static readonly int MaxWebcamStreamsPerChat = 8;

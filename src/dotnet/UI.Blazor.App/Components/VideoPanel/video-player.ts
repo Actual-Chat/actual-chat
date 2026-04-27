@@ -8,6 +8,7 @@ import { AudioVideoSync } from 'audio-video-sync';
 import { DocumentEvents } from 'event-handling';
 import { Versioning } from 'versioning';
 import { type Subscription } from 'rxjs';
+import { renderQualityLevelForWidth } from './render-quality';
 import type { DecoderWorker } from '../../Services/Video/workers/decoder-worker-contract';
 import type { DecoderConfig, DecoderStats } from '../../Services/Video/webcodecs-decoder';
 import { BG_CANVAS_WIDTH, BG_DRAW_INTERVAL_MS, BG_FILTER } from '../../Services/Video/services/bg-canvas-settings';
@@ -67,8 +68,13 @@ const LATE_JOIN_GAP_MS = 1500;
 // Decode performance thresholds — if exceeded on consecutive ticks, trigger quality reduction / codec exclusion
 const SLOW_DECODE_TIME_THRESHOLD_MS = 100; // 3x the 33ms/frame budget at 30fps
 const SLOW_DECODE_QUEUE_THRESHOLD = 10;    // Normal is 0-1; 10+ means decoder is ~300ms behind
-const QUALITY_REDUCTION_TICK_COUNT = 2;    // ~10s of sustained bad performance → request quality reduction
-const CODEC_EXCLUSION_TICK_COUNT = 3;      // ~15s after quality reduction still bad → exclude codec
+const QUALITY_REDUCTION_TICK_COUNT = 5;    // ~10s of sustained bad performance → request quality reduction
+const CODEC_EXCLUSION_TICK_COUNT = 30;     // ~60s after quality reduction still bad → exclude codec
+// SLOW_DECODE warmup: skip the first window of samples after decoder init / codec
+// switch / tab-restore. Cold-start times for codec init + first keyframe routinely
+// exceed the per-frame budget (200–600 ms) before steady-state hits the sub-ms median;
+// counting those samples against codec health triggers spurious exclusions.
+const SLOW_DECODE_WARMUP_MS = 5000;
 const LATENCY_REPORT_INTERVAL_MS = 2000; // Matches Constants.Video.LatencyReportInterval
 
 interface PendingFrame {
@@ -143,6 +149,14 @@ export class VideoPlayer {
     private lastKeyFrameRequestTime = 0;
     private readonly keyFrameRequestCooldownMs = 10000; // Max 1 request per 10 seconds
 
+    // Render-quality hint state. The latency tick fires every 2 s but
+    // is gated on `lastRenderedOffsetMs > 0` — i.e. waits for the first decoded
+    // frame. Until then the server has no render-hint cap on this peer and joins
+    // it at the top spatial layer; once the canvas has laid out we want to push
+    // the hint right away so the cap kicks in within ms, not seconds.
+    private resizeObserver: ResizeObserver | null = null;
+    private lastSentRenderQuality: number | null | undefined = undefined;
+
     // Diagnostics counters for 10s delta reporting
     private lastDiagDecodedFrames = 0;
     private lastDiagReceivedFrames = 0;
@@ -191,6 +205,7 @@ export class VideoPlayer {
     private codecSlowTickCount = 0;            // consecutive bad decode ticks (each tick = 2s)
     private qualityReductionRequested = false;  // true after Phase 1 quality reduction was requested
     private codecCategory = '';         // 'av1', 'hevc', 'vp9', 'h264' — derived from codec string
+    private decoderWarmupUntilMs = 0;          // performance.now() before this → skip SLOW_DECODE detector
 
     // Audio sync
     private startedAtMs: number;
@@ -318,6 +333,7 @@ export class VideoPlayer {
             this.codecCategory = VideoPlayer.getCodecCategory(codecString);
             this.codecSlowTickCount = 0;
             this.qualityReductionRequested = false;
+            this.decoderWarmupUntilMs = performance.now() + SLOW_DECODE_WARMUP_MS;
 
             this.decoderConfig = {
                 codec: codecString,
@@ -1108,8 +1124,47 @@ export class VideoPlayer {
             }
         });
 
+        // Watch the canvas for layout changes and send a render-hint-only
+        // ReportVideoLatency whenever the implied quality level flips between
+        // buckets (Low/Medium/High/Full/Ultra). The latency tick won't run
+        // until first frame is rendered, so without this the server treats this
+        // peer as uncapped for several seconds — bandwidth waste on multi-tile
+        // layouts where the canvas is much smaller than the source resolution.
+        this.resizeObserver = new ResizeObserver(() => this.maybeSendRenderHint());
+        this.resizeObserver.observe(this.canvas);
+        // Initial fire — ResizeObserver delivers the first entry asynchronously,
+        // but we want the hint to land before the first ReportVideoLatency tick.
+        this.maybeSendRenderHint();
+
         // Report initial playing state
         void this.reportPlaying(0, true);
+    }
+
+    // Sends a render-hint-only ReportVideoLatency if the canvas-derived quality
+    // level has changed since the last send. Idempotent across repeat fires from
+    // the ResizeObserver. Returns the level that was sent (or undefined if
+    // suppressed because nothing changed).
+    private maybeSendRenderHint(): number | null | undefined {
+        const level = this.computeRenderQualityLevel();
+        if (level === this.lastSentRenderQuality) return undefined;
+        this.lastSentRenderQuality = level;
+        if (level === null) return level; // canvas not laid out yet — wait
+        debugLog?.log(`RenderQuality hint: level=${level} (canvas=${this.canvas.clientWidth}x${this.canvas.clientHeight})`);
+        // The ResizeObserver can fire BEFORE startPull initializes the streaming
+        // RPC client (canvas layout happens during the same animation frame
+        // VideoPlayer.start runs in). initVideoRpc is idempotent — calling here
+        // ensures the streaming proxy is ready regardless of which entry point
+        // runs first.
+        initVideoRpc();
+        // Hint-only mode: StreamOffsetMs=-1 tells the server to apply just the
+        // render hint + visibility flag without recording a latency sample
+        // (we haven't rendered a frame yet, no offset to report).
+        streamingApi.streamServer.ReportVideoLatency(this.streamId, {
+            StreamOffsetMs: -1,
+            RenderQuality: level,
+            IsVisible: typeof document !== 'undefined' && document.visibilityState === 'visible',
+        }).catch((e: unknown) => warnLog?.log('Render-hint ReportVideoLatency error:', e));
+        return level;
     }
 
     private requestKeyFrame(): void {
@@ -1155,6 +1210,15 @@ export class VideoPlayer {
 
         // Reset decode performance tracking — Chrome may have throttled the decoder while hidden
         this.codecSlowTickCount = 0;
+        this.decoderWarmupUntilMs = performance.now() + SLOW_DECODE_WARMUP_MS;
+
+        // Reset diagnostic counters: the decoder reset zeroes its frame counter,
+        // but lastDiag* still holds the pre-reset value. The next VIDEO_DECODE
+        // diff would compute (small new value) - (large old value) = negative,
+        // producing log lines like `recv=257 decoded=-2071` after tab-restore.
+        this.lastDiagDecodedFrames = 0;
+        this.lastDiagReceivedFrames = 0;
+        this.receivedFrameCount = 0;
 
         // Dispose current pull and re-request from live offset (skip-to-live)
         this.pullAbortController?.abort();
@@ -1364,6 +1428,12 @@ export class VideoPlayer {
             this.visibilitySubscription = null;
         }
 
+        // Disconnect the canvas resize observer
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+            this.resizeObserver = null;
+        }
+
         this.stopPull();
 
         // Close all pending frames
@@ -1493,8 +1563,11 @@ export class VideoPlayer {
 
             // Report the high latency to the server BEFORE resetting state,
             // so EvaluateQuality can detect that this peer is struggling and step down sender quality.
-            streamingApi.streamServer.ReportVideoLatency(this.streamId, streamOffsetMs, -1, -1, -1)
-                .catch(() => { /* best-effort */ });
+            streamingApi.streamServer.ReportVideoLatency(this.streamId, {
+                StreamOffsetMs: streamOffsetMs,
+                RenderQuality: this.computeRenderQualityLevel(),
+                IsVisible: document.visibilityState === 'visible',
+            }).catch(() => { /* best-effort */ });
 
             this.pullAbortController?.abort();
             this.pullAbortController = null;
@@ -1548,9 +1621,26 @@ export class VideoPlayer {
                     `recv=${recvDelta} decoded=${decodedDelta} drop=${ds.droppedFrames} ` +
                     `res=${ds.resolution} hw=${ds.hardwareAcceleration}`);
 
-                // Decode performance tracking — detect codecs that can't sustain realtime
-                const isBadTick = ds.medianDecodeTime > SLOW_DECODE_TIME_THRESHOLD_MS
-                    || ds.decodeQueueSize > SLOW_DECODE_QUEUE_THRESHOLD;
+                // Decode performance tracking — detect codecs that can't sustain realtime.
+                // Skip when:
+                //  - within warmup window: codec init + first KF latency dominate the median
+                //    and don't repeat at steady state (typical: 200–600 ms cold, < 1 ms hot).
+                //  - tab is hidden: rAF stops on the main thread, decoded-frame queue swells,
+                //    looks like decoder slowness but is just paused consumption (mirror of
+                //    the sender-side hidden-tab encoder backpressure case).
+                const inWarmup = performance.now() < this.decoderWarmupUntilMs;
+                const tabHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+                const isBadTick = !inWarmup && !tabHidden
+                    && (ds.medianDecodeTime > SLOW_DECODE_TIME_THRESHOLD_MS
+                        || ds.decodeQueueSize > SLOW_DECODE_QUEUE_THRESHOLD);
+                if (inWarmup || tabHidden) {
+                    if (this.codecSlowTickCount > 0) {
+                        debugLog?.log(
+                            `SLOW_DECODE: ${inWarmup ? 'warmup' : 'hidden tab'} — ` +
+                            `resetting tick count (was ${this.codecSlowTickCount})`);
+                        this.codecSlowTickCount = 0;
+                    }
+                }
                 if (isBadTick) {
                     this.codecSlowTickCount++;
                     if (!this.qualityReductionRequested && this.codecSlowTickCount >= QUALITY_REDUCTION_TICK_COUNT) {
@@ -1599,13 +1689,14 @@ export class VideoPlayer {
 
                 // Send enriched latency report with diagnostics + RTT measurement
                 const sendTime = performance.now();
-                streamingApi.streamServer.ReportVideoLatency(
-                    this.streamId,
-                    streamOffsetMs,
-                    ds.pureMedianDecodeTime >= 0 ? ds.pureMedianDecodeTime : ds.medianDecodeTime,
-                    this.pendingFrames.length,
-                    currentBufferSpanMs
-                ).then(() => {
+                streamingApi.streamServer.ReportVideoLatency(this.streamId, {
+                    StreamOffsetMs: streamOffsetMs,
+                    MedianDecodeTimeMs: ds.pureMedianDecodeTime >= 0 ? ds.pureMedianDecodeTime : ds.medianDecodeTime,
+                    BufferDepth: this.pendingFrames.length,
+                    BufferSpanMs: currentBufferSpanMs,
+                    RenderQuality: this.computeRenderQualityLevel(),
+                    IsVisible: document.visibilityState === 'visible',
+                }).then(() => {
                     this.updateRttEstimate(performance.now() - sendTime);
                 }).catch((e: unknown) => {
                     warnLog?.log('ReportVideoLatency invoke error:', e);
@@ -1614,13 +1705,25 @@ export class VideoPlayer {
         } else {
             // No decoder worker — send basic report without diagnostics + RTT measurement
             const sendTime = performance.now();
-            streamingApi.streamServer.ReportVideoLatency(this.streamId, streamOffsetMs, -1, -1, -1)
-                .then(() => {
-                    this.updateRttEstimate(performance.now() - sendTime);
-                }).catch((e: unknown) => {
-                    warnLog?.log('ReportVideoLatency invoke error:', e);
-                });
+            streamingApi.streamServer.ReportVideoLatency(this.streamId, {
+                StreamOffsetMs: streamOffsetMs,
+                RenderQuality: this.computeRenderQualityLevel(),
+                IsVisible: document.visibilityState === 'visible',
+            }).then(() => {
+                this.updateRttEstimate(performance.now() - sendTime);
+            }).catch((e: unknown) => {
+                warnLog?.log('ReportVideoLatency invoke error:', e);
+            });
         }
+    }
+
+    // Maps this player's current render size to a VideoQualityLevel hint for the
+    // server's simulcast fan-out. Uses canvas.clientWidth (actual layout pixels)
+    // rather than canvas.width (decoder output resolution). Server maps Low→spatial
+    // layer 0, Medium→1, High/Full/Ultra→2. Returns null when the canvas has no
+    // layout yet (detached or hidden) so the server applies no render cap.
+    private computeRenderQualityLevel(): number | null {
+        return renderQualityLevelForWidth(this.canvas.clientWidth);
     }
 
     private updateRttEstimate(rttMs: number): void {

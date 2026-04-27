@@ -38,6 +38,7 @@
         }
         <div @ref="_containerRef" class="@videoCls">
             <div class="video-frame">
+                <video class="camera-preview-video" autoplay playsinline muted></video>
                 <canvas class="camera-preview"></canvas>
                 <span class="plug-text">@GetPlugText(effectiveCameraState)</span>
                 <div class="video-loading">
@@ -384,7 +385,7 @@
         Modal.Close();
     }
 
-    private Task OnJoinClick() {
+    private async Task OnJoinClick() {
         // Ideally we'd query `getActualDeviceId` from JS — the browser can pick a
         // different camera than what was originally requested (e.g. front camera when
         // no device ID was specified). BUT: if the preview is still hanging on an
@@ -392,26 +393,24 @@
         // the JS event loop is busy and our call would wait forever, freezing the UI.
         // So we use the selected device id + fire a best-effort lookup in the background
         // to update the model later.
-        ModalModel.SelectedDeviceId = _selectedDevice?.DeviceId;
-        if (_jsRef is not null)
-            _ = TryUpdateActualDeviceId(_jsRef, ModalModel);
+        var selectedDeviceId = _selectedDevice?.DeviceId;
+        try {
+            if (_jsRef is { } jsRef) {
+                var deviceId = await jsRef.InvokeAsync<string?>("getActualDeviceId");
+                if (!string.IsNullOrEmpty(deviceId))
+                    selectedDeviceId = deviceId;
+            }
+        }
+        catch {
+            // Best effort — ignore
+        }
+        ModalModel.SelectedDeviceId = selectedDeviceId;
         ModalModel.IsBlurEnabled = _isBlurEnabled;
         ModalModel.IsConfirmed = true;
+
         _ = CommitMirrorChoice();  // fire-and-forget — no need to block close on a settings write
         _ = DisposeAsync();  // fire-and-forget — don't block Modal.Close on the JS dispose roundtrip
         Modal.Close();
-        return Task.CompletedTask;
-
-        static async Task TryUpdateActualDeviceId(IJSObjectReference jsRef, Model model) {
-            try {
-                var deviceId = await jsRef.InvokeAsync<string?>("getActualDeviceId");
-                if (!string.IsNullOrEmpty(deviceId))
-                    model.SelectedDeviceId = deviceId;
-            }
-            catch {
-                // Best effort — ignore
-            }
-        }
     }
 
     private async Task OnMicToggle() {

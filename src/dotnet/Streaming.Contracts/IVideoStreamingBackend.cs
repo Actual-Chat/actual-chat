@@ -23,9 +23,6 @@ public interface IVideoStreamingBackend : IComputeService, IRpcService, IBackend
     Task ReportPeerLatency(
         StreamId streamId,
         string peerId,
-        double streamOffsetMs,
-        double medianDecodeTimeMs = -1,
-        int bufferDepth = -1,
-        double bufferSpanMs = -1,
+        VideoLatencyReport report,
         CancellationToken cancellationToken = default);
 }

@@ -29,6 +29,9 @@ export interface VideoStreamFrame {
     description?: Uint8Array;
     codec?: string;
     temporalLayerId?: number;
+    // SVC spatial layer (simulcast): 0 = base (lowest-res), 1+ = higher-res layers.
+    // Always 0 for single-encoder (P2P) streams.
+    spatialLayerId?: number;
     // Native source dimensions, populated on keyframes only. Sent to server so
     // it can track source-resolution growth (window resize, camera swap) and
     // unlock higher quality presets mid-stream without a full stream restart.
@@ -63,10 +66,13 @@ export function serverClockNow(ctx: StreamingContext): number {
  * expected by `.NET VideoFrame` (`[MessagePackObject(true)]` ⇒ PascalCase keys).
  */
 function frameToDto(frame: VideoStreamFrame): VideoFrameDto {
+    // Math.trunc coerces to int64-safe integer. @msgpack/msgpack v3 encodes any
+    // non-integer number as float64 (0xCB), which the server's ReadInt64 on
+    // TimeSpan ticks rejects — tearing down the whole PushVideo stream.
     const dto: VideoFrameDto = {
         Data: frame.data,
-        Offset: frame.offset,
-        Duration: frame.duration,
+        Offset: Math.trunc(frame.offset),
+        Duration: Math.trunc(frame.duration),
         IsKeyFrame: frame.isKeyFrame,
     };
     if (frame.isKeyFrame) {
@@ -81,6 +87,8 @@ function frameToDto(frame: VideoStreamFrame): VideoFrameDto {
     if (frame.codec) dto.Codec = frame.codec;
     if (frame.temporalLayerId !== undefined && frame.temporalLayerId > 0)
         dto.TemporalLayerId = frame.temporalLayerId;
+    if (frame.spatialLayerId !== undefined && frame.spatialLayerId > 0)
+        dto.SpatialLayerId = frame.spatialLayerId;
     return dto;
 }
 
@@ -110,6 +118,7 @@ export class InternalVideoStream {
 
     public isCompleted = false;
     public isDisposed = false;
+    public lastError = '';
     public readonly whenDisposed: Promise<void>;
 
     constructor(
@@ -140,6 +149,10 @@ export class InternalVideoStream {
         }
 
         this.frameAdded.trigger();
+    }
+
+    getAddedFrameCount(): number {
+        return this.addedFrameCount;
     }
 
     complete(): void {
@@ -207,13 +220,19 @@ export class InternalVideoStream {
             // sender owns the lifetime of the stream.
             void streamServer
                 .PushVideo(RPC_SESSION_DEFAULT, this.ctx.chatId, clientStartOffset, format, stream.toRef(peer), this.ctx.streamKind)
-                .catch((err: unknown) => warnLog?.log('PushVideo rejected:', err))
+                .catch((err: unknown) => {
+                    const msg = err instanceof Error ? err.message : String(err);
+                    warnLog?.log('PushVideo rejected:', err);
+                    this.lastError = `PushVideo rejected: ${msg}`;
+                })
                 .finally(() => stream.disconnect());
 
             // Wait for the pump to complete (writeFrom was started by toRef)
             await stream.whenSent;
         } catch (error) {
+            const msg = error instanceof Error ? error.message : String(error);
             errorLog?.log('VideoStream error:', error);
+            this.lastError = `stream error: ${msg}`;
         } finally {
             this.isDisposed = true;
         }

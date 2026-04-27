@@ -4,6 +4,11 @@ using ActualChat.Video;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
+// One simulcast layer — matches the JS SpatialLayerConfig structure. PascalCase
+// property names serialize to JS-friendly camelCase via Blazor JS interop's default
+// JsonNamingPolicy.CamelCase.
+public sealed record SpatialLayerSpec(int Width, int Height, int Bitrate);
+
 /// <summary>
 /// Typed wrapper around the JS VideoRecorder object reference.
 /// Created via <see cref="Create"/> and disposed when recording session ends.
@@ -19,6 +24,22 @@ public sealed class VideoRecorder : IAsyncDisposable
     private (ChatId, bool)? _startRequest;
     private string _deviceId = "";
     private bool _isBlurEnabled;
+
+    // Combined remote-presence state for the simulcast decision.
+    // `_incomingStreamCount` = number of remote streams I'm subscribed to (from
+    // ChatVideoUI.GetRemoteStreams). `_viewerCount` = number of peers subscribed
+    // to MY stream (from VideoQualityPreset.ViewerCount, server-driven).
+    // Either signal can independently arm simulcast — covers the asymmetric
+    // publisher case where peer P pushes, peer V watches but never pushes back.
+    // Negative = unknown / not yet observed. Both feed into ApplySimulcastDecision.
+    private int _incomingStreamCount = -1;
+    private int _viewerCount = -1;
+    private bool _lastSimulcastActive;
+    // Last server-aggregated spatial cap applied to the JS ladder. int.MaxValue =
+    // no cap (full ladder). Tracked so we only push a new ladder when the cap
+    // actually changes — avoids re-sending on every QualityPreset tick.
+    private int _lastMaxSpatial = int.MaxValue;
+    private readonly SemaphoreSlim _simulcastDecisionLock = new(1, 1);
 
     private AppUIHub Hub { get; }
     private StreamKind Kind { get; }
@@ -63,6 +84,10 @@ public sealed class VideoRecorder : IAsyncDisposable
             throw StandardError.Constraint("Start request already set");
         _startRequest = (chatId, true);
         var codecs = await GetInitialAudienceCodecs(chatId).ConfigureAwait(false);
+        // Seed simulcast layers BEFORE JS startRecording builds its config —
+        // otherwise the initial pipeline spins up in P2P mode and a later
+        // SetSimulcastLayers must pay a stop/restart cycle to apply.
+        await SeedSimulcastLayers(chatId, cancellationToken).ConfigureAwait(false);
         await _jsRef.InvokeVoidAsync("startRecording", cancellationToken, chatId.Value, codecs).ConfigureAwait(false);
     }
 
@@ -109,6 +134,22 @@ public sealed class VideoRecorder : IAsyncDisposable
 
         _isBlurEnabled = enabled;
         return _jsRef.InvokeVoidAsync("toggleBlur", cancellationToken, enabled).AsTask();
+    }
+
+    // Pushes a simulcast layer ladder to the JS VideoRecorder. Hot-applied to a
+    // running pipeline via Option C. Pass null or an empty list to disable
+    // simulcast. `force = true` bypasses the JS-side downgrade-refusal guard
+    // (`hasHigherTopTier`) — required for server-driven cap shrinks where the
+    // intent is explicitly to reduce layers (cap dropped because all viewers
+    // want low/mid). The default `force = false` preserves the guard so a
+    // C# default ladder push doesn't downgrade a JS probe-promoted ladder.
+    public Task SetSimulcastLayers(
+        IReadOnlyList<SpatialLayerSpec>? layers,
+        CancellationToken cancellationToken,
+        bool force = false)
+    {
+        var arg = layers is { Count: > 0 } ? layers.ToArray() : null;
+        return _jsRef.InvokeVoidAsync("setSimulcastLayers", cancellationToken, (object?)arg, force).AsTask();
     }
 
     public async ValueTask DisposeAsync()
@@ -182,8 +223,8 @@ public sealed class VideoRecorder : IAsyncDisposable
                 () => LiveVideoStreams.GetQualityPreset(Session, ownStreamId, cancellationToken),
                 cancellationToken).ConfigureAwait(false);
             await foreach (var (preset, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
-                Log.LogInformation("SubscribeToQualityRequests: received preset {Level} ({Width}x{Height}), keyframe={KeyFrame}",
-                    preset.Level, preset.Width, preset.Height, preset.IsKeyFrameRequested);
+                Log.LogInformation("SubscribeToQualityRequests: received preset {Level} ({Width}x{Height}), keyframe={KeyFrame}, viewers={ViewerCount}",
+                    preset.Level, preset.Width, preset.Height, preset.IsKeyFrameRequested, preset.ViewerCount);
                 // Only reconfigure when the server actually changes the preset.
                 // On the first iteration we know nothing about network/CPU yet, so the
                 // default "High" preset is noise — seed lastAppliedPreset silently.
@@ -204,6 +245,29 @@ public sealed class VideoRecorder : IAsyncDisposable
                 }
                 if (preset.IsKeyFrameRequested)
                     await _jsRef.InvokeVoidAsync("forceKeyFrame", cancellationToken).ConfigureAwait(false);
+                // Viewer count from the server arms simulcast even when we have
+                // no incoming streams (asymmetric publisher case).
+                if (preset.ViewerCount != _viewerCount) {
+                    _viewerCount = preset.ViewerCount;
+                    await ApplySimulcastDecision(cancellationToken).ConfigureAwait(false);
+                }
+                // G1: server-aggregated spatial cap. Server's EvaluateQuality
+                // reports max-across-peers EffectiveMaxSpatial — the highest
+                // layer any subscriber currently needs. When this drops below
+                // our full ladder, clamp the JS ladder so the worker spins
+                // down upper extras and saves encode cost. When it raises,
+                // restore the full ladder. force=true bypasses the JS-side
+                // promotion guard since a cap-driven shrink is explicit policy.
+                if (preset.MaxSpatialLayer != _lastMaxSpatial) {
+                    _lastMaxSpatial = preset.MaxSpatialLayer;
+                    if (Kind == StreamKind.Webcam && _lastSimulcastActive) {
+                        var clamped = BuildClampedLadder(preset.MaxSpatialLayer);
+                        Log.LogInformation(
+                            "SubscribeToQualityRequests: MaxSpatialLayer={Cap} → ladder {Layers} layer(s)",
+                            preset.MaxSpatialLayer, clamped?.Count ?? 0);
+                        await SetSimulcastLayers(clamped, cancellationToken, force: true).ConfigureAwait(false);
+                    }
+                }
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
@@ -244,11 +308,113 @@ public sealed class VideoRecorder : IAsyncDisposable
                 lastCount = count;
                 await _jsRef.InvokeVoidAsync("setRemoteStreamCount", cancellationToken, count)
                     .ConfigureAwait(false);
+
+                _incomingStreamCount = count;
+                await ApplySimulcastDecision(cancellationToken).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
         catch (Exception e) {
             Log.LogWarning(e, "SyncRemoteStreamCount failed");
+        }
+    }
+
+    // Single decision point for simulcast activation. Combines the local
+    // incoming-stream count with the server-reported viewer count so either
+    // signal can arm simulcast. Webcam only — screencast keeps the single-
+    // encoder full-res path for text legibility. Idempotent on repeated
+    // calls with the same effective count.
+    private async Task ApplySimulcastDecision(CancellationToken cancellationToken)
+    {
+        if (Kind != StreamKind.Webcam)
+            return;
+        await _simulcastDecisionLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try {
+            // Treat unknown signals as 0 for the threshold check so a single
+            // available signal can arm/disarm. Threshold = MinMembersForSimulcast - 1
+            // because "remote count" excludes the publisher itself.
+            var localCount = Math.Max(0, _incomingStreamCount);
+            var viewerCount = Math.Max(0, _viewerCount);
+            var effectiveCount = Math.Max(localCount, viewerCount);
+            var threshold = Constants.Video.MinMembersForSimulcast - 1;
+            var simulcastActive = effectiveCount >= threshold;
+            if (simulcastActive == _lastSimulcastActive)
+                return;
+            _lastSimulcastActive = simulcastActive;
+            var ladder = simulcastActive ? BuildClampedLadder(_lastMaxSpatial) : null;
+            Log.LogInformation(
+                "ApplySimulcastDecision: incoming={Incoming}, viewers={Viewers}, effective={Effective}, simulcast={Simulcast}, cap={Cap}, layers={Layers}",
+                _incomingStreamCount, _viewerCount, effectiveCount, simulcastActive, _lastMaxSpatial, ladder?.Count ?? 0);
+            await SetSimulcastLayers(ladder, cancellationToken).ConfigureAwait(false);
+        }
+        finally {
+            _simulcastDecisionLock.Release();
+        }
+    }
+
+    // 4-tier simulcast ladder, sorted lowest → highest so index matches the
+    // spatial-id convention used everywhere (0 = base, N = top). Top entry is
+    // 1080p, matching the JS-side single-encoder probe-promotion ceiling — so a
+    // pipeline that started solo at 1080p can keep that resolution as the wire-
+    // top once simulcast activates (without it, hot-adding extras only up to
+    // 720p left spatial=0=1080p as a stranded "bonus" tier the receiver-side
+    // filter can't reach via the spatial-id-ordered cap). Dims mirror
+    // VideoQualityLevel steps; bitrates tuned for H.264 baseline headroom.
+    private static IReadOnlyList<SpatialLayerSpec> BuildSimulcastLadder()
+        => new SpatialLayerSpec[] {
+            new(320, 180, 300_000),
+            new(640, 360, 700_000),
+            new(1280, 720, 2_000_000),
+            new(1920, 1080, 2_300_000),
+        };
+
+    // Clamps the full simulcast ladder by the per-peer aggregate spatial cap.
+    // `maxSpatial == int.MaxValue` (or any value >= ladder.Count - 1) returns
+    // the unclamped ladder. `maxSpatial == 0` returns the base layer only,
+    // forcing the worker into single-encoder mode (no extras). Negative caps
+    // collapse to base for safety. Returns null when the result would have
+    // fewer than 2 tiers — that's the JS-side "simulcast off" signal.
+    private static IReadOnlyList<SpatialLayerSpec>? BuildClampedLadder(int maxSpatial)
+    {
+        var full = BuildSimulcastLadder();
+        var keep = maxSpatial >= full.Count ? full.Count : Math.Max(1, maxSpatial + 1);
+        if (keep < 2)
+            return null;
+        if (keep == full.Count)
+            return full;
+        return full.Take(keep).ToArray();
+    }
+
+    // Queries current remote stream count and pushes a ladder to JS before the
+    // pipeline spins up. Screencast stays single-encoder. Best-effort — any
+    // failure is logged and the session falls back to P2P mode.
+    private async Task SeedSimulcastLayers(ChatId chatId, CancellationToken cancellationToken)
+    {
+        if (Kind != StreamKind.Webcam) {
+            Log.LogInformation("SeedSimulcastLayers: skipped (kind={Kind})", Kind);
+            return;
+        }
+        try {
+            var streams = await ChatVideoUI.GetRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
+            var count = streams.Length;
+            var threshold = Constants.Video.MinMembersForSimulcast - 1;
+            if (count < threshold) {
+                Log.LogInformation(
+                    "SeedSimulcastLayers: remote count={Count} < {Threshold} — staying in P2P",
+                    count, threshold);
+                return;
+            }
+            // Seed honors the latest known cap if QualityPreset already pushed one
+            // (rare on a fresh start, but possible if the publisher restarted).
+            var ladder = BuildClampedLadder(_lastMaxSpatial);
+            Log.LogInformation(
+                "SeedSimulcastLayers: remote count={Count} >= {Threshold} — activating {Layers}-layer simulcast (cap={Cap})",
+                count, threshold, ladder?.Count ?? 0, _lastMaxSpatial);
+            await SetSimulcastLayers(ladder, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception e) {
+            Log.LogWarning(e, "SeedSimulcastLayers failed");
         }
     }
 

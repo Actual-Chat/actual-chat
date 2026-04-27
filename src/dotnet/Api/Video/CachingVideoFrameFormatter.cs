@@ -34,9 +34,10 @@ namespace ActualChat.Video;
 /// element to this formatter, so <see cref="VideoFrame"/>[] batches hit the cache too.
 /// </para>
 /// <para>
-/// Wire format: a 9-entry MessagePack map with PascalCase string keys — Data (bin),
+/// Wire format: a 10-entry MessagePack map with PascalCase string keys — Data (bin),
 /// Offset (int64 ticks), Duration (int64 ticks), IsKeyFrame (bool), Width (int32),
-/// Height (int32), Description (bin or nil), Codec (str or nil), TemporalLayerId (int32).
+/// Height (int32), Description (bin or nil), Codec (str or nil), TemporalLayerId (int32),
+/// SpatialLayerId (int32).
 /// </para>
 /// </remarks>
 public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFrame?>
@@ -91,6 +92,7 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
         var width = 0;
         var height = 0;
         var temporalLayerId = 0;
+        var spatialLayerId = 0;
         var dataSlice = default(ReadOnlyMemory<byte>);
         var descriptionSlice = default(ReadOnlyMemory<byte>);
         string? codec = null;
@@ -125,6 +127,9 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
                 case "TemporalLayerId":
                     temporalLayerId = reader.ReadInt32();
                     break;
+                case "SpatialLayerId":
+                    spatialLayerId = reader.ReadInt32();
+                    break;
                 default:
                     // Forward-compat: tolerate unknown fields.
                     reader.Skip();
@@ -141,6 +146,7 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
             Description = descriptionSlice,         // slice of bytes (may be empty)
             Codec = codec,
             TemporalLayerId = temporalLayerId,
+            SpatialLayerId = spatialLayerId,
             SerializedData = bytes,
         };
     }
@@ -177,7 +183,7 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
 
     private static void WriteFrame(ref MessagePackWriter writer, VideoFrame v)
     {
-        writer.WriteMapHeader(9);
+        writer.WriteMapHeader(10);
 
         writer.Write("Data");
         writer.Write(v.Data.Span);
@@ -211,5 +217,8 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
 
         writer.Write("TemporalLayerId");
         writer.Write(v.TemporalLayerId);
+
+        writer.Write("SpatialLayerId");
+        writer.Write(v.SpatialLayerId);
     }
 }

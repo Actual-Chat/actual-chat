@@ -6,7 +6,7 @@
 import { VideoPipeline, type PipelineConfig } from './video-pipeline';
 import { getBestScalabilityMode, getCodecCategory, getCodecForCategory } from '../codec-support';
 import { detectGPUBackends } from '../gpu-support';
-import type { SegmentationConfig } from '../workers/video-processing-worker-contract';
+import type { SegmentationConfig, SpatialLayerConfig } from '../workers/video-processing-worker-contract';
 import { createDefaultSegmentationConfig, createAdaptiveSegmentationConfig } from '../workers/video-processing-worker-contract';
 import { MediaCapture } from './media-capture';
 import { getLogs } from 'logging';
@@ -47,6 +47,15 @@ export interface RecordingConfig {
     reducedBitrateRatio?: number;
     silenceDelayMs?: number;
   };
+  // Full simulcast ladder, sorted bottom-first to match the spatial-id
+  // convention used everywhere: `ladder[0]` is the base layer (primary
+  // encoder runs at these dims, SpatialLayerId = 0); `ladder[last]` is the
+  // top / capture ideal. Intermediate entries become extra encoders with
+  // ascending spatial IDs (ladder[i] → SpatialLayerId = i). Omit for
+  // single-encoder / P2P. The ladder is re-clamped after camera acquire —
+  // tiers that exceed the camera's actual output get dropped so the
+  // downscaler never upscales from a smaller source.
+  simulcastLadder?: SpatialLayerConfig[];
 }
 
 export interface RecordingState {
@@ -161,6 +170,20 @@ export class RecordingService extends EventTarget {
         };
     }
 
+    // Hot reconfig of simulcast layers on the live pipeline. `ladder` is the
+    // FULL bottom-first ladder (base + extras); we split off base internally.
+    // Mid-stream activation (Option C) — bypasses stop/start so the active
+    // RPC stream stays registered and other peers don't see stream churn.
+    async setSimulcastLadder(ladder: SpatialLayerConfig[] | null): Promise<void> {
+        if (!this.pipeline) return;
+        // Cache for next fresh start as well.
+        this.config.simulcastLadder = ladder ?? undefined;
+        // Strip base — pipeline.setSpatialLayers takes EXTRAS only (base lives
+        // on encoderConfig). Empty/single-tier ladder → empty extras → P2P.
+        const extras = ladder && ladder.length > 1 ? ladder.slice(1) : [];
+        await this.pipeline.setSpatialLayers(extras);
+    }
+
     async switchCodec(codec: string): Promise<void> {
         if (!this.pipeline) {
             warnLog?.log('switchCodec: no active pipeline');
@@ -220,19 +243,75 @@ export class RecordingService extends EventTarget {
             this.setState({ status: 'initializing-pipeline' });
             infoLog?.log('Initializing pipeline with', this.config.codec.toUpperCase(), 'codec');
 
-            const pipelineConfig = await this.buildPipelineConfig(actualWidth, actualHeight);
+            // Clamp the ladder to the camera's actual output. Any tier whose
+            // dims exceed the real camera resolution would force the downscaler
+            // to upscale — no new detail, wasted bandwidth. If every tier is
+            // larger than the camera, fall back to a single tier at the
+            // camera's actual dims (inheriting the base tier's bitrate so the
+            // encoder isn't over-allocated).
+            let ladder = this.config.simulcastLadder;
+            let spatialLayers: SpatialLayerConfig[] | undefined;
+            let encW = actualWidth;
+            let encH = actualHeight;
+            let encBitrate = this.config.bitrate;
+            if (ladder && ladder.length > 0) {
+                // Ladder is bottom-first: ladder[0] = base, ladder[last] = top.
+                // Clamp by filtering out tiers the camera can't realize; order
+                // preserved (filter is stable, camera can only cap the top end).
+                const fits = ladder.filter(l =>
+                    l.width <= actualWidth && l.height <= actualHeight);
+                let clamped: SpatialLayerConfig[];
+                if (fits.length === 0) {
+                    // Camera below every ladder tier — substitute a single tier
+                    // at actual dims, inheriting the base tier's bitrate budget.
+                    const fallbackBitrate = ladder[0].bitrate;
+                    clamped = [{ width: actualWidth, height: actualHeight, bitrate: fallbackBitrate }];
+                    warnLog?.log(`Camera ${actualWidth}x${actualHeight} below every ladder tier — using single encoder at camera dims`);
+                } else {
+                    clamped = fits;
+                    if (clamped.length !== ladder.length)
+                        infoLog?.log(`Clamped ladder to camera: [${clamped.map(l => `${l.width}x${l.height}`).join(', ')}]`);
+                }
+                ladder = clamped;
+
+                const base = ladder[0];
+                encW = base.width;
+                encH = base.height;
+                encBitrate = base.bitrate;
+                // Extras = everything above base, already in ascending order
+                // (bottom-first), so `ladder.slice(1)[i]` → SpatialLayerId = i+1
+                // in the worker. Single-tier ladder → no extras → P2P path.
+                spatialLayers = ladder.length > 1 ? ladder.slice(1) : undefined;
+            }
+
+            const pipelineConfig = await this.buildPipelineConfig(encW, encH, encBitrate);
+            if (spatialLayers)
+                pipelineConfig.spatialLayers = spatialLayers;
             this.pipeline = new VideoPipeline(pipelineConfig);
 
-            // Wire up encoder failure fallback — switch to H264 if current codec dies
+            // Wire up encoder failure fallback. Recording-service doesn't know
+            // the HW encoder / audience decoder intersection — that lives on
+            // the caller (video-recorder). Dispatch the event; caller picks
+            // the next codec from its priority chain and calls switchCodec.
             this.pipeline.onEncoderFailure = (failedCodec: string) => {
                 const category = getCodecCategory(failedCodec);
-                if (category === 'h264') {
-                    errorLog?.log(`H264 encoder also failed — no fallback available`);
-                    return;
-                }
-                warnLog?.log(`Encoder failed for ${category}, falling back to H264`);
+                warnLog?.log(`Encoder failed for ${category} — emitting encoder-failure event`);
                 this.dispatchEvent(new CustomEvent('encoder-failure', { detail: category }));
-                void this.switchCodec('h264');
+            };
+
+            // Track-end detection. Camera was unexpectedly revoked —
+            // dispatch a user-visible error and stop the pipeline so callers
+            // can decide whether to retry. Without this, the worker logged
+            // `Stream input ended` and the pipeline died silently.
+            this.pipeline.onTrackEnded = () => {
+                warnLog?.log('Camera track ended unexpectedly — stopping recording');
+                this.setState({ status: 'error: Camera was disconnected (another app may have taken it)' });
+                this.dispatchEvent(new CustomEvent('error', {
+                    detail: new Error('Camera was disconnected (another app may have taken it)'),
+                }));
+                // Best-effort stop. Caller (video-recorder) listens to the
+                // `error` event and decides on retry policy; we just clean up.
+                void this.stop().catch((e: unknown) => errorLog?.log('Stop after track-end failed:', e));
             };
 
             await this.pipeline.start(new MediaStream([this.inputTrack]));
@@ -337,7 +416,7 @@ export class RecordingService extends EventTarget {
         }
     }
 
-    private async buildPipelineConfig(width: number, height: number): Promise<PipelineConfig> {
+    private async buildPipelineConfig(width: number, height: number, bitrate?: number): Promise<PipelineConfig> {
     // Firefox: cap to 720p — higher resolutions cause encoder failures
         if (DeviceInfo.isFirefox && height > 720) {
             width = Math.round(width * (720 / height));
@@ -389,7 +468,7 @@ export class RecordingService extends EventTarget {
                 codec: codecString,
                 width: width,
                 height: height,
-                bitrate: this.config.bitrate,
+                bitrate: bitrate ?? this.config.bitrate,
                 framerate: this.config.framerate,
                 // Webcam: 2-3s interval (less frequent keyframes save bandwidth).
                 // Screencast: 1-2s interval (more frequent for text clarity on content switches).
@@ -457,6 +536,7 @@ export class RecordingService extends EventTarget {
             infoLog?.log('Adaptive framerate enabled');
         }
 
+        // spatialLayers is assigned by `start()` after the camera-driven clamp.
         return pipelineConfig;
     }
 
@@ -489,6 +569,12 @@ export class RecordingService extends EventTarget {
 
     getInputTrack(): MediaStreamTrack | null {
         return this.inputTrack;
+    }
+
+    /** WYSIWYG preview track produced inside the worker (post-rotate, post-downscale).
+     *  Null on browsers without MSTG support — caller falls back to {@link getInputTrack}. */
+    getProcessedTrack(): MediaStreamTrack | null {
+        return this.pipeline?.getProcessedTrack() ?? null;
     }
 
     /**

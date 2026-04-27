@@ -13,11 +13,12 @@ export class VideoStreamingPreview {
         this.element = element;
         const canvas = this.element.querySelector<HTMLCanvasElement>('.call-video')!;
         const bgCanvas = this.element.querySelector<HTMLCanvasElement>('.remote-video-bg') ?? undefined;
+        const videoEl = this.element.querySelector<HTMLVideoElement>('.call-video-native')!;
 
         this.view = RecorderPreviewView.create({
             canvas,
+            videoEl,
             bgCanvas,
-            rafKey: 'video-streaming-preview',
             // Prefer webcam (0); fall back to screencast (1) so the slot shows
             // the shared screen when the user is only screencasting.
             streamKinds: [0, 1],

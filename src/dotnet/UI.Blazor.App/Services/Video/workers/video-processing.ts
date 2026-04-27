@@ -10,7 +10,7 @@ import Denque from 'denque';
 import * as ort from 'onnxruntime-web';
 
 import { type EncoderConfig, type EncodedChunkData, WebCodecsEncoder } from '../webcodecs-encoder';
-import type { SegmentationConfig, SegmentationStats, ModelConfig, VideoProcessingConfig, VideoProcessingWorker, VideoProcessingWorkerCallbacks, VideoProcessingStats, OrientationStats } from './video-processing-worker-contract';
+import type { SegmentationConfig, SegmentationStats, ModelConfig, SpatialLayerConfig, VideoProcessingConfig, VideoProcessingWorker, VideoProcessingWorkerCallbacks, VideoProcessingStats, VideoProcessingStreamingStats, OrientationStats } from './video-processing-worker-contract';
 import { getModelConfig } from './video-processing-worker-contract';
 import {
     initTensorWebGPU,
@@ -28,9 +28,9 @@ import {
     processBlurDeferredCleanups,
 } from '../webgpu-blur';
 import { WebGPUManager } from '../webgpu-manager';
-import { WebGpuDownscaler } from '../webgpu-downscaler';
+import { WebGpuDownscaler, type DownscaleTarget } from '../webgpu-downscaler';
 
-import { isAvcCDescription, deriveAvcCodecFromDescription, resizeFrame, cpuRgbaToI420 } from './video-encoding-helpers';
+import { isAvcCDescription, deriveAvcCodecFromDescription, pickAvcLevelByte, resizeFrame, cpuRgbaToI420 } from './video-encoding-helpers';
 import {
     type VideoStreamFrame, type StreamingContext,
     microsecondsToTicks, InternalVideoStream,
@@ -41,11 +41,17 @@ import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/
 // Import the ONNX model so esbuild copies it to dist/assets/onnx/
 import SegmentationModelUrl from './selfie_segmentation_olive_webgpu.onnx';
 
-// Type declaration for Insertable Streams API (may be available in worker scope on Safari 18+)
+// Type declarations for Insertable Streams API (may be available in worker scope on Safari 18+)
 declare class MediaStreamTrackProcessor<T = VideoFrame> {
     constructor(options: { track: MediaStreamTrack });
     readable: ReadableStream<T>;
 }
+// Structural ctor types for the two output-track flavours: standardized
+// `VideoTrackGenerator` (Safari 18+) and Chromium's older proprietary
+// `MediaStreamTrackGenerator`. Both produce a writable VideoFrame stream + a
+// readable MediaStreamTrack. We probe `self` for these names at runtime.
+type VideoTrackGeneratorCtor = new () => { writable: WritableStream<VideoFrame>; track: MediaStreamTrack };
+type MediaStreamTrackGeneratorCtor = new (opts: { kind: 'video' }) => { writable: WritableStream<VideoFrame>; track: MediaStreamTrack };
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
 
@@ -59,8 +65,12 @@ export function setCallbacks(cb: VideoProcessingWorkerCallbacks): void {
 
 // ─── State ──────────────────────────────────────────────────────────────────
 
-// Encoder
+// Encoder. `encoder` is the base layer (SpatialLayerId=0) and is always present
+// when encoding is active. `extraLayerEncoders` holds simulcast layers 1..N when
+// VideoProcessingConfig.spatialLayers is set, each tagged with its SpatialLayerId
+// via the WebCodecsEncoder ctor. Empty for single-encoder (P2P) mode.
 let encoder: WebCodecsEncoder | null = null;
+let extraLayerEncoders: WebCodecsEncoder[] = [];
 let encoderConfig: EncoderConfig | null = null;
 let encoderFailed = false;
 let encoderErrorSeen = false;
@@ -73,6 +83,8 @@ let senderRotationDeg = 0;
 let startTimestamp: number | undefined = undefined;
 let lastLoggedFormat: string | null = '(unset)';
 let loggedI420Error = false;
+let loggedPreConvertSkipped = false;
+let loggedPreviewCloneError = false;
 
 // Backpressure
 let backpressureDrops = 0;
@@ -132,6 +144,7 @@ function applyStreamingConfig(config: VideoProcessingConfig): void {
     streamCtx.streamKind = s.streamKind ?? 0;
     streamCtx.apiUrl = s.apiUrl;
     streamingEnabled = true;
+    streamStatus = 'waiting for first frame';
     // Declare our intent to keep a connection up while we capture.
     // Actual attempts are still gated by `Api.isDotNetRpcConnected`.
     Api.requireConnection('VideoCapture');
@@ -141,9 +154,11 @@ function applyStreamingConfig(config: VideoProcessingConfig): void {
 }
 let pendingStreamFrames: VideoStreamFrame[] = [];
 let codecSettings: string | null = null;
-let storedDescriptionBytes: Uint8Array | null = null;
-let firstEncodedTimestamp: number | null = null;
+const storedDescriptionBytesByLayer = new Map<number, Uint8Array>();
 let streamingEnabled = false;
+let streamRecreations = 0;
+let streamStatus = 'idle';
+let lastStreamError = '';
 
 // ─── Screencast heartbeat ──────────────────────────────────────────────────
 // getDisplayMedia is change-driven: a static screen produces zero frames. Without
@@ -180,6 +195,16 @@ let vadReducedFrameIntervalMs = 1000 / 5;
 let vadLastPassedFrameTime = 0;
 let streamReadLoopPromise: Promise<void> | null = null;
 
+// Preview-track output (MSTG path). When set, processed frames are written to
+// `previewWriter` instead of being copied across the RPC boundary as VideoFrames.
+let previewWriter: WritableStreamDefaultWriter<VideoFrame> | null = null;
+let previewWriterClosed = false;
+
+// Input track held by `startWithTrack` / `startPreviewWithTrack` (MSTP source).
+// Tracked here so `stop()` can explicitly release it instead of relying on GC
+// of the MSTP processor — keeps the camera light from lingering.
+let inputTrack: MediaStreamTrack | null = null;
+
 // ─── Segmentation ───────────────────────────────────────────────────────────
 
 function initializeQueue(cfg: SegmentationConfig): void {
@@ -214,14 +239,29 @@ function enqueueFrame(frame: VideoFrame): void {
 
 function emitPreviewAndEncode(frame: VideoFrame): void {
     if (encoder) {
-        // Streaming mode: clone for preview, original goes to encoder
-        try {
-            const previewFrame = new VideoFrame(frame, { timestamp: frame.timestamp });
-            void callbacks.onPreviewFrame(previewFrame, rpcNoWait);
-        } catch { /* clone failed, skip preview */ }
+        // Streaming mode: encoder consumes the frame; preview is emitted from
+        // *inside* `encodeProcessedFrame` after rotation+downscale so what the
+        // remote peer sees is what the local preview shows (WYSIWYG).
         void encodeProcessedFrame(frame);
     } else {
-        // Preview-only mode: send frame directly as preview, no encoding
+        // Preview-only mode: no encoder/downscale step — emit the post-blur
+        // frame directly. (Optional MSTG path still applies; falls back to RPC.)
+        emitPreview(frame);
+    }
+}
+
+// Single point that delivers a processed VideoFrame to the preview consumer.
+// MSTG path (`previewWriter` set) writes to the generator's WritableStream — the
+// browser closes the frame after the writer takes ownership. RPC path (legacy
+// fallback) hands the frame to `onPreviewFrame`, which serialises it across.
+function emitPreview(frame: VideoFrame): void {
+    if (previewWriter && !previewWriterClosed) {
+        previewWriter.write(frame).catch((err: unknown) => {
+            warnLog?.log('Preview MSTG write failed:', err);
+            previewWriterClosed = true;
+            try { frame.close(); } catch { /* already closed */ }
+        });
+    } else {
         void callbacks.onPreviewFrame(frame, rpcNoWait);
     }
 }
@@ -383,8 +423,8 @@ function processOneFrame(frame: VideoFrame): void {
         if (blurEnabled && segInitialized) {
             enqueueFrame(frame);
         } else {
-            // No blur, no encoder — just send as preview and close
-            void callbacks.onPreviewFrame(frame, rpcNoWait);
+            // No blur, no encoder — just emit as preview (MSTG or RPC fallback)
+            emitPreview(frame);
         }
         return;
     }
@@ -427,28 +467,108 @@ function processOneFrame(frame: VideoFrame): void {
 async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
     if (!encoder || !processing || !encoderConfig) { frame.close(); return; }
 
+    // Track the live VideoFrame reference at each pipeline stage so the catch
+    // path can close whatever's still owned. Without this, an exception between
+    // sourceFrame creation and encoder.encode() leaks the intermediate frame
+    // (browser console: `VideoFrame was garbage collected without being closed`).
+    // The encoder wrapper closes its argument in finally, so once we hand off
+    // to encode() this variable is set to null.
+    let liveFrame: VideoFrame | null = frame;
+    let sourceFrame: VideoFrame | null = null;
     try {
         if (startTimestamp === undefined) {
             startTimestamp = frame.timestamp;
             infoLog?.log(`Start timestamp set to ${startTimestamp}μs`);
         }
 
+        // Normalize the source frame timestamp ONCE here, before downscaler
+        // fan-out, so primary + simulcast extras share a single timeline and
+        // emitted chunks carry matching offsets per source frame.
+        // Math.round keeps ticks int64-safe — Chromium occasionally hands back
+        // sub-µs fractions on MSTP-wrapped getUserMedia, which would otherwise
+        // propagate to `Offset` and force msgpack float64 (server rejects).
+        const normalizedSourceTs = Math.round(frame.timestamp - startTimestamp);
+        sourceFrame = frame;
+        if (normalizedSourceTs !== frame.timestamp) {
+            sourceFrame = new VideoFrame(frame, {
+                timestamp: normalizedSourceTs,
+                duration: frame.duration ?? undefined,
+            });
+            frame.close();
+            liveFrame = sourceFrame;
+        }
+
         let processedFrame: VideoFrame;
         if (downscaler) {
             // WebGPU path: keeps frame on GPU. Uses VideoFrame.rotation when set,
             // else senderRotationDeg (main-thread supplies from screen.orientation).
-            const results = downscaler.process(frame, senderRotationDeg);
+            // downscaler.process closes its input internally; sourceFrame is gone.
+            const results = downscaler.process(sourceFrame, senderRotationDeg);
+            sourceFrame = null;
             processedFrame = results[0].frame;
+            liveFrame = processedFrame;
+            // Simulcast extras — feed each additional downscale result to its layer
+            // encoder. Encoders stamp SpatialLayerId on every emitted chunk via their
+            // ctor-bound id, so the fan-out path tags frames automatically. The
+            // extra encoders close their input in finally regardless of success.
+            if (extraLayerEncoders.length > 0) {
+                for (let i = 0; i < extraLayerEncoders.length; i++) {
+                    const extra = results[i + 1];
+                    try {
+                        extraLayerEncoders[i].encode(extra.frame, nextFrameIsKeyFrame);
+                    } catch (e) {
+                        errorLog?.log(`Extra layer ${i + 1} encode error:`, e);
+                        try { extra.frame.close(); } catch { /* already closed */ }
+                    }
+                }
+            }
+            // Defensive cleanup: if `extras.length` is shorter than results - 1
+            // (transient mismatch during a reconfig), close any orphan downscale
+            // results so they don't get GC'd unclosed.
+            for (let i = extraLayerEncoders.length + 1; i < results.length; i++) {
+                try { results[i].frame.close(); } catch { /* already closed */ }
+            }
         } else {
-            const resized = resizeFrame(frame, encoderConfig.width, encoderConfig.height, resizeCanvas, resizeCtx, needsRotation);
+            const resized = resizeFrame(sourceFrame, encoderConfig.width, encoderConfig.height, resizeCanvas, resizeCtx, needsRotation);
+            // resizeFrame closes its input when it produces a new frame; the
+            // returned `frame` is the live one.
+            sourceFrame = null;
             processedFrame = resized.frame;
+            liveFrame = processedFrame;
             resizeCanvas = resized.canvas;
             resizeCtx = resized.ctx;
         }
 
+        // WYSIWYG preview: clone the processed frame (post-rotate, post-downscale,
+        // post-blur — exactly what we hand to the encoder) and emit to the preview
+        // sink. Encoder still consumes the original `processedFrame` below; clone
+        // is independent and closed by the MSTG writer / RPC consumer.
+        if (previewWriter && !previewWriterClosed) {
+            try {
+                const previewClone = new VideoFrame(processedFrame, { timestamp: processedFrame.timestamp });
+                emitPreview(previewClone);
+            } catch (e) {
+                if (!loggedPreviewCloneError) {
+                    loggedPreviewCloneError = true;
+                    warnLog?.log('Preview clone failed:', e);
+                }
+            }
+        }
+
         // Optional YUV pre-conversion — disabled by default since HW encoders accept RGBA natively.
         // Enable via EncoderConfig.preConvertYuv for devices where pre-conversion helps encoding perf.
-        if (encoderConfig.preConvertYuv) {
+        // When the WebGPU downscaler is active its output is a GPU-resident
+        // canvas-backed VideoFrame; running copyTo→new VideoFrame here forces a
+        // GPU→CPU readback + re-upload, which is exactly the round-trip we
+        // designed the downscaler path to avoid. Skip and let the HW encoder
+        // consume RGBA directly.
+        if (encoderConfig.preConvertYuv && downscaler) {
+            if (!loggedPreConvertSkipped) {
+                loggedPreConvertSkipped = true;
+                warnLog?.log('preConvertYuv ignored: WebGPU downscaler active (output already GPU-resident, HW encoder consumes RGBA)');
+            }
+        }
+        else if (encoderConfig.preConvertYuv) {
             const format = processedFrame.format as string | null;
             const isAlreadyYuv = format === 'NV12' || format === 'I420'
                 || format === 'I420A' || format === 'I422' || format === 'I444' || format === 'NV12A';
@@ -467,6 +587,7 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
                         });
                         processedFrame.close();
                         processedFrame = yuvFrame;
+                        liveFrame = processedFrame;
                         converted = true;
                         break;
                     } catch { continue; }
@@ -475,7 +596,9 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
                 if (!converted) {
                     try {
                         const result = cpuRgbaToI420(processedFrame, resizeCanvas, resizeCtx);
+                        // cpuRgbaToI420 closes its input and returns a fresh I420 frame.
                         processedFrame = result.frame;
+                        liveFrame = processedFrame;
                         resizeCanvas = result.canvas;
                         resizeCtx = result.ctx;
                     } catch (e) {
@@ -490,13 +613,8 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
             warnLog?.log(`Frame format: ${processedFrame.format}, ${processedFrame.codedWidth}x${processedFrame.codedHeight}`);
         }
 
-        // Timestamp normalization
-        const normalizedTs = processedFrame.timestamp - startTimestamp;
-        if (normalizedTs !== processedFrame.timestamp) {
-            const normalized = new VideoFrame(processedFrame, { timestamp: normalizedTs, duration: processedFrame.duration ?? undefined });
-            processedFrame.close();
-            processedFrame = normalized;
-        }
+        // Timestamp already normalized at source (pre-downscaler), so primary
+        // and simulcast extras share one timeline here.
 
         // Let the encoder decide keyframes based on its keyframeInterval config
         // (set by recording-service.ts: ~2s screencast, ~3s webcam)
@@ -511,6 +629,10 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
             lastEncodedTimestampUs = processedFrame.timestamp;
             lastEncodedFrameAt = performance.now();
         }
+        // Encoder.encode() closes processedFrame in its finally regardless of
+        // success/throw — drop our live-tracking now so the catch below doesn't
+        // try to close an already-closed frame.
+        liveFrame = null;
         encoder.encode(processedFrame, forceKf);
         framesWithoutOutput++;
 
@@ -523,7 +645,11 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
         }
     } catch (error) {
         errorLog?.log('Error encoding frame:', error);
-        try { frame.close(); } catch { /* already closed */ }
+        // Whichever stage we got to, close the still-owned frame to avoid
+        // GC-without-close warnings.
+        if (liveFrame) {
+            try { liveFrame.close(); } catch { /* already closed */ }
+        }
     }
 }
 
@@ -549,8 +675,15 @@ function onEncoderOutput(chunkData: EncodedChunkData): void {
         new Uint8Array(descBuffer).set(sourceArray);
 
         if (isAvcCDescription(descBuffer) && !encoderConfig!.codec.startsWith('avc1')) {
-            const derivedCodec = deriveAvcCodecFromDescription(descBuffer);
-            warnLog?.log(`Encoder output mismatch: configured=${encoderConfig!.codec} but output is avcC, correcting to ${derivedCodec}`);
+            // Bump derived AVC level to admit the largest tier the ladder will encode.
+            // Encoders pick the minimum level for THEIR input dims; the base layer
+            // (e.g. 320×180) yields Level 3.0, but the 720p / 1080p simulcast extras
+            // need Level 3.1 / 4.0. Without this bump the extra encoders fail with
+            // `NotSupportedError ... AVC level (3.0) ... codec string (0x1E)`.
+            const max = ladderMaxDims();
+            const minLevelByte = pickAvcLevelByte(max.width, max.height);
+            const derivedCodec = deriveAvcCodecFromDescription(descBuffer, minLevelByte);
+            warnLog?.log(`Encoder output mismatch: configured=${encoderConfig!.codec} but output is avcC, correcting to ${derivedCodec} (ladder max ${max.width}x${max.height})`);
             actualCodec = derivedCodec;
             encoderConfig!.codec = derivedCodec;
         }
@@ -558,7 +691,9 @@ function onEncoderOutput(chunkData: EncodedChunkData): void {
 
     if (streamingEnabled) {
         deliverChunkToStream(chunkBuffer, chunkData.chunk.timestamp, chunkData.chunk.duration ?? 0,
-            chunkData.type === 'key', actualCodec, chunkData.sequenceNumber, descBuffer, chunkData.temporalLayerId);
+            chunkData.type === 'key', actualCodec, chunkData.sequenceNumber, descBuffer,
+            chunkData.temporalLayerId, chunkData.spatialLayerId,
+            chunkData.width, chunkData.height);
     } else {
         void callbacks.onSerializedChunk(
             chunkBuffer, chunkData.chunk.timestamp, chunkData.chunk.duration ?? 0,
@@ -574,7 +709,10 @@ function deliverChunkToStream(
     codec: string,
     sequenceNumber: number,
     descriptionBytes?: ArrayBuffer,
-    temporalLayerId?: number
+    temporalLayerId?: number,
+    spatialLayerId?: number,
+    chunkWidth?: number,
+    chunkHeight?: number
 ): void {
     // Detect sender disconnect BEFORE normalizing timestamps.
     //
@@ -592,22 +730,29 @@ function deliverChunkToStream(
         // Causes: RPC peer-change (server restart / different hubId), or server
         // killed PushVideo via its frame-silence watchdog (WebcamFrameSilenceTimeout /
         // ScreencastFrameSilenceTimeout), or MaxLiveDuration. Recreate on next keyframe.
+        // Reset startTimestamp so the next stream starts at offset 0 — avoids
+        // handing the fresh server-side StreamStore a large non-zero baseline.
         warnLog?.log('VideoStream disposed — will recreate on next keyframe');
         videoStream = null;
-        firstEncodedTimestamp = null;
+        startTimestamp = undefined;
+        streamStatus = 'reconnecting: waiting for keyframe';
     }
 
     const chunkData = new Uint8Array(chunkBytes);
-    firstEncodedTimestamp ??= timestamp;
-    const normalizedTimestamp = timestamp - firstEncodedTimestamp;
+
+    // Use encoder-instance dims when provided (simulcast extras differ from primary),
+    // fall back to primary's encoderConfig for single-encoder streams.
+    const frameWidth = chunkWidth ?? encoderConfig!.width;
+    const frameHeight = chunkHeight ?? encoderConfig!.height;
 
     const frame: VideoStreamFrame = {
-        offset: microsecondsToTicks(normalizedTimestamp),
-        duration: microsecondsToTicks(duration),
+        offset: microsecondsToTicks(Math.round(timestamp)),
+        duration: microsecondsToTicks(Math.round(duration)),
         isKeyFrame,
-        width: encoderConfig!.width, height: encoderConfig!.height,
+        width: frameWidth, height: frameHeight,
         data: chunkData, codec: isKeyFrame ? codec : undefined,
         temporalLayerId: temporalLayerId,
+        spatialLayerId: spatialLayerId,
         // Source dims piggybacked on keyframes only — server uses them to
         // recompute its max-quality ceiling when the window is resized mid-stream.
         sourceWidth: isKeyFrame ? sourceWidth : undefined,
@@ -615,24 +760,36 @@ function deliverChunkToStream(
     };
 
     if (isKeyFrame) {
-        debugLog?.log(`Streaming keyframe: seq=${sequenceNumber}, offsetMs=${(normalizedTimestamp / 1000).toFixed(0)}, ${(chunkData.length / 1024).toFixed(2)} KB`);
+        infoLog?.log(`Streaming keyframe: spatial=${spatialLayerId ?? 0}, temporal=${temporalLayerId ?? 0}, seq=${sequenceNumber}, ${frameWidth}x${frameHeight}, offsetMs=${(timestamp / 1000).toFixed(0)}, ${(chunkData.length / 1024).toFixed(2)} KB`);
     }
 
-    if (isKeyFrame && descriptionBytes && descriptionBytes.byteLength > 0) {
-        const descBytes = new Uint8Array(descriptionBytes);
+    // Description handling:
+    // - Encoder emitted description on this keyframe → forward as-is, refresh per-layer cache.
+    // - Encoder omitted description on this keyframe → fill from per-layer cache so the
+    //   receiver's decoder can always reconfigure() (HEVC/AVC require description on every
+    //   configure; Chrome is allowed by spec to omit it on later keyframes).
+    // Keyed by spatialLayerId because HVCC/AVCC bytes differ per resolution in simulcast.
+    if (isKeyFrame) {
+        const layerId = spatialLayerId ?? 0;
+        if (descriptionBytes && descriptionBytes.byteLength > 0) {
+            const descBytes = new Uint8Array(descriptionBytes);
+            frame.description = descBytes;
+            storedDescriptionBytesByLayer.set(layerId, descBytes);
 
-        frame.description = descBytes;
-        if (!codecSettings) {
-            let binary = '';
-            for (const byte of descBytes) binary += String.fromCharCode(byte);
-            codecSettings = btoa(binary);
-            debugLog?.log('Captured codec description:', descBytes.length, 'bytes');
+            if (!codecSettings) {
+                let binary = '';
+                for (const byte of descBytes) binary += String.fromCharCode(byte);
+                codecSettings = btoa(binary);
+                debugLog?.log(`Captured codec description for layer ${layerId}: ${descBytes.length} bytes`);
+            }
+        } else {
+            const cached = storedDescriptionBytesByLayer.get(layerId);
+            if (cached) {
+                frame.description = cached;
+            } else {
+                warnLog?.log(`Keyframe for layer ${layerId} has no description and no cached entry`);
+            }
         }
-        storedDescriptionBytes = descBytes;
-    }
-
-    if (isKeyFrame && !frame.description && storedDescriptionBytes) {
-        frame.description = storedDescriptionBytes;
     }
 
     if (!videoStream) {
@@ -654,12 +811,15 @@ function deliverChunkToStream(
                 lastVideoStream?.whenDisposed,
             );
             lastVideoStream = videoStream;
-            warnLog?.log(`TIMING_ANCHOR: firstEncodedTimestamp=${(firstEncodedTimestamp / 1000).toFixed(0)}ms`);
+            streamRecreations++;
+            warnLog?.log(`TIMING_ANCHOR: startTimestamp=${((startTimestamp ?? 0) / 1000).toFixed(0)}ms, firstChunkOffsetMs=${(timestamp / 1000).toFixed(0)}`);
             for (const buffered of pendingStreamFrames) videoStream.addFrame(buffered);
             pendingStreamFrames = [];
             videoStream.addFrame(frame);
+            streamStatus = 'streaming';
             void callbacks.onStreamCreated(settings, rpcNoWait);
         } else {
+            streamStatus = 'waiting for codec description';
             pendingStreamFrames.push(frame);
         }
     } else {
@@ -667,30 +827,167 @@ function deliverChunkToStream(
     }
 }
 
-function createEncoder(config: EncoderConfig): void {
-    encoderConfig = config;
-    encoder = new WebCodecsEncoder(config, onEncoderOutput, (error) => {
-        errorLog?.log('Encoder error:', error.name, error.message);
-        encoderErrorSeen = true;
-    });
-    encoder.initialize();
+function onEncoderError(error: Error): void {
+    errorLog?.log('Encoder error:', error.name, error.message);
+    encoderErrorSeen = true;
+    lastStreamError = `encoder: ${error.name} ${error.message}`;
 }
 
-// Init WebGPU downscaler for the current encoder dims. Returns null if WebGPU
-// is unavailable — caller then relies on the legacy canvas resizeFrame path.
-async function initDownscaler(width: number, height: number): Promise<void> {
+// Creates the base encoder (SpatialLayerId=0) plus any simulcast extras declared
+// in `config.spatialLayers`. Base encoder always present; extras empty in P2P mode.
+function setupEncoders(config: VideoProcessingConfig): void {
+    encoderConfig = config.encoder;
+    // Fresh encoder instances emit fresh HVCC/AVCC on their first keyframe — drop
+    // any cached descriptions from prior encoder generation to avoid stale bytes.
+    storedDescriptionBytesByLayer.clear();
+    encoder = new WebCodecsEncoder(config.encoder, onEncoderOutput, onEncoderError, 0);
+    encoder.initialize();
+
+    // Drop any prior extras (covers switchCodec re-entry and re-init scenarios).
+    for (const e of extraLayerEncoders) {
+        try { e.close(); } catch { /* already closed */ }
+    }
+    extraLayerEncoders = [];
+
+    const layers = config.spatialLayers ?? [];
+    for (let i = 0; i < layers.length; i++) {
+        const layer = layers[i];
+        const layerCfg: EncoderConfig = {
+            ...config.encoder,
+            width: layer.width,
+            height: layer.height,
+            bitrate: layer.bitrate,
+            scalabilityMode: layer.scalabilityMode ?? config.encoder.scalabilityMode,
+        };
+        const spatialId = i + 1; // base layer consumed index 0
+        const extra = new WebCodecsEncoder(layerCfg, onEncoderOutput, onEncoderError, spatialId);
+        extra.initialize();
+        extraLayerEncoders.push(extra);
+        infoLog?.log(`Simulcast layer ${spatialId}: ${layer.width}x${layer.height} @ ${(layer.bitrate / 1_000_000).toFixed(1)}Mbps`);
+    }
+}
+
+// Largest (width, height) across base + extras. Used to pick an AVC level
+// that admits every layer in the ladder — see deriveAvcCodecFromDescription
+// site for why a base-derived level is too low for simulcast.
+function ladderMaxDims(): { width: number; height: number } {
+    let w = encoderConfig?.width ?? 0;
+    let h = encoderConfig?.height ?? 0;
+    for (const e of extraLayerEncoders) {
+        const s = e.getStats();
+        if (s.configuredWidth > w) w = s.configuredWidth;
+        if (s.configuredHeight > h) h = s.configuredHeight;
+    }
+    return { width: w, height: h };
+}
+
+// Cheap structural match: same length AND identical (w, h, bitrate) per index.
+// Used by setSpatialLayers to skip a no-op rebuild — repeated server pushes of
+// the same ladder are common and we don't want to drain the encoder pipeline
+// on every duplicate.
+function extraLayerCountMatches(layers: SpatialLayerConfig[]): boolean {
+    if (layers.length !== extraLayerEncoders.length) return false;
+    for (let i = 0; i < layers.length; i++) {
+        const live = extraLayerEncoders[i].getStats();
+        const want = layers[i];
+        if (live.configuredWidth !== want.width
+            || live.configuredHeight !== want.height
+            || live.configuredBitrate !== want.bitrate) return false;
+    }
+    return true;
+}
+
+function collectDownscaleTargets(config: VideoProcessingConfig): DownscaleTarget[] {
+    return [
+        { width: config.encoder.width, height: config.encoder.height },
+        ...(config.spatialLayers ?? []).map(l => ({ width: l.width, height: l.height })),
+    ];
+}
+
+// Builds the current downscaler target list from live encoder state. Primary
+// dims come from encoderConfig (which is mutated by reconfigure + orientation
+// reconcile); extras come from each live WebCodecsEncoder's configured dims.
+// Used by any code path that rebuilds downscaler config mid-stream so that
+// simulcast extras aren't accidentally dropped.
+function currentDownscaleTargets(): DownscaleTarget[] {
+    const targets: DownscaleTarget[] = [];
+    if (encoderConfig) targets.push({ width: encoderConfig.width, height: encoderConfig.height });
+    for (const e of extraLayerEncoders) {
+        const s = e.getStats();
+        targets.push({ width: s.configuredWidth, height: s.configuredHeight });
+    }
+    return targets;
+}
+
+// Init WebGPU downscaler for the full simulcast target list (base + any extras).
+// Returns null if WebGPU is unavailable — caller then relies on the legacy canvas
+// resizeFrame path (which only covers the primary layer; simulcast requires WebGPU).
+async function initDownscaler(config: VideoProcessingConfig): Promise<void> {
+    const targets = collectDownscaleTargets(config);
     if (downscaler) {
-        downscaler.configure([{ width, height }]);
+        downscaler.configure(targets);
         return;
     }
     try {
         const device = await WebGPUManager.init();
         downscaler = new WebGpuDownscaler(device);
-        downscaler.configure([{ width, height }]);
-        infoLog?.log(`Downscaler initialized: ${width}x${height}`);
+        downscaler.configure(targets);
+        infoLog?.log(`Downscaler initialized with ${targets.length} target(s)`);
     } catch (e) {
         warnLog?.log('WebGPU downscaler unavailable, falling back to canvas resize:', e);
         downscaler = null;
+    }
+}
+
+// ─── Preview-only (MSTG) helpers ────────────────────────────────────────────
+
+interface PreviewMSTG { writable: WritableStream<VideoFrame>; track: MediaStreamTrack }
+
+// Initialise the preview MSTG and hand the output track to main. Idempotent —
+// no-op if MSTG already set up. Returns true on success. Encoder modes call
+// this opportunistically (no-op on browsers without MSTG, RPC fallback applies);
+// previewOnly mode calls it as a hard requirement.
+function ensurePreviewMSTG(): boolean {
+    if (previewWriter && !previewWriterClosed) return true;
+    const mstg = tryCreatePreviewMSTG();
+    if (!mstg) return false;
+    previewWriter = mstg.writable.getWriter();
+    previewWriterClosed = false;
+    void callbacks.onPreviewTrack(mstg.track, rpcNoWait);
+    return true;
+}
+
+function tryCreatePreviewMSTG(): PreviewMSTG | null {
+    const w = self as unknown as {
+        VideoTrackGenerator?: VideoTrackGeneratorCtor;
+        MediaStreamTrackGenerator?: MediaStreamTrackGeneratorCtor;
+    };
+    try {
+        if (typeof w.VideoTrackGenerator === 'function') {
+            const gen = new w.VideoTrackGenerator();
+            return { writable: gen.writable, track: gen.track };
+        }
+        if (typeof w.MediaStreamTrackGenerator === 'function') {
+            const gen = new w.MediaStreamTrackGenerator({ kind: 'video' });
+            return { writable: gen.writable, track: gen.track };
+        }
+    } catch (e) {
+        warnLog?.log('Failed to construct preview MSTG:', e);
+    }
+    return null;
+}
+
+async function previewReadLoop(inputReader: ReadableStreamDefaultReader<VideoFrame>): Promise<void> {
+    try {
+        while (processing) {
+            const { done, value } = await inputReader.read();
+            if (done) { infoLog?.log('Preview input ended'); break; }
+            processOneFrame(value);
+        }
+    } catch (e) {
+        errorLog?.log('previewReadLoop error:', e);
+    } finally {
+        try { inputReader.releaseLock(); } catch { /* ignore */ }
     }
 }
 
@@ -740,6 +1037,11 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
                         // (avoids upscaling which wastes CPU for no quality gain)
                         warnLog?.log(`Display dimensions ${frameW}x${frameH} smaller than config ${encoderConfig.width}x${encoderConfig.height}, reconfiguring`);
                         encoderConfig.width = frameW; encoderConfig.height = frameH;
+                        // Downscaler first (sync), encoder second (async) — same invariant as
+                        // orientation/RPC reconfigure paths. Without this the downscaler keeps
+                        // its old slot target and feeds frames at the old dims into a smaller
+                        // encoder, hitting the dim-mismatch guard and dropping every frame.
+                        if (downscaler) downscaler.configure(currentDownscaleTargets());
                         await encoder.reconfigure({ width: frameW, height: frameH, bitrate: encoderConfig.bitrate });
                         if (segConfig) { segConfig.outputWidth = frameW; segConfig.outputHeight = frameH; }
                         void callbacks.onDimensionReconciled(frameW, frameH, rpcNoWait);
@@ -771,26 +1073,41 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
                 if (currentH > sourceHeight) sourceHeight = currentH;
             }
 
-            // Sensor is physically landscape; VideoFrame.rotation tells us how the
-            // frame should be displayed. If display orientation crosses the 90°
-            // boundary (portrait ↔ landscape), swap encoder dims and reconfigure
-            // downscaler so output aspect matches user's device orientation.
-            // Fall back to senderRotationDeg when frame.rotation is null (Safari
-            // iOS MSTP): main thread derives it from screen.orientation.
+            // Determine user-facing orientation from POST-rotation source dims,
+            // not from the rotation value alone. Per-platform rationale:
+            //   - iOS Safari MSTP: source landscape (1920×1080), `frame.rotation`
+            //     null → fallback `senderRotationDeg=90` → swap → portrait. ✓
+            //   - Android Chrome MSTP: source already-portrait (720×1280) when
+            //     phone is portrait, `frame.rotation=0` → no swap → portrait. ✓
+            //     (The old `displayPortrait = rotDeg === 90 || === 270` check
+            //     misread Android's `rotation=0` as "wants landscape" and flipped
+            //     the encoder mid-stream.)
+            //   - Desktop: source landscape (1280×720), rotation=0 → no swap →
+            //     landscape. Reconcile flips encoder away from the iOS-tuned
+            //     startup-portrait transpose, as before.
             const rotDeg = frameRotation ?? senderRotationDeg;
-            const displayPortrait = rotDeg === 90 || rotDeg === 270;
+            let finalW = rawFrame.displayWidth;
+            let finalH = rawFrame.displayHeight;
+            if (rotDeg === 90 || rotDeg === 270) {
+                const t = finalW; finalW = finalH; finalH = t;
+            }
+            const displayPortrait = finalH > finalW;
             const encoderPortrait = encoderConfig.height > encoderConfig.width;
             if (displayPortrait !== encoderPortrait) {
                 const newW = encoderConfig.height;
                 const newH = encoderConfig.width;
                 try {
-                    await encoder.reconfigure({ width: newW, height: newH, bitrate: encoderConfig.bitrate });
                     encoderConfig.width = newW;
                     encoderConfig.height = newH;
-                    if (downscaler) downscaler.configure([{ width: newW, height: newH }]);
+                    // Downscaler first (sync) — see comment in `reconfigure` RPC
+                    // above about the race window during encoder.reconfigure's
+                    // `await` and why downscaler-first + dims-mismatch guard
+                    // beats the Chrome HW-encoder top-left-crop fallback.
+                    if (downscaler) downscaler.configure(currentDownscaleTargets());
+                    await encoder.reconfigure({ width: newW, height: newH, bitrate: encoderConfig.bitrate });
                     if (segConfig) { segConfig.outputWidth = newW; segConfig.outputHeight = newH; }
                     void callbacks.onDimensionReconciled(newW, newH, rpcNoWait);
-                    infoLog?.log(`Orientation change: rotation=${rotDeg} → encoder ${newW}x${newH}`);
+                    infoLog?.log(`Orientation change: rotation=${rotDeg} → encoder ${newW}x${newH} (downscaler targets=${extraLayerEncoders.length + 1})`);
                 } catch (e) {
                     warnLog?.log('Orientation reconfigure failed:', e);
                 }
@@ -867,14 +1184,21 @@ export const serverImpl: VideoProcessingWorker = {
             applyStreamingConfig(config);
             senderRotationDeg = config.senderRotationDeg ?? 0;
 
+            // Set up MSTG output BEFORE encoder so the preview track is delivered
+            // to main while we're still in the awaited startup window — main can
+            // read it synchronously after `startWithStream` resolves. No-op
+            // (returns false) on browsers without MSTG; preview falls back to
+            // the existing RPC `onPreviewFrame` callback path.
+            ensurePreviewMSTG();
+
             if (config.segmentation) {
                 await initializeSegmentation({ ...config.segmentation, outputWidth: config.encoder.width, outputHeight: config.encoder.height });
                 blurEnabled = true;
                 infoLog?.log('Segmentation initialized (blur enabled)');
             }
 
-            createEncoder(config.encoder);
-            await initDownscaler(config.encoder.width, config.encoder.height);
+            setupEncoders(config);
+            await initDownscaler(config);
 
             if (config.adaptiveFramerate) {
                 vadReducedFrameIntervalMs = 1000 / config.adaptiveFramerate.reducedFps;
@@ -897,6 +1221,48 @@ export const serverImpl: VideoProcessingWorker = {
         }
     },
 
+    startPreviewWithTrack: async (config, track): Promise<void> => {
+        try {
+            infoLog?.log('Starting preview-only worker (MSTG mode)...');
+
+            if (typeof MediaStreamTrackProcessor === 'undefined')
+                throw new Error('MediaStreamTrackProcessor not available in worker scope');
+
+            // Hand the output track to main BEFORE we start producing frames so
+            // the consumer is wired up by the time the first frame arrives.
+            if (!ensurePreviewMSTG())
+                throw new Error('MediaStreamTrackGenerator/VideoTrackGenerator not available in worker scope');
+
+            senderRotationDeg = config.senderRotationDeg ?? 0;
+            if (config.segmentation) {
+                await initializeSegmentation({
+                    ...config.segmentation,
+                    outputWidth: config.encoder.width,
+                    outputHeight: config.encoder.height,
+                });
+                blurEnabled = true;
+            }
+
+            processing = true;
+            inputTrack = track;
+
+            const processor = new MediaStreamTrackProcessor({ track });
+            const inputReader = processor.readable.getReader();
+            streamReadLoopPromise = previewReadLoop(inputReader);
+
+            infoLog?.log('Preview-only worker started (MSTG mode)');
+        } catch (error) {
+            errorLog?.log('Failed to start preview-only worker (MSTG mode):', error);
+            // Roll back partial state so the caller can fall back cleanly.
+            if (previewWriter) {
+                try { await previewWriter.close(); } catch { /* ignore */ }
+                previewWriter = null;
+            }
+            previewWriterClosed = false;
+            throw error;
+        }
+    },
+
     startWithTrack: async (config, track): Promise<void> => {
         try {
             infoLog?.log('Starting video processing worker (track transfer mode)...');
@@ -909,14 +1275,18 @@ export const serverImpl: VideoProcessingWorker = {
             applyStreamingConfig(config);
             senderRotationDeg = config.senderRotationDeg ?? 0;
 
+            // Set up MSTG output BEFORE encoder so the preview track is delivered
+            // to main while we're still in the awaited startup window.
+            ensurePreviewMSTG();
+
             if (config.segmentation) {
                 await initializeSegmentation({ ...config.segmentation, outputWidth: config.encoder.width, outputHeight: config.encoder.height });
                 blurEnabled = true;
                 infoLog?.log('Segmentation initialized (blur enabled)');
             }
 
-            createEncoder(config.encoder);
-            await initDownscaler(config.encoder.width, config.encoder.height);
+            setupEncoders(config);
+            await initDownscaler(config);
 
             if (config.adaptiveFramerate) {
                 vadReducedFrameIntervalMs = 1000 / config.adaptiveFramerate.reducedFps;
@@ -927,6 +1297,7 @@ export const serverImpl: VideoProcessingWorker = {
             dimensionsReconciled = false;
             needsRotation = false;
             orientationStats = null;
+            inputTrack = track;
 
             const processor = new MediaStreamTrackProcessor({ track });
             const inputReader = processor.readable.getReader();
@@ -947,6 +1318,9 @@ export const serverImpl: VideoProcessingWorker = {
 
             if (!isPreviewOnly) {
                 applyStreamingConfig(config);
+                // Encoder mode: opportunistic MSTG output. No-op on browsers
+                // without MSTG; preview falls back to RPC `onPreviewFrame`.
+                ensurePreviewMSTG();
             }
             senderRotationDeg = config.senderRotationDeg ?? 0;
 
@@ -956,8 +1330,8 @@ export const serverImpl: VideoProcessingWorker = {
             }
 
             if (!isPreviewOnly) {
-                createEncoder(config.encoder);
-                await initDownscaler(config.encoder.width, config.encoder.height);
+                setupEncoders(config);
+                await initDownscaler(config);
             }
 
             if (config.adaptiveFramerate) {
@@ -1001,17 +1375,31 @@ export const serverImpl: VideoProcessingWorker = {
         params.height = isPortrait ? inLarge : inSmall;
         infoLog?.log(`Reconfigure: ${params.bitrate / 1_000_000}Mbps, ${params.width}x${params.height}`);
         encoderConfig.bitrate = params.bitrate; encoderConfig.width = params.width; encoderConfig.height = params.height;
-        await encoder.reconfigure(params);
         resizeCanvas = null; resizeCtx = null;
-        if (downscaler) downscaler.configure([{ width: params.width, height: params.height }]);
+        // Order matters. `encoder.reconfigure` has an `await` boundary, so the
+        // stream-read loop can interleave a frame between the downscaler and
+        // encoder config updates. We reconfigure the downscaler FIRST (sync)
+        // so subsequent frames immediately land at the new target dims. Any
+        // frame that still sneaks through while the encoder is mid-reconfigure
+        // hits the dims-mismatch guard in `WebCodecsEncoder.encode` and is
+        // dropped — preferable to letting Chrome's HW encoder silently
+        // top-left-crop an old-dim frame against the new config.
+        if (downscaler) {
+            // Preserve simulcast extras when reconfiguring the primary layer.
+            // Extras stay at their initial dims — per-layer reconfigure is a
+            // later-stage feature driven by VideoQualityPreset.MaxSpatialLayer.
+            downscaler.configure(currentDownscaleTargets());
+        }
+        await encoder.reconfigure(params);
         if (segConfig && blurEnabled) { segConfig.outputWidth = params.width; segConfig.outputHeight = params.height; }
         // Drop cached heartbeat frame — its dimensions no longer match the encoder.
         if (lastEncodedFrame) { lastEncodedFrame.close(); lastEncodedFrame = null; }
     },
 
-    switchCodec: async (config: EncoderConfig): Promise<void> => {
+    switchCodec: async (config: EncoderConfig, spatialLayers?: SpatialLayerConfig[]): Promise<void> => {
         if (!encoder) { warnLog?.log('Cannot switch codec: not active'); return; }
         infoLog?.log(`Switching codec to ${config.codec}`);
+        streamStatus = 'switching codec';
 
         // Suppress frame output during codec switch — encoder.switchCodec() flushes
         // old-codec frames that must NOT leak into the new stream
@@ -1023,19 +1411,128 @@ export const serverImpl: VideoProcessingWorker = {
             try { await videoStream.whenDisposed; } catch { /* ignore */ }
             videoStream = null;
         }
-        codecSettings = null; firstEncodedTimestamp = null; pendingStreamFrames = []; storedDescriptionBytes = null;
+        codecSettings = null; startTimestamp = undefined; pendingStreamFrames = []; storedDescriptionBytesByLayer.clear();
         if (lastEncodedFrame) { lastEncodedFrame.close(); lastEncodedFrame = null; }
         await encoder.switchCodec(config);
+        // Drop old-codec simulcast extras; we rebuild them below with the new codec
+        // so the ladder survives the switch. Without this rebuild every codec
+        // switch permanently collapses the stream to base layer (regression
+        // observed on AV1→H.264 audience changes: receivers stuck at 640×360).
+        if (extraLayerEncoders.length > 0) {
+            const extras = extraLayerEncoders.slice();
+            extraLayerEncoders = [];
+            infoLog?.log(`switchCodec: tearing down ${extras.length} simulcast extras`);
+            for (const e of extras) {
+                try { await e.flush(); } catch { /* already closed elsewhere */ }
+                try { e.close(); } catch { /* already closed */ }
+            }
+        }
+
+        encoderConfig = config; resizeCanvas = null; resizeCtx = null;
+        // Rebuild simulcast extras on the new codec and restore downscaler targets
+        // to match. If caller omits spatialLayers (P2P mode) we fall through to
+        // a single base target and stay single-layer.
+        const layers = spatialLayers ?? [];
+        for (let i = 0; i < layers.length; i++) {
+            const layer = layers[i];
+            const layerCfg: EncoderConfig = {
+                ...config,
+                width: layer.width,
+                height: layer.height,
+                bitrate: layer.bitrate,
+                scalabilityMode: layer.scalabilityMode ?? config.scalabilityMode,
+            };
+            const spatialId = i + 1;
+            const extra = new WebCodecsEncoder(layerCfg, onEncoderOutput, onEncoderError, spatialId);
+            extra.initialize();
+            extraLayerEncoders.push(extra);
+            infoLog?.log(`Simulcast layer ${spatialId} (post-switch): ${layer.width}x${layer.height} @ ${(layer.bitrate / 1_000_000).toFixed(1)}Mbps`);
+        }
+        if (downscaler) downscaler.configure(currentDownscaleTargets());
 
         // Re-enable streaming and clear any frames that leaked during flush
         streamingEnabled = wasStreaming;
+        // Diagnostic: explain what the encoder needs to resume streaming.
+        // lastEncodedFrame is always null here (cleared above), so screencast
+        // heartbeat can't fire until getDisplayMedia produces a new frame.
+        // On a static screen this means the stream is stalled until user activity.
+        if (streamCtx.streamKind === 1)
+            streamStatus = 'stalled: waiting for screen activity after codec switch (heartbeat source lost)';
+        else
+            streamStatus = 'waiting for encoder output';
         pendingStreamFrames = [];
-        encoderConfig = config; resizeCanvas = null; resizeCtx = null;
-        if (downscaler) downscaler.configure([{ width: config.width, height: config.height }]);
         startTimestamp = undefined;
         backpressureDrops = 0; backpressureTotalFrames = 0; lastBackpressureCheckTime = 0; backpressureNotified = false;
         encoderFailed = false; encoderErrorSeen = false; framesWithoutOutput = 0;
-        infoLog?.log('Codec switched successfully');
+        infoLog?.log(`Codec switched successfully (${extraLayerEncoders.length} simulcast extras rearmed)`);
+    },
+
+    // Hot simulcast reconfig: swap the extra-layer encoders without touching the
+    // base encoder or the active VideoStream/RPC connection. Used to enable
+    // simulcast mid-recording when a second peer joins (or to drop it when the
+    // call collapses to P2P), without the stop/start cascade documented in
+    // commit 2de3f2617. No-op when the requested ladder matches the live one.
+    setSpatialLayers: async (layers): Promise<void> => {
+        if (!encoder || !encoderConfig) {
+            warnLog?.log('Cannot set spatial layers: not active');
+            return;
+        }
+        if (extraLayerCountMatches(layers)) {
+            debugLog?.log(`setSpatialLayers: no-op, ${extraLayerEncoders.length} extras already match request`);
+            return;
+        }
+
+        infoLog?.log(`setSpatialLayers: rebuilding ${extraLayerEncoders.length} → ${layers.length} extra(s)`);
+        if (extraLayerEncoders.length > 0) {
+            const extras = extraLayerEncoders.slice();
+            extraLayerEncoders = [];
+            for (const e of extras) {
+                try { await e.flush(); } catch { /* already closed */ }
+                try { e.close(); } catch { /* already closed */ }
+            }
+        }
+
+        // If base codec is avc1.* and incoming extras need a higher AVC level
+        // than the current string admits, bump it. Without this, hot-adding a
+        // 720p extra to a base whose codec was auto-corrected to avc1.64001e
+        // (Level 3.0, max 720×576) would fail with NotSupportedError.
+        if (encoderConfig.codec.startsWith('avc1.') && layers.length > 0) {
+            let maxW = encoderConfig.width;
+            let maxH = encoderConfig.height;
+            for (const l of layers) {
+                if (l.width > maxW) maxW = l.width;
+                if (l.height > maxH) maxH = l.height;
+            }
+            const needed = pickAvcLevelByte(maxW, maxH);
+            const currentLevel = parseInt(encoderConfig.codec.slice(-2), 16);
+            if (currentLevel < needed) {
+                const bumped = encoderConfig.codec.slice(0, -2) + needed.toString(16).padStart(2, '0');
+                infoLog?.log(`setSpatialLayers: bumping AVC level ${encoderConfig.codec} → ${bumped} for ladder max ${maxW}x${maxH}`);
+                encoderConfig.codec = bumped;
+            }
+        }
+
+        const baseCodec = encoderConfig.codec;
+        for (let i = 0; i < layers.length; i++) {
+            const layer = layers[i];
+            const layerCfg: EncoderConfig = {
+                ...encoderConfig,
+                width: layer.width,
+                height: layer.height,
+                bitrate: layer.bitrate,
+                scalabilityMode: layer.scalabilityMode ?? encoderConfig.scalabilityMode,
+            };
+            const spatialId = i + 1;
+            const extra = new WebCodecsEncoder(layerCfg, onEncoderOutput, onEncoderError, spatialId);
+            extra.initialize();
+            extraLayerEncoders.push(extra);
+            infoLog?.log(`Simulcast layer ${spatialId} (hot): ${layer.width}x${layer.height} @ ${(layer.bitrate / 1_000_000).toFixed(1)}Mbps codec=${baseCodec}`);
+        }
+        if (downscaler) downscaler.configure(currentDownscaleTargets());
+
+        // Force a keyframe so subscribers can latch onto any newly-armed layer
+        // without waiting for the next encoder-driven keyframe interval.
+        nextFrameIsKeyFrame = true;
     },
 
     toggleBlur: async (enabled, segCfg?): Promise<void> => {
@@ -1058,6 +1555,13 @@ export const serverImpl: VideoProcessingWorker = {
 
     flush: async (): Promise<void> => {
         if (encoder) { try { await encoder.flush(); infoLog?.log('Encoder flushed'); } catch (e) { warnLog?.log('Encoder flush error:', e); } }
+        // Snapshot extras before iterating — switchCodec can reset the shared
+        // `extraLayerEncoders` array concurrently, which would turn indexed
+        // access into `undefined`.
+        const extras = extraLayerEncoders.slice();
+        for (let i = 0; i < extras.length; i++) {
+            try { await extras[i].flush(); } catch (e) { warnLog?.log(`Extra layer ${i + 1} flush error:`, e); }
+        }
     },
 
     stop: async (): Promise<void> => {
@@ -1067,9 +1571,35 @@ export const serverImpl: VideoProcessingWorker = {
         stopScreencastHeartbeat();
 
         if (streamReadLoopPromise) { try { await streamReadLoopPromise; } catch { /* ignore */ } streamReadLoopPromise = null; }
+        if (previewWriter) {
+            previewWriterClosed = true;
+            try { await previewWriter.close(); } catch { /* writer may already be in error state */ }
+            previewWriter = null;
+        }
+        if (inputTrack) {
+            // Stop the cloned camera track explicitly — releases the camera light
+            // immediately rather than waiting for MSTP/processor GC.
+            try { inputTrack.stop(); } catch { /* ignore */ }
+            inputTrack = null;
+        }
         try { await awaitAllPendingReadbacks(); } catch { /* ignore */ }
         if (frameQueue) { while (!frameQueue.isEmpty()) { const qf = frameQueue.shift(); if (qf) qf.frame.close(); } frameQueue = null; }
-        if (encoder) { try { await encoder.flush(); encoder.close(); } catch (e) { warnLog?.log('Encoder close error:', e); } }
+        if (encoder) {
+            try { await encoder.flush(); } catch (e) { warnLog?.log('Encoder flush error (stop):', e); }
+            try { encoder.close(); } catch (e) { warnLog?.log('Encoder close error:', e); }
+        }
+        // Snapshot + clear BEFORE awaiting flush — if switchCodec runs during
+        // these awaits it also drains the shared array, and concurrent indexed
+        // iteration would hit `undefined`. Flush and close are guarded
+        // separately so a stale `flush()` rejecting with AbortError doesn't
+        // skip the `close()` step.
+        const extras = extraLayerEncoders.slice();
+        extraLayerEncoders = [];
+        for (let i = 0; i < extras.length; i++) {
+            const e = extras[i];
+            try { await e.flush(); } catch (err) { warnLog?.log(`Extra layer ${i + 1} flush error (stop):`, err); }
+            try { e.close(); } catch (err) { warnLog?.log(`Extra layer ${i + 1} close error:`, err); }
+        }
         if (videoStream) {
             videoStream.complete();
             // Wait for stream loop to finish sending remaining frames before closing connection
@@ -1093,13 +1623,14 @@ export const serverImpl: VideoProcessingWorker = {
         // Reset all state
         encoder = null; encoderConfig = null; onnxSession = null; segConfig = null; resolvedModelConfig = null;
         segInitialized = false; blurEnabled = false; resizeCanvas = null; resizeCtx = null;
-        startTimestamp = undefined; lastLoggedFormat = '(unset)'; loggedI420Error = false;
+        startTimestamp = undefined; lastLoggedFormat = '(unset)'; loggedI420Error = false; loggedPreConvertSkipped = false;
         backpressureDrops = 0; backpressureTotalFrames = 0; lastBackpressureCheckTime = 0; backpressureNotified = false;
         dimensionsReconciled = false; needsRotation = false; orientationStats = null; sourceWidth = 0; sourceHeight = 0; vadSpeaking = true; vadRemoteStreamCount = 0; vadLastPassedFrameTime = 0;
         segFrameCounter = 0; hasValidMask = false; loggedBlurFormat = false; processingFrame = false; frameSequence = 0;
         segProcessedFrames = 0; segTotalInferenceTime = 0; segTotalBlurTime = 0; segTotalProcessingTime = 0; segDroppedFrames = 0;
         videoStream = null; lastVideoStream = null; pendingStreamFrames = [];
-        codecSettings = null; storedDescriptionBytes = null; firstEncodedTimestamp = null; streamingEnabled = false;
+        codecSettings = null; storedDescriptionBytesByLayer.clear();
+        streamingEnabled = false; streamRecreations = 0; streamStatus = 'idle'; lastStreamError = '';
 
         infoLog?.log('Video processing worker stopped');
     },
@@ -1118,7 +1649,17 @@ export const serverImpl: VideoProcessingWorker = {
             averageTotalTime: segProcessedFrames > 0 ? segTotalProcessingTime / segProcessedFrames : 0,
             droppedFrames: segDroppedFrames, backend: segConfig?.backend ?? 'unknown',
         } : null;
-        return { encoder: encoderStats, segmentation: segStats, orientation: orientationStats ? { ...orientationStats } : null };
+        // Pick the first non-empty error string from current stream, previous stream, or worker-level
+        const streamErrors = [videoStream?.lastError, lastVideoStream?.lastError, lastStreamError];
+        const streamError = streamErrors.find(e => e != null && e.length > 0) ?? '';
+        const streamStats: VideoProcessingStreamingStats | null = streamingEnabled ? {
+            sentFrames: videoStream?.getAddedFrameCount() ?? 0,
+            pendingFrames: pendingStreamFrames.length,
+            streamRecreations,
+            status: streamStatus,
+            lastError: streamError,
+        } : null;
+        return { encoder: encoderStats, segmentation: segStats, orientation: orientationStats ? { ...orientationStats } : null, streaming: streamStats };
     },
 
     // eslint-disable-next-line @typescript-eslint/require-await

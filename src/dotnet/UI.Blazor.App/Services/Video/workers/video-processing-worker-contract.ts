@@ -11,6 +11,9 @@
 import { RpcNoWait, RpcTimeout } from 'rpc';
 import type { EncoderConfig, EncoderStats } from '../webcodecs-encoder';
 import { getLogs } from 'logging';
+import type { SpatialLayerConfig } from '../../../Components/VideoPanel/simulcast-ladder';
+
+export type { SpatialLayerConfig };
 
 const { debugLog, warnLog } = getLogs('VideoSegmentation');
 
@@ -127,8 +130,13 @@ export function createAdaptiveSegmentationConfig(backend: SegmentationConfig['ba
  * Configuration for the unified video processing worker.
  */
 export interface VideoProcessingConfig {
-    /** Encoder settings (codec, bitrate, resolution, etc.) */
+    /** Encoder settings (codec, bitrate, resolution, etc.) — also serves as the
+     *  base simulcast layer (SpatialLayerId=0) when `spatialLayers` is set. */
     encoder: EncoderConfig;
+    /** Additional simulcast layers. Index i in this array corresponds to
+     *  `SpatialLayerId = i + 1` on wire; base layer (index 0 on wire) is driven
+     *  from `encoder`. Omit or leave empty for single-encoder (P2P) mode. */
+    spatialLayers?: SpatialLayerConfig[];
     /** Segmentation settings — omit for no blur */
     segmentation?: SegmentationConfig;
     /** Adaptive framerate settings */
@@ -164,22 +172,38 @@ export interface OrientationStats {
     framesSeen: number;
 }
 
+export interface VideoProcessingStreamingStats {
+    sentFrames: number;
+    pendingFrames: number;
+    streamRecreations: number;
+    status: string;
+    lastError: string;
+}
+
 export interface VideoProcessingStats {
     encoder: EncoderStats;
     segmentation: SegmentationStats | null;
     orientation: OrientationStats | null;
+    streaming: VideoProcessingStreamingStats | null;
 }
 
 export interface VideoProcessingWorker {
     startWithStream(config: VideoProcessingConfig, frameInputStream: ReadableStream<VideoFrame>, timeout?: RpcTimeout): Promise<void>;
     startWithTrack(config: VideoProcessingConfig, track: MediaStreamTrack, timeout?: RpcTimeout): Promise<void>;
+    /** Preview-only mode with worker-internal MSTP→processing→MSTG pipeline.
+     *  Caller transfers a (cloned) camera track. Worker creates MSTP to read frames,
+     *  runs segmentation/blur, and writes blurred frames to a MediaStreamTrackGenerator.
+     *  The resulting output track is delivered via {@link VideoProcessingWorkerCallbacks.onPreviewTrack}.
+     *  Throws if MSTP or MSTG is unavailable in the worker scope (caller must fall back). */
+    startPreviewWithTrack(config: VideoProcessingConfig, track: MediaStreamTrack, timeout?: RpcTimeout): Promise<void>;
     initialize(config: VideoProcessingConfig, timeout?: RpcTimeout): Promise<void>;
     encodeFrame(frame: VideoFrame, noWait?: RpcNoWait): Promise<void>;
 
     setVadState(speaking: boolean, remoteStreamCount: number): Promise<void>;
     setSenderRotation(rotationDeg: number, noWait?: RpcNoWait): Promise<void>;
     reconfigure(params: { bitrate: number; width: number; height: number }): Promise<void>;
-    switchCodec(config: EncoderConfig): Promise<void>;
+    switchCodec(config: EncoderConfig, spatialLayers?: SpatialLayerConfig[]): Promise<void>;
+    setSpatialLayers(layers: SpatialLayerConfig[]): Promise<void>;
     toggleBlur(enabled: boolean, segConfig?: SegmentationConfig): Promise<void>;
     forceKeyFrame(): Promise<void>;
     flush(): Promise<void>;
@@ -205,5 +229,8 @@ export interface VideoProcessingWorkerCallbacks {
     onEncoderFailed(codec: string, noWait?: RpcNoWait): Promise<void>;
     onDimensionReconciled(width: number, height: number, noWait?: RpcNoWait): Promise<void>;
     onPreviewFrame(frame: VideoFrame, noWait?: RpcNoWait): Promise<void>;
+    /** Delivers the MediaStreamTrackGenerator output track once {@link VideoProcessingWorker.startPreviewWithTrack}
+     *  has wired up the MSTG. Fires exactly once per session. */
+    onPreviewTrack(track: MediaStreamTrack, noWait?: RpcNoWait): Promise<void>;
     onStreamCreated(codecSettings: string, noWait?: RpcNoWait): Promise<void>;
 }

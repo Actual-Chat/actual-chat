@@ -16,7 +16,7 @@ public static class ClientStartup
         // Rpc & Fusion defaults
         RuntimeInfo.IsServer = false;
         ApiContractsModuleInitializer.Load();
-        CoreModuleInitializer.Configure();
+        CoreModuleInitializer.Initialize();
 #if !DEBUG
         RpcDiagnosticsOptions.Default = RpcDiagnosticsOptions.Default with {
             CallTracerFactory = _ => null // No call tracing in release builds
