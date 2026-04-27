@@ -1486,10 +1486,6 @@ body.narrow .landing-download-tile .c-content {
 body.narrow .premium-features-modal.modal-frame {
     @apply py-0;
 }
-body.narrow .premium-features-modal.narrow-view__modal__position-stretch {
-    padding-top: var(--safe-area-top);
-    padding-bottom: calc(1rem + var(--safe-area-bottom));
-}
 body.wide .premium-features-modal .modal-header {
     @apply hidden;
 }

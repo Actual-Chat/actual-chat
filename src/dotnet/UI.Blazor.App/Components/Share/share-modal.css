@@ -1,10 +1,6 @@
 ﻿.share-modal.modal-frame {
-    @apply px-0 pb-0;
+    @apply px-0;
     @apply gap-y-0;
-}
-body.narrow .share-modal.narrow-view__modal__position-stretch {
-    padding-top: var(--safe-area-top);
-    padding-bottom: var(--safe-area-bottom);
 }
 .share-modal .dialog-body {
     @apply overflow-y-hidden;
@@ -50,7 +46,7 @@ body.narrow .share-modal.narrow-view__modal__position-stretch {
 
 .share-modal .dialog-buttons {
     @apply -flex-x;
-    @apply px-4 pt-0 pb-4;
+    @apply px-4 pt-0;
 }
 .share-modal .dialog-buttons > * {
     @apply flex-1 max-w-none;
