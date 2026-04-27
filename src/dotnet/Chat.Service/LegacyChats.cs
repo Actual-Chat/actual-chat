@@ -29,9 +29,9 @@ public class LegacyChats(IServiceProvider services) : ILegacyChats
         => GetTile(session, chatId, idTileRange, cancellationToken);
 
     public virtual async Task<LegacyChatEntry> OnUpsertEntry(
-        Chats_UpsertEntry command, CancellationToken cancellationToken)
+        LegacyChats_UpsertEntry command, CancellationToken cancellationToken)
     {
-        var entry = await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
+        var entry = await Commander.Call(command.ToModern(), true, cancellationToken).ConfigureAwait(false);
         return LegacyChatEntry.From(entry);
     }
 }

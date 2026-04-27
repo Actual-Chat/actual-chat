@@ -56,12 +56,12 @@ public class LegacyInvites(IServiceProvider services) : ILegacyInvites
     }
 
     public virtual async Task<LegacyInvite> OnUse(
-        Invites_Use command, CancellationToken cancellationToken)
+        LegacyInvites_Use command, CancellationToken cancellationToken)
     {
-        var invite = await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
+        var invite = await Commander.Call(command.ToModern(), true, cancellationToken).ConfigureAwait(false);
         return LegacyInvite.From(invite);
     }
 
-    public virtual Task OnRevoke(Invites_Revoke command, CancellationToken cancellationToken)
-        => Commander.Call(command, true, cancellationToken);
+    public virtual Task OnRevoke(LegacyInvites_Revoke command, CancellationToken cancellationToken)
+        => Commander.Call(command.ToModern(), true, cancellationToken);
 }
