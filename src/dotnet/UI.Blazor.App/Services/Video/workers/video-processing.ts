@@ -1064,14 +1064,25 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
                 if (currentH > sourceHeight) sourceHeight = currentH;
             }
 
-            // Sensor is physically landscape; VideoFrame.rotation tells us how the
-            // frame should be displayed. If display orientation crosses the 90°
-            // boundary (portrait ↔ landscape), swap encoder dims and reconfigure
-            // downscaler so output aspect matches user's device orientation.
-            // Fall back to senderRotationDeg when frame.rotation is null (Safari
-            // iOS MSTP): main thread derives it from screen.orientation.
+            // Determine user-facing orientation from POST-rotation source dims,
+            // not from the rotation value alone. Per-platform rationale:
+            //   - iOS Safari MSTP: source landscape (1920×1080), `frame.rotation`
+            //     null → fallback `senderRotationDeg=90` → swap → portrait. ✓
+            //   - Android Chrome MSTP: source already-portrait (720×1280) when
+            //     phone is portrait, `frame.rotation=0` → no swap → portrait. ✓
+            //     (The old `displayPortrait = rotDeg === 90 || === 270` check
+            //     misread Android's `rotation=0` as "wants landscape" and flipped
+            //     the encoder mid-stream.)
+            //   - Desktop: source landscape (1280×720), rotation=0 → no swap →
+            //     landscape. Reconcile flips encoder away from the iOS-tuned
+            //     startup-portrait transpose, as before.
             const rotDeg = frameRotation ?? senderRotationDeg;
-            const displayPortrait = rotDeg === 90 || rotDeg === 270;
+            let finalW = rawFrame.displayWidth;
+            let finalH = rawFrame.displayHeight;
+            if (rotDeg === 90 || rotDeg === 270) {
+                const t = finalW; finalW = finalH; finalH = t;
+            }
+            const displayPortrait = finalH > finalW;
             const encoderPortrait = encoderConfig.height > encoderConfig.width;
             if (displayPortrait !== encoderPortrait) {
                 const newW = encoderConfig.height;
