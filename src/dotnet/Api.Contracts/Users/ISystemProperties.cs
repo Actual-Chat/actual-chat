@@ -15,16 +15,6 @@ public interface ISystemProperties : IComputeService
     Task OnInvalidateEverything(SystemProperties_InvalidateEverything command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnPruneComputedGraph(SystemProperties_PruneComputedGraph command, CancellationToken cancellationToken);
-
-    // Legacy methods - to be removed in the future
-
-    [Obsolete("2025.06: Retired in favour of GetServerApiInfo.")]
-    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
-    Task<string> GetApiVersion(CancellationToken cancellationToken);
-
-    [Obsolete("2025.06: Retired in favour of GetServerApiInfo.")]
-    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
-    Task<SystemProperties_LegacyClientCompatibility> CheckClientCompatibility(string clientVersion, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
@@ -56,6 +46,3 @@ public sealed partial record ServerApiInfo(
         : this(compatibilityLevel, ApiConstants.VersionString, ApiConstants.FullVersionString, ApiConstants.DisplayVersionString)
     { }
 }
-
-[Obsolete("2025.06: Retired in favour of GetServerApiInfo.")]
-public enum SystemProperties_LegacyClientCompatibility { Latest, Incompatible, UpgradeAvailable }

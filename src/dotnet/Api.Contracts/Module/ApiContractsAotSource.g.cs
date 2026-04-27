@@ -954,9 +954,6 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.SystemProperties_InvalidateEverything>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.SystemProperties_InvalidateEverything>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.SystemProperties_InvalidateEverything>>>>();
-        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.SystemProperties_LegacyClientCompatibility>>();
-        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.SystemProperties_LegacyClientCompatibility>>>();
-        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.SystemProperties_LegacyClientCompatibility>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.SystemProperties_PruneComputedGraph>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.SystemProperties_PruneComputedGraph>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.SystemProperties_PruneComputedGraph>>>>();
@@ -1434,7 +1431,6 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.Formatters.GenericEnumFormatter`1[[ActualChat.Users.ChatPositionKind, ActualChat.Api]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.GenericEnumFormatter`1[[ActualChat.Users.ChatUsageListKind, ActualChat.Api]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.GenericEnumFormatter`1[[ActualChat.Users.Presence, ActualChat.Api]], MessagePack");
-        CodeKeeper.Keep("MessagePack.Formatters.GenericEnumFormatter`1[[ActualChat.Users.SystemProperties_LegacyClientCompatibility, ActualChat.Api.Contracts]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.GenericEnumFormatter`1[[ActualChat.Users.TotpPurpose, ActualChat.Api]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.GenericEnumFormatter`1[[System.Reflection.CallingConventions, System.Private.CoreLib]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.GenericEnumFormatter`1[[System.Reflection.EventAttributes, System.Private.CoreLib]], MessagePack");
