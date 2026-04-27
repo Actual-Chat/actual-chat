@@ -12,6 +12,7 @@ namespace ActualChat.Chat.UnitTests;
 public class LegacyInviteCompatTest(ITestOutputHelper @out) : TestBase(@out)
 {
     private static readonly Moment TestMoment = new(new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc));
+    private static readonly Session TestSession = Session.New();
 
     [Fact]
     public void LegacyInvite_ChatInvite_RoundTripsViaMemoryPack()
@@ -157,5 +158,62 @@ public class LegacyInviteCompatTest(ITestOutputHelper @out) : TestBase(@out)
         // Search key must remain stable across the renames so existing DB rows
         // continue to be reachable through DbInvite.SearchKey.
         modernKey.Should().Be("ChatInviteOption:" + chatId);
+    }
+
+    // Legacy command-record round-trips. These mirror the existing modern
+    // Invites_Generate_Basic / Invites_Use_Basic / Invites_Revoke_Basic in
+    // InviteDetailsSerializationTest, but exercise the MemoryPack-only legacy
+    // wire shapes that ILegacyInvites accepts from old chat-invite clients.
+
+    [Fact]
+    public void LegacyInvites_Generate_ChatInvite_RoundTrip()
+    {
+        var chatId = ChatId.Parse("r5IbjdG7Cq");
+        var legacy = new LegacyInvite("invite-1", 1) {
+            CreatedBy = "admin",
+            CreatedAt = TestMoment,
+            ExpiresOn = TestMoment + TimeSpan.FromDays(7),
+            Remaining = 5,
+            Details = new LegacyInviteDetails { Option = new LegacyChatInviteOption(chatId) },
+        };
+        var cmd = new LegacyInvites_Generate(TestSession, legacy);
+
+        var s = cmd.PassThroughMemoryPackByteSerializer(Out);
+        s.Session.Should().Be(cmd.Session);
+        s.Invite.Id.Should().Be(legacy.Id);
+        s.Invite.Details.Chat.Should().NotBeNull();
+        s.Invite.Details.Chat!.ChatId.Should().Be(chatId);
+
+        // The legacy adapter upgrades the inbound command to its modern shape
+        // before invoking Commander on the modern handler.
+        var modernInvite = s.Invite.ToModern();
+        modernInvite.Should().BeOfType<ChatInvite>();
+        ((ChatInvite)modernInvite).ChatId.Should().Be(chatId);
+        modernInvite.Remaining.Should().Be(5);
+    }
+
+    [Fact]
+    public void LegacyInvites_Use_RoundTrip()
+    {
+        var cmd = new LegacyInvites_Use(TestSession, "invite-1");
+        var s = cmd.PassThroughMemoryPackByteSerializer(Out);
+        s.Session.Should().Be(cmd.Session);
+        s.InviteId.Should().Be("invite-1");
+        // Distinct from Invites_Use so Commander can register one handler per type.
+        var modern = s.ToModern();
+        modern.Should().BeOfType<Invites_Use>();
+        modern.InviteId.Should().Be(cmd.InviteId);
+    }
+
+    [Fact]
+    public void LegacyInvites_Revoke_RoundTrip()
+    {
+        var cmd = new LegacyInvites_Revoke(TestSession, "invite-1");
+        var s = cmd.PassThroughMemoryPackByteSerializer(Out);
+        s.Session.Should().Be(cmd.Session);
+        s.InviteId.Should().Be("invite-1");
+        var modern = s.ToModern();
+        modern.Should().BeOfType<Invites_Revoke>();
+        modern.InviteId.Should().Be(cmd.InviteId);
     }
 }
