@@ -43,7 +43,9 @@
     <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
     <PackageReference Include="Npgsql.OpenTelemetry" />
     <PackageReference Include="Google.Cloud.AspNetCore.DataProtection.Storage" />
-    <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Seq.Extensions.Logging" />
+    <!-- Used only inside #if DEBUG; the Configuration-conditional reference used to break
+         `dotnet test` (no-restore) when the prior restore was Release. -->
+    <PackageReference Include="Seq.Extensions.Logging" />
   </ItemGroup>
 
   <ItemGroup>

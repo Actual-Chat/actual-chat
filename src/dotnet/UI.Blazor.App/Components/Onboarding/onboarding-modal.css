@@ -284,10 +284,6 @@ body.hoverable .stepper-skip-filler .btn-h:hover {
 }
 
 /* Phone verification */
-body.narrow .phone-verification-modal.narrow-view__modal__position-stretch {
-    padding-top: var(--safe-area-top);
-    padding-bottom: calc(1rem + var(--safe-area-bottom));
-}
 .phone-verification-modal .dialog-body {
     @apply flex-1 flex-y;
 }
@@ -306,10 +302,6 @@ body.narrow .phone-verification-modal.narrow-view__modal__position-stretch {
 }
 
 /* Email verification */
-body.narrow .email-verification-modal.narrow-view__modal__position-stretch {
-    padding-top: var(--safe-area-top);
-    padding-bottom: calc(1rem + var(--safe-area-bottom));
-}
 .email-verification-modal .dialog-body > .c-content {
     @apply flex-1 flex-y justify-center gap-y-8;
 }

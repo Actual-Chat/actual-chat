@@ -41,6 +41,13 @@ export interface OwnStreamDiagnostics {
         rotationDetection: string;
         framesSeen: number;
     } | null;
+    streaming: {
+        sentFrames: number;
+        pendingFrames: number;
+        streamRecreations: number;
+        status: string;
+        lastError: string;
+    } | null;
 }
 
 export interface VideoDevice {
@@ -368,10 +375,15 @@ export class VideoRecorder {
     }
 
     /**
-     * Get the raw preview track for rendering by VideoStreamingPreview.
+     * Get the preview track for VideoStreamingPreview / RecorderPreviewView.
+     * Returns the worker's WYSIWYG MSTG output (post-rotate, post-downscale —
+     * exactly what the remote peer sees) when available, falling back to the
+     * raw camera/screen track on browsers without MSTG support.
      */
     public getPreviewTrack(): MediaStreamTrack | null {
-        return this.previewTrack;
+        // Screencast keeps the raw track — the encoder doesn't transform it.
+        if (this.isScreencasting) return this.previewTrack;
+        return this.recordingService?.getProcessedTrack() ?? this.previewTrack;
     }
 
     /**
@@ -1044,6 +1056,7 @@ export class VideoRecorder {
         const encoderStats = pipeline?.getEncoderStats();
         const segStats = pipeline?.getSegmentationStats();
         const orientStats = pipeline?.getOrientationStats();
+        const streamStats = pipeline?.getStreamingStats();
         const state = rs?.getState();
         const config = rs?.getConfig();
         const inputTrack = rs?.getInputTrack();
@@ -1088,6 +1101,13 @@ export class VideoRecorder {
                 needsRotation: orientStats.needsRotation,
                 rotationDetection: orientStats.rotationDetection,
                 framesSeen: orientStats.framesSeen,
+            } : null,
+            streaming: streamStats ? {
+                sentFrames: streamStats.sentFrames,
+                pendingFrames: streamStats.pendingFrames,
+                streamRecreations: streamStats.streamRecreations,
+                status: streamStats.status,
+                lastError: streamStats.lastError,
             } : null,
         };
     }

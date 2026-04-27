@@ -286,6 +286,8 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             if (!model.IsConfirmed)
                 return;
 
+            await LocalSettings.LocalAppSettings()
+                .Update(s => s with { SelectedCameraDeviceId = model.SelectedDeviceId }, cancellationToken).ConfigureAwait(true);
             StartVideoStreaming(chatId, model.SelectedDeviceId, model.IsBlurEnabled);
         }
     }

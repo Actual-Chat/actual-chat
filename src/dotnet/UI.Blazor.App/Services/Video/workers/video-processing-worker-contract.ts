@@ -172,15 +172,30 @@ export interface OrientationStats {
     framesSeen: number;
 }
 
+export interface VideoProcessingStreamingStats {
+    sentFrames: number;
+    pendingFrames: number;
+    streamRecreations: number;
+    status: string;
+    lastError: string;
+}
+
 export interface VideoProcessingStats {
     encoder: EncoderStats;
     segmentation: SegmentationStats | null;
     orientation: OrientationStats | null;
+    streaming: VideoProcessingStreamingStats | null;
 }
 
 export interface VideoProcessingWorker {
     startWithStream(config: VideoProcessingConfig, frameInputStream: ReadableStream<VideoFrame>, timeout?: RpcTimeout): Promise<void>;
     startWithTrack(config: VideoProcessingConfig, track: MediaStreamTrack, timeout?: RpcTimeout): Promise<void>;
+    /** Preview-only mode with worker-internal MSTP→processing→MSTG pipeline.
+     *  Caller transfers a (cloned) camera track. Worker creates MSTP to read frames,
+     *  runs segmentation/blur, and writes blurred frames to a MediaStreamTrackGenerator.
+     *  The resulting output track is delivered via {@link VideoProcessingWorkerCallbacks.onPreviewTrack}.
+     *  Throws if MSTP or MSTG is unavailable in the worker scope (caller must fall back). */
+    startPreviewWithTrack(config: VideoProcessingConfig, track: MediaStreamTrack, timeout?: RpcTimeout): Promise<void>;
     initialize(config: VideoProcessingConfig, timeout?: RpcTimeout): Promise<void>;
     encodeFrame(frame: VideoFrame, noWait?: RpcNoWait): Promise<void>;
 
@@ -214,5 +229,8 @@ export interface VideoProcessingWorkerCallbacks {
     onEncoderFailed(codec: string, noWait?: RpcNoWait): Promise<void>;
     onDimensionReconciled(width: number, height: number, noWait?: RpcNoWait): Promise<void>;
     onPreviewFrame(frame: VideoFrame, noWait?: RpcNoWait): Promise<void>;
+    /** Delivers the MediaStreamTrackGenerator output track once {@link VideoProcessingWorker.startPreviewWithTrack}
+     *  has wired up the MSTG. Fires exactly once per session. */
+    onPreviewTrack(track: MediaStreamTrack, noWait?: RpcNoWait): Promise<void>;
     onStreamCreated(codecSettings: string, noWait?: RpcNoWait): Promise<void>;
 }

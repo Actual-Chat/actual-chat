@@ -121,6 +121,30 @@
                             <span class="diag-value">@(GetNum(orient, "framesSeen").ToString("0"))</span>
                         </div>
                     }
+                    @if (stream.TryGetProperty("streaming", out var streaming) && streaming.ValueKind == JsonValueKind.Object) {
+                        <div class="diag-row">
+                            <span class="diag-label">Send</span>
+                            <span class="diag-value">@GetStr(streaming, "status") (@(GetNum(streaming, "sentFrames").ToString("0")) frames)</span>
+                        </div>
+                        @if (GetNum(streaming, "pendingFrames") > 0) {
+                            <div class="diag-row">
+                                <span class="diag-label">Pending</span>
+                                <span class="diag-value">@(GetNum(streaming, "pendingFrames").ToString("0")) frames</span>
+                            </div>
+                        }
+                        @if (GetNum(streaming, "streamRecreations") > 1) {
+                            <div class="diag-row">
+                                <span class="diag-label">Reconnects</span>
+                                <span class="diag-value">@((GetNum(streaming, "streamRecreations") - 1).ToString("0"))</span>
+                            </div>
+                        }
+                        @if (GetStr(streaming, "lastError") is { Length: > 0 } streamError) {
+                            <div class="diag-row">
+                                <span class="diag-label">Error</span>
+                                <span class="diag-value diag-error">@streamError</span>
+                            </div>
+                        }
+                    }
                 </div>
             }
         </div>
@@ -346,8 +370,10 @@
     private async Task PollJsDiagnostics() {
         if (_isDisposed) return;
         try {
-            if (_showOwnStreamingDetails)
-                _ownDiag = await JS.InvokeAsync<JsonElement>(JSCollectOwnMethod);
+            if (_showOwnStreamingDetails) {
+                var kind = (int)State.Value.OwnStreamingKind.GetValueOrDefault(StreamKind.Webcam);
+                _ownDiag = await JS.InvokeAsync<JsonElement>(JSCollectOwnMethod, kind);
+            }
 
             foreach (var streamId in _expandedStreams) {
                 var diag = await JS.InvokeAsync<JsonElement>(JSCollectRemoteMethod, streamId);

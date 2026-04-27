@@ -46,6 +46,7 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.Users.IEmailAuth>();
         CodeKeeper.Keep<global::ActualChat.Users.IEmails>();
         CodeKeeper.Keep<global::ActualChat.Users.IMobileSessions>();
+        CodeKeeper.Keep<global::ActualChat.Users.INativeAuth>();
         CodeKeeper.Keep<global::ActualChat.Users.IPhoneAuth>();
         CodeKeeper.Keep<global::ActualChat.Users.IPhones>();
         CodeKeeper.Keep<global::ActualChat.Users.ISessionTemporals>();
@@ -126,6 +127,8 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Users.EmailAuth_ValidateTotp>();
         CodeKeeper.KeepSerializable<global::ActualChat.Users.EmailAuth_VerifyEmail>();
         CodeKeeper.KeepSerializable<global::ActualChat.Users.Emails_SendDigest>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Users.NativeAuth_SignInApple>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Users.NativeAuth_SignInGoogle>();
         CodeKeeper.KeepSerializable<global::ActualChat.Users.PhoneAuth_SendTotp>();
         CodeKeeper.KeepSerializable<global::ActualChat.Users.PhoneAuth_ValidateTotp>();
         CodeKeeper.KeepSerializable<global::ActualChat.Users.PhoneAuth_VerifyPhone>();
@@ -915,6 +918,12 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.LegacySessionInfo>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.LegacySessionInfo>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.LegacySessionInfo>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.NativeAuth_SignInApple>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.NativeAuth_SignInApple>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.NativeAuth_SignInApple>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.NativeAuth_SignInGoogle>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.NativeAuth_SignInGoogle>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.NativeAuth_SignInGoogle>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.PhoneAuth_SendTotp>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.PhoneAuth_SendTotp>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.PhoneAuth_SendTotp>>>>();
@@ -1632,6 +1641,8 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+EmailAuth_VerifyEmailFormatter, ActualChat.Api.Contracts");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+Emails_SendDigestFormatter, ActualChat.Api.Contracts");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+LegacySessionInfoFormatter, ActualChat.Api");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+NativeAuth_SignInAppleFormatter, ActualChat.Api.Contracts");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+NativeAuth_SignInGoogleFormatter, ActualChat.Api.Contracts");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+PhoneAuth_SendTotpFormatter, ActualChat.Api.Contracts");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+PhoneAuth_ValidateTotpFormatter, ActualChat.Api.Contracts");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+PhoneAuth_VerifyPhoneFormatter, ActualChat.Api.Contracts");
@@ -1695,6 +1706,7 @@ internal partial class ApiContractsAotSource : IAotSource
             (typeof(global::ActualChat.Users.IEmailAuth), AotTypeKind.Api),
             (typeof(global::ActualChat.Users.IEmails), AotTypeKind.Api),
             (typeof(global::ActualChat.Users.IMobileSessions), AotTypeKind.Api),
+            (typeof(global::ActualChat.Users.INativeAuth), AotTypeKind.Api),
             (typeof(global::ActualChat.Users.IPhoneAuth), AotTypeKind.Api),
             (typeof(global::ActualChat.Users.IPhones), AotTypeKind.Api),
             (typeof(global::ActualChat.Users.ISessionTemporals), AotTypeKind.Api),
@@ -1775,6 +1787,8 @@ internal partial class ApiContractsAotSource : IAotSource
             (typeof(global::ActualChat.Users.EmailAuth_ValidateTotp), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Users.EmailAuth_VerifyEmail), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Users.Emails_SendDigest), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Users.NativeAuth_SignInApple), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Users.NativeAuth_SignInGoogle), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Users.PhoneAuth_SendTotp), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Users.PhoneAuth_ValidateTotp), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Users.PhoneAuth_VerifyPhone), AotTypeKind.Serializable),

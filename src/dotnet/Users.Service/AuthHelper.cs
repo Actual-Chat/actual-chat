@@ -43,7 +43,6 @@ public sealed class AuthHelper
         var isCloseFlow = IsCloseFlow(httpContext, out var closeFlow);
         var isAnyAuthFlow = isCloseFlow
             || IsSignInFlow(httpContext)
-            || IsNativeSignInFlow(httpContext)
             || IsSignOutFlow(httpContext);
         var mustExist = isCloseFlow
             && httpContext.Request.Query.TryGetValue("mustExist", out var mustExistValues)
@@ -104,6 +103,36 @@ public sealed class AuthHelper
         return AuthState.New(session, isAnyAuthFlow, closeFlow, mustExist, signInError);
     }
 
+    public async Task SignIn(
+        Session session,
+        ClaimsPrincipal principal,
+        bool mustExist,
+        CancellationToken cancellationToken)
+    {
+        if (session.Kind is SessionKind.ApiKey)
+            throw StandardError.Unavailable("Cannot use API key session here.");
+
+        var authSchema = principal.Identity?.AuthenticationType ?? "";
+        if (authSchema.IsNullOrEmpty())
+            throw StandardError.Constraint("ClaimsPrincipal has no authentication type.");
+
+        // No HttpContext here — register the session if it's missing, but don't churn IP/UA.
+        var sessionInfo = await Accounts.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
+        if (sessionInfo == null) {
+            var upsertSessionCmd = new SessionsBackend_Upsert(session);
+            await Commander.Call(upsertSessionCmd, true, cancellationToken).ConfigureAwait(false);
+        }
+
+        var existingAccount = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var isSignedIn = !existingAccount.IsGuest;
+        if (isSignedIn && IsSameAccount(existingAccount, principal, authSchema))
+            return;
+
+        var signInCommand = await BuildSignInCommand(session, principal, authSchema, mustExist, cancellationToken)
+            .ConfigureAwait(false);
+        await Commander.Call(signInCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task UpdateAuthState(
         Session session,
         HttpContext httpContext,
@@ -141,7 +170,7 @@ public sealed class AuthHelper
         if (!isSignedIn)
             existingAccount = null;
 
-        if (!(IsCloseFlow(httpContext) || IsNativeSignInFlow(httpContext)))
+        if (!IsCloseFlow(httpContext))
             return; // Actual SignIn/SignOut actions are performed on close flow only
 
         if (httpIsSignedIn) {
@@ -227,9 +256,6 @@ public sealed class AuthHelper
 
     private static bool IsSignInFlow(HttpContext httpContext)
         => httpContext.Request.Path.Value?.StartsWith("/signIn", StringComparison.OrdinalIgnoreCase) == true;
-
-    private static bool IsNativeSignInFlow(HttpContext httpContext)
-        => httpContext.Request.Path.Value?.StartsWith("/api/native-auth/sign-in-", StringComparison.OrdinalIgnoreCase) == true;
 
     private static bool IsSignOutFlow(HttpContext httpContext)
         => httpContext.Request.Path.Value?.StartsWith("/signOut", StringComparison.OrdinalIgnoreCase) == true;

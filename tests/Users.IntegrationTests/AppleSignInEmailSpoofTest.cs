@@ -1,4 +1,3 @@
-using System.Net;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Users.IntegrationTests;
@@ -137,18 +136,8 @@ public class AppleSignInEmailSpoofTest(AppHostFixture fixture, ITestOutputHelper
         var session = Session.New();
         await Commander.Call(new SessionsBackend_Upsert(session));
 
-        using var client = AppHost.NewHttpClient();
-        client.DefaultRequestHeaders.Add(Constants.Session.HeaderName, session.Id);
-        var response = await client.GetAsync(
-            $"/api/native-auth/sign-in-apple"
-            + $"?userId={Uri.EscapeDataString(queryUserId)}"
-            + $"&code={Uri.EscapeDataString(code)}"
-            + $"&email={Uri.EscapeDataString(queryEmail)}");
-
-        var responseBody = await response.Content.ReadAsStringAsync();
-        Out.WriteLine($"Response: {response.StatusCode} - {responseBody}");
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            $"sign-in should succeed (code exchange is mocked). Body: {responseBody}");
+        var command = new NativeAuth_SignInApple(session, queryUserId, code, queryEmail, null);
+        await Commander.Call(command, true, CancellationToken.None);
 
         var signInError = await SessionTemporals.Get(
             session, Constants.SessionTemporals.SignInErrorKey, CancellationToken.None);
