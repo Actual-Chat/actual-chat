@@ -718,6 +718,55 @@ code
     }
 
     [Fact]
+    public void UnclosedCodeBlockExtendsToEndOfMessage()
+    {
+        var text =
+            """
+            ```
+            some code
+            more code
+            """;
+
+        var m = Parse<CodeBlockMarkup>(text, false);
+        m.Code.Should().Be("some code\r\nmore code");
+        m.Language.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void UnclosedCodeBlockWithLanguage()
+    {
+        var text =
+            """
+            ```csharp
+            var x = 1;
+            """;
+
+        var m = Parse<CodeBlockMarkup>(text, false);
+        m.Code.Should().Be("var x = 1;");
+        m.Language.Should().Be("csharp");
+    }
+
+    [Fact]
+    public void UnclosedCodeBlockAfterParagraph()
+    {
+        var text =
+            """
+            Some intro text.
+            ```
+            unclosed code
+            spanning to end
+            """;
+
+        var m = Parse<MarkupSeq>(text, false);
+        m.Items.Length.Should().Be(2);
+        m.Items[0].Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().Be("Some intro text.");
+        m.Items[1].Should().BeOfType<CodeBlockMarkup>()
+            .Which.Code.Should().Be("unclosed code\r\nspanning to end");
+    }
+
+    [Fact]
     public void BlockCodeWithNewLineAfter()
     {
         var text =
