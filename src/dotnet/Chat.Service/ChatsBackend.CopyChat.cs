@@ -441,22 +441,18 @@ public partial class ChatsBackend
                 }
             }
 
-            if (dbChatEntry.IsSystemEntry) {
-                var chatEntry = dbChatEntry.ToModel();
-                var membersChangedOption = chatEntry.SystemEntry?.MembersChanged;
-                var changeAuthorId = membersChangedOption?.AuthorId;
+            if (dbChatEntry.IsSystemEntry && dbChatEntry.ToModel() is MembersChangedEntry membersChangedEntry) {
+                var changeAuthorId = membersChangedEntry.TargetAuthorId;
                 if (changeAuthorId != null) {
                     var isRemoved = migratedAuthors.IsRemoved(changeAuthorId.Value);
                     if (isRemoved)
                         continue;
 
                     var changeNewAuthorId = migratedAuthors.GetNewAuthorId(changeAuthorId);
-                    var newMembersChangedOption = new MembersChangedOption(
-                        changeNewAuthorId,
-                        membersChangedOption!.AuthorName,
-                        membersChangedOption.HasLeft);
-                    chatEntry = chatEntry with { SystemEntry = newMembersChangedOption };
-                    dbChatEntry.UpdateFrom(chatEntry);
+                    var updatedEntry = membersChangedEntry with {
+                        TargetAuthorId = changeNewAuthorId,
+                    };
+                    dbChatEntry.UpdateFrom(updatedEntry);
                     mentionUpdatesInSystemEntries++;
                 }
             }
@@ -492,7 +488,7 @@ public partial class ChatsBackend
 
         if (mentionUpdatesInSystemEntries > 0)
             Log.LogInformation(
-                "OnCopyChat({CorrelationId}): updated MembersChangedOption inside system chat entries, {Count} records affected",
+                "OnCopyChat({CorrelationId}): updated TargetAuthorId inside MembersChangedEntry records, {Count} records affected",
                 correlationId, mentionUpdatesInSystemEntries);
 
         var lastProcessedEntryId = ChatEntryId.ParseNullable(dbLastProcessedEntry?.Id);

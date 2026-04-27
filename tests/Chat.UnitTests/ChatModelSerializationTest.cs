@@ -51,16 +51,16 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     {
         var chatId = ChatId.Parse("the-actual-one");
         var entryId = ChatEntryId.New(chatId, 1);
-        var entry = new ChatEntry(entryId, 1) {
+        var entry = new TextEntry(entryId, 1) {
             AuthorId = AuthorId.New(chatId, 10),
             BeginsAt = new Moment(DateTime.UtcNow),
             Content = "Hello, world!",
             HasReactions = true,
             IsRemoved = false,
-            ContentHash = new HashString("SHA256 Base16 abc123"),
+            ContentHash = HashString.None,
         };
 
-        var s = entry.PassThroughAllSerializers(Out);
+        ChatEntry s = entry.PassThroughModernSerializers(Out);
         s.Id.Should().Be(entry.Id);
         s.Version.Should().Be(entry.Version);
         s.AuthorId.Should().Be(entry.AuthorId);
@@ -77,14 +77,14 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         var chatId = ChatId.Parse("the-actual-one");
         var entryId = ChatEntryId.New(chatId, 2);
         var now = new Moment(DateTime.UtcNow);
-        var entry = new ChatEntry(entryId, 1) {
+        var entry = new TextEntry(entryId, 1) {
             AuthorId = AuthorId.New(chatId, 10),
             BeginsAt = now,
             EndsAt = now + TimeSpan.FromMinutes(5),
             Content = "Test",
         };
 
-        var s = entry.PassThroughAllSerializers(Out);
+        var s = entry.PassThroughModernSerializers(Out);
         s.EndsAt.Should().Be(entry.EndsAt);
     }
 
@@ -93,14 +93,14 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     {
         var chatId = ChatId.Parse("the-actual-one");
         var entryId = ChatEntryId.New(chatId, 3);
-        var entry = new ChatEntry(entryId, 1) {
+        var entry = new TextEntry(entryId, 1) {
             AuthorId = AuthorId.New(chatId, 10),
             BeginsAt = new Moment(DateTime.UtcNow),
             EndsAt = null,
             Content = "Test",
         };
 
-        var s = entry.PassThroughAllSerializers(Out);
+        var s = entry.PassThroughModernSerializers(Out);
         s.EndsAt.Should().BeNull();
     }
 
@@ -111,7 +111,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Content = "Updated content",
             IsRemoved = true,
         };
-        diff.AssertPassesThroughAllSerializers();
+        diff.PassThroughModernSerializers();
     }
 
     [Fact]
@@ -176,7 +176,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         var chatId = ChatId.Parse("the-actual-one");
         var entryId = ChatEntryId.New(chatId, 1);
         var entries = new[] {
-            new ChatEntry(entryId, 1) {
+            new TextEntry(entryId, 1) {
                 AuthorId = AuthorId.New(chatId, 10),
                 BeginsAt = new Moment(DateTime.UtcNow),
                 Content = "Hello",
@@ -184,7 +184,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         };
         var tile = new ChatTile(new Range<long>(0, 100), false, entries);
 
-        var s = tile.PassThroughAllSerializers(Out);
+        var s = tile.PassThroughModernSerializers(Out);
         s.IdTileRange.Should().Be(tile.IdTileRange);
         s.IncludesRemoved.Should().Be(tile.IncludesRemoved);
         s.Entries.Length.Should().Be(tile.Entries.Length);
@@ -194,7 +194,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void ChatNews_Basic()
     {
         var news = new ChatNews(new Range<long>(1, 100));
-        news.AssertPassesThroughAllSerializers();
+        news.PassThroughModernSerializers();
     }
 
     [Fact]
@@ -501,29 +501,38 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void SystemEntry_MembersChanged()
     {
         var chatId = ChatId.Parse("the-actual-one");
+        var entryId = ChatEntryId.New(chatId, 1);
         var authorId = AuthorId.New(chatId, 5);
-        var option = new MembersChangedOption(authorId, "TestUser", false);
-        SystemEntry entry = option;
+        ChatEntry entry = new MembersChangedEntry(entryId, 1) {
+            TargetAuthorId = authorId,
+            TargetAuthorName = "TestUser",
+            HasLeft = false,
+        };
 
-        var s = entry.PassThroughAllSerializers(Out);
-        s.MembersChanged.Should().NotBeNull();
-        s.MembersChanged!.AuthorId.Should().Be(authorId);
-        s.MembersChanged.AuthorName.Should().Be("TestUser");
-        s.MembersChanged.HasLeft.Should().BeFalse();
+        var s = entry.PassThroughModernSerializers(Out);
+        s.Should().BeOfType<MembersChangedEntry>();
+        var mc = (MembersChangedEntry)s;
+        mc.TargetAuthorId.Should().Be(authorId);
+        mc.TargetAuthorName.Should().Be("TestUser");
+        mc.HasLeft.Should().BeFalse();
     }
 
     [Fact]
     public void SystemEntry_NotifyMembers()
     {
         var chatId = ChatId.Parse("the-actual-one");
+        var entryId = ChatEntryId.New(chatId, 1);
         var authorId = AuthorId.New(chatId, 5);
-        var option = new NotifyMembersOption(authorId, "TestUser");
-        SystemEntry entry = option;
+        ChatEntry entry = new NotifyMembersEntry(entryId, 1) {
+            TargetAuthorId = authorId,
+            TargetAuthorName = "TestUser",
+        };
 
-        var s = entry.PassThroughAllSerializers(Out);
-        s.NotifyMembers.Should().NotBeNull();
-        s.NotifyMembers!.AuthorId.Should().Be(authorId);
-        s.NotifyMembers.AuthorName.Should().Be("TestUser");
+        var s = entry.PassThroughModernSerializers(Out);
+        s.Should().BeOfType<NotifyMembersEntry>();
+        var nm = (NotifyMembersEntry)s;
+        nm.TargetAuthorId.Should().Be(authorId);
+        nm.TargetAuthorName.Should().Be("TestUser");
     }
 
     [Fact]

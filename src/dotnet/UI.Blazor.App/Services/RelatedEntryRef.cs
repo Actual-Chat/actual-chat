@@ -6,21 +6,21 @@ public enum RelatedEntryKind
     Edit,
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 public sealed partial record RelatedEntryRef(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] RelatedEntryKind Kind,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] EntryRef EntryRef)
+    [property: DataMember, Key(0)] RelatedEntryKind Kind,
+    [property: DataMember, Key(1)] EntryRef EntryRef)
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public ChatEntryId EntryId => EntryRef.EntryId;
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
-public sealed partial record EntryRef([property: DataMember, MemoryPackOrder(0), Key(0)] ChatEntryId EntryId)
+[DataContract, MessagePackObject]
+public sealed partial record EntryRef([property: DataMember, Key(0)] ChatEntryId EntryId)
 {
-    [DataMember, MemoryPackOrder(1), Key(1)]
+    [DataMember, Key(1)]
     public ChatEntry? ChatEntry { get; init; }
 
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public ChatId ChatId => EntryId.ChatId;
 }

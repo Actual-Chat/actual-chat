@@ -1,28 +1,34 @@
 namespace ActualChat.Chat;
 
 /// <summary>
-/// Legacy v2.6 ChatTile with LegacyChatEntry for backward compatibility.
-/// Remove once all clients are migrated past v2.6.
+/// Wire-frozen v2.7 <see cref="ChatTile"/> shape that carries <see cref="LegacyChatEntry"/> arrays.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
-[Obsolete("2025.03: Legacy v2.6 compat type")]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial class LegacyChatTile
 {
-    [DataMember, MemoryPackOrder(0), Key(0)] public Range<long> IdTileRange { get; init; }
-    [DataMember, MemoryPackOrder(1), Key(1)] public bool IncludesRemoved { get; init; }
-    [DataMember, MemoryPackOrder(2), Key(2)] public Range<Moment> BeginsAtRange { get; init; }
-    [DataMember, MemoryPackOrder(3), Key(3)] public LegacyChatEntry[] Entries { get; init; } = [];
+    [DataMember, MemoryPackOrder(0)] public Range<long> IdTileRange { get; init; }
+    [DataMember, MemoryPackOrder(1)] public bool IncludesRemoved { get; init; }
+    [DataMember, MemoryPackOrder(2)] public Range<Moment> BeginsAtRange { get; init; }
+    [DataMember, MemoryPackOrder(3)] public LegacyChatEntry[] Entries { get; init; } = [];
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public bool IsEmpty => Entries.Length == 0;
+
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public LegacyChatTile() { }
 
-#pragma warning disable CS0618 // Obsolete
+    public LegacyChatTile(Range<long> idTileRange, bool includesRemoved, Range<Moment> beginsAtRange, LegacyChatEntry[] entries)
+    {
+        IdTileRange = idTileRange;
+        IncludesRemoved = includesRemoved;
+        BeginsAtRange = beginsAtRange;
+        Entries = entries;
+    }
+
     public static LegacyChatTile From(ChatTile tile)
-        => new() {
-            IdTileRange = tile.IdTileRange,
-            IncludesRemoved = tile.IncludesRemoved,
-            BeginsAtRange = tile.BeginsAtRange,
-            Entries = Array.ConvertAll(tile.Entries, LegacyChatEntry.From),
-        };
-#pragma warning restore CS0618
+        => new(
+            tile.IdTileRange,
+            tile.IncludesRemoved,
+            tile.BeginsAtRange,
+            tile.Entries.Select(LegacyChatEntry.From).ToArray());
 }

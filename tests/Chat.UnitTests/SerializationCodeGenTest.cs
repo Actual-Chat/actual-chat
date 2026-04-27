@@ -17,8 +17,10 @@ public class SerializationCodeGenTest(ITestOutputHelper @out) : TestBase(@out)
         SerializationCodeGen.ValidateType<Author>();
         SerializationCodeGen.ValidateType<AuthorFull>();
         SerializationCodeGen.ValidateType<Chat>();
-        SerializationCodeGen.ValidateType<ChatEntry>();
-        SerializationCodeGen.ValidateType<ChatNews>();
+        // ChatEntry / ChatNews / ChatTile are MessagePack-only unions; legacy MemoryPack
+        // shape lives in LegacyChatEntry / LegacyChatNews / LegacyChatTile.
+        SerializationCodeGen.ValidateMessagePackOnlyType<ChatEntry>();
+        SerializationCodeGen.ValidateMessagePackOnlyType<ChatNews>();
         SerializationCodeGen.ValidateType<Conversation>();
         SerializationCodeGen.ValidateType<Mention>();
         SerializationCodeGen.ValidateType<Place>();
@@ -36,11 +38,12 @@ public class SerializationCodeGenTest(ITestOutputHelper @out) : TestBase(@out)
 
         // Backend events
         SerializationCodeGen.ValidateType<ChatChangedEvent>();
-        SerializationCodeGen.ValidateType<ChatEntryChangedEvent>();
+        // Carry ChatEntry — MessagePack-only.
+        SerializationCodeGen.ValidateMessagePackOnlyType<ChatEntryChangedEvent>();
+        SerializationCodeGen.ValidateMessagePackOnlyType<ReactionChangedEvent>();
         SerializationCodeGen.ValidateType<AccountChangedEvent>();
         SerializationCodeGen.ValidateType<AuthorUpsertedEvent>();
         SerializationCodeGen.ValidateType<PlaceChangedEvent>();
-        SerializationCodeGen.ValidateType<ReactionChangedEvent>();
         SerializationCodeGen.ValidateType<ContactChangedEvent>();
     }
 }

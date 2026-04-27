@@ -38,7 +38,7 @@ public class Invites(IServiceProvider services) : IInvites
     {
         await AssertCanListChatInvites(session, chatId, cancellationToken).ConfigureAwait(false);
 
-        var searchKey = new ChatInviteOption(chatId).GetSearchKey();
+        var searchKey = ChatInvite.GetSearchKey(chatId);
         return await Backend.GetAll(searchKey, 1, cancellationToken).ConfigureAwait(false);
     }
 
@@ -50,7 +50,7 @@ public class Invites(IServiceProvider services) : IInvites
     {
         await AssertCanListPlaceInvites(session, placeId, cancellationToken).ConfigureAwait(false);
 
-        var searchKey = new PlaceInviteOption(placeId).GetSearchKey();
+        var searchKey = PlaceInvite.GetSearchKey(placeId);
         return await Backend.GetAll(searchKey, 1, cancellationToken).ConfigureAwait(false);
     }
 
@@ -67,7 +67,7 @@ public class Invites(IServiceProvider services) : IInvites
         var invites = await ListChatInvites(session, chatId, cancellationToken).ConfigureAwait(false);
         var invite = ChooseInvite(invites, MinInviteLifespan);
         if (invite == null) {
-            invite = Invite.New(Constants.Invites.Defaults.ChatRemaining, new ChatInviteOption(chatId));
+            invite = ChatInvite.New(Constants.Invites.Defaults.ChatRemaining, chatId);
             invite = await Commander
                 .Call(new Invites_Generate(session, invite), true, cancellationToken)
                 .ConfigureAwait(false);
@@ -89,7 +89,7 @@ public class Invites(IServiceProvider services) : IInvites
         var invites = await ListPlaceInvites(session, placeId, cancellationToken).ConfigureAwait(false);
         var invite = ChooseInvite(invites, MinInviteLifespan);
         if (invite == null) {
-            invite = Invite.New(Constants.Invites.Defaults.PlaceRemaining, new PlaceInviteOption(placeId));
+            invite = PlaceInvite.New(Constants.Invites.Defaults.PlaceRemaining, placeId);
             invite = await Commander
                 .Call(new Invites_Generate(session, invite), true, cancellationToken)
                 .ConfigureAwait(false);
@@ -194,13 +194,13 @@ public class Invites(IServiceProvider services) : IInvites
         account.Require(Account.MustNotBeGuest);
         account.Require(AccountFull.MustBeActive);
 
-        switch (invite.Details.Option) {
-        case UserInviteOption:
+        switch (invite) {
+        case UserInvite:
             throw StandardError.Constraint("User invites feature is removed.");
-        case ChatInviteOption chatInvite:
+        case ChatInvite chatInvite:
             await RequireCanInvite(session, chatInvite.ChatId, cancellationToken).ConfigureAwait(false);
             break;
-        case PlaceInviteOption placeInvite:
+        case PlaceInvite placeInvite:
             await RequireCanInvite(session, placeInvite.PlaceId, cancellationToken).ConfigureAwait(false);
             break;
         default:
@@ -216,13 +216,13 @@ public class Invites(IServiceProvider services) : IInvites
         account.Require(Account.MustNotBeGuest);
         account.Require(AccountFull.MustBeActive);
 
-        switch (invite.Details.Option) {
-            case UserInviteOption:
+        switch (invite) {
+            case UserInvite:
                 throw StandardError.Constraint("User invites feature is removed.");
-            case ChatInviteOption chatInvite:
+            case ChatInvite chatInvite:
                 await RequireCanInvite(session, chatInvite.ChatId, cancellationToken).ConfigureAwait(false);
                 break;
-            case PlaceInviteOption placeInvite:
+            case PlaceInvite placeInvite:
                 await RequireCanInvite(session, placeInvite.PlaceId, cancellationToken).ConfigureAwait(false);
                 break;
             default:

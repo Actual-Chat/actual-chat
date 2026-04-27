@@ -15,7 +15,7 @@ public class ChatEventSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     {
         var entryId = ChatEntryId.New(TestChatId, 1);
         var authorId = AuthorId.New(TestChatId, 5);
-        var entry = new ChatEntry(entryId, 1) {
+        var entry = new TextEntry(entryId, 1) {
             AuthorId = authorId,
             BeginsAt = new Moment(DateTime.UtcNow),
             Content = "Hello",
@@ -24,12 +24,10 @@ public class ChatEventSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Avatar = new Avatar("avatar-1") { Name = "Test" },
         };
         var evt = new ChatEntryChangedEvent(entry, author, ChangeKind.Create, null);
-        evt.AssertPassesThroughAllSerializers(
-            (deserialized, original) => {
-                deserialized.Entry.Id.Should().Be(original.Entry.Id);
-                deserialized.Author.Id.Should().Be(original.Author.Id);
-                deserialized.ChangeKind.Should().Be(original.ChangeKind);
-            }, Out);
+        var s = evt.PassThroughModernSerializers(Out);
+        s.Entry.Id.Should().Be(evt.Entry.Id);
+        s.Author.Id.Should().Be(evt.Author.Id);
+        s.ChangeKind.Should().Be(evt.ChangeKind);
     }
 
     [Fact]
@@ -157,7 +155,7 @@ public class ChatEventSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         var entryId = ChatEntryId.New(TestChatId, 1);
         var authorId = AuthorId.New(TestChatId, 5);
         var reactionAuthorId = AuthorId.New(TestChatId, 10);
-        var entry = new ChatEntry(entryId, 1) {
+        var entry = new TextEntry(entryId, 1) {
             AuthorId = authorId,
             BeginsAt = new Moment(DateTime.UtcNow),
             Content = "Hello",
@@ -176,11 +174,9 @@ public class ChatEventSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Avatar = new Avatar("avatar-2") { Name = "Reactor" },
         };
         var evt = new ReactionChangedEvent(reaction, entry, author, reactionAuthor, ChangeKind.Create);
-        evt.AssertPassesThroughAllSerializers(
-            (deserialized, original) => {
-                deserialized.Reaction.Id.Should().Be(original.Reaction.Id);
-                deserialized.ChangeKind.Should().Be(original.ChangeKind);
-            }, Out);
+        var s = evt.PassThroughModernSerializers(Out);
+        s.Reaction.Id.Should().Be(evt.Reaction.Id);
+        s.ChangeKind.Should().Be(evt.ChangeKind);
     }
 
     [Fact]

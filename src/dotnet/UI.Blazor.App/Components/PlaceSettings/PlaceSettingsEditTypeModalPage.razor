@@ -177,7 +177,7 @@
     }
 
     private async Task OnNewInviteClick() {
-        var invite = Invite.New(Constants.Invites.Defaults.PlaceRemaining, new PlaceInviteOption(PlaceId));
+        Invite invite = PlaceInvite.New(Constants.Invites.Defaults.PlaceRemaining, PlaceId);
         var uiActionResult = await UICommander.Run(new Invites_Generate(Session, invite));
         invite = uiActionResult.Value;
         _newInviteId = invite.Id;

@@ -47,8 +47,7 @@
             return;
         }
 
-        var placeInvite = invite.Details.Place;
-        if (placeInvite != null) {
+        if (invite is PlaceInvite placeInvite) {
             var placeId = placeInvite.PlaceId;
             Place? place = null;
             try {
@@ -72,7 +71,7 @@
             return;
         }
 
-        var chatInvite = invite.Details.Chat.Require();
+        var chatInvite = invite as ChatInvite ?? throw StandardError.Format<Invite>();
         var chatId = chatInvite.ChatId;
         _ = History.NavigateTo(Links.Chat(chatId), true);
     }

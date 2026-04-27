@@ -26,11 +26,11 @@ public interface IInvites : IComputeService
     Task OnRevoke(Invites_Revoke command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Invites_Generate(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] Invite Invite
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] Invite Invite
 ) : ISessionCommand<Invite>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]

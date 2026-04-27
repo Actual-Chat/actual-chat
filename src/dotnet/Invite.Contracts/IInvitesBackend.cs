@@ -55,12 +55,12 @@ public sealed partial record InvitesBackend_Use(
 /// <summary>
 /// Command to generate a new invitation.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record InvitesBackend_Generate(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Invite Invite
+    [property: DataMember, Key(0)] Invite Invite
 ) : ICommand<Invite>, IBackendCommand, IHasShardKey<Unit>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public Unit ShardKey => default;
 }

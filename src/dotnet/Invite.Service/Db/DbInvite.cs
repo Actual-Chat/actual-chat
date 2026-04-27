@@ -12,8 +12,13 @@ namespace ActualChat.Invite.Db;
 public class DbInvite : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     public static readonly RandomStringGenerator IdGenerator = new(10, Alphabet.AlphaNumeric);
-    private static ITextSerializer<InviteDetails> DetailsSerializer { get; } =
-        Serializers.SystemJson.ToTyped<InviteDetails>();
+
+    // The DetailsJson column stores the leaf-specific payload as JSON in the
+    // wrapper-style legacy shape (LegacyInviteDetails / LegacyInviteDetailsOption).
+    // This preserves the on-disk format - existing rows deserialize without migration -
+    // while the in-memory model uses the new Invite hierarchy.
+    private static ITextSerializer<LegacyInviteDetails> LegacyDetailsSerializer { get; } =
+        Serializers.SystemJson.ToTyped<LegacyInviteDetails>();
 
     private DateTime _createdAt;
     private DateTime _expiresOn;
@@ -41,13 +46,22 @@ public class DbInvite : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string DetailsJson { get; set; } = "";
 
     public Invite ToModel()
-        => new(Id, Version) {
+    {
+        var legacyDetails = DetailsJson.IsNullOrEmpty() ? null : LegacyDetailsSerializer.Read(DetailsJson);
+        Invite invite = legacyDetails?.Option switch {
+            LegacyChatInviteOption chat => new ChatInvite(Id, Version) { ChatId = chat.ChatId },
+            LegacyPlaceInviteOption place => new PlaceInvite(Id, Version) { PlaceId = place.PlaceId },
+            LegacyUserInviteOption => new UserInvite(Id, Version),
+            null => new UserInvite(Id, Version), // Defensive — pre-typed rows
+            _ => throw StandardError.Internal($"Unknown invite details option: {legacyDetails.Option.GetType().Name}"),
+        };
+        return invite with {
             Remaining = Remaining,
             ExpiresOn = ExpiresOn,
             CreatedAt = CreatedAt,
             CreatedBy = CreatedBy,
-            Details = DetailsJson.IsNullOrEmpty() ? new() : DetailsSerializer.Read(DetailsJson),
         };
+    }
 
     public void UpdateFrom(Invite model)
     {
@@ -62,8 +76,14 @@ public class DbInvite : IHasId<string>, IHasVersion<long>, IRequirementTarget
         CreatedAt = model.CreatedAt;
         CreatedBy = model.CreatedBy;
 
-        var details = model.Details.Require();
-        SearchKey = details.Option.Require().GetSearchKey();
-        DetailsJson = DetailsSerializer.Write(details);
+        SearchKey = model.GetSearchKey();
+        DetailsJson = LegacyDetailsSerializer.Write(ToLegacyDetails(model));
     }
+
+    private static LegacyInviteDetails ToLegacyDetails(Invite model) => model switch {
+        ChatInvite chat => new LegacyInviteDetails { Option = new LegacyChatInviteOption(chat.ChatId) },
+        PlaceInvite place => new LegacyInviteDetails { Option = new LegacyPlaceInviteOption(place.PlaceId) },
+        UserInvite => new LegacyInviteDetails { Option = new LegacyUserInviteOption() },
+        _ => throw StandardError.Internal($"Unknown invite type: {model.GetType().Name}"),
+    };
 }

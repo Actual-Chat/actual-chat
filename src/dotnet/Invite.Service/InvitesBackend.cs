@@ -63,11 +63,11 @@ public class InvitesBackend(IServiceProvider services)
         if (!invite.CanUse())
             return null;
 
-        switch (invite.Details.Option) {
-        case UserInviteOption:
+        switch (invite) {
+        case UserInvite:
             return null;
-        case ChatInviteOption chatInviteOption: {
-            var chatId = chatInviteOption.ChatId;
+        case ChatInvite chatInvite: {
+            var chatId = chatInvite.ChatId;
             var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
             if (chat is null)
                 return null;
@@ -91,8 +91,8 @@ public class InvitesBackend(IServiceProvider services)
             }
             return new InviteChatLinkPreview(chat, null);
         }
-        case PlaceInviteOption placeInviteOption: {
-            var place = await PlacesBackend.Get(placeInviteOption.PlaceId, cancellationToken).ConfigureAwait(false);
+        case PlaceInvite placeInvite: {
+            var place = await PlacesBackend.Get(placeInvite.PlaceId, cancellationToken).ConfigureAwait(false);
             return new InviteChatLinkPreview(null, place);
         }
         default:
@@ -110,7 +110,7 @@ public class InvitesBackend(IServiceProvider services)
         if (Invalidation.IsActive) {
             var invInvite = context.Operation.Items.KeylessGet<Invite>();
             if (invInvite != null) {
-                _ = PseudoGetAll(invInvite.Details?.GetSearchKey() ?? "");
+                _ = PseudoGetAll(invInvite.GetSearchKey());
                 _ = Get(invInvite.Id, default);
             }
             return default!;
@@ -145,7 +145,7 @@ public class InvitesBackend(IServiceProvider services)
         if (Invalidation.IsActive) {
             var invInvite = context.Operation.Items.KeylessGet<Invite>();
             if (invInvite != null) {
-                _ = PseudoGetAll(invInvite.Details?.GetSearchKey() ?? "");
+                _ = PseudoGetAll(invInvite.GetSearchKey());
                 _ = Get(invInvite.Id, default);
             }
             var invActivationKey = context.Operation.Items.KeylessGet<string>();
@@ -168,11 +168,11 @@ public class InvitesBackend(IServiceProvider services)
         var invite = dbInvite.ToModel();
         invite = invite.Use(VersionGenerator);
 
-        switch (invite.Details.Option) {
-        case UserInviteOption:
+        switch (invite) {
+        case UserInvite:
             throw StandardError.Constraint("User invites feature is removed.");
-        case ChatInviteOption chatInviteOption: {
-            var chatId = chatInviteOption.ChatId;
+        case ChatInvite chatInvite: {
+            var chatId = chatInvite.ChatId;
             if (chatId is PlaceChatId { IsRoot: false } placeChatId) {
                 var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
                 var placeId = placeChatId.PlaceId;
@@ -190,8 +190,8 @@ public class InvitesBackend(IServiceProvider services)
                 await OnUseForChat(chatId).ConfigureAwait(false);
             break;
         }
-        case PlaceInviteOption placeInviteOption: {
-            await OnUseForPlace(placeInviteOption.PlaceId).ConfigureAwait(false);
+        case PlaceInvite placeInvite: {
+            await OnUseForPlace(placeInvite.PlaceId).ConfigureAwait(false);
             break;
         }
         default:
@@ -232,7 +232,7 @@ public class InvitesBackend(IServiceProvider services)
         if (Invalidation.IsActive) {
             var invInvite = context.Operation.Items.KeylessGet<Invite>();
             if (invInvite != null) {
-                _ = PseudoGetAll(invInvite.Details?.GetSearchKey() ?? "");
+                _ = PseudoGetAll(invInvite.GetSearchKey());
                 _ = Get(invInvite.Id, default);
             }
             return;

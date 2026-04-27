@@ -206,26 +206,3 @@ public sealed partial record Chat_PublishCopiedChat(
     [property: DataMember, MemoryPackOrder(1), Key(1)] PlaceChatId NewChatId,
     [property: DataMember, MemoryPackOrder(2), Key(2)] ChatId SourceChatId
 ) : ISessionCommand<Unit>, IApiCommand;
-
-// Legacy command records
-
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
-[Obsolete("2025.03: Use Chats_UpsertEntry")]
-// ReSharper disable once InconsistentNaming
-public sealed partial record Chats_UpsertTextEntry(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] long? LocalId
-) : ISessionCommand<LegacyChatEntry>, IApiCommand
-{
-    [DataMember, MemoryPackOrder(3), Key(3)] public string Text { get; init; } = "";
-    [DataMember, MemoryPackOrder(4), Key(4)] public Option<long?> RepliedEntryLid { get; init; }
-    [DataMember, MemoryPackOrder(6), Key(5)] public ChatEntryId? ForwardedChatEntryId { get; init; }
-    [DataMember, MemoryPackOrder(7), Key(6)] public AuthorId? ForwardedAuthorId { get; init; }
-    [DataMember, MemoryPackOrder(8), Key(7)] public string? ForwardedChatTitle { get; init; }
-    [DataMember, MemoryPackOrder(9), Key(8)] public string? ForwardedAuthorName { get; init; }
-    [DataMember, MemoryPackOrder(10), Key(9)] public Moment? ForwardedChatEntryBeginsAt { get; init; }
-    [DataMember, MemoryPackOrder(11), Key(10)] public ChatEntryAttachment[] EntryAttachments { get; init; } = [];
-    [DataMember, MemoryPackOrder(12), Key(11)] public bool HasAttachmentUploads { get; init; }
-    [DataMember, MemoryPackOrder(13), Key(12)] public string ClientId { get; init; } = "";
-}

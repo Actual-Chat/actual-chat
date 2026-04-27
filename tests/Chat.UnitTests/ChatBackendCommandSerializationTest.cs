@@ -66,7 +66,7 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
         var entryId = ChatEntryId.New(TestChatId, 1);
         var diff = new ChatEntryDiff { Content = "Updated" };
         var cmd = new ChatsBackend_ChangeEntry(entryId, null, Change.Create(diff));
-        cmd.AssertPassesThroughAllSerializers();
+        cmd.PassThroughModernSerializers();
     }
 
     [Fact]

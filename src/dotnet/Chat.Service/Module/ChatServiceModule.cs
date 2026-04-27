@@ -32,9 +32,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         rpcHost.AddLocalApi<IChats, Chats>(); // Used by many
         rpcHost.AddBackend<IChatsBackend, ChatsBackend>();
         rpcHost.AddBackend<IChatsUpgradeBackend, ChatsUpgradeBackend>();
-#pragma warning disable CS0618 // Obsolete
-        rpcHost.AddApi<ILegacyChats, LegacyChats>(); // Legacy v2.6 compat
-#pragma warning restore CS0618
+        rpcHost.AddApi<ILegacyChats, LegacyChats>(); // v2.7 wire-format compat
 
         // Places
         rpcHost.AddLocalApi<IPlaces, Places>(); // Used by Chats

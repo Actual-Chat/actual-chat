@@ -120,7 +120,7 @@ public partial class EditChatTypeModalPage
 
     private async Task OnNewInviteClick()
     {
-        var invite = Invite.Invite.New(Constants.Invites.Defaults.ChatRemaining, new ChatInviteOption(ChatId));
+        ActualChat.Invite.Invite invite = ChatInvite.New(Constants.Invites.Defaults.ChatRemaining, ChatId);
         var uiActionResult = await UICommander.Run(new Invites_Generate(Session, invite)).ConfigureAwait(false);
         invite = uiActionResult.Value;
         _newInviteId = invite.Id;
