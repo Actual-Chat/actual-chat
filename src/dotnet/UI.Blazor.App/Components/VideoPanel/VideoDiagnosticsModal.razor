@@ -138,6 +138,12 @@
                                 <span class="diag-value">@((GetNum(streaming, "streamRecreations") - 1).ToString("0"))</span>
                             </div>
                         }
+                        @if (GetStr(streaming, "lastError") is { Length: > 0 } streamError) {
+                            <div class="diag-row">
+                                <span class="diag-label">Error</span>
+                                <span class="diag-value diag-error">@streamError</span>
+                            </div>
+                        }
                     }
                 </div>
             }

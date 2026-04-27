@@ -46,6 +46,7 @@ export interface OwnStreamDiagnostics {
         pendingFrames: number;
         streamRecreations: number;
         status: string;
+        lastError: string;
     } | null;
 }
 
@@ -1106,6 +1107,7 @@ export class VideoRecorder {
                 pendingFrames: streamStats.pendingFrames,
                 streamRecreations: streamStats.streamRecreations,
                 status: streamStats.status,
+                lastError: streamStats.lastError,
             } : null,
         };
     }

@@ -177,6 +177,7 @@ export interface VideoProcessingStreamingStats {
     pendingFrames: number;
     streamRecreations: number;
     status: string;
+    lastError: string;
 }
 
 export interface VideoProcessingStats {

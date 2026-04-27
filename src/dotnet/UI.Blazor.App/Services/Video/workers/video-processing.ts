@@ -158,6 +158,7 @@ const storedDescriptionBytesByLayer = new Map<number, Uint8Array>();
 let streamingEnabled = false;
 let streamRecreations = 0;
 let streamStatus = 'idle';
+let lastStreamError = '';
 
 // ─── Screencast heartbeat ──────────────────────────────────────────────────
 // getDisplayMedia is change-driven: a static screen produces zero frames. Without
@@ -829,6 +830,7 @@ function deliverChunkToStream(
 function onEncoderError(error: Error): void {
     errorLog?.log('Encoder error:', error.name, error.message);
     encoderErrorSeen = true;
+    lastStreamError = `encoder: ${error.name} ${error.message}`;
 }
 
 // Creates the base encoder (SpatialLayerId=0) plus any simulcast extras declared
@@ -1628,7 +1630,7 @@ export const serverImpl: VideoProcessingWorker = {
         segProcessedFrames = 0; segTotalInferenceTime = 0; segTotalBlurTime = 0; segTotalProcessingTime = 0; segDroppedFrames = 0;
         videoStream = null; lastVideoStream = null; pendingStreamFrames = [];
         codecSettings = null; storedDescriptionBytesByLayer.clear();
-        streamingEnabled = false; streamRecreations = 0; streamStatus = 'idle';
+        streamingEnabled = false; streamRecreations = 0; streamStatus = 'idle'; lastStreamError = '';
 
         infoLog?.log('Video processing worker stopped');
     },
@@ -1647,11 +1649,15 @@ export const serverImpl: VideoProcessingWorker = {
             averageTotalTime: segProcessedFrames > 0 ? segTotalProcessingTime / segProcessedFrames : 0,
             droppedFrames: segDroppedFrames, backend: segConfig?.backend ?? 'unknown',
         } : null;
+        // Pick the first non-empty error string from current stream, previous stream, or worker-level
+        const streamErrors = [videoStream?.lastError, lastVideoStream?.lastError, lastStreamError];
+        const streamError = streamErrors.find(e => e != null && e.length > 0) ?? '';
         const streamStats: VideoProcessingStreamingStats | null = streamingEnabled ? {
             sentFrames: videoStream?.getAddedFrameCount() ?? 0,
             pendingFrames: pendingStreamFrames.length,
             streamRecreations,
             status: streamStatus,
+            lastError: streamError,
         } : null;
         return { encoder: encoderStats, segmentation: segStats, orientation: orientationStats ? { ...orientationStats } : null, streaming: streamStats };
     },

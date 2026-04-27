@@ -118,6 +118,7 @@ export class InternalVideoStream {
 
     public isCompleted = false;
     public isDisposed = false;
+    public lastError = '';
     public readonly whenDisposed: Promise<void>;
 
     constructor(
@@ -219,13 +220,19 @@ export class InternalVideoStream {
             // sender owns the lifetime of the stream.
             void streamServer
                 .PushVideo(RPC_SESSION_DEFAULT, this.ctx.chatId, clientStartOffset, format, stream.toRef(peer), this.ctx.streamKind)
-                .catch((err: unknown) => warnLog?.log('PushVideo rejected:', err))
+                .catch((err: unknown) => {
+                    const msg = err instanceof Error ? err.message : String(err);
+                    warnLog?.log('PushVideo rejected:', err);
+                    this.lastError = `PushVideo rejected: ${msg}`;
+                })
                 .finally(() => stream.disconnect());
 
             // Wait for the pump to complete (writeFrom was started by toRef)
             await stream.whenSent;
         } catch (error) {
+            const msg = error instanceof Error ? error.message : String(error);
             errorLog?.log('VideoStream error:', error);
+            this.lastError = `stream error: ${msg}`;
         } finally {
             this.isDisposed = true;
         }
