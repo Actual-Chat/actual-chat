@@ -10,6 +10,7 @@
 }
 <div class="video-track-player remote-video-container @FocusedClass @streamKindCls">
     <canvas @ref="CanvasRef" class="remote-video" data-stream-id="@StreamInfo.StreamId.Value" data-author-id="@StreamInfo.AuthorId.Value"></canvas>
+    <video @ref="VideoElRef" class="remote-video" autoplay playsinline muted aria-hidden="true"></video>
     @if (!string.IsNullOrEmpty(AuthorName)) {
         <div class="video-participant-label">
             <i class="icon-video"></i>
@@ -37,6 +38,7 @@
     private ILiveVideoStreams LiveVideoStreams => field ??= Services.GetRequiredService<ILiveVideoStreams>();
 
     private ElementReference CanvasRef { get; set; }
+    private ElementReference VideoElRef { get; set; }
     private DotNetObjectReference<VideoTrackPlayer>? BlazorRef { get; set; }
 
     [Parameter, EditorRequired]
@@ -83,6 +85,7 @@
                 JSCreateMethod,
                 _disposeCts.Token,
                 CanvasRef,
+                VideoElRef,
                 BlazorRef,
                 StreamInfo.StreamId.Value,
                 StreamInfo.AuthorId.Value,

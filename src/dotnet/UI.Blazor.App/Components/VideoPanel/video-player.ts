@@ -17,6 +17,26 @@ import {
     type StreamEndpoints,
     supportsTransferableStreams,
 } from '../../Services/Video/workers/stream-channel';
+import type { RenderBackend } from './render-backend';
+import { CanvasRenderBackend } from './render-backend-canvas';
+import { OffThreadRenderBackend, isOffThreadPlausible } from './render-backend-mstg';
+
+// Backend selection: prefer the off-thread renderer wherever a generator API
+// (MediaStreamTrackGenerator on Chromium, VideoTrackGenerator on Safari) is
+// plausibly available. The worker probes the real APIs; if neither exists,
+// it rejects setupWorker() and we swap to canvas at runtime.
+// ?renderBackend=mstg|canvas overrides for diagnostics.
+function pickRenderBackend(canvas: HTMLCanvasElement, videoEl: HTMLVideoElement): RenderBackend {
+    let flag: string | null = null;
+    try {
+        flag = new URL(globalThis.location.href).searchParams.get('renderBackend');
+    } catch { /* non-browser context */ }
+    if (flag === 'canvas')
+        return new CanvasRenderBackend(canvas);
+    if (flag === 'mstg' || isOffThreadPlausible())
+        return new OffThreadRenderBackend(videoEl);
+    return new CanvasRenderBackend(canvas);
+}
 
 // Global registry of active VideoPlayer instances for diagnostics
 const activePlayers = new Map<string, VideoPlayer>();
@@ -100,7 +120,7 @@ export class VideoPlayer {
     private streamId: string;
     private authorId: string;
     private canvas: HTMLCanvasElement;
-    private canvasCtx: CanvasRenderingContext2D | null = null;
+    private renderBackend: RenderBackend;
     // Decoder worker (off-main-thread decoding)
     private decoderWorkerInstance: Worker | null = null;
     private decoderWorker: (DecoderWorker & Disposable) | null = null;
@@ -215,6 +235,7 @@ export class VideoPlayer {
     /** Creates a new VideoPlayer instance for Blazor interop */
     static create(
         canvas: HTMLCanvasElement,
+        videoEl: HTMLVideoElement,
         blazorRef: DotNet.DotNetObject,
         streamId: string,
         authorId: string,
@@ -224,7 +245,7 @@ export class VideoPlayer {
         codecSettings: string,
         startedAtMs: number
     ): VideoPlayer {
-        return new VideoPlayer(blazorRef, streamId, authorId, codec, width, height, codecSettings, canvas, startedAtMs);
+        return new VideoPlayer(blazorRef, streamId, authorId, codec, width, height, codecSettings, canvas, videoEl, startedAtMs);
     }
 
     constructor(
@@ -236,6 +257,7 @@ export class VideoPlayer {
         height: number,
         codecSettings: string,
         canvas: HTMLCanvasElement,
+        videoEl: HTMLVideoElement,
         startedAtMs: number
     ) {
         this.blazorRef = blazorRef;
@@ -243,7 +265,12 @@ export class VideoPlayer {
         this.authorId = authorId;
         this.startedAtMs = startedAtMs;
         this.canvas = canvas;
-        this.canvasCtx = canvas.getContext('2d');
+        this.renderBackend = pickRenderBackend(canvas, videoEl);
+        // Tag the parent container so CSS can hide the inactive surface.
+        const container = canvas.parentElement;
+        if (container) {
+            container.classList.add(`backend-${this.renderBackend.kind}`);
+        }
         this.isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
         this.useStreams = supportsTransferableStreams();
         if (this.isSafari)
@@ -338,7 +365,17 @@ export class VideoPlayer {
             this.decoderWorker = rpcClientServer<DecoderWorker>(
                 'VideoPlayer.decoder',
                 this.decoderWorkerInstance,
-                { onDecodedFrame: (frame: VideoFrame) => { this.onFrameDecoded(frame); return Promise.resolve(); } }
+                {
+                    onDecodedFrame: (frame: VideoFrame) => { this.onFrameDecoded(frame); return Promise.resolve(); },
+                    onOffThreadTrackReady: (track: MediaStreamTrack) => {
+                        const backend = this.renderBackend as { onTrackReady?: (t: MediaStreamTrack) => void };
+                        if (typeof backend.onTrackReady === 'function')
+                            backend.onTrackReady(track);
+                        else
+                            try { track.stop(); } catch { /* ignore */ }
+                        return Promise.resolve();
+                    },
+                }
             );
 
             if (this.useStreams) {
@@ -356,6 +393,31 @@ export class VideoPlayer {
                 // RPC fallback
                 await this.decoderWorker.initialize(this.decoderConfig, { type: 'rpc-timeout', timeoutMs: 5000 });
                 debugLog?.log('Decoder worker initialized (RPC mode)');
+            }
+
+            // Off-thread render path: ask the worker to construct its generator
+            // (MSTG on Chromium, VTG on Safari) and ship a track back. If the
+            // worker has neither API, swap to the canvas backend at runtime.
+            if (this.renderBackend.isOffThread && 'setupWorker' in this.renderBackend) {
+                const backend = this.renderBackend as OffThreadRenderBackend;
+                const ok = await backend.setupWorker(
+                    this.decoderWorker, this.authorId, this.startedAtMs, this.jitterBufferMs);
+                if (ok) {
+                    debugLog?.log('Off-thread renderer wired to decoder worker');
+                } else {
+                    warnLog?.log('Off-thread renderer unavailable in worker — falling back to canvas');
+                    backend.dispose();
+                    this.renderBackend = new CanvasRenderBackend(this.canvas);
+                    const container = this.canvas.parentElement;
+                    if (container) {
+                        container.classList.remove('backend-mstg');
+                        container.classList.add('backend-canvas');
+                    }
+                    // start() was skipped its render loop assuming off-thread;
+                    // kick it now that we know the backend is canvas.
+                    if (this.isPlaying)
+                        this.startRenderLoop();
+                }
             }
 
             // If we have codec settings (SPS/PPS for H.264/HEVC) we don't need
@@ -657,7 +719,10 @@ export class VideoPlayer {
             this.skipFramesBelowOffsetMs = 0;
         }
 
-        if (this.isSafari) {
+        // Safari needs VideoFrame → ImageBitmap conversion to make canvas2D
+        // drawImage cheap. The MSTG backend wants the original VideoFrame
+        // (a `<video>` element accepts native frames straight from the decoder).
+        if (this.isSafari && this.renderBackend.kind === 'canvas') {
             this.conversionQueue = this.conversionQueue.then(async () => {
                 if (!this.isPlaying) { frame.close(); return; }
                 const pf = await this.convertToBitmap(frame);
@@ -890,7 +955,7 @@ export class VideoPlayer {
         if (frameToRender) {
             this.bufferSize--;
             this.lastRenderedOffsetMs = frameToRender.timestamp / 1000;
-            this.drawFrame(frameToRender);
+            this.renderBackend.drawFrame(frameToRender);
             frameToRender.close();
             this.consecutiveEmptyRenders = 0;
         } else if (this.pendingFrames.length > 0) {
@@ -915,20 +980,6 @@ export class VideoPlayer {
         if (now - this.lastLatencyReportTime >= LATENCY_REPORT_INTERVAL_MS) {
             this.lastLatencyReportTime = now;
             this.reportLatencyTick();
-        }
-    }
-
-    private drawFrame(pf: PendingFrame): void {
-        if (!this.canvasCtx) return;
-        try {
-            if (this.canvas.width !== pf.displayWidth || this.canvas.height !== pf.displayHeight) {
-                this.canvas.width = pf.displayWidth;
-                this.canvas.height = pf.displayHeight;
-                debugLog?.log(`Canvas resized to ${pf.displayWidth}x${pf.displayHeight}`);
-            }
-            this.canvasCtx.drawImage(pf.drawable as CanvasImageSource, 0, 0);
-        } catch (error) {
-            errorLog?.log('Error rendering frame:', error);
         }
     }
 
@@ -1089,7 +1140,10 @@ export class VideoPlayer {
         if (this.isPlaying) return;
 
         this.isPlaying = true;
-        this.startRenderLoop();
+        // Off-thread MSTG path: the worker drives selection + writes; main
+        // thread has no per-frame work. Skip the RAF loop entirely.
+        if (!this.renderBackend.isOffThread)
+            this.startRenderLoop();
         // Per-instance scope — refcounts across concurrent players so one
         // stopping doesn't park the peer that other players still need.
         Api.requireConnection(`VideoPlayer:${this.streamId}`);
@@ -1462,6 +1516,8 @@ export class VideoPlayer {
             this.decoderWorkerInstance.terminate();
             this.decoderWorkerInstance = null;
         }
+
+        this.renderBackend.dispose();
 
         debugLog?.log(`VideoPlayer stopped for stream ${this.streamId}`);
     }

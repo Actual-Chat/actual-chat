@@ -101,6 +101,27 @@ export interface DecoderWorker {
      * @param useWasm Whether to use WASM (dav1d.js) decoder or built-in decoder
      */
     toggleDecoderType(useWasm: boolean): Promise<void>;
+
+    /**
+     * Switch the worker into off-thread render mode. The worker constructs
+     * a MediaStreamTrackGenerator (Chromium) or VideoTrackGenerator (Safari)
+     * inside the worker, owns the writable, runs audio-clock-driven selection,
+     * and ships the resulting MediaStreamTrack back to main via the
+     * onOffThreadTrackReady callback. Main attaches that track to
+     * <video srcObject>.
+     *
+     * Resolves once the track has been emitted. Rejects if the worker has no
+     * usable generator API — caller falls back to the main-thread canvas path.
+     *
+     * @param startedAtMs Stream start ms-since-epoch (server clock)
+     * @param jitterBufferMs Initial jitter buffer in ms
+     * @param syncPort MessagePort subscribed to AudioVideoSync (transferred — MUST be trailing)
+     */
+    enableOffThreadRenderer(
+        startedAtMs: number,
+        jitterBufferMs: number,
+        syncPort: MessagePort,
+    ): Promise<void>;
 }
 
 /**
@@ -114,4 +135,11 @@ export interface DecoderWorkerCallbacks {
      * @param noWait Fire-and-forget flag (don't wait for response)
      */
     onDecodedFrame(frame: VideoFrame, noWait?: RpcNoWait): Promise<void>;
+
+    /**
+     * Fired by the worker after enableOffThreadRenderer creates a generator —
+     * delivers the MediaStreamTrack the main thread must attach to a
+     * <video srcObject>. Track is transferable.
+     */
+    onOffThreadTrackReady(track: MediaStreamTrack, noWait?: RpcNoWait): Promise<void>;
 }

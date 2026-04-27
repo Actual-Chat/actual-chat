@@ -432,6 +432,25 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
     @apply object-contain;
 }
 
+/* MSTG render backend: video element gets the same fill rules as canvas;
+   inactive surface is hidden so only the chosen backend paints. */
+.video-track-player video.remote-video {
+    @apply hidden;
+}
+.video-track-player.backend-mstg video.remote-video {
+    @apply block;
+    @apply absolute inset-0;
+    @apply w-full h-full;
+    @apply bg-black;
+    @apply object-cover;
+}
+.video-panel.expanded .video-track-player.backend-mstg.screencast video.remote-video {
+    @apply object-contain;
+}
+.video-track-player.backend-mstg canvas.remote-video {
+    @apply hidden;
+}
+
 /* Blurred background canvas — only visible inside focused container,
    fills the container behind the letterboxed main canvas. */
 .video-track-player canvas.remote-video-bg {

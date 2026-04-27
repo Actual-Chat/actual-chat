@@ -12,6 +12,7 @@ import { type DecoderConfig, type DecoderStats, WebCodecsDecoder } from '../webc
 import type { EncodedChunkData } from '../webcodecs-encoder';
 import { extractHVCC } from '../hevc-parser';
 import { getLogs } from 'logging';
+import { WorkerMstgSelector } from './worker-mstg-selector';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoDecoder');
 
@@ -27,6 +28,10 @@ let lastRawDescription: ArrayBuffer | null = null;
 
 // Stream-based input reader loop promise (for cleanup)
 let streamReadLoopPromise: Promise<void> | null = null;
+
+// Off-thread MSTG render path: when set, decoded frames are routed into the
+// selector instead of being emitted to main via onDecodedFrame.
+let mstgSelector: WorkerMstgSelector | null = null;
 
 function bufferEqual(a: ArrayBuffer, b: ArrayBuffer): boolean {
     if (a.byteLength !== b.byteLength) return false;
@@ -254,6 +259,10 @@ function decodeChunk(chunkData: EncodedChunkData): void {
  */
 function emitDecodedFrame(frame: VideoFrame): void {
     frameCount++;
+    if (mstgSelector) {
+        mstgSelector.onDecoded(frame);
+        return;
+    }
     void callbacks.onDecodedFrame(frame, rpcNoWait);
 }
 
@@ -392,6 +401,11 @@ const serverImpl: DecoderWorker = {
 
             processing = false;
             decoderConfigured = false;
+
+            if (mstgSelector) {
+                mstgSelector.dispose();
+                mstgSelector = null;
+            }
 
             // Wait for stream read loop to finish
             if (streamReadLoopPromise) {
@@ -762,8 +776,54 @@ const serverImpl: DecoderWorker = {
             errorLog?.log('Failed to toggle decoder type:', error);
             throw error;
         }
+    },
+
+    // eslint-disable-next-line @typescript-eslint/require-await
+    enableOffThreadRenderer: async (
+        startedAtMs: number,
+        jitterBufferMs: number,
+        syncPort: MessagePort,
+    ): Promise<void> => {
+        if (mstgSelector) {
+            warnLog?.log('enableOffThreadRenderer called while another selector is active — replacing');
+            mstgSelector.dispose();
+        }
+        const gen = tryCreateOffThreadGenerator();
+        if (!gen) {
+            throw new Error('Off-thread renderer unsupported: neither MediaStreamTrackGenerator nor VideoTrackGenerator is available in worker context');
+        }
+        mstgSelector = new WorkerMstgSelector(gen.writable, syncPort, startedAtMs, jitterBufferMs);
+        // Track is transferable — caller attaches it to <video srcObject>.
+        void callbacks.onOffThreadTrackReady(gen.track, rpcNoWait);
+        infoLog?.log(`Off-thread renderer enabled in worker (${gen.api}), startedAtMs=${startedAtMs}, jitterBufferMs=${jitterBufferMs}`);
     }
 };
+
+// Two slightly different APIs produce equivalent (writable, MediaStreamTrack):
+//   - MediaStreamTrackGenerator: Chromium (also exposed in workers). The
+//     generator IS the MediaStreamTrack.
+//   - VideoTrackGenerator: Safari worker-only. Has .track + .writable.
+interface OffThreadGenerator {
+    readonly track: MediaStreamTrack;
+    readonly writable: WritableStream<VideoFrame>;
+    readonly api: 'MediaStreamTrackGenerator' | 'VideoTrackGenerator';
+}
+
+function tryCreateOffThreadGenerator(): OffThreadGenerator | null {
+    const g = globalThis as unknown as {
+        MediaStreamTrackGenerator?: new (init: { kind: 'video' }) => MediaStreamTrack & { readonly writable: WritableStream<VideoFrame> };
+        VideoTrackGenerator?: new () => { readonly track: MediaStreamTrack; readonly writable: WritableStream<VideoFrame> };
+    };
+    if (typeof g.MediaStreamTrackGenerator === 'function') {
+        const generator = new g.MediaStreamTrackGenerator({ kind: 'video' });
+        return { track: generator, writable: generator.writable, api: 'MediaStreamTrackGenerator' };
+    }
+    if (typeof g.VideoTrackGenerator === 'function') {
+        const vtg = new g.VideoTrackGenerator();
+        return { track: vtg.track, writable: vtg.writable, api: 'VideoTrackGenerator' };
+    }
+    return null;
+}
 
 // Initialize RPC communication (bidirectional)
 const callbacks = rpcClientServer<DecoderWorkerCallbacks>(
