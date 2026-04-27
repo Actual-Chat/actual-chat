@@ -24,7 +24,7 @@ public class Invites(IServiceProvider services) : IInvites
     private ILogger Log => _log ??= Services.LogFor<Invites>();
 
     // [ComputeMethod]
-    [Obsolete("2025.02: User invites feature is removed.")]
+    [Obsolete("2026.02: User invites feature is removed.")]
     public virtual Task<Invite[]> ListUserInvites(
         Session session,
         CancellationToken cancellationToken)

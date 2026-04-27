@@ -12,7 +12,7 @@ namespace ActualChat.Invite;
 [LegacyName(nameof(IInvites), "2.7.9999")]
 public interface ILegacyInvites : IComputeService
 {
-    [ComputeMethod, Obsolete("2025.02: User invites feature is removed.")]
+    [ComputeMethod, Obsolete("2026.02: User invites feature is removed.")]
     Task<LegacyInvite[]> ListUserInvites(Session session, CancellationToken cancellationToken);
 
     [ComputeMethod]

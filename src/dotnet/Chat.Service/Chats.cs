@@ -85,7 +85,7 @@ public partial class Chats(IServiceProvider services) : IChats
     }
 
     // Legacy compat: old clients send ChatEntryKind parameter
-    [Obsolete("2025.03: Use GetTile without entryKind")]
+    [Obsolete("2026.03: Use GetTile without entryKind")]
     public virtual Task<ChatTile> GetTile(
         Session session, ChatId chatId, int entryKind, Range<long> idTileRange, CancellationToken cancellationToken)
         => GetTile(session, chatId, idTileRange, cancellationToken);
@@ -113,7 +113,7 @@ public partial class Chats(IServiceProvider services) : IChats
     }
 
     // Legacy compat: old clients send ChatEntryKind parameter
-    [Obsolete("2025.03: Use GetIdRange without entryKind")]
+    [Obsolete("2026.03: Use GetIdRange without entryKind")]
     public virtual Task<Range<long>> GetIdRange(
         Session session, ChatId chatId, int entryKind, CancellationToken cancellationToken)
         => GetIdRange(session, chatId, cancellationToken);
