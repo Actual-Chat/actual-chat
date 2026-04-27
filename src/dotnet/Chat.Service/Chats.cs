@@ -960,7 +960,7 @@ public partial class Chats(IServiceProvider services) : IChats
 
         // Check constraints
         if (!(textEntry.AuthorId == author.Id || chat.Rules.IsOwner() || chat.Id.Kind == ChatKind.Peer))
-            throw StandardError.Unauthorized("You can remove only your own messages.");
+            throw StandardError.Unauthorized("You're not allowed to remove this message.");
         if (textEntry.IsContentStreaming)
             throw StandardError.Constraint("Wait for the content stream end to remove this message.");
 
@@ -987,7 +987,7 @@ public partial class Chats(IServiceProvider services) : IChats
             return;
 
         if (!(textEntry.AuthorId == author.Id || chat.Rules.IsOwner() || chat.Id.Kind == ChatKind.Peer))
-            throw StandardError.Unauthorized("You can restore only your own messages.");
+            throw StandardError.Unauthorized("You're not allowed to restore this message.");
 
         await Restore(chatEntryId).ConfigureAwait(false);
         return;
