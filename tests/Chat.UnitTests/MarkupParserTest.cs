@@ -588,7 +588,7 @@ code
     [Fact]
     public void ListBlockWithNewLineSeparator()
     {
-        // Empty lines between list and paragraph are consumed as separators (no empty paragraphs)
+        // An empty line after a list block is preserved as an empty ParagraphMarkup
         var text =
             """
             **Text before the list.**
@@ -600,17 +600,59 @@ code
             - List item 4 is here.
             """;
         var m = Parse<MarkupSeq>(text, false);
-        m.Items.Length.Should().Be(4);
+        m.Items.Length.Should().Be(5);
         m.Items[0].Should().BeOfType<ParagraphMarkup>()
             .Which.Content.Should().BeOfType<StylizedMarkup>()
             .Which.Style.Should().Be(TextStyle.Bold);
         m.Items[1].Should().BeOfType<ListMarkup>()
             .Which.Items.Should().HaveCount(2);
-        m.Items[2].Should().BeOfType<ParagraphMarkup>()
+        m.Items[2].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.EmptyText);
+        m.Items[3].Should().BeOfType<ParagraphMarkup>()
             .Which.Content.Should().BeOfType<StylizedMarkup>()
             .Which.Style.Should().Be(TextStyle.Bold);
-        m.Items[3].Should().BeOfType<ListMarkup>()
+        m.Items[4].Should().BeOfType<ListMarkup>()
             .Which.Items.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void KeepEmptyLineBetweenListAndParagraph()
+    {
+        // An empty line between a list and a following paragraph must not be swallowed
+        var text =
+            """
+            - List item 1 is here.
+            - List item 2 is here.
+
+            Text after the list.
+            """;
+        var m = Parse<MarkupSeq>(text, false);
+        m.Items.Length.Should().Be(3);
+        m.Items[0].Should().BeOfType<ListMarkup>().Which.Items.Should().HaveCount(2);
+        m.Items[1].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.EmptyText);
+        m.Items[2].Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().Be("Text after the list.");
+    }
+
+    [Fact]
+    public void KeepEmptyLineBetweenCodeBlockAndParagraph()
+    {
+        // Same behavior for code blocks
+        var text =
+            """
+            ```
+            some code
+            ```
+
+            Text after the code block.
+            """;
+        var m = Parse<MarkupSeq>(text, false);
+        m.Items.Length.Should().Be(3);
+        m.Items[0].Should().BeOfType<CodeBlockMarkup>().Which.Code.Should().Be("some code");
+        m.Items[1].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.EmptyText);
+        m.Items[2].Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().Be("Text after the code block.");
     }
 
     [Fact]
