@@ -4,12 +4,10 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.App.Maui.Services;
 
-[method: DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiAuth))]
-internal sealed class MauiAuth(UIHub hub) : UIServiceBase<UIHub>(hub), IClientAuth
+[method: DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiAccountUI))]
+internal sealed class MauiAccountUI(UIHub hub) : AccountUI(hub)
 {
-    private SessionTokens SessionTokens => Hub.SessionTokens;
-
-    public (string Name, string DisplayName)[] GetSchemas()
+    public override (string Name, string DisplayName)[] GetAuthSchemas()
     {
         var schemas = AuthSchema.AllExternal.AsEnumerable();
         if (HostInfo.AppKind == AppKind.Ios)
@@ -17,7 +15,7 @@ internal sealed class MauiAuth(UIHub hub) : UIServiceBase<UIHub>(hub), IClientAu
         return AuthSchema.ToSchemasWithDisplayNames(schemas);
     }
 
-    public async Task SignIn(string schema, bool mustExist = false)
+    protected override async Task SignInBackend(string schema, bool mustExist)
     {
         if (schema.IsNullOrEmpty())
             throw new ArgumentOutOfRangeException(nameof(schema));
@@ -46,7 +44,7 @@ internal sealed class MauiAuth(UIHub hub) : UIServiceBase<UIHub>(hub), IClientAu
         await WebSignInOrSignOut(endpoint, "Sign-in", mustExist).ConfigureAwait(false);
     }
 
-    public async Task SignOut()
+    protected override async Task SignOutBackend()
     {
 #if ANDROID
         var googleAuth = Hub.Services.GetRequiredService<NativeGoogleAuth>();
@@ -63,7 +61,7 @@ internal sealed class MauiAuth(UIHub hub) : UIServiceBase<UIHub>(hub), IClientAu
     {
         var isSignIn = endpoint.StartsWith("/signIn", StringComparison.OrdinalIgnoreCase);
         try {
-            var sessionToken = await SessionTokens.Get().ConfigureAwait(true);
+            var sessionToken = await Hub.SessionTokens.Get().ConfigureAwait(true);
             var url = $"{MauiSettings.BaseUrl}maui-auth/start"
                 + $"?s={sessionToken.Token.UrlEncode()}"
                 + $"&e={endpoint.UrlEncode()}"
@@ -77,7 +75,7 @@ internal sealed class MauiAuth(UIHub hub) : UIServiceBase<UIHub>(hub), IClientAu
             }
 
             // WebView-based authentication
-            var redirectUrl = UrlMapper.ToAbsolute( isSignIn ? Links.Chats : Links.Home);
+            var redirectUrl = UrlMapper.ToAbsolute(isSignIn ? Links.Chats : Links.Home);
             // NOTE(AY): returnUrl here points to https://[xxx.]voxt.ai/xxx ,
             // but MauiNavigationInterceptor will correct it to the local one anyway.
             url = $"{url}&redirectUrl={redirectUrl.UrlEncode()}";
