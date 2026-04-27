@@ -8,6 +8,10 @@ import { getLogs } from 'logging';
 
 const { infoLog, warnLog, errorLog } = getLogs('VideoDecoder');
 
+// Drop non-key chunks when decoder queue exceeds this depth — prevents
+// thrashing under network jitter where frames stack up faster than HW decode.
+const BackpressureQueueLimit = 4;
+
 export interface DecoderConfig {
   codec: string;
   optimizeForLatency: boolean;
@@ -139,6 +143,12 @@ export class WebCodecsDecoder {
             this.droppedFrames++;
             return;
         }
+        // Backpressure: drop delta chunks when decoder queue is saturated.
+        // Always pass keyframes through so the decoder can resync.
+        if (this.decoder.decodeQueueSize > BackpressureQueueLimit && chunk.type !== 'key') {
+            this.backpressureDrops++;
+            return;
+        }
         this.decodeStartTimes.push(performance.now());
         this.decodeQueueAtStart.push(this.decoder.decodeQueueSize);
         try {
@@ -164,6 +174,12 @@ export class WebCodecsDecoder {
         if (currentState !== 'configured') {
             this.droppedFrames++;
             warnLog?.log(`Decoder not ready (state: ${currentState}), dropping ${chunkData.type} chunk`);
+            return;
+        }
+
+        // Backpressure: drop delta chunks when decoder queue is saturated.
+        if (this.decoder.decodeQueueSize > BackpressureQueueLimit && chunkData.type !== 'key') {
+            this.backpressureDrops++;
             return;
         }
 
