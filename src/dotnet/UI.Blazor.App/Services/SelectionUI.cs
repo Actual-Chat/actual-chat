@@ -70,7 +70,7 @@ public class SelectionUI : UIServiceBase<AppUIHub>
         var chatMarkupHub = ChatMarkupHubFactory[chatId];
         CancellationToken cancellationToken = default;
 
-        var sb = ActualLab.Text.StringBuilderExt.Acquire();
+        var lines = new List<string>();
         AuthorId? currentAuthorId = null;
         foreach (var chatEntryId in selection.OrderBy(x => x.LocalId)) {
             var chatEntry = await Chats.GetEntry(Session, chatEntryId, cancellationToken).ConfigureAwait(false);
@@ -91,21 +91,19 @@ public class SelectionUI : UIServiceBase<AppUIHub>
             markup = await chatMarkupHub.ApplyMentionNamer(markup, cancellationToken).ConfigureAwait(false);
 
             if (showAuthor && currentAuthorId != chatEntry.AuthorId) {
-                if (sb.Length > 0)
-                    sb.AppendLine();
+                if (lines.Count > 0)
+                    lines.Add("");
                 currentAuthorId = chatEntry.AuthorId;
                 var author = await Authors.Get(Session, chatEntry.ChatId, chatEntry.AuthorId, cancellationToken).ConfigureAwait(false);
                 var authorName = author?.Avatar.Name ?? "(N/A)";
                 var timestamp = DateTimeConverter.ToLocalTime(chatEntry.BeginsAt).ToString("g");
-                sb.AppendFormat("{0}, [{1}]", authorName, timestamp);
-                sb.AppendLine();
+                lines.Add($"{authorName}, [{timestamp}]");
             }
 
-            var text = markup.ToClipboardText();
-            sb.AppendLine(text);
+            lines.Add(markup.ToClipboardText());
         }
 
-        return sb.ToStringAndRelease();
+        return string.Join('\n', lines);
     }
 
     private async Task<string> GetTextToCopy(ChatEntry sendingChatEntry)
