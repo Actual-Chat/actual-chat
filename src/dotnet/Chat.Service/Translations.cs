@@ -9,11 +9,6 @@ public class Translations(IServiceProvider services) : ITranslations
     private IChats Chats => field ??= services.GetRequiredService<IChats>();
     private IChatEntryLanguagesBackend ChatEntryLanguagesBackend => field ??= services.GetRequiredService<IChatEntryLanguagesBackend>();
 
-    [Obsolete("2025.08: Use Get with translateIfMissing flag instead.")]
-    // [ComputeMethod]
-    public virtual Task<Translation?> Get(Session session, TranslationId id, CancellationToken cancellationToken)
-        => Get(session, id, true, cancellationToken);
-
     // [ComputeMethod]
     public virtual async Task<Translation?> Get(
         Session session,
