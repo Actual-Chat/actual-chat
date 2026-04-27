@@ -1281,7 +1281,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (chatId is PeerChatId peerChatId)
                 _ = await EnsureExists(peerChatId, cancellationToken).ConfigureAwait(false);
 
-            if (change.IsCreate(out _) && chatId is PeerChatId banCheckChatId) {
+            if (chatId is PeerChatId banCheckChatId && ChangeAffectsPeerContent(change)) {
                 var (userId1, userId2) = banCheckChatId.UserIds;
                 if (await ContactsBackend.IsBanned(userId1, userId2, cancellationToken).ConfigureAwait(false)
                     || await ContactsBackend.IsBanned(userId2, userId1, cancellationToken).ConfigureAwait(false))
@@ -2577,5 +2577,20 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             null,
             new Change<MediaFull> { Remove = true });
         await Commander.Call(removeCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static bool ChangeAffectsPeerContent(Change<ChatEntryDiff> change)
+    {
+        // True when the change posts or rewrites visible content; false for Remove or
+        // metadata-only updates (e.g. transcription remap, link previews) so an active
+        // ban doesn't break in-flight system updates to entries posted before the ban.
+        if (change.IsCreate(out _))
+            return true;
+        if (!change.IsUpdate(out var diff))
+            return false;
+
+        return diff.Content is not null
+            || diff.Attachments is not null
+            || diff.Audio.HasValue;
     }
 }
