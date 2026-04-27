@@ -95,30 +95,4 @@ public class SystemProperties(IServiceProvider services)
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
     }
-
-    // Legacy methods - to be removed in the future
-
-#pragma warning disable CS0618 // Type or member is obsolete
-
-    // [ComputeMethod]
-    [Obsolete("2025.06: Retired in favour of GetServerApiInfo.")]
-    public virtual async Task<string> GetApiVersion(CancellationToken cancellationToken)
-    {
-        var serverApiInfo = await GetServerApiInfo("", cancellationToken).ConfigureAwait(false);
-        return serverApiInfo.VersionString;
-    }
-
-    // [ComputeMethod]
-    [Obsolete("2025.06: Retired in favour of GetServerApiInfo.")]
-    public virtual async Task<SystemProperties_LegacyClientCompatibility> CheckClientCompatibility(string clientVersion, CancellationToken cancellationToken)
-    {
-        var serverApiInfo = await GetServerApiInfo("", cancellationToken).ConfigureAwait(false);
-        return serverApiInfo.CompatibilityLevel switch {
-            CompatibilityLevel.Compatible => SystemProperties_LegacyClientCompatibility.UpgradeAvailable,
-            CompatibilityLevel.Incompatible => SystemProperties_LegacyClientCompatibility.Incompatible,
-            _ => SystemProperties_LegacyClientCompatibility.Latest,
-        };
-    }
-
-#pragma warning restore CS0618 // Type or member is obsolete
 }
