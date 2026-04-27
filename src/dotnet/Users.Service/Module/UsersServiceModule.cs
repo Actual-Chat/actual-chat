@@ -170,6 +170,10 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         // EmailAuth
         rpcHost.AddApi<IEmailAuth, EmailAuth>(); // Requires Redis & IEmailSender
 
+        // NativeAuth (iOS/Android OAuth)
+        if (rpcHost.IsApiHost)
+            rpcHost.AddApi<INativeAuth, NativeAuth>(); // Requires ASP.NET auth options
+
         // Emails
         rpcHost.AddApi<IEmails, Emails>();
         rpcHost.AddBackend<IEmailsBackend, EmailsBackend>();
