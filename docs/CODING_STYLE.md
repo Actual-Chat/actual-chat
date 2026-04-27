@@ -498,6 +498,22 @@ public override async Task Require(CancellationToken cancellationToken)
 
 11. **Prefer primary constructors for services** when acceptable.
 
+12. **`[Obsolete]` messages must start with a `YYYY.MM:` date prefix**
+    indicating when the member was deprecated. The date lets readers see
+    at a glance how long a deprecation has been in place and decide
+    whether it's safe to remove. Use the year and month of the
+    deprecation, not a planned removal date.
+
+```csharp
+[Obsolete("2025.03: Use GetIdRange without entryKind")]
+[Obsolete("2026.04: Use IStreamServer.GetVideo via RPC")]
+[Obsolete("2026.04: Old MAUI clients only. Remove once no installed app version targets this route.")]
+```
+
+   The only exception is `[Obsolete]` used as a compile-time guard for
+   reflection-only members (e.g. Mono AOT marker methods) — those
+   messages describe the constraint, not a deprecation timeline.
+
 ### Test Conventions
 
 #### Test Method Naming
