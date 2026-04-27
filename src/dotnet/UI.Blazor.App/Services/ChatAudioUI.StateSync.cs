@@ -178,8 +178,12 @@ public partial class ChatAudioUI
                 : null;
             await ChatEditorUI.HideRelatedEntry().ConfigureAwait(false);
 
+            // Play tune BEFORE acquiring mic — on iOS Safari, the mic's
+            // audioSession is set to 'play-and-record' after getUserMedia,
+            // and WebKit AEC does not register the DestinationFallbackTrait
+            // playback path, so a tune playing into a live mic feeds back.
+            await TuneUI.PlayAndWait(Tune.BeginRecording).ConfigureAwait(false);
             await AudioRecorder.StartRecording(chatId, repliedEntryId, abortToken).ConfigureAwait(false);
-            _ = TuneUI.Play(Tune.BeginRecording);
             _ = IncomingShareSuggestions?.Push(chatId);
             var whenStopped = ForegroundTask.Run(
                 async () => await cRecordingState
