@@ -25,7 +25,15 @@ export type AudioSyncMessage =
 
 const registry = new Map<string, AudioSyncState>();
 const workerPorts = new Map<string, Set<MessagePort>>();
+const lastBroadcastAt = new Map<string, number>();
+const lastBroadcastState = new Map<string, AudioPlaybackState>();
 let lastLogTime = 0;
+
+// Coalesce broadcasts to subscribed worker ports — at most one per 16 ms
+// (≈ 60 Hz) per author. Workers interpolate playingAtSec themselves, so missing
+// intermediate samples doesn't degrade A/V sync. State transitions
+// (paused/starving/playing) bypass the rate limit so the worker reacts instantly.
+const BROADCAST_MIN_INTERVAL_MS = 16;
 
 function broadcast(authorId: string, message: AudioSyncMessage): void {
     const ports = workerPorts.get(authorId);
@@ -37,6 +45,19 @@ function broadcast(authorId: string, message: AudioSyncMessage): void {
             // Port may be disconnected; drop silently.
         }
     }
+}
+
+function broadcastState(authorId: string, state: AudioSyncState): void {
+    const now = state.capturedAt;
+    const prevState = lastBroadcastState.get(authorId);
+    const stateChanged = prevState !== state.playbackState;
+    if (!stateChanged) {
+        const last = lastBroadcastAt.get(authorId) ?? 0;
+        if (now - last < BROADCAST_MIN_INTERVAL_MS) return;
+    }
+    lastBroadcastAt.set(authorId, now);
+    lastBroadcastState.set(authorId, state.playbackState);
+    broadcast(authorId, { kind: 'state', state });
 }
 
 export class AudioVideoSync {
@@ -55,7 +76,7 @@ export class AudioVideoSync {
             playbackState: playbackState as AudioPlaybackState,
         };
         registry.set(authorId, state);
-        broadcast(authorId, { kind: 'state', state });
+        broadcastState(authorId, state);
         const now = state.capturedAt;
         if (now - lastLogTime > 1000) {
             lastLogTime = now;
@@ -69,6 +90,8 @@ export class AudioVideoSync {
     static clear(authorId: string): void {
         debugLog?.log(`clear: authorId=${authorId}`);
         registry.delete(authorId);
+        lastBroadcastAt.delete(authorId);
+        lastBroadcastState.delete(authorId);
         broadcast(authorId, { kind: 'clear' });
     }
 
