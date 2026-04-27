@@ -35,7 +35,7 @@ public interface IAccounts : IComputeService
     [ComputeMethod(MinCacheDuration = 10)]
     Task<ApiList<SessionInfo>> ListOwnSessions(Session session, SessionKind kind, CancellationToken cancellationToken);
 
-    [Obsolete("2025.03: Use GetSessionInfo instead.")]
+    [Obsolete("2026.03: Use GetSessionInfo instead.")]
     [LegacyName(nameof(GetSessionInfo), "2.6.9999")]
     [ComputeMethod(MinCacheDuration = 10)]
 #pragma warning disable CS0809

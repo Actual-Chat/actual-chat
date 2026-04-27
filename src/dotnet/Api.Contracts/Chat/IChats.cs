@@ -31,7 +31,7 @@ public interface IChats : IComputeService
         CancellationToken cancellationToken);
 
     [ComputeMethod(MinCacheDuration = 60), RemoteComputeMethod(MinCacheDuration = 600)]
-    [Obsolete("2025.03: Use GetIdRange without entryKind")]
+    [Obsolete("2026.03: Use GetIdRange without entryKind")]
     Task<Range<long>> GetIdRange(
         Session session,
         ChatId chatId,
@@ -47,7 +47,7 @@ public interface IChats : IComputeService
         CancellationToken cancellationToken);
 
     [ComputeMethod(MinCacheDuration = 10), RemoteComputeMethod(MinCacheDuration = 300)]
-    [Obsolete("2025.03: Use GetTile without entryKind")]
+    [Obsolete("2026.03: Use GetTile without entryKind")]
     Task<ChatTile> GetTile(
         Session session,
         ChatId chatId,

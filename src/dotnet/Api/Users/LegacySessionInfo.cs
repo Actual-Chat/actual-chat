@@ -5,7 +5,7 @@ namespace ActualChat.Users;
 /// <summary>
 /// Legacy session info format for backward compatibility with older clients.
 /// </summary>
-[Obsolete("Use SessionInfo instead.")]
+[Obsolete("2026.03: Use SessionInfo instead.")]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
 public partial record LegacySessionInfo() : IRequirementTarget, IHasVersion<long>

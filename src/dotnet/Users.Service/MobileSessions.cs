@@ -14,7 +14,7 @@ public class MobileSessions(IServiceProvider services) : IMobileSessions
     private ICommander Commander { get; } = services.Commander();
 
     // Not a [ComputeMethod]!
-    [Obsolete("2025.03: Use CreateSession(appVersion, ...) instead.")]
+    [Obsolete("2026.03: Use CreateSession(appVersion, ...) instead.")]
     public Task<Session> CreateSession(CancellationToken cancellationToken)
         => CreateSession("", cancellationToken);
 
@@ -32,7 +32,7 @@ public class MobileSessions(IServiceProvider services) : IMobileSessions
     }
 
     // Not a [ComputeMethod]!
-    [Obsolete("2025.03: Use ValidateSession(session, appVersion, ...) instead.")]
+    [Obsolete("2026.03: Use ValidateSession(session, appVersion, ...) instead.")]
     public Task<Session> ValidateSession(Session session, CancellationToken cancellationToken)
         => ValidateSession(session, "", cancellationToken);
 

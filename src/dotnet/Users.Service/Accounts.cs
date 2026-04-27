@@ -61,7 +61,7 @@ public class Accounts(IServiceProvider services) : IAccounts
 
     // [ComputeMethod]
 #pragma warning disable CS0809
-    [Obsolete("2025.03: Use GetOwnSessionInfo instead.")]
+    [Obsolete("2026.03: Use GetOwnSessionInfo instead.")]
     public virtual async Task<LegacySessionInfo?> GetLegacySessionInfo(Session session, CancellationToken cancellationToken)
 #pragma warning restore CS0809
     {
