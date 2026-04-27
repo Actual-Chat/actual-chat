@@ -204,9 +204,13 @@ public partial class MarkupParser : IMarkupParser
     private static readonly Parser<char, string> CodeBlockLine =
         Lookahead(Not(CodeBlockEnd))
             .Then(NotEndOfLineChar.ManyString());
+    // End of an unclosed code block: matches end-of-input as a fallback when
+    // the closing ``` was not provided. The resulting value is unused.
+    private static readonly Parser<char, char> CodeBlockEndOrEof =
+        CodeBlockEnd.Or(End.ThenReturn(default(char)));
     private static readonly Parser<char, string> CodeBlockCode =
         Try(CodeBlockLine)
-            .SeparatedAndTerminated(Try(EndOfLine))
+            .SeparatedAndOptionallyTerminated(Try(EndOfLine))
             .Select(lines => {
                 var buffer = ArrayBuffer<string>.Lease(false);
                 var sb = ActualLab.Text.StringBuilderExt.Acquire();
@@ -241,7 +245,7 @@ public partial class MarkupParser : IMarkupParser
     private static readonly Parser<char, Markup> CodeBlock = (
         from language in TryOneOf(CodeBlockWithLanguageStart, CodeBlockWithoutLanguageStart)
         from code in Try(CodeBlockCode).Optional()
-        from end in CodeBlockEnd
+        from end in CodeBlockEndOrEof
         select (Markup)new CodeBlockMarkup(code.GetValueOrDefault(""), language.TrimEnd())
         ).Debug("<Code>");
 
