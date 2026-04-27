@@ -164,7 +164,6 @@ export class JoinVideoCallModal {
         this.recorderView = RecorderPreviewView.create({
             canvas: this.canvasEl,
             videoEl: this.videoEl,
-            rafKey: 'join-video-preview',
             onDetach: () => this.videoFrame.classList.remove('has-video', 'shows-video', 'shows-canvas'),
             onFirstFrame: () => {
                 this.videoFrame.classList.add('has-video', 'shows-video');
