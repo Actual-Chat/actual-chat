@@ -103,24 +103,61 @@ export interface DecoderWorker {
     toggleDecoderType(useWasm: boolean): Promise<void>;
 
     /**
-     * Switch the worker into off-thread render mode. The worker constructs
-     * a MediaStreamTrackGenerator (Chromium) or VideoTrackGenerator (Safari)
-     * inside the worker, owns the writable, runs audio-clock-driven selection,
-     * and ships the resulting MediaStreamTrack back to main via the
-     * onOffThreadTrackReady callback. Main attaches that track to
-     * <video srcObject>.
+     * Switch the worker into off-thread render mode AND start the Fusion RPC
+     * pull entirely inside the worker. The worker constructs a
+     * MediaStreamTrackGenerator (Chromium) or VideoTrackGenerator (Safari)
+     * locally, owns the writable, runs audio-clock-driven selection, ships
+     * the resulting MediaStreamTrack back to main via onOffThreadTrackReady,
+     * AND iterates `streamingApi.streamServer.GetVideo(streamId, skipToTicks)`
+     * — feeding chunks directly into its own decoder. Main does no per-frame
+     * work on this path.
      *
-     * Resolves once the track has been emitted. Rejects if the worker has no
-     * usable generator API — caller falls back to the main-thread canvas path.
+     * Resolves once the generator is created and pull has started. Rejects if
+     * the worker has no usable generator API — caller falls back to the
+     * main-thread canvas + main-thread pull path.
      *
+     * Two-tier generator construction:
+     *   Tier 1 — worker constructs MSTG/VTG itself (Safari workers, Chromium
+     *     workers that expose MSTG). No `writable` arg required; worker fires
+     *     onOffThreadTrackReady with the track for main to attach.
+     *   Tier 2 — main constructs MSTG, attaches track locally, passes the
+     *     writable to the worker. Used on Chromium versions where MSTG only
+     *     exists in main-thread globals (worker has neither MSTG nor VTG).
+     *     `writable` carries the transferred stream; track is already attached.
+     *
+     * @param streamId Server stream id
+     * @param skipToMs Initial skip-to offset in ms (forwarded as TimeSpan ticks)
+     * @param apiUrl Fusion RPC websocket URL (e.g. wss://host/rpc/ws)
      * @param startedAtMs Stream start ms-since-epoch (server clock)
      * @param jitterBufferMs Initial jitter buffer in ms
-     * @param syncPort MessagePort subscribed to AudioVideoSync (transferred — MUST be trailing)
+     * @param syncPort MessagePort subscribed to AudioVideoSync (transferred)
+     * @param writable Optional WritableStream<VideoFrame> from main-side MSTG
+     *                 (transferred — when present, tier 2). MUST trail syncPort.
      */
-    enableOffThreadRenderer(
+    startPullInWorker(
+        streamId: string,
+        skipToMs: number,
+        apiUrl: string,
         startedAtMs: number,
         jitterBufferMs: number,
         syncPort: MessagePort,
+        writable?: WritableStream<VideoFrame>,
+    ): Promise<void>;
+
+    /**
+     * Abort any in-flight pull loop started by startPullInWorker. Idempotent.
+     */
+    stopPullInWorker(noWait?: RpcNoWait): Promise<void>;
+
+    /**
+     * Forward connectivity state from main thread's ConnectivityUI to the
+     * worker's WorkerConnectivityUI mirror. Same shape as the sender worker.
+     */
+    onConnectivityUpdate(
+        isOnline: boolean,
+        isConnected: boolean,
+        isBlazorServer: boolean,
+        noWait?: RpcNoWait,
     ): Promise<void>;
 }
 
@@ -137,9 +174,22 @@ export interface DecoderWorkerCallbacks {
     onDecodedFrame(frame: VideoFrame, noWait?: RpcNoWait): Promise<void>;
 
     /**
-     * Fired by the worker after enableOffThreadRenderer creates a generator —
+     * Fired by the worker after startPullInWorker creates a generator —
      * delivers the MediaStreamTrack the main thread must attach to a
      * <video srcObject>. Track is transferable.
      */
     onOffThreadTrackReady(track: MediaStreamTrack, noWait?: RpcNoWait): Promise<void>;
+
+    /**
+     * Fired periodically (~every 2 s) by the worker pull loop with the most
+     * recent `streamOffsetMs` so the main side can call ReportVideoLatency on
+     * the server. Replaces the main-thread `reportLatencyTick`.
+     */
+    onLatencyReport(streamOffsetMs: number, noWait?: RpcNoWait): Promise<void>;
+
+    /**
+     * Fired when the worker's pull loop terminates (server ended, fatal error,
+     * or stop). Main forwards to Blazor via existing `OnEnded`.
+     */
+    onPullEnded(errorMessage: string | null, noWait?: RpcNoWait): Promise<void>;
 }

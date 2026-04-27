@@ -13,6 +13,8 @@ import type { EncodedChunkData } from '../webcodecs-encoder';
 import { extractHVCC } from '../hevc-parser';
 import { getLogs } from 'logging';
 import { WorkerMstgSelector } from './worker-mstg-selector';
+import { Api, streamingApi } from 'api';
+import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoDecoder');
 
@@ -32,6 +34,18 @@ let streamReadLoopPromise: Promise<void> | null = null;
 // Off-thread MSTG render path: when set, decoded frames are routed into the
 // selector instead of being emitted to main via onDecodedFrame.
 let mstgSelector: WorkerMstgSelector | null = null;
+
+// In-worker Fusion RPC pull state (§9). When pullActive, the worker iterates
+// `streamingApi.streamServer.GetVideo(...)` itself and feeds chunks into the
+// decoder — main never sees per-frame work on this path.
+let pullActive = false;
+let pullAbortController: AbortController | null = null;
+let pullStartedAtMs = 0;
+let pullRetryCount = 0;
+let pullSequenceNumber = 0;
+const PULL_LATENCY_REPORT_INTERVAL_MS = 2000;
+let lastLatencyReportAt = 0;
+let apiInitialized = false;
 
 function bufferEqual(a: ArrayBuffer, b: ArrayBuffer): boolean {
     if (a.byteLength !== b.byteLength) return false;
@@ -279,6 +293,87 @@ function createDecoder(config: DecoderConfig): WebCodecsDecoder {
     );
 }
 
+// In-worker pull loop. Iterates `streamingApi.streamServer.GetVideo(...)`,
+// feeds each frame into `serverImpl.decodeRawChunk` (which handles codec
+// change, reorder, and decode), and retries with backoff on empty / error.
+// Mirror of the main-thread `startPull` from video-player.ts:1265-1334.
+async function runPullLoop(streamId: string, skipToMs: number): Promise<void> {
+    const ac = new AbortController();
+    pullAbortController = ac;
+    const skipToTicks = Math.round(skipToMs * 10000); // ms → .NET TimeSpan ticks
+    let pullFrameCount = 0;
+    let lastArrivedOffsetMs = 0;
+
+    try {
+        infoLog?.log(`pull: GetVideo(${streamId}, skipTo=${skipToMs}ms)`);
+        const stream = await streamingApi.streamServer.GetVideo(streamId, skipToTicks);
+
+        for await (const frame of stream) {
+            if (ac.signal.aborted || !pullActive) break;
+            pullFrameCount++;
+            pullRetryCount = 0;
+
+            const offsetMs = frame.Offset / 10000;
+            const durationMs = frame.Duration / 10000;
+            if (offsetMs > lastArrivedOffsetMs) lastArrivedOffsetMs = offsetMs;
+
+            const data = frame.Data;
+            const dataBuffer = new ArrayBuffer(data.byteLength);
+            new Uint8Array(dataBuffer).set(data);
+            let descBuffer: ArrayBuffer | undefined;
+            const desc = frame.Description;
+            if (desc && desc.length > 0) {
+                descBuffer = new ArrayBuffer(desc.byteLength);
+                new Uint8Array(descBuffer).set(desc);
+            }
+
+            await serverImpl.decodeRawChunk(
+                offsetMs * 1000,        // ms → μs
+                durationMs * 1000,
+                frame.IsKeyFrame,
+                pullSequenceNumber++,
+                dataBuffer,
+                descBuffer,
+            );
+
+            const now = performance.now();
+            if (now - lastLatencyReportAt > PULL_LATENCY_REPORT_INTERVAL_MS) {
+                lastLatencyReportAt = now;
+                void callbacks.onLatencyReport(lastArrivedOffsetMs, rpcNoWait);
+            }
+        }
+
+        if (ac.signal.aborted || !pullActive) return;
+
+        if (pullFrameCount > 0) {
+            infoLog?.log(`pull: completed normally after ${pullFrameCount} frames`);
+            pullActive = false;
+            void callbacks.onPullEnded(null, rpcNoWait);
+        } else {
+            // Empty stream — skipTo may exceed available data, retry with backoff.
+            pullRetryCount++;
+            const delay = Math.min(500 * pullRetryCount, 2000);
+            warnLog?.log(`pull: empty stream, retry #${pullRetryCount} in ${delay}ms`);
+            setTimeout(() => {
+                if (!pullActive) return;
+                const retrySkipToMs = Math.max(0, Date.now() - pullStartedAtMs);
+                void runPullLoop(streamId, retrySkipToMs);
+            }, delay);
+        }
+    } catch (err) {
+        if (ac.signal.aborted || !pullActive) return;
+        const message = err instanceof Error ? err.message : String(err);
+        pullRetryCount++;
+        const delay = Math.min(1000 * pullRetryCount, 5000);
+        warnLog?.log(`pull: error (retry #${pullRetryCount} in ${delay}ms): ${message}`);
+        setTimeout(() => {
+            if (!pullActive) return;
+            const retrySkipToMs = Math.max(0, Date.now() - pullStartedAtMs);
+            void runPullLoop(streamId, retrySkipToMs);
+        }, delay);
+    }
+}
+
 // RPC Server Implementation
 const serverImpl: DecoderWorker = {
     /**
@@ -401,6 +496,14 @@ const serverImpl: DecoderWorker = {
 
             processing = false;
             decoderConfigured = false;
+
+            if (pullActive) {
+                pullActive = false;
+                if (pullAbortController) {
+                    pullAbortController.abort();
+                    pullAbortController = null;
+                }
+            }
 
             if (mstgSelector) {
                 mstgSelector.dispose();
@@ -779,23 +882,70 @@ const serverImpl: DecoderWorker = {
     },
 
     // eslint-disable-next-line @typescript-eslint/require-await
-    enableOffThreadRenderer: async (
+    startPullInWorker: async (
+        streamId: string,
+        skipToMs: number,
+        apiUrl: string,
         startedAtMs: number,
         jitterBufferMs: number,
         syncPort: MessagePort,
+        writable?: WritableStream<VideoFrame>,
     ): Promise<void> => {
         if (mstgSelector) {
-            warnLog?.log('enableOffThreadRenderer called while another selector is active — replacing');
+            warnLog?.log('startPullInWorker called while another selector is active — replacing');
             mstgSelector.dispose();
+            mstgSelector = null;
         }
-        const gen = tryCreateOffThreadGenerator();
-        if (!gen) {
-            throw new Error('Off-thread renderer unsupported: neither MediaStreamTrackGenerator nor VideoTrackGenerator is available in worker context');
+
+        let selectorWritable: WritableStream<VideoFrame>;
+        if (writable) {
+            // Tier 2: main constructed MSTG and already attached the track.
+            selectorWritable = writable;
+            infoLog?.log(`Off-thread renderer using main-supplied writable (tier 2), startedAtMs=${startedAtMs}, jitterBufferMs=${jitterBufferMs}`);
+        } else {
+            // Tier 1: try to construct generator inside this worker.
+            const gen = tryCreateOffThreadGenerator();
+            if (!gen) {
+                try { syncPort.close(); } catch { /* ignore */ }
+                throw new Error('Off-thread renderer unsupported: neither MediaStreamTrackGenerator nor VideoTrackGenerator is available in worker context');
+            }
+            selectorWritable = gen.writable;
+            void callbacks.onOffThreadTrackReady(gen.track, rpcNoWait);
+            infoLog?.log(`Off-thread renderer enabled in worker (tier 1, ${gen.api}), startedAtMs=${startedAtMs}, jitterBufferMs=${jitterBufferMs}`);
         }
-        mstgSelector = new WorkerMstgSelector(gen.writable, syncPort, startedAtMs, jitterBufferMs);
-        // Track is transferable — caller attaches it to <video srcObject>.
-        void callbacks.onOffThreadTrackReady(gen.track, rpcNoWait);
-        infoLog?.log(`Off-thread renderer enabled in worker (${gen.api}), startedAtMs=${startedAtMs}, jitterBufferMs=${jitterBufferMs}`);
+
+        mstgSelector = new WorkerMstgSelector(selectorWritable, syncPort, startedAtMs, jitterBufferMs);
+
+        // Lazy Api init (idempotent — second call no-ops with a warn log).
+        if (!apiInitialized) {
+            Api.init(apiUrl, streamingApi);
+            Api.bindDotNetRpcConnected(WorkerConnectivityUI);
+            Api.requireConnection('VideoDecoder');
+            apiInitialized = true;
+        }
+
+        pullStartedAtMs = startedAtMs;
+        pullActive = true;
+        // Fire and forget — pull loop runs in background, ends via onPullEnded.
+        void runPullLoop(streamId, skipToMs);
+    },
+
+    stopPullInWorker: async (): Promise<void> => {
+        pullActive = false;
+        if (pullAbortController) {
+            pullAbortController.abort();
+            pullAbortController = null;
+        }
+        await Promise.resolve();
+    },
+
+    // eslint-disable-next-line @typescript-eslint/require-await
+    onConnectivityUpdate: async (
+        isOnline: boolean,
+        isConnected: boolean,
+        isBlazorServer: boolean,
+    ): Promise<void> => {
+        WorkerConnectivityUI.update(isOnline, isConnected, isBlazorServer);
     }
 };
 

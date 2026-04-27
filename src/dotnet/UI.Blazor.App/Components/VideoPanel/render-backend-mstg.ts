@@ -1,6 +1,4 @@
 import { getLogs } from 'logging';
-import { AudioVideoSync } from 'audio-video-sync';
-import type { DecoderWorker } from '../../Services/Video/workers/decoder-worker-contract';
 import type { PresentableFrame, RenderBackend } from './render-backend';
 
 const { infoLog, warnLog } = getLogs('VideoPlayer');
@@ -20,23 +18,19 @@ export function isOffThreadPlausible(): boolean {
     return false;
 }
 
-// Off-thread renderer: the worker constructs the generator (MSTG on Chromium,
-// VTG on Safari), keeps the writable, runs audio-clock selection, and ships
-// the resulting MediaStreamTrack back via the onOffThreadTrackReady callback.
-// Main attaches the track to <video srcObject> — the browser paints, and
-// VideoPlayer's main-thread render loop is silent on this backend.
+// Off-thread renderer: just an HTMLVideoElement adapter. The decoder worker
+// owns the generator + writable + selector + Fusion RPC pull (see
+// `startPullInWorker` in decoder-worker-contract.ts). When the worker emits
+// `onOffThreadTrackReady`, video-player calls `onTrackReady` here and we
+// attach the MediaStreamTrack to <video srcObject>.
 export class OffThreadRenderBackend implements RenderBackend {
     readonly kind = 'mstg' as const;
     readonly isOffThread = true;
-    private syncChannel: MessageChannel | null = null;
-    private subscribedAuthorId: string | null = null;
     private trackAttached = false;
     private disposed = false;
 
     constructor(private readonly videoEl: HTMLVideoElement) {}
 
-    // Fired by the rpc callback wired in VideoPlayer when the worker's
-    // generator produces its track. Attach to <video srcObject> and play.
     onTrackReady(track: MediaStreamTrack): void {
         if (this.disposed) {
             try { track.stop(); } catch { /* ignore */ }
@@ -53,30 +47,6 @@ export class OffThreadRenderBackend implements RenderBackend {
         infoLog?.log('Off-thread track attached to <video srcObject>');
     }
 
-    // Asks the worker to construct the generator + run selection. Returns true
-    // on success, false if the worker has no usable API — caller swaps to
-    // canvas backend.
-    async setupWorker(
-        decoderWorker: DecoderWorker,
-        authorId: string,
-        startedAtMs: number,
-        jitterBufferMs: number,
-    ): Promise<boolean> {
-        if (this.disposed) return false;
-        const channel = new MessageChannel();
-        this.syncChannel = channel;
-        this.subscribedAuthorId = authorId;
-        AudioVideoSync.subscribeWorker(authorId, channel.port1);
-        try {
-            await decoderWorker.enableOffThreadRenderer(startedAtMs, jitterBufferMs, channel.port2);
-            return true;
-        } catch (e) {
-            warnLog?.log('Off-thread renderer rejected by worker, falling back to canvas:', e);
-            this.cleanupSyncChannel();
-            return false;
-        }
-    }
-
     drawFrame(_pf: PresentableFrame): void {
         // No-op: off-thread path. Main thread never feeds frames here.
     }
@@ -84,7 +54,6 @@ export class OffThreadRenderBackend implements RenderBackend {
     dispose(): void {
         if (this.disposed) return;
         this.disposed = true;
-        this.cleanupSyncChannel();
         try {
             const stream = this.videoEl.srcObject;
             if (stream instanceof MediaStream) {
@@ -92,14 +61,5 @@ export class OffThreadRenderBackend implements RenderBackend {
             }
         } catch { /* ignore */ }
         try { this.videoEl.srcObject = null; } catch { /* ignore */ }
-    }
-
-    private cleanupSyncChannel(): void {
-        if (this.syncChannel && this.subscribedAuthorId) {
-            AudioVideoSync.unsubscribeWorker(this.subscribedAuthorId, this.syncChannel.port1);
-            try { this.syncChannel.port1.close(); } catch { /* ignore */ }
-            this.syncChannel = null;
-            this.subscribedAuthorId = null;
-        }
     }
 }

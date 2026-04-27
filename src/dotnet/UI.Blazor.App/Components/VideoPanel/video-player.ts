@@ -7,6 +7,7 @@ import type { Disposable } from 'disposable';
 import { AudioVideoSync } from 'audio-video-sync';
 import { DocumentEvents } from 'event-handling';
 import { Versioning } from 'versioning';
+import { type EventHandler } from 'event-handling';
 import { type Subscription } from 'rxjs';
 import { renderQualityLevelForWidth } from './render-quality';
 import type { DecoderWorker } from '../../Services/Video/workers/decoder-worker-contract';
@@ -20,6 +21,8 @@ import {
 import type { RenderBackend } from './render-backend';
 import { CanvasRenderBackend } from './render-backend-canvas';
 import { OffThreadRenderBackend, isOffThreadPlausible } from './render-backend-mstg';
+import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
+import { ConnectivityUI } from '../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
 
 // Backend selection: prefer the off-thread renderer wherever a generator API
 // (MediaStreamTrackGenerator on Chromium, VideoTrackGenerator on Safari) is
@@ -149,6 +152,13 @@ export class VideoPlayer {
     private pullAbortController: AbortController | null = null;
     private pullRetryCount = 0;
     private pullRetryTimer: ReturnType<typeof setTimeout> | null = null;
+
+    // Off-thread mode: when true, the decoder worker owns the Fusion RPC pull
+    // and main does no per-frame work. Set after a successful startPullInWorker.
+    private offThreadPullActive = false;
+    private offThreadSyncChannel: MessageChannel | null = null;
+    private connectivityHandlerOnline: EventHandler<boolean> | null = null;
+    private connectivityHandlerConnected: EventHandler<boolean> | null = null;
 
     // Frame pacing state
     private playbackStartTime = 0;     // wall-clock ms (performance.now) when first frame rendered
@@ -375,8 +385,30 @@ export class VideoPlayer {
                             try { track.stop(); } catch { /* ignore */ }
                         return Promise.resolve();
                     },
+                    onLatencyReport: (streamOffsetMs: number) => {
+                        this.onWorkerLatencyReport(streamOffsetMs);
+                        return Promise.resolve();
+                    },
+                    onPullEnded: (errorMessage: string | null) => {
+                        void this.reportEnded(errorMessage ?? undefined);
+                        return Promise.resolve();
+                    },
                 }
             );
+
+            // Mirror main-thread ConnectivityUI → worker's WorkerConnectivityUI
+            // so the worker's Api peer honours `isDotNetRpcConnected`.
+            const pushConnectivity = (): void => {
+                if (!this.decoderWorker) return;
+                void this.decoderWorker.onConnectivityUpdate(
+                    ConnectivityUI.isOnline,
+                    ConnectivityUI.isConnected,
+                    ConnectivityUI.isBlazorServer,
+                    rpcNoWait);
+            };
+            this.connectivityHandlerOnline = ConnectivityUI.isOnlineChanged.add(pushConnectivity);
+            this.connectivityHandlerConnected = ConnectivityUI.isConnectedChanged.add(pushConnectivity);
+            void ConnectivityUI.whenReady.then(pushConnectivity);
 
             if (this.useStreams) {
                 // Stream mode: transfer input stream to worker, output via RPC callback
@@ -395,30 +427,9 @@ export class VideoPlayer {
                 debugLog?.log('Decoder worker initialized (RPC mode)');
             }
 
-            // Off-thread render path: ask the worker to construct its generator
-            // (MSTG on Chromium, VTG on Safari) and ship a track back. If the
-            // worker has neither API, swap to the canvas backend at runtime.
-            if (this.renderBackend.isOffThread && 'setupWorker' in this.renderBackend) {
-                const backend = this.renderBackend as OffThreadRenderBackend;
-                const ok = await backend.setupWorker(
-                    this.decoderWorker, this.authorId, this.startedAtMs, this.jitterBufferMs);
-                if (ok) {
-                    debugLog?.log('Off-thread renderer wired to decoder worker');
-                } else {
-                    warnLog?.log('Off-thread renderer unavailable in worker — falling back to canvas');
-                    backend.dispose();
-                    this.renderBackend = new CanvasRenderBackend(this.canvas);
-                    const container = this.canvas.parentElement;
-                    if (container) {
-                        container.classList.remove('backend-mstg');
-                        container.classList.add('backend-canvas');
-                    }
-                    // start() was skipped its render loop assuming off-thread;
-                    // kick it now that we know the backend is canvas.
-                    if (this.isPlaying)
-                        this.startRenderLoop();
-                }
-            }
+            // Off-thread renderer activation now happens inside `startPull`,
+            // because the worker needs streamId + skipToMs to start the pull
+            // loop in one shot.
 
             // If we have codec settings (SPS/PPS for H.264/HEVC) we don't need
             // to wait for a keyframe with description — the description alone
@@ -1273,6 +1284,25 @@ export class VideoPlayer {
             return;
         }
 
+        // Off-thread path: hand the entire Fusion RPC pull to the decoder worker.
+        // Main thread becomes silent on the per-frame path.
+        if (this.renderBackend.isOffThread && !this.offThreadPullActive && this.decoderWorker) {
+            const ok = await this.delegatePullToWorker(streamId, skipToMs);
+            if (ok) return;
+            // Worker rejected (no MSTG/VTG) — fall back to main-thread canvas + pull.
+            warnLog?.log('Off-thread pull unavailable in worker — falling back to canvas + main-thread pull');
+            (this.renderBackend as { dispose: () => void }).dispose();
+            this.renderBackend = new CanvasRenderBackend(this.canvas);
+            const container = this.canvas.parentElement;
+            if (container) {
+                container.classList.remove('backend-mstg');
+                container.classList.add('backend-canvas');
+            }
+            // start() was already called by Blazor before startPull, so isPlaying is true here.
+            this.startRenderLoop();
+            // Fall through to existing main-thread pull below.
+        }
+
         // Cancel any existing pull
         this.pullAbortController?.abort();
         const abortController = new AbortController();
@@ -1440,6 +1470,85 @@ export class VideoPlayer {
         };
     }
 
+    // Hands the entire Fusion RPC pull to the decoder worker. Returns true on
+    // success, false if neither tier of off-thread setup works — caller falls
+    // back to canvas + main-thread pull.
+    //
+    // Two-tier setup. Tier 2 first: if main-thread globalThis exposes
+    // MediaStreamTrackGenerator (Chromium today), construct it here, attach the
+    // track to the <video> immediately, and ship the writable to the worker.
+    // Tier 1: if no main MSTG, let the worker try to construct MSTG/VTG itself
+    // (Safari workers, future Chromium worker MSTG). The worker rejects when
+    // neither tier yields a writable.
+    private async delegatePullToWorker(streamId: string, skipToMs: number): Promise<boolean> {
+        if (!this.decoderWorker) return false;
+
+        let mainGenerator: MediaStreamTrack | null = null;
+        let mainWritable: WritableStream<VideoFrame> | undefined;
+        const Ctor = (globalThis as unknown as {
+            MediaStreamTrackGenerator?: new (init: { kind: 'video' }) => MediaStreamTrack & { readonly writable: WritableStream<VideoFrame> };
+        }).MediaStreamTrackGenerator;
+        if (typeof Ctor === 'function') {
+            try {
+                const generator = new Ctor({ kind: 'video' });
+                mainGenerator = generator;
+                mainWritable = generator.writable;
+                const backend = this.renderBackend as { onTrackReady?: (t: MediaStreamTrack) => void };
+                if (typeof backend.onTrackReady === 'function')
+                    backend.onTrackReady(generator);
+                debugLog?.log('Tier 2: main-thread MSTG constructed, track attached');
+            } catch (e) {
+                warnLog?.log('Main-thread MSTG construct failed, falling back to worker tier:', e);
+                mainGenerator = null;
+                mainWritable = undefined;
+            }
+        }
+
+        const channel = new MessageChannel();
+        AudioVideoSync.subscribeWorker(this.authorId, channel.port1);
+        this.offThreadSyncChannel = channel;
+        const apiUrl = BrowserInit.getUrl('/rpc/ws').replace(/^http/, 'ws');
+        // Main-thread Api is needed once for ReportVideoLatency; the worker
+        // owns the per-frame pull, so this initialises the main-side peer
+        // for control-plane RPCs only. Idempotent.
+        initVideoRpc();
+        try {
+            await this.decoderWorker.startPullInWorker(
+                streamId, skipToMs, apiUrl,
+                this.startedAtMs, this.jitterBufferMs,
+                channel.port2,
+                mainWritable);
+            this.offThreadPullActive = true;
+            debugLog?.log(`Off-thread pull started for ${streamId}, skipTo=${skipToMs}ms (tier ${mainWritable ? 2 : 1})`);
+            return true;
+        } catch (e) {
+            warnLog?.log('startPullInWorker rejected:', e);
+            if (mainGenerator) {
+                try { mainGenerator.stop(); } catch { /* ignore */ }
+            }
+            AudioVideoSync.unsubscribeWorker(this.authorId, channel.port1);
+            try { channel.port1.close(); } catch { /* ignore */ }
+            this.offThreadSyncChannel = null;
+            return false;
+        }
+    }
+
+    private onWorkerLatencyReport(streamOffsetMs: number): void {
+        if (streamOffsetMs > this.lastArrivedOffsetMs)
+            this.lastArrivedOffsetMs = streamOffsetMs;
+        const isVisible = !document.hidden;
+        const renderLevel = this.computeRenderQualityLevel();
+        try {
+            void streamingApi.streamServer.ReportVideoLatency(this.streamId, {
+                StreamOffsetMs: streamOffsetMs,
+                RenderQuality: renderLevel,
+                IsVisible: isVisible,
+            });
+        } catch (e) {
+            warnLog?.log('ReportVideoLatency failed:', e);
+        }
+    }
+
     public async stop(): Promise<void> {
         if (!this.isPlaying) return;
 
@@ -1484,6 +1593,25 @@ export class VideoPlayer {
         }
 
         this.stopPull();
+
+        // Off-thread cleanup
+        if (this.offThreadPullActive && this.decoderWorker) {
+            try { void this.decoderWorker.stopPullInWorker(rpcNoWait); } catch { /* ignore */ }
+            this.offThreadPullActive = false;
+        }
+        if (this.offThreadSyncChannel) {
+            AudioVideoSync.unsubscribeWorker(this.authorId, this.offThreadSyncChannel.port1);
+            try { this.offThreadSyncChannel.port1.close(); } catch { /* ignore */ }
+            this.offThreadSyncChannel = null;
+        }
+        if (this.connectivityHandlerOnline) {
+            ConnectivityUI.isOnlineChanged.remove(this.connectivityHandlerOnline);
+            this.connectivityHandlerOnline = null;
+        }
+        if (this.connectivityHandlerConnected) {
+            ConnectivityUI.isConnectedChanged.remove(this.connectivityHandlerConnected);
+            this.connectivityHandlerConnected = null;
+        }
 
         // Close all pending frames
         for (const frame of this.pendingFrames) {
