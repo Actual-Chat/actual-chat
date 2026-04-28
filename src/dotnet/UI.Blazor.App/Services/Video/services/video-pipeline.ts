@@ -220,6 +220,19 @@ export class VideoPipeline implements IVideoPipeline {
     private trackEndedHandler: (() => void) | null = null;
     private inputTrack: MediaStreamTrack | null = null;
 
+    // Reconfigure debounce. Server-side hysteresis (LatencyStepDownConsecutiveChecks)
+    // is the primary defense against quality-preset ping-pong; this is belt-and-
+    // braces. If a fresh reconfigure arrives within `reconfigureCoalesceMs` of
+    // the previous one, the new target replaces the pending one and they share
+    // a single worker round-trip. Each suppressed call avoids one WebGPU
+    // downscaler dispose/realloc + one WebCodecs encoder reconfigure (forced
+    // keyframe), both of which spike CPU/GPU and prolong any congestion that
+    // triggered the step-down in the first place.
+    private readonly reconfigureCoalesceMs = 1000;
+    private reconfigureTimer: ReturnType<typeof setTimeout> | null = null;
+    private reconfigurePendingTarget: { bitrate: number; width: number; height: number } | null = null;
+    private reconfigureLastFiredAt = 0;
+
     // Server clock sync
     private clockUnsubscribe: (() => void) | null = null;
 
@@ -440,10 +453,22 @@ export class VideoPipeline implements IVideoPipeline {
             screen.orientation.addEventListener('change', this.orientationChangeHandler);
         }
 
-        // Start stats polling
+        // Start stats polling. Skip if a previous request is still in flight —
+        // when the worker is overcommitted (GC pause, encoder reconfigure
+        // storm, large frame queue) `getStats()` can take seconds, and a naive
+        // setInterval would queue up unbounded in-flight RPC promises, each
+        // pinning a resolver chain in the parent's heap and amplifying GC
+        // pressure on the very thread we're trying to keep responsive.
+        let statsInflight = false;
         this.statsInterval = window.setInterval(() => {
+            if (statsInflight) return;
+            statsInflight = true;
             void (async () => {
-                this.currentStats = await this.worker.getStats();
+                try {
+                    this.currentStats = await this.worker.getStats();
+                } finally {
+                    statsInflight = false;
+                }
             })();
         }, 1000);
 
@@ -580,6 +605,9 @@ export class VideoPipeline implements IVideoPipeline {
         // Stop stats polling
         if (this.statsInterval) { clearInterval(this.statsInterval); this.statsInterval = null; }
         if (this.diagnosticsInterval) { clearInterval(this.diagnosticsInterval); this.diagnosticsInterval = null; }
+        if (this.reconfigureTimer !== null) { clearTimeout(this.reconfigureTimer); this.reconfigureTimer = null; }
+        this.reconfigurePendingTarget = null;
+        this.reconfigureLastFiredAt = 0;
 
         // Stop frame pump (RPC fallback)
         this.processing = false;
@@ -608,6 +636,35 @@ export class VideoPipeline implements IVideoPipeline {
     async reconfigure(params: { bitrate: number; width: number; height: number }): Promise<void> {
         // Don't reconfigure while server-paused — wait for resumeEncoding
         if (this.serverPaused) return;
+
+        const now = performance.now();
+        const sinceLast = now - this.reconfigureLastFiredAt;
+
+        // Inside the coalesce window: defer and let any later call override the
+        // target. The most-recent target wins.
+        if (this.reconfigureLastFiredAt > 0 && sinceLast < this.reconfigureCoalesceMs) {
+            this.reconfigurePendingTarget = params;
+            if (this.reconfigureTimer === null) {
+                const delay = this.reconfigureCoalesceMs - sinceLast;
+                this.reconfigureTimer = setTimeout(() => {
+                    this.reconfigureTimer = null;
+                    const target = this.reconfigurePendingTarget;
+                    this.reconfigurePendingTarget = null;
+                    if (target) void this.applyReconfigure(target);
+                }, delay);
+                debugLog?.log(`reconfigure: coalescing for ${delay}ms (target ${params.width}x${params.height})`);
+            } else {
+                debugLog?.log(`reconfigure: replacing pending target → ${params.width}x${params.height}`);
+            }
+            return;
+        }
+
+        await this.applyReconfigure(params);
+    }
+
+    private async applyReconfigure(params: { bitrate: number; width: number; height: number }): Promise<void> {
+        if (this.serverPaused) return;
+        this.reconfigureLastFiredAt = performance.now();
 
         infoLog?.log(`Reconfiguring: ${params.bitrate / 1_000_000}Mbps, ${params.width}x${params.height}`);
 

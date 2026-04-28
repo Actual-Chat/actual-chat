@@ -108,6 +108,23 @@ export function ensureRpcPush(ctx: StreamingContext): void {
 }
 
 /**
+ * Hard cap on the producer-side frame queue. If server ACKs stall (slow link,
+ * server overload, peer reconnect), the unbounded Denque used to grow into
+ * tens of MB of encoded chunks → V8 major GC pauses → main-thread freeze.
+ *
+ * 60 frames ≈ 2 s at 30 fps — one full keyframe interval of headroom. Above
+ * that we'd rather drop than buffer; live video can't catch up anyway.
+ */
+const MAX_QUEUE_LENGTH = 60;
+
+export interface InternalVideoStreamCallbacks {
+    /** Fired when overflow forced us to drop a keyframe (or run out of
+     *  non-keyframes to drop). Listener should ask the encoder to emit a fresh
+     *  keyframe so the stream stays decodable downstream. */
+    onNeedKeyframe?: () => void;
+}
+
+/**
  * In-worker video stream producer. Buffers encoded frames and pumps them to
  * the server via `IStreamServer.PushVideo` over Fusion RPC binary transport.
  */
@@ -115,6 +132,7 @@ export class InternalVideoStream {
     private readonly frames = new Denque<VideoStreamFrame>();
     private readonly frameAdded = new EventHandlerSet<void>();
     private addedFrameCount = 0;
+    private droppedFrameCount = 0;
 
     public isCompleted = false;
     public isDisposed = false;
@@ -132,6 +150,7 @@ export class InternalVideoStream {
         },
         private readonly ctx: StreamingContext,
         streamAfter?: Promise<void>,
+        private readonly callbacks: InternalVideoStreamCallbacks = {},
     ) {
         this.whenDisposed = this.stream(streamAfter);
     }
@@ -139,6 +158,10 @@ export class InternalVideoStream {
     addFrame(frame: VideoStreamFrame): void {
         if (this.isCompleted) return;
         if (frame.data.byteLength === 0) return;
+
+        if (this.frames.length >= MAX_QUEUE_LENGTH) {
+            this.dropForOverflow();
+        }
 
         this.frames.push(frame);
         this.addedFrameCount++;
@@ -151,8 +174,40 @@ export class InternalVideoStream {
         this.frameAdded.trigger();
     }
 
+    /**
+     * Free a slot when the queue is full. Prefer dropping the oldest
+     * non-keyframe (delta frames between keyframes are independently
+     * disposable). If only keyframes remain, drop the oldest one and signal
+     * the encoder to emit a fresh keyframe — otherwise the stream becomes
+     * un-decodable from the next delta forward.
+     */
+    private dropForOverflow(): void {
+        let nonKeyIdx = -1;
+        for (let i = 0; i < this.frames.length; i++) {
+            if (!this.frames.peekAt(i)!.isKeyFrame) { nonKeyIdx = i; break; }
+        }
+        if (nonKeyIdx >= 0) {
+            this.frames.removeOne(nonKeyIdx);
+        } else {
+            this.frames.shift();
+            this.callbacks.onNeedKeyframe?.();
+        }
+        this.droppedFrameCount++;
+        if (this.droppedFrameCount === 1 || this.droppedFrameCount % 60 === 0) {
+            warnLog?.log(`Stream queue overflow: dropped=${this.droppedFrameCount} queue=${this.frames.length}/${MAX_QUEUE_LENGTH}`);
+        }
+    }
+
     getAddedFrameCount(): number {
         return this.addedFrameCount;
+    }
+
+    getDroppedFrameCount(): number {
+        return this.droppedFrameCount;
+    }
+
+    getQueueLength(): number {
+        return this.frames.length;
     }
 
     complete(): void {

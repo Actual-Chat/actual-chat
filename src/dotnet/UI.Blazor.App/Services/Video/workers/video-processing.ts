@@ -834,6 +834,7 @@ function deliverChunkToStream(
                 },
                 streamCtx,
                 lastVideoStream?.whenDisposed,
+                { onNeedKeyframe: () => { nextFrameIsKeyFrame = true; } },
             );
             lastVideoStream = videoStream;
             streamRecreations++;
@@ -1787,10 +1788,33 @@ export const serverImpl: VideoProcessingWorker = {
 
     // eslint-disable-next-line @typescript-eslint/require-await
     getStats: async (): Promise<VideoProcessingStats> => {
-        const encoderStats = encoder?.getStats() ?? {
+        const baseStats = encoder?.getStats() ?? {
             encodedFrames: 0, droppedFrames: 0, keyFrames: 0, totalBytes: 0,
             averageEncodeTime: 0, medianEncodeTime: 0, pureMedianEncodeTime: -1,
             configuredWidth: 0, configuredHeight: 0, configuredBitrate: 0, hardwareAcceleration: 'unknown',
+        };
+        // Fold simulcast extras into the headline counters. Without this the
+        // diagnostics log compared base-only `totalBytes` (the bytes a 1.3 Mbps
+        // base layer emits) to the SUM of all configured caps (base + extras),
+        // producing nonsense like `actual=10Mbps cfg=1.3Mbps`. Per-encoder
+        // dims and HW acceleration still reflect the base — there's only one
+        // headline number for those.
+        let extraBytes = 0, extraEncoded = 0, extraDropped = 0, extraKey = 0, extraBitrate = 0;
+        for (const e of extraLayerEncoders) {
+            const s = e.getStats();
+            extraBytes += s.totalBytes;
+            extraEncoded += s.encodedFrames;
+            extraDropped += s.droppedFrames;
+            extraKey += s.keyFrames;
+            extraBitrate += s.configuredBitrate;
+        }
+        const encoderStats = {
+            ...baseStats,
+            totalBytes: baseStats.totalBytes + extraBytes,
+            encodedFrames: baseStats.encodedFrames + extraEncoded,
+            droppedFrames: baseStats.droppedFrames + extraDropped,
+            keyFrames: baseStats.keyFrames + extraKey,
+            configuredBitrate: baseStats.configuredBitrate + extraBitrate,
         };
         const segStats: SegmentationStats | null = segInitialized ? {
             processedFrames: segProcessedFrames,
@@ -1805,6 +1829,8 @@ export const serverImpl: VideoProcessingWorker = {
         const streamStats: VideoProcessingStreamingStats | null = streamingEnabled ? {
             sentFrames: videoStream?.getAddedFrameCount() ?? 0,
             pendingFrames: pendingStreamFrames.length,
+            queueLength: videoStream?.getQueueLength() ?? 0,
+            queueDrops: videoStream?.getDroppedFrameCount() ?? 0,
             streamRecreations,
             status: streamStatus,
             lastError: streamError,

@@ -119,6 +119,9 @@ public sealed class StreamLatencyStore(IServiceProvider services)
         private readonly Queue<float> _samples = new();
         private readonly Lock _lock = new();
         private readonly CpuTimestamp _createdAt;
+        // Consecutive RecordLatency calls observing IsNetworkSlow=true. Drives
+        // hysteresis on the spatial/temporal cap drop — see RecordLatency.
+        private int _consecutiveSlowSamples;
 
         public PeerLatencyState() : this(CpuTimestamp.Now) { }
 
@@ -238,15 +241,31 @@ public sealed class StreamLatencyStore(IServiceProvider services)
                 var slow = IsNetworkSlow;
                 var fast = IsNetworkFast;
 
-                // Temporal: only drop enhancement layers under congestion.
-                MaxTemporalLayer = slow ? 0 : int.MaxValue;
+                // Hysteresis on the slow-induced cap drop. Without this, a single
+                // slow sample collapses the spatial cap to 0 → aggregatedMaxSpatial
+                // recomputes → publisher gets a fresh QualityPreset → JS-side
+                // setSpatialLayers tears down extras → fresh keyframe across all
+                // layers → encoder churn that prolongs the very congestion we're
+                // reacting to. Match the quality-level step-down rule
+                // (LatencyStepDownConsecutiveChecks): require N consecutive slow
+                // samples before dropping the cap. Step-up (slow→fast) stays
+                // instantaneous so we recover bandwidth headroom without delay.
+                if (slow)
+                    _consecutiveSlowSamples++;
+                else
+                    _consecutiveSlowSamples = 0;
+                var sustainedSlow = _consecutiveSlowSamples >= Constants.Video.LatencyStepDownConsecutiveChecks;
 
-                // Spatial: ladder-agnostic. Slow → base only; fast → uncapped (server filter
-                // clamps to producer's observedMaxSpatial, whatever that turns out to be);
-                // borderline → mid (~spatial=1). Hard-coding `fast → 2` pinned receivers to
-                // the 3rd layer of any ladder, which silently caps a 4-tier 1080p ladder at
-                // its 720p tier even on a fast network. int.MaxValue lets observedMax decide.
-                MaxSpatialLayer = slow ? 0 : fast ? int.MaxValue : 1;
+                // Temporal: only drop enhancement layers under sustained congestion.
+                MaxTemporalLayer = sustainedSlow ? 0 : int.MaxValue;
+
+                // Spatial: ladder-agnostic. Sustained slow → base only; fast → uncapped
+                // (server filter clamps to producer's observedMaxSpatial, whatever that
+                // turns out to be); borderline OR transient slow → mid (~spatial=1).
+                // Hard-coding `fast → 2` pinned receivers to the 3rd layer of any
+                // ladder, which silently caps a 4-tier 1080p ladder at its 720p tier
+                // even on a fast network. int.MaxValue lets observedMax decide.
+                MaxSpatialLayer = sustainedSlow ? 0 : fast ? int.MaxValue : 1;
             }
         }
 
@@ -378,6 +397,7 @@ public sealed class StreamLatencyStore(IServiceProvider services)
         private CpuTimestamp _lastThroughputCheckAt = CpuTimestamp.Now;
         private CpuTimestamp _lastByteReceivedAt = CpuTimestamp.Now;
         private int _consecutiveHighThroughputChecks;
+        private int _consecutiveNetworkSlowChecks;
         // Highest SpatialLayerId observed across all incoming frames. >0 means
         // simulcast is active — multi-encoder bytes legitimately sum past any
         // single-layer target, so OVER-DELIVERY (which models single-encoder
@@ -530,16 +550,27 @@ public sealed class StreamLatencyStore(IServiceProvider services)
                     : Constants.Video.PeerOutlierRatio;
 
                 if (networkSlowRatio > effectiveOutlierRatio) {
-                    var stepped = VideoQualityPreset.StepDown(currentQuality, Kind);
-                    if (stepped != null) {
-                        _lastQualityChangeAt = CpuTimestamp.Now;
-                        QualityPreset.Value = stepped;
-                        Log.LogInformation(
-                            "EvaluateQuality: STEP DOWN {OldLevel} -> {NewLevel}, networkSlow={NetworkSlow}, receiverSlow={ReceiverSlow}, total={TotalCount} (threshold={Threshold:F2})",
-                            currentQuality, stepped.Level, networkSlowCount, receiverSlowCount, peers.Count, effectiveOutlierRatio);
+                    _consecutiveNetworkSlowChecks++;
+                    if (_consecutiveNetworkSlowChecks >= Constants.Video.LatencyStepDownConsecutiveChecks) {
+                        var stepped = VideoQualityPreset.StepDown(currentQuality, Kind);
+                        if (stepped != null) {
+                            _consecutiveNetworkSlowChecks = 0;
+                            _lastQualityChangeAt = CpuTimestamp.Now;
+                            QualityPreset.Value = stepped;
+                            Log.LogInformation(
+                                "EvaluateQuality: STEP DOWN {OldLevel} -> {NewLevel}, networkSlow={NetworkSlow}, receiverSlow={ReceiverSlow}, total={TotalCount} (threshold={Threshold:F2})",
+                                currentQuality, stepped.Level, networkSlowCount, receiverSlowCount, peers.Count, effectiveOutlierRatio);
+                        }
+                    }
+                    else {
+                        DebugLog?.LogDebug(
+                            "EvaluateQuality: STEP DOWN deferred ({Consecutive}/{Required}), networkSlow={NetworkSlow}, total={TotalCount}",
+                            _consecutiveNetworkSlowChecks, Constants.Video.LatencyStepDownConsecutiveChecks,
+                            networkSlowCount, peers.Count);
                     }
                 }
                 else if (totalSlowCount == 0 && _lastQualityChangeAt.Elapsed >= Constants.Video.QualityHysteresisWindow) {
+                    _consecutiveNetworkSlowChecks = 0;
                     // Step-up only when all peers are unambiguously fast. Borderline
                     // peers (neither slow nor fast — e.g. still building samples)
                     // hold quality but must still reach aggregation below so the
@@ -574,10 +605,15 @@ public sealed class StreamLatencyStore(IServiceProvider services)
                         }
                     }
                 }
-                else
+                else {
+                    // Borderline: some peers slow but not enough to trip step-down.
+                    // Reset the consecutive counter so a stale single-tick blip
+                    // can't combine with a future blip into a bogus step-down.
+                    _consecutiveNetworkSlowChecks = 0;
                     DebugLog?.LogDebug(
                         "EvaluateQuality: HOLD at {Level}, networkSlow={NetworkSlow}, receiverSlow={ReceiverSlow}, total={TotalCount}",
                         currentQuality, networkSlowCount, receiverSlowCount, peers.Count);
+                }
 
                 // Aggregate per-peer layer demands into the stream-wide preset so the
                 // sender (subscribed via Fusion on GetQualityPreset) knows which

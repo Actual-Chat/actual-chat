@@ -65,6 +65,14 @@ public static partial class Constants
         // catches real congestion; encoder output is content-driven and routinely below target.
         public static readonly float ThroughputOverDeliveryRatio = 2.5f; // Step down when actual > 250% of target
         public static readonly int ThroughputStepDownConsecutiveChecks = 2; // Require 2 consecutive high checks
+        // Latency-driven step-down hysteresis. Without this the publisher
+        // ping-pongs between presets every QualityDecisionInterval (~2s) on a
+        // single congestion blip — each switch reconfigures the WebCodecs
+        // encoder + WebGPU downscaler and forces a keyframe, which is the very
+        // load that prolongs the congestion. Two consecutive samples = ~4s of
+        // sustained slowness before we step down. Step-up keeps its longer
+        // QualityHysteresisWindow (5s) so we don't oscillate at the boundary.
+        public static readonly int LatencyStepDownConsecutiveChecks = 2;
 
         // PLI rate limiting
         public static readonly TimeSpan KeyFrameRequestCooldown = TimeSpan.FromSeconds(5);
