@@ -124,7 +124,6 @@
         var isWatchingHere = chatId == watchingChatId;
         var isVideoPanelCollapsed = isWatchingHere && await ChatVideoUI.GetIsVideoPanelCollapsed(cancellationToken).ConfigureAwait(false);
         var model = new Model(chatId, audioState, isAnyoneTalking, hasRemoteStreams, isOwnVideoStreaming, isWatchingHere, isVideoPanelCollapsed);
-        Hub.LogFor(this.GetType()).LogInformation("Computed chat activity panel state for chat {ChatId}: {Model}", chatId, model);
         return model;
     }
 
