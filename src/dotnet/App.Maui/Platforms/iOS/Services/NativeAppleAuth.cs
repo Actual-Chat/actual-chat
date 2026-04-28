@@ -8,7 +8,7 @@ public sealed class NativeAppleAuth(IServiceProvider services)
     private ICommander Commander { get; } = services.Commander();
     private TrueSessionResolver SessionResolver { get; } = services.GetRequiredService<TrueSessionResolver>();
 
-    public async Task SignIn(bool mustExist = false)
+    public async Task SignIn()
     {
         var options = new AppleSignInAuthenticator.Options() {
             IncludeEmailScope = true,
@@ -21,7 +21,7 @@ public sealed class NativeAppleAuth(IServiceProvider services)
         var name = result.Properties["name"];
         var userId = result.Properties["user_id"];
         var session = await SessionResolver.GetSession().ConfigureAwait(false);
-        var command = new NativeAuth_SignInApple(session, userId, code, email, name, mustExist);
+        var command = new NativeAuth_SignInApple(session, userId, code, email, name);
         await Commander.Call(command, true).ConfigureAwait(false);
     }
 }

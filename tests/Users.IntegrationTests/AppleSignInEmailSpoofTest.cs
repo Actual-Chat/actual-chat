@@ -144,6 +144,11 @@ public class AppleSignInEmailSpoofTest(AppHostFixture fixture, ITestOutputHelper
         Out.WriteLine($"SignInError: {signInError}");
         signInError.Should().BeNullOrEmpty("sign-in should not produce errors");
 
+        // First-time Apple sign-in stashes a PendingRegistration prompt instead
+        // of auto-creating; the equivalent of the user clicking "Register" in
+        // the UI is calling Accounts_ConfirmRegister.
+        await AppHost.ConfirmPendingRegistration(session);
+
         var ct = CancellationToken.None;
         var cAccount = await Computed
             .Capture(() => Accounts.GetOwn(session, ct), ct);

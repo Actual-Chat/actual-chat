@@ -2,6 +2,7 @@ using System.Net.Mail;
 using System.Security.Claims;
 using ActualChat.Db;
 using ActualChat.Flows;
+using ActualChat.Security;
 using ActualChat.Users.Db;
 using ActualChat.Users.Flows;
 using ActualChat.Users.Module;
@@ -30,6 +31,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     private IDbEntityResolver<string, DbAccount> DbAccountResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbAccount>>();
     private UsersSettings UsersSettings => field ??= Services.GetRequiredService<UsersSettings>();
     private AccountNameValidator AccountNameValidator => field ??= Services.GetRequiredService<AccountNameValidator>();
+    private ISecureTokensBackend SecureTokensBackend => field ??= Services.GetRequiredService<ISecureTokensBackend>();
 
     // [ComputeMethod]
     public virtual async Task<AccountFull?> Get(UserId userId, CancellationToken cancellationToken)
@@ -159,7 +161,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     // [CommandHandler]
     public virtual async Task OnSignIn(AccountsBackend_SignIn command, CancellationToken cancellationToken = default)
     {
-        var (session, authenticatedIdentity, identities, claims, mustExist) = command;
+        var (session, authenticatedIdentity, identities, claims, autoCreate) = command;
         session.RequireValid();
         if (session.Kind is not SessionKind.Session)
             throw StandardError.Constraint("Regular Session is required here.");
@@ -216,10 +218,24 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         }
 
         if (userId is null) {
-            if (mustExist)
-                throw StandardError.Constraint("Account not found. Register instead?");
+            if (!autoCreate) {
+                // No account exists yet — stash a SecureToken with the sign-in payload and
+                // surface it via SessionTemporals so the UI can ask the user to confirm
+                // registration. Accounts.OnConfirmRegister re-issues this command with
+                // AutoCreate=true to actually create the account.
+                var pending = new PendingRegistration(session, authenticatedIdentity, identities, claims);
+                var token = await pending.Encode(SecureTokensBackend, cancellationToken).ConfigureAwait(false);
+                var info = new PendingRegistrationInfo(
+                    Provider: AuthSchema.DisplayNames.GetValueOrDefault(authenticatedIdentity.Schema, authenticatedIdentity.Schema),
+                    Identifier: GetPendingRegistrationIdentifier(authenticatedIdentity, identities, claims),
+                    Token: token);
+                var setCmd = new SessionTemporalsBackend_Set(
+                    session, Constants.SessionTemporals.PendingRegistrationKey, info.ToJson());
+                await Commander.Call(setCmd, true, cancellationToken).ConfigureAwait(false);
+                return;
+            }
 
-            // No user found by identity or internalUserId - create new account
+            // Confirmed registration - create new account
             account = UpdateExistingAccount(null, internalUserId);
             var dbAccount = await CreateDbAccount(dbContext, account, cancellationToken).ConfigureAwait(false);
             userId = UserId.Parse(dbAccount.Id);
@@ -245,6 +261,11 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             AuthenticatedIdentity = authenticatedIdentity,
         };
         await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
+
+        // Clear any stale pending-registration prompt now that we have a real account.
+        var clearPendingCmd = new SessionTemporalsBackend_Set(
+            session, Constants.SessionTemporals.PendingRegistrationKey, null);
+        await Commander.Call(clearPendingCmd, true, cancellationToken).ConfigureAwait(false);
 
         // Emit UserSignedInEvent
         context.Operation.AddEvent(new UserSignedInEvent(userId, session));
@@ -487,6 +508,24 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
                 return true; // test agent email
         }
         return false;
+    }
+
+    private static string GetPendingRegistrationIdentifier(
+        UserIdentity authenticatedIdentity,
+        ApiMap<UserIdentity, string> identities,
+        ApiMap<string, string> claims)
+    {
+        var schema = authenticatedIdentity.Schema;
+        if (schema == AuthSchema.Phone || schema == AuthSchema.HashedPhone) {
+            var phone = identities.GetPhones().FirstOrDefault();
+            return phone is not null ? phone.Value : authenticatedIdentity.Value;
+        }
+        if (schema == AuthSchema.Email || schema == AuthSchema.HashedEmail)
+            return identities.GetEmails().FirstOrDefault() ?? authenticatedIdentity.Value;
+        // External providers (Google/Apple): show the email claim if available
+        return claims.GetValueOrDefault(ClaimTypes.Email, "").NullIfEmpty()
+            ?? identities.GetEmails().FirstOrDefault()
+            ?? authenticatedIdentity.Value;
     }
 
     private static AccountFull? GetGuestAccount(UserId userId)

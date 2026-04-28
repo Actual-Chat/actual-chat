@@ -155,7 +155,7 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
         if (!userInfo.Email.IsNullOrEmpty())
             claims = claims.With(ClaimTypes.Email, userInfo.Email);
 
-        var signInCommand = new AccountsBackend_SignIn(session, userIdentity, identities, claims);
+        var signInCommand = new AccountsBackend_SignIn(session, userIdentity, identities, claims, AutoCreate: true);
         await commander.Call(signInCommand, cancellationToken).ConfigureAwait(false);
 
         // Fetch its account

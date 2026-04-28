@@ -71,6 +71,10 @@ public class TestAgentSignInTest(AppHostFixture fixture, ITestOutputHelper @out)
         var success = await _tester.Commander.Call(validateCmd);
         success.Should().BeTrue();
 
+        // First-time TOTP sign-in stashes a PendingRegistration prompt; emulate
+        // the user clicking "Register" in the confirmation modal.
+        await AppHost.ConfirmPendingRegistration(session);
+
         var account = await _tester.Accounts.GetOwn(session, default);
         account.Should().NotBeNull();
         return (account, emailString);

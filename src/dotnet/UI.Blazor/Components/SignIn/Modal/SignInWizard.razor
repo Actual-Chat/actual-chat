@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @{
     var reason = Reason.NullIfEmpty() ?? $"to {CoreConstants.AppName}";
-    var actionText = _model.IsRegister ? "Register" : "Sign in";
+    var actionText = "Sign in";
 }
 
 <Stepper Context="stepper">

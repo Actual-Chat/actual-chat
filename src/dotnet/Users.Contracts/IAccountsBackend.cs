@@ -55,7 +55,9 @@ public sealed partial record AccountsBackend_SignIn(
     [property: DataMember, MemoryPackOrder(1), Key(1)] UserIdentity AuthenticatedIdentity,
     [property: DataMember, MemoryPackOrder(2), Key(2)] ApiMap<UserIdentity, string> Identities, // May not include AuthenticatedIdentity
     [property: DataMember, MemoryPackOrder(3), Key(3)] ApiMap<string, string> Claims,
-    [property: DataMember, MemoryPackOrder(4), Key(4)] bool MustExist = false
+    // When true, missing account is created instead of stashed as a pending registration.
+    // Only Accounts.OnConfirmRegister sets this; all other callers leave it false.
+    [property: DataMember, MemoryPackOrder(4), Key(4)] bool AutoCreate = false
 ) : ISessionCommand<Unit>, IBackendCommand;
 
 /// <summary>

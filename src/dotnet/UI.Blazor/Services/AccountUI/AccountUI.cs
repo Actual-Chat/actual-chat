@@ -108,9 +108,9 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
     public virtual (string Name, string DisplayName)[] GetAuthSchemas()
         => _cachedAuthSchemas ??= AuthSchema.ToSchemasWithDisplayNames(AuthSchema.AllExternal);
 
-    public async Task SignIn(string schema, bool mustExist = false)
+    public async Task SignIn(string schema)
     {
-        await SignInBackend(schema, mustExist).ConfigureAwait(false);
+        await SignInBackend(schema).ConfigureAwait(false);
         // TODO(AY): Make it reliable
         await NotificationUI.EnsureDeviceRegistered(CancellationToken.None).ConfigureAwait(false);
     }
@@ -141,8 +141,8 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
 
     // Protected methods
 
-    protected virtual Task SignInBackend(string schema, bool mustExist)
-        => JS.InvokeVoidAsync($"{AuthJsClassName}.signIn", schema, mustExist).AsTask();
+    protected virtual Task SignInBackend(string schema)
+        => JS.InvokeVoidAsync($"{AuthJsClassName}.signIn", schema).AsTask();
 
     protected virtual Task SignOutBackend()
         => JS.InvokeVoidAsync($"{AuthJsClassName}.signOut").AsTask();

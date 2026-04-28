@@ -40,6 +40,10 @@ public class LegacyNativeAuthControllerTest(AppHostFixture fixture, ITestOutputH
         response.StatusCode.Should().Be(HttpStatusCode.OK,
             $"legacy route should still work. Body: {await response.Content.ReadAsStringAsync()}");
 
+        // First-time sign-in stashes a PendingRegistration prompt — confirm it
+        // to commit the account creation, then verify the user is signed in.
+        await AppHost.ConfirmPendingRegistration(session);
+
         var ct = CancellationToken.None;
         var cAccount = await Computed.Capture(() => Accounts.GetOwn(session, ct), ct);
         cAccount = await cAccount

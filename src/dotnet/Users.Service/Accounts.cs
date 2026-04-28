@@ -1,6 +1,7 @@
 using ActualChat.Contacts;
 using ActualChat.Geo;
 using ActualChat.Notification;
+using ActualChat.Security;
 using UAParser;
 
 namespace ActualChat.Users;
@@ -15,6 +16,7 @@ public class Accounts(IServiceProvider services) : IAccounts
 
     private ISessionsBackend SessionsBackend { get; } = services.GetRequiredService<ISessionsBackend>();
     private IAccountsBackend Backend { get; } = services.GetRequiredService<IAccountsBackend>();
+    private ISecureTokensBackend SecureTokensBackend { get; } = services.GetRequiredService<ISecureTokensBackend>();
     private ICommander Commander { get; } = services.Commander();
     private MomentClockSet Clocks { get; } = services.Clocks();
     private ILogger Log { get; } = services.LogFor<Accounts>();
@@ -212,6 +214,56 @@ public class Accounts(IServiceProvider services) : IAccounts
 
         var signOutCommand = new AccountsBackend_SignOut(targetSession, Deactivate: true);
         await Commander.Call(signOutCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnConfirmRegister(Accounts_ConfirmRegister command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return;
+
+        var (session, token) = command;
+        session.RequireValid();
+
+        var pending = PendingRegistrationExt.TryDecode(SecureTokensBackend, token, session)
+            ?? throw StandardError.Constraint("This registration request has expired. Please try signing in again.");
+
+        var signInCommand = new AccountsBackend_SignIn(
+            pending.Session,
+            pending.AuthenticatedIdentity,
+            pending.Identities,
+            pending.Claims,
+            AutoCreate: true);
+        await Commander.Call(signInCommand, true, cancellationToken).ConfigureAwait(false);
+
+        // Clear the pending-registration prompt — OnSignIn already does this on success,
+        // but call it here too in case the prompt key was somehow retained.
+        var clearCmd = new SessionTemporalsBackend_Set(
+            session, Constants.SessionTemporals.PendingRegistrationKey, null);
+        await Commander.Call(clearCmd, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnCancelRegister(Accounts_CancelRegister command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return;
+
+        var (session, token) = command;
+        session.RequireValid();
+
+        // Verify the token matches the session before clearing — prevents a stale prompt
+        // from cancelling a fresh one. If the token can't be decoded we still clear the
+        // SessionTemporal entry so the user isn't stuck with a stale modal.
+        _ = PendingRegistrationExt.TryDecode(SecureTokensBackend, token, session);
+
+        var clearCmd = new SessionTemporalsBackend_Set(
+            session, Constants.SessionTemporals.PendingRegistrationKey, null);
+        await Commander.Call(clearCmd, true, cancellationToken).ConfigureAwait(false);
+
+        var setErrorCmd = new SessionTemporalsBackend_Set(
+            session, Constants.SessionTemporals.SignInErrorKey, Constants.SessionTemporals.SignInCanceledMessage);
+        await Commander.Call(setErrorCmd, true, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
