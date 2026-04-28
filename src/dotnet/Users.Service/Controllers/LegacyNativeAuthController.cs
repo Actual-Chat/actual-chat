@@ -27,16 +27,18 @@ public sealed class LegacyNativeAuthController(IServiceProvider services) : Cont
         bool mustExist = false,
         CancellationToken cancellationToken = default)
     {
+        // mustExist is accepted but ignored — sign-in flow now always confirms registration via UI.
         var session = HttpContext.GetSessionFromHeader();
-        var command = new NativeAuth_SignInApple(session, userId, code, email, name, mustExist);
+        var command = new NativeAuth_SignInApple(session, userId, code, email, name);
         return Commander.Call(command, true, cancellationToken);
     }
 
     [HttpGet("sign-in-google")]
     public Task SignInGoogle(string code, bool mustExist = false, CancellationToken cancellationToken = default)
     {
+        // mustExist is accepted but ignored — sign-in flow now always confirms registration via UI.
         var session = HttpContext.GetSessionFromHeader();
-        var command = new NativeAuth_SignInGoogle(session, code, mustExist);
+        var command = new NativeAuth_SignInGoogle(session, code);
         return Commander.Call(command, true, cancellationToken);
     }
 }

@@ -129,7 +129,8 @@ public partial class Chats
         var botSession = Session.New();
         var userIdentity = new UserIdentity(UserIdentity.InternalSchema, userId.Value);
         var signInCommand = new AccountsBackend_SignIn(
-            botSession, userIdentity, ApiMap<UserIdentity, string>.Empty, ApiMap<string, string>.Empty);
+            botSession, userIdentity, ApiMap<UserIdentity, string>.Empty, ApiMap<string, string>.Empty,
+            AutoCreate: true);
         await Commander.Call(signInCommand, cancellationToken).ConfigureAwait(false);
 
         // Fetch & activate

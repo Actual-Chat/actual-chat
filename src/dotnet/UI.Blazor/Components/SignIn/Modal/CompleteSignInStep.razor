@@ -18,11 +18,9 @@
         <p class="c-title">Enter the code</p>
         <p class="c-text">
             @if (phone is not null) {
-                var phoneAction = TotpSignInModel.IsRegister ? "register" : "sign in";
-                <text>Please verify your phone number to @phoneAction and make it discoverable to friends on @CoreConstants.AppName.</text>
+                <text>Please verify your phone number to continue and make it discoverable to friends on @CoreConstants.AppName.</text>
             } else {
-                var emailAction = TotpSignInModel.IsRegister ? "register" : "sign in";
-                <text>Please verify your email address to @emailAction and make it discoverable to friends on @CoreConstants.AppName.</text>
+                <text>Please verify your email address to continue and make it discoverable to friends on @CoreConstants.AppName.</text>
             }
         </p>
     </div>

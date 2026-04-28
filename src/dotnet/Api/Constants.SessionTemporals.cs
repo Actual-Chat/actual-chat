@@ -5,5 +5,6 @@ public static partial class Constants
     public static class SessionTemporals
     {
         public const string SignInErrorKey = "SignInError";
+        public const string PendingRegistrationKey = "PendingRegistration";
     }
 }

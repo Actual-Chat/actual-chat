@@ -59,7 +59,7 @@ public static class TestAuthExt
             await WaitForSignOut(accounts, session, cancellationToken).ConfigureAwait(false);
         }
 
-        var command = new AccountsBackend_SignIn(session, userIdentity, newIdentities, account.Claims);
+        var command = new AccountsBackend_SignIn(session, userIdentity, newIdentities, account.Claims, AutoCreate: true);
         await commander.Call(command, cancellationToken).ConfigureAwait(false);
         return await WaitForSignIn(accounts, session, userIdentity, cancellationToken).ConfigureAwait(false);
     }
@@ -91,7 +91,7 @@ public static class TestAuthExt
             await WaitForSignOut(clientAccounts, session, cancellationToken).ConfigureAwait(false);
         }
 
-        var command = new AccountsBackend_SignIn(session, userIdentity, newIdentities, account.Claims);
+        var command = new AccountsBackend_SignIn(session, userIdentity, newIdentities, account.Claims, AutoCreate: true);
         await commander.Call(command, cancellationToken).ConfigureAwait(false);
         return await WaitForSignIn(clientAccounts, session, userIdentity, cancellationToken).ConfigureAwait(false);
     }

@@ -44,10 +44,6 @@ public sealed class AuthHelper
         var isAnyAuthFlow = isCloseFlow
             || IsSignInFlow(httpContext)
             || IsSignOutFlow(httpContext);
-        var mustExist = isCloseFlow
-            && httpContext.Request.Query.TryGetValue("mustExist", out var mustExistValues)
-            && int.TryParse(mustExistValues.FirstOrDefault(), out var mustExistValue)
-            && mustExistValue != 0;
 
         // Path A: Token-based session (MAUI sign-in/sign-out/close flows)
         // Token-based sessions are mobile app sessions — they must NEVER leak to browser's session cookie.
@@ -59,7 +55,7 @@ public sealed class AuthHelper
             if (!await Accounts.IsValidSession(tokenSession, cancellationToken).ConfigureAwait(false))
                 throw StandardError.Unauthorized("Your session is expired or deactivated. Please restart the app.");
             try {
-                await UpdateAuthState(tokenSession, httpContext, mustExist, cancellationToken).ConfigureAwait(false);
+                await UpdateAuthState(tokenSession, httpContext, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
                 signInError = e.Message;
@@ -67,7 +63,7 @@ public sealed class AuthHelper
                     tokenSession, Constants.SessionTemporals.SignInErrorKey, signInError);
                 await Commander.Run(setErrorCmd, true, cancellationToken).ConfigureAwait(false);
             }
-            return AuthState.New(tokenSession, isAnyAuthFlow, closeFlow, mustExist, signInError);
+            return AuthState.New(tokenSession, isAnyAuthFlow, closeFlow, signInError);
         }
 
         // Path B: Cookie-based session (normal web flow)
@@ -77,7 +73,7 @@ public sealed class AuthHelper
         var session = cookieSession ?? Session.New();
         for (var tryIndex = 0;; tryIndex++) {
             try {
-                await UpdateAuthState(session, httpContext, mustExist, cancellationToken).ConfigureAwait(false);
+                await UpdateAuthState(session, httpContext, cancellationToken).ConfigureAwait(false);
                 break;
             }
             catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
@@ -100,13 +96,12 @@ public sealed class AuthHelper
             httpContext.AddSessionCookie(session);
             // httpContext.Response.Cookies.Delete(RenderModeEndpoint.Cookie.Name!);
         }
-        return AuthState.New(session, isAnyAuthFlow, closeFlow, mustExist, signInError);
+        return AuthState.New(session, isAnyAuthFlow, closeFlow, signInError);
     }
 
     public async Task SignIn(
         Session session,
         ClaimsPrincipal principal,
-        bool mustExist,
         CancellationToken cancellationToken)
     {
         if (session.Kind is SessionKind.ApiKey)
@@ -128,7 +123,7 @@ public sealed class AuthHelper
         if (isSignedIn && IsSameAccount(existingAccount, principal, authSchema))
             return;
 
-        var signInCommand = await BuildSignInCommand(session, principal, authSchema, mustExist, cancellationToken)
+        var signInCommand = await BuildSignInCommand(session, principal, authSchema, cancellationToken)
             .ConfigureAwait(false);
         await Commander.Call(signInCommand, true, cancellationToken).ConfigureAwait(false);
     }
@@ -136,7 +131,6 @@ public sealed class AuthHelper
     public async Task UpdateAuthState(
         Session session,
         HttpContext httpContext,
-        bool mustExist,
         CancellationToken cancellationToken)
     {
         if (session.Kind is SessionKind.ApiKey)
@@ -177,7 +171,7 @@ public sealed class AuthHelper
             if (isSignedIn && IsSameAccount(existingAccount, httpUser, authSchema))
                 return; // Nothing to change
 
-            var signInCommand = await BuildSignInCommand(session, httpUser, authSchema, mustExist, cancellationToken)
+            var signInCommand = await BuildSignInCommand(session, httpUser, authSchema, cancellationToken)
                 .ConfigureAwait(false);
             await Commander.Call(signInCommand, true, cancellationToken).ConfigureAwait(false);
         }
@@ -205,7 +199,6 @@ public sealed class AuthHelper
         Session session,
         ClaimsPrincipal httpUser,
         string authSchema,
-        bool mustExist,
         CancellationToken cancellationToken)
     {
         var httpUserIdentityName = httpUser.Identity?.Name ?? "";
@@ -241,7 +234,7 @@ public sealed class AuthHelper
         identities = identities.WithEmailIdentity(email);
 
         exit:
-        return new AccountsBackend_SignIn(session, authenticatedIdentity, identities, claims, mustExist);
+        return new AccountsBackend_SignIn(session, authenticatedIdentity, identities, claims);
     }
 
     private static string? FirstClaimOrDefault(IReadOnlyDictionary<string, string> claims, string[] keys)
@@ -296,14 +289,14 @@ public sealed class AuthHelper
     {
         public static AuthState New(
             Session session, bool isAnyAuthFlow, CloseFlow? closeFlow,
-            bool mustExist, string? error = null)
+            string? error = null)
         {
             if (error is null)
                 return new AuthState(session, isAnyAuthFlow, closeFlow);
             if (closeFlow is not null)
                 return new AuthState(session, isAnyAuthFlow, closeFlow with { Error = error });
 
-            closeFlow = new CloseFlow(mustExist ? "Sign-in" : "Register", null, true, error);
+            closeFlow = new CloseFlow("Sign-in", null, true, error);
             return new AuthState(session, isAnyAuthFlow, closeFlow);
         }
     }

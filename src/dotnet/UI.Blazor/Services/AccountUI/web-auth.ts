@@ -13,11 +13,11 @@ export class WebAuth {
     public static allowPopup = !(DeviceInfo.isMobile || DeviceInfo.isWebKit);
     public static mustRedirectOnPopupBlock = true;
 
-    public static signIn(schema: string, mustExist = false): Promise<void> {
+    public static signIn(schema: string): Promise<void> {
         const path = schema
             ? this.signInPath + '/' + schema
             : this.signInPath;
-        return this.showPopupOrRedirect(path, 'Sign-in', mustExist);
+        return this.showPopupOrRedirect(path, 'Sign-in');
     }
 
     public static signOut(): Promise<void> {
@@ -26,22 +26,20 @@ export class WebAuth {
 
     // Private methods
 
-    private static showPopupOrRedirect(path: string, flowName: string, mustExist = false): Promise<void> {
+    private static showPopupOrRedirect(path: string, flowName: string): Promise<void> {
         if (!this.allowPopup) {
-            this.redirect(path, flowName, mustExist);
+            this.redirect(path, flowName);
             return Promise.resolve();
         }
 
-        let closeFlowUrl = this.closeFlowPath + '?flow=' + encode(flowName);
-        if (mustExist)
-            closeFlowUrl += '&mustExist=1';
+        const closeFlowUrl = this.closeFlowPath + '?flow=' + encode(flowName);
         const returnUrl = new URL(closeFlowUrl, document.baseURI).href;
         const url = path + '?returnUrl=' + encode(returnUrl);
         warnLog?.log(`popup: -> ${url}`);
         const popup = window.open(url, this.windowTarget, this.windowFeatures);
         if (!popup || popup.closed || typeof popup.closed == 'undefined') {
             if (this.mustRedirectOnPopupBlock) {
-                this.redirect(path, flowName, mustExist);
+                this.redirect(path, flowName);
             }
             else {
                 alert('Authentication popup is blocked by the browser. Please allow popups on this website and retry.')
@@ -60,13 +58,11 @@ export class WebAuth {
         });
     }
 
-    private static redirect(path: string, flowName: string, mustExist = false) {
+    private static redirect(path: string, flowName: string) {
         const redirectUrl = window.location.href;
-        let closeFlowUrl = this.closeFlowPath +
+        const closeFlowUrl = this.closeFlowPath +
             '?flow=' + encode(flowName) +
             '&redirectUrl=' + encode(redirectUrl);
-        if (mustExist)
-            closeFlowUrl += '&mustExist=1';
         const returnUrl = new URL(closeFlowUrl, document.baseURI).href;
         const url = new URL(path + '?returnUrl=' + encode(returnUrl), document.baseURI).href;
         warnLog?.log(`redirect: -> ${url}`);
