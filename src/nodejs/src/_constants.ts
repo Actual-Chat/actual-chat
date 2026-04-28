@@ -68,9 +68,9 @@ export const AUDIO_RECORDER_HEARTBEAT = {
     // Main thread sends a heartbeat to the encoder worker at this period while recording
     INTERVAL_MS: 3000,
     // Worker auto-shuts-down its pipeline if no heartbeat arrives within this window
-    TIMEOUT_MS: 7000,
+    TIMEOUT_MS: 5000,
     // Worker self-checks heartbeat freshness at this period
-    CHECK_INTERVAL_MS: 1000,
+    CHECK_INTERVAL_MS: 500,
 }
 
 export const AUDIO_VAD = {

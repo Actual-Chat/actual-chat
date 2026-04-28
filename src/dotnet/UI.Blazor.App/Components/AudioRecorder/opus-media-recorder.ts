@@ -210,6 +210,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
     public source: MediaStreamAudioSourceNode | null = null;
     public stream: MediaStream | null = null;
     private heartbeatTimerId: ReturnType<typeof setInterval> | undefined;
+    private heartbeatSuspendedUntil = 0;
 
     private get isRecording(): boolean {
         return !!(this.stream && this.state === 'recording');
@@ -557,15 +558,25 @@ export class OpusMediaRecorder implements RecorderStateServer {
         return ResolvedPromise.Void;
     }
 
+    // Debug-only: stop sending heartbeats to the encoder worker for the given duration so the
+    // worker watchdog can fire. Used by DebugUI.suspendAudioRecorderHeartbeat to simulate a hung main thread.
+    public suspendHeartbeat(durationMs: number): void {
+        this.heartbeatSuspendedUntil = Date.now() + durationMs;
+        warnLog?.log(`suspendHeartbeat: heartbeats paused for ${durationMs}ms`);
+    }
+
     // Private/Internal methods
 
     private startHeartbeat(): void {
         this.stopHeartbeat();
-        // Send the first heartbeat immediately so the worker doesn't have to wait a full interval after start().
-        void this.encoderWorker?.heartbeat(rpcNoWait);
-        this.heartbeatTimerId = setInterval(() => {
+        const sendHeartbeat = () => {
+            if (Date.now() < this.heartbeatSuspendedUntil)
+                return; // Debug suspension via DebugUI.suspendAudioRecorderHeartbeat
             void this.encoderWorker?.heartbeat(rpcNoWait);
-        }, ARH.INTERVAL_MS);
+        };
+        // Send the first heartbeat immediately so the worker doesn't have to wait a full interval after start().
+        sendHeartbeat();
+        this.heartbeatTimerId = setInterval(sendHeartbeat, ARH.INTERVAL_MS);
     }
 
     private stopHeartbeat(): void {
