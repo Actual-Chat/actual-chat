@@ -6,7 +6,6 @@ export interface OpusEncoderWorker {
     create(artifactVersions: Map<string, string>, apiUrl: string, timeout?: RpcTimeout): Promise<void>;
     init(workletMessagePort: MessagePort, vadMessagePort: MessagePort): Promise<void>;
     start(chatId?: string, repliedChatEntryId?: string): Promise<void>;
-    setSessionToken(sessionToken: string, noWait?: RpcNoWait): Promise<void>;
     stop(): Promise<void>;
     heartbeat(noWait?: RpcNoWait): Promise<void>;
     ensureConnected(quickReconnect: boolean, noWait?: RpcNoWait): Promise<void>;

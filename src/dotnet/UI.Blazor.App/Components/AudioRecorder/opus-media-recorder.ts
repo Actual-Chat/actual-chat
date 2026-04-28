@@ -203,8 +203,6 @@ export class OpusMediaRecorder implements RecorderStateServer {
     private playbackContextRef?: AudioContextRef;
     private recordingAction?: AudioContextAction;
     private chatId?: string;
-    private sessionToken: string | null;
-    private encoderWorkerSessionToken: string | null;
 
     public origin: string = new URL(import.meta.url).origin;
     public source: MediaStreamAudioSourceNode | null = null;
@@ -438,20 +436,6 @@ export class OpusMediaRecorder implements RecorderStateServer {
                 throw e;
             }
             debugLog?.log('<- start()');
-        });
-    }
-
-    public setSessionToken(sessionToken: string): void {
-        this.sessionToken = sessionToken;
-
-        // We don't want to wait here - this method can complete immediately,
-        // all we need
-        void this.whenInitialized.then(() => {
-            if (this.encoderWorkerSessionToken === this.sessionToken)
-                return; // Concurrent call to this method already applied the change
-
-            this.encoderWorkerSessionToken = this.sessionToken;
-            void this.encoderWorker.setSessionToken(this.sessionToken!);
         });
     }
 

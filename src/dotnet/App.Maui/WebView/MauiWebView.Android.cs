@@ -40,7 +40,7 @@ public partial class MauiWebView
 
     private partial void OnLoaded(object? sender, EventArgs eventArgs) { }
 
-    private partial void SetupSessionCookie(Session session)
+    private partial async Task SetupSessionCookie(Session session)
     {
         using var webView = AndroidWebView.Hold();
         if (!webView.IsValid)
@@ -53,7 +53,24 @@ public partial class MauiWebView
         cookieManager.SetAcceptCookie(true);
         cookieManager.SetAcceptThirdPartyCookies(AndroidWebView, true);
         var sessionCookieValue = $"{cookieName}={session.Id}; path=/; secure; samesite=none; httponly";
-        cookieManager.SetCookie("https://" + MauiSettings.LocalHost, sessionCookieValue);
-        cookieManager.SetCookie("https://" + MauiSettings.Host, sessionCookieValue);
+ #pragma warning disable CA2025
+        await SetCookie(cookieManager, "https://" + MauiSettings.LocalHost, sessionCookieValue).ConfigureAwait(true);
+        await SetCookie(cookieManager, "https://" + MauiSettings.Host, sessionCookieValue).ConfigureAwait(true);
+ #pragma warning restore CA2025
+        return;
+
+        static Task SetCookie(CookieManager cookieManager, string url, string value) {
+            var taskSource = TaskCompletionSourceExt.New();
+            cookieManager.SetCookie(url, value, new CookieSetValueCallback(taskSource));
+            return taskSource.Task;
+        }
+    }
+
+    // Nested types
+
+    private sealed class CookieSetValueCallback(TaskCompletionSource taskSource) : Java.Lang.Object, IValueCallback
+    {
+        public void OnReceiveValue(Java.Lang.Object? value)
+            => taskSource.SetResult();
     }
 }

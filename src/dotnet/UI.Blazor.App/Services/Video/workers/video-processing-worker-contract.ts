@@ -145,7 +145,6 @@ export interface VideoProcessingConfig {
     streaming: {
         /** Fusion RPC WebSocket URL, e.g. `wss://host/rpc/ws`. */
         apiUrl: string;
-        sessionToken: string;
         chatId: string;
         serverClockOffsetMs: number;
         streamKind?: number; // 0 = Webcam (default), 1 = Screencast
@@ -218,7 +217,6 @@ export interface VideoProcessingWorker {
     stop(): Promise<void>;
     getStats(): Promise<VideoProcessingStats>;
 
-    updateSessionToken(token: string): Promise<void>;
     updateServerClockOffset(offsetMs: number): Promise<void>;
     /** Main thread pushes `ConnectivityUI.isOnline` / `isConnected` / `isBlazorServer`
      *  into the worker so its `WorkerConnectivityUI` mirror drives the worker's

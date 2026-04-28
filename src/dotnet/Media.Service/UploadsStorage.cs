@@ -2,9 +2,9 @@ using System.Text;
 
 namespace ActualChat.Media;
 
-public class UploadsStorage(IServiceProvider services)
+public sealed class UploadsStorage(IServiceProvider services)
 {
-    protected IServiceProvider Services { get; } = services;
+    private IServiceProvider Services { get; } = services;
     private IBlobStorages Blobs => field ??= Services.GetRequiredService<IBlobStorages>();
     private IBlobStorage BlobStorage => field ??= Blobs[BlobScope.UploadTempRecord];
 

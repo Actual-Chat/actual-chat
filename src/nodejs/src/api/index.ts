@@ -10,3 +10,4 @@ export type { ApiModule } from './api.js';
 
 export * from './core-api.js';
 export * from './streaming-api.js';
+export * from './uploads-api.js';

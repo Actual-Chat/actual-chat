@@ -109,12 +109,13 @@ public partial class MauiWebView
 
     private partial void OnLoaded(object? sender, EventArgs eventArgs) { }
 
-    private partial void SetupSessionCookie(Session session)
+    private partial Task SetupSessionCookie(Session session)
     {
         var webView = WindowsWebView.CoreWebView2;
         var cookieName = Constants.Session.CookieName;
 
         var cookie = webView.CookieManager.CreateCookie(cookieName, session.Id, MauiSettings.LocalHost, "/");
+        cookie.IsHttpOnly = true;
         webView.CookieManager.AddOrUpdateCookie(cookie);
 
         cookie = webView.CookieManager.CreateCookie(cookieName, session.Id, MauiSettings.Host, "/");
@@ -122,6 +123,7 @@ public partial class MauiWebView
         cookie.IsHttpOnly = true;
         cookie.IsSecure = true;
         webView.CookieManager.AddOrUpdateCookie(cookie);
+        return Task.CompletedTask;
     }
 
     // Nested types

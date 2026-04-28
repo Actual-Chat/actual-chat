@@ -57,7 +57,6 @@ let vadWorker: AudioVadWorker & Disposable;
 let encoder: Encoder | null;
 let systemEncoder: AudioEncoder | null;
 let lastStartArguments: { chatId: string, repliedChatEntryId: string } | null = null;
-let lastSessionToken = '';
 let chunkTimeOffset = 0;
 let lastFrameProcessedAt = 0;
 let audioStream: AudioStream | null = null;
@@ -122,10 +121,6 @@ const serverImpl: OpusEncoderWorker = {
         startHeartbeatWatchdog();
         if (isVoiceDetected)
             await startRecording();
-    },
-
-    setSessionToken: async (sessionToken: string, _noWait?: RpcNoWait): Promise<void> => {
-        lastSessionToken = sessionToken;
     },
 
     stop: async (): Promise<void> => {

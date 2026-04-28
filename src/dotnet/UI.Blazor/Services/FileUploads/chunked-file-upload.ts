@@ -1,11 +1,14 @@
 import { getLogs } from 'logging';
 import { delayAsync, OperationCancelledError, PromiseSource } from 'promises';
-import { BrowserInit } from '../BrowserInit/browser-init';
-import { SessionTokens } from '../Security/session-tokens';
+import { Api, uploadsApi } from 'api';
 import { ConnectivityUI } from '../ConnectivityUI/connectivity-ui';
 import { IFileUpload, IUploadStreamSource } from './web-uploads';
 
 const { debugLog, warnLog, errorLog } = getLogs('FileUpload');
+
+// '~' = use the session bound to the current RPC connection (cookie/header
+// resolved at WS handshake), matching audio-streamer.ts's RPC_SESSION_DEFAULT.
+const RPC_SESSION_DEFAULT = '~';
 
 type ProgressReporter = (progressPercent: number) => void;
 
@@ -37,7 +40,6 @@ export class FileUploadProgressReporter {
 
 export class ChunkedFileUpload implements IFileUpload {
     private readonly whenCompletedSource: PromiseSource<void> = new PromiseSource<void>();
-    private readonly uploadUrl: string;
     private readonly abortController: AbortController = new AbortController();
 
     constructor(
@@ -45,7 +47,10 @@ export class ChunkedFileUpload implements IFileUpload {
         private readonly blob: Blob,
         private readonly progressReporter: ProgressReporter)
     {
-        this.uploadUrl = BrowserInit.getUrl(`api/uploads/${this.uploadId}`);
+        // Lazy: register uploadsApi with the shared hub. No-op if Api is
+        // already initialized (the registry is shared, addClient registers
+        // service defs lazily anyway).
+        Api.init(undefined, uploadsApi);
     }
 
     public get whenCompleted(): Promise<void> {
@@ -105,6 +110,9 @@ export class ChunkedFileUpload implements IFileUpload {
                 this.progressReporter((offset / fileSize) * 100);
                 // Upload chunks
                 while (offset < fileSize) {
+                    if (this.isCancelled())
+                        throw new OperationCancelledError('File upload cancelled');
+
                     const remainingBytes = fileSize - offset;
                     const chunkSize = chunkSizeSelector.getChunkSize();
                     const currentChunkSize = Math.min(chunkSize, remainingBytes);
@@ -124,7 +132,7 @@ export class ChunkedFileUpload implements IFileUpload {
                 this.whenCompletedSource.resolve();
                 return;
             } catch (error) {
-                chunkSizeSelector.adaptOnUploadIssue(error instanceof TypeError);
+                chunkSizeSelector.adaptOnUploadIssue(isConnectivityError(error));
                 if (error instanceof OffsetConflictError) {
                     if (retryIndex < maxRetries) {
                         warnLog?.log('Offset conflict detected. Retrying...');
@@ -143,8 +151,7 @@ export class ChunkedFileUpload implements IFileUpload {
                         continue;
                     }
                 }
-                else if (error instanceof TypeError) {
-                    // Network-level error (no connection, timeout, offline, etc.)
+                else if (isConnectivityError(error)) {
                     if (retryIndex < maxRetries) {
                         retryIndex++;
                         run = true;
@@ -162,60 +169,27 @@ export class ChunkedFileUpload implements IFileUpload {
         }
     }
 
-    private async getOffset(): Promise<number>
-    {
-        const response = await fetch(this.uploadUrl, {
-            method: 'HEAD',
-            headers: {
-                [SessionTokens.headerName]: SessionTokens.current,
-                'Tus-Resumable' : '1.0.0',
-            },
-            signal: this.abortController.signal
-        });
-        if (!response.ok) {
-            if (response.status == 404)
-                throw new UploadNotFoundError(`Upload ${this.uploadId} not found`);
-            if (response.status == 503)
-                throw new UploadTransientFailure(`Upload transient failure`);
-            throw new Error(`Failed to get upload status: ${response.statusText}`);
+    private async getOffset(): Promise<number> {
+        try {
+            return await uploadsApi.uploads.GetOffset(RPC_SESSION_DEFAULT, this.uploadId);
+        } catch (e: unknown) {
+            throw mapUploadError(e);
         }
-        const header = response.headers.get('Upload-Offset');
-        if (!header)
-            throw new Error('Upload-Offset header not found in response');
-        return parseInt(header, 10);
     }
 
-    private async uploadChunk(offset: number, chunkSize: number): Promise<number>
-    {
-        const contentType = 'application/offset+octet-stream';
+    private async uploadChunk(offset: number, chunkSize: number): Promise<number> {
         const expectedNewOffset = offset + chunkSize;
-        const chunk = this.blob.slice(offset, expectedNewOffset, contentType);
-        const response = await fetch(this.uploadUrl, {
-            method: 'PATCH',
-            headers: {
-                [SessionTokens.headerName]: SessionTokens.current,
-                'Content-Type': contentType,
-                'Upload-Offset': offset.toString(),
-                'Tus-Resumable' : '1.0.0',
-            },
-            body: chunk,
-            signal: this.abortController.signal
-        });
-
-        if (!response.ok) {
-            if (response.status == 404)
-                throw new UploadNotFoundError(`Upload ${this.uploadId} not found`);
-            if (response.status == 503)
-                throw new UploadTransientFailure(`Upload transient failure`);
-            if (response.status == 409)
-                throw new OffsetConflictError('Upload offset conflict');
-            throw new Error(`Failed to upload chunk: ${response.statusText}`);
+        const arrayBuffer = await this.blob.slice(offset, expectedNewOffset).arrayBuffer();
+        try {
+            return await uploadsApi.uploads.OnAppend({
+                Session: RPC_SESSION_DEFAULT,
+                UploadId: this.uploadId,
+                Offset: offset,
+                Chunk: new Uint8Array(arrayBuffer),
+            });
+        } catch (e: unknown) {
+            throw mapUploadError(e);
         }
-
-        const newOffsetHeader = response.headers.get('Upload-Offset');
-        if (!newOffsetHeader)
-            throw new Error('Upload-Offset header not found in response');
-        return parseInt(newOffsetHeader, 10);
     }
 
     private isCancelled() : boolean {
@@ -223,14 +197,38 @@ export class ChunkedFileUpload implements IFileUpload {
     }
 }
 
+/** Maps a server-side upload exception (carried via RPC error TypeName) to the
+ *  matching JS error class. Falls through with the original error otherwise. */
+function mapUploadError(e: unknown): unknown {
+    if (e instanceof Error) {
+        const typeName = (e as { typeName?: string }).typeName;
+        if (typeName === 'UploadNotFoundException')
+            return new UploadNotFoundError(e.message);
+        if (typeName === 'OffsetConflictException')
+            return new OffsetConflictError(e.message);
+        if (typeName === 'UploadTransientException')
+            return new UploadTransientFailure(e.message);
+    }
+    return e;
+}
+
+/** Connectivity / disposed-peer style failures that should trigger a reconnect-and-retry. */
+function isConnectivityError(e: unknown): boolean {
+    if (e instanceof OffsetConflictError || e instanceof UploadNotFoundError || e instanceof UploadTransientFailure)
+        return false;
+    if (e instanceof OperationCancelledError)
+        return false;
+    return e instanceof Error;
+}
+
 interface Stat { multiplier: number; ms: number; }
 
 class ChunkSizeSelector
 {
     private static minChunkSize = 256 * 1024; // 256 KB
-    private static defaultChunkSizeMultiplier = 8; // 4 Mb
-    private static maxChunkSizeMultiplier = 16; // 8 Mb
-    private static recommendedChunkSizeMultiplier = 8; // 4 Mb
+    private static defaultChunkSizeMultiplier = 8; // 2 Mb
+    private static maxChunkSizeMultiplier = 16; // 4 Mb
+    private static recommendedChunkSizeMultiplier = 8; // 2 Mb
     private static maxChunkUploadDurationMs = 5000; // 5 seconds
 
     private currentMultiplier: number;

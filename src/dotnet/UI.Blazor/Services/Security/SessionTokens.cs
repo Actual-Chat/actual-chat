@@ -1,56 +1,22 @@
-﻿using ActualChat.Security;
-using ActualChat.UI.Blazor.Module;
+using ActualChat.Security;
 using ActualLab.Locking;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public sealed class SessionTokens(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService
+public sealed class SessionTokens(UIHub hub) : UIServiceBase<UIHub>(hub)
 {
-    private static readonly string JSSetCurrentMethod = $"{BlazorUICoreModule.ImportName}.SessionTokens.setCurrent";
-
     private readonly AsyncLock _asyncLock = new(LockReentryMode.CheckedFail);
     private volatile SecureToken? _current;
 
     private ISecureTokens SecureTokens => field ??= Services.GetRequiredService<ISecureTokens>();
-    private DeviceAwakeUI DeviceAwakeUI => field ??= Services.GetRequiredService<DeviceAwakeUI>();
     private MomentClock ServerClock => field ??= Clocks.ServerClock;
 
     public TimeSpan MinLifespan { get; init; } = TimeSpan.FromMinutes(60);
-    public TimeSpan RefreshLifespan { get; init; } = TimeSpan.FromMinutes(15);
-    public SecureToken? Current => _current;
 
     public ValueTask<SecureToken> Get(CancellationToken cancellationToken = default)
         => Get(MinLifespan, cancellationToken);
 
-    // Protected & private methods
-
-    protected override Task OnRun(CancellationToken cancellationToken)
-    {
-        var retryDelays = RetryDelaySeq.Exp(0.1, 5);
-        return AsyncChain.From(AutoRefresh)
-            .Log(LogLevel.Debug, Log)
-            .RetryForever(retryDelays, Log)
-            .RunIsolated(cancellationToken);
-    }
-
-    private async Task AutoRefresh(CancellationToken cancellationToken)
-    {
-        var jsToken = "";
-        var minLifespan = RefreshLifespan;
-        while (!cancellationToken.IsCancellationRequested) {
-            var current = await Get(minLifespan, cancellationToken).ConfigureAwait(false);
-            if (jsToken != current.Token) {
-                await JS.InvokeVoidAsync(JSSetCurrentMethod, CancellationToken.None, current.Token)
-                    .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
-                jsToken = current.Token;
-            }
-
-            var now = ServerClock.Now;
-            await DeviceAwakeUI
-                .SleepUntil(ServerClock,  now + ((current.ExpiresAt - now) / 2) , cancellationToken)
-                .ConfigureAwait(false);
-        }
-    }
+    // Private methods
 
     private async ValueTask<SecureToken> Get(TimeSpan minLifespan, CancellationToken cancellationToken = default)
     {
@@ -79,5 +45,4 @@ public sealed class SessionTokens(UIHub hub) : UIWorkerBase<UIHub>(hub), IComput
         Interlocked.Exchange(ref _current, result);
         return result;
     }
-
 }

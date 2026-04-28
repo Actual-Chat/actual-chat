@@ -28,7 +28,6 @@ import type {
 import { Versioning } from 'versioning';
 import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
-import { SessionTokens } from '../../../../UI.Blazor/Services/Security/session-tokens';
 import { ServerClock } from 'server-clock';
 import type { Subscription } from 'rxjs';
 import { RecorderStateHub } from '../../../Components/AudioRecorder/recorder-state-hub';
@@ -394,7 +393,6 @@ export class VideoPipeline implements IVideoPipeline {
             encoder: this.config.encoderConfig,
             streaming: {
                 apiUrl,
-                sessionToken: SessionTokens.current,
                 chatId: this.config.streaming?.chatId ?? '',
                 serverClockOffsetMs: ServerClock.offsetMs,
                 streamKind: this.config.streaming?.streamKind ?? 0,

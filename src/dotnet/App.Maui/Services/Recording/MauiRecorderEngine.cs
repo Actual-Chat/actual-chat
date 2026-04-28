@@ -16,7 +16,6 @@ public class MauiRecorderEngine : IAudioRecorderEngine
     private readonly Debouncer<Unit> _noSignalDetectedDebouncer;
 
     private ChatId? _chatId;
-    private string? _sessionToken;
     private ChatEntryId? _repliedChatEntryId;
     private Channel<IMemoryOwner<byte>>? _currentStream;
     private CancellationTokenSource? _recordingCts;
@@ -50,7 +49,6 @@ public class MauiRecorderEngine : IAudioRecorderEngine
     public async Task<bool> Start(
         ChatId chatId,
         ChatEntryId? repliedChatEntryId,
-        string sessionToken,
         CancellationToken cancellationToken = default)
     {
         // Stop any existing recording first
@@ -72,7 +70,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         }
 
         // Set the recording context
-        SetRecordingContext(chatId, sessionToken, repliedChatEntryId);
+        SetRecordingContext(chatId, repliedChatEntryId);
 
         // Update state
         await InitializeRecordingState().ConfigureAwait(false);
@@ -141,12 +139,11 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 
     #region State Management
 
-    private void SetRecordingContext(ChatId chatId, string sessionToken, ChatEntryId? repliedChatEntryId)
+    private void SetRecordingContext(ChatId chatId, ChatEntryId? repliedChatEntryId)
     {
         lock (_sync)
         {
             _chatId = chatId;
-            _sessionToken = sessionToken;
             _repliedChatEntryId = repliedChatEntryId;
         }
     }
@@ -156,7 +153,6 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         lock (_sync)
         {
             _chatId = null;
-            _sessionToken = null;
             _repliedChatEntryId = null;
         }
     }
@@ -370,17 +366,15 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 
     private async Task<ChannelWriter<IMemoryOwner<byte>>?> CreateAudioStream(TimeSpan preRollDuration, CancellationToken cancellationToken)
     {
-        string? sessionToken;
         ChatId? chatId;
         ChatEntryId? repliedChatEntryId;
 
         lock (_sync) {
-            sessionToken = _sessionToken;
             chatId = _chatId;
             repliedChatEntryId = _repliedChatEntryId;
         }
 
-        if (sessionToken is null || chatId is null)
+        if (chatId is null)
             return null;
 
         await ConnectivityUI.WhenConnected(cancellationToken).ConfigureAwait(false);
