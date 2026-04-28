@@ -29,7 +29,7 @@ import { ConnectivityUI } from '../../../UI.Blazor/Services/ConnectivityUI/conne
 // plausibly available. The worker probes the real APIs; if neither exists,
 // it rejects setupWorker() and we swap to canvas at runtime.
 // ?renderBackend=mstg|canvas overrides for diagnostics.
-function pickRenderBackend(canvas: HTMLCanvasElement, videoEl: HTMLVideoElement): RenderBackend {
+function pickRenderBackend(canvas: HTMLCanvasElement, videoEl: HTMLVideoElement, bgVideoEl: HTMLVideoElement | null): RenderBackend {
     let flag: string | null = null;
     try {
         flag = new URL(globalThis.location.href).searchParams.get('renderBackend');
@@ -37,7 +37,7 @@ function pickRenderBackend(canvas: HTMLCanvasElement, videoEl: HTMLVideoElement)
     if (flag === 'canvas')
         return new CanvasRenderBackend(canvas);
     if (flag === 'mstg' || isOffThreadPlausible())
-        return new OffThreadRenderBackend(videoEl);
+        return new OffThreadRenderBackend(videoEl, bgVideoEl);
     return new CanvasRenderBackend(canvas);
 }
 
@@ -246,6 +246,7 @@ export class VideoPlayer {
     static create(
         canvas: HTMLCanvasElement,
         videoEl: HTMLVideoElement,
+        bgVideoEl: HTMLVideoElement,
         blazorRef: DotNet.DotNetObject,
         streamId: string,
         authorId: string,
@@ -255,7 +256,7 @@ export class VideoPlayer {
         codecSettings: string,
         startedAtMs: number
     ): VideoPlayer {
-        return new VideoPlayer(blazorRef, streamId, authorId, codec, width, height, codecSettings, canvas, videoEl, startedAtMs);
+        return new VideoPlayer(blazorRef, streamId, authorId, codec, width, height, codecSettings, canvas, videoEl, bgVideoEl, startedAtMs);
     }
 
     constructor(
@@ -268,6 +269,7 @@ export class VideoPlayer {
         codecSettings: string,
         canvas: HTMLCanvasElement,
         videoEl: HTMLVideoElement,
+        bgVideoEl: HTMLVideoElement,
         startedAtMs: number
     ) {
         this.blazorRef = blazorRef;
@@ -275,7 +277,7 @@ export class VideoPlayer {
         this.authorId = authorId;
         this.startedAtMs = startedAtMs;
         this.canvas = canvas;
-        this.renderBackend = pickRenderBackend(canvas, videoEl);
+        this.renderBackend = pickRenderBackend(canvas, videoEl, bgVideoEl);
         // Tag the parent container so CSS can hide the inactive surface.
         const container = canvas.parentElement;
         if (container) {
@@ -1224,21 +1226,29 @@ export class VideoPlayer {
 
     private onVisibilityRestored(): void {
         if (!this.decoderWorker) return;
+        void this.restartAfterVisibilityChange();
+    }
+
+    private async restartAfterVisibilityChange(): Promise<void> {
+        if (!this.decoderWorker) return;
 
         this.skippedBacklogFrames = 0;
         const pendingCount = this.pendingFrames.length;
 
-        // Close all pending decoded frames to avoid burst playback
+        // Close pending decoded frames so the gated wait doesn't render stale
+        // content while the next keyframe is in flight.
         for (const frame of this.pendingFrames) {
             try { frame.close(); } catch { /* already closed */ }
         }
         this.pendingFrames = [];
         this.bufferSize = 0;
 
-        // Reset decoder worker to flush its internal queue
-        void this.decoderWorker.resetDecoder();
-
-        // After reset, delta frames are useless — need a fresh keyframe
+        // Server-only skip architecture: keep the existing pull running, do
+        // NOT call startPull (which forces a forward jump on the server and
+        // destroys frames between currentOffset and now). Just gate deltas
+        // at the worker decoder until the PLI keyframe arrives in-band.
+        try { await this.decoderWorker.flagWaitingForKeyframe(); }
+        catch { /* ignore */ }
         this.waitingForKeyframe = true;
         this.requestKeyFrame();
 
@@ -1247,34 +1257,23 @@ export class VideoPlayer {
         this.playbackRate = 1.0;
         this.lastSeekTime = 0;
         this.rebufferDelayMs = 300;
-        // Reset lastRenderedOffsetMs so reportLatencyTick skips until a fresh frame renders
-        // (prevents SKIP_TO_LIVE loop from using stale offset after background→foreground)
         this.lastRenderedOffsetMs = 0;
         this.lastArrivedOffsetMs = 0;
 
-        // Reset decode performance tracking — Chrome may have throttled the decoder while hidden
+        // Chrome may have throttled the decoder while hidden — give it a
+        // warmup window before SLOW_DECODE thresholds re-arm.
         this.codecSlowTickCount = 0;
         this.decoderWarmupUntilMs = performance.now() + SLOW_DECODE_WARMUP_MS;
 
-        // Reset diagnostic counters: the decoder reset zeroes its frame counter,
-        // but lastDiag* still holds the pre-reset value. The next VIDEO_DECODE
-        // diff would compute (small new value) - (large old value) = negative,
-        // producing log lines like `recv=257 decoded=-2071` after tab-restore.
         this.lastDiagDecodedFrames = 0;
         this.lastDiagReceivedFrames = 0;
         this.receivedFrameCount = 0;
         this.receivedBytes = 0;
         this.firstFrameReceivedTime = 0;
 
-        // Dispose current pull and re-request from live offset (skip-to-live)
-        this.pullAbortController?.abort();
-        this.pullAbortController = null;
         this.pipelineLatencyMs = 0;
-        const skipToMs = Math.max(0, ServerClock.now() - this.startedAtMs);
         warnLog?.log(
-            `Tab restored: flushed ${pendingCount} pending frames, decoder reset, ` +
-            `re-requesting stream from offset ${skipToMs.toFixed(0)}ms`);
-        void this.startPull(this.streamId, skipToMs);
+            `Tab restored: flushed ${pendingCount} pending frames, gating deltas until next keyframe`);
     }
 
     /** Called by Blazor */
@@ -1735,43 +1734,40 @@ export class VideoPlayer {
         // be pointless churn. Arrival latency only grows when the stream is actually
         // stalled server-side or the network is congested.
         else if (latencyMs > SKIP_TO_LIVE_THRESHOLD_MS) {
-            // Phase 3: Nuclear — re-request stream from live offset
+            // Server-only skip architecture: don't issue a fresh GetVideo
+            // (which would skip server-side and destroy frames between
+            // currentOffset and now). Notify the server of the latency, ask
+            // for a keyframe, and gate deltas at the worker until it arrives.
             this.skipToLiveCount++;
             warnLog?.log(
-                `SKIP_TO_LIVE: latency ${latencyMs.toFixed(0)}ms > ${SKIP_TO_LIVE_THRESHOLD_MS}ms, re-requesting stream (count=${this.skipToLiveCount})`);
+                `SKIP_TO_LIVE: latency ${latencyMs.toFixed(0)}ms > ${SKIP_TO_LIVE_THRESHOLD_MS}ms, gating until next keyframe (count=${this.skipToLiveCount})`);
 
-            // Report the high latency to the server BEFORE resetting state,
-            // so EvaluateQuality can detect that this peer is struggling and step down sender quality.
             streamingApi.streamServer.ReportVideoLatency(this.streamId, {
                 StreamOffsetMs: streamOffsetMs,
                 RenderQuality: this.computeRenderQualityLevel(),
                 IsVisible: document.visibilityState === 'visible',
             }).catch(() => { /* best-effort */ });
 
-            this.pullAbortController?.abort();
-            this.pullAbortController = null;
             for (const pf of this.pendingFrames)
                 pf.close();
             this.pendingFrames.length = 0;
             this.bufferSize = 0;
-            if (this.decoderWorker) {
-                void this.decoderWorker.resetDecoder();
-            }
-            this.waitingForKeyframe = true;
-            this.requestKeyFrame();
             this.pipelineLatencyMs = 0;
             this.playbackStartTime = 0;
-            // Prevent stale latency report before first new frame renders
             this.lastRenderedOffsetMs = 0;
             this.lastArrivedOffsetMs = 0;
             this.lastSkipToLiveTime = performance.now();
-            // Reset jitter buffer state — stale arrival times from old stream are meaningless
+            // Stale arrival times from before the gate are meaningless
             this.jitterEstimateMs = 0;
             this.jitterBufferMs = this.minJitterBufferMs;
             this.lastFrameArrivalTime = 0;
             this.lastFrameArrivalInterval = 0;
-            const skipToMs = Math.max(0, ServerClock.now() - this.startedAtMs);
-            void this.startPull(this.streamId, skipToMs);
+
+            if (this.decoderWorker) {
+                void this.decoderWorker.flagWaitingForKeyframe();
+            }
+            this.waitingForKeyframe = true;
+            this.requestKeyFrame();
             return;
         }
 

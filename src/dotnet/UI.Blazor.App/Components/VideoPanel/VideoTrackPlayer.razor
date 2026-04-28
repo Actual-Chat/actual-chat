@@ -7,10 +7,14 @@
 
 @{
     var streamKindCls = StreamInfo.StreamKind == StreamKind.Screencast ? "screencast" : "";
+    var aspectRatioStyle = StreamInfo.Format is { Width: > 0, Height: > 0 } f
+        ? $"aspect-ratio: {f.Width} / {f.Height}"
+        : "";
 }
 <div class="video-track-player remote-video-container @FocusedClass @streamKindCls">
-    <canvas @ref="CanvasRef" class="remote-video" data-stream-id="@StreamInfo.StreamId.Value" data-author-id="@StreamInfo.AuthorId.Value"></canvas>
-    <video @ref="VideoElRef" class="remote-video" autoplay playsinline muted aria-hidden="true"></video>
+    <video @ref="BgVideoElRef" class="remote-video-bg" autoplay playsinline muted aria-hidden="true"></video>
+    <canvas @ref="CanvasRef" class="remote-video" style="@aspectRatioStyle" data-stream-id="@StreamInfo.StreamId.Value" data-author-id="@StreamInfo.AuthorId.Value"></canvas>
+    <video @ref="VideoElRef" class="remote-video" style="@aspectRatioStyle" autoplay playsinline muted aria-hidden="true"></video>
     @if (!string.IsNullOrEmpty(AuthorName)) {
         <div class="video-participant-label">
             <i class="icon-video"></i>
@@ -39,6 +43,7 @@
 
     private ElementReference CanvasRef { get; set; }
     private ElementReference VideoElRef { get; set; }
+    private ElementReference BgVideoElRef { get; set; }
     private DotNetObjectReference<VideoTrackPlayer>? BlazorRef { get; set; }
 
     [Parameter, EditorRequired]
@@ -86,6 +91,7 @@
                 _disposeCts.Token,
                 CanvasRef,
                 VideoElRef,
+                BgVideoElRef,
                 BlazorRef,
                 StreamInfo.StreamId.Value,
                 StreamInfo.AuthorId.Value,

@@ -655,6 +655,19 @@ const serverImpl: DecoderWorker = {
             return;
         }
 
+        // Gate after reset/recovery: drop deltas until first keyframe arrives.
+        // resetDecoder sets waitingForKeyframe=true; without this gate an
+        // in-flight chunk from the prior stream feeds the fresh decoder and
+        // triggers "A key frame is required after configure()" — pixelation
+        // until the next IDR.
+        if (waitingForKeyframe) {
+            if (!isKeyFrame) {
+                return;
+            }
+            infoLog?.log(`Recovery keyframe received: seq=${sequenceNumber}`);
+            waitingForKeyframe = false;
+        }
+
         try {
             // If we have a description and it's a keyframe, reconfigure the decoder only if description changed
             if (isKeyFrame && description && description.byteLength > 0) {
@@ -752,9 +765,18 @@ const serverImpl: DecoderWorker = {
         }
     },
 
+    // eslint-disable-next-line @typescript-eslint/require-await
+    flagWaitingForKeyframe: async (): Promise<void> => {
+        // Drop incoming deltas at decodeRawChunk's gate until the next key
+        // arrives in the existing stream. Does NOT touch the decoder — keeps
+        // it alive so it can consume the recovery keyframe normally.
+        waitingForKeyframe = true;
+        infoLog?.log('flagWaitingForKeyframe: gate armed');
+    },
+
     /**
      * Reset the decoder (flush internal queue).
-     * Used for tab visibility restore.
+     * Used as last-resort recovery on real decoder errors.
      */
     // eslint-disable-next-line
     resetDecoder: async (): Promise<void> => {
@@ -773,6 +795,10 @@ const serverImpl: DecoderWorker = {
                 decoder = createDecoder(currentDecoderConfig);
                 decoder.initialize();
                 decoderConfigured = false;
+                // Drop deltas until a key arrives. Without this, an in-flight
+                // chunk from the pre-reset stream can race the new decoder and
+                // trigger "A key frame is required after configure()".
+                waitingForKeyframe = true;
                 infoLog?.log('Decoder reset complete');
             }
         } catch (error) {

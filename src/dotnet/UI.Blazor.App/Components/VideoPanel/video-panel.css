@@ -421,14 +421,11 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
 
 /* ── Item-based layout ── */
 
-/* Canvas inside video-track-player: fill container */
+/* Canvas inside video-track-player: fill container, letterbox source */
 .video-track-player canvas {
     @apply absolute inset-0;
     @apply w-full h-full;
     @apply bg-black;
-    @apply object-cover;
-}
-.video-panel.expanded .video-track-player.screencast canvas {
     @apply object-contain;
 }
 
@@ -441,14 +438,59 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
     @apply block;
     @apply absolute inset-0;
     @apply w-full h-full;
-    @apply bg-black;
-    @apply object-cover;
-}
-.video-panel.expanded .video-track-player.backend-mstg.screencast video.remote-video {
+    @apply bg-transparent;
     @apply object-contain;
+    z-index: 1;
 }
 .video-track-player.backend-mstg canvas.remote-video {
     @apply hidden;
+}
+
+/* Blurred backdrop: fills the letterbox/pillarbox bars with a blurred
+   over-cover of the same MediaStream. Only visible when MSTG backend is
+   active (canvas backend hides this video element). z-index 0 sits behind
+   the foreground; foreground gets z-index 1. */
+.video-track-player video.remote-video-bg {
+    @apply hidden;
+}
+.video-track-player.backend-mstg video.remote-video-bg {
+    @apply block;
+    @apply absolute inset-0;
+    @apply w-full h-full;
+    @apply bg-black;
+    @apply object-cover;
+    z-index: 0;
+    filter: blur(28px) saturate(1.2);
+    transform: scale(1.08);
+    pointer-events: none;
+    /* Same per-frame containment as the foreground surface — bg video
+       writes at the same rate, intrinsic-size invalidation must not
+       propagate. No aspect-ratio: the bg should fill the box (cover). */
+    contain: layout paint style size;
+    will-change: transform;
+}
+
+/* §6.D + §6.E — bound per-frame invalidations to the render surface element.
+   <video> (MSTG backend) and <canvas> (canvas backend) update at frame rate;
+   without containment WebKit propagates style/layout invalidation up the
+   ancestor chain on every frame (measured 17/sec recalc-styles + layout on
+   iPhone 13 Stage B → 13/sec after §6.D). `contain: size` decouples element
+   layout from intrinsic content (per-frame VideoFrame displayWidth/Height
+   no longer triggers element self-recalc); aspect-ratio is pinned via inline
+   style from StreamInfo.Format so object-fit cover/contain still letterboxes
+   correctly. `will-change` + `translateZ(0)` promote to own GraphicsLayer;
+   `pointer-events: none` skips per-paint hit-test. */
+.video-track-player canvas.remote-video,
+.video-track-player.backend-mstg video.remote-video {
+    contain: layout paint style size;
+    will-change: transform;
+    transform: translateZ(0);
+    pointer-events: none;
+}
+
+/* Bound any descendant invalidation (overlays, labels) to the player box. */
+.video-track-player {
+    contain: layout paint;
 }
 
 /* Blurred background canvas — only visible inside focused container,
@@ -497,6 +539,12 @@ body.wide .video-panel-content .video-track-player.pip-overlay {
     @apply w-full h-full;
     @apply rounded-none border-0;
     @apply overflow-hidden;
+    /* §6.E — fullscreen subtree has explicit dims (inset-0 + w/h-full),
+       so upgrade from `contain: layout paint` to `strict` (size + layout +
+       paint + style). Stops descendant invalidation (overlay labels,
+       connecting spinner, focus ring) from bubbling out of the focused
+       player. */
+    contain: strict;
 }
 body.wide .video-panel-content .video-track-player.item-focused {
     @apply rounded-lg;
