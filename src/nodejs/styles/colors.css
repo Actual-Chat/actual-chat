@@ -591,6 +591,12 @@
 
     --cr-header-gradient-1: var(--indigo-70);
     --cr-header-gradient-2: var(--indigo-90);
+
+    /* Film strip */
+    --film-frame: var(--violet-30);
+    --film-fill: var(--white);
+    --film-stroke: #c7a7e9;
+    --film-accent: #eadfff;
 }
 .theme-dark {
     /* Background */
@@ -915,6 +921,12 @@
 
     --cr-header-gradient-1: var(--indigo-70);
     --cr-header-gradient-2: var(--indigo-90);
+
+    /* Film strip */
+    --film-frame: #b89cd9;
+    --film-fill: #302e38;
+    --film-stroke: #6b5a80;
+    --film-accent: #3d3348;
 }
 .theme-ash {
     /* Background */
@@ -1238,4 +1250,10 @@
 
     --cr-header-gradient-1: var(--indigo-70);
     --cr-header-gradient-2: var(--indigo-90);
+
+    /* Film strip */
+    --film-frame: var(--violet-30);
+    --film-fill: var(--white);
+    --film-stroke: #c7a7e9;
+    --film-accent: #eadfff;
 }

@@ -22,6 +22,10 @@
     var tooltip = isListening ? "Listening..." : "Listen";
     var cls = isListening ? " listening" : "";
     if (m.IsAnyoneVideoStreaming) cls += " video-streaming";
+    if (!isParticipating)
+        cls += " not-participating";
+    if (isWatchingHere && !m.IsVideoPanelCollapsed)
+        cls += " watching";
     var joinButtonText = "Join muted";
 }
 
@@ -119,7 +123,8 @@
         var isOwnVideoStreaming = ownStreamKind is not null;
         var watchingChatId = await ChatVideoUI.GetWatchingChatId(cancellationToken).ConfigureAwait(false);
         var isWatchingHere = chatId == watchingChatId;
-        return new (chat, audioState, isAnyoneTalking, isAnyoneVideoStreaming, isOwnVideoStreaming, isWatchingHere);
+        var isVideoPanelCollapsed = isWatchingHere && await ChatVideoUI.GetIsVideoPanelCollapsed(cancellationToken).ConfigureAwait(false);
+        return new (chat, audioState, isAnyoneTalking, isAnyoneVideoStreaming, isOwnVideoStreaming, isWatchingHere, isVideoPanelCollapsed);
     }
 
     private async Task OnJoinClick(ChatId chatId) {
@@ -188,7 +193,8 @@
         bool IsAnyoneTalking,
         bool IsAnyoneVideoStreaming,
         bool IsOwnVideoStreaming,
-        bool IsWatchingHere) {
+        bool IsWatchingHere,
+        bool IsVideoPanelCollapsed) {
         public bool IsListening => AudioState.IsListening;
         public bool IsRecordingHere => AudioState.IsRecording;
     }
