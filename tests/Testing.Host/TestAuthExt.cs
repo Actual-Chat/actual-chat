@@ -59,7 +59,7 @@ public static class TestAuthExt
             await WaitForSignOut(accounts, session, cancellationToken).ConfigureAwait(false);
         }
 
-        var command = new AccountsBackend_SignIn(session, userIdentity, newIdentities, account.Claims);
+        var command = new AccountsBackend_SignIn(session, userIdentity, newIdentities, account.Claims, AutoCreate: true);
         await commander.Call(command, cancellationToken).ConfigureAwait(false);
         return await WaitForSignIn(accounts, session, userIdentity, cancellationToken).ConfigureAwait(false);
     }
@@ -91,9 +91,32 @@ public static class TestAuthExt
             await WaitForSignOut(clientAccounts, session, cancellationToken).ConfigureAwait(false);
         }
 
-        var command = new AccountsBackend_SignIn(session, userIdentity, newIdentities, account.Claims);
+        var command = new AccountsBackend_SignIn(session, userIdentity, newIdentities, account.Claims, AutoCreate: true);
         await commander.Call(command, cancellationToken).ConfigureAwait(false);
         return await WaitForSignIn(clientAccounts, session, userIdentity, cancellationToken).ConfigureAwait(false);
+    }
+
+    // Reads SessionTemporals[PendingRegistrationKey] for the given session and,
+    // if present, calls Accounts_ConfirmRegister to commit the registration.
+    // Returns true when a prompt was found and confirmed.
+    public static async Task<bool> ConfirmPendingRegistration(
+        this AppHost appHost,
+        Session session,
+        CancellationToken cancellationToken = default)
+    {
+        var services = appHost.Services;
+        var sessionTemporals = services.GetRequiredService<ISessionTemporalsBackend>();
+        var json = await sessionTemporals
+            .Get(session, Constants.SessionTemporals.PendingRegistrationKey, cancellationToken)
+            .ConfigureAwait(false);
+        var info = PendingRegistrationInfo.TryParseJson(json);
+        if (info is null)
+            return false;
+
+        await services.Commander()
+            .Call(new Accounts_ConfirmRegister(session, info.Token), true, cancellationToken)
+            .ConfigureAwait(false);
+        return true;
     }
 
     public static Task SignOut(

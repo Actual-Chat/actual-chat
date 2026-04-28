@@ -13,8 +13,10 @@ using ActualChat.Users.Models;
 using ActualChat.Users.Phone;
 using ActualChat.Users.Phone.Internal;
 using ActualLab.Fusion.Server;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.Authentication.OAuth.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders.Physical;
@@ -60,6 +62,18 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
                 options.ClientId = Settings.GoogleClientId;
                 options.ClientSecret = Settings.GoogleClientSecret;
                 options.CorrelationCookie.SameSite = SameSiteMode.Lax;
+                // Pin the scopes explicitly — the package's defaults already include
+                // these, but locking them in protects us from a future package update
+                // silently dropping any of them.
+                options.Scope.Clear();
+                options.Scope.Add("openid");
+                options.Scope.Add("profile");
+                options.Scope.Add("email");
+                // GoogleOptions defaults don't map "picture" into a claim — add it
+                // so the user's profile picture URL is captured for downstream use
+                // (e.g., seeding the avatar on first sign-in). Provider-scoped key
+                // ("google/picture") so future providers can carry their own.
+                options.ClaimActions.MapJsonKey("google/picture", "picture");
             });
             authentication.AddApple(options => {
                 options.Events.OnCreatingTicket = context => {

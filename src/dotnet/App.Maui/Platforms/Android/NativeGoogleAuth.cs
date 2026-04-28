@@ -16,7 +16,6 @@ public sealed class NativeGoogleAuth
     private const int GoogleSignInRequestCode = 800;
 
     private readonly GoogleSignInClient _googleSignInClient;
-    private bool _mustExist;
 
     private IServiceProvider Services { get; }
     private ILogger Log { get; }
@@ -52,9 +51,8 @@ public sealed class NativeGoogleAuth
         return statusCode == ConnectionResult.Success;
     }
 
-    public Task SignIn(bool mustExist = false)
+    public Task SignIn()
     {
-        _mustExist = mustExist;
         var signInIntent = _googleSignInClient.SignInIntent;
         MainActivity.Current.StartActivityForResult(signInIntent, GoogleSignInRequestCode);
         return Task.CompletedTask;
@@ -95,7 +93,7 @@ public sealed class NativeGoogleAuth
                 var commander = Services.Commander();
                 var sessionResolver = Services.GetRequiredService<TrueSessionResolver>();
                 var session = await sessionResolver.GetSession().ConfigureAwait(true);
-                var command = new NativeAuth_SignInGoogle(session, code, _mustExist);
+                var command = new NativeAuth_SignInGoogle(session, code);
                 await commander.Call(command).ConfigureAwait(true);
             }
             catch (Exception e) {

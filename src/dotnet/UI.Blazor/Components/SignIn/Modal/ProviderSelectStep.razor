@@ -21,7 +21,7 @@
                         <img draggable="false" src="@provider.Icon" class="@provider.Class" alt="@provider.DisplayName">
                     }
                 </Icon>
-                <Title>@((TotpSignInModel.IsRegister ? "Register with " : "Sign in with ") + provider.DisplayName)</Title>
+                <Title>Sign in with @provider.DisplayName</Title>
             </Button>
         }
     </div>
@@ -62,9 +62,6 @@
         @if (!_signInError.IsNullOrEmpty()) {
             <div class="c-account-error">@_signInError</div>
         }
-        <Toggle Label="Register a new account"
-                IsChecked="@TotpSignInModel.IsRegister"
-                IsCheckedChanged="@OnRegisterToggleChanged" />
         <FormButtons IsEndAligned="false" Class="dialog-buttons">
             <Button Type="@ButtonType.Submit"  Class="btn-primary btn-modal sign-in" IsDisabled="@(_validationState is ValidationState.Invalid || _formModel.PhoneOrEmail.IsNullOrEmpty())">
                 @switch (_validationState) {
@@ -78,7 +75,7 @@
                     case ValidationState.Valid:
                     case ValidationState.CodeSentRecently:
                     default:
-                        <span>@(TotpSignInModel.IsRegister ? "Register" : "Continue")</span>
+                        <span>Continue</span>
                         break;
                 }
             </Button>
@@ -169,6 +166,19 @@
             return;
 
         _lastSignInErrorConsumedAt = CpuTimestamp.Now;
+
+        // After a registration cancel, the phone/email field is still blocked
+        // by the TOTP throttle and still holds the abandoned input. Reset both
+        // so the user can start fresh.
+        if (signInError == Constants.SessionTemporals.SignInCanceledMessage) {
+            _formModel.PhoneOrEmail = "";
+            TotpSignInModel.Phone = null;
+            TotpSignInModel.Email = null;
+            _validationState = ValidationState.None;
+            _showFieldErrors = false;
+            TotpUI.Reset();
+        }
+
         var cmd = new SessionTemporals_Set(Session, SessionTemporals_SignInErrorKey, null);
         _ = Hub.Services.Commander().Run(cmd, true, CancellationToken.None);
     }
@@ -191,7 +201,7 @@
     }
 
     private async Task OnSignInWithProvider(string schema) {
-        await AccountUI.SignIn(schema, mustExist: !TotpSignInModel.IsRegister);
+        await AccountUI.SignIn(schema);
     }
 
     private void OnPhoneOrEmailChanged(string? value) {
@@ -202,14 +212,6 @@
             return;
 
         _formModel.PhoneOrEmail = newValue;
-        if (_validationState is ValidationState.CannotSend or ValidationState.Invalid)
-            _validationState = ValidationState.None;
-        StateHasChanged();
-    }
-
-    private void OnRegisterToggleChanged(bool value) {
-        TotpSignInModel.IsRegister = value;
-        _signInError = "";
         if (_validationState is ValidationState.CannotSend or ValidationState.Invalid)
             _validationState = ValidationState.None;
         StateHasChanged();
@@ -267,28 +269,12 @@
 
     private async Task<bool> ValidatePhoneForSend(Phone phone) {
         var blocked = await TotpUI.CheckIfBlocked(phone, TotpPurpose.SignInPhone, CancellationToken.None);
-        if (!blocked.IsNullOrEmpty()) {
-            _signInError = blocked;
-            StateHasChanged();
-            return false;
-        }
+        if (blocked.IsNullOrEmpty())
+            return true;
 
-        var mustExist = !TotpSignInModel.IsRegister;
-        try {
-            var exists = await TotpUI.AccountExists(phone, CancellationToken.None);
-            if (exists != mustExist) {
-                _signInError = exists
-                    ? "Account is already registered. Sign-in instead?"
-                    : "Account not found. Register instead?";
-                _validationState = ValidationState.None;
-                StateHasChanged();
-                return false;
-            }
-        }
-        catch {
-            // If the check fails, proceed anyway — the server will validate during TOTP
-        }
-        return true;
+        _signInError = blocked;
+        StateHasChanged();
+        return false;
     }
 
     private async Task<bool> ValidateEmailForSend(string input) {
@@ -303,28 +289,12 @@
         }
 
         var blocked = await TotpUI.CheckIfBlocked(email, TotpPurpose.SignInEmail, CancellationToken.None);
-        if (!blocked.IsNullOrEmpty()) {
-            _signInError = blocked;
-            StateHasChanged();
-            return false;
-        }
+        if (blocked.IsNullOrEmpty())
+            return true;
 
-        var mustExist = !TotpSignInModel.IsRegister;
-        try {
-            var exists = await TotpUI.AccountExists(email, CancellationToken.None);
-            if (exists != mustExist) {
-                _signInError = exists
-                    ? "Account is already registered. Sign-in instead?"
-                    : "Account not found. Register instead?";
-                _validationState = ValidationState.None;
-                StateHasChanged();
-                return false;
-            }
-        }
-        catch {
-            // If the check fails, proceed anyway — the server will validate during TOTP
-        }
-        return true;
+        _signInError = blocked;
+        StateHasChanged();
+        return false;
     }
 
     // Nested types

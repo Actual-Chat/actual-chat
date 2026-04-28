@@ -29,7 +29,7 @@ public class NativeAuth(IServiceProvider services) : INativeAuth
         if (Invalidation.IsActive)
             return;
 
-        var (session, code, mustExist) = command;
+        var (session, code) = command;
         try {
             code.RequireNonEmpty();
 
@@ -59,7 +59,7 @@ public class NativeAuth(IServiceProvider services) : INativeAuth
             }
 
             var principal = new ClaimsPrincipal(identity);
-            await SignIn(session, principal, mustExist, "Unable to sign in with Google.", cancellationToken)
+            await SignIn(session, principal, "Unable to sign in with Google.", cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
@@ -73,7 +73,7 @@ public class NativeAuth(IServiceProvider services) : INativeAuth
         if (Invalidation.IsActive)
             return;
 
-        var (session, userId, code, _, name, mustExist) = command;
+        var (session, userId, code, _, name) = command;
         try {
             userId.RequireNonEmpty();
             code.RequireNonEmpty();
@@ -116,7 +116,7 @@ public class NativeAuth(IServiceProvider services) : INativeAuth
             }
 
             var principal = new ClaimsPrincipal(identity);
-            await SignIn(session, principal, mustExist, "Unable to sign in with Apple.", cancellationToken)
+            await SignIn(session, principal, "Unable to sign in with Apple.", cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
@@ -129,12 +129,11 @@ public class NativeAuth(IServiceProvider services) : INativeAuth
     private async Task SignIn(
         Session session,
         ClaimsPrincipal principal,
-        bool mustExist,
         string defaultErrorMessage,
         CancellationToken cancellationToken)
     {
         try {
-            await AuthHelper.SignIn(session, principal, mustExist, cancellationToken).ConfigureAwait(false);
+            await AuthHelper.SignIn(session, principal, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
             // Match the legacy controller: surface the underlying error message via SessionTemporals,

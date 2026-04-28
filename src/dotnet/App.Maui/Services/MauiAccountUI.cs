@@ -15,7 +15,7 @@ internal sealed class MauiAccountUI(UIHub hub) : AccountUI(hub)
         return AuthSchema.ToSchemasWithDisplayNames(schemas);
     }
 
-    protected override async Task SignInBackend(string schema, bool mustExist)
+    protected override async Task SignInBackend(string schema)
     {
         if (schema.IsNullOrEmpty())
             throw new ArgumentOutOfRangeException(nameof(schema));
@@ -24,7 +24,7 @@ internal sealed class MauiAccountUI(UIHub hub) : AccountUI(hub)
         if (schema == AuthSchema.Google) {
             var googleAuth = Hub.Services.GetRequiredService<NativeGoogleAuth>();
             if (googleAuth.IsAvailable()) {
-                await googleAuth.SignIn(mustExist).ConfigureAwait(false);
+                await googleAuth.SignIn().ConfigureAwait(false);
                 return;
             }
         }
@@ -35,13 +35,13 @@ internal sealed class MauiAccountUI(UIHub hub) : AccountUI(hub)
             && DeviceInfo.Version.Major >= 13)
         {
             var appleAuth = Hub.Services.GetRequiredService<NativeAppleAuth>();
-            await appleAuth.SignIn(mustExist).ConfigureAwait(false);
+            await appleAuth.SignIn().ConfigureAwait(false);
             return;
         }
 #endif
 
         var endpoint = $"/signIn/{schema}";
-        await WebSignInOrSignOut(endpoint, "Sign-in", mustExist).ConfigureAwait(false);
+        await WebSignInOrSignOut(endpoint, "Sign-in").ConfigureAwait(false);
     }
 
     protected override async Task SignOutBackend()
@@ -57,7 +57,7 @@ internal sealed class MauiAccountUI(UIHub hub) : AccountUI(hub)
 
     // Private methods
 
-    private async Task WebSignInOrSignOut(string endpoint, string flowName, bool mustExist = false)
+    private async Task WebSignInOrSignOut(string endpoint, string flowName)
     {
         var isSignIn = endpoint.StartsWith("/signIn", StringComparison.OrdinalIgnoreCase);
         try {
@@ -67,8 +67,6 @@ internal sealed class MauiAccountUI(UIHub hub) : AccountUI(hub)
                 + $"&e={endpoint.UrlEncode()}"
                 + $"&flow={flowName.UrlEncode()}"
                 + $"&appKind={HostInfo.AppKind:G}";
-            if (mustExist)
-                url += "&mustExist=1";
             if (MauiSettings.WebAuth.UseSystemBrowser) {
                 _ = MauiBrowser.Open(url);
                 return;

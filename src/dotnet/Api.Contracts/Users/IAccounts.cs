@@ -20,6 +20,10 @@ public interface IAccounts : IComputeService
     Task OnDeactivateSession(Accounts_DeactivateSession command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnDeactivateAllSessions(Accounts_DeactivateAllSessions command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnConfirmRegister(Accounts_ConfirmRegister command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnCancelRegister(Accounts_CancelRegister command, CancellationToken cancellationToken);
 
     // Queries
     [ComputeMethod(MinCacheDuration = 60, ConsolidationDelay = 0.01)]
@@ -84,4 +88,18 @@ public sealed partial record Accounts_DeactivateSession(
 public sealed partial record Accounts_DeactivateAllSessions(
     [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1), Key(1)] SessionKind[] Kinds
+) : ISessionCommand<Unit>, IApiCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Accounts_ConfirmRegister(
+    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] string Token
+) : ISessionCommand<Unit>, IApiCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Accounts_CancelRegister(
+    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] string Token
 ) : ISessionCommand<Unit>, IApiCommand;
