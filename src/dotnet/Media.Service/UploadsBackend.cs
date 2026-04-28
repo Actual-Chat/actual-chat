@@ -34,7 +34,8 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         if (IsGoogleStorage) {
             var upload = await Get(uploadId, cancellationToken).Require().ConfigureAwait(false);
             var sessionUri = upload.SessionUri.Require();
-            var offset = await GoogleResumableUploads.GetUploadStatusAsync(sessionUri, cancellationToken)
+            var offset = await GoogleResumableUploads
+                .GetUploadStatusAsync(sessionUri, cancellationToken)
                 .ConfigureAwait(false);
             offset ??= upload.Length!.Value;
             return offset.Value;
@@ -80,6 +81,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
             _ = Get(uploadId, default);
             return;
         }
+
         if (IsGoogleStorage) {
             var upload = await Get(uploadId, cancellationToken).ConfigureAwait(false);
             if (upload is not null)
@@ -98,7 +100,9 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         if (IsGoogleStorage) {
             var upload1 = await Get(uploadId, cancellationToken).Require().ConfigureAwait(false);
             var sessionUri = upload1.SessionUri.Require();
-            _ = await GoogleResumableUploads.UploadChunk(sessionUri, data, uploadOffset, upload1.Length!.Value, cancellationToken).ConfigureAwait(false);
+            _ = await GoogleResumableUploads
+                .UploadChunk(sessionUri, data, uploadOffset, upload1.Length!.Value, cancellationToken)
+                .ConfigureAwait(false);
             var newOffset = uploadOffset + data.Length;
             return newOffset;
         }
