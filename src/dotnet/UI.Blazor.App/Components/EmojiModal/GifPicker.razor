@@ -11,14 +11,7 @@
                 <div class="c-gif-recent-label">Recent</div>
                 <div class="c-gif-recent-list">
                     @foreach (var gif in _recentGifs) {
-                        <button @key="gif.Slug"
-                                class="c-gif-recent-item"
-                                @onclick="@(() => OnGifClick(gif))">
-                            <img class="c-gif-img"
-                                 src="@gif.PreviewUrl"
-                                 alt=""
-                                 style="@GetAspectRatioStyle(gif)"/>
-                        </button>
+                        @GifButton(gif, "c-gif-recent-item", false)
                     }
                 </div>
             </div>
@@ -30,15 +23,7 @@
                 var columnIndex = col;
                 <div @key="@columnIndex" class="c-gif-col">
                     @foreach (var gif in _columns[columnIndex]) {
-                        <button @key="gif.Slug"
-                                class="c-gif-item"
-                                @onclick="@(() => OnGifClick(gif))">
-                            <img class="c-gif-img"
-                                 src="@gif.PreviewUrl"
-                                 alt=""
-                                 loading="lazy"
-                                 style="@GetAspectRatioStyle(gif)"/>
-                        </button>
+                        @GifButton(gif, "c-gif-item", true)
                     }
                     <div @ref="_sentinelRefs[columnIndex]" class="c-gif-sentinel"></div>
                 </div>
@@ -178,6 +163,18 @@
             catch (OperationCanceledException) { }
         }
     }
+
+    private RenderFragment GifButton(GifItem gif, string cls, bool lazy) => __builder => {
+        <button @key="gif.Slug"
+                class="@cls"
+                @onclick="@(() => OnGifClick(gif))">
+            <img class="c-gif-img"
+                 src="@gif.PreviewUrl"
+                 alt=""
+                 loading="@(lazy ? "lazy" : null)"
+                 style="@GetAspectRatioStyle(gif)"/>
+        </button>
+    };
 
     private async Task OnGifClick(GifItem gif) {
         await SaveRecentGif(gif).ConfigureAwait(true);
