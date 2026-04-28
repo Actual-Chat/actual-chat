@@ -9,7 +9,7 @@ namespace ActualChat.Streaming;
 [LegacyName("ILiveStreams", "2.6.9999")]
 public interface ILiveAudioStreams : IComputeService
 {
-    [ComputeMethod]
+    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     [LegacyName("ListActiveStreams", "2.6.9999")]
     Task<ApiArray<LiveStreamInfo>> List(Session session, ChatId chatId, CancellationToken cancellationToken);
 

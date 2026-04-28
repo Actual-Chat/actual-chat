@@ -13,19 +13,19 @@ public interface ILiveVideoStreams : IComputeService
         TimeSpan skipTo,
         CancellationToken cancellationToken);
 
-    [ComputeMethod]
+    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     [LegacyName("ListActiveStreams", "2.6.9999")]
     Task<ApiArray<VideoStreamInfo>> List(Session session, ChatId chatId, CancellationToken cancellationToken);
 
-    [ComputeMethod]
+    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     [LegacyName("GetVideoStreamMemberCount", "2.6.9999")]
     Task<int> GetMemberCount(Session session, ChatId chatId, CancellationToken cancellationToken);
 
-    [ComputeMethod]
+    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     [LegacyName("GetSupportedDecoderCodecs", "2.6.9999")]
     Task<ApiArray<string>> GetSupportedCodecs(Session session, ChatId chatId, CancellationToken cancellationToken);
 
-    [ComputeMethod]
+    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<VideoQualityPreset> GetQualityPreset(Session session, StreamId streamId, CancellationToken cancellationToken);
 
     [LegacyName("RegisterVideoStreamMember", "2.6.9999")]
