@@ -183,6 +183,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         var rules = await Chats.GetRules(record.Session, record.ChatId, cancellationToken)
             .ConfigureAwait(false);
         rules.Require(ChatPermissions.Write);
+        rules.Require(ChatPermissions.WriteVideo);
 
         var author = await Authors
             .EnsureJoined(record.Session, record.ChatId, cancellationToken)

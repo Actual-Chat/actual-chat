@@ -76,7 +76,7 @@ public sealed partial record ConversationBackend_Summarize(
 public sealed partial record ConversationBackend_AppendReply(
     [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(1), Key(1)] long EntryLid,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] Range<long> ReplySequence
+    [property: DataMember, MemoryPackOrder(2), Key(2)] Range<long> ReplyLidRange
 ) : ICommand<Conversation>, IBackendCommand, IHasShardKey<ChatId>, IHasDelayUntil, IHasTimeout
 {
     [DataMember, MemoryPackOrder(3), Key(3)]

@@ -51,6 +51,19 @@ public interface IChatsBackend : IComputeService, IBackendService
         CancellationToken cancellationToken);
 
     [ComputeMethod]
+    Task<long> GetMinLid(ChatId chatId, CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    Task<long> GetMaxLid(ChatId chatId, bool includeRemoved, CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    Task<ApiSet<AuthorId>> GetFirstEntryAuthors(
+        ChatId chatId,
+        int entryCount,
+        bool includeRemoved,
+        CancellationToken cancellationToken);
+
+    [ComputeMethod]
     Task<long?> GetMaxEntryVersion(ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]

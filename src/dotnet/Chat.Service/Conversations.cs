@@ -41,7 +41,7 @@ public class Conversations(IServiceProvider services) : IConversations
         if (conversation == null)
             throw new NotFoundException<Conversation>();
 
-        var entryIdRange = conversation.EntryRange;
+        var entryIdRange = conversation.EntryLidRange;
         var reSummarizeCommand = new ConversationBackend_Summarize(chatId, [entryIdRange]);
         await Commander.Call(reSummarizeCommand, cancellationToken).ConfigureAwait(false);
     }

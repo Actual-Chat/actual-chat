@@ -359,6 +359,8 @@ public partial class Chats(IServiceProvider services) : IChats
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(ChatPermissions.Write);
         var attachments = command.Attachments;
+        if (attachments.Length > 0 || command.HasUploadingAttachments)
+            chat.Rules.Permissions.Require(ChatPermissions.Upload);
         if (string.IsNullOrWhiteSpace(text) && attachments.Length == 0 && !command.HasUploadingAttachments)
             throw StandardError.Constraint("Sorry, you can't post empty messages.");
 
@@ -423,6 +425,19 @@ public partial class Chats(IServiceProvider services) : IChats
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
         }
         else { // Create
+            // In peer chats, when the caller isn't in the recipient's contacts and
+            // the recipient hasn't replied, ChatPermissions.WriteAudio (and other
+            // content-type flags) are stripped. Use that as the cheap signal to
+            // enforce the creation cap. Edits remain unaffected since this branch
+            // only runs on create.
+            if (chatId is PeerChatId && !chat.Rules.Has(ChatPermissions.WriteAudio)) {
+                var hasReachedLimit = await HasReachedNonContactPeerLimit(chatId, author.Id, cancellationToken)
+                    .ConfigureAwait(false);
+                if (hasReachedLimit)
+                    throw StandardError.Constraint(
+                        $"You can send up to {Constants.Chat.NonContactPeerMessageLimit} messages until this user adds you to their contacts or replies.");
+            }
+
             var commandResult = await TryHandleAdminCommand(session, chatId, author, text, cancellationToken)
                 .ConfigureAwait(false);
             if (commandResult != null)
@@ -441,6 +456,9 @@ public partial class Chats(IServiceProvider services) : IChats
                     ClientId = command.ClientId,
                 }));
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+            if (chatId is PeerChatId peerChatId)
+                await EnsureOwnPeerContactStored(peerChatId, chat.Rules.Account.Require().Id, cancellationToken)
+                    .ConfigureAwait(false);
         }
 
         return textEntry;
@@ -756,7 +774,9 @@ public partial class Chats(IServiceProvider services) : IChats
                 var contactId = ContactId.NewAny(userId, newChatId);
                 var contact = await ContactsBackend.Get(userId, contactId, cancellationToken).ConfigureAwait(false);
                 if (!contact.IsStored()) {
-                    var change = new Change<Contact> { Create = new Contact(contactId) };
+                    var change = new Change<Contact> {
+                        Create = new Contact(contactId) { State = ContactState.Regular },
+                    };
                     var backendCmd4 = new ContactsBackend_Change(contactId, null, change);
                     await Commander.Call(backendCmd4, true, cancellationToken).ConfigureAwait(false);
                 }
@@ -931,6 +951,33 @@ public partial class Chats(IServiceProvider services) : IChats
     {
         var rules = await GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         return rules.CanRead();
+    }
+
+    private async Task<bool> HasReachedNonContactPeerLimit(
+        ChatId chatId,
+        AuthorId authorId,
+        CancellationToken cancellationToken)
+    {
+        var messageLimit = Constants.Chat.NonContactPeerMessageLimit;
+        var firstAuthors = await Backend.GetFirstEntryAuthors(chatId, messageLimit, true, cancellationToken).ConfigureAwait(false);
+        return firstAuthors.Count == 1 && firstAuthors.Contains(authorId);
+    }
+
+    private async Task EnsureOwnPeerContactStored(
+        PeerChatId chatId,
+        UserId ownerId,
+        CancellationToken cancellationToken)
+    {
+        var contactId = ContactId.NewUser(ownerId, chatId.AnotherUserId(ownerId));
+        var contact = await ContactsBackend.Get(ownerId, contactId, cancellationToken).ConfigureAwait(false);
+        if (contact.IsStoredContact)
+            return;
+
+        var command = new ContactsBackend_Change(
+            contactId,
+            contact.IsStored() ? contact.Version : null,
+            Change.Upsert(contact with { State = ContactState.Regular }));
+        await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<PrincipalId> GetOwnPrincipalId(

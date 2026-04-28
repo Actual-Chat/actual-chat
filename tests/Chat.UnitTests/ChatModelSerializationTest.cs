@@ -229,7 +229,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
 
         var s = meta.PassThroughAllSerializers(Out);
         s.ChatId.Should().Be(meta.ChatId);
-        s.EntryRanges.Should().BeEquivalentTo(meta.EntryRanges);
+        s.EntryLidRange.Should().BeEquivalentTo(meta.EntryLidRange);
         s.PreviousEntryLid.Should().Be(meta.PreviousEntryLid);
         s.NextEntryLid.Should().Be(meta.NextEntryLid);
     }
@@ -348,9 +348,9 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
 
         var s = meta.PassThroughAllSerializers(Out);
         s.ChatId.Should().Be(meta.ChatId);
-        s.ConversationRanges.Should().BeEquivalentTo(meta.ConversationRanges);
-        s.PreviousConversationRange.Should().Be(meta.PreviousConversationRange);
-        s.NextConversationRange.Should().Be(meta.NextConversationRange);
+        s.ConversationLidRanges.Should().BeEquivalentTo(meta.ConversationLidRanges);
+        s.PreviousConversationLidRange.Should().Be(meta.PreviousConversationLidRange);
+        s.NextConversationLidRange.Should().Be(meta.NextConversationLidRange);
     }
 
     [Fact]

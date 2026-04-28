@@ -24,8 +24,9 @@ public partial class ChatsBackend
                     ChatEntryId.Parse(invLastEntrySid).LocalId,
                     ChangeKind.Create,
                     false);
-                _ = GetIdRange(newChatId, true, default);
-                _ = GetIdRange(newChatId, false, default);
+                _ = GetMinLid(newChatId, default);
+                _ = GetMaxLid(newChatId, true, default);
+                _ = GetMaxLid(newChatId, false, default);
             }
             return default!;
         }
@@ -44,7 +45,7 @@ public partial class ChatsBackend
         var commandTimeout = TimeSpan.FromSeconds(30);
 
         MigratedAuthors migratedAuthors;
-        var textEntryRange = new Range<long>();
+        var entryLidRange = new Range<long>();
         (RoleId Id, RoleId NewId)[] rolesMap;
         long maxAuthorLocalId;
         ChatCopyState chatCopyState;
@@ -76,11 +77,11 @@ public partial class ChatsBackend
                 var startEntryId = !newChatRange.IsEmpty ? newChatRange.End : 1;
                 var endEntryId = sourceChatRange.End;
                 if (endEntryId > startEntryId)
-                    textEntryRange = new Range<long>(startEntryId, endEntryId);
+                    entryLidRange = new Range<long>(startEntryId, endEntryId);
             }
 
             Log.LogInformation("OnCopyChat({CorrelationId}: text range is [{Start},{End})",
-                correlationId, textEntryRange.Start, textEntryRange.End);
+                correlationId, entryLidRange.Start, entryLidRange.End);
 
             var migratedRoles = new List<MigratedRole>();
             var hasChanges1 = await CreateOrUpdateRoles(dbContext,
@@ -120,13 +121,13 @@ public partial class ChatsBackend
         var proceed = true;
         var hasErrors = false;
         var lastProcessedEntryId = (ChatEntryId?)null;
-        if (!textEntryRange.IsEmpty) {
-            var startEntryId = textEntryRange.Start;
+        if (!entryLidRange.IsEmpty) {
+            var startEntryId = entryLidRange.Start;
             var copyContext = new CopyChatEntriesContext(chatId, newChatId, correlationId, migratedAuthors);
             const int batchLimit = 500;
 
             while (proceed) {
-                var batchRange = new Range<long>(startEntryId, textEntryRange.End);
+                var batchRange = new Range<long>(startEntryId, entryLidRange.End);
                 try {
                     var result = await CopyChatEntries(copyContext,
                             batchRange,

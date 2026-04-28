@@ -100,8 +100,8 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             .ConfigureAwait(false);
 
         return conversations
-            .Where(c => c != null && !c.EntryRange.IntersectWith(idTileRange).IsEmpty)
-            .OrderBy(c => c!.EntryRange.Start)
+            .Where(c => c != null && !c.EntryLidRange.IntersectWith(lidTileRange).IsEmpty)
+            .OrderBy(c => c!.EntryLidRange.Start)
             .ToArray()!;
     }
 
@@ -117,10 +117,10 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             var invConversation = context.Operation.Items.KeylessGet<Conversation>();
             if (invConversation != null) {
                 _ = Get(invConversation.Id, default);
-                foreach (var idTile in IdTileStack.LastLayer.GetCoveringTiles(invConversation.EntryRange))
+                foreach (var idTile in IdTileStack.LastLayer.GetCoveringTiles(invConversation.EntryLidRange))
                     _ = GetRangeMeta(chatId, idTile.Range.Start, default);
-                var previousConversationId = context.Operation.Items.Get<long>(nameof(ConversationRangeMeta.PreviousConversationRange));
-                var nextConversationId = context.Operation.Items.Get<long>(nameof(ConversationRangeMeta.NextConversationRange));
+                var previousConversationId = context.Operation.Items.Get<long>(nameof(ConversationRangeMeta.PreviousConversationLidRange));
+                var nextConversationId = context.Operation.Items.Get<long>(nameof(ConversationRangeMeta.NextConversationLidRange));
                 if (previousConversationId != default) {
                     var previousIdTile = IdTileStack.LastLayer.GetTile(previousConversationId);
                     _ = GetRangeMeta(chatId, previousIdTile.Range.Start, default);
@@ -218,7 +218,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             var newConversation = DiffEngine.Patch(originalConversation, diff) with {
                 Version = VersionGenerator.NextVersion(originalConversation.Version),
             };
-            if (newConversation.EntryRange.Start != originalConversation.EntryRange.Start)
+            if (newConversation.EntryLidRange.Start != originalConversation.EntryLidRange.Start)
                 throw StandardError.Constraint("EntryRange.Start can't be changed.");
 
             // Validation
@@ -246,9 +246,9 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .ConfigureAwait(false);
 
             if (previousConversationId != 0)
-                context.Operation.Items.Set(nameof(ConversationRangeMeta.PreviousConversationRange), previousConversationId);
+                context.Operation.Items.Set(nameof(ConversationRangeMeta.PreviousConversationLidRange), previousConversationId);
             if (nextConversationId != 0)
-                context.Operation.Items.Set(nameof(ConversationRangeMeta.NextConversationRange), nextConversationId);
+                context.Operation.Items.Set(nameof(ConversationRangeMeta.NextConversationLidRange), nextConversationId);
         }
     }
 
@@ -340,7 +340,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         var conversation = await Get(conversationId, cancellationToken).ConfigureAwait(false);
         conversation.Require();
 
-        var entriesInfo = await GetTextEntries(chatId, [conversation.EntryRange, replyIdRange], cancellationToken).ConfigureAwait(false);
+        var entriesInfo = await GetTextEntries(chatId, [conversation.EntryLidRange, replyIdRange], cancellationToken).ConfigureAwait(false);
         var entries = entriesInfo.TextEntries;
         var summaryResult = await ConversationSummarizer.Summarize(entries, cancellationToken).ConfigureAwait(false);
         if (!summaryResult.HasResult)

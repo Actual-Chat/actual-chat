@@ -2,6 +2,7 @@ using ActualChat.Chat.Db;
 using ActualChat.Chat.Flows;
 using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
+using ActualChat.Contacts;
 using ActualChat.Db;
 using ActualChat.Diagnostics;
 using ActualChat.Flows;
@@ -13,6 +14,7 @@ using ActualChat.Transcription;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.Resilience;
+using ActualLab.Rpc;
 
 namespace ActualChat.Chat;
 
@@ -47,6 +49,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     private IInvitesBackend InvitesBackend => field ??= Services.GetRequiredService<IInvitesBackend>();
     private IPlacesBackend PlacesBackend => field ??= Services.GetRequiredService<IPlacesBackend>();
     private IConversationsBackend ConversationsBackend => field ??= Services.GetRequiredService<IConversationsBackend>();
+    private IContactsBackend ContactsBackend => field ??= Services.GetRequiredService<IContactsBackend>();
     private IServerKvasBackend ServerKvasBackend => field ??= Services.GetRequiredService<IServerKvasBackend>();
     private HostInfo HostInfo => field ??= Services.HostInfo();
     private IMarkupParser MarkupParser => field ??= Services.GetRequiredService<IMarkupParser>();
@@ -171,7 +174,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             var threadPermissions = ChatPermissions.Read;
             if (parentChatRules.CanWrite() && threadChatAuthor is not null)
                 threadPermissions |= ChatPermissions.Write;
-            return new AuthorRules(chatId, threadChatAuthor, account, threadPermissions);
+            return new AuthorRules(chatId, threadChatAuthor, account, threadPermissions.AddImplied());
         }
 
         AuthorRules chatRules;
@@ -220,13 +223,39 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     // Note that it returns (firstId, lastId + 1) range!
     // [ComputeMethod]
+    [LegacyName("GetIdRange", "2.7.9999")]
     public virtual async Task<Range<long>> GetLidRange(
         ChatId chatId,
         bool includeRemoved,
         CancellationToken cancellationToken)
     {
         var minLid = await GetMinLid(chatId, cancellationToken).ConfigureAwait(false);
+        var maxLid = await GetMaxLid(chatId, includeRemoved, cancellationToken).ConfigureAwait(false);
+        return (minLid, Math.Max(minLid, maxLid) + 1);
+    }
 
+    [ComputeMethod]
+    public virtual async Task<long> GetMinLid(
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        return await dbContext.ChatEntries
+            .Where(e => e.ChatId == chatId.Value && e.Kind == 0)
+            .OrderBy(e => e.LocalId)
+            .Select(e => e.LocalId)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<long> GetMaxLid(
+        ChatId chatId,
+        bool includeRemoved,
+        CancellationToken cancellationToken)
+    {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
@@ -235,13 +264,43 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             .Where(e => !e.IsThreadEntry);
         if (!includeRemoved)
             dbChatEntries = dbChatEntries.Where(e => !e.IsRemoved);
-        var maxId = await dbChatEntries
+        return await dbChatEntries
             .OrderByDescending(e => e.LocalId)
             .Select(e => e.LocalId)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
+    }
 
-        return (minId, Math.Max(minId, maxId) + 1);
+    // [ComputeMethod]
+    public virtual async Task<ApiSet<AuthorId>> GetFirstEntryAuthors(
+        ChatId chatId,
+        int entryCount,
+        bool includeRemoved,
+        CancellationToken cancellationToken)
+    {
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(entryCount, 64);
+        if (entryCount <= 0)
+            return ApiSet<AuthorId>.Empty;
+
+        var minLid = await GetMinLid(chatId, cancellationToken).ConfigureAwait(false);
+        var authors = new ApiSet<AuthorId>();
+        var remainingCount = entryCount;
+        for (var idTile = IdTileStack.FirstLayer.GetTile(minLid); remainingCount > 0; idTile = idTile.Next()) {
+            var tile = await GetTile(chatId, idTile.Range, true, cancellationToken).ConfigureAwait(false);
+            if (tile.Entries.Length == 0)
+                break;
+
+            foreach (var entry in tile.Entries) {
+                if (!includeRemoved && entry.IsRemoved)
+                    continue;
+
+                authors.Add(entry.AuthorId);
+                remainingCount--;
+                if (remainingCount == 0)
+                    break;
+            }
+        }
+        return remainingCount == 0 ? authors : ApiSet<AuthorId>.Empty;
     }
 
     // [ComputeMethod]
@@ -337,8 +396,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         Range<long> chatLidRange;
         using (Computed.BeginIsolation())
             chatLidRange = await GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false);
-        var start = tile.Start;
-        var end = tile.End;
+        var startLid = tile.Start;
+        var endLid = tile.End;
         var entryLidRanges = new List<Range<long>>();
         var conversationIdRanges = new List<Range<long>>();
         var minCount = 0;
@@ -348,10 +407,10 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var entryRangeMeta = await entryRangeMetaTask.ConfigureAwait(false);
         var conversationRangeMeta = await conversationRangeMetaTask.ConfigureAwait(false);
-        entryIdRanges.AddRange(entryRangeMeta.EntryRanges);
-        conversationIdRanges.AddRange(conversationRangeMeta.ConversationRanges);
+        entryLidRanges.AddRange(entryRangeMeta.EntryLidRange);
+        conversationIdRanges.AddRange(conversationRangeMeta.ConversationLidRanges);
         minCount += EstimateMinimumCount(entryRangeMeta, conversationRangeMeta);
-        var hasFulfilled = minCount >= Constants.Chat.MinChatPageMapSize || new Range<long>(start, end).Contains(chatIdRange);
+        var hasFulfilled = minCount >= Constants.Chat.MinChatPageMapSize || new Range<long>(startLid, endLid).Contains(chatLidRange);
 
         var previousEntryRangeMeta = entryRangeMeta;
         var previousConversationRangeMeta = conversationRangeMeta;
@@ -360,8 +419,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         long previousId;
         long nextId;
         while (!hasFulfilled) {
-            previousId = Math.Max(previousEntryRangeMeta?.PreviousEntryId ?? 0, (previousConversationRangeMeta?.PreviousConversationRange?.End ?? 1) - 1);
-            nextId = Math.Min(nextEntryRangeMeta?.NextEntryId ?? long.MaxValue, nextConversationRangeMeta?.NextConversationRange?.Start ?? long.MaxValue);
+            previousId = Math.Max(previousEntryRangeMeta?.PreviousEntryLid ?? 0, (previousConversationRangeMeta?.PreviousConversationLidRange?.End ?? 1) - 1);
+            nextId = Math.Min(nextEntryRangeMeta?.NextEntryLid ?? long.MaxValue, nextConversationRangeMeta?.NextConversationLidRange?.Start ?? long.MaxValue);
             if (previousId == 0 && nextId == long.MaxValue)
                 break;
 
@@ -390,16 +449,16 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 : null;
 
             if (previousEntryRangeMeta is not null && previousConversationRangeMeta is not null) {
-                start = previousTile.Start;
-                entryIdRanges = [..previousEntryRangeMeta.EntryRanges, ..entryIdRanges];
-                conversationIdRanges = [..previousConversationRangeMeta.ConversationRanges, ..conversationIdRanges];
+                startLid = previousTile.Start;
+                entryLidRanges = [..previousEntryRangeMeta.EntryLidRange, ..entryLidRanges];
+                conversationIdRanges = [..previousConversationRangeMeta.ConversationLidRanges, ..conversationIdRanges];
                 minCount += EstimateMinimumCount(previousEntryRangeMeta, previousConversationRangeMeta);
-                hasFulfilled = minCount >= Constants.Chat.MinChatPageMapSize || new Range<long>(start, end).Contains(chatIdRange);
+                hasFulfilled = minCount >= Constants.Chat.MinChatPageMapSize || new Range<long>(startLid, endLid).Contains(chatLidRange);
                 if (hasFulfilled)
                     break;
             }
             else
-                start = IdTileStack.LastLayer.GetTile(chatIdRange.Start).Start;
+                startLid = IdTileStack.LastLayer.GetTile(chatLidRange.Start).Start;
 
             nextEntryRangeMeta = nextEntryRangeMetaTask is not null
                 ? await nextEntryRangeMetaTask.ConfigureAwait(false)
@@ -408,19 +467,19 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 ? await nextConversationRangeMetaTask.ConfigureAwait(false)
                 : null;
             if (nextEntryRangeMeta is null || nextConversationRangeMeta is null) {
-                end = chatIdRange.End;
+                endLid = chatLidRange.End;
                 continue;
             }
 
-            end = nextTile.End;
-            entryIdRanges.AddRange(nextEntryRangeMeta.EntryRanges);
-            conversationIdRanges.AddRange(nextConversationRangeMeta.ConversationRanges);
+            endLid = nextTile.End;
+            entryLidRanges.AddRange(nextEntryRangeMeta.EntryLidRange);
+            conversationIdRanges.AddRange(nextConversationRangeMeta.ConversationLidRanges);
             minCount += EstimateMinimumCount(nextEntryRangeMeta, nextConversationRangeMeta);
-            hasFulfilled = minCount >= Constants.Chat.MinChatPageMapSize || new Range<long>(start, end).Contains(chatIdRange);
+            hasFulfilled = minCount >= Constants.Chat.MinChatPageMapSize || new Range<long>(startLid, endLid).Contains(chatLidRange);
         }
 
-        previousId = Math.Max(previousEntryRangeMeta?.PreviousEntryId ?? 0, (previousConversationRangeMeta?.PreviousConversationRange?.End ?? 1) - 1);
-        nextId = Math.Min(nextEntryRangeMeta?.NextEntryId ?? long.MaxValue, nextConversationRangeMeta?.NextConversationRange?.Start ?? long.MaxValue);
+        previousId = Math.Max(previousEntryRangeMeta?.PreviousEntryLid ?? 0, (previousConversationRangeMeta?.PreviousConversationLidRange?.End ?? 1) - 1);
+        nextId = Math.Min(nextEntryRangeMeta?.NextEntryLid ?? long.MaxValue, nextConversationRangeMeta?.NextConversationLidRange?.Start ?? long.MaxValue);
         entryLidRanges.Sort((a, b) => a.Start.CompareTo(b.Start));
         conversationIdRanges.Sort((a, b) => a.Start.CompareTo(b.Start));
 
@@ -436,7 +495,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             .ToList();
 
         return new ChatRangeMeta(
-            new Range<long>(start, end),
+            new Range<long>(startLid, endLid),
             mergedEntryIdRanges.EnsureMonotonic().ToArray(),
             mergedConversationIdRanges.EnsureMonotonic().ToArray(),
             minCount,
@@ -447,8 +506,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         {
             var count = 0;
             var lastRange = new Range<long>(0, 0);
-            var merged = entryRangeMeta1.EntryRanges
-                .Merge(conversationRangeMeta1.ConversationRanges, (ce, co) => ce.IntersectWith(co).IsEmpty ? (int)(ce.Start - co.Start) : 0)
+            var merged = entryRangeMeta1.EntryLidRange
+                .Merge(conversationRangeMeta1.ConversationLidRanges, (ce, co) => ce.IntersectWith(co).IsEmpty ? (int)(ce.Start - co.Start) : 0)
                 .ToList();
 
             Range<long>? pendingRight = null; // right part of the current entryRange
@@ -1168,14 +1227,14 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (Invalidation.IsActive) {
             var invChatEntry = context.Operation.Items.KeylessGet<ChatEntry>();
             var invBoundToThreadHasChanged = context.Operation.Items.Get<bool>(boundToThreadHasChangedKey);
+            var previousEntryId = context.Operation.Items.Get<long>(nameof(ChatEntryRangeMeta.PreviousEntryLid));
+            var nextEntryId = context.Operation.Items.Get<long>(nameof(ChatEntryRangeMeta.NextEntryLid));
             if (invChatEntry != null) {
                 InvalidateTiles(chatId, invChatEntry.LocalId, changeKind, invBoundToThreadHasChanged);
 
                 var entryTile = IdTileStack.LastLayer.GetTile(invChatEntry.LocalId);
                 _ = GetEntryRangeMeta(chatId, entryTile.Range.Start, default);
 
-                var previousEntryId = context.Operation.Items.Get<long>(nameof(ChatEntryRangeMeta.PreviousEntryId));
-                var nextEntryId = context.Operation.Items.Get<long>(nameof(ChatEntryRangeMeta.NextEntryId));
                 if (previousEntryId != 0 && !entryTile.Range.Contains(previousEntryId)) {
                     var previousEntryIdTile = IdTileStack.LastLayer.GetTile(previousEntryId);
                     _ = GetEntryRangeMeta(chatId, previousEntryIdTile.Range.Start, default);
@@ -1189,18 +1248,18 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             // Invalidate min-max Id range at last
             switch (changeKind) {
             case ChangeKind.Create:
-                var createdChatEntry = context.Operation.Items.Get<ChatEntryId>(CreatedChatEntryId);
-                if (createdChatEntry is { LocalId: <= 1 })
-                    _ = GetMinId(createdChatEntry.ChatId, default);
-                _ = GetIdRange(chatId, true, default);
-                _ = GetIdRange(chatId, false, default);
+                var createdChatEntryId = context.Operation.Items.Get<ChatEntryId>(CreatedChatEntryId);
+                if (createdChatEntryId is not null && previousEntryId == 0)
+                    _ = GetMinLid(createdChatEntryId.ChatId, default);
+                _ = GetMaxLid(chatId, true, default);
+                _ = GetMaxLid(chatId, false, default);
                 break;
             case ChangeKind.Update when invBoundToThreadHasChanged:
-                _ = GetIdRange(chatId, true, default);
-                _ = GetIdRange(chatId, false, default);
+                _ = GetMaxLid(chatId, true, default);
+                _ = GetMaxLid(chatId, false, default);
                 break;
             case ChangeKind.Remove:
-                _ = GetIdRange(chatId, false, default);
+                _ = GetMaxLid(chatId, false, default);
                 break;
             }
             return null!;
@@ -2085,24 +2144,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         }
     }
 
-
     // Protected methods
-
-    [ComputeMethod]
-    protected virtual async Task<long> GetMinId(
-        ChatId chatId,
-        CancellationToken cancellationToken)
-    {
-        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _ = dbContext.ConfigureAwait(false);
-
-        return await dbContext.ChatEntries
-            .Where(e => e.ChatId == chatId.Value && e.Kind == 0)
-            .OrderBy(e => e.LocalId)
-            .Select(e => e.LocalId)
-            .FirstOrDefaultAsync(cancellationToken)
-            .ConfigureAwait(false);
-    }
 
     protected void InvalidateTiles(
         ChatId chatId,
@@ -2110,7 +2152,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         ChangeKind changeKind,
         bool boundToThreadHasChanged)
     {
-        // Invalidate GetTile & GetEntryCount for chat tiles
+        // Invalidate GetTile for chat tiles
         foreach (var idTile in IdTileStack.GetAllTiles(entryId)) {
             if (idTile.Layer.Smaller != null)
                 continue;
@@ -2391,6 +2433,20 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         }
 
         var permissions = (ChatPermissions.Write | ChatPermissions.SeeMembers | ChatPermissions.Join | ChatPermissions.EditProperties).AddImplied();
+
+        // Strip stream + upload capabilities if the recipient hasn't explicitly stored
+        // the caller's contact. A recipient reply stores this contact automatically.
+        // The message-count cap on creates is enforced separately in Chats.OnUpsertEntry.
+        var peerUserId = otherUserId!;
+        var peerContactId = ContactId.NewUser(peerUserId, account.Id);
+        var peerContact = await ContactsBackend.Get(peerUserId, peerContactId, cancellationToken).ConfigureAwait(false);
+        if (!peerContact.IsStoredContact)
+            permissions &= ~(ChatPermissions.Upload
+                | ChatPermissions.WriteAudio
+                | ChatPermissions.WriteVideo
+                | ChatPermissions.ReadAudio
+                | ChatPermissions.ReadVideo);
+
         return new(chatId, author, account, permissions);
     }
 

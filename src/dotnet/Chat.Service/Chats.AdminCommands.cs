@@ -104,7 +104,7 @@ public partial class Chats
             await CreateTestBot(session, userId, cancellationToken).ConfigureAwait(false);
 
             var contactId = ContactId.NewUser(myId, userId);
-            var contact = new Contact(contactId);
+            var contact = new Contact(contactId) { State = ContactState.Regular };
             var createCmd = new ContactsBackend_Change(contactId, null, Change.Create(contact));
             await Commander.Call(createCmd, cancellationToken).ConfigureAwait(false);
         }

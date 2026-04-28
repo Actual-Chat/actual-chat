@@ -567,7 +567,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         };
 
         // If we are scrolling somewhere within idRange, let's extend the range to navigation & nearby entries.
-        if (navigation != null && chatIdRange.Contains(navigation.EntryLid)) {
+        if (navigation != null && chatLidRange.Contains(navigation.EntryLid)) {
             caseName += "+navigation";
             dataQuery = new ChatDataQuery(
                 secondLayer.GetTile(navigation.EntryLid).Range,
@@ -674,9 +674,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     {
         var chatId = ChatId;
         var entryReader = new ChatEntryReader(Chats, Session, chatId);
-        var chatIdRange = await Chats
-            .GetIdRange(Session, chatId, cancellationToken)
-            .ConfigureAwait(false);
+        var chatLidRange = await Chats.GetIdRange(Session, chatId, cancellationToken).ConfigureAwait(false);
         var range = new Range<long>(minEntryLid, minEntryLid + (20 * ChatUI.IdTileStack.MinTileSize))
             .IntersectWith(chatLidRange);
         return await entryReader.GetFirst(range, cancellationToken).ConfigureAwait(false);

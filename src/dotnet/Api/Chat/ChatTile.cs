@@ -1,4 +1,4 @@
-namespace ActualChat.Chat;
+﻿namespace ActualChat.Chat;
 
 [DataContract, MessagePackObject]
 public sealed partial class ChatTile

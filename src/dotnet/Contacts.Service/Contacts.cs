@@ -101,6 +101,7 @@ public class Contacts(IServiceProvider services) : IContacts
         if (id.OwnerId != account.Id)
             throw Unauthorized();
 
+        change = EnsureStoredContactState(change);
         var changeCommand = new ContactsBackend_Change(id, expectedVersion, change);
         return await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
     }
@@ -135,6 +136,20 @@ public class Contacts(IServiceProvider services) : IContacts
     }
 
     // Private methods
+
+    private static Change<Contact> EnsureStoredContactState(Change<Contact> change)
+    {
+        if (change.IsCreate(out var create))
+            return Change.Create(EnsureStored(create));
+        if (change.IsUpdate(out var update))
+            return Change.Update(EnsureStored(update));
+        return change;
+
+        static Contact EnsureStored(Contact contact)
+            => contact.State == ContactState.Temporary
+                ? contact with { State = ContactState.Regular }
+                : contact;
+    }
 
     private static Exception Unauthorized()
         => StandardError.Unauthorized("You can access only your own contacts.");

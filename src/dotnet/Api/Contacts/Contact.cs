@@ -24,6 +24,7 @@ public sealed partial record Contact(
     [DataMember, MemoryPackOrder(7), Key(7)] public string PeerContactName { get; init; } = "";
     [DataMember, MemoryPackOrder(8), Key(8)] public Symbol SystemTag { get; init; }
     [DataMember, MemoryPackOrder(9), Key(9)] public string ExternalContactName { get; init; } = "";
+    [DataMember, MemoryPackOrder(10), Key(10)] public ContactState State { get; init; }
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
@@ -34,6 +35,8 @@ public sealed partial record Contact(
     public ChatId ChatId => Id.ChatId;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public string? PeerRename => PeerContactName.NullIfWhiteSpace() ?? ExternalContactName.NullIfWhiteSpace();
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public bool IsStoredContact => State == ContactState.Regular;
 
     // Populated on backend on reads
     [DataMember, MemoryPackOrder(5), Key(5)] public Account? Account { get; init; }

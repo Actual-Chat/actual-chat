@@ -415,11 +415,11 @@ public partial class ChatUI
                 .GetTile(Session, chatId, conversationIdTile.Range, cancellationToken)
                 .ConfigureAwait(false);
             conversations = conversationTile
-                .Where(c => !c.EntryRange.IntersectWith(requestedIdRange).IsEmpty)
+                .Where(c => !c.EntryLidRange.IntersectWith(requestedIdRange).IsEmpty)
                 .ToArray();
             idRangesToSkip = conversations
                 .Where(c => !expandedConversations.Contains(c.Id))
-                .Select(c => c.EntryRange)
+                .Select(c => c.EntryLidRange)
                 .ToArray();
         }
         var entryIdTiles = IdTileStack.FirstLayer
@@ -501,7 +501,7 @@ public partial class ChatUI
             else if (entry != null) {
                 // Ignore matched conversation
                 var isClientMsg = entry.Version == 0;
-                var expandedConversation = conversations.FirstOrDefault(c => c.EntryRange.Contains(entry.LocalId));
+                var expandedConversation = conversations.FirstOrDefault(c => c.EntryLidRange.Contains(entry.LocalId));
                 var isBlockStart = IsBlockStart(prevEntry, entry);
                 var isForward = entry.Forwarded is not null;
                 var isPrevForward = prevEntry is not null && prevEntry.Forwarded is not null;
@@ -643,7 +643,7 @@ public partial class ChatUI
             // Remove messages that are outside requested range
             messages.RemoveAll(m =>
                 (m is ChatEntryMessage && !lidRange.Contains(m.Id))
-                || (m is ConversationMessage cm && idRange.IntersectWith(cm.Conversation!.EntryRange).IsEmpty));
+                || (m is ConversationMessage cm && lidRange.IntersectWith(cm.Conversation!.EntryLidRange).IsEmpty));
         return new VirtualListTile<ChatMessage>($"tile:{lidRange.Format()}", messages);
     }
 

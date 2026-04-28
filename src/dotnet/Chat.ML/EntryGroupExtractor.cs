@@ -13,15 +13,15 @@ public record EntryGroup(IReadOnlyList<ChatEntrySlim> Entries, int WordCount = 0
         long? startLid = null, endLid = null;
         foreach (var lid in Entries.Select(e => e.LocalId).OrderBy(id => id).EnsureMonotonic())
             if (startLid is null) {
-                startId = lid;
-                endId = lid;
+                startLid = lid;
+                endLid = lid;
             }
-            else if (lid == endId + 1)
-                endId = lid;
+            else if (lid == endLid + 1)
+                endLid = lid;
             else {
                 idRanges.Add(new Range<long>(startLid.Value, endLid!.Value + 1));
-                startId = lid;
-                endId = lid;
+                startLid = lid;
+                endLid = lid;
             }
         if (startLid != null && endLid != null)
             idRanges.Add(new Range<long>(startLid.Value, endLid.Value + 1));

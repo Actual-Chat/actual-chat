@@ -11,7 +11,7 @@ public record ChatDataQuery(Range<long> ExistingLidRange, int StartOffset, int E
     public ChatViewNavigation? Navigation { get; init; }
 
     public string Format()
- #pragma warning disable MA0076
+#pragma warning disable MA0076
         => $"{ExistingLidRange}@[{StartOffset}-{EndOffset}]";
- #pragma warning restore MA0076
+#pragma warning restore MA0076
 }

@@ -76,6 +76,7 @@ public partial class AudioStreamingBackend
             chatId, record.ClientStartOffset, clockDelta.TotalMilliseconds);
         var rules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         rules.Require(ChatPermissions.Write);
+        rules.Require(ChatPermissions.WriteAudio);
 
         var languages = await GetTranscriptionLanguage(record, cancellationToken).ConfigureAwait(false);
 

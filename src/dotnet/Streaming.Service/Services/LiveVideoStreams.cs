@@ -18,7 +18,7 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         CancellationToken cancellationToken)
     {
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (!chatRules.Has(ChatPermissions.Read))
+        if (!chatRules.Has(ChatPermissions.ReadVideo))
             return [];
 
         var result = await Backend.List(chatId, cancellationToken).ConfigureAwait(false);
@@ -33,7 +33,7 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         CancellationToken cancellationToken)
     {
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (!chatRules.Has(ChatPermissions.Read))
+        if (!chatRules.Has(ChatPermissions.ReadVideo))
             return 0;
 
         return await Backend.GetVideoStreamMemberCount(chatId, cancellationToken).ConfigureAwait(false);
@@ -46,7 +46,7 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         CancellationToken cancellationToken)
     {
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
-        chatRules.Require(ChatPermissions.Read);
+        chatRules.Require(ChatPermissions.ReadVideo);
         await Backend.RegisterMember(chatId, session.Id, supportedDecoderCodecs, cancellationToken).ConfigureAwait(false);
     }
 
@@ -56,7 +56,7 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         CancellationToken cancellationToken)
     {
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
-        chatRules.Require(ChatPermissions.Read);
+        chatRules.Require(ChatPermissions.ReadVideo);
         await Backend.UnregisterMember(chatId, session.Id, cancellationToken).ConfigureAwait(false);
     }
 
@@ -67,7 +67,7 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         CancellationToken cancellationToken)
     {
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
-        chatRules.Require(ChatPermissions.Read);
+        chatRules.Require(ChatPermissions.ReadVideo);
         return await Backend.GetSupportedCodecs(chatId, cancellationToken).ConfigureAwait(false);
     }
 
@@ -77,6 +77,7 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
+        // Note: stream-level access is gated upstream via List/RegisterMember.
         var peerId = RpcInboundContext.Current?.Peer.Id.ToString() ?? "rpc-unknown";
         var remoteStream = await VideoStreamingBackend.GetVideo(streamId, skipTo, peerId, cancellationToken).ConfigureAwait(false);
         return remoteStream is null

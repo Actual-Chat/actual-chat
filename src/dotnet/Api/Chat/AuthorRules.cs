@@ -21,6 +21,11 @@ public sealed partial record AuthorRules(
 
     public bool CanRead() => Permissions.Has(ChatPermissions.Read);
     public bool CanWrite() => Permissions.Has(ChatPermissions.Write);
+    public bool CanUpload() => Permissions.Has(ChatPermissions.Upload);
+    public bool CanWriteAudio() => Permissions.Has(ChatPermissions.WriteAudio);
+    public bool CanWriteVideo() => Permissions.Has(ChatPermissions.WriteVideo);
+    public bool CanReadAudio() => Permissions.Has(ChatPermissions.ReadAudio);
+    public bool CanReadVideo() => Permissions.Has(ChatPermissions.ReadVideo);
     public bool CanSeeMembers() => Permissions.Has(ChatPermissions.SeeMembers);
     public bool CanJoin() => Permissions.Has(ChatPermissions.Join);
     public bool CanLeave() => Permissions.Has(ChatPermissions.Leave);

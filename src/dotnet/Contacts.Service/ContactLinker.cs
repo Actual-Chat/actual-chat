@@ -87,10 +87,10 @@ public class ContactLinker(IServiceProvider services) : ActivatedWorkerBase(serv
         var contactId = ContactId.NewUser(ownerId, userId);
         // check existing contact since command always performs db request
         var contact = await ContactsBackend.Get(ownerId, contactId, cancellationToken).ConfigureAwait(false);
-        if (!contact.IsStored()) {
-            contact = new Contact(contactId);
+        if (!contact.IsStored() || !contact.IsStoredContact) {
+            contact = contact with { State = ContactState.Regular };
             // This command doesn't throw an exception in case contact already exists
-            var createCmd = new ContactsBackend_Change(contactId, null, Change.Create(contact));
+            var createCmd = new ContactsBackend_Change(contactId, null, Change.Upsert(contact));
             await Commander.Call(createCmd, cancellationToken).ConfigureAwait(false);
         }
 

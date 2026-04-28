@@ -4,7 +4,7 @@
 [method: SerializationConstructor]
 public sealed partial record ChatEntryRangeMeta(
     [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId? ChatId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] Range<long>[] EntryRanges,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] Range<long>[] EntryLidRange,
     [property: DataMember, MemoryPackIgnore, Key(2)] long? PreviousEntryLid,
     [property: DataMember, MemoryPackIgnore, Key(3)] long? NextEntryLid)
 {

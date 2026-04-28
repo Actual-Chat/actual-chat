@@ -169,6 +169,14 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
         var parentChat = await Chats.Get(session, parentChatId, cancellationToken).Require().ConfigureAwait(false);
         parentChat.Rules.Permissions.Require(ChatPermissions.Write);
         var ownerId = parentChat.Rules.Account!.Id;
+        if (parentChatId is PeerChatId peerChatId) {
+            var peerUserId = peerChatId.AnotherUserId(ownerId);
+            var peerContactId = ContactId.NewUser(peerUserId, ownerId);
+            var peerContact = await ContactsBackend.Get(peerUserId, peerContactId, cancellationToken)
+                .ConfigureAwait(false);
+            if (!peerContact.IsStoredContact)
+                throw StandardError.Constraint("Threads can be started only after this user adds you to their contacts or replies.");
+        }
 
         var isFirst = true;
         Chat? threadChat = null;
