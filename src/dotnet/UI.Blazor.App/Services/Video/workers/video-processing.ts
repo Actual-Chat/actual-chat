@@ -1463,7 +1463,7 @@ export const serverImpl: VideoProcessingWorker = {
         pendingStreamFrames = [];
         startTimestamp = undefined;
         backpressureDrops = 0; backpressureTotalFrames = 0; lastBackpressureCheckTime = 0; backpressureNotified = false;
-        encoderFailed = false; encoderErrorSeen = false; framesWithoutOutput = 0;
+        encoderFailed = false; encoderErrorSeen = false; framesWithoutOutput = 0; lastStreamError = '';
         infoLog?.log(`Codec switched successfully (${extraLayerEncoders.length} simulcast extras rearmed)`);
     },
 

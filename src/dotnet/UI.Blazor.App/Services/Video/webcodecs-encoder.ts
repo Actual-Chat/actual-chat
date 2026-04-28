@@ -126,6 +126,8 @@ export class WebCodecsEncoder {
     encode(frame: VideoFrame, forceKeyFrame = false): void {
         if (this.encoder.state !== 'configured') {
             this.droppedFrames++;
+            this.onError(new DOMException(
+                `Encoder state is '${this.encoder.state}'`, 'InvalidStateError'));
             frame.close();
             return;
         }
