@@ -11,6 +11,20 @@
         <TabPanel @ref="_tabPanel" BottomHill="true" TabsClass="emoji-modal-tabs">
             <Tab Id="emoji" Title="Emoji" Order="0">
                 <div class="c-grid">
+                    @if (_recentEmojis.Count > 0) {
+                        <div class="c-emoji-recent">
+                            <div class="c-group-title">Recent</div>
+                            <div class="c-emoji-recent-list">
+                                @foreach (var emoji in _recentEmojis) {
+                                    <button @key="@($"recent-{emoji.Id.Value}")"
+                                        class="c-item"
+                                        @onclick="@(() => OnEmojiClick(emoji))">
+                                        <EmojiIcon Emoji="@emoji" Class="c-emoji" HasPreview="true"/>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
                     @foreach (var group in Enum.GetValues<EmojiGroup>()) {
                         <div @key="group" class="c-group">
                             <div class="c-group-title">@group</div>
@@ -35,17 +49,27 @@
 </DialogFrame>
 
 @code {
+    private const int MaxRecentEmojis = 7;
+    private const string RecentEmojisKey = "EmojiModal.RecentEmojis";
+
     private TabPanel? _tabPanel;
+    private readonly List<Emoji> _recentEmojis = new();
+
+    private LocalStorage LocalStorage => Hub.LocalStorage;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    protected override void OnAfterRender(bool firstRender) {
-        if (firstRender && _tabPanel != null && ModalModel.InitialTabId != "emoji")
-            _tabPanel.SelectedTabId = ModalModel.InitialTabId;
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            if (_tabPanel != null && ModalModel.InitialTabId != "emoji")
+                _tabPanel.SelectedTabId = ModalModel.InitialTabId;
+            await LoadRecentEmojis().ConfigureAwait(true);
+        }
     }
 
-    private void OnEmojiClick(Emoji emoji) {
+    private async Task OnEmojiClick(Emoji emoji) {
+        await SaveRecentEmoji(emoji).ConfigureAwait(true);
         ModalModel.SelectedEmoji = emoji;
         Modal.Close();
     }
@@ -53,6 +77,34 @@
     private void OnGifSelected(string url) {
         ModalModel.SelectedGifUrl = url;
         Modal.Close();
+    }
+
+    private async Task LoadRecentEmojis() {
+        try {
+            var json = await LocalStorage.GetString(RecentEmojisKey).ConfigureAwait(true);
+            if (json.IsNullOrEmpty())
+                return;
+            var ids = SystemJsonSerializer.Default.Read<List<string>>(json);
+            _recentEmojis.Clear();
+            foreach (var id in ids) {
+                if (_recentEmojis.Count >= MaxRecentEmojis)
+                    break;
+                if (Emojis.ById.TryGetValue(id, out var emoji))
+                    _recentEmojis.Add(emoji);
+            }
+            StateHasChanged();
+        }
+        catch { /* corrupted data — ignore */ }
+    }
+
+    private async Task SaveRecentEmoji(Emoji emoji) {
+        _recentEmojis.Remove(emoji);
+        _recentEmojis.Insert(0, emoji);
+        if (_recentEmojis.Count > MaxRecentEmojis)
+            _recentEmojis.RemoveRange(MaxRecentEmojis, _recentEmojis.Count - MaxRecentEmojis);
+        var ids = _recentEmojis.Select(e => e.Id.Value).ToList();
+        var json = SystemJsonSerializer.Default.Write(ids);
+        await LocalStorage.SetString(RecentEmojisKey, json).ConfigureAwait(false);
     }
 
     // Nested types
