@@ -115,11 +115,11 @@ public static class ChatsBackendExt
     public static async Task<IReadOnlyList<ChatEntry>> ListEntries(
         this IChatsBackend chatsBackend,
         ChatId chatId,
-        Range<long> idRange,
+        Range<long> lidRange,
         bool includeRemoved = false,
         CancellationToken cancellationToken = default)
     {
-        var idTiles = Constants.Chat.ViewIdTileStack.FirstLayer.GetCoveringTiles(idRange);
+        var idTiles = Constants.Chat.ViewIdTileStack.FirstLayer.GetCoveringTiles(lidRange);
         var tiles = await idTiles.Select(t => chatsBackend.GetTile(
                 chatId,
                 t.Range,
@@ -140,7 +140,7 @@ public static class ChatsBackendExt
         // We don't want callers of this method to be dependent on whatever it fetches
         using var _ = Computed.BeginIsolation();
 
-        var idRange = await chatsBackend.GetIdRange(chatId, true, cancellationToken).ConfigureAwait(false);
+        var idRange = await chatsBackend.GetLidRange(chatId, true, cancellationToken).ConfigureAwait(false);
         if (idRange.Size() <= 0)
             return [];
 
@@ -178,11 +178,11 @@ public static class ChatsBackendExt
     public static async IAsyncEnumerable<ChatEntry> ReadEntries(
         this IChatsBackend chatsBackend,
         ChatId chatId,
-        Range<long> idRange,
+        Range<long> lidRange,
         bool includeRemoved = false,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var idTiles = Constants.Chat.ViewIdTileStack.FirstLayer.GetCoveringTiles(idRange);
+        var idTiles = Constants.Chat.ViewIdTileStack.FirstLayer.GetCoveringTiles(lidRange);
         foreach (var idTile in idTiles) {
             var tile = await chatsBackend.GetTile(
                 chatId,

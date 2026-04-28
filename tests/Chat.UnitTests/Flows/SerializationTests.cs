@@ -50,7 +50,7 @@ public class ConversationSplitFlowSerializationTest(ITestOutputHelper @out)
         LastLid = 100,
         LastRunAt = new Moment(new DateTime(2026, 4, 16, 12, 0, 0, DateTimeKind.Utc)),
         LastSummaryAt = new Moment(new DateTime(2026, 4, 16, 13, 0, 0, DateTimeKind.Utc)),
-        LastSummaryRanges = [new Range<long>(1, 10), new Range<long>(20, 30)],
+        LastSummaryLidRanges = [new Range<long>(1, 10), new Range<long>(20, 30)],
         LastReadiness = "test-suspension",
     };
 }

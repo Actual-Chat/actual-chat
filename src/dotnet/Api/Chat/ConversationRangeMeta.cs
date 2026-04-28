@@ -3,11 +3,11 @@
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public sealed partial record ConversationRangeMeta(
     [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] Range<long>[] ConversationRanges,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] Range<long>? PreviousConversationRange,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] Range<long>? NextConversationRange)
+    [property: DataMember, MemoryPackOrder(1), Key(1)] Range<long>[] ConversationLidRanges,
+    [property: DataMember, MemoryPackOrder(2), Key(2)] Range<long>? PreviousConversationLidRange,
+    [property: DataMember, MemoryPackOrder(3), Key(3)] Range<long>? NextConversationLidRange)
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ConversationId[] ConversationIds
-        => field ??= ConversationRanges.Select(r => ConversationId.New(ChatId, r.Start)).ToArray();
+        => field ??= ConversationLidRanges.Select(r => ConversationId.New(ChatId, r.Start)).ToArray();
 }

@@ -3,12 +3,12 @@
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(AllowPrivate = true)]
 [method: SerializationConstructor]
 public sealed partial record ChatRangeMeta(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Range<long> IdRange,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] Range<long>[] EntryIdRanges,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] Range<long>[] ConversationIdRanges,
+    [property: DataMember, MemoryPackOrder(0), Key(0)] Range<long> LidRange,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] Range<long>[] EntryLidRanges,
+    [property: DataMember, MemoryPackOrder(2), Key(2)] Range<long>[] ConversationLidRanges,
     [property: DataMember, MemoryPackOrder(3), Key(3)] int MinCount,
-    [property: DataMember, MemoryPackIgnore, Key(4)] long? PreviousIdTileStart,
-    [property: DataMember, MemoryPackIgnore, Key(5)] long? NextIdTileStart)
+    [property: DataMember, MemoryPackIgnore, Key(4)] long? PreviousLidTileStart,
+    [property: DataMember, MemoryPackIgnore, Key(5)] long? NextLidTileStart)
 {
     [MemoryPackConstructor]
     public ChatRangeMeta() : this(default, default!, default!, default, default, default) { }
@@ -16,15 +16,15 @@ public sealed partial record ChatRangeMeta(
     #region MemoryPackXxx properties
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(4), IgnoreMember]
-    private ApiNullable8<long> MemoryPackPreviousIdTileStart {
-        get => PreviousIdTileStart;
-        init => PreviousIdTileStart = value;
+    private ApiNullable8<long> MemoryPackPreviousLidTileStart {
+        get => PreviousLidTileStart;
+        init => PreviousLidTileStart = value;
     }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(5), IgnoreMember]
-    private ApiNullable8<long> MemoryPackNextIdTileStart {
-        get => NextIdTileStart;
-        init => NextIdTileStart = value;
+    private ApiNullable8<long> MemoryPackNextLidTileStart {
+        get => NextLidTileStart;
+        init => NextLidTileStart = value;
     }
 
     #endregion

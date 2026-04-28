@@ -19,7 +19,6 @@ public sealed record VirtualListTile<TItem>(string Key, IReadOnlyList<TItem> Ite
                     : Items[^1].Key)
             : default;
 
-
     public VirtualListTile(Range<long> idRange, IReadOnlyList<TItem>? Items = null)
         : this($"tile:{idRange.Format()}", Items ?? []) { }
 

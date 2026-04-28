@@ -4,14 +4,12 @@ namespace ActualChat.Invite;
 /// Invite link for joining a specific place.
 /// </summary>
 [DataContract, MessagePackObject]
-public sealed partial record PlaceInvite : Invite
+[method: SerializationConstructor]
+public sealed partial record PlaceInvite(Symbol Id, long Version = 0) : Invite(Id, Version)
 {
-    [DataMember, Key(10)] public PlaceId PlaceId { get; init; }
+    [DataMember, Key(10)] public PlaceId PlaceId { get; init; } = null!;
 
-    public PlaceInvite() : base(Symbol.Empty) { }
-
-    [SerializationConstructor]
-    public PlaceInvite(Symbol id, long version = 0) : base(id, version) { }
+    public PlaceInvite() : this(Symbol.Empty) { }
 
     public static PlaceInvite New(int remaining, PlaceId placeId)
         => new(Symbol.Empty) { Remaining = remaining, PlaceId = placeId };

@@ -20,6 +20,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string? PlaceId { get; set; }
     public string PeerContactName { get; set; } = "";
     public string ExternalContactName { get; set; } = "";
+    public ContactState State { get; set; }
     public bool IsPinned { get; set; }
 
     public DateTime TouchedAt {
@@ -37,6 +38,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
             IsPinned = IsPinned,
             PeerContactName = PeerContactName,
             ExternalContactName = ExternalContactName,
+            State = State,
         };
 
     public void UpdateFrom(Contact model)
@@ -50,6 +52,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
         IsPinned = model.IsPinned;
         PeerContactName = model.PeerContactName;
         ExternalContactName = model.ExternalContactName;
+        State = model.State;
         if (!Id.IsNullOrEmpty())
             return; // Only the above properties can be changed for already existing contacts
 

@@ -134,7 +134,7 @@ public class LegacyChatCompatTest(ITestOutputHelper @out) : TestBase(@out)
 
         var legacy = LegacyChatNews.From(modernNews);
         legacy.Should().NotBeNull();
-        legacy!.TextEntryIdRange.Should().Be(modernNews.TextEntryIdRange);
+        legacy.TextEntryLidRange.Should().Be(modernNews.TextEntryLidRange);
         legacy.LastTextEntry.Should().NotBeNull();
         legacy.LastTextEntry!.Content.Should().Be("tail");
     }

@@ -11,13 +11,13 @@ public class Conversations(IServiceProvider services) : IConversations
     private ICommander Commander { get; } = services.GetRequiredService<ICommander>();
 
     // [Computed]
-    public virtual async Task<Conversation[]> GetTile(Session session, ChatId chatId, Range<long> idTileRange, CancellationToken cancellationToken)
+    public virtual async Task<Conversation[]> GetTile(Session session, ChatId chatId, Range<long> lidTileRange, CancellationToken cancellationToken)
     {
         var rules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!rules.CanRead())
             return [];
 
-        return await Backend.GetTile(chatId, idTileRange, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetTile(chatId, lidTileRange, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task<Conversation?> Get(Session session, ConversationId conversationId, CancellationToken cancellationToken)
@@ -41,7 +41,7 @@ public class Conversations(IServiceProvider services) : IConversations
         if (conversation == null)
             throw new NotFoundException<Conversation>();
 
-        var entryIdRange = conversation.EntryRange;
+        var entryIdRange = conversation.EntryLidRange;
         var reSummarizeCommand = new ConversationBackend_Summarize(chatId, [entryIdRange]);
         await Commander.Call(reSummarizeCommand, cancellationToken).ConfigureAwait(false);
     }

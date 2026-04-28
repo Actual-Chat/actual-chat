@@ -30,7 +30,7 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
     [DataMember(Order = 3), MemoryPackOrder(3), Key(3)]
     public Moment LastSummaryAt { get; set; }
     [DataMember(Order = 4), MemoryPackOrder(4), Key(4)]
-    public Range<long>[] LastSummaryRanges { get; set; } = [];
+    public Range<long>[] LastSummaryLidRanges { get; set; } = [];
     [DataMember(Order = 5), MemoryPackOrder(5), Key(5)]
     public FlowReadiness LastReadiness { get; set; }
 
@@ -121,7 +121,7 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
             }
 
             var idRanges = group.LocalIdRanges;
-            if (LastSummaryRanges.SequenceEqual(idRanges)) {
+            if (LastSummaryLidRanges.SequenceEqual(idRanges)) {
                 Console.Log("Skipping group: ranges match LastSummaryRanges");
                 continue;
             }
@@ -130,7 +130,7 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
             var summarize = new ConversationBackend_Summarize(ChatId, [.. idRanges]);
             await Services.Queues().Enqueue(summarize, cancellationToken).ConfigureAwait(false);
             LastSummaryAt = now;
-            LastSummaryRanges = idRanges.ToArray();
+            LastSummaryLidRanges = idRanges.ToArray();
         }
 
         if (hasEntries)
@@ -138,7 +138,7 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
 
         // If we reached the end of the entries, we might want to summarize the last group
         if (!hasMore) {
-            var lastRanges = LastSummaryRanges;
+            var lastRanges = LastSummaryLidRanges;
             var currentRanges = new EntryGroupBuilder(state.CurrentGroup)
                 .AddRange(state.CurrentChunk?.Entries ?? [])
                 .Build().LocalIdRanges;
@@ -159,12 +159,12 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
                 var group = groupBuilder.Build();
 
                 var idRanges = group.LocalIdRanges;
-                if (!LastSummaryRanges.SequenceEqual(idRanges)) {
+                if (!LastSummaryLidRanges.SequenceEqual(idRanges)) {
                     Console.Log($"Enqueuing end-of-stream summarize: {group.Entries.Count} entries, {group.WordCount} words");
                     var summarize = new ConversationBackend_Summarize(ChatId, [.. idRanges]);
                     await Services.Queues().Enqueue(summarize, cancellationToken).ConfigureAwait(false);
                     LastSummaryAt = now;
-                    LastSummaryRanges = idRanges.ToArray();
+                    LastSummaryLidRanges = idRanges.ToArray();
                 }
 
                 // Keep the group if there are immature items, otherwise clear the chunk

@@ -103,7 +103,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
         var messageCount = 0;
         var topAuthorIds = new List<AuthorId>();
         var authorIds = new HashSet<AuthorId>();
-        var range = await ChatsBackend.GetIdRange(threadChatId, false, cancellationToken).ConfigureAwait(false);
+        var range = await ChatsBackend.GetLidRange(threadChatId, false, cancellationToken).ConfigureAwait(false);
         var entries = ChatsBackend.ReadEntries(threadChatId, range, false, cancellationToken);
         var entryCount = 0;
         var attachmentList = new List<ChatEntryAttachment>();
@@ -169,6 +169,14 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
         var parentChat = await Chats.Get(session, parentChatId, cancellationToken).Require().ConfigureAwait(false);
         parentChat.Rules.Permissions.Require(ChatPermissions.Write);
         var ownerId = parentChat.Rules.Account!.Id;
+        if (parentChatId is PeerChatId peerChatId) {
+            var peerUserId = peerChatId.AnotherUserId(ownerId);
+            var peerContactId = ContactId.NewUser(peerUserId, ownerId);
+            var peerContact = await ContactsBackend.Get(peerUserId, peerContactId, cancellationToken)
+                .ConfigureAwait(false);
+            if (!peerContact.IsStoredContact)
+                throw StandardError.Constraint("Threads can be started only after this user adds you to their contacts or replies.");
+        }
 
         var isFirst = true;
         Chat? threadChat = null;

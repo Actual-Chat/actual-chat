@@ -22,7 +22,7 @@ public sealed partial record Conversation(
     [DataMember, MemoryPackOrder(2), Key(2)] public string Title { get; init; } = "";
     [DataMember, MemoryPackOrder(3), Key(3)] public string Description { get; init; } = "";
     [DataMember, MemoryPackOrder(4), Key(4)] public string Summary { get; init; } = "";
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember] public Range<long> EntryRange => new(Id.StartEntryLid, EndEntryLid + 1);
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember] public Range<long> EntryLidRange => new(Id.StartEntryLid, EndEntryLid + 1);
     [DataMember, MemoryPackOrder(5), Key(5)] public long EndEntryLid { get; init; } = Id.StartEntryLid;
     [DataMember, MemoryPackOrder(6), Key(6)] public Moment StartsAt { get; init; }
     [DataMember, MemoryPackOrder(7), Key(7)] public Moment EndsAt { get; init; }

@@ -77,18 +77,18 @@ public partial class Chats(IServiceProvider services) : IChats
     public virtual async Task<ChatTile> GetTile(
         Session session,
         ChatId chatId,
-        Range<long> idTileRange,
+        Range<long> lidTileRange,
         CancellationToken cancellationToken)
     {
         await RequireCanRead(session, chatId, cancellationToken).ConfigureAwait(false);
-        return await Backend.GetTile(chatId, idTileRange, false, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetTile(chatId, lidTileRange, false, cancellationToken).ConfigureAwait(false);
     }
 
     // Legacy compat: old clients send ChatEntryKind parameter
     [Obsolete("2026.03: Use GetTile without entryKind")]
     public virtual Task<ChatTile> GetTile(
-        Session session, ChatId chatId, int entryKind, Range<long> idTileRange, CancellationToken cancellationToken)
-        => GetTile(session, chatId, idTileRange, cancellationToken);
+        Session session, ChatId chatId, int entryKind, Range<long> lidTileRange, CancellationToken cancellationToken)
+        => GetTile(session, chatId, lidTileRange, cancellationToken);
 
     // [ComputeMethod]
     public virtual async Task<ChatRangeMeta> GetChatRangeMeta(
@@ -109,7 +109,7 @@ public partial class Chats(IServiceProvider services) : IChats
         CancellationToken cancellationToken)
     {
         await RequireCanRead(session, chatId, cancellationToken).ConfigureAwait(false);
-        return await Backend.GetIdRange(chatId, false, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false);
     }
 
     // Legacy compat: old clients send ChatEntryKind parameter
@@ -431,8 +431,9 @@ public partial class Chats(IServiceProvider services) : IChats
             // enforce the creation cap. Edits remain unaffected since this branch
             // only runs on create.
             if (chatId is PeerChatId && !chat.Rules.Has(ChatPermissions.WriteAudio)) {
-                var existingCount = await Backend.GetEntryCount(chatId, author.Id, cancellationToken).ConfigureAwait(false);
-                if (existingCount >= Constants.Chat.NonContactPeerMessageLimit)
+                var hasReachedLimit = await HasReachedNonContactPeerLimit(chatId, author.Id, cancellationToken)
+                    .ConfigureAwait(false);
+                if (hasReachedLimit)
                     throw StandardError.Constraint(
                         $"You can send up to {Constants.Chat.NonContactPeerMessageLimit} messages until this user adds you to their contacts or replies.");
             }
@@ -455,6 +456,9 @@ public partial class Chats(IServiceProvider services) : IChats
                     ClientId = command.ClientId,
                 }));
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+            if (chatId is PeerChatId peerChatId)
+                await EnsureOwnPeerContactStored(peerChatId, chat.Rules.Account.Require().Id, cancellationToken)
+                    .ConfigureAwait(false);
         }
 
         return textEntry;
@@ -770,14 +774,16 @@ public partial class Chats(IServiceProvider services) : IChats
                 var contactId = ContactId.NewAny(userId, newChatId);
                 var contact = await ContactsBackend.Get(userId, contactId, cancellationToken).ConfigureAwait(false);
                 if (!contact.IsStored()) {
-                    var change = new Change<Contact> { Create = new Contact(contactId) };
+                    var change = new Change<Contact> {
+                        Create = new Contact(contactId) { State = ContactState.Regular },
+                    };
                     var backendCmd4 = new ContactsBackend_Change(contactId, null, change);
                     await Commander.Call(backendCmd4, true, cancellationToken).ConfigureAwait(false);
                 }
             }
         }
         {
-            var textEntryRange = await Backend.GetIdRange(newChatId, false, cancellationToken).ConfigureAwait(false);
+            var textEntryRange = await Backend.GetLidRange(newChatId, false, cancellationToken).ConfigureAwait(false);
             var maxEntryId = textEntryRange.End > 0 ? textEntryRange.End - 1 : 0;
             var userIds = await AuthorsBackend.ListUserIds(newChatId, cancellationToken).ConfigureAwait(false);
             var updateUserChatSettingCount = 0;
@@ -945,6 +951,33 @@ public partial class Chats(IServiceProvider services) : IChats
     {
         var rules = await GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         return rules.CanRead();
+    }
+
+    private async Task<bool> HasReachedNonContactPeerLimit(
+        ChatId chatId,
+        AuthorId authorId,
+        CancellationToken cancellationToken)
+    {
+        var messageLimit = Constants.Chat.NonContactPeerMessageLimit;
+        var firstAuthors = await Backend.GetFirstEntryAuthors(chatId, messageLimit, true, cancellationToken).ConfigureAwait(false);
+        return firstAuthors.Count == 1 && firstAuthors.Contains(authorId);
+    }
+
+    private async Task EnsureOwnPeerContactStored(
+        PeerChatId chatId,
+        UserId ownerId,
+        CancellationToken cancellationToken)
+    {
+        var contactId = ContactId.NewUser(ownerId, chatId.AnotherUserId(ownerId));
+        var contact = await ContactsBackend.Get(ownerId, contactId, cancellationToken).ConfigureAwait(false);
+        if (contact.IsStoredContact)
+            return;
+
+        var command = new ContactsBackend_Change(
+            contactId,
+            contact.IsStored() ? contact.Version : null,
+            Change.Upsert(contact with { State = ContactState.Regular }));
+        await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<PrincipalId> GetOwnPrincipalId(

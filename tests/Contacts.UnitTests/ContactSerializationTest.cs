@@ -21,6 +21,7 @@ public class ContactSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             TouchedAt = new Moment(DateTime.UtcNow),
             IsPinned = true,
             PeerContactName = "Friend",
+            State = ContactState.Regular,
             Chat = new Chat.Chat(TestChatId) { Title = "Test Chat" },
         };
 
@@ -30,6 +31,7 @@ public class ContactSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         s.TouchedAt.Should().Be(contact.TouchedAt);
         s.IsPinned.Should().Be(contact.IsPinned);
         s.PeerContactName.Should().Be(contact.PeerContactName);
+        s.State.Should().Be(contact.State);
     }
 
     [Fact]

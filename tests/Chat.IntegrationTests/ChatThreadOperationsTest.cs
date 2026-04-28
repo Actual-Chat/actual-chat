@@ -276,5 +276,13 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
         canReadThreadChat.Should().Be(canReadParentChat);
         var canWriteToThreadChat = threadChat2 is not null && threadChat2.Rules.Permissions.Has(ChatPermissions.Write);
         canWriteToThreadChat.Should().Be(canWriteToParentChat);
+        if (parentChat2 is null || threadChat2 is null)
+            return;
+
+        threadChat2.Rules.CanUpload().Should().Be(parentChat2.Rules.CanUpload());
+        threadChat2.Rules.CanWriteAudio().Should().Be(parentChat2.Rules.CanWriteAudio());
+        threadChat2.Rules.CanWriteVideo().Should().Be(parentChat2.Rules.CanWriteVideo());
+        threadChat2.Rules.CanReadAudio().Should().Be(parentChat2.Rules.CanReadAudio());
+        threadChat2.Rules.CanReadVideo().Should().Be(parentChat2.Rules.CanReadVideo());
     }
 }

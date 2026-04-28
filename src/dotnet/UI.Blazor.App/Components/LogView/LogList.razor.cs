@@ -30,12 +30,11 @@ public partial class LogList : IVirtualListDataSource<LogEntry>
 
         Range<long> GetIdRange()
         {
-            if (query.IsNone) {
-                var start = (fullIdRange.End - 40).Clamp(fullIdRange.Start, fullIdRange.End - 1);
-                return new (start, fullIdRange.End);
-            }
+            if (!query.IsNone)
+                return query.KeyRange.ToLongRange().Move(query.MoveRange);
 
-            return query.KeyRange.ToLongRange().Move(query.MoveRange);
+            var start = (fullIdRange.End - 40).Clamp(fullIdRange.Start, fullIdRange.End - 1);
+            return new (start, fullIdRange.End);
         }
     }
 

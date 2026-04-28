@@ -23,7 +23,7 @@ public interface ILegacyChats : IComputeService
     // route it here so they get a LegacyChatTile rather than the modern union shape.
     [ComputeMethod(MinCacheDuration = 10), RemoteComputeMethod(MinCacheDuration = 300)]
     Task<LegacyChatTile> GetTile(
-        Session session, ChatId chatId, int entryKind, Range<long> idTileRange, CancellationToken cancellationToken);
+        Session session, ChatId chatId, int entryKind, Range<long> lidTileRange, CancellationToken cancellationToken);
 
     [CommandHandler, RpcMethod(ConnectTimeout = double.PositiveInfinity)]
     Task<LegacyChatEntry> OnUpsertEntry(

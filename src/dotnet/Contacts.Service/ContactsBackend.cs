@@ -317,8 +317,22 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var existing = dbContact?.ToModel();
 
         if (change.IsCreate(out var contact)) {
-            if (dbContact != null)
-                return dbContact.ToModel(); // Already exists, so we don't recreate one
+            if (dbContact != null) {
+                var existingContact = existing.Require();
+                if (contact.State != ContactState.Regular || existingContact.State == ContactState.Regular)
+                    return existingContact; // Already exists, so we don't recreate one
+
+                contact = existingContact with {
+                    Version = VersionGenerator.NextVersion(dbContact.Version),
+                    State = ContactState.Regular,
+                    TouchedAt = Clocks.SystemClock.Now,
+                };
+                dbContact.UpdateFrom(contact);
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                context.Operation.Items.KeylessSet((long)oldContactIds.IndexOf(id));
+                context.Operation.AddEvent(new ContactChangedEvent(contact, existing, ChangeKind.Update));
+                return contact;
+            }
 
             // Original UserId is ignored here - it's set based on Id
             var userId = id.ChatId is PeerChatId peerChatId
@@ -538,6 +552,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             }
             var contact = new Contact(ContactId.NewUser(ownerId, account.Id)) {
                 ExternalContactName = externalContactName,
+                State = ContactState.Regular,
             };
             var cmd = new ContactsBackend_Change(contact.Id, null, Change.Create(contact));
             return await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
@@ -623,7 +638,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             if (contact.IsStored())
                 continue; // No need to make any changes
 
-            var change = Change.Create(new Contact(contactId));
+            var change = Change.Create(new Contact(contactId) { State = ContactState.Regular });
             var createContact = new ContactsBackend_Change(contactId, null, change);
             await Commander.Call(createContact, false, cancellationToken).ConfigureAwait(false);
         }
@@ -821,8 +836,9 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             return;
         }
 
+        var contactState = chatId.Kind == ChatKind.Peer ? ContactState.Temporary : ContactState.Regular;
         var change = new Change<Contact> {
-            Create = new Contact(contactId),
+            Create = new Contact(contactId) { State = contactState },
         };
         var command = new ContactsBackend_Change(contactId, null, change);
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);

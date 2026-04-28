@@ -233,7 +233,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         async Task UpdateReadPositionToTheLastId(ChatId chatId)
         {
             var chatInfo = await ChatUI.Get(chatId, DisposeToken).ConfigureAwait(true);
-            var lastId = chatInfo?.News?.TextEntryIdRange.End - 1;
+            var lastId = chatInfo?.News?.TextEntryLidRange.End - 1;
             if (lastId is not > 0)
                 return;
 
@@ -269,8 +269,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         // Getting the very last chat entry
         var chatNews = await Chats.GetNews(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var chatIdGap = new Range<long>(chatNews?.TextEntryIdRange.End ?? 0, chatIdRange.End);
-        var lastEntry = await entryReader.ReadReverse(chatIdGap, cancellationToken)
+        var chatLidGap = new Range<long>(chatNews?.TextEntryLidRange.End ?? 0, chatIdRange.End);
+        var lastEntry = await entryReader.ReadReverse(chatLidGap, cancellationToken)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
         lastEntry ??= chatNews?.LastTextEntry;
@@ -369,7 +369,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             renderedData,
             nav,
             chatIdRange);
-        if (dataQuery.ExistingIdRange.End + dataQuery.EndOffset + ChatUI.HalfLoadLimit >= chatIdRange.End)
+        if (dataQuery.ExistingLidRange.End + dataQuery.EndOffset + ChatUI.HalfLoadLimit >= chatIdRange.End)
             await cChatIdRange.Use(cancellationToken); // Add dependency on chatIdRange
 
         DebugLog?.LogDebug(
@@ -517,7 +517,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         VirtualListDataQuery query,
         VirtualListData<ChatMessage> oldData,
         ChatViewNavigation? navigation,
-        Range<long> chatIdRange)
+        Range<long> chatLidRange)
     {
         var firstLayer = ChatUI.IdTileStack.FirstLayer;
         var secondLayer = ChatUI.IdTileStack.LastLayer;
@@ -527,7 +527,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var keyRange = query.IsNone
             ? firstItem != null
                 ? new Range<long>(firstItem.Id, lastItem!.Id + 1)
-                : chatIdRange.EnsureNonEmpty()
+                : chatLidRange.EnsureNonEmpty()
             : query.KeyRange.ToLongRange(true).EnsureNonEmpty();
         var caseName = (!query.IsNone, firstItem != null) switch {
             (false, false) => "no-query+no-data",
@@ -540,7 +540,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
             // No query, no data -> initial load
             (false, false) => new ChatDataQuery(
-                secondLayer.GetTile(chatIdRange.End - firstLayer.TileSize).Range,
+                secondLayer.GetTile(chatLidRange.End - firstLayer.TileSize).Range,
                 -ChatUI.HalfLoadLimit,
                 ChatUI.HalfLoadLimit),
 
@@ -567,7 +567,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         };
 
         // If we are scrolling somewhere within idRange, let's extend the range to navigation & nearby entries.
-        if (navigation != null && chatIdRange.Contains(navigation.EntryLid)) {
+        if (navigation != null && chatLidRange.Contains(navigation.EntryLid)) {
             caseName += "+navigation";
             dataQuery = new ChatDataQuery(
                 secondLayer.GetTile(navigation.EntryLid).Range,
@@ -579,7 +579,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         DebugLog?.LogDebug(
             "GetChatDataQuery: case={Case}, result={DataQuery}, chatIdRange={IdRange}",
-            caseName, dataQuery.Format(), chatIdRange.Format());
+            caseName, dataQuery.Format(), chatLidRange.Format());
 
         return dataQuery;
     }
@@ -674,11 +674,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     {
         var chatId = ChatId;
         var entryReader = new ChatEntryReader(Chats, Session, chatId);
-        var chatIdRange = await Chats
-            .GetIdRange(Session, chatId, cancellationToken)
-            .ConfigureAwait(false);
+        var chatLidRange = await Chats.GetIdRange(Session, chatId, cancellationToken).ConfigureAwait(false);
         var range = new Range<long>(minEntryLid, minEntryLid + (20 * ChatUI.IdTileStack.MinTileSize))
-            .IntersectWith(chatIdRange);
+            .IntersectWith(chatLidRange);
         return await entryReader.GetFirst(range, cancellationToken).ConfigureAwait(false);
     }
 

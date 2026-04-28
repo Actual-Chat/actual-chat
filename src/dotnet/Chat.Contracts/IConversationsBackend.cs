@@ -15,7 +15,7 @@ public interface IConversationsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<Conversation[]> GetTile(
         ChatId chatId,
-        Range<long> idTileRange,
+        Range<long> lidTileRange,
         CancellationToken cancellationToken);
 
     [ComputeMethod]
@@ -55,7 +55,7 @@ public sealed partial record ConversationBackend_Change(
 // ReSharper disable once InconsistentNaming
 public sealed partial record ConversationBackend_Summarize(
     [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] Range<long>[] EntryIdRanges
+    [property: DataMember, MemoryPackOrder(1), Key(1)] Range<long>[] EntryLidRanges
     ) : ICommand<Conversation>, IBackendCommand, IHasShardKey<ChatId>, IHasDelayUntil, IHasTimeout
 {
     [DataMember, MemoryPackOrder(2), Key(2)]
@@ -65,7 +65,7 @@ public sealed partial record ConversationBackend_Summarize(
     TimeSpan? IHasTimeout.Timeout => TimeSpan.FromMinutes(5);
 
     public override string ToString()
-        => $"ConversationBackend_Summarize {{ ChatId={ChatId}, EntryIdRanges=[{string.Join(", ", EntryIdRanges.Select(r => r.Format()))}], DelayUntil={DelayUntil} }}";
+        => $"ConversationBackend_Summarize {{ ChatId={ChatId}, EntryLidRanges=[{string.Join(", ", EntryLidRanges.Select(r => r.Format()))}], DelayUntil={DelayUntil} }}";
 }
 
 /// <summary>
@@ -76,7 +76,7 @@ public sealed partial record ConversationBackend_Summarize(
 public sealed partial record ConversationBackend_AppendReply(
     [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(1), Key(1)] long EntryLid,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] Range<long> ReplySequence
+    [property: DataMember, MemoryPackOrder(2), Key(2)] Range<long> ReplyLidRange
 ) : ICommand<Conversation>, IBackendCommand, IHasShardKey<ChatId>, IHasDelayUntil, IHasTimeout
 {
     [DataMember, MemoryPackOrder(3), Key(3)]

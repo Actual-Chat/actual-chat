@@ -163,12 +163,12 @@ public class ConversationSummarizer(ConversationSummarizer.Options settings, ISe
 
         var localIds = chatEntries.Select(ce => ce.LocalId).ToList();
         // Determine the minimal tile range that covers all provided local IDs
-        var minId = localIds.Min();
-        var maxId = localIds.Max();
-        var range = new Range<long>(minId, maxId + 1);
-        var idTiles = Constants.Chat.ServerIdTileStack.FirstLayer.GetCoveringTiles(range);
+        var minLid = localIds.Min();
+        var maxLid = localIds.Max();
+        var lidRange = new Range<long>(minLid, maxLid + 1);
+        var lidTiles = Constants.Chat.ServerIdTileStack.FirstLayer.GetCoveringTiles(lidRange);
 
-        var tiles = await idTiles
+        var tiles = await lidTiles
             .Select(idTile => ChatEntryLanguagesBackend.GetTile(chatId, idTile.Range, cancellationToken))
             .Collect(cancellationToken)
             .ConfigureAwait(false);
