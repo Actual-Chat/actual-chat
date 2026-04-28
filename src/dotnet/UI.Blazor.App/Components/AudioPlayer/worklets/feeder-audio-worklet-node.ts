@@ -46,6 +46,10 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
         return node;
     }
 
+    public setBufferEscalation(value: number, noWait?: RpcNoWait): Promise<void> {
+        return this.worklet.setBufferEscalation(value, noWait);
+    }
+
     public pause(noWait?: RpcNoWait): Promise<void> {
         return this.worklet.pause(noWait);
     }

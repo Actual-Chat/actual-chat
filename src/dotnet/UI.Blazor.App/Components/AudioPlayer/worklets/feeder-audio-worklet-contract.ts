@@ -8,6 +8,7 @@ export interface FeederAudioWorklet {
     pause(noWait?: RpcNoWait): Promise<void>;
     resume(preSkip: number): Promise<void>;
     end(mustAbort: boolean, noWait?: RpcNoWait): Promise<void>;
+    setBufferEscalation(value: number, noWait?: RpcNoWait): Promise<void>;
 }
 
 export interface FeederAudioWorkletEventHandler {

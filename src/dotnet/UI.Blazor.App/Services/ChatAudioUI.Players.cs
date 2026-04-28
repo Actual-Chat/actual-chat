@@ -28,6 +28,13 @@ public partial class ChatAudioUI
         return Task.FromResult(player);
     }
 
+    [ComputeMethod]
+    public virtual async Task<int> GetPlaybackBufferEscalation(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var escalate = await ChatVideoUI.HasRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
+        return escalate ? 1 : 0;
+    }
+
     // GetXxxNonComputed
 
     public ChatListener? GetListenerNonComputed(ChatId chatId)

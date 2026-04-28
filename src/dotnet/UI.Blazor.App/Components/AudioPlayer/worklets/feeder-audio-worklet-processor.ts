@@ -38,6 +38,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     private bufferState: BufferState = 'ok';
     private lastReportedState: FeederState;
     private isEnding = false;
+    private bufferEscalation = 0;
     private bufferSizeToStartPlayback = AP.BUFFER_TO_PLAY_DURATION;
     private lastStarvingEventAt = 0;
 
@@ -124,6 +125,15 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         this.chunks.push('end');
     }
 
+    public setBufferEscalation(value: number, _noWait?: RpcNoWait): Promise<void> {
+        this.bufferEscalation = value;
+        debugLog?.log(`#${this.id}.process: got 'setBufferEscalation:' ${value}`);
+        const minBuffer = this.getMinBufferSize();
+        if (this.bufferSizeToStartPlayback < minBuffer)
+            this.bufferSizeToStartPlayback = minBuffer;
+        return ResolvedPromise.Void;
+    }
+
     public process(
         _inputs: Float32Array[][],
         outputs: Float32Array[][],
@@ -169,7 +179,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
                 this.playbackState = 'starving';
                 if (time - this.lastStarvingEventAt > 1000)
                     // Increase buffer size to prevent starving if previous event has happened earlier than 1s before
-                    this.bufferSizeToStartPlayback += AP.BUFFER_TO_PLAY_DURATION;
+                    this.bufferSizeToStartPlayback += AP.BUFFER_TO_PLAY_DURATION_DELTA;
                 this.lastStarvingEventAt = time;
                 this.stateHasChanged();
                 return true;
@@ -204,11 +214,12 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         this.buffer.pull([channel]);
         this.playingAt += channel.length * AP.SAMPLE_DURATION;
         // Decrease buffer size when there were no starving events during last 5s
-        if (time - this.lastStarvingEventAt > 5000)
+        if (time - this.lastStarvingEventAt > 5000) {
+            const minBuffer = this.getMinBufferSize();
             this.bufferSizeToStartPlayback = Math.max(
-                this.bufferSizeToStartPlayback - AP.BUFFER_TO_PLAY_DURATION,
-                AP.BUFFER_TO_PLAY_DURATION);
-
+                this.bufferSizeToStartPlayback - AP.BUFFER_TO_PLAY_DURATION_DELTA,
+                minBuffer);
+        }
         this.stateHasChanged();
         return true;
     }
@@ -247,6 +258,13 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         this.isEnding = false;
         this.playbackState = 'playing';
         this.stateHasChanged();
+    }
+
+    private getMinBufferSize()
+    {
+        return this.bufferEscalation > 0
+            ? AP.BUFFER_TO_PLAY_DURATION_WITH_VIDEO
+            : AP.BUFFER_TO_PLAY_DURATION;
     }
 }
 
