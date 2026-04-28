@@ -6,6 +6,7 @@ export interface RecorderStateServer {
     onAudioPowerChange(power: number, noWait?: RpcNoWait): Promise<void>;
 
     microphoneIsCaptured(noWait?: RpcNoWait): Promise<void>;
+    onRecorderShutdown(reason: string, noWait?: RpcNoWait): Promise<void>;
 }
 
 export type RecorderStateChanged = (isRecording: boolean, isSignalDetected: boolean, isConnected: boolean, isVoiceActive: boolean) => Promise<void>;

@@ -8,6 +8,7 @@ export interface OpusEncoderWorker {
     start(chatId?: string, repliedChatEntryId?: string): Promise<void>;
     setSessionToken(sessionToken: string, noWait?: RpcNoWait): Promise<void>;
     stop(): Promise<void>;
+    heartbeat(noWait?: RpcNoWait): Promise<void>;
     ensureConnected(quickReconnect: boolean, noWait?: RpcNoWait): Promise<void>;
     /** Debug-only: force-remove the worker's RPC peer from the hub. The reconnect
      *  loop will re-create it. Invoked by {@link DebugUI.disconnectApi}. */

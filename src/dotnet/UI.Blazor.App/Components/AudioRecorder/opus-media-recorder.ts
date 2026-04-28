@@ -1,6 +1,6 @@
 // TODO: remove eslint-disables and fix errors
 /* eslint-disable @typescript-eslint/no-unused-vars,@typescript-eslint/no-unnecessary-condition,@typescript-eslint/require-await,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-explicit-any,@typescript-eslint/no-redundant-type-constituents,@typescript-eslint/no-unsafe-argument */
-import { AUDIO_REC as AR } from '_constants';
+import { AUDIO_REC as AR, AUDIO_RECORDER_HEARTBEAT as ARH } from '_constants';
 import { Disposable } from 'disposable';
 import { Versioning } from 'versioning';
 import { catchErrors, delayAsync, delayAsyncWith, PromiseSource, ResolvedPromise, retry } from 'promises';
@@ -209,6 +209,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
     public origin: string = new URL(import.meta.url).origin;
     public source: MediaStreamAudioSourceNode | null = null;
     public stream: MediaStream | null = null;
+    private heartbeatTimerId: ReturnType<typeof setInterval> | undefined;
 
     private get isRecording(): boolean {
         return !!(this.stream && this.state === 'recording');
@@ -424,12 +425,14 @@ export class OpusMediaRecorder implements RecorderStateServer {
                     this.vadWorker.reset(),
                     pipeline.encoderWorklet?.start(rpcNoWait)
                 ]);
+                this.startHeartbeat();
 
                 await this.startMicrophoneStream(context, pipeline);
                 RecorderStateHub.setRecording(this.isRecording);
             }
             catch (e) {
                 this.state = 'stopped';
+                this.stopHeartbeat();
                 await this.stopMicrophoneStream();
                 throw e;
             }
@@ -454,6 +457,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
     public async stop(): Promise<void> {
         this.state = 'stopped';
         this.chatId = undefined;
+        this.stopHeartbeat();
 
         debugLog?.log(`-> stop()`);
 
@@ -480,6 +484,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
     }
 
     public async terminate(): Promise<void> {
+        this.stopHeartbeat();
         await this.encoderWorker?.stop();
         await this.vadWorker?.reset();
         this.recordingAction?.dispose();
@@ -544,7 +549,31 @@ export class OpusMediaRecorder implements RecorderStateServer {
         return ResolvedPromise.Void;
     }
 
+    public onRecorderShutdown(reason: string, _noWait?: RpcNoWait): Promise<void> {
+        // Worker auto-shuts-down its pipeline (e.g. heartbeat-lost while main thread was hung).
+        // Run regular stop() to release the microphone and propagate state to the UI.
+        warnLog?.log(`onRecorderShutdown: reason=${reason}`);
+        void this.stop();
+        return ResolvedPromise.Void;
+    }
+
     // Private/Internal methods
+
+    private startHeartbeat(): void {
+        this.stopHeartbeat();
+        // Send the first heartbeat immediately so the worker doesn't have to wait a full interval after start().
+        void this.encoderWorker?.heartbeat(rpcNoWait);
+        this.heartbeatTimerId = setInterval(() => {
+            void this.encoderWorker?.heartbeat(rpcNoWait);
+        }, ARH.INTERVAL_MS);
+    }
+
+    private stopHeartbeat(): void {
+        if (this.heartbeatTimerId === undefined)
+            return;
+        clearInterval(this.heartbeatTimerId);
+        this.heartbeatTimerId = undefined;
+    }
 
     private async ensureInitialized(): Promise<void> {
         if (this.state !== 'inactive') {

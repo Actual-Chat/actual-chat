@@ -3,7 +3,7 @@
 import codec, { Encoder, Codec } from '@actual-chat/codec';
 import codecWasm from '@actual-chat/codec/codec.wasm';
 // import codecWasmMap from '@actual-chat/codec/codec.wasm.map';
-import { AUDIO_REC as AR, AUDIO_ENCODER as AE } from '_constants';
+import { AUDIO_REC as AR, AUDIO_ENCODER as AE, AUDIO_RECORDER_HEARTBEAT as ARH } from '_constants';
 import Denque from 'denque';
 import { Disposable } from 'disposable';
 import { retry } from 'promises';
@@ -62,6 +62,8 @@ let chunkTimeOffset = 0;
 let lastFrameProcessedAt = 0;
 let audioStream: AudioStream | null = null;
 let encodedFrameCount = 0;
+let lastHeartbeatAt = 0;
+let heartbeatCheckIntervalId: ReturnType<typeof setInterval> | undefined;
 
 const resamplerLoader = new ResamplerLoader();
 // if (DeviceInfo.isFirefox)
@@ -117,6 +119,7 @@ const serverImpl: OpusEncoderWorker = {
         debugLog?.log(`start: chatId=${chatId}`);
 
         state = 'encoding';
+        startHeartbeatWatchdog();
         if (isVoiceDetected)
             await startRecording();
     },
@@ -130,7 +133,12 @@ const serverImpl: OpusEncoderWorker = {
 
         state = 'ended';
         isVoiceDetected = false;
+        stopHeartbeatWatchdog();
         await stopRecording();
+    },
+
+    heartbeat: async (_noWait?: RpcNoWait): Promise<void> => {
+        lastHeartbeatAt = Date.now();
     },
 
     ensureConnected: (_quickReconnect: boolean, _noWait?: RpcNoWait): Promise<void> => {
@@ -386,6 +394,35 @@ function clearQueue(): void {
         const { frame } = encodedAudioFrames.shift()!;
         void encoderWorklet.releaseBuffer(frame, rpcNoWait);
     }
+}
+
+function startHeartbeatWatchdog(): void {
+    // Watchdog runs on the worker's own event loop, so a hung main thread can't suppress it.
+    lastHeartbeatAt = Date.now();
+    if (heartbeatCheckIntervalId !== undefined)
+        return;
+    heartbeatCheckIntervalId = setInterval(() => {
+        if (state !== 'encoding')
+            return;
+        if (Date.now() - lastHeartbeatAt <= ARH.TIMEOUT_MS)
+            return;
+
+        warnLog?.log(`heartbeat watchdog: no main-thread heartbeat for ${ARH.TIMEOUT_MS}ms — shutting down pipeline`);
+        state = 'ended';
+        isVoiceDetected = false;
+        stopHeartbeatWatchdog();
+        void stopRecording().catch((e: unknown) => warnLog?.log('heartbeat watchdog: stopRecording failed:', e));
+        // Notification sits in main-thread message queue until it wakes — then opusMediaRecorder.stop() cleans up locally.
+        void stateServer.onRecorderShutdown('heartbeat-lost', rpcNoWait);
+    }, ARH.CHECK_INTERVAL_MS);
+}
+
+function stopHeartbeatWatchdog(): void {
+    if (heartbeatCheckIntervalId === undefined)
+        return;
+    clearInterval(heartbeatCheckIntervalId);
+    heartbeatCheckIntervalId = undefined;
+    lastHeartbeatAt = 0;
 }
 
 // Helpers
