@@ -50,7 +50,7 @@ body.device-android .modal-frame.emoji-modal {
     grid-template-columns: repeat(auto-fill, minmax(3rem, 1fr));
 }
 .emoji-modal .c-item {
-    @apply flex items-center justify-center;
+    @apply flex-none flex items-center justify-center;
     @apply w-12 h-12;
     @apply rounded-lg;
     @apply cursor-pointer;
@@ -61,6 +61,14 @@ body.hoverable .emoji-modal .c-item:hover,
 }
 .emoji-modal .c-emoji {
     @apply w-9 h-9;
+}
+
+/* Recent emojis — horizontal scrolling strip */
+.emoji-modal .c-emoji-recent {
+    @apply flex-y gap-1;
+}
+.emoji-modal .c-emoji-recent-list {
+    @apply flex-x justify-between gap-1;
 }
 
 /* ── GIF tab ── */
