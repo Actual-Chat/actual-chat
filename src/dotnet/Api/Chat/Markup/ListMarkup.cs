@@ -6,7 +6,7 @@ namespace ActualChat.Chat;
 /// Represents an unordered list of items in markup.
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
-public sealed class ListMarkup : Markup
+public sealed class ListMarkup : BlockMarkup
 {
     public ListItemMarkup[] Items { get; init; } // Immutable!
 

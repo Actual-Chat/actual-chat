@@ -15,6 +15,9 @@ public record LinkExtractor : MarkupVisitorWithState<HashSet<string>>
     protected override void VisitParagraph(ParagraphMarkup markup, ref HashSet<string> state)
         => Visit(markup.Content, ref state);
 
+    protected override void VisitHeader(HeaderMarkup markup, ref HashSet<string> state)
+        => Visit(markup.Content, ref state);
+
     protected override void VisitMention(MentionMarkup markup, ref HashSet<string> state) { }
 
     protected override void VisitStylized(StylizedMarkup markup, ref HashSet<string> state)

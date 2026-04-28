@@ -75,8 +75,18 @@ public sealed record MarkupTrimmer : MarkupRewriter<MarkupTrimmer.State>, IMarku
     {
         if (!state.CanAppend())
             return Markup.EmptyText;
+
         var newContent = Visit(markup.Content, ref state);
         return newContent == markup.Content ? markup : new ParagraphMarkup(newContent);
+    }
+
+    protected override Markup VisitHeader(HeaderMarkup markup, ref State state)
+    {
+        if (!state.CanAppend())
+            return Markup.EmptyText;
+
+        var newContent = Visit(markup.Content, ref state);
+        return newContent == markup.Content ? markup : new HeaderMarkup(markup.Level, newContent);
     }
 
     // We assume any mention is of length 8
@@ -94,6 +104,7 @@ public sealed record MarkupTrimmer : MarkupRewriter<MarkupTrimmer.State>, IMarku
     {
         if (!state.CanAppend(markup.Url.Length))
             return state.TryAppendEllipsis();
+
         state.Append(markup.Url.Length);
         return base.VisitUrl(markup, ref state);
     }

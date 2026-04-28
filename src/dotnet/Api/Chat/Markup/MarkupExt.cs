@@ -35,7 +35,7 @@ public static partial class MarkupExt
         => MarkupFormatter.Readable.Format(markup);
 
     public static bool IsBlockMarkup(this Markup markup)
-        => markup is CodeBlockMarkup or ListMarkup or ParagraphMarkup
+        => markup is BlockMarkup
             || (markup is MarkupSeq seq && seq.Items.Any(IsBlockMarkup));
 
     public static bool IsPlainText(this Markup markup)

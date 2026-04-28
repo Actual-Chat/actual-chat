@@ -35,6 +35,9 @@ public record MarkupEditorHtmlConverter : MarkupHtmlFormatterBase
     protected override void VisitCodeBlock(CodeBlockMarkup markup, ref StringBuilder state)
         => AddText(markup.Format(), ref state);
 
+    protected override void VisitHeader(HeaderMarkup markup, ref StringBuilder state)
+        => AddText(markup.Format(), ref state);
+
     protected override void VisitPreformattedText(PreformattedTextMarkup markup, ref StringBuilder state)
         => AddText(markup.Format(), ref state);
 

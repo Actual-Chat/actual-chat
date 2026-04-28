@@ -6,6 +6,7 @@ public abstract record AsyncMarkupVisitor<TResult>
         => markup switch {
             MarkupSeq markupSeq => VisitSeq(markupSeq, cancellationToken),
             ParagraphMarkup paragraphMarkup => VisitParagraph(paragraphMarkup, cancellationToken),
+            HeaderMarkup headerMarkup => VisitHeader(headerMarkup, cancellationToken),
             CodeBlockMarkup codeBlockMarkup => VisitCodeBlock(codeBlockMarkup, cancellationToken),
             MentionMarkup mention => VisitMention(mention, cancellationToken),
             UrlMarkup urlMarkup => VisitUrl(urlMarkup, cancellationToken),
@@ -29,6 +30,7 @@ public abstract record AsyncMarkupVisitor<TResult>
     protected abstract ValueTask<TResult> VisitList(ListMarkup markup, CancellationToken cancellationToken);
     protected abstract ValueTask<TResult> VisitListItem(ListItemMarkup markup, CancellationToken cancellationToken);
     protected abstract ValueTask<TResult> VisitParagraph(ParagraphMarkup markup, CancellationToken cancellationToken);
+    protected abstract ValueTask<TResult> VisitHeader(HeaderMarkup markup, CancellationToken cancellationToken);
 
     protected abstract ValueTask<TResult> VisitSeq(MarkupSeq markup, CancellationToken cancellationToken);
     protected abstract ValueTask<TResult> VisitStylized(StylizedMarkup markup, CancellationToken cancellationToken);

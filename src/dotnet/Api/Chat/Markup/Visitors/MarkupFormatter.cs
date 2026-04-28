@@ -64,6 +64,14 @@ public abstract record MarkupFormatterBase : MarkupVisitorWithState<StringBuilde
     protected override void VisitParagraph(ParagraphMarkup markup, ref StringBuilder state)
         => Visit(markup.Content, ref state);
 
+    protected override void VisitHeader(HeaderMarkup markup, ref StringBuilder state)
+    {
+        for (var i = 0; i < markup.Level; i++)
+            state.Append('#');
+        state.Append(' ');
+        Visit(markup.Content, ref state);
+    }
+
     protected override void VisitStylized(StylizedMarkup markup, ref StringBuilder state)
     {
         state.Append(markup.StyleToken);
