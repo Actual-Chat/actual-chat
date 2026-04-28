@@ -10,7 +10,7 @@
 
 import { AudioVideoSyncClient } from 'audio-video-sync-client';
 import { getLogs } from 'logging';
-import { BG_CANVAS_WIDTH, BG_DRAW_INTERVAL_MS, BG_FILTER } from '../services/bg-canvas-settings';
+import { BG_BOX_BLUR_PASSES, BG_BOX_BLUR_RADIUS, BG_CANVAS_WIDTH, BG_DRAW_INTERVAL_MS } from '../services/bg-canvas-settings';
 
 const { warnLog } = getLogs('VideoDecoder');
 
@@ -121,7 +121,10 @@ export class WorkerMstgSelector {
 
         // Paint bg backdrop from the same VideoFrame, throttled to ~10 fps.
         // Drawing happens before writer.write so the frame is still readable
-        // — writer takes ownership when its promise resolves.
+        // — writer takes ownership when its promise resolves. Blur is applied
+        // via a portable software box-blur (see bgBoxBlur) — Safari
+        // OffscreenCanvas silently ignores ctx.filter on some versions, so
+        // we don't rely on it. Box blur on 64×N at 10 fps is microseconds.
         if (this.bgPainter) {
             const nowMs = performance.now();
             if (nowMs - this.lastBgDrawAtMs >= BG_DRAW_INTERVAL_MS) {
@@ -134,11 +137,12 @@ export class WorkerMstgSelector {
                         this.bgPainter.canvas.height !== bgH) {
                         this.bgPainter.canvas.width = BG_CANVAS_WIDTH;
                         this.bgPainter.canvas.height = bgH;
-                        // Canvas resize resets ctx state — re-apply filter + smoothing.
+                        // Canvas resize resets ctx state — re-apply smoothing.
                         this.bgPainter.ctx.imageSmoothingEnabled = false;
-                        this.bgPainter.ctx.filter = BG_FILTER;
                     }
                     this.bgPainter.ctx.drawImage(eligible, 0, 0, BG_CANVAS_WIDTH, bgH);
+                    bgBoxBlur(this.bgPainter.ctx, BG_CANVAS_WIDTH, bgH,
+                        BG_BOX_BLUR_RADIUS, BG_BOX_BLUR_PASSES);
                 } catch (e) {
                     warnLog?.log('Bg paint failed:', e);
                 }
@@ -155,4 +159,56 @@ export class WorkerMstgSelector {
                 if (!this.disposed && this.queue.length > 0) this.tick();
             });
     }
+}
+
+// Portable separable box blur on an OffscreenCanvas 2D context. Multiple
+// passes approximate Gaussian (3 passes ≈ Gaussian σ ≈ radius). Operates
+// on a 64×N image at 10 fps — total ≈ 200k ops/draw, ~2M/s, microseconds.
+// Replaces ctx.filter='blur(...)' which Safari OffscreenCanvas silently
+// drops on iOS ≤17.3 / iPadOS, leaving the bg pixelated.
+function bgBoxBlur(
+    ctx: OffscreenCanvasRenderingContext2D,
+    w: number, h: number,
+    radius: number, passes: number,
+): void {
+    if (radius < 1 || passes < 1 || w < 1 || h < 1) return;
+    const imageData = ctx.getImageData(0, 0, w, h);
+    const data = imageData.data;
+    const tmp = new Uint8ClampedArray(data.length);
+    const wPx = w << 2;
+    for (let p = 0; p < passes; p++) {
+        // Horizontal pass: data → tmp
+        for (let y = 0; y < h; y++) {
+            const rowStart = y * wPx;
+            for (let x = 0; x < w; x++) {
+                let r = 0, g = 0, b = 0, n = 0;
+                const xMin = Math.max(0, x - radius);
+                const xMax = Math.min(w - 1, x + radius);
+                for (let xi = xMin; xi <= xMax; xi++) {
+                    const i = rowStart + (xi << 2);
+                    r += data[i]; g += data[i + 1]; b += data[i + 2];
+                    n++;
+                }
+                const i = rowStart + (x << 2);
+                tmp[i] = r / n; tmp[i + 1] = g / n; tmp[i + 2] = b / n; tmp[i + 3] = 255;
+            }
+        }
+        // Vertical pass: tmp → data
+        for (let x = 0; x < w; x++) {
+            const colStart = x << 2;
+            for (let y = 0; y < h; y++) {
+                let r = 0, g = 0, b = 0, n = 0;
+                const yMin = Math.max(0, y - radius);
+                const yMax = Math.min(h - 1, y + radius);
+                for (let yi = yMin; yi <= yMax; yi++) {
+                    const i = yi * wPx + colStart;
+                    r += tmp[i]; g += tmp[i + 1]; b += tmp[i + 2];
+                    n++;
+                }
+                const i = y * wPx + colStart;
+                data[i] = r / n; data[i + 1] = g / n; data[i + 2] = b / n; data[i + 3] = 255;
+            }
+        }
+    }
+    ctx.putImageData(imageData, 0, 0);
 }

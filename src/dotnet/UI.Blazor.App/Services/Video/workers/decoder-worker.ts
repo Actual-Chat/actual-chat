@@ -13,7 +13,7 @@ import type { EncodedChunkData } from '../webcodecs-encoder';
 import { extractHVCC } from '../hevc-parser';
 import { getLogs } from 'logging';
 import { WorkerMstgSelector } from './worker-mstg-selector';
-import { BG_CANVAS_WIDTH, BG_DRAW_INTERVAL_MS, BG_FILTER } from '../services/bg-canvas-settings';
+import { BG_CANVAS_WIDTH, BG_DRAW_INTERVAL_MS } from '../services/bg-canvas-settings';
 import { Api, streamingApi } from 'api';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
 
@@ -943,17 +943,17 @@ const serverImpl: DecoderWorker = {
         }
 
         // Optional bg painter: low-res blurred canvas drawn from the same
-        // VideoFrames the selector picks. Blur baked into the bitmap via
-        // ctx.filter — compositor just bilinear-upscales a 64×N texture
-        // instead of running a Gaussian shader over the full surface.
+        // VideoFrames the selector picks. Blur is applied via a portable
+        // software box-blur in the selector — Safari OffscreenCanvas
+        // silently ignores ctx.filter on some versions, leaving the bg
+        // pixelated. Box blur on 64×N at 10 fps is microseconds.
         let bgPainter: { canvas: OffscreenCanvas; ctx: OffscreenCanvasRenderingContext2D } | undefined;
         if (bgCanvas) {
-            const ctx = bgCanvas.getContext('2d', { alpha: false }) as OffscreenCanvasRenderingContext2D | null;
+            const ctx = bgCanvas.getContext('2d', { alpha: false });
             if (ctx) {
                 ctx.imageSmoothingEnabled = false;
-                ctx.filter = BG_FILTER;
                 bgPainter = { canvas: bgCanvas, ctx };
-                infoLog?.log(`Bg painter armed: ${BG_CANVAS_WIDTH}px wide, filter=${BG_FILTER}, every ${BG_DRAW_INTERVAL_MS}ms`);
+                infoLog?.log(`Bg painter armed: ${BG_CANVAS_WIDTH}px wide, every ${BG_DRAW_INTERVAL_MS}ms (software box blur)`);
             } else {
                 warnLog?.log('Bg canvas getContext("2d") returned null — bg painter disabled');
             }
