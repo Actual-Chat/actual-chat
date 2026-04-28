@@ -51,6 +51,14 @@
     font-size: 0.75rem;
 }
 
+div.diag-value.multiline .diag-value {
+    @apply text-wrap;
+}
+
+.diag-error {
+    @apply text-danger;
+}
+
 .diag-dim {
     @apply text-04;
 }

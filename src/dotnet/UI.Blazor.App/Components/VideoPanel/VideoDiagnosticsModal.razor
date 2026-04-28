@@ -47,6 +47,12 @@
                         <span class="diag-label">Status</span>
                         <span class="diag-value">@GetStr(stream, "status")</span>
                     </div>
+                    @if (GetStr(stream, "cameraLabel") is { Length: > 0 } cameraLabel) {
+                        <div class="diag-row">
+                            <span class="diag-label">Camera</span>
+                            <span class="diag-value multiline">@cameraLabel</span>
+                        </div>
+                    }
                     <div class="diag-row">
                         <span class="diag-label">Codec</span>
                         <span class="diag-value">@GetStr(stream, "codec") (@GetStr(stream, "codecCategory"), @(GetBool(stream, "hardwareAccelerated") ? "HW" : "SW"))</span>
@@ -79,12 +85,6 @@
                         <span class="diag-label">Duration</span>
                         <span class="diag-value">@(GetNum(stream, "duration").ToString("0"))s</span>
                     </div>
-                    @if (GetStr(stream, "cameraLabel") is { Length: > 0 } cameraLabel) {
-                        <div class="diag-row">
-                            <span class="diag-label">Camera</span>
-                            <span class="diag-value">@cameraLabel</span>
-                        </div>
-                    }
                     @if (GetBool(stream, "blurEnabled")) {
                         <div class="diag-row">
                             <span class="diag-label">Blur</span>
@@ -124,7 +124,10 @@
                     @if (stream.TryGetProperty("streaming", out var streaming) && streaming.ValueKind == JsonValueKind.Object) {
                         <div class="diag-row">
                             <span class="diag-label">Send</span>
-                            <span class="diag-value">@GetStr(streaming, "status") (@(GetNum(streaming, "sentFrames").ToString("0")) frames)</span>
+                            <div class="diag-value multiline">
+                                <span class="diag-value">@GetStr(streaming, "status") (@(GetNum(streaming, "sentFrames").ToString("0")) frames)</span>
+                            </div>
+
                         </div>
                         @if (GetNum(streaming, "pendingFrames") > 0) {
                             <div class="diag-row">
@@ -141,7 +144,9 @@
                         @if (GetStr(streaming, "lastError") is { Length: > 0 } streamError) {
                             <div class="diag-row">
                                 <span class="diag-label">Error</span>
-                                <span class="diag-value diag-error">@streamError</span>
+                                <div class="diag-value multiline">
+                                    <span class="diag-error">@streamError</span>
+                                </div>
                             </div>
                         }
                     }
