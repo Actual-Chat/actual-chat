@@ -2408,17 +2408,22 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var permissions = (ChatPermissions.Write | ChatPermissions.SeeMembers | ChatPermissions.Join | ChatPermissions.EditProperties).AddImplied();
 
-        // Strip stream + upload capabilities if the caller isn't in the recipient's contacts.
-        // The 3-message cap on creates is enforced separately in Chats.OnUpsertEntry.
+        // Strip stream + upload capabilities if the caller isn't in the recipient's contacts
+        // AND the recipient hasn't replied yet. Either event lifts the restriction.
+        // The message-count cap on creates is enforced separately in Chats.OnUpsertEntry.
         var peerUserId = otherUserId!;
         var peerContactId = ContactId.NewUser(peerUserId, account.Id);
         var peerContact = await ContactsBackend.Get(peerUserId, peerContactId, cancellationToken).ConfigureAwait(false);
-        if (!peerContact.IsStored())
-            permissions &= ~(ChatPermissions.Upload
-                | ChatPermissions.WriteAudio
-                | ChatPermissions.WriteVideo
-                | ChatPermissions.ReadAudio
-                | ChatPermissions.ReadVideo);
+        if (!peerContact.IsStored()) {
+            var peerAuthorId = chatId.AnotherAuthorId(account.Id);
+            var peerEntryCount = await GetEntryCount(chatId, peerAuthorId, cancellationToken).ConfigureAwait(false);
+            if (peerEntryCount == 0)
+                permissions &= ~(ChatPermissions.Upload
+                    | ChatPermissions.WriteAudio
+                    | ChatPermissions.WriteVideo
+                    | ChatPermissions.ReadAudio
+                    | ChatPermissions.ReadVideo);
+        }
 
         return new(chatId, author, account, permissions);
     }

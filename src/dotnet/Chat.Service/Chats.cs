@@ -12,8 +12,6 @@ public partial class Chats(IServiceProvider services) : IChats
     public static readonly TileStack<long> ServerIdTileStack = Constants.Chat.ServerIdTileStack;
     public static readonly TileStack<long> ViewIdTileStack = Constants.Chat.ViewIdTileStack;
 
-    private const int NonContactPeerMessageCap = 3;
-
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
     private IAvatars Avatars { get; } = services.GetRequiredService<IAvatars>();
@@ -427,15 +425,16 @@ public partial class Chats(IServiceProvider services) : IChats
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
         }
         else { // Create
-            // In peer chats, when the caller isn't in the recipient's contacts,
-            // ChatPermissions.WriteAudio (and other content-type flags) are stripped.
-            // Use that as the cheap signal to enforce a 3-message creation cap.
-            // Edits remain unaffected since this branch only runs on create.
+            // In peer chats, when the caller isn't in the recipient's contacts and
+            // the recipient hasn't replied, ChatPermissions.WriteAudio (and other
+            // content-type flags) are stripped. Use that as the cheap signal to
+            // enforce the creation cap. Edits remain unaffected since this branch
+            // only runs on create.
             if (chatId is PeerChatId && !chat.Rules.Has(ChatPermissions.WriteAudio)) {
                 var existingCount = await Backend.GetEntryCount(chatId, author.Id, cancellationToken).ConfigureAwait(false);
-                if (existingCount >= NonContactPeerMessageCap)
+                if (existingCount >= Constants.Chat.NonContactPeerMessageLimit)
                     throw StandardError.Constraint(
-                        $"You can send up to {NonContactPeerMessageCap} messages until this user adds you to their contacts.");
+                        $"You can send up to {Constants.Chat.NonContactPeerMessageLimit} messages until this user adds you to their contacts or replies.");
             }
 
             var commandResult = await TryHandleAdminCommand(session, chatId, author, text, cancellationToken)
