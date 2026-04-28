@@ -6,7 +6,7 @@ namespace ActualChat.Chat;
 /// Represents a fenced code block with optional language.
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
-public sealed class CodeBlockMarkup(string code, string language = "") : Markup
+public sealed class CodeBlockMarkup(string code, string language = "") : BlockMarkup
 {
     public string Code { get; } = code ?? throw new ArgumentNullException(nameof(code));
     public string Language { get; } = language;

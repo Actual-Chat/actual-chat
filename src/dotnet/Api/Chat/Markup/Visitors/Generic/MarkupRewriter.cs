@@ -45,6 +45,12 @@ public abstract record MarkupRewriter<TState> : MarkupVisitorWithState<TState, M
         return newContent == markup.Content ? markup : new ParagraphMarkup(newContent);
     }
 
+    protected override Markup VisitHeader(HeaderMarkup markup, ref TState state)
+    {
+        var newContent = Visit(markup.Content, ref state);
+        return newContent == markup.Content ? markup : new HeaderMarkup(markup.Level, newContent);
+    }
+
     protected override Markup VisitUrl(UrlMarkup markup, ref TState state) => markup;
     protected override Markup VisitMention(MentionMarkup markup, ref TState state) => markup;
     protected override Markup VisitCodeBlock(CodeBlockMarkup markup, ref TState state) => markup;

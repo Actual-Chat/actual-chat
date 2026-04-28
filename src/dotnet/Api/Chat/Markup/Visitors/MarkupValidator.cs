@@ -46,6 +46,11 @@ public record MarkupValidator : MarkupVisitor<bool>
             ? Visit(markup.Content) && _predicate(markup)
             : Visit(markup.Content) || _predicate(markup);
 
+    protected override bool VisitHeader(HeaderMarkup markup)
+        => _aggregationMode == AggregationMode.All
+            ? Visit(markup.Content) && _predicate(markup)
+            : Visit(markup.Content) || _predicate(markup);
+
     protected override bool VisitUrl(UrlMarkup markup) => _predicate(markup);
     protected override bool VisitMention(MentionMarkup markup) => _predicate(markup);
     protected override bool VisitCodeBlock(CodeBlockMarkup markup) => _predicate(markup);

@@ -717,6 +717,146 @@ code
         m.Items[6].Should().BeOfType<CodeBlockMarkup>();
     }
 
+    [Theory]
+    [InlineData("# Heading", 1)]
+    [InlineData("## Heading", 2)]
+    [InlineData("### Heading", 3)]
+    public void HeaderLevelTest(string text, int expectedLevel)
+    {
+        var m = Parse<HeaderMarkup>(text);
+        m.Level.Should().Be(expectedLevel);
+        m.Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be("Heading");
+    }
+
+    [Fact]
+    public void HeaderTooManyHashesIsParagraph()
+    {
+        // 4+ hashes are not valid headers - should fall back to paragraph
+        var m = Parse<ParagraphMarkup>("#### Not a header");
+        m.Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be("#### Not a header");
+    }
+
+    [Fact]
+    public void HeaderRequiresWhitespaceAfterHashes()
+    {
+        // No space after # means it's not a header
+        var m = Parse<ParagraphMarkup>("#NotAHeader");
+        m.Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be("#NotAHeader");
+    }
+
+    [Fact]
+    public void HeaderWithBoldContent()
+    {
+        var m = Parse<HeaderMarkup>("# **Bold heading**");
+        m.Level.Should().Be(1);
+        var stylized = m.Content.Should().BeOfType<StylizedMarkup>().Subject;
+        stylized.Style.Should().Be(TextStyle.Bold);
+        stylized.Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be("Bold heading");
+    }
+
+    [Fact]
+    public void HeaderWithMention()
+    {
+        var m = Parse<HeaderMarkup>("# Welcome @u:userId");
+        m.Level.Should().Be(1);
+        var seq = m.Content.Should().BeOfType<MarkupSeq>().Subject;
+        seq.Items.Should().HaveCount(2);
+        seq.Items[1].Should().BeOfType<MentionMarkup>();
+    }
+
+    [Fact]
+    public void HeaderFollowedByParagraph()
+    {
+        var text =
+            """
+            # Heading
+            Paragraph text.
+            """;
+        var m = Parse<MarkupSeq>(text);
+        m.Items.Length.Should().Be(2);
+        m.Items[0].Should().BeOfType<HeaderMarkup>().Which.Level.Should().Be(1);
+        m.Items[1].Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().Be("Paragraph text.");
+    }
+
+    [Fact]
+    public void ParagraphFollowedByHeader()
+    {
+        var text =
+            """
+            Some text.
+            # Heading
+            """;
+        var m = Parse<MarkupSeq>(text);
+        m.Items.Length.Should().Be(2);
+        m.Items[0].Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().Be("Some text.");
+        m.Items[1].Should().BeOfType<HeaderMarkup>().Which.Level.Should().Be(1);
+    }
+
+    [Fact]
+    public void MultipleHeaders()
+    {
+        var text =
+            """
+            # Title
+            ## Subtitle
+            ### Section
+            """;
+        var m = Parse<MarkupSeq>(text);
+        m.Items.Length.Should().Be(3);
+        m.Items[0].Should().BeOfType<HeaderMarkup>().Which.Level.Should().Be(1);
+        m.Items[1].Should().BeOfType<HeaderMarkup>().Which.Level.Should().Be(2);
+        m.Items[2].Should().BeOfType<HeaderMarkup>().Which.Level.Should().Be(3);
+    }
+
+    [Fact]
+    public void KeepEmptyLineAfterHeader()
+    {
+        var text =
+            """
+            # Heading
+
+            paragraph
+            """;
+        var m = Parse<MarkupSeq>(text, false);
+        m.Items.Length.Should().Be(3);
+        m.Items[0].Should().BeOfType<HeaderMarkup>();
+        m.Items[1].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.EmptyText);
+        m.Items[2].Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().Be("paragraph");
+    }
+
+    [Fact]
+    public void HeaderAndListAndCodeBlock()
+    {
+        var text =
+            """
+            # Heading
+            - item 1
+            - item 2
+            ```
+            some code
+            ```
+            """;
+        var m = Parse<MarkupSeq>(text);
+        m.Items.Length.Should().Be(3);
+        m.Items[0].Should().BeOfType<HeaderMarkup>().Which.Level.Should().Be(1);
+        m.Items[1].Should().BeOfType<ListMarkup>().Which.Items.Should().HaveCount(2);
+        m.Items[2].Should().BeOfType<CodeBlockMarkup>().Which.Code.Should().Be("some code");
+    }
+
+    [Fact]
+    public void HeaderIsBlockMarkup()
+    {
+        var m = Parse<HeaderMarkup>("# Title");
+        ((Markup)m).Should().BeAssignableTo<BlockMarkup>();
+        m.IsBlockMarkup().Should().BeTrue();
+    }
+
     [Fact]
     public void UnclosedCodeBlockExtendsToEndOfMessage()
     {
@@ -875,6 +1015,7 @@ code
         WriteLine("Output:");
         WriteLine($"  {simplified}");
         WriteLine($"  Raw: {parsed}");
+        AssertTopLevelIsBlocks(simplified);
         var result = simplified.Should().BeOfType<TResult>().Subject;
         if (validateFormat) {
             var expectedMarkupText = text.Replace("\r\n", "\n");
@@ -884,5 +1025,22 @@ code
             markupText2.Should().Be(expectedMarkupText);
         }
         return result;
+    }
+
+    // Every top-level markup produced by the parser must be a BlockMarkup
+    // (or a MarkupSeq whose items are all BlockMarkup).
+    private static void AssertTopLevelIsBlocks(Markup markup)
+    {
+        if (markup is MarkupSeq seq) {
+            for (var i = 0; i < seq.Items.Length; i++) {
+                seq.Items[i].Should().BeAssignableTo<BlockMarkup>(
+                    "every top-level item in MarkupSeq must be a BlockMarkup descendant; " +
+                    $"item {i} is {seq.Items[i].GetType().Name}");
+            }
+        }
+        else {
+            markup.Should().BeAssignableTo<BlockMarkup>(
+                $"top-level result must be a BlockMarkup descendant, but is {markup.GetType().Name}");
+        }
     }
 }

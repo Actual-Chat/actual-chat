@@ -1,6 +1,6 @@
 namespace ActualChat.Chat;
 
-public class ParagraphMarkup : Markup
+public class ParagraphMarkup : BlockMarkup
 {
     public static readonly ParagraphMarkup Empty = new (PlainTextMarkup.Empty);
 

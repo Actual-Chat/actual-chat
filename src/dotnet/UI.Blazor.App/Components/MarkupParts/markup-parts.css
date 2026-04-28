@@ -262,3 +262,62 @@ ul.list-markup li::before {
 .chat-message-markup p.paragraph-markup + p.paragraph-markup {
     @apply mt-2;
 }
+
+/* Header markup - all levels render at the default text size; level differentiation comes
+   from a small color shift toward the surrounding background:
+   - Light theme: lighter (less dark) as level grows.
+   - Dark theme:  darker  (less bright) as level grows.
+   Level 1 stays at the default text color. */
+:root, .theme-light {
+    --header-markup-color-1: var(--text-01);
+    --header-markup-color-2: var(--gray-20);
+    --header-markup-color-3: var(--gray-40);
+}
+.theme-dark {
+    --header-markup-color-1: var(--text-01);
+    --header-markup-color-2: var(--ash-80);
+    --header-markup-color-3: var(--ash-60);
+}
+.header-markup {
+    @apply whitespace-break-spaces;
+    @apply my-2;
+    word-break: break-word;
+    color: var(--header-markup-color-1);
+}
+.header-markup-2 {
+    color: var(--header-markup-color-2);
+}
+.header-markup-3 {
+    color: var(--header-markup-color-3);
+}
+/* NOTE(AY): Why font-weight lives on descendant <span>, not on .header-markup itself:
+   .chat-message-markup span applies text-text-1, which carries font-weight:400
+   baked in (see tailwind.config.js). That rule sets font-weight directly on the
+   span, so an inherited weight from the .header-markup parent loses.
+   Why two selectors per level:
+   - The .chat-message-markup-prefixed selector raises specificity above
+     `.chat-message-markup span` so it wins inside chat messages.
+   - The bare `.header-markup-N span` selector covers headers rendered outside
+     a chat message (previews, editor, search results) where the prefixed rule
+     wouldn't match.
+  The real reason: Andrey wrote a CSS rule for ".chat-message-markup span",
+  which should never exist in the first place. And now we have to deal with it.
+*/
+.chat-message-markup .header-markup-1 span,
+.header-markup-1 span {
+    @apply font-black;
+}
+.chat-message-markup .header-markup-2 span,
+.header-markup-2 span {
+    @apply font-bold;
+}
+.chat-message-markup .header-markup-3 span,
+.header-markup-3 span {
+    @apply font-medium;
+}
+
+.chat-message-markup .header-markup + .header-markup,
+.chat-message-markup p.paragraph-markup + .header-markup,
+.chat-message-markup .header-markup + p.paragraph-markup {
+    @apply mt-2;
+}

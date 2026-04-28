@@ -109,6 +109,13 @@ public partial class MarkupParser : IMarkupParser
     internal static readonly Parser<char, Markup> WhitespaceText =
         WhitespaceChar.AtLeastOnceString().ToTextMarkup(TextMarkupKind.Plain, false);
 
+    // Header level: 1 to 3 '#' chars followed by whitespace (lookahead, not consumed)
+    private static readonly Parser<char, int> HeaderLevel =
+        Char('#').AtLeastOnceString()
+            .Where(s => s.Length is >= HeaderMarkup.MinLevel and <= HeaderMarkup.MaxLevel)
+            .Select(s => s.Length)
+            .Before(Lookahead(WhitespaceChar));
+
     // Check what follows after a newline (used in lookahead)
     private static readonly Parser<char, char> ParagraphBreakAhead =
         EndOfLine.Then(EndOfLine).ThenReturn('\n'); // double newline = paragraph break
@@ -116,12 +123,15 @@ public partial class MarkupParser : IMarkupParser
         EndOfLine.Then(OneOf(Char('-'), Char('*')).Before(WhitespaceChar));
     private static readonly Parser<char, string> CodeBlockAhead =
         EndOfLine.Then(CodeBlockToken);
+    private static readonly Parser<char, int> HeaderAhead =
+        EndOfLine.Then(HeaderLevel);
 
-    // Inline newline (single newline within inline content, not paragraph break or list/code block start)
+    // Inline newline (single newline within inline content, not paragraph break or list/code/header block start)
     private static readonly Parser<char, Markup> InlineNewLine =
         Lookahead(Not(ParagraphBreakAhead)) // not paragraph break
             .Then(Lookahead(Not(ListItemAhead))) // not list item start
             .Then(Lookahead(Not(CodeBlockAhead))) // not code block start
+            .Then(Lookahead(Not(HeaderAhead))) // not header start
             .Then(EndOfLine)
             .ThenReturn(NewLineMarkup.Instance as Markup);
 
@@ -315,10 +325,11 @@ public partial class MarkupParser : IMarkupParser
             // A single paragraph line (can be empty - 0 or more chars)
             Parser<char, string> paragraphLine = NotEndOfLineChar.ManyString();
 
-            // Check if next line starts a block element (CodeBlock or ListBlock)
+            // Check if next line starts a block element (CodeBlock, ListBlock, or Header)
             Parser<char, char> blockElementAhead =
                 Lookahead(Try(CodeBlockToken.ThenReturn('`'))
-                    .Or(Try(OneOf(Char('-'), Char('*')).Before(WhitespaceChar))));
+                    .Or(Try(OneOf(Char('-'), Char('*')).Before(WhitespaceChar)))
+                    .Or(Try(HeaderLevel.ThenReturn('#'))));
 
             // Paragraph: collect all content until paragraph break or block element, then parse as inline
             // This allows styled text (**bold**) to span multiple lines
@@ -334,20 +345,38 @@ public partial class MarkupParser : IMarkupParser
                 select BuildParagraph(firstLine, restParts, inlineParser)
                 ).Debug("<Paragraph>");
 
+            // Header: 1-3 '#' followed by whitespace and a single line of inline content
+            Parser<char, Markup> header = (
+                from level in HeaderLevel
+                from _ in WhitespaceChar.AtLeastOnce()
+                from line in paragraphLine
+                select BuildHeader(level, line.TrimEnd(), inlineParser)
+                ).Debug("<Header>");
+
+            // Header optionally followed by an empty paragraph (preserves trailing blank line)
+            Parser<char, Markup> headerWithOptionalEmpty =
+                from h in header
+                from emptyOpt in TrailingEmptyParagraphAfterBlock.Optional()
+                select emptyOpt.HasValue ? Markup.Join(h, emptyOpt.Value) : h;
+
+            // Any standalone block (list/code/header with optional trailing empty, or paragraph)
+            Parser<char, Markup> blockOrHeader =
+                SafeTryOneOf(ListOrCodeBlockWithOptionalEmpty, headerWithOptionalEmpty);
+
             Parser<char, Markup> block =
-                SafeTryOneOf(ListOrCodeBlockWithOptionalEmpty, paragraph);
+                SafeTryOneOf(blockOrHeader, paragraph);
 
             // Empty paragraph: matches when there's another newline (or end) after paragraph break
             Parser<char, Markup> emptyParagraph =
                 Lookahead(Try(EndOfLine).Or(End.ThenReturn(""))).ThenReturn((Markup)new ParagraphMarkup(Markup.EmptyText));
 
-            // After code/list block: single newline can be followed by any block
-            // After paragraph: need double newline for next paragraph, single newline OK for code/list
+            // After code/list/header block: single newline can be followed by any block
+            // After paragraph: need double newline for next paragraph, single newline OK for code/list/header
             // Solution: Try all options with proper backtracking
             Parser<char, Markup> blockSeparatorThenBlock =
-                Try(EndOfLine.Then(ListOrCodeBlockWithOptionalEmpty)) // single \n + code/list (with optional trailing empty line)
+                Try(EndOfLine.Then(blockOrHeader)) // single \n + code/list/header (with optional trailing empty line)
                     .Or(Try(EndOfLine.Then(EndOfLine).Then(SafeTryOneOf(emptyParagraph, block)))) // \n\n + empty or block
-                    .Or(EndOfLine.Then(paragraph)); // single \n + paragraph (only works after code/list)
+                    .Or(EndOfLine.Then(paragraph)); // single \n + paragraph (only works after code/list/header)
 
             Parser =
                 from first in block
@@ -361,5 +390,8 @@ public partial class MarkupParser : IMarkupParser
             var content = firstLine + string.Concat(restParts);
             return new ParagraphMarkup(inlineParser.ParseOrThrow(content));
         }
+
+        private static Markup BuildHeader(int level, string line, Parser<char, Markup> inlineParser)
+            => new HeaderMarkup(level, inlineParser.ParseOrThrow(line));
     }
 }

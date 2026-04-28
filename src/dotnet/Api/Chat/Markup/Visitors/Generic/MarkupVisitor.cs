@@ -6,6 +6,7 @@ public abstract record MarkupVisitor<TResult>
         => markup switch {
             MarkupSeq markupSeq => VisitSeq(markupSeq),
             ParagraphMarkup paragraphMarkup => VisitParagraph(paragraphMarkup),
+            HeaderMarkup headerMarkup => VisitHeader(headerMarkup),
             CodeBlockMarkup codeBlockMarkup => VisitCodeBlock(codeBlockMarkup),
             MentionMarkup mention => VisitMention(mention),
             UrlMarkup urlMarkup => VisitUrl(urlMarkup),
@@ -29,6 +30,7 @@ public abstract record MarkupVisitor<TResult>
     protected abstract TResult VisitList(ListMarkup markup);
     protected abstract TResult VisitListItem(ListItemMarkup markup);
     protected abstract TResult VisitParagraph(ParagraphMarkup markup);
+    protected abstract TResult VisitHeader(HeaderMarkup markup);
 
     protected abstract TResult VisitSeq(MarkupSeq markup);
     protected abstract TResult VisitStylized(StylizedMarkup markup);

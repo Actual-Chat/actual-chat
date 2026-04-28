@@ -1,0 +1,9 @@
+@inherits MarkupViewBase<HeaderMarkup>
+
+<div class="header-markup @($"header-markup-{Markup.Level}")" role="heading" aria-level="@Markup.Level">
+    @if (Markup.Content is TextMarkup { Text.Length: 0 }) {
+        <br/>
+    } else {
+        <MarkupView Markup="@Markup.Content"/>
+    }
+</div>
