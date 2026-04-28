@@ -30,6 +30,7 @@ export interface RemoteStreamDiagnostics {
     authorId: string;
     codec: string;
     codecCategory: string;
+    bitrateKbps: number;
     pipelineLatencyMs: number;
     jitterBufferMs: number;
     jitterEstimateMs: number;
@@ -142,6 +143,8 @@ export class VideoPlayer {
     private renderFrameCount = 0;       // count of rendered frames (for periodic logging)
     private receivedFrameCount = 0;     // count of received frames (for periodic logging)
     private receivedKeyframeCount = 0;   // count of received keyframes (for correlation with encoder)
+    private receivedBytes = 0;           // total bytes received (for bitrate calculation)
+    private firstFrameReceivedTime = 0;  // performance.now() when first frame arrived
     private lastSyncLogTime = 0;        // throttle sync logging
     private sequenceNumber = 0;         // sequence number for chunks sent to decoder worker
 
@@ -1219,6 +1222,8 @@ export class VideoPlayer {
         this.lastDiagDecodedFrames = 0;
         this.lastDiagReceivedFrames = 0;
         this.receivedFrameCount = 0;
+        this.receivedBytes = 0;
+        this.firstFrameReceivedTime = 0;
 
         // Dispose current pull and re-request from live offset (skip-to-live)
         this.pullAbortController?.abort();
@@ -1312,6 +1317,9 @@ export class VideoPlayer {
             const description = frame.Description ?? undefined;
 
             this.receivedFrameCount++;
+            this.receivedBytes += data.byteLength;
+            if (this.firstFrameReceivedTime === 0)
+                this.firstFrameReceivedTime = performance.now();
             if (offsetMs > this.lastArrivedOffsetMs)
                 this.lastArrivedOffsetMs = offsetMs;
             if (isKeyFrame) {
@@ -1359,6 +1367,14 @@ export class VideoPlayer {
             try { decoderStats = await this.decoderWorker.getStats(); } catch { /* ignore */ }
         }
 
+        // Compute incoming bitrate
+        const elapsedSec = this.firstFrameReceivedTime > 0
+            ? (performance.now() - this.firstFrameReceivedTime) / 1000
+            : 0;
+        const bitrateKbps = elapsedSec > 0
+            ? Math.round(this.receivedBytes * 8 / elapsedSec / 1000)
+            : 0;
+
         // Compute A/V drift
         let avDriftMs: number | null = null;
         const audioState = AudioVideoSync.get(this.authorId);
@@ -1374,6 +1390,7 @@ export class VideoPlayer {
             authorId: this.authorId,
             codec: this.decoderConfig?.codec ?? 'unknown',
             codecCategory: this.codecCategory,
+            bitrateKbps,
             pipelineLatencyMs: Math.round(this.pipelineLatencyMs),
             jitterBufferMs: Math.round(this.jitterBufferMs),
             jitterEstimateMs: Math.round(this.jitterEstimateMs),
@@ -1411,6 +1428,8 @@ export class VideoPlayer {
         this.renderFrameCount = 0;
         this.receivedFrameCount = 0;
         this.receivedKeyframeCount = 0;
+        this.receivedBytes = 0;
+        this.firstFrameReceivedTime = 0;
         this.pipelineLatencyMs = 0;
         this.skipFramesBelowOffsetMs = 0;
         this.skippedBacklogFrames = 0;

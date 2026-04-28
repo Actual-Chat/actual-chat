@@ -153,7 +153,7 @@
                         }
                         @if (GetStr(streaming, "lastError") is { Length: > 0 } streamError) {
                             <div class="diag-row">
-                                <span class="diag-label">Error</span>
+                                <span class="diag-label">Last Error</span>
                                 <div class="diag-value multiline">
                                     <span class="diag-error">@streamError</span>
                                 </div>
@@ -220,11 +220,21 @@
                                 && dsPeek.ValueKind == JsonValueKind.Object
                                 ? GetStr(dsPeek, "resolution")
                                 : null;
+                            var peekBitrate = _streamDiags.TryGetValue(sid, out var rdBrPeek)
+                                && rdBrPeek.ValueKind == JsonValueKind.Object
+                                ? GetNum(rdBrPeek, "bitrateKbps")
+                                : 0;
                         }
                         @if (!string.IsNullOrEmpty(encodedRes)) {
                             <div class="diag-row">
                                 <span class="diag-label">Encoded</span>
                                 <span class="diag-value">@encodedRes</span>
+                            </div>
+                        }
+                        @if (peekBitrate > 0) {
+                            <div class="diag-row">
+                                <span class="diag-label">Bitrate</span>
+                                <span class="diag-value">@(peekBitrate.ToString("0")) kbps</span>
                             </div>
                         }
                         @if (isExpanded && _streamDiags.TryGetValue(sid, out var rd) && rd.ValueKind == JsonValueKind.Object) {
@@ -260,6 +270,10 @@
 
                                 @* Network *@
                                 <div class="diag-group-header">Network</div>
+                                <div class="diag-row">
+                                    <span class="diag-label">Bitrate</span>
+                                    <span class="diag-value">@(GetNum(rd, "bitrateKbps").ToString("0")) kbps</span>
+                                </div>
                                 <div class="diag-row">
                                     <span class="diag-label">E2E latency</span>
                                     <span class="diag-value">@(GetNum(rd, "pipelineLatencyMs").ToString("0"))ms</span>
@@ -487,7 +501,7 @@
                 if (GetNum(copyStreaming, "streamRecreations") > 1)
                     sb.AppendLine($"Reconnects: {GetNum(copyStreaming, "streamRecreations") - 1:0}");
                 if (GetStr(copyStreaming, "lastError") is { Length: > 0 } copyStreamError)
-                    sb.AppendLine($"Error: {copyStreamError}");
+                    sb.AppendLine($"Last Error: {copyStreamError}");
             }
         }
         sb.AppendLine();
@@ -516,6 +530,7 @@
                 }
                 // Network
                 sb.AppendLine("  -- Network --");
+                sb.AppendLine($"  Bitrate: {GetNum(rd, "bitrateKbps"):0} kbps");
                 sb.AppendLine($"  E2E latency: {GetNum(rd, "pipelineLatencyMs"):0}ms");
                 sb.AppendLine($"  Jitter buf: {GetNum(rd, "jitterBufferMs"):0}ms (est: {GetNum(rd, "jitterEstimateMs"):0}ms)");
                 sb.AppendLine($"  RTT: {GetNum(rd, "smoothedRttMs"):0}ms (grad: {GetNum(rd, "rttGradientMs"):0}ms)");
