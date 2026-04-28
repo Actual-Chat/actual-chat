@@ -1,13 +1,8 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@{
-    _attachmentsCls = IsConversation && !IsNarrow ? "wide" : "";
-    _listCls = _rows.Length == 1 ? "one-row" : "";
-}
 
-<div class="message-image-attachments @_listCls @_attachmentsCls">
+<div class="message-image-attachments">
     @foreach (var row in _rows) {
-        var cls = row.GetRowClass();
-        <VisualMediaAttachmentLine Row="@row" Class="@cls">
+        <VisualMediaAttachmentLine Row="@row">
             <ItemTemplate>
                 <VisualMediaAttachment Attachment="@context" Attachments="@MediaList"/>
             </ItemTemplate>
@@ -27,9 +22,6 @@
 @code {
     private VisualMediaGalleryLine<ChatEntryAttachment>[] _rows = [];
     private ChatEntryAttachment[] _mediaList = [];
-
-    private string _listCls = "";
-    private string _attachmentsCls = "";
 
     [Inject] private UIHub Hub { get; init; } = null!;
     private UrlMapper UrlMapper => Hub.UrlMapper;
