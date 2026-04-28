@@ -96,6 +96,29 @@ public static class TestAuthExt
         return await WaitForSignIn(clientAccounts, session, userIdentity, cancellationToken).ConfigureAwait(false);
     }
 
+    // Reads SessionTemporals[PendingRegistrationKey] for the given session and,
+    // if present, calls Accounts_ConfirmRegister to commit the registration.
+    // Returns true when a prompt was found and confirmed.
+    public static async Task<bool> ConfirmPendingRegistration(
+        this AppHost appHost,
+        Session session,
+        CancellationToken cancellationToken = default)
+    {
+        var services = appHost.Services;
+        var sessionTemporals = services.GetRequiredService<ISessionTemporalsBackend>();
+        var json = await sessionTemporals
+            .Get(session, Constants.SessionTemporals.PendingRegistrationKey, cancellationToken)
+            .ConfigureAwait(false);
+        var info = PendingRegistrationInfo.TryParseJson(json);
+        if (info is null)
+            return false;
+
+        await services.Commander()
+            .Call(new Accounts_ConfirmRegister(session, info.Token), true, cancellationToken)
+            .ConfigureAwait(false);
+        return true;
+    }
+
     public static Task SignOut(
         this IWebTester tester,
         bool deactivate = false,
