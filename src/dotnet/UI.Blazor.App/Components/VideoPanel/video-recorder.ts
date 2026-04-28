@@ -451,7 +451,7 @@ export class VideoRecorder {
         }
 
         this.setRecordingState('starting');
-        infoLog?.log('Starting video recording...');
+        infoLog?.log(`Starting video recording... audienceCodecs=[${audienceCodecs?.join(', ') ?? '(none)'}]`);
 
         try {
             // Capture at 720p on all platforms — lower resolutions may select the wrong
@@ -485,6 +485,14 @@ export class VideoRecorder {
                     infoLog?.log(`Simulcast probe override: ${bestCodecString} → ${simulcastPick}`);
                     bestCodecString = simulcastPick;
                 }
+            } else {
+                // P2P / single-encoder mode: probe the picked codec at base dim
+                // to catch a degraded HW encoder (e.g. previous HEVC session's HW
+                // lock not yet released by the OS). Without this gate, we'd start
+                // with the broken codec and waste ~3s × N codecs in the
+                // dead-encoder fallback chain (91 frames per attempt).
+                bestCodecString = await this.preflightSingleCodec(
+                    supportedCodecs, audienceCodecs, targetSize, bestCodecString);
             }
             const bestCodecInfo = supportedCodecs.find(c => c.codec === bestCodecString);
             const codecCategory = getCodecCategory(bestCodecString);
@@ -778,6 +786,11 @@ export class VideoRecorder {
      * Called from Blazor when the server pushes updated decoder capabilities.
      */
     public async updateSupportedDecoderCodecs(codecs: string[]): Promise<void> {
+        // Cache the latest audience codecs so a subsequent restart (internal
+        // line 262 path or external C# StartRecording arriving with stale data)
+        // honors the freshest audience capability, not the seed value from
+        // GetInitialAudienceCodecs at the prior session start.
+        this.audienceCodecs = codecs;
         if (!this.recordingService) return;
 
         // Filter server's list by sender's encoder capabilities
@@ -890,6 +903,64 @@ export class VideoRecorder {
             infoLog?.log(`pickSimulcastCodec: ${category} (${codecInfo.codec}) FAIL — median=${probe.medianEncodeMs.toFixed(1)}ms, stage=${probe.failedStage ?? 'timing'}`);
         }
         return null;
+    }
+
+    // Probe the single picked codec at the actual capture dim. On FAIL
+    // (configure fail or timing way over budget), exclude that category and
+    // re-pick. Repeats up to N-1 times along the supported-category list.
+    // Budget is generous (50 ms per frame) — we're catching frank brokenness,
+    // not steady-state throughput. Cached per (codec, dim, layers).
+    private async preflightSingleCodec(
+        supportedCodecs: CodecInfo[],
+        audienceCodecs: string[] | undefined,
+        size: Size,
+        initialPick: string,
+    ): Promise<string> {
+        let pick = initialPick;
+        const ladder: SpatialLayerConfig[] = [{
+            width: size.width, height: size.height,
+            bitrate: getExpectedBitrate(pick, size.height),
+        }];
+        for (let i = 0; i < 4; i++) {
+            const probe = await probeConcurrentEncoders(pick, ladder, 4, 50);
+            // Configure-stage failure = encoder refuses the config right now
+            // (HW lock leak, codec unavailable). Timing failure (encode stage
+            // or median-over-budget with no stage) = encoder configures fine
+            // but probes slow on cold start. Real encoder warms up; the 4-frame
+            // probe median is too noisy to permanently drop an audience-compatible
+            // codec. Only exclude on hard configure failure.
+            if (probe.supported || probe.failedStage !== 'configure') {
+                if (!probe.supported)
+                    infoLog?.log(`Preflight: ${pick} timing-only fail (median=${probe.medianEncodeMs.toFixed(1)}ms) — proceeding anyway`);
+                else if (i > 0)
+                    infoLog?.log(`Preflight: ${pick} PASS at attempt ${i + 1}`);
+                return pick;
+            }
+            const failed = getCodecCategory(pick);
+            warnLog?.log(`Preflight: ${failed} (${pick}) FAIL — stage=configure, excluding and re-picking`);
+            const idx = this.supportedEncoderCategories.indexOf(failed);
+            if (idx >= 0) this.supportedEncoderCategories.splice(idx, 1);
+            const codecsByRemaining = supportedCodecs.filter(c =>
+                c.supported && this.supportedEncoderCategories.includes(c.category));
+            if (codecsByRemaining.length === 0) {
+                warnLog?.log(`Preflight: all codecs excluded, falling back to original pick ${pick}`);
+                return pick;
+            }
+            // Don't break the audience contract: if the remaining codecs don't
+            // intersect the audience, returning here would force the unfiltered
+            // pickInitialCodec branch which picks AV1 against an iOS audience.
+            // Better to fail with the originally-picked audience-compatible codec.
+            if (audienceCodecs && audienceCodecs.length > 0) {
+                const stillAudienceCompatible = codecsByRemaining.some(c => audienceCodecs.includes(c.category));
+                if (!stillAudienceCompatible) {
+                    warnLog?.log(`Preflight: no remaining codec intersects audience [${audienceCodecs.join(', ')}] — falling back to initial pick ${initialPick}`);
+                    return initialPick;
+                }
+            }
+            pick = this.pickInitialCodec(codecsByRemaining, audienceCodecs, size);
+            ladder[0].bitrate = getExpectedBitrate(pick, size.height);
+        }
+        return pick;
     }
 
     private pickInitialCodec(supportedCodecs: CodecInfo[], audienceCodecs: string[] | undefined, size: Size) {

@@ -6,6 +6,7 @@
 import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
 import Denque from 'denque';
+import { getCodecCategory, getCodecForCategory } from './codec-support';
 
 const { infoLog, warnLog, errorLog } = getLogs('VideoEncoder');
 
@@ -99,6 +100,15 @@ export class WebCodecsEncoder {
     // (P2P, screencast, non-simulcast recordings) leave it at 0.
     private readonly spatialLayerId: number;
 
+    // Init-time error tracking. NVENC sessions don't release synchronously on
+    // VideoEncoder.close(), so a fresh-after-stop configure() can hit OperationError
+    // ~50-200ms later via the async error callback. We retry up to 3× with backoff;
+    // intermediate errors are swallowed (they are not real failures yet, just
+    // cold-start NVENC contention) and only the final failure propagates.
+    // Mutated from the encoder's async error callback — eslint can't see that.
+    private initErrorSeen = false;
+    private suppressInitErrorCallback = false;
+
     constructor(
     private config: EncoderConfig,
     private onChunk: (chunk: EncodedChunkData) => void,
@@ -109,18 +119,48 @@ export class WebCodecsEncoder {
         this.encoder = this.createEncoder();
     }
 
-    initialize(): void {
-        try {
-            infoLog?.log(`Initializing: ${this.config.width}x${this.config.height} @ ${(this.config.bitrate / 1_000_000).toFixed(1)}Mbps`);
-            const encoderConfig = this.buildEncoderConfig();
-            if (this.config.scalabilityMode) {
-                infoLog?.log('Using scalability mode:', this.config.scalabilityMode);
+    async initialize(): Promise<void> {
+        const maxAttempts = 3;
+        // Settle window: the async error fires up to ~150ms after configure()
+        // returns. Wait that long before declaring success.
+        const settleMs = 200;
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            this.initErrorSeen = false;
+            const isLastAttempt = attempt === maxAttempts - 1;
+            // Suppress error propagation during retries — only the final attempt's
+            // failure should reach the watchdog / codec-fallback machinery.
+            this.suppressInitErrorCallback = !isLastAttempt;
+            try {
+                infoLog?.log(`Initializing${attempt > 0 ? ` (attempt ${attempt + 1}/${maxAttempts})` : ''}: ${this.config.width}x${this.config.height} @ ${(this.config.bitrate / 1_000_000).toFixed(1)}Mbps`);
+                const encoderConfig = this.buildEncoderConfig();
+                if (this.config.scalabilityMode && attempt === 0) {
+                    infoLog?.log('Using scalability mode:', this.config.scalabilityMode);
+                }
+                this.encoder.configure(encoderConfig);
+                await new Promise(r => setTimeout(r, settleMs));
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+                if (!this.initErrorSeen && this.encoder.state === 'configured') {
+                    this.suppressInitErrorCallback = false;
+                    if (attempt > 0) infoLog?.log(`Encoder init succeeded on attempt ${attempt + 1}`);
+                    return;
+                }
+            } catch (error) {
+                this.initErrorSeen = true;
+                errorLog?.log(`Configure threw on attempt ${attempt + 1}:`, error);
             }
-            this.encoder.configure(encoderConfig);
-        } catch (error) {
-            errorLog?.log('Failed to configure encoder:', error);
-            throw error;
+            if (!isLastAttempt) {
+                const backoff = 500 * (attempt + 1); // 500ms, 1000ms
+                warnLog?.log(`Encoder init failed (attempt ${attempt + 1}/${maxAttempts}) — NVENC likely still releasing previous session. Retrying in ${backoff}ms.`);
+                await new Promise(r => setTimeout(r, backoff));
+                try { this.encoder.close(); } catch { /* already closed */ }
+                this.encoder = this.createEncoder();
+            }
         }
+        this.suppressInitErrorCallback = false;
+        const err = new Error(`Encoder init failed after ${maxAttempts} attempts`);
+        errorLog?.log('Failed to configure encoder:', err);
+        this.onError(err);
+        throw err;
     }
 
     encode(frame: VideoFrame, forceKeyFrame = false): void {
@@ -225,6 +265,17 @@ export class WebCodecsEncoder {
             this.config.height = params.height;
         }
 
+        // Bump codec string to a higher AVC/HEVC/VP9/AV1 level if the new dims
+        // cross the level threshold (e.g. 720p → 1080p forces AVC 3.1 → 4.0).
+        // Without this, encoder.configure() throws NotSupportedError because the
+        // old codec string (e.g. avc1.64001F = level 3.1, max ~921k pixels) can't
+        // describe a 1080p stream.
+        const category = getCodecCategory(this.config.codec);
+        const newCodec = getCodecForCategory(category, this.config.width, this.config.height);
+        if (newCodec !== this.config.codec) {
+            infoLog?.log(`Reconfigure codec string: ${this.config.codec} -> ${newCodec} (dims ${this.config.width}x${this.config.height} crosses level threshold)`);
+            this.config.codec = newCodec;
+        }
         infoLog?.log(`Reconfigure: ${oldBitrate / 1_000_000}Mbps ${oldWidth}x${oldHeight} -> ${this.config.bitrate / 1_000_000}Mbps ${this.config.width}x${this.config.height}`);
         this.encoder.configure(this.buildEncoderConfig());
 
@@ -254,7 +305,7 @@ export class WebCodecsEncoder {
         this.encoder = this.createEncoder();
 
         // Configure with new codec
-        this.initialize();
+        await this.initialize();
         infoLog?.log(`Codec switched to ${newConfig.codec}`);
     }
 
@@ -299,7 +350,10 @@ export class WebCodecsEncoder {
             },
             error: (e: DOMException) => {
                 errorLog?.log('Encoder error:', e.name, e.message);
-                this.onError(e as unknown as Error);
+                this.initErrorSeen = true;
+                if (!this.suppressInitErrorCallback) {
+                    this.onError(e as unknown as Error);
+                }
             }
         });
     }

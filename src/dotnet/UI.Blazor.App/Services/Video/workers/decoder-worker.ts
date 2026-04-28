@@ -58,6 +58,43 @@ function bufferEqual(a: ArrayBuffer, b: ArrayBuffer): boolean {
     return true;
 }
 
+// Diagnostic helpers — capture state at error time to root-cause iOS HEVC
+// decoder failures. Updated on every chunk so error callback has context.
+let lastChunkSeq = -1;
+let lastChunkType: 'key' | 'delta' | '?' = '?';
+let lastChunkSize = 0;
+let lastChunkDescLen = 0;
+let firstKeyframeLogged = false;
+
+// Set in `initialize`/`initializeWithStreams`/`configureDecoder` whenever the
+// decoder is configured with a description. Consumed by decodeRawChunk on the
+// next keyframe to skip the redundant `decoder.configure()` that iOS Safari's
+// HEVC HW decoder rejects with EncodingError. The check is identity-based
+// (a flag), not byte-equality, so it survives RPC transports that may convert
+// ArrayBuffer ↔ Uint8Array and break `instanceof` / `ArrayBuffer.isView` paths.
+let initialDescriptionApplied = false;
+
+function describeBytes(buf: AllowSharedBufferSource | undefined, maxBytes = 24): string {
+    if (!buf) return '<none>';
+    let view: Uint8Array;
+    if (buf instanceof ArrayBuffer) {
+        view = new Uint8Array(buf, 0, Math.min(maxBytes, buf.byteLength));
+    } else if (ArrayBuffer.isView(buf)) {
+        const v = buf as ArrayBufferView;
+        view = new Uint8Array(
+            v.buffer as ArrayBuffer,
+            v.byteOffset,
+            Math.min(maxBytes, v.byteLength));
+    } else {
+        return '<unknown>';
+    }
+    const hex: string[] = [];
+    for (const b of view) {
+        hex.push(b.toString(16).padStart(2, '0'));
+    }
+    return hex.join('');
+}
+
 // Chunk ordering state to prevent out-of-order decoding issues
 let nextExpectedSequence = 0;
 const reorderBuffer = new Map<number, EncodedChunkData>();
@@ -398,12 +435,18 @@ const serverImpl: DecoderWorker = {
                     config,
                     emitDecodedFrame,
                     (error) => {
-                        errorLog?.log('Decoder error:', error);
+                        errorLog?.log(`Decoder error (state=${decoder?.getState() ?? '?'}, ` +
+                            `lastChunkSeq=${lastChunkSeq}, lastChunkType=${lastChunkType}, ` +
+                            `lastChunkBytes=${lastChunkSize}, lastDescLen=${lastChunkDescLen}):`, error);
                     }
                 );
                 decoder.initialize();
                 decoderConfigured = true;
-                infoLog?.log('Decoder initialized in AVCC mode (single configure)');
+                initialDescriptionApplied = true;
+                infoLog?.log(`Decoder initialized in AVCC mode (single configure), ` +
+                    `codec=${config.codec}, hwAccel=${config.hardwareAcceleration}, ` +
+                    `descLen=${config.description.byteLength}, ` +
+                    `descHex=${describeBytes(config.description)}`);
             } else {
                 decoder = createDecoder(config);
                 decoder.initialize();
@@ -439,11 +482,18 @@ const serverImpl: DecoderWorker = {
                 decoder = new WebCodecsDecoder(
                     config,
                     emitDecodedFrame,
-                    (error) => { errorLog?.log('Decoder error:', error); }
+                    (error) => {
+                        errorLog?.log(`Decoder error (state=${decoder?.getState() ?? '?'}, ` +
+                            `lastChunkSeq=${lastChunkSeq}, lastChunkType=${lastChunkType}, ` +
+                            `lastChunkBytes=${lastChunkSize}, lastDescLen=${lastChunkDescLen}):`, error);
+                    }
                 );
                 decoder.initialize();
                 decoderConfigured = true;
-                infoLog?.log('Decoder initialized in AVCC mode (stream, single configure)');
+                initialDescriptionApplied = true;
+                infoLog?.log(`Decoder initialized in AVCC mode (stream, single configure), ` +
+                    `codec=${config.codec}, descLen=${config.description.byteLength}, ` +
+                    `descHex=${describeBytes(config.description)}`);
             } else {
                 decoder = createDecoder(config);
                 decoder.initialize();
@@ -542,7 +592,13 @@ const serverImpl: DecoderWorker = {
             nextExpectedSequence = 0;
             reorderBuffer.clear();
             lastKeyframeSequence = -1;
+            firstKeyframeLogged = false;
+            lastChunkSeq = -1;
+            lastChunkType = '?';
+            lastChunkSize = 0;
+            lastChunkDescLen = 0;
             waitingForKeyframe = false;
+            initialDescriptionApplied = false;
         } catch (error) {
             errorLog?.log('Failed to stop decoder:', error);
             throw error;
@@ -669,10 +725,66 @@ const serverImpl: DecoderWorker = {
             waitingForKeyframe = false;
         }
 
+        // Diagnostic: snapshot what the decoder is about to be fed so the
+        // error callback can reference it.
+        lastChunkSeq = sequenceNumber;
+        lastChunkType = isKeyFrame ? 'key' : 'delta';
+        lastChunkSize = data.byteLength;
+        lastChunkDescLen = description?.byteLength ?? 0;
+
+        // Diagnostic: on the first keyframe of a fresh stream, log a side-by-side
+        // comparison of the description from VideoStreamInfo metadata (used at
+        // initialize) vs the description on this keyframe. iOS Safari HEVC HW
+        // decoder errors implicate a possible mismatch — confirm or rule out.
+        if (isKeyFrame && !firstKeyframeLogged) {
+            firstKeyframeLogged = true;
+            const initDesc = currentDecoderConfig?.description;
+            const initLen = initDesc?.byteLength ?? 0;
+            const chunkLen = description?.byteLength ?? 0;
+            const initHex = describeBytes(initDesc);
+            const chunkHex = describeBytes(description);
+            const dataHex = describeBytes(data);
+            let initVsChunk: string;
+            if (initLen === chunkLen && initDesc && description) {
+                let initAsArrayBuffer: ArrayBuffer;
+                if (initDesc instanceof ArrayBuffer) {
+                    initAsArrayBuffer = initDesc;
+                } else if (ArrayBuffer.isView(initDesc)) {
+                    const v = initDesc as ArrayBufferView;
+                    initAsArrayBuffer = (v.buffer as ArrayBuffer).slice(
+                        v.byteOffset, v.byteOffset + v.byteLength);
+                } else {
+                    initAsArrayBuffer = new ArrayBuffer(0);
+                }
+                initVsChunk = bufferEqual(initAsArrayBuffer, description) ? 'EQUAL' : 'DIFFER';
+            } else {
+                initVsChunk = initLen === 0 ? 'init-no-desc' : 'len-differ';
+            }
+            warnLog?.log(
+                `[FIRST_KF_DIAG] seq=${sequenceNumber}, dataLen=${data.byteLength}, ` +
+                `initDescLen=${initLen}, chunkDescLen=${chunkLen}, cmp=${initVsChunk}, ` +
+                `decoderState=${decoder.getState()}, decoderConfigured=${decoderConfigured}, ` +
+                `codec=${currentDecoderConfig?.codec}, hwAccel=${currentDecoderConfig?.hardwareAcceleration}`);
+            warnLog?.log(`[FIRST_KF_DIAG] initDescHex=${initHex}`);
+            warnLog?.log(`[FIRST_KF_DIAG] chunkDescHex=${chunkHex}`);
+            warnLog?.log(`[FIRST_KF_DIAG] dataHex=${dataHex}`);
+        }
+
         try {
             // If we have a description and it's a keyframe, reconfigure the decoder only if description changed
             if (isKeyFrame && description && description.byteLength > 0) {
-                if (!lastRawDescription || !bufferEqual(lastRawDescription, description)) {
+                if (initialDescriptionApplied) {
+                    // Decoder was already configured with description at init/configure path —
+                    // skip the redundant decoder.configure() that iOS Safari HEVC HW
+                    // rejects with EncodingError even when bytes are identical.
+                    initialDescriptionApplied = false;
+                    lastRawDescription = description.slice(0);
+                    infoLog?.log(`First keyframe: decoder already configured at init, ` +
+                        `seeding lastRawDescription (${description.byteLength} bytes)`);
+                } else if (!lastRawDescription || !bufferEqual(lastRawDescription, description)) {
+                    warnLog?.log(`updateDescription firing: lastRawDesc=${
+                        lastRawDescription ? lastRawDescription.byteLength : 'null'} bytes, ` +
+                        `chunkDesc=${description.byteLength} bytes, decoderState=${decoder.getState()}`);
                     decoder.updateDescription(description);
                     lastRawDescription = description.slice(0);
                     infoLog?.log('Description changed, decoder reconfigured');
@@ -681,7 +793,9 @@ const serverImpl: DecoderWorker = {
             } else if (isKeyFrame && !decoderConfigured && currentDecoderConfig?.description) {
                 // Recreate decoder with description to avoid double-configure.
                 // Handles skipTo jumping past the first keyframe with per-frame SPS/PPS.
-                infoLog?.log('Recreating decoder with initial description for skipTo keyframe');
+                warnLog?.log(`Recreating decoder with initial description for skipTo keyframe, ` +
+                    `descLen=${currentDecoderConfig.description.byteLength}, ` +
+                    `descHex=${describeBytes(currentDecoderConfig.description)}`);
                 if (decoder.getState() !== 'closed') {
                     decoder.close();
                 }
@@ -689,7 +803,7 @@ const serverImpl: DecoderWorker = {
                     currentDecoderConfig,
                     emitDecodedFrame,
                     (error) => {
-                        errorLog?.log('Decoder error:', error);
+                        errorLog?.log(`Decoder error (recreate path, state=${decoder?.getState() ?? '?'}):`, error);
                     }
                 );
                 decoder.initialize();
@@ -727,7 +841,11 @@ const serverImpl: DecoderWorker = {
                     const recoveryDescription: ArrayBuffer | undefined = description && description.byteLength > 0
                         ? description
                         : (lastRawDescription ?? undefined);
-                    warnLog?.log(`Decoder in state '${decoder.getState()}', recovering on keyframe (descLen=${recoveryDescription?.byteLength ?? 0})`);
+                    warnLog?.log(`Decoder in state '${decoder.getState()}', recovering on keyframe seq=${
+                        sequenceNumber}, dataLen=${data.byteLength}, descLen=${
+                        recoveryDescription?.byteLength ?? 0}, descHex=${
+                        describeBytes(recoveryDescription)}, source=${
+                        description && description.byteLength > 0 ? 'chunk' : 'cached'}`);
                     try {
                         const recoveryConfig: DecoderConfig = recoveryDescription
                             ? { ...currentDecoderConfig, description: recoveryDescription }
@@ -736,7 +854,7 @@ const serverImpl: DecoderWorker = {
                             recoveryConfig,
                             emitDecodedFrame,
                             (error) => {
-                                errorLog?.log('Decoder error:', error);
+                                errorLog?.log(`Decoder error (recovery path, state=${decoder?.getState() ?? '?'}):`, error);
                             }
                         );
                         decoder.initialize();
@@ -796,6 +914,10 @@ const serverImpl: DecoderWorker = {
                 decoder = createDecoder(currentDecoderConfig);
                 decoder.initialize();
                 decoderConfigured = false;
+                // createDecoder strips description, so the decoder is configured
+                // codec-only here. Clear the flag so the next keyframe DOES run
+                // updateDescription to apply the per-frame SPS/PPS.
+                initialDescriptionApplied = false;
                 // Drop deltas until a key arrives. Without this, an in-flight
                 // chunk from the pre-reset stream can race the new decoder and
                 // trigger "A key frame is required after configure()".
@@ -834,6 +956,7 @@ const serverImpl: DecoderWorker = {
                 );
                 decoder.initialize();
                 decoderConfigured = true;
+                initialDescriptionApplied = true;
 
                 // Sync lastRawDescription so decodeRawChunk doesn't redundantly reconfigure
                 const desc = config.description;
@@ -848,6 +971,7 @@ const serverImpl: DecoderWorker = {
                 decoder.initialize();
                 decoderConfigured = false;
                 lastRawDescription = null;
+                initialDescriptionApplied = false;
             }
 
             infoLog?.log('Decoder configured');

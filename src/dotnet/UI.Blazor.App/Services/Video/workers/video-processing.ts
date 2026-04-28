@@ -72,6 +72,11 @@ export function setCallbacks(cb: VideoProcessingWorkerCallbacks): void {
 let encoder: WebCodecsEncoder | null = null;
 let extraLayerEncoders: WebCodecsEncoder[] = [];
 let encoderConfig: EncoderConfig | null = null;
+// True once .initialize() (configure) has been called on `encoder` and any
+// extras. Encoder.configure() is deferred to the first encoded frame so the
+// configure call sees the FINAL dims (after first-frame rotation/dim reconcile)
+// and avoids the configure→reconfigure flip-flop that crashes Chrome HW HEVC.
+let encodersInitialized = false;
 let encoderFailed = false;
 let encoderErrorSeen = false;
 let framesWithoutOutput = 0;
@@ -636,8 +641,12 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
         encoder.encode(processedFrame, forceKf);
         framesWithoutOutput++;
 
-        // Detect dead encoder: error seen + 90 frames (3s@30fps) with zero output
-        if (encoderErrorSeen && framesWithoutOutput > 90 && !encoderFailed) {
+        // Detect dead encoder: error seen + 30 frames (~1s @ 30fps) with zero
+        // output. Reduced from 90 (3s) — the retry-with-backoff in
+        // WebCodecsEncoder.initialize() already gives the encoder ~1.5s to recover
+        // from NVENC contention before reporting failure, so the watchdog only
+        // needs to catch errors that slipped past retry (codec genuinely broken).
+        if (encoderErrorSeen && framesWithoutOutput > 30 && !encoderFailed) {
             encoderFailed = true;
             const codec = encoderConfig.codec;
             errorLog?.log(`Encoder dead: ${codec} — ${framesWithoutOutput} frames with no output after error`);
@@ -841,7 +850,6 @@ function setupEncoders(config: VideoProcessingConfig): void {
     // any cached descriptions from prior encoder generation to avoid stale bytes.
     storedDescriptionBytesByLayer.clear();
     encoder = new WebCodecsEncoder(config.encoder, onEncoderOutput, onEncoderError, 0);
-    encoder.initialize();
 
     // Drop any prior extras (covers switchCodec re-entry and re-init scenarios).
     for (const e of extraLayerEncoders) {
@@ -861,9 +869,26 @@ function setupEncoders(config: VideoProcessingConfig): void {
         };
         const spatialId = i + 1; // base layer consumed index 0
         const extra = new WebCodecsEncoder(layerCfg, onEncoderOutput, onEncoderError, spatialId);
-        extra.initialize();
         extraLayerEncoders.push(extra);
         infoLog?.log(`Simulcast layer ${spatialId}: ${layer.width}x${layer.height} @ ${(layer.bitrate / 1_000_000).toFixed(1)}Mbps`);
+    }
+    // .initialize() (encoder.configure) deferred to first frame so the first
+    // configure call uses post-reconcile dims — see initializeEncoders().
+    encodersInitialized = false;
+}
+
+// Calls .initialize() (encoder.configure) on the base + extra encoders.
+// Idempotent. Stream-mode callers invoke this after first-frame dim reconcile
+// so the very first configure call lands on final dims; RPC fallback mode
+// invokes it eagerly during start-up since it has no first-frame reconcile.
+// Async because initialize() retries with backoff (NVENC session lifecycle).
+async function initializeEncoders(): Promise<void> {
+    if (encodersInitialized) return;
+    encodersInitialized = true;
+    if (!encoder) return;
+    try { await encoder.initialize(); } catch { /* error already surfaced via onEncoderError */ }
+    for (const e of extraLayerEncoders) {
+        try { await e.initialize(); } catch { /* error already surfaced via onEncoderError */ }
     }
 }
 
@@ -1046,7 +1071,9 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
                         // its old slot target and feeds frames at the old dims into a smaller
                         // encoder, hitting the dim-mismatch guard and dropping every frame.
                         if (downscaler) downscaler.configure(currentDownscaleTargets());
-                        await encoder.reconfigure({ width: evenW, height: evenH, bitrate: encoderConfig.bitrate });
+                        if (encodersInitialized) {
+                            await encoder.reconfigure({ width: evenW, height: evenH, bitrate: encoderConfig.bitrate });
+                        }
                         if (segConfig) { segConfig.outputWidth = evenW; segConfig.outputHeight = evenH; }
                         void callbacks.onDimensionReconciled(evenW, evenH, rpcNoWait);
                     } else {
@@ -1108,7 +1135,13 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
                     // `await` and why downscaler-first + dims-mismatch guard
                     // beats the Chrome HW-encoder top-left-crop fallback.
                     if (downscaler) downscaler.configure(currentDownscaleTargets());
-                    await encoder.reconfigure({ width: newW, height: newH, bitrate: encoderConfig.bitrate });
+                    // First-frame: encoder.configure() is deferred (encodersInitialized=false)
+                    // so we just mutate encoderConfig — initializeEncoders() below will pick
+                    // up the final dims. Mid-stream rotation flip (encoder already warm) hits
+                    // the encoder.reconfigure() branch — by then HW encoder accepts it.
+                    if (encodersInitialized) {
+                        await encoder.reconfigure({ width: newW, height: newH, bitrate: encoderConfig.bitrate });
+                    }
                     if (segConfig) { segConfig.outputWidth = newW; segConfig.outputHeight = newH; }
                     void callbacks.onDimensionReconciled(newW, newH, rpcNoWait);
                     infoLog?.log(`Orientation change: rotation=${rotDeg} → encoder ${newW}x${newH} (downscaler targets=${extraLayerEncoders.length + 1})`);
@@ -1116,6 +1149,12 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
                     warnLog?.log('Orientation reconfigure failed:', e);
                 }
             }
+
+            // Lazy-initialize encoders on first frame, after dim reconcile mutated
+            // encoderConfig.width/height to its final values. This is the SINGLE
+            // configure() call — no flip-flop, no HW encoder init crash on HEVC.
+            // Awaited — initialize() retries with backoff on NVENC contention.
+            if (!encodersInitialized) await initializeEncoders();
 
             const frame = rawFrame;
 
@@ -1336,6 +1375,9 @@ export const serverImpl: VideoProcessingWorker = {
             if (!isPreviewOnly) {
                 setupEncoders(config);
                 await initDownscaler(config);
+                // RPC fallback: no streamReadLoop first-frame reconcile fires here,
+                // so the encoder must be configured eagerly with the supplied dims.
+                await initializeEncoders();
             }
 
             if (config.adaptiveFramerate) {
@@ -1417,7 +1459,11 @@ export const serverImpl: VideoProcessingWorker = {
         }
         codecSettings = null; startTimestamp = undefined; pendingStreamFrames = []; storedDescriptionBytesByLayer.clear();
         if (lastEncodedFrame) { lastEncodedFrame.close(); lastEncodedFrame = null; }
-        await encoder.switchCodec(config);
+        // Synchronous configure() failure inside switchCodec already surfaces via
+        // onEncoderError; the watchdog plus codec-exclusion list takes care of
+        // the next fallback. Don't let a sync throw break the worker RPC.
+        let switchFailed = false;
+        try { await encoder.switchCodec(config); } catch { switchFailed = true; /* error already surfaced via onEncoderError */ }
         // Drop old-codec simulcast extras; we rebuild them below with the new codec
         // so the ladder survives the switch. Without this rebuild every codec
         // switch permanently collapses the stream to base layer (regression
@@ -1448,7 +1494,7 @@ export const serverImpl: VideoProcessingWorker = {
             };
             const spatialId = i + 1;
             const extra = new WebCodecsEncoder(layerCfg, onEncoderOutput, onEncoderError, spatialId);
-            extra.initialize();
+            try { await extra.initialize(); } catch { /* error already surfaced via onEncoderError */ }
             extraLayerEncoders.push(extra);
             infoLog?.log(`Simulcast layer ${spatialId} (post-switch): ${layer.width}x${layer.height} @ ${(layer.bitrate / 1_000_000).toFixed(1)}Mbps`);
         }
@@ -1467,8 +1513,10 @@ export const serverImpl: VideoProcessingWorker = {
         pendingStreamFrames = [];
         startTimestamp = undefined;
         backpressureDrops = 0; backpressureTotalFrames = 0; lastBackpressureCheckTime = 0; backpressureNotified = false;
-        encoderFailed = false; encoderErrorSeen = false; framesWithoutOutput = 0; lastStreamError = '';
-        infoLog?.log(`Codec switched successfully (${extraLayerEncoders.length} simulcast extras rearmed)`);
+        if (!switchFailed) {
+            encoderFailed = false; encoderErrorSeen = false; framesWithoutOutput = 0; lastStreamError = '';
+        }
+        infoLog?.log(`Codec switched ${switchFailed ? 'with error' : 'successfully'} (${extraLayerEncoders.length} simulcast extras rearmed)`);
     },
 
     // Hot simulcast reconfig: swap the extra-layer encoders without touching the
@@ -1528,7 +1576,7 @@ export const serverImpl: VideoProcessingWorker = {
             };
             const spatialId = i + 1;
             const extra = new WebCodecsEncoder(layerCfg, onEncoderOutput, onEncoderError, spatialId);
-            extra.initialize();
+            try { await extra.initialize(); } catch { /* error already surfaced via onEncoderError */ }
             extraLayerEncoders.push(extra);
             infoLog?.log(`Simulcast layer ${spatialId} (hot): ${layer.width}x${layer.height} @ ${(layer.bitrate / 1_000_000).toFixed(1)}Mbps codec=${baseCodec}`);
         }
@@ -1625,7 +1673,7 @@ export const serverImpl: VideoProcessingWorker = {
         if (downscaler) { try { downscaler.dispose(); } catch { /* ignore */ } downscaler = null; }
 
         // Reset all state
-        encoder = null; encoderConfig = null; onnxSession = null; segConfig = null; resolvedModelConfig = null;
+        encoder = null; encoderConfig = null; encodersInitialized = false; onnxSession = null; segConfig = null; resolvedModelConfig = null;
         segInitialized = false; blurEnabled = false; resizeCanvas = null; resizeCtx = null;
         startTimestamp = undefined; lastLoggedFormat = '(unset)'; loggedI420Error = false; loggedPreConvertSkipped = false;
         backpressureDrops = 0; backpressureTotalFrames = 0; lastBackpressureCheckTime = 0; backpressureNotified = false;

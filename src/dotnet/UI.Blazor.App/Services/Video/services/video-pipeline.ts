@@ -27,6 +27,7 @@ import type {
 } from '../workers/video-processing-worker-contract';
 import { Versioning } from 'versioning';
 import { getLogs } from 'logging';
+import { DeviceInfo } from 'device-info';
 import { SessionTokens } from '../../../../UI.Blazor/Services/Security/session-tokens';
 import { ServerClock } from 'server-clock';
 import type { Subscription } from 'rxjs';
@@ -72,7 +73,12 @@ declare class MediaStreamTrackProcessor<T = VideoFrame> {
 // when `VideoFrame.rotation` is not populated by the platform (Safari iOS MSTP).
 // Empirical table for iPhone front camera — landscape modes were rotated 180°
 // with the (90-angle) formula; (90+angle) matches tested orientations.
+// Desktop webcams expose frames in display orientation already, so the 90°
+// sensor-mount offset must NOT be applied — otherwise initial encoder config
+// transposes to portrait and the first-frame reconcile triggers an immediate
+// configure→reconfigure flip-flop that crashes Chrome's HW HEVC encoder.
 function computeSenderRotation(): number {
+    if (!DeviceInfo.isMobile) return 0;
     return (90 + screen.orientation.angle) % 360;
 }
 
