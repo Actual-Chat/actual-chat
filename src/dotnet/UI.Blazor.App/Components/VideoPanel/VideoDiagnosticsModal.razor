@@ -229,32 +229,37 @@
                         }
                         @if (isExpanded && _streamDiags.TryGetValue(sid, out var rd) && rd.ValueKind == JsonValueKind.Object) {
                             <div class="diag-js-details">
+                                @* Decoder *@
+                                <div class="diag-group-header">Decoder</div>
                                 <div class="diag-row">
-                                    <span class="diag-label">Decode codec</span>
+                                    <span class="diag-label">Codec</span>
                                     <span class="diag-value">@GetStr(rd, "codec") (@GetStr(rd, "codecCategory"))</span>
                                 </div>
                                 @if (rd.TryGetProperty("decoderStats", out var ds) && ds.ValueKind == JsonValueKind.Object) {
                                     <div class="diag-row">
-                                        <span class="diag-label">Decode time</span>
+                                        <span class="diag-label">Time</span>
                                         <span class="diag-value">@(GetNum(ds, "medianDecodeTime").ToString("0.0"))ms (pure: @(GetNum(ds, "pureMedianDecodeTime").ToString("0.0"))ms)</span>
                                     </div>
                                     <div class="diag-row">
-                                        <span class="diag-label">Decode queue</span>
+                                        <span class="diag-label">Queue</span>
                                         <span class="diag-value">@(GetNum(ds, "decodeQueueSize").ToString("0"))</span>
                                     </div>
                                     <div class="diag-row">
-                                        <span class="diag-label">Decoded</span>
+                                        <span class="diag-label">Frames</span>
                                         <span class="diag-value">@(GetNum(ds, "decodedFrames").ToString("0")) dec, @(GetNum(ds, "droppedFrames").ToString("0")) drop, @(GetNum(ds, "backpressureDrops").ToString("0")) bp</span>
                                     </div>
                                     <div class="diag-row">
-                                        <span class="diag-label">Decoder HW</span>
+                                        <span class="diag-label">HW accel</span>
                                         <span class="diag-value">@GetStr(ds, "hardwareAcceleration")</span>
                                     </div>
                                     <div class="diag-row">
-                                        <span class="diag-label">Decoder res</span>
+                                        <span class="diag-label">Resolution</span>
                                         <span class="diag-value">@GetStr(ds, "resolution")</span>
                                     </div>
                                 }
+
+                                @* Network *@
+                                <div class="diag-group-header">Network</div>
                                 <div class="diag-row">
                                     <span class="diag-label">E2E latency</span>
                                     <span class="diag-value">@(GetNum(rd, "pipelineLatencyMs").ToString("0"))ms</span>
@@ -267,8 +272,11 @@
                                     <span class="diag-label">RTT</span>
                                     <span class="diag-value">@(GetNum(rd, "smoothedRttMs").ToString("0"))ms (grad: @(GetNum(rd, "rttGradientMs").ToString("0"))ms)</span>
                                 </div>
+
+                                @* Playback *@
+                                <div class="diag-group-header">Playback</div>
                                 <div class="diag-row">
-                                    <span class="diag-label">Playback</span>
+                                    <span class="diag-label">Rate</span>
                                     <span class="diag-value">@(GetNum(rd, "playbackRate").ToString("0.00"))x, buf=@(GetNum(rd, "bufferSize").ToString("0"))</span>
                                 </div>
                                 <div class="diag-row">
@@ -496,25 +504,34 @@
             sb.AppendLine($"  Resolution: {s.Info.Format.Width}x{s.Info.Format.Height}");
 
             if (_streamDiags.TryGetValue(sid, out var rd) && rd.ValueKind == JsonValueKind.Object) {
-                AppendJson(sb, rd, "  ");
+                // Decoder
+                sb.AppendLine("  -- Decoder --");
+                sb.AppendLine($"  Codec: {GetStr(rd, "codec")} ({GetStr(rd, "codecCategory")})");
+                if (rd.TryGetProperty("decoderStats", out var copyDs) && copyDs.ValueKind == JsonValueKind.Object) {
+                    sb.AppendLine($"  Time: {GetNum(copyDs, "medianDecodeTime"):0.0}ms (pure: {GetNum(copyDs, "pureMedianDecodeTime"):0.0}ms)");
+                    sb.AppendLine($"  Queue: {GetNum(copyDs, "decodeQueueSize"):0}");
+                    sb.AppendLine($"  Frames: {GetNum(copyDs, "decodedFrames"):0} dec, {GetNum(copyDs, "droppedFrames"):0} drop, {GetNum(copyDs, "backpressureDrops"):0} bp");
+                    sb.AppendLine($"  HW accel: {GetStr(copyDs, "hardwareAcceleration")}");
+                    sb.AppendLine($"  Resolution: {GetStr(copyDs, "resolution")}");
+                }
+                // Network
+                sb.AppendLine("  -- Network --");
+                sb.AppendLine($"  E2E latency: {GetNum(rd, "pipelineLatencyMs"):0}ms");
+                sb.AppendLine($"  Jitter buf: {GetNum(rd, "jitterBufferMs"):0}ms (est: {GetNum(rd, "jitterEstimateMs"):0}ms)");
+                sb.AppendLine($"  RTT: {GetNum(rd, "smoothedRttMs"):0}ms (grad: {GetNum(rd, "rttGradientMs"):0}ms)");
+                // Playback
+                sb.AppendLine("  -- Playback --");
+                sb.AppendLine($"  Rate: {GetNum(rd, "playbackRate"):0.00}x, buf={GetNum(rd, "bufferSize"):0}");
+                sb.AppendLine($"  Received: {GetNum(rd, "receivedFrameCount"):0} frm, {GetNum(rd, "receivedKeyframeCount"):0} key, {GetNum(rd, "renderFrameCount"):0} rend");
+                sb.AppendLine($"  Skip-to-live: {GetNum(rd, "skipToLiveCount"):0}");
+                if (rd.TryGetProperty("avDriftMs", out var copyDriftEl) && copyDriftEl.ValueKind == JsonValueKind.Number)
+                    sb.AppendLine($"  A/V drift: {copyDriftEl.GetDouble():0}ms");
+                if (GetBool(rd, "qualityReductionRequested"))
+                    sb.AppendLine($"  Quality: reduction requested (slow ticks: {GetNum(rd, "codecSlowTickCount"):0})");
             }
         }
 
         await JS.InvokeVoidAsync("navigator.clipboard.writeText", sb.ToString());
-    }
-
-    private static void AppendJson(System.Text.StringBuilder sb, JsonElement el, string indent = "") {
-        foreach (var prop in el.EnumerateObject()) {
-            if (prop.Value.ValueKind == JsonValueKind.Object) {
-                sb.AppendLine($"{indent}{prop.Name}:");
-                AppendJson(sb, prop.Value, indent + "  ");
-            } else if (prop.Value.ValueKind == JsonValueKind.Array) {
-                var items = string.Join(", ", prop.Value.EnumerateArray().Select(x => x.ToString()));
-                sb.AppendLine($"{indent}{prop.Name}: [{items}]");
-            } else {
-                sb.AppendLine($"{indent}{prop.Name}: {prop.Value}");
-            }
-        }
     }
 
     // Nested types
