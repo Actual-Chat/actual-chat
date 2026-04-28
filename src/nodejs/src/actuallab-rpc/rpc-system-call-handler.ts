@@ -79,14 +79,18 @@ export class RpcSystemCallHandler {
                         errorInfo?.message ??
                         'RPC error') as string;
                 const errorType = errorInfo?.TypeRef ?? errorInfo?.typeRef;
-                // Mirrors RpcSystemCalls.cs:102 — surface RpcRerouteException.
+                let typeName: string | undefined;
                 if (errorType !== null && typeof errorType === 'object') {
                     const t = errorType as Record<string, unknown>;
-                    if (t.TypeName === 'RpcRerouteException'
-                        || t.typeName === 'RpcRerouteException')
+                    typeName = (t.TypeName ?? t.typeName) as string | undefined;
+                    // Mirrors RpcSystemCalls.cs:102 — surface RpcRerouteException.
+                    if (typeName === 'RpcRerouteException')
                         warnLog?.log('Got RpcRerouteException from remote peer:', msg);
                 }
-                call.result.reject(new Error(msg));
+                const error = new Error(msg) as Error & { typeName?: string };
+                if (typeName !== undefined)
+                    error.typeName = typeName;
+                call.result.reject(error);
             }
             break;
         }

@@ -1,0 +1,57 @@
+// Uploads RPC module — service contract (IUploads), command DTO,
+// the `UploadsApi` module class, and a typed `uploadsApi.uploads` accessor
+// on its singleton instance.
+//
+// Usage:
+//     Api.init(url, uploadsApi);
+//     const offset = await uploadsApi.uploads.GetOffset('~', uploadId);
+//     await uploadsApi.uploads.OnAppend({ Session: '~', UploadId, Offset, Chunk });
+
+import { defineRpcService, type RpcHub } from 'actuallab-rpc';
+import { Api, type ApiModule } from './api.js';
+
+// --- IUploads (chunked upload control + chunk push) ---
+// Both methods use RpcRemoteExecutionMode.Default (= AwaitForConnection
+// | AllowReconnect | AllowResend = 7), matching the C# defaults:
+//   - GetOffset has no [RpcMethod] attribute (Default mode).
+//   - OnAppend has [RpcMethod(ConnectTimeout = +∞)] which keeps Default mode.
+// Both calls are idempotent — GetOffset is a pure read, and OnAppend's server
+// handler returns OffsetConflictException on offset mismatch which the client
+// handles via retry. ConnectTimeout has no TS equivalent; the JS peer parks
+// on Api.canConnect until the connection is allowed.
+export const UploadsDef = defineRpcService('IUploads', {
+    GetOffset: { args: ['session', 'uploadId'] },
+    OnAppend: { args: ['command'] },
+});
+
+/** Matches .NET Uploads_Append: AppMessagePackKeylessResolver serializes
+ *  members by name (PascalCase) regardless of [Key(N)]. */
+export interface UploadsAppendCommand {
+    Session: string;
+    UploadId: string;
+    Offset: number;
+    Chunk: Uint8Array;
+}
+
+/** Typed proxy for IUploads client calls. */
+export interface UploadsClient {
+    GetOffset(session: string, uploadId: string): Promise<number>;
+    OnAppend(command: UploadsAppendCommand): Promise<number>;
+}
+
+/** Uploads module — pass `uploadsApi` to `Api.init` to enable the typed client.
+ *  Singleton; class is intentionally not exported. */
+class UploadsApi implements ApiModule {
+    register(hub: RpcHub): void {
+        hub.registry.registerService(UploadsDef.name, UploadsDef.methods);
+    }
+
+    private _uploads: UploadsClient | undefined;
+    /** Typed `IUploads` client bound to the shared default peer. */
+    get uploads(): UploadsClient {
+        return this._uploads
+            ??= Api.hub.addClient<UploadsClient>(Api.peer, UploadsDef);
+    }
+}
+
+export const uploadsApi = new UploadsApi();
