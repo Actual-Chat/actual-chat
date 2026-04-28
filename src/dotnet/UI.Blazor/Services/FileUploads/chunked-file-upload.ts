@@ -4,18 +4,32 @@ import { Api, uploadsApi } from 'api';
 import { ConnectivityUI } from '../ConnectivityUI/connectivity-ui';
 import { IFileUpload, IUploadStreamSource } from './web-uploads';
 
-const { debugLog, warnLog, errorLog } = getLogs('FileUpload');
+const { debugLog, infoLog, warnLog, errorLog } = getLogs('FileUpload');
 
 // '~' = use the session bound to the current RPC connection (cookie/header
 // resolved at WS handshake), matching audio-streamer.ts's RPC_SESSION_DEFAULT.
 const RPC_SESSION_DEFAULT = '~';
 
+// One-time wiring of the JS RPC peer for uploads:
+//   - bind the peer's reconnect gate to `ConnectivityUI.isConnected`,
+//   - register `uploadsApi` with the shared hub.
+// Idempotent — Api.init is a no-op on second call, bind is a structural sub.
+let _isUploadsRpcInitialized = false;
+function ensureUploadsRpcInitialized(): void {
+    if (_isUploadsRpcInitialized) return;
+
+    _isUploadsRpcInitialized = true;
+    Api.init(undefined, uploadsApi);
+    Api.bindDotNetRpcConnected(ConnectivityUI);
+    infoLog?.log(`uploads RPC initialized: url=${Api.url ?? '<unset>'}, ` +
+        `canConnect=${Api.canConnect}, isDotNetRpcConnected=${Api.isDotNetRpcConnected}`);
+}
+
 type ProgressReporter = (progressPercent: number) => void;
 
 export class FileUploadProgressReporter {
     constructor(private blazorRef: DotNet.DotNetObject)
-    {
-    }
+    { }
 
     public async reportProgress(progressPercent: number) {
         return this.blazorRef.invokeMethodAsync('OnUploadProgress', Math.trunc(progressPercent));
@@ -42,15 +56,18 @@ export class ChunkedFileUpload implements IFileUpload {
     private readonly whenCompletedSource: PromiseSource<void> = new PromiseSource<void>();
     private readonly abortController: AbortController = new AbortController();
 
+    private readonly connectionScope: string;
+
     constructor(
         private readonly uploadId: string,
         private readonly blob: Blob,
         private readonly progressReporter: ProgressReporter)
     {
-        // Lazy: register uploadsApi with the shared hub. No-op if Api is
-        // already initialized (the registry is shared, addClient registers
-        // service defs lazily anyway).
-        Api.init(undefined, uploadsApi);
+        ensureUploadsRpcInitialized();
+        // Per-upload connection scope: the peer's reconnect loop only opens the
+        // WS while at least one scope is held. Released in startInternal()'s
+        // finally block.
+        this.connectionScope = `FileUpload:${uploadId}`;
     }
 
     public get whenCompleted(): Promise<void> {
@@ -96,83 +113,97 @@ export class ChunkedFileUpload implements IFileUpload {
     }
 
     private async startInternal() {
+        infoLog?.log(`startInternal: id=${this.uploadId} size=${this.blob.size} ` +
+            `Api.canConnect=${Api.canConnect} requiresConnection=${Api.requiresConnection} ` +
+            `isDotNetRpcConnected=${Api.isDotNetRpcConnected}`);
+        Api.requireConnection(this.connectionScope);
         let retryIndex = 0;
         const maxRetries = 3;
         let run = true;
         const chunkSizeSelector = new ChunkSizeSelector();
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        while (run) {
-            run = false;
-            try {
-                let offset = await this.getOffset();
-                debugLog?.log(`Starting upload of ${this.uploadId} at offset ${offset}`);
-                const fileSize = this.blob.size;
-                this.progressReporter((offset / fileSize) * 100);
-                // Upload chunks
-                while (offset < fileSize) {
-                    if (this.isCancelled())
-                        throw new OperationCancelledError('File upload cancelled');
-
-                    const remainingBytes = fileSize - offset;
-                    const chunkSize = chunkSizeSelector.getChunkSize();
-                    const currentChunkSize = Math.min(chunkSize, remainingBytes);
-                    const t0 = chunkSizeSelector.getTimestamp();
-                    const newOffset = await this.uploadChunk(offset, currentChunkSize);
-                    const dt = chunkSizeSelector.getElapsedTime(t0);
-                    const expectedNewOffset = offset + currentChunkSize;
-                    if (newOffset !== expectedNewOffset)
-                        warnLog?.log(`Offset mismatch detected: ${expectedNewOffset} != ${newOffset}`);
-                    offset = newOffset;
-                    // Reset retry counter on successful chunk upload
-                    retryIndex = 0;
-                    chunkSizeSelector.adaptChunkSizeOnSucceedUpload(dt);
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+            while (run) {
+                run = false;
+                try {
+                    let offset = await this.getOffset();
+                    debugLog?.log(`Starting upload of ${this.uploadId} at offset ${offset}`);
+                    const fileSize = this.blob.size;
                     this.progressReporter((offset / fileSize) * 100);
-                }
-                chunkSizeSelector.updateRecommendation();
-                this.whenCompletedSource.resolve();
-                return;
-            } catch (error) {
-                chunkSizeSelector.adaptOnUploadIssue(isConnectivityError(error));
-                if (error instanceof OffsetConflictError) {
-                    if (retryIndex < maxRetries) {
-                        warnLog?.log('Offset conflict detected. Retrying...');
-                        retryIndex++;
-                        run = true;
-                        continue;
+                    // Upload chunks
+                    while (offset < fileSize) {
+                        if (this.isCancelled())
+                            throw new OperationCancelledError('File upload cancelled');
+
+                        const remainingBytes = fileSize - offset;
+                        const chunkSize = chunkSizeSelector.getChunkSize();
+                        const currentChunkSize = Math.min(chunkSize, remainingBytes);
+                        const t0 = chunkSizeSelector.getTimestamp();
+                        const newOffset = await this.uploadChunk(offset, currentChunkSize);
+                        const dt = chunkSizeSelector.getElapsedTime(t0);
+                        const expectedNewOffset = offset + currentChunkSize;
+                        if (newOffset !== expectedNewOffset)
+                            warnLog?.log(`Offset mismatch detected: ${expectedNewOffset} != ${newOffset}`);
+                        offset = newOffset;
+                        // Reset retry counter on successful chunk upload
+                        retryIndex = 0;
+                        chunkSizeSelector.adaptChunkSizeOnSucceedUpload(dt);
+                        this.progressReporter((offset / fileSize) * 100);
                     }
-                }
-                else if (error instanceof UploadTransientFailure) {
-                    if (retryIndex < maxRetries) {
-                        warnLog?.log('Upload transient failure. Retrying...');
-                        await delayAsync(500);
-                        retryIndex++;
-                        // on transient server-side problems try to reduce chunk size for stability
-                        run = true;
-                        continue;
+                    chunkSizeSelector.updateRecommendation();
+                    this.whenCompletedSource.resolve();
+                    return;
+                } catch (error) {
+                    chunkSizeSelector.adaptOnUploadIssue(isConnectivityError(error));
+                    if (error instanceof OffsetConflictError) {
+                        if (retryIndex < maxRetries) {
+                            warnLog?.log('Offset conflict detected. Retrying...');
+                            retryIndex++;
+                            run = true;
+                            continue;
+                        }
                     }
-                }
-                else if (isConnectivityError(error)) {
-                    if (retryIndex < maxRetries) {
-                        retryIndex++;
-                        run = true;
-                        await ConnectivityUI.whenConnected();
-                        continue;
+                    else if (error instanceof UploadTransientFailure) {
+                        if (retryIndex < maxRetries) {
+                            warnLog?.log('Upload transient failure. Retrying...');
+                            await delayAsync(500);
+                            retryIndex++;
+                            // on transient server-side problems try to reduce chunk size for stability
+                            run = true;
+                            continue;
+                        }
                     }
+                    else if (isConnectivityError(error)) {
+                        if (retryIndex < maxRetries) {
+                            retryIndex++;
+                            run = true;
+                            await ConnectivityUI.whenConnected();
+                            continue;
+                        }
+                    }
+                    if (this.isCancelled()) {
+                        this.whenCompletedSource.reject(new OperationCancelledError('File upload cancelled'));
+                    } else {
+                        this.whenCompletedSource.reject(error);
+                    }
+                    return;
                 }
-                if (this.isCancelled()) {
-                    this.whenCompletedSource.reject(new OperationCancelledError('File upload cancelled'));
-                } else {
-                    this.whenCompletedSource.reject(error);
-                }
-                return;
             }
+        }
+        finally {
+            Api.releaseConnection(this.connectionScope);
         }
     }
 
     private async getOffset(): Promise<number> {
+        debugLog?.log(`-> GetOffset(${this.uploadId})`);
+        const t0 = performance.now();
         try {
-            return await uploadsApi.uploads.GetOffset(RPC_SESSION_DEFAULT, this.uploadId);
+            const result = await uploadsApi.uploads.GetOffset(RPC_SESSION_DEFAULT, this.uploadId);
+            debugLog?.log(`<- GetOffset(${this.uploadId}) = ${result} in ${(performance.now() - t0).toFixed(0)}ms`);
+            return result;
         } catch (e: unknown) {
+            warnLog?.log(`<- GetOffset(${this.uploadId}) threw after ${(performance.now() - t0).toFixed(0)}ms:`, e);
             throw mapUploadError(e);
         }
     }
@@ -180,14 +211,19 @@ export class ChunkedFileUpload implements IFileUpload {
     private async uploadChunk(offset: number, chunkSize: number): Promise<number> {
         const expectedNewOffset = offset + chunkSize;
         const arrayBuffer = await this.blob.slice(offset, expectedNewOffset).arrayBuffer();
+        debugLog?.log(`-> OnAppend(${this.uploadId}) offset=${offset} size=${chunkSize}`);
+        const t0 = performance.now();
         try {
-            return await uploadsApi.uploads.OnAppend({
+            const result = await uploadsApi.uploads.OnAppend({
                 Session: RPC_SESSION_DEFAULT,
                 UploadId: this.uploadId,
                 Offset: offset,
                 Chunk: new Uint8Array(arrayBuffer),
             });
+            debugLog?.log(`<- OnAppend(${this.uploadId}) = ${result} in ${(performance.now() - t0).toFixed(0)}ms`);
+            return result;
         } catch (e: unknown) {
+            warnLog?.log(`<- OnAppend(${this.uploadId}) threw after ${(performance.now() - t0).toFixed(0)}ms:`, e);
             throw mapUploadError(e);
         }
     }

@@ -175,6 +175,7 @@ export class Api {
      *  forward on workers. Safe to call before `Api.init`. */
     static setDotNetRpcConnected(value: boolean): void {
         if (Api._isDotNetRpcConnected === value) return;
+
         Api._isDotNetRpcConnected = value;
         Api.isDotNetRpcConnectedChanged.trigger(value);
         Api._recomputeCanConnect();
