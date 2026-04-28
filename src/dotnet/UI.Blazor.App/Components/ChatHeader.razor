@@ -2,9 +2,6 @@
 @{
     var m = State.Value;
     var chat = Chat;
-    var searchCls = ScreenSize.IsNarrow() ? "btn-sm" : "";
-    if (m.IsSearchMode)
-        searchCls += " on";
     var isThread = chat?.Id.IsThread() ?? false;
     var showBackBtn = isThread || ScreenSize.IsNarrow();
 }
@@ -43,7 +40,7 @@
                 </div>
             </div>
             @if (!ScreenSize.IsNarrow()) {
-                <ChatActivityPanel Chat="@chat"/>
+                <ChatActivityPanel ChatId="@chat.Id"/>
             }
         } else {
             <ChatIcon Chat="@null"/>
@@ -69,7 +66,7 @@
     }
 </div>
 @if (ScreenSize.IsNarrow() && chat is not null) {
-    <ChatActivityPanelNarrowScreenWrapper Chat="@chat" Click="@OnToggleRightPanelClick" />
+    <ChatActivityPanelNarrowScreenWrapper ChatId="@chat.Id" Click="@OnToggleRightPanelClick" />
 }
 
 <VideoPanelContainer />
@@ -123,9 +120,6 @@
         if (ScreenSize.IsNarrow())
             Hub.PanelsUI.Left.SetIsVisible(true);
     }
-
-    private void OnSearchClick()
-        => Hub.PanelsUI.Right.SearchToggle();
 
     // Nested types
 

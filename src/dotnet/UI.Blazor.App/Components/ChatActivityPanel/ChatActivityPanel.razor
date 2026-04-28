@@ -6,11 +6,11 @@
     if (m is null)
         return;
 
-    var isVisible = m.IsAnyoneTalking || m.IsAnyoneVideoStreaming || m.IsListening || m.IsRecordingHere || m.IsWatchingHere;
+    var isVisible = m.IsAnyoneTalking || m.HasRemoteStreams || m.IsListening || m.IsRecordingHere || m.IsWatchingHere;
     if (!isVisible)
         return;
 
-    var chat = Chat;
+    var chatId = m.ChatId;
     var iconSize = ScreenSize.IsNarrow() ? 6 : 8;
     var isListening = m.IsListening;
     var isRecordingHere = m.IsRecordingHere;
@@ -18,10 +18,10 @@
     var isOwnVideoStreaming = m.IsOwnVideoStreaming;
     var isParticipating = isListening || isRecordingHere || isOwnVideoStreaming;
     var isActive = m.IsAnyoneTalking;
-    var iconMode = m.IsAnyoneVideoStreaming ? "video" : "audio";
+    var iconMode = m.HasRemoteStreams ? "video" : "audio";
     var tooltip = isListening ? "Listening..." : "Listen";
     var cls = isListening ? " listening" : "";
-    if (m.IsAnyoneVideoStreaming) cls += " video-streaming";
+    if (m.HasRemoteStreams) cls += " video-streaming";
     if (!isParticipating)
         cls += " not-participating";
     if (isWatchingHere && !m.IsVideoPanelCollapsed)
@@ -39,7 +39,7 @@
             <i class="icon-arrow-down"></i> Pin panel
         </span>
     </div>
-    @if (m.IsAnyoneVideoStreaming) {
+    @if (m.HasRemoteStreams) {
         <div class="c-film-strip"></div>
     }
     @if (!isParticipating) {
@@ -51,8 +51,8 @@
     @* Talking heads - shown when anyone is talking *@
     @if (m.IsAnyoneTalking) {
         <ChatActivities
-            @key="@chat.Id.Value"
-            Chat="@chat"
+            @key="@chatId.Value"
+            ChatId="@chatId"
             MaxCount="@MaxCount"
             IsListening="@isListening"/>
     }
@@ -63,7 +63,7 @@
                 Class="btn-sm btn-transparent unhovered not-listening"
                 StopPropagation="true"
                 PreventDefault="true"
-                Click="@(() => OnJoinClick(chat.Id))"
+                Click="@(() => OnJoinClick(chatId))"
                 Tooltip="@tooltip"
                 TooltipPosition="FloatingPosition.Bottom">
                 @joinButtonText
@@ -73,13 +73,13 @@
                 Class="talking"
                 StopPropagation="true"
                 PreventDefault="true"
-                Click="@(() => OnHangUpClick(chat.Id))"
+                Click="@(() => OnHangUpClick(chatId))"
                 Tooltip="@tooltip"
                 TooltipPosition="FloatingPosition.Bottom">
                 <i class="icon-phone-off"></i>
             </HeaderButton>
         } else {
-            <StopListeningCountdownButton ChatId="@chat.Id" Click="@(() => OnStopListeningClick(chat.Id))"/>
+            <StopListeningCountdownButton ChatId="@chatId" Click="@(() => OnStopListeningClick(chatId))"/>
         }
     </div>
 </div>
@@ -98,7 +98,7 @@
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-    [Parameter, EditorRequired] public Chat Chat { get; set; }
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
     [Parameter] public int MaxCount { get; set; } = 5;
     [Parameter] public EventCallback Click { get; set; }
 
@@ -114,17 +114,18 @@
     }
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        var chat = Chat;
-        var chatId = chat.Id;
+        var chatId = ChatId;
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
         var isAnyoneTalking = await LiveStreamUI.IsAnyoneStreaming(chatId, cancellationToken).ConfigureAwait(false);
-        var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chatId, cancellationToken).ConfigureAwait(false);
-        var ownStreamKind = await ChatVideoUI.GetOwnStreamKind(chat.Id, cancellationToken).ConfigureAwait(false);
+        var hasRemoteStreams = await ChatVideoUI.HasRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
+        var ownStreamKind = await ChatVideoUI.GetOwnStreamKind(chatId, cancellationToken).ConfigureAwait(false);
         var isOwnVideoStreaming = ownStreamKind is not null;
         var watchingChatId = await ChatVideoUI.GetWatchingChatId(cancellationToken).ConfigureAwait(false);
         var isWatchingHere = chatId == watchingChatId;
         var isVideoPanelCollapsed = isWatchingHere && await ChatVideoUI.GetIsVideoPanelCollapsed(cancellationToken).ConfigureAwait(false);
-        return new (chat, audioState, isAnyoneTalking, isAnyoneVideoStreaming, isOwnVideoStreaming, isWatchingHere, isVideoPanelCollapsed);
+        var model = new Model(chatId, audioState, isAnyoneTalking, hasRemoteStreams, isOwnVideoStreaming, isWatchingHere, isVideoPanelCollapsed);
+        Hub.LogFor(this.GetType()).LogInformation("Computed chat activity panel state for chat {ChatId}: {Model}", chatId, model);
+        return model;
     }
 
     private async Task OnJoinClick(ChatId chatId) {
@@ -163,7 +164,7 @@
     }
 
     private bool IsUpdating(ChatId chatId)
-        => chatId != Chat.Id;
+        => chatId != ChatId;
 
     private void StopRecording(ChatId chatId) {
         if (!IsValidAction())
@@ -188,10 +189,10 @@
     // Nested types
 
     public sealed record Model(
-        Chat Chat,
+        ChatId ChatId,
         ChatAudioState AudioState,
         bool IsAnyoneTalking,
-        bool IsAnyoneVideoStreaming,
+        bool HasRemoteStreams,
         bool IsOwnVideoStreaming,
         bool IsWatchingHere,
         bool IsVideoPanelCollapsed) {
