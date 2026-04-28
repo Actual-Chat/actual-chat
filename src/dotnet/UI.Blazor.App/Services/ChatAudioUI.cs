@@ -24,6 +24,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private IAudioInitializer AudioInitializer => Hub.AudioInitializer;
     private AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private LanguageUI LanguageUI => Hub.LanguageUI;
     private UserActivityUI UserActivityUI => Hub.UserActivityUI;
     private InteractiveUI InteractiveUI => Hub.InteractiveUI;

@@ -27,6 +27,8 @@ export const AUDIO_PLAY = {
     // In seconds:
     SAMPLE_DURATION: 0.001 / PLAY_SAMPLES_PER_MS,
     BUFFER_TO_PLAY_DURATION: 0.1, // !DELAYER: How much to buffer before we start playing
+    BUFFER_TO_PLAY_DURATION_DELTA: 0.1, // How much to grow buffer during starvation
+    BUFFER_TO_PLAY_DURATION_WITH_VIDEO: 0.5, // !DELAYER: Larger buffer when video is active for A/V sync
     BUFFER_LOW_DURATION: 10.0, // Buffer is "low" while it's less than this
     STATE_UPDATE_PERIOD: 0.2, // The period between feeder state update signals
     MEDIA_SESSION_RESET_DEBOUNCE_MS: 5000, // The period to debounce media session metadata (displays info that Voxt is playing at iOS) reset

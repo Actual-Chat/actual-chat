@@ -140,6 +140,7 @@ export class AudioPlayer implements Resettable {
     private whenEnded?: PromiseSource<void>;
 
     private playbackState: PlaybackState = 'paused';
+    private bufferEscalation = 0;
     private authorId: string | null = null;
     private recordedAtMs = 0;
     private lastLatencyLogTime = 0;
@@ -188,11 +189,12 @@ export class AudioPlayer implements Resettable {
         title: string,
         album: string,
         authorId: string | null,
-        recordedAtMs: number
+        recordedAtMs: number,
+        bufferEscalation: number,
     ): Promise<AudioPlayer> {
         await AudioPlayer.init();
         const player = AudioPlayer.pool.get();
-        await player.startPlayback(blazorRef, id, preSkip, title, album, authorId, recordedAtMs);
+        await player.startPlayback(blazorRef, id, preSkip, title, album, authorId, recordedAtMs, bufferEscalation);
         return player;
     }
 
@@ -209,14 +211,16 @@ export class AudioPlayer implements Resettable {
         title: string,
         album: string,
         authorId: string | null,
-        recordedAtMs: number): Promise<void> {
+        recordedAtMs: number,
+        bufferEscalation: number): Promise<void> {
 
         debugLog?.log(
             `#${this.internalId} -> startPlayback(): authorId=${authorId}, ` +
-            `recordedAtMs=${recordedAtMs.toFixed(0)}`);
+            `recordedAtMs=${recordedAtMs.toFixed(0)}, bufferEscalation=${bufferEscalation}`);
         this.blazorRef = blazorRef;
         this.authorId = authorId;
         this.recordedAtMs = recordedAtMs;
+        this.bufferEscalation = bufferEscalation;
         this.playbackState = 'paused';
         this.whenEnded = new PromiseSource<void>();
 
@@ -229,6 +233,7 @@ export class AudioPlayer implements Resettable {
             if (!attachedFeeder)
                 throw new Error('Feeder node not attached');
 
+            await attachedFeeder.feederNode.setBufferEscalation(this.bufferEscalation, rpcNoWait);
             await decoderWorker!.resume(this.internalId, rpcNoWait);
             await attachedFeeder.feederNode.resume(preSkip);
         });
@@ -278,6 +283,14 @@ export class AudioPlayer implements Resettable {
             'frame',
             [this.internalId, buf, bytes.byteOffset, bytes.length],
             [buf]);
+    }
+
+    /** Called by Blazor */
+    public setBufferEscalation(value: number): void {
+        this.bufferEscalation = value;
+        const attachedFeeder = this.contextRef?.getTrait<AttachedFeederNode>(this.feederNodeTrait);
+        if (attachedFeeder)
+            void attachedFeeder.feederNode.setBufferEscalation(value, rpcNoWait);
     }
 
     /** Called by Blazor */
