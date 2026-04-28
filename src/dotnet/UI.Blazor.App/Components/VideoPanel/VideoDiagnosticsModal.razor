@@ -43,6 +43,8 @@
             }
             @if (own is not null && own.Value.TryGetProperty("stream", out var stream) && stream.ValueKind == JsonValueKind.Object) {
                 <div class="diag-js-details">
+                    @* Source *@
+                    <div class="diag-group-header">Source</div>
                     <div class="diag-row">
                         <span class="diag-label">Status</span>
                         <span class="diag-value">@GetStr(stream, "status")</span>
@@ -54,12 +56,19 @@
                         </div>
                     }
                     <div class="diag-row">
-                        <span class="diag-label">Codec</span>
-                        <span class="diag-value">@GetStr(stream, "codec") (@GetStr(stream, "codecCategory"), @(GetBool(stream, "hardwareAccelerated") ? "HW" : "SW"))</span>
-                    </div>
-                    <div class="diag-row">
                         <span class="diag-label">Input</span>
                         <span class="diag-value">@GetStr(stream, "inputResolution") @@ @(GetNum(stream, "inputFramerate").ToString("0"))fps</span>
+                    </div>
+                    <div class="diag-row">
+                        <span class="diag-label">Duration</span>
+                        <span class="diag-value">@(GetNum(stream, "duration").ToString("0"))s</span>
+                    </div>
+
+                    @* Encoder *@
+                    <div class="diag-group-header">Encoder</div>
+                    <div class="diag-row">
+                        <span class="diag-label">Codec</span>
+                        <span class="diag-value">@GetStr(stream, "codec") (@GetStr(stream, "codecCategory"), @(GetBool(stream, "hardwareAccelerated") ? "HW" : "SW"))</span>
                     </div>
                     <div class="diag-row">
                         <span class="diag-label">Output</span>
@@ -81,10 +90,6 @@
                         <span class="diag-label">Frames</span>
                         <span class="diag-value">@(GetNum(stream, "encodedFrames").ToString("0")) enc, @(GetNum(stream, "droppedFrames").ToString("0")) drop, @(GetNum(stream, "keyFrames").ToString("0")) key</span>
                     </div>
-                    <div class="diag-row">
-                        <span class="diag-label">Duration</span>
-                        <span class="diag-value">@(GetNum(stream, "duration").ToString("0"))s</span>
-                    </div>
                     @if (GetBool(stream, "blurEnabled")) {
                         <div class="diag-row">
                             <span class="diag-label">Blur</span>
@@ -92,10 +97,13 @@
                         </div>
                     }
                     <div class="diag-row">
-                        <span class="diag-label">Encoders</span>
+                        <span class="diag-label">Available</span>
                         <span class="diag-value">@GetStrArray(stream, "supportedEncoderCategories")</span>
                     </div>
+
+                    @* Orientation *@
                     @if (stream.TryGetProperty("orientation", out var orient) && orient.ValueKind == JsonValueKind.Object) {
+                        <div class="diag-group-header">Orientation</div>
                         <div class="diag-row">
                             <span class="diag-label">Display</span>
                             <span class="diag-value">@GetStr(orient, "firstDisplayResolution")</span>
@@ -121,13 +129,15 @@
                             <span class="diag-value">@(GetNum(orient, "framesSeen").ToString("0"))</span>
                         </div>
                     }
+
+                    @* Streaming *@
                     @if (stream.TryGetProperty("streaming", out var streaming) && streaming.ValueKind == JsonValueKind.Object) {
+                        <div class="diag-group-header">Streaming</div>
                         <div class="diag-row">
                             <span class="diag-label">Send</span>
                             <div class="diag-value multiline">
                                 <span class="diag-value">@GetStr(streaming, "status") (@(GetNum(streaming, "sentFrames").ToString("0")) frames)</span>
                             </div>
-
                         </div>
                         @if (GetNum(streaming, "pendingFrames") > 0) {
                             <div class="diag-row">
@@ -427,8 +437,27 @@
         if (_ownDiag is { } ownVal
             && ownVal.TryGetProperty("stream", out var ownStream)
             && ownStream.ValueKind == JsonValueKind.Object) {
-            AppendJson(sb, ownStream);
+            // Source
+            sb.AppendLine($"Status: {GetStr(ownStream, "status")}");
+            if (GetStr(ownStream, "cameraLabel") is { Length: > 0 } copyCameraLabel)
+                sb.AppendLine($"Camera: {copyCameraLabel}");
+            sb.AppendLine($"Input: {GetStr(ownStream, "inputResolution")} @ {GetNum(ownStream, "inputFramerate"):0}fps");
+            sb.AppendLine($"Duration: {GetNum(ownStream, "duration"):0}s");
 
+            // Encoder
+            sb.AppendLine();
+            sb.AppendLine("-- Encoder --");
+            sb.AppendLine($"Codec: {GetStr(ownStream, "codec")} ({GetStr(ownStream, "codecCategory")}, {(GetBool(ownStream, "hardwareAccelerated") ? "HW" : "SW")})");
+            sb.AppendLine($"Output: {GetStr(ownStream, "outputResolution")}");
+            sb.AppendLine($"Bitrate: {GetNum(ownStream, "actualBitrateKbps"):0} kbps (cfg: {GetNum(ownStream, "configuredBitrate") / 1000:0} kbps)");
+            sb.AppendLine($"Encode time: {GetNum(ownStream, "medianEncodeTime"):0.0}ms (pure: {GetNum(ownStream, "pureMedianEncodeTime"):0.0}ms)");
+            sb.AppendLine($"HW accel: {GetStr(ownStream, "encoderHwAccel")}");
+            sb.AppendLine($"Frames: {GetNum(ownStream, "encodedFrames"):0} enc, {GetNum(ownStream, "droppedFrames"):0} drop, {GetNum(ownStream, "keyFrames"):0} key");
+            if (GetBool(ownStream, "blurEnabled"))
+                sb.AppendLine($"Blur: {GetStr(ownStream, "segmentationBackend")} ({GetNum(ownStream, "segmentationAvgTime"):0.0}ms)");
+            sb.AppendLine($"Available: {GetStrArray(ownStream, "supportedEncoderCategories")}");
+
+            // Orientation
             if (ownStream.TryGetProperty("orientation", out var orient) && orient.ValueKind == JsonValueKind.Object) {
                 sb.AppendLine();
                 sb.AppendLine("-- Orientation --");
@@ -438,6 +467,19 @@
                 sb.AppendLine($"Rotation: {GetStr(orient, "firstRotation")} → {GetStr(orient, "lastRotation")}");
                 sb.AppendLine($"Detection: {GetStr(orient, "rotationDetection")} (rot: {(GetBool(orient, "needsRotation") ? "yes" : "no")})");
                 sb.AppendLine($"Frames seen: {GetNum(orient, "framesSeen"):0}");
+            }
+
+            // Streaming
+            if (ownStream.TryGetProperty("streaming", out var copyStreaming) && copyStreaming.ValueKind == JsonValueKind.Object) {
+                sb.AppendLine();
+                sb.AppendLine("-- Streaming --");
+                sb.AppendLine($"Send: {GetStr(copyStreaming, "status")} ({GetNum(copyStreaming, "sentFrames"):0} frames)");
+                if (GetNum(copyStreaming, "pendingFrames") > 0)
+                    sb.AppendLine($"Pending: {GetNum(copyStreaming, "pendingFrames"):0} frames");
+                if (GetNum(copyStreaming, "streamRecreations") > 1)
+                    sb.AppendLine($"Reconnects: {GetNum(copyStreaming, "streamRecreations") - 1:0}");
+                if (GetStr(copyStreaming, "lastError") is { Length: > 0 } copyStreamError)
+                    sb.AppendLine($"Error: {copyStreamError}");
             }
         }
         sb.AppendLine();
