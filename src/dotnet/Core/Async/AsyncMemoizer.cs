@@ -24,9 +24,9 @@ public static class AsyncMemoizer
 ///     chain. There is no shared Write loop that could introduce duplication or
 ///     orphan-target races.
 ///   - The chain itself is the snapshot — no seqlock, no bounded-channel-of-targets.
-///   - Bounded mode advances the head pointer; lagging consumers keep evicted
-///     nodes alive via their local pointer, so memory is soft-bounded rather than
-///     hard-bounded. (All production callers use unbounded.)
+///   - Bounded mode advances the head pointer and severs evicted links. Lagging
+///     consumers skip to the current bounded window rather than retaining the
+///     whole evicted chain.
 ///   - <see cref="IAsyncDisposable"/> is the primary disposal contract — sync
 ///     <see cref="IDisposable.Dispose"/> only signals cancellation and returns
 ///     immediately, deferring cleanup to the Read task's natural exit.
@@ -100,6 +100,12 @@ public sealed class AsyncMemoizer<T> : WorkerBase, IAsyncMemoizer<T>
 
         while (true) {
             cancellationToken.ThrowIfCancellationRequested();
+            var head = _head;
+            if (current.Index < head.Index) {
+                current = head;
+                continue;
+            }
+
             var next = current.Next;
             if (next != null) {
                 current = next;
@@ -172,16 +178,17 @@ public sealed class AsyncMemoizer<T> : WorkerBase, IAsyncMemoizer<T>
         var oldTail = _tail;
         var newNode = new Node(item, oldTail.Index + 1);
 
-        // Bounded eviction: drop oldest by advancing _head. Lagging consumers may still
-        // hold references to older nodes via their local pointer; in that case the chain
-        // stays live until they release it. This trades hard memory bounds for lock-free reads.
+        // Bounded eviction: drop oldest by advancing _head and severing the evicted link.
+        // Lagging consumers detect this via Index and jump to the current bounded window.
         if (_capacity != int.MaxValue) {
             while (newNode.Index - _head.Index > _capacity) {
-                var nextHead = _head.Next;
+                var oldHead = _head;
+                var nextHead = oldHead.Next;
                 if (nextHead == null)
                     break;
 
                 _head = nextHead;
+                oldHead.Next = null;
             }
         }
 

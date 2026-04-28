@@ -5,13 +5,54 @@ namespace ActualChat.Core.UnitTests.Channels;
 /// <summary>Shared tests run against <see cref="AsyncMemoizer{T}"/>.</summary>
 public class AsyncMemoizerTest(ITestOutputHelper @out) : AsyncMemoizerTestBase(@out)
 {
-    protected override bool IsItemDropInstant => false;
+    protected override bool IsItemDropInstant => true;
 
     protected override IAsyncMemoizer<T> Memoize<T>(
         IAsyncEnumerable<T> source,
         int capacity = int.MaxValue,
         CancellationToken cancellationToken = default)
         => new AsyncMemoizer<T>(source, capacity, cancellationToken);
+
+    [Fact]
+    public async Task BoundedReplay_StalledConsumerDoesNotKeepEvictedChainAlive()
+    {
+        var source = Channel.CreateUnbounded<object>();
+        source.Writer.TryWrite(new object());
+        await using var memoizer = Memoize(source, 10);
+        await SpinWaitForBuffered(memoizer, 1);
+
+        var firstItem = new TaskCompletionSource();
+        var gate = new TaskCompletionSource();
+        var replayTask = Task.Run(async () => {
+            await foreach (var _ in memoizer.Replay()) {
+                firstItem.SetResult();
+                await gate.Task.ConfigureAwait(false);
+                break;
+            }
+        });
+
+        await firstItem.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var weakRefs = PopulateChannelWithTrackedObjects(source, 100);
+        source.Writer.Complete();
+        await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5));
+
+        var oldEvictedRefs = weakRefs.Take(80).ToList();
+        var aliveCount = 0;
+        for (var attempt = 0; attempt < 5; attempt++) {
+            GC.Collect(2, GCCollectionMode.Forced, true);
+            GC.WaitForPendingFinalizers();
+            GC.Collect(2, GCCollectionMode.Forced, true);
+            aliveCount = oldEvictedRefs.Count(wr => wr.IsAlive);
+            if (aliveCount == 0)
+                break;
+
+            await Task.Delay(50);
+        }
+
+        gate.SetResult();
+        await replayTask.WaitAsync(TimeSpan.FromSeconds(5));
+        aliveCount.Should().Be(0, "a stalled consumer should not retain the evicted linked-list tail");
+    }
 }
 
 /// <summary>Shared tests run against the legacy <see cref="OldAsyncMemoizer{T}"/>.</summary>
@@ -42,8 +83,8 @@ public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@
 
     /// <summary>
     /// True when overflowing bounded capacity physically evicts items from the buffer
-    /// immediately (old impl's ring buffer). False when evicted items are kept alive
-    /// by any lagging consumer that still holds a reference (new impl's linked list).
+    /// immediately. False when evicted items are kept alive by any lagging consumer
+    /// that still holds a reference.
     /// </summary>
     protected abstract bool IsItemDropInstant { get; }
 
@@ -851,9 +892,9 @@ public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@
     }
 
     // === Bounded capacity overflow + slow consumer ===
-    // IsItemDropInstant=true  (old): the ring buffer physically overwrites evicted items;
-    //     the consumer sees whatever remained in the ring when it resumed, with a gap.
-    // IsItemDropInstant=false (new): the consumer holds evicted nodes alive via its local
+    // IsItemDropInstant=true: bounded overflow physically evicts items;
+    //     the consumer sees whatever remained in the bounded window when it resumed, with a gap.
+    // IsItemDropInstant=false: the consumer holds evicted nodes alive via its local
     //     pointer and sees every item produced (the stall just delays delivery).
     // Either way, a *new* late-joiner sees only the current buffer (last capacity items).
 
@@ -885,18 +926,15 @@ public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@
         for (var i = 6; i <= 50; i++)
             source.Writer.TryWrite(i);
 
-        // BufferedCount semantics differ: instant-drop tracks total writes;
-        // lazy-drop caps at capacity.
-        await SpinWaitForBuffered(memoizer, IsItemDropInstant ? 50 : 10);
-
         source.Writer.Complete();
+        await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5));
         gate.SetResult();
         await replayTask.WaitAsync(TimeSpan.FromSeconds(5));
 
         if (IsItemDropInstant) {
             items.First().Should().Be(1, "first item was read before blocking");
             items.Last().Should().Be(50, "most recent item should be present");
-            items.Should().HaveCountLessThan(50, "some items should be skipped due to ring eviction");
+            items.Should().HaveCountLessThan(50, "some items should be skipped due to bounded eviction");
         }
         else {
             items.Should().Equal(Enumerable.Range(1, 50));
