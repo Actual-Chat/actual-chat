@@ -247,6 +247,8 @@ public class CachingVideoFrameByteSerializerTest(ITestOutputHelper @out) : TestB
             Duration = TimeSpan.FromMilliseconds(33),
             Width = isKey ? 1280 : 0,
             Height = isKey ? 720 : 0,
+            SourceWidth = isKey ? 1920 : 0,
+            SourceHeight = isKey ? 1080 : 0,
             Description = isKey ? new byte[] { 0x00, 0x00, 0x00, 0x01, 0x67 } : default,
             Codec = isKey ? "avc1" : null,
             TemporalLayerId = 0,
@@ -260,6 +262,8 @@ public class CachingVideoFrameByteSerializerTest(ITestOutputHelper @out) : TestB
         actual.Duration.Should().Be(expected.Duration);
         actual.Width.Should().Be(expected.Width);
         actual.Height.Should().Be(expected.Height);
+        actual.SourceWidth.Should().Be(expected.SourceWidth);
+        actual.SourceHeight.Should().Be(expected.SourceHeight);
         actual.Data.Span.SequenceEqual(expected.Data.Span).Should().BeTrue();
         actual.Description.Span.SequenceEqual(expected.Description.Span).Should().BeTrue();
         actual.Codec.Should().Be(expected.Codec);
