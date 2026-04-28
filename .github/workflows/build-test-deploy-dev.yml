@@ -226,6 +226,17 @@ jobs:
         if: env.SKIP_TESTS == 'true'
         run: 'echo "Tests are skipped"'
 
+      - name: Free Disk Space (Ubuntu)
+        uses: insightsengineering/disk-space-reclaimer@v1
+        with:
+          android: false
+          dotnet: true
+          haskell: false
+          large-packages: false
+          swap-storage: true
+          docker-images: true
+          tools-cache: true
+
       - name: Install dependencies
         if: env.SKIP_TESTS != 'true'
         run: |
