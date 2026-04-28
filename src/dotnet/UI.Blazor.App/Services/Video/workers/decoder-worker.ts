@@ -771,7 +771,35 @@ const serverImpl: DecoderWorker = {
         try {
             // If we have a description and it's a keyframe, reconfigure the decoder only if description changed
             if (isKeyFrame && description && description.byteLength > 0) {
-                if (initialDescriptionApplied) {
+                if (!decoderConfigured) {
+                    // First keyframe of a fresh stream. The VideoDecoder built at
+                    // initialize() has been sitting unconfigured for hundreds of ms
+                    // while RPC handshake + GetVideo roundtripped; on iOS Safari
+                    // HEVC HW that stale instance can no longer be configured into
+                    // a working state — first decode fails with
+                    // "EncodingError: Decoder failure" even though state reads
+                    // 'configured'. Recovery branch below already proves
+                    // fresh-decoder + initialize(description) + decode() is
+                    // reliable; mirror it here.
+                    if (decoder.getState() !== 'closed') {
+                        decoder.close();
+                    }
+                    const freshConfig: DecoderConfig = { ...currentDecoderConfig!, description };
+                    decoder = new WebCodecsDecoder(
+                        freshConfig,
+                        emitDecodedFrame,
+                        (error) => {
+                            errorLog?.log(`Decoder error (fresh first-keyframe path, state=${decoder?.getState() ?? '?'}, ` +
+                                `lastChunkSeq=${lastChunkSeq}, lastChunkType=${lastChunkType}, ` +
+                                `lastChunkBytes=${lastChunkSize}, lastDescLen=${lastChunkDescLen}):`, error);
+                        }
+                    );
+                    decoder.initialize();
+                    lastRawDescription = description.slice(0);
+                    initialDescriptionApplied = false;
+                    warnLog?.log(`[FIRST_KF_FRESH] built fresh decoder for first keyframe, ` +
+                        `descLen=${description.byteLength}, decoderState=${decoder.getState()}`);
+                } else if (initialDescriptionApplied) {
                     // Decoder was already configured with description at init/configure path —
                     // skip the redundant decoder.configure() that iOS Safari HEVC HW
                     // rejects with EncodingError even when bytes are identical.

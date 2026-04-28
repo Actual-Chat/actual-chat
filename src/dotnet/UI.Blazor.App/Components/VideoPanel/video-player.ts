@@ -130,6 +130,12 @@ export class VideoPlayer {
     private decoderWorkerInstance: Worker | null = null;
     private decoderWorker: (DecoderWorker & Disposable) | null = null;
     private decoderConfig: DecoderConfig | null = null;
+    // Resolves once initDecoderWorker has either finished setting up the worker
+    // (decoderWorker assigned + initializeWithStreams/initialize awaited) or
+    // bailed out. startPull awaits this so frames cannot arrive before the
+    // worker is ready — otherwise pushFrame drops them at `!this.decoderWorker`
+    // and the pre-init keyframe is lost, stalling startup until next IDR.
+    private decoderReady: Promise<void> = Promise.resolve();
     private pendingFrames: PendingFrame[] = [];
     private readonly isSafari: boolean;
     private conversionQueue: Promise<void> = Promise.resolve();
@@ -303,8 +309,9 @@ export class VideoPlayer {
         activePlayers.set(streamId, this);
         warnLog?.log(`VideoPlayer registry: added ${streamId}, active=${activePlayers.size}`);
 
-        // Initialize decoder worker
-        void this.initDecoderWorker(codec, width, height, codecSettings);
+        // Initialize decoder worker — store the promise so startPull can gate
+        // on it (prevents pre-init frame drop on the main-thread RPC fallback).
+        this.decoderReady = this.initDecoderWorker(codec, width, height, codecSettings);
     }
 
     private async initDecoderWorker(codec: string, width: number, height: number, codecSettings: string): Promise<void> {
@@ -483,9 +490,33 @@ export class VideoPlayer {
                 }
             };
 
-            // 1. Derived from HVCC binary description (ground truth from encoder) — both hev1 and hvc1 prefixes
-            addCandidate(`hev1.${generalProfileIdc}.6.${tierStr}${generalLevelIdc}.B0`);
-            addCandidate(`hvc1.${generalProfileIdc}.6.${tierStr}${generalLevelIdc}.B0`);
+            // 1. Derived from HVCC binary description (ground truth from encoder) — both hev1 and hvc1 prefixes.
+            // Read the actual tier_flag from the SPS NAL inside HVCC: Chrome's HEVC
+            // encoder emits SPS with tier=High while writing tier=Low into the HVCC
+            // header byte[1], so a codec string built off the HVCC header alone
+            // mismatches the real bitstream — iOS HEVC HW rejects with
+            // "EncodingError: Decoder failure" and Edge/Chrome HEVC HW silently
+            // stall. Adding both tier variants lets WebCodecs pick whichever
+            // matches the SPS the decoder actually parses.
+            const spsTier = VideoPlayer.extractHvccSpsTierFlag(bytes);
+            const spsTierStr: 'H' | 'L' | undefined = spsTier === 1 ? 'H' : (spsTier === 0 ? 'L' : undefined);
+            if (spsTierStr) {
+                // Highest priority: SPS-derived codec string (matches what the
+                // bitstream actually says).
+                addCandidate(VideoPlayer.deriveHevcCodecString('hev1', bytes, spsTierStr));
+                addCandidate(VideoPlayer.deriveHevcCodecString('hvc1', bytes, spsTierStr));
+            }
+            // Fallbacks built off HVCC header (legacy path).
+            addCandidate(VideoPlayer.deriveHevcCodecString('hev1', bytes));
+            addCandidate(VideoPlayer.deriveHevcCodecString('hvc1', bytes));
+            // Belt-and-suspenders: the opposite tier too, in case neither HVCC nor
+            // SPS detection landed on the right answer.
+            addCandidate(VideoPlayer.deriveHevcCodecString('hev1', bytes, 'H'));
+            addCandidate(VideoPlayer.deriveHevcCodecString('hvc1', bytes, 'H'));
+            addCandidate(VideoPlayer.deriveHevcCodecString('hev1', bytes, 'L'));
+            addCandidate(VideoPlayer.deriveHevcCodecString('hvc1', bytes, 'L'));
+            // Suppress unused-var warnings now that we read these only via deriveHevcCodecString.
+            void generalProfileIdc; void tierStr; void generalLevelIdc;
 
             // 2. Stream metadata codec string (sender's declared codec, if it's a full HEVC string)
             const lc = codec.toLowerCase();
@@ -576,6 +607,85 @@ export class VideoPlayer {
         if (lc.startsWith('vp09') || lc.startsWith('vp9')) return 'vp9';
         if (lc.startsWith('avc1') || lc.startsWith('h264')) return 'h264';
         return 'unknown';
+    }
+
+    // Walk HVCC NAL arrays, locate the SPS, return its tier_flag from
+    // profile_tier_level. Returns -1 if not found / malformed.
+    // Encoder bug: Chrome HEVC encoder produces SPS with tier=High while writing
+    // tier=Low in the HVCC header byte[1] — decoders that pick tier from HVCC
+    // and compare against SPS reject (iOS) or silently stall (Edge/Chrome HW).
+    private static extractHvccSpsTierFlag(bytes: Uint8Array): number {
+        if (bytes.length < 24) return -1;
+        const numArrays = bytes[22];
+        let pos = 23;
+        for (let i = 0; i < numArrays; i++) {
+            if (pos >= bytes.length) return -1;
+            const nalUnitType = bytes[pos] & 0x3F;
+            pos += 1;
+            if (pos + 2 > bytes.length) return -1;
+            const numNalus = (bytes[pos] << 8) | bytes[pos + 1];
+            pos += 2;
+            for (let j = 0; j < numNalus; j++) {
+                if (pos + 2 > bytes.length) return -1;
+                const nalLen = (bytes[pos] << 8) | bytes[pos + 1];
+                pos += 2;
+                if (pos + nalLen > bytes.length) return -1;
+                if (nalUnitType === 33 && nalLen >= 4) {
+                    // SPS NAL layout: 2-byte NAL header, then RBSP.
+                    // RBSP byte 0 = sps_video_parameter_set_id<<4 | max_sub_layers_minus1<<1 | temporal_id_nesting_flag
+                    // RBSP byte 1 = general_profile_space<<6 | general_tier_flag<<5 | general_profile_idc
+                    return (bytes[pos + 3] >> 5) & 0x01;
+                }
+                pos += nalLen;
+            }
+        }
+        return -1;
+    }
+
+    // Build a fully spec-compliant HEVC codec string from HVCC bytes — every
+    // field is read from the description, no hardcoded suffixes. Output:
+    //   {prefix}.{profileSpace?}{profileIdc}.{compatHexReversed}.{L|H}{levelIdc}[.{constraintByte0}[.{constraintByte1}…]]
+    // For our typical encoder output (Main L4.0, constraint=0x90 …) this yields
+    // `hev1.1.6.L120.90` rather than the legacy hardcoded `hev1.1.6.L120.B0`.
+    // `tierOverride` lets the caller force `H` or `L`; default reads HVCC byte[1].
+    // Spec: ISO/IEC 14496-15 §8.3.3.1 + RFC 7798 §7.1.
+    private static deriveHevcCodecString(prefix: 'hev1' | 'hvc1', bytes: Uint8Array, tierOverride?: 'H' | 'L'): string {
+        const profileSpace = (bytes[1] >> 6) & 0x03;
+        const tierFlag = (bytes[1] >> 5) & 0x01;
+        const profileIdc = bytes[1] & 0x1F;
+        const levelIdc = bytes[12];
+
+        // 32-bit profile compat flags (BE), then full 32-bit bit reversal — codec
+        // string format expresses bit 0 of the flags as the LSB of the encoded int.
+        let compat = (((bytes[2] << 24) >>> 0) | (bytes[3] << 16) | (bytes[4] << 8) | bytes[5]) >>> 0;
+        compat = (((compat & 0xAAAAAAAA) >>> 1) | ((compat & 0x55555555) << 1)) >>> 0;
+        compat = (((compat & 0xCCCCCCCC) >>> 2) | ((compat & 0x33333333) << 2)) >>> 0;
+        compat = (((compat & 0xF0F0F0F0) >>> 4) | ((compat & 0x0F0F0F0F) << 4)) >>> 0;
+        compat = (((compat & 0xFF00FF00) >>> 8) | ((compat & 0x00FF00FF) << 8)) >>> 0;
+        compat = ((compat >>> 16) | (compat << 16)) >>> 0;
+
+        const profileStr = profileSpace > 0
+            ? String.fromCharCode(0x40 + profileSpace) + profileIdc.toString()
+            : profileIdc.toString();
+        const tierStr = tierOverride ?? (tierFlag ? 'H' : 'L');
+        const compatHex = compat.toString(16).toUpperCase();
+
+        // 6 constraint bytes starting at HVCC byte 6, MSB-first, dot-separated
+        // hex; trailing zero bytes are stripped (codec-string convention).
+        let lastNonZero = -1;
+        for (let i = 0; i < 6; i++) {
+            if (bytes[6 + i] !== 0) lastNonZero = i;
+        }
+        let constraintSuffix = '';
+        if (lastNonZero >= 0) {
+            const parts: string[] = [];
+            for (let i = 0; i <= lastNonZero; i++) {
+                parts.push(bytes[6 + i].toString(16).toUpperCase().padStart(2, '0'));
+            }
+            constraintSuffix = '.' + parts.join('.');
+        }
+
+        return `${prefix}.${profileStr}.${compatHex}.${tierStr}${levelIdc}${constraintSuffix}`;
     }
 
     private static isHvccDescription(description: ArrayBuffer): boolean {
@@ -1293,6 +1403,15 @@ export class VideoPlayer {
             warnLog?.log('startPull called but player not started');
             return;
         }
+
+        // Wait for the decoder worker to finish initialization before opening
+        // the pull. Without this gate, frames arriving on the main-thread RPC
+        // fallback path are dropped at `pushFrame` (`!this.decoderWorker`) —
+        // and since `waitingForKeyframe` then waits for the next IDR, startup
+        // stalls for a full keyframe interval. If the player was stopped while
+        // we awaited, the abort/`_isPlayingNow` checks in the pull loop below
+        // catch that and tear the stream down on the first iteration.
+        await this.decoderReady;
 
         // Off-thread path: hand the entire Fusion RPC pull to the decoder worker.
         // Main thread becomes silent on the per-frame path.
