@@ -1060,6 +1060,7 @@ public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@
         await Task.Delay(50);
 
         gate.SetResult();
+        await SpinWaitForBuffered(memoizer, 2);
         await memoizer.DisposeAsync();
 
         var consumerCompleted = replayTask.Wait(TimeSpan.FromSeconds(2));

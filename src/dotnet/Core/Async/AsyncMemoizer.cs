@@ -65,7 +65,11 @@ public sealed class AsyncMemoizer<T> : WorkerBase, IAsyncMemoizer<T>
     protected override async Task DisposeAsyncCore()
     {
         await base.DisposeAsyncCore().ConfigureAwait(false);
-        var sentinel = new Node(default!, _tail.Index, AsyncMemoizer.SuccessfulCompletion);
+        // Detach the chain from _head/_tail so unread buffered items can be GC'd, but preserve
+        // the current head index rather than using _tail.Index. This lets lagging consumers drain
+        // items still reachable via their local `current.Next` pointer, while bounded consumers
+        // already behind the evicted head still fast-forward to completion.
+        var sentinel = new Node(default!, _head.Index, AsyncMemoizer.SuccessfulCompletion);
         sentinel.SetResult();
         _tail = _head = sentinel;
         _source = null;
