@@ -31,7 +31,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
 
         // Session & authentication
         services.AddSingleton(c => new MauiSession(c));
-        services.AddScoped<IClientAuth>(c => new MauiAuth(c.UIHub()));
+        services.AddScoped<AccountUI>(c => new MauiAccountUI(c.UIHub()));
 
         // UI
         services.AddSingleton<ScopedServicesAccessor>(_ => static () => TryGetScopedServices(out var c) ? c : null); // Scoped in WASM/SSB, singleton in MAUI

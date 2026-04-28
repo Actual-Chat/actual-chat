@@ -18,8 +18,8 @@ public static class ChatMarkupHubExt
     {
         Markup markup;
         switch (entry) {
-        case { SystemEntry: { } systemEntry }:
-            markup = systemEntry.Option?.ToMarkup() ?? Markup.EmptyParagraph;
+        case SystemEntry systemEntry:
+            markup = systemEntry.ToMarkup();
             // System entries render markup w/o mention names
             markup = await markupHub.MentionNamer.Apply(markup, cancellationToken).ConfigureAwait(false);
             break;
@@ -43,8 +43,8 @@ public static class ChatMarkupHubExt
     {
         Markup markup;
         switch (entry) {
-        case { SystemEntry: { } systemEntry }:
-            markup = systemEntry.Option?.ToMarkup() ?? Markup.EmptyParagraph;
+        case SystemEntry systemEntry:
+            markup = systemEntry.ToMarkup();
             break;
         case { HasAudio: true }:
         // HasAudio covers all audio/media entries now

@@ -5,8 +5,8 @@ export interface OwnStreamDiagnosticsSnapshot {
     stream: OwnStreamDiagnostics | null;
 }
 
-export function collectOwnStreamDiagnostics(): OwnStreamDiagnosticsSnapshot {
-    const recorder = getActiveRecorder();
+export function collectOwnStreamDiagnostics(kind: number): OwnStreamDiagnosticsSnapshot {
+    const recorder = getActiveRecorder(kind);
     return {
         stream: recorder?.getDiagnostics() ?? null,
     };

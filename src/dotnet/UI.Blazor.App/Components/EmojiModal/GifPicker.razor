@@ -7,13 +7,12 @@
     <SearchBox Placeholder="Search GIFs..." ClearButton="true" TextChanged="@OnSearch"/>
     <div class="c-gif-scroll">
         <div class="c-gif-grid">
-            @* Round-robin into two independent columns by index parity.
-               Stable: item N always lands in the same column regardless of how many pages loaded.
-               New pages append strictly at the bottom of each column. *@
+            @* Each new item is appended to the currently-shorter column (height estimated from aspect ratio).
+               Stable: items are only appended, never reshuffled, so positions don't change across loads. *@
             @for (var col = 0; col < 2; col++) {
                 var columnIndex = col;
                 <div @key="@columnIndex" class="c-gif-col">
-                    @foreach (var gif in EnumerateColumn(columnIndex)) {
+                    @foreach (var gif in _columns[columnIndex]) {
                         <button @key="gif.Slug"
                                 class="c-gif-item"
                                 @onclick="@(() => GifSelected.InvokeAsync(gif.Url))">
@@ -38,6 +37,8 @@
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.EmojiModal.create";
 
     private readonly List<GifItem> _gifItems = new();
+    private readonly List<GifItem>[] _columns = [new(), new()];
+    private readonly double[] _columnHeights = new double[2];
     private readonly CancellationTokenSource _disposeCts = new();
     private CancellationTokenSource? _searchCts;
     private ElementReference _sentinelRef;
@@ -79,6 +80,10 @@
         _searchQuery = query.Trim();
         _page = 1;
         _gifItems.Clear();
+        _columns[0].Clear();
+        _columns[1].Clear();
+        _columnHeights[0] = 0;
+        _columnHeights[1] = 0;
         _hasNext = false;
         _showEmpty = false;
         SwapSearchCts();
@@ -116,7 +121,14 @@
             if (version != _searchVersion)
                 return;
             var existingSlugs = _gifItems.Select(g => g.Slug).ToHashSet(StringComparer.Ordinal);
-            _gifItems.AddRange(result.Items.Where(g => existingSlugs.Add(g.Slug)));
+            foreach (var gif in result.Items) {
+                if (!existingSlugs.Add(gif.Slug))
+                    continue;
+                _gifItems.Add(gif);
+                var shorter = _columnHeights[0] <= _columnHeights[1] ? 0 : 1;
+                _columns[shorter].Add(gif);
+                _columnHeights[shorter] += GetItemHeight(gif);
+            }
             _hasNext = result.HasNext;
         }
         catch (OperationCanceledException) {
@@ -159,8 +171,10 @@
         catch (ObjectDisposedException) { }
     }
 
-    private IEnumerable<GifItem> EnumerateColumn(int column)
-        => _gifItems.Where((_, i) => i % 2 == column);
+    private static double GetItemHeight(GifItem gif)
+        => gif.PreviewWidth > 0 && gif.PreviewHeight > 0
+            ? (double)gif.PreviewHeight / gif.PreviewWidth
+            : 1.0;
 
     private static string GetAspectRatioStyle(GifItem gif)
         => gif.PreviewWidth > 0 && gif.PreviewHeight > 0

@@ -3,6 +3,8 @@ namespace ActualChat.App.Maui;
 public sealed class NativeAppleAuth(IServiceProvider services)
 {
     private IServiceProvider Services { get; } = services;
+    private ICommander Commander { get; } = services.Commander();
+    private TrueSessionResolver SessionResolver { get; } = services.GetRequiredService<TrueSessionResolver>();
 
     public async Task SignIn(bool mustExist = false)
     {
@@ -16,7 +18,8 @@ public sealed class NativeAppleAuth(IServiceProvider services)
         var email = result.Properties["email"];
         var name = result.Properties["name"];
         var userId = result.Properties["user_id"];
-        var nativeAuthClient = Services.GetRequiredService<INativeAuthClient>();
-        await nativeAuthClient.SignInApple(userId, code, email, name, mustExist).ConfigureAwait(false);
+        var session = await SessionResolver.GetSession().ConfigureAwait(false);
+        var command = new NativeAuth_SignInApple(session, userId, code, email, name, mustExist);
+        await Commander.Call(command, true).ConfigureAwait(false);
     }
 }

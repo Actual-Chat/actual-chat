@@ -85,7 +85,7 @@ public partial class Chats(IServiceProvider services) : IChats
     }
 
     // Legacy compat: old clients send ChatEntryKind parameter
-    [Obsolete("2025.03: Use GetTile without entryKind")]
+    [Obsolete("2026.03: Use GetTile without entryKind")]
     public virtual Task<ChatTile> GetTile(
         Session session, ChatId chatId, int entryKind, Range<long> idTileRange, CancellationToken cancellationToken)
         => GetTile(session, chatId, idTileRange, cancellationToken);
@@ -113,7 +113,7 @@ public partial class Chats(IServiceProvider services) : IChats
     }
 
     // Legacy compat: old clients send ChatEntryKind parameter
-    [Obsolete("2025.03: Use GetIdRange without entryKind")]
+    [Obsolete("2026.03: Use GetIdRange without entryKind")]
     public virtual Task<Range<long>> GetIdRange(
         Session session, ChatId chatId, int entryKind, CancellationToken cancellationToken)
         => GetIdRange(session, chatId, cancellationToken);
@@ -959,8 +959,8 @@ public partial class Chats(IServiceProvider services) : IChats
             .ConfigureAwait(false);
 
         // Check constraints
-        if (!(textEntry.AuthorId == author.Id || chat.Rules.IsOwner()))
-            throw StandardError.Unauthorized("You can remove only your own messages.");
+        if (!(textEntry.AuthorId == author.Id || chat.Rules.IsOwner() || chat.Id.Kind == ChatKind.Peer))
+            throw StandardError.Unauthorized("You're not allowed to remove this message.");
         if (textEntry.IsContentStreaming)
             throw StandardError.Constraint("Wait for the content stream end to remove this message.");
 
@@ -986,8 +986,8 @@ public partial class Chats(IServiceProvider services) : IChats
         if (textEntry == null)
             return;
 
-        if (!(textEntry.AuthorId == author.Id || chat.Rules.IsOwner()))
-            throw StandardError.Unauthorized("You can restore only your own messages.");
+        if (!(textEntry.AuthorId == author.Id || chat.Rules.IsOwner() || chat.Id.Kind == ChatKind.Peer))
+            throw StandardError.Unauthorized("You're not allowed to restore this message.");
 
         await Restore(chatEntryId).ConfigureAwait(false);
         return;

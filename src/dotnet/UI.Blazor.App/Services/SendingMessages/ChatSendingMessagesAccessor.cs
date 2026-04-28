@@ -63,7 +63,7 @@ public class ChatSendingMessagesAccessor(ChatSendingMessages chatSendingMessages
                 continue;
 
             var entryId = ChatEntryId.New(ChatId, localId);
-            var chatEntry = new ChatEntry(entryId, 0) {
+            var chatEntry = new TextEntry(entryId, 0) {
                 AuthorId = ownAuthorId,
                 Content = sendingMessage.Content,
                 BeginsAt = sendingMessage.BeginsAt,

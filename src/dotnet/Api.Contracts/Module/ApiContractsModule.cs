@@ -87,7 +87,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         rpc.AddClient<ISecureTokens>();
         fusion.AddClient<IMobileSessions>();
         if (HostInfo.HostKind.IsMauiApp())
-            services.AddRestEase(restEase => restEase.AddClient<INativeAuthClient>());
+            fusion.AddClient<INativeAuth>();
         fusion.AddClient<IPhoneAuth>();
         fusion.AddClient<IEmailAuth>();
 

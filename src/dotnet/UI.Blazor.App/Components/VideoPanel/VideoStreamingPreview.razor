@@ -18,6 +18,7 @@
 
 <div @ref="Ref" class="video-track-player video-streaming-preview @Class @recordingCls @screencastCls">
     <canvas class="remote-video-bg" aria-hidden="true"></canvas>
+    <video class="call-video-native @mirrorCls" autoplay playsinline muted></video>
     <canvas
         class="call-video @mirrorCls"
         @onclick="@(isRecording && !m.IsAloneOnStream ? OnSettingsClick : null!)"></canvas>

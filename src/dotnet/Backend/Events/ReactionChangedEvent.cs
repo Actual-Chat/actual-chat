@@ -1,14 +1,14 @@
 namespace ActualChat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MessagePackObject(true)]
 public partial record ReactionChangedEvent(
-    [property: DataMember, MemoryPackOrder(1)] Reaction Reaction,
-    [property: DataMember, MemoryPackOrder(2)] ChatEntry Entry,
-    [property: DataMember, MemoryPackOrder(3)] AuthorFull Author,
-    [property: DataMember, MemoryPackOrder(4)] AuthorFull ReactionAuthor,
-    [property: DataMember, MemoryPackOrder(5)] ChangeKind ChangeKind
+    [property: DataMember] Reaction Reaction,
+    [property: DataMember] ChatEntry Entry,
+    [property: DataMember] AuthorFull Author,
+    [property: DataMember] AuthorFull ReactionAuthor,
+    [property: DataMember] ChangeKind ChangeKind
 ) : EventCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => Entry.ChatId;
 }

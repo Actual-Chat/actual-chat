@@ -146,9 +146,6 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         // Avatars
         rpcHost.AddLocalApi<IAvatars, Avatars>(); // Used by Authors -> Chats, etc.
         rpcHost.AddBackend<IAvatarsBackend, AvatarsBackend>();
-#pragma warning disable CS0618 // Obsolete
-        rpcHost.AddApi<ILegacyAvatars, LegacyAvatars>(); // Legacy compat for old mobile clients
-#pragma warning restore CS0618
         services.AddSingleton<AvatarPictures>(); // Used by AvatarPicturesController for caching
 
         // ChatPositions
@@ -169,6 +166,10 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
 
         // EmailAuth
         rpcHost.AddApi<IEmailAuth, EmailAuth>(); // Requires Redis & IEmailSender
+
+        // NativeAuth (iOS/Android OAuth)
+        if (rpcHost.IsApiHost)
+            rpcHost.AddApi<INativeAuth, NativeAuth>(); // Requires ASP.NET auth options
 
         // Emails
         rpcHost.AddApi<IEmails, Emails>();

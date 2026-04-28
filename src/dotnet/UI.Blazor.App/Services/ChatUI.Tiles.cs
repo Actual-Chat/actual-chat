@@ -671,7 +671,7 @@ public partial class ChatUI
             return chatEntry; // Cache chat entry to enable reusing MessageView.
 
         var entryId = ChatEntryId.New(chatId, long.MaxValue);
-        chatEntry = new ChatEntry(entryId, 0) {
+        chatEntry = new TextEntry(entryId, 0) {
             AuthorId = ownAuthorId,
             Content = "",
             BeginsAt = state.RecordingStartTime,

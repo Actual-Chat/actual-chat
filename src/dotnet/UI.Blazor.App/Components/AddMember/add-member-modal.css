@@ -1,7 +1,3 @@
-body.narrow .add-member-modal.narrow-view__modal__position-stretch {
-    padding-top: var(--safe-area-top);
-    padding-bottom: calc(1rem + var(--safe-area-bottom));
-}
 .add-member-modal-content .dialog-body {
     @apply flex-y gap-y-2;
 }

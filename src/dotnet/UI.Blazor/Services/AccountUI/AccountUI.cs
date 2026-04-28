@@ -1,4 +1,5 @@
 using ActualChat.Hosting;
+using ActualChat.UI.Blazor.Module;
 using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.Services;
@@ -8,17 +9,19 @@ namespace ActualChat.UI.Blazor.Services;
 /// </summary>
 public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyInitialized
 {
+    private static readonly string AuthJsClassName = $"{BlazorUICoreModule.ImportName}.WebAuth";
+
     private readonly AsyncTaskMethodBuilder _whenReadySource = AsyncTaskMethodBuilderExt.New();
     private readonly MutableState<AccountFull> _ownAccount;
     private readonly MutableState<Moment> _lastChangedAt;
     private readonly MutableState<SignInRequest?> _activeSignInRequest;
     private readonly TimeSpan _maxInvalidationDelay;
     private readonly Lock _postponeOnSignedInWorkflowTasksLock = new();
+    private (string Schema, string DisplayName)[]? _cachedAuthSchemas;
     private List<Task>? _postponeOnSignedInWorkflowTasks;
 
     private IAccounts Accounts => Hub.Accounts;
 
-    private IClientAuth ClientAuth => field ??= Services.GetRequiredService<IClientAuth>();
     private IOnboardingUI OnboardingUI => Hub.OnboardingUI;
     private INotificationUI NotificationUI => Hub.NotificationUI;
     private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
@@ -100,16 +103,14 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
         return OwnAccount.Value is { IsGuest: false };
     }
 
-    // IClientAuth wrapping methods
+    // Sign-in / sign-out
 
-#pragma warning disable CS0618 // Type or member is obsolete
-
-    public (string Name, string DisplayName)[] GetAuthSchemas()
-        => ClientAuth.GetSchemas();
+    public virtual (string Name, string DisplayName)[] GetAuthSchemas()
+        => _cachedAuthSchemas ??= AuthSchema.ToSchemasWithDisplayNames(AuthSchema.AllExternal);
 
     public async Task SignIn(string schema, bool mustExist = false)
     {
-        await ClientAuth.SignIn(schema, mustExist).ConfigureAwait(false);
+        await SignInBackend(schema, mustExist).ConfigureAwait(false);
         // TODO(AY): Make it reliable
         await NotificationUI.EnsureDeviceRegistered(CancellationToken.None).ConfigureAwait(false);
     }
@@ -123,11 +124,8 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
         catch (Exception e) {
             Log.LogError(e, "SignOut: failed to deregister device");
         }
-        await ClientAuth.SignOut().ConfigureAwait(false);
+        await SignOutBackend().ConfigureAwait(false);
     }
-
-#pragma warning restore CS0618 // Type or member is obsolete
-
 
     public void PostponeOnSignInWorkflow(Task taskToAwait)
     {
@@ -140,6 +138,14 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
             _postponeOnSignedInWorkflowTasks.Add(taskToAwait);
         }
     }
+
+    // Protected methods
+
+    protected virtual Task SignInBackend(string schema, bool mustExist)
+        => JS.InvokeVoidAsync($"{AuthJsClassName}.signIn", schema, mustExist).AsTask();
+
+    protected virtual Task SignOutBackend()
+        => JS.InvokeVoidAsync($"{AuthJsClassName}.signOut").AsTask();
 
     // Private methods
 

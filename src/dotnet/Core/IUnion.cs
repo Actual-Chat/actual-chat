@@ -5,7 +5,7 @@ namespace ActualChat;
 /// </summary>
 public interface IUnion<T> : IRequirementTarget
 {
-    public T Option { get; set; }
+    T Option { get; set; }
 }
 
 /// <summary>
@@ -13,5 +13,5 @@ public interface IUnion<T> : IRequirementTarget
 /// </summary>
 public interface IUnionRecord<T> : IRequirementTarget
 {
-    public T Option { get; init; }
+    T Option { get; init; }
 }

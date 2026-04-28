@@ -141,7 +141,12 @@
                 break;
             }
 
-            if (chat.Rules.IsOwner())
+            if (!chat.Rules.CanWrite()) {
+                canDelete = false;
+                break;
+            }
+
+            if (chat.Rules.IsOwner() || chat.Id.Kind == ChatKind.Peer)
                 break;
 
             if (ownAuthor == null) {

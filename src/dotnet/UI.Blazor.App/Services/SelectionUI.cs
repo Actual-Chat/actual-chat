@@ -70,7 +70,7 @@ public class SelectionUI : UIServiceBase<AppUIHub>
         var chatMarkupHub = ChatMarkupHubFactory[chatId];
         CancellationToken cancellationToken = default;
 
-        var sb = ActualLab.Text.StringBuilderExt.Acquire();
+        var lines = new List<string>();
         AuthorId? currentAuthorId = null;
         foreach (var chatEntryId in selection.OrderBy(x => x.LocalId)) {
             var chatEntry = await Chats.GetEntry(Session, chatEntryId, cancellationToken).ConfigureAwait(false);
@@ -91,21 +91,19 @@ public class SelectionUI : UIServiceBase<AppUIHub>
             markup = await chatMarkupHub.ApplyMentionNamer(markup, cancellationToken).ConfigureAwait(false);
 
             if (showAuthor && currentAuthorId != chatEntry.AuthorId) {
-                if (sb.Length > 0)
-                    sb.AppendLine();
+                if (lines.Count > 0)
+                    lines.Add("");
                 currentAuthorId = chatEntry.AuthorId;
                 var author = await Authors.Get(Session, chatEntry.ChatId, chatEntry.AuthorId, cancellationToken).ConfigureAwait(false);
                 var authorName = author?.Avatar.Name ?? "(N/A)";
                 var timestamp = DateTimeConverter.ToLocalTime(chatEntry.BeginsAt).ToString("g");
-                sb.AppendFormat("{0}, [{1}]", authorName, timestamp);
-                sb.AppendLine();
+                lines.Add($"{authorName}, [{timestamp}]");
             }
 
-            var text = markup.ToClipboardText();
-            sb.AppendLine(text);
+            lines.Add(markup.ToClipboardText());
         }
 
-        return sb.ToStringAndRelease();
+        return string.Join('\n', lines);
     }
 
     private async Task<string> GetTextToCopy(ChatEntry sendingChatEntry)
@@ -129,6 +127,23 @@ public class SelectionUI : UIServiceBase<AppUIHub>
 
         var chatId = selection.Select(x => x.ChatId).First();
         var localIds = selection.Select(x => x.LocalId).ToArray();
+
+        var otherAuthorCount = await GetOtherAuthorEntryCount(chatId, selection).ConfigureAwait(true);
+        if (otherAuthorCount > 0) {
+            var word = "message".Pluralize(otherAuthorCount);
+            var confirmed = false;
+            var model = new ConfirmModal.Model(true,
+                $"You're about to delete {otherAuthorCount} {word} written by other users. Continue?",
+                () => { confirmed = true; }) {
+                Title = $"Delete {word}?",
+                ConfirmButtonText = "Delete",
+            };
+            var modalRef = await ModalUI.Show(model).ConfigureAwait(true);
+            await modalRef.WhenClosed.ConfigureAwait(true);
+            if (!confirmed)
+                return;
+        }
+
         var removeCommand = new Chats_RemoveEntries(Session, chatId, localIds);
         await UICommander.Run(removeCommand).ConfigureAwait(true);
 
@@ -139,6 +154,19 @@ public class SelectionUI : UIServiceBase<AppUIHub>
             var restoreCommand = new Chats_RestoreEntries(Session, chatId, localIds);
             _ = UICommander.Run(restoreCommand);
         }
+    }
+
+    private async Task<int> GetOtherAuthorEntryCount(ChatId chatId, IReadOnlySet<ChatEntryId> selection)
+    {
+        var ownAuthor = await Authors.GetOwn(Session, chatId, default).ConfigureAwait(false);
+        var ownAuthorId = ownAuthor?.Id ?? default;
+        var count = 0;
+        foreach (var chatEntryId in selection) {
+            var chatEntry = await Chats.GetEntry(Session, chatEntryId).ConfigureAwait(false);
+            if (chatEntry != null && chatEntry.AuthorId != ownAuthorId)
+                count++;
+        }
+        return count;
     }
 
     public Task Forward(ChatEntryId chatEntryId)

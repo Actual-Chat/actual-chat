@@ -1228,7 +1228,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 var localId = await DbNextLocalId(dbContext, chatId, cancellationToken)
                     .ConfigureAwait(false);
                 chatEntryId = ChatEntryId.New(chatId, localId);
-                entry = new ChatEntry(chatEntryId) {
+                entry = ChatEntry.NewEmpty(chatEntryId, update?.Kind ?? ChatEntryKind.Text) with {
                     Version = VersionGenerator.NextVersion(),
                     BeginsAt = Clocks.SystemClock.Now,
                 };
@@ -1985,8 +1985,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             entryId,
             null,
             Change.Create(new ChatEntryDiff {
+                Kind = ChatEntryKind.MembersChanged,
                 AuthorId = Bots.GetWalleId(author.ChatId),
-                SystemEntry = (SystemEntry)new MembersChangedOption(authorId, authorName, author.HasLeft),
+                TargetAuthorId = authorId,
+                TargetAuthorName = authorName,
+                HasLeft = author.HasLeft,
             }));
 
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);

@@ -149,7 +149,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         }
 
         if (!isPublicPlace) {
-            var invite = ActualChat.Invite.Invite.New(Constants.Invites.Defaults.PlaceRemaining, new PlaceInviteOption(place.Id));
+            ActualChat.Invite.Invite invite = ActualChat.Invite.PlaceInvite.New(Constants.Invites.Defaults.PlaceRemaining, place.Id);
             invite = await commander.Call(new Invites_Generate(session, invite));
 
             await commander2.Call(new Invites_Use(anotherSession, invite.Id));
@@ -186,7 +186,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         }
 
         if (!isPublicPlace) {
-            var invite = ActualChat.Invite.Invite.New(Constants.Invites.Defaults.PlaceRemaining, new PlaceInviteOption(place.Id));
+            ActualChat.Invite.Invite invite = ActualChat.Invite.PlaceInvite.New(Constants.Invites.Defaults.PlaceRemaining, place.Id);
             invite = await commander.Call(new Invites_Generate(session, invite));
 
             await tester2.Commander.Call(new Invites_Use(anotherSession, invite.Id));
@@ -226,7 +226,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
         var inviteId = Symbol.Empty;
         if (!isPublicPlace) {
-            var invite = ActualChat.Invite.Invite.New(Constants.Invites.Defaults.PlaceRemaining, new PlaceInviteOption(placeId));
+            ActualChat.Invite.Invite invite = ActualChat.Invite.PlaceInvite.New(Constants.Invites.Defaults.PlaceRemaining, placeId);
             invite = await commander.Call(new Invites_Generate(session, invite));
             inviteId = invite.Id;
 
@@ -300,7 +300,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         }
 
         if (!isPublicPlace) {
-            var invite = ActualChat.Invite.Invite.New(Constants.Invites.Defaults.PlaceRemaining, new PlaceInviteOption(place.Id));
+            ActualChat.Invite.Invite invite = ActualChat.Invite.PlaceInvite.New(Constants.Invites.Defaults.PlaceRemaining, place.Id);
             invite = await commander.Call(new Invites_Generate(session, invite));
 
             await commander2.Call(new Invites_Use(anotherSession, invite.Id));
@@ -335,7 +335,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
             var contactIds = await contacts.ListIds(anotherSession, place.Id, default);
             contactIds.Length.Should().Be(0);
 
-            var invite = ActualChat.Invite.Invite.New(Constants.Invites.Defaults.ChatRemaining, new ChatInviteOption(chat.Id));
+            ActualChat.Invite.Invite invite = ActualChat.Invite.ChatInvite.New(Constants.Invites.Defaults.ChatRemaining, chat.Id);
             invite = await commander.Call(new Invites_Generate(session, invite));
 
             await commander2.Call(new Invites_Use(anotherSession, invite.Id));
@@ -393,7 +393,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
             });
         }
 
-        var invite = ActualChat.Invite.Invite.New(Constants.Invites.Defaults.ChatRemaining, new ChatInviteOption(chat.Id));
+        ActualChat.Invite.Invite invite = ActualChat.Invite.ChatInvite.New(Constants.Invites.Defaults.ChatRemaining, chat.Id);
         invite = await commander.Call(new Invites_Generate(session, invite));
 
         if (shouldSucceed) {

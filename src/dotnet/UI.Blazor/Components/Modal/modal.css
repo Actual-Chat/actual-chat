@@ -77,10 +77,12 @@ body.wide .modal .modal-content {
 }
 
 body.narrow .modal-frame.modal-md {
-    @apply absolute bottom-0 left-0 right-0;
+    @apply absolute bottom-0;
+    left: var(--safe-area-left);
+    right: var(--safe-area-right);
     @apply w-auto h-auto;
-    @apply rounded-b-none;
-    height: 80vh;
+    @apply rounded-b-none rounded-t-2xl;
+    max-height: 80vh;
     padding-bottom: calc(1rem + var(--safe-area-bottom));
 }
 body.narrow .modal-frame.modal-sm {
@@ -96,15 +98,19 @@ body.narrow .modal-frame.modal-sm {
 }
 
 .narrow .narrow-view__modal__position-bottom {
-    @apply absolute bottom-0 left-0 right-0;
+    @apply absolute bottom-0;
+    left: var(--safe-area-left);
+    right: var(--safe-area-right);
     @apply w-auto h-auto;
-    @apply rounded-b-none;
-    height: 80vh;
+    @apply rounded-b-none rounded-t-2xl;
+    max-height: 80vh;
     padding-bottom: calc(1rem + var(--safe-area-bottom));
 }
 
 .narrow .narrow-view__modal__position-stretch {
     @apply rounded-none;
+    padding-top: var(--safe-area-top);
+    padding-bottom: calc(1rem + var(--safe-area-bottom));
 }
 
 .modal-frame .safe-area-bottom-overlay {
